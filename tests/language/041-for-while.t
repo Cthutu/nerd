@@ -39,7 +39,7 @@ func fn.0() -> void {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [53 x i8] c"tests/language/041-for-while.t\00"
+@.macro.file.m0 = private unnamed_addr constant [31 x i8] c"tests/language/041-for-while.t\00"
 @.str.m0.0 = private unnamed_addr constant [7 x i8] c"While \00"
 
 declare i1 @string_eq(ptr, ptr)
@@ -68,6 +68,7 @@ declare ptr @$input({ ptr, i64 })
 
 define internal void @fn.0() {
   %local.0 = alloca i32
+  %t4 = alloca { ptr, i64 }
   store i32 0, ptr %local.0
   br label %for.cond.0
 for.cond.0:
@@ -77,7 +78,6 @@ for.cond.0:
 for.body.1:
   %t2 = call i64 @string_builder_mark()
   %t3 = alloca { ptr, i64 }
-  %t4 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.0, i64 6 }, ptr %t4
   call void @to_string$string(ptr %t3, ptr %t4)
   call void @string_builder_append_string(ptr %t3)

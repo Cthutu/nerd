@@ -109,6 +109,8 @@ ffi "kernel32" {
 
     c_CloseHandle :: CloseHandle (hObject: HANDLE) -> BOOL
 
+    c_FlushFileBuffers :: FlushFileBuffers (hFile: HANDLE) -> BOOL
+
     c_ReadFile :: ReadFile (hFile                : HANDLE,
                             lpBuffer             : ^void,
                             nNumberOfBytesToRead : DWORD,
@@ -185,6 +187,10 @@ pub CreateFile :: fn (lpFileName            : ^i8,
 
 pub CloseHandle :: fn (hObject: HANDLE) -> BOOL {
     return c_CloseHandle(hObject)
+}
+
+pub FlushFileBuffers :: fn (hFile: HANDLE) -> BOOL {
+    return c_FlushFileBuffers(hFile)
 }
 
 pub ReadFile :: fn (hFile                : HANDLE,

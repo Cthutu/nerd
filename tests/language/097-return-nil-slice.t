@@ -49,7 +49,10 @@ func fn.1() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
+@.macro.file.m0 = private unnamed_addr constant [38 x i8] c"tests/language/097-return-nil-slice.t\00"
+
 define internal { ptr, i64 } @fn.0(i1 %ok) {
+  %local.1 = alloca [2 x i8]
   %t0 = icmp eq i1 %ok, 0
   %t1 = icmp eq i1 %t0, 1
   br i1 %t1, label %on.body.1, label %on.end.0
@@ -58,7 +61,6 @@ on.body.1:
 on.end.0:
   %t2 = insertvalue [2 x i8] poison, i8 111, 0
   %t3 = insertvalue [2 x i8] %t2, i8 107, 1
-  %local.1 = alloca [2 x i8]
   store [2 x i8] %t3, ptr %local.1
   %t4 = getelementptr inbounds [2 x i8], ptr %local.1, i64 0, i64 0
   %t5 = insertvalue { ptr, i64 } poison, ptr %t4, 0

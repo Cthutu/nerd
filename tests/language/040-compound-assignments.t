@@ -53,7 +53,7 @@ func fn.0() -> void {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [64 x i8] c"tests/language/040-compound-assignments.t\00"
+@.macro.file.m0 = private unnamed_addr constant [42 x i8] c"tests/language/040-compound-assignments.t\00"
 @.str.m0.0 = private unnamed_addr constant [2 x i8] c" \00"
 @.str.m0.1 = private unnamed_addr constant [2 x i8] c" \00"
 
@@ -83,6 +83,10 @@ declare ptr @$input({ ptr, i64 })
 
 define internal void @fn.0() {
   %local.0 = alloca i32
+  %local.1 = alloca i32
+  %local.2 = alloca i1
+  %t24 = alloca { ptr, i64 }
+  %t28 = alloca { ptr, i64 }
   store i32 1, ptr %local.0
   %t0 = load i32, ptr %local.0
   %t1 = add i32 %t0, 2
@@ -99,7 +103,6 @@ define internal void @fn.0() {
   %t8 = load i32, ptr %local.0
   %t9 = srem i32 %t8, 2
   store i32 %t9, ptr %local.0
-  %local.1 = alloca i32
   store i32 6, ptr %local.1
   %t10 = load i32, ptr %local.1
   %t11 = and i32 %t10, 3
@@ -110,7 +113,6 @@ define internal void @fn.0() {
   %t14 = load i32, ptr %local.1
   %t15 = or i32 %t14, 8
   store i32 %t15, ptr %local.1
-  %local.2 = alloca i1
   store i1 1, ptr %local.2
   %t16 = load i1, ptr %local.2
   %t17 = and i1 %t16, 0
@@ -124,7 +126,6 @@ define internal void @fn.0() {
   call void @to_string$i32(ptr %t22, i32 %t21)
   call void @string_builder_append_string(ptr %t22)
   %t23 = alloca { ptr, i64 }
-  %t24 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.0, i64 1 }, ptr %t24
   call void @to_string$string(ptr %t23, ptr %t24)
   call void @string_builder_append_string(ptr %t23)
@@ -133,7 +134,6 @@ define internal void @fn.0() {
   call void @to_string$i32(ptr %t26, i32 %t25)
   call void @string_builder_append_string(ptr %t26)
   %t27 = alloca { ptr, i64 }
-  %t28 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.1, i64 1 }, ptr %t28
   call void @to_string$string(ptr %t27, ptr %t28)
   call void @string_builder_append_string(ptr %t27)

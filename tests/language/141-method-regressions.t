@@ -72,7 +72,7 @@ func fn.3() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [62 x i8] c"tests/language/141-method-regressions.t\00"
+@.macro.file.m0 = private unnamed_addr constant [40 x i8] c"tests/language/141-method-regressions.t\00"
 @.str.m0.0 = private unnamed_addr constant [6 x i8] c"area \00"
 
 declare i1 @string_eq(ptr, ptr)
@@ -129,12 +129,12 @@ define internal i32 @fn.2(ptr %rect) {
 
 define internal i32 @fn.3() {
   %local.4 = alloca { i32, i32 }
+  %t3 = alloca { ptr, i64 }
   store { i32, i32 } zeroinitializer, ptr %local.4
   call void @fn.1(ptr %local.4, i32 3)
   %t0 = call i32 @fn.2(ptr %local.4)
   %t1 = call i64 @string_builder_mark()
   %t2 = alloca { ptr, i64 }
-  %t3 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.0, i64 5 }, ptr %t3
   call void @to_string$string(ptr %t2, ptr %t3)
   call void @string_builder_append_string(ptr %t2)

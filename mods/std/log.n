@@ -59,6 +59,11 @@ on "linux" {
         return log_append(log, text) && log_append(log, "\n")
     }
 
+    pub log_flush :: fn (log: LogFile) -> bool {
+        on !log_valid(log) => return no
+        return sys_fsync(log.fd) == 0
+    }
+
     pub log_close :: fn (log: LogFile) -> bool {
         on !log_valid(log) => return no
         return sys_close(log.fd) == 0
@@ -110,6 +115,11 @@ on "windows" {
 
     pub log_append_line :: fn (log: LogFile, text: string) -> bool {
         return log_append(log, text) && log_append(log, "\n")
+    }
+
+    pub log_flush :: fn (log: LogFile) -> bool {
+        on !log_valid(log) => return no
+        return FlushFileBuffers(log.handle) != 0
     }
 
     pub log_close :: fn (log: LogFile) -> bool {

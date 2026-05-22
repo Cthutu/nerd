@@ -90,8 +90,8 @@ define internal ptr @fn.1() {
 
 define internal i32 @fn.2() {
   %local.1 = alloca i32
-  store i32 7, ptr %local.1
   %local.2 = alloca ptr
+  store i32 7, ptr %local.1
   store ptr null, ptr %local.2
   store ptr %local.1, ptr %local.2
   %t0 = load ptr, ptr %local.2
@@ -123,4 +123,3 @@ on.end.2:
 @$take_slice = internal alias i32 ({ ptr, i64 }), ptr @fn.0
 @$ret_ptr = internal alias ptr (), ptr @fn.1
 @$main = alias i32 (), ptr @fn.2
-

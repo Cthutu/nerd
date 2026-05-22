@@ -51,6 +51,7 @@ func fn.0() -> void {
 ; nerd llvm-ir 0
 ; generated from HIR
 
+@.macro.file.m0 = private unnamed_addr constant [44 x i8] c"tests/language/117-interpolated-for-field.t\00"
 @.str.m0.0 = private unnamed_addr constant [6 x i8] c"field\00"
 @.str.m0.1 = private unnamed_addr constant [5 x i8] c"same\00"
 @.str.m0.2 = private unnamed_addr constant [11 x i8] c"You go to \00"
@@ -89,12 +90,15 @@ define void @m0.init() {
 }
 
 define internal void @fn.0() {
+  %local.1 = alloca i64
+  %local.2 = alloca ptr
+  %t10 = alloca { ptr, i64 }
+  %t15 = alloca { ptr, i64 }
+  %t17 = alloca { ptr, i64 }
   %t0 = load { ptr, i64 }, ptr @$locs
   %t1 = extractvalue { ptr, i64 } %t0, 0
   %t2 = extractvalue { ptr, i64 } %t0, 1
-  %local.1 = alloca i64
   store i64 0, ptr %local.1
-  %local.2 = alloca ptr
   br label %for.in.cond.0
 for.in.cond.0:
   %t3 = load i64, ptr %local.1
@@ -114,7 +118,6 @@ on.next.5:
 on.body.6:
   %t8 = call i64 @string_builder_mark()
   %t9 = alloca { ptr, i64 }
-  %t10 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.2, i64 10 }, ptr %t10
   call void @to_string$string(ptr %t9, ptr %t10)
   call void @string_builder_append_string(ptr %t9)
@@ -122,12 +125,10 @@ on.body.6:
   %t12 = load { { ptr, i64 } }, ptr %t11
   %t13 = extractvalue { { ptr, i64 } } %t12, 0
   %t14 = alloca { ptr, i64 }
-  %t15 = alloca { ptr, i64 }
   store { ptr, i64 } %t13, ptr %t15
   call void @to_string$string(ptr %t14, ptr %t15)
   call void @string_builder_append_string(ptr %t14)
   %t16 = alloca { ptr, i64 }
-  %t17 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.3, i64 1 }, ptr %t17
   call void @to_string$string(ptr %t16, ptr %t17)
   call void @string_builder_append_string(ptr %t16)

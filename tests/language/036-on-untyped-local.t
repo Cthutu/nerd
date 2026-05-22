@@ -38,7 +38,7 @@ func fn.0() -> void {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [60 x i8] c"tests/language/036-on-untyped-local.t\00"
+@.macro.file.m0 = private unnamed_addr constant [38 x i8] c"tests/language/036-on-untyped-local.t\00"
 @.str.m0.0 = private unnamed_addr constant [5 x i8] c"zero\00"
 @.str.m0.1 = private unnamed_addr constant [11 x i8] c"non-zero: \00"
 
@@ -67,6 +67,7 @@ declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
 
 define internal void @fn.0() {
+  %t3 = alloca { ptr, i64 }
   %t0 = icmp eq i32 2, 0
   br i1 %t0, label %on.body.1, label %on.next.2
 on.body.1:
@@ -78,7 +79,6 @@ on.next.2:
 on.body.4:
   %t1 = call i64 @string_builder_mark()
   %t2 = alloca { ptr, i64 }
-  %t3 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.1, i64 10 }, ptr %t3
   call void @to_string$string(ptr %t2, ptr %t3)
   call void @string_builder_append_string(ptr %t2)

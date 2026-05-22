@@ -55,7 +55,7 @@ func fn.0() -> void {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [65 x i8] c"tests/language/129-cross-module-generics.t\00"
+@.macro.file.m0 = private unnamed_addr constant [43 x i8] c"tests/language/129-cross-module-generics.t\00"
 @.str.m0.0 = private unnamed_addr constant [3 x i8] c"ok\00"
 @.str.m0.1 = private unnamed_addr constant [2 x i8] c" \00"
 @.str.m0.2 = private unnamed_addr constant [2 x i8] c" \00"
@@ -83,24 +83,26 @@ declare void @to_string$f64(ptr, double)
 
 declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
-declare void @m4.fn.0(ptr %stack, i32 %elem)
-declare i32 @m4.fn.1(ptr %stack)
-declare { { ptr, i64 } } @m4.fn.2({ ptr, i64 } %value)
+declare void @mN.fn.0(ptr %stack, i32 %elem)
+declare i32 @mN.fn.1(ptr %stack)
+declare { { ptr, i64 } } @mN.fn.2({ ptr, i64 } %value)
 
 define internal void @fn.0() {
   %local.0 = alloca { ptr }
+  %t6 = alloca { ptr, i64 }
+  %t9 = alloca { ptr, i64 }
+  %t12 = alloca { ptr, i64 }
   store { ptr } zeroinitializer, ptr %local.0
-  call void @m4.fn.0(ptr %local.0, i32 42)
-  call void @m4.fn.0(ptr %local.0, i32 13)
-  %t0 = call i32 @m4.fn.1(ptr %local.0)
-  %t1 = call i32 @m4.fn.1(ptr %local.0)
-  %t2 = call { { ptr, i64 } } @m4.fn.2({ ptr, i64 } { ptr @.str.m0.0, i64 2 })
+  call void @mN.fn.0(ptr %local.0, i32 42)
+  call void @mN.fn.0(ptr %local.0, i32 13)
+  %t0 = call i32 @mN.fn.1(ptr %local.0)
+  %t1 = call i32 @mN.fn.1(ptr %local.0)
+  %t2 = call { { ptr, i64 } } @mN.fn.2({ ptr, i64 } { ptr @.str.m0.0, i64 2 })
   %t3 = call i64 @string_builder_mark()
   %t4 = alloca { ptr, i64 }
   call void @to_string$i32(ptr %t4, i32 %t0)
   call void @string_builder_append_string(ptr %t4)
   %t5 = alloca { ptr, i64 }
-  %t6 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.1, i64 1 }, ptr %t6
   call void @to_string$string(ptr %t5, ptr %t6)
   call void @string_builder_append_string(ptr %t5)
@@ -108,13 +110,11 @@ define internal void @fn.0() {
   call void @to_string$i32(ptr %t7, i32 %t1)
   call void @string_builder_append_string(ptr %t7)
   %t8 = alloca { ptr, i64 }
-  %t9 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.2, i64 1 }, ptr %t9
   call void @to_string$string(ptr %t8, ptr %t9)
   call void @string_builder_append_string(ptr %t8)
   %t10 = extractvalue { { ptr, i64 } } %t2, 0
   %t11 = alloca { ptr, i64 }
-  %t12 = alloca { ptr, i64 }
   store { ptr, i64 } %t10, ptr %t12
   call void @to_string$string(ptr %t11, ptr %t12)
   call void @string_builder_append_string(ptr %t11)

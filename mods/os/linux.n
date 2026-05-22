@@ -17,6 +17,7 @@ pub SYS_OPEN          :: 2  -- Linux syscall number for `open`.
 pub SYS_CLOSE         :: 3  -- Linux syscall number for `close`.
 pub SYS_IOCTL         :: 16  -- Linux syscall number for `ioctl`.
 pub SYS_NANOSLEEP     :: 35  -- Linux syscall number for `nanosleep`.
+pub SYS_FSYNC         :: 74  -- Linux syscall number for `fsync`.
 pub SYS_CLOCK_GETTIME :: 228  -- Linux syscall number for `clock_gettime`.
 
 pub O_WRONLY :: 0x0001
@@ -103,6 +104,11 @@ pub sys_open :: fn (path: ^i8, flags: i32, mode: i32) -> i32 {
 -- Closes a file descriptor using the Linux `close` syscall.
 pub sys_close :: fn (fd: i32) -> i32 {
     return syscall(SYS_CLOSE, fd.as(u64), 0, 0, 0, 0, 0).as(i32)
+}
+
+-- Flushes file contents and metadata using the Linux `fsync` syscall.
+pub sys_fsync :: fn (fd: i32) -> i32 {
+    return syscall(SYS_FSYNC, fd.as(u64), 0, 0, 0, 0, 0).as(i32)
 }
 
 -- Applies a Linux `ioctl` request with a pointer argument.

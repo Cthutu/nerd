@@ -57,7 +57,7 @@ func fn.1() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [63 x i8] c"tests/language/100-on-short-block-expr.t\00"
+@.macro.file.m0 = private unnamed_addr constant [41 x i8] c"tests/language/100-on-short-block-expr.t\00"
 @.str.m0.0 = private unnamed_addr constant [5 x i8] c"look\00"
 @.str.m0.1 = private unnamed_addr constant [1 x i8] c"\00"
 
@@ -130,8 +130,8 @@ on.end.0:
 }
 
 define internal i32 @fn.1() {
-  %t0 = call ptr @fn.0({ ptr, i64 } { ptr @.str.m0.0, i64 4 }, { ptr, i64 } { ptr @.str.m0.1, i64 0 })
   %local.3 = alloca ptr
+  %t0 = call ptr @fn.0({ ptr, i64 } { ptr @.str.m0.0, i64 4 }, { ptr, i64 } { ptr @.str.m0.1, i64 0 })
   store ptr %t0, ptr %local.3
   %t1 = load ptr, ptr %local.3
   %t2 = alloca i64

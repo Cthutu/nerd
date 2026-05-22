@@ -60,7 +60,7 @@ func fn.0() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [50 x i8] c"tests/language/054-slices.t\00"
+@.macro.file.m0 = private unnamed_addr constant [28 x i8] c"tests/language/054-slices.t\00"
 @.str.m0.0 = private unnamed_addr constant [7 x i8] c"all = \00"
 @.str.m0.1 = private unnamed_addr constant [10 x i8] c"middle = \00"
 @.str.m0.2 = private unnamed_addr constant [14 x i8] c"from_start = \00"
@@ -94,12 +94,19 @@ declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
 
 define internal i32 @fn.0() {
+  %local.0 = alloca [5 x i32]
+  %t31 = alloca { ptr, i64 }
+  %t46 = alloca { ptr, i64 }
+  %t61 = alloca { ptr, i64 }
+  %t76 = alloca { ptr, i64 }
+  %t91 = alloca { ptr, i64 }
+  %t106 = alloca { ptr, i64 }
+  %t113 = alloca { ptr, i64 }
   %t0 = insertvalue [5 x i32] poison, i32 10, 0
   %t1 = insertvalue [5 x i32] %t0, i32 20, 1
   %t2 = insertvalue [5 x i32] %t1, i32 30, 2
   %t3 = insertvalue [5 x i32] %t2, i32 40, 3
   %t4 = insertvalue [5 x i32] %t3, i32 50, 4
-  %local.0 = alloca [5 x i32]
   store [5 x i32] %t4, ptr %local.0
   %t5 = getelementptr inbounds [5 x i32], ptr %local.0, i64 0, i64 0
   %t6 = insertvalue { ptr, i64 } poison, ptr %t5, 0
@@ -128,7 +135,6 @@ define internal i32 @fn.0() {
   %t28 = insertvalue { ptr, i64 } %t27, i64 2, 1
   %t29 = call i64 @string_builder_mark()
   %t30 = alloca { ptr, i64 }
-  %t31 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.0, i64 6 }, ptr %t31
   call void @to_string$string(ptr %t30, ptr %t31)
   call void @string_builder_append_string(ptr %t30)
@@ -166,7 +172,6 @@ slice.string.end.4:
   call void @$prn({ ptr, i64 } %t43)
   %t44 = call i64 @string_builder_mark()
   %t45 = alloca { ptr, i64 }
-  %t46 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.1, i64 9 }, ptr %t46
   call void @to_string$string(ptr %t45, ptr %t46)
   call void @string_builder_append_string(ptr %t45)
@@ -204,7 +209,6 @@ slice.string.end.9:
   call void @$prn({ ptr, i64 } %t58)
   %t59 = call i64 @string_builder_mark()
   %t60 = alloca { ptr, i64 }
-  %t61 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.2, i64 13 }, ptr %t61
   call void @to_string$string(ptr %t60, ptr %t61)
   call void @string_builder_append_string(ptr %t60)
@@ -242,7 +246,6 @@ slice.string.end.14:
   call void @$prn({ ptr, i64 } %t73)
   %t74 = call i64 @string_builder_mark()
   %t75 = alloca { ptr, i64 }
-  %t76 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.3, i64 9 }, ptr %t76
   call void @to_string$string(ptr %t75, ptr %t76)
   call void @string_builder_append_string(ptr %t75)
@@ -280,7 +283,6 @@ slice.string.end.19:
   call void @$prn({ ptr, i64 } %t88)
   %t89 = call i64 @string_builder_mark()
   %t90 = alloca { ptr, i64 }
-  %t91 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.4, i64 10 }, ptr %t91
   call void @to_string$string(ptr %t90, ptr %t91)
   call void @string_builder_append_string(ptr %t90)
@@ -318,7 +320,6 @@ slice.string.end.24:
   call void @$prn({ ptr, i64 } %t103)
   %t104 = call i64 @string_builder_mark()
   %t105 = alloca { ptr, i64 }
-  %t106 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.5, i64 16 }, ptr %t106
   call void @to_string$string(ptr %t105, ptr %t106)
   call void @string_builder_append_string(ptr %t105)
@@ -332,7 +333,6 @@ slice.string.end.24:
   call void @$prn({ ptr, i64 } %t110)
   %t111 = call i64 @string_builder_mark()
   %t112 = alloca { ptr, i64 }
-  %t113 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.6, i64 13 }, ptr %t113
   call void @to_string$string(ptr %t112, ptr %t113)
   call void @string_builder_append_string(ptr %t112)

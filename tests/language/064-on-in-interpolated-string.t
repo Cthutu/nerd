@@ -41,7 +41,7 @@ func fn.0() -> void {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [69 x i8] c"tests/language/064-on-in-interpolated-string.t\00"
+@.macro.file.m0 = private unnamed_addr constant [47 x i8] c"tests/language/064-on-in-interpolated-string.t\00"
 @.str.m0.0 = private unnamed_addr constant [10 x i8] c"Colour = \00"
 @.str.m0.1 = private unnamed_addr constant [4 x i8] c"red\00"
 @.str.m0.2 = private unnamed_addr constant [6 x i8] c"green\00"
@@ -72,11 +72,12 @@ declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
 
 define internal void @fn.0() {
+  %t4 = alloca { ptr, i64 }
+  %t22 = alloca { ptr, i64 }
   %t0 = insertvalue { i64, i64 } poison, i64 0, 0
   %t1 = insertvalue { i64, i64 } %t0, i64 0, 1
   %t2 = call i64 @string_builder_mark()
   %t3 = alloca { ptr, i64 }
-  %t4 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.0, i64 9 }, ptr %t4
   call void @to_string$string(ptr %t3, ptr %t4)
   call void @string_builder_append_string(ptr %t3)
@@ -117,7 +118,6 @@ on.next.8:
 on.end.0:
   %t20 = phi { ptr, i64 } [{ ptr @.str.m0.1, i64 3 }, %on.value.3], [{ ptr @.str.m0.2, i64 5 }, %on.value.6], [{ ptr @.str.m0.3, i64 4 }, %on.value.9]
   %t21 = alloca { ptr, i64 }
-  %t22 = alloca { ptr, i64 }
   store { ptr, i64 } %t20, ptr %t22
   call void @to_string$string(ptr %t21, ptr %t22)
   call void @string_builder_append_string(ptr %t21)

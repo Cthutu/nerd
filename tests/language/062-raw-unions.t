@@ -42,7 +42,7 @@ func fn.0() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [54 x i8] c"tests/language/062-raw-unions.t\00"
+@.macro.file.m0 = private unnamed_addr constant [32 x i8] c"tests/language/062-raw-unions.t\00"
 @.str.m0.0 = private unnamed_addr constant [3 x i8] c"i \00"
 @.str.m0.1 = private unnamed_addr constant [3 x i8] c"f \00"
 
@@ -71,10 +71,11 @@ declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
 
 define internal i32 @fn.0() {
+  %t3 = alloca { ptr, i64 }
+  %t9 = alloca { ptr, i64 }
   %t0 = bitcast float 0x400C000000000000 to i32
   %t1 = call i64 @string_builder_mark()
   %t2 = alloca { ptr, i64 }
-  %t3 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.0, i64 2 }, ptr %t3
   call void @to_string$string(ptr %t2, ptr %t3)
   call void @string_builder_append_string(ptr %t2)
@@ -87,7 +88,6 @@ define internal i32 @fn.0() {
   call void @$prn({ ptr, i64 } %t6)
   %t7 = call i64 @string_builder_mark()
   %t8 = alloca { ptr, i64 }
-  %t9 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.1, i64 2 }, ptr %t9
   call void @to_string$string(ptr %t8, ptr %t9)
   call void @string_builder_append_string(ptr %t8)

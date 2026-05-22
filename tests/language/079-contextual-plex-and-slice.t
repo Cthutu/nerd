@@ -62,7 +62,7 @@ func fn.1() -> void {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [69 x i8] c"tests/language/079-contextual-plex-and-slice.t\00"
+@.macro.file.m0 = private unnamed_addr constant [47 x i8] c"tests/language/079-contextual-plex-and-slice.t\00"
 @.str.m0.0 = private unnamed_addr constant [2 x i8] c" \00"
 @.str.m0.1 = private unnamed_addr constant [2 x i8] c" \00"
 @.str.m0.2 = private unnamed_addr constant [2 x i8] c" \00"
@@ -95,6 +95,7 @@ declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
 
 define internal void @fn.0({ ptr, i64 } %items) {
+  %t9 = alloca { ptr, i64 }
   %t0 = extractvalue { ptr, i64 } %items, 1
   %t1 = sub i64 %t0, 1
   %t2 = extractvalue { ptr, i64 } %items, 0
@@ -106,7 +107,6 @@ define internal void @fn.0({ ptr, i64 } %items) {
   call void @to_string$i32(ptr %t7, i32 %t6)
   call void @string_builder_append_string(ptr %t7)
   %t8 = alloca { ptr, i64 }
-  %t9 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.0, i64 1 }, ptr %t9
   call void @to_string$string(ptr %t8, ptr %t9)
   call void @string_builder_append_string(ptr %t8)
@@ -122,6 +122,9 @@ define internal void @fn.0({ ptr, i64 } %items) {
 }
 
 define internal void @fn.1() {
+  %t8 = alloca { ptr, i64 }
+  %t26 = alloca { ptr, i64 }
+  %t42 = alloca { ptr, i64 }
   %t0 = insertvalue { i32, i32 } poison, i32 5, 0
   %t1 = insertvalue { i32, i32 } %t0, i32 6, 1
   %t2 = call i64 @string_builder_mark()
@@ -132,7 +135,6 @@ define internal void @fn.1() {
   call void @to_string$i32(ptr %t6, i32 %t5)
   call void @string_builder_append_string(ptr %t6)
   %t7 = alloca { ptr, i64 }
-  %t8 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.1, i64 1 }, ptr %t8
   call void @to_string$string(ptr %t7, ptr %t8)
   call void @string_builder_append_string(ptr %t7)
@@ -159,7 +161,6 @@ define internal void @fn.1() {
   call void @to_string$i32(ptr %t24, i32 %t23)
   call void @string_builder_append_string(ptr %t24)
   %t25 = alloca { ptr, i64 }
-  %t26 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.2, i64 1 }, ptr %t26
   call void @to_string$string(ptr %t25, ptr %t26)
   call void @string_builder_append_string(ptr %t25)
@@ -184,7 +185,6 @@ define internal void @fn.1() {
   call void @to_string$i32(ptr %t40, i32 %t39)
   call void @string_builder_append_string(ptr %t40)
   %t41 = alloca { ptr, i64 }
-  %t42 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.3, i64 1 }, ptr %t42
   call void @to_string$string(ptr %t41, ptr %t42)
   call void @string_builder_append_string(ptr %t41)

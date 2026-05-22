@@ -47,9 +47,11 @@ func fn.0() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
+@.macro.file.m0 = private unnamed_addr constant [35 x i8] c"tests/language/089-field-lvalues.t\00"
+
 define internal i32 @fn.0() {
-  %t0 = insertvalue { i32 } poison, i32 1, 0
   %local.0 = alloca { i32 }
+  %t0 = insertvalue { i32 } poison, i32 1, 0
   store { i32 } %t0, ptr %local.0
   %t1 = getelementptr inbounds { i32 }, ptr %local.0, i64 0, i32 0
   store i32 3, ptr %t1

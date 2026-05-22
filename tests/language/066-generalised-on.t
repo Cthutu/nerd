@@ -106,7 +106,7 @@ func fn.3() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [58 x i8] c"tests/language/066-generalised-on.t\00"
+@.macro.file.m0 = private unnamed_addr constant [36 x i8] c"tests/language/066-generalised-on.t\00"
 @.str.m0.0 = private unnamed_addr constant [9 x i8] c"negative\00"
 @.str.m0.1 = private unnamed_addr constant [5 x i8] c"zero\00"
 @.str.m0.2 = private unnamed_addr constant [6 x i8] c"small\00"
@@ -240,9 +240,23 @@ on.end.0:
 }
 
 define internal i32 @fn.3() {
+  %t2 = alloca { ptr, i64 }
+  %t7 = alloca { ptr, i64 }
+  %t11 = alloca { ptr, i64 }
+  %t15 = alloca { ptr, i64 }
+  %t19 = alloca { ptr, i64 }
+  %t26 = alloca { ptr, i64 }
+  %t30 = alloca { ptr, i64 }
+  %t32 = alloca { ptr, i64 }
+  %t35 = alloca { ptr, i64 }
+  %t37 = alloca { ptr, i64 }
+  %t40 = alloca { ptr, i64 }
+  %t42 = alloca { ptr, i64 }
+  %t45 = alloca { ptr, i64 }
+  %t50 = alloca { ptr, i64 }
+  %t54 = alloca { ptr, i64 }
   %t0 = call i64 @string_builder_mark()
   %t1 = alloca { ptr, i64 }
-  %t2 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.4, i64 7 }, ptr %t2
   call void @to_string$string(ptr %t1, ptr %t2)
   call void @string_builder_append_string(ptr %t1)
@@ -252,7 +266,6 @@ define internal i32 @fn.3() {
   call void @to_string$i32(ptr %t5, i32 %t4)
   call void @string_builder_append_string(ptr %t5)
   %t6 = alloca { ptr, i64 }
-  %t7 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.5, i64 1 }, ptr %t7
   call void @to_string$string(ptr %t6, ptr %t7)
   call void @string_builder_append_string(ptr %t6)
@@ -261,7 +274,6 @@ define internal i32 @fn.3() {
   call void @to_string$i32(ptr %t9, i32 %t8)
   call void @string_builder_append_string(ptr %t9)
   %t10 = alloca { ptr, i64 }
-  %t11 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.6, i64 1 }, ptr %t11
   call void @to_string$string(ptr %t10, ptr %t11)
   call void @string_builder_append_string(ptr %t10)
@@ -270,7 +282,6 @@ define internal i32 @fn.3() {
   call void @to_string$i32(ptr %t13, i32 %t12)
   call void @string_builder_append_string(ptr %t13)
   %t14 = alloca { ptr, i64 }
-  %t15 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.7, i64 1 }, ptr %t15
   call void @to_string$string(ptr %t14, ptr %t15)
   call void @string_builder_append_string(ptr %t14)
@@ -279,7 +290,6 @@ define internal i32 @fn.3() {
   call void @to_string$i32(ptr %t17, i32 %t16)
   call void @string_builder_append_string(ptr %t17)
   %t18 = alloca { ptr, i64 }
-  %t19 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.8, i64 1 }, ptr %t19
   call void @to_string$string(ptr %t18, ptr %t19)
   call void @string_builder_append_string(ptr %t18)
@@ -293,47 +303,39 @@ define internal i32 @fn.3() {
   call void @$prn({ ptr, i64 } %t23)
   %t24 = call i64 @string_builder_mark()
   %t25 = alloca { ptr, i64 }
-  %t26 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.9, i64 13 }, ptr %t26
   call void @to_string$string(ptr %t25, ptr %t26)
   call void @string_builder_append_string(ptr %t25)
   %t27 = sub i32 0, 2
   %t28 = call { ptr, i64 } @fn.1(i32 %t27)
   %t29 = alloca { ptr, i64 }
-  %t30 = alloca { ptr, i64 }
   store { ptr, i64 } %t28, ptr %t30
   call void @to_string$string(ptr %t29, ptr %t30)
   call void @string_builder_append_string(ptr %t29)
   %t31 = alloca { ptr, i64 }
-  %t32 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.10, i64 1 }, ptr %t32
   call void @to_string$string(ptr %t31, ptr %t32)
   call void @string_builder_append_string(ptr %t31)
   %t33 = call { ptr, i64 } @fn.1(i32 0)
   %t34 = alloca { ptr, i64 }
-  %t35 = alloca { ptr, i64 }
   store { ptr, i64 } %t33, ptr %t35
   call void @to_string$string(ptr %t34, ptr %t35)
   call void @string_builder_append_string(ptr %t34)
   %t36 = alloca { ptr, i64 }
-  %t37 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.11, i64 1 }, ptr %t37
   call void @to_string$string(ptr %t36, ptr %t37)
   call void @string_builder_append_string(ptr %t36)
   %t38 = call { ptr, i64 } @fn.1(i32 7)
   %t39 = alloca { ptr, i64 }
-  %t40 = alloca { ptr, i64 }
   store { ptr, i64 } %t38, ptr %t40
   call void @to_string$string(ptr %t39, ptr %t40)
   call void @string_builder_append_string(ptr %t39)
   %t41 = alloca { ptr, i64 }
-  %t42 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.12, i64 1 }, ptr %t42
   call void @to_string$string(ptr %t41, ptr %t42)
   call void @string_builder_append_string(ptr %t41)
   %t43 = call { ptr, i64 } @fn.1(i32 12)
   %t44 = alloca { ptr, i64 }
-  %t45 = alloca { ptr, i64 }
   store { ptr, i64 } %t43, ptr %t45
   call void @to_string$string(ptr %t44, ptr %t45)
   call void @string_builder_append_string(ptr %t44)
@@ -343,7 +345,6 @@ define internal i32 @fn.3() {
   call void @$prn({ ptr, i64 } %t47)
   %t48 = call i64 @string_builder_mark()
   %t49 = alloca { ptr, i64 }
-  %t50 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.13, i64 9 }, ptr %t50
   call void @to_string$string(ptr %t49, ptr %t50)
   call void @string_builder_append_string(ptr %t49)
@@ -352,7 +353,6 @@ define internal i32 @fn.3() {
   call void @to_string$i32(ptr %t52, i32 %t51)
   call void @string_builder_append_string(ptr %t52)
   %t53 = alloca { ptr, i64 }
-  %t54 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.14, i64 1 }, ptr %t54
   call void @to_string$string(ptr %t53, ptr %t54)
   call void @string_builder_append_string(ptr %t53)

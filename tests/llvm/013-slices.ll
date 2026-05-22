@@ -8,12 +8,14 @@ main :: fn() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
+@.macro.file.m0 = private unnamed_addr constant [30 x i8] c"tests/llvm/013-slices.input.n\00"
+
 define internal i32 @fn.0() {
+  %local.0 = alloca [4 x i32]
   %t0 = insertvalue [4 x i32] poison, i32 1, 0
   %t1 = insertvalue [4 x i32] %t0, i32 2, 1
   %t2 = insertvalue [4 x i32] %t1, i32 3, 2
   %t3 = insertvalue [4 x i32] %t2, i32 4, 3
-  %local.0 = alloca [4 x i32]
   store [4 x i32] %t3, ptr %local.0
   %t4 = getelementptr inbounds [4 x i32], ptr %local.0, i64 0, i64 0
   %t5 = insertvalue { ptr, i64 } poison, ptr %t4, 0

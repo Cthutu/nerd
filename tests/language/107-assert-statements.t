@@ -20,6 +20,7 @@ func fn.0() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
+@.macro.file.m0 = private unnamed_addr constant [39 x i8] c"tests/language/107-assert-statements.t\00"
 @.str.m0.0 = private unnamed_addr constant [17 x i8] c"math still works\00"
 @.assert.source_path.m0.0 = private unnamed_addr constant [39 x i8] c"tests/language/107-assert-statements.t\00"
 @.assert.source_path.m0.1 = private unnamed_addr constant [39 x i8] c"tests/language/107-assert-statements.t\00"
@@ -28,12 +29,12 @@ func fn.0() -> i32 {
 declare void @nerd_assert(i1, ptr, i32, ptr)
 
 define internal i32 @fn.0() {
-  %t0 = icmp slt i32 2, 3
   %t1 = alloca { ptr, i64 }
+  %t3 = alloca { ptr, i64 }
+  %t0 = icmp slt i32 2, 3
   store { ptr, i64 } { ptr @.assert.default.m0, i64 16 }, ptr %t1
   call void @nerd_assert(i1 %t0, ptr @.assert.source_path.m0.0, i32 3, ptr %t1)
   %t2 = icmp eq i32 4, 4
-  %t3 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.0, i64 16 }, ptr %t3
   call void @nerd_assert(i1 %t2, ptr @.assert.source_path.m0.1, i32 4, ptr %t3)
   ret i32 0

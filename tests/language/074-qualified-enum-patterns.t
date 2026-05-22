@@ -41,7 +41,10 @@ func fn.1() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
+@.macro.file.m0 = private unnamed_addr constant [45 x i8] c"tests/language/074-qualified-enum-patterns.t\00"
+
 define internal i32 @fn.0({ i64, i64 } %value) {
+  %t14 = alloca i64
   %t0 = insertvalue { i64, i64 } poison, i64 0, 0
   %t1 = insertvalue { i64, i64 } %t0, i64 0, 1
   %t2 = extractvalue { i64, i64 } %value, 0
@@ -67,7 +70,6 @@ on.next.5:
   %t10 = extractvalue { i64, i64 } %value, 0
   %t11 = icmp eq i64 %t10, 2
   %t12 = extractvalue { i64, i64 } %value, 1
-  %t14 = alloca i64
   store i64 %t12, ptr %t14
   %t13 = load { i32, i32 }, ptr %t14
   %t15 = extractvalue { i32, i32 } %t13, 0
@@ -88,9 +90,9 @@ on.end.0:
 }
 
 define internal i32 @fn.1() {
+  %t3 = alloca i64
   %t0 = insertvalue { i32, i32 } poison, i32 10, 0
   %t1 = insertvalue { i32, i32 } %t0, i32 20, 1
-  %t3 = alloca i64
   store i64 0, ptr %t3
   store { i32, i32 } %t1, ptr %t3
   %t2 = load i64, ptr %t3

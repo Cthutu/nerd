@@ -56,7 +56,7 @@ func fn.1() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [61 x i8] c"tests/language/029-on-comma-patterns.t\00"
+@.macro.file.m0 = private unnamed_addr constant [39 x i8] c"tests/language/029-on-comma-patterns.t\00"
 @.str.m0.0 = private unnamed_addr constant [4 x i8] c"0: \00"
 @.str.m0.1 = private unnamed_addr constant [4 x i8] c"1: \00"
 @.str.m0.2 = private unnamed_addr constant [4 x i8] c"2: \00"
@@ -106,9 +106,11 @@ on.end.0:
 }
 
 define internal i32 @fn.1() {
+  %t2 = alloca { ptr, i64 }
+  %t9 = alloca { ptr, i64 }
+  %t16 = alloca { ptr, i64 }
   %t0 = call i64 @string_builder_mark()
   %t1 = alloca { ptr, i64 }
-  %t2 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.0, i64 3 }, ptr %t2
   call void @to_string$string(ptr %t1, ptr %t2)
   call void @string_builder_append_string(ptr %t1)
@@ -122,7 +124,6 @@ define internal i32 @fn.1() {
   call void @$prn({ ptr, i64 } %t6)
   %t7 = call i64 @string_builder_mark()
   %t8 = alloca { ptr, i64 }
-  %t9 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.1, i64 3 }, ptr %t9
   call void @to_string$string(ptr %t8, ptr %t9)
   call void @string_builder_append_string(ptr %t8)
@@ -136,7 +137,6 @@ define internal i32 @fn.1() {
   call void @$prn({ ptr, i64 } %t13)
   %t14 = call i64 @string_builder_mark()
   %t15 = alloca { ptr, i64 }
-  %t16 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.2, i64 3 }, ptr %t16
   call void @to_string$string(ptr %t15, ptr %t16)
   call void @string_builder_append_string(ptr %t15)

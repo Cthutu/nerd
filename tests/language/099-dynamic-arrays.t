@@ -238,7 +238,7 @@ func fn.1() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [58 x i8] c"tests/language/099-dynamic-arrays.t\00"
+@.macro.file.m0 = private unnamed_addr constant [36 x i8] c"tests/language/099-dynamic-arrays.t\00"
 @.str.m0.0 = private unnamed_addr constant [5 x i8] c"look\00"
 @.str.m0.1 = private unnamed_addr constant [6 x i8] c"north\00"
 @.str.m0.2 = private unnamed_addr constant [6 x i8] c"north\00"
@@ -387,6 +387,24 @@ dynarray.store.7:
 
 define internal i32 @fn.1() {
   %local.2 = alloca ptr
+  %local.3 = alloca ptr
+  %local.1 = alloca [2 x { ptr, i64 }]
+  %t147 = alloca { ptr, i64 }
+  %t148 = alloca { ptr, i64 }
+  %t217 = alloca { ptr, i64 }
+  %t219 = alloca { ptr, i64 }
+  %t224 = alloca { ptr, i64 }
+  %t226 = alloca { ptr, i64 }
+  %t231 = alloca { ptr, i64 }
+  %t233 = alloca { ptr, i64 }
+  %t238 = alloca { ptr, i64 }
+  %t240 = alloca { ptr, i64 }
+  %t245 = alloca { ptr, i64 }
+  %local.6 = alloca ptr
+  %t294 = alloca { ptr, i64 }
+  %t296 = alloca { ptr, i64 }
+  %t304 = alloca { ptr, i64 }
+  %local.7 = alloca ptr
   store ptr null, ptr %local.2
   %t0 = load ptr, ptr %local.2
   %t1 = icmp ne ptr %t0, null
@@ -449,7 +467,6 @@ on.end.10:
   store ptr %t25, ptr %t22
   store i64 2, ptr %t23
   store i64 4, ptr %t24
-  %local.3 = alloca ptr
   store ptr %t25, ptr %local.3
   %t28 = load ptr, ptr %local.3
   %t29 = alloca i64
@@ -565,7 +582,6 @@ on.body.30:
 on.end.29:
   %t87 = insertvalue [2 x { ptr, i64 }] poison, { ptr, i64 } { ptr @.str.m0.5, i64 4 }, 0
   %t88 = insertvalue [2 x { ptr, i64 }] %t87, { ptr, i64 } { ptr @.str.m0.6, i64 2 }, 1
-  %local.1 = alloca [2 x { ptr, i64 }]
   store [2 x { ptr, i64 }] %t88, ptr %local.1
   %t89 = getelementptr inbounds [2 x { ptr, i64 }], ptr %local.1, i64 0, i64 0
   %t90 = insertvalue { ptr, i64 } poison, ptr %t89, 0
@@ -662,9 +678,7 @@ on.end.41:
   %t144 = getelementptr inbounds { ptr, i64 }, ptr %t139, i64 %t143
   %t145 = load { ptr, i64 }, ptr %t144
   store i64 %t143, ptr %t141
-  %t147 = alloca { ptr, i64 }
   store { ptr, i64 } %t145, ptr %t147
-  %t148 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.7, i64 2 }, ptr %t148
   %t146 = call i1 @string_eq(ptr %t147, ptr %t148)
   %t149 = xor i1 %t146, 1
@@ -780,12 +794,10 @@ on.end.57:
   %t214 = getelementptr inbounds { ptr, i64 }, ptr %t213, i32 0
   %t215 = load { ptr, i64 }, ptr %t214
   %t216 = alloca { ptr, i64 }
-  %t217 = alloca { ptr, i64 }
   store { ptr, i64 } %t215, ptr %t217
   call void @to_string$string(ptr %t216, ptr %t217)
   call void @string_builder_append_string(ptr %t216)
   %t218 = alloca { ptr, i64 }
-  %t219 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.8, i64 1 }, ptr %t219
   call void @to_string$string(ptr %t218, ptr %t219)
   call void @string_builder_append_string(ptr %t218)
@@ -793,12 +805,10 @@ on.end.57:
   %t221 = getelementptr inbounds { ptr, i64 }, ptr %t220, i32 1
   %t222 = load { ptr, i64 }, ptr %t221
   %t223 = alloca { ptr, i64 }
-  %t224 = alloca { ptr, i64 }
   store { ptr, i64 } %t222, ptr %t224
   call void @to_string$string(ptr %t223, ptr %t224)
   call void @string_builder_append_string(ptr %t223)
   %t225 = alloca { ptr, i64 }
-  %t226 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.9, i64 1 }, ptr %t226
   call void @to_string$string(ptr %t225, ptr %t226)
   call void @string_builder_append_string(ptr %t225)
@@ -806,12 +816,10 @@ on.end.57:
   %t228 = getelementptr inbounds { ptr, i64 }, ptr %t227, i32 2
   %t229 = load { ptr, i64 }, ptr %t228
   %t230 = alloca { ptr, i64 }
-  %t231 = alloca { ptr, i64 }
   store { ptr, i64 } %t229, ptr %t231
   call void @to_string$string(ptr %t230, ptr %t231)
   call void @string_builder_append_string(ptr %t230)
   %t232 = alloca { ptr, i64 }
-  %t233 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.10, i64 1 }, ptr %t233
   call void @to_string$string(ptr %t232, ptr %t233)
   call void @string_builder_append_string(ptr %t232)
@@ -819,12 +827,10 @@ on.end.57:
   %t235 = getelementptr inbounds { ptr, i64 }, ptr %t234, i32 3
   %t236 = load { ptr, i64 }, ptr %t235
   %t237 = alloca { ptr, i64 }
-  %t238 = alloca { ptr, i64 }
   store { ptr, i64 } %t236, ptr %t238
   call void @to_string$string(ptr %t237, ptr %t238)
   call void @string_builder_append_string(ptr %t237)
   %t239 = alloca { ptr, i64 }
-  %t240 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.11, i64 1 }, ptr %t240
   call void @to_string$string(ptr %t239, ptr %t240)
   call void @string_builder_append_string(ptr %t239)
@@ -832,7 +838,6 @@ on.end.57:
   %t242 = getelementptr inbounds { ptr, i64 }, ptr %t241, i32 4
   %t243 = load { ptr, i64 }, ptr %t242
   %t244 = alloca { ptr, i64 }
-  %t245 = alloca { ptr, i64 }
   store { ptr, i64 } %t243, ptr %t245
   call void @to_string$string(ptr %t244, ptr %t245)
   call void @string_builder_append_string(ptr %t244)
@@ -896,7 +901,6 @@ on.body.67:
   ret i32 11
 on.end.66:
   %t276 = call ptr @fn.0()
-  %local.6 = alloca ptr
   store ptr %t276, ptr %local.6
   %t277 = load ptr, ptr %local.6
   %t278 = alloca i64
@@ -927,12 +931,10 @@ on.end.71:
   %t291 = getelementptr inbounds { ptr, i64 }, ptr %t290, i32 0
   %t292 = load { ptr, i64 }, ptr %t291
   %t293 = alloca { ptr, i64 }
-  %t294 = alloca { ptr, i64 }
   store { ptr, i64 } %t292, ptr %t294
   call void @to_string$string(ptr %t293, ptr %t294)
   call void @string_builder_append_string(ptr %t293)
   %t295 = alloca { ptr, i64 }
-  %t296 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.12, i64 1 }, ptr %t296
   call void @to_string$string(ptr %t295, ptr %t296)
   call void @string_builder_append_string(ptr %t295)
@@ -943,7 +945,6 @@ on.end.71:
   %t301 = getelementptr inbounds { ptr, i64 }, ptr %t300, i32 1
   %t302 = load { ptr, i64 }, ptr %t301
   %t303 = alloca { ptr, i64 }
-  %t304 = alloca { ptr, i64 }
   store { ptr, i64 } %t302, ptr %t304
   call void @to_string$string(ptr %t303, ptr %t304)
   call void @string_builder_append_string(ptr %t303)
@@ -960,7 +961,6 @@ dynarray.free.73:
   store ptr null, ptr %local.6
   br label %dynarray.free.done.74
 dynarray.free.done.74:
-  %local.7 = alloca ptr
   store ptr null, ptr %local.7
   %t310 = load ptr, ptr %local.7
   %t311 = icmp eq ptr %t310, null

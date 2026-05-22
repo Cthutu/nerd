@@ -23,10 +23,12 @@ main :: fn() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
+@.macro.file.m0 = private unnamed_addr constant [33 x i8] c"tests/llvm/017-for-basic.input.n\00"
+
 define internal i32 @fn.0(i32 %limit) {
   %local.1 = alloca i32
-  store i32 0, ptr %local.1
   %local.2 = alloca i32
+  store i32 0, ptr %local.1
   store i32 0, ptr %local.2
   br label %for.cond.0
 for.cond.0:
@@ -49,8 +51,8 @@ for.end.3:
 
 define internal i32 @fn.1() {
   %local.3 = alloca i32
-  store i32 0, ptr %local.3
   %local.4 = alloca i32
+  store i32 0, ptr %local.3
   store i32 0, ptr %local.4
   br label %for.cond.0
 for.cond.0:

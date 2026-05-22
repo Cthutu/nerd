@@ -35,7 +35,7 @@ func fn.0() -> void {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [63 x i8] c"tests/language/057-plex-newline-fields.t\00"
+@.macro.file.m0 = private unnamed_addr constant [41 x i8] c"tests/language/057-plex-newline-fields.t\00"
 @.str.m0.0 = private unnamed_addr constant [5 x i8] c"Matt\00"
 @.str.m0.1 = private unnamed_addr constant [13 x i8] c"His name is \00"
 @.str.m0.2 = private unnamed_addr constant [12 x i8] c" and he is \00"
@@ -66,9 +66,12 @@ declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
 
 define internal void @fn.0() {
+  %t2 = alloca { ptr, i64 }
+  %t7 = alloca { ptr, i64 }
+  %t9 = alloca { ptr, i64 }
+  %t15 = alloca { ptr, i64 }
   %t0 = call i64 @string_builder_mark()
   %t1 = alloca { ptr, i64 }
-  %t2 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.1, i64 12 }, ptr %t2
   call void @to_string$string(ptr %t1, ptr %t2)
   call void @string_builder_append_string(ptr %t1)
@@ -76,12 +79,10 @@ define internal void @fn.0() {
   %t4 = insertvalue { { ptr, i64 }, i8 } %t3, i8 53, 1
   %t5 = extractvalue { { ptr, i64 }, i8 } %t4, 0
   %t6 = alloca { ptr, i64 }
-  %t7 = alloca { ptr, i64 }
   store { ptr, i64 } %t5, ptr %t7
   call void @to_string$string(ptr %t6, ptr %t7)
   call void @string_builder_append_string(ptr %t6)
   %t8 = alloca { ptr, i64 }
-  %t9 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.2, i64 11 }, ptr %t9
   call void @to_string$string(ptr %t8, ptr %t9)
   call void @string_builder_append_string(ptr %t8)
@@ -92,7 +93,6 @@ define internal void @fn.0() {
   call void @to_string$u8(ptr %t13, i8 %t12)
   call void @string_builder_append_string(ptr %t13)
   %t14 = alloca { ptr, i64 }
-  %t15 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.3, i64 10 }, ptr %t15
   call void @to_string$string(ptr %t14, ptr %t15)
   call void @string_builder_append_string(ptr %t14)

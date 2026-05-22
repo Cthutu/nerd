@@ -84,13 +84,14 @@ func fn.1() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [67 x i8] c"tests/language/152-on-break-for-expression.t\00"
+@.macro.file.m0 = private unnamed_addr constant [45 x i8] c"tests/language/152-on-break-for-expression.t\00"
 
 declare ptr @nrt_mem_alloc(i64, i64, ptr, i32)
 declare ptr @nrt_mem_realloc(ptr, i64, i64, ptr, i32)
 declare void @nrt_mem_free(ptr)
 
 define internal ptr @fn.0(ptr %system, i64 %handle) {
+  %local.2 = alloca ptr
   %t0 = load { ptr }, ptr %system
   %t1 = extractvalue { ptr } %t0, 0
   %t4 = alloca ptr
@@ -118,7 +119,6 @@ for.in.ready.2:
   store ptr null, ptr %t13, align 4
   %t14 = alloca i64
   store i64 0, ptr %t14
-  %local.2 = alloca ptr
   br label %for.in.cond.3
 for.in.cond.3:
   %t15 = load i64, ptr %t14
@@ -151,6 +151,8 @@ for.in.end.6:
 }
 
 define internal i32 @fn.1() {
+  %local.3 = alloca ptr
+  %local.4 = alloca { ptr }
   %t0 = call ptr @nrt_mem_alloc(i64 40, i64 16, ptr @.macro.file.m0, i32 0)
   %t1 = getelementptr inbounds { ptr, i64, i64 }, ptr %t0, i64 0, i32 0
   %t2 = getelementptr inbounds { ptr, i64, i64 }, ptr %t0, i64 0, i32 1
@@ -159,7 +161,6 @@ define internal i32 @fn.1() {
   store ptr %t4, ptr %t1
   store i64 0, ptr %t2
   store i64 2, ptr %t3
-  %local.3 = alloca ptr
   store ptr %t4, ptr %local.3
   %t5 = load ptr, ptr %local.3
   %t6 = icmp eq ptr %t5, null
@@ -263,7 +264,6 @@ dynarray.store.7:
   store i64 %t54, ptr %t68
   %t71 = load ptr, ptr %local.3
   %t72 = insertvalue { ptr } poison, ptr %t71, 0
-  %local.4 = alloca { ptr }
   store { ptr } %t72, ptr %local.4
   %t73 = call ptr @fn.0(ptr %local.4, i64 9)
   %t74 = icmp eq ptr %t73, null

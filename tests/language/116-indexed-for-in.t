@@ -43,6 +43,7 @@ func fn.0() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
+@.macro.file.m0 = private unnamed_addr constant [36 x i8] c"tests/language/116-indexed-for-in.t\00"
 @.str.m0.0 = private unnamed_addr constant [2 x i8] c"d\00"
 @.str.m0.1 = private unnamed_addr constant [2 x i8] c"a\00"
 @.str.m0.2 = private unnamed_addr constant [2 x i8] c"a\00"
@@ -79,12 +80,14 @@ define void @m0.init() {
 }
 
 define internal i32 @fn.0() {
+  %local.1 = alloca i64
+  %local.2 = alloca ptr
+  %t10 = alloca { ptr, i64 }
+  %t11 = alloca { ptr, i64 }
   %t0 = load { ptr, i64 }, ptr @$locs
   %t1 = extractvalue { ptr, i64 } %t0, 0
   %t2 = extractvalue { ptr, i64 } %t0, 1
-  %local.1 = alloca i64
   store i64 0, ptr %local.1
-  %local.2 = alloca ptr
   br label %for.in.cond.0
 for.in.cond.0:
   %t3 = load i64, ptr %local.1
@@ -96,9 +99,7 @@ for.in.body.1:
   %t6 = load ptr, ptr %local.2
   %t7 = load { { ptr, i64 }, { ptr, i64 } }, ptr %t6
   %t8 = extractvalue { { ptr, i64 }, { ptr, i64 } } %t7, 1
-  %t10 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.2, i64 1 }, ptr %t10
-  %t11 = alloca { ptr, i64 }
   store { ptr, i64 } %t8, ptr %t11
   %t9 = call i1 @string_eq(ptr %t10, ptr %t11)
   %t12 = icmp eq i1 %t9, 1

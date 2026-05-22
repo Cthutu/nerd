@@ -114,7 +114,7 @@ func fn.3() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [72 x i8] c"tests/language/083-explicit-return-enum-context.t\00"
+@.macro.file.m0 = private unnamed_addr constant [50 x i8] c"tests/language/083-explicit-return-enum-context.t\00"
 @.str.m0.0 = private unnamed_addr constant [6 x i8] c"north\00"
 @.str.m0.1 = private unnamed_addr constant [2 x i8] c"n\00"
 @.str.m0.2 = private unnamed_addr constant [5 x i8] c"east\00"
@@ -156,13 +156,25 @@ declare ptr @$input({ ptr, i64 })
 
 define internal { i64, i64 } @fn.0({ ptr, i64 } %word) {
   %t0 = alloca { ptr, i64 }
-  store { ptr, i64 } %word, ptr %t0
   %t1 = alloca { ptr, i64 }
+  %t3 = alloca { ptr, i64 }
+  %t4 = alloca { ptr, i64 }
+  %t9 = alloca { ptr, i64 }
+  %t10 = alloca { ptr, i64 }
+  %t12 = alloca { ptr, i64 }
+  %t13 = alloca { ptr, i64 }
+  %t18 = alloca { ptr, i64 }
+  %t19 = alloca { ptr, i64 }
+  %t21 = alloca { ptr, i64 }
+  %t22 = alloca { ptr, i64 }
+  %t27 = alloca { ptr, i64 }
+  %t28 = alloca { ptr, i64 }
+  %t30 = alloca { ptr, i64 }
+  %t31 = alloca { ptr, i64 }
+  store { ptr, i64 } %word, ptr %t0
   store { ptr, i64 } { ptr @.str.m0.0, i64 5 }, ptr %t1
   %t2 = call i1 @string_eq(ptr %t0, ptr %t1)
-  %t3 = alloca { ptr, i64 }
   store { ptr, i64 } %word, ptr %t3
-  %t4 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.1, i64 1 }, ptr %t4
   %t5 = call i1 @string_eq(ptr %t3, ptr %t4)
   %t6 = or i1 %t2, %t5
@@ -174,14 +186,10 @@ on.body.1:
 on.value.3:
   br label %on.end.0
 on.next.2:
-  %t9 = alloca { ptr, i64 }
   store { ptr, i64 } %word, ptr %t9
-  %t10 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.2, i64 4 }, ptr %t10
   %t11 = call i1 @string_eq(ptr %t9, ptr %t10)
-  %t12 = alloca { ptr, i64 }
   store { ptr, i64 } %word, ptr %t12
-  %t13 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.3, i64 1 }, ptr %t13
   %t14 = call i1 @string_eq(ptr %t12, ptr %t13)
   %t15 = or i1 %t11, %t14
@@ -193,14 +201,10 @@ on.body.4:
 on.value.6:
   br label %on.end.0
 on.next.5:
-  %t18 = alloca { ptr, i64 }
   store { ptr, i64 } %word, ptr %t18
-  %t19 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.4, i64 5 }, ptr %t19
   %t20 = call i1 @string_eq(ptr %t18, ptr %t19)
-  %t21 = alloca { ptr, i64 }
   store { ptr, i64 } %word, ptr %t21
-  %t22 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.5, i64 1 }, ptr %t22
   %t23 = call i1 @string_eq(ptr %t21, ptr %t22)
   %t24 = or i1 %t20, %t23
@@ -212,14 +216,10 @@ on.body.7:
 on.value.9:
   br label %on.end.0
 on.next.8:
-  %t27 = alloca { ptr, i64 }
   store { ptr, i64 } %word, ptr %t27
-  %t28 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.6, i64 4 }, ptr %t28
   %t29 = call i1 @string_eq(ptr %t27, ptr %t28)
-  %t30 = alloca { ptr, i64 }
   store { ptr, i64 } %word, ptr %t30
-  %t31 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.7, i64 1 }, ptr %t31
   %t32 = call i1 @string_eq(ptr %t30, ptr %t31)
   %t33 = or i1 %t29, %t32

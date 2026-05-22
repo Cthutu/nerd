@@ -31,7 +31,7 @@ func fn.1() -> void {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [57 x i8] c"tests/language/067-ffi-functions.t\00"
+@.macro.file.m0 = private unnamed_addr constant [35 x i8] c"tests/language/067-ffi-functions.t\00"
 @.str.m0.0 = private unnamed_addr constant [2 x i8] c"c\00"
 @.str.m0.1 = private unnamed_addr constant [7 x i8] c"abs = \00"
 
@@ -62,11 +62,11 @@ declare ptr @$input({ ptr, i64 })
 declare i32 @abs(i32)
 
 define internal void @fn.1() {
+  %t4 = alloca { ptr, i64 }
   %t0 = sub i32 0, 7
   %t1 = call i32 @abs(i32 %t0)
   %t2 = call i64 @string_builder_mark()
   %t3 = alloca { ptr, i64 }
-  %t4 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.1, i64 6 }, ptr %t4
   call void @to_string$string(ptr %t3, ptr %t4)
   call void @string_builder_append_string(ptr %t3)

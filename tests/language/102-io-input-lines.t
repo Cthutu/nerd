@@ -30,7 +30,7 @@ func fn.0() -> void {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [58 x i8] c"tests/language/102-io-input-lines.t\00"
+@.macro.file.m0 = private unnamed_addr constant [36 x i8] c"tests/language/102-io-input-lines.t\00"
 @.str.m0.0 = private unnamed_addr constant [1 x i8] c"\00"
 
 declare ptr @nrt_mem_alloc(i64, i64, ptr, i32)
@@ -41,8 +41,8 @@ declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
 
 define internal void @fn.0() {
-  %t0 = call ptr @$input({ ptr, i64 } { ptr @.str.m0.0, i64 0 })
   %local.0 = alloca ptr
+  %t0 = call ptr @$input({ ptr, i64 } { ptr @.str.m0.0, i64 0 })
   store ptr %t0, ptr %local.0
   %t1 = load ptr, ptr %local.0
   %t2 = alloca { ptr, i64 }

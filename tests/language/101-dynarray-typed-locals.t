@@ -111,7 +111,7 @@ func fn.1() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [65 x i8] c"tests/language/101-dynarray-typed-locals.t\00"
+@.macro.file.m0 = private unnamed_addr constant [43 x i8] c"tests/language/101-dynarray-typed-locals.t\00"
 @.str.m0.0 = private unnamed_addr constant [12 x i8] c"look around\00"
 @.str.m0.1 = private unnamed_addr constant [2 x i8] c" \00"
 @.str.m0.2 = private unnamed_addr constant [5 x i8] c"look\00"
@@ -143,6 +143,10 @@ declare void @nrt_mem_free(ptr)
 
 define internal ptr @fn.0({ ptr, i64 } %s, { ptr, i64 } %sep) {
   %local.2 = alloca ptr
+  %local.3 = alloca i64
+  %local.4 = alloca i64
+  %local.5 = alloca i1
+  %local.6 = alloca i64
   store ptr null, ptr %local.2
   %t0 = extractvalue { ptr, i64 } %sep, 1
   %t1 = icmp eq i64 %t0, 0
@@ -201,9 +205,7 @@ dynarray.store.5:
   %t35 = load ptr, ptr %local.2
   ret ptr %t35
 on.end.0:
-  %local.3 = alloca i64
   store i64 0, ptr %local.3
-  %local.4 = alloca i64
   store i64 0, ptr %local.4
   br label %for.cond.6
 for.cond.6:
@@ -214,9 +216,7 @@ for.cond.6:
   %t40 = icmp ule i64 %t38, %t39
   br i1 %t40, label %for.body.7, label %for.end.9
 for.body.7:
-  %local.5 = alloca i1
   store i1 1, ptr %local.5
-  %local.6 = alloca i64
   store i64 0, ptr %local.6
   br label %for.cond.10
 for.cond.10:
@@ -390,8 +390,12 @@ dynarray.store.27:
 }
 
 define internal i32 @fn.1() {
-  %t0 = call ptr @fn.0({ ptr, i64 } { ptr @.str.m0.0, i64 11 }, { ptr, i64 } { ptr @.str.m0.1, i64 1 })
   %local.7 = alloca ptr
+  %t17 = alloca { ptr, i64 }
+  %t18 = alloca { ptr, i64 }
+  %t28 = alloca { ptr, i64 }
+  %t29 = alloca { ptr, i64 }
+  %t0 = call ptr @fn.0({ ptr, i64 } { ptr @.str.m0.0, i64 11 }, { ptr, i64 } { ptr @.str.m0.1, i64 1 })
   store ptr %t0, ptr %local.7
   %t1 = load ptr, ptr %local.7
   %t2 = alloca i64
@@ -420,9 +424,7 @@ on.end.3:
   %t13 = load ptr, ptr %t12
   %t14 = getelementptr inbounds { ptr, i64 }, ptr %t13, i32 0
   %t15 = load { ptr, i64 }, ptr %t14
-  %t17 = alloca { ptr, i64 }
   store { ptr, i64 } %t15, ptr %t17
-  %t18 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.2, i64 4 }, ptr %t18
   %t16 = call i1 @string_eq(ptr %t17, ptr %t18)
   %t19 = xor i1 %t16, 1
@@ -437,9 +439,7 @@ on.end.5:
   %t24 = load ptr, ptr %t23
   %t25 = getelementptr inbounds { ptr, i64 }, ptr %t24, i32 1
   %t26 = load { ptr, i64 }, ptr %t25
-  %t28 = alloca { ptr, i64 }
   store { ptr, i64 } %t26, ptr %t28
-  %t29 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.3, i64 6 }, ptr %t29
   %t27 = call i1 @string_eq(ptr %t28, ptr %t29)
   %t30 = xor i1 %t27, 1

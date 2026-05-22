@@ -96,23 +96,27 @@ declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
 
 define internal i32 @fn.0() {
+  %local.0 = alloca [3 x i32]
+  %local.2 = alloca { ptr, i64 }
+  %local.4 = alloca ptr
+  %local.6 = alloca { ptr, i64 }
+  %t87 = alloca { ptr, i64 }
+  %t94 = alloca { ptr, i64 }
+  %t103 = alloca { ptr, i64 }
   %t0 = insertvalue [3 x i32] poison, i32 10, 0
   %t1 = insertvalue [3 x i32] %t0, i32 20, 1
   %t2 = insertvalue [3 x i32] %t1, i32 30, 2
-  %local.0 = alloca [3 x i32]
   store [3 x i32] %t2, ptr %local.0
   %t3 = getelementptr inbounds [3 x i32], ptr %local.0, i64 0, i32 1
   store i32 21, ptr %t3
   %t4 = getelementptr inbounds [3 x i32], ptr %local.0, i64 0, i64 0
   %t5 = insertvalue { ptr, i64 } poison, ptr %t4, 0
   %t6 = insertvalue { ptr, i64 } %t5, i64 3, 1
-  %local.2 = alloca { ptr, i64 }
   store { ptr, i64 } %t6, ptr %local.2
   %t7 = load { ptr, i64 }, ptr %local.2
   %t8 = extractvalue { ptr, i64 } %t7, 0
   %t9 = getelementptr inbounds i32, ptr %t8, i32 2
   store i32 32, ptr %t9
-  %local.4 = alloca ptr
   store ptr null, ptr %local.4
   %t10 = load ptr, ptr %local.4
   %t11 = icmp eq ptr %t10, null
@@ -218,7 +222,6 @@ dynarray.store.7:
   %t77 = load ptr, ptr %t76
   %t78 = getelementptr inbounds i32, ptr %t77, i32 1
   store i32 7, ptr %t78
-  %local.6 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.0, i64 3 }, ptr %local.6
   %t79 = load { ptr, i64 }, ptr %local.6
   %t80 = extractvalue { ptr, i64 } %t79, 0
@@ -230,7 +233,6 @@ dynarray.store.7:
   call void @to_string$i32(ptr %t85, i32 %t84)
   call void @string_builder_append_string(ptr %t85)
   %t86 = alloca { ptr, i64 }
-  %t87 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.1, i64 1 }, ptr %t87
   call void @to_string$string(ptr %t86, ptr %t87)
   call void @string_builder_append_string(ptr %t86)
@@ -242,7 +244,6 @@ dynarray.store.7:
   call void @to_string$i32(ptr %t92, i32 %t91)
   call void @string_builder_append_string(ptr %t92)
   %t93 = alloca { ptr, i64 }
-  %t94 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.2, i64 1 }, ptr %t94
   call void @to_string$string(ptr %t93, ptr %t94)
   call void @string_builder_append_string(ptr %t93)
@@ -256,7 +257,6 @@ dynarray.store.7:
   call void @to_string$i32(ptr %t101, i32 %t100)
   call void @string_builder_append_string(ptr %t101)
   %t102 = alloca { ptr, i64 }
-  %t103 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.3, i64 1 }, ptr %t103
   call void @to_string$string(ptr %t102, ptr %t103)
   call void @string_builder_append_string(ptr %t102)
@@ -298,4 +298,3 @@ dynarray.free.done.9:
 }
 
 @$main = alias i32 (), ptr @fn.0
-

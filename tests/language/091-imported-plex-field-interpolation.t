@@ -40,6 +40,7 @@ func fn.1() -> void {
 ; nerd llvm-ir 0
 ; generated from HIR
 
+@.macro.file.m0 = private unnamed_addr constant [55 x i8] c"tests/language/091-imported-plex-field-interpolation.t\00"
 @.str.m0.0 = private unnamed_addr constant [8 x i8] c"Value: \00"
 
 declare i1 @string_eq(ptr, ptr)
@@ -78,10 +79,10 @@ on.end.0:
 }
 
 define internal void @fn.1() {
+  %t3 = alloca { ptr, i64 }
   %t0 = call { i64 } @$make_box(i64 7)
   %t1 = call i64 @string_builder_mark()
   %t2 = alloca { ptr, i64 }
-  %t3 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.0, i64 7 }, ptr %t3
   call void @to_string$string(ptr %t2, ptr %t3)
   call void @string_builder_append_string(ptr %t2)

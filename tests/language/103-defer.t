@@ -111,6 +111,7 @@ func fn.1() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
+@.macro.file.m0 = private unnamed_addr constant [27 x i8] c"tests/language/103-defer.t\00"
 @.str.m0.0 = private unnamed_addr constant [7 x i8] c"order=\00"
 @.str.m0.1 = private unnamed_addr constant [21 x i8] c"deferred-module-call\00"
 @.str.m0.2 = private unnamed_addr constant [13 x i8] c"after-block=\00"
@@ -146,12 +147,16 @@ define internal i32 @fn.0() {
 }
 
 define internal i32 @fn.1() {
-  %t0 = call i32 @fn.0()
   %local.1 = alloca i32
+  %local.2 = alloca i32
+  %t11 = alloca { ptr, i64 }
+  %t22 = alloca { ptr, i64 }
+  %local.3 = alloca i32
+  %t47 = alloca { ptr, i64 }
+  %t0 = call i32 @fn.0()
   store i32 %t0, ptr %local.1
   %t1 = mul i32 0, 10
   %t2 = add i32 %t1, 2
-  %local.2 = alloca i32
   store i32 %t2, ptr %local.2
   %t3 = load i32, ptr %local.2
   %t4 = mul i32 %t3, 10
@@ -163,7 +168,6 @@ define internal i32 @fn.1() {
   store i32 %t8, ptr %local.1
   %t9 = call i64 @string_builder_mark()
   %t10 = alloca { ptr, i64 }
-  %t11 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.0, i64 6 }, ptr %t11
   call void @to_string$string(ptr %t10, ptr %t11)
   call void @string_builder_append_string(ptr %t10)
@@ -184,7 +188,6 @@ define internal i32 @fn.1() {
   store i32 %t19, ptr %local.1
   %t20 = call i64 @string_builder_mark()
   %t21 = alloca { ptr, i64 }
-  %t22 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.2, i64 12 }, ptr %t22
   call void @to_string$string(ptr %t21, ptr %t22)
   call void @string_builder_append_string(ptr %t21)
@@ -196,7 +199,6 @@ define internal i32 @fn.1() {
   call void @string_builder_finish(ptr %t25, i64 %t20)
   %t26 = load { ptr, i64 }, ptr %t25
   call void @$prn({ ptr, i64 } %t26)
-  %local.3 = alloca i32
   store i32 0, ptr %local.3
   br label %for.cond.0
 for.cond.0:
@@ -239,7 +241,6 @@ for.update.2:
 for.end.3:
   %t45 = call i64 @string_builder_mark()
   %t46 = alloca { ptr, i64 }
-  %t47 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.3, i64 11 }, ptr %t47
   call void @to_string$string(ptr %t46, ptr %t47)
   call void @string_builder_append_string(ptr %t46)

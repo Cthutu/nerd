@@ -47,10 +47,12 @@ func fn.0() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
+@.macro.file.m0 = private unnamed_addr constant [40 x i8] c"tests/language/096-nil-slice-equality.t\00"
+
 define internal i32 @fn.0() {
+  %local.1 = alloca [2 x i8]
   %t0 = insertvalue [2 x i8] poison, i8 97, 0
   %t1 = insertvalue [2 x i8] %t0, i8 98, 1
-  %local.1 = alloca [2 x i8]
   store [2 x i8] %t1, ptr %local.1
   %t2 = getelementptr inbounds [2 x i8], ptr %local.1, i64 0, i64 0
   %t3 = insertvalue { ptr, i64 } poison, ptr %t2, 0

@@ -61,7 +61,7 @@ func fn.2() -> void {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [73 x i8] c"tests/language/084-nested-local-fn-in-block-body.t\00"
+@.macro.file.m0 = private unnamed_addr constant [51 x i8] c"tests/language/084-nested-local-fn-in-block-body.t\00"
 @.str.m0.0 = private unnamed_addr constant [4 x i8] c"ABC\00"
 
 declare i1 @string_eq(ptr, ptr)
@@ -89,11 +89,11 @@ declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
 
 define internal i8 @fn.0({ ptr, i64 } %text, i8 %char) {
+  %local.4 = alloca ptr
   %t0 = extractvalue { ptr, i64 } %text, 0
   %t1 = extractvalue { ptr, i64 } %text, 1
   %t2 = alloca i64
   store i64 0, ptr %t2
-  %local.4 = alloca ptr
   br label %for.in.cond.0
 for.in.cond.0:
   %t3 = load i64, ptr %t2

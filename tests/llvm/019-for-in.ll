@@ -14,14 +14,16 @@ main :: fn() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
+@.macro.file.m0 = private unnamed_addr constant [30 x i8] c"tests/llvm/019-for-in.input.n\00"
+
 define internal i32 @fn.0({ ptr, i64 } %values) {
   %local.1 = alloca i32
+  %local.2 = alloca i64
+  %local.3 = alloca ptr
   store i32 0, ptr %local.1
   %t0 = extractvalue { ptr, i64 } %values, 0
   %t1 = extractvalue { ptr, i64 } %values, 1
-  %local.2 = alloca i64
   store i64 0, ptr %local.2
-  %local.3 = alloca ptr
   br label %for.in.cond.0
 for.in.cond.0:
   %t2 = load i64, ptr %local.2
@@ -48,9 +50,9 @@ for.in.end.2:
 }
 
 define internal i32 @fn.1() {
+  %local.4 = alloca [2 x i32]
   %t0 = insertvalue [2 x i32] poison, i32 1, 0
   %t1 = insertvalue [2 x i32] %t0, i32 2, 1
-  %local.4 = alloca [2 x i32]
   store [2 x i32] %t1, ptr %local.4
   %t2 = getelementptr inbounds [2 x i32], ptr %local.4, i64 0, i64 0
   %t3 = insertvalue { ptr, i64 } poison, ptr %t2, 0

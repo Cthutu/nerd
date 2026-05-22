@@ -47,7 +47,7 @@ func fn.0() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [55 x i8] c"tests/language/042-for-c-style.t\00"
+@.macro.file.m0 = private unnamed_addr constant [33 x i8] c"tests/language/042-for-c-style.t\00"
 @.str.m0.0 = private unnamed_addr constant [3 x i8] c"C \00"
 
 declare i1 @string_eq(ptr, ptr)
@@ -76,8 +76,9 @@ declare ptr @$input({ ptr, i64 })
 
 define internal i32 @fn.0() {
   %local.0 = alloca i32
-  store i32 0, ptr %local.0
   %local.1 = alloca i32
+  %t4 = alloca { ptr, i64 }
+  store i32 0, ptr %local.0
   store i32 0, ptr %local.1
   br label %for.cond.0
 for.cond.0:
@@ -87,7 +88,6 @@ for.cond.0:
 for.body.1:
   %t2 = call i64 @string_builder_mark()
   %t3 = alloca { ptr, i64 }
-  %t4 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.0, i64 2 }, ptr %t4
   call void @to_string$string(ptr %t3, ptr %t4)
   call void @string_builder_append_string(ptr %t3)

@@ -66,7 +66,7 @@ func fn.1() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [57 x i8] c"tests/language/065-enum-payloads.t\00"
+@.macro.file.m0 = private unnamed_addr constant [35 x i8] c"tests/language/065-enum-payloads.t\00"
 @.str.m0.0 = private unnamed_addr constant [6 x i8] c"hello\00"
 @.str.m0.1 = private unnamed_addr constant [8 x i8] c"scores \00"
 @.str.m0.2 = private unnamed_addr constant [2 x i8] c" \00"
@@ -98,6 +98,8 @@ declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
 
 define internal i32 @fn.0({ i64, i128 } %value) {
+  %t14 = alloca i128
+  %t24 = alloca i128
   %t0 = insertvalue { i64, i128 } poison, i64 0, 0
   %t1 = insertvalue { i64, i128 } %t0, i128 0, 1
   %t2 = extractvalue { i64, i128 } %value, 0
@@ -123,7 +125,6 @@ on.next.5:
   %t10 = extractvalue { i64, i128 } %value, 0
   %t11 = icmp eq i64 %t10, 2
   %t12 = extractvalue { i64, i128 } %value, 1
-  %t14 = alloca i128
   store i128 %t12, ptr %t14
   %t13 = load { i32, i32 }, ptr %t14
   %t15 = extractvalue { i32, i32 } %t13, 0
@@ -140,7 +141,6 @@ on.next.8:
   %t20 = extractvalue { i64, i128 } %value, 0
   %t21 = icmp eq i64 %t20, 3
   %t22 = extractvalue { i64, i128 } %value, 1
-  %t24 = alloca i128
   store i128 %t22, ptr %t24
   %t23 = load { ptr, i64 }, ptr %t24
   %t25 = and i1 %t21, 1
@@ -157,6 +157,12 @@ on.end.0:
 }
 
 define internal i32 @fn.1() {
+  %t8 = alloca i128
+  %t12 = alloca i128
+  %t17 = alloca { ptr, i64 }
+  %t21 = alloca { ptr, i64 }
+  %t25 = alloca { ptr, i64 }
+  %t29 = alloca { ptr, i64 }
   %t0 = insertvalue { i64, i128 } poison, i64 0, 0
   %t1 = insertvalue { i64, i128 } %t0, i128 0, 1
   %t2 = zext i32 5 to i128
@@ -164,13 +170,11 @@ define internal i32 @fn.1() {
   %t4 = insertvalue { i64, i128 } %t3, i128 %t2, 1
   %t5 = insertvalue { i32, i32 } poison, i32 10, 0
   %t6 = insertvalue { i32, i32 } %t5, i32 20, 1
-  %t8 = alloca i128
   store i128 0, ptr %t8
   store { i32, i32 } %t6, ptr %t8
   %t7 = load i128, ptr %t8
   %t9 = insertvalue { i64, i128 } poison, i64 2, 0
   %t10 = insertvalue { i64, i128 } %t9, i128 %t7, 1
-  %t12 = alloca i128
   store i128 0, ptr %t12
   store { ptr, i64 } { ptr @.str.m0.0, i64 5 }, ptr %t12
   %t11 = load i128, ptr %t12
@@ -178,7 +182,6 @@ define internal i32 @fn.1() {
   %t14 = insertvalue { i64, i128 } %t13, i128 %t11, 1
   %t15 = call i64 @string_builder_mark()
   %t16 = alloca { ptr, i64 }
-  %t17 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.1, i64 7 }, ptr %t17
   call void @to_string$string(ptr %t16, ptr %t17)
   call void @string_builder_append_string(ptr %t16)
@@ -187,7 +190,6 @@ define internal i32 @fn.1() {
   call void @to_string$i32(ptr %t19, i32 %t18)
   call void @string_builder_append_string(ptr %t19)
   %t20 = alloca { ptr, i64 }
-  %t21 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.2, i64 1 }, ptr %t21
   call void @to_string$string(ptr %t20, ptr %t21)
   call void @string_builder_append_string(ptr %t20)
@@ -196,7 +198,6 @@ define internal i32 @fn.1() {
   call void @to_string$i32(ptr %t23, i32 %t22)
   call void @string_builder_append_string(ptr %t23)
   %t24 = alloca { ptr, i64 }
-  %t25 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.3, i64 1 }, ptr %t25
   call void @to_string$string(ptr %t24, ptr %t25)
   call void @string_builder_append_string(ptr %t24)
@@ -205,7 +206,6 @@ define internal i32 @fn.1() {
   call void @to_string$i32(ptr %t27, i32 %t26)
   call void @string_builder_append_string(ptr %t27)
   %t28 = alloca { ptr, i64 }
-  %t29 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.4, i64 1 }, ptr %t29
   call void @to_string$string(ptr %t28, ptr %t29)
   call void @string_builder_append_string(ptr %t28)

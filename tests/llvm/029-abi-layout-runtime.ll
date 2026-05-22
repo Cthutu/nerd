@@ -50,7 +50,7 @@ main :: fn() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [58 x i8] c"tests/llvm/029-abi-layout-runtime.input.n\00"
+@.macro.file.m0 = private unnamed_addr constant [42 x i8] c"tests/llvm/029-abi-layout-runtime.input.n\00"
 @.str.m0.0 = private unnamed_addr constant [2 x i8] c"c\00"
 @.str.m0.1 = private unnamed_addr constant [2 x i8] c"c\00"
 @.str.m0.2 = private unnamed_addr constant [6 x i8] c"hello\00"
@@ -93,6 +93,8 @@ define internal void @fn.2({ ptr, i64 } %_value) {
 }
 
 define internal i32 @fn.3({ i64, i128 } %choice) {
+  %t9 = alloca i128
+  %t19 = alloca i128
   %t0 = insertvalue { i64, i128 } poison, i64 0, 0
   %t1 = insertvalue { i64, i128 } %t0, i128 0, 1
   %t2 = extractvalue { i64, i128 } %choice, 0
@@ -107,7 +109,6 @@ on.next.2:
   %t5 = extractvalue { i64, i128 } %choice, 0
   %t6 = icmp eq i64 %t5, 1
   %t7 = extractvalue { i64, i128 } %choice, 1
-  %t9 = alloca i128
   store i128 %t7, ptr %t9
   %t8 = load { i32, i64 }, ptr %t9
   %t10 = and i1 %t6, 1
@@ -124,7 +125,6 @@ on.next.5:
   %t15 = extractvalue { i64, i128 } %choice, 0
   %t16 = icmp eq i64 %t15, 2
   %t17 = extractvalue { i64, i128 } %choice, 1
-  %t19 = alloca i128
   store i128 %t17, ptr %t19
   %t18 = load { ptr, i64 }, ptr %t19
   %t20 = and i1 %t16, 1
@@ -253,11 +253,17 @@ dynarray.free.done.9:
 }
 
 define internal i32 @fn.5() {
+  %local.6 = alloca [4 x i8]
+  %local.11 = alloca [16 x i8]
+  %t22 = alloca { ptr, i64 }
+  %t25 = alloca { ptr, i64 }
+  %t30 = alloca { ptr, i64 }
+  %t31 = alloca { ptr, i64 }
+  %t39 = alloca i128
   %t0 = insertvalue [4 x i8] poison, i8 97, 0
   %t1 = insertvalue [4 x i8] %t0, i8 98, 1
   %t2 = insertvalue [4 x i8] %t1, i8 99, 2
   %t3 = insertvalue [4 x i8] %t2, i8 100, 3
-  %local.6 = alloca [4 x i8]
   store [4 x i8] %t3, ptr %local.6
   %t4 = getelementptr inbounds [4 x i8], ptr %local.6, i64 0, i64 0
   %t5 = insertvalue { ptr, i64 } poison, ptr %t4, 0
@@ -266,7 +272,6 @@ define internal i32 @fn.5() {
   %t8 = insertvalue { ptr, i64 } poison, ptr %t7, 0
   %t9 = insertvalue { ptr, i64 } %t8, i64 2, 1
   %t10 = call i64 @strlen(ptr @.str.m0.2)
-  %local.11 = alloca [16 x i8]
   store [16 x i8] zeroinitializer, ptr %local.11
   %t11 = getelementptr inbounds [16 x i8], ptr %local.11, i64 0, i64 0
   %t12 = insertvalue { ptr, i64 } poison, ptr %t11, 0
@@ -279,7 +284,6 @@ define internal i32 @fn.5() {
   %t19 = call i32 @snprintf(ptr %t14, i64 %t18, ptr @.str.m0.3, i32 7)
   %t20 = call i64 @string_builder_mark()
   %t21 = alloca { ptr, i64 }
-  %t22 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.4, i64 4 }, ptr %t22
   call void @to_string$string(ptr %t21, ptr %t22)
   call void @string_builder_append_string(ptr %t21)
@@ -287,7 +291,6 @@ define internal i32 @fn.5() {
   call void @to_string$usize(ptr %t23, i64 %t10)
   call void @string_builder_append_string(ptr %t23)
   %t24 = alloca { ptr, i64 }
-  %t25 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.5, i64 1 }, ptr %t25
   call void @to_string$string(ptr %t24, ptr %t25)
   call void @string_builder_append_string(ptr %t24)
@@ -298,9 +301,7 @@ define internal i32 @fn.5() {
   call void @string_builder_finish(ptr %t27, i64 %t20)
   %t28 = load { ptr, i64 }, ptr %t27
   call void @fn.2({ ptr, i64 } %t28)
-  %t30 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.6, i64 4 }, ptr %t30
-  %t31 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.7, i64 4 }, ptr %t31
   %t29 = call i1 @string_eq(ptr %t30, ptr %t31)
   %t32 = extractvalue { ptr, i64 } %t9, 0
@@ -309,7 +310,6 @@ define internal i32 @fn.5() {
   %t35 = zext i8 %t34 to i32
   %t36 = insertvalue { i32, i64 } poison, i32 %t35, 0
   %t37 = insertvalue { i32, i64 } %t36, i64 8, 1
-  %t39 = alloca i128
   store i128 0, ptr %t39
   store { i32, i64 } %t37, ptr %t39
   %t38 = load i128, ptr %t39

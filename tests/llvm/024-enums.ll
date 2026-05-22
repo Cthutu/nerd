@@ -21,7 +21,10 @@ main :: fn() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
+@.macro.file.m0 = private unnamed_addr constant [29 x i8] c"tests/llvm/024-enums.input.n\00"
+
 define internal i32 @fn.0({ i64, i64 } %choice) {
+  %t11 = alloca i64
   %t0 = extractvalue { i64, i64 } %choice, 0
   %t1 = icmp eq i64 %t0, 0
   br i1 %t1, label %on.body.1, label %on.next.2
@@ -44,7 +47,6 @@ on.next.5:
   %t7 = extractvalue { i64, i64 } %choice, 0
   %t8 = icmp eq i64 %t7, 2
   %t9 = extractvalue { i64, i64 } %choice, 1
-  %t11 = alloca i64
   store i64 %t9, ptr %t11
   %t10 = load { i32, i32 }, ptr %t11
   %t12 = extractvalue { i32, i32 } %t10, 0
@@ -69,9 +71,9 @@ on.end.0:
 }
 
 define internal i32 @fn.1() {
+  %t3 = alloca i64
   %t0 = insertvalue { i32, i32 } poison, i32 7, 0
   %t1 = insertvalue { i32, i32 } %t0, i32 4, 1
-  %t3 = alloca i64
   store i64 0, ptr %t3
   store { i32, i32 } %t1, ptr %t3
   %t2 = load i64, ptr %t3

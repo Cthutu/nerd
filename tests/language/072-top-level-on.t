@@ -56,7 +56,7 @@ func fn.0() -> void {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [56 x i8] c"tests/language/072-top-level-on.t\00"
+@.macro.file.m0 = private unnamed_addr constant [34 x i8] c"tests/language/072-top-level-on.t\00"
 @.str.m0.0 = private unnamed_addr constant [6 x i8] c"debug\00"
 @.str.m0.1 = private unnamed_addr constant [8 x i8] c"release\00"
 @.str.m0.2 = private unnamed_addr constant [4 x i8] c"x64\00"
@@ -91,9 +91,12 @@ declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
 
 define internal void @fn.0() {
+  %t2 = alloca { ptr, i64 }
+  %t8 = alloca { ptr, i64 }
+  %t14 = alloca { ptr, i64 }
+  %t20 = alloca { ptr, i64 }
   %t0 = call i64 @string_builder_mark()
   %t1 = alloca { ptr, i64 }
-  %t2 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.4, i64 7 }, ptr %t2
   call void @to_string$string(ptr %t1, ptr %t2)
   call void @string_builder_append_string(ptr %t1)
@@ -106,7 +109,6 @@ define internal void @fn.0() {
   call void @$prn({ ptr, i64 } %t5)
   %t6 = call i64 @string_builder_mark()
   %t7 = alloca { ptr, i64 }
-  %t8 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.5, i64 5 }, ptr %t8
   call void @to_string$string(ptr %t7, ptr %t8)
   call void @string_builder_append_string(ptr %t7)
@@ -119,7 +121,6 @@ define internal void @fn.0() {
   call void @$prn({ ptr, i64 } %t11)
   %t12 = call i64 @string_builder_mark()
   %t13 = alloca { ptr, i64 }
-  %t14 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.6, i64 5 }, ptr %t14
   call void @to_string$string(ptr %t13, ptr %t14)
   call void @string_builder_append_string(ptr %t13)
@@ -132,7 +133,6 @@ define internal void @fn.0() {
   call void @$prn({ ptr, i64 } %t17)
   %t18 = call i64 @string_builder_mark()
   %t19 = alloca { ptr, i64 }
-  %t20 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.7, i64 9 }, ptr %t20
   call void @to_string$string(ptr %t19, ptr %t20)
   call void @string_builder_append_string(ptr %t19)

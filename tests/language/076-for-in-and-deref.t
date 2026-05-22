@@ -66,7 +66,7 @@ func fn.0() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [60 x i8] c"tests/language/076-for-in-and-deref.t\00"
+@.macro.file.m0 = private unnamed_addr constant [38 x i8] c"tests/language/076-for-in-and-deref.t\00"
 @.str.m0.0 = private unnamed_addr constant [3 x i8] c"ab\00"
 @.str.m0.1 = private unnamed_addr constant [2 x i8] c" \00"
 @.str.m0.2 = private unnamed_addr constant [2 x i8] c" \00"
@@ -97,10 +97,19 @@ declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
 
 define internal i32 @fn.0() {
+  %local.0 = alloca [3 x i32]
+  %local.1 = alloca ptr
+  %local.2 = alloca i32
+  %local.3 = alloca ptr
+  %local.5 = alloca i32
+  %local.6 = alloca i32
+  %local.7 = alloca ptr
+  %t49 = alloca { ptr, i64 }
+  %t53 = alloca { ptr, i64 }
+  %t57 = alloca { ptr, i64 }
   %t0 = insertvalue [3 x i32] poison, i32 1, 0
   %t1 = insertvalue [3 x i32] %t0, i32 2, 1
   %t2 = insertvalue [3 x i32] %t1, i32 3, 2
-  %local.0 = alloca [3 x i32]
   store [3 x i32] %t2, ptr %local.0
   %t3 = getelementptr inbounds [3 x i32], ptr %local.0, i64 0, i64 0
   %t4 = insertvalue { ptr, i64 } poison, ptr %t3, 0
@@ -109,7 +118,6 @@ define internal i32 @fn.0() {
   %t7 = extractvalue { ptr, i64 } %t5, 1
   %t8 = alloca i64
   store i64 0, ptr %t8
-  %local.1 = alloca ptr
   br label %for.in.cond.0
 for.in.cond.0:
   %t9 = load i64, ptr %t8
@@ -123,7 +131,6 @@ for.in.body.1:
   store i64 %t13, ptr %t8
   br label %for.in.cond.0
 for.in.end.2:
-  %local.2 = alloca i32
   store i32 0, ptr %local.2
   %t14 = getelementptr inbounds [3 x i32], ptr %local.0, i64 0, i64 0
   %t15 = insertvalue { ptr, i64 } poison, ptr %t14, 0
@@ -132,7 +139,6 @@ for.in.end.2:
   %t18 = extractvalue { ptr, i64 } %t16, 1
   %t19 = alloca i64
   store i64 0, ptr %t19
-  %local.3 = alloca ptr
   br label %for.in.cond.3
 for.in.cond.3:
   %t20 = load i64, ptr %t19
@@ -151,15 +157,12 @@ for.in.body.4:
   store i64 %t28, ptr %t19
   br label %for.in.cond.3
 for.in.end.5:
-  %local.5 = alloca i32
   store i32 0, ptr %local.5
-  %local.6 = alloca i32
   store i32 0, ptr %local.6
   %t29 = extractvalue { ptr, i64 } { ptr @.str.m0.0, i64 2 }, 0
   %t30 = extractvalue { ptr, i64 } { ptr @.str.m0.0, i64 2 }, 1
   %t31 = alloca i64
   store i64 0, ptr %t31
-  %local.7 = alloca ptr
   br label %for.in.cond.6
 for.in.cond.6:
   %t32 = load i64, ptr %t31
@@ -189,7 +192,6 @@ for.in.end.8:
   call void @to_string$i32(ptr %t47, i32 %t46)
   call void @string_builder_append_string(ptr %t47)
   %t48 = alloca { ptr, i64 }
-  %t49 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.1, i64 1 }, ptr %t49
   call void @to_string$string(ptr %t48, ptr %t49)
   call void @string_builder_append_string(ptr %t48)
@@ -198,7 +200,6 @@ for.in.end.8:
   call void @to_string$i32(ptr %t51, i32 %t50)
   call void @string_builder_append_string(ptr %t51)
   %t52 = alloca { ptr, i64 }
-  %t53 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.2, i64 1 }, ptr %t53
   call void @to_string$string(ptr %t52, ptr %t53)
   call void @string_builder_append_string(ptr %t52)
@@ -207,7 +208,6 @@ for.in.end.8:
   call void @to_string$i32(ptr %t55, i32 %t54)
   call void @string_builder_append_string(ptr %t55)
   %t56 = alloca { ptr, i64 }
-  %t57 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.3, i64 1 }, ptr %t57
   call void @to_string$string(ptr %t56, ptr %t57)
   call void @string_builder_append_string(ptr %t56)

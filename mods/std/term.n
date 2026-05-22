@@ -7,7 +7,6 @@
 -- underneath.
 
 use std.math
-use std.log
 -- Represents terminal key codes, using ASCII values for byte-sized input and
 -- reserved values for keys reported through terminal escape sequences.
 pub KeyCode :: enum {
@@ -219,13 +218,6 @@ term_fb_width       : u32
 term_fb_height      : u32
 term_fb_view        : RectI32
 term_fb_ready       : bool
-term_fb_debug_path  : string
-term_fb_debug_once  : bool
-
-pub term_fb_debug_present_once :: fn (path: string = "term-debug.log") {
-    term_fb_debug_path = path
-    term_fb_debug_once = yes
-}
 
 term_arena_ensure :: fn () {
     on term_arena_ready => return
@@ -537,19 +529,6 @@ pub term_fb_clear :: fn () {
 pub term_fb_text :: fn (x: i32, y: i32, text: string, ink: Colour = COLOUR_TRANSPARENT, paper: Colour = COLOUR_TRANSPARENT) {
     on !term_fb_ready => return
 
-    on term_fb_debug_once => {
-        log := log_create(term_fb_debug_path)
-        on log_valid(log) => {
-            _ := log_append_line(log, $"term_fb_text x={x} y={y} count={text.count}")
-            _ := log_append(log, "text_bytes:")
-            for i: usize = 0; i < text.count; i += 1 {
-                _ := log_append(log, $" {text.data[i].as(u32)}")
-            }
-            _ := log_append(log, "\n")
-            _ := log_close(log)
-        }
-    }
-
     text_width := term_text_display_width(text)
     clip := term_clip_rect(RectI32 { x: x, y: y, w: text_width, h: 1 })
     on !clip.ok => return
@@ -741,38 +720,6 @@ term_output_string :: fn (output: TermOutput) -> string {
     return output.bytes[..output.count].as(string)
 }
 
-term_fb_debug_dump_present :: fn (output: TermOutput) {
-    on !term_fb_debug_once => return
-    term_fb_debug_once = no
-
-    log := log_create(term_fb_debug_path)
-    on !log_valid(log) => return
-    defer _ := log_close(log)
-
-    _ := log_append_line(log, $"framebuffer={term_fb_width}x{term_fb_height}")
-    _ := log_append_line(log, $"output_count={output.count} output_capacity={output.bytes.count} truncated={output.truncated}")
-
-    _ := log_append(log, "output_bytes:")
-    for i: usize = 0; i < output.count; i += 1 {
-        _ := log_append(log, $" {output.bytes[i].as(u32)}")
-    }
-    _ := log_append(log, "\n")
-
-    _ := log_append_line(log, "output_string_begin")
-    _ := log_append(log, term_output_string(output))
-    _ := log_append_line(log, "\noutput_string_end")
-
-    _ := log_append_line(log, "cells:")
-    for y: u32 = 0; y < term_fb_height; y += 1 {
-        for x: u32 = 0; x < term_fb_width; x += 1 {
-            cell := term_fb_cells[term_fb_index(x, y)]
-            on cell.ch != ' '.as(u32) || cell.ink != TERM_DEFAULT_INK || cell.paper != TERM_DEFAULT_PAPER => {
-                _ := log_append_line(log, $"x={x} y={y} ch={cell.ch} flags={cell.flags} ink={cell.ink} paper={cell.paper}")
-            }
-        }
-    }
-}
-
 term_fb_present :: fn () {
     on !term_fb_ready => return
 
@@ -830,7 +777,6 @@ term_fb_present :: fn () {
 
     on output.count > 0 => {
         term_output_push(^output, "\x1b[0m")
-        term_fb_debug_dump_present(output)
         term_print(term_output_string(output))
     }
 }

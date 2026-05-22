@@ -47,7 +47,7 @@ func fn.0() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [64 x i8] c"tests/language/080-dynamic-slice-bounds.t\00"
+@.macro.file.m0 = private unnamed_addr constant [42 x i8] c"tests/language/080-dynamic-slice-bounds.t\00"
 
 declare i1 @string_eq(ptr, ptr)
 declare void @string_builder_reset()
@@ -74,12 +74,12 @@ declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
 
 define internal i32 @fn.0() {
+  %local.1 = alloca [5 x i32]
   %t0 = insertvalue [5 x i32] poison, i32 10, 0
   %t1 = insertvalue [5 x i32] %t0, i32 20, 1
   %t2 = insertvalue [5 x i32] %t1, i32 30, 2
   %t3 = insertvalue [5 x i32] %t2, i32 40, 3
   %t4 = insertvalue [5 x i32] %t3, i32 50, 4
-  %local.1 = alloca [5 x i32]
   store [5 x i32] %t4, ptr %local.1
   %t5 = getelementptr inbounds [5 x i32], ptr %local.1, i64 0, i64 0
   %t6 = insertvalue { ptr, i64 } poison, ptr %t5, 0

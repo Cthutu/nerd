@@ -20,6 +20,7 @@ func fn.0() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
+@.macro.file.m0 = private unnamed_addr constant [50 x i8] c"tests/language/136-interpolated-assert-messages.t\00"
 @.str.m0.0 = private unnamed_addr constant [10 x i8] c"count is \00"
 @.assert.source_path.m0.1 = private unnamed_addr constant [50 x i8] c"tests/language/136-interpolated-assert-messages.t\00"
 
@@ -46,10 +47,11 @@ declare void @to_string$f64(ptr, double)
 declare void @nerd_assert(i1, ptr, i32, ptr)
 
 define internal i32 @fn.0() {
+  %t3 = alloca { ptr, i64 }
+  %t7 = alloca { ptr, i64 }
   %t0 = icmp eq i32 3, 3
   %t1 = call i64 @string_builder_mark()
   %t2 = alloca { ptr, i64 }
-  %t3 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.0, i64 9 }, ptr %t3
   call void @to_string$string(ptr %t2, ptr %t3)
   call void @string_builder_append_string(ptr %t2)
@@ -59,7 +61,6 @@ define internal i32 @fn.0() {
   %t5 = alloca { ptr, i64 }
   call void @string_builder_finish(ptr %t5, i64 %t1)
   %t6 = load { ptr, i64 }, ptr %t5
-  %t7 = alloca { ptr, i64 }
   store { ptr, i64 } %t6, ptr %t7
   call void @nerd_assert(i1 %t0, ptr @.assert.source_path.m0.1, i32 4, ptr %t7)
   ret i32 0

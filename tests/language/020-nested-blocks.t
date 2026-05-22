@@ -40,7 +40,7 @@ func fn.0() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [57 x i8] c"tests/language/020-nested-blocks.t\00"
+@.macro.file.m0 = private unnamed_addr constant [35 x i8] c"tests/language/020-nested-blocks.t\00"
 @.str.m0.0 = private unnamed_addr constant [7 x i8] c"inner=\00"
 @.str.m0.1 = private unnamed_addr constant [7 x i8] c"outer=\00"
 
@@ -70,13 +70,14 @@ declare ptr @$input({ ptr, i64 })
 
 define internal i32 @fn.0() {
   %local.1 = alloca i32
+  %t4 = alloca { ptr, i64 }
+  %t11 = alloca { ptr, i64 }
   store i32 32, ptr %local.1
   %t0 = load i32, ptr %local.1
   %t1 = add i32 %t0, 1
   store i32 %t1, ptr %local.1
   %t2 = call i64 @string_builder_mark()
   %t3 = alloca { ptr, i64 }
-  %t4 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.0, i64 6 }, ptr %t4
   call void @to_string$string(ptr %t3, ptr %t4)
   call void @string_builder_append_string(ptr %t3)
@@ -90,7 +91,6 @@ define internal i32 @fn.0() {
   call void @$prn({ ptr, i64 } %t8)
   %t9 = call i64 @string_builder_mark()
   %t10 = alloca { ptr, i64 }
-  %t11 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.1, i64 6 }, ptr %t11
   call void @to_string$string(ptr %t10, ptr %t11)
   call void @string_builder_append_string(ptr %t10)

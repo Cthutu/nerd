@@ -34,7 +34,7 @@ func fn.1() -> void {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [63 x i8] c"tests/language/070-ffi-library-linking.t\00"
+@.macro.file.m0 = private unnamed_addr constant [41 x i8] c"tests/language/070-ffi-library-linking.t\00"
 @.str.m0.0 = private unnamed_addr constant [2 x i8] c"m\00"
 @.str.m0.1 = private unnamed_addr constant [8 x i8] c"sqrt = \00"
 
@@ -65,10 +65,10 @@ declare ptr @$input({ ptr, i64 })
 declare double @sqrt(double)
 
 define internal void @fn.1() {
+  %t3 = alloca { ptr, i64 }
   %t0 = call double @sqrt(double 0x4022000000000000)
   %t1 = call i64 @string_builder_mark()
   %t2 = alloca { ptr, i64 }
-  %t3 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.1, i64 7 }, ptr %t3
   call void @to_string$string(ptr %t2, ptr %t3)
   call void @string_builder_append_string(ptr %t2)

@@ -70,7 +70,7 @@ func fn.0() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [69 x i8] c"tests/language/048-labelled-expression-block.t\00"
+@.macro.file.m0 = private unnamed_addr constant [47 x i8] c"tests/language/048-labelled-expression-block.t\00"
 @.str.m0.0 = private unnamed_addr constant [9 x i8] c"labelled\00"
 @.str.m0.1 = private unnamed_addr constant [10 x i8] c"answer = \00"
 @.str.m0.2 = private unnamed_addr constant [8 x i8] c"word = \00"
@@ -102,6 +102,12 @@ declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
 
 define internal i32 @fn.0() {
+  %local.3 = alloca i32
+  %t11 = alloca { ptr, i64 }
+  %t17 = alloca { ptr, i64 }
+  %t19 = alloca { ptr, i64 }
+  %t24 = alloca { ptr, i64 }
+  %t30 = alloca { ptr, i64 }
   %t0 = alloca i32, align 4
   store i32 0, ptr %t0, align 4
   %t1 = add i32 41, 1
@@ -124,7 +130,6 @@ block.end.3:
   br label %block.end.2
 block.end.2:
   %t6 = load i32, ptr %t5, align 4
-  %local.3 = alloca i32
   store i32 0, ptr %local.3
   %t7 = load i32, ptr %local.3
   %t8 = add i32 %t7, 1
@@ -133,7 +138,6 @@ block.end.2:
 block.end.4:
   %t9 = call i64 @string_builder_mark()
   %t10 = alloca { ptr, i64 }
-  %t11 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.1, i64 9 }, ptr %t11
   call void @to_string$string(ptr %t10, ptr %t11)
   call void @string_builder_append_string(ptr %t10)
@@ -146,12 +150,10 @@ block.end.4:
   call void @$prn({ ptr, i64 } %t14)
   %t15 = call i64 @string_builder_mark()
   %t16 = alloca { ptr, i64 }
-  %t17 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.2, i64 7 }, ptr %t17
   call void @to_string$string(ptr %t16, ptr %t17)
   call void @string_builder_append_string(ptr %t16)
   %t18 = alloca { ptr, i64 }
-  %t19 = alloca { ptr, i64 }
   store { ptr, i64 } %t4, ptr %t19
   call void @to_string$string(ptr %t18, ptr %t19)
   call void @string_builder_append_string(ptr %t18)
@@ -161,7 +163,6 @@ block.end.4:
   call void @$prn({ ptr, i64 } %t21)
   %t22 = call i64 @string_builder_mark()
   %t23 = alloca { ptr, i64 }
-  %t24 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.3, i64 8 }, ptr %t24
   call void @to_string$string(ptr %t23, ptr %t24)
   call void @string_builder_append_string(ptr %t23)
@@ -174,7 +175,6 @@ block.end.4:
   call void @$prn({ ptr, i64 } %t27)
   %t28 = call i64 @string_builder_mark()
   %t29 = alloca { ptr, i64 }
-  %t30 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.4, i64 7 }, ptr %t30
   call void @to_string$string(ptr %t29, ptr %t30)
   call void @string_builder_append_string(ptr %t29)

@@ -74,7 +74,7 @@ func fn.0() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [52 x i8] c"tests/language/050-for-else.t\00"
+@.macro.file.m0 = private unnamed_addr constant [30 x i8] c"tests/language/050-for-else.t\00"
 @.str.m0.0 = private unnamed_addr constant [9 x i8] c"found = \00"
 @.str.m0.1 = private unnamed_addr constant [11 x i8] c"missing = \00"
 
@@ -104,8 +104,11 @@ declare ptr @$input({ ptr, i64 })
 
 define internal i32 @fn.0() {
   %local.2 = alloca i32
-  store i32 0, ptr %local.2
   %local.3 = alloca i32
+  %local.4 = alloca i32
+  %t17 = alloca { ptr, i64 }
+  %t23 = alloca { ptr, i64 }
+  store i32 0, ptr %local.2
   store i32 0, ptr %local.3
   %t0 = alloca i32, align 4
   store i32 0, ptr %t0, align 4
@@ -131,7 +134,6 @@ for.else.3:
   br label %for.end.4
 for.end.4:
   %t9 = load i32, ptr %t0, align 4
-  %local.4 = alloca i32
   store i32 0, ptr %local.4
   %t10 = alloca i32, align 4
   store i32 0, ptr %t10, align 4
@@ -153,7 +155,6 @@ for.end.9:
   %t14 = load i32, ptr %t10, align 4
   %t15 = call i64 @string_builder_mark()
   %t16 = alloca { ptr, i64 }
-  %t17 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.0, i64 8 }, ptr %t17
   call void @to_string$string(ptr %t16, ptr %t17)
   call void @string_builder_append_string(ptr %t16)
@@ -166,7 +167,6 @@ for.end.9:
   call void @$prn({ ptr, i64 } %t20)
   %t21 = call i64 @string_builder_mark()
   %t22 = alloca { ptr, i64 }
-  %t23 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.1, i64 10 }, ptr %t23
   call void @to_string$string(ptr %t22, ptr %t23)
   call void @string_builder_append_string(ptr %t22)

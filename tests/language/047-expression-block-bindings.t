@@ -53,7 +53,7 @@ func fn.0() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [69 x i8] c"tests/language/047-expression-block-bindings.t\00"
+@.macro.file.m0 = private unnamed_addr constant [47 x i8] c"tests/language/047-expression-block-bindings.t\00"
 @.str.m0.0 = private unnamed_addr constant [12 x i8] c"constant = \00"
 @.str.m0.1 = private unnamed_addr constant [12 x i8] c"variable = \00"
 @.str.m0.2 = private unnamed_addr constant [11 x i8] c"updated = \00"
@@ -103,9 +103,11 @@ block.end.0:
 }
 
 define internal i32 @fn.0() {
+  %t2 = alloca { ptr, i64 }
+  %t10 = alloca { ptr, i64 }
+  %t19 = alloca { ptr, i64 }
   %t0 = call i64 @string_builder_mark()
   %t1 = alloca { ptr, i64 }
-  %t2 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.0, i64 11 }, ptr %t2
   call void @to_string$string(ptr %t1, ptr %t2)
   call void @string_builder_append_string(ptr %t1)
@@ -124,7 +126,6 @@ block.end.0:
   call void @$prn({ ptr, i64 } %t7)
   %t8 = call i64 @string_builder_mark()
   %t9 = alloca { ptr, i64 }
-  %t10 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.1, i64 11 }, ptr %t10
   call void @to_string$string(ptr %t9, ptr %t10)
   call void @string_builder_append_string(ptr %t9)
@@ -141,7 +142,6 @@ block.end.0:
   store i32 %t16, ptr @$variable_value
   %t17 = call i64 @string_builder_mark()
   %t18 = alloca { ptr, i64 }
-  %t19 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.2, i64 10 }, ptr %t19
   call void @to_string$string(ptr %t18, ptr %t19)
   call void @string_builder_append_string(ptr %t18)

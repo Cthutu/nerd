@@ -60,6 +60,7 @@ func fn.0() -> void {
 ; nerd llvm-ir 0
 ; generated from HIR
 
+@.macro.file.m0 = private unnamed_addr constant [35 x i8] c"tests/language/127-generic-types.t\00"
 @.str.m0.0 = private unnamed_addr constant [9 x i8] c"generic \00"
 @.str.m0.1 = private unnamed_addr constant [5 x i8] c"none\00"
 
@@ -88,6 +89,8 @@ declare void @$prn({ ptr, i64 })
 
 define internal void @fn.0() {
   %local.0 = alloca { i32 }
+  %local.1 = alloca i128
+  %t17 = alloca { ptr, i64 }
   store { i32 } zeroinitializer, ptr %local.0
   %t0 = getelementptr inbounds { i32 }, ptr %local.0, i64 0, i32 0
   store i32 7, ptr %t0
@@ -95,7 +98,6 @@ define internal void @fn.0() {
   %t2 = extractvalue { i32 } %t1, 0
   %t3 = add i32 %t2, 1
   %t4 = zext i32 %t3 to i128
-  %local.1 = alloca i128
   store i128 %t4, ptr %local.1
   %t5 = load i128, ptr %local.1
   %t6 = trunc i128 %t5 to i32
@@ -111,7 +113,6 @@ define internal void @fn.0() {
 on.body.1:
   %t15 = call i64 @string_builder_mark()
   %t16 = alloca { ptr, i64 }
-  %t17 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.0, i64 8 }, ptr %t17
   call void @to_string$string(ptr %t16, ptr %t17)
   call void @string_builder_append_string(ptr %t16)

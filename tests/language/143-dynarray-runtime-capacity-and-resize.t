@@ -73,13 +73,14 @@ func fn.1() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [80 x i8] c"tests/language/143-dynarray-runtime-capacity-and-resize.t\00"
+@.macro.file.m0 = private unnamed_addr constant [58 x i8] c"tests/language/143-dynarray-runtime-capacity-and-resize.t\00"
 
 declare ptr @nrt_mem_alloc(i64, i64, ptr, i32)
 declare ptr @nrt_mem_realloc(ptr, i64, i64, ptr, i32)
 declare void @nrt_mem_free(ptr)
 
 define internal i32 @fn.0(i64 %initial_size) {
+  %local.1 = alloca ptr
   %t1 = mul i64 %initial_size, 4
   %t2 = add i64 24, %t1
   %t0 = call ptr @nrt_mem_alloc(i64 %t2, i64 16, ptr @.macro.file.m0, i32 0)
@@ -90,7 +91,6 @@ define internal i32 @fn.0(i64 %initial_size) {
   store ptr %t6, ptr %t3
   store i64 0, ptr %t4
   store i64 %initial_size, ptr %t5
-  %local.1 = alloca ptr
   store ptr %t6, ptr %local.1
   %t7 = load ptr, ptr %local.1
   %t8 = alloca i64

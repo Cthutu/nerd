@@ -103,13 +103,14 @@ func fn.1() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [52 x i8] c"tests/language/153-break-on.t\00"
+@.macro.file.m0 = private unnamed_addr constant [30 x i8] c"tests/language/153-break-on.t\00"
 
 declare ptr @nrt_mem_alloc(i64, i64, ptr, i32)
 declare ptr @nrt_mem_realloc(ptr, i64, i64, ptr, i32)
 declare void @nrt_mem_free(ptr)
 
 define internal ptr @fn.0(ptr %system, i64 %handle) {
+  %local.2 = alloca ptr
   %t0 = load { ptr }, ptr %system
   %t1 = extractvalue { ptr } %t0, 0
   %t4 = alloca ptr
@@ -137,7 +138,6 @@ for.in.ready.2:
   store ptr null, ptr %t13, align 4
   %t14 = alloca i64
   store i64 0, ptr %t14
-  %local.2 = alloca ptr
   br label %for.in.cond.3
 for.in.cond.3:
   %t15 = load i64, ptr %t14
@@ -170,6 +170,8 @@ for.in.end.6:
 }
 
 define internal i32 @fn.1() {
+  %local.4 = alloca ptr
+  %local.5 = alloca { ptr }
   %t0 = alloca i32, align 4
   store i32 0, ptr %t0, align 4
   %t1 = icmp eq i32 1, 1
@@ -197,7 +199,6 @@ on.end.3:
   store ptr %t10, ptr %t7
   store i64 0, ptr %t8
   store i64 2, ptr %t9
-  %local.4 = alloca ptr
   store ptr %t10, ptr %local.4
   %t11 = load ptr, ptr %local.4
   %t12 = icmp eq ptr %t11, null
@@ -301,7 +302,6 @@ dynarray.store.12:
   store i64 %t60, ptr %t74
   %t77 = load ptr, ptr %local.4
   %t78 = insertvalue { ptr } poison, ptr %t77, 0
-  %local.5 = alloca { ptr }
   store { ptr } %t78, ptr %local.5
   %t79 = call ptr @fn.0(ptr %local.5, i64 9)
   %t80 = icmp eq ptr %t79, null

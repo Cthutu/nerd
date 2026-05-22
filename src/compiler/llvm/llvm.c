@@ -1806,6 +1806,7 @@ typedef struct {
 
 typedef struct {
     StringBuilder*    sb;
+    StringBuilder*    entry_sb;
     const Hir*        hir;
     const Lexer*      lexer;
     const Sema*       sema;
@@ -1903,15 +1904,22 @@ internal string llvm_type_string(LlvmFunctionContext* ctx, u32 type_index)
     return sb_to_string(&sb);
 }
 
+internal void
+llvm_emit_alloca(LlvmFunctionContext* ctx, string ptr, string type)
+{
+    StringBuilder* target = ctx->entry_sb != NULL ? ctx->entry_sb : ctx->sb;
+    sb_format(target,
+              "  " STRINGP " = alloca " STRINGP "\n",
+              STRINGV(ptr),
+              STRINGV(type));
+}
+
 internal string llvm_emit_string_value_pointer(LlvmFunctionContext* ctx,
                                                string               value)
 {
     string string_type = llvm_string_type(ctx->layout);
     string ptr         = llvm_temp(ctx);
-    sb_format(ctx->sb,
-              "  " STRINGP " = alloca " STRINGP "\n",
-              STRINGV(ptr),
-              STRINGV(string_type));
+    llvm_emit_alloca(ctx, ptr, string_type);
     sb_format(ctx->sb,
               "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n",
               STRINGV(string_type),
@@ -2075,10 +2083,7 @@ internal LlvmLocalSlot* llvm_ensure_local_slot(LlvmFunctionContext* ctx,
                    .ptr         = ptr,
                });
     string type = llvm_type_string(ctx, type_index);
-    sb_format(ctx->sb,
-              "  " STRINGP " = alloca " STRINGP "\n",
-              STRINGV(ptr),
-              STRINGV(type));
+    llvm_emit_alloca(ctx, ptr, type);
     return &ctx->slots[array_count(ctx->slots) - 1];
 }
 
@@ -2388,13 +2393,11 @@ internal LlvmValue llvm_cast_to_storage_bits(LlvmFunctionContext* ctx,
                   STRINGV(storage_type));
     } else if (value_bits > 0 && value_bits <= storage_bits) {
         string slot = llvm_temp(ctx);
+        llvm_emit_alloca(ctx, slot, storage_type);
         sb_format(ctx->sb,
-                  "  " STRINGP " = alloca " STRINGP "\n"
                   "  store " STRINGP " 0, ptr " STRINGP "\n"
                   "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n"
                   "  " STRINGP " = load " STRINGP ", ptr " STRINGP "\n",
-                  STRINGV(slot),
-                  STRINGV(storage_type),
                   STRINGV(storage_type),
                   STRINGV(slot),
                   STRINGV(value_type),
@@ -2473,12 +2476,10 @@ internal LlvmValue llvm_cast_from_storage_bits(LlvmFunctionContext* ctx,
                   STRINGV(result_type_s));
     } else if (result_bits <= storage_bits) {
         string slot = llvm_temp(ctx);
+        llvm_emit_alloca(ctx, slot, storage_type);
         sb_format(ctx->sb,
-                  "  " STRINGP " = alloca " STRINGP "\n"
                   "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n"
                   "  " STRINGP " = load " STRINGP ", ptr " STRINGP "\n",
-                  STRINGV(slot),
-                  STRINGV(storage_type),
                   STRINGV(storage_type),
                   STRINGV(value.value),
                   STRINGV(slot),
@@ -12026,10 +12027,19 @@ internal void llvm_render_global_init(StringBuilder* sb,
     sb_append_cstr(sb, "define void ");
     llvm_append_module_init_name(sb, hir);
     sb_append_cstr(sb, "() {\n");
-    Arena temp = {0};
+    Arena temp        = {0};
+    Arena entry_arena = {0};
+    Arena body_arena  = {0};
     arena_init(&temp);
+    arena_init(&entry_arena);
+    arena_init(&body_arena);
+    StringBuilder entry_sb = {0};
+    StringBuilder body_sb  = {0};
+    sb_init(&entry_sb, &entry_arena);
+    sb_init(&body_sb, &body_arena);
     LlvmFunctionContext ctx = {
-        .sb                      = sb,
+        .sb                      = &body_sb,
+        .entry_sb                = &entry_sb,
         .hir                     = hir,
         .lexer                   = lexer,
         .sema                    = sema,
@@ -12059,19 +12069,23 @@ internal void llvm_render_global_init(StringBuilder* sb,
         }
 
         string type = llvm_type_string(&ctx, value->type_index);
-        sb_format(sb,
+        sb_format(&body_sb,
                   "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n",
                   STRINGV(type),
                   STRINGV(init_value.value),
                   STRINGV(name));
     }
-    sb_append_cstr(sb, "  ret void\n");
+    sb_append_cstr(&body_sb, "  ret void\n");
+    sb_append_string(sb, sb_to_string(&entry_sb));
+    sb_append_string(sb, sb_to_string(&body_sb));
     sb_append_cstr(sb, "}\n");
     array_free(ctx.locals);
     array_free(ctx.slots);
     array_free(ctx.assigned_locals);
     array_free(ctx.defer_block_indices);
     array_free(ctx.control_targets);
+    arena_done(&body_arena);
+    arena_done(&entry_arena);
     arena_done(&temp);
     (void)arena;
 }
@@ -12100,10 +12114,19 @@ internal void llvm_render_function(StringBuilder*     sb,
     llvm_append_function_signature(
         sb, hir, lexer, sema, function, function_index);
     sb_append_cstr(sb, " {\n");
-    Arena temp = {0};
+    Arena temp        = {0};
+    Arena entry_arena = {0};
+    Arena body_arena  = {0};
     arena_init(&temp);
+    arena_init(&entry_arena);
+    arena_init(&body_arena);
+    StringBuilder entry_sb = {0};
+    StringBuilder body_sb  = {0};
+    sb_init(&entry_sb, &entry_arena);
+    sb_init(&body_sb, &body_arena);
     LlvmFunctionContext ctx = {
-        .sb                      = sb,
+        .sb                      = &body_sb,
+        .entry_sb                = &entry_sb,
         .hir                     = hir,
         .lexer                   = lexer,
         .sema                    = sema,
@@ -12118,13 +12141,17 @@ internal void llvm_render_function(StringBuilder*     sb,
                    llvm_emit_block(&ctx, function, function->body_block_index);
     if (!emitted || !ctx.block_terminated) {
         u32 return_type = llvm_function_return_type(sema, function->type_index);
-        llvm_append_default_return(sb, sema, return_type);
+        llvm_append_default_return(&body_sb, sema, return_type);
     }
+    sb_append_string(sb, sb_to_string(&entry_sb));
+    sb_append_string(sb, sb_to_string(&body_sb));
     array_free(ctx.locals);
     array_free(ctx.slots);
     array_free(ctx.assigned_locals);
     array_free(ctx.defer_block_indices);
     array_free(ctx.control_targets);
+    arena_done(&body_arena);
+    arena_done(&entry_arena);
     arena_done(&temp);
     sb_append_cstr(sb, "}\n");
     (void)arena;

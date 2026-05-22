@@ -86,7 +86,7 @@ inst func fn.4(self: ^plex { [..]i32[..]i32) -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [65 x i8] c"tests/language/130-inherent-impl-methods.t\00"
+@.macro.file.m0 = private unnamed_addr constant [43 x i8] c"tests/language/130-inherent-impl-methods.t\00"
 @.str.m0.0 = private unnamed_addr constant [2 x i8] c" \00"
 @.str.m0.1 = private unnamed_addr constant [2 x i8] c" \00"
 
@@ -133,10 +133,12 @@ define internal i32 @fn.1({ i32 } %self) {
 
 define internal void @fn.2() {
   %local.3 = alloca { i32 }
+  %local.4 = alloca { ptr }
+  %t6 = alloca { ptr, i64 }
+  %t10 = alloca { ptr, i64 }
   store { i32 } zeroinitializer, ptr %local.3
   call void @fn.0(ptr %local.3, i32 7)
   call void @fn.0(ptr %local.3, i32 5)
-  %local.4 = alloca { ptr }
   store { ptr } zeroinitializer, ptr %local.4
   %t0 = load { i32 }, ptr %local.3
   %t1 = call i32 @fn.1({ i32 } %t0)
@@ -148,7 +150,6 @@ define internal void @fn.2() {
   call void @to_string$i32(ptr %t4, i32 %t3)
   call void @string_builder_append_string(ptr %t4)
   %t5 = alloca { ptr, i64 }
-  %t6 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.0, i64 1 }, ptr %t6
   call void @to_string$string(ptr %t5, ptr %t6)
   call void @string_builder_append_string(ptr %t5)
@@ -157,7 +158,6 @@ define internal void @fn.2() {
   call void @to_string$i32(ptr %t8, i32 %t7)
   call void @string_builder_append_string(ptr %t8)
   %t9 = alloca { ptr, i64 }
-  %t10 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.1, i64 1 }, ptr %t10
   call void @to_string$string(ptr %t9, ptr %t10)
   call void @string_builder_append_string(ptr %t9)
