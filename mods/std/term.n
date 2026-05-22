@@ -1531,7 +1531,7 @@ term_keyboard_record_event :: fn (event: TermInputEvent) {
         KeyDown(key) => {
             index := term_key_index(key)
             on term_key_index_valid(index) => {
-                on !term_keyboard_down[index] => term_keyboard_pressed[index] = yes
+                term_keyboard_pressed[index] = yes
                 term_keyboard_down[index] = yes
             }
         }
@@ -2206,6 +2206,21 @@ test "terminal keyboard state records edges" {
     assert !term_key_down(keyboard, KeyCode.LowerQ)
     assert !term_key_pressed(keyboard, KeyCode.LowerQ)
     assert term_key_released(keyboard, KeyCode.LowerQ)
+
+    term_keyboard_clear()
+}
+
+test "terminal repeated key down records another press edge" {
+    term_keyboard_clear()
+
+    term_event_record(TermInputEvent.KeyDown(KeyCode.LowerQ))
+    term_keyboard_clear_edges()
+    term_event_record(TermInputEvent.KeyDown(KeyCode.LowerQ))
+
+    keyboard := term_keyboard_snapshot()
+    assert term_key_down(keyboard, KeyCode.LowerQ)
+    assert term_key_pressed(keyboard, KeyCode.LowerQ)
+    assert !term_key_released(keyboard, KeyCode.LowerQ)
 
     term_keyboard_clear()
 }
