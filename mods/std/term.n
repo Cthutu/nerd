@@ -1987,6 +1987,44 @@ test "framebuffer resize preserves overlapping cells" {
     term_fb_release()
 }
 
+test "framebuffer resize truncates rows using new row stride" {
+    term_fb_release()
+    assert term_fb_resize(4, 3)
+
+    term_fb_put(0, 0, 'A'.as(u32))
+    term_fb_put(1, 0, 'B'.as(u32))
+    term_fb_put(2, 0, 'C'.as(u32))
+    term_fb_put(3, 0, 'D'.as(u32))
+    term_fb_put(0, 1, 'E'.as(u32))
+    term_fb_put(1, 1, 'F'.as(u32))
+    term_fb_put(2, 1, 'G'.as(u32))
+    term_fb_put(3, 1, 'H'.as(u32))
+    term_fb_put(0, 2, 'I'.as(u32))
+    term_fb_put(1, 2, 'J'.as(u32))
+    term_fb_put(2, 2, 'K'.as(u32))
+    term_fb_put(3, 2, 'L'.as(u32))
+
+    assert term_fb_resize(2, 3)
+    assert term_fb_cells.count == 6
+    assert term_fb_cell_ch(0, 0) == 'A'.as(u32)
+    assert term_fb_cell_ch(1, 0) == 'B'.as(u32)
+    assert term_fb_cell_ch(0, 1) == 'E'.as(u32)
+    assert term_fb_cell_ch(1, 1) == 'F'.as(u32)
+    assert term_fb_cell_ch(0, 2) == 'I'.as(u32)
+    assert term_fb_cell_ch(1, 2) == 'J'.as(u32)
+
+    assert term_fb_resize(3, 2)
+    assert term_fb_cells.count == 6
+    assert term_fb_cell_ch(0, 0) == 'A'.as(u32)
+    assert term_fb_cell_ch(1, 0) == 'B'.as(u32)
+    assert term_fb_cell_ch(2, 0) == ' '.as(u32)
+    assert term_fb_cell_ch(0, 1) == 'E'.as(u32)
+    assert term_fb_cell_ch(1, 1) == 'F'.as(u32)
+    assert term_fb_cell_ch(2, 1) == ' '.as(u32)
+
+    term_fb_release()
+}
+
 test "framebuffer resize rejection leaves state unchanged" {
     term_fb_release()
     assert term_fb_resize(3, 2)
