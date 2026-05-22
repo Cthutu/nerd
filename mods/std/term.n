@@ -274,6 +274,8 @@ CELL_DIRTY     :: 1
 CELL_WIDE_HEAD :: 2
 CELL_WIDE_TAIL :: 4
 
+TERM_MAX_FRAMEBUFFER_CELLS :: 1000000
+
 term_initialised       : bool
 term_done_requested    : bool
 term_events            : [..]TermEvent
@@ -331,9 +333,25 @@ term_fb_index :: fn (x: u32, y: u32) -> usize {
     return (y * term_fb_width + x).as(usize)
 }
 
+term_size_supported :: fn (width: u32, height: u32) -> bool {
+    on width == 0 || height == 0 => return no
+    max_cells := TERM_MAX_FRAMEBUFFER_CELLS.as(usize)
+    return width.as(usize) <= max_cells / height.as(usize)
+}
+
+term_fb_index_valid :: fn (x: u32, y: u32) -> bool {
+    on x >= term_fb_width || y >= term_fb_height => return no
+
+    index := term_fb_index(x, y)
+    return index < term_fb_cells.count
+}
+
 term_normalise_size :: fn (width: i32, height: i32) -> (u32, u32) {
     on width <= 0 || height <= 0 => return (0, 0)
-    return (width.as(u32), height.as(u32))
+    normalised_width := width.as(u32)
+    normalised_height := height.as(u32)
+    on !term_size_supported(normalised_width, normalised_height) => return (0, 0)
+    return (normalised_width, normalised_height)
 }
 
 term_window_span :: fn (first: i16, last: i16) -> i32 {
@@ -358,25 +376,25 @@ pub term_view :: fn (x: i32, y: i32, w: i32, h: i32) {
 }
 
 term_fb_mark_dirty :: fn (x: u32, y: u32) {
-    on x >= term_fb_width || y >= term_fb_height => return
+    on !term_fb_index_valid(x, y) => return
     index := term_fb_index(x, y)
     term_fb_cells[index].flags |= CELL_DIRTY
 }
 
 term_fb_clear_wide_link :: fn (x: u32, y: u32) {
-    on x >= term_fb_width || y >= term_fb_height => return
+    on !term_fb_index_valid(x, y) => return
 
     index := term_fb_index(x, y)
     flags := term_fb_cells[index].flags
 
-    on (flags & CELL_WIDE_TAIL) != 0 && x > 0 => {
+    on (flags & CELL_WIDE_TAIL) != 0 && x > 0 && term_fb_index_valid(x - 1, y) => {
         head_index := term_fb_index(x - 1, y)
         term_fb_cells[head_index].ch = ' '.as(u32)
         term_fb_cells[head_index].flags &= ~CELL_WIDE_HEAD
         term_fb_cells[head_index].flags |= CELL_DIRTY
     }
 
-    on (flags & CELL_WIDE_HEAD) != 0 && x + 1 < term_fb_width => {
+    on (flags & CELL_WIDE_HEAD) != 0 && x + 1 < term_fb_width && term_fb_index_valid(x + 1, y) => {
         tail_index := term_fb_index(x + 1, y)
         term_fb_cells[tail_index].ch = ' '.as(u32)
         term_fb_cells[tail_index].flags &= ~CELL_WIDE_TAIL
@@ -388,28 +406,35 @@ term_fb_clear_wide_link :: fn (x: u32, y: u32) {
 }
 
 term_fb_fill_cell :: fn (index: usize) {
+    on index >= term_fb_cells.count => return
     term_fb_cells[index] = term_fb_default_cell()
 }
 
 term_fb_cell_ch :: fn (x: u32, y: u32) -> u32 {
+    on !term_fb_index_valid(x, y) => return ' '.as(u32)
     return term_fb_cells[term_fb_index(x, y)].ch
 }
 
 term_fb_cell_ink :: fn (x: u32, y: u32) -> Colour {
+    on !term_fb_index_valid(x, y) => return TERM_DEFAULT_INK
     return term_fb_cells[term_fb_index(x, y)].ink
 }
 
 term_fb_cell_paper :: fn (x: u32, y: u32) -> Colour {
+    on !term_fb_index_valid(x, y) => return TERM_DEFAULT_PAPER
     return term_fb_cells[term_fb_index(x, y)].paper
 }
 
 term_fb_cell_flags :: fn (x: u32, y: u32) -> u32 {
+    on !term_fb_index_valid(x, y) => return 0
     return term_fb_cells[term_fb_index(x, y)].flags
 }
 
-term_fb_resize :: fn (width: u32, height: u32) {
-    new_count := (width * height).as(usize)
-    new_cells : [new_count..]TermCell
+term_fb_resize :: fn (width: u32, height: u32) -> bool {
+    on !term_size_supported(width, height) => return no
+
+    new_count := width.as(usize) * height.as(usize)
+    new_cells : [..]TermCell
     new_cells.resize_undefined_to(new_count)
 
     i : usize = 0
@@ -425,6 +450,7 @@ term_fb_resize :: fn (width: u32, height: u32) {
 
     for y: u32 = 0; y < copy_height; y += 1 {
         for x: u32 = 0; x < copy_width; x += 1 {
+            on !term_fb_index_valid(x, y) => again
             old_index := term_fb_index(x, y)
             new_index := (y * width + x).as(usize)
             new_cells[new_index] = term_fb_cells[old_index]
@@ -443,6 +469,7 @@ term_fb_resize :: fn (width: u32, height: u32) {
     term_fb_height = height
     term_fb_ready  = yes
     term_view_reset()
+    return yes
 }
 
 term_fb_release :: fn () {
@@ -461,7 +488,7 @@ term_fb_ensure :: fn () {
     on height == 0 => height = 1
 
     on !term_fb_ready || width != term_fb_width || height != term_fb_height => {
-        term_fb_resize(width, height)
+        _ := term_fb_resize(width, height)
     } else {
         term_view_reset()
     }
@@ -550,6 +577,7 @@ pub term_fb_put :: fn (x     : i32,
 
     dx := clip.dst.x.as(u32)
     dy := clip.dst.y.as(u32)
+    on !term_fb_index_valid(dx, dy) => return
 
     term_fb_clear_wide_link(dx, dy)
     index := term_fb_index(dx, dy)
@@ -558,7 +586,7 @@ pub term_fb_put :: fn (x     : i32,
     term_fb_cells[index].flags &= ~(CELL_WIDE_HEAD | CELL_WIDE_TAIL)
     term_fb_cells[index].flags |= CELL_DIRTY
 
-    on width == 2 && dx + 1 < term_fb_width => {
+    on width == 2 && dx + 1 < term_fb_width && term_fb_index_valid(dx + 1, dy) => {
         term_fb_clear_wide_link(dx + 1, dy)
         tail_index := term_fb_index(dx + 1, dy)
         term_fb_cells[index].flags |= CELL_WIDE_HEAD
@@ -591,6 +619,10 @@ pub term_fb_fill_rect :: fn (x     : i32,
             on char_width == 1 => {
                 dx := (clip.dst.x + xx).as(u32)
                 dy := (clip.dst.y + yy).as(u32)
+                on !term_fb_index_valid(dx, dy) => {
+                    xx += 1
+                    again
+                }
                 term_fb_clear_wide_link(dx, dy)
                 index := term_fb_index(dx, dy)
                 term_fb_cells[index].ch = ch
@@ -629,6 +661,10 @@ pub term_fb_paint_rect :: fn (x     : i32,
         for xx < clip.dst.w {
             dx := (clip.dst.x + xx).as(u32)
             dy := (clip.dst.y + yy).as(u32)
+            on !term_fb_index_valid(dx, dy) => {
+                xx += 1
+                again
+            }
             index := term_fb_index(dx, dy)
             term_fb_apply_colour(^term_fb_cells[index], ink, paper)
             term_fb_mark_dirty(dx, dy)
@@ -876,13 +912,19 @@ term_fb_present :: fn () {
     for y < term_fb_height {
         x = 0
         for x < term_fb_width {
+            on !term_fb_index_valid(x, y) => {
+                x += 1
+                again
+            }
             index := term_fb_index(x, y)
             on (term_fb_cells[index].flags & CELL_DIRTY) == 0 => {
                 x += 1
             } else {
                 term_output_push(^output, $"\x1b[{y + 1};{x + 1}H")
 
-                for x < term_fb_width && (term_fb_cells[term_fb_index(x, y)].flags & CELL_DIRTY) != 0 {
+                for x < term_fb_width &&
+                    term_fb_index_valid(x, y) &&
+                    (term_fb_cells[term_fb_index(x, y)].flags & CELL_DIRTY) != 0 {
                     cell_index := term_fb_index(x, y)
                     cell := term_fb_cells[cell_index]
 
@@ -903,7 +945,7 @@ term_fb_present :: fn () {
                         on ch == 0 => ch = ' '.as(u32)
                         term_output_push_codepoint(^output, ch)
                         term_fb_cells[cell_index].flags &= ~CELL_DIRTY
-                        on (cell.flags & CELL_WIDE_HEAD) != 0 && x + 1 < term_fb_width => {
+                        on (cell.flags & CELL_WIDE_HEAD) != 0 && x + 1 < term_fb_width && term_fb_index_valid(x + 1, y) => {
                             tail_index := term_fb_index(x + 1, y)
                             term_fb_cells[tail_index].flags &= ~CELL_DIRTY
                             x += 2
@@ -1654,10 +1696,10 @@ term_queue_resize_event :: fn () {
     on rows == 0 => rows = 1
 
     on columns == term_last_columns && rows == term_last_rows => return
+    on !term_fb_resize(columns, rows) => return
 
     term_last_columns = columns
     term_last_rows    = rows
-    term_fb_resize(columns, rows)
     term_queue_push(TermEvent.Resize(columns, rows))
 }
 
@@ -1844,6 +1886,13 @@ test "terminal window span widens before subtracting" {
     assert term_window_span(89.as(i16), 10.as(i16)) == -78
 }
 
+test "terminal framebuffer rejects unsupported sizes" {
+    assert term_size_supported(80, 25)
+    assert !term_size_supported(0, 25)
+    assert !term_size_supported(80, 0)
+    assert !term_size_supported((TERM_MAX_FRAMEBUFFER_CELLS + 1).as(u32), 1)
+}
+
 test "utf-8 decoder handles ascii glyph offsets" {
     text := "ASCII"
 
@@ -1862,12 +1911,26 @@ test "terminal text width sums ascii glyphs" {
 
 test "framebuffer text stores ascii codepoints" {
     term_fb_release()
-    term_fb_resize(8, 3)
+    assert term_fb_resize(8, 3)
 
     term_fb_text(0, 0, "AB", COLOUR_TRANSPARENT, COLOUR_TRANSPARENT)
 
     assert term_fb_cells[term_fb_index(0, 0)].ch == 'A'.as(u32)
     assert term_fb_cells[term_fb_index(1, 0)].ch == 'B'.as(u32)
+
+    term_fb_release()
+}
+
+test "framebuffer cell helpers guard out of bounds access" {
+    term_fb_release()
+    assert term_fb_resize(2, 2)
+
+    assert !term_fb_index_valid(2, 0)
+    assert !term_fb_index_valid(0, 2)
+    assert term_fb_cell_ch(2, 0) == ' '.as(u32)
+    assert term_fb_cell_ink(0, 2) == TERM_DEFAULT_INK
+    assert term_fb_cell_paper(2, 2) == TERM_DEFAULT_PAPER
+    assert term_fb_cell_flags(2, 0) == 0
 
     term_fb_release()
 }
@@ -2029,7 +2092,7 @@ test "terminal hooks clear resets registered callbacks" {
 
 test "too-small renderer marks warning background" {
     term_fb_release()
-    term_fb_resize(10, 3)
+    assert term_fb_resize(10, 3)
     term_min_width  = 80
     term_min_height = 25
 
