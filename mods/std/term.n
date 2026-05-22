@@ -1770,9 +1770,8 @@ term_run_step :: fn () -> bool {
     term_view_reset()
     term_run_presentation_hook(current)
 
-    -- `term_init` queues the initial Resize event. Skip the first presentation so
-    -- framebuffer apps can process that event and draw their first frame before
-    -- anything is written to the terminal.
+    -- Skip the first presentation so framebuffer apps can draw their first
+    -- frame from the initial terminal size before anything is written.
     on term_present_ready => {
         term_fb_present()
     } else {
