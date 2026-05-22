@@ -173,6 +173,8 @@ pub Colour :: u32
 pub TERM_DEFAULT_INK   :: 0xdcdcdc.as(Colour)
 pub TERM_DEFAULT_PAPER :: 0x000000.as(Colour)
 pub COLOUR_TRANSPARENT :: 0xffffffff.as(Colour)
+pub TERM_DEFAULT_MIN_WIDTH  :: 80
+pub TERM_DEFAULT_MIN_HEIGHT :: 25
 
 pub BoxStyle :: enum {
     Single
@@ -211,6 +213,8 @@ term_done_requested : bool
 term_events         : [..]TermEvent
 term_last_columns   : u32
 term_last_rows      : u32
+term_min_width      : u32
+term_min_height     : u32
 term_present_ready  : bool
 term_arena          : arena
 term_arena_ready    : bool
@@ -551,6 +555,12 @@ pub term_fb_text :: fn (x: i32, y: i32, text: string, ink: Colour = COLOUR_TRANS
         source_col += width
         byte_index += decoded.1
     }
+}
+
+term_fb_text_centered :: fn (y: i32, text: string, ink: Colour, paper: Colour) {
+    width := term_text_display_width(text)
+    x := (term_fb_width.as(i32) - width) / 2
+    term_fb_text(x, y, text, ink, paper)
 }
 
 term_box_string_char :: fn (chars: string, cell_index: usize) -> u32 {
@@ -1265,11 +1275,39 @@ term_queue_push :: fn (event: TermEvent) {
     term_events.push(event)
 }
 
+term_too_small :: fn () -> bool {
+    return term_last_columns < term_min_width || term_last_rows < term_min_height
+}
+
+term_draw_too_small :: fn () {
+    ink := rgb(255, 235, 180)
+    paper := rgb(72, 18, 28)
+
+    term_fb_fill_rect(0, 0, term_fb_width.as(i32), term_fb_height.as(i32), ' '.as(u32), ink, paper)
+
+    message := "Terminal too small"
+    detail := $"Need at least {term_min_width}x{term_min_height}"
+
+    -- If even the status text cannot fit, the warning background still gives a
+    -- visible signal that the app is intentionally withholding its normal view.
+    on term_fb_width >= term_text_display_width(message).as(u32) && term_fb_height >= 1 => {
+        center_y := term_fb_height.as(i32) / 2
+        on term_fb_height >= 3 => center_y -= 1
+        term_fb_text_centered(center_y, message, ink, paper)
+
+        on term_fb_width >= term_text_display_width(detail).as(u32) && term_fb_height >= 3 => {
+            term_fb_text_centered(center_y + 1, detail, ink, paper)
+        }
+    }
+}
+
 -- Enters terminal application mode.
-pub term_init :: fn () {
+pub term_init :: fn (min_width: u32 = TERM_DEFAULT_MIN_WIDTH, min_height: u32 = TERM_DEFAULT_MIN_HEIGHT) {
     on term_initialized => return
 
     term_done_requested = no
+    term_min_width = min_width
+    term_min_height = min_height
     term_arena_ensure()
     term_queue_clear()
     term_raw_mode_enable(yes)
@@ -1330,7 +1368,12 @@ pub term_loop :: fn () -> bool {
     -- `term_init` queues the initial Resize event. Skip the first presentation so
     -- framebuffer apps can process that event and draw their first frame before
     -- anything is written to the terminal.
-    on term_present_ready => term_fb_present() else term_present_ready = yes
+    on term_present_ready => {
+        on term_too_small() => term_draw_too_small()
+        term_fb_present()
+    } else {
+        term_present_ready = yes
+    }
     term_view_reset()
 
     event := term_poll_event_impl()
@@ -1508,4 +1551,35 @@ test "terminal loop is inactive before init" {
     term_queue_clear()
 
     assert !term_loop()
+}
+
+test "terminal minimum size detects undersized axes" {
+    term_min_width = 80
+    term_min_height = 25
+
+    term_last_columns = 80
+    term_last_rows = 25
+    assert !term_too_small()
+
+    term_last_columns = 79
+    term_last_rows = 25
+    assert term_too_small()
+
+    term_last_columns = 80
+    term_last_rows = 24
+    assert term_too_small()
+}
+
+test "too-small renderer marks warning background" {
+    term_fb_release()
+    term_fb_resize(10, 3)
+    term_min_width = 80
+    term_min_height = 25
+
+    term_draw_too_small()
+
+    assert term_fb_cells[term_fb_index(0, 0)].paper == rgb(72, 18, 28)
+    assert term_fb_cells[term_fb_index(9, 2)].paper == rgb(72, 18, 28)
+
+    term_fb_release()
 }
