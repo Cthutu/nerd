@@ -41,8 +41,8 @@ seed       : u64
 generated  : bool
 
 stone_dark  :: rgb(8, 10, 14)
-stone_mid   :: rgb(18, 24, 32)
-stone_light :: rgb(30, 37, 48)
+stone_mid   :: rgb(84, 86, 92)
+stone_light :: rgb(188, 180, 184)
 floor_dark  :: rgb(42, 34, 26)
 floor_mid   :: rgb(70, 54, 38)
 floor_light :: rgb(112, 86, 54)
@@ -74,6 +74,17 @@ dungeon_set :: fn (x: i32, y: i32, tile: Tile, region: i32) {
 dungeon_passable :: fn (x: i32, y: i32) -> bool {
     cell := dungeon_cell(x, y)
     return cell.tile == Tile.Floor || cell.tile == Tile.Door
+}
+
+dungeon_wall_visible :: fn (x: i32, y: i32) -> bool {
+    for dy: i32 = -1; dy <= 1; dy += 1 {
+        for dx: i32 = -1; dx <= 1; dx += 1 {
+            on dx == 0 && dy == 0 => again
+            on dungeon_passable(x + dx, y + dy) => return yes
+        }
+    }
+
+    return no
 }
 
 rand_i32 :: fn (min: i32, max: i32) -> i32 {
@@ -246,6 +257,27 @@ region_union :: fn (parents: [..]i32, a: i32, b: i32) {
     on root_a != root_b => parents[root_b.as(usize)] = root_a
 }
 
+dungeon_abs_i32 :: fn (value: i32) -> i32 {
+    on value < 0 => return -value
+    return value
+}
+
+dungeon_remove_nearby_connectors :: fn (connector: Connector) {
+    i : usize = 0
+    for i < connectors.count {
+        other := connectors[i]
+        dx := dungeon_abs_i32(other.x - connector.x)
+        dy := dungeon_abs_i32(other.y - connector.y)
+
+        on dx <= 1 && dy <= 1 => {
+            connectors.swap_delete(i)
+            again
+        }
+
+        i += 1
+    }
+}
+
 dungeon_connect_regions :: fn (region_count: i32) {
     dungeon_find_connectors()
 
@@ -267,6 +299,7 @@ dungeon_connect_regions :: fn (region_count: i32) {
         on root_a != root_b || extra_loop => {
             dungeon_set(connector.x, connector.y, Tile.Door, connector.a)
             region_union(parents, root_a, root_b)
+            dungeon_remove_nearby_connectors(connector)
         }
     }
 
@@ -356,11 +389,13 @@ dungeon_draw_cell :: fn (x: u32, y: u32) {
 
     on cell.tile {
         Tile.Wall => {
-            paper := stone_light
-            on noise < 8 => paper = stone_dark else {
-                on noise < 18 => paper = stone_mid
+            on dungeon_wall_visible(x.as(i32), y.as(i32)) => {
+                ink := dungeon_colour_step(stone_mid, noise * 2)
+                on noise > 20 => ink = dungeon_colour_step(stone_light, noise)
+                term_fb_put(x.as(i32), y.as(i32), '#'.as(u32), ink, rgb(0, 0, 0))
+            } else {
+                term_fb_put(x.as(i32), y.as(i32), ' '.as(u32), stone_dark, rgb(0, 0, 0))
             }
-            term_fb_put(x.as(i32), y.as(i32), ' '.as(u32), paper, paper)
         }
         Tile.Floor => {
             paper := dungeon_colour_step(floor_dark, noise / 3)
@@ -493,6 +528,58 @@ test "dungeon generation creates regioned passable cells" {
     generated = no
 
     assert valid
+}
+
+test "dungeon generation avoids adjacent doors" {
+    seed = 12345
+    random_seed(seed)
+    generated = no
+
+    dungeon_generate(61, 25)
+
+    valid := yes
+    for y: u32 = 1; y < map_height - 1; y += 1 {
+        for x: u32 = 1; x < map_width - 1; x += 1 {
+            on dungeon_cell(x.as(i32), y.as(i32)).tile != Tile.Door => again
+
+            for dy: i32 = -1; dy <= 1; dy += 1 {
+                for dx: i32 = -1; dx <= 1; dx += 1 {
+                    on dx == 0 && dy == 0 => again
+                    on dungeon_cell(x.as(i32) + dx, y.as(i32) + dy).tile == Tile.Door => valid = no
+                }
+            }
+        }
+    }
+
+    cells.free()
+    rooms.free()
+    connectors.free()
+    generated = no
+
+    assert valid
+}
+
+test "dungeon generation exposes walls beside floors" {
+    seed = 12345
+    random_seed(seed)
+    generated = no
+
+    dungeon_generate(41, 19)
+
+    visible_wall_count := 0
+    for y: u32 = 1; y < map_height - 1; y += 1 {
+        for x: u32 = 1; x < map_width - 1; x += 1 {
+            on dungeon_cell(x.as(i32), y.as(i32)).tile == Tile.Wall &&
+               dungeon_wall_visible(x.as(i32), y.as(i32)) => visible_wall_count += 1
+        }
+    }
+
+    cells.free()
+    rooms.free()
+    connectors.free()
+    generated = no
+
+    assert visible_wall_count > 0
 }
 
 main :: fn () {
