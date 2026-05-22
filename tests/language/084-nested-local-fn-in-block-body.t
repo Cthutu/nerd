@@ -135,7 +135,7 @@ define internal void @fn.2() {
   %t0 = call i64 @string_builder_mark()
   %t1 = call i8 @fn.0({ ptr, i64 } { ptr @.str.m0.0, i64 3 })
   %t2 = alloca { ptr, i64 }
-  call void @to_string$u8(ptr %t2, i8 %t1)
+  call void @to_string$u8(ptr %t2, i8 zeroext %t1)
   call void @string_builder_append_string(ptr %t2)
   %t3 = alloca { ptr, i64 }
   call void @string_builder_finish(ptr %t3, i64 %t0)

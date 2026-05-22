@@ -105,7 +105,7 @@ define internal i32 @fn.0() {
   %t24 = extractvalue { i64, i64 } %t21, 0
   %t22 = icmp eq i64 %t23, %t24
   %t25 = alloca { ptr, i64 }
-  call void @to_string$bool(ptr %t25, i1 %t22)
+  call void @to_string$bool(ptr %t25, i1 zeroext %t22)
   call void @string_builder_append_string(ptr %t25)
   %t26 = alloca { ptr, i64 }
   call void @string_builder_finish(ptr %t26, i64 %t0)
@@ -137,7 +137,7 @@ define internal i32 @fn.0() {
   %t52 = extractvalue { i64, i64 } %t49, 0
   %t50 = icmp eq i64 %t51, %t52
   %t53 = alloca { ptr, i64 }
-  call void @to_string$bool(ptr %t53, i1 %t50)
+  call void @to_string$bool(ptr %t53, i1 zeroext %t50)
   call void @string_builder_append_string(ptr %t53)
   %t54 = alloca { ptr, i64 }
   call void @string_builder_finish(ptr %t54, i64 %t28)
@@ -169,7 +169,7 @@ define internal i32 @fn.0() {
   %t80 = extractvalue { i64, i64 } %t77, 0
   %t78 = icmp eq i64 %t79, %t80
   %t81 = alloca { ptr, i64 }
-  call void @to_string$bool(ptr %t81, i1 %t78)
+  call void @to_string$bool(ptr %t81, i1 zeroext %t78)
   call void @string_builder_append_string(ptr %t81)
   %t82 = alloca { ptr, i64 }
   call void @string_builder_finish(ptr %t82, i64 %t56)
@@ -201,7 +201,7 @@ define internal i32 @fn.0() {
   %t108 = extractvalue { i64, i64 } %t105, 0
   %t106 = icmp eq i64 %t107, %t108
   %t109 = alloca { ptr, i64 }
-  call void @to_string$bool(ptr %t109, i1 %t106)
+  call void @to_string$bool(ptr %t109, i1 zeroext %t106)
   call void @string_builder_append_string(ptr %t109)
   %t110 = alloca { ptr, i64 }
   call void @string_builder_finish(ptr %t110, i64 %t84)

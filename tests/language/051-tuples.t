@@ -252,7 +252,7 @@ define internal i32 @fn.1() {
   call void @string_builder_append_byte(i8 32)
   %t69 = extractvalue { { i32, { ptr, i64 } }, { i32 }, i1 } %t8, 2
   %t70 = alloca { ptr, i64 }
-  call void @to_string$bool(ptr %t70, i1 %t69)
+  call void @to_string$bool(ptr %t70, i1 zeroext %t69)
   call void @string_builder_append_string(ptr %t70)
   call void @string_builder_append_byte(i8 41)
   %t71 = alloca { ptr, i64 }

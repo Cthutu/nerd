@@ -4173,6 +4173,23 @@ internal void llvm_emit_append_byte(LlvmFunctionContext* ctx, u8 byte)
         ctx->sb, "  call void @string_builder_append_byte(i8 %u)\n", (u32)byte);
 }
 
+internal string llvm_runtime_integer_abi_attr(LlvmFunctionContext* ctx,
+                                              u32                  type_index)
+{
+    SemaTypeKind kind = llvm_type_kind(ctx->sema, type_index);
+    switch (kind) {
+    case STK_Bool:
+    case STK_U8:
+    case STK_U16:
+        return s(" zeroext");
+    case STK_I8:
+    case STK_I16:
+        return s(" signext");
+    default:
+        return s("");
+    }
+}
+
 internal const Ast* llvm_current_ast(const LlvmFunctionContext* ctx)
 {
     if (ctx == NULL || ctx->hir == NULL || ctx->sema == NULL ||
@@ -4695,12 +4712,14 @@ internal bool llvm_emit_append_string_value(LlvmFunctionContext* ctx,
                   STRINGV(converted_ptr),
                   STRINGV(value_ptr));
     } else {
+        string abi_attr = llvm_runtime_integer_abi_attr(ctx, value.type_index);
         sb_format(ctx->sb,
-                  "  call void @to_string$" STRINGP "(ptr " STRINGP ", " STRINGP
-                  " " STRINGP ")\n",
+                  "  call void @to_string$" STRINGP "(ptr " STRINGP
+                  ", " STRINGP STRINGP " " STRINGP ")\n",
                   STRINGV(suffix),
                   STRINGV(converted_ptr),
                   STRINGV(value_type),
+                  STRINGV(abi_attr),
                   STRINGV(value.value));
     }
     sb_format(ctx->sb,

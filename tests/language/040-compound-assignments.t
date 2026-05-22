@@ -139,7 +139,7 @@ define internal void @fn.0() {
   call void @string_builder_append_string(ptr %t27)
   %t29 = load i1, ptr %local.2
   %t30 = alloca { ptr, i64 }
-  call void @to_string$bool(ptr %t30, i1 %t29)
+  call void @to_string$bool(ptr %t30, i1 zeroext %t29)
   call void @string_builder_append_string(ptr %t30)
   %t31 = alloca { ptr, i64 }
   call void @string_builder_finish(ptr %t31, i64 %t20)

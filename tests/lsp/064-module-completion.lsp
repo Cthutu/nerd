@@ -200,6 +200,10 @@ main :: fn () {}
                 "kind": 9
             },
             {
+                "label": "runtime_helper_u8",
+                "kind": 9
+            },
+            {
                 "label": "source_tests",
                 "kind": 9
             }

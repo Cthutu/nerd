@@ -262,7 +262,7 @@ dynarray.store.7:
   call void @string_builder_append_string(ptr %t102)
   %t104 = load i8, ptr %t81
   %t105 = alloca { ptr, i64 }
-  call void @to_string$u8(ptr %t105, i8 %t104)
+  call void @to_string$u8(ptr %t105, i8 zeroext %t104)
   call void @string_builder_append_string(ptr %t105)
   %t106 = alloca { ptr, i64 }
   call void @string_builder_finish(ptr %t106, i64 %t82)

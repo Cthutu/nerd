@@ -1,0 +1,9 @@
+use core
+
+pub print_rgb_bytes :: fn (colour: u32) {
+    r := ((colour >> 16) & 0xff).as(u8)
+    g := ((colour >> 8) & 0xff).as(u8)
+    b := (colour & 0xff).as(u8)
+
+    prn($"{r} {g} {b}")
+}

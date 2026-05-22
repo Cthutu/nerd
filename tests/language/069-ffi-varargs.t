@@ -73,7 +73,7 @@ define internal void @fn.1() {
   call void @string_builder_append_string(ptr %t2)
   %t4 = icmp sge i32 %t0, 0
   %t5 = alloca { ptr, i64 }
-  call void @to_string$bool(ptr %t5, i1 %t4)
+  call void @to_string$bool(ptr %t5, i1 zeroext %t4)
   call void @string_builder_append_string(ptr %t5)
   %t6 = alloca { ptr, i64 }
   call void @string_builder_finish(ptr %t6, i64 %t1)

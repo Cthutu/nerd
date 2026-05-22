@@ -208,7 +208,7 @@ define internal i32 @fn.0() {
   %t60 = getelementptr inbounds i8, ptr %t59, i32 0
   %t61 = load i8, ptr %t60
   %t62 = alloca { ptr, i64 }
-  call void @to_string$u8(ptr %t62, i8 %t61)
+  call void @to_string$u8(ptr %t62, i8 zeroext %t61)
   call void @string_builder_append_string(ptr %t62)
   %t63 = alloca { ptr, i64 }
   call void @string_builder_finish(ptr %t63, i64 %t56)

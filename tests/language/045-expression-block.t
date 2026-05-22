@@ -166,7 +166,7 @@ block.end.3:
   call void @to_string$string(ptr %t27, ptr %t28)
   call void @string_builder_append_string(ptr %t27)
   %t29 = alloca { ptr, i64 }
-  call void @to_string$bool(ptr %t29, i1 %t8)
+  call void @to_string$bool(ptr %t29, i1 zeroext %t8)
   call void @string_builder_append_string(ptr %t29)
   %t30 = alloca { ptr, i64 }
   call void @string_builder_finish(ptr %t30, i64 %t26)

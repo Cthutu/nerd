@@ -90,7 +90,7 @@ define internal void @fn.0() {
   %t11 = insertvalue { { ptr, i64 }, i8 } %t10, i8 53, 1
   %t12 = extractvalue { { ptr, i64 }, i8 } %t11, 1
   %t13 = alloca { ptr, i64 }
-  call void @to_string$u8(ptr %t13, i8 %t12)
+  call void @to_string$u8(ptr %t13, i8 zeroext %t12)
   call void @string_builder_append_string(ptr %t13)
   %t14 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.3, i64 10 }, ptr %t15

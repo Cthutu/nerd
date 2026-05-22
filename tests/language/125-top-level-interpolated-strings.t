@@ -124,7 +124,7 @@ define internal i32 @fn.1() {
   call void @to_string$string(ptr %t9, ptr %t10)
   call void @string_builder_append_string(ptr %t9)
   %t11 = alloca { ptr, i64 }
-  call void @to_string$bool(ptr %t11, i1 1)
+  call void @to_string$bool(ptr %t11, i1 zeroext 1)
   call void @string_builder_append_string(ptr %t11)
   %t12 = alloca { ptr, i64 }
   call void @string_builder_finish(ptr %t12, i64 %t0)
