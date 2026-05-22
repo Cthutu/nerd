@@ -211,6 +211,7 @@ term_done_requested : bool
 term_events         : [..]TermEvent
 term_last_columns   : u32
 term_last_rows      : u32
+term_present_ready  : bool
 term_arena          : arena
 term_arena_ready    : bool
 term_fb_cells       : [..]TermCell
@@ -1282,7 +1283,8 @@ pub term_init :: fn () {
     term_fb_ensure()
     term_fb_clear()
     term_queue_push(TermEvent.Resize(term_last_columns, term_last_rows))
-    term_initialized  = yes
+    term_present_ready = no
+    term_initialized   = yes
 }
 
 -- Signals that `term_loop` should clean up and exit on its next call.
@@ -1319,12 +1321,16 @@ pub term_loop :: fn () -> bool {
         term_arena_done()
         term_initialized    = no
         term_done_requested = no
+        term_present_ready  = no
         return no
     }
 
     term_arena_reset()
     term_fb_ensure()
-    term_fb_present()
+    -- `term_init` queues the initial Resize event. Skip the first presentation so
+    -- framebuffer apps can process that event and draw their first frame before
+    -- anything is written to the terminal.
+    on term_present_ready => term_fb_present() else term_present_ready = yes
     term_view_reset()
 
     event := term_poll_event_impl()

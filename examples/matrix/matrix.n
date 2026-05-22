@@ -137,9 +137,8 @@ main :: fn () {
     term_cursor_enable(no)
     defer term_cursor_enable(yes)
 
-    (width, height) := term_get_size()
-    matrix_columns_resize(width, height)
-    matrix_draw(width, height)
+    width  : u32 = 1
+    height : u32 = 1
 
     for term_loop() {
         _ := matrix_handle_events(^width, ^height)
