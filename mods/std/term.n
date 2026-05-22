@@ -336,6 +336,10 @@ term_normalise_size :: fn (width: i32, height: i32) -> (u32, u32) {
     return (width.as(u32), height.as(u32))
 }
 
+term_window_span :: fn (first: i16, last: i16) -> i32 {
+    return last.as(i32) - first.as(i32) + 1
+}
+
 term_fb_default_cell :: fn () -> TermCell {
     return TermCell { ch: ' '.as(u32) ink: TERM_DEFAULT_INK paper: TERM_DEFAULT_PAPER flags: CELL_DIRTY }
 }
@@ -1103,9 +1107,9 @@ on "windows" {
         result := GetConsoleScreenBufferInfo(output, ^info)
         on result == 0 => return (0, 0)
 
-        columns := info.srWindow.Right - info.srWindow.Left + 1
-        rows := info.srWindow.Bottom - info.srWindow.Top + 1
-        return term_normalise_size(columns.as(i32), rows.as(i32))
+        columns := term_window_span(info.srWindow.Left, info.srWindow.Right)
+        rows := term_window_span(info.srWindow.Top, info.srWindow.Bottom)
+        return term_normalise_size(columns, rows)
     }
 
     -- Writes text directly to the terminal output stream.
@@ -1833,6 +1837,11 @@ test "terminal size normalisation rejects transient invalid rectangles" {
     negative_height := term_normalise_size(80, -1)
     assert negative_height.0 == 0
     assert negative_height.1 == 0
+}
+
+test "terminal window span widens before subtracting" {
+    assert term_window_span(10.as(i16), 89.as(i16)) == 80
+    assert term_window_span(89.as(i16), 10.as(i16)) == -78
 }
 
 test "utf-8 decoder handles ascii glyph offsets" {
