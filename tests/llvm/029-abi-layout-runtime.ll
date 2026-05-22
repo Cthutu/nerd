@@ -177,7 +177,7 @@ dynarray.grow.2:
   %t19 = icmp eq i64 %t16, 0
   %t20 = mul i64 %t16, 2
   %t21 = select i1 %t19, i64 1, i64 %t20
-  %t22 = mul i64 %t21, 12
+  %t22 = mul i64 %t21, 16
   %t23 = add i64 24, %t22
   %t24 = call ptr @nrt_mem_realloc(ptr %t8, i64 %t23, i64 16, ptr @.macro.file.m0, i32 28)
   %t25 = getelementptr inbounds i8, ptr %t24, i64 24
@@ -219,7 +219,7 @@ dynarray.ready.5:
   %t46 = icmp ugt i64 4, %t45
   br i1 %t46, label %dynarray.reserve.grow.6, label %dynarray.reserve.done.7
 dynarray.reserve.grow.6:
-  %t47 = mul i64 4, 12
+  %t47 = mul i64 4, 16
   %t48 = add i64 24, %t47
   %t49 = call ptr @nrt_mem_realloc(ptr %t42, i64 %t48, i64 16, ptr @.macro.file.m0, i32 29)
   %t50 = getelementptr inbounds i8, ptr %t49, i64 24

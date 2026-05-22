@@ -419,6 +419,82 @@ dungeon_present :: fn (present: TermPresent) {
     dungeon_draw(present.width, present.height)
 }
 
+test "dungeon generation creates expected width" {
+    seed = 12345
+    random_seed(seed)
+    generated = no
+
+    dungeon_generate(41, 19)
+
+    valid := map_width == 41
+
+    cells.free()
+    rooms.free()
+    connectors.free()
+    generated = no
+
+    assert valid
+}
+
+test "dungeon generation creates expected height" {
+    seed = 12345
+    random_seed(seed)
+    generated = no
+
+    dungeon_generate(41, 19)
+
+    valid := map_height == 17
+
+    cells.free()
+    rooms.free()
+    connectors.free()
+    generated = no
+
+    assert valid
+}
+
+test "dungeon generation creates matching cell count" {
+    seed = 12345
+    random_seed(seed)
+    generated = no
+
+    dungeon_generate(41, 19)
+
+    valid := cells.count == (map_width * map_height).as(usize)
+
+    cells.free()
+    rooms.free()
+    connectors.free()
+    generated = no
+
+    assert valid
+}
+
+test "dungeon generation creates regioned passable cells" {
+    seed = 12345
+    random_seed(seed)
+    generated = no
+
+    dungeon_generate(41, 19)
+
+    valid := yes
+    for y: u32 = 0; y < map_height; y += 1 {
+        for x: u32 = 0; x < map_width; x += 1 {
+            cell := dungeon_cell(x.as(i32), y.as(i32))
+            on cell.tile == Tile.Floor || cell.tile == Tile.Door => {
+                on cell.region < 0 => valid = no
+            }
+        }
+    }
+
+    cells.free()
+    rooms.free()
+    connectors.free()
+    generated = no
+
+    assert valid
+}
+
 main :: fn () {
     seed = now()
     random_seed(seed)

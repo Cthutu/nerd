@@ -277,6 +277,7 @@ internal u32 llvm_float_bits(const Sema* sema, u32 type_index)
 
 internal u32 llvm_union_storage_bits(const Sema* sema, u32 union_type);
 internal u32 llvm_enum_storage_payload_bits(const Sema* sema, u32 enum_type);
+internal u32 llvm_type_align_bits(const Sema* sema, u32 type_index);
 
 internal u32 llvm_align_bits(u32 bits, u32 align_bits)
 {
@@ -312,13 +313,20 @@ internal u32 llvm_type_storage_bits(const Sema* sema, u32 type_index)
     }
     if (llvm_type_kind(sema, type_index) == STK_Tuple ||
         llvm_type_kind(sema, type_index) == STK_Plex) {
-        const SemaType* type = &sema->types[type_index];
-        u32             bits = 0;
+        const SemaType* type           = &sema->types[type_index];
+        u32             bits           = 0;
+        u32             max_align_bits = 8;
         for (u32 i = 0; i < type->param_count; ++i) {
-            bits += llvm_type_storage_bits(
-                sema, sema->type_param_types[type->first_param_type + i]);
+            u32 field_type = sema->type_param_types[type->first_param_type + i];
+            u32 field_align_bits = llvm_type_align_bits(sema, field_type);
+            u32 field_bits       = llvm_type_storage_bits(sema, field_type);
+            bits                 = llvm_align_bits(bits, field_align_bits);
+            bits += field_bits;
+            if (field_align_bits > max_align_bits) {
+                max_align_bits = field_align_bits;
+            }
         }
-        return bits;
+        return llvm_align_bits(bits, max_align_bits);
     }
     if (llvm_type_kind(sema, type_index) == STK_Array) {
         const SemaType* type = &sema->types[type_index];
@@ -333,6 +341,66 @@ internal u32 llvm_type_storage_bits(const Sema* sema, u32 type_index)
                llvm_enum_storage_payload_bits(sema, type_index);
     }
     return 0;
+}
+
+internal u32 llvm_type_align_bits(const Sema* sema, u32 type_index)
+{
+    const LlvmLayout* layout   = llvm_default_layout();
+    u32               int_bits = llvm_integer_bits(sema, type_index);
+    if (int_bits > 0) {
+        return int_bits < 8 ? 8 : int_bits;
+    }
+
+    u32 float_bits = llvm_float_bits(sema, type_index);
+    if (float_bits > 0) {
+        return float_bits;
+    }
+
+    SemaTypeKind kind = llvm_type_kind(sema, type_index);
+    switch (kind) {
+    case STK_Pointer:
+    case STK_Function:
+    case STK_DynamicArray:
+    case STK_String:
+    case STK_Slice:
+    case STK_Arena:
+    case STK_Enum:
+        return layout->pointer_bits;
+    case STK_Array:
+        return llvm_type_align_bits(sema,
+                                    sema->types[type_index].first_param_type);
+    case STK_Tuple:
+    case STK_Plex:
+        {
+            const SemaType* type           = &sema->types[type_index];
+            u32             max_align_bits = 8;
+            for (u32 i = 0; i < type->param_count; ++i) {
+                u32 field_type =
+                    sema->type_param_types[type->first_param_type + i];
+                u32 field_align_bits = llvm_type_align_bits(sema, field_type);
+                if (field_align_bits > max_align_bits) {
+                    max_align_bits = field_align_bits;
+                }
+            }
+            return max_align_bits;
+        }
+    case STK_Union:
+        {
+            const SemaType* type           = &sema->types[type_index];
+            u32             max_align_bits = 8;
+            for (u32 i = 0; i < type->param_count; ++i) {
+                u32 field_type =
+                    sema->type_param_types[type->first_param_type + i];
+                u32 field_align_bits = llvm_type_align_bits(sema, field_type);
+                if (field_align_bits > max_align_bits) {
+                    max_align_bits = field_align_bits;
+                }
+            }
+            return max_align_bits;
+        }
+    default:
+        return 8;
+    }
 }
 
 internal bool
