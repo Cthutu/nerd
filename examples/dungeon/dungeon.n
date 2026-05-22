@@ -40,13 +40,14 @@ map_height : u32
 seed       : u64
 generated  : bool
 
-stone_dark  :: rgb(8, 10, 14)
-stone_mid   :: rgb(84, 86, 92)
-stone_light :: rgb(188, 180, 184)
+stone_void  :: rgb(8, 10, 14)
+wall_ink    :: rgb(45, 42, 46)
+wall_paper  :: rgb(190, 180, 184)
 floor_dark  :: rgb(42, 34, 26)
 floor_mid   :: rgb(70, 54, 38)
 floor_light :: rgb(112, 86, 54)
-door_ink    :: rgb(190, 140, 70)
+door_ink    :: rgb(232, 126, 102)
+door_paper  :: rgb(88, 22, 18)
 text_ink    :: rgb(224, 212, 176)
 
 dungeon_index :: fn (x: i32, y: i32) -> usize {
@@ -390,11 +391,11 @@ dungeon_draw_cell :: fn (x: u32, y: u32) {
     on cell.tile {
         Tile.Wall => {
             on dungeon_wall_visible(x.as(i32), y.as(i32)) => {
-                ink := dungeon_colour_step(stone_mid, noise * 2)
-                on noise > 20 => ink = dungeon_colour_step(stone_light, noise)
-                term_fb_put(x.as(i32), y.as(i32), '#'.as(u32), ink, rgb(0, 0, 0))
+                paper := dungeon_colour_step(wall_paper, noise / 2)
+                ink := dungeon_colour_step(wall_ink, noise / 4)
+                term_fb_put(x.as(i32), y.as(i32), '#'.as(u32), ink, paper)
             } else {
-                term_fb_put(x.as(i32), y.as(i32), ' '.as(u32), stone_dark, rgb(0, 0, 0))
+                term_fb_put(x.as(i32), y.as(i32), ' '.as(u32), stone_void, rgb(0, 0, 0))
             }
         }
         Tile.Floor => {
@@ -403,7 +404,7 @@ dungeon_draw_cell :: fn (x: u32, y: u32) {
             term_fb_put(x.as(i32), y.as(i32), '.'.as(u32), ink, paper)
         }
         Tile.Door => {
-            term_fb_put(x.as(i32), y.as(i32), '+'.as(u32), door_ink, floor_dark)
+            term_fb_put(x.as(i32), y.as(i32), '+'.as(u32), door_ink, door_paper)
         }
     }
 }
