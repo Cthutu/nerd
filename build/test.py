@@ -115,6 +115,15 @@ def llvm_test_keeps_debug_metadata(source: str) -> bool:
     )
 
 
+def debug_info_expected_sources(source: str, default_source: str) -> list[str]:
+    expected: list[str] = []
+    for line in source.splitlines():
+        match = re.match(r"\s*--\s*test-debug-source\s*:\s*(.+?)\s*$", line)
+        if match:
+            expected.append(match.group(1))
+    return expected or [default_source]
+
+
 def strip_llvm_debug_metadata(text: str) -> str:
     lines: list[str] = []
     for line in text.splitlines():
@@ -783,8 +792,13 @@ def test_command(path: pathlib.Path) -> list[Failure]:
             )
             if debug_dump.returncode != 0:
                 failures.append(Failure(path, f"readelf failed with {debug_dump.returncode}\n{debug_dump.stderr}"))
-            elif run_mode == "debug-info" and input_path.name not in debug_dump.stdout:
-                failures.append(Failure(path, "expected executable debug line table to mention Nerd source file"))
+            elif run_mode == "debug-info":
+                expected_sources = debug_info_expected_sources(source, input_path.name)
+                missing_sources = [
+                    item for item in expected_sources if item not in debug_dump.stdout
+                ]
+                if missing_sources:
+                    failures.append(Failure(path, "expected executable debug line table to mention Nerd source file(s): " + ", ".join(missing_sources)))
             elif run_mode == "no-debug-info" and input_path.name in debug_dump.stdout:
                 failures.append(Failure(path, "release executable unexpectedly contains Nerd debug line table"))
     if run_mode == "clean-llvm":

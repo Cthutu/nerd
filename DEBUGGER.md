@@ -234,7 +234,8 @@ that gap.
 
 ### MS4: Breakpoint Quality
 
-- [ ] Validate breakpoints in root files, imported modules, and folder-module
+- [x] Validate breakpoints in root files and imported module root files.
+- [ ] Validate breakpoints in folder-module
   part files.
 - [ ] Handle breakpoints on declarations, blank lines, comments, and lowered
   multi-statement lines predictably.
@@ -404,12 +405,14 @@ Verification:
 
 ### Commit 7: Breakpoint Quality
 
+- [x] Validate debug line-table source paths in imported module root files.
 - [ ] Validate breakpoints in imported modules and folder-module part files.
 - [ ] Improve source path handling for generated folder-module source mapping.
 - [ ] Avoid stepping primarily through generated runtime glue.
 
 Verification:
 
+- [x] Linux command test for root file and imported module debug line entries.
 - [ ] Debugger smoke cases for root file, imported module, and folder-module
   part file.
 - [ ] Manual CodeLLDB checks for moved or rejected breakpoint behaviour.
