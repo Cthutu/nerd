@@ -199,6 +199,13 @@ async function provideFormattedText(
     }
 }
 
+function fullDocumentRange(document: vscode.TextDocument): vscode.Range {
+    return new vscode.Range(
+        document.positionAt(0),
+        document.positionAt(document.getText().length)
+    );
+}
+
 function registerFormatter(context: vscode.ExtensionContext) {
     formatterRegistration?.dispose();
     formatterRegistration = vscode.languages.registerDocumentFormattingEditProvider(
@@ -206,12 +213,12 @@ function registerFormatter(context: vscode.ExtensionContext) {
         {
             async provideDocumentFormattingEdits(document) {
                 const formattedText = await provideFormattedText(document);
-                const lastLine = document.lineCount > 0 ? document.lineAt(document.lineCount - 1) : undefined;
-                const fullRange = lastLine
-                    ? new vscode.Range(0, 0, document.lineCount - 1, lastLine.text.length)
-                    : new vscode.Range(0, 0, 0, 0);
-
-                return [vscode.TextEdit.replace(fullRange, formattedText)];
+                return [
+                    vscode.TextEdit.replace(
+                        fullDocumentRange(document),
+                        formattedText
+                    ),
+                ];
             },
         }
     );

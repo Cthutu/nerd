@@ -52,6 +52,8 @@ def check_vscode_extension() -> None:
         "registerEnterIndentation(context)",
         "computeNerdIndent(lines, line)",
         "nerd.restartLanguageServer",
+        "fullDocumentRange(document)",
+        "document.positionAt(document.getText().length)",
     ]
     for fragment in required_fragments:
         if fragment not in extension_source:
