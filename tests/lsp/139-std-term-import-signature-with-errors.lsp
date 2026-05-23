@@ -123,7 +123,7 @@ main :: fn () {
         "result": {
             "signatures": [
                 {
-                    "label": "term_fb_box(x: i32, y: i32, w: i32, h: i32, style: BoxStyle = BoxStyle.Single, ink: u32 = COLOUR_TRANSPARENT, paper: u32 = COLOUR_TRANSPARENT) -> void",
+                    "label": "term_fb_box(x: i32, y: i32, w: u32, h: u32, style: BoxStyle = BoxStyle.Single, ink: u32 = COLOUR_TRANSPARENT, paper: u32 = COLOUR_TRANSPARENT) -> void",
                     "documentation": "Named arguments use `name = value`; omitted parameters use declared defaults when available.",
                     "parameters": [
                         {

@@ -84,8 +84,8 @@ matrix_draw :: fn (width: u32, height: u32) {
     term_fb_clear()
     term_fb_fill_rect(0,
                       0,
-                      width.as(i32),
-                      height.as(i32),
+                      width,
+                      height,
                       ' '.as(u32),
                       matrix_green_faint,
                       rgb(0, 0, 0))

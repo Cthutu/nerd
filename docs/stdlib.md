@@ -129,6 +129,14 @@ array when it is no longer needed.
 
 ### `std.term`
 
+Framebuffer rectangle APIs keep positions signed so callers can draw partially
+off-screen, but use unsigned dimensions for sizes:
+
+- `term_view(x: i32, y: i32, w: u32, h: u32) -> void`
+- `term_fb_fill_rect(x: i32, y: i32, w: u32, h: u32, ...) -> void`
+- `term_fb_paint_rect(x: i32, y: i32, w: u32, h: u32, ...) -> void`
+- `term_fb_box(x: i32, y: i32, w: u32, h: u32, ...) -> void`
+
 Terminal hook registration accepts optional opaque user data:
 
 - `term_hook_simulation(interval: Duration, callback: TermSimulateFn, user_data: ^void = nil) -> void`

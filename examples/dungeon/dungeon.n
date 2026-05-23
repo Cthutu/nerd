@@ -415,7 +415,7 @@ dungeon_draw :: fn (width: u32, height: u32) {
        map_height != dungeon_generation_height(height) => dungeon_generate(width, height)
 
     term_fb_clear()
-    term_fb_fill_rect(0, 0, width.as(i32), height.as(i32), ' '.as(u32), text_ink, rgb(0, 0, 0))
+    term_fb_fill_rect(0, 0, width, height, ' '.as(u32), text_ink, rgb(0, 0, 0))
 
     offset_x := ((width - map_width) / 2).as(i32)
     for y: u32 = 0; y < map_height; y += 1 {
@@ -425,7 +425,7 @@ dungeon_draw :: fn (width: u32, height: u32) {
     }
 
     status_y := map_height.as(i32)
-    term_fb_fill_rect(0, status_y, width.as(i32), height.as(i32) - status_y, ' '.as(u32), text_ink, rgb(0, 0, 0))
+    term_fb_fill_rect(0, status_y, width, height - map_height, ' '.as(u32), text_ink, rgb(0, 0, 0))
     term_fb_text(1, status_y, $"rooms {rooms.count}  seed {seed}  size {map_width}x{map_height}", text_ink, rgb(0, 0, 0))
     term_fb_text(1, status_y + 1, "any key regenerates   q/Esc exit", rgb(150, 185, 150), rgb(0, 0, 0))
 

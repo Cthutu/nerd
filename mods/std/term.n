@@ -368,8 +368,8 @@ pub term_view_reset :: fn () {
     term_fb_view = term_fb_screen_rect()
 }
 
-pub term_view :: fn (x: i32, y: i32, w: i32, h: i32) {
-    requested := RectI32 { x y w h }
+pub term_view :: fn (x: i32, y: i32, w: u32, h: u32) {
+    requested := RectI32 { x y w: w.as(i32) h: h.as(i32) }
     term_fb_view = requested.intersection(term_fb_screen_rect())
 }
 
@@ -610,12 +610,12 @@ pub term_fb_put :: fn (x     : i32,
 
 pub term_fb_fill_rect :: fn (x     : i32,
                              y     : i32,
-                             w     : i32,
-                             h     : i32,
+                             w     : u32,
+                             h     : u32,
                              ch    : u32 = ' '.as(u32),
                              ink   : Colour = COLOUR_TRANSPARENT,
                              paper : Colour = COLOUR_TRANSPARENT) {
-    clip := term_fb_prepare_rect(RectI32 { x y w h })
+    clip := term_fb_prepare_rect(RectI32 { x y w: w.as(i32) h: h.as(i32) })
     on !clip.ok => return
 
     char_width := term_codepoint_width(ch)
@@ -654,11 +654,11 @@ pub term_fb_fill_rect :: fn (x     : i32,
 
 pub term_fb_paint_rect :: fn (x     : i32,
                               y     : i32,
-                              w     : i32,
-                              h     : i32,
+                              w     : u32,
+                              h     : u32,
                               ink   : Colour = COLOUR_TRANSPARENT,
                               paper : Colour = COLOUR_TRANSPARENT) {
-    clip := term_fb_prepare_rect(RectI32 { x y w h })
+    clip := term_fb_prepare_rect(RectI32 { x y w: w.as(i32) h: h.as(i32) })
     on !clip.ok => return
 
     yy : i32 = 0
@@ -685,8 +685,8 @@ pub term_fb_paint_rect :: fn (x     : i32,
 pub term_fb_clear :: fn () {
     term_fb_fill_rect(0,
                       0,
-                      term_fb_view.w,
-                      term_fb_view.h,
+                      term_fb_view.w.as(u32),
+                      term_fb_view.h.as(u32),
                       ' '.as(u32),
                       TERM_DEFAULT_INK,
                       TERM_DEFAULT_PAPER)
@@ -781,8 +781,8 @@ term_box_cell :: fn (source_x      : i32,
 
 pub term_fb_box :: fn (x     : i32,
                        y     : i32,
-                       w     : i32,
-                       h     : i32,
+                       w     : u32,
+                       h     : u32,
                        style : BoxStyle = BoxStyle.Single,
                        ink   : Colour = COLOUR_TRANSPARENT,
                        paper : Colour = COLOUR_TRANSPARENT) {
@@ -796,7 +796,7 @@ pub term_fb_box :: fn (x     : i32,
     bottom       : u32 = 0x2500
     bottom_right : u32 = 0x2518
 
-    on w <= 0 || h <= 0 => return
+    on w == 0 || h == 0 => return
 
     on style {
         Double => {
@@ -840,7 +840,7 @@ pub term_fb_box :: fn (x     : i32,
         }
     }
 
-    clip := term_fb_prepare_rect(RectI32 { x y w h })
+    clip := term_fb_prepare_rect(RectI32 { x y w: w.as(i32) h: h.as(i32) })
     on !clip.ok => return
 
     yy : i32 = 0
@@ -853,8 +853,8 @@ pub term_fb_box :: fn (x     : i32,
             source_y := clip.y_offset + yy
             ch := term_box_cell(source_x,
                                 source_y,
-                                w,
-                                h,
+                                w.as(i32),
+                                h.as(i32),
                                 top_left,
                                 top,
                                 top_right,
@@ -1565,8 +1565,8 @@ term_draw_too_small :: fn () {
 
     term_fb_fill_rect(0,
                       0,
-                      term_fb_width.as(i32),
-                      term_fb_height.as(i32),
+                      term_fb_width,
+                      term_fb_height,
                       ' '.as(u32),
                       ink,
                       paper)
@@ -2083,11 +2083,11 @@ test "framebuffer resize and clipped drawing stay within bounds" {
         assert term_fb_height == height
         assert term_fb_cells.count == width.as(usize) * height.as(usize)
 
-        term_view(-1, -1, width.as(i32) + 2, height.as(i32) + 2)
-        term_fb_fill_rect(-3, -2, width.as(i32) + 6, height.as(i32) + 4, '.'.as(u32), rgb(20, 200, 80), rgb(0, 12, 0))
-        term_fb_paint_rect(-2, 0, width.as(i32) + 4, height.as(i32), rgb(160, 255, 160), COLOUR_TRANSPARENT)
+        term_view(-1, -1, width + 2, height + 2)
+        term_fb_fill_rect(-3, -2, width + 6, height + 4, '.'.as(u32), rgb(20, 200, 80), rgb(0, 12, 0))
+        term_fb_paint_rect(-2, 0, width + 4, height, rgb(160, 255, 160), COLOUR_TRANSPARENT)
         term_fb_text(-4, 0, "resize clipping regression", rgb(230, 255, 230), COLOUR_TRANSPARENT)
-        term_fb_box(-2, -1, width.as(i32) + 4, height.as(i32) + 2, BoxStyle.Custom("abcdefghi"), rgb(80, 220, 120), COLOUR_TRANSPARENT)
+        term_fb_box(-2, -1, width + 4, height + 2, BoxStyle.Custom("abcdefghi"), rgb(80, 220, 120), COLOUR_TRANSPARENT)
 
         assert term_fb_cells.count == width.as(usize) * height.as(usize)
         assert term_fb_index_valid(width - 1, height - 1)
