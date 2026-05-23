@@ -269,7 +269,10 @@ that gap.
 - [ ] Handle breakpoints on declarations, blank lines, comments, and lowered
   multi-statement lines predictably.
 - [ ] Make rejected or moved breakpoints understandable in VS Code.
-- [ ] Verify stepping does not stop primarily in generated runtime glue.
+- [x] Add a Linux CodeLLDB-bundled LLDB smoke check for source step-over
+  staying in Nerd source on a simple function.
+- [ ] Verify stepping does not stop primarily in generated runtime glue on a
+  larger program such as `examples/dungeon/dungeon.n`.
 - [ ] Keep source paths stable when the program is built from inside VS Code,
   from the command line, and from installed `nerd`.
 
@@ -336,6 +339,8 @@ that gap.
 - Use command tests for non-release debug metadata and artefact cleanup.
 - Use `python3 build/check_debugger_smoke.py --nerd _bin/nerd-debug` for the
   Linux CodeLLDB-bundled LLDB breakpoint/watch smoke path.
+- Use `python3 build/check_debugger_stepping.py --nerd _bin/nerd-debug` for
+  the Linux CodeLLDB-bundled LLDB source step-over smoke path.
 - Extend `build/check_editor_integrations.py` to verify VS Code debugger
   contribution metadata and launch configuration snippets.
 - Keep manual testing notes in this file until they can be automated.
@@ -441,7 +446,9 @@ Verification:
 - [x] Validate breakpoints in imported modules and folder-module part files
   with CodeLLDB's bundled LLDB.
 - [x] Improve source path handling for generated folder-module source mapping.
-- [ ] Avoid stepping primarily through generated runtime glue.
+- [x] Add first source step-over smoke coverage.
+- [ ] Avoid stepping primarily through generated runtime glue in larger
+  programs.
 
 Verification:
 
@@ -449,6 +456,7 @@ Verification:
   debug line entries.
 - [x] Debugger smoke cases for root file, imported module, and folder-module
   part file.
+- [x] Debugger stepping smoke for simple source step-over.
 - [ ] Manual CodeLLDB checks for moved or rejected breakpoint behaviour.
 
 ### Commit 8: Watch And Value First Pass
