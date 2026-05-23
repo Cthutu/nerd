@@ -2,7 +2,7 @@ use std.term
 
 main :: fn () {
     missing()
-    term_fb_box(
+    term_fb_box()
 }
 ¬
 [
@@ -84,33 +84,33 @@ main :: fn () {
                 {
                     "range": {
                         "start": {
-                            "line": 5,
-                            "character": 0
+                            "line": 3,
+                            "character": 4
                         },
                         "end": {
-                            "line": 5,
-                            "character": 1
+                            "line": 3,
+                            "character": 11
                         }
                     },
                     "severity": 1,
                     "source": "nerd",
-                    "message": "Missing value before RightBrace `}`",
+                    "message": "Unknown symbol `missing`",
                     "relatedInformation": [
                         {
                             "location": {
                                 "uri": "file:///test.n",
                                 "range": {
                                     "start": {
-                                        "line": 5,
-                                        "character": 0
+                                        "line": 3,
+                                        "character": 4
                                     },
                                     "end": {
-                                        "line": 5,
-                                        "character": 1
+                                        "line": 3,
+                                        "character": 11
                                     }
                                 }
                             },
-                            "message": "help: Insert a literal, parenthesized expression, or unary operator"
+                            "message": "help: Add a binding for `missing` or fix the spelling."
                         }
                     ]
                 }
@@ -123,7 +123,7 @@ main :: fn () {
         "result": {
             "signatures": [
                 {
-                    "label": "term_fb_box(x: i32, y: i32, w: i32, h: i32, style: BoxStyle = BoxStyle.Single, ink: Colour = COLOUR_TRANSPARENT, paper: Colour = COLOUR_TRANSPARENT)",
+                    "label": "term_fb_box(x: i32, y: i32, w: i32, h: i32, style: BoxStyle = BoxStyle.Single, ink: u32 = COLOUR_TRANSPARENT, paper: u32 = COLOUR_TRANSPARENT) -> void",
                     "documentation": "Named arguments use `name = value`; omitted parameters use declared defaults when available.",
                     "parameters": [
                         {
@@ -159,13 +159,13 @@ main :: fn () {
                         {
                             "label": [
                                 79,
-                                111
+                                108
                             ]
                         },
                         {
                             "label": [
-                                113,
-                                147
+                                110,
+                                141
                             ]
                         }
                     ]

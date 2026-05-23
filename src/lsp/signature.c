@@ -721,24 +721,78 @@ internal void lsp_signature_append_source_params(StringBuilder* sb,
     }
 }
 
+internal bool lsp_signature_source_offset_in_ffi_block(string source,
+                                                       usize  offset)
+{
+    bool pending_ffi = false;
+    u32  depth       = 0;
+    for (usize i = 0; i < offset && i < source.count; ++i) {
+        if (lsp_signature_is_ident_char(source.data[i])) {
+            usize start = i;
+            while (i < offset && i < source.count &&
+                   lsp_signature_is_ident_char(source.data[i])) {
+                i++;
+            }
+            string ident = {.data = source.data + start, .count = i - start};
+            if (string_eq(ident, s("ffi"))) {
+                pending_ffi = true;
+            }
+            if (i == 0) {
+                break;
+            }
+            i--;
+        } else if (source.data[i] == '{') {
+            if (pending_ffi || depth > 0) {
+                depth++;
+                pending_ffi = false;
+            }
+        } else if (source.data[i] == '}' && depth > 0) {
+            depth--;
+        }
+    }
+    return depth > 0;
+}
+
 internal bool lsp_signature_source_decl_label(Arena*      arena,
                                               string      source,
                                               string      name,
                                               string*     out_label,
                                               JsonValue** out_params)
 {
+    u32 ffi_block_depth = 0;
     for (usize line_start = 0; line_start < source.count;) {
         usize line_end = line_start;
         while (line_end < source.count && source.data[line_end] != '\n') {
             line_end++;
         }
 
-        usize cursor = line_start;
+        bool  inside_ffi_block = ffi_block_depth > 0;
+        usize cursor           = line_start;
         lsp_signature_skip_space(source, &cursor);
         if (lsp_signature_match_ident_at(source, &cursor, s("pub"))) {
             lsp_signature_skip_space(source, &cursor);
         }
+        bool line_starts_ffi =
+            lsp_signature_match_ident_at(source, &cursor, s("ffi"));
 
+        for (usize i = line_start; i < line_end; ++i) {
+            if (source.data[i] == '{' &&
+                (inside_ffi_block || line_starts_ffi)) {
+                ffi_block_depth++;
+            } else if (source.data[i] == '}' && ffi_block_depth > 0) {
+                ffi_block_depth--;
+            }
+        }
+        if (line_starts_ffi) {
+            line_start = line_end + (line_end < source.count ? 1 : 0);
+            continue;
+        }
+
+        cursor = line_start;
+        lsp_signature_skip_space(source, &cursor);
+        if (lsp_signature_match_ident_at(source, &cursor, s("pub"))) {
+            lsp_signature_skip_space(source, &cursor);
+        }
         usize ident_start = cursor;
         while (cursor < line_end &&
                lsp_signature_is_ident_char(source.data[cursor])) {
@@ -761,6 +815,11 @@ internal bool lsp_signature_source_decl_label(Arena*      arena,
                 continue;
             }
             lsp_signature_skip_space(source, &cursor);
+        } else if (!inside_ffi_block &&
+                   !lsp_signature_source_offset_in_ffi_block(source,
+                                                             ident_start)) {
+            line_start = line_end + (line_end < source.count ? 1 : 0);
+            continue;
         }
         if (cursor >= source.count || source.data[cursor] != '(') {
             line_start = line_end + (line_end < source.count ? 1 : 0);
