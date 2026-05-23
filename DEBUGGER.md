@@ -37,6 +37,9 @@ starts the native executable is not enough.
 - Generated LLVM now emits first-pass structure debug types for stack locals
   such as `string`, slices, tuples, and plexes so native debugger watches can
   inspect ordinary fields.
+- Debug builds materialize composite `let` locals into stack slots so values
+  introduced with `:=`, such as strings, slices, plexes, tuples, and fixed-size
+  arrays, can be inspected by LLDB.
 - CodeLLDB's bundled LLDB has been validated against a small watch program:
   it can stop on a Nerd source line, show a `string` local as `data/count`, show
   a plex local by field name, evaluate a field watch such as `point.x`, and
@@ -159,12 +162,11 @@ has a reusable expression evaluator or interpreter.
 
 The first proven subset is native CodeLLDB evaluation of in-scope locals,
 parameters, and simple field access backed by emitted DWARF type metadata. This
-currently covers primitive locals, stack-backed `string` and slice values,
-plex/tuple fields, and fixed-size stack array indexing. Temporary/SSA slice
-values emitted through aggregate `dbg.value` are not reliably exposed by LLDB
-yet. Typed pointer indexing through `string.data` is proven. Dynamic arrays,
-general pointer dereference/indexing, and Nerd-owned expression parsing remain
-open.
+currently covers primitive locals, `string` and slice values, plex/tuple
+fields, and fixed-size stack array indexing, including composite locals
+introduced with `:=`. Typed pointer indexing through `string.data` and
+`slice.data` is proven. Dynamic arrays, general pointer dereference/indexing,
+and Nerd-owned expression parsing remain open.
 
 ### Value Rendering
 

@@ -15,16 +15,11 @@ SMOKE_SOURCE = """Point :: plex {
 }
 
 main :: fn () {
-    message: string
-    message = "hello"
-    point: Point
-    point = Point { x: 3 y: 4 }
-    values: [3]i32
-    values = [10, 20, 30]
-    bytes: [3]u8
-    bytes = [1.as(u8), 2.as(u8), 3.as(u8)]
-    slice: []u8
-    slice = bytes[..]
+    message := "hello"
+    point := Point { x: 3 y: 4 }
+    values := [10, 20, 30]
+    bytes := [1.as(u8), 2.as(u8), 3.as(u8)]
+    slice := bytes[..]
     on point.x == 3 && values[1] == 20 && bytes[2] == 3 &&
        slice.data[1] == 2 => prn(message)
 }
@@ -90,7 +85,7 @@ def main() -> int:
 
     commands = [
         "target create " + str(binary),
-        "breakpoint set --file main.n --line 18",
+        "breakpoint set --file main.n --line 13",
         "run",
         "frame variable message point values bytes slice",
         "expression point.x",

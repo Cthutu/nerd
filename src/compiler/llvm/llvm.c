@@ -10343,6 +10343,9 @@ internal bool llvm_emit_let(LlvmFunctionContext* ctx,
     }
 
     if (llvm_local_is_assigned(ctx, stmt->local_index) ||
+        (ctx->debug != NULL &&
+         (llvm_debug_type_is_record_like(ctx->sema, stmt->type_index) ||
+          llvm_debug_type_is_array(ctx->sema, stmt->type_index))) ||
         llvm_type_kind(ctx->sema, stmt->type_index) == STK_DynamicArray) {
         LlvmLocalSlot* slot =
             llvm_ensure_local_slot(ctx, stmt->local_index, stmt->type_index);
