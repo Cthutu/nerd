@@ -310,15 +310,15 @@ Verification:
 
 ### Commit 2: Linux Baseline Smoke
 
-- [ ] Add a minimal debugger smoke source program or fixture.
-- [ ] Add notes or a script showing the current `readelf` and LLDB baseline.
-- [ ] Confirm current executables do not yet expose usable Nerd source lines.
+- [x] Add a minimal debugger smoke source program or fixture.
+- [x] Add notes or a script showing the current `readelf` and LLDB baseline.
+- [x] Confirm current executables do not yet expose usable Nerd source lines.
 
 Verification:
 
-- [ ] `./_bin/nerd-debug build <smoke.n> -o <smoke-binary> --llvm`
-- [ ] `readelf --debug-dump=decodedline <smoke-binary>`
-- [ ] command-line LLDB breakpoint attempt recorded.
+- [x] `./_bin/nerd-debug build <smoke.n> -o <smoke-binary> --llvm`
+- [x] `readelf --debug-dump=decodedline <smoke-binary>`
+- [x] command-line LLDB breakpoint attempt recorded.
 
 ### Commit 3: Minimal Line Tables
 

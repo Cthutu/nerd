@@ -1,0 +1,6 @@
+main :: fn () -> i32 {
+    base := 40
+    bonus := 2
+    total := base + bonus
+    return total
+}
