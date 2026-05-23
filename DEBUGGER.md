@@ -34,6 +34,12 @@ starts the native executable is not enough.
   to clang.
 - Generated LLVM now has an initial debug metadata contract for compile units,
   source files, function subprograms, and statement line locations.
+- Generated LLVM now emits first-pass structure debug types for stack locals
+  such as `string`, slices, tuples, and plexes so native debugger watches can
+  inspect ordinary fields.
+- CodeLLDB's bundled LLDB has been validated against a small watch program:
+  it can stop on a Nerd source line, show a `string` local as `data/count`, show
+  a plex local by field name, and evaluate a field watch such as `point.x`.
 - Nerd-visible function bindings are emitted as `$` aliases while generated
   function bodies use compiler-internal names such as `@fn.N`.
 - The runtime object is compiled from `data/nrt.c` and linked into generated
@@ -148,6 +154,13 @@ dereference, indexes, and simple arithmetic when the underlying debugger can
 evaluate them. Full Nerd expression evaluation is deferred until the compiler
 has a reusable expression evaluator or interpreter.
 
+The first proven subset is native CodeLLDB evaluation of in-scope locals,
+parameters, and simple field access backed by emitted DWARF type metadata. This
+currently covers primitive locals, stack-backed `string` values, and plex/tuple
+fields; slices share the same `data/count` type shape but still need a manual
+watch proof. Dynamic arrays, pointer dereference, indexing, and Nerd-owned
+expression parsing remain open.
+
 ### Value Rendering
 
 Native debuggers will not naturally know how to display higher-level Nerd
@@ -251,8 +264,8 @@ that gap.
 
 ### MS5: Watch Expressions
 
-- [ ] Define the supported first watch-expression subset.
-- [ ] Support locals and parameters by name.
+- [x] Define the supported first watch-expression subset.
+- [x] Support locals and parameters by name.
 - [ ] Support field access for plexes, tuples, strings, slices, and dynamic
   arrays.
 - [ ] Support pointer dereference and indexing where the runtime representation
@@ -426,16 +439,16 @@ Verification:
 
 ### Commit 8: Watch And Value First Pass
 
-- [ ] Define the first supported watch-expression subset.
-- [ ] Support ordinary local and parameter watches through CodeLLDB.
+- [x] Define the first supported watch-expression subset.
+- [x] Support ordinary local and parameter watches through CodeLLDB.
 - [ ] Add first-pass rendering notes for strings, slices, and dynamic arrays.
 - [ ] Decide whether a Nerd adapter or pretty-printer layer is needed before
   going beyond native CodeLLDB evaluation.
 
 Verification:
 
-- [ ] Manual CodeLLDB watch checks for locals, parameters, simple fields, and
-  indexes.
+- [x] Manual CodeLLDB watch checks for locals and simple fields.
+- [ ] Manual CodeLLDB watch checks for indexes.
 - [ ] Any automated debugger smoke checks added by this point pass.
 
 ### Commit 9: Windows 11 Plan To Implementation
