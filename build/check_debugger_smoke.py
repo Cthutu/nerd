@@ -1,0 +1,126 @@
+#!/usr/bin/env python3
+import argparse
+import pathlib
+import shutil
+import subprocess
+import sys
+
+
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+
+
+SMOKE_SOURCE = """Point :: plex {
+    x i32
+    y i32
+}
+
+main :: fn () {
+    message: string
+    message = "hello"
+    point: Point
+    point = Point { x: 3 y: 4 }
+    on point.x == 3 => prn(message)
+}
+"""
+
+
+def run(cmd: list[str], *, cwd: pathlib.Path = ROOT) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(cmd, cwd=cwd, text=True, capture_output=True)
+
+
+def latest_codelldb_lldb() -> pathlib.Path | None:
+    candidates: list[pathlib.Path] = []
+    for base in [pathlib.Path.home() / ".vscode" / "extensions"]:
+        if not base.exists():
+            continue
+        candidates.extend(base.glob("vadimcn.vscode-lldb-*/lldb/bin/lldb"))
+    return sorted(candidates)[-1] if candidates else None
+
+
+def fail(message: str, details: str = "") -> int:
+    print(f"debugger-smoke failed: {message}", file=sys.stderr)
+    if details:
+        print(details, file=sys.stderr)
+    return 1
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Run a Linux CodeLLDB/LLDB smoke test for Nerd debug info"
+    )
+    parser.add_argument(
+        "--nerd",
+        default=str(ROOT / "_bin" / "nerd-debug"),
+        help="Nerd compiler executable to use",
+    )
+    parser.add_argument(
+        "--lldb",
+        default=None,
+        help="LLDB executable to use; defaults to the latest CodeLLDB-bundled LLDB",
+    )
+    args = parser.parse_args()
+
+    nerd = pathlib.Path(args.nerd)
+    if not nerd.exists():
+        return fail(f"Nerd compiler does not exist: {nerd}")
+
+    lldb = pathlib.Path(args.lldb) if args.lldb else latest_codelldb_lldb()
+    if lldb is None or not lldb.exists():
+        return fail("CodeLLDB-bundled LLDB was not found under ~/.vscode/extensions")
+
+    work = ROOT / "_tmp" / "debugger-smoke"
+    if work.exists():
+        shutil.rmtree(work)
+    work.mkdir(parents=True)
+
+    source = work / "main.n"
+    binary = work / "main"
+    source.write_text(SMOKE_SOURCE, encoding="utf-8", newline="\n")
+
+    build = run([str(nerd), "build", "--output", str(binary), str(source)])
+    if build.returncode != 0:
+        return fail("Nerd debug build failed", build.stderr)
+
+    commands = [
+        "target create " + str(binary),
+        "breakpoint set --file main.n --line 11",
+        "run",
+        "frame variable message point",
+        "expression point.x",
+        "expression message.data[0]",
+    ]
+    lldb_cmd = [str(lldb), "--batch"]
+    for command in commands:
+        lldb_cmd.extend(["-o", command])
+
+    debug = run(lldb_cmd)
+    output = debug.stdout + debug.stderr
+    if debug.returncode != 0:
+        return fail("LLDB smoke session failed", output)
+
+    expected = [
+        "Breakpoint 1:",
+        "stop reason = breakpoint",
+        '(string) message = (data = "hello", count = 5)',
+        "(Point) point = {",
+        "x = 3",
+        "y = 4",
+        "(int) $0 = 3",
+        "(unsigned char) $1 = 'h'",
+    ]
+    missing = [item for item in expected if item not in output]
+    if missing:
+        return fail(
+            "LLDB smoke output did not contain expected debugger evidence",
+            "missing:\n"
+            + "\n".join(missing)
+            + "\n\noutput:\n"
+            + output,
+        )
+
+    print("debugger-smoke ok")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

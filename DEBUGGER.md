@@ -323,7 +323,8 @@ that gap.
 
 - Use LLVM snapshot tests for metadata that must stay stable.
 - Use command tests for non-release debug metadata and artefact cleanup.
-- Add a scripted debugger smoke test once the first platform path is chosen.
+- Use `python3 build/check_debugger_smoke.py --nerd _bin/nerd-debug` for the
+  Linux CodeLLDB-bundled LLDB breakpoint/watch smoke path.
 - Extend `build/check_editor_integrations.py` to verify VS Code debugger
   contribution metadata and launch configuration snippets.
 - Keep manual testing notes in this file until they can be automated.
@@ -452,7 +453,7 @@ Verification:
 - [x] Manual CodeLLDB watch checks for locals and simple fields.
 - [x] Manual CodeLLDB watch checks for typed pointer indexes.
 - [ ] Manual CodeLLDB watch checks for collection indexes.
-- [ ] Any automated debugger smoke checks added by this point pass.
+- [x] Any automated debugger smoke checks added by this point pass.
 
 ### Commit 9: Windows 11 Plan To Implementation
 
