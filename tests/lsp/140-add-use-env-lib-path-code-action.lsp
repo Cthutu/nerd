@@ -1,11 +1,8 @@
-Point :: plex {
-    x i32
-    y i32
-}
-
+-- lsp-uri: file:///tmp/nerd-env-code-action/main.n
+-- lsp-root-uri: file:///tmp/nerd-env-code-action
+-- lsp-lib-path: __REPO_URI__/tests/lsp/env_lib
 main :: fn () {
-    point := Point {
-    }
+    env_only_helper()
 }
 ¬
 [
@@ -15,16 +12,16 @@ main :: fn () {
         "method": "textDocument/codeAction",
         "params": {
             "textDocument": {
-                "uri": "file:///test.n"
+                "uri": "file:///tmp/nerd-env-code-action/main.n"
             },
             "range": {
                 "start": {
-                    "line": 6,
-                    "character": 13
+                    "line": 1,
+                    "character": 8
                 },
                 "end": {
-                    "line": 6,
-                    "character": 13
+                    "line": 1,
+                    "character": 8
                 }
             },
             "context": {
@@ -91,54 +88,38 @@ main :: fn () {
         "jsonrpc": "2.0",
         "method": "textDocument/publishDiagnostics",
         "params": {
-            "uri": "file:///test.n",
+            "uri": "file:///tmp/nerd-env-code-action/main.n",
             "diagnostics": [
                 {
                     "range": {
                         "start": {
-                            "line": 6,
-                            "character": 19
+                            "line": 1,
+                            "character": 4
                         },
                         "end": {
-                            "line": 6,
-                            "character": 20
+                            "line": 1,
+                            "character": 19
                         }
                     },
                     "severity": 1,
                     "source": "nerd",
-                    "message": "Plex literal is missing required fields",
+                    "message": "Unknown symbol `env_only_helper`",
                     "relatedInformation": [
                         {
                             "location": {
-                                "uri": "file:///test.n",
+                                "uri": "file:///tmp/nerd-env-code-action/main.n",
                                 "range": {
                                     "start": {
-                                        "line": 6,
-                                        "character": 19
+                                        "line": 1,
+                                        "character": 4
                                     },
                                     "end": {
-                                        "line": 6,
-                                        "character": 20
+                                        "line": 1,
+                                        "character": 19
                                     }
                                 }
                             },
-                            "message": "note: Missing fields: `x`, `y`"
-                        },
-                        {
-                            "location": {
-                                "uri": "file:///test.n",
-                                "range": {
-                                    "start": {
-                                        "line": 6,
-                                        "character": 19
-                                    },
-                                    "end": {
-                                        "line": 6,
-                                        "character": 20
-                                    }
-                                }
-                            },
-                            "message": "help: Add all fields required by the plex type, or write `...` in the literal to initialise omitted fields with their default values."
+                            "message": "help: Add a binding for `env_only_helper` or fix the spelling."
                         }
                     ]
                 }
@@ -150,23 +131,23 @@ main :: fn () {
         "id": 2,
         "result": [
             {
-                "title": "Fill missing plex fields",
+                "title": "Add use envonly",
                 "kind": "quickfix",
                 "edit": {
                     "changes": {
-                        "file:///test.n": [
+                        "file:///tmp/nerd-env-code-action/main.n": [
                             {
                                 "range": {
                                     "start": {
-                                        "line": 7,
-                                        "character": 4
+                                        "line": 0,
+                                        "character": 0
                                     },
                                     "end": {
-                                        "line": 7,
-                                        "character": 4
+                                        "line": 0,
+                                        "character": 0
                                     }
                                 },
-                                "newText": "        x: 0\n        y: 0\n    "
+                                "newText": "use envonly\n\n"
                             }
                         ]
                     }

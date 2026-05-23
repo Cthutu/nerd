@@ -590,6 +590,14 @@ def test_lsp(path: pathlib.Path) -> list[Failure]:
     if match:
         root_uri = normalize_repo_uris(match.group(1))
         source = source[match.end():]
+    lsp_env = env()
+    match = re.match(r"\s*--\s*lsp-lib-path:\s*(\S+)\s*\n", source)
+    if match:
+        lib_path = normalize_repo_uris(match.group(1))
+        if lib_path.startswith("file://"):
+            lib_path = lib_path[len("file://") :]
+        lsp_env["NERD_LIB_PATH"] = lib_path
+        source = source[match.end():]
     messages = [
         {
             "jsonrpc": "2.0",
@@ -617,7 +625,7 @@ def test_lsp(path: pathlib.Path) -> list[Failure]:
     proc = subprocess.run(
         [str(NERD), "lsp"],
         cwd=ROOT,
-        env=env(),
+        env=lsp_env,
         input=input_bytes,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,

@@ -174,6 +174,29 @@ Graphics :: plex {
                         ]
                     }
                 }
+            },
+            {
+                "title": "Add use test.lsp_windows_exports",
+                "kind": "quickfix",
+                "edit": {
+                    "changes": {
+                        "__REPO_URI__/tests/lsp/130-workspace-root-add-use/tiny_engine/graphics.n": [
+                            {
+                                "range": {
+                                    "start": {
+                                        "line": 0,
+                                        "character": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "character": 0
+                                    }
+                                },
+                                "newText": "use test.lsp_windows_exports\n\n"
+                            }
+                        ]
+                    }
+                }
             }
         ]
     },

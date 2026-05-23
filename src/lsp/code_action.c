@@ -896,6 +896,27 @@ internal bool lsp_code_action_symbol_ref_is_resolved(const LspDocument* doc,
     return true;
 }
 
+internal bool lsp_code_action_doc_declares_symbol(const LspDocument* doc,
+                                                  string             symbol)
+{
+    const Ast*   ast   = &doc->front_end.ast;
+    const Lexer* lexer = &doc->front_end.lexer;
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (!ast_node_is_binding_like(node)) {
+            continue;
+        }
+
+        u32 node_symbol = ast_get_symbol(node);
+        if (node_symbol != U32_MAX &&
+            string_eq(lex_symbol(lexer, node_symbol), symbol)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 internal u32 lsp_code_action_unwrap_expr_node(const Ast* ast, u32 node_index)
 {
     while (node_index < array_count(ast->nodes) &&
@@ -1162,6 +1183,39 @@ internal bool lsp_code_action_should_scan_module_root(cstr root)
            strcmp(root, ".") != 0;
 }
 
+internal void lsp_code_action_find_modules_exporting_symbol_in_env_roots(
+    Arena* arena, Array(string) * paths, cstr lib_path, string symbol)
+{
+    if (lib_path == NULL || *lib_path == '\0') {
+        return;
+    }
+
+#if OS_WINDOWS
+    char separator = ';';
+#else
+    char separator = ':';
+#endif
+
+    const char* cursor = lib_path;
+    while (*cursor != '\0') {
+        const char* end = strchr(cursor, separator);
+        usize       len = end != NULL ? (usize)(end - cursor) : strlen(cursor);
+        if (len > 0) {
+            char* root = arena_alloc(arena, len + 1);
+            memcpy(root, cursor, len);
+            root[len] = '\0';
+            if (lsp_code_action_should_scan_module_root(root)) {
+                lsp_code_action_find_modules_exporting_symbol_in_dir(
+                    arena, paths, root, root, symbol);
+            }
+        }
+        if (end == NULL) {
+            break;
+        }
+        cursor = end + 1;
+    }
+}
+
 internal void lsp_code_action_find_loaded_modules_exporting_symbol(
     Arena* arena, Array(string) * paths, const LspDocument* doc, string symbol)
 {
@@ -1264,6 +1318,9 @@ internal void lsp_code_action_find_modules_exporting_symbol(
         lsp_code_action_find_modules_exporting_symbol_in_dir(
             arena, paths, cwd_mods, cwd_mods, symbol);
     }
+
+    lsp_code_action_find_modules_exporting_symbol_in_env_roots(
+        arena, paths, getenv("NERD_LIB_PATH"), symbol);
 
     cstr exe_dir  = path_executable_dir(arena);
     cstr mods_dir = path_join(arena, exe_dir, "mods");
@@ -2524,7 +2581,8 @@ void lsp_handle_code_action(LspState* state, const LspMessage* message)
                 message->arena, actions, uri, doc, token_index);
         }
 
-        if (lsp_code_action_symbol_needs_import(doc, token_index)) {
+        if (!lsp_code_action_doc_declares_symbol(doc, symbol) &&
+            lsp_code_action_symbol_needs_import(doc, token_index)) {
             lsp_code_action_add_import_actions(
                 message->arena, actions, uri, doc, symbol);
         }
