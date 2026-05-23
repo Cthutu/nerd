@@ -2226,7 +2226,7 @@ internal u32 hir_lower_stmt(Hir*         hir,
         return hir_no_index();
     }
 
-    const AstNode* node = &ast->nodes[node_index];
+    const AstNode* node             = &ast->nodes[node_index];
     string         stmt_source_path = {0};
     u32            stmt_source_line = 0;
     hir_node_source_location(
@@ -2337,8 +2337,8 @@ internal u32 hir_lower_stmt(Hir*         hir,
                                     .local_index      = local_index,
                                     .type_index       = local_type,
                                     .body_block_index = hir_no_index(),
-                                    .source_line = stmt_source_line,
-                                    .source_path = stmt_source_path,
+                                    .source_line      = stmt_source_line,
+                                    .source_path      = stmt_source_path,
                                 });
         }
     case AK_Assign:
@@ -2463,8 +2463,8 @@ internal u32 hir_lower_stmt(Hir*         hir,
                                 .local_index   = sema_no_local(),
                                 .type_index = hir_node_type(sema, node_index),
                                 .body_block_index = hir_no_index(),
-                                .source_line = stmt_source_line,
-                                .source_path = stmt_source_path,
+                                .source_line      = stmt_source_line,
+                                .source_path      = stmt_source_path,
                             });
     case AK_Block:
         return hir_add_stmt(hir,

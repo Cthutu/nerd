@@ -77,8 +77,8 @@ internal u32 back_end_llvm_text_max_metadata_id(string text)
 }
 
 internal void back_end_append_remapped_llvm_metadata_line(StringBuilder* sb,
-                                                         string line,
-                                                         u32 base)
+                                                          string         line,
+                                                          u32            base)
 {
     for (usize i = 0; i < line.count; ++i) {
         if (line.data[i] == '!' && i + 1 < line.count &&
@@ -99,9 +99,8 @@ internal void back_end_append_remapped_llvm_metadata_line(StringBuilder* sb,
     }
 }
 
-internal bool back_end_llvm_line_named_metadata_items(string line,
-                                                      cstr   prefix,
-                                                      string* out)
+internal bool
+back_end_llvm_line_named_metadata_items(string line, cstr prefix, string* out)
 {
     usize prefix_count = strlen(prefix);
     if (line.count < prefix_count + 1 ||
@@ -117,7 +116,7 @@ internal bool back_end_llvm_line_named_metadata_items(string line,
 }
 
 internal void back_end_append_named_metadata_items(StringBuilder* sb,
-                                                  string items)
+                                                   string         items)
 {
     if (items.count == 0) {
         return;
@@ -277,12 +276,11 @@ internal void back_end_append_llvm_without_satisfied_declarations(
         arena_init(&line_arena);
         StringBuilder remapped_line = {0};
         sb_init(&remapped_line, &line_arena);
-        back_end_append_remapped_llvm_metadata_line(&remapped_line,
-                                                    line,
-                                                    metadata_id_base);
+        back_end_append_remapped_llvm_metadata_line(
+            &remapped_line, line, metadata_id_base);
         string rendered_line = sb_to_string(&remapped_line);
 
-        string named_items = {0};
+        string named_items   = {0};
         if (back_end_llvm_line_named_metadata_items(
                 rendered_line, "!llvm.dbg.cu = !{", &named_items)) {
             back_end_append_named_metadata_items(dbg_cu_items, named_items);
@@ -351,7 +349,8 @@ string back_end_llvm_text_build_combined(Arena* arena,
             &module_flag_items,
             &has_module_flags,
             metadata_id_base);
-        metadata_id_base += back_end_llvm_text_max_metadata_id(module_llvms[i]) + 1;
+        metadata_id_base +=
+            back_end_llvm_text_max_metadata_id(module_llvms[i]) + 1;
         sb_append_cstr(&combined_llvm_builder, "\n");
     }
     back_end_append_llvm_without_satisfied_declarations(&combined_llvm_builder,
@@ -362,17 +361,17 @@ string back_end_llvm_text_build_combined(Arena* arena,
                                                         &module_flag_items,
                                                         &has_module_flags,
                                                         metadata_id_base);
-    metadata_id_base += back_end_llvm_text_max_metadata_id(runtime_epilogue) + 1;
+    metadata_id_base +=
+        back_end_llvm_text_max_metadata_id(runtime_epilogue) + 1;
     sb_append_cstr(&combined_llvm_builder, "\n");
-    back_end_append_llvm_without_satisfied_declarations(
-        &combined_llvm_builder,
-        init_ll,
-        defined_symbols,
-        &declared_symbols,
-        &dbg_cu_items,
-        &module_flag_items,
-        &has_module_flags,
-        metadata_id_base);
+    back_end_append_llvm_without_satisfied_declarations(&combined_llvm_builder,
+                                                        init_ll,
+                                                        defined_symbols,
+                                                        &declared_symbols,
+                                                        &dbg_cu_items,
+                                                        &module_flag_items,
+                                                        &has_module_flags,
+                                                        metadata_id_base);
 
     string dbg_cu_text      = sb_to_string(&dbg_cu_items);
     string module_flag_text = sb_to_string(&module_flag_items);
@@ -384,8 +383,7 @@ string back_end_llvm_text_build_combined(Arena* arena,
             sb_append_cstr(&combined_llvm_builder, "}\n");
         }
         if (module_flag_text.count > 0) {
-            sb_append_cstr(&combined_llvm_builder,
-                           "!llvm.module.flags = !{");
+            sb_append_cstr(&combined_llvm_builder, "!llvm.module.flags = !{");
             sb_append_string(&combined_llvm_builder, module_flag_text);
             sb_append_cstr(&combined_llvm_builder, "}\n");
         }

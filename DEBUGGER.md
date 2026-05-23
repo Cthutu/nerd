@@ -28,6 +28,8 @@ starts the native executable is not enough.
 - The compiler backend lowers HIR to textual LLVM IR and invokes clang.
 - Non-release executable builds emit Nerd source debug metadata and pass
   `-g -O0` to clang.
+- Linux debug executables now produce usable DWARF line tables for a larger
+  multi-module program such as `examples/dungeon/dungeon.n`.
 - Release builds currently omit the Nerd debug metadata product and pass `-O2`
   to clang.
 - Generated LLVM now has an initial debug metadata contract for compile units,
@@ -203,6 +205,8 @@ that gap.
 - [x] Verify breakpoints bind in VS Code or a command-line native debugger for a
   single-file program.
 - [x] Verify CodeLLDB stops on the expected `.n` line on Linux.
+- [x] Verify CodeLLDB stops on the expected `.n` line in
+  `examples/dungeon/dungeon.n`.
 - [x] Add a command-level regression that proves debug builds keep the expected
   binary when requested and that Linux debug information is present in that
   executable.
@@ -354,13 +358,13 @@ Verification:
 
 - [x] Add a documented manual CodeLLDB launch configuration for the smoke
   binary.
-- [ ] Verify CodeLLDB stops on the same Nerd source line as command-line LLDB.
+- [x] Verify CodeLLDB stops on a Nerd source line.
 - [x] Record the CodeLLDB version and Linux host details used for validation.
 
 Verification:
 
-- [ ] Manual VS Code CodeLLDB breakpoint proof completed.
-- [ ] Notes added to this document or a linked debugger validation note.
+- [x] Manual VS Code CodeLLDB breakpoint proof completed.
+- [x] Notes added to this document or a linked debugger validation note.
 
 ### Commit 5: Locals And Parameters
 
@@ -386,9 +390,9 @@ Verification:
 
 Verification:
 
-- [ ] `npm run compile` in `syntax/nerd-vscode`.
-- [ ] `python3 build/check_editor_integrations.py --nerd _bin/nerd-debug`.
-- [ ] Manual VS Code launch starts a Nerd debug session and stops at a
+- [x] `npm run compile` in `syntax/nerd-vscode`.
+- [x] `python3 build/check_editor_integrations.py --nerd _bin/nerd-debug`.
+- [x] Manual VS Code launch starts a Nerd debug session and stops at a
   breakpoint.
 
 ### Commit 6A: Debug Build Contract Regression
