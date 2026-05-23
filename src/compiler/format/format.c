@@ -57,6 +57,11 @@ internal void  format_emit_on_block_multiline(StringBuilder* sb,
                                               const Lexer*   lexer,
                                               u32            node_index,
                                               u32            indent_level);
+internal bool  format_emit_bool_on_multiline_if_long(StringBuilder* sb,
+                                                     const Cst*     cst,
+                                                     const Lexer*   lexer,
+                                                     u32            node_index,
+                                                     u32 indent_level);
 internal void  format_emit_call_multiline_aligned(StringBuilder* sb,
                                                   const Cst*     cst,
                                                   const Lexer*   lexer,
@@ -1770,6 +1775,108 @@ internal void format_emit_on_block_multiline(StringBuilder* sb,
 
     array_free(heads);
     arena_done(&branch_arena);
+}
+
+internal bool format_logical_chain_kind(CstKind kind)
+{
+    return kind == CK_LogicalAnd || kind == CK_LogicalOr;
+}
+
+internal string format_logical_chain_operator(CstKind kind)
+{
+    return kind == CK_LogicalAnd ? s("&&") : s("||");
+}
+
+internal void format_collect_logical_chain(const Cst* cst,
+                                           u32        node_index,
+                                           CstKind    kind,
+                                           Array(u32) * out_parts)
+{
+    const CstNode* node = &cst->nodes[node_index];
+    if (node->kind == kind) {
+        format_collect_logical_chain(cst, node->a, kind, out_parts);
+        format_collect_logical_chain(cst, node->b, kind, out_parts);
+        return;
+    }
+
+    array_push(*out_parts, node_index);
+}
+
+internal void format_emit_bool_on_multiline(StringBuilder* sb,
+                                            const Cst*     cst,
+                                            const Lexer*   lexer,
+                                            u32            node_index,
+                                            u32            indent_level)
+{
+    const CstNode*   node = &cst->nodes[node_index];
+    const CstOnInfo* on   = &cst->ons[node->b];
+    ASSERT(node->kind == CK_On && on->kind == COK_Bool,
+           "Expected bool on expression");
+
+    const CstNode* condition  = &cst->nodes[node->a];
+    CstKind        chain_kind = condition->kind;
+    ASSERT(format_logical_chain_kind(chain_kind),
+           "Expected logical chain condition");
+
+    Array(u32) parts = NULL;
+    format_collect_logical_chain(cst, node->a, chain_kind, &parts);
+
+    string op = format_logical_chain_operator(chain_kind);
+    sb_append_cstr(sb, "on ");
+    for (u32 i = 0; i < array_count(parts); ++i) {
+        if (i > 0) {
+            format_emit_indent(sb, indent_level + 1);
+        }
+        format_emit_expr(sb, cst, lexer, parts[i], 0);
+        if (i + 1 < array_count(parts)) {
+            sb_append_char(sb, ' ');
+            sb_append_string(sb, op);
+            sb_append_char(sb, '\n');
+        }
+    }
+
+    const CstOnBranch* true_branch = &cst->on_branches[on->first_branch];
+    sb_append_cstr(sb, " => ");
+    format_emit_expr_with_indent(
+        sb, cst, lexer, true_branch->expr_node_index, 0, indent_level);
+
+    if (on->branch_count > 1) {
+        const CstOnBranch* else_branch =
+            &cst->on_branches[on->first_branch + 1];
+        sb_append_cstr(sb, " else ");
+        format_emit_expr_with_indent(
+            sb, cst, lexer, else_branch->expr_node_index, 0, indent_level);
+    }
+
+    array_free(parts);
+}
+
+internal bool format_emit_bool_on_multiline_if_long(StringBuilder* sb,
+                                                    const Cst*     cst,
+                                                    const Lexer*   lexer,
+                                                    u32            node_index,
+                                                    u32            indent_level)
+{
+    const CstNode* node = &cst->nodes[node_index];
+    if (node->kind != CK_On || cst->ons[node->b].kind != COK_Bool ||
+        !format_logical_chain_kind(cst->nodes[node->a].kind)) {
+        return false;
+    }
+
+    Arena arena = {0};
+    arena_init(&arena);
+    string single =
+        format_render_expr_to_string(&arena, cst, lexer, node_index);
+    bool wrap = !format_string_has_newline(single) &&
+                (usize)indent_level * 4 + single.count > FORMAT_WRAP_WIDTH;
+    arena_done(&arena);
+
+    if (!wrap) {
+        return false;
+    }
+
+    format_emit_bool_on_multiline(sb, cst, lexer, node_index, indent_level);
+    return true;
 }
 
 internal void format_emit_variable_payload(StringBuilder* sb,
@@ -6495,6 +6602,8 @@ internal void format_emit_block_statement(StringBuilder* sb,
         if (format_node_is_block_form_on(cst, stmt->a)) {
             format_emit_on_block_multiline(
                 sb, cst, lexer, stmt->a, indent_level);
+        } else if (format_emit_bool_on_multiline_if_long(
+                       sb, cst, lexer, stmt->a, indent_level)) {
         } else if (!format_emit_call_with_block_on_arg(
                        sb, cst, lexer, stmt->a, indent_level)) {
             format_emit_wrapped_call_expr_if_long(
