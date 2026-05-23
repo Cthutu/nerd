@@ -108,6 +108,33 @@ def normalize_llvm_imported_module_ids(text: str) -> str:
     return re.sub(r"@m\d+\.fn\.", "@mN.fn.", text)
 
 
+def llvm_test_keeps_debug_metadata(source: str) -> bool:
+    return any(
+        re.match(r"\s*--\s*test-llvm-debug\s*:\s*yes\s*$", line)
+        for line in source.splitlines()
+    )
+
+
+def strip_llvm_debug_metadata(text: str) -> str:
+    lines: list[str] = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("!llvm.dbg."):
+            continue
+        if re.match(r"!\d+ = (?:distinct )?!DI", stripped):
+            continue
+        if re.match(r"!\d+ = !\{i32 \d+, !\"(?:Debug Info|Dwarf)", stripped):
+            continue
+        line = re.sub(r" !dbg !\d+(?= \{)", "", line)
+        line = re.sub(r", !dbg !\d+\b", "", line)
+        lines.append(line)
+    return "\n".join(lines) + ("\n" if text.endswith("\n") else "")
+
+
+def normalize_llvm_debug_paths(text: str) -> str:
+    return text.replace(ROOT.as_posix(), "__REPO__").replace(str(ROOT), "__REPO__")
+
+
 def normalized_returncode(code: int) -> int:
     return code & 0xFF if os.name == "nt" and code > 255 else code
 
@@ -351,6 +378,8 @@ def test_language(path: pathlib.Path) -> list[Failure]:
         actual_llvm = normalize_llvm_source_path_lengths(actual_llvm)
         expected_llvm = normalize_llvm_imported_module_ids(expected_llvm)
         actual_llvm = normalize_llvm_imported_module_ids(actual_llvm)
+        expected_llvm = strip_llvm_debug_metadata(expected_llvm)
+        actual_llvm = strip_llvm_debug_metadata(actual_llvm)
         if not lines_are_subsequence(expected_llvm, actual_llvm):
             llvm_failure = check_equal(path, "llvm", expected_llvm, actual_llvm)
             if llvm_failure:
@@ -409,6 +438,7 @@ def test_llvm(path: pathlib.Path) -> list[Failure]:
         return [Failure(path, "LLVM test must have source and expected LLVM sections")]
 
     source, expected_llvm = parts
+    keep_debug_metadata = llvm_test_keeps_debug_metadata(source)
     input_path = path.with_suffix(".input.n")
     output_root = path.parent / path.stem
     llvm_path = path.parent / f"_{path.stem}.ll"
@@ -442,8 +472,13 @@ def test_llvm(path: pathlib.Path) -> list[Failure]:
             actual_llvm = actual_llvm.replace(input_variant, rel(input_path))
         expected_llvm = normalize_llvm_source_path_lengths(expected_llvm)
         actual_llvm = normalize_llvm_source_path_lengths(actual_llvm)
+        expected_llvm = normalize_llvm_debug_paths(expected_llvm)
+        actual_llvm = normalize_llvm_debug_paths(actual_llvm)
         expected_llvm = normalize_llvm_imported_module_ids(expected_llvm)
         actual_llvm = normalize_llvm_imported_module_ids(actual_llvm)
+        if not keep_debug_metadata:
+            expected_llvm = strip_llvm_debug_metadata(expected_llvm)
+            actual_llvm = strip_llvm_debug_metadata(actual_llvm)
         if not lines_are_subsequence(expected_llvm, actual_llvm):
             llvm_failure = check_equal(path, "llvm", expected_llvm, actual_llvm)
             if llvm_failure:

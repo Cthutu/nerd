@@ -1873,6 +1873,23 @@ typedef struct {
 } LlvmControlTarget;
 
 typedef struct {
+    u32 id;
+    u32 line;
+    u32 scope_id;
+} LlvmDebugLocation;
+
+typedef struct {
+    Arena         metadata_arena;
+    Arena*        arena;
+    StringBuilder metadata;
+    u32           next_id;
+    u32           empty_id;
+    u32           file_id;
+    u32           compile_unit_id;
+    Array(LlvmDebugLocation) locations;
+} LlvmDebugModule;
+
+typedef struct {
     StringBuilder*    sb;
     StringBuilder*    entry_sb;
     const Hir*        hir;
@@ -1895,12 +1912,352 @@ typedef struct {
     u32               macro_source_line;
     const Hir*        macro_source_hir;
     bool              discard_expr_value;
+    LlvmDebugModule*  debug;
+    u32               debug_scope_id;
     Array(LlvmLocalValue) locals;
     Array(LlvmLocalSlot) slots;
     Array(u32) assigned_locals;
     Array(u32) defer_block_indices;
     Array(LlvmControlTarget) control_targets;
 } LlvmFunctionContext;
+
+internal cstr llvm_debug_cstr(Arena* arena, string text)
+{
+    char* copy = (char*)arena_alloc(arena, text.count + 1);
+    memcpy(copy, text.data, text.count);
+    copy[text.count] = '\0';
+    return copy;
+}
+
+internal string llvm_debug_canonical_source_path(Arena* arena, string path)
+{
+    if (path.count == 0) {
+        return s("<memory>");
+    }
+
+    cstr nul_path = llvm_debug_cstr(arena, path);
+    cstr canonical = path_canonical(arena, nul_path);
+    return canonical != NULL ? s(canonical) : path;
+}
+
+internal void llvm_debug_append_quoted(StringBuilder* sb, string text)
+{
+    sb_append_char(sb, '"');
+    for (usize i = 0; i < text.count; ++i) {
+        u8 ch = text.data[i];
+        if (ch == '\\') {
+            sb_append_cstr(sb, "\\\\");
+        } else if (ch == '"') {
+            sb_append_cstr(sb, "\\\"");
+        } else if (ch == '\n') {
+            sb_append_cstr(sb, "\\0A");
+        } else {
+            sb_append_char(sb, (char)ch);
+        }
+    }
+    sb_append_char(sb, '"');
+}
+
+internal void llvm_debug_split_path(string path, string* out_dir, string* out_file)
+{
+    usize last_separator = (usize)-1;
+    for (usize i = 0; i < path.count; ++i) {
+        if (path.data[i] == '/' || path.data[i] == '\\') {
+            last_separator = i;
+        }
+    }
+    if (last_separator == (usize)-1) {
+        *out_dir  = s(".");
+        *out_file = path;
+        return;
+    }
+    *out_dir  = string_from(path.data, last_separator == 0 ? 1 : last_separator);
+    *out_file = string_from(path.data + last_separator + 1,
+                            path.count - last_separator - 1);
+}
+
+internal u32 llvm_debug_alloc_id(LlvmDebugModule* debug)
+{
+    return debug != NULL ? debug->next_id++ : 0;
+}
+
+internal void llvm_debug_init(LlvmDebugModule* debug,
+                              Arena*           arena,
+                              const Lexer*     lexer)
+{
+    *debug       = (LlvmDebugModule){0};
+    arena_init(&debug->metadata_arena);
+    debug->arena = &debug->metadata_arena;
+    (void)arena;
+
+    string source_path = llvm_debug_canonical_source_path(
+        debug->arena, lexer->source.source_path);
+    string directory = {0};
+    string filename  = {0};
+    llvm_debug_split_path(source_path, &directory, &filename);
+
+    sb_init(&debug->metadata, debug->arena);
+
+    debug->compile_unit_id = llvm_debug_alloc_id(debug);
+    debug->file_id         = llvm_debug_alloc_id(debug);
+    debug->empty_id        = llvm_debug_alloc_id(debug);
+    u32 debug_info_flag    = llvm_debug_alloc_id(debug);
+    u32 dwarf_flag         = llvm_debug_alloc_id(debug);
+
+    sb_format(&debug->metadata,
+              "!llvm.dbg.cu = !{!%u}\n"
+              "!llvm.module.flags = !{!%u, !%u}\n\n",
+              debug->compile_unit_id,
+              debug_info_flag,
+              dwarf_flag);
+
+    sb_format(&debug->metadata, "!%u = distinct !DICompileUnit(language: "
+                                "DW_LANG_C, file: !%u, producer: ",
+              debug->compile_unit_id,
+              debug->file_id);
+    llvm_debug_append_quoted(&debug->metadata, s("Nerd"));
+    sb_format(&debug->metadata,
+              ", isOptimized: false, runtimeVersion: 0, emissionKind: "
+              "FullDebug, enums: !%u)\n",
+              debug->empty_id);
+
+    sb_format(&debug->metadata, "!%u = !DIFile(filename: ", debug->file_id);
+    llvm_debug_append_quoted(&debug->metadata, filename);
+    sb_append_cstr(&debug->metadata, ", directory: ");
+    llvm_debug_append_quoted(&debug->metadata, directory);
+    sb_append_cstr(&debug->metadata, ")\n");
+
+    sb_format(&debug->metadata,
+              "!%u = !{}\n"
+              "!%u = !{i32 2, !\"Debug Info Version\", i32 3}\n"
+              "!%u = !{i32 2, !\"Dwarf Version\", i32 5}\n",
+              debug->empty_id,
+              debug_info_flag,
+              dwarf_flag);
+}
+
+internal void llvm_debug_done(LlvmDebugModule* debug)
+{
+    array_free(debug->locations);
+    arena_done(&debug->metadata_arena);
+}
+
+internal string llvm_debug_function_source_name(const Hir*   hir,
+                                                const Lexer* lexer,
+                                                const Sema*  sema,
+                                                Arena*       arena,
+                                                const HirFunction* function,
+                                                u32 function_index)
+{
+    if (function->decl_index < array_count(sema->decls)) {
+        u32 symbol = sema->decls[function->decl_index].symbol_handle;
+        if (symbol != U32_MAX) {
+            return lex_symbol(lexer, symbol);
+        }
+    }
+    return llvm_function_name_string(hir, lexer, arena, function_index);
+}
+
+internal u32 llvm_debug_function_line(const Hir* hir,
+                                      const HirFunction* function)
+{
+    if (function->body_block_index >= array_count(hir->blocks)) {
+        return 1;
+    }
+    const HirBlock* block = &hir->blocks[function->body_block_index];
+    for (u32 i = 0; i < block->stmt_count; ++i) {
+        u32 stmt_index = block->stmt_indices[i];
+        if (stmt_index < array_count(hir->stmts) &&
+            hir->stmts[stmt_index].source_line > 0) {
+            return hir->stmts[stmt_index].source_line;
+        }
+    }
+    return 1;
+}
+
+internal u32 llvm_debug_add_function(LlvmDebugModule* debug,
+                                     const Hir*       hir,
+                                     const Lexer*     lexer,
+                                     const Sema*      sema,
+                                     Arena*           arena,
+                                     const HirFunction* function,
+                                     u32 function_index)
+{
+    if (debug == NULL) {
+        return 0;
+    }
+
+    u32    id          = llvm_debug_alloc_id(debug);
+    u32    type_id     = llvm_debug_alloc_id(debug);
+    Arena name_arena = {0};
+    arena_init(&name_arena);
+    string source_name = llvm_debug_function_source_name(
+        hir, lexer, sema, &name_arena, function, function_index);
+    string linkage_name =
+        llvm_function_name_string(hir, lexer, &name_arena, function_index);
+    u32 line = llvm_debug_function_line(hir, function);
+
+    sb_format(&debug->metadata, "!%u = !DISubroutineType(types: !%u)\n",
+              type_id,
+              debug->empty_id);
+    sb_format(&debug->metadata, "!%u = distinct !DISubprogram(name: ", id);
+    llvm_debug_append_quoted(&debug->metadata, source_name);
+    sb_append_cstr(&debug->metadata, ", linkageName: ");
+    llvm_debug_append_quoted(&debug->metadata, linkage_name);
+    sb_format(&debug->metadata,
+              ", scope: !%u, file: !%u, line: %u, type: !%u, scopeLine: %u, "
+              "spFlags: DISPFlagDefinition, unit: !%u, retainedNodes: !%u)\n",
+              debug->file_id,
+              debug->file_id,
+              line,
+              type_id,
+              line,
+              debug->compile_unit_id,
+              debug->empty_id);
+    arena_done(&name_arena);
+    (void)arena;
+    return id;
+}
+
+internal u32 llvm_debug_location(LlvmDebugModule* debug,
+                                 u32              line,
+                                 u32              scope_id)
+{
+    if (debug == NULL || line == 0 || scope_id == 0) {
+        return 0;
+    }
+    for (u32 i = 0; i < array_count(debug->locations); ++i) {
+        LlvmDebugLocation* location = &debug->locations[i];
+        if (location->line == line && location->scope_id == scope_id) {
+            return location->id;
+        }
+    }
+
+    u32 id = llvm_debug_alloc_id(debug);
+    array_push(debug->locations,
+               (LlvmDebugLocation){
+                   .id       = id,
+                   .line     = line,
+                   .scope_id = scope_id,
+               });
+    sb_format(&debug->metadata,
+              "!%u = !DILocation(line: %u, column: 1, scope: !%u)\n",
+              id,
+              line,
+              scope_id);
+    return id;
+}
+
+internal void llvm_debug_emit_marker(LlvmFunctionContext* ctx, u32 source_line)
+{
+    u32 location =
+        llvm_debug_location(ctx->debug, source_line, ctx->debug_scope_id);
+    if (location != 0) {
+        sb_format(ctx->sb, "  ; nerd.dbg !%u\n", location);
+    }
+}
+
+internal bool llvm_debug_line_is_marker(string line, u32* out_location)
+{
+    cstr  prefix     = "  ; nerd.dbg !";
+    usize prefix_len = strlen(prefix);
+    if (line.count < prefix_len ||
+        memcmp(line.data, prefix, prefix_len) != 0) {
+        return false;
+    }
+
+    u32 value = 0;
+    for (usize i = prefix_len; i < line.count; ++i) {
+        u8 ch = line.data[i];
+        if (ch == '\r' || ch == '\n') {
+            break;
+        }
+        if (ch < '0' || ch > '9') {
+            return false;
+        }
+        value = value * 10 + (u32)(ch - '0');
+    }
+    *out_location = value;
+    return true;
+}
+
+internal bool llvm_debug_line_contains_dbg(string line)
+{
+    cstr  needle     = "!dbg";
+    usize needle_len = strlen(needle);
+    if (line.count < needle_len) {
+        return false;
+    }
+    for (usize i = 0; i + needle_len <= line.count; ++i) {
+        if (memcmp(line.data + i, needle, needle_len) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+internal bool llvm_debug_line_is_annotatable(string line)
+{
+    if (line.count < 3 || line.data[0] != ' ' || line.data[1] != ' ') {
+        return false;
+    }
+    if (line.data[2] == ';' || line.data[2] == '\n' || line.data[2] == '\r') {
+        return false;
+    }
+    if (llvm_debug_line_contains_dbg(line)) {
+        return false;
+    }
+    return true;
+}
+
+internal string llvm_debug_annotate_body(Arena*           arena,
+                                         LlvmDebugModule* debug,
+                                         string           body)
+{
+    if (debug == NULL) {
+        return body;
+    }
+
+    StringBuilder out = {0};
+    sb_init(&out, arena);
+    u32   current_location = 0;
+    usize cursor           = 0;
+    while (cursor < body.count) {
+        usize start = cursor;
+        while (cursor < body.count && body.data[cursor] != '\n') {
+            ++cursor;
+        }
+        if (cursor < body.count) {
+            ++cursor;
+        }
+
+        string line = string_from(body.data + start, cursor - start);
+        u32    marker_location = 0;
+        if (llvm_debug_line_is_marker(line, &marker_location)) {
+            current_location = marker_location;
+            continue;
+        }
+
+        if (current_location != 0 && llvm_debug_line_is_annotatable(line)) {
+            usize line_end = line.count;
+            bool  has_newline = line_end > 0 && line.data[line_end - 1] == '\n';
+            if (has_newline) {
+                --line_end;
+                if (line_end > 0 && line.data[line_end - 1] == '\r') {
+                    --line_end;
+                }
+            }
+            sb_append_string(&out, string_from(line.data, line_end));
+            sb_format(&out, ", !dbg !%u", current_location);
+            if (has_newline) {
+                sb_append_char(&out, '\n');
+            }
+        } else {
+            sb_append_string(&out, line);
+        }
+    }
+    return sb_to_string(&out);
+}
 
 internal u32 llvm_data_field_item_type(LlvmFunctionContext* ctx,
                                        const HirExpr*       field_expr)
@@ -9630,6 +9987,7 @@ internal bool llvm_emit_effect_stmt(LlvmFunctionContext* ctx,
                                     const HirFunction*   function,
                                     const HirStmt*       stmt)
 {
+    llvm_debug_emit_marker(ctx, stmt != NULL ? stmt->source_line : 0);
     switch (stmt->kind) {
     case HIR_STMT_Let:
         return llvm_emit_let(ctx, function, stmt);
@@ -10140,6 +10498,7 @@ internal bool llvm_emit_block(LlvmFunctionContext* ctx,
         }
 
         const HirStmt* stmt = &ctx->hir->stmts[stmt_index];
+        llvm_debug_emit_marker(ctx, stmt->source_line);
         if (stmt->kind == HIR_STMT_Let) {
             if (!llvm_emit_let(ctx, function, stmt)) {
                 return false;
@@ -12187,6 +12546,7 @@ internal void llvm_render_function(StringBuilder*     sb,
                                    const Lexer*       lexer,
                                    const Sema*        sema,
                                    Arena*             arena,
+                                   LlvmDebugModule*   debug,
                                    const HirFunction* function,
                                    u32                function_index)
 {
@@ -12199,12 +12559,18 @@ internal void llvm_render_function(StringBuilder*     sb,
         return;
     }
 
+    u32 debug_scope_id = llvm_debug_add_function(
+        debug, hir, lexer, sema, arena, function, function_index);
+
     sb_append_cstr(sb, "define ");
     if (!llvm_function_needs_external_definition(sema, hir, function_index)) {
         sb_append_cstr(sb, "internal ");
     }
     llvm_append_function_signature(
         sb, hir, lexer, sema, function, function_index);
+    if (debug_scope_id != 0) {
+        sb_format(sb, " !dbg !%u", debug_scope_id);
+    }
     sb_append_cstr(sb, " {\n");
     Arena temp        = {0};
     Arena entry_arena = {0};
@@ -12226,6 +12592,8 @@ internal void llvm_render_function(StringBuilder*     sb,
         .layout                  = llvm_default_layout(),
         .next_temp               = 0,
         .global_init_value_index = U32_MAX,
+        .debug                   = debug,
+        .debug_scope_id          = debug_scope_id,
     };
     llvm_collect_assigned_locals(&ctx, function->body_block_index);
     llvm_collect_addressed_locals(&ctx, function->body_block_index);
@@ -12236,7 +12604,8 @@ internal void llvm_render_function(StringBuilder*     sb,
         llvm_append_default_return(&body_sb, sema, return_type);
     }
     sb_append_string(sb, sb_to_string(&entry_sb));
-    sb_append_string(sb, sb_to_string(&body_sb));
+    sb_append_string(
+        sb, llvm_debug_annotate_body(&body_arena, debug, sb_to_string(&body_sb)));
     array_free(ctx.locals);
     array_free(ctx.slots);
     array_free(ctx.assigned_locals);
@@ -12384,6 +12753,8 @@ string llvm_render_hir(const Hir*   hir,
     const Sema*   render_sema         = &render_sema_storage;
     StringBuilder sb                  = {0};
     sb_init(&sb, arena);
+    LlvmDebugModule debug = {0};
+    llvm_debug_init(&debug, arena, lexer);
 
     sb_append_cstr(&sb, "; nerd llvm-ir 0\n");
     sb_append_cstr(&sb, "; generated from HIR\n\n");
@@ -12461,7 +12832,7 @@ string llvm_render_hir(const Hir*   hir,
 
     for (u32 i = 0; i < array_count(hir->functions); ++i) {
         llvm_render_function(
-            &sb, hir, lexer, render_sema, arena, &hir->functions[i], i);
+            &sb, hir, lexer, render_sema, arena, &debug, &hir->functions[i], i);
         sb_append_char(&sb, '\n');
     }
 
@@ -12478,7 +12849,10 @@ string llvm_render_hir(const Hir*   hir,
         sb_append_char(&sb, '\n');
     }
 
+    sb_append_string(&sb, sb_to_string(&debug.metadata));
+
     string rendered = sb_to_string(&sb);
+    llvm_debug_done(&debug);
     llvm_render_sema_done(&render_sema_storage);
     return rendered;
 }

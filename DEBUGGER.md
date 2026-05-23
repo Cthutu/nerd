@@ -26,8 +26,8 @@ starts the native executable is not enough.
 - The compiler backend lowers HIR to textual LLVM IR and invokes clang.
 - Non-release executable builds already pass `-g -O0` to clang and should be
   treated as debug builds.
-- Generated LLVM currently has no documented Nerd source debug metadata
-  contract.
+- Generated LLVM now has an initial debug metadata contract for compile units,
+  source files, function subprograms, and statement line locations.
 - Nerd-visible function bindings are emitted as `$` aliases while generated
   function bodies use compiler-internal names such as `@fn.N`.
 - The runtime object is compiled from `data/nrt.c` and linked into generated
@@ -179,23 +179,23 @@ that gap.
 
 ### MS1: Debug Metadata Proof
 
-- [ ] Add a tiny single-file smoke program for manual debugger validation.
-- [ ] Capture the current baseline with `readelf` and LLDB/CodeLLDB notes.
-- [ ] Make normal non-release builds emit Nerd source debug metadata.
+- [x] Add a tiny single-file smoke program for manual debugger validation.
+- [x] Capture the current baseline with `readelf` and LLDB/CodeLLDB notes.
+- [x] Make normal non-release builds emit Nerd source debug metadata.
 - [ ] Keep release builds free to omit debug metadata under the current
   `--release` contract.
-- [ ] Emit LLVM compile-unit metadata for the root module and imported modules.
-- [ ] Emit source locations for function entry, statements, and expression
+- [x] Emit LLVM compile-unit metadata for the root module and imported modules.
+- [x] Emit source locations for function entry, statements, and expression
   lowering points that can carry stable line information.
-- [ ] Emit function metadata that names Nerd functions, not only generated
+- [x] Emit function metadata that names Nerd functions, not only generated
   `fn.N` implementation symbols.
-- [ ] Verify breakpoints bind in VS Code or a command-line native debugger for a
+- [x] Verify breakpoints bind in VS Code or a command-line native debugger for a
   single-file program.
-- [ ] Verify CodeLLDB stops on the expected `.n` line on Linux.
+- [x] Verify CodeLLDB stops on the expected `.n` line on Linux.
 - [ ] Add a command-level regression that proves debug builds keep the expected
   binary when requested and that Linux debug information is present in that
   executable.
-- [ ] Document exactly which Linux debugger and VS Code adapter were validated.
+- [x] Document exactly which Linux debugger and VS Code adapter were validated.
 
 ### MS2: Locals, Parameters, And Call Stack
 
@@ -274,7 +274,7 @@ that gap.
 
 - Should a future release-with-debug-info mode exist, and what should it be
   called?
-- Which native debugger is the first supported Linux VS Code backend?
+- How should the extension discover and delegate to CodeLLDB on Linux?
 - Which native debugger/debug format should Windows 11 use?
 - Does the VS Code extension depend on an existing debugger extension, discover
   an installed native adapter, or ship a small Nerd adapter?
@@ -322,18 +322,18 @@ Verification:
 
 ### Commit 3: Minimal Line Tables
 
-- [ ] Emit LLVM module debug flags.
-- [ ] Emit compile-unit and file metadata for root and imported modules.
-- [ ] Emit function `DISubprogram` metadata.
-- [ ] Attach `DILocation` metadata to enough instructions for source
+- [x] Emit LLVM module debug flags.
+- [x] Emit compile-unit and file metadata for root and imported modules.
+- [x] Emit function `DISubprogram` metadata.
+- [x] Attach `DILocation` metadata to enough instructions for source
   breakpoints.
 
 Verification:
 
-- [ ] Focused LLVM snapshot test for debug metadata shape.
-- [ ] `readelf --debug-dump=decodedline <smoke-binary>` shows `.n` source
+- [x] Focused LLVM snapshot test for debug metadata shape.
+- [x] `readelf --debug-dump=decodedline <smoke-binary>` shows `.n` source
   lines.
-- [ ] LLDB can bind and stop at one smoke-program breakpoint.
+- [x] LLDB can bind and stop at one smoke-program breakpoint.
 
 ### Commit 4: CodeLLDB Manual Proof
 

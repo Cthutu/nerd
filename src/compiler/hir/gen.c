@@ -2332,6 +2332,8 @@ internal u32 hir_lower_stmt(Hir*         hir,
                                     .local_index      = local_index,
                                     .type_index       = local_type,
                                     .body_block_index = hir_no_index(),
+                                    .source_line =
+                                        hir_node_line(lexer, ast, node_index),
                                 });
         }
     case AK_Assign:
@@ -2346,6 +2348,7 @@ internal u32 hir_lower_stmt(Hir*         hir,
                 .local_index      = hir_node_local(sema, node_index),
                 .type_index       = hir_node_type(sema, node_index),
                 .body_block_index = hir_no_index(),
+                .source_line      = hir_node_line(lexer, ast, node_index),
             });
     case AK_DestructureBind:
     case AK_DestructureVariable:
@@ -2389,6 +2392,7 @@ internal u32 hir_lower_stmt(Hir*         hir,
                     .local_index       = sema_no_local(),
                     .type_index        = hir_node_type(sema, node_index),
                     .body_block_index  = item_count,
+                    .source_line       = hir_node_line(lexer, ast, node_index),
                 });
         }
     case AK_Assert:
@@ -2426,6 +2430,8 @@ internal u32 hir_lower_stmt(Hir*         hir,
                                 .type_index = hir_node_type(sema, node_index),
                                 .body_block_index = hir_lower_single_stmt_block(
                                     hir, lexer, ast, sema, node->a),
+                                .source_line =
+                                    hir_node_line(lexer, ast, node_index),
                             });
     case AK_Break:
     case AK_BreakExpr:
@@ -2441,6 +2447,7 @@ internal u32 hir_lower_stmt(Hir*         hir,
                 .local_index      = sema_no_local(),
                 .type_index       = hir_node_type(sema, node_index),
                 .body_block_index = hir_no_index(),
+                .source_line      = hir_node_line(lexer, ast, node_index),
             });
     case AK_Continue:
     case AK_ContinueExpr:
@@ -2452,6 +2459,8 @@ internal u32 hir_lower_stmt(Hir*         hir,
                                 .local_index   = sema_no_local(),
                                 .type_index = hir_node_type(sema, node_index),
                                 .body_block_index = hir_no_index(),
+                                .source_line =
+                                    hir_node_line(lexer, ast, node_index),
                             });
     case AK_Block:
         return hir_add_stmt(hir,
@@ -2463,6 +2472,8 @@ internal u32 hir_lower_stmt(Hir*         hir,
                                 .type_index = hir_node_type(sema, node_index),
                                 .body_block_index = hir_lower_block_node(
                                     hir, lexer, ast, sema, node_index),
+                                .source_line =
+                                    hir_node_line(lexer, ast, node_index),
                             });
     default:
         return hir_add_stmt(
@@ -2474,6 +2485,7 @@ internal u32 hir_lower_stmt(Hir*         hir,
                 .local_index      = sema_no_local(),
                 .type_index       = hir_node_type(sema, node_index),
                 .body_block_index = hir_no_index(),
+                .source_line      = hir_node_line(lexer, ast, node_index),
             });
     }
 }
