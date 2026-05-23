@@ -61,6 +61,13 @@ or when current docs refer to a settled review decision.
 - When reporting back, include the commit hash, verification run, and useful
   next step.
 
+## Generated Files
+
+Repo-level generated directories should start with an underscore, such as
+`_tmp`, `_bin`, or `_obj`. This keeps local build and debugger output easy to
+identify and clean up. Avoid adding new hidden generated directories such as
+`.nerd` in the repository root.
+
 Useful commands:
 
 ```sh
