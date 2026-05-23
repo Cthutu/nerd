@@ -40,7 +40,8 @@ starts the native executable is not enough.
 - CodeLLDB's bundled LLDB has been validated against a small watch program:
   it can stop on a Nerd source line, show a `string` local as `data/count`, show
   a plex local by field name, evaluate a field watch such as `point.x`, and
-  index through typed pointer data such as `message.data[0]`.
+  index through typed pointer data such as `message.data[0]`, and display and
+  index fixed-size stack arrays such as `values[1]`.
 - Nerd-visible function bindings are emitted as `$` aliases while generated
   function bodies use compiler-internal names such as `@fn.N`.
 - The runtime object is compiled from `data/nrt.c` and linked into generated
@@ -157,9 +158,10 @@ has a reusable expression evaluator or interpreter.
 
 The first proven subset is native CodeLLDB evaluation of in-scope locals,
 parameters, and simple field access backed by emitted DWARF type metadata. This
-currently covers primitive locals, stack-backed `string` values, and plex/tuple
-fields; slices share the same `data/count` type shape but still need a manual
-watch proof. Typed pointer indexing through `string.data` is proven. Dynamic
+currently covers primitive locals, stack-backed `string` values, plex/tuple
+fields, and fixed-size stack array indexing; slices share the same `data/count`
+type shape but still need a manual watch proof when the slice value is not
+stack-backed. Typed pointer indexing through `string.data` is proven. Dynamic
 arrays, general pointer dereference/indexing, and Nerd-owned expression parsing
 remain open.
 
@@ -270,8 +272,8 @@ that gap.
 - [x] Support locals and parameters by name.
 - [ ] Support field access for plexes, tuples, strings, slices, and dynamic
   arrays.
-- [ ] Support general pointer dereference and indexing where the runtime representation
-  is known.
+- [ ] Support general pointer dereference and indexing where the runtime
+  representation is known.
 - [ ] Reject unsupported watch expressions with clear debugger UI messages.
 - [ ] Add tests or scripted debugger smoke checks for watch evaluation.
 
@@ -452,7 +454,7 @@ Verification:
 
 - [x] Manual CodeLLDB watch checks for locals and simple fields.
 - [x] Manual CodeLLDB watch checks for typed pointer indexes.
-- [ ] Manual CodeLLDB watch checks for collection indexes.
+- [x] Manual CodeLLDB watch checks for collection indexes.
 - [x] Any automated debugger smoke checks added by this point pass.
 
 ### Commit 9: Windows 11 Plan To Implementation

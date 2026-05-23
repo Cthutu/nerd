@@ -2491,6 +2491,11 @@ internal bool llvm_debug_type_is_record_like(const Sema* sema, u32 type_index)
            kind == STK_Plex;
 }
 
+internal bool llvm_debug_type_is_array(const Sema* sema, u32 type_index)
+{
+    return llvm_type_kind(sema, type_index) == STK_Array;
+}
+
 internal u32 llvm_debug_emit_fallback_basic_type(LlvmDebugModule* debug,
                                                  string           name,
                                                  u32              size,
@@ -2611,6 +2616,40 @@ internal void llvm_debug_emit_composite_type(LlvmDebugModule* debug,
     arena_done(&name_arena);
 }
 
+internal void llvm_debug_emit_array_type(LlvmDebugModule* debug,
+                                         const Sema*      sema,
+                                         u32              type_index,
+                                         u32              type_id)
+{
+    Arena name_arena = {0};
+    arena_init(&name_arena);
+
+    u32 item_type       = llvm_collection_item_type(sema, type_index);
+    u32 item_debug_type = llvm_debug_type(debug, sema, item_type);
+    u32 elements_id     = llvm_debug_alloc_id(debug);
+    u32 subrange_id     = llvm_debug_alloc_id(debug);
+
+    sb_format(&debug->metadata,
+              "!%u = !DICompositeType(tag: DW_TAG_array_type, name: ",
+              type_id);
+    llvm_debug_append_quoted(
+        &debug->metadata,
+        llvm_debug_type_name(debug, sema, type_index, &name_arena));
+    sb_format(&debug->metadata,
+              ", file: !%u, baseType: !%u, size: %u, elements: !%u)\n",
+              debug->file_id,
+              item_debug_type,
+              llvm_type_storage_bits(sema, type_index),
+              elements_id);
+    sb_format(&debug->metadata, "!%u = !{!%u}\n", elements_id, subrange_id);
+    sb_format(&debug->metadata,
+              "!%u = !DISubrange(count: %u, lowerBound: 0)\n",
+              subrange_id,
+              sema->types[type_index].return_type);
+
+    arena_done(&name_arena);
+}
+
 internal u32 llvm_debug_type(LlvmDebugModule* debug,
                              const Sema*      sema,
                              u32              type_index)
@@ -2629,9 +2668,10 @@ internal u32 llvm_debug_type(LlvmDebugModule* debug,
     cstr   encoding   = NULL;
     bool   is_pointer = false;
     bool   is_record  = llvm_debug_type_is_record_like(sema, type_index);
+    bool   is_array   = llvm_debug_type_is_array(sema, type_index);
     if (!llvm_debug_type_info(
             sema, type_index, &name, &size, &encoding, &is_pointer) &&
-        !is_record) {
+        !is_record && !is_array) {
         return 0;
     }
 
@@ -2643,6 +2683,8 @@ internal u32 llvm_debug_type(LlvmDebugModule* debug,
                });
     if (is_record) {
         llvm_debug_emit_composite_type(debug, sema, type_index, id);
+    } else if (is_array) {
+        llvm_debug_emit_array_type(debug, sema, type_index, id);
     } else if (is_pointer) {
         u32 base_type = 0;
         if (type_index < array_count(sema->types) &&

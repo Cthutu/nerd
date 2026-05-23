@@ -19,7 +19,11 @@ main :: fn () {
     message = "hello"
     point: Point
     point = Point { x: 3 y: 4 }
-    on point.x == 3 => prn(message)
+    values: [3]i32
+    values = [10, 20, 30]
+    bytes: [3]u8
+    bytes = [1.as(u8), 2.as(u8), 3.as(u8)]
+    on point.x == 3 && values[1] == 20 && bytes[2] == 3 => prn(message)
 }
 """
 
@@ -83,11 +87,13 @@ def main() -> int:
 
     commands = [
         "target create " + str(binary),
-        "breakpoint set --file main.n --line 11",
+        "breakpoint set --file main.n --line 15",
         "run",
-        "frame variable message point",
+        "frame variable message point values bytes",
         "expression point.x",
         "expression message.data[0]",
+        "expression values[1]",
+        "expression bytes[2]",
     ]
     lldb_cmd = [str(lldb), "--batch"]
     for command in commands:
@@ -105,8 +111,12 @@ def main() -> int:
         "(Point) point = {",
         "x = 3",
         "y = 4",
+        "(int[3]) values = ([0] = 10, [1] = 20, [2] = 30)",
+        '(unsigned char[3]) bytes = "\\U00000001\\U00000002\\U00000003"',
         "(int) $0 = 3",
         "(unsigned char) $1 = 'h'",
+        "(int) $2 = 20",
+        "(unsigned char) $3 = '\\x03'",
     ]
     missing = [item for item in expected if item not in output]
     if missing:
