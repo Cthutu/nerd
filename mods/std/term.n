@@ -471,7 +471,7 @@ term_fb_resize :: fn (width: u32, height: u32) -> bool {
 }
 
 term_fb_release :: fn () {
-    term_fb_cells.clear()
+    term_fb_cells.free()
     term_fb_width  = 0
     term_fb_height = 0
     term_fb_ready  = no
@@ -1983,6 +1983,18 @@ test "framebuffer resize keeps dimensions and cell count consistent" {
     assert term_fb_cells.count == 2
 
     term_fb_release()
+}
+
+test "framebuffer release frees backing storage" {
+    term_fb_release()
+
+    assert term_fb_resize(8, 3)
+    assert term_fb_cells.count == 24
+    assert term_fb_cells.capacity >= 24
+
+    term_fb_release()
+    assert term_fb_cells.count == 0
+    assert term_fb_cells.capacity == 0
 }
 
 test "framebuffer resize preserves overlapping cells" {
