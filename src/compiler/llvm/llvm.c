@@ -2803,7 +2803,8 @@ internal u32 llvm_debug_local_variable(LlvmDebugModule* debug,
 internal void llvm_debug_emit_declare(LlvmFunctionContext* ctx,
                                       u32                  local_index,
                                       string               ptr,
-                                      u32                  type_index)
+                                      u32                  type_index,
+                                      u32                  arg_index)
 {
     if (ctx->sema == NULL || local_index >= array_count(ctx->sema->locals) ||
         ctx->sema->locals[local_index].owner_decl_index !=
@@ -2816,7 +2817,7 @@ internal void llvm_debug_emit_declare(LlvmFunctionContext* ctx,
                                              local_index,
                                              type_index,
                                              ctx->debug_scope_id,
-                                             0);
+                                             arg_index);
     if (variable == 0) {
         return;
     }
@@ -3276,9 +3277,10 @@ internal LlvmLocalSlot* llvm_find_local_slot(LlvmFunctionContext* ctx,
     return NULL;
 }
 
-internal LlvmLocalSlot* llvm_ensure_local_slot(LlvmFunctionContext* ctx,
-                                               u32                  local_index,
-                                               u32                  type_index)
+internal LlvmLocalSlot* llvm_ensure_local_slot_ex(LlvmFunctionContext* ctx,
+                                                  u32 local_index,
+                                                  u32 type_index,
+                                                  u32 arg_index)
 {
     LlvmLocalSlot* slot = llvm_find_local_slot(ctx, local_index);
     if (slot != NULL) {
@@ -3294,8 +3296,15 @@ internal LlvmLocalSlot* llvm_ensure_local_slot(LlvmFunctionContext* ctx,
                });
     string type = llvm_type_string(ctx, type_index);
     llvm_emit_alloca(ctx, ptr, type);
-    llvm_debug_emit_declare(ctx, local_index, ptr, type_index);
+    llvm_debug_emit_declare(ctx, local_index, ptr, type_index, arg_index);
     return &ctx->slots[array_count(ctx->slots) - 1];
+}
+
+internal LlvmLocalSlot* llvm_ensure_local_slot(LlvmFunctionContext* ctx,
+                                               u32                  local_index,
+                                               u32                  type_index)
+{
+    return llvm_ensure_local_slot_ex(ctx, local_index, type_index, 0);
 }
 
 internal void llvm_store_local_slot(LlvmFunctionContext* ctx,
@@ -11244,7 +11253,8 @@ internal bool llvm_initialise_assigned_param_slots(LlvmFunctionContext* ctx,
     for (u32 i = 0; i < function->param_count; ++i) {
         const HirParam* param = &ctx->hir->params[function->first_param + i];
         if (param->local_index == U32_MAX ||
-            !llvm_local_is_assigned(ctx, param->local_index)) {
+            (!llvm_local_is_assigned(ctx, param->local_index) &&
+             ctx->debug == NULL)) {
             continue;
         }
 
@@ -11254,8 +11264,8 @@ internal bool llvm_initialise_assigned_param_slots(LlvmFunctionContext* ctx,
             return false;
         }
 
-        LlvmLocalSlot* slot =
-            llvm_ensure_local_slot(ctx, param->local_index, param->type_index);
+        LlvmLocalSlot* slot = llvm_ensure_local_slot_ex(
+            ctx, param->local_index, param->type_index, i + 1);
         llvm_store_local_slot(ctx,
                               slot,
                               (LlvmValue){
@@ -11273,7 +11283,8 @@ internal bool llvm_emit_param_debug_values(LlvmFunctionContext* ctx,
     for (u32 i = 0; i < function->param_count; ++i) {
         const HirParam* param = &ctx->hir->params[function->first_param + i];
         if (param->local_index == U32_MAX ||
-            llvm_local_is_assigned(ctx, param->local_index)) {
+            llvm_local_is_assigned(ctx, param->local_index) ||
+            llvm_find_local_slot(ctx, param->local_index) != NULL) {
             continue;
         }
 

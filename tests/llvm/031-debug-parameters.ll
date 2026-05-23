@@ -14,11 +14,17 @@ main :: fn () -> i32 {
 @.macro.file.m0 = private unnamed_addr constant [40 x i8] c"tests/llvm/031-debug-parameters.input.n\00"
 
 define internal i32 @fn.0(i32 %left, i32 %right) !dbg !6 {
-  call void @llvm.dbg.value(metadata i32 %left, metadata !9, metadata !5), !dbg !10
-  call void @llvm.dbg.value(metadata i32 %right, metadata !11, metadata !5), !dbg !10
-  %t0 = add i32 %left, %right, !dbg !12
-  call void @llvm.dbg.value(metadata i32 %t0, metadata !13, metadata !5), !dbg !12
-  ret i32 %t0, !dbg !14
+  %local.0 = alloca i32
+  call void @llvm.dbg.declare(metadata ptr %local.0, metadata !9, metadata !5), !dbg !10
+  %local.1 = alloca i32
+  call void @llvm.dbg.declare(metadata ptr %local.1, metadata !11, metadata !5), !dbg !10
+  store i32 %left, ptr %local.0
+  store i32 %right, ptr %local.1
+  %t0 = load i32, ptr %local.0, !dbg !12
+  %t1 = load i32, ptr %local.1, !dbg !12
+  %t2 = add i32 %t0, %t1, !dbg !12
+  call void @llvm.dbg.value(metadata i32 %t2, metadata !13, metadata !5), !dbg !12
+  ret i32 %t2, !dbg !14
 }
 
 define internal i32 @fn.1() !dbg !15 {
@@ -29,6 +35,7 @@ define internal i32 @fn.1() !dbg !15 {
 @$add = internal alias i32 (i32, i32), ptr @fn.0
 @$main = alias i32 (), ptr @fn.1
 
+declare void @llvm.dbg.declare(metadata, metadata, metadata)
 declare void @llvm.dbg.value(metadata, metadata, metadata)
 
 !llvm.dbg.cu = !{!0}
