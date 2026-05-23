@@ -226,12 +226,14 @@ pub TermSimulate :: plex {
     height   u32
     keyboard TermKeyboard
     mouse    TermMouse
+    user_data ^void
 }
 
 pub TermPresent :: plex {
-    dt     Duration
-    width  u32
-    height u32
+    dt        Duration
+    width     u32
+    height    u32
+    user_data ^void
 }
 
 pub TermSimulateFn :: fn (TermSimulate)
@@ -291,11 +293,13 @@ term_keyboard_released : [TERM_KEY_CODE_COUNT]bool
 term_mouse             : TermMouse
 term_simulate_hook     : TermSimulateFn
 term_simulate_hook_set : bool
+term_simulate_user_data : ^void
 term_simulate_interval : Duration
 term_simulate_last     : Instant
 term_simulate_ran      : bool
 term_present_hook      : TermPresentFn
 term_present_hook_set  : bool
+term_present_user_data : ^void
 term_present_interval  : Duration
 term_present_last      : Instant
 term_present_ran       : bool
@@ -1591,20 +1595,27 @@ pub term_valid :: fn () -> bool {
 
 -- Registers a simulation callback. The callback runs from
 -- `term_run` no more often than `interval`, receives accumulated
--- keyboard edges, and is skipped while the terminal is below its requested
--- minimum size.
-pub term_hook_simulation :: fn (interval: Duration, callback: TermSimulateFn) {
+-- keyboard edges and caller-supplied `user_data`, and is skipped while the
+-- terminal is below its requested minimum size.
+pub term_hook_simulation :: fn (interval  : Duration,
+                                callback  : TermSimulateFn,
+                                user_data : ^void = nil) {
     term_simulate_interval = interval
     term_simulate_hook     = callback
+    term_simulate_user_data = user_data
     term_simulate_hook_set = yes
     term_simulate_ran      = no
 }
 
 -- Registers a presentation callback. The callback runs immediately before the
--- framebuffer is presented, so drawing code writes into the current frame.
-pub term_hook_presentation :: fn (interval: Duration, callback: TermPresentFn) {
+-- framebuffer is presented, so drawing code writes into the current frame and
+-- can read caller-supplied `user_data`.
+pub term_hook_presentation :: fn (interval  : Duration,
+                                  callback  : TermPresentFn,
+                                  user_data : ^void = nil) {
     term_present_interval = interval
     term_present_hook     = callback
+    term_present_user_data = user_data
     term_present_hook_set = yes
     term_present_ran      = no
 }
@@ -1613,6 +1624,8 @@ pub term_hook_presentation :: fn (interval: Duration, callback: TermPresentFn) {
 pub term_hooks_clear :: fn () {
     term_simulate_hook_set = no
     term_present_hook_set  = no
+    term_simulate_user_data = nil
+    term_present_user_data = nil
     term_simulate_interval = 0
     term_present_interval  = 0
     term_simulate_last     = 0
@@ -1653,6 +1666,7 @@ term_run_simulation_hook :: fn (current: Instant) {
         height   : term_last_rows
         keyboard : term_keyboard_snapshot()
         mouse    : term_mouse
+        user_data: term_simulate_user_data
     }
     term_simulate_hook(sim)
     term_keyboard_clear_edges()
@@ -1670,8 +1684,9 @@ term_run_presentation_hook :: fn (current: Instant) {
 
     present := TermPresent {
         dt
-        width  : term_last_columns
-        height : term_last_rows
+        width     : term_last_columns
+        height    : term_last_rows
+        user_data : term_present_user_data
     }
     term_present_hook(present)
 }
@@ -1793,6 +1808,18 @@ term_noop_simulate :: fn (_sim: TermSimulate) {
 }
 
 term_noop_present :: fn (_present: TermPresent) {
+}
+
+term_test_payload              : u32
+term_test_simulate_user_data   : ^void
+term_test_presentation_user_data : ^void
+
+term_capture_simulate :: fn (sim: TermSimulate) {
+    term_test_simulate_user_data = sim.user_data
+}
+
+term_capture_present :: fn (present: TermPresent) {
+    term_test_presentation_user_data = present.user_data
 }
 
 test "term_get_size returns a column and row tuple" {
@@ -2287,20 +2314,43 @@ test "terminal hook due runs first tick then by interval" {
 }
 
 test "terminal hooks clear resets registered callbacks" {
-    term_hook_simulation(50.as(Duration), term_noop_simulate)
-    term_hook_presentation(50.as(Duration), term_noop_present)
+    term_hook_simulation(50.as(Duration), term_noop_simulate, (^term_test_payload).as(^void))
+    term_hook_presentation(50.as(Duration), term_noop_present, (^term_test_payload).as(^void))
 
     assert term_simulate_hook_set
     assert term_present_hook_set
+    assert term_simulate_user_data == (^term_test_payload).as(^void)
+    assert term_present_user_data == (^term_test_payload).as(^void)
 
     term_hooks_clear()
 
     assert !term_simulate_hook_set
     assert !term_present_hook_set
+    assert term_simulate_user_data == nil
+    assert term_present_user_data == nil
     assert term_simulate_interval == 0
     assert term_present_interval == 0
     assert !term_simulate_ran
     assert !term_present_ran
+}
+
+test "terminal hooks relay user data" {
+    term_test_simulate_user_data    = nil
+    term_test_presentation_user_data = nil
+    term_last_columns              = 80
+    term_last_rows                 = 25
+
+    payload := (^term_test_payload).as(^void)
+    term_hook_simulation(50.as(Duration), term_capture_simulate, payload)
+    term_hook_presentation(50.as(Duration), term_capture_present, payload)
+
+    term_run_simulation_hook(100.as(Instant))
+    term_run_presentation_hook(100.as(Instant))
+
+    assert term_test_simulate_user_data == payload
+    assert term_test_presentation_user_data == payload
+
+    term_hooks_clear()
 }
 
 test "too-small renderer marks warning background" {

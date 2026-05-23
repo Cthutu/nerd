@@ -127,6 +127,17 @@ and reuses storage, and `done()` releases the reserved arena range.
 `split` returns a dynamic array and the caller is responsible for freeing that
 array when it is no longer needed.
 
+### `std.term`
+
+Terminal hook registration accepts optional opaque user data:
+
+- `term_hook_simulation(interval: Duration, callback: TermSimulateFn, user_data: ^void = nil) -> void`
+- `term_hook_presentation(interval: Duration, callback: TermPresentFn, user_data: ^void = nil) -> void`
+
+The registered pointer is relayed through `TermSimulate.user_data` and
+`TermPresent.user_data` each time the hook runs. `term_hooks_clear()` resets both
+stored pointers to `nil`.
+
 ### `std.traits`
 
 - `Display`

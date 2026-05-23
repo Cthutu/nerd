@@ -147,6 +147,10 @@ simulate :: fn (s: TermSimulate) {
             {
                 "label": "mouse",
                 "kind": 5
+            },
+            {
+                "label": "user_data",
+                "kind": 5
             }
         ]
     },
