@@ -2644,11 +2644,22 @@ internal u32 llvm_debug_type(LlvmDebugModule* debug,
     if (is_record) {
         llvm_debug_emit_composite_type(debug, sema, type_index, id);
     } else if (is_pointer) {
+        u32 base_type = 0;
+        if (type_index < array_count(sema->types) &&
+            sema->types[type_index].first_param_type != sema_no_type()) {
+            base_type = llvm_debug_type(
+                debug, sema, sema->types[type_index].first_param_type);
+        }
         sb_format(&debug->metadata,
                   "!%u = !DIDerivedType(tag: DW_TAG_pointer_type, name: ",
                   id);
         llvm_debug_append_quoted(&debug->metadata, name);
-        sb_format(&debug->metadata, ", baseType: null, size: %u)\n", size);
+        if (base_type != 0) {
+            sb_format(&debug->metadata, ", baseType: !%u", base_type);
+        } else {
+            sb_append_cstr(&debug->metadata, ", baseType: null");
+        }
+        sb_format(&debug->metadata, ", size: %u)\n", size);
     } else {
         sb_format(&debug->metadata, "!%u = !DIBasicType(name: ", id);
         llvm_debug_append_quoted(&debug->metadata, name);
