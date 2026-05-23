@@ -45,7 +45,8 @@ starts the native executable is not enough.
   a plex local by field name, evaluate a field watch such as `point.x`, and
   index through typed pointer data such as `message.data[0]`, display and
   index fixed-size stack arrays such as `values[1]`, and inspect/index
-  stack-backed slices such as `slice.data[1]`.
+  stack-backed slices such as `slice.data[1]`, and index dynamic-array data
+  pointers such as `numbers[1]`.
 - Nerd-visible function bindings are emitted as `$` aliases while generated
   function bodies use compiler-internal names such as `@fn.N`.
 - The runtime object is compiled from `data/nrt.c` and linked into generated
@@ -163,10 +164,11 @@ has a reusable expression evaluator or interpreter.
 The first proven subset is native CodeLLDB evaluation of in-scope locals,
 parameters, and simple field access backed by emitted DWARF type metadata. This
 currently covers primitive locals, `string` and slice values, plex/tuple
-fields, and fixed-size stack array indexing, including composite locals
-introduced with `:=`. Typed pointer indexing through `string.data` and
-`slice.data` is proven. Dynamic arrays, general pointer dereference/indexing,
-and Nerd-owned expression parsing remain open.
+fields, fixed-size stack array indexing, and dynamic-array data pointer
+indexing, including composite locals introduced with `:=`. Typed pointer
+indexing through `string.data` and `slice.data` is proven. Dynamic-array
+`.count`/`.capacity` rendering, general pointer dereference/indexing, and
+Nerd-owned expression parsing remain open.
 
 ### Value Rendering
 

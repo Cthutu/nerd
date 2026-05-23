@@ -2356,6 +2356,11 @@ internal bool llvm_debug_type_info(const Sema* sema,
         *out_size    = 64;
         *out_pointer = true;
         return true;
+    case STK_DynamicArray:
+        *out_name    = s("ptr");
+        *out_size    = 64;
+        *out_pointer = true;
+        return true;
     default:
         return false;
     }
@@ -2686,6 +2691,11 @@ internal u32 llvm_debug_type(LlvmDebugModule* debug,
     } else if (is_array) {
         llvm_debug_emit_array_type(debug, sema, type_index, id);
     } else if (is_pointer) {
+        Arena name_arena = {0};
+        arena_init(&name_arena);
+        if (llvm_type_kind(sema, type_index) == STK_DynamicArray) {
+            name = llvm_debug_type_name(debug, sema, type_index, &name_arena);
+        }
         u32 base_type = 0;
         if (type_index < array_count(sema->types) &&
             sema->types[type_index].first_param_type != sema_no_type()) {
@@ -2702,6 +2712,7 @@ internal u32 llvm_debug_type(LlvmDebugModule* debug,
             sb_append_cstr(&debug->metadata, ", baseType: null");
         }
         sb_format(&debug->metadata, ", size: %u)\n", size);
+        arena_done(&name_arena);
     } else {
         sb_format(&debug->metadata, "!%u = !DIBasicType(name: ", id);
         llvm_debug_append_quoted(&debug->metadata, name);
