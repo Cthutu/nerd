@@ -42,6 +42,14 @@
             {
                 "command": "nerd.restartLanguageServer",
                 "title": "Nerd: Restart Language Server"
+            },
+            {
+                "command": "nerd.debugActiveFileWithCodeLLDB",
+                "title": "Nerd: Debug Active File with CodeLLDB"
+            },
+            {
+                "command": "nerd.buildActiveFileForDebug",
+                "title": "Nerd: Build Active File for Debug"
             }
         ],
         "configuration": {

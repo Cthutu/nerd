@@ -22,10 +22,11 @@ let suppressEnterIndentUntil = 0;
 
 function execFileAsync(
     command: string,
-    args: string[]
+    args: string[],
+    options?: { cwd?: string; env?: NodeJS.ProcessEnv }
 ): Promise<{ stdout: string; stderr: string }> {
     return new Promise((resolve, reject) => {
-        execFile(command, args, (error, stdout, stderr) => {
+        execFile(command, args, options ?? {}, (error, stdout, stderr) => {
             if (error) {
                 reject(
                     new Error(
@@ -177,6 +178,102 @@ function getToolExecutablePath(): string {
     const config = vscode.workspace.getConfiguration("nerd");
     const configuredPath = config.get<string>("languageServer.path", "").trim();
     return configuredPath || findWorkspaceServer() || findUserServer() || "nerd";
+}
+
+function workspaceFolderForDocument(
+    document: vscode.TextDocument
+): vscode.WorkspaceFolder | undefined {
+    return vscode.workspace.getWorkspaceFolder(document.uri);
+}
+
+function executableSuffix(): string {
+    return process.platform === "win32" ? ".exe" : "";
+}
+
+function nerdDebugOutputPath(document: vscode.TextDocument): string {
+    const workspaceFolder = workspaceFolderForDocument(document);
+    const baseDir = workspaceFolder?.uri.fsPath ?? path.dirname(document.fileName);
+    const outputDir = path.join(baseDir, ".nerd", "debug");
+    const parsed = path.parse(document.fileName);
+    return path.join(outputDir, `${parsed.name}${executableSuffix()}`);
+}
+
+async function buildActiveNerdDocumentForDebug(): Promise<string | undefined> {
+    const editor = vscode.window.activeTextEditor;
+    const document = editor?.document;
+
+    if (!document || document.languageId !== "nerd" || document.uri.scheme !== "file") {
+        void vscode.window.showErrorMessage("Open a Nerd source file before debugging.");
+        return undefined;
+    }
+
+    if (document.isDirty) {
+        await document.save();
+    }
+
+    const executablePath = getToolExecutablePath();
+    const outputPath = nerdDebugOutputPath(document);
+    const outputDir = path.dirname(outputPath);
+    const sourcePath = document.uri.fsPath;
+    const workspaceFolder = workspaceFolderForDocument(document);
+    const cwd = workspaceFolder?.uri.fsPath ?? path.dirname(sourcePath);
+    const toolSourcePath =
+        executablePath !== "nerd"
+            ? executablePath
+            : findWorkspaceServer() || findUserServer();
+    const env = getServerEnvironment(toolSourcePath);
+
+    fs.mkdirSync(outputDir, { recursive: true });
+    outputChannel?.appendLine(`Building debug executable: ${sourcePath}`);
+    outputChannel?.appendLine(`Output: ${outputPath}`);
+
+    try {
+        const result = await execFileAsync(
+            executablePath,
+            ["build", sourcePath, "--output", outputPath],
+            { cwd, env }
+        );
+        if (result.stdout.trim()) {
+            outputChannel?.appendLine(result.stdout.trimEnd());
+        }
+        if (result.stderr.trim()) {
+            outputChannel?.appendLine(result.stderr.trimEnd());
+        }
+        return outputPath;
+    } catch (error) {
+        outputChannel?.appendLine(String(error));
+        outputChannel?.show(true);
+        void vscode.window.showErrorMessage(`Nerd debug build failed: ${String(error)}`);
+        return undefined;
+    }
+}
+
+async function debugActiveNerdFileWithCodeLLDB() {
+    const editor = vscode.window.activeTextEditor;
+    const document = editor?.document;
+    const executablePath = await buildActiveNerdDocumentForDebug();
+    if (!document || !executablePath) {
+        return;
+    }
+
+    const workspaceFolder = workspaceFolderForDocument(document);
+    const cwd = workspaceFolder?.uri.fsPath ?? path.dirname(document.uri.fsPath);
+    const started = await vscode.debug.startDebugging(workspaceFolder, {
+        type: "lldb",
+        request: "launch",
+        name: `Debug ${path.basename(document.uri.fsPath)}`,
+        program: executablePath,
+        args: [],
+        cwd,
+        sourceLanguages: ["c"],
+    });
+
+    if (!started) {
+        outputChannel?.show(true);
+        void vscode.window.showErrorMessage(
+            "Could not start CodeLLDB. Install the CodeLLDB extension and try again."
+        );
+    }
 }
 
 async function provideFormattedText(
@@ -559,6 +656,18 @@ export function activate(
             async () => {
                 await restartLanguageServer("manual restart command");
             }
+        )
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "nerd.buildActiveFileForDebug",
+            buildActiveNerdDocumentForDebug
+        )
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "nerd.debugActiveFileWithCodeLLDB",
+            debugActiveNerdFileWithCodeLLDB
         )
     );
     return startLanguageServer(context);

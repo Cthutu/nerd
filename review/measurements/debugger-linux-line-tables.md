@@ -6,6 +6,7 @@ Commit context: local implementation for `DEBUGGER.md` Commit 3.
 
 Host tools:
 
+- Host: `Linux alpha 7.0.9-1-cachyos x86_64`
 - `readelf`: GNU Binutils 2.46.0
 - CodeLLDB extension: `vadimcn.vscode-lldb-1.12.2`
 - Bundled LLDB: `lldb version 22.1.4-codelldb`

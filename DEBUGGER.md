@@ -23,6 +23,8 @@ starts the native executable is not enough.
 
 - The VS Code extension owns `.n` file registration, TextMate grammar wiring,
   LSP launch, formatting, indentation, and `nerd.restartLanguageServer`.
+- The VS Code extension can build the active Nerd file and start a CodeLLDB
+  `type: "lldb"` debug session through `nerd.debugActiveFileWithCodeLLDB`.
 - The compiler backend lowers HIR to textual LLVM IR and invokes clang.
 - Non-release executable builds already pass `-g -O0` to clang and should be
   treated as debug builds.
@@ -120,6 +122,13 @@ by the compiler into the executable. Keep a Nerd-owned Debug Adapter Protocol
 adapter out of the first slice unless CodeLLDB cannot consume the generated
 metadata well enough.
 
+The current Linux-first bridge is a VS Code command, not a Nerd-owned debug
+adapter. `Nerd: Debug Active File with CodeLLDB` builds the active `.n` file to
+`.nerd/debug/` and starts a CodeLLDB `type: "lldb"` launch. A checked-in
+`launch.json` can also use `"program": "${command:nerd.buildActiveFileForDebug}"`
+with `type: "lldb"`. This keeps the user workflow usable while preserving the
+`type: "nerd"` decision for a real adapter or proven adapter-delegation layer.
+
 ### Watch Expressions
 
 Watch support has two levels:
@@ -210,10 +219,11 @@ that gap.
 ### MS3: VS Code Launch Integration
 
 - [ ] Add VS Code `debuggers` contribution metadata for `type: "nerd"`.
-- [ ] Add a default `launch.json` snippet for the active `.n` file.
-- [ ] Build the Nerd program before launching the debugger.
-- [ ] Surface compiler diagnostics in VS Code when the debug build fails.
-- [ ] Resolve the debugger executable/tool path using workspace, user install,
+- [x] Add a documented CodeLLDB `launch.json` configuration for the active
+  `.n` file.
+- [x] Build the Nerd program before launching the debugger.
+- [x] Surface compiler diagnostics in VS Code when the debug build fails.
+- [x] Resolve the compiler executable/tool path using workspace, user install,
   and PATH rules similar to the language-server lookup.
 - [ ] Add editor integration checks for debugger contribution metadata.
 - [ ] Keep the launch configuration schema platform-aware so Linux and Windows
@@ -338,10 +348,10 @@ Verification:
 
 ### Commit 4: CodeLLDB Manual Proof
 
-- [ ] Add a documented manual CodeLLDB launch configuration for the smoke
+- [x] Add a documented manual CodeLLDB launch configuration for the smoke
   binary.
 - [ ] Verify CodeLLDB stops on the same Nerd source line as command-line LLDB.
-- [ ] Record the CodeLLDB version and Linux host details used for validation.
+- [x] Record the CodeLLDB version and Linux host details used for validation.
 
 Verification:
 
@@ -363,12 +373,12 @@ Verification:
 - [x] LLDB and CodeLLDB show smoke-program locals and parameters at a
   breakpoint.
 
-### Commit 6: VS Code Nerd Launch
+### Commit 6: VS Code CodeLLDB Launch Bridge
 
 - [ ] Add VS Code `debuggers` contribution metadata for `type: "nerd"`.
-- [ ] Add launch configuration snippets that build the active Nerd file.
-- [ ] Delegate Linux debug sessions to CodeLLDB after the build succeeds.
-- [ ] Surface build failures through VS Code output or diagnostics.
+- [x] Add a CodeLLDB launch configuration path that builds the active Nerd file.
+- [x] Delegate Linux debug sessions to CodeLLDB after the build succeeds.
+- [x] Surface build failures through VS Code output or diagnostics.
 
 Verification:
 

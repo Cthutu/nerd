@@ -36,6 +36,15 @@ def check_vscode_extension() -> None:
     if not grammar_path.exists():
         raise AssertionError(f"VS Code grammar path is missing: {grammar_path}")
 
+    commands = {command["command"] for command in contributes["commands"]}
+    for command in [
+        "nerd.restartLanguageServer",
+        "nerd.buildActiveFileForDebug",
+        "nerd.debugActiveFileWithCodeLLDB",
+    ]:
+        if command not in commands:
+            raise AssertionError(f"VS Code extension is missing command {command!r}")
+
     properties = contributes["configuration"]["properties"]
     args = properties["nerd.languageServer.args"]["default"]
     if args != ["lsp"]:
@@ -52,6 +61,10 @@ def check_vscode_extension() -> None:
         "registerEnterIndentation(context)",
         "computeNerdIndent(lines, line)",
         "nerd.restartLanguageServer",
+        "nerd.buildActiveFileForDebug",
+        "nerd.debugActiveFileWithCodeLLDB",
+        'type: "lldb"',
+        '["build", sourcePath, "--output", outputPath]',
         "fullDocumentRange(document)",
         "document.positionAt(document.getText().length)",
         "suppressEnterIndentUntil",
