@@ -338,15 +338,19 @@ internal void cli_validate_parser(const CliParser* parser)
 internal void
 cli_set_json_bool(JsonValue* object, Arena* arena, string key, bool value)
 {
-    string key_copy = string_format(arena, STRINGP, STRINGV(key));
-    json_object_set_bool(object, arena, (cstr)key_copy.data, value);
+    char* key_copy = (char*)arena_alloc(arena, key.count + 1);
+    memcpy(key_copy, key.data, key.count);
+    key_copy[key.count] = '\0';
+    json_object_set_bool(object, arena, key_copy, value);
 }
 
 internal void
 cli_set_json_string(JsonValue* object, Arena* arena, string key, string value)
 {
-    string key_copy = string_format(arena, STRINGP, STRINGV(key));
-    json_object_set_string(object, arena, (cstr)key_copy.data, value);
+    char* key_copy = (char*)arena_alloc(arena, key.count + 1);
+    memcpy(key_copy, key.data, key.count);
+    key_copy[key.count] = '\0';
+    json_object_set_string(object, arena, key_copy, value);
 }
 
 internal void cli_add_named_option_row(Table* table,

@@ -5,12 +5,13 @@
             "name": "Debug Dungeon (Nerd + CodeLLDB)",
             "type": "lldb",
             "request": "launch",
-            "program": "${command:nerd.buildActiveFileForDebug}",
+            "program": "${workspaceFolder}/_tmp/debug/dungeon",
             "args": [],
             "cwd": "${workspaceFolder}/examples/dungeon",
             "env": {
                 "NERD_LIB_PATH": "${workspaceFolder}/mods"
             },
+            "preLaunchTask": "Build Dungeon Debug",
             "terminal": "integrated",
             "sourceLanguages": [
                 "c"
