@@ -230,7 +230,7 @@ async function buildActiveNerdDocumentForDebug(): Promise<string | undefined> {
     try {
         const result = await execFileAsync(
             executablePath,
-            ["build", sourcePath, "--output", outputPath],
+            ["build", "--output", outputPath, sourcePath],
             { cwd, env }
         );
         if (result.stdout.trim()) {

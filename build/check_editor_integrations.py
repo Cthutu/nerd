@@ -77,7 +77,7 @@ def check_vscode_extension() -> None:
         "nerd.buildActiveFileForDebug",
         "nerd.debugActiveFileWithCodeLLDB",
         'type: "lldb"',
-        '["build", sourcePath, "--output", outputPath]',
+        '["build", "--output", outputPath, sourcePath]',
         "fullDocumentRange(document)",
         "document.positionAt(document.getText().length)",
         "suppressEnterIndentUntil",
