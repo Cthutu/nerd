@@ -23,7 +23,10 @@ main :: fn () {
     values = [10, 20, 30]
     bytes: [3]u8
     bytes = [1.as(u8), 2.as(u8), 3.as(u8)]
-    on point.x == 3 && values[1] == 20 && bytes[2] == 3 => prn(message)
+    slice: []u8
+    slice = bytes[..]
+    on point.x == 3 && values[1] == 20 && bytes[2] == 3 &&
+       slice.data[1] == 2 => prn(message)
 }
 """
 
@@ -87,13 +90,14 @@ def main() -> int:
 
     commands = [
         "target create " + str(binary),
-        "breakpoint set --file main.n --line 15",
+        "breakpoint set --file main.n --line 18",
         "run",
-        "frame variable message point values bytes",
+        "frame variable message point values bytes slice",
         "expression point.x",
         "expression message.data[0]",
         "expression values[1]",
         "expression bytes[2]",
+        "expression slice.data[1]",
     ]
     lldb_cmd = [str(lldb), "--batch"]
     for command in commands:
@@ -113,10 +117,13 @@ def main() -> int:
         "y = 4",
         "(int[3]) values = ([0] = 10, [1] = 20, [2] = 30)",
         '(unsigned char[3]) bytes = "\\U00000001\\U00000002\\U00000003"',
+        "([]u8) slice = (data = ",
+        "count = 3)",
         "(int) $0 = 3",
         "(unsigned char) $1 = 'h'",
         "(int) $2 = 20",
         "(unsigned char) $3 = '\\x03'",
+        "(unsigned char) $4 = '\\x02'",
     ]
     missing = [item for item in expected if item not in output]
     if missing:
