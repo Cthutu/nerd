@@ -2,6 +2,21 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Debug Dungeon (Nerd + CodeLLDB)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${command:nerd.buildActiveFileForDebug}",
+            "args": [],
+            "cwd": "${workspaceFolder}/examples/dungeon",
+            "env": {
+                "NERD_LIB_PATH": "${workspaceFolder}/mods"
+            },
+            "terminal": "integrated",
+            "sourceLanguages": [
+                "c"
+            ]
+        },
+        {
             "name": "Launch Executable (Linux)",
             "type": "lldb",
             "request": "launch",
