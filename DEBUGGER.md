@@ -47,6 +47,8 @@ starts the native executable is not enough.
   index fixed-size stack arrays such as `values[1]`, and inspect/index
   stack-backed slices such as `slice.data[1]`, and index dynamic-array data
   pointers such as `numbers[1]`.
+- Function parameters emitted with `dbg.value` are marked as DWARF arguments so
+  CodeLLDB exposes ordinary arguments such as `std.random.random_seed(seed)`.
 - Nerd-visible function bindings are emitted as `$` aliases while generated
   function bodies use compiler-internal names such as `@fn.N`.
 - The runtime object is compiled from `data/nrt.c` and linked into generated

@@ -2748,7 +2748,8 @@ internal u32 llvm_debug_local_variable(LlvmDebugModule* debug,
                                        const Sema*      sema,
                                        u32              local_index,
                                        u32              type_index,
-                                       u32              scope_id)
+                                       u32              scope_id,
+                                       u32              arg_index)
 {
     if (debug == NULL || lexer == NULL || sema == NULL ||
         local_index >= array_count(sema->locals) || scope_id == 0) {
@@ -2788,11 +2789,14 @@ internal u32 llvm_debug_local_variable(LlvmDebugModule* debug,
     sb_format(&debug->metadata, "!%u = !DILocalVariable(name: ", id);
     llvm_debug_append_quoted(&debug->metadata, name);
     sb_format(&debug->metadata,
-              ", scope: !%u, file: !%u, line: %u, type: !%u)\n",
+              ", scope: !%u, file: !%u, line: %u",
               scope_id,
               debug->file_id,
-              line,
-              type_id);
+              line);
+    if (arg_index > 0) {
+        sb_format(&debug->metadata, ", arg: %u", arg_index);
+    }
+    sb_format(&debug->metadata, ", type: !%u)\n", type_id);
     return id;
 }
 
@@ -2811,7 +2815,8 @@ internal void llvm_debug_emit_declare(LlvmFunctionContext* ctx,
                                              ctx->sema,
                                              local_index,
                                              type_index,
-                                             ctx->debug_scope_id);
+                                             ctx->debug_scope_id,
+                                             0);
     if (variable == 0) {
         return;
     }
@@ -2856,7 +2861,54 @@ internal void llvm_debug_emit_value(LlvmFunctionContext* ctx,
                                              ctx->sema,
                                              local_index,
                                              local_type,
-                                             ctx->debug_scope_id);
+                                             ctx->debug_scope_id,
+                                             0);
+    if (variable == 0) {
+        return;
+    }
+    string type                = llvm_type_string(ctx, value.type_index);
+    ctx->debug->uses_dbg_value = true;
+    u32 location               = llvm_debug_location(
+        ctx->debug,
+        llvm_debug_local_line(ctx->lexer, ctx->sema, local_index),
+        ctx->debug_scope_id);
+    sb_format(ctx->sb,
+              "  call void @llvm.dbg.value(metadata " STRINGP " " STRINGP
+              ", metadata !%u, metadata !%u)",
+              STRINGV(type),
+              STRINGV(value.value),
+              variable,
+              ctx->debug->expression_id);
+    if (location != 0) {
+        sb_format(ctx->sb, ", !dbg !%u", location);
+    }
+    sb_append_char(ctx->sb, '\n');
+}
+
+internal void llvm_debug_emit_param_value(LlvmFunctionContext* ctx,
+                                          u32                  local_index,
+                                          LlvmValue            value,
+                                          u32                  arg_index)
+{
+    if (!value.ok || arg_index == 0) {
+        return;
+    }
+    u32 local_type = llvm_local_type(ctx, local_index);
+    if (local_type == sema_no_type() || local_type != value.type_index) {
+        return;
+    }
+    if (ctx->sema == NULL || local_index >= array_count(ctx->sema->locals) ||
+        ctx->sema->locals[local_index].owner_decl_index !=
+            ctx->debug_decl_index) {
+        return;
+    }
+    u32 variable = llvm_debug_local_variable(ctx->debug,
+                                             ctx->lexer,
+                                             ctx->sema,
+                                             local_index,
+                                             local_type,
+                                             ctx->debug_scope_id,
+                                             arg_index);
     if (variable == 0) {
         return;
     }
@@ -11230,13 +11282,14 @@ internal bool llvm_emit_param_debug_values(LlvmFunctionContext* ctx,
         if (value.count == 0) {
             continue;
         }
-        llvm_debug_emit_value(ctx,
-                              param->local_index,
-                              (LlvmValue){
-                                  .ok         = true,
-                                  .type_index = param->type_index,
-                                  .value      = value,
-                              });
+        llvm_debug_emit_param_value(ctx,
+                                    param->local_index,
+                                    (LlvmValue){
+                                        .ok         = true,
+                                        .type_index = param->type_index,
+                                        .value      = value,
+                                    },
+                                    i + 1);
     }
     return true;
 }
