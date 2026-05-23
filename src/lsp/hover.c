@@ -698,6 +698,218 @@ internal JsonValue* lsp_ast_imported_symbol_location(const LspDocument* doc,
     return NULL;
 }
 
+internal JsonValue* lsp_enum_variant_location(Arena*                arena,
+                                              NerdSource            source,
+                                              string                uri,
+                                              const Lexer*          lexer,
+                                              const AstEnumVariant* variant)
+{
+    if (variant->token_index >= array_count(lexer->tokens)) {
+        return NULL;
+    }
+
+    usize start = 0;
+    usize end   = 0;
+    lsp_token_offsets(lexer, variant->token_index, &start, &end);
+
+    JsonValue* location = json_new_object(arena);
+    json_object_set_string(location, arena, "uri", uri);
+    json_object_set_object(
+        location, "range", lsp_make_range(arena, source, start, end));
+    return location;
+}
+
+internal JsonValue* lsp_local_enum_variant_location(const LspDocument* doc,
+                                                    Arena*             arena,
+                                                    string             uri,
+                                                    u32 enum_type,
+                                                    u32 variant_symbol)
+{
+    enum_type = sema_materialise_type(&doc->front_end.sema, enum_type);
+
+    for (u32 node_index = 0; node_index < array_count(doc->front_end.ast.nodes);
+         ++node_index) {
+        const AstNode* node = &doc->front_end.ast.nodes[node_index];
+        if (node->kind != AK_TypeEnum ||
+            node->a >= array_count(doc->front_end.ast.enum_types)) {
+            continue;
+        }
+
+        u32 candidate_type = sema_no_type();
+        if (!lsp_sema_node_type(
+                &doc->front_end.sema, node_index, &candidate_type) ||
+            sema_materialise_type(&doc->front_end.sema, candidate_type) !=
+                enum_type) {
+            continue;
+        }
+
+        const AstEnumTypeInfo* enum_info =
+            &doc->front_end.ast.enum_types[node->a];
+        for (u32 i = 0; i < enum_info->variant_count; ++i) {
+            const AstEnumVariant* variant =
+                &doc->front_end.ast.enum_variants[enum_info->first_variant + i];
+            if (variant->symbol_handle == variant_symbol) {
+                return lsp_enum_variant_location(arena,
+                                                 doc->front_end.lexer.source,
+                                                 uri,
+                                                 &doc->front_end.lexer,
+                                                 variant);
+            }
+        }
+    }
+
+    return NULL;
+}
+
+internal JsonValue* lsp_ast_enum_variant_location_in_file(Arena* arena,
+                                                          cstr   resolved_path,
+                                                          string variant_name)
+{
+    FileMap map    = {0};
+    string  source = filemap_load(resolved_path, &map);
+    if (source.data == NULL) {
+        return NULL;
+    }
+
+    ErrorRenderMode previous_mode = error_system_mode();
+    bool            previous_emit = error_system_should_emit_output();
+    error_system_set_mode(ERROR_RENDER_DIAGNOSTICS);
+    error_system_set_emit_output(false);
+
+    JsonValue* location = NULL;
+    Lexer      lexer    = {0};
+    if (lex((NerdSource){.source = source, .source_path = s(resolved_path)},
+            &lexer)) {
+        Ast ast = ast_parse(&lexer);
+        for (u32 node_index = 0; node_index < array_count(ast.nodes);
+             ++node_index) {
+            const AstNode* node = &ast.nodes[node_index];
+            if (node->kind != AK_Bind || !ast_has_flag(node, ANF_Public) ||
+                node->b >= array_count(ast.nodes)) {
+                continue;
+            }
+
+            const AstNode* value = &ast.nodes[node->b];
+            if (value->kind != AK_TypeEnum ||
+                value->a >= array_count(ast.enum_types)) {
+                continue;
+            }
+
+            const AstEnumTypeInfo* enum_info = &ast.enum_types[value->a];
+            for (u32 i = 0; i < enum_info->variant_count; ++i) {
+                const AstEnumVariant* variant =
+                    &ast.enum_variants[enum_info->first_variant + i];
+                if (variant->symbol_handle != U32_MAX &&
+                    string_eq(lex_symbol(&lexer, variant->symbol_handle),
+                              variant_name)) {
+                    location = lsp_enum_variant_location(
+                        arena,
+                        lexer.source,
+                        lsp_path_to_uri(arena, resolved_path),
+                        &lexer,
+                        variant);
+                    break;
+                }
+            }
+            if (location != NULL) {
+                break;
+            }
+        }
+        ast_done(&ast);
+    }
+    lex_done(&lexer);
+
+    error_system_set_mode(previous_mode);
+    error_system_set_emit_output(previous_emit);
+    filemap_unload(&map);
+    return location;
+}
+
+internal JsonValue* lsp_ast_imported_enum_variant_location(
+    const LspDocument* doc, Arena* arena, string variant_name)
+{
+    const Ast* ast = &doc->front_end.ast;
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (node->kind != AK_Use || node->a >= array_count(ast->nodes)) {
+            continue;
+        }
+
+        const AstNode* modref = &ast->nodes[node->a];
+        if (modref->kind != AK_ModRef ||
+            modref->a >= array_count(ast->module_paths)) {
+            continue;
+        }
+
+        Arena temp = {0};
+        arena_init(&temp);
+        ModuleResolveResult resolved = {0};
+        ModuleResolveStatus status =
+            module_resolve_path(&temp,
+                                doc->front_end.lexer.source,
+                                &doc->front_end.lexer,
+                                ast,
+                                &ast->module_paths[modref->a],
+                                &resolved);
+        JsonValue* location = NULL;
+        if (status == MRS_Found) {
+            location = lsp_ast_enum_variant_location_in_file(
+                arena, resolved.resolved_path, variant_name);
+        }
+        arena_done(&temp);
+        if (location != NULL) {
+            return location;
+        }
+    }
+    return NULL;
+}
+
+internal bool
+lsp_enum_type_has_variant(const Sema* sema, u32 enum_type, u32 variant_symbol)
+{
+    enum_type            = sema_materialise_type(sema, enum_type);
+    const SemaType* type = NULL;
+    if (!lsp_sema_type(sema, enum_type, &type) || type->kind != STK_Enum) {
+        return false;
+    }
+
+    for (u32 i = 0; i < type->param_count; ++i) {
+        if (sema->type_param_symbols[type->first_param_type + i] ==
+            variant_symbol) {
+            return true;
+        }
+    }
+    return false;
+}
+
+internal JsonValue* lsp_contextual_enum_variant_location(const LspDocument* doc,
+                                                         Arena* arena,
+                                                         string uri,
+                                                         u32    token_index)
+{
+    u32 ref_node_index =
+        lsp_find_symbol_ref_node_at_token(&doc->front_end.ast, token_index);
+    if (ref_node_index == U32_MAX) {
+        return NULL;
+    }
+
+    const AstNode* ref       = &doc->front_end.ast.nodes[ref_node_index];
+    u32            enum_type = sema_no_type();
+    if (!lsp_sema_node_type(&doc->front_end.sema, ref_node_index, &enum_type) ||
+        !lsp_enum_type_has_variant(&doc->front_end.sema, enum_type, ref->a)) {
+        return NULL;
+    }
+
+    JsonValue* location =
+        lsp_local_enum_variant_location(doc, arena, uri, enum_type, ref->a);
+    if (location != NULL) {
+        return location;
+    }
+
+    return lsp_ast_imported_enum_variant_location(
+        doc, arena, lex_symbol(&doc->front_end.lexer, ref->a));
+}
+
 internal string lsp_hover_text_from_module_export(Arena* arena,
                                                   cstr   resolved_path,
                                                   string symbol)
@@ -3359,6 +3571,14 @@ void lsp_handle_definition(LspState* state, const LspMessage* message)
 
     u32 decl_index = lsp_find_decl_index_for_token(doc, token_index);
     if (decl_index == LSP_NO_DECL) {
+        JsonValue* enum_variant_location = lsp_contextual_enum_variant_location(
+            doc, message->arena, uri, token_index);
+        if (enum_variant_location != NULL) {
+            json_object_set_object(response, "result", enum_variant_location);
+            lsp_send_response(message->arena, response);
+            return;
+        }
+
         JsonValue* ast_location =
             lsp_ast_definition_location(doc, message->arena, uri, token_index);
         if (ast_location != NULL) {

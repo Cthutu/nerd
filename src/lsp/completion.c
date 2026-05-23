@@ -3235,6 +3235,114 @@ internal u32 lsp_completion_symbol_handle_at_token(const Lexer* lexer,
     return U32_MAX;
 }
 
+internal void lsp_completion_add_enum_variants(Arena*             arena,
+                                               JsonValue*         items,
+                                               const LspDocument* doc,
+                                               u32                enum_type)
+{
+    const Sema*     sema = &doc->front_end.sema;
+    const SemaType* type = NULL;
+    enum_type            = sema_materialise_type(sema, enum_type);
+    if (!lsp_sema_type(sema, enum_type, &type) || type->kind != STK_Enum) {
+        return;
+    }
+
+    for (u32 i = 0; i < type->param_count; ++i) {
+        u32 symbol = sema->type_param_symbols[type->first_param_type + i];
+        if (symbol != U32_MAX) {
+            lsp_completion_add(
+                arena, items, lex_symbol(&doc->front_end.lexer, symbol), 20);
+        }
+    }
+}
+
+internal bool lsp_completion_arg_contains_offset(const Lexer* lexer,
+                                                 const Ast*   ast,
+                                                 u32          arg_node_index,
+                                                 usize        offset)
+{
+    if (arg_node_index >= array_count(ast->nodes)) {
+        return false;
+    }
+
+    const AstNode* arg = &ast->nodes[arg_node_index];
+    if (arg->token_index >= array_count(lexer->tokens)) {
+        return false;
+    }
+
+    usize start = lexer->tokens[arg->token_index].offset;
+    usize end   = lex_token_end_offset(lexer, &lexer->tokens[arg->token_index]);
+    return offset >= start && offset <= end;
+}
+
+internal bool lsp_completion_expected_enum_type_at_offset(
+    const LspDocument* doc, usize offset, u32* out_enum_type)
+{
+    const Lexer* lexer = &doc->front_end.lexer;
+    const Ast*   ast   = &doc->front_end.ast;
+    const Sema*  sema  = &doc->front_end.sema;
+
+    u32   best_type    = sema_no_type();
+    usize best_span    = SIZE_MAX;
+
+    for (u32 node_index = 0; node_index < array_count(ast->nodes);
+         ++node_index) {
+        const AstNode* node = &ast->nodes[node_index];
+        if (node->kind != AK_Call || node->b >= array_count(ast->calls)) {
+            continue;
+        }
+
+        const AstCallInfo* call = &ast->calls[node->b];
+        for (u32 arg_index = 0; arg_index < call->arg_count; ++arg_index) {
+            u32 arg_node = ast->call_args[call->first_arg + arg_index];
+            if (!lsp_completion_arg_contains_offset(
+                    lexer, ast, arg_node, offset)) {
+                continue;
+            }
+
+            const AstNode* arg   = &ast->nodes[arg_node];
+            usize          start = lexer->tokens[arg->token_index].offset;
+            usize          end =
+                lex_token_end_offset(lexer, &lexer->tokens[arg->token_index]);
+            usize span = end - start;
+            if (span >= best_span) {
+                continue;
+            }
+
+            u32 callee_type = sema_no_type();
+            if (!lsp_sema_node_type(sema, node->a, &callee_type)) {
+                continue;
+            }
+            callee_type             = sema_materialise_type(sema, callee_type);
+
+            const SemaType* fn_type = NULL;
+            if (!lsp_sema_type(sema, callee_type, &fn_type) ||
+                fn_type->kind != STK_Function ||
+                arg_index >= fn_type->param_count) {
+                continue;
+            }
+
+            u32 expected_type =
+                sema->type_param_types[fn_type->first_param_type + arg_index];
+            expected_type = sema_materialise_type(sema, expected_type);
+            const SemaType* expected = NULL;
+            if (!lsp_sema_type(sema, expected_type, &expected) ||
+                expected->kind != STK_Enum) {
+                continue;
+            }
+
+            best_type = expected_type;
+            best_span = span;
+        }
+    }
+
+    if (best_type == sema_no_type()) {
+        return false;
+    }
+    *out_enum_type = best_type;
+    return true;
+}
+
 internal bool lsp_completion_enclosing_brace(const Lexer* lexer,
                                              usize        offset,
                                              u32*         out_open_token)
@@ -3917,6 +4025,12 @@ void lsp_handle_completion(LspState* state, const LspMessage* message)
     }
 
     lsp_completion_add_symbols(message->arena, items, doc);
+    u32 expected_enum = sema_no_type();
+    if (lsp_completion_expected_enum_type_at_offset(
+            doc, offset, &expected_enum)) {
+        lsp_completion_add_enum_variants(
+            message->arena, items, doc, expected_enum);
+    }
     lsp_completion_add_source_symbols(
         message->arena, items, view.source, offset);
     if (!doc->bindings_ready || !doc->sema_complete) {
