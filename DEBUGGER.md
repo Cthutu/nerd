@@ -26,8 +26,10 @@ starts the native executable is not enough.
 - The VS Code extension can build the active Nerd file and start a CodeLLDB
   `type: "lldb"` debug session through `nerd.debugActiveFileWithCodeLLDB`.
 - The compiler backend lowers HIR to textual LLVM IR and invokes clang.
-- Non-release executable builds already pass `-g -O0` to clang and should be
-  treated as debug builds.
+- Non-release executable builds emit Nerd source debug metadata and pass
+  `-g -O0` to clang.
+- Release builds currently omit the Nerd debug metadata product and pass `-O2`
+  to clang.
 - Generated LLVM now has an initial debug metadata contract for compile units,
   source files, function subprograms, and statement line locations.
 - Nerd-visible function bindings are emitted as `$` aliases while generated
@@ -191,7 +193,7 @@ that gap.
 - [x] Add a tiny single-file smoke program for manual debugger validation.
 - [x] Capture the current baseline with `readelf` and LLDB/CodeLLDB notes.
 - [x] Make normal non-release builds emit Nerd source debug metadata.
-- [ ] Keep release builds free to omit debug metadata under the current
+- [x] Keep release builds free to omit debug metadata under the current
   `--release` contract.
 - [x] Emit LLVM compile-unit metadata for the root module and imported modules.
 - [x] Emit source locations for function entry, statements, and expression
@@ -201,7 +203,7 @@ that gap.
 - [x] Verify breakpoints bind in VS Code or a command-line native debugger for a
   single-file program.
 - [x] Verify CodeLLDB stops on the expected `.n` line on Linux.
-- [ ] Add a command-level regression that proves debug builds keep the expected
+- [x] Add a command-level regression that proves debug builds keep the expected
   binary when requested and that Linux debug information is present in that
   executable.
 - [x] Document exactly which Linux debugger and VS Code adapter were validated.
@@ -386,6 +388,19 @@ Verification:
 - [ ] `python3 build/check_editor_integrations.py --nerd _bin/nerd-debug`.
 - [ ] Manual VS Code launch starts a Nerd debug session and stops at a
   breakpoint.
+
+### Commit 6A: Debug Build Contract Regression
+
+- [x] Gate LLVM debug metadata emission to normal non-release builds.
+- [x] Add a Linux command test proving normal builds embed Nerd debug line
+  information in the executable.
+- [x] Add a Linux command test proving release builds omit Nerd debug line
+  information.
+
+Verification:
+
+- [x] `python3 build/test.py --filter build-debug-info-linux`
+- [x] `python3 build/test.py --filter build-release-no-debug-info-linux`
 
 ### Commit 7: Breakpoint Quality
 

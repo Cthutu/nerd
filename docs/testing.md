@@ -143,6 +143,11 @@ The runner skips the case when the current host platform is not listed. Use this
 only for tests that exercise host APIs or toolchain behaviour that cannot be made
 portable, such as POSIX-only FFI calls.
 
+Linux command tests may use the `debug-info` and `no-debug-info` run modes to
+inspect the kept executable with `readelf --debug-dump=decodedline`. These modes
+cover the debug-build contract that normal builds embed Nerd line tables and the
+release-build contract that the current release path omits them.
+
 ## Artefact Behaviour
 
 Language, HIR, LLVM, and command tests write temporary `.input.n`, `.hir`,

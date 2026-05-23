@@ -50,6 +50,12 @@ This mirrors the Neovim indent file for cases that VS Code's declarative
 language configuration cannot express, such as returning to the declaration
 indent after a multi-line FFI signature closes.
 
+On Linux, the VS Code extension contributes `Nerd: Debug Active File with
+CodeLLDB`. The command builds the active `.n` file to `.nerd/debug/` with the
+detected Nerd executable, then starts a CodeLLDB `type: "lldb"` launch session.
+This is a bridge to the native debugger while the project decides whether a
+future Nerd-owned `type: "nerd"` adapter is needed.
+
 ## Verification
 
 For language or LSP behaviour changes, run:

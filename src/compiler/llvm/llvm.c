@@ -13080,14 +13080,19 @@ internal void llvm_render_export_wrapper(StringBuilder*    sb,
 string llvm_render_hir(const Hir*   hir,
                        const Lexer* lexer,
                        const Sema*  sema,
-                       Arena*       arena)
+                       Arena*       arena,
+                       bool         emit_debug)
 {
     Sema          render_sema_storage = llvm_prepare_render_sema(sema);
     const Sema*   render_sema         = &render_sema_storage;
     StringBuilder sb                  = {0};
     sb_init(&sb, arena);
-    LlvmDebugModule debug = {0};
-    llvm_debug_init(&debug, arena, lexer);
+    LlvmDebugModule  debug_storage = {0};
+    LlvmDebugModule* debug         = NULL;
+    if (emit_debug) {
+        debug = &debug_storage;
+        llvm_debug_init(debug, arena, lexer);
+    }
 
     sb_append_cstr(&sb, "; nerd llvm-ir 0\n");
     sb_append_cstr(&sb, "; generated from HIR\n\n");
@@ -13165,7 +13170,7 @@ string llvm_render_hir(const Hir*   hir,
 
     for (u32 i = 0; i < array_count(hir->functions); ++i) {
         llvm_render_function(
-            &sb, hir, lexer, render_sema, arena, &debug, &hir->functions[i], i);
+            &sb, hir, lexer, render_sema, arena, debug, &hir->functions[i], i);
         sb_append_char(&sb, '\n');
     }
 
@@ -13182,24 +13187,28 @@ string llvm_render_hir(const Hir*   hir,
         sb_append_char(&sb, '\n');
     }
 
-    if (debug.uses_dbg_declare) {
+    if (debug != NULL && debug->uses_dbg_declare) {
         sb_append_cstr(
             &sb,
             "declare void @llvm.dbg.declare(metadata, metadata, metadata)\n");
     }
-    if (debug.uses_dbg_value) {
+    if (debug != NULL && debug->uses_dbg_value) {
         sb_append_cstr(
             &sb,
             "declare void @llvm.dbg.value(metadata, metadata, metadata)\n");
     }
-    if (debug.uses_dbg_declare || debug.uses_dbg_value) {
+    if (debug != NULL && (debug->uses_dbg_declare || debug->uses_dbg_value)) {
         sb_append_char(&sb, '\n');
     }
 
-    sb_append_string(&sb, sb_to_string(&debug.metadata));
+    if (debug != NULL) {
+        sb_append_string(&sb, sb_to_string(&debug->metadata));
+    }
 
     string rendered = sb_to_string(&sb);
-    llvm_debug_done(&debug);
+    if (debug != NULL) {
+        llvm_debug_done(debug);
+    }
     llvm_render_sema_done(&render_sema_storage);
     return rendered;
 }
@@ -13211,7 +13220,7 @@ bool llvm_save_hir(const Hir*   hir,
 {
     Arena arena = {0};
     arena_init(&arena);
-    string rendered = llvm_render_hir(hir, lexer, sema, &arena);
+    string rendered = llvm_render_hir(hir, lexer, sema, &arena, true);
 
     FILE* file      = fopen(path, "wb");
     if (!file) {

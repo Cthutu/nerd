@@ -616,7 +616,11 @@ internal bool back_end_render_llvm_modules(Arena*                    arena,
     for (u32 i = 0; i < module_count; ++i) {
         const FrontEndState* front_end   = &program->modules[i].front_end;
         string               module_llvm = llvm_render_hir(
-            &front_end->hir, &front_end->lexer, &front_end->sema, arena);
+            &front_end->hir,
+            &front_end->lexer,
+            &front_end->sema,
+            arena,
+            !artifacts->release);
         array_push(out->module_llvms, module_llvm);
         if (artifacts->emit_llvm_file) {
             cstr llvm_path = back_end_module_llvm_path(arena, artifacts, i);

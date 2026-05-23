@@ -762,11 +762,31 @@ def test_command(path: pathlib.Path) -> list[Failure]:
         failures.append(Failure(path, "run command deleted its input source file"))
 
     debug_symbols = executable.with_suffix(".pdb")
-    if run_mode == "keep" and not executable.exists():
+    if run_mode in {"keep", "debug-info", "no-debug-info"} and not executable.exists():
         failures.append(Failure(path, "expected command to keep generated executable"))
     if run_mode in {"delete", "clean-llvm"} and executable.exists():
         failures.append(Failure(path, "expected command to delete generated executable"))
         executable.unlink()
+    if run_mode in {"debug-info", "no-debug-info"} and executable.exists():
+        readelf = shutil.which("readelf")
+        if readelf is None:
+            failures.append(Failure(path, "readelf is required for Linux debug-info command tests"))
+        else:
+            debug_dump = subprocess.run(
+                [readelf, "--debug-dump=decodedline", str(executable)],
+                cwd=ROOT,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            if debug_dump.returncode != 0:
+                failures.append(Failure(path, f"readelf failed with {debug_dump.returncode}\n{debug_dump.stderr}"))
+            elif run_mode == "debug-info" and input_path.name not in debug_dump.stdout:
+                failures.append(Failure(path, "expected executable debug line table to mention Nerd source file"))
+            elif run_mode == "no-debug-info" and input_path.name in debug_dump.stdout:
+                failures.append(Failure(path, "release executable unexpectedly contains Nerd debug line table"))
     if run_mode == "clean-llvm":
         leftovers: list[pathlib.Path] = []
         for pattern in (

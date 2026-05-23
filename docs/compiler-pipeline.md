@@ -202,6 +202,12 @@ not currently invoke `llvm-as`, `llc`, or `opt` directly. That keeps the install
 surface small while still allowing a future measurement-backed switch to LLVM
 CLI tools or bitcode if clang startup or textual parsing becomes a bottleneck.
 
+Normal non-release executable builds emit source-level LLVM debug metadata and
+pass `-g -O0` to clang. On Linux, that debug information is embedded in the
+produced executable and can be inspected with tools such as
+`readelf --debug-dump=decodedline`. Release builds pass `-O2` and currently omit
+the Nerd debug metadata product.
+
 LLVM generation now has an explicit layout context for the current target
 contract. The initial context still describes the existing 64-bit assumptions:
 opaque `ptr`, pointer-sized integers as `i64`, string and slice values as
