@@ -12,6 +12,12 @@
         "Programming Languages"
     ],
     "main": "./out/extension.js",
+    "activationEvents": [
+        "onLanguage:nerd",
+        "onCommand:nerd.restartLanguageServer",
+        "onCommand:nerd.debugActiveFileWithCodeLLDB",
+        "onCommand:nerd.buildActiveFileForDebug"
+    ],
     "scripts": {
         "compile": "tsc -p ./",
         "vscode:prepublish": "npm run compile",
@@ -36,6 +42,11 @@
                 "language": "nerd",
                 "scopeName": "source.nerd",
                 "path": "./syntaxes/nerd.tmLanguage.json"
+            }
+        ],
+        "breakpoints": [
+            {
+                "language": "nerd"
             }
         ],
         "commands": [

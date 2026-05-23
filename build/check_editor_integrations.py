@@ -36,6 +36,19 @@ def check_vscode_extension() -> None:
     if not grammar_path.exists():
         raise AssertionError(f"VS Code grammar path is missing: {grammar_path}")
 
+    breakpoints = contributes.get("breakpoints", [])
+    if not any(item.get("language") == "nerd" for item in breakpoints):
+        raise AssertionError("VS Code extension does not enable breakpoints for nerd")
+
+    activation_events = set(package.get("activationEvents", []))
+    for event in [
+        "onLanguage:nerd",
+        "onCommand:nerd.debugActiveFileWithCodeLLDB",
+        "onCommand:nerd.buildActiveFileForDebug",
+    ]:
+        if event not in activation_events:
+            raise AssertionError(f"VS Code extension is missing activation event {event!r}")
+
     commands = {command["command"] for command in contributes["commands"]}
     for command in [
         "nerd.restartLanguageServer",
