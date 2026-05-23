@@ -571,10 +571,11 @@ internal cstr back_end_module_llvm_path(Arena*                    arena,
 
 internal void back_end_cleanup_llvm_artifacts(Array(cstr) llvm_paths,
                                               bool remove_llvm_paths,
+                                              bool remove_combined_llvm_path,
                                               cstr combined_llvm_path,
                                               cstr runtime_object_path)
 {
-    if (combined_llvm_path != NULL) {
+    if (remove_combined_llvm_path && combined_llvm_path != NULL) {
         path_remove(combined_llvm_path);
     }
     if (runtime_object_path != NULL) {
@@ -615,12 +616,11 @@ internal bool back_end_render_llvm_modules(Arena*                    arena,
 
     for (u32 i = 0; i < module_count; ++i) {
         const FrontEndState* front_end   = &program->modules[i].front_end;
-        string               module_llvm = llvm_render_hir(
-            &front_end->hir,
-            &front_end->lexer,
-            &front_end->sema,
-            arena,
-            !artifacts->release);
+        string               module_llvm = llvm_render_hir(&front_end->hir,
+                                                           &front_end->lexer,
+                                                           &front_end->sema,
+                                                           arena,
+                                                           !artifacts->release);
         array_push(out->module_llvms, module_llvm);
         if (artifacts->emit_llvm_file) {
             cstr llvm_path = back_end_module_llvm_path(arena, artifacts, i);
@@ -700,7 +700,8 @@ internal bool back_end_emit_llvm_artifacts(const ProgramInfo*        program,
         back_end_timing_end(timing, COMPILER_PHASE_LLVM_RENDER, timing_start);
         compiler_memory_profile_end(
             COMPILER_STAGE_BACK_END, COMPILER_PHASE_LLVM_RENDER, memory_before);
-        back_end_cleanup_llvm_artifacts(modules.llvm_paths, false, NULL, NULL);
+        back_end_cleanup_llvm_artifacts(
+            modules.llvm_paths, false, false, NULL, NULL);
         back_end_llvm_modules_done(&modules);
         arena_done(&arena);
         return false;
@@ -739,6 +740,7 @@ internal bool back_end_emit_llvm_artifacts(const ProgramInfo*        program,
         back_end_timing_end(timing, COMPILER_PHASE_LLVM_WRITE, timing_start);
         back_end_cleanup_llvm_artifacts(modules.llvm_paths,
                                         !artifacts->emit_llvm_file,
+                                        !artifacts->emit_llvm_file,
                                         combined_llvm_path,
                                         NULL);
         back_end_llvm_modules_done(&modules);
@@ -755,6 +757,7 @@ internal bool back_end_emit_llvm_artifacts(const ProgramInfo*        program,
                                     COMPILER_PHASE_RUNTIME_OBJECT,
                                     memory_before);
         back_end_cleanup_llvm_artifacts(modules.llvm_paths,
+                                        !artifacts->emit_llvm_file,
                                         !artifacts->emit_llvm_file,
                                         combined_llvm_path,
                                         runtime_object_path);
@@ -778,6 +781,7 @@ internal bool back_end_emit_llvm_artifacts(const ProgramInfo*        program,
             COMPILER_STAGE_BACK_END, COMPILER_PHASE_LINK, memory_before);
         back_end_cleanup_llvm_artifacts(modules.llvm_paths,
                                         !artifacts->emit_llvm_file,
+                                        !artifacts->emit_llvm_file,
                                         combined_llvm_path,
                                         runtime_object_path);
         back_end_llvm_modules_done(&modules);
@@ -789,6 +793,7 @@ internal bool back_end_emit_llvm_artifacts(const ProgramInfo*        program,
         COMPILER_STAGE_BACK_END, COMPILER_PHASE_LINK, memory_before);
 
     back_end_cleanup_llvm_artifacts(modules.llvm_paths,
+                                    !artifacts->emit_llvm_file,
                                     !artifacts->emit_llvm_file,
                                     combined_llvm_path,
                                     runtime_object_path);
