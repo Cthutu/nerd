@@ -54,6 +54,8 @@ def check_vscode_extension() -> None:
         "nerd.restartLanguageServer",
         "fullDocumentRange(document)",
         "document.positionAt(document.getText().length)",
+        "suppressEnterIndentUntil",
+        r"/^\r?\n[ \t]*$/.test(change.text)",
     ]
     for fragment in required_fragments:
         if fragment not in extension_source:

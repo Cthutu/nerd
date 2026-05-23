@@ -18,6 +18,7 @@ let restartTimer: NodeJS.Timeout | undefined;
 let serverWatcher: fs.FSWatcher | undefined;
 let formatterRegistration: vscode.Disposable | undefined;
 let applyingIndentEdit = false;
+let suppressEnterIndentUntil = 0;
 
 function execFileAsync(
     command: string,
@@ -213,6 +214,7 @@ function registerFormatter(context: vscode.ExtensionContext) {
         {
             async provideDocumentFormattingEdits(document) {
                 const formattedText = await provideFormattedText(document);
+                suppressEnterIndentUntil = Date.now() + 1500;
                 return [
                     vscode.TextEdit.replace(
                         fullDocumentRange(document),
@@ -392,13 +394,16 @@ async function applyNerdEnterIndent(document: vscode.TextDocument, line: number)
 function registerEnterIndentation(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.workspace.onDidChangeTextDocument((event) => {
-            if (applyingIndentEdit || event.document.languageId !== "nerd") {
+            if (
+                applyingIndentEdit ||
+                event.document.languageId !== "nerd" ||
+                Date.now() < suppressEnterIndentUntil
+            ) {
                 return;
             }
 
             for (const change of event.contentChanges) {
-                const newlineCount = (change.text.match(/\n/g) ?? []).length;
-                if (newlineCount !== 1) {
+                if (!/^\r?\n[ \t]*$/.test(change.text)) {
                     continue;
                 }
 
