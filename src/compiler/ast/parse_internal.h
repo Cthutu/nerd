@@ -52,6 +52,7 @@ typedef struct {
     bool   stop_before_call;
     bool   stop_before_ffi_name;
     bool   stop_before_for_body;
+    bool   stop_before_block_lbrace;
     bool   stop_before_param_separator;
 
     // Current token (from last peek or next)

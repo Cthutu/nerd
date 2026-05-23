@@ -937,6 +937,10 @@ internal bool cst_caret_is_postfix_deref(const CstParseState* state)
         cst_token_has_newline_before(state, state->token_index + 1)) {
         return true;
     }
+    if (state->stop_before_block_lbrace &&
+        cst_peek_kind_at(state, 1) == TK_LBrace) {
+        return true;
+    }
     return !cst_token_starts_expression(cst_peek_kind_at(state, 1));
 }
 
@@ -946,6 +950,10 @@ internal bool cst_consumed_caret_is_postfix_deref(const CstParseState* state)
         return true;
     }
     if (cst_token_has_newline_before(state, state->token_index)) {
+        return true;
+    }
+    if (state->stop_before_block_lbrace &&
+        cst_current_token(state).kind == TK_LBrace) {
         return true;
     }
     return !cst_token_starts_expression(cst_current_token(state).kind);
@@ -2301,8 +2309,12 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
                              out_node);
     }
 
-    u32 scrutinee = 0;
-    if (!cst_parse_expr_bp(state, 0, &scrutinee)) {
+    u32  scrutinee                         = 0;
+    bool previous_stop_before_block_lbrace = state->stop_before_block_lbrace;
+    state->stop_before_block_lbrace        = true;
+    bool parsed_scrutinee           = cst_parse_expr_bp(state, 0, &scrutinee);
+    state->stop_before_block_lbrace = previous_stop_before_block_lbrace;
+    if (!parsed_scrutinee) {
         return false;
     }
 
@@ -3312,10 +3324,6 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
             break;
         }
 
-        if (state->stop_before_block_lbrace && token.kind == TK_LBrace) {
-            break;
-        }
-
         bool starts_plex = false;
         if (token.kind == TK_LBrace) {
             starts_plex = (state->cst.nodes[left].kind == CK_SymbolRef ||
@@ -3332,15 +3340,15 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
                 break;
             }
         }
+        if (state->stop_before_block_lbrace && token.kind == TK_LBrace &&
+            !starts_plex) {
+            break;
+        }
 
         bool caret_is_postfix =
             token.kind == TK_Caret && cst_caret_is_postfix_deref(state);
-        if ((!caret_is_postfix &&
-             !cst_infix_binding_power(token.kind, &left_bp, &right_bp)) ||
-            left_bp < min_bp ||
-            (!cst_postfix_token_can_cross_statement_boundary(token.kind) &&
-             left_bp >= CST_BP_PREFIX + 10 &&
-             cst_token_has_newline_before(state, state->token_index))) {
+        if (!caret_is_postfix &&
+            !cst_infix_binding_power(token.kind, &left_bp, &right_bp)) {
             if (token.kind == TK_StringContinuationStart &&
                 cst_node_is_stringish(&state->cst, left)) {
                 u32 right                    = 0;
@@ -3385,6 +3393,13 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
         if (caret_is_postfix) {
             left_bp  = CST_BP_PREFIX + 10;
             right_bp = CST_BP_PREFIX + 10;
+        }
+
+        if (left_bp < min_bp ||
+            (!cst_postfix_token_can_cross_statement_boundary(token.kind) &&
+             left_bp >= CST_BP_PREFIX + 10 &&
+             cst_token_has_newline_before(state, state->token_index))) {
+            break;
         }
 
         u32 token_index = state->token_index;

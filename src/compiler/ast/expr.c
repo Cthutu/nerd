@@ -200,6 +200,10 @@ internal bool ast_caret_is_postfix_deref(const AstParseState* state,
             return true;
         }
     }
+    if (state->stop_before_block_lbrace &&
+        state->lexer->tokens[token.token_index + 1].kind == TK_LBrace) {
+        return true;
+    }
     if (ast_token_has_newline_before(state, token.token_index + 1)) {
         return true;
     }
@@ -216,6 +220,10 @@ internal bool ast_consumed_caret_is_postfix_deref(const AstParseState* state)
         if (next_kind == TK_LBrace || next_kind == TK_Dollar) {
             return true;
         }
+    }
+    if (state->stop_before_block_lbrace &&
+        state->lexer->tokens[state->token_index].kind == TK_LBrace) {
+        return true;
     }
     if (ast_token_has_newline_before(state, state->token_index)) {
         return true;
@@ -968,8 +976,12 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
                              out_node);
     }
 
-    u32 condition_node = 0;
-    if (!ast_parse_expr_bp(state, 0, &condition_node)) {
+    u32  condition_node                    = 0;
+    bool previous_stop_before_block_lbrace = state->stop_before_block_lbrace;
+    state->stop_before_block_lbrace        = true;
+    bool parsed_condition = ast_parse_expr_bp(state, 0, &condition_node);
+    state->stop_before_block_lbrace = previous_stop_before_block_lbrace;
+    if (!parsed_condition) {
         return false;
     }
 
@@ -2445,7 +2457,6 @@ bool ast_parse_expr_bp(AstParseState* state, u8 min_bp, u32* out_node)
             (next.kind == TK_LBrace || next.kind == TK_Dollar)) {
             break;
         }
-
         bool starts_plex = false;
         if (next.kind == TK_LBrace) {
             starts_plex = (state->nodes[left_node].kind == AK_SymbolRef ||
@@ -2461,6 +2472,10 @@ bool ast_parse_expr_bp(AstParseState* state, u8 min_bp, u32* out_node)
             if (!starts_plex) {
                 break;
             }
+        }
+        if (state->stop_before_block_lbrace && next.kind == TK_LBrace &&
+            !starts_plex) {
+            break;
         }
 
         bool caret_is_postfix =
