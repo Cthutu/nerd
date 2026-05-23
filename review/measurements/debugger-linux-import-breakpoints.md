@@ -46,12 +46,19 @@ main :: fn () -> i32 {
 }
 ```
 
-Current decoded line-table paths include `tests/mods/test/parts/mod.n`, but the
-line rows for code originating in `tests/mods/test/parts/body.n` are also
-reported under `mod.n`.
+Decoded line-table paths now include both:
+
+```text
+tests/mods/test/parts/mod.n
+tests/mods/test/parts/body.n
+```
+
+Rows for executable code originating in `body.n` are reported under `body.n`.
+The function subprogram metadata still starts from the combined folder-module
+scope, so fully polished function-entry metadata remains a follow-up.
 
 Interpretation:
 
-- folder-module part debug paths are not source-accurate yet
-- MS4 should preserve part-file source paths through module part expansion before
-  claiming breakpoints in part files
+- folder-module part line-table paths are source-accurate for executable rows
+- MS4 still needs manual CodeLLDB breakpoint validation in part files before the
+  VS Code workflow is considered covered

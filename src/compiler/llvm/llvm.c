@@ -1879,6 +1879,17 @@ typedef struct {
 } LlvmDebugLocation;
 
 typedef struct {
+    string source_path;
+    u32    id;
+} LlvmDebugFile;
+
+typedef struct {
+    u32 parent_scope_id;
+    u32 file_id;
+    u32 id;
+} LlvmDebugFileScope;
+
+typedef struct {
     u32 type_index;
     u32 id;
 } LlvmDebugType;
@@ -1891,6 +1902,7 @@ typedef struct {
 
 typedef struct {
     Arena         metadata_arena;
+    Arena         path_arena;
     Arena*        arena;
     StringBuilder metadata;
     u32           next_id;
@@ -1898,7 +1910,10 @@ typedef struct {
     u32           expression_id;
     u32           file_id;
     u32           compile_unit_id;
+    string        source_path;
     Array(LlvmDebugLocation) locations;
+    Array(LlvmDebugFile) files;
+    Array(LlvmDebugFileScope) file_scopes;
     Array(LlvmDebugType) types;
     Array(LlvmDebugVariable) variables;
     bool uses_dbg_declare;
@@ -2004,16 +2019,18 @@ internal void llvm_debug_init(LlvmDebugModule* debug,
 {
     *debug       = (LlvmDebugModule){0};
     arena_init(&debug->metadata_arena);
-    debug->arena = &debug->metadata_arena;
+    arena_init(&debug->path_arena);
+    debug->arena = &debug->path_arena;
     (void)arena;
 
     string source_path = llvm_debug_canonical_source_path(
         debug->arena, lexer->source.source_path);
+    debug->source_path = source_path;
     string directory = {0};
     string filename  = {0};
     llvm_debug_split_path(source_path, &directory, &filename);
 
-    sb_init(&debug->metadata, debug->arena);
+    sb_init(&debug->metadata, &debug->metadata_arena);
 
     debug->compile_unit_id = llvm_debug_alloc_id(debug);
     debug->file_id         = llvm_debug_alloc_id(debug);
@@ -2044,6 +2061,9 @@ internal void llvm_debug_init(LlvmDebugModule* debug,
     sb_append_cstr(&debug->metadata, ", directory: ");
     llvm_debug_append_quoted(&debug->metadata, directory);
     sb_append_cstr(&debug->metadata, ")\n");
+    array_push(debug->files,
+               (LlvmDebugFile){.source_path = source_path,
+                               .id          = debug->file_id});
 
     sb_format(&debug->metadata,
               "!%u = !{}\n"
@@ -2059,9 +2079,12 @@ internal void llvm_debug_init(LlvmDebugModule* debug,
 internal void llvm_debug_done(LlvmDebugModule* debug)
 {
     array_free(debug->locations);
+    array_free(debug->files);
+    array_free(debug->file_scopes);
     array_free(debug->types);
     array_free(debug->variables);
     arena_done(&debug->metadata_arena);
+    arena_done(&debug->path_arena);
 }
 
 internal string llvm_debug_function_source_name(const Hir*   hir,
@@ -2141,6 +2164,66 @@ internal u32 llvm_debug_add_function(LlvmDebugModule* debug,
     return id;
 }
 
+internal u32 llvm_debug_file(LlvmDebugModule* debug, string source_path)
+{
+    if (debug == NULL || source_path.count == 0) {
+        return debug != NULL ? debug->file_id : 0;
+    }
+
+    source_path = llvm_debug_canonical_source_path(debug->arena, source_path);
+    for (u32 i = 0; i < array_count(debug->files); ++i) {
+        LlvmDebugFile* file = &debug->files[i];
+        if (string_eq(file->source_path, source_path)) {
+            return file->id;
+        }
+    }
+
+    string directory = {0};
+    string filename  = {0};
+    llvm_debug_split_path(source_path, &directory, &filename);
+
+    u32 id = llvm_debug_alloc_id(debug);
+    sb_format(&debug->metadata, "!%u = !DIFile(filename: ", id);
+    llvm_debug_append_quoted(&debug->metadata, filename);
+    sb_append_cstr(&debug->metadata, ", directory: ");
+    llvm_debug_append_quoted(&debug->metadata, directory);
+    sb_append_cstr(&debug->metadata, ")\n");
+    array_push(debug->files,
+               (LlvmDebugFile){.source_path = source_path, .id = id});
+    return id;
+}
+
+internal u32 llvm_debug_file_scope(LlvmDebugModule* debug,
+                                   u32              parent_scope_id,
+                                   u32              file_id)
+{
+    if (debug == NULL || parent_scope_id == 0 || file_id == 0 ||
+        file_id == debug->file_id) {
+        return parent_scope_id;
+    }
+
+    for (u32 i = 0; i < array_count(debug->file_scopes); ++i) {
+        LlvmDebugFileScope* scope = &debug->file_scopes[i];
+        if (scope->parent_scope_id == parent_scope_id &&
+            scope->file_id == file_id) {
+            return scope->id;
+        }
+    }
+
+    u32 id = llvm_debug_alloc_id(debug);
+    sb_format(&debug->metadata,
+              "!%u = !DILexicalBlockFile(scope: !%u, file: !%u, "
+              "discriminator: 0)\n",
+              id,
+              parent_scope_id,
+              file_id);
+    array_push(debug->file_scopes,
+               (LlvmDebugFileScope){.parent_scope_id = parent_scope_id,
+                                    .file_id         = file_id,
+                                    .id              = id});
+    return id;
+}
+
 internal u32 llvm_debug_location(LlvmDebugModule* debug,
                                  u32              line,
                                  u32              scope_id)
@@ -2168,6 +2251,26 @@ internal u32 llvm_debug_location(LlvmDebugModule* debug,
               line,
               scope_id);
     return id;
+}
+
+internal u32 llvm_debug_source_location(LlvmDebugModule* debug,
+                                        u32              line,
+                                        string           source_path,
+                                        u32              scope_id)
+{
+    if (debug == NULL || line == 0 || scope_id == 0 ||
+        source_path.count == 0) {
+        return llvm_debug_location(debug, line, scope_id);
+    }
+
+    source_path = llvm_debug_canonical_source_path(debug->arena, source_path);
+    if (string_eq(source_path, debug->source_path)) {
+        return llvm_debug_location(debug, line, scope_id);
+    }
+
+    u32 file_id    = llvm_debug_file(debug, source_path);
+    u32 file_scope = llvm_debug_file_scope(debug, scope_id, file_id);
+    return llvm_debug_location(debug, line, file_scope);
 }
 
 internal string llvm_type_string(LlvmFunctionContext* ctx, u32 type_index);
@@ -2451,10 +2554,12 @@ internal void llvm_debug_emit_value(LlvmFunctionContext* ctx,
     sb_append_char(ctx->sb, '\n');
 }
 
-internal void llvm_debug_emit_marker(LlvmFunctionContext* ctx, u32 source_line)
+internal void llvm_debug_emit_marker(LlvmFunctionContext* ctx,
+                                     u32                  source_line,
+                                     string               source_path)
 {
-    u32 location =
-        llvm_debug_location(ctx->debug, source_line, ctx->debug_scope_id);
+    u32 location = llvm_debug_source_location(
+        ctx->debug, source_line, source_path, ctx->debug_scope_id);
     if (location != 0) {
         sb_format(ctx->sb, "  ; nerd.dbg !%u\n", location);
     }
@@ -10292,7 +10397,9 @@ internal bool llvm_emit_effect_stmt(LlvmFunctionContext* ctx,
                                     const HirFunction*   function,
                                     const HirStmt*       stmt)
 {
-    llvm_debug_emit_marker(ctx, stmt != NULL ? stmt->source_line : 0);
+    llvm_debug_emit_marker(ctx,
+                           stmt != NULL ? stmt->source_line : 0,
+                           stmt != NULL ? stmt->source_path : (string){0});
     switch (stmt->kind) {
     case HIR_STMT_Let:
         return llvm_emit_let(ctx, function, stmt);
@@ -10829,7 +10936,7 @@ internal bool llvm_emit_block(LlvmFunctionContext* ctx,
         }
 
         const HirStmt* stmt = &ctx->hir->stmts[stmt_index];
-        llvm_debug_emit_marker(ctx, stmt->source_line);
+        llvm_debug_emit_marker(ctx, stmt->source_line, stmt->source_path);
         if (stmt->kind == HIR_STMT_Let) {
             if (!llvm_emit_let(ctx, function, stmt)) {
                 return false;
