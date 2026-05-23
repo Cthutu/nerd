@@ -1905,6 +1905,7 @@ typedef struct {
     Arena         path_arena;
     Arena*        arena;
     StringBuilder metadata;
+    const Lexer*  lexer;
     u32           next_id;
     u32           empty_id;
     u32           expression_id;
@@ -2031,6 +2032,7 @@ llvm_debug_init(LlvmDebugModule* debug, Arena* arena, const Lexer* lexer)
     llvm_debug_split_path(source_path, &directory, &filename);
 
     sb_init(&debug->metadata, &debug->metadata_arena);
+    debug->lexer           = lexer;
 
     debug->compile_unit_id = llvm_debug_alloc_id(debug);
     debug->file_id         = llvm_debug_alloc_id(debug);
@@ -2361,6 +2363,256 @@ internal bool llvm_debug_type_info(const Sema* sema,
 
 internal u32 llvm_debug_type(LlvmDebugModule* debug,
                              const Sema*      sema,
+                             u32              type_index);
+
+internal string llvm_debug_type_name(LlvmDebugModule* debug,
+                                     const Sema*      sema,
+                                     u32              type_index,
+                                     Arena*           arena)
+{
+    if (debug != NULL && debug->lexer != NULL) {
+        return sema_type_name(debug->lexer, sema, arena, type_index);
+    }
+
+    string name       = {0};
+    u32    size       = 0;
+    cstr   encoding   = NULL;
+    bool   is_pointer = false;
+    if (llvm_debug_type_info(
+            sema, type_index, &name, &size, &encoding, &is_pointer)) {
+        return name;
+    }
+    return s("<unknown>");
+}
+
+internal u32 llvm_debug_record_field_count(const Sema* sema, u32 type_index)
+{
+    SemaTypeKind kind = llvm_type_kind(sema, type_index);
+    if (kind == STK_String || kind == STK_Slice) {
+        return 2;
+    }
+    if (kind == STK_Tuple || kind == STK_Plex) {
+        return sema->types[type_index].param_count;
+    }
+    return 0;
+}
+
+internal string llvm_debug_record_field_name(LlvmDebugModule* debug,
+                                             const Sema*      sema,
+                                             u32              type_index,
+                                             u32              field_index,
+                                             Arena*           arena)
+{
+    SemaTypeKind kind = llvm_type_kind(sema, type_index);
+    if ((kind == STK_String || kind == STK_Slice) && field_index == 0) {
+        return s("data");
+    }
+    if ((kind == STK_String || kind == STK_Slice) && field_index == 1) {
+        return s("count");
+    }
+    if (kind == STK_Tuple) {
+        return string_format(arena, "%u", field_index);
+    }
+    if (kind == STK_Plex && debug != NULL && debug->lexer != NULL &&
+        field_index < sema->types[type_index].param_count) {
+        u32 symbol =
+            sema->type_param_symbols[sema->types[type_index].first_param_type +
+                                     field_index];
+        return lex_symbol(debug->lexer, symbol);
+    }
+    return string_format(arena, "field%u", field_index);
+}
+
+internal u32 llvm_debug_record_field_type(const Sema* sema,
+                                          u32         type_index,
+                                          u32         field_index)
+{
+    SemaTypeKind kind = llvm_type_kind(sema, type_index);
+    if (kind == STK_String) {
+        if (field_index == 0) {
+            return llvm_pointer_type(sema, llvm_builtin_type(sema, STK_U8));
+        }
+        return field_index == 1 ? llvm_builtin_type(sema, STK_Usize)
+                                : sema_no_type();
+    }
+    if (kind == STK_Slice) {
+        if (field_index == 0) {
+            return llvm_pointer_type(
+                sema, llvm_collection_item_type(sema, type_index));
+        }
+        return field_index == 1 ? llvm_builtin_type(sema, STK_Usize)
+                                : sema_no_type();
+    }
+    if ((kind == STK_Tuple || kind == STK_Plex) &&
+        field_index < sema->types[type_index].param_count) {
+        return sema->type_param_types[sema->types[type_index].first_param_type +
+                                      field_index];
+    }
+    return sema_no_type();
+}
+
+internal u32 llvm_debug_record_field_offset_bits(const Sema* sema,
+                                                 u32         type_index,
+                                                 u32         field_index)
+{
+    const LlvmLayout* layout = llvm_default_layout();
+    SemaTypeKind      kind   = llvm_type_kind(sema, type_index);
+    if ((kind == STK_String || kind == STK_Slice) && field_index == 1) {
+        return layout->pointer_bits;
+    }
+    if (kind != STK_Tuple && kind != STK_Plex) {
+        return 0;
+    }
+
+    u32 offset = 0;
+    for (u32 i = 0; i < field_index && i < sema->types[type_index].param_count;
+         ++i) {
+        u32 field_type =
+            sema->type_param_types[sema->types[type_index].first_param_type +
+                                   i];
+        offset =
+            llvm_align_bits(offset, llvm_type_align_bits(sema, field_type));
+        offset += llvm_type_storage_bits(sema, field_type);
+    }
+
+    u32 field_type =
+        llvm_debug_record_field_type(sema, type_index, field_index);
+    if (field_type != sema_no_type()) {
+        offset =
+            llvm_align_bits(offset, llvm_type_align_bits(sema, field_type));
+    }
+    return offset;
+}
+
+internal bool llvm_debug_type_is_record_like(const Sema* sema, u32 type_index)
+{
+    SemaTypeKind kind = llvm_type_kind(sema, type_index);
+    return kind == STK_String || kind == STK_Slice || kind == STK_Tuple ||
+           kind == STK_Plex;
+}
+
+internal u32 llvm_debug_emit_fallback_basic_type(LlvmDebugModule* debug,
+                                                 string           name,
+                                                 u32              size,
+                                                 cstr             encoding)
+{
+    u32 id = llvm_debug_alloc_id(debug);
+    sb_format(&debug->metadata, "!%u = !DIBasicType(name: ", id);
+    llvm_debug_append_quoted(&debug->metadata, name);
+    sb_format(&debug->metadata, ", size: %u, encoding: %s)\n", size, encoding);
+    return id;
+}
+
+internal u32 llvm_debug_emit_fallback_pointer_type(LlvmDebugModule* debug)
+{
+    u32 id = llvm_debug_alloc_id(debug);
+    sb_format(&debug->metadata,
+              "!%u = !DIDerivedType(tag: DW_TAG_pointer_type, name: "
+              "\"ptr\", baseType: null, size: %u)\n",
+              id,
+              llvm_default_layout()->pointer_bits);
+    return id;
+}
+
+internal u32 llvm_debug_record_fallback_field_type(LlvmDebugModule* debug,
+                                                   const Sema*      sema,
+                                                   u32              type_index,
+                                                   u32              field_index,
+                                                   u32*             out_size)
+{
+    SemaTypeKind kind = llvm_type_kind(sema, type_index);
+    if ((kind == STK_String || kind == STK_Slice) && field_index == 0) {
+        *out_size = llvm_default_layout()->pointer_bits;
+        return llvm_debug_emit_fallback_pointer_type(debug);
+    }
+    if ((kind == STK_String || kind == STK_Slice) && field_index == 1) {
+        *out_size = llvm_default_layout()->size_bits;
+        return llvm_debug_emit_fallback_basic_type(
+            debug, s("usize"), *out_size, "DW_ATE_unsigned");
+    }
+
+    *out_size = 8;
+    return llvm_debug_emit_fallback_basic_type(
+        debug, s("<unknown>"), *out_size, "DW_ATE_unsigned");
+}
+
+internal void llvm_debug_emit_composite_type(LlvmDebugModule* debug,
+                                             const Sema*      sema,
+                                             u32              type_index,
+                                             u32              type_id)
+{
+    Arena name_arena = {0};
+    arena_init(&name_arena);
+
+    u32 elements_id       = llvm_debug_alloc_id(debug);
+    u32 field_count       = llvm_debug_record_field_count(sema, type_index);
+    u32 size              = llvm_type_storage_bits(sema, type_index);
+    Array(u32) member_ids = NULL;
+    array_requires_capacity(member_ids, field_count);
+    for (u32 i = 0; i < field_count; ++i) {
+        array_push(member_ids, llvm_debug_alloc_id(debug));
+    }
+
+    sb_format(&debug->metadata,
+              "!%u = !DICompositeType(tag: DW_TAG_structure_type, name: ",
+              type_id);
+    llvm_debug_append_quoted(
+        &debug->metadata,
+        llvm_debug_type_name(debug, sema, type_index, &name_arena));
+    sb_format(&debug->metadata,
+              ", file: !%u, size: %u, elements: !%u)\n",
+              debug->file_id,
+              size,
+              elements_id);
+
+    sb_format(&debug->metadata, "!%u = !{", elements_id);
+    for (u32 i = 0; i < field_count; ++i) {
+        if (i > 0) {
+            sb_append_cstr(&debug->metadata, ", ");
+        }
+        sb_format(&debug->metadata, "!%u", member_ids[i]);
+    }
+    sb_append_cstr(&debug->metadata, "}\n");
+
+    for (u32 i = 0; i < field_count; ++i) {
+        u32 field_id   = member_ids[i];
+        u32 field_type = llvm_debug_record_field_type(sema, type_index, i);
+        u32 field_debug_type = field_type == sema_no_type()
+                                   ? 0
+                                   : llvm_debug_type(debug, sema, field_type);
+        u32 field_size       = field_type == sema_no_type()
+                                   ? 0
+                                   : llvm_type_storage_bits(sema, field_type);
+        if (field_debug_type == 0) {
+            field_debug_type = llvm_debug_record_fallback_field_type(
+                debug, sema, type_index, i, &field_size);
+        }
+        u32 field_offset =
+            llvm_debug_record_field_offset_bits(sema, type_index, i);
+
+        sb_format(&debug->metadata,
+                  "!%u = !DIDerivedType(tag: DW_TAG_member, name: ",
+                  field_id);
+        llvm_debug_append_quoted(&debug->metadata,
+                                 llvm_debug_record_field_name(
+                                     debug, sema, type_index, i, &name_arena));
+        sb_format(&debug->metadata,
+                  ", scope: !%u, file: !%u",
+                  type_id,
+                  debug->file_id);
+        sb_format(&debug->metadata, ", baseType: !%u", field_debug_type);
+        sb_format(&debug->metadata,
+                  ", size: %u, offset: %u)\n",
+                  field_size,
+                  field_offset);
+    }
+
+    array_free(member_ids);
+    arena_done(&name_arena);
+}
+
+internal u32 llvm_debug_type(LlvmDebugModule* debug,
+                             const Sema*      sema,
                              u32              type_index)
 {
     if (debug == NULL) {
@@ -2376,8 +2628,10 @@ internal u32 llvm_debug_type(LlvmDebugModule* debug,
     u32    size       = 0;
     cstr   encoding   = NULL;
     bool   is_pointer = false;
+    bool   is_record  = llvm_debug_type_is_record_like(sema, type_index);
     if (!llvm_debug_type_info(
-            sema, type_index, &name, &size, &encoding, &is_pointer)) {
+            sema, type_index, &name, &size, &encoding, &is_pointer) &&
+        !is_record) {
         return 0;
     }
 
@@ -2387,7 +2641,9 @@ internal u32 llvm_debug_type(LlvmDebugModule* debug,
                    .type_index = type_index,
                    .id         = id,
                });
-    if (is_pointer) {
+    if (is_record) {
+        llvm_debug_emit_composite_type(debug, sema, type_index, id);
+    } else if (is_pointer) {
         sb_format(&debug->metadata,
                   "!%u = !DIDerivedType(tag: DW_TAG_pointer_type, name: ",
                   id);

@@ -7,11 +7,11 @@ main :: fn () -> i32 {
 ¬
 define internal i32 @fn.0() !dbg !6 {
   %local.0 = alloca i32
-  call void @llvm.dbg.declare(metadata ptr %local.0, metadata !10, metadata !5)
+  call void @llvm.dbg.declare(metadata ptr %local.0, metadata !10, metadata !5), !dbg !11
   store i32 0, ptr %local.0, !dbg !8
-  store i32 42, ptr %local.0, !dbg !11
-  %t0 = load i32, ptr %local.0, !dbg !12
-  ret i32 %t0, !dbg !12
+  store i32 42, ptr %local.0, !dbg !12
+  %t0 = load i32, ptr %local.0, !dbg !13
+  ret i32 %t0, !dbg !13
 }
 
 declare void @llvm.dbg.declare(metadata, metadata, metadata)
@@ -22,5 +22,6 @@ declare void @llvm.dbg.declare(metadata, metadata, metadata)
 !6 = distinct !DISubprogram(name: "main", linkageName: "@fn.0", scope: !1, file: !1, line: 3, type: !7, scopeLine: 3, spFlags: DISPFlagDefinition, unit: !0, retainedNodes: !2)
 !9 = !DIBasicType(name: "i32", size: 32, encoding: DW_ATE_signed)
 !10 = !DILocalVariable(name: "extra", scope: !6, file: !1, line: 1, type: !9)
-!11 = !DILocation(line: 4, column: 1, scope: !6)
-!12 = !DILocation(line: 5, column: 1, scope: !6)
+!11 = !DILocation(line: 1, column: 1, scope: !6)
+!12 = !DILocation(line: 4, column: 1, scope: !6)
+!13 = !DILocation(line: 5, column: 1, scope: !6)
