@@ -831,6 +831,123 @@ internal bool lsp_signature_source_decl_label(Arena*      arena,
     return false;
 }
 
+internal bool lsp_signature_module_export_label(Arena*      arena,
+                                                cstr        resolved_path,
+                                                string      name,
+                                                string*     out_label,
+                                                JsonValue** out_params)
+{
+    FileMap map    = {0};
+    string  source = filemap_load(resolved_path, &map);
+    if (source.data == NULL) {
+        return false;
+    }
+
+    ErrorRenderMode previous_mode = error_system_mode();
+    bool            previous_emit = error_system_should_emit_output();
+    error_system_set_mode(ERROR_RENDER_DIAGNOSTICS);
+    error_system_set_emit_output(false);
+
+    FrontEndOptions options = {
+        .verbose              = false,
+        .release              = false,
+        .require_entry_point  = false,
+        .skip_hir_generation  = true,
+        .keep_partial_results = true,
+    };
+
+    ProgramInfo program = {0};
+    bool        ok      = front_end_program(
+        (NerdSource){
+            .source      = source,
+            .source_path = s(resolved_path),
+        },
+        &options,
+        NULL,
+        &program);
+    error_system_set_mode(previous_mode);
+    error_system_set_emit_output(previous_emit);
+
+    bool          found  = false;
+    LspModuleView module = {0};
+    if (ok &&
+        lsp_program_module_view(&program, program.root_module_index, &module)) {
+        for (u32 i = 0; i < lsp_module_export_count(&module); ++i) {
+            const SemaDecl* decl = NULL;
+            if (!lsp_module_export_decl(&module, i, &decl, NULL) ||
+                decl->symbol_handle == U32_MAX ||
+                !string_eq(lex_symbol(module.lexer, decl->symbol_handle),
+                           name)) {
+                continue;
+            }
+
+            LspDocument module_doc     = {0};
+            module_doc.source          = module.lexer->source.source;
+            module_doc.program         = program;
+            module_doc.front_end.lexer = *module.lexer;
+            module_doc.front_end.ast   = *module.ast;
+            module_doc.front_end.sema  = *module.sema;
+
+            LspTypeFactView view       = {
+                .doc    = &module_doc,
+                .source = module.lexer->source.source,
+                .lexer  = module.lexer,
+                .ast    = module.ast,
+                .sema   = module.sema,
+            };
+            found = lsp_signature_decl_label(
+                &view, arena, decl, out_label, out_params);
+            break;
+        }
+    }
+
+    program_info_done(&program);
+    filemap_unload(&map);
+    return found;
+}
+
+internal bool lsp_signature_ast_use_decl_label(Arena*             arena,
+                                               const LspDocument* doc,
+                                               string             name,
+                                               string*            out_label,
+                                               JsonValue**        out_params)
+{
+    const Ast* ast = &doc->front_end.ast;
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (node->kind != AK_Use || node->a >= array_count(ast->nodes)) {
+            continue;
+        }
+
+        const AstNode* modref = &ast->nodes[node->a];
+        if (modref->kind != AK_ModRef ||
+            modref->a >= array_count(ast->module_paths)) {
+            continue;
+        }
+
+        Arena temp = {0};
+        arena_init(&temp);
+        ModuleResolveResult resolved = {0};
+        ModuleResolveStatus status =
+            module_resolve_path(&temp,
+                                doc->front_end.lexer.source,
+                                &doc->front_end.lexer,
+                                ast,
+                                &ast->module_paths[modref->a],
+                                &resolved);
+        bool found = false;
+        if (status == MRS_Found) {
+            found = lsp_signature_module_export_label(
+                arena, resolved.resolved_path, name, out_label, out_params);
+        }
+        arena_done(&temp);
+        if (found) {
+            return true;
+        }
+    }
+    return false;
+}
+
 internal cstr lsp_signature_text_module_relative(Arena* arena,
                                                  string module_path,
                                                  cstr   extension)
@@ -1057,6 +1174,11 @@ void lsp_handle_signature_help(LspState* state, const LspMessage* message)
                                             name,
                                             &source_label,
                                             &source_parameters) ||
+            lsp_signature_ast_use_decl_label(message->arena,
+                                             source_view.doc,
+                                             name,
+                                             &source_label,
+                                             &source_parameters) ||
             lsp_signature_source_use_decl_label(message->arena,
                                                 source_view.doc,
                                                 uri,
@@ -1114,6 +1236,11 @@ void lsp_handle_signature_help(LspState* state, const LspMessage* message)
                                             name,
                                             &source_label,
                                             &source_parameters) ||
+            lsp_signature_ast_use_decl_label(message->arena,
+                                             source_view.doc,
+                                             name,
+                                             &source_label,
+                                             &source_parameters) ||
             lsp_signature_source_use_decl_label(message->arena,
                                                 source_view.doc,
                                                 uri,
@@ -1177,17 +1304,20 @@ void lsp_handle_signature_help(LspState* state, const LspMessage* message)
         }
     }
     if (!labelled) {
-        labelled = lsp_signature_source_decl_label(message->arena,
-                                                   source_view.source,
-                                                   name,
-                                                   &label,
-                                                   &parameters) ||
-                   lsp_signature_source_use_decl_label(message->arena,
-                                                       source_view.doc,
-                                                       uri,
-                                                       name,
-                                                       &label,
-                                                       &parameters);
+        labelled =
+            lsp_signature_source_decl_label(message->arena,
+                                            source_view.source,
+                                            name,
+                                            &label,
+                                            &parameters) ||
+            lsp_signature_ast_use_decl_label(
+                message->arena, source_view.doc, name, &label, &parameters) ||
+            lsp_signature_source_use_decl_label(message->arena,
+                                                source_view.doc,
+                                                uri,
+                                                name,
+                                                &label,
+                                                &parameters);
         if (!labelled) {
             json_object_set_null(response, message->arena, "result");
             lsp_send_response(message->arena, response);

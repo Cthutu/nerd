@@ -156,6 +156,11 @@ cached, case-insensitive client filtering from showing stale mismatched items.
 Signature help is triggered by `(` and `,`. It resolves the callable name through
 the semantic declaration table, reports the active argument, includes default
 parameter expressions, and reminds the editor user of named-argument syntax.
+When the active document cannot provide semantic facts, signature help uses the
+parsed `use` list to resolve imported modules and analyses those modules
+independently. This keeps argument help available for public standard-library
+functions, including multi-line signatures such as `term_fb_box`, while the
+edited call is incomplete.
 
 ## Semantic Tokens
 
