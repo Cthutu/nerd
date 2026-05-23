@@ -199,12 +199,13 @@ that gap.
 
 ### MS2: Locals, Parameters, And Call Stack
 
-- [ ] Emit parameter debug metadata.
-- [ ] Emit local-variable debug metadata for HIR locals and mutable storage.
+- [x] Emit parameter debug metadata.
+- [x] Emit local-variable debug metadata for HIR locals and mutable storage.
 - [ ] Preserve lexical scopes enough for shadowed locals to display correctly.
 - [ ] Verify call stacks show Nerd function names and source locations.
-- [ ] Verify locals and parameters display at breakpoints and during stepping.
-- [ ] Add focused compiler tests for generated LLVM debug metadata shape.
+- [x] Verify locals and parameters display at breakpoints.
+- [ ] Verify locals and parameters remain coherent while stepping.
+- [x] Add focused compiler tests for generated LLVM debug metadata shape.
 
 ### MS3: VS Code Launch Integration
 
@@ -349,17 +350,17 @@ Verification:
 
 ### Commit 5: Locals And Parameters
 
-- [ ] Emit basic debug type metadata for primitive integers, bools, and
+- [x] Emit basic debug type metadata for primitive integers, bools, and
   pointers.
-- [ ] Emit parameter metadata.
-- [ ] Emit local-variable metadata and `llvm.dbg.declare` for stack-backed
+- [x] Emit parameter metadata.
+- [x] Emit local-variable metadata and `llvm.dbg.declare` for stack-backed
   locals.
 - [ ] Preserve lexical scope metadata enough for ordinary nested blocks.
 
 Verification:
 
-- [ ] LLVM snapshot tests for local/parameter metadata.
-- [ ] LLDB and CodeLLDB show smoke-program locals and parameters at a
+- [x] LLVM snapshot tests for local/parameter metadata.
+- [x] LLDB and CodeLLDB show smoke-program locals and parameters at a
   breakpoint.
 
 ### Commit 6: VS Code Nerd Launch

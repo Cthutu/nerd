@@ -121,6 +121,10 @@ def strip_llvm_debug_metadata(text: str) -> str:
         stripped = line.strip()
         if stripped.startswith("!llvm.dbg."):
             continue
+        if stripped.startswith("declare void @llvm.dbg."):
+            continue
+        if "call void @llvm.dbg." in stripped:
+            continue
         if re.match(r"!\d+ = (?:distinct )?!DI", stripped):
             continue
         if re.match(r"!\d+ = !\{i32 \d+, !\"(?:Debug Info|Dwarf)", stripped):

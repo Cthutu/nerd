@@ -6,15 +6,25 @@ main :: fn () -> i32 {
     return total
 }
 ¬
-define internal i32 @fn.0() !dbg !5 {
-  %t0 = add i32 40, 2, !dbg !9
-  ret i32 %t0, !dbg !10
+define internal i32 @fn.0() !dbg !6 {
+  call void @llvm.dbg.value(metadata i32 40, metadata !10, metadata !5), !dbg !8
+  call void @llvm.dbg.value(metadata i32 2, metadata !12, metadata !5), !dbg !11
+  %t0 = add i32 40, 2, !dbg !13
+  call void @llvm.dbg.value(metadata i32 %t0, metadata !14, metadata !5), !dbg !13
+  ret i32 %t0, !dbg !15
 }
+
+declare void @llvm.dbg.value(metadata, metadata, metadata)
 
 !llvm.dbg.cu = !{!0}
 !llvm.module.flags = !{!3, !4}
 !0 = distinct !DICompileUnit(language: DW_LANG_C, file: !1, producer: "Nerd", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, enums: !2)
 !1 = !DIFile(filename: "030-debug-line-tables.input.n", directory: "__REPO__/tests/llvm")
-!5 = distinct !DISubprogram(name: "main", linkageName: "@fn.0", scope: !1, file: !1, line: 3, type: !6, scopeLine: 3, spFlags: DISPFlagDefinition, unit: !0, retainedNodes: !2)
-!9 = !DILocation(line: 5, column: 1, scope: !5)
-!10 = !DILocation(line: 6, column: 1, scope: !5)
+!5 = !DIExpression()
+!6 = distinct !DISubprogram(name: "main", linkageName: "@fn.0", scope: !1, file: !1, line: 3, type: !7, scopeLine: 3, spFlags: DISPFlagDefinition, unit: !0, retainedNodes: !2)
+!9 = !DIBasicType(name: "i32", size: 32, encoding: DW_ATE_signed)
+!10 = !DILocalVariable(name: "base", scope: !6, file: !1, line: 1, type: !9)
+!12 = !DILocalVariable(name: "bonus", scope: !6, file: !1, line: 1, type: !9)
+!13 = !DILocation(line: 5, column: 1, scope: !6)
+!14 = !DILocalVariable(name: "total", scope: !6, file: !1, line: 1, type: !9)
+!15 = !DILocation(line: 6, column: 1, scope: !6)

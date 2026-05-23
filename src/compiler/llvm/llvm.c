@@ -1879,14 +1879,30 @@ typedef struct {
 } LlvmDebugLocation;
 
 typedef struct {
+    u32 type_index;
+    u32 id;
+} LlvmDebugType;
+
+typedef struct {
+    u32 local_index;
+    u32 scope_id;
+    u32 id;
+} LlvmDebugVariable;
+
+typedef struct {
     Arena         metadata_arena;
     Arena*        arena;
     StringBuilder metadata;
     u32           next_id;
     u32           empty_id;
+    u32           expression_id;
     u32           file_id;
     u32           compile_unit_id;
     Array(LlvmDebugLocation) locations;
+    Array(LlvmDebugType) types;
+    Array(LlvmDebugVariable) variables;
+    bool uses_dbg_declare;
+    bool uses_dbg_value;
 } LlvmDebugModule;
 
 typedef struct {
@@ -1914,6 +1930,7 @@ typedef struct {
     bool              discard_expr_value;
     LlvmDebugModule*  debug;
     u32               debug_scope_id;
+    u32               debug_decl_index;
     Array(LlvmLocalValue) locals;
     Array(LlvmLocalSlot) slots;
     Array(u32) assigned_locals;
@@ -2003,6 +2020,7 @@ internal void llvm_debug_init(LlvmDebugModule* debug,
     debug->empty_id        = llvm_debug_alloc_id(debug);
     u32 debug_info_flag    = llvm_debug_alloc_id(debug);
     u32 dwarf_flag         = llvm_debug_alloc_id(debug);
+    debug->expression_id   = llvm_debug_alloc_id(debug);
 
     sb_format(&debug->metadata,
               "!llvm.dbg.cu = !{!%u}\n"
@@ -2029,9 +2047,11 @@ internal void llvm_debug_init(LlvmDebugModule* debug,
 
     sb_format(&debug->metadata,
               "!%u = !{}\n"
+              "!%u = !DIExpression()\n"
               "!%u = !{i32 2, !\"Debug Info Version\", i32 3}\n"
               "!%u = !{i32 2, !\"Dwarf Version\", i32 5}\n",
               debug->empty_id,
+              debug->expression_id,
               debug_info_flag,
               dwarf_flag);
 }
@@ -2039,6 +2059,8 @@ internal void llvm_debug_init(LlvmDebugModule* debug,
 internal void llvm_debug_done(LlvmDebugModule* debug)
 {
     array_free(debug->locations);
+    array_free(debug->types);
+    array_free(debug->variables);
     arena_done(&debug->metadata_arena);
 }
 
@@ -2146,6 +2168,287 @@ internal u32 llvm_debug_location(LlvmDebugModule* debug,
               line,
               scope_id);
     return id;
+}
+
+internal string llvm_type_string(LlvmFunctionContext* ctx, u32 type_index);
+internal u32 llvm_local_type(LlvmFunctionContext* ctx, u32 local_index);
+
+internal bool llvm_debug_type_info(const Sema* sema,
+                                   u32         type_index,
+                                   string*     out_name,
+                                   u32*        out_size,
+                                   cstr*       out_encoding,
+                                   bool*       out_pointer)
+{
+    *out_pointer = false;
+    switch (llvm_type_kind(sema, type_index)) {
+    case STK_Bool:
+        *out_name     = s("bool");
+        *out_size     = 8;
+        *out_encoding = "DW_ATE_boolean";
+        return true;
+    case STK_I8:
+        *out_name     = s("i8");
+        *out_size     = 8;
+        *out_encoding = "DW_ATE_signed";
+        return true;
+    case STK_I16:
+        *out_name     = s("i16");
+        *out_size     = 16;
+        *out_encoding = "DW_ATE_signed";
+        return true;
+    case STK_I32:
+        *out_name     = s("i32");
+        *out_size     = 32;
+        *out_encoding = "DW_ATE_signed";
+        return true;
+    case STK_I64:
+        *out_name     = s("i64");
+        *out_size     = 64;
+        *out_encoding = "DW_ATE_signed";
+        return true;
+    case STK_U8:
+        *out_name     = s("u8");
+        *out_size     = 8;
+        *out_encoding = "DW_ATE_unsigned";
+        return true;
+    case STK_U16:
+        *out_name     = s("u16");
+        *out_size     = 16;
+        *out_encoding = "DW_ATE_unsigned";
+        return true;
+    case STK_U32:
+        *out_name     = s("u32");
+        *out_size     = 32;
+        *out_encoding = "DW_ATE_unsigned";
+        return true;
+    case STK_U64:
+        *out_name     = s("u64");
+        *out_size     = 64;
+        *out_encoding = "DW_ATE_unsigned";
+        return true;
+    case STK_Isize:
+        *out_name     = s("isize");
+        *out_size     = 64;
+        *out_encoding = "DW_ATE_signed";
+        return true;
+    case STK_Usize:
+        *out_name     = s("usize");
+        *out_size     = 64;
+        *out_encoding = "DW_ATE_unsigned";
+        return true;
+    case STK_F32:
+        *out_name     = s("f32");
+        *out_size     = 32;
+        *out_encoding = "DW_ATE_float";
+        return true;
+    case STK_F64:
+        *out_name     = s("f64");
+        *out_size     = 64;
+        *out_encoding = "DW_ATE_float";
+        return true;
+    case STK_Pointer:
+        *out_name    = s("ptr");
+        *out_size    = 64;
+        *out_pointer = true;
+        return true;
+    default:
+        return false;
+    }
+}
+
+internal u32 llvm_debug_type(LlvmDebugModule* debug,
+                             const Sema*      sema,
+                             u32              type_index)
+{
+    if (debug == NULL) {
+        return 0;
+    }
+    for (u32 i = 0; i < array_count(debug->types); ++i) {
+        if (debug->types[i].type_index == type_index) {
+            return debug->types[i].id;
+        }
+    }
+
+    string name       = {0};
+    u32    size       = 0;
+    cstr   encoding   = NULL;
+    bool   is_pointer = false;
+    if (!llvm_debug_type_info(
+            sema, type_index, &name, &size, &encoding, &is_pointer)) {
+        return 0;
+    }
+
+    u32 id = llvm_debug_alloc_id(debug);
+    array_push(debug->types,
+               (LlvmDebugType){
+                   .type_index = type_index,
+                   .id         = id,
+               });
+    if (is_pointer) {
+        sb_format(&debug->metadata,
+                  "!%u = !DIDerivedType(tag: DW_TAG_pointer_type, name: ",
+                  id);
+        llvm_debug_append_quoted(&debug->metadata, name);
+        sb_format(&debug->metadata, ", baseType: null, size: %u)\n", size);
+    } else {
+        sb_format(&debug->metadata, "!%u = !DIBasicType(name: ", id);
+        llvm_debug_append_quoted(&debug->metadata, name);
+        sb_format(&debug->metadata,
+                  ", size: %u, encoding: %s)\n",
+                  size,
+                  encoding);
+    }
+    return id;
+}
+
+internal u32 llvm_debug_local_line(const Lexer* lexer, const Sema* sema, u32 local_index)
+{
+    if (lexer == NULL || sema == NULL || local_index >= array_count(sema->locals)) {
+        return 0;
+    }
+    u32 token_index = sema->locals[local_index].decl_token_index;
+    if (token_index >= array_count(lexer->tokens)) {
+        return 0;
+    }
+    u32 line = 0;
+    u32 col  = 0;
+    if (!lex_offset_to_line_col(
+            lexer->source, lexer->tokens[token_index].offset, &line, &col)) {
+        return 0;
+    }
+    return line + 1;
+}
+
+internal u32 llvm_debug_local_variable(LlvmDebugModule* debug,
+                                       const Lexer*     lexer,
+                                       const Sema*      sema,
+                                       u32              local_index,
+                                       u32              type_index,
+                                       u32              scope_id)
+{
+    if (debug == NULL || lexer == NULL || sema == NULL ||
+        local_index >= array_count(sema->locals) || scope_id == 0) {
+        return 0;
+    }
+    for (u32 i = 0; i < array_count(debug->variables); ++i) {
+        if (debug->variables[i].local_index == local_index &&
+            debug->variables[i].scope_id == scope_id) {
+            return debug->variables[i].id;
+        }
+    }
+
+    const SemaLocal* local = &sema->locals[local_index];
+    if (local->symbol_handle == U32_MAX) {
+        return 0;
+    }
+    string name = lex_symbol(lexer, local->symbol_handle);
+    if (name.count == 0 || string_eq_cstr(name, "_")) {
+        return 0;
+    }
+    u32 type_id = llvm_debug_type(debug, sema, type_index);
+    if (type_id == 0) {
+        return 0;
+    }
+
+    u32 line = llvm_debug_local_line(lexer, sema, local_index);
+    if (line == 0) {
+        line = 1;
+    }
+    u32 id = llvm_debug_alloc_id(debug);
+    array_push(debug->variables,
+               (LlvmDebugVariable){
+                   .local_index = local_index,
+                   .scope_id    = scope_id,
+                   .id          = id,
+               });
+    sb_format(&debug->metadata, "!%u = !DILocalVariable(name: ", id);
+    llvm_debug_append_quoted(&debug->metadata, name);
+    sb_format(&debug->metadata,
+              ", scope: !%u, file: !%u, line: %u, type: !%u)\n",
+              scope_id,
+              debug->file_id,
+              line,
+              type_id);
+    return id;
+}
+
+internal void llvm_debug_emit_declare(LlvmFunctionContext* ctx,
+                                      u32                  local_index,
+                                      string               ptr,
+                                      u32                  type_index)
+{
+    if (ctx->sema == NULL || local_index >= array_count(ctx->sema->locals) ||
+        ctx->sema->locals[local_index].owner_decl_index !=
+            ctx->debug_decl_index) {
+        return;
+    }
+    u32 variable = llvm_debug_local_variable(ctx->debug,
+                                             ctx->lexer,
+                                             ctx->sema,
+                                             local_index,
+                                             type_index,
+                                             ctx->debug_scope_id);
+    if (variable == 0) {
+        return;
+    }
+    ctx->debug->uses_dbg_declare = true;
+    u32 location = llvm_debug_location(
+        ctx->debug, llvm_debug_local_line(ctx->lexer, ctx->sema, local_index), ctx->debug_scope_id);
+    sb_format(ctx->entry_sb != NULL ? ctx->entry_sb : ctx->sb,
+              "  call void @llvm.dbg.declare(metadata ptr " STRINGP
+              ", metadata !%u, metadata !%u)",
+              STRINGV(ptr),
+              variable,
+              ctx->debug->expression_id);
+    if (location != 0) {
+        sb_format(ctx->entry_sb != NULL ? ctx->entry_sb : ctx->sb,
+                  ", !dbg !%u",
+                  location);
+    }
+    sb_append_char(ctx->entry_sb != NULL ? ctx->entry_sb : ctx->sb, '\n');
+}
+
+internal void llvm_debug_emit_value(LlvmFunctionContext* ctx,
+                                    u32                  local_index,
+                                    LlvmValue            value)
+{
+    if (!value.ok) {
+        return;
+    }
+    u32 local_type = llvm_local_type(ctx, local_index);
+    if (local_type == sema_no_type() || local_type != value.type_index) {
+        return;
+    }
+    if (ctx->sema == NULL || local_index >= array_count(ctx->sema->locals) ||
+        ctx->sema->locals[local_index].owner_decl_index !=
+            ctx->debug_decl_index) {
+        return;
+    }
+    u32 variable = llvm_debug_local_variable(ctx->debug,
+                                             ctx->lexer,
+                                             ctx->sema,
+                                             local_index,
+                                             local_type,
+                                             ctx->debug_scope_id);
+    if (variable == 0) {
+        return;
+    }
+    string type = llvm_type_string(ctx, value.type_index);
+    ctx->debug->uses_dbg_value = true;
+    u32 location = llvm_debug_location(
+        ctx->debug, llvm_debug_local_line(ctx->lexer, ctx->sema, local_index), ctx->debug_scope_id);
+    sb_format(ctx->sb,
+              "  call void @llvm.dbg.value(metadata " STRINGP " " STRINGP
+              ", metadata !%u, metadata !%u)",
+              STRINGV(type),
+              STRINGV(value.value),
+              variable,
+              ctx->debug->expression_id);
+    if (location != 0) {
+        sb_format(ctx->sb, ", !dbg !%u", location);
+    }
+    sb_append_char(ctx->sb, '\n');
 }
 
 internal void llvm_debug_emit_marker(LlvmFunctionContext* ctx, u32 source_line)
@@ -2459,6 +2762,7 @@ llvm_set_local_value(LlvmFunctionContext* ctx, u32 local_index, LlvmValue value)
                    .local_index = local_index,
                    .value       = value,
                });
+    llvm_debug_emit_value(ctx, local_index, value);
 }
 
 internal bool llvm_local_is_assigned(LlvmFunctionContext* ctx, u32 local_index)
@@ -2509,6 +2813,7 @@ internal LlvmLocalSlot* llvm_ensure_local_slot(LlvmFunctionContext* ctx,
                });
     string type = llvm_type_string(ctx, type_index);
     llvm_emit_alloca(ctx, ptr, type);
+    llvm_debug_emit_declare(ctx, local_index, ptr, type_index);
     return &ctx->slots[array_count(ctx->slots) - 1];
 }
 
@@ -10476,6 +10781,32 @@ internal bool llvm_initialise_assigned_param_slots(LlvmFunctionContext* ctx,
     return true;
 }
 
+internal bool llvm_emit_param_debug_values(LlvmFunctionContext* ctx,
+                                           const HirFunction* function)
+{
+    for (u32 i = 0; i < function->param_count; ++i) {
+        const HirParam* param = &ctx->hir->params[function->first_param + i];
+        if (param->local_index == U32_MAX ||
+            llvm_local_is_assigned(ctx, param->local_index)) {
+            continue;
+        }
+
+        string value = llvm_param_value(
+            function, ctx->hir, ctx->lexer, ctx->arena, param->local_index);
+        if (value.count == 0) {
+            continue;
+        }
+        llvm_debug_emit_value(ctx,
+                              param->local_index,
+                              (LlvmValue){
+                                  .ok         = true,
+                                  .type_index = param->type_index,
+                                  .value      = value,
+                              });
+    }
+    return true;
+}
+
 internal bool llvm_emit_block(LlvmFunctionContext* ctx,
                               const HirFunction*   function,
                               u32                  block_index)
@@ -12594,10 +12925,12 @@ internal void llvm_render_function(StringBuilder*     sb,
         .global_init_value_index = U32_MAX,
         .debug                   = debug,
         .debug_scope_id          = debug_scope_id,
+        .debug_decl_index        = function->decl_index,
     };
     llvm_collect_assigned_locals(&ctx, function->body_block_index);
     llvm_collect_addressed_locals(&ctx, function->body_block_index);
     bool emitted = llvm_initialise_assigned_param_slots(&ctx, function) &&
+                   llvm_emit_param_debug_values(&ctx, function) &&
                    llvm_emit_block(&ctx, function, function->body_block_index);
     if (!emitted || !ctx.block_terminated) {
         u32 return_type = llvm_function_return_type(sema, function->type_index);
@@ -12846,6 +13179,20 @@ string llvm_render_hir(const Hir*   hir,
             &sb, hir, lexer, render_sema, binding, exported);
     }
     if (array_count(hir->bindings) > 0) {
+        sb_append_char(&sb, '\n');
+    }
+
+    if (debug.uses_dbg_declare) {
+        sb_append_cstr(
+            &sb,
+            "declare void @llvm.dbg.declare(metadata, metadata, metadata)\n");
+    }
+    if (debug.uses_dbg_value) {
+        sb_append_cstr(
+            &sb,
+            "declare void @llvm.dbg.value(metadata, metadata, metadata)\n");
+    }
+    if (debug.uses_dbg_declare || debug.uses_dbg_value) {
         sb_append_char(&sb, '\n');
     }
 
