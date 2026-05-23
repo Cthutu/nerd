@@ -42,8 +42,8 @@ The server lookup order is:
 2. user install under `~/.local/bin/nerd`
 3. `nerd` from `PATH`
 
-The install recipe packages and installs the extension after installing the
-compiler.
+`just install` installs the compiler, modules, Neovim files, the CodeLLDB VS
+Code prerequisite, and the repo-owned VS Code extension.
 
 The VS Code extension also adjusts indentation after Enter for Nerd buffers.
 This mirrors the Neovim indent file for cases that VS Code's declarative

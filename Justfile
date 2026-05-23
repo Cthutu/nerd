@@ -56,6 +56,7 @@ ext_name := "nerd-language-" + version
 src_dir  := "syntax/nerd-vscode"
 vsix := "nerd-language-" + version + ".vsix"
 ext_id := "matt-davies.nerd-language"
+codelldb_ext_id := "vadimcn.vscode-lldb"
 vscode_cli := if os_family() == "windows" { "code.cmd" } else { "code" }
 user_bin_dir := if os_family() == "windows" { replace(env_var("USERPROFILE"), "\\", "/") + "/.local/bin" } else { "~/.local/bin" }
 user_bin_nerd := user_bin_dir + "/nerd" + exe_suffix
@@ -92,6 +93,7 @@ install:
     mv {{user_bin_nerd}}.tmp {{user_bin_nerd}}
     cp -R mods/. {{user_mods_dir}}/
     just install-nvim
+    {{vscode_cli}} --install-extension {{codelldb_ext_id}}
     just uninstall
     just package
     {{vscode_cli}} --install-extension {{src_dir}}/{{vsix}} --force
