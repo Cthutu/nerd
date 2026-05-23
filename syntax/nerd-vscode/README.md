@@ -26,7 +26,7 @@ extension metadata and LSP startup contract.
 On Linux, install the CodeLLDB VS Code extension and run `Nerd: Debug Active
 File with CodeLLDB` from a `.n` file. The command saves the active file, builds
 it with the detected Nerd executable, writes the executable under
-`.nerd/debug/`, and launches a CodeLLDB `type: "lldb"` session.
+`_tmp/debug/`, and launches a CodeLLDB `type: "lldb"` session.
 
 After installing or updating the extension, run `Developer: Reload Window` in
 open VS Code windows so newly contributed commands and breakpoint support are

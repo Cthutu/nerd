@@ -126,7 +126,7 @@ metadata well enough.
 
 The current Linux-first bridge is a VS Code command, not a Nerd-owned debug
 adapter. `Nerd: Debug Active File with CodeLLDB` builds the active `.n` file to
-`.nerd/debug/` and starts a CodeLLDB `type: "lldb"` launch. A checked-in
+`_tmp/debug/` and starts a CodeLLDB `type: "lldb"` launch. A checked-in
 `launch.json` can also use `"program": "${command:nerd.buildActiveFileForDebug}"`
 with `type: "lldb"`. This keeps the user workflow usable while preserving the
 `type: "nerd"` decision for a real adapter or proven adapter-delegation layer.

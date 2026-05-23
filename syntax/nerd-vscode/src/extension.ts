@@ -193,7 +193,7 @@ function executableSuffix(): string {
 function nerdDebugOutputPath(document: vscode.TextDocument): string {
     const workspaceFolder = workspaceFolderForDocument(document);
     const baseDir = workspaceFolder?.uri.fsPath ?? path.dirname(document.fileName);
-    const outputDir = path.join(baseDir, ".nerd", "debug");
+    const outputDir = path.join(baseDir, "_tmp", "debug");
     const parsed = path.parse(document.fileName);
     return path.join(outputDir, `${parsed.name}${executableSuffix()}`);
 }
