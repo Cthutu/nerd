@@ -82,6 +82,12 @@ Hover uses semantic tables for:
 - function signature text
 - constant integer values when they can be evaluated
 
+When the edited document cannot provide semantic data for an imported
+unqualified symbol, hover resolves the parsed `use` module and analyses that
+module independently. This keeps hover available for public functions and types
+from healthy imported modules such as the standard library while the active file
+is incomplete or has later errors.
+
 For field access hover and definition, the server falls back to AST type
 annotations when semantic analysis stops before attaching receiver type data.
 This keeps `param.field` useful while code is mid-edit, including cases where

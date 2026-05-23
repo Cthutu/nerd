@@ -4,6 +4,7 @@
 // Copyright (C)2026 Matt Davies, all rights reserved
 //------------------------------------------------------------------------------
 
+#include <compiler/build/front/front.h>
 #include <compiler/error/error.h>
 #include <compiler/modules/modules.h>
 #include <lsp/lsp.h>
@@ -592,6 +593,10 @@ internal JsonValue* lsp_ast_definition_location(const LspDocument* doc,
     return NULL;
 }
 
+internal string lsp_decl_hover_text(const LspDocument* doc,
+                                    Arena*             arena,
+                                    u32                decl_index);
+
 internal JsonValue*
 lsp_ast_export_location_in_file(Arena* arena, cstr resolved_path, string symbol)
 {
@@ -691,6 +696,111 @@ internal JsonValue* lsp_ast_imported_symbol_location(const LspDocument* doc,
         }
     }
     return NULL;
+}
+
+internal string lsp_hover_text_from_module_export(Arena* arena,
+                                                  cstr   resolved_path,
+                                                  string symbol)
+{
+    FileMap map    = {0};
+    string  source = filemap_load(resolved_path, &map);
+    if (source.data == NULL) {
+        return s("");
+    }
+
+    ErrorRenderMode previous_mode = error_system_mode();
+    bool            previous_emit = error_system_should_emit_output();
+    error_system_set_mode(ERROR_RENDER_DIAGNOSTICS);
+    error_system_set_emit_output(false);
+
+    FrontEndOptions options = {
+        .verbose              = false,
+        .release              = false,
+        .require_entry_point  = false,
+        .skip_hir_generation  = true,
+        .keep_partial_results = true,
+    };
+
+    ProgramInfo program = {0};
+    bool        ok      = front_end_program(
+        (NerdSource){
+            .source      = source,
+            .source_path = s(resolved_path),
+        },
+        &options,
+        NULL,
+        &program);
+    error_system_set_mode(previous_mode);
+    error_system_set_emit_output(previous_emit);
+
+    string        hover  = s("");
+    LspModuleView module = {0};
+    if (ok &&
+        lsp_program_module_view(&program, program.root_module_index, &module)) {
+        for (u32 i = 0; i < lsp_module_export_count(&module); ++i) {
+            const SemaDecl* decl       = NULL;
+            u32             decl_index = sema_no_decl();
+            if (!lsp_module_export_decl(&module, i, &decl, &decl_index) ||
+                decl->symbol_handle == U32_MAX ||
+                !string_eq(lex_symbol(module.lexer, decl->symbol_handle),
+                           symbol)) {
+                continue;
+            }
+
+            LspDocument module_doc     = {0};
+            module_doc.source          = module.lexer->source.source;
+            module_doc.program         = program;
+            module_doc.front_end.lexer = *module.lexer;
+            module_doc.front_end.ast   = *module.ast;
+            module_doc.front_end.sema  = *module.sema;
+            hover = lsp_decl_hover_text(&module_doc, arena, decl_index);
+            break;
+        }
+    }
+
+    program_info_done(&program);
+    filemap_unload(&map);
+    return hover;
+}
+
+internal string lsp_imported_symbol_hover_text(const LspDocument* doc,
+                                               Arena*             arena,
+                                               string             symbol)
+{
+    const Ast* ast = &doc->front_end.ast;
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (node->kind != AK_Use || node->a >= array_count(ast->nodes)) {
+            continue;
+        }
+
+        const AstNode* modref = &ast->nodes[node->a];
+        if (modref->kind != AK_ModRef ||
+            modref->a >= array_count(ast->module_paths)) {
+            continue;
+        }
+
+        Arena temp = {0};
+        arena_init(&temp);
+        ModuleResolveResult resolved = {0};
+        ModuleResolveStatus status =
+            module_resolve_path(&temp,
+                                doc->front_end.lexer.source,
+                                &doc->front_end.lexer,
+                                ast,
+                                &ast->module_paths[modref->a],
+                                &resolved);
+        string hover = s("");
+        if (status == MRS_Found) {
+            hover = lsp_hover_text_from_module_export(
+                arena, resolved.resolved_path, symbol);
+        }
+        arena_done(&temp);
+        if (hover.count != 0) {
+            return hover;
+        }
+    }
+    return s("");
 }
 
 internal u32 lsp_find_local_index_for_token(const LspDocument* doc,
@@ -3063,6 +3173,17 @@ void lsp_handle_hover(LspState* state, const LspMessage* message)
 
             u32 symbol_handle =
                 lsp_symbol_handle_at_token(&doc->front_end.lexer, token_index);
+            if (symbol_handle != U32_MAX) {
+                string imported_hover = lsp_imported_symbol_hover_text(
+                    doc,
+                    message->arena,
+                    lex_symbol(&doc->front_end.lexer, symbol_handle));
+                if (imported_hover.count != 0) {
+                    lsp_set_markdown_hover(
+                        response, message->arena, imported_hover);
+                    break;
+                }
+            }
             string builtin_hover =
                 symbol_handle == U32_MAX
                     ? s("")
