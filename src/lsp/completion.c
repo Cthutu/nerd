@@ -2220,6 +2220,95 @@ internal void lsp_completion_add_source_param_members(Arena*             arena,
     arena_done(&temp);
 }
 
+internal bool lsp_completion_add_text_plex_fields_from_file(Arena*     arena,
+                                                            JsonValue* items,
+                                                            cstr       path,
+                                                            string type_name)
+{
+    FileMap map    = {0};
+    string  source = filemap_load(path, &map);
+    if (source.data == NULL) {
+        return false;
+    }
+
+    bool added =
+        lsp_completion_add_text_plex_fields(arena, items, source, type_name);
+    filemap_unload(&map);
+    return added;
+}
+
+internal void lsp_completion_add_imported_type_members(Arena*             arena,
+                                                       JsonValue*         items,
+                                                       const LspDocument* doc,
+                                                       string             uri,
+                                                       usize  offset,
+                                                       string receiver)
+{
+    Arena temp = {0};
+    arena_init(&temp);
+
+    string type_name = {0};
+    if (!lsp_completion_source_param_type_before(
+            &temp, doc->source, offset, receiver, &type_name)) {
+        arena_done(&temp);
+        return;
+    }
+
+    usize line_start = 0;
+    while (line_start < doc->source.count) {
+        usize line_end = line_start;
+        while (line_end < doc->source.count &&
+               doc->source.data[line_end] != '\n') {
+            line_end++;
+        }
+
+        string line = {.data  = doc->source.data + line_start,
+                       .count = line_end - line_start};
+        line        = lsp_completion_trim(lsp_completion_strip_comment(line));
+
+        usize i     = 0;
+        if (lsp_completion_match_ident_at(line, &i, s("pub"))) {
+            while (i < line.count &&
+                   (line.data[i] == ' ' || line.data[i] == '\t')) {
+                i++;
+            }
+        }
+        if (!lsp_completion_match_ident_at(line, &i, s("use"))) {
+            line_start = line_end + (line_end < doc->source.count ? 1 : 0);
+            continue;
+        }
+
+        while (i < line.count &&
+               (line.data[i] == ' ' || line.data[i] == '\t')) {
+            i++;
+        }
+        usize path_start = i;
+        while (i < line.count && (lsp_completion_is_ident_char(line.data[i]) ||
+                                  line.data[i] == '.')) {
+            i++;
+        }
+        if (i == path_start) {
+            line_start = line_end + (line_end < doc->source.count ? 1 : 0);
+            continue;
+        }
+
+        string module_path = {.data  = line.data + path_start,
+                              .count = i - path_start};
+        cstr   resolved    = NULL;
+        if (lsp_completion_resolve_text_module(
+                &temp, doc, module_path, uri, &resolved)) {
+            if (lsp_completion_add_text_plex_fields_from_file(
+                    arena, items, resolved, type_name)) {
+                break;
+            }
+        }
+
+        line_start = line_end + (line_end < doc->source.count ? 1 : 0);
+    }
+
+    arena_done(&temp);
+}
+
 internal void lsp_completion_add_source_symbols(Arena*     arena,
                                                 JsonValue* items,
                                                 string     source,
@@ -3808,6 +3897,10 @@ void lsp_handle_completion(LspState* state, const LspMessage* message)
         if (array_count(items->array.values) == 0) {
             lsp_completion_add_source_param_members(
                 message->arena, items, doc, offset, receiver);
+        }
+        if (array_count(items->array.values) == 0) {
+            lsp_completion_add_imported_type_members(
+                message->arena, items, doc, uri, offset, receiver);
         }
         if (array_count(items->array.values) == 0) {
             lsp_completion_add_source_on_payload_members(

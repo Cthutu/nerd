@@ -89,6 +89,10 @@ the field access itself is part of the current diagnostic.
 
 Definition jumps resolve through semantic declaration indices and then convert
 the binding token span back into an LSP range.
+When semantic binding data is not available, definition falls back to the parsed
+source and can still resolve unqualified public declarations imported through
+`use`, including standard-library declarations, by reading the imported module's
+AST.
 
 Rename supports same-document semantic renames for locals and local
 top-level declarations, including constant and mutable variable bindings. When
@@ -112,7 +116,9 @@ Completion is semantic where possible:
   analysis unavailable, completion falls back to AST and light source-text
   recovery for declarations, function parameters, and `for item in collection`
   binders that appear before the error, including loop expressions used as
-  `return for ...`.
+  `return for ...`. For a parameter whose type came from an unqualified `use`,
+  the fallback reads the imported module source so `param.` can still complete
+  public plex fields from standard modules while the edited file is incomplete.
 - `module_binding.` offers public exports for `module_binding :: use ...`
   imports, including while the edited document or imported module has parse or
   semantic errors. Folder-module fallback includes public declarations from

@@ -11631,12 +11631,23 @@ sema_method_target_matches_receiver(const Lexer*      lexer,
                                     bool              imported)
 {
     u32 source_target_type = sema_no_type();
-    if (!sema_resolve_type_node(source_lexer,
-                                source_ast,
-                                source_sema,
-                                source_method->target_type_node_index,
-                                &source_target_type)) {
-        return false;
+    if (source_method->target_type_node_index <
+        array_count(source_sema->node_type_indices)) {
+        source_target_type =
+            source_sema
+                ->node_type_indices[source_method->target_type_node_index];
+    }
+    if (source_target_type == sema_no_type()) {
+        if (imported) {
+            return false;
+        }
+        if (!sema_resolve_type_node(source_lexer,
+                                    source_ast,
+                                    source_sema,
+                                    source_method->target_type_node_index,
+                                    &source_target_type)) {
+            return false;
+        }
     }
 
     u32  target_type = imported ? sema_import_type((Lexer*)lexer,

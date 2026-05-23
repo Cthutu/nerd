@@ -4,6 +4,7 @@
 // Copyright (C)2026 Matt Davies, all rights reserved
 //------------------------------------------------------------------------------
 
+#include <compiler/error/error.h>
 #include <compiler/modules/modules.h>
 #include <lsp/lsp.h>
 
@@ -588,6 +589,107 @@ internal JsonValue* lsp_ast_definition_location(const LspDocument* doc,
         return lsp_token_location(doc, arena, uri, token_index);
     }
 
+    return NULL;
+}
+
+internal JsonValue*
+lsp_ast_export_location_in_file(Arena* arena, cstr resolved_path, string symbol)
+{
+    FileMap map    = {0};
+    string  source = filemap_load(resolved_path, &map);
+    if (source.data == NULL) {
+        return NULL;
+    }
+
+    ErrorRenderMode previous_mode = error_system_mode();
+    bool            previous_emit = error_system_should_emit_output();
+    error_system_set_mode(ERROR_RENDER_DIAGNOSTICS);
+    error_system_set_emit_output(false);
+
+    JsonValue* location = NULL;
+    Lexer      lexer    = {0};
+    if (lex((NerdSource){.source = source, .source_path = s(resolved_path)},
+            &lexer)) {
+        Ast ast = ast_parse(&lexer);
+        for (u32 i = 0; i < array_count(ast.nodes); ++i) {
+            const AstNode* node = &ast.nodes[i];
+            if (!ast_has_flag(node, ANF_Public)) {
+                continue;
+            }
+
+            u32 symbol_handle = U32_MAX;
+            u32 token_index   = node->token_index;
+            if (node->kind == AK_Bind || node->kind == AK_Variable) {
+                symbol_handle = node->a;
+            } else if (node->kind == AK_FfiDef &&
+                       node->a < array_count(ast.ffi_infos)) {
+                symbol_handle = ast.ffi_infos[node->a].symbol_handle;
+            }
+            if (symbol_handle == U32_MAX ||
+                !string_eq(lex_symbol(&lexer, symbol_handle), symbol) ||
+                token_index >= array_count(lexer.tokens)) {
+                continue;
+            }
+
+            usize start = 0;
+            usize end   = 0;
+            lsp_token_offsets(&lexer, token_index, &start, &end);
+            location = json_new_object(arena);
+            json_object_set_string(
+                location, arena, "uri", lsp_path_to_uri(arena, resolved_path));
+            json_object_set_object(
+                location,
+                "range",
+                lsp_make_range(arena, lexer.source, start, end));
+            break;
+        }
+        ast_done(&ast);
+    }
+    lex_done(&lexer);
+
+    error_system_set_mode(previous_mode);
+    error_system_set_emit_output(previous_emit);
+    filemap_unload(&map);
+    return location;
+}
+
+internal JsonValue* lsp_ast_imported_symbol_location(const LspDocument* doc,
+                                                     Arena*             arena,
+                                                     string             symbol)
+{
+    const Ast* ast = &doc->front_end.ast;
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (node->kind != AK_Use || node->a >= array_count(ast->nodes)) {
+            continue;
+        }
+
+        const AstNode* modref = &ast->nodes[node->a];
+        if (modref->kind != AK_ModRef ||
+            modref->a >= array_count(ast->module_paths)) {
+            continue;
+        }
+
+        Arena temp = {0};
+        arena_init(&temp);
+        ModuleResolveResult resolved = {0};
+        ModuleResolveStatus status =
+            module_resolve_path(&temp,
+                                doc->front_end.lexer.source,
+                                &doc->front_end.lexer,
+                                ast,
+                                &ast->module_paths[modref->a],
+                                &resolved);
+        JsonValue* location = NULL;
+        if (status == MRS_Found) {
+            location = lsp_ast_export_location_in_file(
+                arena, resolved.resolved_path, symbol);
+        }
+        arena_done(&temp);
+        if (location != NULL) {
+            return location;
+        }
+    }
     return NULL;
 }
 
@@ -2480,9 +2582,9 @@ internal bool lsp_get_request_context(LspState*           state,
         return false;
     }
 
-    *out_uri            = json_string(uri_value);
-    LspBindingView view = {0};
-    if (!lsp_binding_view(state, *out_uri, &view)) {
+    *out_uri           = json_string(uri_value);
+    LspSyntaxView view = {0};
+    if (!lsp_syntax_view(state, *out_uri, &view)) {
         return false;
     }
     *out_doc            = view.doc;
@@ -3142,6 +3244,19 @@ void lsp_handle_definition(LspState* state, const LspMessage* message)
             json_object_set_object(response, "result", ast_location);
             lsp_send_response(message->arena, response);
             return;
+        }
+        u32 symbol_handle =
+            lsp_symbol_handle_at_token(&doc->front_end.lexer, token_index);
+        if (symbol_handle != U32_MAX) {
+            JsonValue* imported_location = lsp_ast_imported_symbol_location(
+                doc,
+                message->arena,
+                lex_symbol(&doc->front_end.lexer, symbol_handle));
+            if (imported_location != NULL) {
+                json_object_set_object(response, "result", imported_location);
+                lsp_send_response(message->arena, response);
+                return;
+            }
         }
         lsp_cancel(response, message->arena);
         return;
