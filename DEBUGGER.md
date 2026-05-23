@@ -275,12 +275,14 @@ that gap.
 
 - [x] Define the supported first watch-expression subset.
 - [x] Support locals and parameters by name.
-- [ ] Support field access for plexes, tuples, strings, slices, and dynamic
-  arrays.
+- [x] Support field access for plexes, tuples, strings, and slices.
+- [ ] Support dynamic-array `.count` and `.capacity` field rendering.
+- [x] Support native collection indexing for strings, slices, fixed arrays, and
+  dynamic-array data pointers where the runtime representation is known.
 - [ ] Support general pointer dereference and indexing where the runtime
-  representation is known.
+  representation is not already described by emitted debug metadata.
 - [ ] Reject unsupported watch expressions with clear debugger UI messages.
-- [ ] Add tests or scripted debugger smoke checks for watch evaluation.
+- [x] Add tests or scripted debugger smoke checks for watch evaluation.
 
 ### MS6: Nerd Value Rendering
 
@@ -451,7 +453,7 @@ Verification:
 
 - [x] Define the first supported watch-expression subset.
 - [x] Support ordinary local and parameter watches through CodeLLDB.
-- [ ] Add first-pass rendering notes for strings, slices, and dynamic arrays.
+- [x] Add first-pass rendering notes for strings, slices, and dynamic arrays.
 - [ ] Decide whether a Nerd adapter or pretty-printer layer is needed before
   going beyond native CodeLLDB evaluation.
 
