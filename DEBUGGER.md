@@ -271,7 +271,7 @@ that gap.
 - [ ] Make rejected or moved breakpoints understandable in VS Code.
 - [x] Add a Linux CodeLLDB-bundled LLDB smoke check for source step-over
   staying in Nerd source on a simple function.
-- [ ] Verify stepping does not stop primarily in generated runtime glue on a
+- [x] Verify step-over does not stop primarily in generated runtime glue on a
   larger program such as `examples/dungeon/dungeon.n`.
 - [ ] Keep source paths stable when the program is built from inside VS Code,
   from the command line, and from installed `nerd`.
@@ -447,8 +447,8 @@ Verification:
   with CodeLLDB's bundled LLDB.
 - [x] Improve source path handling for generated folder-module source mapping.
 - [x] Add first source step-over smoke coverage.
-- [ ] Avoid stepping primarily through generated runtime glue in larger
-  programs.
+- [x] Manual CodeLLDB step-over proof for `examples/dungeon/dungeon.n` main
+  startup stays in Nerd source.
 
 Verification:
 
@@ -457,6 +457,9 @@ Verification:
 - [x] Debugger smoke cases for root file, imported module, and folder-module
   part file.
 - [x] Debugger stepping smoke for simple source step-over.
+- [x] Manual CodeLLDB step-over in `examples/dungeon/dungeon.n` visited
+  `dungeon.n:587`, `588`, `589`, `590`, and `593` without stopping in runtime
+  glue.
 - [ ] Manual CodeLLDB checks for moved or rejected breakpoint behaviour.
 
 ### Commit 8: Watch And Value First Pass
