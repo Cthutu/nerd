@@ -14,7 +14,16 @@ SMOKE_SOURCE = """Point :: plex {
     y i32
 }
 
+saved_width: u32
+saved_height: u32
+
+set_default_size :: fn (min_width: u32 = 41, min_height: u32 = 19) {
+    saved_width = min_width
+    saved_height = min_height
+}
+
 main :: fn () {
+    set_default_size()
     message := "hello"
     point := Point { x: 3 y: 4 }
     values := [10, 20, 30]
@@ -88,8 +97,13 @@ def main() -> int:
 
     commands = [
         "target create " + str(binary),
-        "breakpoint set --file main.n --line 16",
+        "breakpoint set --file main.n --line 9",
+        "breakpoint set --file main.n --line 24",
         "run",
+        "frame variable min_width min_height",
+        "expression min_width",
+        "expression min_height",
+        "continue",
         "frame variable message point values bytes slice numbers",
         "expression point.x",
         "expression message.data[0]",
@@ -109,7 +123,10 @@ def main() -> int:
 
     expected = [
         "Breakpoint 1:",
+        "Breakpoint 2:",
         "stop reason = breakpoint",
+        "(unsigned int) min_width = 41",
+        "(unsigned int) min_height = 19",
         '(string) message = (data = "hello", count = 5)',
         "(Point) point = {",
         "x = 3",
@@ -119,12 +136,14 @@ def main() -> int:
         "([]u8) slice = (data = ",
         "count = 3)",
         "(int *) numbers = ",
-        "(int) $0 = 3",
-        "(unsigned char) $1 = 'h'",
-        "(int) $2 = 20",
-        "(unsigned char) $3 = '\\x03'",
-        "(unsigned char) $4 = '\\x02'",
-        "(int) $5 = 20",
+        "(unsigned int) $0 = 41",
+        "(unsigned int) $1 = 19",
+        "(int) $2 = 3",
+        "(unsigned char) $3 = 'h'",
+        "(int) $4 = 20",
+        "(unsigned char) $5 = '\\x03'",
+        "(unsigned char) $6 = '\\x02'",
+        "(int) $7 = 20",
     ]
     missing = [item for item in expected if item not in output]
     if missing:
