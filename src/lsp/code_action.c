@@ -637,61 +637,6 @@ internal u32 lsp_code_action_symbol_at_token(const LspDocument* doc,
     return U32_MAX;
 }
 
-internal Array(u32)
-    lsp_code_action_symbol_tokens(const LspDocument* doc, u32 symbol)
-{
-    Array(u32) tokens = NULL;
-    const Ast* ast    = &doc->front_end.ast;
-
-    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
-        const AstNode* node = &ast->nodes[i];
-        switch (node->kind) {
-        case AK_Bind:
-        case AK_Variable:
-        case AK_SymbolRef:
-            if (node->a == symbol) {
-                lsp_code_action_add_token(&tokens, node->token_index);
-            }
-            break;
-        default:
-            break;
-        }
-    }
-
-    for (u32 i = 0; i < array_count(ast->params); ++i) {
-        const AstParam* param = &ast->params[i];
-        if (param->symbol_handle == symbol) {
-            lsp_code_action_add_token(&tokens, param->token_index);
-        }
-    }
-
-    for (u32 i = 0; i < array_count(ast->patterns); ++i) {
-        const AstPattern* pattern = &ast->patterns[i];
-        if (pattern->kind == APK_Bind && pattern->a == symbol) {
-            lsp_code_action_add_token(&tokens, pattern->token_index);
-        }
-    }
-
-    for (u32 i = 0; i < array_count(ast->fors); ++i) {
-        const AstForInfo* for_info = &ast->fors[i];
-        if (for_info->index_symbol == symbol) {
-            lsp_code_action_add_token(&tokens, for_info->index_token_index);
-        }
-        if (for_info->item_symbol == symbol) {
-            lsp_code_action_add_token(&tokens, for_info->item_token_index);
-        }
-    }
-
-    for (u32 i = 0; i < array_count(ast->on_branches); ++i) {
-        const AstOnBranch* branch = &ast->on_branches[i];
-        if (branch->binder_symbol_handle == symbol) {
-            lsp_code_action_add_token(&tokens, branch->binder_token_index);
-        }
-    }
-
-    return tokens;
-}
-
 internal void lsp_code_action_add_unused_local_rename(Arena*     arena,
                                                       JsonValue* actions,
                                                       string     uri,
@@ -724,12 +669,6 @@ internal void lsp_code_action_add_unused_local_rename(Arena*     arena,
     if (lsp_code_action_local_at_token(doc, token_index, &local_index)) {
         workspace_edit = lsp_code_action_rename_local_edit(
             arena, uri, doc, local_index, new_name);
-    }
-    if (workspace_edit == NULL) {
-        Array(u32) tokens = lsp_code_action_symbol_tokens(doc, symbol);
-        workspace_edit    = lsp_code_action_rename_tokens_edit(
-            arena, uri, doc, tokens, new_name);
-        array_free(tokens);
     }
     if (workspace_edit == NULL) {
         return;
@@ -2577,8 +2516,11 @@ void lsp_handle_code_action(LspState* state, const LspMessage* message)
                         end - token->offset);
         if (lsp_code_action_has_unused_local_diagnostic(
                 message->arena, message, symbol)) {
-            lsp_code_action_add_unused_local_rename(
-                message->arena, actions, uri, doc, token_index);
+            LspBindingView binding = {0};
+            if (lsp_binding_view(state, uri, &binding)) {
+                lsp_code_action_add_unused_local_rename(
+                    message->arena, actions, uri, binding.doc, token_index);
+            }
         }
 
         if (!lsp_code_action_doc_declares_symbol(doc, symbol) &&

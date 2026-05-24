@@ -19820,7 +19820,7 @@ bool sema_analyse(const Lexer*           lexer,
         return false;
     }
     if (!sema_validate_unused_locals(lexer, ast, &sema)) {
-        sema_done(&sema);
+        *out_sema = sema;
         return false;
     }
     if (effective_options.require_entry_point &&
