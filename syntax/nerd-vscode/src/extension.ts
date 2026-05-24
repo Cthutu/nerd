@@ -74,6 +74,26 @@ type SyntheticDynamicArray = {
     itemType: string;
 };
 
+type PendingDynamicArraySummaryKind = "count" | "capacity";
+
+type PendingDynamicArraySummaryEvaluation = {
+    requestSeq: number;
+    variableIndex: number;
+    kind: PendingDynamicArraySummaryKind;
+};
+
+type PendingDynamicArraySummaryValue = {
+    count?: number;
+    capacity?: number;
+};
+
+type PendingDynamicArraySummary = {
+    message: DapMessage;
+    variables: DapVariable[];
+    values: Map<number, PendingDynamicArraySummaryValue>;
+    pending: number;
+};
+
 type PendingSyntheticKind = "count" | "capacity" | "data" | "item";
 
 type PendingSyntheticEvaluation = {
@@ -566,6 +586,14 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
     private readonly pendingEvaluateRequests = new Map<number, PendingEvaluateRequest>();
     private readonly dynamicArrayDeclarations = new Set<string>();
     private readonly syntheticDynamicArrays = new Map<number, SyntheticDynamicArray>();
+    private readonly pendingDynamicArraySummaryEvaluations = new Map<
+        number,
+        PendingDynamicArraySummaryEvaluation
+    >();
+    private readonly pendingDynamicArraySummaries = new Map<
+        number,
+        PendingDynamicArraySummary
+    >();
     private readonly pendingSyntheticEvaluations = new Map<number, PendingSyntheticEvaluation>();
     private readonly pendingSyntheticExpansions = new Map<number, PendingSyntheticExpansion>();
 
@@ -624,6 +652,10 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
     }
 
     private forwardFromCodeLldb(message: DapMessage): void {
+        if (this.handleDynamicArraySummaryEvaluationResponse(message)) {
+            return;
+        }
+
         if (this.handleSyntheticEvaluationResponse(message)) {
             return;
         }
@@ -657,7 +689,9 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
         }
 
         if (message.type === "response" && message.command === "variables") {
-            this.rewriteVariablesResponse(message);
+            if (this.rewriteVariablesResponse(message)) {
+                return;
+            }
         }
 
         if (message.type === "response" && message.command === "evaluate") {
@@ -778,26 +812,28 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
         }
     }
 
-    private rewriteVariablesResponse(message: DapMessage) {
+    private rewriteVariablesResponse(message: DapMessage): boolean {
         if (message.request_seq === undefined) {
-            return;
+            return false;
         }
         const request = this.pendingVariablesRequests.get(message.request_seq);
         this.pendingVariablesRequests.delete(message.request_seq);
         if (!request || !message.body) {
-            return;
+            return false;
         }
         const frameId = this.scopeFrames.get(request.variablesReference);
         if (frameId === undefined) {
-            return;
+            return false;
         }
 
         const variables = message.body.variables as DapVariable[] | undefined;
         if (!Array.isArray(variables)) {
-            return;
+            return false;
         }
 
-        for (const variable of variables) {
+        let summary: PendingDynamicArraySummary | undefined;
+        for (let index = 0; index < variables.length; ++index) {
+            const variable = variables[index];
             const name = variable.name;
             const evaluateName = variable.evaluateName ?? name;
             if (
@@ -812,16 +848,132 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
             const reference = this.nextInternalSeq++;
             const itemType = variable.type.replace(/\s*\*$/, "").trim();
             const displayItemType = nerdPrimitiveTypeName(itemType);
-            this.syntheticDynamicArrays.set(reference, {
+            const dynamicArray = {
                 baseExpression: evaluateName,
                 displayItemType,
                 frameId,
                 itemType,
-            });
+            };
+            this.syntheticDynamicArrays.set(reference, dynamicArray);
             variable.type = `[..]${displayItemType}`;
             variable.value = `[..]${displayItemType}`;
             variable.variablesReference = reference;
+
+            if (!this.process.stdin.destroyed) {
+                summary ??= {
+                    message,
+                    variables,
+                    values: new Map(),
+                    pending: 0,
+                };
+                summary.values.set(index, {});
+                this.requestDynamicArraySummaryEvaluation(
+                    summary,
+                    message.request_seq,
+                    index,
+                    "count",
+                    this.dynamicArrayHeaderExpression(dynamicArray, 2),
+                    frameId
+                );
+                this.requestDynamicArraySummaryEvaluation(
+                    summary,
+                    message.request_seq,
+                    index,
+                    "capacity",
+                    this.dynamicArrayHeaderExpression(dynamicArray, 1),
+                    frameId
+                );
+            }
         }
+
+        if (summary && summary.pending > 0) {
+            this.pendingDynamicArraySummaries.set(message.request_seq, summary);
+            return true;
+        }
+        return false;
+    }
+
+    private requestDynamicArraySummaryEvaluation(
+        summary: PendingDynamicArraySummary,
+        requestSeq: number,
+        variableIndex: number,
+        kind: PendingDynamicArraySummaryKind,
+        expression: string,
+        frameId: number
+    ) {
+        const seq = this.nextInternalSeq++;
+        summary.pending += 1;
+        this.pendingDynamicArraySummaryEvaluations.set(seq, {
+            requestSeq,
+            variableIndex,
+            kind,
+        });
+        this.process.stdin.write(
+            encodeDapMessage({
+                seq,
+                type: "request",
+                command: "evaluate",
+                arguments: {
+                    expression,
+                    frameId,
+                    context: "watch",
+                },
+            })
+        );
+    }
+
+    private handleDynamicArraySummaryEvaluationResponse(message: DapMessage): boolean {
+        if (message.type !== "response" || message.request_seq === undefined) {
+            return false;
+        }
+        const pending = this.pendingDynamicArraySummaryEvaluations.get(message.request_seq);
+        if (!pending) {
+            return false;
+        }
+        this.pendingDynamicArraySummaryEvaluations.delete(message.request_seq);
+
+        const summary = this.pendingDynamicArraySummaries.get(pending.requestSeq);
+        if (!summary) {
+            return true;
+        }
+
+        summary.pending -= 1;
+        const body = message.body as DapVariable | undefined;
+        if (message.success !== false && body) {
+            const parsed = parseUnsignedResult(body.result as string | undefined);
+            if (parsed !== undefined) {
+                const value = summary.values.get(pending.variableIndex) ?? {};
+                if (pending.kind === "count") {
+                    value.count = parsed;
+                } else {
+                    value.capacity = parsed;
+                }
+                summary.values.set(pending.variableIndex, value);
+            }
+        }
+
+        if (summary.pending === 0) {
+            this.finishDynamicArraySummary(summary, pending.requestSeq);
+        }
+        return true;
+    }
+
+    private finishDynamicArraySummary(
+        summary: PendingDynamicArraySummary,
+        requestSeq: number
+    ) {
+        for (const [index, value] of summary.values) {
+            const variable = summary.variables[index];
+            if (!variable?.type) {
+                continue;
+            }
+            const count = value.count === undefined ? "?" : String(value.count);
+            const capacity = value.capacity === undefined ? "?" : String(value.capacity);
+            variable.value = `${variable.type} (${count}/${capacity})`;
+        }
+
+        this.pendingDynamicArraySummaries.delete(requestSeq);
+        this.emitter.fire(summary.message);
     }
 
     private rewriteEvaluateResponse(message: DapMessage) {
