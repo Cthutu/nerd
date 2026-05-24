@@ -298,7 +298,9 @@ that gap.
 ### MS6: Nerd Value Rendering
 
 - [ ] Render `string` values as text plus length.
-- [ ] Render slices and dynamic arrays as expandable indexed collections.
+- [x] Render dynamic arrays declared in Nerd source as expandable indexed
+  collections in the VS Code Variables tree.
+- [ ] Render slices as expandable indexed collections.
 - [ ] Render enums as variant names plus numeric tags, and decode `payload`
   according to the selected variant's payload type instead of showing only the
   raw storage integer.

@@ -49,6 +49,44 @@ type DapScope = {
     expensive?: boolean;
 };
 
+type DapVariable = {
+    evaluateName?: string;
+    name?: string;
+    presentationHint?: { [key: string]: unknown };
+    result?: string;
+    type?: string;
+    value?: string;
+    variablesReference?: number;
+};
+
+type PendingVariablesRequest = {
+    variablesReference: number;
+};
+
+type SyntheticDynamicArray = {
+    baseExpression: string;
+    frameId: number;
+    itemType: string;
+};
+
+type PendingSyntheticKind = "count" | "capacity" | "data" | "item";
+
+type PendingSyntheticEvaluation = {
+    requestSeq: number;
+    kind: PendingSyntheticKind;
+    itemIndex?: number;
+};
+
+type PendingSyntheticExpansion = {
+    originalRequest: DapMessage;
+    array: SyntheticDynamicArray;
+    count?: number;
+    capacity?: string;
+    data?: string;
+    itemResults: Map<number, DapVariable>;
+    pending: number;
+};
+
 function execFileAsync(
     command: string,
     args: string[],
@@ -358,6 +396,56 @@ function retryableDynamicArrayWatch(message: DapMessage): string | undefined {
     return dynamicArrayHeaderWatchExpression(message.arguments.expression);
 }
 
+function collectDynamicArrayDeclarationsFromText(text: string, names: Set<string>) {
+    const declaration =
+        /(?:^|[\s{])([A-Za-z_][A-Za-z0-9_]*)\s*:?\s*\[\s*\.\.\s*\]/g;
+    let match: RegExpExecArray | null;
+    while ((match = declaration.exec(text)) !== null) {
+        names.add(match[1]);
+    }
+}
+
+function collectDynamicArrayDeclarationsFromFile(filePath: string, names: Set<string>) {
+    try {
+        collectDynamicArrayDeclarationsFromText(fs.readFileSync(filePath, "utf8"), names);
+    } catch {
+        // Ignore files that disappear or cannot be read while the debug session starts.
+    }
+}
+
+function collectDynamicArrayDeclarationsFromDir(dirPath: string, names: Set<string>) {
+    let entries: fs.Dirent[];
+    try {
+        entries = fs.readdirSync(dirPath, { withFileTypes: true });
+    } catch {
+        return;
+    }
+
+    for (const entry of entries) {
+        if (entry.name === ".git" || entry.name === "node_modules" || entry.name === "_obj") {
+            continue;
+        }
+        const entryPath = path.join(dirPath, entry.name);
+        if (entry.isDirectory()) {
+            collectDynamicArrayDeclarationsFromDir(entryPath, names);
+        } else if (entry.isFile() && path.extname(entry.name) === ".n") {
+            collectDynamicArrayDeclarationsFromFile(entryPath, names);
+        }
+    }
+}
+
+function parseUnsignedResult(value: string | undefined): number | undefined {
+    if (!value) {
+        return undefined;
+    }
+    const match = value.trim().match(/^(?:0x[0-9a-fA-F]+|\d+)/);
+    if (!match) {
+        return undefined;
+    }
+    const parsed = Number.parseInt(match[0], match[0].startsWith("0x") ? 16 : 10);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+}
+
 class DapMessageReader {
     private buffer = Buffer.alloc(0);
 
@@ -402,6 +490,13 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
     private nextInternalSeq = 1_000_000_000;
     private readonly pendingDynamicArrayRetries = new Map<number, DapMessage>();
     private readonly dynamicArrayRetryResponses = new Map<number, number>();
+    private readonly pendingScopeRequests = new Map<number, number>();
+    private readonly scopeFrames = new Map<number, number>();
+    private readonly pendingVariablesRequests = new Map<number, PendingVariablesRequest>();
+    private readonly dynamicArrayDeclarations = new Set<string>();
+    private readonly syntheticDynamicArrays = new Map<number, SyntheticDynamicArray>();
+    private readonly pendingSyntheticEvaluations = new Map<number, PendingSyntheticEvaluation>();
+    private readonly pendingSyntheticExpansions = new Map<number, PendingSyntheticExpansion>();
 
     constructor(adapterPath: string) {
         this.process = spawn(adapterPath, [], {
@@ -427,6 +522,7 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
 
     handleMessage(message: vscode.DebugProtocolMessage): void {
         const dapMessage = message as DapMessage;
+        this.observeClientRequest(dapMessage);
         const retryExpression = retryableDynamicArrayWatch(dapMessage);
         if (retryExpression && dapMessage.seq !== undefined) {
             this.pendingDynamicArrayRetries.set(dapMessage.seq, {
@@ -438,9 +534,15 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
             });
         }
 
+        if (this.handleSyntheticVariablesRequest(dapMessage)) {
+            return;
+        }
+
         if (!this.process.stdin.destroyed) {
             this.process.stdin.write(
-                encodeDapMessage(normalizeNerdBreakpointRequest(dapMessage))
+                encodeDapMessage(
+                    this.normalizeLaunchRequest(normalizeNerdBreakpointRequest(dapMessage))
+                )
             );
         }
     }
@@ -451,19 +553,40 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
     }
 
     private forwardFromCodeLldb(message: DapMessage): void {
+        if (this.handleSyntheticEvaluationResponse(message)) {
+            return;
+        }
+
         if (message.type === "response" && message.command === "initialize" && message.body) {
             message.body.supportsDelayedStackTraceLoading = false;
         }
 
         if (message.type === "response" && message.command === "scopes" && message.body) {
             const scopes = message.body.scopes as DapScope[] | undefined;
+            const frameId =
+                message.request_seq !== undefined
+                    ? this.pendingScopeRequests.get(message.request_seq)
+                    : undefined;
+            if (message.request_seq !== undefined) {
+                this.pendingScopeRequests.delete(message.request_seq);
+            }
             if (Array.isArray(scopes)) {
                 for (const scope of scopes) {
                     if (scope.name === "Global") {
                         scope.name = "Nerd Globals";
                     }
+                    if (
+                        frameId !== undefined &&
+                        typeof scope.variablesReference === "number"
+                    ) {
+                        this.scopeFrames.set(scope.variablesReference, frameId);
+                    }
                 }
             }
+        }
+
+        if (message.type === "response" && message.command === "variables") {
+            this.rewriteVariablesResponse(message);
         }
 
         if (message.type === "response" && message.request_seq !== undefined) {
@@ -493,6 +616,287 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
             }
         }
         this.emitter.fire(message);
+    }
+
+    private observeClientRequest(message: DapMessage) {
+        if (message.type !== "request" || message.seq === undefined) {
+            return;
+        }
+
+        if (message.command === "launch") {
+            this.collectDynamicArrayDeclarations(message);
+        } else if (
+            message.command === "scopes" &&
+            typeof message.arguments?.frameId === "number"
+        ) {
+            this.pendingScopeRequests.set(message.seq, message.arguments.frameId);
+        } else if (
+            message.command === "variables" &&
+            typeof message.arguments?.variablesReference === "number"
+        ) {
+            this.pendingVariablesRequests.set(message.seq, {
+                variablesReference: message.arguments.variablesReference,
+            });
+        }
+    }
+
+    private normalizeLaunchRequest(message: DapMessage): DapMessage {
+        if (message.type !== "request" || message.command !== "launch") {
+            return message;
+        }
+        return {
+            ...message,
+            arguments: {
+                ...message.arguments,
+                expressions: message.arguments?.expressions ?? "native",
+            },
+        };
+    }
+
+    private collectDynamicArrayDeclarations(message: DapMessage) {
+        this.dynamicArrayDeclarations.clear();
+        const args = message.arguments ?? {};
+        if (typeof args.cwd === "string") {
+            collectDynamicArrayDeclarationsFromDir(args.cwd, this.dynamicArrayDeclarations);
+        }
+        for (const folder of vscode.workspace.workspaceFolders ?? []) {
+            collectDynamicArrayDeclarationsFromDir(
+                folder.uri.fsPath,
+                this.dynamicArrayDeclarations
+            );
+        }
+        const env = process.env.NERD_LIB_PATH?.split(process.platform === "win32" ? ";" : ":");
+        for (const dir of env ?? []) {
+            if (dir.trim()) {
+                collectDynamicArrayDeclarationsFromDir(dir.trim(), this.dynamicArrayDeclarations);
+            }
+        }
+    }
+
+    private rewriteVariablesResponse(message: DapMessage) {
+        if (message.request_seq === undefined) {
+            return;
+        }
+        const request = this.pendingVariablesRequests.get(message.request_seq);
+        this.pendingVariablesRequests.delete(message.request_seq);
+        if (!request || !message.body) {
+            return;
+        }
+        const frameId = this.scopeFrames.get(request.variablesReference);
+        if (frameId === undefined) {
+            return;
+        }
+
+        const variables = message.body.variables as DapVariable[] | undefined;
+        if (!Array.isArray(variables)) {
+            return;
+        }
+
+        for (const variable of variables) {
+            const name = variable.name;
+            const evaluateName = variable.evaluateName ?? name;
+            if (
+                !name ||
+                !evaluateName ||
+                !this.dynamicArrayDeclarations.has(name) ||
+                !variable.type?.endsWith("*")
+            ) {
+                continue;
+            }
+
+            const reference = this.nextInternalSeq++;
+            const itemType = variable.type.replace(/\s*\*$/, "").trim();
+            this.syntheticDynamicArrays.set(reference, {
+                baseExpression: evaluateName,
+                frameId,
+                itemType,
+            });
+            variable.value = `${variable.type} dynamic array`;
+            variable.variablesReference = reference;
+        }
+    }
+
+    private handleSyntheticVariablesRequest(message: DapMessage): boolean {
+        if (
+            message.type !== "request" ||
+            message.command !== "variables" ||
+            message.seq === undefined ||
+            typeof message.arguments?.variablesReference !== "number"
+        ) {
+            return false;
+        }
+
+        const array = this.syntheticDynamicArrays.get(message.arguments.variablesReference);
+        if (!array) {
+            return false;
+        }
+
+        this.pendingVariablesRequests.delete(message.seq);
+        this.startSyntheticDynamicArrayExpansion(message, array);
+        return true;
+    }
+
+    private startSyntheticDynamicArrayExpansion(
+        originalRequest: DapMessage,
+        array: SyntheticDynamicArray
+    ) {
+        const expansion: PendingSyntheticExpansion = {
+            originalRequest,
+            array,
+            itemResults: new Map(),
+            pending: 0,
+        };
+        this.pendingSyntheticExpansions.set(originalRequest.seq ?? 0, expansion);
+        this.requestSyntheticEvaluation(expansion, "count", this.dynamicArrayHeaderExpression(array, 2));
+        this.requestSyntheticEvaluation(
+            expansion,
+            "capacity",
+            this.dynamicArrayHeaderExpression(array, 1)
+        );
+        this.requestSyntheticEvaluation(expansion, "data", `(void*)${array.baseExpression}`);
+    }
+
+    private dynamicArrayHeaderExpression(array: SyntheticDynamicArray, offset: number): string {
+        return `((unsigned long long *)${array.baseExpression})[-${offset}]`;
+    }
+
+    private requestSyntheticEvaluation(
+        expansion: PendingSyntheticExpansion,
+        kind: PendingSyntheticKind,
+        expression: string,
+        itemIndex?: number
+    ) {
+        if (this.process.stdin.destroyed) {
+            return;
+        }
+        const seq = this.nextInternalSeq++;
+        expansion.pending += 1;
+        this.pendingSyntheticEvaluations.set(seq, {
+            requestSeq: expansion.originalRequest.seq ?? 0,
+            kind,
+            itemIndex,
+        });
+        this.process.stdin.write(
+            encodeDapMessage({
+                seq,
+                type: "request",
+                command: "evaluate",
+                arguments: {
+                    expression,
+                    frameId: expansion.array.frameId,
+                    context: "watch",
+                },
+            })
+        );
+    }
+
+    private handleSyntheticEvaluationResponse(message: DapMessage): boolean {
+        if (message.type !== "response" || message.request_seq === undefined) {
+            return false;
+        }
+        const pending = this.pendingSyntheticEvaluations.get(message.request_seq);
+        if (!pending) {
+            return false;
+        }
+        this.pendingSyntheticEvaluations.delete(message.request_seq);
+
+        const expansion = this.pendingSyntheticExpansions.get(pending.requestSeq);
+        if (!expansion) {
+            return true;
+        }
+
+        expansion.pending -= 1;
+        const body = message.body as DapVariable | undefined;
+        if (message.success !== false && body) {
+            if (pending.kind === "count") {
+                expansion.count = parseUnsignedResult(body.result as string | undefined);
+            } else if (pending.kind === "capacity") {
+                expansion.capacity = body.result as string | undefined;
+            } else if (pending.kind === "data") {
+                expansion.data = body.result as string | undefined;
+            } else if (pending.kind === "item" && pending.itemIndex !== undefined) {
+                expansion.itemResults.set(pending.itemIndex, {
+                    evaluateName: `${expansion.array.baseExpression}[${pending.itemIndex}]`,
+                    name: `[${pending.itemIndex}]`,
+                    type: body.type,
+                    value: body.result,
+                    variablesReference: body.variablesReference ?? 0,
+                });
+            }
+        } else if (pending.kind === "count") {
+            expansion.count = 0;
+        }
+
+        if (pending.kind === "count" && expansion.count !== undefined) {
+            const itemLimit = Math.min(expansion.count, 100);
+            for (let i = 0; i < itemLimit; ++i) {
+                this.requestSyntheticEvaluation(
+                    expansion,
+                    "item",
+                    `${expansion.array.baseExpression}[${i}]`,
+                    i
+                );
+            }
+        }
+
+        this.maybeFinishSyntheticExpansion(expansion);
+        return true;
+    }
+
+    private maybeFinishSyntheticExpansion(expansion: PendingSyntheticExpansion) {
+        if (expansion.pending > 0 || expansion.count === undefined) {
+            return;
+        }
+
+        const variables: DapVariable[] = [
+            {
+                name: "count",
+                type: "usize",
+                value: String(expansion.count),
+                variablesReference: 0,
+            },
+            {
+                name: "capacity",
+                type: "usize",
+                value: expansion.capacity ?? "<unavailable>",
+                variablesReference: 0,
+            },
+            {
+                name: "data",
+                type: `${expansion.array.itemType} *`,
+                value: expansion.data ?? "<unavailable>",
+                variablesReference: 0,
+            },
+        ];
+
+        const itemLimit = Math.min(expansion.count, 100);
+        for (let i = 0; i < itemLimit; ++i) {
+            variables.push(
+                expansion.itemResults.get(i) ?? {
+                    name: `[${i}]`,
+                    type: expansion.array.itemType,
+                    value: "<unavailable>",
+                    variablesReference: 0,
+                }
+            );
+        }
+        if (expansion.count > itemLimit) {
+            variables.push({
+                name: "...",
+                value: `${expansion.count - itemLimit} more element(s)`,
+                variablesReference: 0,
+            });
+        }
+
+        this.pendingSyntheticExpansions.delete(expansion.originalRequest.seq ?? 0);
+        this.emitter.fire({
+            seq: this.nextInternalSeq++,
+            type: "response",
+            request_seq: expansion.originalRequest.seq,
+            success: true,
+            command: "variables",
+            body: { variables },
+        } as DapMessage);
     }
 
     private sendError(message: string): void {
