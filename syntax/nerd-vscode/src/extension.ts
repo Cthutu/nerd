@@ -342,6 +342,14 @@ function executableSuffix(): string {
     return process.platform === "win32" ? ".exe" : "";
 }
 
+function realFilePath(filePath: string): string {
+    try {
+        return fs.realpathSync.native(filePath);
+    } catch {
+        return path.resolve(filePath);
+    }
+}
+
 function codeLldbAdapterPath(): string | undefined {
     const extension = vscode.extensions.getExtension("vadimcn.vscode-lldb");
     if (!extension) {
@@ -408,9 +416,10 @@ function normalizeNerdBreakpointRequest(message: DapMessage): DapMessage {
         return message;
     }
 
+    const sourcePath = realFilePath(source.path);
     let lines: string[];
     try {
-        lines = fs.readFileSync(source.path, "utf8").split(/\r?\n/);
+        lines = fs.readFileSync(sourcePath, "utf8").split(/\r?\n/);
     } catch {
         return message;
     }
@@ -442,6 +451,10 @@ function normalizeNerdBreakpointRequest(message: DapMessage): DapMessage {
         ...message,
         arguments: {
             ...args,
+            source: {
+                ...source,
+                path: sourcePath,
+            },
             breakpoints: normalizedBreakpoints,
         },
     };
@@ -817,13 +830,14 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
         } else if (message.command === "setBreakpoints") {
             const source = message.arguments?.source as DapSource | undefined;
             if (source?.path) {
+                const sourcePath = realFilePath(source.path);
                 collectNerdDeclarationsFromFile(
-                    source.path,
+                    sourcePath,
                     this.dynamicArrayDeclarations,
                     this.enumDeclarations
                 );
                 collectNerdDeclarationsNearPath(
-                    source.path,
+                    sourcePath,
                     this.dynamicArrayDeclarations,
                     this.enumDeclarations
                 );
@@ -1650,9 +1664,9 @@ async function buildActiveNerdDocumentForDebug(): Promise<string | undefined> {
     const executablePath = getToolExecutablePath();
     const outputPath = nerdDebugOutputPath(document);
     const outputDir = path.dirname(outputPath);
-    const sourcePath = document.uri.fsPath;
+    const sourcePath = realFilePath(document.uri.fsPath);
     const workspaceFolder = workspaceFolderForDocument(document);
-    const cwd = workspaceFolder?.uri.fsPath ?? path.dirname(sourcePath);
+    const cwd = realFilePath(workspaceFolder?.uri.fsPath ?? path.dirname(sourcePath));
     const toolSourcePath =
         executablePath !== "nerd"
             ? executablePath
