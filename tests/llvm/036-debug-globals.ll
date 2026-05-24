@@ -37,9 +37,9 @@ define internal void @fn.0() !dbg !12 {
 !3 = !{i32 2, !"Debug Info Version", i32 3}
 !4 = !{i32 2, !"Dwarf Version", i32 5}
 !7 = !DIBasicType(name: "u32", size: 32, encoding: DW_ATE_unsigned)
-!8 = distinct !DIGlobalVariable(name: "saved_width", scope: !0, file: !1, line: 1, type: !7, isLocal: true, isDefinition: true)
+!8 = distinct !DIGlobalVariable(name: "saved_width", scope: !0, file: !1, line: 1, type: !7, isLocal: false, isDefinition: true)
 !9 = !DIGlobalVariableExpression(var: !8, expr: !5)
-!10 = distinct !DIGlobalVariable(name: "saved_height", scope: !0, file: !1, line: 1, type: !7, isLocal: true, isDefinition: true)
+!10 = distinct !DIGlobalVariable(name: "saved_height", scope: !0, file: !1, line: 1, type: !7, isLocal: false, isDefinition: true)
 !11 = !DIGlobalVariableExpression(var: !10, expr: !5)
 !13 = !DISubroutineType(types: !2)
 !12 = distinct !DISubprogram(name: "main", linkageName: "main", scope: !1, file: !1, line: 6, type: !13, scopeLine: 6, spFlags: DISPFlagDefinition, unit: !0, retainedNodes: !2)

@@ -14,6 +14,11 @@ SMOKE_SOURCE = """Point :: plex {
     y i32
 }
 
+Choice :: enum {
+    None
+    Some(i32)
+}
+
 saved_width: u32
 saved_height: u32
 
@@ -26,13 +31,14 @@ main :: fn () {
     set_default_size()
     message := "hello"
     point := Point { x: 3 y: 4 }
+    choice := Choice.Some(7)
     values := [10, 20, 30]
     bytes := [1.as(u8), 2.as(u8), 3.as(u8)]
     slice := bytes[..]
     numbers: [..]i32
     numbers.push(10)
     numbers.push(20)
-    on point.x == 3 && values[1] == 20 && bytes[2] == 3 &&
+    on choice == Choice.Some(7) && point.x == 3 && values[1] == 20 && bytes[2] == 3 &&
        slice.data[1] == 2 && numbers[1] == 20 => prn(message)
 }
 """
@@ -97,8 +103,8 @@ def main() -> int:
 
     commands = [
         "target create " + str(binary),
-        "breakpoint set --file main.n --line 9",
-        "breakpoint set --file main.n --line 24",
+        "breakpoint set --file main.n --line 15",
+        "breakpoint set --file main.n --line 30",
         "run",
         "bt",
         "frame variable min_width min_height",
@@ -106,7 +112,7 @@ def main() -> int:
         "expression min_height",
         "continue",
         "target variable saved_width saved_height",
-        "frame variable message point values bytes slice numbers",
+        "frame variable message point choice values bytes slice numbers",
         "expression saved_width",
         "expression saved_height",
         "expression point.x",
@@ -132,8 +138,8 @@ def main() -> int:
         "Breakpoint 1:",
         "Breakpoint 2:",
         "stop reason = breakpoint",
-        "`set_default_size(min_width=41, min_height=19) at main.n:10:1",
-        "`main at main.n:15:1",
+        "`set_default_size(min_width=41, min_height=19) at main.n:15:1",
+        "`main at main.n:20:1",
         "(unsigned int) min_width = 41",
         "(unsigned int) min_height = 19",
         "(unsigned int) saved_width = 41",
@@ -142,6 +148,8 @@ def main() -> int:
         "(Point) point = {",
         "x = 3",
         "y = 4",
+        "(Choice) choice = (tag = ",
+        "payload = 7",
         "(int[3]) values = ([0] = 10, [1] = 20, [2] = 30)",
         '(unsigned char[3]) bytes = "\\U00000001\\U00000002\\U00000003"',
         "([]u8) slice = (data = ",

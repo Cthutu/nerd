@@ -2454,6 +2454,9 @@ internal u32 llvm_debug_record_field_count(const Sema* sema, u32 type_index)
     if (kind == STK_String || kind == STK_Slice) {
         return 2;
     }
+    if (kind == STK_Enum) {
+        return 2;
+    }
     if (kind == STK_Tuple || kind == STK_Plex) {
         return sema->types[type_index].param_count;
     }
@@ -2472,6 +2475,12 @@ internal string llvm_debug_record_field_name(LlvmDebugModule* debug,
     }
     if ((kind == STK_String || kind == STK_Slice) && field_index == 1) {
         return s("count");
+    }
+    if (kind == STK_Enum && field_index == 0) {
+        return s("tag");
+    }
+    if (kind == STK_Enum && field_index == 1) {
+        return s("payload");
     }
     if (kind == STK_Tuple) {
         return string_format(arena, "%u", field_index);
@@ -2506,6 +2515,9 @@ internal u32 llvm_debug_record_field_type(const Sema* sema,
         return field_index == 1 ? llvm_builtin_type(sema, STK_Usize)
                                 : sema_no_type();
     }
+    if (kind == STK_Enum && field_index == 0) {
+        return llvm_builtin_type(sema, STK_U64);
+    }
     if ((kind == STK_Tuple || kind == STK_Plex) &&
         field_index < sema->types[type_index].param_count) {
         return sema->type_param_types[sema->types[type_index].first_param_type +
@@ -2522,6 +2534,9 @@ internal u32 llvm_debug_record_field_offset_bits(const Sema* sema,
     SemaTypeKind      kind   = llvm_type_kind(sema, type_index);
     if ((kind == STK_String || kind == STK_Slice) && field_index == 1) {
         return layout->pointer_bits;
+    }
+    if (kind == STK_Enum && field_index == 1) {
+        return layout->enum_tag_bits;
     }
     if (kind != STK_Tuple && kind != STK_Plex) {
         return 0;
@@ -2551,7 +2566,7 @@ internal bool llvm_debug_type_is_record_like(const Sema* sema, u32 type_index)
 {
     SemaTypeKind kind = llvm_type_kind(sema, type_index);
     return kind == STK_String || kind == STK_Slice || kind == STK_Tuple ||
-           kind == STK_Plex;
+           kind == STK_Plex || kind == STK_Enum;
 }
 
 internal bool llvm_debug_type_is_array(const Sema* sema, u32 type_index)
@@ -2597,6 +2612,14 @@ internal u32 llvm_debug_record_fallback_field_type(LlvmDebugModule* debug,
         *out_size = llvm_default_layout()->size_bits;
         return llvm_debug_emit_fallback_basic_type(
             debug, s("usize"), *out_size, "DW_ATE_unsigned");
+    }
+    if (kind == STK_Enum && field_index == 1) {
+        *out_size = llvm_enum_storage_payload_bits(sema, type_index);
+        if (*out_size == 0) {
+            *out_size = 8;
+        }
+        return llvm_debug_emit_fallback_basic_type(
+            debug, s("<payload>"), *out_size, "DW_ATE_unsigned");
     }
 
     *out_size = 8;
@@ -3006,6 +3029,7 @@ internal u32 llvm_debug_global_variable(LlvmDebugModule* debug,
     if (value->kind != HIR_VALUE_Global) {
         return 0;
     }
+    (void)exported;
 
     u32 symbol_handle = llvm_value_symbol_handle(hir, value_index);
     if (symbol_handle == U32_MAX) {
@@ -3030,11 +3054,10 @@ internal u32 llvm_debug_global_variable(LlvmDebugModule* debug,
     llvm_debug_append_quoted(&debug->metadata, name);
     sb_format(&debug->metadata,
               ", scope: !%u, file: !%u, line: 1, type: !%u, "
-              "isLocal: %s, isDefinition: true)\n",
+              "isLocal: false, isDefinition: true)\n",
               debug->compile_unit_id,
               debug->file_id,
-              type_id,
-              exported ? "false" : "true");
+              type_id);
     sb_format(&debug->metadata,
               "!%u = !DIGlobalVariableExpression(var: !%u, expr: !%u)\n",
               expression_id,
