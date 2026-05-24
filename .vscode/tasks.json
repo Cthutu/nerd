@@ -43,6 +43,26 @@
             "problemMatcher": "$gcc"
         },
         {
+            "label": "Build Debugger Fixture",
+            "type": "shell",
+            "command": "mkdir -p \"${workspaceFolder}/_tmp/debug\" && \"${workspaceFolder}/_bin/nerd-debug\" build --output \"${workspaceFolder}/_tmp/debug/debug\" \"${workspaceFolder}/examples/debug/debug.n\"",
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "NERD_LIB_PATH": "${workspaceFolder}/mods"
+                }
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": true
+            },
+            "problemMatcher": "$gcc"
+        },
+        {
             "label": "Compile-Release",
             "type": "process",
             "command": "just",

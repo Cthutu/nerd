@@ -1,0 +1,96 @@
+DebugPoint :: plex {
+    x i32
+    y i32
+}
+
+DebugCell :: plex {
+    ch    u32
+    ink   u32
+    paper u32
+    flags u32
+}
+
+DebugEvent :: enum {
+    None
+    Move(DebugPoint)
+    Message(string)
+    Count(i32)
+}
+
+global_counter : i32
+global_cells   : [..]DebugCell
+global_event   : DebugEvent
+
+debugger_seed_globals :: fn () {
+    global_counter = 41
+    global_cells.push(DebugCell { ch: 'G'.as(u32) ink: 1 paper: 2 flags: 3 })
+    global_cells.push(DebugCell { ch: 'H'.as(u32) ink: 4 paper: 5 flags: 6 })
+    global_event = DebugEvent.Count(global_cells.count.as(i32))
+}
+
+debugger_branch_value :: fn (event: DebugEvent) -> i32 {
+    result := 0
+
+    on event {
+        DebugEvent.None => {
+            result = 1
+        }
+        DebugEvent.Move(point) => {
+            result = point.x + point.y
+        }
+        DebugEvent.Message(text) => {
+            result = text.count.as(i32)
+        }
+        DebugEvent.Count(value) => {
+            result = value
+        }
+    }
+
+    return result
+}
+
+debugger_values :: fn (scale: i32) -> i32 {
+    label := "debugger"
+    point := DebugPoint { x: 3 y: 4 }
+    fixed_numbers := [10, 20, 30]
+    pair := ("east", 7)
+
+    bytes : [..]u8
+    bytes.push('A'.as(u8))
+    bytes.push('B'.as(u8))
+    bytes.push('C'.as(u8))
+    byte_slice := bytes[..]
+
+    numbers : [..]i32
+    numbers.push(100)
+    numbers.push(200)
+    numbers.push(300)
+
+    cells : [..]DebugCell
+    cells.push(DebugCell { ch: 'a'.as(u32) ink: 10 paper: 20 flags: 1 })
+    cells.push(DebugCell { ch: 'b'.as(u32) ink: 11 paper: 21 flags: 2 })
+    cells.push(DebugCell { ch: 'c'.as(u32) ink: 12 paper: 22 flags: 3 })
+
+    local_event := DebugEvent.Move(point)
+    branch_value := debugger_branch_value(local_event)
+    global_branch_value := debugger_branch_value(global_event)
+
+    checkpoint := label.count.as(i32) + point.x + fixed_numbers[1] + pair.1.as(i32) + byte_slice.data[1].as(i32) + numbers[1] + cells[1].flags.as(i32) + branch_value + global_branch_value + scale
+
+    on checkpoint > 0 => prn($"debug checkpoint {checkpoint}")
+
+    cells.free()
+    numbers.free()
+    bytes.free()
+
+    return checkpoint
+}
+
+main :: fn () {
+    debugger_seed_globals()
+
+    total := debugger_values(2)
+    assert total > global_counter
+
+    global_cells.free()
+}
