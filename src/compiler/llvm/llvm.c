@@ -1911,12 +1911,14 @@ typedef struct {
     u32           expression_id;
     u32           file_id;
     u32           compile_unit_id;
+    u32           globals_id;
     string        source_path;
     Array(LlvmDebugLocation) locations;
     Array(LlvmDebugFile) files;
     Array(LlvmDebugFileScope) file_scopes;
     Array(LlvmDebugType) types;
     Array(LlvmDebugVariable) variables;
+    Array(u32) global_variables;
     bool uses_dbg_declare;
     bool uses_dbg_value;
 } LlvmDebugModule;
@@ -2015,8 +2017,10 @@ internal u32 llvm_debug_alloc_id(LlvmDebugModule* debug)
     return debug != NULL ? debug->next_id++ : 0;
 }
 
-internal void
-llvm_debug_init(LlvmDebugModule* debug, Arena* arena, const Lexer* lexer)
+internal void llvm_debug_init(LlvmDebugModule* debug,
+                              Arena*           arena,
+                              const Lexer*     lexer,
+                              bool             has_globals)
 {
     *debug = (LlvmDebugModule){0};
     arena_init(&debug->metadata_arena);
@@ -2040,6 +2044,7 @@ llvm_debug_init(LlvmDebugModule* debug, Arena* arena, const Lexer* lexer)
     u32 debug_info_flag    = llvm_debug_alloc_id(debug);
     u32 dwarf_flag         = llvm_debug_alloc_id(debug);
     debug->expression_id   = llvm_debug_alloc_id(debug);
+    debug->globals_id      = has_globals ? llvm_debug_alloc_id(debug) : 0;
 
     sb_format(&debug->metadata,
               "!llvm.dbg.cu = !{!%u}\n"
@@ -2056,8 +2061,12 @@ llvm_debug_init(LlvmDebugModule* debug, Arena* arena, const Lexer* lexer)
     llvm_debug_append_quoted(&debug->metadata, s("Nerd"));
     sb_format(&debug->metadata,
               ", isOptimized: false, runtimeVersion: 0, emissionKind: "
-              "FullDebug, enums: !%u)\n",
+              "FullDebug, enums: !%u",
               debug->empty_id);
+    if (debug->globals_id != 0) {
+        sb_format(&debug->metadata, ", globals: !%u", debug->globals_id);
+    }
+    sb_append_cstr(&debug->metadata, ")\n");
 
     sb_format(&debug->metadata, "!%u = !DIFile(filename: ", debug->file_id);
     llvm_debug_append_quoted(&debug->metadata, filename);
@@ -2086,6 +2095,7 @@ internal void llvm_debug_done(LlvmDebugModule* debug)
     array_free(debug->file_scopes);
     array_free(debug->types);
     array_free(debug->variables);
+    array_free(debug->global_variables);
     arena_done(&debug->metadata_arena);
     arena_done(&debug->path_arena);
 }
@@ -2978,6 +2988,75 @@ internal void llvm_debug_emit_param_value(LlvmFunctionContext* ctx,
         sb_format(ctx->sb, ", !dbg !%u", location);
     }
     sb_append_char(ctx->sb, '\n');
+}
+
+internal u32 llvm_debug_global_variable(LlvmDebugModule* debug,
+                                        const Hir*       hir,
+                                        const Lexer*     lexer,
+                                        const Sema*      sema,
+                                        u32              value_index,
+                                        bool             exported)
+{
+    if (debug == NULL || hir == NULL || lexer == NULL || sema == NULL ||
+        value_index >= array_count(hir->values)) {
+        return 0;
+    }
+
+    const HirValue* value = &hir->values[value_index];
+    if (value->kind != HIR_VALUE_Global) {
+        return 0;
+    }
+
+    u32 symbol_handle = llvm_value_symbol_handle(hir, value_index);
+    if (symbol_handle == U32_MAX) {
+        return 0;
+    }
+
+    string name = lex_symbol(lexer, symbol_handle);
+    if (name.count == 0) {
+        return 0;
+    }
+
+    u32 type_id = llvm_debug_type(debug, sema, value->type_index);
+    if (type_id == 0) {
+        return 0;
+    }
+
+    u32 variable_id   = llvm_debug_alloc_id(debug);
+    u32 expression_id = llvm_debug_alloc_id(debug);
+    sb_format(&debug->metadata,
+              "!%u = distinct !DIGlobalVariable(name: ",
+              variable_id);
+    llvm_debug_append_quoted(&debug->metadata, name);
+    sb_format(&debug->metadata,
+              ", scope: !%u, file: !%u, line: 1, type: !%u, "
+              "isLocal: %s, isDefinition: true)\n",
+              debug->compile_unit_id,
+              debug->file_id,
+              type_id,
+              exported ? "false" : "true");
+    sb_format(&debug->metadata,
+              "!%u = !DIGlobalVariableExpression(var: !%u, expr: !%u)\n",
+              expression_id,
+              variable_id,
+              debug->expression_id);
+    array_push(debug->global_variables, expression_id);
+    return expression_id;
+}
+
+internal void llvm_debug_emit_global_list(LlvmDebugModule* debug)
+{
+    if (debug == NULL || debug->globals_id == 0) {
+        return;
+    }
+    sb_format(&debug->metadata, "!%u = !{", debug->globals_id);
+    for (u32 i = 0; i < array_count(debug->global_variables); ++i) {
+        if (i > 0) {
+            sb_append_cstr(&debug->metadata, ", ");
+        }
+        sb_format(&debug->metadata, "!%u", debug->global_variables[i]);
+    }
+    sb_append_cstr(&debug->metadata, "}\n");
 }
 
 internal void llvm_debug_emit_marker(LlvmFunctionContext* ctx,
@@ -13280,11 +13359,12 @@ internal u32 llvm_hir_value_binding_index(const Hir* hir, u32 value_index)
     return U32_MAX;
 }
 
-internal void llvm_render_global_values(StringBuilder* sb,
-                                        const Hir*     hir,
-                                        const Lexer*   lexer,
-                                        const Sema*    sema,
-                                        Arena*         arena)
+internal void llvm_render_global_values(StringBuilder*   sb,
+                                        const Hir*       hir,
+                                        const Lexer*     lexer,
+                                        const Sema*      sema,
+                                        Arena*           arena,
+                                        LlvmDebugModule* debug)
 {
     for (u32 i = 0; i < array_count(hir->values); ++i) {
         const HirValue* value = &hir->values[i];
@@ -13305,6 +13385,11 @@ internal void llvm_render_global_values(StringBuilder* sb,
         llvm_append_type(sb, sema, value->type_index);
         sb_append_cstr(sb, " ");
         llvm_append_zero_value(sb, sema, value->type_index);
+        u32 debug_global =
+            llvm_debug_global_variable(debug, hir, lexer, sema, i, exported);
+        if (debug_global != 0) {
+            sb_format(sb, ", !dbg !%u", debug_global);
+        }
         sb_append_char(sb, '\n');
     }
     (void)arena;
@@ -13638,7 +13723,7 @@ string llvm_render_hir(const Hir*   hir,
     LlvmDebugModule* debug         = NULL;
     if (emit_debug) {
         debug = &debug_storage;
-        llvm_debug_init(debug, arena, lexer);
+        llvm_debug_init(debug, arena, lexer, llvm_hir_has_globals(hir));
     }
 
     sb_append_cstr(&sb, "; nerd llvm-ir 0\n");
@@ -13709,7 +13794,7 @@ string llvm_render_hir(const Hir*   hir,
 
     if (llvm_hir_has_globals(hir)) {
         llvm_render_global_slice_backing_values(&sb, hir, lexer, render_sema);
-        llvm_render_global_values(&sb, hir, lexer, render_sema, arena);
+        llvm_render_global_values(&sb, hir, lexer, render_sema, arena, debug);
         sb_append_char(&sb, '\n');
         llvm_render_global_init(&sb, hir, lexer, render_sema, arena);
         sb_append_char(&sb, '\n');
@@ -13749,6 +13834,7 @@ string llvm_render_hir(const Hir*   hir,
     }
 
     if (debug != NULL) {
+        llvm_debug_emit_global_list(debug);
         sb_append_string(&sb, sb_to_string(&debug->metadata));
     }
 

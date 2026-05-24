@@ -26,6 +26,8 @@ type DapMessage = vscode.DebugProtocolMessage & {
     command?: string;
     arguments?: { [key: string]: unknown };
     request_seq?: number;
+    success?: boolean;
+    message?: string;
     body?: { [key: string]: unknown };
 };
 
@@ -321,6 +323,35 @@ function normalizeNerdBreakpointRequest(message: DapMessage): DapMessage {
     };
 }
 
+function dynamicArrayHeaderWatchExpression(expression: string): string | undefined {
+    const match = expression
+        .trim()
+        .match(/^([A-Za-z_][A-Za-z0-9_.$]*)\s*\.\s*(count|capacity|data)$/);
+    if (!match) {
+        return undefined;
+    }
+
+    const base = match[1];
+    const field = match[2];
+    if (field === "data") {
+        return base;
+    }
+
+    const offset = field === "count" ? 16 : 8;
+    return `${base} ? *((unsigned long long *)((char *)${base} - ${offset})) : 0`;
+}
+
+function retryableDynamicArrayWatch(message: DapMessage): string | undefined {
+    if (
+        message.type !== "request" ||
+        message.command !== "evaluate" ||
+        typeof message.arguments?.expression !== "string"
+    ) {
+        return undefined;
+    }
+    return dynamicArrayHeaderWatchExpression(message.arguments.expression);
+}
+
 class DapMessageReader {
     private buffer = Buffer.alloc(0);
 
@@ -362,6 +393,9 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
     readonly onDidSendMessage = this.emitter.event;
     private readonly process: ChildProcessWithoutNullStreams;
     private readonly reader: DapMessageReader;
+    private nextInternalSeq = 1_000_000_000;
+    private readonly pendingDynamicArrayRetries = new Map<number, DapMessage>();
+    private readonly dynamicArrayRetryResponses = new Map<number, number>();
 
     constructor(adapterPath: string) {
         this.process = spawn(adapterPath, [], {
@@ -386,9 +420,21 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
     }
 
     handleMessage(message: vscode.DebugProtocolMessage): void {
+        const dapMessage = message as DapMessage;
+        const retryExpression = retryableDynamicArrayWatch(dapMessage);
+        if (retryExpression && dapMessage.seq !== undefined) {
+            this.pendingDynamicArrayRetries.set(dapMessage.seq, {
+                ...dapMessage,
+                arguments: {
+                    ...dapMessage.arguments,
+                    expression: retryExpression,
+                },
+            });
+        }
+
         if (!this.process.stdin.destroyed) {
             this.process.stdin.write(
-                encodeDapMessage(normalizeNerdBreakpointRequest(message as DapMessage))
+                encodeDapMessage(normalizeNerdBreakpointRequest(dapMessage))
             );
         }
     }
@@ -401,6 +447,33 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
     private forwardFromCodeLldb(message: DapMessage): void {
         if (message.type === "response" && message.command === "initialize" && message.body) {
             message.body.supportsDelayedStackTraceLoading = false;
+        }
+
+        if (message.type === "response" && message.request_seq !== undefined) {
+            const originalRequest = this.dynamicArrayRetryResponses.get(
+                message.request_seq
+            );
+            if (originalRequest !== undefined) {
+                this.dynamicArrayRetryResponses.delete(message.request_seq);
+                message.request_seq = originalRequest;
+                this.emitter.fire(message);
+                return;
+            }
+
+            const retry = this.pendingDynamicArrayRetries.get(message.request_seq);
+            this.pendingDynamicArrayRetries.delete(message.request_seq);
+            if (
+                retry &&
+                message.command === "evaluate" &&
+                message.success === false &&
+                !this.process.stdin.destroyed
+            ) {
+                const retrySeq = this.nextInternalSeq++;
+                retry.seq = retrySeq;
+                this.dynamicArrayRetryResponses.set(retrySeq, message.request_seq);
+                this.process.stdin.write(encodeDapMessage(retry));
+                return;
+            }
         }
         this.emitter.fire(message);
     }

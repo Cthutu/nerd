@@ -93,6 +93,8 @@ def check_vscode_extension() -> None:
         "normalizeNerdBreakpointRequest",
         "nearestNerdBreakpointLine",
         "Moved ${movedCount} Nerd breakpoint(s)",
+        "dynamicArrayHeaderWatchExpression",
+        "pendingDynamicArrayRetries",
         '["build", "--output", outputPath, sourcePath]',
         "fullDocumentRange(document)",
         "document.positionAt(document.getText().length)",

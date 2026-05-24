@@ -48,6 +48,10 @@ starts the native executable is not enough.
   index fixed-size stack arrays such as `values[1]`, and inspect/index
   stack-backed slices such as `slice.data[1]`, and index dynamic-array data
   pointers such as `numbers[1]`.
+- Linux debug executables expose Nerd globals by source name through DWARF
+  global-variable metadata.
+- The Nerd VS Code debug shim retries failed dynamic-array `.count`,
+  `.capacity`, and `.data` watches with runtime-header expressions.
 - Function parameters emitted with `dbg.value` are marked as DWARF arguments so
   CodeLLDB exposes ordinary arguments such as `std.random.random_seed(seed)`.
 - Nerd-visible function bindings are emitted as `$` aliases while generated
@@ -283,7 +287,7 @@ that gap.
 - [x] Define the supported first watch-expression subset.
 - [x] Support locals and parameters by name.
 - [x] Support field access for plexes, tuples, strings, and slices.
-- [ ] Support dynamic-array `.count` and `.capacity` field rendering.
+- [x] Support dynamic-array `.count` and `.capacity` field rendering.
 - [x] Support native collection indexing for strings, slices, fixed arrays, and
   dynamic-array data pointers where the runtime representation is known.
 - [ ] Support general pointer dereference and indexing where the runtime
