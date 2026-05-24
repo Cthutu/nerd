@@ -1,6 +1,12 @@
 {
     "files.associations": {
-        "*.h": "c",
+        "*.h": "c"
+    },
+    "files.exclude": {
+        "_tmp/**": true
+    },
+    "files.watcherExclude": {
+        "_tmp/**": true
     },
     "git.ignoreLimitWarning": true,
     "sarif-viewer.connectToGithubCodeScanning": "off"
