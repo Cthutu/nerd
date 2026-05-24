@@ -2147,6 +2147,10 @@ internal string llvm_debug_function_linkage_name(const Hir*   hir,
         name.data += 1;
         name.count -= 1;
     }
+    if (name.count > 0 && name.data[0] == '$') {
+        name.data += 1;
+        name.count -= 1;
+    }
     return name;
 }
 

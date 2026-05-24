@@ -265,7 +265,6 @@ async function debugActiveNerdFileWithCodeLLDB() {
         program: executablePath,
         args: [],
         cwd,
-        sourceLanguages: ["c"],
     });
 
     if (!started) {

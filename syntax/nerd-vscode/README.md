@@ -49,8 +49,7 @@ the Nerd command build the active file:
     "name": "Debug Nerd Active File",
     "program": "${command:nerd.buildActiveFileForDebug}",
     "args": [],
-    "cwd": "${workspaceFolder}",
-    "sourceLanguages": ["c"]
+    "cwd": "${workspaceFolder}"
 }
 ```
 

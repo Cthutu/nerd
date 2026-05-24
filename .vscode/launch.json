@@ -12,10 +12,7 @@
                 "NERD_LIB_PATH": "${workspaceFolder}/mods"
             },
             "preLaunchTask": "Build Dungeon Debug",
-            "terminal": "integrated",
-            "sourceLanguages": [
-                "c"
-            ]
+            "terminal": "integrated"
         },
         {
             "name": "Launch Executable (Linux)",
