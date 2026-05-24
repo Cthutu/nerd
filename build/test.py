@@ -466,7 +466,7 @@ def test_llvm(path: pathlib.Path) -> list[Failure]:
         str(input_path),
         "--output",
         str(output_root),
-    ])
+    ], extra_env={"NERD_DEBUG_LLVM_SIDECARS": "1"} if keep_debug_metadata else None)
 
     failures: list[Failure] = []
     if proc.returncode != 0:

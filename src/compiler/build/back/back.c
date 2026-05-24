@@ -9,6 +9,7 @@
 #    include <sys/stat.h>
 #endif
 #include <stdio.h>
+#include <stdlib.h>
 
 #include <compiler/build/back/back.h>
 #include <compiler/build/back/llvm_runtime.h>
@@ -614,6 +615,10 @@ internal bool back_end_render_llvm_modules(Arena*                    arena,
         array_requires_capacity(out->llvm_paths, module_count);
     }
 
+    const char* debug_sidecars = getenv("NERD_DEBUG_LLVM_SIDECARS");
+    bool        emit_debug_sidecars =
+        debug_sidecars != NULL && strcmp(debug_sidecars, "1") == 0;
+
     for (u32 i = 0; i < module_count; ++i) {
         const FrontEndState* front_end   = &program->modules[i].front_end;
         string               module_llvm = llvm_render_hir(&front_end->hir,
@@ -623,8 +628,16 @@ internal bool back_end_render_llvm_modules(Arena*                    arena,
                                                            !artifacts->release);
         array_push(out->module_llvms, module_llvm);
         if (artifacts->emit_llvm_file) {
+            string sidecar_llvm = module_llvm;
+            if (!artifacts->release && !emit_debug_sidecars) {
+                sidecar_llvm = llvm_render_hir(&front_end->hir,
+                                               &front_end->lexer,
+                                               &front_end->sema,
+                                               arena,
+                                               false);
+            }
             cstr llvm_path = back_end_module_llvm_path(arena, artifacts, i);
-            if (!back_end_write_text_file(llvm_path, module_llvm)) {
+            if (!back_end_write_text_file(llvm_path, sidecar_llvm)) {
                 return false;
             }
             array_push(out->llvm_paths, llvm_path);
