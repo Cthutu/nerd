@@ -299,14 +299,14 @@ that gap.
 
 ### MS6: Nerd Value Rendering
 
-- [ ] Render `string` values as text plus length.
+- [x] Render `string` values as text summaries with expandable data/count.
 - [x] Render dynamic arrays declared in Nerd source as expandable indexed
   collections in the VS Code Variables tree.
 - [ ] Render slices as expandable indexed collections.
-- [ ] Render tagged enums with both symbolic variant names and integer
+- [x] Render tagged enums with both symbolic variant names and integer
   discriminants, and decode `payload` according to the active tag's payload
   type instead of showing only the raw storage integer.
-- [ ] Render tuples and plexes as expandable structured values.
+- [x] Render tuples and plexes as expandable structured values.
 - [ ] Render raw unions and pointers in a low-level form.
 - [ ] Decide whether pretty rendering belongs in extension TypeScript, adapter
   code, debugger scripts, or emitted metadata.
@@ -356,6 +356,8 @@ that gap.
   locals/parameters smoke path.
 - Extend `build/check_editor_integrations.py` to verify VS Code debugger
   contribution metadata and launch configuration snippets.
+- Use `python3 build/check_debugger_adapter_transforms.py` for adapter-side
+  value-rendering transform coverage.
 - Keep manual testing notes in this file until they can be automated.
 
 ## Commit Plan
