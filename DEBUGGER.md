@@ -299,7 +299,9 @@ that gap.
 
 - [ ] Render `string` values as text plus length.
 - [ ] Render slices and dynamic arrays as expandable indexed collections.
-- [ ] Render enums as variant names with payloads.
+- [ ] Render enums as variant names plus numeric tags, and decode `payload`
+  according to the selected variant's payload type instead of showing only the
+  raw storage integer.
 - [ ] Render tuples and plexes as expandable structured values.
 - [ ] Render raw unions and pointers in a low-level form.
 - [ ] Decide whether pretty rendering belongs in extension TypeScript, adapter
