@@ -57,6 +57,9 @@ const result = {
   payload: fmt.enumPayloadExpression("event", event.variants[3]),
   pointerType: fmt.nerdDisplayTypeName("unsigned char *"),
   primitiveType: fmt.nerdPrimitiveTypeName("unsigned int"),
+  unsupportedCast: fmt.unsupportedNerdWatchReason("value.as(i32)"),
+  unsupportedRange: fmt.unsupportedNerdWatchReason("numbers[1..]"),
+  supportedNative: fmt.unsupportedNerdWatchReason("numbers[1]"),
 };
 console.log(JSON.stringify(result));
 """
@@ -83,6 +86,8 @@ console.log(JSON.stringify(result));
         "payload": "*(int *)((char *)&event.payload + ((sizeof(int) <= 8) ? 8 : 0))",
         "pointerType": "^u8",
         "primitiveType": "u32",
+        "unsupportedCast": "Nerd casts are not supported in watches yet",
+        "unsupportedRange": "ranges and slices are not supported in watches yet; watch the slice variable or its data/count fields",
     }
     for key, value in expected.items():
         if result.get(key) != value:
@@ -91,6 +96,8 @@ console.log(JSON.stringify(result));
     variants = result.get("variants")
     if not variants or variants[1].get("payloadType") != "DebugPoint":
         return fail("enum payload metadata was not collected", json.dumps(result, indent=2))
+    if result.get("supportedNative") is not None:
+        return fail("native watch expression was incorrectly rejected", json.dumps(result, indent=2))
 
     print("debugger-adapter-transforms ok")
     return 0

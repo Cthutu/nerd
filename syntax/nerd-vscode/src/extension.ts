@@ -24,6 +24,7 @@ import {
     parseIntegerResult,
     parseUnsignedResult,
     stripNerdLineComment,
+    unsupportedNerdWatchReason,
 } from "./debugFormat";
 
 let client: LanguageClient | undefined;
@@ -645,6 +646,9 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
 
     handleMessage(message: vscode.DebugProtocolMessage): void {
         const dapMessage = message as DapMessage;
+        if (this.rejectUnsupportedWatchExpression(dapMessage)) {
+            return;
+        }
         let outboundMessage = dapMessage;
         const retryExpression = retryableDynamicArrayWatch(dapMessage);
         if (retryExpression && dapMessage.seq !== undefined) {
@@ -686,6 +690,37 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
     dispose(): void {
         this.process.kill();
         this.emitter.dispose();
+    }
+
+    private rejectUnsupportedWatchExpression(message: DapMessage): boolean {
+        if (
+            message.type !== "request" ||
+            message.command !== "evaluate" ||
+            message.seq === undefined ||
+            typeof message.arguments?.expression !== "string"
+        ) {
+            return false;
+        }
+
+        const context = message.arguments.context;
+        if (context !== "watch" && context !== "repl") {
+            return false;
+        }
+
+        const reason = unsupportedNerdWatchReason(message.arguments.expression);
+        if (!reason) {
+            return false;
+        }
+
+        this.emitter.fire({
+            seq: this.nextInternalSeq++,
+            type: "response",
+            request_seq: message.seq,
+            success: false,
+            command: "evaluate",
+            message: `Unsupported Nerd watch expression: ${reason}.`,
+        } as DapMessage);
+        return true;
     }
 
     private forwardFromCodeLldb(message: DapMessage): void {

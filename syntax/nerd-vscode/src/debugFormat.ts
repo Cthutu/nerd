@@ -191,6 +191,35 @@ export function lldbTypeNameForNerdType(nerdType: string): string {
     }
 }
 
+export function unsupportedNerdWatchReason(expression: string): string | undefined {
+    const text = expression.trim();
+    if (!text) {
+        return "empty watch expressions are not supported";
+    }
+    if (/\b(on|for|return|break|continue|defer|assert)\b/.test(text)) {
+        return "statement forms are not supported in watches yet";
+    }
+    if (/:=/.test(text) || /^\s*(let|var)\b/.test(text)) {
+        return "declarations are not supported in watches";
+    }
+    if (/=>/.test(text)) {
+        return "pattern branches are not supported in watches yet";
+    }
+    if (/\.\s*as\s*\(/.test(text)) {
+        return "Nerd casts are not supported in watches yet";
+    }
+    if (/\.\./.test(text)) {
+        return "ranges and slices are not supported in watches yet; watch the slice variable or its data/count fields";
+    }
+    if (/[$]"/.test(text)) {
+        return "interpolated strings are not supported in watches";
+    }
+    if (/[{}]/.test(text)) {
+        return "blocks and aggregate literals are not supported in watches yet";
+    }
+    return undefined;
+}
+
 export function enumVariantForTag(
     enumDecl: NerdEnumDeclaration,
     tag: number | undefined
