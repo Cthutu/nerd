@@ -26,7 +26,8 @@ extension metadata and LSP startup contract.
 On Linux, install the CodeLLDB VS Code extension and run `Nerd: Debug Active
 File with CodeLLDB` from a `.n` file. The command saves the active file, builds
 it with the detected Nerd executable, writes the executable under
-`_tmp/debug/`, and launches a CodeLLDB `type: "lldb"` session.
+`_tmp/debug/`, and launches a Nerd `type: "nerd"` session that delegates to
+CodeLLDB.
 
 After installing or updating the extension, run `Developer: Reload Window` in
 open VS Code windows so newly contributed commands and breakpoint support are
@@ -39,12 +40,12 @@ The build command uses the same Nerd executable lookup as formatting:
 3. user install under `~/.local/bin/nerd`
 4. `nerd` from `PATH`
 
-For a checked-in `.vscode/launch.json` workflow, use CodeLLDB directly and let
+For a checked-in `.vscode/launch.json` workflow, use the Nerd debug type and let
 the Nerd command build the active file:
 
 ```json
 {
-    "type": "lldb",
+    "type": "nerd",
     "request": "launch",
     "name": "Debug Nerd Active File",
     "program": "${command:nerd.buildActiveFileForDebug}",
@@ -53,5 +54,6 @@ the Nerd command build the active file:
 }
 ```
 
-This is the current Linux-first bridge. A future Nerd-owned `type: "nerd"`
-debug configuration still needs a real adapter or a proven delegation strategy.
+This is the current Linux-first bridge. The Nerd debug adapter is a small VS
+Code shim that delegates process control to CodeLLDB while keeping Nerd-specific
+debugger presentation decisions in this extension.

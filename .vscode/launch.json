@@ -3,7 +3,7 @@
     "configurations": [
         {
             "name": "Debug Dungeon (Nerd + CodeLLDB)",
-            "type": "lldb",
+            "type": "nerd",
             "request": "launch",
             "program": "${workspaceFolder}/_tmp/debug/dungeon",
             "args": [],

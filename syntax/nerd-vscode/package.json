@@ -14,6 +14,7 @@
     "main": "./out/extension.js",
     "activationEvents": [
         "onLanguage:nerd",
+        "onDebug:nerd",
         "onCommand:nerd.restartLanguageServer",
         "onCommand:nerd.debugActiveFileWithCodeLLDB",
         "onCommand:nerd.buildActiveFileForDebug"
@@ -47,6 +48,60 @@
         "breakpoints": [
             {
                 "language": "nerd"
+            }
+        ],
+        "debuggers": [
+            {
+                "type": "nerd",
+                "label": "Nerd",
+                "languages": [
+                    "nerd"
+                ],
+                "configurationAttributes": {
+                    "launch": {
+                        "required": [
+                            "program"
+                        ],
+                        "properties": {
+                            "program": {
+                                "type": "string",
+                                "description": "Path to the Nerd executable to debug."
+                            },
+                            "args": {
+                                "type": "array",
+                                "description": "Command-line arguments passed to the program.",
+                                "default": []
+                            },
+                            "cwd": {
+                                "type": "string",
+                                "description": "Working directory for the debugged program."
+                            },
+                            "env": {
+                                "type": "object",
+                                "description": "Environment variables for the debugged program."
+                            },
+                            "terminal": {
+                                "type": "string",
+                                "enum": [
+                                    "integrated",
+                                    "external",
+                                    "console"
+                                ],
+                                "description": "Where to run the debugged program."
+                            }
+                        }
+                    }
+                },
+                "initialConfigurations": [
+                    {
+                        "type": "nerd",
+                        "request": "launch",
+                        "name": "Debug Nerd Active File",
+                        "program": "${command:nerd.buildActiveFileForDebug}",
+                        "args": [],
+                        "cwd": "${workspaceFolder}"
+                    }
+                ]
             }
         ],
         "commands": [

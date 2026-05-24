@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
-import { execFile } from "child_process";
+import { ChildProcessWithoutNullStreams, execFile, spawn } from "child_process";
 import {
     Executable,
     LanguageClient,
@@ -19,6 +19,12 @@ let serverWatcher: fs.FSWatcher | undefined;
 let formatterRegistration: vscode.Disposable | undefined;
 let applyingIndentEdit = false;
 let suppressEnterIndentUntil = 0;
+
+type DapMessage = vscode.DebugProtocolMessage & {
+    type?: string;
+    command?: string;
+    body?: { [key: string]: unknown };
+};
 
 function execFileAsync(
     command: string,
@@ -190,6 +196,129 @@ function executableSuffix(): string {
     return process.platform === "win32" ? ".exe" : "";
 }
 
+function codeLldbAdapterPath(): string | undefined {
+    const extension = vscode.extensions.getExtension("vadimcn.vscode-lldb");
+    if (!extension) {
+        return undefined;
+    }
+
+    const executableName = process.platform === "win32" ? "codelldb.exe" : "codelldb";
+    const candidate = path.join(extension.extensionPath, "adapter", executableName);
+    return fs.existsSync(candidate) ? candidate : undefined;
+}
+
+function encodeDapMessage(message: DapMessage): Buffer {
+    const payload = Buffer.from(JSON.stringify(message), "utf8");
+    return Buffer.concat([
+        Buffer.from(`Content-Length: ${payload.length}\r\n\r\n`, "ascii"),
+        payload,
+    ]);
+}
+
+class DapMessageReader {
+    private buffer = Buffer.alloc(0);
+
+    constructor(private readonly onMessage: (message: DapMessage) => void) {}
+
+    accept(chunk: Buffer): void {
+        this.buffer = Buffer.concat([this.buffer, chunk]);
+
+        while (true) {
+            const headerEnd = this.buffer.indexOf("\r\n\r\n");
+            if (headerEnd < 0) {
+                return;
+            }
+
+            const header = this.buffer.subarray(0, headerEnd).toString("ascii");
+            const lengthLine = header
+                .split("\r\n")
+                .find((line) => line.toLowerCase().startsWith("content-length:"));
+            if (!lengthLine) {
+                throw new Error("Debug adapter message is missing Content-Length");
+            }
+
+            const payloadLength = Number.parseInt(lengthLine.split(":", 2)[1].trim(), 10);
+            const payloadStart = headerEnd + 4;
+            const payloadEnd = payloadStart + payloadLength;
+            if (this.buffer.length < payloadEnd) {
+                return;
+            }
+
+            const payload = this.buffer.subarray(payloadStart, payloadEnd).toString("utf8");
+            this.buffer = this.buffer.subarray(payloadEnd);
+            this.onMessage(JSON.parse(payload) as DapMessage);
+        }
+    }
+}
+
+class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
+    private readonly emitter = new vscode.EventEmitter<vscode.DebugProtocolMessage>();
+    readonly onDidSendMessage = this.emitter.event;
+    private readonly process: ChildProcessWithoutNullStreams;
+    private readonly reader: DapMessageReader;
+
+    constructor(adapterPath: string) {
+        this.process = spawn(adapterPath, [], {
+            env: process.env,
+            stdio: ["pipe", "pipe", "pipe"],
+        });
+        this.reader = new DapMessageReader((message) => this.forwardFromCodeLldb(message));
+
+        this.process.stdout.on("data", (chunk: Buffer) => {
+            try {
+                this.reader.accept(chunk);
+            } catch (error) {
+                this.sendError(`CodeLLDB protocol error: ${String(error)}`);
+            }
+        });
+        this.process.stderr.on("data", (chunk: Buffer) => {
+            outputChannel?.append(chunk.toString("utf8"));
+        });
+        this.process.on("error", (error) => {
+            this.sendError(`Could not start CodeLLDB: ${error.message}`);
+        });
+    }
+
+    handleMessage(message: vscode.DebugProtocolMessage): void {
+        if (!this.process.stdin.destroyed) {
+            this.process.stdin.write(encodeDapMessage(message as DapMessage));
+        }
+    }
+
+    dispose(): void {
+        this.process.kill();
+        this.emitter.dispose();
+    }
+
+    private forwardFromCodeLldb(message: DapMessage): void {
+        if (message.type === "response" && message.command === "initialize" && message.body) {
+            message.body.supportsDelayedStackTraceLoading = false;
+        }
+        this.emitter.fire(message);
+    }
+
+    private sendError(message: string): void {
+        outputChannel?.appendLine(message);
+        outputChannel?.show(true);
+    }
+}
+
+class NerdDebugAdapterFactory implements vscode.DebugAdapterDescriptorFactory {
+    createDebugAdapterDescriptor(): vscode.ProviderResult<vscode.DebugAdapterDescriptor> {
+        const adapterPath = codeLldbAdapterPath();
+        if (!adapterPath) {
+            void vscode.window.showErrorMessage(
+                "Nerd debugging requires the CodeLLDB extension."
+            );
+            return undefined;
+        }
+
+        return new vscode.DebugAdapterInlineImplementation(
+            new NerdCodeLldbDebugAdapter(adapterPath)
+        );
+    }
+}
+
 function nerdDebugOutputPath(document: vscode.TextDocument): string {
     const workspaceFolder = workspaceFolderForDocument(document);
     const baseDir = workspaceFolder?.uri.fsPath ?? path.dirname(document.fileName);
@@ -259,7 +388,7 @@ async function debugActiveNerdFileWithCodeLLDB() {
     const workspaceFolder = workspaceFolderForDocument(document);
     const cwd = workspaceFolder?.uri.fsPath ?? path.dirname(document.uri.fsPath);
     const started = await vscode.debug.startDebugging(workspaceFolder, {
-        type: "lldb",
+        type: "nerd",
         request: "launch",
         name: `Debug ${path.basename(document.uri.fsPath)}`,
         program: executablePath,
@@ -649,6 +778,12 @@ export function activate(
 
     registerFormatter(context);
     registerEnterIndentation(context);
+    context.subscriptions.push(
+        vscode.debug.registerDebugAdapterDescriptorFactory(
+            "nerd",
+            new NerdDebugAdapterFactory()
+        )
+    );
     context.subscriptions.push(
         vscode.commands.registerCommand(
             "nerd.restartLanguageServer",

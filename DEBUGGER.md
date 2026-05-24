@@ -23,8 +23,9 @@ starts the native executable is not enough.
 
 - The VS Code extension owns `.n` file registration, TextMate grammar wiring,
   LSP launch, formatting, indentation, and `nerd.restartLanguageServer`.
-- The VS Code extension can build the active Nerd file and start a CodeLLDB
-  `type: "lldb"` debug session through `nerd.debugActiveFileWithCodeLLDB`.
+- The VS Code extension can build the active Nerd file and start a Nerd
+  `type: "nerd"` debug session that delegates to CodeLLDB through
+  `nerd.debugActiveFileWithCodeLLDB`.
 - The compiler backend lowers HIR to textual LLVM IR and invokes clang.
 - Non-release executable builds emit Nerd source debug metadata and pass
   `-g -O0` to clang.
@@ -141,12 +142,13 @@ by the compiler into the executable. Keep a Nerd-owned Debug Adapter Protocol
 adapter out of the first slice unless CodeLLDB cannot consume the generated
 metadata well enough.
 
-The current Linux-first bridge is a VS Code command, not a Nerd-owned debug
-adapter. `Nerd: Debug Active File with CodeLLDB` builds the active `.n` file to
-`_tmp/debug/` and starts a CodeLLDB `type: "lldb"` launch. A checked-in
-`launch.json` can also use `"program": "${command:nerd.buildActiveFileForDebug}"`
-with `type: "lldb"`. This keeps the user workflow usable while preserving the
-`type: "nerd"` decision for a real adapter or proven adapter-delegation layer.
+The current Linux-first bridge is a small VS Code debug adapter shim.
+`Nerd: Debug Active File with CodeLLDB` builds the active `.n` file to
+`_tmp/debug/` and starts a Nerd `type: "nerd"` launch that delegates to
+CodeLLDB. A checked-in `launch.json` can also use `"program":
+"${command:nerd.buildActiveFileForDebug}"` with `type: "nerd"`. This keeps the
+user workflow usable while preserving the option to grow into a fuller Nerd
+adapter later.
 
 ### Watch Expressions
 
@@ -248,14 +250,14 @@ that gap.
 
 ### MS3: VS Code Launch Integration
 
-- [ ] Add VS Code `debuggers` contribution metadata for `type: "nerd"`.
+- [x] Add VS Code `debuggers` contribution metadata for `type: "nerd"`.
 - [x] Add a documented CodeLLDB `launch.json` configuration for the active
   `.n` file.
 - [x] Build the Nerd program before launching the debugger.
 - [x] Surface compiler diagnostics in VS Code when the debug build fails.
 - [x] Resolve the compiler executable/tool path using workspace, user install,
   and PATH rules similar to the language-server lookup.
-- [ ] Add editor integration checks for debugger contribution metadata.
+- [x] Add editor integration checks for debugger contribution metadata.
 - [ ] Keep the launch configuration schema platform-aware so Linux and Windows
   11 can use different native debugger adapters without changing the user-facing
   Nerd launch type.
@@ -415,7 +417,7 @@ Verification:
 
 ### Commit 6: VS Code CodeLLDB Launch Bridge
 
-- [ ] Add VS Code `debuggers` contribution metadata for `type: "nerd"`.
+- [x] Add VS Code `debuggers` contribution metadata for `type: "nerd"`.
 - [x] Add a CodeLLDB launch configuration path that builds the active Nerd file.
 - [x] Delegate Linux debug sessions to CodeLLDB after the build succeeds.
 - [x] Surface build failures through VS Code output or diagnostics.

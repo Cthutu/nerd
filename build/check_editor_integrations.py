@@ -43,11 +43,22 @@ def check_vscode_extension() -> None:
     activation_events = set(package.get("activationEvents", []))
     for event in [
         "onLanguage:nerd",
+        "onDebug:nerd",
         "onCommand:nerd.debugActiveFileWithCodeLLDB",
         "onCommand:nerd.buildActiveFileForDebug",
     ]:
         if event not in activation_events:
             raise AssertionError(f"VS Code extension is missing activation event {event!r}")
+
+    debuggers = contributes.get("debuggers", [])
+    nerd_debugger = next(
+        (debugger for debugger in debuggers if debugger.get("type") == "nerd"),
+        None,
+    )
+    if nerd_debugger is None:
+        raise AssertionError("VS Code extension is missing the nerd debugger type")
+    if "nerd" not in nerd_debugger.get("languages", []):
+        raise AssertionError("VS Code nerd debugger does not target nerd files")
 
     commands = {command["command"] for command in contributes["commands"]}
     for command in [
@@ -76,7 +87,9 @@ def check_vscode_extension() -> None:
         "nerd.restartLanguageServer",
         "nerd.buildActiveFileForDebug",
         "nerd.debugActiveFileWithCodeLLDB",
-        'type: "lldb"',
+        'type: "nerd"',
+        "registerDebugAdapterDescriptorFactory",
+        "supportsDelayedStackTraceLoading",
         '["build", "--output", outputPath, sourcePath]',
         "fullDocumentRange(document)",
         "document.positionAt(document.getText().length)",
