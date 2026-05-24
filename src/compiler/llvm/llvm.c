@@ -2106,6 +2106,50 @@ internal string llvm_debug_function_source_name(const Hir*         hir,
     return llvm_function_name_string(hir, lexer, arena, function_index);
 }
 
+internal bool llvm_function_has_binding_alias(const Sema* sema,
+                                              const Hir*  hir,
+                                              u32         function_index)
+{
+    if (hir == NULL || function_index >= array_count(hir->functions)) {
+        return false;
+    }
+    const HirFunction* function = &hir->functions[function_index];
+    if (function->kind == HIR_FUNCTION_Ffi) {
+        return false;
+    }
+    if (sema != NULL && sema->program != NULL &&
+        hir->current_module_index != sema->program->root_module_index &&
+        llvm_program_function_symbol_conflicts(sema, hir, function_index)) {
+        return false;
+    }
+    return llvm_function_symbol_handle(hir, function_index) != U32_MAX;
+}
+
+internal string llvm_debug_function_linkage_name(const Hir*   hir,
+                                                 const Lexer* lexer,
+                                                 const Sema*  sema,
+                                                 Arena*       arena,
+                                                 u32          function_index)
+{
+    StringBuilder sb = {0};
+    sb_init(&sb, arena);
+    if (llvm_function_has_binding_alias(sema, hir, function_index)) {
+        llvm_append_symbol_name(
+            &sb,
+            lex_symbol(lexer,
+                       llvm_function_symbol_handle(hir, function_index)));
+    } else {
+        llvm_append_function_name(&sb, hir, lexer, function_index);
+    }
+
+    string name = sb_to_string(&sb);
+    if (name.count > 0 && name.data[0] == '@') {
+        name.data += 1;
+        name.count -= 1;
+    }
+    return name;
+}
+
 internal u32 llvm_debug_function_line(const Hir*         hir,
                                       const HirFunction* function)
 {
@@ -2141,8 +2185,8 @@ internal u32 llvm_debug_add_function(LlvmDebugModule*   debug,
     arena_init(&name_arena);
     string source_name = llvm_debug_function_source_name(
         hir, lexer, sema, &name_arena, function, function_index);
-    string linkage_name =
-        llvm_function_name_string(hir, lexer, &name_arena, function_index);
+    string linkage_name = llvm_debug_function_linkage_name(
+        hir, lexer, sema, &name_arena, function_index);
     u32 line = llvm_debug_function_line(hir, function);
 
     sb_format(&debug->metadata,
