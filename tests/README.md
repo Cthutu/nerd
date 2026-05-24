@@ -50,3 +50,12 @@ failed cases can be inspected locally.
 
 Use `-- test-platform: linux` in the source section for cases that intentionally
 depend on host APIs unavailable on other platforms.
+
+Debugger coverage is split between LLVM metadata snapshots, command tests with
+`debug-info`/`no-debug-info`, and Linux CodeLLDB smoke scripts:
+
+```sh
+python3 build/check_debugger_adapter_transforms.py
+python3 build/check_debugger_smoke.py --nerd _bin/nerd-debug
+python3 build/check_debugger_stepping.py --nerd _bin/nerd-debug
+```

@@ -57,3 +57,10 @@ the Nerd command build the active file:
 This is the current Linux-first bridge. The Nerd debug adapter is a small VS
 Code shim that delegates process control to CodeLLDB while keeping Nerd-specific
 debugger presentation decisions in this extension.
+
+Current Linux debugger support includes source breakpoints, source stepping,
+locals, parameters, globals, strings, slices, dynamic arrays, tuples, plexes,
+tagged enums, raw unions, and raw pointers. Watch expressions are native
+CodeLLDB expressions with Nerd-specific help for known runtime layouts such as
+dynamic-array `count`, `capacity`, and `data`; unsupported Nerd-only forms are
+reported explicitly instead of being passed through as confusing LLDB errors.

@@ -35,9 +35,10 @@ starts the native executable is not enough.
   to clang.
 - Generated LLVM now has an initial debug metadata contract for compile units,
   source files, function subprograms, and statement line locations.
-- Generated LLVM now emits first-pass structure debug types for stack locals
-  such as `string`, slices, tuples, and plexes so native debugger watches can
-  inspect ordinary fields.
+- Generated LLVM now emits first-pass debug types for stack locals such as
+  `string`, slices, tuples, plexes, raw unions, pointers, and nested lexical
+  scopes so native debugger watches can inspect ordinary fields and shadowed
+  locals.
 - Debug builds materialize composite `let` locals into stack slots so values
   introduced with `:=`, such as strings, slices, plexes, tuples, and fixed-size
   arrays, can be inspected by LLDB.
@@ -51,7 +52,8 @@ starts the native executable is not enough.
 - Linux debug executables expose Nerd globals by source name through DWARF
   global-variable metadata.
 - The Nerd VS Code debug shim retries failed dynamic-array `.count`,
-  `.capacity`, and `.data` watches with runtime-header expressions.
+  `.capacity`, and `.data` watches with runtime-header expressions and rejects
+  known unsupported Nerd-only watch forms with clear UI messages.
 - Function parameters emitted with `dbg.value` are marked as DWARF arguments so
   CodeLLDB exposes ordinary arguments such as `std.random.random_seed(seed)`.
 - Nerd-visible function bindings are emitted as `$` aliases while generated
@@ -172,11 +174,11 @@ has a reusable expression evaluator or interpreter.
 The first proven subset is native CodeLLDB evaluation of in-scope locals,
 parameters, and simple field access backed by emitted DWARF type metadata. This
 currently covers primitive locals, `string` and slice values, plex/tuple
-fields, fixed-size stack array indexing, and dynamic-array data pointer
-indexing, including composite locals introduced with `:=`. Typed pointer
-indexing through `string.data` and `slice.data` is proven. Dynamic-array
-`.count`/`.capacity` rendering, general pointer dereference/indexing, and
-Nerd-owned expression parsing remain open.
+fields, raw pointer values, fixed-size stack array indexing, and dynamic-array
+data pointer indexing, including composite locals introduced with `:=`. Typed
+pointer indexing through `string.data` and `slice.data` is proven.
+Dynamic-array `.count`/`.capacity` rendering is handled by the VS Code shim.
+General Nerd expression parsing remains open.
 
 ### Value Rendering
 
@@ -248,7 +250,7 @@ that gap.
 
 - [x] Emit parameter debug metadata.
 - [x] Emit local-variable debug metadata for HIR locals and mutable storage.
-- [ ] Preserve lexical scopes enough for shadowed locals to display correctly.
+- [x] Preserve lexical scopes enough for shadowed locals to display correctly.
 - [x] Verify call stacks show Nerd function names and source locations.
 - [x] Verify locals and parameters display at breakpoints.
 - [x] Verify locals and parameters remain coherent while stepping.
@@ -281,7 +283,7 @@ that gap.
   staying in Nerd source on a simple function.
 - [x] Verify step-over does not stop primarily in generated runtime glue on a
   larger program such as `examples/dungeon/dungeon.n`.
-- [ ] Keep source paths stable when the program is built from inside VS Code,
+- [x] Keep source paths stable when the program is built from inside VS Code,
   from the command line, and from installed `nerd`.
 
 ### MS5: Watch Expressions
@@ -294,7 +296,7 @@ that gap.
   dynamic-array data pointers where the runtime representation is known.
 - [ ] Support general pointer dereference and indexing where the runtime
   representation is not already described by emitted debug metadata.
-- [ ] Reject unsupported watch expressions with clear debugger UI messages.
+- [x] Reject unsupported watch expressions with clear debugger UI messages.
 - [x] Add tests or scripted debugger smoke checks for watch evaluation.
 
 ### MS6: Nerd Value Rendering
@@ -307,7 +309,7 @@ that gap.
   discriminants, and decode `payload` according to the active tag's payload
   type instead of showing only the raw storage integer.
 - [x] Render tuples and plexes as expandable structured values.
-- [ ] Render raw unions and pointers in a low-level form.
+- [x] Render raw unions and pointers in a low-level form.
 - [ ] Decide whether pretty rendering belongs in extension TypeScript, adapter
   code, debugger scripts, or emitted metadata.
 
@@ -508,11 +510,11 @@ Verification:
 
 ## Documentation Updates Needed
 
-- `README.md`: mention the debugger roadmap once the first milestone starts.
-- `docs/compiler-pipeline.md`: describe debug metadata emission and debug-build
+- [x] `README.md`: mention the debugger roadmap once the first milestone starts.
+- [x] `docs/compiler-pipeline.md`: describe debug metadata emission and debug-build
   artefacts.
-- `docs/editor-support.md`: add VS Code debugger ownership and verification.
-- `syntax/nerd-vscode/README.md`: document launch configuration and debugger
+- [x] `docs/editor-support.md`: add VS Code debugger ownership and verification.
+- [x] `syntax/nerd-vscode/README.md`: document launch configuration and debugger
   path lookup.
-- `tests/README.md` and `docs/testing.md`: document debugger smoke tests once
+- [x] `tests/README.md` and `docs/testing.md`: document debugger smoke tests once
   they exist.

@@ -2358,9 +2358,8 @@ internal u32 llvm_debug_lexical_scope(LlvmDebugModule* debug,
         }
     }
 
-    u32 file_id =
-        source_path.count > 0 ? llvm_debug_file(debug, source_path)
-                              : debug->file_id;
+    u32 file_id = source_path.count > 0 ? llvm_debug_file(debug, source_path)
+                                        : debug->file_id;
     if (line == 0) {
         line = 1;
     }
@@ -11561,8 +11560,8 @@ internal bool llvm_emit_block(LlvmFunctionContext* ctx,
         return false;
     }
 
-    const HirBlock* block      = &ctx->hir->blocks[block_index];
-    u32             old_scope  = ctx->debug_scope_id;
+    const HirBlock* block     = &ctx->hir->blocks[block_index];
+    u32             old_scope = ctx->debug_scope_id;
     if (ctx->debug != NULL && block->scope_index != U32_MAX &&
         block->scope_index != function->root_scope_index) {
         u32    line        = 0;
@@ -11577,7 +11576,7 @@ internal bool llvm_emit_block(LlvmFunctionContext* ctx,
 
     llvm_bind_block_function_values(ctx, block_index);
 
-    u32             defer_base = array_count(ctx->defer_block_indices);
+    u32 defer_base = array_count(ctx->defer_block_indices);
     for (u32 i = 0; i < block->stmt_count; ++i) {
         if (ctx->block_terminated) {
             break;

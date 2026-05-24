@@ -148,6 +148,20 @@ inspect the kept executable with `readelf --debug-dump=decodedline`. These modes
 cover the debug-build contract that normal builds embed Nerd line tables and the
 release-build contract that the current release path omits them.
 
+Linux debugger smoke scripts cover the VS Code/CodeLLDB-facing debugger
+contract:
+
+```sh
+python3 build/check_debugger_adapter_transforms.py
+python3 build/check_debugger_smoke.py --nerd _bin/nerd-debug
+python3 build/check_debugger_stepping.py --nerd _bin/nerd-debug
+```
+
+Use the adapter transform check for TypeScript value rendering and watch
+translation changes. Use the smoke and stepping checks for source breakpoints,
+locals, parameters, globals, watches, and source stepping against CodeLLDB's
+bundled LLDB.
+
 ## Artefact Behaviour
 
 Language, HIR, LLVM, and command tests write temporary `.input.n`, `.hir`,

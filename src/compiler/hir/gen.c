@@ -2206,8 +2206,8 @@ internal u32 hir_lower_single_stmt_block(Hir*         hir,
     u32 block_index = (u32)array_count(hir->blocks);
     array_push(hir->blocks,
                (HirBlock){
-                   .first_stmt = 0,
-                   .stmt_count = 0,
+                   .first_stmt  = 0,
+                   .stmt_count  = 0,
                    .scope_index = hir_node_scope(sema, node_index),
                });
 
@@ -2866,8 +2866,8 @@ internal u32 hir_lower_block_node(Hir*         hir,
     u32 block_index = (u32)array_count(hir->blocks);
     array_push(hir->blocks,
                (HirBlock){
-                   .first_stmt = 0,
-                   .stmt_count = 0,
+                   .first_stmt  = 0,
+                   .stmt_count  = 0,
                    .scope_index = hir_node_scope(sema, block_node_index),
                });
 
@@ -2985,8 +2985,8 @@ internal u32 hir_lower_function_body(Hir*         hir,
     u32 block_index = (u32)array_count(hir->blocks);
     array_push(hir->blocks,
                (HirBlock){
-                   .first_stmt = 0,
-                   .stmt_count = 0,
+                   .first_stmt  = 0,
+                   .stmt_count  = 0,
                    .scope_index = hir_node_scope(sema, fn_node_index),
                });
 

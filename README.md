@@ -29,13 +29,16 @@ If you are new to the repository, read these in order:
 2. [ROADMAP.md](ROADMAP.md)
    Current project direction. Prefer this over older historical notes when they
    disagree.
-3. [docs/README.md](docs/README.md)
+3. [DEBUGGER.md](DEBUGGER.md)
+   Source-level debugger roadmap and current VS Code/CodeLLDB implementation
+   status.
+4. [docs/README.md](docs/README.md)
    Documentation map. Follow its links into the manual, specs, compiler
    internals, diagnostics, standard library, LSP, editor support, and testing
    docs.
-4. [src/README.md](src/README.md)
+5. [src/README.md](src/README.md)
    Current implementation entry points for the compiler and language server.
-5. [tests/README.md](tests/README.md)
+6. [tests/README.md](tests/README.md)
    Test harness expectations and fixture layout.
 
 Use the architecture review under [review/README.md](review/README.md) as

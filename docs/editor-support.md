@@ -52,9 +52,18 @@ indent after a multi-line FFI signature closes.
 
 On Linux, the VS Code extension contributes `Nerd: Debug Active File with
 CodeLLDB`. The command builds the active `.n` file to `_tmp/debug/` with the
-detected Nerd executable, then starts a CodeLLDB `type: "lldb"` launch session.
-This is a bridge to the native debugger while the project decides whether a
-future Nerd-owned `type: "nerd"` adapter is needed.
+detected Nerd executable, then starts a Nerd `type: "nerd"` launch session that
+delegates process control to CodeLLDB. The extension canonicalizes source paths
+before build and breakpoint requests so VS Code, command-line builds, and the
+installed `nerd` agree on the source files named in DWARF.
+
+The debugger shim owns Nerd-specific presentation for values that native LLDB
+does not understand by itself. It renders strings, slices, dynamic arrays,
+tuples, plexes, enums, raw unions, and pointers in Nerd-facing terms where
+possible, and it gives clear messages for known unsupported Nerd-only watch
+forms such as declarations, ranges, casts, aggregate literals, and `on`
+branches. This is still a Linux-first bridge to a native debugger while the
+project decides whether a larger Nerd-owned adapter is needed.
 
 ## Verification
 
@@ -68,6 +77,14 @@ For editor wiring and LSP startup changes, run:
 
 ```sh
 python3 build/check_editor_integrations.py --nerd _bin/nerd-debug
+```
+
+For debugger value or stepping changes on Linux, also run:
+
+```sh
+python3 build/check_debugger_adapter_transforms.py
+python3 build/check_debugger_smoke.py --nerd _bin/nerd-debug
+python3 build/check_debugger_stepping.py --nerd _bin/nerd-debug
 ```
 
 For install recipe changes, also check:
