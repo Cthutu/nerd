@@ -318,6 +318,22 @@ internal u32 hir_node_source_line(const Lexer* lexer,
     return line + 1;
 }
 
+internal u32 hir_token_source_line(const Lexer* lexer, u32 token_index)
+{
+    if (lexer == NULL || token_index >= array_count(lexer->tokens)) {
+        return 0;
+    }
+
+    u32 line = 0;
+    u32 col  = 0;
+    if (!lex_offset_to_line_col(
+            lexer->source, lexer->tokens[token_index].offset, &line, &col)) {
+        return 0;
+    }
+    UNUSED(col);
+    return line + 1;
+}
+
 internal u32 hir_add_unsupported_expr(Hir*        hir,
                                       const Sema* sema,
                                       u32         node_index)
@@ -1891,7 +1907,10 @@ internal u32 hir_lower_expr(Hir*         hir,
                 }
 
                 HirOnBranch hir_branch = {
-                    .is_else       = (branch->flags & AOBF_Else) != 0,
+                    .is_else = (branch->flags & AOBF_Else) != 0,
+                    .source_line =
+                        hir_token_source_line(lexer, branch->token_index),
+                    .source_path   = lexer->source.source_path,
                     .first_pattern = first_pattern,
                     .pattern_count = branch->pattern_count,
                     .guard_expr_index =

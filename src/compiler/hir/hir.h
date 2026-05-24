@@ -269,12 +269,14 @@ typedef struct {
 } HirCallArg;
 
 typedef struct {
-    bool is_else;
-    u32  first_pattern;
-    u32  pattern_count;
-    u32  guard_expr_index;
-    u32  body_block_index;
-    u32  binder_symbol_handle;
+    bool   is_else;
+    u32    source_line;
+    string source_path;
+    u32    first_pattern;
+    u32    pattern_count;
+    u32    guard_expr_index;
+    u32    body_block_index;
+    u32    binder_symbol_handle;
 } HirOnBranch;
 
 typedef struct {

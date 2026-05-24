@@ -685,6 +685,7 @@ bool ast_parse_break_on_expr(AstParseState* state,
     u32 first_branch = (u32)array_count(state->on_branches);
     array_push(state->on_branches,
                (AstOnBranch){
+                   .token_index          = on_token.token_index,
                    .pattern_index        = first_pattern,
                    .expr_node_index      = break_node,
                    .pattern_count        = 1,
@@ -880,6 +881,7 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
             }
 
             AstOnBranch branch          = {0};
+            branch.token_index          = state->token.token_index;
             branch.pattern_index        = U32_MAX;
             branch.pattern_count        = 0;
             branch.binder_symbol_handle = U32_MAX;
@@ -1012,6 +1014,7 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
             }
 
             AstOnBranch branch          = {0};
+            branch.token_index          = state->token.token_index;
             branch.binder_symbol_handle = U32_MAX;
             branch.binder_token_index   = U32_MAX;
             branch.guard_node_index     = U32_MAX;
@@ -1267,6 +1270,7 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
             u32 first_branch = (u32)array_count(state->on_branches);
             array_push(state->on_branches,
                        (AstOnBranch){
+                           .token_index          = on_token.token_index,
                            .pattern_index        = first_pattern,
                            .expr_node_index      = true_expr_node,
                            .pattern_count        = 1,
@@ -1341,6 +1345,7 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
     u32 first_branch = (u32)array_count(state->on_branches);
     array_push(state->on_branches,
                (AstOnBranch){
+                   .token_index          = on_token.token_index,
                    .pattern_index        = first_pattern,
                    .expr_node_index      = true_expr_node,
                    .pattern_count        = 1,
@@ -1351,6 +1356,7 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
                });
     array_push(state->on_branches,
                (AstOnBranch){
+                   .token_index          = on_token.token_index,
                    .expr_node_index      = false_expr_node,
                    .guard_node_index     = U32_MAX,
                    .flags                = AOBF_Else,

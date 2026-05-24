@@ -3093,6 +3093,19 @@ internal void llvm_debug_emit_marker(LlvmFunctionContext* ctx,
     }
 }
 
+internal void llvm_debug_emit_step_anchor(LlvmFunctionContext* ctx,
+                                          u32                  source_line,
+                                          string               source_path)
+{
+    if (ctx == NULL || ctx->debug == NULL || source_line == 0 ||
+        source_path.count == 0) {
+        return;
+    }
+
+    llvm_debug_emit_marker(ctx, source_line, source_path);
+    sb_append_cstr(ctx->sb, "  call void asm sideeffect \"nop\", \"\"()\n");
+}
+
 internal bool llvm_debug_line_is_marker(string line, u32* out_location)
 {
     cstr  prefix     = "  ; nerd.dbg !";
@@ -8383,6 +8396,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                         }
 
                         sb_format(ctx->sb, STRINGP ":\n", STRINGV(body_label));
+                        llvm_debug_emit_step_anchor(
+                            ctx, branch->source_line, branch->source_path);
                         llvm_bind_symbol_value(
                             ctx, branch->binder_symbol_handle, scrutinee);
                         ctx->block_terminated = false;
@@ -8474,6 +8489,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     }
 
                     sb_format(ctx->sb, STRINGP ":\n", STRINGV(body_label));
+                    llvm_debug_emit_step_anchor(
+                        ctx, branch->source_line, branch->source_path);
                     llvm_bind_symbol_value(
                         ctx, branch->binder_symbol_handle, scrutinee);
                     LlvmValue value = llvm_emit_block_value(
@@ -8589,6 +8606,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 }
 
                 sb_format(ctx->sb, STRINGP ":\n", STRINGV(body_label));
+                llvm_debug_emit_step_anchor(
+                    ctx, branch->source_line, branch->source_path);
                 if (llvm_type_is_void(ctx->sema, expr->type_index)) {
                     ctx->block_terminated = false;
                     if (!llvm_emit_block(

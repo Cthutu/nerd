@@ -378,6 +378,7 @@ typedef struct {
 } AstEnumPattern;
 
 typedef struct {
+    u32 token_index;
     u32 pattern_index;
     u32 expr_node_index;
     u32 pattern_count;

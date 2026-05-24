@@ -43,6 +43,12 @@ type DapSource = {
     path?: string;
 };
 
+type DapScope = {
+    name?: string;
+    variablesReference?: number;
+    expensive?: boolean;
+};
+
 function execFileAsync(
     command: string,
     args: string[],
@@ -447,6 +453,17 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
     private forwardFromCodeLldb(message: DapMessage): void {
         if (message.type === "response" && message.command === "initialize" && message.body) {
             message.body.supportsDelayedStackTraceLoading = false;
+        }
+
+        if (message.type === "response" && message.command === "scopes" && message.body) {
+            const scopes = message.body.scopes as DapScope[] | undefined;
+            if (Array.isArray(scopes)) {
+                for (const scope of scopes) {
+                    if (scope.name === "Global") {
+                        scope.name = "Nerd Globals";
+                    }
+                }
+            }
         }
 
         if (message.type === "response" && message.request_seq !== undefined) {

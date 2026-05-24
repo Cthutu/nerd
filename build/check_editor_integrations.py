@@ -95,6 +95,7 @@ def check_vscode_extension() -> None:
         "Moved ${movedCount} Nerd breakpoint(s)",
         "dynamicArrayHeaderWatchExpression",
         "pendingDynamicArrayRetries",
+        "Nerd Globals",
         '["build", "--output", outputPath, sourcePath]',
         "fullDocumentRange(document)",
         "document.positionAt(document.getText().length)",
