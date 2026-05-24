@@ -268,9 +268,9 @@ that gap.
 - [x] Validate debug line-table source paths in folder-module part files.
 - [x] Validate breakpoints in folder-module part files from CodeLLDB's bundled
   LLDB.
-- [ ] Handle breakpoints on declarations, blank lines, comments, and lowered
+- [x] Handle breakpoints on declarations, blank lines, comments, and lowered
   multi-statement lines predictably.
-- [ ] Make rejected or moved breakpoints understandable in VS Code.
+- [x] Make rejected or moved breakpoints understandable in VS Code.
 - [x] Add a Linux CodeLLDB-bundled LLDB smoke check for source step-over
   staying in Nerd source on a simple function.
 - [x] Verify step-over does not stop primarily in generated runtime glue on a

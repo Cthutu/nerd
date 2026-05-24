@@ -21,9 +21,24 @@ let applyingIndentEdit = false;
 let suppressEnterIndentUntil = 0;
 
 type DapMessage = vscode.DebugProtocolMessage & {
+    seq?: number;
     type?: string;
     command?: string;
+    arguments?: { [key: string]: unknown };
+    request_seq?: number;
     body?: { [key: string]: unknown };
+};
+
+type DapBreakpoint = {
+    line?: number;
+    column?: number;
+    condition?: string;
+    hitCondition?: string;
+    logMessage?: string;
+};
+
+type DapSource = {
+    path?: string;
 };
 
 function execFileAsync(
@@ -215,6 +230,97 @@ function encodeDapMessage(message: DapMessage): Buffer {
     ]);
 }
 
+function isNerdSourcePath(sourcePath: string | undefined): sourcePath is string {
+    return sourcePath !== undefined && path.extname(sourcePath) === ".n";
+}
+
+function stripNerdLineComment(line: string): string {
+    const comment = line.indexOf("--");
+    return comment >= 0 ? line.slice(0, comment) : line;
+}
+
+function isNerdExecutableBreakpointLine(line: string): boolean {
+    const text = stripNerdLineComment(line).trim();
+    if (!text) {
+        return false;
+    }
+    if (text === "{" || text === "}") {
+        return false;
+    }
+    if (text.endsWith("{")) {
+        return false;
+    }
+    if (/^[A-Za-z_][A-Za-z0-9_.$]*\s*::/.test(text)) {
+        return false;
+    }
+    return true;
+}
+
+function nearestNerdBreakpointLine(lines: string[], requestedLine: number): number {
+    const start = Math.max(1, Math.min(requestedLine, lines.length));
+    for (let line = start; line <= lines.length; ++line) {
+        if (isNerdExecutableBreakpointLine(lines[line - 1])) {
+            return line;
+        }
+    }
+    for (let line = start - 1; line >= 1; --line) {
+        if (isNerdExecutableBreakpointLine(lines[line - 1])) {
+            return line;
+        }
+    }
+    return requestedLine;
+}
+
+function normalizeNerdBreakpointRequest(message: DapMessage): DapMessage {
+    if (message.type !== "request" || message.command !== "setBreakpoints") {
+        return message;
+    }
+
+    const args = message.arguments;
+    const source = args?.source as DapSource | undefined;
+    if (!args || !isNerdSourcePath(source?.path)) {
+        return message;
+    }
+
+    let lines: string[];
+    try {
+        lines = fs.readFileSync(source.path, "utf8").split(/\r?\n/);
+    } catch {
+        return message;
+    }
+
+    const breakpoints = args.breakpoints as DapBreakpoint[] | undefined;
+    if (!Array.isArray(breakpoints)) {
+        return message;
+    }
+
+    let movedCount = 0;
+    const normalizedBreakpoints = breakpoints.map((breakpoint) => {
+        if (breakpoint.line === undefined) {
+            return breakpoint;
+        }
+        const normalizedLine = nearestNerdBreakpointLine(lines, breakpoint.line);
+        if (normalizedLine === breakpoint.line) {
+            return breakpoint;
+        }
+        movedCount += 1;
+        return { ...breakpoint, line: normalizedLine };
+    });
+    if (movedCount > 0) {
+        outputChannel?.appendLine(
+            `Moved ${movedCount} Nerd breakpoint(s) in ${path.basename(source.path)} to executable lines.`
+        );
+    }
+
+    return {
+        ...message,
+        arguments: {
+            ...args,
+            breakpoints: normalizedBreakpoints,
+        },
+    };
+}
+
 class DapMessageReader {
     private buffer = Buffer.alloc(0);
 
@@ -281,7 +387,9 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
 
     handleMessage(message: vscode.DebugProtocolMessage): void {
         if (!this.process.stdin.destroyed) {
-            this.process.stdin.write(encodeDapMessage(message as DapMessage));
+            this.process.stdin.write(
+                encodeDapMessage(normalizeNerdBreakpointRequest(message as DapMessage))
+            );
         }
     }
 
