@@ -50,6 +50,10 @@ def check_vscode_extension() -> None:
     if "nerd" not in nerd_debugger.get("languages", []):
         raise AssertionError("VS Code nerd debugger does not target nerd files")
 
+    activation_events = set(package.get("activationEvents", []))
+    if "onDebugResolve:nerd" not in activation_events:
+        raise AssertionError("VS Code extension must activate before resolving nerd debug sessions")
+
     commands = {command["command"] for command in contributes["commands"]}
     for command in [
         "nerd.restartLanguageServer",

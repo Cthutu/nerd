@@ -12,6 +12,9 @@
         "Programming Languages"
     ],
     "main": "./out/extension.js",
+    "activationEvents": [
+        "onDebugResolve:nerd"
+    ],
     "scripts": {
         "compile": "tsc -p ./",
         "vscode:prepublish": "npm run compile",
