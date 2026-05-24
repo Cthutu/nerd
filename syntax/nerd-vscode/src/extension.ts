@@ -37,6 +37,7 @@ type DapBreakpoint = {
     condition?: string;
     hitCondition?: string;
     logMessage?: string;
+    message?: string;
 };
 
 type DapSource = {
@@ -674,6 +675,14 @@ function nerdPrimitiveTypeName(lldbType: string): string {
     }
 }
 
+function nerdDisplayTypeName(lldbType: string): string {
+    const type = lldbType.replace(/\s+/g, " ").trim();
+    if (type.endsWith("*")) {
+        return `^${nerdDisplayTypeName(type.replace(/\s*\*$/, ""))}`;
+    }
+    return nerdPrimitiveTypeName(type);
+}
+
 function lldbTypeNameForNerdType(nerdType: string): string {
     const type = nerdType.trim();
     switch (type) {
@@ -779,6 +788,7 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
     private nextInternalSeq = 1_000_000_000;
     private readonly pendingDynamicArrayRetries = new Map<number, DapMessage>();
     private readonly dynamicArrayRetryResponses = new Map<number, number>();
+    private readonly pendingBreakpointMessages = new Map<number, string>();
     private readonly pendingScopeRequests = new Map<number, number>();
     private readonly scopeFrames = new Map<number, number>();
     private readonly pendingVariablesRequests = new Map<number, PendingVariablesRequest>();
@@ -846,7 +856,7 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
         if (!this.process.stdin.destroyed) {
             this.process.stdin.write(
                 encodeDapMessage(
-                    this.normalizeLaunchRequest(normalizeNerdBreakpointRequest(dapMessage))
+                    this.normalizeLaunchRequest(this.normalizeBreakpointRequest(dapMessage))
                 )
             );
         }
@@ -896,6 +906,10 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
                     }
                 }
             }
+        }
+
+        if (message.type === "response" && message.command === "setBreakpoints") {
+            this.rewriteSetBreakpointsResponse(message);
         }
 
         if (message.type === "response" && message.command === "variables") {
@@ -975,6 +989,60 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
             this.pendingEvaluateRequests.set(message.seq, {
                 context: typeof context === "string" ? context : undefined,
             });
+        }
+    }
+
+    private normalizeBreakpointRequest(message: DapMessage): DapMessage {
+        const normalized = normalizeNerdBreakpointRequest(message);
+        if (
+            message.type !== "request" ||
+            message.command !== "setBreakpoints" ||
+            message.seq === undefined
+        ) {
+            return normalized;
+        }
+
+        const originalBreakpoints = message.arguments?.breakpoints as
+            | DapBreakpoint[]
+            | undefined;
+        const normalizedBreakpoints = normalized.arguments?.breakpoints as
+            | DapBreakpoint[]
+            | undefined;
+        if (!Array.isArray(originalBreakpoints) || !Array.isArray(normalizedBreakpoints)) {
+            return normalized;
+        }
+
+        const movedCount = originalBreakpoints.filter((breakpoint, index) => {
+            const normalizedBreakpoint = normalizedBreakpoints[index];
+            return (
+                breakpoint.line !== undefined &&
+                normalizedBreakpoint?.line !== undefined &&
+                breakpoint.line !== normalizedBreakpoint.line
+            );
+        }).length;
+        if (movedCount > 0) {
+            this.pendingBreakpointMessages.set(
+                message.seq,
+                `${movedCount} Nerd breakpoint${movedCount === 1 ? "" : "s"} moved to executable source line${movedCount === 1 ? "" : "s"}.`
+            );
+        }
+        return normalized;
+    }
+
+    private rewriteSetBreakpointsResponse(message: DapMessage) {
+        if (message.request_seq === undefined || !message.body) {
+            return;
+        }
+        const text = this.pendingBreakpointMessages.get(message.request_seq);
+        this.pendingBreakpointMessages.delete(message.request_seq);
+        const breakpoints = message.body.breakpoints as DapBreakpoint[] | undefined;
+        if (!text || !Array.isArray(breakpoints)) {
+            return;
+        }
+        for (const breakpoint of breakpoints) {
+            breakpoint.message = breakpoint.message
+                ? `${breakpoint.message} ${text}`
+                : text;
         }
     }
 
@@ -1228,7 +1296,7 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
         }
         const request = this.pendingEvaluateRequests.get(message.request_seq);
         this.pendingEvaluateRequests.delete(message.request_seq);
-        if (request?.context !== "hover" || message.success === false) {
+        if (message.success === false) {
             return;
         }
 
@@ -1237,10 +1305,20 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
         if (typeof type !== "string" || typeof result !== "string") {
             return;
         }
-        if (result.startsWith(`(${type}) `)) {
+        const enumDecl = this.enumDeclarations.get(type);
+        if (enumDecl) {
+            message.body.result = enumSummary(enumDecl, enumTagFromVariableValue(result));
+        }
+        const displayType = enumDecl ? type : nerdDisplayTypeName(type);
+        message.body.type = displayType;
+
+        if (request?.context !== "hover") {
             return;
         }
-        message.body.result = `(${type}) ${result}`;
+        if (String(message.body.result).startsWith(`(${displayType}) `)) {
+            return;
+        }
+        message.body.result = `(${displayType}) ${message.body.result}`;
     }
 
     private handleSyntheticVariablesRequest(message: DapMessage): boolean {
