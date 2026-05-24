@@ -243,9 +243,9 @@ that gap.
 - [x] Emit parameter debug metadata.
 - [x] Emit local-variable debug metadata for HIR locals and mutable storage.
 - [ ] Preserve lexical scopes enough for shadowed locals to display correctly.
-- [ ] Verify call stacks show Nerd function names and source locations.
+- [x] Verify call stacks show Nerd function names and source locations.
 - [x] Verify locals and parameters display at breakpoints.
-- [ ] Verify locals and parameters remain coherent while stepping.
+- [x] Verify locals and parameters remain coherent while stepping.
 - [x] Add focused compiler tests for generated LLVM debug metadata shape.
 
 ### MS3: VS Code Launch Integration
@@ -342,7 +342,8 @@ that gap.
 - Use `python3 build/check_debugger_smoke.py --nerd _bin/nerd-debug` for the
   Linux CodeLLDB-bundled LLDB breakpoint/watch smoke path.
 - Use `python3 build/check_debugger_stepping.py --nerd _bin/nerd-debug` for
-  the Linux CodeLLDB-bundled LLDB source step-over smoke path.
+  the Linux CodeLLDB-bundled LLDB source step-over, call-stack, and
+  locals/parameters smoke path.
 - Extend `build/check_editor_integrations.py` to verify VS Code debugger
   contribution metadata and launch configuration snippets.
 - Keep manual testing notes in this file until they can be automated.

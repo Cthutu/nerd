@@ -10,13 +10,18 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
-SOURCE = """main :: fn () {
+SOURCE = """mix :: fn (left: i32, right: i32) -> i32 {
+    total := left + right
+    return total
+}
+
+main :: fn () {
     first: i32
     first = 10
     second: i32
     second = first + 1
     third: i32
-    third = second + 3
+    third = mix(second, 3)
     on third == 14 => prn("ok")
 }
 """
@@ -78,9 +83,9 @@ def main() -> int:
     if build.returncode != 0:
         return fail("Nerd debug build failed", build.stderr)
 
-    commands = [
+    source_step_commands = [
         "target create " + str(binary),
-        "breakpoint set --file main.n --line 3",
+        "breakpoint set --file main.n --line 8",
         "run",
         "frame info",
         "thread step-over",
@@ -90,8 +95,9 @@ def main() -> int:
         "thread step-over",
         "frame info",
     ]
+
     lldb_cmd = [str(lldb), "--batch"]
-    for command in commands:
+    for command in source_step_commands:
         lldb_cmd.extend(["-o", command])
 
     debug = run(lldb_cmd)
@@ -107,10 +113,56 @@ def main() -> int:
     for line in raw_frame_lines:
         if not frame_lines or frame_lines[-1] != line:
             frame_lines.append(line)
-    if frame_lines[:4] != [3, 4, 5, 6]:
+    if frame_lines[:4] != [8, 9, 10, 11]:
         return fail(
             "LLDB step-over did not visit the expected Nerd source lines",
             f"lines: {frame_lines}\n\noutput:\n{output}",
+        )
+
+    call_stack_commands = [
+        "target create " + str(binary),
+        "breakpoint set --file main.n --line 12",
+        "run",
+        "thread step-in",
+        "bt",
+        "frame variable left right total",
+        "thread step-over",
+        "bt",
+        "frame variable left right total",
+        "thread step-out",
+        "bt",
+        "thread step-over",
+        "frame variable third",
+    ]
+    lldb_cmd = [str(lldb), "--batch"]
+    for command in call_stack_commands:
+        lldb_cmd.extend(["-o", command])
+
+    debug = run(lldb_cmd)
+    output = debug.stdout + debug.stderr
+    if debug.returncode != 0:
+        return fail("LLDB call-stack stepping session failed", output)
+
+    expected = [
+        "stop reason = step in",
+        "`mix(left=11, right=3) at main.n:2:1",
+        "`main at main.n:12:1",
+        "(int) left = 11",
+        "(int) right = 3",
+        "(int) total = 14",
+        "`mix(left=11, right=3) at main.n:3:1",
+        "stop reason = step out",
+        "`main at main.n:12:1",
+        "(int) third = 14",
+    ]
+    missing = [item for item in expected if item not in output]
+    if missing:
+        return fail(
+            "LLDB call-stack stepping output did not contain expected evidence",
+            "missing:\n"
+            + "\n".join(missing)
+            + "\n\noutput:\n"
+            + output,
         )
 
     print("debugger-stepping ok")
