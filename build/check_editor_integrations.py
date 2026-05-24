@@ -40,16 +40,6 @@ def check_vscode_extension() -> None:
     if not any(item.get("language") == "nerd" for item in breakpoints):
         raise AssertionError("VS Code extension does not enable breakpoints for nerd")
 
-    activation_events = set(package.get("activationEvents", []))
-    for event in [
-        "onLanguage:nerd",
-        "onDebug:nerd",
-        "onCommand:nerd.debugActiveFileWithCodeLLDB",
-        "onCommand:nerd.buildActiveFileForDebug",
-    ]:
-        if event not in activation_events:
-            raise AssertionError(f"VS Code extension is missing activation event {event!r}")
-
     debuggers = contributes.get("debuggers", [])
     nerd_debugger = next(
         (debugger for debugger in debuggers if debugger.get("type") == "nerd"),

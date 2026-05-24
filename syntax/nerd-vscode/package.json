@@ -12,13 +12,6 @@
         "Programming Languages"
     ],
     "main": "./out/extension.js",
-    "activationEvents": [
-        "onLanguage:nerd",
-        "onDebug:nerd",
-        "onCommand:nerd.restartLanguageServer",
-        "onCommand:nerd.debugActiveFileWithCodeLLDB",
-        "onCommand:nerd.buildActiveFileForDebug"
-    ],
     "scripts": {
         "compile": "tsc -p ./",
         "vscode:prepublish": "npm run compile",
