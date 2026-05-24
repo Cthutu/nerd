@@ -1895,6 +1895,12 @@ typedef struct {
 } LlvmDebugType;
 
 typedef struct {
+    u32 sema_scope_index;
+    u32 parent_scope_id;
+    u32 id;
+} LlvmDebugLexicalScope;
+
+typedef struct {
     u32 local_index;
     u32 scope_id;
     u32 id;
@@ -1917,6 +1923,7 @@ typedef struct {
     Array(LlvmDebugFile) files;
     Array(LlvmDebugFileScope) file_scopes;
     Array(LlvmDebugType) types;
+    Array(LlvmDebugLexicalScope) lexical_scopes;
     Array(LlvmDebugVariable) variables;
     Array(u32) global_variables;
     bool uses_dbg_declare;
@@ -2094,6 +2101,7 @@ internal void llvm_debug_done(LlvmDebugModule* debug)
     array_free(debug->files);
     array_free(debug->file_scopes);
     array_free(debug->types);
+    array_free(debug->lexical_scopes);
     array_free(debug->variables);
     array_free(debug->global_variables);
     arena_done(&debug->metadata_arena);
@@ -2330,6 +2338,48 @@ internal u32 llvm_debug_source_location(LlvmDebugModule* debug,
     u32 file_id    = llvm_debug_file(debug, source_path);
     u32 file_scope = llvm_debug_file_scope(debug, scope_id, file_id);
     return llvm_debug_location(debug, line, file_scope);
+}
+
+internal u32 llvm_debug_lexical_scope(LlvmDebugModule* debug,
+                                      u32              sema_scope_index,
+                                      u32              parent_scope_id,
+                                      u32              line,
+                                      string           source_path)
+{
+    if (debug == NULL || sema_scope_index == U32_MAX || parent_scope_id == 0) {
+        return parent_scope_id;
+    }
+
+    for (u32 i = 0; i < array_count(debug->lexical_scopes); ++i) {
+        LlvmDebugLexicalScope* scope = &debug->lexical_scopes[i];
+        if (scope->sema_scope_index == sema_scope_index &&
+            scope->parent_scope_id == parent_scope_id) {
+            return scope->id;
+        }
+    }
+
+    u32 file_id =
+        source_path.count > 0 ? llvm_debug_file(debug, source_path)
+                              : debug->file_id;
+    if (line == 0) {
+        line = 1;
+    }
+
+    u32 id = llvm_debug_alloc_id(debug);
+    sb_format(&debug->metadata,
+              "!%u = distinct !DILexicalBlock(scope: !%u, file: !%u, "
+              "line: %u, column: 1)\n",
+              id,
+              parent_scope_id,
+              file_id,
+              line);
+    array_push(debug->lexical_scopes,
+               (LlvmDebugLexicalScope){
+                   .sema_scope_index = sema_scope_index,
+                   .parent_scope_id  = parent_scope_id,
+                   .id               = id,
+               });
+    return id;
 }
 
 internal string llvm_type_string(LlvmFunctionContext* ctx, u32 type_index);
@@ -11482,6 +11532,27 @@ internal bool llvm_emit_param_debug_values(LlvmFunctionContext* ctx,
     return true;
 }
 
+internal void llvm_debug_block_start(const Hir*      hir,
+                                     const HirBlock* block,
+                                     u32*            out_line,
+                                     string*         out_path)
+{
+    *out_line = 0;
+    *out_path = (string){0};
+    if (hir == NULL || block == NULL) {
+        return;
+    }
+    for (u32 i = 0; i < block->stmt_count; ++i) {
+        u32 stmt_index = block->stmt_indices[i];
+        if (stmt_index < array_count(hir->stmts) &&
+            hir->stmts[stmt_index].source_line > 0) {
+            *out_line = hir->stmts[stmt_index].source_line;
+            *out_path = hir->stmts[stmt_index].source_path;
+            return;
+        }
+    }
+}
+
 internal bool llvm_emit_block(LlvmFunctionContext* ctx,
                               const HirFunction*   function,
                               u32                  block_index)
@@ -11490,9 +11561,22 @@ internal bool llvm_emit_block(LlvmFunctionContext* ctx,
         return false;
     }
 
+    const HirBlock* block      = &ctx->hir->blocks[block_index];
+    u32             old_scope  = ctx->debug_scope_id;
+    if (ctx->debug != NULL && block->scope_index != U32_MAX &&
+        block->scope_index != function->root_scope_index) {
+        u32    line        = 0;
+        string source_path = {0};
+        llvm_debug_block_start(ctx->hir, block, &line, &source_path);
+        ctx->debug_scope_id = llvm_debug_lexical_scope(ctx->debug,
+                                                       block->scope_index,
+                                                       ctx->debug_scope_id,
+                                                       line,
+                                                       source_path);
+    }
+
     llvm_bind_block_function_values(ctx, block_index);
 
-    const HirBlock* block      = &ctx->hir->blocks[block_index];
     u32             defer_base = array_count(ctx->defer_block_indices);
     for (u32 i = 0; i < block->stmt_count; ++i) {
         if (ctx->block_terminated) {
@@ -11526,6 +11610,7 @@ internal bool llvm_emit_block(LlvmFunctionContext* ctx,
             if (ctx->defer_block_indices != NULL) {
                 __array_count(ctx->defer_block_indices) = defer_base;
             }
+            ctx->debug_scope_id = old_scope;
             return ok;
         } else if (stmt->kind == HIR_STMT_Expr) {
             if (stmt->expr_index != U32_MAX) {
@@ -11569,6 +11654,7 @@ internal bool llvm_emit_block(LlvmFunctionContext* ctx,
             if (ctx->defer_block_indices != NULL) {
                 __array_count(ctx->defer_block_indices) = defer_base;
             }
+            ctx->debug_scope_id = old_scope;
             return true;
         } else if (stmt->kind == HIR_STMT_Continue) {
             if (!llvm_emit_effect_stmt(ctx, function, stmt)) {
@@ -11577,6 +11663,7 @@ internal bool llvm_emit_block(LlvmFunctionContext* ctx,
             if (ctx->defer_block_indices != NULL) {
                 __array_count(ctx->defer_block_indices) = defer_base;
             }
+            ctx->debug_scope_id = old_scope;
             return true;
         } else if (stmt->kind == HIR_STMT_Block) {
             if (!llvm_emit_block(ctx, function, stmt->body_block_index)) {
@@ -11593,6 +11680,7 @@ internal bool llvm_emit_block(LlvmFunctionContext* ctx,
     if (ctx->block_terminated && ctx->defer_block_indices != NULL) {
         __array_count(ctx->defer_block_indices) = defer_base;
     }
+    ctx->debug_scope_id = old_scope;
     return true;
 }
 

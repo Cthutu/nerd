@@ -211,6 +211,7 @@ typedef struct {
 typedef struct {
     u32 first_stmt;
     u32 stmt_count;
+    u32 scope_index;
     Array(u32) stmt_indices;
 } HirBlock;
 

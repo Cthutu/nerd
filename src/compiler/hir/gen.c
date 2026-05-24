@@ -2208,6 +2208,7 @@ internal u32 hir_lower_single_stmt_block(Hir*         hir,
                (HirBlock){
                    .first_stmt = 0,
                    .stmt_count = 0,
+                   .scope_index = hir_node_scope(sema, node_index),
                });
 
     u32 stmt_index = hir_lower_stmt(hir, lexer, ast, sema, node_index);
@@ -2867,6 +2868,7 @@ internal u32 hir_lower_block_node(Hir*         hir,
                (HirBlock){
                    .first_stmt = 0,
                    .stmt_count = 0,
+                   .scope_index = hir_node_scope(sema, block_node_index),
                });
 
     bool* owned_nodes = arena_alloc(&hir->arena, sizeof(bool) * end);
@@ -2985,6 +2987,7 @@ internal u32 hir_lower_function_body(Hir*         hir,
                (HirBlock){
                    .first_stmt = 0,
                    .stmt_count = 0,
+                   .scope_index = hir_node_scope(sema, fn_node_index),
                });
 
     if (fn_node->b == AFK_Expr) {
