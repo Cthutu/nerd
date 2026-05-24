@@ -18,6 +18,7 @@ import {
     enumSummary,
     enumTagFromVariableValue,
     enumVariantForTag,
+    lldbTypeNameForNerdType,
     nerdDisplayTypeName,
     nerdPrimitiveTypeName,
     parseIntegerResult,
@@ -90,6 +91,7 @@ type SyntheticDynamicArray = {
     displayItemType: string;
     frameId: number;
     itemType: string;
+    kind: "dynamicArray" | "slice";
 };
 
 type SyntheticEnum = {
@@ -110,6 +112,7 @@ type PendingDynamicArraySummaryValue = {
     count?: number;
     capacity?: number;
     enumDecl?: NerdEnumDeclaration;
+    sliceType?: string;
     tag?: number;
 };
 
@@ -973,6 +976,7 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
                     displayItemType,
                     frameId,
                     itemType,
+                    kind: "dynamicArray" as const,
                 };
                 this.syntheticDynamicArrays.set(reference, dynamicArray);
                 variable.type = `[..]${displayItemType}`;
@@ -1001,6 +1005,42 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
                         index,
                         "capacity",
                         this.dynamicArrayHeaderExpression(dynamicArray, 1),
+                        frameId
+                    );
+                }
+                continue;
+            }
+
+            const sliceType = variable.type?.match(/^\[\]([A-Za-z_][A-Za-z0-9_]*)$/);
+            if (sliceType) {
+                const reference = this.nextInternalSeq++;
+                const itemType = lldbTypeNameForNerdType(sliceType[1]);
+                const displayItemType = sliceType[1];
+                const slice = {
+                    baseExpression: evaluateName,
+                    displayItemType,
+                    frameId,
+                    itemType,
+                    kind: "slice" as const,
+                };
+                this.syntheticDynamicArrays.set(reference, slice);
+                variable.value = `[]${displayItemType}`;
+                variable.variablesReference = reference;
+
+                if (!this.process.stdin.destroyed) {
+                    summary ??= {
+                        message,
+                        variables,
+                        values: new Map(),
+                        pending: 0,
+                    };
+                    summary.values.set(index, { sliceType: `[]${displayItemType}` });
+                    this.requestDynamicArraySummaryEvaluation(
+                        summary,
+                        message.request_seq,
+                        index,
+                        "count",
+                        `${evaluateName}.count`,
                         frameId
                     );
                 }
@@ -1134,6 +1174,10 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
                 continue;
             }
             const count = value.count === undefined ? "?" : String(value.count);
+            if (value.sliceType) {
+                variable.value = `${value.sliceType} (${count})`;
+                continue;
+            }
             const capacity = value.capacity === undefined ? "?" : String(value.capacity);
             variable.value = `${variable.type} (${count}/${capacity})`;
         }
@@ -1353,13 +1397,18 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
             pending: 0,
         };
         this.pendingSyntheticExpansions.set(originalRequest.seq ?? 0, expansion);
-        this.requestSyntheticEvaluation(expansion, "count", this.dynamicArrayHeaderExpression(array, 2));
-        this.requestSyntheticEvaluation(
-            expansion,
-            "capacity",
-            this.dynamicArrayHeaderExpression(array, 1)
-        );
-        this.requestSyntheticEvaluation(expansion, "data", `(void*)${array.baseExpression}`);
+        if (array.kind === "slice") {
+            this.requestSyntheticEvaluation(expansion, "count", `${array.baseExpression}.count`);
+            this.requestSyntheticEvaluation(expansion, "data", `(void*)${array.baseExpression}.data`);
+        } else {
+            this.requestSyntheticEvaluation(expansion, "count", this.dynamicArrayHeaderExpression(array, 2));
+            this.requestSyntheticEvaluation(
+                expansion,
+                "capacity",
+                this.dynamicArrayHeaderExpression(array, 1)
+            );
+            this.requestSyntheticEvaluation(expansion, "data", `(void*)${array.baseExpression}`);
+        }
     }
 
     private dynamicArrayHeaderExpression(array: SyntheticDynamicArray, offset: number): string {
@@ -1421,8 +1470,12 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
             } else if (pending.kind === "data") {
                 expansion.data = body.result as string | undefined;
             } else if (pending.kind === "item" && pending.itemIndex !== undefined) {
+                const evaluateName =
+                    expansion.array.kind === "slice"
+                        ? `${expansion.array.baseExpression}.data[${pending.itemIndex}]`
+                        : `${expansion.array.baseExpression}[${pending.itemIndex}]`;
                 expansion.itemResults.set(pending.itemIndex, {
-                    evaluateName: `${expansion.array.baseExpression}[${pending.itemIndex}]`,
+                    evaluateName,
                     name: `[${pending.itemIndex}]`,
                     type: expansion.array.displayItemType,
                     value: body.result,
@@ -1436,10 +1489,14 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
         if (pending.kind === "count" && expansion.count !== undefined) {
             const itemLimit = Math.min(expansion.count, 100);
             for (let i = 0; i < itemLimit; ++i) {
+                const itemExpression =
+                    expansion.array.kind === "slice"
+                        ? `${expansion.array.baseExpression}.data[${i}]`
+                        : `${expansion.array.baseExpression}[${i}]`;
                 this.requestSyntheticEvaluation(
                     expansion,
                     "item",
-                    `${expansion.array.baseExpression}[${i}]`,
+                    itemExpression,
                     i
                 );
             }
@@ -1462,18 +1519,20 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
                 variablesReference: 0,
             },
             {
-                name: "capacity",
-                type: "usize",
-                value: expansion.capacity ?? "<unavailable>",
-                variablesReference: 0,
-            },
-            {
                 name: "data",
                 type: `^${expansion.array.displayItemType}`,
                 value: expansion.data ?? "<unavailable>",
                 variablesReference: 0,
             },
         ];
+        if (expansion.array.kind === "dynamicArray") {
+            variables.splice(1, 0, {
+                name: "capacity",
+                type: "usize",
+                value: expansion.capacity ?? "<unavailable>",
+                variablesReference: 0,
+            });
+        }
 
         const itemLimit = Math.min(expansion.count, 100);
         for (let i = 0; i < itemLimit; ++i) {

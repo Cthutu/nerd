@@ -302,7 +302,7 @@ that gap.
 - [x] Render `string` values as text summaries with expandable data/count.
 - [x] Render dynamic arrays declared in Nerd source as expandable indexed
   collections in the VS Code Variables tree.
-- [ ] Render slices as expandable indexed collections.
+- [x] Render slices as expandable indexed collections.
 - [x] Render tagged enums with both symbolic variant names and integer
   discriminants, and decode `payload` according to the active tag's payload
   type instead of showing only the raw storage integer.

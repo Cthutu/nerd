@@ -65,7 +65,7 @@ debugger_values :: fn (scale: i32) -> i32 {
     numbers.push(100)
     numbers.push(200)
     numbers.push(300)
-    number_slice := numbers[1..]
+    number_slice := numbers[..]
 
     cells : [..]DebugCell
     cells.push(DebugCell { ch: 'a'.as(u32) ink: 10 paper: 20 flags: 1 })
