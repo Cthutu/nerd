@@ -69,6 +69,7 @@ type PendingEvaluateRequest = {
 
 type SyntheticDynamicArray = {
     baseExpression: string;
+    displayItemType: string;
     frameId: number;
     itemType: string;
 };
@@ -481,6 +482,40 @@ function parseUnsignedResult(value: string | undefined): number | undefined {
     return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
 }
 
+function nerdPrimitiveTypeName(lldbType: string): string {
+    const type = lldbType.replace(/\s+/g, " ").trim();
+    switch (type) {
+        case "_Bool":
+        case "bool":
+            return "bool";
+        case "char":
+        case "signed char":
+            return "i8";
+        case "unsigned char":
+            return "u8";
+        case "short":
+            return "i16";
+        case "unsigned short":
+            return "u16";
+        case "int":
+            return "i32";
+        case "unsigned int":
+            return "u32";
+        case "long":
+        case "long long":
+            return "i64";
+        case "unsigned long":
+        case "unsigned long long":
+            return "u64";
+        case "float":
+            return "f32";
+        case "double":
+            return "f64";
+        default:
+            return type;
+    }
+}
+
 class DapMessageReader {
     private buffer = Buffer.alloc(0);
 
@@ -776,12 +811,15 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
 
             const reference = this.nextInternalSeq++;
             const itemType = variable.type.replace(/\s*\*$/, "").trim();
+            const displayItemType = nerdPrimitiveTypeName(itemType);
             this.syntheticDynamicArrays.set(reference, {
                 baseExpression: evaluateName,
+                displayItemType,
                 frameId,
                 itemType,
             });
-            variable.value = `${variable.type} dynamic array`;
+            variable.type = `[..]${displayItemType}`;
+            variable.value = `[..]${displayItemType}`;
             variable.variablesReference = reference;
         }
     }
@@ -909,7 +947,7 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
                 expansion.itemResults.set(pending.itemIndex, {
                     evaluateName: `${expansion.array.baseExpression}[${pending.itemIndex}]`,
                     name: `[${pending.itemIndex}]`,
-                    type: body.type,
+                    type: expansion.array.displayItemType,
                     value: body.result,
                     variablesReference: body.variablesReference ?? 0,
                 });
@@ -954,7 +992,7 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
             },
             {
                 name: "data",
-                type: `${expansion.array.itemType} *`,
+                type: `^${expansion.array.displayItemType}`,
                 value: expansion.data ?? "<unavailable>",
                 variablesReference: 0,
             },
@@ -965,7 +1003,7 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
             variables.push(
                 expansion.itemResults.get(i) ?? {
                     name: `[${i}]`,
-                    type: expansion.array.itemType,
+                    type: expansion.array.displayItemType,
                     value: "<unavailable>",
                     variablesReference: 0,
                 }
