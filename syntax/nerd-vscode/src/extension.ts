@@ -81,6 +81,8 @@ type PendingVariablesRequest = {
 
 type PendingEvaluateRequest = {
     context?: string;
+    expression?: string;
+    frameId?: number;
 };
 
 type SyntheticDynamicArray = {
@@ -802,8 +804,12 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
             });
         } else if (message.command === "evaluate") {
             const context = message.arguments?.context;
+            const expression = message.arguments?.expression;
+            const frameId = message.arguments?.frameId;
             this.pendingEvaluateRequests.set(message.seq, {
                 context: typeof context === "string" ? context : undefined,
+                expression: typeof expression === "string" ? expression : undefined,
+                frameId: typeof frameId === "number" ? frameId : undefined,
             });
         }
     }
@@ -1091,7 +1097,10 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
         summary.pending -= 1;
         const body = message.body as DapVariable | undefined;
         if (message.success !== false && body) {
-            const parsed = parseUnsignedResult(body.result as string | undefined);
+            const parsed =
+                pending.kind === "enumTag"
+                    ? parseIntegerResult(body.result as string | undefined)
+                    : parseUnsignedResult(body.result as string | undefined);
             if (parsed !== undefined) {
                 const value = summary.values.get(pending.variableIndex) ?? {};
                 if (pending.kind === "count") {
@@ -1151,6 +1160,15 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
         const enumDecl = this.enumDeclarations.get(type);
         if (enumDecl) {
             message.body.result = enumSummary(enumDecl, enumTagFromVariableValue(result));
+            if (request?.expression && request.frameId !== undefined) {
+                const reference = this.nextInternalSeq++;
+                this.syntheticEnums.set(reference, {
+                    baseExpression: request.expression,
+                    enumDecl,
+                    frameId: request.frameId,
+                });
+                message.body.variablesReference = reference;
+            }
         }
         const displayType = enumDecl ? type : nerdDisplayTypeName(type);
         message.body.type = displayType;
