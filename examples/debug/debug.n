@@ -71,11 +71,17 @@ debugger_values :: fn (scale: i32) -> i32 {
     cells.push(DebugCell { ch: 'b'.as(u32) ink: 11 paper: 21 flags: 2 })
     cells.push(DebugCell { ch: 'c'.as(u32) ink: 12 paper: 22 flags: 3 })
 
+    none_event : DebugEvent = DebugEvent.None
     local_event := DebugEvent.Move(point)
+    message_event := DebugEvent.Message(label)
+    count_event := DebugEvent.Count(numbers.count.as(i32))
+    none_branch_value := debugger_branch_value(none_event)
     branch_value := debugger_branch_value(local_event)
+    message_branch_value := debugger_branch_value(message_event)
+    count_branch_value := debugger_branch_value(count_event)
     global_branch_value := debugger_branch_value(global_event)
 
-    checkpoint := label.count.as(i32) + point.x + fixed_numbers[1] + pair.1.as(i32) + byte_slice.data[1].as(i32) + numbers[1] + cells[1].flags.as(i32) + branch_value + global_branch_value + scale
+    checkpoint := label.count.as(i32) + point.x + fixed_numbers[1] + pair.1.as(i32) + byte_slice.data[1].as(i32) + numbers[1] + cells[1].flags.as(i32) + none_branch_value + branch_value + message_branch_value + count_branch_value + global_branch_value + scale
 
     on checkpoint > 0 => prn($"debug checkpoint {checkpoint}")
 

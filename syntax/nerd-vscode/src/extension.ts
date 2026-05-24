@@ -74,6 +74,23 @@ type SyntheticDynamicArray = {
     itemType: string;
 };
 
+type NerdEnumVariant = {
+    discriminant: number;
+    name: string;
+    payloadType?: string;
+};
+
+type NerdEnumDeclaration = {
+    name: string;
+    variants: NerdEnumVariant[];
+};
+
+type SyntheticEnum = {
+    baseExpression: string;
+    enumDecl: NerdEnumDeclaration;
+    frameId: number;
+};
+
 type PendingDynamicArraySummaryKind = "count" | "capacity";
 
 type PendingDynamicArraySummaryEvaluation = {
@@ -91,6 +108,21 @@ type PendingDynamicArraySummary = {
     message: DapMessage;
     variables: DapVariable[];
     values: Map<number, PendingDynamicArraySummaryValue>;
+    pending: number;
+};
+
+type PendingEnumExpansionKind = "tag" | "payload";
+
+type PendingEnumExpansionEvaluation = {
+    requestSeq: number;
+    kind: PendingEnumExpansionKind;
+};
+
+type PendingEnumExpansion = {
+    originalRequest: DapMessage;
+    syntheticEnum: SyntheticEnum;
+    tag?: number;
+    payload?: DapVariable;
     pending: number;
 };
 
@@ -445,15 +477,79 @@ function collectDynamicArrayDeclarationsFromText(text: string, names: Set<string
     }
 }
 
-function collectDynamicArrayDeclarationsFromFile(filePath: string, names: Set<string>) {
+function collectEnumDeclarationsFromText(
+    text: string,
+    declarations: Map<string, NerdEnumDeclaration>
+) {
+    const lines = text.split(/\r?\n/);
+    for (let i = 0; i < lines.length; ++i) {
+        const header = stripNerdLineComment(lines[i]).trim();
+        const headerMatch = header.match(/^(?:pub\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*::\s*enum(?:\s*\[[^\]]+\])?\s*\{/);
+        if (!headerMatch) {
+            continue;
+        }
+
+        const name = headerMatch[1];
+        const variants: NerdEnumVariant[] = [];
+        let nextDiscriminant = 0;
+        for (++i; i < lines.length; ++i) {
+            const line = stripNerdLineComment(lines[i]).trim();
+            if (line.startsWith("}")) {
+                break;
+            }
+            if (!line) {
+                continue;
+            }
+
+            const variantMatch = line.match(
+                /^([A-Za-z_][A-Za-z0-9_]*)(?:\(([^)]*)\))?(?:\s*=\s*(-?(?:0x[0-9a-fA-F]+|\d+)))?/
+            );
+            if (!variantMatch) {
+                continue;
+            }
+
+            const explicitDiscriminant = variantMatch[3]
+                ? Number.parseInt(
+                      variantMatch[3],
+                      variantMatch[3].startsWith("0x") ? 16 : 10
+                  )
+                : undefined;
+            const discriminant = Number.isFinite(explicitDiscriminant)
+                ? (explicitDiscriminant as number)
+                : nextDiscriminant;
+            variants.push({
+                name: variantMatch[1],
+                discriminant,
+                payloadType: variantMatch[2]?.trim() || undefined,
+            });
+            nextDiscriminant = discriminant + 1;
+        }
+
+        if (variants.length > 0) {
+            declarations.set(name, { name, variants });
+        }
+    }
+}
+
+function collectNerdDeclarationsFromFile(
+    filePath: string,
+    dynamicArrayNames: Set<string>,
+    enumDeclarations: Map<string, NerdEnumDeclaration>
+) {
     try {
-        collectDynamicArrayDeclarationsFromText(fs.readFileSync(filePath, "utf8"), names);
+        const text = fs.readFileSync(filePath, "utf8");
+        collectDynamicArrayDeclarationsFromText(text, dynamicArrayNames);
+        collectEnumDeclarationsFromText(text, enumDeclarations);
     } catch {
         // Ignore files that disappear or cannot be read while the debug session starts.
     }
 }
 
-function collectDynamicArrayDeclarationsFromDir(dirPath: string, names: Set<string>) {
+function collectNerdDeclarationsFromDir(
+    dirPath: string,
+    dynamicArrayNames: Set<string>,
+    enumDeclarations: Map<string, NerdEnumDeclaration>
+) {
     let entries: fs.Dirent[];
     try {
         entries = fs.readdirSync(dirPath, { withFileTypes: true });
@@ -467,20 +563,32 @@ function collectDynamicArrayDeclarationsFromDir(dirPath: string, names: Set<stri
         }
         const entryPath = path.join(dirPath, entry.name);
         if (entry.isDirectory()) {
-            collectDynamicArrayDeclarationsFromDir(entryPath, names);
+            collectNerdDeclarationsFromDir(entryPath, dynamicArrayNames, enumDeclarations);
         } else if (entry.isFile() && path.extname(entry.name) === ".n") {
-            collectDynamicArrayDeclarationsFromFile(entryPath, names);
+            collectNerdDeclarationsFromFile(entryPath, dynamicArrayNames, enumDeclarations);
         }
     }
 }
 
-function collectDynamicArrayDeclarationsNearPath(startPath: string, names: Set<string>) {
+function collectNerdDeclarationsNearPath(
+    startPath: string,
+    dynamicArrayNames: Set<string>,
+    enumDeclarations: Map<string, NerdEnumDeclaration>
+) {
     let current = fs.existsSync(startPath) && fs.statSync(startPath).isDirectory()
         ? startPath
         : path.dirname(startPath);
     for (;;) {
-        collectDynamicArrayDeclarationsFromDir(path.join(current, "mods"), names);
-        collectDynamicArrayDeclarationsFromDir(path.join(current, "_bin", "mods"), names);
+        collectNerdDeclarationsFromDir(
+            path.join(current, "mods"),
+            dynamicArrayNames,
+            enumDeclarations
+        );
+        collectNerdDeclarationsFromDir(
+            path.join(current, "_bin", "mods"),
+            dynamicArrayNames,
+            enumDeclarations
+        );
 
         const parent = path.dirname(current);
         if (parent === current) {
@@ -500,6 +608,36 @@ function parseUnsignedResult(value: string | undefined): number | undefined {
     }
     const parsed = Number.parseInt(match[0], match[0].startsWith("0x") ? 16 : 10);
     return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+}
+
+function parseIntegerResult(value: string | undefined): number | undefined {
+    if (!value) {
+        return undefined;
+    }
+    const text = value.trim();
+    const numberMatch = text.match(/^-?(?:0x[0-9a-fA-F]+|\d+)/);
+    if (numberMatch) {
+        const literal = numberMatch[0];
+        const sign = literal.startsWith("-") ? -1 : 1;
+        const digits = sign < 0 ? literal.slice(1) : literal;
+        const parsed = Number.parseInt(digits, digits.startsWith("0x") ? 16 : 10);
+        return Number.isFinite(parsed) ? parsed * sign : undefined;
+    }
+
+    const charMatch = text.match(/^'(.*)'$/);
+    if (!charMatch) {
+        return undefined;
+    }
+    const body = charMatch[1];
+    if (body.startsWith("\\x")) {
+        const parsed = Number.parseInt(body.slice(2), 16);
+        return Number.isFinite(parsed) ? parsed : undefined;
+    }
+    if (body.startsWith("\\0")) {
+        const parsed = Number.parseInt(body.slice(1), 8);
+        return Number.isFinite(parsed) ? parsed : undefined;
+    }
+    return body.length === 1 ? body.charCodeAt(0) : undefined;
 }
 
 function nerdPrimitiveTypeName(lldbType: string): string {
@@ -534,6 +672,67 @@ function nerdPrimitiveTypeName(lldbType: string): string {
         default:
             return type;
     }
+}
+
+function lldbTypeNameForNerdType(nerdType: string): string {
+    const type = nerdType.trim();
+    switch (type) {
+        case "bool":
+            return "bool";
+        case "i8":
+            return "signed char";
+        case "u8":
+            return "unsigned char";
+        case "i16":
+            return "short";
+        case "u16":
+            return "unsigned short";
+        case "i32":
+            return "int";
+        case "u32":
+            return "unsigned int";
+        case "i64":
+            return "long long";
+        case "u64":
+            return "unsigned long long";
+        case "f32":
+            return "float";
+        case "f64":
+            return "double";
+        default:
+            return type;
+    }
+}
+
+function enumVariantForTag(
+    enumDecl: NerdEnumDeclaration,
+    tag: number | undefined
+): NerdEnumVariant | undefined {
+    if (tag === undefined) {
+        return undefined;
+    }
+    return enumDecl.variants.find((variant) => variant.discriminant === tag);
+}
+
+function enumSummary(enumDecl: NerdEnumDeclaration, tag: number | undefined): string {
+    const variant = enumVariantForTag(enumDecl, tag);
+    if (!variant) {
+        return `${enumDecl.name}.<unknown> (${tag ?? "?"})`;
+    }
+    return `${enumDecl.name}.${variant.name} (${variant.discriminant})`;
+}
+
+function enumPayloadExpression(baseExpression: string, variant: NerdEnumVariant): string {
+    const payloadType = lldbTypeNameForNerdType(variant.payloadType ?? "");
+    return `*(${payloadType} *)((char *)&${baseExpression}.payload + ((sizeof(${payloadType}) <= 8) ? 8 : 0))`;
+}
+
+function enumTagFromVariableValue(value: string | undefined): number | undefined {
+    if (!value) {
+        return undefined;
+    }
+    const tagMatch = value.match(/\btag\s*=\s*([^,)]+)/);
+    return parseIntegerResult(tagMatch?.[1]);
 }
 
 class DapMessageReader {
@@ -585,7 +784,9 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
     private readonly pendingVariablesRequests = new Map<number, PendingVariablesRequest>();
     private readonly pendingEvaluateRequests = new Map<number, PendingEvaluateRequest>();
     private readonly dynamicArrayDeclarations = new Set<string>();
+    private readonly enumDeclarations = new Map<string, NerdEnumDeclaration>();
     private readonly syntheticDynamicArrays = new Map<number, SyntheticDynamicArray>();
+    private readonly syntheticEnums = new Map<number, SyntheticEnum>();
     private readonly pendingDynamicArraySummaryEvaluations = new Map<
         number,
         PendingDynamicArraySummaryEvaluation
@@ -594,6 +795,11 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
         number,
         PendingDynamicArraySummary
     >();
+    private readonly pendingEnumExpansionEvaluations = new Map<
+        number,
+        PendingEnumExpansionEvaluation
+    >();
+    private readonly pendingEnumExpansions = new Map<number, PendingEnumExpansion>();
     private readonly pendingSyntheticEvaluations = new Map<number, PendingSyntheticEvaluation>();
     private readonly pendingSyntheticExpansions = new Map<number, PendingSyntheticExpansion>();
 
@@ -653,6 +859,10 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
 
     private forwardFromCodeLldb(message: DapMessage): void {
         if (this.handleDynamicArraySummaryEvaluationResponse(message)) {
+            return;
+        }
+
+        if (this.handleEnumExpansionEvaluationResponse(message)) {
             return;
         }
 
@@ -733,17 +943,19 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
         }
 
         if (message.command === "launch") {
-            this.collectDynamicArrayDeclarations(message);
+            this.collectNerdDeclarations(message);
         } else if (message.command === "setBreakpoints") {
             const source = message.arguments?.source as DapSource | undefined;
             if (source?.path) {
-                collectDynamicArrayDeclarationsFromFile(
+                collectNerdDeclarationsFromFile(
                     source.path,
-                    this.dynamicArrayDeclarations
+                    this.dynamicArrayDeclarations,
+                    this.enumDeclarations
                 );
-                collectDynamicArrayDeclarationsNearPath(
+                collectNerdDeclarationsNearPath(
                     source.path,
-                    this.dynamicArrayDeclarations
+                    this.dynamicArrayDeclarations,
+                    this.enumDeclarations
                 );
             }
         } else if (
@@ -784,30 +996,49 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
         };
     }
 
-    private collectDynamicArrayDeclarations(message: DapMessage) {
+    private collectNerdDeclarations(message: DapMessage) {
         this.dynamicArrayDeclarations.clear();
+        this.enumDeclarations.clear();
         const args = message.arguments ?? {};
         if (typeof args.cwd === "string") {
-            collectDynamicArrayDeclarationsFromDir(args.cwd, this.dynamicArrayDeclarations);
-            collectDynamicArrayDeclarationsNearPath(args.cwd, this.dynamicArrayDeclarations);
+            collectNerdDeclarationsFromDir(
+                args.cwd,
+                this.dynamicArrayDeclarations,
+                this.enumDeclarations
+            );
+            collectNerdDeclarationsNearPath(
+                args.cwd,
+                this.dynamicArrayDeclarations,
+                this.enumDeclarations
+            );
         }
         if (typeof args.program === "string") {
-            collectDynamicArrayDeclarationsNearPath(args.program, this.dynamicArrayDeclarations);
+            collectNerdDeclarationsNearPath(
+                args.program,
+                this.dynamicArrayDeclarations,
+                this.enumDeclarations
+            );
         }
         for (const folder of vscode.workspace.workspaceFolders ?? []) {
-            collectDynamicArrayDeclarationsFromDir(
+            collectNerdDeclarationsFromDir(
                 folder.uri.fsPath,
-                this.dynamicArrayDeclarations
+                this.dynamicArrayDeclarations,
+                this.enumDeclarations
             );
-            collectDynamicArrayDeclarationsNearPath(
+            collectNerdDeclarationsNearPath(
                 folder.uri.fsPath,
-                this.dynamicArrayDeclarations
+                this.dynamicArrayDeclarations,
+                this.enumDeclarations
             );
         }
         const env = process.env.NERD_LIB_PATH?.split(process.platform === "win32" ? ";" : ":");
         for (const dir of env ?? []) {
             if (dir.trim()) {
-                collectDynamicArrayDeclarationsFromDir(dir.trim(), this.dynamicArrayDeclarations);
+                collectNerdDeclarationsFromDir(
+                    dir.trim(),
+                    this.dynamicArrayDeclarations,
+                    this.enumDeclarations
+                );
             }
         }
     }
@@ -836,53 +1067,68 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
             const variable = variables[index];
             const name = variable.name;
             const evaluateName = variable.evaluateName ?? name;
-            if (
-                !name ||
-                !evaluateName ||
-                !this.dynamicArrayDeclarations.has(name) ||
-                !variable.type?.endsWith("*")
-            ) {
+            if (!name || !evaluateName) {
                 continue;
             }
 
-            const reference = this.nextInternalSeq++;
-            const itemType = variable.type.replace(/\s*\*$/, "").trim();
-            const displayItemType = nerdPrimitiveTypeName(itemType);
-            const dynamicArray = {
-                baseExpression: evaluateName,
-                displayItemType,
-                frameId,
-                itemType,
-            };
-            this.syntheticDynamicArrays.set(reference, dynamicArray);
-            variable.type = `[..]${displayItemType}`;
-            variable.value = `[..]${displayItemType}`;
-            variable.variablesReference = reference;
-
-            if (!this.process.stdin.destroyed) {
-                summary ??= {
-                    message,
-                    variables,
-                    values: new Map(),
-                    pending: 0,
+            if (
+                this.dynamicArrayDeclarations.has(name) &&
+                variable.type?.endsWith("*")
+            ) {
+                const reference = this.nextInternalSeq++;
+                const itemType = variable.type.replace(/\s*\*$/, "").trim();
+                const displayItemType = nerdPrimitiveTypeName(itemType);
+                const dynamicArray = {
+                    baseExpression: evaluateName,
+                    displayItemType,
+                    frameId,
+                    itemType,
                 };
-                summary.values.set(index, {});
-                this.requestDynamicArraySummaryEvaluation(
-                    summary,
-                    message.request_seq,
-                    index,
-                    "count",
-                    this.dynamicArrayHeaderExpression(dynamicArray, 2),
-                    frameId
-                );
-                this.requestDynamicArraySummaryEvaluation(
-                    summary,
-                    message.request_seq,
-                    index,
-                    "capacity",
-                    this.dynamicArrayHeaderExpression(dynamicArray, 1),
-                    frameId
-                );
+                this.syntheticDynamicArrays.set(reference, dynamicArray);
+                variable.type = `[..]${displayItemType}`;
+                variable.value = `[..]${displayItemType}`;
+                variable.variablesReference = reference;
+
+                if (!this.process.stdin.destroyed) {
+                    summary ??= {
+                        message,
+                        variables,
+                        values: new Map(),
+                        pending: 0,
+                    };
+                    summary.values.set(index, {});
+                    this.requestDynamicArraySummaryEvaluation(
+                        summary,
+                        message.request_seq,
+                        index,
+                        "count",
+                        this.dynamicArrayHeaderExpression(dynamicArray, 2),
+                        frameId
+                    );
+                    this.requestDynamicArraySummaryEvaluation(
+                        summary,
+                        message.request_seq,
+                        index,
+                        "capacity",
+                        this.dynamicArrayHeaderExpression(dynamicArray, 1),
+                        frameId
+                    );
+                }
+                continue;
+            }
+
+            const enumDecl = variable.type
+                ? this.enumDeclarations.get(variable.type)
+                : undefined;
+            if (enumDecl) {
+                const reference = this.nextInternalSeq++;
+                this.syntheticEnums.set(reference, {
+                    baseExpression: evaluateName,
+                    enumDecl,
+                    frameId,
+                });
+                variable.value = enumSummary(enumDecl, enumTagFromVariableValue(variable.value));
+                variable.variablesReference = reference;
             }
         }
 
@@ -1008,13 +1254,159 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
         }
 
         const array = this.syntheticDynamicArrays.get(message.arguments.variablesReference);
-        if (!array) {
-            return false;
+        if (array) {
+            this.pendingVariablesRequests.delete(message.seq);
+            this.startSyntheticDynamicArrayExpansion(message, array);
+            return true;
         }
 
-        this.pendingVariablesRequests.delete(message.seq);
-        this.startSyntheticDynamicArrayExpansion(message, array);
+        const syntheticEnum = this.syntheticEnums.get(message.arguments.variablesReference);
+        if (syntheticEnum) {
+            this.pendingVariablesRequests.delete(message.seq);
+            this.startSyntheticEnumExpansion(message, syntheticEnum);
+            return true;
+        }
+
+        return false;
+    }
+
+    private startSyntheticEnumExpansion(
+        originalRequest: DapMessage,
+        syntheticEnum: SyntheticEnum
+    ) {
+        const expansion: PendingEnumExpansion = {
+            originalRequest,
+            syntheticEnum,
+            pending: 0,
+        };
+        this.pendingEnumExpansions.set(originalRequest.seq ?? 0, expansion);
+        this.requestEnumExpansionEvaluation(
+            expansion,
+            "tag",
+            `${syntheticEnum.baseExpression}.tag`
+        );
+    }
+
+    private requestEnumExpansionEvaluation(
+        expansion: PendingEnumExpansion,
+        kind: PendingEnumExpansionKind,
+        expression: string
+    ) {
+        if (this.process.stdin.destroyed) {
+            return;
+        }
+        const seq = this.nextInternalSeq++;
+        expansion.pending += 1;
+        this.pendingEnumExpansionEvaluations.set(seq, {
+            requestSeq: expansion.originalRequest.seq ?? 0,
+            kind,
+        });
+        this.process.stdin.write(
+            encodeDapMessage({
+                seq,
+                type: "request",
+                command: "evaluate",
+                arguments: {
+                    expression,
+                    frameId: expansion.syntheticEnum.frameId,
+                    context: "watch",
+                },
+            })
+        );
+    }
+
+    private handleEnumExpansionEvaluationResponse(message: DapMessage): boolean {
+        if (message.type !== "response" || message.request_seq === undefined) {
+            return false;
+        }
+        const pending = this.pendingEnumExpansionEvaluations.get(message.request_seq);
+        if (!pending) {
+            return false;
+        }
+        this.pendingEnumExpansionEvaluations.delete(message.request_seq);
+
+        const expansion = this.pendingEnumExpansions.get(pending.requestSeq);
+        if (!expansion) {
+            return true;
+        }
+
+        expansion.pending -= 1;
+        const body = message.body as DapVariable | undefined;
+        if (message.success !== false && body) {
+            if (pending.kind === "tag") {
+                expansion.tag = parseIntegerResult(body.result as string | undefined);
+                const variant = enumVariantForTag(
+                    expansion.syntheticEnum.enumDecl,
+                    expansion.tag
+                );
+                if (variant?.payloadType) {
+                    this.requestEnumExpansionEvaluation(
+                        expansion,
+                        "payload",
+                        enumPayloadExpression(
+                            expansion.syntheticEnum.baseExpression,
+                            variant
+                        )
+                    );
+                }
+            } else if (pending.kind === "payload") {
+                expansion.payload = {
+                    evaluateName: `${expansion.syntheticEnum.baseExpression}.payload`,
+                    name: "payload",
+                    type: body.type
+                        ? nerdPrimitiveTypeName(body.type)
+                        : body.type,
+                    value: body.result,
+                    variablesReference: body.variablesReference ?? 0,
+                };
+            }
+        }
+
+        this.maybeFinishSyntheticEnumExpansion(expansion);
         return true;
+    }
+
+    private maybeFinishSyntheticEnumExpansion(expansion: PendingEnumExpansion) {
+        if (expansion.pending > 0 || expansion.tag === undefined) {
+            return;
+        }
+
+        const enumDecl = expansion.syntheticEnum.enumDecl;
+        const variant = enumVariantForTag(enumDecl, expansion.tag);
+        const variables: DapVariable[] = [
+            {
+                name: "tag",
+                type: "u8",
+                value: enumSummary(enumDecl, expansion.tag),
+                variablesReference: 0,
+            },
+            {
+                name: "discriminant",
+                type: "u32",
+                value: String(expansion.tag),
+                variablesReference: 0,
+            },
+        ];
+        if (variant?.payloadType) {
+            variables.push(
+                expansion.payload ?? {
+                    name: "payload",
+                    type: variant.payloadType,
+                    value: "<unavailable>",
+                    variablesReference: 0,
+                }
+            );
+        }
+
+        this.pendingEnumExpansions.delete(expansion.originalRequest.seq ?? 0);
+        this.emitter.fire({
+            seq: this.nextInternalSeq++,
+            type: "response",
+            request_seq: expansion.originalRequest.seq,
+            success: true,
+            command: "variables",
+            body: { variables },
+        } as DapMessage);
     }
 
     private startSyntheticDynamicArrayExpansion(
