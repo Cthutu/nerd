@@ -187,6 +187,8 @@ values. Add value-rendering support in layers:
 - expose strings and slices as pointer/count values
 - add VS Code/debugger pretty rendering for `string`, slices, dynamic arrays,
   enums, tuples, and plexes
+- render tagged enum values with both the symbolic variant tag and integer
+  discriminant, and interpret the payload using the active tag's payload type
 - keep raw pointers and raw unions honest rather than hiding their low-level
   nature
 
@@ -301,9 +303,9 @@ that gap.
 - [x] Render dynamic arrays declared in Nerd source as expandable indexed
   collections in the VS Code Variables tree.
 - [ ] Render slices as expandable indexed collections.
-- [ ] Render enums as variant names plus numeric tags, and decode `payload`
-  according to the selected variant's payload type instead of showing only the
-  raw storage integer.
+- [ ] Render tagged enums with both symbolic variant names and integer
+  discriminants, and decode `payload` according to the active tag's payload
+  type instead of showing only the raw storage integer.
 - [ ] Render tuples and plexes as expandable structured values.
 - [ ] Render raw unions and pointers in a low-level form.
 - [ ] Decide whether pretty rendering belongs in extension TypeScript, adapter
@@ -480,6 +482,8 @@ Verification:
 - [x] Add first-pass rendering notes for strings, slices, and dynamic arrays.
 - [ ] Decide whether a Nerd adapter or pretty-printer layer is needed before
   going beyond native CodeLLDB evaluation.
+- [ ] Plan tagged enum rendering so watches and Variables can show the active
+  tag as a symbol plus integer and switch payload children based on that tag.
 
 Verification:
 
