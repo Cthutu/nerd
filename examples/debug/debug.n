@@ -10,6 +10,11 @@ DebugCell :: plex {
     flags u32
 }
 
+DebugRaw :: union {
+    i i32
+    f f32
+}
+
 DebugEvent :: enum {
     None
     Move(DebugPoint)
@@ -52,6 +57,8 @@ debugger_branch_value :: fn (event: DebugEvent) -> i32 {
 debugger_values :: fn (scale: i32) -> i32 {
     label := "debugger"
     point := DebugPoint { x: 3 y: 4 }
+    point_ptr := ^point
+    raw_value : DebugRaw = DebugRaw { i: 12 }
     fixed_numbers := [10, 20, 30]
     pair := ("east", 7)
 
@@ -83,7 +90,7 @@ debugger_values :: fn (scale: i32) -> i32 {
     count_branch_value := debugger_branch_value(count_event)
     global_branch_value := debugger_branch_value(global_event)
 
-    checkpoint := label.count.as(i32) + point.x + fixed_numbers[1] + pair.1.as(i32) + byte_slice.data[1].as(i32) + number_slice.data[0] + tail_slice.data[0] + cells[1].flags.as(i32) + none_branch_value + branch_value + message_branch_value + count_branch_value + global_branch_value + scale
+    checkpoint := label.count.as(i32) + point_ptr.x + raw_value.i + fixed_numbers[1] + pair.1.as(i32) + byte_slice.data[1].as(i32) + number_slice.data[0] + tail_slice.data[0] + cells[1].flags.as(i32) + none_branch_value + branch_value + message_branch_value + count_branch_value + global_branch_value + scale
 
     on checkpoint > 0 => prn($"debug checkpoint {checkpoint}")
 

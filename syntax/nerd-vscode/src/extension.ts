@@ -1115,6 +1115,11 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
                         enumTagFromVariableValue(variable.value)
                     );
                 }
+                continue;
+            }
+
+            if (variable.type) {
+                variable.type = nerdDisplayTypeName(variable.type);
             }
         }
 

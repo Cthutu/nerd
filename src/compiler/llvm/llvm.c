@@ -2457,7 +2457,7 @@ internal u32 llvm_debug_record_field_count(const Sema* sema, u32 type_index)
     if (kind == STK_Enum) {
         return 2;
     }
-    if (kind == STK_Tuple || kind == STK_Plex) {
+    if (kind == STK_Tuple || kind == STK_Plex || kind == STK_Union) {
         return sema->types[type_index].param_count;
     }
     return 0;
@@ -2485,7 +2485,8 @@ internal string llvm_debug_record_field_name(LlvmDebugModule* debug,
     if (kind == STK_Tuple) {
         return string_format(arena, "%u", field_index);
     }
-    if (kind == STK_Plex && debug != NULL && debug->lexer != NULL &&
+    if ((kind == STK_Plex || kind == STK_Union) && debug != NULL &&
+        debug->lexer != NULL &&
         field_index < sema->types[type_index].param_count) {
         u32 symbol =
             sema->type_param_symbols[sema->types[type_index].first_param_type +
@@ -2518,7 +2519,7 @@ internal u32 llvm_debug_record_field_type(const Sema* sema,
     if (kind == STK_Enum && field_index == 0) {
         return llvm_builtin_type(sema, STK_U64);
     }
-    if ((kind == STK_Tuple || kind == STK_Plex) &&
+    if ((kind == STK_Tuple || kind == STK_Plex || kind == STK_Union) &&
         field_index < sema->types[type_index].param_count) {
         return sema->type_param_types[sema->types[type_index].first_param_type +
                                       field_index];
@@ -2537,6 +2538,9 @@ internal u32 llvm_debug_record_field_offset_bits(const Sema* sema,
     }
     if (kind == STK_Enum && field_index == 1) {
         return layout->enum_tag_bits;
+    }
+    if (kind == STK_Union) {
+        return 0;
     }
     if (kind != STK_Tuple && kind != STK_Plex) {
         return 0;
@@ -2566,7 +2570,7 @@ internal bool llvm_debug_type_is_record_like(const Sema* sema, u32 type_index)
 {
     SemaTypeKind kind = llvm_type_kind(sema, type_index);
     return kind == STK_String || kind == STK_Slice || kind == STK_Tuple ||
-           kind == STK_Plex || kind == STK_Enum;
+           kind == STK_Plex || kind == STK_Union || kind == STK_Enum;
 }
 
 internal bool llvm_debug_type_is_array(const Sema* sema, u32 type_index)
@@ -2645,8 +2649,11 @@ internal void llvm_debug_emit_composite_type(LlvmDebugModule* debug,
     }
 
     sb_format(&debug->metadata,
-              "!%u = !DICompositeType(tag: DW_TAG_structure_type, name: ",
-              type_id);
+              "!%u = !DICompositeType(tag: %s, name: ",
+              type_id,
+              llvm_type_kind(sema, type_index) == STK_Union
+                  ? "DW_TAG_union_type"
+                  : "DW_TAG_structure_type");
     llvm_debug_append_quoted(
         &debug->metadata,
         llvm_debug_type_name(debug, sema, type_index, &name_arena));
@@ -11197,7 +11204,8 @@ internal void llvm_mark_mutated_local_base(LlvmFunctionContext* ctx,
 
         u32          type_index = llvm_local_type(ctx, expr->ref_index);
         SemaTypeKind kind       = llvm_type_kind(ctx->sema, type_index);
-        if (kind == STK_Array || kind == STK_Plex || kind == STK_Tuple) {
+        if (kind == STK_Array || kind == STK_Plex || kind == STK_Union ||
+            kind == STK_Tuple) {
             llvm_mark_assigned_local(ctx, expr->ref_index);
         }
         return;
