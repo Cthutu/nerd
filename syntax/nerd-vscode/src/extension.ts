@@ -96,7 +96,7 @@ type SyntheticEnum = {
     frameId: number;
 };
 
-type PendingDynamicArraySummaryKind = "count" | "capacity";
+type PendingDynamicArraySummaryKind = "count" | "capacity" | "enumTag";
 
 type PendingDynamicArraySummaryEvaluation = {
     requestSeq: number;
@@ -107,6 +107,8 @@ type PendingDynamicArraySummaryEvaluation = {
 type PendingDynamicArraySummaryValue = {
     count?: number;
     capacity?: number;
+    enumDecl?: NerdEnumDeclaration;
+    tag?: number;
 };
 
 type PendingDynamicArraySummary = {
@@ -457,6 +459,16 @@ function dynamicArrayHeaderWatchExpression(expression: string): string | undefin
     return `${base} ? *((unsigned long long *)((char *)${base} - ${offset})) : 0`;
 }
 
+function dynamicArrayWatchBaseName(expression: string): string | undefined {
+    const match = expression
+        .trim()
+        .match(/^([A-Za-z_][A-Za-z0-9_.$]*)\s*\.\s*(count|capacity|data)$/);
+    if (!match) {
+        return undefined;
+    }
+    return match[1].split(".").pop();
+}
+
 function retryableDynamicArrayWatch(message: DapMessage): string | undefined {
     if (
         message.type !== "request" ||
@@ -628,26 +640,39 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
 
     handleMessage(message: vscode.DebugProtocolMessage): void {
         const dapMessage = message as DapMessage;
-        this.observeClientRequest(dapMessage);
+        let outboundMessage = dapMessage;
         const retryExpression = retryableDynamicArrayWatch(dapMessage);
         if (retryExpression && dapMessage.seq !== undefined) {
-            this.pendingDynamicArrayRetries.set(dapMessage.seq, {
+            const expression = dapMessage.arguments?.expression;
+            const baseName =
+                typeof expression === "string"
+                    ? dynamicArrayWatchBaseName(expression)
+                    : undefined;
+            const rewriteNow =
+                baseName !== undefined && this.dynamicArrayDeclarations.has(baseName);
+            const rewrittenMessage = {
                 ...dapMessage,
                 arguments: {
                     ...dapMessage.arguments,
                     expression: retryExpression,
                 },
-            });
+            };
+            if (rewriteNow) {
+                outboundMessage = rewrittenMessage;
+            } else {
+                this.pendingDynamicArrayRetries.set(dapMessage.seq, rewrittenMessage);
+            }
         }
+        this.observeClientRequest(outboundMessage);
 
-        if (this.handleSyntheticVariablesRequest(dapMessage)) {
+        if (this.handleSyntheticVariablesRequest(outboundMessage)) {
             return;
         }
 
         if (!this.process.stdin.destroyed) {
             this.process.stdin.write(
                 encodeDapMessage(
-                    this.normalizeLaunchRequest(this.normalizeBreakpointRequest(dapMessage))
+                    this.normalizeLaunchRequest(this.normalizeBreakpointRequest(outboundMessage))
                 )
             );
         }
@@ -986,8 +1011,29 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
                     enumDecl,
                     frameId,
                 });
-                variable.value = enumSummary(enumDecl, enumTagFromVariableValue(variable.value));
                 variable.variablesReference = reference;
+                if (!this.process.stdin.destroyed) {
+                    summary ??= {
+                        message,
+                        variables,
+                        values: new Map(),
+                        pending: 0,
+                    };
+                    summary.values.set(index, { enumDecl });
+                    this.requestDynamicArraySummaryEvaluation(
+                        summary,
+                        message.request_seq,
+                        index,
+                        "enumTag",
+                        `${evaluateName}.tag`,
+                        frameId
+                    );
+                } else {
+                    variable.value = enumSummary(
+                        enumDecl,
+                        enumTagFromVariableValue(variable.value)
+                    );
+                }
             }
         }
 
@@ -1050,8 +1096,10 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
                 const value = summary.values.get(pending.variableIndex) ?? {};
                 if (pending.kind === "count") {
                     value.count = parsed;
-                } else {
+                } else if (pending.kind === "capacity") {
                     value.capacity = parsed;
+                } else {
+                    value.tag = parsed;
                 }
                 summary.values.set(pending.variableIndex, value);
             }
@@ -1070,6 +1118,10 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
         for (const [index, value] of summary.values) {
             const variable = summary.variables[index];
             if (!variable?.type) {
+                continue;
+            }
+            if (value.enumDecl) {
+                variable.value = enumSummary(value.enumDecl, value.tag);
                 continue;
             }
             const count = value.count === undefined ? "?" : String(value.count);
@@ -1247,12 +1299,6 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
                 name: "tag",
                 type: "u8",
                 value: enumSummary(enumDecl, expansion.tag),
-                variablesReference: 0,
-            },
-            {
-                name: "discriminant",
-                type: "u32",
-                value: String(expansion.tag),
                 variablesReference: 0,
             },
         ];

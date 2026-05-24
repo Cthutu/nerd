@@ -218,6 +218,6 @@ export function enumTagFromVariableValue(value: string | undefined): number | un
     if (!value) {
         return undefined;
     }
-    const tagMatch = value.match(/\btag\s*=\s*([^,)]+)/);
+    const tagMatch = value.match(/\btag\s*[:=]\s*([^,)}]+)/);
     return parseIntegerResult(tagMatch?.[1]);
 }
