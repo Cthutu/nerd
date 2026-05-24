@@ -2141,6 +2141,8 @@ internal u32 llvm_debug_add_function(LlvmDebugModule*   debug,
     arena_init(&name_arena);
     string source_name = llvm_debug_function_source_name(
         hir, lexer, sema, &name_arena, function, function_index);
+    string linkage_name =
+        llvm_function_name_string(hir, lexer, &name_arena, function_index);
     u32 line = llvm_debug_function_line(hir, function);
 
     sb_format(&debug->metadata,
@@ -2149,6 +2151,8 @@ internal u32 llvm_debug_add_function(LlvmDebugModule*   debug,
               debug->empty_id);
     sb_format(&debug->metadata, "!%u = distinct !DISubprogram(name: ", id);
     llvm_debug_append_quoted(&debug->metadata, source_name);
+    sb_append_cstr(&debug->metadata, ", linkageName: ");
+    llvm_debug_append_quoted(&debug->metadata, linkage_name);
     sb_format(&debug->metadata,
               ", scope: !%u, file: !%u, line: %u, type: !%u, scopeLine: %u, "
               "spFlags: DISPFlagDefinition, unit: !%u, retainedNodes: !%u)\n",

@@ -49,9 +49,6 @@ starts the native executable is not enough.
   pointers such as `numbers[1]`.
 - Function parameters emitted with `dbg.value` are marked as DWARF arguments so
   CodeLLDB exposes ordinary arguments such as `std.random.random_seed(seed)`.
-- Function debug metadata omits generated implementation linkage names so
-  CodeLLDB call stacks prefer Nerd-visible names such as `random_seed` and
-  `main`.
 - Nerd-visible function bindings are emitted as `$` aliases while generated
   function bodies use compiler-internal names such as `@fn.N`.
 - The runtime object is compiled from `data/nrt.c` and linked into generated
@@ -244,7 +241,7 @@ that gap.
 - [x] Emit parameter debug metadata.
 - [x] Emit local-variable debug metadata for HIR locals and mutable storage.
 - [ ] Preserve lexical scopes enough for shadowed locals to display correctly.
-- [x] Verify call stacks show Nerd function names and source locations.
+- [ ] Verify call stacks show Nerd function names and source locations.
 - [x] Verify locals and parameters display at breakpoints.
 - [ ] Verify locals and parameters remain coherent while stepping.
 - [x] Add focused compiler tests for generated LLVM debug metadata shape.
