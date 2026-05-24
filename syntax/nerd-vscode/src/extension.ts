@@ -63,6 +63,10 @@ type PendingVariablesRequest = {
     variablesReference: number;
 };
 
+type PendingEvaluateRequest = {
+    context?: string;
+};
+
 type SyntheticDynamicArray = {
     baseExpression: string;
     frameId: number;
@@ -86,6 +90,21 @@ type PendingSyntheticExpansion = {
     itemResults: Map<number, DapVariable>;
     pending: number;
 };
+
+const nerdTupleSummaryPython = [
+    "def nerd_tuple_summary(valobj, internal_dict):",
+    "    parts = []",
+    "    for index in range(valobj.GetNumChildren()):",
+    "        child = valobj.GetChildAtIndex(index)",
+    '        parts.append(child.GetSummary() or child.GetValue() or "<unavailable>")',
+    '    return "(" + ", ".join(parts) + ")"',
+].join("\n");
+
+const nerdLldbInitCommands = [
+    `script exec(${JSON.stringify(nerdTupleSummaryPython)})`,
+    `type summary add string --summary-string "\${var.data}"`,
+    `type summary add -x "^\\\\(.+\\\\)$" -F nerd_tuple_summary`,
+];
 
 function execFileAsync(
     command: string,
@@ -509,6 +528,7 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
     private readonly pendingScopeRequests = new Map<number, number>();
     private readonly scopeFrames = new Map<number, number>();
     private readonly pendingVariablesRequests = new Map<number, PendingVariablesRequest>();
+    private readonly pendingEvaluateRequests = new Map<number, PendingEvaluateRequest>();
     private readonly dynamicArrayDeclarations = new Set<string>();
     private readonly syntheticDynamicArrays = new Map<number, SyntheticDynamicArray>();
     private readonly pendingSyntheticEvaluations = new Map<number, PendingSyntheticEvaluation>();
@@ -605,6 +625,10 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
             this.rewriteVariablesResponse(message);
         }
 
+        if (message.type === "response" && message.command === "evaluate") {
+            this.rewriteEvaluateResponse(message);
+        }
+
         if (message.type === "response" && message.request_seq !== undefined) {
             const originalRequest = this.dynamicArrayRetryResponses.get(
                 message.request_seq
@@ -665,6 +689,11 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
             this.pendingVariablesRequests.set(message.seq, {
                 variablesReference: message.arguments.variablesReference,
             });
+        } else if (message.command === "evaluate") {
+            const context = message.arguments?.context;
+            this.pendingEvaluateRequests.set(message.seq, {
+                context: typeof context === "string" ? context : undefined,
+            });
         }
     }
 
@@ -672,11 +701,16 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
         if (message.type !== "request" || message.command !== "launch") {
             return message;
         }
+        const userInitCommands = message.arguments?.initCommands;
+        const initCommands = Array.isArray(userInitCommands)
+            ? [...nerdLldbInitCommands, ...userInitCommands]
+            : nerdLldbInitCommands;
         return {
             ...message,
             arguments: {
                 ...message.arguments,
                 expressions: message.arguments?.expressions ?? "native",
+                initCommands,
             },
         };
     }
@@ -750,6 +784,27 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
             variable.value = `${variable.type} dynamic array`;
             variable.variablesReference = reference;
         }
+    }
+
+    private rewriteEvaluateResponse(message: DapMessage) {
+        if (message.request_seq === undefined || !message.body) {
+            return;
+        }
+        const request = this.pendingEvaluateRequests.get(message.request_seq);
+        this.pendingEvaluateRequests.delete(message.request_seq);
+        if (request?.context !== "hover" || message.success === false) {
+            return;
+        }
+
+        const type = message.body.type;
+        const result = message.body.result;
+        if (typeof type !== "string" || typeof result !== "string") {
+            return;
+        }
+        if (result.startsWith(`(${type}) `)) {
+            return;
+        }
+        message.body.result = `(${type}) ${result}`;
     }
 
     private handleSyntheticVariablesRequest(message: DapMessage): boolean {

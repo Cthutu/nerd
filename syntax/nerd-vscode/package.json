@@ -73,6 +73,14 @@
                                 "type": "object",
                                 "description": "Environment variables for the debugged program."
                             },
+                            "initCommands": {
+                                "type": "array",
+                                "description": "Additional LLDB commands to run before launch.",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "default": []
+                            },
                             "terminal": {
                                 "type": "string",
                                 "enum": [
