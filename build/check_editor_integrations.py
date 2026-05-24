@@ -95,6 +95,7 @@ def check_vscode_extension() -> None:
         "Moved ${movedCount} Nerd breakpoint(s)",
         "dynamicArrayHeaderWatchExpression",
         "collectDynamicArrayDeclarationsFromText",
+        "collectDynamicArrayDeclarationsNearPath",
         "syntheticDynamicArrays",
         'expressions: message.arguments?.expressions ?? "native"',
         "pendingDynamicArrayRetries",

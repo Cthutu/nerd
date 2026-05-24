@@ -434,6 +434,22 @@ function collectDynamicArrayDeclarationsFromDir(dirPath: string, names: Set<stri
     }
 }
 
+function collectDynamicArrayDeclarationsNearPath(startPath: string, names: Set<string>) {
+    let current = fs.existsSync(startPath) && fs.statSync(startPath).isDirectory()
+        ? startPath
+        : path.dirname(startPath);
+    for (;;) {
+        collectDynamicArrayDeclarationsFromDir(path.join(current, "mods"), names);
+        collectDynamicArrayDeclarationsFromDir(path.join(current, "_bin", "mods"), names);
+
+        const parent = path.dirname(current);
+        if (parent === current) {
+            break;
+        }
+        current = parent;
+    }
+}
+
 function parseUnsignedResult(value: string | undefined): number | undefined {
     if (!value) {
         return undefined;
@@ -625,6 +641,18 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
 
         if (message.command === "launch") {
             this.collectDynamicArrayDeclarations(message);
+        } else if (message.command === "setBreakpoints") {
+            const source = message.arguments?.source as DapSource | undefined;
+            if (source?.path) {
+                collectDynamicArrayDeclarationsFromFile(
+                    source.path,
+                    this.dynamicArrayDeclarations
+                );
+                collectDynamicArrayDeclarationsNearPath(
+                    source.path,
+                    this.dynamicArrayDeclarations
+                );
+            }
         } else if (
             message.command === "scopes" &&
             typeof message.arguments?.frameId === "number"
@@ -658,9 +686,17 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
         const args = message.arguments ?? {};
         if (typeof args.cwd === "string") {
             collectDynamicArrayDeclarationsFromDir(args.cwd, this.dynamicArrayDeclarations);
+            collectDynamicArrayDeclarationsNearPath(args.cwd, this.dynamicArrayDeclarations);
+        }
+        if (typeof args.program === "string") {
+            collectDynamicArrayDeclarationsNearPath(args.program, this.dynamicArrayDeclarations);
         }
         for (const folder of vscode.workspace.workspaceFolders ?? []) {
             collectDynamicArrayDeclarationsFromDir(
+                folder.uri.fsPath,
+                this.dynamicArrayDeclarations
+            );
+            collectDynamicArrayDeclarationsNearPath(
                 folder.uri.fsPath,
                 this.dynamicArrayDeclarations
             );
