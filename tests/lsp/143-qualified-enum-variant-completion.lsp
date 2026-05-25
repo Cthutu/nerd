@@ -1,40 +1,21 @@
 use std.term
 
 main :: fn () {
-    term_init()
-    missing()
-}
-
-simulate :: fn (s: TermSimulate) {
-    s.input
+    term_fb_box(0, 0, 10, 4, BoxStyle.)
 }
 ¬
 [
     {
         "jsonrpc": "2.0",
         "id": 2,
-        "method": "textDocument/definition",
+        "method": "textDocument/completion",
         "params": {
             "textDocument": {
                 "uri": "file:///test.n"
             },
             "position": {
                 "line": 3,
-                "character": 6
-            }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 3,
-        "method": "textDocument/definition",
-        "params": {
-            "textDocument": {
-                "uri": "file:///test.n"
-            },
-            "position": {
-                "line": 7,
-                "character": 20
+                "character": 38
             }
         }
     }
@@ -102,33 +83,33 @@ simulate :: fn (s: TermSimulate) {
                 {
                     "range": {
                         "start": {
-                            "line": 4,
-                            "character": 4
+                            "line": 3,
+                            "character": 38
                         },
                         "end": {
-                            "line": 4,
-                            "character": 11
+                            "line": 3,
+                            "character": 39
                         }
                     },
                     "severity": 1,
                     "source": "nerd",
-                    "message": "Unknown symbol `missing`",
+                    "message": "Expected Symbol but found RightParen `)`",
                     "relatedInformation": [
                         {
                             "location": {
                                 "uri": "file:///test.n",
                                 "range": {
                                     "start": {
-                                        "line": 4,
-                                        "character": 4
+                                        "line": 3,
+                                        "character": 38
                                     },
                                     "end": {
-                                        "line": 4,
-                                        "character": 11
+                                        "line": 3,
+                                        "character": 39
                                     }
                                 }
                             },
-                            "message": "help: Add a binding for `missing` or fix the spelling."
+                            "message": "help: Check for a missing closing delimiter or misplaced operator"
                         }
                     ]
                 }
@@ -138,36 +119,28 @@ simulate :: fn (s: TermSimulate) {
     {
         "jsonrpc": "2.0",
         "id": 2,
-        "result": {
-            "uri": "file:///home/matt/nerd/mods/std/term.n",
-            "range": {
-                "start": {
-                    "line": 1738,
-                    "character": 4
-                },
-                "end": {
-                    "line": 1738,
-                    "character": 13
-                }
+        "result": [
+            {
+                "label": "Single",
+                "kind": 20
+            },
+            {
+                "label": "Double",
+                "kind": 20
+            },
+            {
+                "label": "Rounded",
+                "kind": 20
+            },
+            {
+                "label": "Heavy",
+                "kind": 20
+            },
+            {
+                "label": "Custom",
+                "kind": 20
             }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 3,
-        "result": {
-            "uri": "file:///home/matt/nerd/mods/std/term.n",
-            "range": {
-                "start": {
-                    "line": 223,
-                    "character": 4
-                },
-                "end": {
-                    "line": 223,
-                    "character": 16
-                }
-            }
-        }
+        ]
     },
     {
         "jsonrpc": "2.0",

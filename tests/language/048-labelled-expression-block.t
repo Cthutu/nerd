@@ -125,9 +125,6 @@ block.end.1:
   store i32 0, ptr %t5, align 4
   store i32 99, ptr %t5, align 4
   br label %block.end.2
-block.end.3:
-  store i32 0, ptr %t5, align 4
-  br label %block.end.2
 block.end.2:
   %t6 = load i32, ptr %t5, align 4
   store i32 0, ptr %local.3

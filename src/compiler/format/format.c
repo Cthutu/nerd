@@ -1642,8 +1642,13 @@ internal bool format_emit_wrapped_call_expr_if_long(StringBuilder* sb,
                                                     u32            indent_level)
 {
     const CstNode* node = &cst->nodes[node_index];
+    if (format_node_is_block_form_on(cst, node_index)) {
+        format_emit_on_block_multiline(
+            sb, cst, lexer, node_index, indent_level);
+        return false;
+    }
 
-    Arena arena         = {0};
+    Arena arena = {0};
     arena_init(&arena);
     StringBuilder single_sb = {0};
     sb_init(&single_sb, &arena);
@@ -6505,8 +6510,8 @@ internal void format_emit_block_statement(StringBuilder* sb,
             format_emit_variable_payload(sb, cst, lexer, stmt->b, indent_level);
         } else {
             sb_append_cstr(sb, " := ");
-            format_emit_expr_with_indent(
-                sb, cst, lexer, stmt->b, 0, indent_level);
+            format_emit_wrapped_call_expr_if_long(
+                sb, cst, lexer, stmt->b, (usize)indent_level * 4, indent_level);
         }
         sb_append_char(sb, '\n');
         return;
@@ -6515,7 +6520,8 @@ internal void format_emit_block_statement(StringBuilder* sb,
     if (stmt->kind == CK_DestructureAssign) {
         format_emit_pattern(sb, cst, lexer, stmt->a, false);
         sb_append_cstr(sb, " = ");
-        format_emit_expr_with_indent(sb, cst, lexer, stmt->b, 0, indent_level);
+        format_emit_wrapped_call_expr_if_long(
+            sb, cst, lexer, stmt->b, (usize)indent_level * 4, indent_level);
         sb_append_char(sb, '\n');
         return;
     }
@@ -7495,6 +7501,7 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
     u32       interp_multiline_depth         = 0;
     TokenKind previous_kind                  = TK_EOF;
     bool      previous_plus_continues_string = false;
+    bool      in_on_header                   = false;
     for (u32 i = 0; i < array_count(lexer.tokens); ++i) {
         TokenKind kind      = lexer.tokens[i].kind;
         TokenKind next_kind = i + 1 < array_count(lexer.tokens)
@@ -7513,6 +7520,8 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
         u32  comment_count_before = 0;
         bool has_comments_before  = format_trivia_comments_before_token(
             &trivia, i, &first_comment_before, &comment_count_before);
+        bool suppress_newline_before =
+            in_on_header && !has_comments_before && newlines_before > 0;
         if (has_comments_before) {
             if (i > 0 && first_comment_before < array_count(lexer.comments)) {
                 usize previous_end =
@@ -7528,6 +7537,7 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
             } else if (newlines_before > 0 && !state.at_line_start) {
                 format_token_state_newline(&state);
             }
+        } else if (suppress_newline_before) {
         } else if (newlines_before > 1 && sb->size > 0) {
             format_token_state_blank_line(&state);
         } else if (newlines_before > 0 && !state.at_line_start) {
@@ -7590,7 +7600,7 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
              previous_kind == TK_InterpolatedStringEnd)) {
             needs_space = true;
         }
-        if (!needs_space && kind == TK_LBracket && previous_kind != TK_EOF &&
+        if (!needs_space && previous_kind != TK_EOF &&
             format_token_had_space_between(&lexer, i - 1, i)) {
             needs_space = true;
         }
@@ -7628,6 +7638,14 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
             }
         } else {
             sb_append_string(sb, format_token_text(&lexer, i));
+        }
+
+        if (kind == TK_on) {
+            in_on_header = true;
+        } else if (in_on_header &&
+                   (kind == TK_LBrace || kind == TK_FatArrow ||
+                    kind == TK_Semicolon || kind == TK_RBrace)) {
+            in_on_header = false;
         }
 
         if (!in_interpolated_string && kind == TK_LBrace) {

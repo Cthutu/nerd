@@ -45,6 +45,17 @@ intended exit code.
 - `name: Type = undefined` opts out of both `Default` and default storage
   initialisation.
 - `nil` is available for pointer-like and slice-like values where supported.
+- `box[T]` owns one runtime heap allocation for a `T`, or is nil.
+- `box[T]()` allocates one default-initialised `T`; `box[T](ptr)` adopts a
+  runtime-heap-compatible `^T`.
+- `box[T]` moves on assignment, box-parameter calls, and return; the source
+  box is set to nil.
+- `box[T]` borrows implicitly as `^T` for function calls and dot access.
+- `box[T]` converts implicitly to `bool`, where nil is `no` and non-nil is
+  `yes`.
+- `box.free()` releases the allocation and resets the box to nil. Local and
+  parameter boxes that still own an allocation are freed automatically on scope
+  exit.
 - Pointer equality supports matching pointer types, `nil`, and `^void` compared
   with any pointer type.
 - Non-built-in equality with `==` and `!=` uses the canonical `core.Eq`

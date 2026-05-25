@@ -38,6 +38,11 @@ DebugEvent :: enum {
 
 bytes : [..]u8
 cells : [..]DebugCell
+Map :: plex {
+    width  u32
+    height u32
+    data   [..]u8
+}
 `;
 const arrays = new Set();
 const enums = new Map();
@@ -56,6 +61,8 @@ const result = {
   zeroSummary: fmt.enumSummary(event, 0),
   payload: fmt.enumPayloadExpression("event", event.variants[3]),
   pointerType: fmt.nerdDisplayTypeName("unsigned char *"),
+  dynPointerType: fmt.dynamicArrayDebugTypeFromLldbType("unsigned char *"),
+  dynNamedType: fmt.dynamicArrayDebugTypeFromLldbType("[..]u8"),
   primitiveType: fmt.nerdPrimitiveTypeName("unsigned int"),
   unsupportedCast: fmt.unsupportedNerdWatchReason("value.as(i32)"),
   unsupportedRange: fmt.unsupportedNerdWatchReason("numbers[1..]"),
@@ -75,7 +82,7 @@ console.log(JSON.stringify(result));
 
     result = json.loads(node_result.stdout)
     expected = {
-        "arrays": ["bytes", "cells"],
+        "arrays": ["bytes", "cells", "data"],
         "tagHex": 7,
         "tagText": 7,
         "parsedTagText": 1,
@@ -85,6 +92,8 @@ console.log(JSON.stringify(result));
         "zeroSummary": "DebugEvent.None (0)",
         "payload": "*(int *)((char *)&event.payload + ((sizeof(int) <= 8) ? 8 : 0))",
         "pointerType": "^u8",
+        "dynPointerType": {"displayItemType": "u8", "itemType": "unsigned char"},
+        "dynNamedType": {"displayItemType": "u8", "itemType": "unsigned char"},
         "primitiveType": "u32",
         "unsupportedCast": "Nerd casts are not supported in watches yet",
         "unsupportedRange": "ranges and slices are not supported in watches yet; watch the slice variable or its data/count fields",

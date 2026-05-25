@@ -6,6 +6,10 @@ Dynamic arrays are growable arrays. They own their storage and can change size
 while the program runs, which makes them useful when the number of items is not
 known at compile time.
 
+Boxes are single-value heap allocations. They are useful when a program wants a
+pointer-stable value such as one plex instance, without manually allocating a
+byte slice and casting it.
+
 ## Types
 
 An initially empty dynamic array type is written:
@@ -159,6 +163,75 @@ make_words :: fn () -> [..]string {
     return words  -- ownership moves to the caller
 }
 ```
+
+## Boxes
+
+A box type is written as `box[T]`:
+
+```nerd
+Map :: plex {
+    width  u32
+    height u32
+}
+
+make_map :: fn () -> box[Map] {
+    map := box[Map]()
+    map.width = 80
+    map.height = 24
+    return map
+}
+```
+
+`box[T]()` allocates one `T` with the runtime heap allocator and records the
+call site's `@file` and `@line` for memory leak diagnostics.
+
+Boxes are nilable:
+
+```nerd
+map: box[Map] = nil
+map = box[Map]()
+```
+
+A `box[T]` also converts implicitly to `bool`: nil boxes are `no`, non-nil
+boxes are `yes`.
+
+Boxes are owning values. Passing a `box[T]` to a function that expects
+`box[T]`, assigning it to another `box[T]`, or returning it moves ownership and
+sets the source box to nil. Passing a `box[T]` to a function expecting `^T`
+only borrows the pointer and does not move ownership.
+
+A `box[T]` can be passed to a function expecting `^T`. This is a weak pointer
+borrow and does not transfer ownership:
+
+```nerd
+draw :: fn (map: ^Map) {
+    -- ...
+}
+
+map := box[Map]()
+draw(map)
+```
+
+Call `.free()` to release the allocation and reset the box to nil:
+
+```nerd
+map.free()
+```
+
+If a local or parameter box still owns an allocation when its scope exits, the
+box allocation is released automatically. Owned fields inside the boxed value
+are still the program's responsibility, so clean them before the box leaves
+scope:
+
+```nerd
+map_done :: fn (map: box[Map]) {
+    on map => map.rooms.free()
+} -- `map` itself is freed here
+```
+
+`box[T](ptr)` adopts an existing `^T` as owned box storage. The pointer must
+come from the same runtime heap allocator family; adopting arena memory, stack
+memory, or a pointer that is also freed elsewhere is invalid program behaviour.
 
 The caller owns the returned array and should free it:
 

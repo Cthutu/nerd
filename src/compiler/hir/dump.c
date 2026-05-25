@@ -624,6 +624,14 @@ internal void hir_render_expr(StringBuilder* sb,
             sb, hir, lexer, sema, arena, expr, false, false);
         sb_append_char(sb, ')');
         break;
+    case HIR_EXPR_Box:
+        sb_append_cstr(sb, "box ");
+        hir_append_type_name(sb, lexer, sema, expr->type_index);
+        sb_append_char(sb, '(');
+        hir_render_expr_arg_list(
+            sb, hir, lexer, sema, arena, expr, false, false);
+        sb_append_char(sb, ')');
+        break;
     case HIR_EXPR_Cast:
         sb_append_cstr(sb, "cast(");
         hir_render_expr(sb, hir, lexer, sema, arena, expr->operand_expr_index);

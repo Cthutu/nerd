@@ -93,14 +93,14 @@ main :: fn () {
     "source_file": "tests/errors/030-destructuring.e",
     "primary_location": {
         "line": 4,
-        "column": 6
+        "column": 15
     },
     "references": [
         {
             "kind": "primary",
             "line": 4,
-            "column": 6,
-            "length": 1,
+            "column": 15,
+            "length": 5,
             "message": "This expression has type `string`"
         }
     ],

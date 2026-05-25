@@ -14,6 +14,7 @@ import {
     NerdEnumVariant,
     collectDynamicArrayDeclarationsFromText,
     collectEnumDeclarationsFromText,
+    dynamicArrayDebugTypeFromLldbType,
     enumPayloadExpression,
     enumSummary,
     enumTagFromVariableValue,
@@ -1013,23 +1014,19 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
                 continue;
             }
 
-            if (
-                this.dynamicArrayDeclarations.has(name) &&
-                variable.type?.endsWith("*")
-            ) {
+            const dynamicArrayType = dynamicArrayDebugTypeFromLldbType(variable.type);
+            if (this.dynamicArrayDeclarations.has(name) && dynamicArrayType) {
                 const reference = this.nextInternalSeq++;
-                const itemType = variable.type.replace(/\s*\*$/, "").trim();
-                const displayItemType = nerdPrimitiveTypeName(itemType);
                 const dynamicArray = {
                     baseExpression: evaluateName,
-                    displayItemType,
+                    displayItemType: dynamicArrayType.displayItemType,
                     frameId,
-                    itemType,
+                    itemType: dynamicArrayType.itemType,
                     kind: "dynamicArray" as const,
                 };
                 this.syntheticDynamicArrays.set(reference, dynamicArray);
-                variable.type = `[..]${displayItemType}`;
-                variable.value = `[..]${displayItemType}`;
+                variable.type = `[..]${dynamicArrayType.displayItemType}`;
+                variable.value = `[..]${dynamicArrayType.displayItemType}`;
                 variable.variablesReference = reference;
 
                 if (!this.process.stdin.destroyed) {

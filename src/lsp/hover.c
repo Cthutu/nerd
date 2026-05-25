@@ -2350,9 +2350,30 @@ internal string lsp_field_hover_text(const LspDocument* doc,
         const SemaType* pointee      = NULL;
         if (lsp_sema_type(&doc->front_end.sema, pointee_type, &pointee) &&
             (pointee->kind == STK_Plex || pointee->kind == STK_Union ||
-             pointee->kind == STK_DynamicArray || pointee->kind == STK_Arena)) {
+             pointee->kind == STK_Box || pointee->kind == STK_DynamicArray ||
+             pointee->kind == STK_Arena)) {
             target_type = pointee_type;
             target      = pointee;
+        }
+    }
+    if (target->kind == STK_Box) {
+        string name = lex_symbol(&doc->front_end.lexer, field->b);
+        if (string_eq(name, s("free"))) {
+            string owner = sema_type_name(&doc->front_end.lexer,
+                                          &doc->front_end.sema,
+                                          arena,
+                                          target_type);
+            return string_format(
+                arena,
+                "free\n\n- Kind: box method\n- Type: `fn () -> "
+                "void`\n- Owner: `" STRINGP "`",
+                STRINGV(owner));
+        }
+        u32             item_type = target->first_param_type;
+        const SemaType* item      = NULL;
+        if (lsp_sema_type(&doc->front_end.sema, item_type, &item)) {
+            target_type = item_type;
+            target      = item;
         }
     }
 

@@ -980,13 +980,47 @@ internal string lsp_code_action_module_path_from_file(Arena* arena,
     return sb_to_string(&sb);
 }
 
+internal bool lsp_code_action_ast_node_is_impl_member(const Ast* ast,
+                                                      u32        node_index)
+{
+    if (ast == NULL || node_index >= array_count(ast->nodes)) {
+        return false;
+    }
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (node->kind != AK_Impl || node->a >= array_count(ast->impls)) {
+            continue;
+        }
+
+        const AstImplInfo* impl = &ast->impls[node->a];
+        if (impl->body_node_index >= array_count(ast->nodes)) {
+            continue;
+        }
+
+        const AstNode* body = &ast->nodes[impl->body_node_index];
+        if (body->kind == AK_Block && node_index >= body->a &&
+            node_index < body->b) {
+            return true;
+        }
+    }
+    return false;
+}
+
 internal bool lsp_code_action_ast_exports_symbol(const Lexer* lexer,
                                                  const Ast*   ast,
-                                                 string       symbol)
+                                                 string       symbol,
+                                                 bool include_impl_methods)
 {
     for (u32 i = 0; i < array_count(ast->nodes); ++i) {
         const AstNode* node = &ast->nodes[i];
+        if (!include_impl_methods &&
+            lsp_code_action_ast_node_is_impl_member(ast, i)) {
+            continue;
+        }
         if (node->kind == AK_Impl && node->a < array_count(ast->impls)) {
+            if (!include_impl_methods) {
+                continue;
+            }
             const AstImplInfo* impl = &ast->impls[node->a];
             if (impl->body_node_index >= array_count(ast->nodes)) {
                 continue;
@@ -1026,6 +1060,27 @@ internal bool lsp_code_action_ast_exports_symbol(const Lexer* lexer,
     return false;
 }
 
+internal bool lsp_code_action_path_is_core_module(cstr path)
+{
+    if (path == NULL) {
+        return false;
+    }
+    return string_eq(path_filename(s(path)), s("core.n"));
+}
+
+internal bool lsp_code_action_decl_is_method(const Sema* sema, u32 decl_index)
+{
+    if (sema == NULL || decl_index == sema_no_decl()) {
+        return false;
+    }
+    for (u32 i = 0; i < array_count(sema->methods); ++i) {
+        if (sema->methods[i].decl_index == decl_index) {
+            return true;
+        }
+    }
+    return false;
+}
+
 internal bool lsp_code_action_file_exports_symbol(cstr path, string symbol)
 {
     FileMap map    = {0};
@@ -1044,7 +1099,8 @@ internal bool lsp_code_action_file_exports_symbol(cstr path, string symbol)
     bool  found = false;
     if (lex((NerdSource){.source = source, .source_path = s(path)}, &lexer)) {
         ast   = ast_parse(&lexer);
-        found = lsp_code_action_ast_exports_symbol(&lexer, &ast, symbol);
+        found = lsp_code_action_ast_exports_symbol(
+            &lexer, &ast, symbol, !lsp_code_action_path_is_core_module(path));
     }
 
     ast_done(&ast);
@@ -1185,11 +1241,20 @@ internal void lsp_code_action_find_loaded_modules_exporting_symbol(
             continue;
         }
 
+        bool is_core_module =
+            lsp_code_action_path_is_core_module(module.info->resolved_path);
         for (u32 j = 0; j < lsp_module_export_count(&module); ++j) {
-            const SemaDecl* decl = NULL;
-            if (!lsp_module_export_decl(&module, j, &decl, NULL) ||
+            const SemaDecl* decl       = NULL;
+            u32             decl_index = sema_no_decl();
+            if (!lsp_module_export_decl(&module, j, &decl, &decl_index) ||
                 !string_eq(lex_symbol(module.lexer, decl->symbol_handle),
                            symbol)) {
+                continue;
+            }
+            if (is_core_module &&
+                (lsp_code_action_decl_is_method(module.sema, decl_index) ||
+                 lsp_code_action_ast_node_is_impl_member(
+                     module.ast, decl->bind_node_index))) {
                 continue;
             }
 

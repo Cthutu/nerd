@@ -33,22 +33,22 @@ bind ab = value.1
 bind abc = value.2
 bind abcde = value.3
 bind main = fn.0
-const value.0: u8 = u8 97
+const value.0: untyped integer = untyped integer 97
 const value.1: u16 = u16 24930
 const value.2: u32 = u32 6382179
 const value.3: u64 = u64 418262508645
 func fn.0() -> i32 {
-  let ok: bool = bool logical_and(bool logical_and(bool logical_and(bool equal(u8 bind.1(a), u8 97), bool equal(u16 bind.2(ab), u16 24930)), bool equal(u32 bind.3(abc), u32 6382179)), bool equal(u64 bind.4(abcde), u64 418262508645))
-  let upper: bool = bool on u8 81 {
-    range_inclusive(u8 65, u8 90) => {
+  let ok: bool = bool logical_and(bool logical_and(bool logical_and(bool equal(untyped integer bind.1(a), untyped integer 97), bool equal(u16 bind.2(ab), u16 24930)), bool equal(u32 bind.3(abc), u32 6382179)), bool equal(u64 bind.4(abcde), u64 418262508645))
+  let upper: bool = bool on i32 81 {
+    range_inclusive(i32 65, i32 90) => {
       expr bool yes
     }
     else => {
       expr bool no
     }
   }
-  let lower: bool = bool on u8 113 {
-    range_inclusive(u8 65, u8 90) => {
+  let lower: bool = bool on i32 113 {
+    range_inclusive(i32 65, i32 90) => {
       expr bool yes
     }
     else => {
@@ -73,15 +73,15 @@ func fn.0() -> i32 {
 declare ptr @$input({ ptr, i64 })
 
 define internal i32 @fn.0() {
-  %t0 = icmp eq i8 97, 97
+  %t0 = icmp eq i32 97, 97
   %t1 = icmp eq i16 24930, 24930
   %t2 = and i1 %t0, %t1
   %t3 = icmp eq i32 6382179, 6382179
   %t4 = and i1 %t2, %t3
   %t5 = icmp eq i64 418262508645, 418262508645
   %t6 = and i1 %t4, %t5
-  %t7 = icmp sge i8 81, 65
-  %t8 = icmp sle i8 81, 90
+  %t7 = icmp sge i32 81, 65
+  %t8 = icmp sle i32 81, 90
   %t9 = and i1 %t7, %t8
   br i1 %t9, label %on.body.1, label %on.next.2
 on.body.1:
@@ -96,8 +96,8 @@ on.value.6:
   br label %on.end.0
 on.end.0:
   %t10 = phi i1 [1, %on.value.3], [0, %on.value.6]
-  %t11 = icmp sge i8 113, 65
-  %t12 = icmp sle i8 113, 90
+  %t11 = icmp sge i32 113, 65
+  %t12 = icmp sle i32 113, 90
   %t13 = and i1 %t11, %t12
   br i1 %t13, label %on.body.8, label %on.next.9
 on.body.8:

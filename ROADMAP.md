@@ -129,6 +129,37 @@ the roadmap before committing the implementation.
 
 ## Active Work
 
+### Boxed Single Allocation Milestone
+
+Add `box[T]` as the built-in owning single-value heap allocation type, backed by
+the runtime heap allocator. The feature exists to replace unsafe byte-slice
+allocation casts when a program wants one heap-allocated plex or value.
+
+- [x] Add `box[T]` type resolution and source-facing type names.
+- [x] Add `box[T] = nil` and nil comparison support.
+- [x] Add `box[T]()` allocation through `nrt_mem_alloc` with call-site file
+  and line information for leak diagnostics.
+- [x] Add `box[T](ptr)` adoption from `^T` without allocating.
+- [x] Add implicit `box[T]` to `^T` borrowing for function calls.
+- [x] Add implicit `box[T]` to `bool` conversion where nil is `no` and non-nil
+  is `yes`.
+- [x] Add field access through boxes so `boxed.field` behaves like pointer
+  member access.
+- [x] Add `.free()` lowering through `nrt_mem_free`, resetting the box to nil.
+- [x] Add formatter coverage for `box[T]` type syntax through existing generic
+  type formatting.
+- [x] Add basic LSP member completion and hover support for `.free()` and boxed
+  pointee fields.
+- [x] Add debugger representation support as pointer-shaped storage with the
+  `box[...]` source type name in debug metadata.
+- [x] Add executable command coverage for allocation, borrowing, field access,
+  nil, and free.
+- [x] Add move assignment/call/return semantics that nil the source box.
+- [x] Add automatic scope-exit cleanup for local and parameter boxes that are
+  not returned or moved.
+- [ ] Add dedicated diagnostics for invalid box adoption and double-free-prone
+  patterns once broader ownership analysis exists.
+
 ### Standard Library Expansion
 
 - Continue expanding the standard library only as the module/export model needs

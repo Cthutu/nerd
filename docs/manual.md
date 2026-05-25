@@ -150,14 +150,15 @@ Concepts:
 - precedence and grouping
 - casts with `.as(Type)`
 - pointer-to-slice casts with `.as([]T, count)`
-- packed integer literals
+- single-quoted character and packed integer literals
 - digit separators in integer and float literals
 - string interpolation with `$"..."`
 - continuation string literals with `+"..."`
 
 Rules to teach:
 
-- Untyped numeric literals are resolved by context where possible.
+- Untyped numeric literals, including single-quoted character literals, are
+  resolved by context where possible.
 - Boolean values are `yes`/`no`; `true`/`false` are aliases.
 - Casts are explicit.
 - Pointer-to-slice casts require an explicit element type and count:

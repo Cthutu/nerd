@@ -1,40 +1,29 @@
-use std.term
-
+-- lsp-uri: __REPO_URI__/tests/lsp/144-add-use-skips-core-method.input.n
 main :: fn () {
-    term_init()
-    missing()
-}
-
-simulate :: fn (s: TermSimulate) {
-    s.input
+    alloc()
 }
 ¬
 [
     {
         "jsonrpc": "2.0",
         "id": 2,
-        "method": "textDocument/definition",
+        "method": "textDocument/codeAction",
         "params": {
             "textDocument": {
-                "uri": "file:///test.n"
+                "uri": "__REPO_URI__/tests/lsp/144-add-use-skips-core-method.input.n"
             },
-            "position": {
-                "line": 3,
-                "character": 6
-            }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 3,
-        "method": "textDocument/definition",
-        "params": {
-            "textDocument": {
-                "uri": "file:///test.n"
+            "range": {
+                "start": {
+                    "line": 1,
+                    "character": 5
+                },
+                "end": {
+                    "line": 1,
+                    "character": 5
+                }
             },
-            "position": {
-                "line": 7,
-                "character": 20
+            "context": {
+                "diagnostics": []
             }
         }
     }
@@ -97,38 +86,38 @@ simulate :: fn (s: TermSimulate) {
         "jsonrpc": "2.0",
         "method": "textDocument/publishDiagnostics",
         "params": {
-            "uri": "file:///test.n",
+            "uri": "__REPO_URI__/tests/lsp/144-add-use-skips-core-method.input.n",
             "diagnostics": [
                 {
                     "range": {
                         "start": {
-                            "line": 4,
+                            "line": 1,
                             "character": 4
                         },
                         "end": {
-                            "line": 4,
-                            "character": 11
+                            "line": 1,
+                            "character": 9
                         }
                     },
                     "severity": 1,
                     "source": "nerd",
-                    "message": "Unknown symbol `missing`",
+                    "message": "Unknown symbol `alloc`",
                     "relatedInformation": [
                         {
                             "location": {
-                                "uri": "file:///test.n",
+                                "uri": "__REPO_URI__/tests/lsp/144-add-use-skips-core-method.input.n",
                                 "range": {
                                     "start": {
-                                        "line": 4,
+                                        "line": 1,
                                         "character": 4
                                     },
                                     "end": {
-                                        "line": 4,
-                                        "character": 11
+                                        "line": 1,
+                                        "character": 9
                                     }
                                 }
                             },
-                            "message": "help: Add a binding for `missing` or fix the spelling."
+                            "message": "help: Add a binding for `alloc` or fix the spelling."
                         }
                     ]
                 }
@@ -138,36 +127,31 @@ simulate :: fn (s: TermSimulate) {
     {
         "jsonrpc": "2.0",
         "id": 2,
-        "result": {
-            "uri": "file:///home/matt/nerd/mods/std/term.n",
-            "range": {
-                "start": {
-                    "line": 1738,
-                    "character": 4
-                },
-                "end": {
-                    "line": 1738,
-                    "character": 13
+        "result": [
+            {
+                "title": "Add use std.mem",
+                "kind": "quickfix",
+                "edit": {
+                    "changes": {
+                        "__REPO_URI__/tests/lsp/144-add-use-skips-core-method.input.n": [
+                            {
+                                "range": {
+                                    "start": {
+                                        "line": 0,
+                                        "character": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "character": 0
+                                    }
+                                },
+                                "newText": "use std.mem\n\n"
+                            }
+                        ]
+                    }
                 }
             }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 3,
-        "result": {
-            "uri": "file:///home/matt/nerd/mods/std/term.n",
-            "range": {
-                "start": {
-                    "line": 223,
-                    "character": 4
-                },
-                "end": {
-                    "line": 223,
-                    "character": 16
-                }
-            }
-        }
+        ]
     },
     {
         "jsonrpc": "2.0",

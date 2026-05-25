@@ -19,8 +19,9 @@ manual. It records every `TokenKind` defined in
   keyword token is emitted instead of `TK_Symbol`.
 - Numeric literal separators use `_`. Separators are accepted inside digits but
   not at the start, not doubled, and not at the end of the digit sequence.
-- Single-quoted packed integer literals emit `TK_Integer`, not a distinct
-  character-literal token.
+- Single-quoted literals emit `TK_Integer`, not a distinct character-literal
+  token. A literal containing one UTF-8 codepoint stores that UTF-32 codepoint;
+  otherwise the decoded bytes are packed into the integer payload.
 
 ## Interpolated Strings
 
@@ -61,7 +62,7 @@ For example, `$"Hello {name}"` emits this token shape:
 | Token kind                   | Source spelling                                                                    | Payload                 | Notes                                                                                     |
 | ---------------------------- | ---------------------------------------------------------------------------------- | ----------------------- | ----------------------------------------------------------------------------------------- |
 | `TK_EOF`                     | none                                                                               | none                    | Parser sentinel; not emitted by `lex()`.                                                  |
-| `TK_Integer`                 | Decimal digits, `0x` hex, `0b` binary, `0o` octal, or single-quoted packed integer | `lexer->integers`       | Decimal, prefixed-base, and packed integer literals all share this token.                 |
+| `TK_Integer`                 | Decimal digits, `0x` hex, `0b` binary, `0o` octal, or single-quoted integer | `lexer->integers`       | Decimal, prefixed-base, character, and packed integer literals all share this token.      |
 | `TK_Float`                   | Decimal digits followed by `.` and at least one decimal digit or `_`               | `lexer->floats`         | Only base-10 floats are recognised. No exponent form is currently lexed.                  |
 | `TK_String`                  | `"..."` or an interpolated text chunk                                              | `lexer->strings`        | Escapes are decoded by the lexer. Interpolated strings emit string chunks as `TK_String`. |
 | `TK_CString`                 | `c"..."`                                                                           | `lexer->strings`        | C string literal. Escapes are decoded by the lexer.                                       |

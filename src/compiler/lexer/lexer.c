@@ -338,14 +338,64 @@ internal u8 lexer_decode_escape(string source_code, usize* io_index, u8 quote)
     }
 }
 
+internal usize lexer_decode_utf8_first(const u8* data, usize count, u32* out_cp)
+{
+    if (count == 0) {
+        return 0;
+    }
+
+    u8 b0 = data[0];
+    if (b0 < 0x80) {
+        *out_cp = b0;
+        return 1;
+    }
+    if ((b0 & 0xE0) == 0xC0) {
+        if (count < 2 || (data[1] & 0xC0) != 0x80) {
+            return 0;
+        }
+        u32 cp = ((u32)(b0 & 0x1F) << 6) | (u32)(data[1] & 0x3F);
+        if (cp < 0x80) {
+            return 0;
+        }
+        *out_cp = cp;
+        return 2;
+    }
+    if ((b0 & 0xF0) == 0xE0) {
+        if (count < 3 || (data[1] & 0xC0) != 0x80 || (data[2] & 0xC0) != 0x80) {
+            return 0;
+        }
+        u32 cp = ((u32)(b0 & 0x0F) << 12) | ((u32)(data[1] & 0x3F) << 6) |
+                 (u32)(data[2] & 0x3F);
+        if (cp < 0x800 || (cp >= 0xD800 && cp <= 0xDFFF)) {
+            return 0;
+        }
+        *out_cp = cp;
+        return 3;
+    }
+    if ((b0 & 0xF8) == 0xF0) {
+        if (count < 4 || (data[1] & 0xC0) != 0x80 || (data[2] & 0xC0) != 0x80 ||
+            (data[3] & 0xC0) != 0x80) {
+            return 0;
+        }
+        u32 cp = ((u32)(b0 & 0x07) << 18) | ((u32)(data[1] & 0x3F) << 12) |
+                 ((u32)(data[2] & 0x3F) << 6) | (u32)(data[3] & 0x3F);
+        if (cp < 0x10000 || cp > 0x10FFFF) {
+            return 0;
+        }
+        *out_cp = cp;
+        return 4;
+    }
+    return 0;
+}
+
 internal bool lexer_lex_packed_integer_literal(NerdSource source,
                                                string     source_code,
                                                usize*     io_index,
                                                Lexer*     lexer)
 {
-    usize start  = *io_index;
-    usize i      = start + 1;
-    u64   value  = 0;
+    usize start = *io_index;
+    usize i     = start + 1;
+    u8    data[8];
     u32   bytes  = 0;
     bool  closed = false;
 
@@ -367,13 +417,24 @@ internal bool lexer_lex_packed_integer_literal(NerdSource source,
                 source, (ErrorSpan){.start = start, .end = i});
         }
 
-        value = (value << 8) | ch;
+        data[bytes] = ch;
         bytes++;
     }
 
     if (!closed) {
         return error_0107_unterminated_packed_integer_literal(
             source, (ErrorSpan){.start = start, .end = i});
+    }
+
+    u64   value    = 0;
+    u32   cp       = 0;
+    usize consumed = lexer_decode_utf8_first(data, bytes, &cp);
+    if (bytes > 0 && consumed == bytes) {
+        value = cp;
+    } else {
+        for (u32 byte = 0; byte < bytes; ++byte) {
+            value = (value << 8) | data[byte];
+        }
     }
 
     array_push(lexer->tokens,

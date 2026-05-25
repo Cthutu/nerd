@@ -246,9 +246,9 @@ internal u32 lsp_completion_field_type(const Sema*  sema,
                 break;
             }
             SemaTypeKind pointee_kind = sema->types[pointee_type].kind;
-            if (pointee_kind != STK_Pointer && pointee_kind != STK_Tuple &&
-                pointee_kind != STK_Array && pointee_kind != STK_Slice &&
-                pointee_kind != STK_String &&
+            if (pointee_kind != STK_Pointer && pointee_kind != STK_Box &&
+                pointee_kind != STK_Tuple && pointee_kind != STK_Array &&
+                pointee_kind != STK_Slice && pointee_kind != STK_String &&
                 pointee_kind != STK_DynamicArray && pointee_kind != STK_Plex &&
                 pointee_kind != STK_Union && pointee_kind != STK_Arena) {
                 break;
@@ -256,6 +256,11 @@ internal u32 lsp_completion_field_type(const Sema*  sema,
             receiver_type = pointee_type;
             type          = &sema->types[receiver_type];
         }
+    }
+    if (type->kind == STK_Box &&
+        type->first_param_type < array_count(sema->types)) {
+        receiver_type = sema_materialise_type(sema, type->first_param_type);
+        type          = &sema->types[receiver_type];
     }
 
     if (type->kind == STK_Tuple) {
@@ -415,6 +420,11 @@ internal void lsp_completion_add_dynamic_array_members(Arena*     arena,
     lsp_completion_add(arena, items, s("resize_undefined_to"), 2); // Method
     lsp_completion_add(arena, items, s("extend"), 2);              // Method
     lsp_completion_add(arena, items, s("extend_undefined"), 2);    // Method
+}
+
+internal void lsp_completion_add_box_members(Arena* arena, JsonValue* items)
+{
+    lsp_completion_add(arena, items, s("free"), 2); // Method
 }
 
 internal bool lsp_completion_is_internal_label(string label)
@@ -733,9 +743,9 @@ internal void lsp_completion_add_members(Arena*             arena,
                 break;
             }
             SemaTypeKind pointee_kind = sema->types[pointee_type].kind;
-            if (pointee_kind != STK_Pointer && pointee_kind != STK_Tuple &&
-                pointee_kind != STK_Array && pointee_kind != STK_Slice &&
-                pointee_kind != STK_String &&
+            if (pointee_kind != STK_Pointer && pointee_kind != STK_Box &&
+                pointee_kind != STK_Tuple && pointee_kind != STK_Array &&
+                pointee_kind != STK_Slice && pointee_kind != STK_String &&
                 pointee_kind != STK_DynamicArray && pointee_kind != STK_Plex &&
                 pointee_kind != STK_Union && pointee_kind != STK_Arena) {
                 break;
@@ -743,6 +753,12 @@ internal void lsp_completion_add_members(Arena*             arena,
             type_index = pointee_type;
             type       = &sema->types[type_index];
         }
+    }
+    if (type->kind == STK_Box &&
+        type->first_param_type < array_count(sema->types)) {
+        lsp_completion_add_box_members(arena, items);
+        type_index = sema_materialise_type(sema, type->first_param_type);
+        type       = &sema->types[type_index];
     }
 
     LspModuleView module = {0};
@@ -1847,6 +1863,74 @@ internal bool lsp_completion_add_text_plex_fields(Arena*     arena,
         line_start = line_end + (line_end < source.count ? 1 : 0);
     }
     return array_count(items->array.values) > before;
+}
+
+internal bool lsp_completion_add_text_enum_variants(Arena*     arena,
+                                                    JsonValue* items,
+                                                    string     source,
+                                                    string     type_name)
+{
+    usize line_start = 0;
+    bool  in_enum    = false;
+    usize before     = array_count(items->array.values);
+    while (line_start < source.count) {
+        usize line_end = line_start;
+        while (line_end < source.count && source.data[line_end] != '\n') {
+            line_end++;
+        }
+        string line = {.data  = source.data + line_start,
+                       .count = line_end - line_start};
+        line        = lsp_completion_trim(lsp_completion_strip_comment(line));
+
+        if (!in_enum) {
+            if (lsp_completion_line_starts_decl(line, type_name, s("enum"))) {
+                in_enum = true;
+            }
+            line_start = line_end + (line_end < source.count ? 1 : 0);
+            continue;
+        }
+
+        if (line.count > 0 && line.data[0] == '}') {
+            break;
+        }
+        usize i = 0;
+        if (lsp_completion_match_ident_at(line, &i, s("pub"))) {
+            while (i < line.count &&
+                   (line.data[i] == ' ' || line.data[i] == '\t')) {
+                i++;
+            }
+        }
+        usize start = i;
+        while (i < line.count && lsp_completion_is_ident_char(line.data[i])) {
+            i++;
+        }
+        if (i > start) {
+            lsp_completion_add(
+                arena,
+                items,
+                (string){.data = line.data + start, .count = i - start},
+                20);
+        }
+        line_start = line_end + (line_end < source.count ? 1 : 0);
+    }
+    return array_count(items->array.values) > before;
+}
+
+internal bool lsp_completion_add_text_enum_variants_from_file(Arena*     arena,
+                                                              JsonValue* items,
+                                                              cstr       path,
+                                                              string type_name)
+{
+    FileMap map    = {0};
+    string  source = filemap_load(path, &map);
+    if (source.data == NULL) {
+        return false;
+    }
+
+    bool added =
+        lsp_completion_add_text_enum_variants(arena, items, source, type_name);
+    filemap_unload(&map);
+    return added;
 }
 
 internal bool lsp_completion_seen_name(Array(string) seen, string name)
@@ -3256,6 +3340,185 @@ internal void lsp_completion_add_enum_variants(Arena*             arena,
     }
 }
 
+internal bool lsp_completion_receiver_is_single_ident(string receiver)
+{
+    if (receiver.count == 0) {
+        return false;
+    }
+    for (usize i = 0; i < receiver.count; ++i) {
+        if (!lsp_completion_is_ident_char(receiver.data[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+
+internal bool lsp_completion_type_is_enum(const Sema* sema, u32 type_index)
+{
+    const SemaType* type = NULL;
+    type_index           = sema_materialise_type(sema, type_index);
+    return lsp_sema_type(sema, type_index, &type) && type->kind == STK_Enum;
+}
+
+internal bool lsp_completion_add_ast_enum_variants(Arena*             arena,
+                                                   JsonValue*         items,
+                                                   const LspDocument* doc,
+                                                   string             receiver)
+{
+    const Lexer* lexer = &doc->front_end.lexer;
+    const Ast*   ast   = &doc->front_end.ast;
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (node->kind != AK_Bind || node->a == U32_MAX ||
+            !string_eq(lex_symbol(lexer, node->a), receiver) ||
+            node->b >= array_count(ast->nodes)) {
+            continue;
+        }
+
+        const AstNode* value = &ast->nodes[node->b];
+        if (value->kind != AK_TypeEnum ||
+            value->a >= array_count(ast->enum_types)) {
+            return false;
+        }
+
+        const AstEnumTypeInfo* enum_type = &ast->enum_types[value->a];
+        for (u32 variant_index = 0; variant_index < enum_type->variant_count;
+             ++variant_index) {
+            const AstEnumVariant* variant =
+                &ast->enum_variants[enum_type->first_variant + variant_index];
+            if (variant->symbol_handle != U32_MAX) {
+                lsp_completion_add(arena,
+                                   items,
+                                   lex_symbol(lexer, variant->symbol_handle),
+                                   20);
+            }
+        }
+        return enum_type->variant_count > 0;
+    }
+    return false;
+}
+
+internal bool lsp_completion_add_qualified_enum_variants(Arena*     arena,
+                                                         JsonValue* items,
+                                                         const LspDocument* doc,
+                                                         string receiver,
+                                                         usize  offset)
+{
+    if (!lsp_completion_receiver_is_single_ident(receiver)) {
+        return false;
+    }
+
+    const Lexer* lexer = &doc->front_end.lexer;
+    const Sema*  sema  = &doc->front_end.sema;
+    if (doc->bindings_ready) {
+        u32   best_local      = sema_no_local();
+        usize best_local_span = 0;
+        for (u32 i = 0; i < array_count(sema->locals); ++i) {
+            const SemaLocal* local = &sema->locals[i];
+            if (local->symbol_handle == U32_MAX ||
+                !string_eq(lex_symbol(lexer, local->symbol_handle), receiver)) {
+                continue;
+            }
+            usize local_offset = lsp_completion_local_decl_offset(doc, local);
+            if (local_offset <= offset && local_offset >= best_local_span) {
+                best_local      = i;
+                best_local_span = local_offset;
+            }
+        }
+        if (best_local != sema_no_local()) {
+            const SemaLocal* local = &sema->locals[best_local];
+            if (local->kind != SLK_TypeAlias ||
+                !lsp_completion_type_is_enum(sema, local->type_index)) {
+                return false;
+            }
+            usize before = array_count(items->array.values);
+            lsp_completion_add_enum_variants(
+                arena, items, doc, local->type_index);
+            return array_count(items->array.values) > before;
+        }
+
+        for (u32 i = 0; i < array_count(sema->decls); ++i) {
+            const SemaDecl* decl = &sema->decls[i];
+            if (decl->kind != SK_TypeAlias || decl->symbol_handle == U32_MAX ||
+                !string_eq(lex_symbol(lexer, decl->symbol_handle), receiver) ||
+                !lsp_completion_type_is_enum(sema, decl->type_index)) {
+                continue;
+            }
+            usize before = array_count(items->array.values);
+            lsp_completion_add_enum_variants(
+                arena, items, doc, decl->type_index);
+            return array_count(items->array.values) > before;
+        }
+    }
+
+    if (lsp_completion_add_ast_enum_variants(arena, items, doc, receiver) ||
+        lsp_completion_add_text_enum_variants(
+            arena, items, doc->source, receiver)) {
+        return true;
+    }
+
+    Arena temp = {0};
+    arena_init(&temp);
+    usize line_start = 0;
+    while (line_start < doc->source.count) {
+        usize line_end = line_start;
+        while (line_end < doc->source.count &&
+               doc->source.data[line_end] != '\n') {
+            line_end++;
+        }
+
+        string line = {.data  = doc->source.data + line_start,
+                       .count = line_end - line_start};
+        line        = lsp_completion_trim(lsp_completion_strip_comment(line));
+
+        usize i     = 0;
+        if (lsp_completion_match_ident_at(line, &i, s("pub"))) {
+            while (i < line.count &&
+                   (line.data[i] == ' ' || line.data[i] == '\t')) {
+                i++;
+            }
+        }
+        if (!lsp_completion_match_ident_at(line, &i, s("use"))) {
+            line_start = line_end + (line_end < doc->source.count ? 1 : 0);
+            continue;
+        }
+        while (i < line.count &&
+               (line.data[i] == ' ' || line.data[i] == '\t')) {
+            i++;
+        }
+
+        usize path_start = i;
+        while (i < line.count && (lsp_completion_is_ident_char(line.data[i]) ||
+                                  line.data[i] == '.')) {
+            i++;
+        }
+        if (i == path_start) {
+            line_start = line_end + (line_end < doc->source.count ? 1 : 0);
+            continue;
+        }
+
+        string module_path = {.data  = line.data + path_start,
+                              .count = i - path_start};
+        cstr   resolved    = NULL;
+        if (lsp_completion_resolve_text_module(
+                &temp,
+                doc,
+                module_path,
+                doc->front_end.lexer.source.source_path,
+                &resolved) &&
+            lsp_completion_add_text_enum_variants_from_file(
+                arena, items, resolved, receiver)) {
+            arena_done(&temp);
+            return true;
+        }
+
+        line_start = line_end + (line_end < doc->source.count ? 1 : 0);
+    }
+
+    arena_done(&temp);
+    return false;
+}
+
 internal bool lsp_completion_arg_contains_offset(const Lexer* lexer,
                                                  const Ast*   ast,
                                                  u32          arg_node_index,
@@ -3981,6 +4244,13 @@ void lsp_handle_completion(LspState* state, const LspMessage* message)
 
     string receiver = {0};
     if (lsp_completion_member_context(view.source, offset, &receiver)) {
+        if (lsp_completion_add_qualified_enum_variants(
+                message->arena, items, doc, receiver, offset)) {
+            lsp_completion_filter_items(items, prefix);
+            json_object_set_array(response, "result", items);
+            lsp_send_response(message->arena, response);
+            return;
+        }
         lsp_completion_add_source_for_item_members(
             message->arena, items, doc, offset, receiver);
         if (array_count(items->array.values) == 0) {

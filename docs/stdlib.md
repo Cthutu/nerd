@@ -146,6 +146,12 @@ The registered pointer is relayed through `TermSimulate.user_data` and
 `TermPresent.user_data` each time the hook runs. `term_hooks_clear()` resets both
 stored pointers to `nil`.
 
+`term_init` accepts a `TermTooSmallPolicy` argument. The default
+`PauseSimulation` policy suppresses app simulation while the terminal is below
+the configured minimum size and discards key/mouse edge state, while preserving
+current key-down state. `ContinueSimulation` keeps simulation hooks running but
+still lets `std.term` own presentation until the terminal is large enough again.
+
 ### `std.traits`
 
 - `Display`

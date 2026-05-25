@@ -50,6 +50,7 @@ typedef enum : u8 {
     STK_Array,
     STK_Slice,
     STK_DynamicArray,
+    STK_Box,
     STK_Pointer,
     STK_Plex,
     STK_Union,

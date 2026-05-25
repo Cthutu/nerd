@@ -191,6 +191,39 @@ export function lldbTypeNameForNerdType(nerdType: string): string {
     }
 }
 
+export type NerdDynamicArrayDebugType = {
+    displayItemType: string;
+    itemType: string;
+};
+
+export function dynamicArrayDebugTypeFromLldbType(
+    lldbType: string | undefined
+): NerdDynamicArrayDebugType | undefined {
+    if (!lldbType) {
+        return undefined;
+    }
+
+    const type = lldbType.replace(/\s+/g, " ").trim();
+    const namedDynamicArray = type.match(/^\[\s*\.\.\s*\]\s*(.+?)(?:\s*\*)?$/);
+    if (namedDynamicArray) {
+        const displayItemType = namedDynamicArray[1].trim();
+        return {
+            displayItemType,
+            itemType: lldbTypeNameForNerdType(displayItemType),
+        };
+    }
+
+    if (!type.endsWith("*")) {
+        return undefined;
+    }
+
+    const itemType = type.replace(/\s*\*$/, "").trim();
+    return {
+        displayItemType: nerdPrimitiveTypeName(itemType),
+        itemType,
+    };
+}
+
 export function unsupportedNerdWatchReason(expression: string): string | undefined {
     const text = expression.trim();
     if (!text) {

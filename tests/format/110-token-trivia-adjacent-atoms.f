@@ -17,5 +17,5 @@ winsize :: plex #c {
 ffi "c" ioctl :: fn (fd: i32, request: i32, ...) -> i32
 
 main :: fn () {
-    prn("a" +"b"
+    prn("a" + "b"
 }

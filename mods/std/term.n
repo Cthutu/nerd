@@ -13,7 +13,7 @@
 --   Use `term_hook_simulation()` for input/state updates and
 --   `term_hook_presentation()` for framebuffer drawing.
 -- - `term_done()` only requests shutdown. Cleanup happens inside the next
---   terminal step so raw mode and alternate screen are restored in one place.
+--   terminal step so the cursor, raw mode, and alternate screen are restored.
 --
 -- Framebuffer drawing:
 -- - `term_fb_clear`, `term_fb_put`, `term_fb_text`, `term_fb_fill_rect`,
@@ -193,6 +193,7 @@ pub KeyCode :: enum {
 
 TermInputEvent :: enum {
     None
+    KeyPress(KeyCode)
     KeyDown(KeyCode)
     KeyUp(KeyCode)
 }
@@ -234,6 +235,11 @@ pub TermPresent :: plex {
     width     u32
     height    u32
     user_data ^void
+}
+
+pub TermTooSmallPolicy :: enum {
+    PauseSimulation
+    ContinueSimulation
 }
 
 pub TermSimulateFn :: fn (TermSimulate)
@@ -279,6 +285,7 @@ term_last_columns      : u32
 term_last_rows         : u32
 term_min_width         : u32
 term_min_height        : u32
+term_too_small_policy  : TermTooSmallPolicy
 term_present_ready     : bool
 term_arena             : arena
 term_arena_ready       : bool
@@ -290,6 +297,7 @@ term_fb_ready          : bool
 term_keyboard_down     : [TERM_KEY_CODE_COUNT]bool
 term_keyboard_pressed  : [TERM_KEY_CODE_COUNT]bool
 term_keyboard_released : [TERM_KEY_CODE_COUNT]bool
+term_keyboard_pulse    : [TERM_KEY_CODE_COUNT]bool
 term_mouse             : TermMouse
 term_simulate_hook     : TermSimulateFn
 term_simulate_hook_set : bool
@@ -1005,6 +1013,8 @@ on "linux" {
 
     -- Applies raw terminal input mode and saves the original Linux mode.
     term_raw_mode_enable_impl :: fn () {
+        on term_original_mode_saved => return
+
         current : Termios
         _ := sys_ioctl(STDIN_FILENO, TCGETS.as(u64), (^current).as(^void))
         term_original_mode       = current
@@ -1026,9 +1036,11 @@ on "linux" {
 
     -- Restores the saved Linux terminal mode.
     term_raw_mode_disable_impl :: fn () {
-        _ := sys_ioctl(STDIN_FILENO,
-                       TCSETS.as(u64),
-                       (^term_original_mode).as(^void))
+        on !term_original_mode_saved => return
+
+        restored := term_original_mode
+        restored.oflag |= (OPOST | ONLCR).as(u32)
+        _ := sys_ioctl(STDIN_FILENO, TCSETS.as(u64), (^restored).as(^void))
         term_original_mode_saved = no
     }
 
@@ -1111,7 +1123,7 @@ on "linux" {
     term_read_input_event_impl :: fn () -> TermInputEvent {
         key := term_read_key_nonblocking()
         return on key {
-            Some(code) => TermInputEvent.KeyDown(code)
+            Some(code) => TermInputEvent.KeyPress(code)
             None => TermInputEvent.None
         }
     }
@@ -1130,6 +1142,8 @@ on "windows" {
 
     -- Applies raw terminal input mode and saves the original Windows console modes.
     term_raw_mode_enable_impl :: fn () {
+        on term_original_mode_saved => return
+
         input := GetStdHandle(STD_INPUT_HANDLE)
         output := GetStdHandle(STD_OUTPUT_HANDLE)
 
@@ -1157,6 +1171,8 @@ on "windows" {
 
     -- Restores the saved Windows console modes.
     term_raw_mode_disable_impl :: fn () {
+        on !term_original_mode_saved => return
+
         input := GetStdHandle(STD_INPUT_HANDLE)
         output := GetStdHandle(STD_OUTPUT_HANDLE)
 
@@ -1336,7 +1352,7 @@ on "windows" {
         on event {
             TermInputEvent.None => {
                 byte := term_read_byte_timeout(0)
-                return on byte == 0 => TermInputEvent.None else TermInputEvent.KeyDown(byte.as(KeyCode))
+                return on byte == 0 => TermInputEvent.None else TermInputEvent.KeyPress(byte.as(KeyCode))
             }
             else => return event
         }
@@ -1485,6 +1501,7 @@ term_keyboard_clear :: fn () {
         term_keyboard_down[i] = no
         term_keyboard_pressed[i] = no
         term_keyboard_released[i] = no
+        term_keyboard_pulse[i] = no
         i += 1
     }
 }
@@ -1492,6 +1509,10 @@ term_keyboard_clear :: fn () {
 term_keyboard_clear_edges :: fn () {
     i : usize = 0
     for i < TERM_KEY_CODE_COUNT.as(usize) {
+        on term_keyboard_pulse[i] => {
+            term_keyboard_down[i] = no
+            term_keyboard_pulse[i] = no
+        }
         term_keyboard_pressed[i] = no
         term_keyboard_released[i] = no
         i += 1
@@ -1532,11 +1553,20 @@ pub term_key_released :: fn (keyboard: TermKeyboard, key: KeyCode) -> bool {
 
 term_keyboard_record_event :: fn (event: TermInputEvent) {
     on event {
+        KeyPress(key) => {
+            index := term_key_index(key)
+            on term_key_index_valid(index) => {
+                term_keyboard_pressed[index] = yes
+                term_keyboard_down[index] = yes
+                term_keyboard_pulse[index] = yes
+            }
+        }
         KeyDown(key) => {
             index := term_key_index(key)
             on term_key_index_valid(index) => {
                 term_keyboard_pressed[index] = yes
                 term_keyboard_down[index] = yes
+                term_keyboard_pulse[index] = no
             }
         }
         KeyUp(key) => {
@@ -1544,6 +1574,7 @@ term_keyboard_record_event :: fn (event: TermInputEvent) {
             on term_key_index_valid(index) => {
                 on term_keyboard_down[index] => term_keyboard_released[index] = yes
                 term_keyboard_down[index] = no
+                term_keyboard_pulse[index] = no
             }
         }
         else => {
@@ -1691,14 +1722,29 @@ term_run_presentation_hook :: fn (current: Instant) {
     term_present_hook(present)
 }
 
+term_handle_too_small :: fn (current: Instant) {
+    on term_too_small_policy {
+        PauseSimulation => term_hooks_reset_timing(current)
+        ContinueSimulation => {
+            term_run_simulation_hook(current)
+            term_present_last = current
+            term_present_ran  = no
+        }
+    }
+
+    term_draw_too_small()
+}
+
 -- Enters terminal application mode.
 pub term_init :: fn (min_width  : u32 = TERM_DEFAULT_MIN_WIDTH,
-                     min_height : u32 = TERM_DEFAULT_MIN_HEIGHT) {
+                     min_height : u32 = TERM_DEFAULT_MIN_HEIGHT,
+                     too_small_policy : TermTooSmallPolicy = TermTooSmallPolicy.PauseSimulation) {
     on term_initialised => return
 
-    term_done_requested = no
-    term_min_width      = min_width
-    term_min_height     = min_height
+    term_done_requested   = no
+    term_min_width        = min_width
+    term_min_height       = min_height
+    term_too_small_policy = too_small_policy
     term_arena_ensure()
     term_keyboard_clear()
     term_raw_mode_enable(yes)
@@ -1745,6 +1791,7 @@ term_run_step :: fn () -> bool {
         term_arena_reset()
         term_fb_present()
         term_fb_release()
+        term_cursor_enable(yes)
         term_alternate_screen_enable(no)
         term_raw_mode_enable(no)
         term_arena_done()
@@ -1774,8 +1821,7 @@ term_run_step :: fn () -> bool {
     term_view_reset()
 
     on term_too_small() => {
-        term_hooks_reset_timing(current)
-        term_draw_too_small()
+        term_handle_too_small(current)
         term_fb_present()
         term_present_ready = yes
         return yes
@@ -1813,6 +1859,8 @@ term_noop_present :: fn (_present: TermPresent) {
 term_test_payload              : u32
 term_test_simulate_user_data   : ^void
 term_test_presentation_user_data : ^void
+term_test_simulate_count       : u32
+term_test_keyboard             : TermKeyboard
 
 term_capture_simulate :: fn (sim: TermSimulate) {
     term_test_simulate_user_data = sim.user_data
@@ -1820,6 +1868,11 @@ term_capture_simulate :: fn (sim: TermSimulate) {
 
 term_capture_present :: fn (present: TermPresent) {
     term_test_presentation_user_data = present.user_data
+}
+
+term_count_simulate :: fn (sim: TermSimulate) {
+    term_test_simulate_count += 1
+    term_test_keyboard = sim.keyboard
 }
 
 test "term_get_size returns a column and row tuple" {
@@ -2264,6 +2317,23 @@ test "terminal repeated key down records another press edge" {
     term_keyboard_clear()
 }
 
+test "terminal key press pulses down state for one simulation" {
+    term_keyboard_clear()
+
+    term_event_record(TermInputEvent.KeyPress(KeyCode.LowerQ))
+    keyboard := term_keyboard_snapshot()
+    assert term_key_down(keyboard, KeyCode.LowerQ)
+    assert term_key_pressed(keyboard, KeyCode.LowerQ)
+
+    term_keyboard_clear_edges()
+    keyboard = term_keyboard_snapshot()
+    assert !term_key_down(keyboard, KeyCode.LowerQ)
+    assert !term_key_pressed(keyboard, KeyCode.LowerQ)
+    assert !term_key_released(keyboard, KeyCode.LowerQ)
+
+    term_keyboard_clear()
+}
+
 test "term_done only signals loop shutdown" {
     term_initialised    = yes
     term_done_requested = no
@@ -2299,6 +2369,66 @@ test "terminal minimum size detects undersized axes" {
     term_last_columns = 80
     term_last_rows    = 24
     assert term_too_small()
+}
+
+test "too-small pause policy clears key edges but keeps down state" {
+    term_fb_release()
+    assert term_fb_resize(10, 3)
+    term_keyboard_clear()
+    term_min_width        = 80
+    term_min_height       = 25
+    term_too_small_policy = TermTooSmallPolicy.PauseSimulation
+    term_last_columns     = 79
+    term_last_rows        = 25
+    term_simulate_ran     = yes
+    term_present_ran      = yes
+
+    term_event_record(TermInputEvent.KeyPress(KeyCode.LowerQ))
+    term_handle_too_small(100.as(Instant))
+
+    keyboard := term_keyboard_snapshot()
+    assert !term_key_down(keyboard, KeyCode.LowerQ)
+    assert !term_key_pressed(keyboard, KeyCode.LowerQ)
+    assert !term_key_released(keyboard, KeyCode.LowerQ)
+    assert !term_simulate_ran
+    assert !term_present_ran
+
+    term_keyboard_clear()
+    term_fb_release()
+}
+
+test "too-small continue policy runs simulation without presentation timing" {
+    term_fb_release()
+    assert term_fb_resize(10, 3)
+    term_keyboard_clear()
+    term_test_simulate_count = 0
+    term_min_width           = 80
+    term_min_height          = 25
+    term_too_small_policy    = TermTooSmallPolicy.ContinueSimulation
+    term_last_columns        = 79
+    term_last_rows           = 25
+    term_simulate_ran        = no
+    term_present_ran         = yes
+    term_hook_simulation(50.as(Duration), term_count_simulate)
+
+    term_event_record(TermInputEvent.KeyPress(KeyCode.LowerQ))
+    term_handle_too_small(100.as(Instant))
+
+    assert term_test_simulate_count == 1
+    assert term_key_down(term_test_keyboard, KeyCode.LowerQ)
+    assert term_key_pressed(term_test_keyboard, KeyCode.LowerQ)
+    assert !term_key_released(term_test_keyboard, KeyCode.LowerQ)
+    assert term_simulate_ran
+    assert !term_present_ran
+
+    keyboard := term_keyboard_snapshot()
+    assert !term_key_down(keyboard, KeyCode.LowerQ)
+    assert !term_key_pressed(keyboard, KeyCode.LowerQ)
+    assert !term_key_released(keyboard, KeyCode.LowerQ)
+
+    term_hooks_clear()
+    term_keyboard_clear()
+    term_fb_release()
 }
 
 test "term_valid requires initialisation and minimum size" {

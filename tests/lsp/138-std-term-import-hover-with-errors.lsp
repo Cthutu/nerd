@@ -141,7 +141,7 @@ simulate :: fn (s: TermSimulate) {
         "result": {
             "contents": {
                 "kind": "markdown",
-                "value": "```nerd\nterm_init :: fn (min_width: u32 = TERM_DEFAULT_MIN_WIDTH, min_height: u32 = TERM_DEFAULT_MIN_HEIGHT) -> void\n```\n\n- Kind: function\n\nEnters terminal application mode."
+                "value": "```nerd\nterm_init :: fn (min_width: u32 = TERM_DEFAULT_MIN_WIDTH, min_height: u32 = TERM_DEFAULT_MIN_HEIGHT, too_small_policy: TermTooSmallPolicy = TermTooSmallPolicy.PauseSimulation) -> void\n```\n\n- Kind: function\n\nEnters terminal application mode."
             }
         }
     },

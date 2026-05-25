@@ -73,6 +73,7 @@ typedef enum : u8 {
     HIR_EXPR_Binary,
     HIR_EXPR_Assign,
     HIR_EXPR_Call,
+    HIR_EXPR_Box,
     HIR_EXPR_Cast,
     HIR_EXPR_Index,
     HIR_EXPR_Tuple,
@@ -296,6 +297,7 @@ typedef struct {
 
 typedef struct {
     HirForKind kind;
+    u32        scope_index;
     u32        label_symbol;
     u32        condition_expr_index;
     u32        iterable_expr_index;

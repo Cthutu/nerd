@@ -957,6 +957,21 @@ hir_call_callee_symbol(const Ast* ast, u32 call_node_index, u32* out_symbol)
     return false;
 }
 
+internal bool
+hir_node_is_box_constructor(const Lexer* lexer, const Ast* ast, u32 node_index)
+{
+    if (node_index >= array_count(ast->nodes)) {
+        return false;
+    }
+    const AstNode* node = &ast->nodes[node_index];
+    if (node->kind != AK_Index || node->a >= array_count(ast->nodes)) {
+        return false;
+    }
+    const AstNode* target = &ast->nodes[node->a];
+    return target->kind == AK_SymbolRef &&
+           string_eq(lex_symbol(lexer, target->a), s("box"));
+}
+
 internal u32 hir_lower_expr_with_expected(Hir*         hir,
                                           const Lexer* lexer,
                                           const Ast*   ast,
@@ -1645,10 +1660,42 @@ internal u32 hir_lower_expr(Hir*         hir,
                     });
             }
 
+            const AstCallInfo* call = &ast->calls[node->b];
+            if (hir_node_is_box_constructor(lexer, ast, node->a)) {
+                Array(HirCallArg) lowered_args = NULL;
+                for (u32 i = 0; i < call->arg_count; ++i) {
+                    u32 arg_node_index = ast->call_args[call->first_arg + i];
+                    u32 arg_symbol     = U32_MAX;
+                    arg_node_index     = hir_call_arg_value_node(
+                        ast, arg_node_index, &arg_symbol);
+                    array_push(lowered_args,
+                               (HirCallArg){
+                                   .expr_index = hir_lower_expr(
+                                       hir, lexer, ast, sema, arg_node_index),
+                                   .symbol_handle = arg_symbol,
+                               });
+                }
+                u32 first_arg = (u32)array_count(hir->call_args);
+                for (u32 i = 0; i < array_count(lowered_args); ++i) {
+                    array_push(hir->call_args, lowered_args[i]);
+                }
+                u32 arg_count = (u32)array_count(lowered_args);
+                array_free(lowered_args);
+                return hir_add_expr(
+                    hir,
+                    (HirExpr){
+                        .kind       = HIR_EXPR_Box,
+                        .type_index = hir_node_type(sema, node_index),
+                        .first_arg  = first_arg,
+                        .arg_count  = arg_count,
+                        .source_line =
+                            hir_node_source_line(lexer, ast, node_index),
+                        .source_path = lexer->source.source_path,
+                    });
+            }
             u32 callee_expr_index =
                 hir_lower_expr(hir, lexer, ast, sema, node->a);
-            const AstCallInfo* call        = &ast->calls[node->b];
-            u32                callee_type = hir_node_type(sema, node->a);
+            u32 callee_type = hir_node_type(sema, node->a);
             if (callee_type == sema_no_type() &&
                 callee_expr_index < array_count(hir->exprs)) {
                 callee_type = hir->exprs[callee_expr_index].type_index;
@@ -2606,6 +2653,7 @@ internal u32 hir_lower_for(Hir*         hir,
 
     hir->fors[for_index] = (HirFor){
         .kind                 = hir_for_kind_from_ast(for_info->mode),
+        .scope_index          = for_scope,
         .label_symbol         = for_info->label_symbol,
         .condition_expr_index = condition_expr_index,
         .iterable_expr_index  = iterable_expr_index,
