@@ -28,8 +28,7 @@ frame : Frame : {
     x     : 10         -- x comment
 
     -- size group
-    width  : 640
-                  -- width comment that should align with height and wrap onto
+    width  : 640  -- width comment that should align with height and wrap onto
                   --     the next line if the configured formatter width requires
                   --     it
     height : 480  -- height comment

@@ -5659,17 +5659,8 @@ internal void format_emit_trailing_comment_text_aligned(StringBuilder* sb,
         FORMAT_WRAP_WIDTH > continuation_prefix_width
             ? FORMAT_WRAP_WIDTH - continuation_prefix_width
             : 1;
-    bool comment_fits_on_first_line = text.count <= first_width;
-
-    if (comment_fits_on_first_line) {
-        for (usize pad = current_column; pad < comment_column; ++pad) {
-            sb_append_char(sb, ' ');
-        }
-    } else {
-        sb_append_char(sb, '\n');
-        for (usize pad = 0; pad < comment_column; ++pad) {
-            sb_append_char(sb, ' ');
-        }
+    for (usize pad = current_column; pad < comment_column; ++pad) {
+        sb_append_char(sb, ' ');
     }
     sb_append_cstr(sb, "--");
 

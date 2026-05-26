@@ -12,8 +12,7 @@ State::enum {
 State :: enum {
     Idle
 
-    Running(i32)
-                  -- active job identifier that is deliberately long enough to
+    Running(i32)  -- active job identifier that is deliberately long enough to
                   --     wrap onto another line while keeping the marker aligned
 
     Failed(string)
