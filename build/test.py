@@ -287,6 +287,10 @@ def cleanup_generated_outputs(path: pathlib.Path) -> None:
         path.parent / f"{path.stem}.exe.link.ll",
         path.parent / f"{path.stem}.input.link.ll",
         path.parent / f"{path.stem}.input.exe.link.ll",
+        path.parent / f"{path.stem}.nrt.o",
+        path.parent / f"{path.stem}.exe.nrt.o",
+        path.parent / f"{path.stem}.input.nrt.o",
+        path.parent / f"{path.stem}.input.exe.nrt.o",
     ):
         if sidecar.is_file():
             sidecar.unlink(missing_ok=True)
@@ -743,6 +747,24 @@ def test_command(path: pathlib.Path) -> list[Failure]:
             ):
                 stale.write_text("stale generated artifact\n", encoding="utf-8")
 
+    if run_mode == "build-clean-sidecars" and command in {"build", "b"}:
+        build_stem = input_path.with_suffix("").name
+        sidecar_stem = pathlib.Path(build_stem).stem
+        for stale in (
+            cwd / f"_{sidecar_stem}.hir",
+            cwd / f"_{sidecar_stem}.ll",
+            cwd / f"{build_stem}.m1.ll",
+        ):
+            stale.write_text("stale generated artifact\n", encoding="utf-8")
+
+    if run_mode == "compile-error-clean-sidecars":
+        sidecar_stem = pathlib.Path(input_path.with_suffix("").name).stem
+        for stale in (
+            cwd / f"_{sidecar_stem}.hir",
+            cwd / f"_{sidecar_stem}.ll",
+        ):
+            stale.write_text("stale generated artifact\n", encoding="utf-8")
+
     args = [str(NERD), command, *cli_args]
     if command in {"run", "r"} and run_mode == "keep" and "--keep" not in args:
         args.append("--keep")
@@ -801,6 +823,32 @@ def test_command(path: pathlib.Path) -> list[Failure]:
                     failures.append(Failure(path, "expected executable debug line table to mention Nerd source file(s): " + ", ".join(missing_sources)))
             elif run_mode == "no-debug-info" and input_path.name in debug_dump.stdout:
                 failures.append(Failure(path, "release executable unexpectedly contains Nerd debug line table"))
+    if run_mode == "build-clean-sidecars":
+        leftovers: list[pathlib.Path] = []
+        build_stem = input_path.with_suffix("").name
+        sidecar_stem = pathlib.Path(build_stem).stem
+        for pattern in (
+            f"_{sidecar_stem}.hir",
+            f"_{sidecar_stem}.ll",
+            f"{build_stem}.m*.ll",
+        ):
+            leftovers.extend(sorted(cwd.glob(pattern)))
+        leftovers = [item for item in leftovers if item.is_file()]
+        if leftovers:
+            names = ", ".join(item.name for item in leftovers)
+            failures.append(Failure(path, f"expected build to clean stale sidecars, found: {names}"))
+    if run_mode == "compile-error-clean-sidecars":
+        leftovers: list[pathlib.Path] = []
+        sidecar_stem = pathlib.Path(input_path.with_suffix("").name).stem
+        for pattern in (
+            f"_{sidecar_stem}.hir",
+            f"_{sidecar_stem}.ll",
+        ):
+            leftovers.extend(sorted(cwd.glob(pattern)))
+        leftovers = [item for item in leftovers if item.is_file()]
+        if leftovers:
+            names = ", ".join(item.name for item in leftovers)
+            failures.append(Failure(path, f"expected compile error to clean stale sidecars, found: {names}"))
     if run_mode == "clean-llvm":
         leftovers: list[pathlib.Path] = []
         for pattern in (

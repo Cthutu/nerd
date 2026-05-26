@@ -6,5 +6,5 @@ main :: fn () {
 ¬
 
 ¬
-clean-llvm
+compile-error-clean-sidecars
 ¬

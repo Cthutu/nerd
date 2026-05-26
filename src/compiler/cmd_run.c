@@ -171,50 +171,6 @@ internal void compiler_cmd_run_cleanup_generated(
                                                   artifacts->binary_path);
 }
 
-internal void compiler_cmd_run_remove_known_binary_artifacts(Arena* arena,
-                                                             cstr   binary_path)
-{
-    path_remove(binary_path);
-    path_remove((cstr)string_format(arena, "%s.link.ll", binary_path).data);
-    path_remove((cstr)string_format(arena, "%s.nrt.o", binary_path).data);
-    path_remove((cstr)string_format(arena, "%s.pdb", binary_path).data);
-    for (u32 i = 1; i < 32; ++i) {
-        path_remove(
-            (cstr)string_format(arena, "%s.m%u.ll", binary_path, i).data);
-    }
-
-    cstr   dir_path = path_dirname(arena, binary_path);
-    string stem     = path_stem(s(binary_path));
-    cstr   dir = (dir_path != NULL && dir_path[0] != '\0') ? dir_path : ".";
-    StringBuilder stem_builder = {0};
-    sb_init(&stem_builder, arena);
-    sb_append_string(&stem_builder, stem);
-    sb_append_null(&stem_builder);
-    cstr stem_path =
-        path_join(arena, dir, (cstr)sb_to_string(&stem_builder).data);
-    path_remove((cstr)string_format(arena, "%s.link.ll", stem_path).data);
-    path_remove((cstr)string_format(arena, "%s.nrt.o", stem_path).data);
-    path_remove((cstr)string_format(arena, "%s.pdb", stem_path).data);
-    for (u32 i = 1; i < 32; ++i) {
-        path_remove((cstr)string_format(arena, "%s.m%u.ll", stem_path, i).data);
-    }
-}
-
-internal void compiler_cmd_run_cleanup_failed_compile(
-    Arena* arena, const NerdArtifactConfig* artifacts, cstr output_root)
-{
-    compiler_cmd_run_cleanup_generated(arena, artifacts, false);
-    compiler_cmd_run_remove_known_binary_artifacts(arena,
-                                                   artifacts->binary_path);
-
-    path_remove(artifacts->hir_path);
-    path_remove(artifacts->llvm_path);
-
-    cstr build_binary = compiler_cmd_build_binary_path(arena, output_root);
-    compiler_cmd_run_cleanup_generated_for_binary(arena, build_binary);
-    compiler_cmd_run_remove_known_binary_artifacts(arena, build_binary);
-}
-
 //------------------------------------------------------------------------------
 // Build and then execute one Nerd program.
 
@@ -276,9 +232,7 @@ int compiler_cmd_run(const NerdRunConfig* config)
     arena_init(&arena);
 
     NerdArtifactConfig artifacts = compiler_cmd_run_artifacts(&arena, config);
-    cstr               output_root =
-        compiler_cmd_output_root(&arena, config->output_path, config->source);
-    Timing timing = {0};
+    Timing             timing    = {0};
     timing_init(&timing);
 
     bool ok = compile(config->source, &artifacts, config->verbose, &timing);
@@ -288,10 +242,6 @@ int compiler_cmd_run(const NerdRunConfig* config)
     }
     timing_done(&timing);
     if (!ok) {
-        if (!config->keep_binary) {
-            compiler_cmd_run_cleanup_failed_compile(
-                &arena, &artifacts, output_root);
-        }
         arena_done(&arena);
         return 1;
     }

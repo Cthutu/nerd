@@ -92,6 +92,16 @@ typedef struct {
 } NerdRunConfig;
 
 typedef struct {
+    Arena arena;
+    Array(cstr) cleanup_paths;
+} NerdSideFileRegistry;
+
+void nerd_side_file_registry_init(NerdSideFileRegistry* registry);
+void nerd_side_file_registry_done(NerdSideFileRegistry* registry);
+void nerd_side_file_register_cleanup(NerdSideFileRegistry* registry, cstr path);
+void nerd_side_file_cleanup_registered(NerdSideFileRegistry* registry);
+
+typedef struct {
     cstr binary_path;
     cstr hir_path;
     cstr llvm_path;
@@ -100,6 +110,7 @@ typedef struct {
     bool emit_executable;
     bool release;
     Array(string) keywords;
+    NerdSideFileRegistry* side_files;
 } NerdArtifactConfig;
 
 //------------------------------------------------------------------------------

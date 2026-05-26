@@ -8,5 +8,5 @@ main :: fn () {}
 ¬
 
 ¬
-clean-llvm
+delete
 ¬

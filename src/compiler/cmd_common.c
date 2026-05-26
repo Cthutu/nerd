@@ -25,6 +25,42 @@ NerdArtifactConfig compiler_cmd_default_artifacts(void)
     };
 }
 
+void nerd_side_file_registry_init(NerdSideFileRegistry* registry)
+{
+    *registry = (NerdSideFileRegistry){0};
+    arena_init(&registry->arena);
+}
+
+void nerd_side_file_registry_done(NerdSideFileRegistry* registry)
+{
+    array_free(registry->cleanup_paths);
+    arena_done(&registry->arena);
+    *registry = (NerdSideFileRegistry){0};
+}
+
+void nerd_side_file_register_cleanup(NerdSideFileRegistry* registry, cstr path)
+{
+    if (registry == NULL || path == NULL || path[0] == '\0') {
+        return;
+    }
+
+    usize len  = strlen(path);
+    char* copy = (char*)arena_alloc(&registry->arena, len + 1);
+    memcpy(copy, path, len + 1);
+    array_push(registry->cleanup_paths, copy);
+}
+
+void nerd_side_file_cleanup_registered(NerdSideFileRegistry* registry)
+{
+    if (registry == NULL) {
+        return;
+    }
+
+    for (u32 i = 0; i < array_count(registry->cleanup_paths); ++i) {
+        path_remove(registry->cleanup_paths[i]);
+    }
+}
+
 cstr compiler_cmd_copy_path(Arena* arena, string path)
 {
     char* copy = (char*)arena_alloc(arena, path.count + 1);
@@ -111,6 +147,20 @@ bool compile(NerdSource                source,
         artifacts = &default_artifacts;
     }
 
+    NerdSideFileRegistry side_files = {0};
+    nerd_side_file_registry_init(&side_files);
+
+    NerdArtifactConfig effective_artifacts = *artifacts;
+    effective_artifacts.side_files         = &side_files;
+    artifacts                              = &effective_artifacts;
+
+    if (!artifacts->emit_hir_file) {
+        nerd_side_file_register_cleanup(&side_files, artifacts->hir_path);
+    }
+    if (!artifacts->emit_llvm_file) {
+        nerd_side_file_register_cleanup(&side_files, artifacts->llvm_path);
+    }
+
     NerdSource effective_source = source;
     FileMap    source_map       = {0};
     bool       mapped_source    = false;
@@ -120,6 +170,7 @@ bool compile(NerdSource                source,
         char* source_path =
             calloc(effective_source.source_path.count + 1, sizeof(char));
         if (source_path == NULL) {
+            nerd_side_file_registry_done(&side_files);
             return error_runtime("Failed to allocate source path buffer");
         }
 
@@ -131,6 +182,7 @@ bool compile(NerdSource                source,
         if (path_is_directory(source_path)) {
             string bad_path = effective_source.source_path;
             free(source_path);
+            nerd_side_file_registry_done(&side_files);
             return error_runtime(
                 "Expected a source file but found directory: " STRINGP,
                 STRINGV(bad_path));
@@ -139,6 +191,7 @@ bool compile(NerdSource                source,
         effective_source.source = filemap_load(source_path, &source_map);
         free(source_path);
         if (effective_source.source.data == NULL) {
+            nerd_side_file_registry_done(&side_files);
             return error_runtime("Failed to load source file: " STRINGP,
                                  STRINGV(effective_source.source_path));
         }
@@ -159,6 +212,8 @@ bool compile(NerdSource                source,
         if (mapped_source) {
             filemap_unload(&source_map);
         }
+        nerd_side_file_cleanup_registered(&side_files);
+        nerd_side_file_registry_done(&side_files);
         return false;
     }
 
@@ -167,6 +222,7 @@ bool compile(NerdSource                source,
         if (mapped_source) {
             filemap_unload(&source_map);
         }
+        nerd_side_file_registry_done(&side_files);
         return false;
     }
 
@@ -174,6 +230,8 @@ bool compile(NerdSource                source,
     if (mapped_source) {
         filemap_unload(&source_map);
     }
+    nerd_side_file_cleanup_registered(&side_files);
+    nerd_side_file_registry_done(&side_files);
     return true;
 }
 
