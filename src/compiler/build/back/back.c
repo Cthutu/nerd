@@ -377,6 +377,33 @@ internal bool back_end_parse_lld_locked_output(string output,
     return false;
 }
 
+internal bool
+back_end_parse_lld_failed_write_output(string                     output,
+                                       BackEndLlvmToolDiagnostic* out)
+{
+    cstr   prefix        = "lld-link: error: failed to write output '";
+    cstr   suffix        = "': permission denied";
+    usize  prefix_len    = back_end_cstr_len(prefix);
+    usize  suffix_offset = 0;
+    usize  cursor        = 0;
+    string line          = {0};
+    while (back_end_next_line(output, &cursor, &line)) {
+        if (!back_end_string_starts_with_cstr(line, prefix) ||
+            !back_end_string_find_cstr(line, suffix, &suffix_offset) ||
+            suffix_offset < prefix_len) {
+            continue;
+        }
+
+        out->kind    = BACK_END_LLVM_TOOL_DIAG_LOCKED_OUTPUT;
+        out->tool    = s("lld-link");
+        out->message = s("failed to write output file");
+        out->path =
+            string_from(line.data + prefix_len, suffix_offset - prefix_len);
+        return true;
+    }
+    return false;
+}
+
 internal bool back_end_parse_clang_locked_output(string output,
                                                  BackEndLlvmToolDiagnostic* out)
 {
@@ -420,6 +447,9 @@ internal bool back_end_parse_llvm_tool_output(string                     output,
         return true;
     }
     if (back_end_parse_lld_locked_output(output, out)) {
+        return true;
+    }
+    if (back_end_parse_lld_failed_write_output(output, out)) {
         return true;
     }
     if (back_end_parse_clang_locked_output(output, out)) {
@@ -892,6 +922,24 @@ bool back_end_llvm_tool_output_self_test(void)
                         "C:\\Users\\matt\\nerd\\examples\\dungeon\\_dungeon."
                         "out.exe")) {
         eprn("Failed to parse lld locked-output diagnostic");
+        return false;
+    }
+
+    string lld_failed_write_output =
+        s("lld-link: error: failed to write output "
+          "'C:\\Users\\matt\\nerd\\examples\\matrix\\_matrix.out': "
+          "permission denied\n"
+          "clang: error: unable to remove file: permission denied\n"
+          "clang: error: linker command failed with exit code 1 "
+          "(use -v to see invocation)\n");
+    diagnostic = (BackEndLlvmToolDiagnostic){0};
+    if (!back_end_parse_llvm_tool_output(lld_failed_write_output,
+                                         &diagnostic) ||
+        diagnostic.kind != BACK_END_LLVM_TOOL_DIAG_LOCKED_OUTPUT ||
+        !string_eq_cstr(diagnostic.path,
+                        "C:\\Users\\matt\\nerd\\examples\\matrix\\_matrix."
+                        "out")) {
+        eprn("Failed to parse lld failed-write diagnostic");
         return false;
     }
 
