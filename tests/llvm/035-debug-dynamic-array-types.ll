@@ -23,9 +23,11 @@ define internal void @fn.0() !dbg !6 {
   br i1 %t2, label %on.body.1, label %on.end.0, !dbg !13
 on.body.1:
   call void asm sideeffect "nop", ""(), !dbg !13
-  br label %on.end.0, !dbg !13
+  call void asm sideeffect "nop", ""(), !dbg !15
+  br label %on.end.0, !dbg !15
 on.end.0:
-  ret void, !dbg !13
+  call void asm sideeffect "nop", ""(), !dbg !16
+  ret void, !dbg !16
 }
 
 @$main = alias void (), ptr @fn.0
@@ -50,3 +52,5 @@ declare void @llvm.dbg.declare(metadata, metadata, metadata)
 !12 = !DILocation(line: 1, column: 1, scope: !6)
 !13 = !DILocation(line: 4, column: 1, scope: !6)
 !14 = distinct !DILexicalBlock(scope: !6, file: !1, line: 1, column: 1)
+!15 = !DILocation(line: 4, column: 1, scope: !14)
+!16 = !DILocation(line: 5, column: 1, scope: !6)

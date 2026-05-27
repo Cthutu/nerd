@@ -212,10 +212,13 @@ The current debug metadata contract includes compile units, canonical source
 file paths, function subprograms, source locations, parameters, locals, globals,
 lexical blocks for nested scopes, and first-pass type descriptions for
 primitives, pointers, strings, slices, dynamic arrays, fixed arrays, tuples,
-plexes, raw unions, and enums. This is enough for the Linux VS Code debugger
-path to bind Nerd source breakpoints, step through Nerd lines, show shadowed
-locals in their lexical scopes, and let CodeLLDB evaluate the supported native
-watch subset.
+plexes, raw unions, and enums. Fallthrough block and function exits emit a small
+line-table anchor at the closing brace before cleanup or an implicit return, so
+single-stepping can visit the source-level exit point instead of jumping
+straight from the previous statement to the caller. This is enough for the Linux
+VS Code debugger path to bind Nerd source breakpoints, step through Nerd lines,
+show shadowed locals in their lexical scopes, and let CodeLLDB evaluate the
+supported native watch subset.
 
 `for in` lowering keeps the HIR collection semantics but chooses the appropriate
 LLVM address shape for each built-in iterable. Slices, strings, and dynamic

@@ -210,9 +210,11 @@ typedef struct {
 } HirParam;
 
 typedef struct {
-    u32 first_stmt;
-    u32 stmt_count;
-    u32 scope_index;
+    u32    first_stmt;
+    u32    stmt_count;
+    u32    scope_index;
+    u32    end_source_line;
+    string end_source_path;
     Array(u32) stmt_indices;
 } HirBlock;
 

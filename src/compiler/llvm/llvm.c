@@ -3192,6 +3192,16 @@ internal void llvm_debug_emit_step_anchor(LlvmFunctionContext* ctx,
     sb_append_cstr(ctx->sb, "  call void asm sideeffect \"nop\", \"\"()\n");
 }
 
+internal void llvm_debug_emit_block_end_anchor(LlvmFunctionContext* ctx,
+                                               const HirBlock*      block)
+{
+    if (block == NULL) {
+        return;
+    }
+    llvm_debug_emit_step_anchor(
+        ctx, block->end_source_line, block->end_source_path);
+}
+
 internal u32 llvm_debug_for_header_line(LlvmFunctionContext* ctx,
                                         const HirFor*        loop,
                                         const HirExpr*       expr)
@@ -11561,6 +11571,9 @@ internal bool llvm_emit_effect_block(LlvmFunctionContext* ctx,
         ctx->debug_scope_id = old_scope;
         return false;
     }
+    if (!ctx->block_terminated) {
+        llvm_debug_emit_block_end_anchor(ctx, block);
+    }
     if (!ctx->block_terminated &&
         !llvm_emit_defers_to(ctx, function, defer_base, true)) {
         ctx->debug_scope_id = old_scope;
@@ -12269,6 +12282,9 @@ internal bool llvm_emit_block(LlvmFunctionContext* ctx,
         }
     }
 
+    if (!ctx->block_terminated) {
+        llvm_debug_emit_block_end_anchor(ctx, block);
+    }
     if (!ctx->block_terminated &&
         !llvm_emit_defers_to(ctx, function, defer_base, true)) {
         return false;

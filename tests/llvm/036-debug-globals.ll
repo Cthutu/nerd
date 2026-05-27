@@ -10,7 +10,7 @@ main :: fn () {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [36 x i8] c"tests/llvm/036-debug-globals.input.n\00"
+@.macro.file.m0 = private unnamed_addr constant [37 x i8] c"tests/llvm/036-debug-globals.input.n\00"
 
 @$saved_width = internal global i32 0, !dbg !9
 @$saved_height = internal global i32 0, !dbg !11
@@ -22,7 +22,8 @@ define void @m0.init() {
 define internal void @fn.0() !dbg !12 {
   store i32 41, ptr @$saved_width, !dbg !14
   store i32 19, ptr @$saved_height, !dbg !15
-  ret void, !dbg !15
+  call void asm sideeffect "nop", ""(), !dbg !16
+  ret void, !dbg !16
 }
 
 @$main = alias void (), ptr @fn.0
@@ -45,4 +46,5 @@ define internal void @fn.0() !dbg !12 {
 !12 = distinct !DISubprogram(name: "main", linkageName: "main", scope: !1, file: !1, line: 6, type: !13, scopeLine: 6, spFlags: DISPFlagDefinition, unit: !0, retainedNodes: !2)
 !14 = !DILocation(line: 6, column: 1, scope: !12)
 !15 = !DILocation(line: 7, column: 1, scope: !12)
+!16 = !DILocation(line: 8, column: 1, scope: !12)
 !6 = !{!9, !11}

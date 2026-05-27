@@ -104,6 +104,89 @@ internal void hir_node_source_location(const Lexer* lexer,
     *out_source_path = mapped.source_path;
 }
 
+internal void hir_token_source_location(const Lexer* lexer,
+                                        u32          token_index,
+                                        string*      out_source_path,
+                                        u32*         out_line)
+{
+    *out_source_path = lexer != NULL ? lexer->source.source_path : (string){0};
+    *out_line        = 0;
+    if (lexer == NULL || token_index >= array_count(lexer->tokens)) {
+        return;
+    }
+
+    usize      offset        = lexer->tokens[token_index].offset;
+    NerdSource mapped        = lexer->source;
+    usize      mapped_offset = offset;
+    for (u32 i = 0; i < array_count(lexer->source.fragments); ++i) {
+        NerdSourceFragment fragment = lexer->source.fragments[i];
+        if (offset < fragment.start || offset >= fragment.end) {
+            continue;
+        }
+
+        usize source_prefix_start = fragment.start - fragment.source_start;
+        usize source_count        = fragment.end - source_prefix_start;
+        mapped                    = (NerdSource){
+            .source = string_from(
+                lexer->source.source.data + source_prefix_start, source_count),
+            .source_path = fragment.source_path,
+        };
+        mapped_offset = offset - fragment.start + fragment.source_start;
+        break;
+    }
+
+    u32 line = 0;
+    u32 col  = 0;
+    if (!lex_offset_to_line_col(mapped, mapped_offset, &line, &col)) {
+        return;
+    }
+    UNUSED(col);
+    *out_line        = line + 1;
+    *out_source_path = mapped.source_path;
+}
+
+internal void hir_closing_brace_source_location(const Lexer* lexer,
+                                                u32          start_token_index,
+                                                string*      out_source_path,
+                                                u32*         out_line)
+{
+    *out_source_path = lexer != NULL ? lexer->source.source_path : (string){0};
+    *out_line        = 0;
+    if (lexer == NULL || start_token_index >= array_count(lexer->tokens)) {
+        return;
+    }
+
+    u32 cursor = start_token_index;
+    while (cursor < array_count(lexer->tokens) &&
+           lexer->tokens[cursor].kind != TK_LBrace) {
+        if (lexer->tokens[cursor].kind == TK_EOF) {
+            return;
+        }
+        ++cursor;
+    }
+    if (cursor >= array_count(lexer->tokens)) {
+        return;
+    }
+
+    u32 depth = 0;
+    for (; cursor < array_count(lexer->tokens); ++cursor) {
+        TokenKind kind = lexer->tokens[cursor].kind;
+        if (kind == TK_LBrace) {
+            ++depth;
+        } else if (kind == TK_RBrace) {
+            if (depth == 0) {
+                return;
+            }
+            --depth;
+            if (depth == 0) {
+                hir_token_source_location(
+                    lexer, cursor, out_source_path, out_line);
+                return;
+            }
+        }
+    }
+}
+
 internal u32 hir_local_type(const Sema* sema, u32 local_index)
 {
     return local_index < array_count(sema->locals)
@@ -2911,12 +2994,19 @@ internal u32 hir_lower_block_node(Hir*         hir,
         end = (u32)array_count(ast->nodes);
     }
 
+    u32    end_source_line = 0;
+    string end_source_path = {0};
+    hir_closing_brace_source_location(
+        lexer, block_node->token_index, &end_source_path, &end_source_line);
+
     u32 block_index = (u32)array_count(hir->blocks);
     array_push(hir->blocks,
                (HirBlock){
-                   .first_stmt  = 0,
-                   .stmt_count  = 0,
-                   .scope_index = hir_node_scope(sema, block_node_index),
+                   .first_stmt      = 0,
+                   .stmt_count      = 0,
+                   .scope_index     = hir_node_scope(sema, block_node_index),
+                   .end_source_line = end_source_line,
+                   .end_source_path = end_source_path,
                });
 
     bool* owned_nodes = arena_alloc(&hir->arena, sizeof(bool) * end);
@@ -3030,12 +3120,20 @@ internal u32 hir_lower_function_body(Hir*         hir,
         fn_end = (u32)array_count(ast->nodes);
     }
 
-    u32 block_index = (u32)array_count(hir->blocks);
+    u32    block_index     = (u32)array_count(hir->blocks);
+    u32    end_source_line = 0;
+    string end_source_path = {0};
+    if (fn_node->b == AFK_Block) {
+        hir_closing_brace_source_location(
+            lexer, fn_start->token_index, &end_source_path, &end_source_line);
+    }
     array_push(hir->blocks,
                (HirBlock){
-                   .first_stmt  = 0,
-                   .stmt_count  = 0,
-                   .scope_index = hir_node_scope(sema, fn_node_index),
+                   .first_stmt      = 0,
+                   .stmt_count      = 0,
+                   .scope_index     = hir_node_scope(sema, fn_node_index),
+                   .end_source_line = end_source_line,
+                   .end_source_path = end_source_path,
                });
 
     if (fn_node->b == AFK_Expr) {

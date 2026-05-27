@@ -33,8 +33,9 @@ starts the native executable is not enough.
   multi-module program such as `examples/dungeon/dungeon.n`.
 - Release builds currently omit the Nerd debug metadata product and pass `-O2`
   to clang.
-- Generated LLVM now has an initial debug metadata contract for compile units,
-  source files, function subprograms, and statement line locations.
+- Generated LLVM now has debug metadata for compile units, source files,
+  function subprograms, statement line locations, and fallthrough closing-brace
+  anchors for implicit block/function exits.
 - Generated LLVM now emits first-pass debug types for stack locals such as
   `string`, slices, tuples, plexes, raw unions, pointers, and nested lexical
   scopes so native debugger watches can inspect ordinary fields and shadowed
