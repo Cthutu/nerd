@@ -13,96 +13,96 @@
 //------------------------------------------------------------------------------
 // Table of AST Nodes:
 //
-// | Name               | a                 | b                               |
-// |--------------------|-------------------|---------------------------------|
-// | AK_IntegerLiteral  | Integer index     | 0                               |
-// | AK_FloatLiteral    | Float index       | 0                               |
-// | AK_StringLiteral   | String index      | 0                               |
-// | AK_BoolLiteral     | 0 no, 1 yes       | 0                               |
-// | AK_NilLiteral      | 0                 | 0                               |
-// | AK_StringConcat    | Ast index of lhs  | Ast index of rhs                |
-// | AK_InterpPartExpr  | Ast index of expr | 0                               |
-// | AK_InterpolatedString | First part index | End-exclusive part index      |
-// | AK_BuiltinMacro    | Symbol handle     | 0                               |
-// | AK_SymbolRef       | Symbol handle     | 0                               |
-// | AK_EnumVariant     | Symbol handle     | 0                               |
-// | AK_LogicalNot      | Ast index of rhs  | 0                               |
-// | AK_IntegerNegate   | Ast index of rhs  | 0                               |
-// | AK_BitwiseNot      | Ast index of rhs  | 0                               |
-// | AK_AddressOf       | Ast index of value | 0                              |
-// | AK_Deref           | Ast index of value | 0                              |
-// | AK_IntegerPlus     | Ast index of left | Ast index of right              |
-// | AK_IntegerMinus    | Ast index of left | Ast index of right              |
-// | AK_IntegerMultiply | Ast index of left | Ast index of right              |
-// | AK_IntegerDivide   | Ast index of left | Ast index of right              |
-// | AK_IntegerModulo   | Ast index of left | Ast index of right              |
-// | AK_BitwiseAnd      | Ast index of left | Ast index of right              |
-// | AK_BitwiseXor      | Ast index of left | Ast index of right              |
-// | AK_BitwiseOr       | Ast index of left | Ast index of right              |
-// | AK_ShiftLeft       | Ast index of left | Ast index of right              |
-// | AK_ShiftRight      | Ast index of left | Ast index of right              |
-// | AK_Equal           | Ast index of left | Ast index of right              |
-// | AK_NotEqual        | Ast index of left | Ast index of right              |
-// | AK_Less            | Ast index of left | Ast index of right              |
-// | AK_LessEqual       | Ast index of left | Ast index of right              |
-// | AK_Greater         | Ast index of left | Ast index of right              |
-// | AK_GreaterEqual    | Ast index of left | Ast index of right              |
-// | AK_LogicalAnd      | Ast index of left | Ast index of right              |
-// | AK_LogicalOr       | Ast index of left | Ast index of right              |
-// | AK_Call            | Ast index callee  | Ast call-info index             |
-// | AK_Cast            | Ast index value   | Ast cast-info index             |
-// | AK_Tuple           | First item index  | Item count                      |
-// | AK_TupleField      | Ast index value   | Zero-based field index          |
-// | AK_Array           | First item index  | Item count                      |
-// | AK_Index           | Ast index value   | Ast index of index expression   |
-// | AK_Slice           | Ast slice-info index | 0                            |
-// | AK_Field           | Ast index value   | Symbol handle                   |
-// | AK_Plex            | Ast plex-literal index | 0                         |
-// | AK_PlexUpdate      | Ast plex-literal index | 0                         |
-// | AK_RangeExclusive  | Ast index start   | Ast index of end                |
-// | AK_RangeInclusive  | Ast index start   | Ast index of end                |
-// | AK_On              | Ast index scrutinee | Ast on-info index             |
-// | AK_DestructureBind | Ast pattern index | Ast index of value              |
-// | AK_DestructureVariable | Ast pattern index | Ast index of value          |
-// | AK_DestructureAssign | Ast pattern index | Ast index of value            |
-// | AK_TypeFn          | Ast fn-signature index | 0                           |
-// | AK_TypeApply       | Ast type-apply info index | 0                         |
-// | AK_TypeTuple       | First item index  | Item count                      |
-// | AK_TypeArray       | Ast index length  | Ast index element type          |
-// | AK_TypeSlice       | Ast index element type | 0                           |
-// | AK_TypeDynamicArray | Ast index min capacity or U32_MAX | Ast index element type |
-// | AK_TypePointer     | Ast index pointee type | 0                           |
-// | AK_TypePlex        | Ast plex-type index | 0                            |
-// | AK_TypeEnum        | Ast enum-type index | 0                            |
-// | AK_Expression      | Ast index of root | 0                               |
-// | AK_Statement       | Ast index of expr | 0                               |
-// | AK_Return          | Ast index of expr | 0                               |
-// | AK_Defer           | Ast index of deferred statement | 0                |
-// | AK_Assert          | Ast index of condition | Ast message expr or U32_MAX   |
-// | AK_ReturnExpr      | Ast index of expr or U32_MAX | 0                    |
-// | AK_BreakExpr       | Ast index of expr or U32_MAX | Symbol or U32_MAX   |
-// | AK_ContinueExpr    | 0                 | Symbol or U32_MAX              |
-// | AK_ExprBlock       | Ast index of block | Symbol or U32_MAX              |
-// | AK_Block           | First stmt index  | End-exclusive stmt index        |
-// | AK_For             | Ast for-info index | Body block index              |
-// | AK_Break           | Ast index of expr or U32_MAX | Symbol or U32_MAX   |
-// | AK_Continue        | 0                 | Symbol or U32_MAX              |
-// | AK_Bind            | Symbol            | Ast index of type or expression |
-// | AK_Variable        | Symbol            | Ast index of type/value/zero    |
-// | AK_Assign          | Ast index of target | Ast index of value            |
-// | AK_AnnotatedValue  | Ast index of type | Ast index of value              |
-// | AK_ZeroInit        | Ast index of type | 0                               |
-// | AK_Undefined       | Ast index of type | 0                               |
-// | AK_FnDef           | Body start index  | Fn syntax kind                  |
-// | AK_FnStart         | Ast fn-signature index | AK_FnEnd index             |
-// | AK_FnEnd           | AK_FnDef index    | AK_FnStart index                |
-// | AK_FfiDef          | Ast ffi-info index | 0                              |
-// | AK_ModRef          | Ast module path index | 0                            |
-// | AK_Use             | Ast index of module expression | 0                  |
-// | AK_Impl            | Ast impl-info index | 0                             |
-// | AK_Trait           | Ast trait-info index | 0                              |
-// | AK_TopOn           | Ast top-on info index | 0                           |
-// | AK_Pragma          | Ast pragma-info index | 0                          |
+// | Name                   | a                                 | b                               |
+// |------------------------|-----------------------------------|---------------------------------|
+// | AK_IntegerLiteral      | Integer index                     | 0                               |
+// | AK_FloatLiteral        | Float index                       | 0                               |
+// | AK_StringLiteral       | String index                      | 0                               |
+// | AK_BoolLiteral         | 0 no, 1 yes                       | 0                               |
+// | AK_NilLiteral          | 0                                 | 0                               |
+// | AK_StringConcat        | Ast index of lhs                  | Ast index of rhs                |
+// | AK_InterpPartExpr      | Ast index of expr                 | 0                               |
+// | AK_InterpolatedString  | First part index                  | End-exclusive part index        |
+// | AK_BuiltinMacro        | Symbol handle                     | 0                               |
+// | AK_SymbolRef           | Symbol handle                     | 0                               |
+// | AK_EnumVariant         | Symbol handle                     | 0                               |
+// | AK_LogicalNot          | Ast index of rhs                  | 0                               |
+// | AK_IntegerNegate       | Ast index of rhs                  | 0                               |
+// | AK_BitwiseNot          | Ast index of rhs                  | 0                               |
+// | AK_AddressOf           | Ast index of value                | 0                               |
+// | AK_Deref               | Ast index of value                | 0                               |
+// | AK_IntegerPlus         | Ast index of left                 | Ast index of right              |
+// | AK_IntegerMinus        | Ast index of left                 | Ast index of right              |
+// | AK_IntegerMultiply     | Ast index of left                 | Ast index of right              |
+// | AK_IntegerDivide       | Ast index of left                 | Ast index of right              |
+// | AK_IntegerModulo       | Ast index of left                 | Ast index of right              |
+// | AK_BitwiseAnd          | Ast index of left                 | Ast index of right              |
+// | AK_BitwiseXor          | Ast index of left                 | Ast index of right              |
+// | AK_BitwiseOr           | Ast index of left                 | Ast index of right              |
+// | AK_ShiftLeft           | Ast index of left                 | Ast index of right              |
+// | AK_ShiftRight          | Ast index of left                 | Ast index of right              |
+// | AK_Equal               | Ast index of left                 | Ast index of right              |
+// | AK_NotEqual            | Ast index of left                 | Ast index of right              |
+// | AK_Less                | Ast index of left                 | Ast index of right              |
+// | AK_LessEqual           | Ast index of left                 | Ast index of right              |
+// | AK_Greater             | Ast index of left                 | Ast index of right              |
+// | AK_GreaterEqual        | Ast index of left                 | Ast index of right              |
+// | AK_LogicalAnd          | Ast index of left                 | Ast index of right              |
+// | AK_LogicalOr           | Ast index of left                 | Ast index of right              |
+// | AK_Call                | Ast index callee                  | Ast call-info index             |
+// | AK_Cast                | Ast index value                   | Ast cast-info index             |
+// | AK_Tuple               | First item index                  | Item count                      |
+// | AK_TupleField          | Ast index value                   | Zero-based field index          |
+// | AK_Array               | First item index                  | Item count                      |
+// | AK_Index               | Ast index value                   | Ast index of index expression   |
+// | AK_Slice               | Ast slice-info index              | 0                               |
+// | AK_Field               | Ast index value                   | Symbol handle                   |
+// | AK_Plex                | Ast plex-literal index            | 0                               |
+// | AK_PlexUpdate          | Ast plex-literal index            | 0                               |
+// | AK_RangeExclusive      | Ast index start                   | Ast index of end                |
+// | AK_RangeInclusive      | Ast index start                   | Ast index of end                |
+// | AK_On                  | Ast index scrutinee               | Ast on-info index               |
+// | AK_DestructureBind     | Ast pattern index                 | Ast index of value              |
+// | AK_DestructureVariable | Ast pattern index                 | Ast index of value              |
+// | AK_DestructureAssign   | Ast pattern index                 | Ast index of value              |
+// | AK_TypeFn              | Ast fn-signature index            | 0                               |
+// | AK_TypeApply           | Ast type-apply info index         | 0                               |
+// | AK_TypeTuple           | First item index                  | Item count                      |
+// | AK_TypeArray           | Ast index length                  | Ast index element type          |
+// | AK_TypeSlice           | Ast index element type            | 0                               |
+// | AK_TypeDynamicArray    | Ast index min capacity or U32_MAX | Ast index element type          |
+// | AK_TypePointer         | Ast index pointee type            | 0                               |
+// | AK_TypePlex            | Ast plex-type index               | 0                               |
+// | AK_TypeEnum            | Ast enum-type index               | 0                               |
+// | AK_Expression          | Ast index of root                 | 0                               |
+// | AK_Statement           | Ast index of expr                 | 0                               |
+// | AK_Return              | Ast index of expr                 | 0                               |
+// | AK_Defer               | Ast index of deferred statement   | 0                               |
+// | AK_Assert              | Ast index of condition            | Ast message expr or U32_MAX     |
+// | AK_ReturnExpr          | Ast index of expr or U32_MAX      | 0                               |
+// | AK_BreakExpr           | Ast index of expr or U32_MAX      | Symbol or U32_MAX               |
+// | AK_ContinueExpr        | 0                                 | Symbol or U32_MAX               |
+// | AK_ExprBlock           | Ast index of block                | Symbol or U32_MAX               |
+// | AK_Block               | First stmt index                  | End-exclusive stmt index        |
+// | AK_For                 | Ast for-info index                | Body block index                |
+// | AK_Break               | Ast index of expr or U32_MAX      | Symbol or U32_MAX               |
+// | AK_Continue            | 0                                 | Symbol or U32_MAX               |
+// | AK_Bind                | Symbol                            | Ast index of type or expression |
+// | AK_Variable            | Symbol                            | Ast index of type/value/zero    |
+// | AK_Assign              | Ast index of target               | Ast index of value              |
+// | AK_AnnotatedValue      | Ast index of type                 | Ast index of value              |
+// | AK_ZeroInit            | Ast index of type                 | 0                               |
+// | AK_Undefined           | Ast index of type                 | 0                               |
+// | AK_FnDef               | Body start index                  | Fn syntax kind                  |
+// | AK_FnStart             | Ast fn-signature index            | AK_FnEnd index                  |
+// | AK_FnEnd               | AK_FnDef index                    | AK_FnStart index                |
+// | AK_FfiDef              | Ast ffi-info index                | 0                               |
+// | AK_ModRef              | Ast module path index             | 0                               |
+// | AK_Use                 | Ast index of module expression    | 0                               |
+// | AK_Impl                | Ast impl-info index               | 0                               |
+// | AK_Trait               | Ast trait-info index              | 0                               |
+// | AK_TopOn               | Ast top-on info index             | 0                               |
+// | AK_Pragma              | Ast pragma-info index             | 0                               |
 //
 // clang-format on
 

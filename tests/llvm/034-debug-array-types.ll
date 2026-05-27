@@ -24,6 +24,7 @@ define internal void @fn.0() !dbg !6 {
   %t6 = icmp eq i1 %t5, 1, !dbg !16
   br i1 %t6, label %on.body.1, label %on.end.0, !dbg !16
 on.body.1:
+  call void asm sideeffect "nop", ""(), !dbg !16
   br label %on.end.0, !dbg !16
 on.end.0:
   ret void, !dbg !16
@@ -53,3 +54,4 @@ declare void @llvm.dbg.declare(metadata, metadata, metadata)
 !14 = !DILocation(line: 1, column: 1, scope: !6)
 !15 = !DILocation(line: 4, column: 1, scope: !6)
 !16 = !DILocation(line: 5, column: 1, scope: !6)
+!17 = distinct !DILexicalBlock(scope: !6, file: !1, line: 1, column: 1)

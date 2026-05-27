@@ -5,6 +5,11 @@ main :: fn () -> i32 {
     return extra
 }
 ¬
+; nerd llvm-ir 0
+; generated from HIR
+
+@.macro.file.m0 = private unnamed_addr constant [42 x i8] c"tests/llvm/032-debug-stack-locals.input.n\00"
+
 define internal i32 @fn.0() !dbg !6 {
   %local.0 = alloca i32
   call void @llvm.dbg.declare(metadata ptr %local.0, metadata !10, metadata !5), !dbg !11

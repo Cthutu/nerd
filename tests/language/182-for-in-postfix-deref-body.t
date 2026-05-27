@@ -9,7 +9,7 @@ main :: fn () -> usize {
     return result
 }
 ¬
-0
+1
 ¬
 
 ¬

@@ -217,6 +217,15 @@ path to bind Nerd source breakpoints, step through Nerd lines, show shadowed
 locals in their lexical scopes, and let CodeLLDB evaluate the supported native
 watch subset.
 
+`for in` lowering keeps the HIR collection semantics but chooses the appropriate
+LLVM address shape for each built-in iterable. Slices, strings, and dynamic
+arrays already carry a data pointer plus count. Fixed arrays are value-shaped in
+the type system, so the backend first takes the array expression's address,
+computes the address of element zero with `getelementptr`, and uses the
+compile-time array length as the loop count. That keeps fixed-array iteration
+consistent with other collection iteration: the loop item is a pointer to the
+current element, and an optional indexed binding is still a `usize` counter.
+
 LLVM generation now has an explicit layout context for the current target
 contract. The initial context still describes the existing 64-bit assumptions:
 opaque `ptr`, pointer-sized integers as `i64`, string and slice values as

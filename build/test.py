@@ -11,7 +11,7 @@ import shutil
 import shlex
 import subprocess
 import sys
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 from dataclasses import dataclass
 
 if os.name == "nt":
@@ -145,7 +145,18 @@ def strip_llvm_debug_metadata(text: str) -> str:
 
 
 def normalize_llvm_debug_paths(text: str) -> str:
-    return text.replace(ROOT.as_posix(), "__REPO__").replace(str(ROOT), "__REPO__")
+    root_native = str(ROOT)
+    normalized = (
+        text.replace(root_native.replace("\\", "\\\\"), "__REPO__")
+        .replace(ROOT.as_posix(), "__REPO__")
+        .replace(root_native, "__REPO__")
+    )
+    lines = []
+    for line in normalized.splitlines(keepends=True):
+        if "!DIFile(" in line:
+            line = line.replace("\\\\", "/")
+        lines.append(line)
+    return "".join(lines)
 
 
 def normalized_returncode(code: int) -> int:
@@ -647,7 +658,9 @@ def test_lsp(path: pathlib.Path) -> list[Failure]:
     if match:
         lib_path = normalize_repo_uris(match.group(1))
         if lib_path.startswith("file://"):
-            lib_path = lib_path[len("file://") :]
+            lib_path = unquote(lib_path[len("file://") :])
+            if os.name == "nt" and re.match(r"^/[A-Za-z]:", lib_path):
+                lib_path = lib_path[1:]
         lsp_env["NERD_LIB_PATH"] = lib_path
         source = source[match.end():]
     messages = [

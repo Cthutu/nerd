@@ -6,6 +6,11 @@ main :: fn () -> i32 {
     return total
 }
 ¬
+; nerd llvm-ir 0
+; generated from HIR
+
+@.macro.file.m0 = private unnamed_addr constant [41 x i8] c"tests/llvm/030-debug-line-tables.input.n\00"
+
 define internal i32 @fn.0() !dbg !6 {
   call void @llvm.dbg.value(metadata i32 40, metadata !10, metadata !5), !dbg !8
   call void @llvm.dbg.value(metadata i32 2, metadata !12, metadata !5), !dbg !11
@@ -20,6 +25,7 @@ declare void @llvm.dbg.value(metadata, metadata, metadata)
 
 !llvm.dbg.cu = !{!0}
 !llvm.module.flags = !{!3, !4}
+
 !0 = distinct !DICompileUnit(language: DW_LANG_C, file: !1, producer: "Nerd", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, enums: !2)
 !1 = !DIFile(filename: "030-debug-line-tables.input.n", directory: "__REPO__/tests/llvm")
 !2 = !{}
