@@ -3192,6 +3192,39 @@ internal void llvm_debug_emit_step_anchor(LlvmFunctionContext* ctx,
     sb_append_cstr(ctx->sb, "  call void asm sideeffect \"nop\", \"\"()\n");
 }
 
+internal u32 llvm_debug_for_header_line(LlvmFunctionContext* ctx,
+                                        const HirFor*        loop,
+                                        const HirExpr*       expr)
+{
+    if (ctx != NULL && loop != NULL) {
+        u32 index_line = llvm_debug_local_line(
+            ctx->lexer, ctx->sema, loop->index_local_index);
+        if (index_line != 0) {
+            return index_line;
+        }
+        u32 item_line = llvm_debug_local_line(
+            ctx->lexer, ctx->sema, loop->item_local_index);
+        if (item_line != 0) {
+            return item_line;
+        }
+        if (loop->condition_expr_index < array_count(ctx->hir->exprs)) {
+            const HirExpr* condition =
+                &ctx->hir->exprs[loop->condition_expr_index];
+            if (condition->source_line != 0) {
+                return condition->source_line;
+            }
+        }
+        if (loop->iterable_expr_index < array_count(ctx->hir->exprs)) {
+            const HirExpr* iterable =
+                &ctx->hir->exprs[loop->iterable_expr_index];
+            if (iterable->source_line != 0) {
+                return iterable->source_line;
+            }
+        }
+    }
+    return expr != NULL ? expr->source_line : 0;
+}
+
 internal bool llvm_debug_line_is_marker(string line, u32* out_location)
 {
     cstr  prefix     = "  ; nerd.dbg !";
@@ -9331,6 +9364,10 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     llvm_pop_control_target(ctx, loop->label_symbol);
 
                     if (!ctx->block_terminated) {
+                        llvm_debug_emit_marker(
+                            ctx,
+                            llvm_debug_for_header_line(ctx, loop, expr),
+                            expr->source_path);
                         sb_format(ctx->sb,
                                   "  br label %%" STRINGP "\n",
                                   STRINGV(update_label));
@@ -9395,6 +9432,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     ctx->continue_defer_count = old_continue_defer_count;
                     ctx->emitted_break        = old_break_emitted;
                     ctx->block_terminated     = false;
+                    llvm_debug_emit_marker(
+                        ctx, expr->source_line, expr->source_path);
                     sb_format(ctx->sb, STRINGP ":\n", STRINGV(end_label));
                     if (has_result) {
                         string result_type =
@@ -9650,6 +9689,10 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     llvm_pop_control_target(ctx, loop->label_symbol);
 
                     if (!ctx->block_terminated) {
+                        llvm_debug_emit_marker(
+                            ctx,
+                            llvm_debug_for_header_line(ctx, loop, expr),
+                            expr->source_path);
                         string current = llvm_temp(ctx);
                         sb_format(ctx->sb,
                                   "  " STRINGP " = load i64, ptr " STRINGP "\n",
@@ -9696,6 +9739,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     ctx->continue_defer_count = old_continue_defer_count;
                     ctx->emitted_break        = old_break_emitted;
                     ctx->block_terminated     = false;
+                    llvm_debug_emit_marker(
+                        ctx, expr->source_line, expr->source_path);
                     sb_format(ctx->sb, STRINGP ":\n", STRINGV(end_label));
                     if (has_result) {
                         string result_type =
@@ -10029,6 +10074,10 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 llvm_pop_control_target(ctx, loop->label_symbol);
 
                 if (!ctx->block_terminated) {
+                    llvm_debug_emit_marker(
+                        ctx,
+                        llvm_debug_for_header_line(ctx, loop, expr),
+                        expr->source_path);
                     if (!hidden_index) {
                         index_slot =
                             llvm_find_local_slot(ctx, loop->index_local_index);
@@ -10108,6 +10157,10 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 ctx->continue_defer_count = old_continue_defer_count;
                 ctx->emitted_break        = old_break_emitted;
                 ctx->block_terminated     = false;
+                llvm_debug_emit_marker(
+                    ctx,
+                    llvm_debug_for_header_line(ctx, loop, expr),
+                    expr->source_path);
                 sb_format(ctx->sb, STRINGP ":\n", STRINGV(end_label));
                 if (has_result) {
                     string result_type =

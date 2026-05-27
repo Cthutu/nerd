@@ -50,11 +50,28 @@ def run(cmd: list[str], *, cwd: pathlib.Path = ROOT) -> subprocess.CompletedProc
 
 def latest_codelldb_lldb() -> pathlib.Path | None:
     candidates: list[pathlib.Path] = []
-    for base in [pathlib.Path.home() / ".vscode" / "extensions"]:
+    home = pathlib.Path.home()
+    extension_bases = [
+        home / ".vscode" / "extensions",
+        home / ".vscode-insiders" / "extensions",
+        home / "scoop" / "persist" / "vscode" / "data" / "extensions",
+        home / "scoop" / "persist" / "vscode-insiders" / "data" / "extensions",
+    ]
+    for base in extension_bases:
         if not base.exists():
             continue
         candidates.extend(base.glob("vadimcn.vscode-lldb-*/lldb/bin/lldb"))
-    return sorted(candidates)[-1] if candidates else None
+        candidates.extend(base.glob("vadimcn.vscode-lldb-*/lldb/bin/lldb.exe"))
+
+    def version_key(path: pathlib.Path) -> tuple[int, ...]:
+        import re
+
+        match = re.search(r"vscode-lldb-(\d+(?:\.\d+)*)", str(path))
+        if match is None:
+            return ()
+        return tuple(int(part) for part in match.group(1).split("."))
+
+    return sorted(candidates, key=version_key)[-1] if candidates else None
 
 
 def fail(message: str, details: str = "") -> int:
@@ -86,15 +103,17 @@ def main() -> int:
 
     lldb = pathlib.Path(args.lldb) if args.lldb else latest_codelldb_lldb()
     if lldb is None or not lldb.exists():
-        return fail("CodeLLDB-bundled LLDB was not found under ~/.vscode/extensions")
+        return fail("CodeLLDB-bundled LLDB was not found")
 
+    exe_suffix = ".exe" if sys.platform == "win32" else ""
     work = ROOT / "_tmp" / "debugger-smoke"
     if work.exists():
         shutil.rmtree(work)
     work.mkdir(parents=True)
 
     source = work / "main.n"
-    binary = work / "main"
+    binary = work / f"main{exe_suffix}"
+    source_for_lldb = source.as_posix()
     source.write_text(SMOKE_SOURCE, encoding="utf-8", newline="\n")
 
     build = run([str(nerd), "build", "--output", str(binary), str(source)])
@@ -103,8 +122,8 @@ def main() -> int:
 
     commands = [
         "target create " + str(binary),
-        "breakpoint set --file main.n --line 15",
-        "breakpoint set --file main.n --line 30",
+        "breakpoint set --file " + source_for_lldb + " --line 15",
+        "breakpoint set --file " + source_for_lldb + " --line 30",
         "run",
         "bt",
         "frame variable min_width min_height",
@@ -160,7 +179,7 @@ def main() -> int:
         "(unsigned int) $2 = 41",
         "(unsigned int) $3 = 19",
         "(int) $4 = 3",
-        "(unsigned long) $5 = 5",
+        "$5 = 5",
         "(unsigned char) $6 = 'h'",
         "(int) $7 = 20",
         "(unsigned char) $8 = '\\x03'",
