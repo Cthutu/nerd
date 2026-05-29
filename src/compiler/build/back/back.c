@@ -464,7 +464,10 @@ internal bool back_end_report_llvm_tool_failure(Arena*      arena,
                                                 cstr        combined_llvm_path,
                                                 cstr        runtime_object_path)
 {
-    string output                        = back_end_tool_output_excerpt(result);
+    string output = back_end_tool_output_excerpt(result);
+    if (runtime_object_path == NULL) {
+        runtime_object_path = "(none)";
+    }
 
     BackEndLlvmToolDiagnostic diagnostic = {0};
     if (!back_end_parse_llvm_tool_output(output, &diagnostic)) {
@@ -577,13 +580,14 @@ internal void back_end_timing_end(Timing* timing, cstr phase, TimePoint start)
 internal NerdArtifactConfig compiler_default_artifacts(void)
 {
     return (NerdArtifactConfig){
-        .binary_path     = "a.out",
-        .hir_path        = "_a.hir",
-        .llvm_path       = "_a.ll",
-        .emit_hir_file   = false,
-        .emit_llvm_file  = false,
-        .emit_executable = true,
-        .release         = false,
+        .binary_path         = "a.out",
+        .hir_path            = "_a.hir",
+        .llvm_path           = "_a.ll",
+        .emit_hir_file       = false,
+        .emit_llvm_file      = false,
+        .output_kind         = NERD_BUILD_OUTPUT_Executable,
+        .require_entry_point = true,
+        .release             = false,
     };
 }
 
@@ -725,11 +729,90 @@ internal bool back_end_link_combined_llvm(Arena*                    arena,
     return true;
 }
 
+internal bool back_end_compile_object(Arena*                    arena,
+                                      const NerdArtifactConfig* artifacts,
+                                      cstr combined_llvm_path,
+                                      cstr object_path)
+{
+    string      opt_flags = artifacts->release ? s("-O2") : s("-g -O0");
+    string      command = string_format(arena,
+                                        "clang -Wno-override-module -c " STRINGP
+                                        " -o \"%s\" \"%s\"",
+                                        STRINGV(opt_flags),
+                                        object_path,
+                                        combined_llvm_path);
+    ShellResult result  = shell_capture(back_end_cstr(arena, command), arena);
+    if (result.exit_code != 0) {
+        return back_end_report_llvm_tool_failure(
+            arena, result, command, combined_llvm_path, NULL);
+    }
+    return true;
+}
+
+internal bool back_end_archive_static_library(Arena* arena,
+                                              cstr   library_path,
+                                              cstr   object_path,
+                                              cstr   runtime_object_path)
+{
+#if OS_WINDOWS
+    string command = string_format(arena,
+                                   "llvm-lib /NOLOGO /OUT:\"%s\" \"%s\" \"%s\"",
+                                   library_path,
+                                   object_path,
+                                   runtime_object_path);
+#else
+    string command = string_format(arena,
+                                   "ar rcs \"%s\" \"%s\" \"%s\"",
+                                   library_path,
+                                   object_path,
+                                   runtime_object_path);
+#endif
+    ShellResult result = shell_capture(back_end_cstr(arena, command), arena);
+    if (result.exit_code != 0) {
+        string output = back_end_tool_output_excerpt(result);
+        return error_runtime("Failed to create static library (exit code %d)\n"
+                             "Command: " STRINGP "\n"
+                             "Output: " STRINGP,
+                             result.exit_code,
+                             STRINGV(command),
+                             STRINGV(output));
+    }
+    return true;
+}
+
+internal bool back_end_link_shared_library(Arena*                    arena,
+                                           const ProgramInfo*        program,
+                                           const NerdArtifactConfig* artifacts,
+                                           cstr combined_llvm_path,
+                                           cstr runtime_object_path)
+{
+    string        opt_flags  = artifacts->release ? s("-O2") : s("-g -O0");
+    StringBuilder link_flags = {0};
+    sb_init(&link_flags, arena);
+    back_end_append_hir_extern_link_flags(&link_flags, program);
+    string command = string_format(arena,
+                                   "clang -shared -Wno-override-module " STRINGP
+                                   " -o \"%s\" \"%s\" \"%s\"" STRINGP,
+                                   STRINGV(opt_flags),
+                                   artifacts->binary_path,
+                                   combined_llvm_path,
+                                   runtime_object_path,
+                                   STRINGV(sb_to_string(&link_flags)));
+    ShellResult result = shell_capture(back_end_cstr(arena, command), arena);
+    if (result.exit_code != 0) {
+        return back_end_report_llvm_tool_failure(
+            arena, result, command, combined_llvm_path, runtime_object_path);
+    }
+    return true;
+}
+
 internal bool back_end_emit_llvm_artifacts(const ProgramInfo*        program,
                                            const NerdArtifactConfig* artifacts,
                                            Timing*                   timing)
 {
-    if (!artifacts->emit_executable && !artifacts->emit_llvm_file) {
+    bool emit_binary = artifacts->output_kind != NERD_BUILD_OUTPUT_Executable ||
+                       artifacts->require_entry_point;
+    if (!emit_binary && !artifacts->emit_llvm_file) {
         return true;
     }
     if (program->root_module_index >= array_count(program->modules)) {
@@ -753,7 +836,7 @@ internal bool back_end_emit_llvm_artifacts(const ProgramInfo*        program,
     back_end_timing_end(timing, COMPILER_PHASE_LLVM_RENDER, timing_start);
     compiler_memory_profile_end(
         COMPILER_STAGE_BACK_END, COMPILER_PHASE_LLVM_RENDER, memory_before);
-    if (!artifacts->emit_executable) {
+    if (!emit_binary) {
         back_end_llvm_modules_done(&modules);
         arena_done(&arena);
         return true;
@@ -761,18 +844,27 @@ internal bool back_end_emit_llvm_artifacts(const ProgramInfo*        program,
 
     cstr combined_llvm_path = back_end_cstr(
         &arena, string_format(&arena, "%s.link.ll", artifacts->binary_path));
-    cstr runtime_object_path = back_end_cstr(
-        &arena, string_format(&arena, "%s.nrt.o", artifacts->binary_path));
+    cstr runtime_object_path =
+        artifacts->output_kind == NERD_BUILD_OUTPUT_Object
+            ? NULL
+            : back_end_cstr(
+                  &arena,
+                  string_format(&arena, "%s.nrt.o", artifacts->binary_path));
     nerd_side_file_register_cleanup(artifacts->side_files, combined_llvm_path);
     nerd_side_file_register_cleanup(artifacts->side_files, runtime_object_path);
 
-    const FrontEndState* root =
-        &program->modules[program->root_module_index].front_end;
-    BackEndRootMainInfo main_info = back_end_llvm_runtime_root_main_info(root);
-    string              runtime_epilogue = back_end_llvm_runtime_epilogue(
-        &arena, main_info, program->windowed && OS_WINDOWS);
-    string init_ll =
-        back_end_llvm_runtime_render_init(&arena, modules.init_module_indices);
+    string runtime_epilogue = s("");
+    string init_ll          = s("");
+    if (artifacts->output_kind == NERD_BUILD_OUTPUT_Executable) {
+        const FrontEndState* root =
+            &program->modules[program->root_module_index].front_end;
+        BackEndRootMainInfo main_info =
+            back_end_llvm_runtime_root_main_info(root);
+        runtime_epilogue = back_end_llvm_runtime_epilogue(
+            &arena, main_info, program->windowed && OS_WINDOWS);
+        init_ll = back_end_llvm_runtime_render_init(
+            &arena, modules.init_module_indices);
+    }
     memory_before        = compiler_memory_profile_begin();
     timing_start         = back_end_timing_begin(timing);
     string combined_llvm = back_end_llvm_text_build_combined(
@@ -788,39 +880,74 @@ internal bool back_end_emit_llvm_artifacts(const ProgramInfo*        program,
         return false;
     }
     back_end_timing_end(timing, COMPILER_PHASE_LLVM_WRITE, timing_start);
-    memory_before = compiler_memory_profile_begin();
-    timing_start  = back_end_timing_begin(timing);
-    if (!back_end_llvm_runtime_write_object(runtime_object_path)) {
+    if (runtime_object_path != NULL) {
+        memory_before = compiler_memory_profile_begin();
+        timing_start  = back_end_timing_begin(timing);
+        bool wrote_runtime =
+            artifacts->output_kind == NERD_BUILD_OUTPUT_SharedLibrary
+                ? back_end_llvm_runtime_write_pic_object(runtime_object_path)
+                : back_end_llvm_runtime_write_object(runtime_object_path);
+        if (!wrote_runtime) {
+            back_end_timing_end(
+                timing, COMPILER_PHASE_RUNTIME_OBJECT, timing_start);
+            compiler_memory_profile_end(COMPILER_STAGE_BACK_END,
+                                        COMPILER_PHASE_RUNTIME_OBJECT,
+                                        memory_before);
+            back_end_llvm_modules_done(&modules);
+            arena_done(&arena);
+            return false;
+        }
         back_end_timing_end(
             timing, COMPILER_PHASE_RUNTIME_OBJECT, timing_start);
         compiler_memory_profile_end(COMPILER_STAGE_BACK_END,
                                     COMPILER_PHASE_RUNTIME_OBJECT,
                                     memory_before);
-        back_end_llvm_modules_done(&modules);
-        arena_done(&arena);
-        return false;
     }
-    back_end_timing_end(timing, COMPILER_PHASE_RUNTIME_OBJECT, timing_start);
-    compiler_memory_profile_end(
-        COMPILER_STAGE_BACK_END, COMPILER_PHASE_RUNTIME_OBJECT, memory_before);
 
-    memory_before = compiler_memory_profile_begin();
-    timing_start  = back_end_timing_begin(timing);
-    if (!back_end_link_combined_llvm(&arena,
-                                     program,
-                                     artifacts,
-                                     combined_llvm_path,
-                                     runtime_object_path)) {
-        back_end_timing_end(timing, COMPILER_PHASE_LINK, timing_start);
+    memory_before    = compiler_memory_profile_begin();
+    timing_start     = back_end_timing_begin(timing);
+    bool ok          = false;
+    cstr object_path = artifacts->binary_path;
+    cstr phase       = COMPILER_PHASE_LINK;
+    if (artifacts->output_kind == NERD_BUILD_OUTPUT_Executable) {
+        ok = back_end_link_combined_llvm(&arena,
+                                         program,
+                                         artifacts,
+                                         combined_llvm_path,
+                                         runtime_object_path);
+    } else if (artifacts->output_kind == NERD_BUILD_OUTPUT_Object) {
+        phase = COMPILER_PHASE_OBJECT;
+        ok    = back_end_compile_object(
+            &arena, artifacts, combined_llvm_path, artifacts->binary_path);
+    } else if (artifacts->output_kind == NERD_BUILD_OUTPUT_StaticLibrary) {
+        phase       = COMPILER_PHASE_ARCHIVE;
+        object_path = back_end_cstr(
+            &arena, string_format(&arena, "%s.obj.o", artifacts->binary_path));
+        nerd_side_file_register_cleanup(artifacts->side_files, object_path);
+        ok = back_end_compile_object(
+                 &arena, artifacts, combined_llvm_path, object_path) &&
+             back_end_archive_static_library(&arena,
+                                             artifacts->binary_path,
+                                             object_path,
+                                             runtime_object_path);
+    } else if (artifacts->output_kind == NERD_BUILD_OUTPUT_SharedLibrary) {
+        phase = COMPILER_PHASE_SHARED_LIBRARY;
+        ok    = back_end_link_shared_library(&arena,
+                                             program,
+                                             artifacts,
+                                             combined_llvm_path,
+                                             runtime_object_path);
+    }
+    if (!ok) {
+        back_end_timing_end(timing, phase, timing_start);
         compiler_memory_profile_end(
-            COMPILER_STAGE_BACK_END, COMPILER_PHASE_LINK, memory_before);
+            COMPILER_STAGE_BACK_END, phase, memory_before);
         back_end_llvm_modules_done(&modules);
         arena_done(&arena);
         return false;
     }
-    back_end_timing_end(timing, COMPILER_PHASE_LINK, timing_start);
-    compiler_memory_profile_end(
-        COMPILER_STAGE_BACK_END, COMPILER_PHASE_LINK, memory_before);
+    back_end_timing_end(timing, phase, timing_start);
+    compiler_memory_profile_end(COMPILER_STAGE_BACK_END, phase, memory_before);
 
     back_end_cleanup_llvm_artifacts(modules.llvm_paths,
                                     !artifacts->emit_llvm_file,

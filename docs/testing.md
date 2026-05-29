@@ -119,6 +119,8 @@ They may also include optional sections for run mode, extra CLI arguments,
 command name, and expected stderr. The parser accepts three to seven sections.
 For `run` command tests, extra CLI arguments after `--` are passed through to
 the generated program.
+The `build-artifact` run mode checks that a `build` command produced the
+expected executable, object, static library, or shared library artifact.
 
 The Python runner writes the source into a generated `.input.n` file next to the test
 case and invokes the relevant compiler command against that file. This covers

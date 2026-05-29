@@ -16,13 +16,55 @@ compiler_cmd_build_artifacts(Arena* arena, const NerdBuildConfig* config)
     cstr output_root =
         compiler_cmd_output_root(arena, config->output_path, config->source);
 
-    artifacts.binary_path = compiler_cmd_build_binary_path(arena, output_root);
+    if (config->output_path.count > 0) {
+        artifacts.binary_path = output_root;
+    } else {
+        switch (config->output_kind) {
+        case NERD_BUILD_OUTPUT_Executable:
+            artifacts.binary_path =
+                compiler_cmd_build_binary_path(arena, output_root);
+            break;
+        case NERD_BUILD_OUTPUT_Object:
+#if OS_WINDOWS
+            artifacts.binary_path = compiler_cmd_output_path_with_extension(
+                arena, output_root, ".obj");
+#else
+            artifacts.binary_path = compiler_cmd_output_path_with_extension(
+                arena, output_root, ".o");
+#endif
+            break;
+        case NERD_BUILD_OUTPUT_StaticLibrary:
+#if OS_WINDOWS
+            artifacts.binary_path = compiler_cmd_output_path_with_extension(
+                arena, output_root, ".lib");
+#else
+            artifacts.binary_path = compiler_cmd_output_path_with_extension(
+                arena, output_root, ".a");
+#endif
+            break;
+        case NERD_BUILD_OUTPUT_SharedLibrary:
+#if OS_WINDOWS
+            artifacts.binary_path = compiler_cmd_output_path_with_extension(
+                arena, output_root, ".dll");
+#elif OS_MACOS
+            artifacts.binary_path = compiler_cmd_output_path_with_extension(
+                arena, output_root, ".dylib");
+#else
+            artifacts.binary_path = compiler_cmd_output_path_with_extension(
+                arena, output_root, ".so");
+#endif
+            break;
+        }
+    }
     artifacts.hir_path  = compiler_cmd_sidecar_path(arena, output_root, ".hir");
     artifacts.llvm_path = compiler_cmd_sidecar_path(arena, output_root, ".ll");
     artifacts.emit_hir_file  = config->emit_hir;
     artifacts.emit_llvm_file = config->emit_llvm;
-    artifacts.release        = config->release;
-    artifacts.keywords       = config->keywords;
+    artifacts.output_kind    = config->output_kind;
+    artifacts.require_entry_point =
+        config->output_kind == NERD_BUILD_OUTPUT_Executable;
+    artifacts.release  = config->release;
+    artifacts.keywords = config->keywords;
 
     return artifacts;
 }

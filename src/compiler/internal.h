@@ -25,6 +25,9 @@
 #define COMPILER_PHASE_LLVM_WRITE "write combined LLVM"
 #define COMPILER_PHASE_RUNTIME_OBJECT "write runtime object"
 #define COMPILER_PHASE_LINK "link executable"
+#define COMPILER_PHASE_OBJECT "write object"
+#define COMPILER_PHASE_ARCHIVE "archive static library"
+#define COMPILER_PHASE_SHARED_LIBRARY "link shared library"
 #define COMPILER_PHASE_FORMAT_SOURCE "format source"
 #define COMPILER_PHASE_LSP_ANALYSE "analyse document"
 

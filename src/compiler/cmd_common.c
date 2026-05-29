@@ -14,14 +14,15 @@
 NerdArtifactConfig compiler_cmd_default_artifacts(void)
 {
     return (NerdArtifactConfig){
-        .binary_path     = "a.out",
-        .hir_path        = "_a.hir",
-        .llvm_path       = "_a.ll",
-        .emit_hir_file   = false,
-        .emit_llvm_file  = false,
-        .emit_executable = true,
-        .release         = false,
-        .keywords        = NULL,
+        .binary_path         = "a.out",
+        .hir_path            = "_a.hir",
+        .llvm_path           = "_a.ll",
+        .emit_hir_file       = false,
+        .emit_llvm_file      = false,
+        .output_kind         = NERD_BUILD_OUTPUT_Executable,
+        .require_entry_point = true,
+        .release             = false,
+        .keywords            = NULL,
     };
 }
 
@@ -109,6 +110,21 @@ cstr compiler_cmd_build_binary_path(Arena* arena, cstr output_root)
     UNUSED(arena);
     return output_root;
 #endif
+}
+
+cstr compiler_cmd_output_path_with_extension(Arena* arena,
+                                             cstr   output_root,
+                                             cstr   extension)
+{
+    if (extension == NULL || extension[0] == '\0') {
+        return output_root;
+    }
+    StringBuilder sb = {0};
+    sb_init(&sb, arena);
+    sb_append_cstr(&sb, output_root);
+    sb_append_cstr(&sb, extension);
+    sb_append_null(&sb);
+    return (cstr)sb_to_string(&sb).data;
 }
 
 cstr compiler_cmd_sidecar_path(Arena* arena, cstr output_root, cstr extension)
@@ -201,7 +217,7 @@ bool compile(NerdSource                source,
     FrontEndOptions front_end_options = {
         .verbose             = dump_compiler_state,
         .release             = artifacts->release,
-        .require_entry_point = true,
+        .require_entry_point = artifacts->require_entry_point,
         .keywords            = artifacts->keywords,
     };
 

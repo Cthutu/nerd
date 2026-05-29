@@ -53,14 +53,22 @@ typedef struct {
     Array(string) keywords;
 } NerdCheckConfig;
 
+typedef enum {
+    NERD_BUILD_OUTPUT_Executable,
+    NERD_BUILD_OUTPUT_Object,
+    NERD_BUILD_OUTPUT_StaticLibrary,
+    NERD_BUILD_OUTPUT_SharedLibrary,
+} NerdBuildOutputKind;
+
 typedef struct {
-    NerdSource source;
-    string     output_path;
-    bool       emit_hir;
-    bool       emit_llvm;
-    bool       release;
-    bool       verbose;
-    bool       timing;
+    NerdSource          source;
+    string              output_path;
+    NerdBuildOutputKind output_kind;
+    bool                emit_hir;
+    bool                emit_llvm;
+    bool                release;
+    bool                verbose;
+    bool                timing;
     Array(string) keywords;
 } NerdBuildConfig;
 
@@ -103,13 +111,14 @@ void nerd_side_file_register_cleanup(NerdSideFileRegistry* registry, cstr path);
 void nerd_side_file_cleanup_registered(NerdSideFileRegistry* registry);
 
 typedef struct {
-    cstr binary_path;
-    cstr hir_path;
-    cstr llvm_path;
-    bool emit_hir_file;
-    bool emit_llvm_file;
-    bool emit_executable;
-    bool release;
+    cstr                binary_path;
+    cstr                hir_path;
+    cstr                llvm_path;
+    bool                emit_hir_file;
+    bool                emit_llvm_file;
+    NerdBuildOutputKind output_kind;
+    bool                require_entry_point;
+    bool                release;
     Array(string) keywords;
     NerdSideFileRegistry* side_files;
 } NerdArtifactConfig;

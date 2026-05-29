@@ -2,6 +2,7 @@
 //> use: core intern compiler timing table cli lsp object
 // clang-format off
 //> run: clang -std=c23 -Wall -Wextra -Werror -O2 -c data/nrt.c -o _obj/runtime/nrt.o
+//> run: clang -std=c23 -Wall -Wextra -Werror -O2 -fPIC -c data/nrt.c -o _obj/runtime/nrt.pic.o
 // clang-format on
 
 #include <cli/cli.h>
@@ -319,6 +320,16 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
         json_array_push(
             build_flags,
             nerd_cli_make_flag(arena, "release", "r", "Build release binary"));
+        json_array_push(
+            build_flags,
+            nerd_cli_make_flag(
+                arena, "obj", NULL, "Build a relocatable object file"));
+        json_array_push(
+            build_flags,
+            nerd_cli_make_flag(arena, "lib", NULL, "Build a static library"));
+        json_array_push(build_flags,
+                        nerd_cli_make_flag(
+                            arena, "dll", NULL, "Build a host shared library"));
         json_array_push(build_params,
                         nerd_cli_make_param(arena,
                                             "output",
@@ -604,6 +615,21 @@ internal string nerd_default_source_path(Arena* arena, string input)
     return (string){0};
 }
 
+internal NerdBuildOutputKind
+nerd_build_output_kind_from_json(const JsonValue* cli_result)
+{
+    if (nerd_cli_flag_bool(cli_result, "command.flags.obj", false)) {
+        return NERD_BUILD_OUTPUT_Object;
+    }
+    if (nerd_cli_flag_bool(cli_result, "command.flags.lib", false)) {
+        return NERD_BUILD_OUTPUT_StaticLibrary;
+    }
+    if (nerd_cli_flag_bool(cli_result, "command.flags.dll", false)) {
+        return NERD_BUILD_OUTPUT_SharedLibrary;
+    }
+    return NERD_BUILD_OUTPUT_Executable;
+}
+
 internal NerdBuildConfig
 nerd_build_config_from_json(const JsonValue* cli_result, Array(string) keywords)
 {
@@ -645,6 +671,7 @@ nerd_build_config_from_json(const JsonValue* cli_result, Array(string) keywords)
             },
         .output_path = nerd_cli_param_string(
             cli_result, "command.params.output", (string){0}),
+        .output_kind = nerd_build_output_kind_from_json(cli_result),
         .emit_hir = nerd_cli_flag_bool(cli_result, "command.flags.hir", false),
         .emit_llvm =
             nerd_cli_flag_bool(cli_result, "command.flags.llvm", false),
@@ -655,6 +682,20 @@ nerd_build_config_from_json(const JsonValue* cli_result, Array(string) keywords)
         .timing = nerd_cli_flag_bool(cli_result, "global_flags.timing", false),
         .keywords = keywords,
     };
+}
+
+internal bool nerd_build_output_flags_valid(const JsonValue* cli_result)
+{
+    u32 count = 0;
+    count += nerd_cli_flag_bool(cli_result, "command.flags.obj", false) ? 1 : 0;
+    count += nerd_cli_flag_bool(cli_result, "command.flags.lib", false) ? 1 : 0;
+    count += nerd_cli_flag_bool(cli_result, "command.flags.dll", false) ? 1 : 0;
+    if (count <= 1) {
+        return true;
+    }
+    eprn("Build output flags `--obj`, `--lib`, and `--dll` are mutually "
+         "exclusive.");
+    return false;
 }
 
 internal NerdCheckConfig
@@ -916,12 +957,14 @@ internal int nerd_run_with_cli(int argc, char** argv)
         eprn("Program arguments after `--` are only supported by `run`.");
         result = 1;
     } else if (string_eq_cstr(name, "build") || string_eq_cstr(name, "b")) {
-        NerdBuildConfig config =
-            nerd_build_config_from_json(cli_result, cli_keywords);
-        result = config.source.source.count == 0 &&
-                         config.source.source_path.count == 0
-                     ? 1
-                     : compiler_cmd_build(&config);
+        if (nerd_build_output_flags_valid(cli_result)) {
+            NerdBuildConfig config =
+                nerd_build_config_from_json(cli_result, cli_keywords);
+            result = config.source.source.count == 0 &&
+                             config.source.source_path.count == 0
+                         ? 1
+                         : compiler_cmd_build(&config);
+        }
     } else if (string_eq_cstr(name, "check")) {
         NerdCheckConfig config =
             nerd_check_config_from_json(cli_result, cli_keywords);

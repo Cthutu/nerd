@@ -14,19 +14,37 @@ static const unsigned char g_nrt_object[] = {
 #embed "../../../../_obj/runtime/nrt.o"
 };
 
-bool back_end_llvm_runtime_write_object(cstr path)
+static const unsigned char g_nrt_pic_object[] = {
+#embed "../../../../_obj/runtime/nrt.pic.o"
+};
+
+internal bool back_end_llvm_runtime_write_bytes(cstr                 path,
+                                                const unsigned char* bytes,
+                                                usize                count)
 {
     FILE* file = fopen(path, "wb");
     if (!file) {
         return error_runtime("Failed to open file for writing: %s", path);
     }
 
-    usize written      = fwrite(g_nrt_object, 1, sizeof(g_nrt_object), file);
+    usize written      = fwrite(bytes, 1, count, file);
     bool  close_failed = fclose(file) != 0;
-    if (written != sizeof(g_nrt_object) || close_failed) {
+    if (written != count || close_failed) {
         return error_runtime("Failed to write file: %s", path);
     }
     return true;
+}
+
+bool back_end_llvm_runtime_write_object(cstr path)
+{
+    return back_end_llvm_runtime_write_bytes(
+        path, g_nrt_object, sizeof(g_nrt_object));
+}
+
+bool back_end_llvm_runtime_write_pic_object(cstr path)
+{
+    return back_end_llvm_runtime_write_bytes(
+        path, g_nrt_pic_object, sizeof(g_nrt_pic_object));
 }
 
 bool back_end_llvm_runtime_hir_has_globals(const Hir* hir)

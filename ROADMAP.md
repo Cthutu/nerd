@@ -272,29 +272,30 @@ current LLVM/clang backend can verify.
     help text
   - [x] add command tests for zero arguments, multiple arguments, and strings
     containing spaces
-- [ ] Add library/object output:
-  - [ ] add a CLI mode or flag for producing relocatable object output instead
+- [x] Add library/object output:
+  - [x] add a CLI mode or flag for producing relocatable object output instead
     of an executable
-  - [ ] support conventional host artefact names such as `.o` on POSIX and
+  - [x] support static library output through `--lib`
+  - [x] support conventional host artefact names such as `.o` on POSIX and
     `.obj`/`.lib` on Windows where applicable
-  - [ ] define how public Nerd declarations become exported/linkable symbols
-  - [ ] keep temporary LLVM/runtime artefact cleanup consistent with existing
+  - [x] define how public Nerd declarations become exported/linkable symbols
+  - [x] keep temporary LLVM/runtime artefact cleanup consistent with existing
     `run` and `build` cleanup rules
-  - [ ] add command tests for object/library generation and stale artefact
+  - [x] add command tests for object/library generation and stale artefact
     cleanup
-- [ ] Add DLL/shared-library support:
-  - [ ] add a CLI mode or flag for producing a host shared library
-  - [ ] support `.dll` on Windows and document any deferred POSIX `.so`/macOS
+- [x] Add DLL/shared-library support:
+  - [x] add a CLI mode or flag for producing a host shared library
+  - [x] support `.dll` on Windows and document any deferred POSIX `.so`/macOS
     `.dylib` behaviour if not implemented together
-  - [ ] define explicit export rules for public functions and data
-  - [ ] decide how, or whether, the Nerd runtime object is linked into shared
+  - [x] define explicit export rules for public functions and data
+  - [x] decide how, or whether, the Nerd runtime object is linked into shared
     libraries
-  - [ ] add command tests that build a shared library and link/load it from a
+  - [x] add command tests that build a shared library and link/load it from a
     small host program where practical
-- [ ] Update documentation:
-  - [ ] CLI help and command reference for argument handling and output modes
-  - [ ] manual/language reference for allowed `main` signatures
-  - [ ] compiler pipeline notes for object and shared-library output paths
+- [x] Update documentation:
+  - [x] CLI help and command reference for argument handling and output modes
+  - [x] manual/language reference for allowed `main` signatures
+  - [x] compiler pipeline notes for object and shared-library output paths
 
 ### Trait Polish Milestone
 

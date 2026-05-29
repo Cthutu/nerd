@@ -163,6 +163,30 @@ def normalized_returncode(code: int) -> int:
     return code & 0xFF if os.name == "nt" and code > 255 else code
 
 
+def command_artifact_path(input_path: pathlib.Path, cli_args: list[str]) -> pathlib.Path:
+    if "--output" in cli_args:
+        index = cli_args.index("--output")
+        if index + 1 < len(cli_args):
+            return input_path.parent / cli_args[index + 1]
+    if "-o" in cli_args:
+        index = cli_args.index("-o")
+        if index + 1 < len(cli_args):
+            return input_path.parent / cli_args[index + 1]
+
+    stem = input_path.with_suffix("")
+    if "--obj" in cli_args:
+        return pathlib.Path(str(stem) + (".obj" if os.name == "nt" else ".o"))
+    if "--lib" in cli_args:
+        return pathlib.Path(str(stem) + (".lib" if os.name == "nt" else ".a"))
+    if "--dll" in cli_args:
+        if os.name == "nt":
+            return pathlib.Path(str(stem) + ".dll")
+        if sys.platform == "darwin":
+            return pathlib.Path(str(stem) + ".dylib")
+        return pathlib.Path(str(stem) + ".so")
+    return stem.with_suffix(".exe") if os.name == "nt" else stem
+
+
 def current_platform() -> str:
     return "windows" if os.name == "nt" else "linux"
 
@@ -293,6 +317,13 @@ def cleanup_generated_outputs(path: pathlib.Path) -> None:
         path.parent / f"{path.stem}.exe",
         path.parent / f"{path.stem}.input",
         path.parent / f"{path.stem}.input.exe",
+        path.parent / f"{path.stem}.input.o",
+        path.parent / f"{path.stem}.input.obj",
+        path.parent / f"{path.stem}.input.a",
+        path.parent / f"{path.stem}.input.lib",
+        path.parent / f"{path.stem}.input.so",
+        path.parent / f"{path.stem}.input.dylib",
+        path.parent / f"{path.stem}.input.dll",
         path.parent / f"{path.stem}.input.pdb",
         path.parent / f"{path.stem}.link.ll",
         path.parent / f"{path.stem}.exe.link.ll",
@@ -850,6 +881,52 @@ def test_command(path: pathlib.Path) -> list[Failure]:
         if leftovers:
             names = ", ".join(item.name for item in leftovers)
             failures.append(Failure(path, f"expected build to clean stale sidecars, found: {names}"))
+    if run_mode == "build-artifact":
+        artifact = command_artifact_path(input_path, cli_args)
+        if not artifact.exists():
+            failures.append(Failure(path, f"expected build artifact: {artifact.name}"))
+    if run_mode == "build-artifact-link":
+        artifact = command_artifact_path(input_path, cli_args)
+        if not artifact.exists():
+            failures.append(Failure(path, f"expected build artifact: {artifact.name}"))
+        else:
+            host_c = cwd / f"{path.stem}.host.c"
+            host_exe = cwd / f"{path.stem}.host"
+            host_c.write_text(
+                '#include <stdio.h>\n'
+                'extern int nerd_add(int, int) asm("$add");\n'
+                'int main(void) { printf("%d\\n", nerd_add(20, 22)); return 0; }\n',
+                encoding="utf-8",
+                newline="\n",
+            )
+            host_args = ["clang", str(host_c), str(artifact), "-o", str(host_exe)]
+            if "--dll" in cli_args and os.name != "nt":
+                host_args.insert(-2, f"-Wl,-rpath,{cwd}")
+            host_proc = subprocess.run(
+                host_args,
+                cwd=cwd,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            if host_proc.returncode != 0:
+                failures.append(Failure(path, f"host link failed with {host_proc.returncode}\n{host_proc.stderr}"))
+            else:
+                run_proc = subprocess.run(
+                    [str(host_exe)],
+                    cwd=cwd,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+                if run_proc.returncode != 0 or run_proc.stdout.strip() != "42":
+                    failures.append(Failure(path, f"host artifact run failed with {run_proc.returncode}\nstdout:\n{run_proc.stdout}\nstderr:\n{run_proc.stderr}"))
+            host_c.unlink(missing_ok=True)
+            host_exe.unlink(missing_ok=True)
     if run_mode == "compile-error-clean-sidecars":
         leftovers: list[pathlib.Path] = []
         sidecar_stem = pathlib.Path(input_path.with_suffix("").name).stem
