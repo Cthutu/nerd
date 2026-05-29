@@ -310,10 +310,10 @@ These are open trait-system follow-ups that were previously recorded as
     possible before monomorphisation
   - [ ] keep concrete instantiation diagnostics for cases that genuinely depend
     on substituted types
-- [ ] Improve diagnostics for non-inferable trait generic parameters:
-  - [ ] produce useful help text when trait generic parameters are required but
+- [x] Improve diagnostics for non-inferable trait generic parameters:
+  - [x] produce useful help text when trait generic parameters are required but
     cannot be inferred
-  - [ ] add error tests for non-inferable trait generic parameters
+  - [x] add error tests for non-inferable trait generic parameters
 - [ ] Stabilise generated backend names for trait implementation functions.
 
 ### Source Testing Follow-up Milestone

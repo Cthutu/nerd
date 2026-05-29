@@ -1537,4 +1537,44 @@ bool error_0354_private_method(NerdSource source,
     return false;
 }
 
+bool error_0355_trait_generic_argument_count(NerdSource source,
+                                             ErrorSpan  span,
+                                             string     trait,
+                                             u32        expected_count,
+                                             u32        actual_count,
+                                             string     missing_params)
+{
+    ErrorInfo error = error_init(source,
+                                 span,
+                                 "Generic trait `" STRINGP
+                                 "` expects %u type argument%s, found %u",
+                                 STRINGV(trait),
+                                 expected_count,
+                                 expected_count == 1 ? "" : "s",
+                                 actual_count);
+    if (actual_count < expected_count && missing_params.count > 0) {
+        error_add_reference(&error,
+                            ERROR_REF_PRIMARY,
+                            span,
+                            "Trait generic parameter%s `" STRINGP
+                            "` cannot be inferred from this constraint",
+                            expected_count - actual_count == 1 ? "" : "s",
+                            STRINGV(missing_params));
+    } else {
+        error_add_reference(&error,
+                            ERROR_REF_PRIMARY,
+                            span,
+                            "This trait constraint has the wrong number of "
+                            "type arguments");
+    }
+    error_add_help(&error,
+                   "Provide exactly %u explicit type argument%s for `" STRINGP
+                   "`.",
+                   expected_count,
+                   expected_count == 1 ? "" : "s",
+                   STRINGV(trait));
+    error_render(&error);
+    return false;
+}
+
 //------------------------------------------------------------------------------

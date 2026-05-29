@@ -4395,6 +4395,128 @@ internal u32 sema_trait_symbol_from_type_node(const Ast* ast, u32 node_index)
     return U32_MAX;
 }
 
+internal u32 sema_trait_type_arg_count(const Ast* ast, u32 node_index)
+{
+    if (node_index >= array_count(ast->nodes)) {
+        return 0;
+    }
+
+    const AstNode* node = &ast->nodes[node_index];
+    while ((node->kind == AK_Expression || node->kind == AK_Statement) &&
+           node->a < array_count(ast->nodes)) {
+        node_index = node->a;
+        node       = &ast->nodes[node_index];
+    }
+
+    if (node->kind == AK_TypeApply &&
+        node->a < array_count(ast->type_applications)) {
+        return ast->type_applications[node->a].arg_count;
+    }
+    return 0;
+}
+
+internal u32 sema_trait_type_target_node_index(const Ast* ast, u32 node_index)
+{
+    if (node_index >= array_count(ast->nodes)) {
+        return node_index;
+    }
+
+    const AstNode* node = &ast->nodes[node_index];
+    while ((node->kind == AK_Expression || node->kind == AK_Statement) &&
+           node->a < array_count(ast->nodes)) {
+        node_index = node->a;
+        node       = &ast->nodes[node_index];
+    }
+
+    if (node->kind == AK_TypeApply &&
+        node->a < array_count(ast->type_applications)) {
+        return ast->type_applications[node->a].target_node_index;
+    }
+    return node_index;
+}
+
+internal string
+sema_trait_missing_generic_params(const Lexer*            lexer,
+                                  const Ast*              ast,
+                                  const AstGenericParams* generic,
+                                  u32                     actual_count,
+                                  Arena*                  arena)
+{
+    StringBuilder sb = {0};
+    sb_init(&sb, arena);
+    for (u32 i = actual_count; i < generic->symbol_count; ++i) {
+        if (i > actual_count) {
+            sb_append_cstr(&sb,
+                           i + 1 == generic->symbol_count ? " and " : ", ");
+        }
+        sb_append_string(
+            &sb,
+            lex_symbol(lexer,
+                       ast->generic_param_symbols[generic->first_symbol + i]));
+    }
+    return sb_to_string(&sb);
+}
+
+internal bool sema_validate_trait_generic_type_args(const Lexer* lexer,
+                                                    const Ast*   ast,
+                                                    Sema*        sema,
+                                                    u32 trait_type_node_index,
+                                                    u32 trait_decl_index)
+{
+    if (trait_decl_index == sema_no_decl() ||
+        trait_decl_index >= array_count(sema->decls) ||
+        sema->decls[trait_decl_index].value_node_index >=
+            array_count(ast->nodes)) {
+        return true;
+    }
+
+    const AstNode* trait_node =
+        &ast->nodes[sema->decls[trait_decl_index].value_node_index];
+    if (trait_node->kind != AK_Trait ||
+        trait_node->a >= array_count(ast->trait_infos)) {
+        return true;
+    }
+
+    const AstTraitInfo* trait          = &ast->trait_infos[trait_node->a];
+    u32                 expected_count = 0;
+    if (trait->generic_params_index != U32_MAX) {
+        expected_count =
+            ast->generic_params[trait->generic_params_index].symbol_count;
+    }
+    u32 actual_count = sema_trait_type_arg_count(ast, trait_type_node_index);
+    if (actual_count == expected_count) {
+        return true;
+    }
+
+    Arena temp_arena = {0};
+    arena_init(&temp_arena);
+    string missing = {0};
+    if (actual_count < expected_count &&
+        trait->generic_params_index != U32_MAX) {
+        missing = sema_trait_missing_generic_params(
+            lexer,
+            ast,
+            &ast->generic_params[trait->generic_params_index],
+            actual_count,
+            &temp_arena);
+    }
+
+    u32 trait_symbol =
+        sema_trait_symbol_from_type_node(ast, trait_type_node_index);
+    bool ok = error_0355_trait_generic_argument_count(
+        lexer->source,
+        sema_node_span(lexer,
+                       &ast->nodes[sema_trait_type_target_node_index(
+                           ast, trait_type_node_index)]),
+        trait_symbol != U32_MAX ? lex_symbol(lexer, trait_symbol)
+                                : s("<trait>"),
+        expected_count,
+        actual_count,
+        missing);
+    arena_done(&temp_arena);
+    return ok;
+}
+
 internal const AstNode* sema_trait_member_value(const Ast*     ast,
                                                 const AstNode* member)
 {
@@ -4910,6 +5032,15 @@ sema_validate_where_constraints(const Lexer* lexer, const Ast* ast, Sema* sema)
                                &ast->nodes[constraint->trait_type_node_index]),
                 s("known trait"),
                 lex_symbol(lexer, trait_symbol));
+        }
+
+        if (!sema_validate_trait_generic_type_args(
+                lexer,
+                ast,
+                sema,
+                constraint->trait_type_node_index,
+                trait_decl_index)) {
+            return false;
         }
     }
     return true;

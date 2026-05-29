@@ -386,6 +386,12 @@ bool error_0354_private_method(NerdSource source,
                                string     method,
                                string     receiver_type,
                                string     module);
+bool error_0355_trait_generic_argument_count(NerdSource source,
+                                             ErrorSpan  span,
+                                             string     trait,
+                                             u32        expected_count,
+                                             u32        actual_count,
+                                             string     missing_params);
 
 //------------------------------------------------------------------------------
 // Low-level error system
