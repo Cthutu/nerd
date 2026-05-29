@@ -156,6 +156,10 @@ main :: fn () {}
                 "kind": 9
             },
             {
+                "label": "library_exports",
+                "kind": 9
+            },
+            {
                 "label": "local_bare_module",
                 "kind": 9
             },

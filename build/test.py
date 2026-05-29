@@ -187,6 +187,32 @@ def command_artifact_path(input_path: pathlib.Path, cli_args: list[str]) -> path
     return stem.with_suffix(".exe") if os.name == "nt" else stem
 
 
+def command_host_symbol(source: str) -> str:
+    for line in source.splitlines():
+        match = re.match(r"\s*--\s*test-host-symbol\s*:\s*(.+?)\s*$", line)
+        if match:
+            return match.group(1)
+    return "add"
+
+
+def command_artifact_symbols(artifact: pathlib.Path, cli_args: list[str]) -> subprocess.CompletedProcess[str]:
+    args = ["nm"]
+    if "--dll" in cli_args and os.name != "nt":
+        args.append("-D")
+    else:
+        args.append("-g")
+    args.append(str(artifact))
+    return subprocess.run(
+        args,
+        cwd=artifact.parent,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+
 def current_platform() -> str:
     return "windows" if os.name == "nt" else "linux"
 
@@ -890,12 +916,13 @@ def test_command(path: pathlib.Path) -> list[Failure]:
         if not artifact.exists():
             failures.append(Failure(path, f"expected build artifact: {artifact.name}"))
         else:
+            host_symbol = command_host_symbol(source)
             host_c = cwd / f"{path.stem}.host.c"
             host_exe = cwd / f"{path.stem}.host"
             host_c.write_text(
                 '#include <stdio.h>\n'
-                'extern int nerd_add(int, int) asm("$add");\n'
-                'int main(void) { printf("%d\\n", nerd_add(20, 22)); return 0; }\n',
+                f'extern int nerd_fn(int, int) asm("${host_symbol}");\n'
+                'int main(void) { printf("%d\\n", nerd_fn(20, 22)); return 0; }\n',
                 encoding="utf-8",
                 newline="\n",
             )
@@ -927,6 +954,17 @@ def test_command(path: pathlib.Path) -> list[Failure]:
                     failures.append(Failure(path, f"host artifact run failed with {run_proc.returncode}\nstdout:\n{run_proc.stdout}\nstderr:\n{run_proc.stderr}"))
             host_c.unlink(missing_ok=True)
             host_exe.unlink(missing_ok=True)
+    if run_mode == "build-artifact-no-symbol":
+        artifact = command_artifact_path(input_path, cli_args)
+        if not artifact.exists():
+            failures.append(Failure(path, f"expected build artifact: {artifact.name}"))
+        else:
+            host_symbol = "$" + command_host_symbol(source)
+            symbols = command_artifact_symbols(artifact, cli_args)
+            if symbols.returncode != 0:
+                failures.append(Failure(path, f"nm failed with {symbols.returncode}\n{symbols.stderr}"))
+            elif host_symbol in symbols.stdout:
+                failures.append(Failure(path, f"unexpected exported symbol `{host_symbol}` in {artifact.name}\n{symbols.stdout}"))
     if run_mode == "compile-error-clean-sidecars":
         leftovers: list[pathlib.Path] = []
         sidecar_stem = pathlib.Path(input_path.with_suffix("").name).stem

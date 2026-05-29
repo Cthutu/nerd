@@ -207,8 +207,10 @@ and asks clang to produce a relocatable object. `nerd build --lib` compiles the
 same combined module object and archives it with the embedded Nerd runtime
 object. `nerd build --dll` links a host shared library using a PIC runtime
 object. These non-executable modes do not require a `main` entry point.
-Public Nerd bindings are the exported/linkable surface; public functions are
-emitted with their Nerd symbol alias, such as `$add`.
+The root module's public surface is the exported/linkable surface. This includes
+root `pub` declarations and root `pub use` re-exports; public declarations in
+imported modules are not exported unless the root module re-exports them. Public
+functions are emitted with their Nerd symbol alias, such as `$add`.
 
 The current toolchain contract is textual LLVM IR plus clang. The compiler does
 not currently invoke `llvm-as`, `llc`, or `opt` directly. That keeps the install

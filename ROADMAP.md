@@ -278,7 +278,8 @@ current LLVM/clang backend can verify.
   - [x] support static library output through `--lib`
   - [x] support conventional host artefact names such as `.o` on POSIX and
     `.obj`/`.lib` on Windows where applicable
-  - [x] define how public Nerd declarations become exported/linkable symbols
+  - [x] define how the root module's public surface becomes exported/linkable
+    symbols
   - [x] keep temporary LLVM/runtime artefact cleanup consistent with existing
     `run` and `build` cleanup rules
   - [x] add command tests for object/library generation and stale artefact
@@ -287,7 +288,7 @@ current LLVM/clang backend can verify.
   - [x] add a CLI mode or flag for producing a host shared library
   - [x] support `.dll` on Windows and document any deferred POSIX `.so`/macOS
     `.dylib` behaviour if not implemented together
-  - [x] define explicit export rules for public functions and data
+  - [x] define explicit export rules for root-public functions and data
   - [x] decide how, or whether, the Nerd runtime object is linked into shared
     libraries
   - [x] add command tests that build a shared library and link/load it from a
