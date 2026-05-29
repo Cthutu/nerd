@@ -54,8 +54,8 @@ bind prn = import.0
 bind input = import.1
 bind Stack = type.0
 bind Counter = type.1
-bind __impl_46_inc = fn.0
-bind __impl_46_get = fn.1
+bind __impl_Counter_inc = fn.0
+bind __impl_Counter_get = fn.1
 bind main = fn.2
 generic type type.0 = <unknown>
 type type.1 = Counter
@@ -68,13 +68,13 @@ func fn.1(self: Counter) -> i32 {
 func fn.2() -> void {
   expr <unknown> default
   let counter: Counter = <unknown> default
-  expr void call bind.4(__impl_46_inc)(^Counter address_of(Counter local.3(counter)), i32 7)
-  expr void call bind.4(__impl_46_inc)(^Counter address_of(Counter local.3(counter)), i32 5)
+  expr void call bind.4(__impl_Counter_inc)(^Counter address_of(Counter local.3(counter)), i32 7)
+  expr void call bind.4(__impl_Counter_inc)(^Counter address_of(Counter local.3(counter)), i32 5)
   expr <unknown> default
   let stack: plex { [..]i32[..]i32 = <unknown> default
-  expr void call decl.1(__impl_9_push_g_2ffac2fa)(^plex { [..]i32[..]i32 address_of(plex { [..]i32[..]i32 local.4(stack)), i32 call bind.5(__impl_46_get)(Counter local.3(counter)))
-  expr void call decl.1(__impl_9_push_g_2ffac2fa)(^plex { [..]i32[..]i32 address_of(plex { [..]i32[..]i32 local.4(stack)), i32 30)
-  expr void call bind.0(prn)(string interpolate(i32 call decl.2(__impl_9_pop_g_2c3b981a)(^plex { [..]i32[..]i32 address_of(plex { [..]i32[..]i32 local.4(stack))), <unknown> " ", i32 call decl.2(__impl_9_pop_g_2c3b981a)(^plex { [..]i32[..]i32 address_of(plex { [..]i32[..]i32 local.4(stack))), <unknown> " ", i32 call bind.5(__impl_46_get)(Counter local.3(counter))))
+  expr void call decl.1(__impl_Stack_T_push_g_2ffac2fa)(^plex { [..]i32[..]i32 address_of(plex { [..]i32[..]i32 local.4(stack)), i32 call bind.5(__impl_Counter_get)(Counter local.3(counter)))
+  expr void call decl.1(__impl_Stack_T_push_g_2ffac2fa)(^plex { [..]i32[..]i32 address_of(plex { [..]i32[..]i32 local.4(stack)), i32 30)
+  expr void call bind.0(prn)(string interpolate(i32 call decl.2(__impl_Stack_T_pop_g_2c164aaa)(^plex { [..]i32[..]i32 address_of(plex { [..]i32[..]i32 local.4(stack))), <unknown> " ", i32 call decl.2(__impl_Stack_T_pop_g_2c164aaa)(^plex { [..]i32[..]i32 address_of(plex { [..]i32[..]i32 local.4(stack))), <unknown> " ", i32 call bind.5(__impl_Counter_get)(Counter local.3(counter))))
 }
 inst func fn.3(self: ^plex { [..]i32[..]i32, elem: i32) -> void {
   expr void call fn (i32) -> void field([..]i32 field(^plex { [..]i32[..]i32 local.5(self), data), push)(i32 local.6(elem))
@@ -240,6 +240,6 @@ define internal i32 @fn.4(ptr %self) {
   ret i32 %t7
 }
 
-@$__impl_46_inc = internal alias void (ptr, i32), ptr @fn.0
-@$__impl_46_get = internal alias i32 ({ i32 }), ptr @fn.1
+@$__impl_Counter_inc = internal alias void (ptr, i32), ptr @fn.0
+@$__impl_Counter_get = internal alias i32 ({ i32 }), ptr @fn.1
 @$main = alias void (), ptr @fn.2

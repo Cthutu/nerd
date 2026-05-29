@@ -17,9 +17,9 @@ main :: fn () {
 hir 0
 module module.0(091-imported-plex-field-interpolation.input)
 import module.1(test.imported_plex)
-import import.0 __impl_4_bump from module.1(test.imported_plex).decl.1: fn (^plex { usize value }plex { usize val
+import import.0 __impl_Box_bump from module.1(test.imported_plex).decl.1: fn (^plex { usize value }plex { usize val
 import import.1 make_box from module.1(test.imported_plex).decl.2: fn (usize) -> plex { usize value }
-bind __impl_4_bump = import.0
+bind __impl_Box_bump = import.0
 bind make_box = import.1
 bind boxmod = module.1
 bind consume = fn.0
@@ -64,7 +64,7 @@ declare void @to_string$usize(ptr, i64)
 declare void @to_string$f32(ptr, float)
 declare void @to_string$f64(ptr, double)
 
-declare void @$__impl_4_bump(ptr, i64)
+declare void @$__impl_Box_bump(ptr, i64)
 declare { i64 } @$make_box(i64)
 
 define internal void @fn.0({ ptr, i64 } %text) {

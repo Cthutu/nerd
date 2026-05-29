@@ -314,7 +314,7 @@ These are open trait-system follow-ups that were previously recorded as
   - [x] produce useful help text when trait generic parameters are required but
     cannot be inferred
   - [x] add error tests for non-inferable trait generic parameters
-- [ ] Stabilise generated backend names for trait implementation functions.
+- [x] Stabilise generated backend names for trait implementation functions.
 
 ### Source Testing Follow-up Milestone
 

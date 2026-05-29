@@ -21,10 +21,10 @@ hir 0
 module module.0(147-qualified-module-types.input)
 import module.1(test.imported_plex)
 import import.0 Box from module.1(test.imported_plex).decl.0: Box
-import import.1 __impl_4_bump from module.1(test.imported_plex).decl.1: fn (^Box^Box, usize) -> 
+import import.1 __impl_Box_bump from module.1(test.imported_plex).decl.1: fn (^Box^Box, usize) ->
 import import.2 make_box from module.1(test.imported_plex).decl.2: fn (usize) -> Box
 bind Box = import.0
-bind __impl_4_bump = import.1
+bind __impl_Box_bump = import.1
 bind make_box = import.2
 bind boxmod = module.1
 bind Holder = type.0
@@ -36,7 +36,7 @@ func fn.0() -> i32 {
   expr <unknown> default
   let box: Box = <unknown> default
   assign Box local.0(box) = Box call fn (usize) -> Box field(module bind.3(boxmod), make_box)(usize 7)
-  expr void call bind.1(__impl_4_bump)(^Box address_of(Box local.0(box)), usize 1)
+  expr void call bind.1(__impl_Box_bump)(^Box address_of(Box local.0(box)), usize 1)
   let holder: Holder = Holder plex(box: Box local.0(box), ptr: ^Box address_of(Box local.0(box)))
   return i32 cast(usize add(usize field(Box field(Holder local.1(holder), box), value), usize field(Box deref(^Box field(Holder local.1(holder), ptr)), value)) as i32)
 }
@@ -44,7 +44,7 @@ func fn.0() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-declare void @$__impl_4_bump(ptr, i64)
+declare void @$__impl_Box_bump(ptr, i64)
 declare { i64 } @$make_box(i64)
 
 define internal i32 @fn.0() {
@@ -52,7 +52,7 @@ define internal i32 @fn.0() {
   store { i64 } zeroinitializer, ptr %local.0
   %t0 = call { i64 } @$make_box(i64 7)
   store { i64 } %t0, ptr %local.0
-  call void @$__impl_4_bump(ptr %local.0, i64 1)
+  call void @$__impl_Box_bump(ptr %local.0, i64 1)
   %t1 = load { i64 }, ptr %local.0
   %t2 = insertvalue { { i64 }, ptr } poison, { i64 } %t1, 0
   %t3 = insertvalue { { i64 }, ptr } %t2, ptr %local.0, 1

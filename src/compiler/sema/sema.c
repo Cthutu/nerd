@@ -2674,13 +2674,103 @@ internal u32 sema_trait_self_alias_symbol(const Lexer*   lexer,
     return sema_find_symbol_handle_by_name(lexer, s("Self"));
 }
 
-internal u32 sema_mangle_method_symbol(const Lexer* lexer,
-                                       u32          impl_node_index,
-                                       u32          method_symbol)
+internal void sema_append_mangle_part(StringBuilder* sb, string value)
 {
-    string method  = lex_symbol(lexer, method_symbol);
-    string mangled = string_format(
-        &temp_arena, "__impl_%u_" STRINGP, impl_node_index, STRINGV(method));
+    for (usize i = 0; i < value.count; ++i) {
+        u8   ch     = value.data[i];
+        bool simple = (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
+                      (ch >= '0' && ch <= '9') || ch == '_';
+        sb_append_char(sb, simple ? (char)ch : '_');
+    }
+}
+
+internal void sema_append_type_node_mangle(StringBuilder* sb,
+                                           const Lexer*   lexer,
+                                           const Ast*     ast,
+                                           u32            node_index)
+{
+    if (node_index >= array_count(ast->nodes)) {
+        sb_append_cstr(sb, "unknown");
+        return;
+    }
+
+    const AstNode* node = &ast->nodes[node_index];
+    while ((node->kind == AK_Expression || node->kind == AK_Statement) &&
+           node->a < array_count(ast->nodes)) {
+        node_index = node->a;
+        node       = &ast->nodes[node_index];
+    }
+
+    switch (node->kind) {
+    case AK_SymbolRef:
+        sema_append_mangle_part(sb, lex_symbol(lexer, node->a));
+        return;
+    case AK_TypeApply:
+        {
+            if (node->a >= array_count(ast->type_applications)) {
+                sb_append_cstr(sb, "apply");
+                return;
+            }
+            const AstTypeApplyInfo* apply = &ast->type_applications[node->a];
+            sema_append_type_node_mangle(
+                sb, lexer, ast, apply->target_node_index);
+            for (u32 i = 0; i < apply->arg_count; ++i) {
+                sb_append_char(sb, '_');
+                sema_append_type_node_mangle(
+                    sb, lexer, ast, ast->tuple_items[apply->first_arg + i]);
+            }
+            return;
+        }
+    case AK_TypePointer:
+        sb_append_cstr(sb, "ptr_");
+        sema_append_type_node_mangle(sb, lexer, ast, node->a);
+        return;
+    case AK_TypeSlice:
+        sb_append_cstr(sb, "slice_");
+        sema_append_type_node_mangle(sb, lexer, ast, node->a);
+        return;
+    case AK_TypeDynamicArray:
+        sb_append_cstr(sb, "array_");
+        sema_append_type_node_mangle(sb, lexer, ast, node->b);
+        return;
+    case AK_TypeArray:
+        sb_append_cstr(sb, "array_");
+        sema_append_type_node_mangle(sb, lexer, ast, node->b);
+        return;
+    case AK_TypeTuple:
+        sb_append_cstr(sb, "tuple");
+        for (u32 i = 0; i < node->b; ++i) {
+            sb_append_char(sb, '_');
+            sema_append_type_node_mangle(
+                sb, lexer, ast, ast->tuple_items[node->a + i]);
+        }
+        return;
+    default:
+        sb_append_cstr(sb, "type");
+        return;
+    }
+}
+
+internal u32 sema_mangle_method_symbol(const Lexer*       lexer,
+                                       const Ast*         ast,
+                                       const AstImplInfo* impl,
+                                       u32                method_symbol)
+{
+    StringBuilder sb = {0};
+    sb_init(&sb, &temp_arena);
+    if (impl->trait_type_node_index != U32_MAX) {
+        sb_append_cstr(&sb, "__trait_");
+        sema_append_type_node_mangle(
+            &sb, lexer, ast, impl->trait_type_node_index);
+        sb_append_cstr(&sb, "_for_");
+    } else {
+        sb_append_cstr(&sb, "__impl_");
+    }
+    sema_append_type_node_mangle(&sb, lexer, ast, impl->target_type_node_index);
+    sb_append_char(&sb, '_');
+    sema_append_mangle_part(&sb, lex_symbol(lexer, method_symbol));
+
+    string          mangled = sb_to_string(&sb);
     InternAddResult ignored = {0};
     return lex_add_symbol((Lexer*)lexer, mangled, &ignored);
 }
@@ -5069,7 +5159,7 @@ internal bool sema_collect_decls_in_range(const Lexer*           lexer,
 
                 u32 method_symbol = ast_get_symbol(method_node);
                 u32 hidden_symbol =
-                    sema_mangle_method_symbol(lexer, i, method_symbol);
+                    sema_mangle_method_symbol(lexer, ast, impl, method_symbol);
 
                 u32            type_node_index  = sema_no_type();
                 u32            value_node_index = method_node->b;

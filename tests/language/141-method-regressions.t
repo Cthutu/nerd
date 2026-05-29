@@ -44,8 +44,8 @@ import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
 bind prn = import.0
 bind input = import.1
 bind Rect = type.0
-bind __impl_7_area = fn.0
-bind __impl_7_grow = fn.1
+bind __impl_Rect_area = fn.0
+bind __impl_Rect_grow = fn.1
 bind use_methods = fn.2
 bind main = fn.3
 type type.0 = Rect
@@ -57,13 +57,13 @@ func fn.1(self: ^Rect, amount: i32) -> void {
   assign i32 field(^Rect local.1(self), height) = i32 add(i32 field(^Rect local.1(self), height), i32 local.2(amount))
 }
 func fn.2(rect: ^Rect) -> i32 {
-  expr void call bind.4(__impl_7_grow)(^Rect local.3(rect), i32 2)
-  return i32 call bind.3(__impl_7_area)(Rect deref(^Rect local.3(rect)))
+  expr void call bind.4(__impl_Rect_grow)(^Rect local.3(rect), i32 2)
+  return i32 call bind.3(__impl_Rect_area)(Rect deref(^Rect local.3(rect)))
 }
 func fn.3() -> i32 {
   expr <unknown> default
   let rect: Rect = <unknown> default
-  expr void call bind.4(__impl_7_grow)(^Rect address_of(Rect local.4(rect)), i32 3)
+  expr void call bind.4(__impl_Rect_grow)(^Rect address_of(Rect local.4(rect)), i32 3)
   let result: i32 = i32 call bind.5(use_methods)(^Rect address_of(Rect local.4(rect)))
   expr void call bind.0(prn)(string interpolate(<unknown> "area ", i32 local.5(result)))
   return i32 0
@@ -148,7 +148,7 @@ define internal i32 @fn.3() {
   ret i32 0
 }
 
-@$__impl_7_area = internal alias i32 ({ i32, i32 }), ptr @fn.0
-@$__impl_7_grow = internal alias void (ptr, i32), ptr @fn.1
+@$__impl_Rect_area = internal alias i32 ({ i32, i32 }), ptr @fn.0
+@$__impl_Rect_grow = internal alias void (ptr, i32), ptr @fn.1
 @$use_methods = internal alias i32 (ptr), ptr @fn.2
 @$main = alias i32 (), ptr @fn.3

@@ -31,9 +31,9 @@ main :: fn () {
 ¬
 hir 0
 bind Counter = type.0
-bind __impl_4_set = fn.0
-bind __impl_4_add = fn.1
-bind __impl_4_get = fn.2
+bind __impl_Counter_set = fn.0
+bind __impl_Counter_add = fn.1
+bind __impl_Counter_get = fn.2
 bind add = fn.3
 bind main = fn.4
 type type.0 = Counter
@@ -52,9 +52,9 @@ func fn.3(a: i32, b: i32, c: i32) -> i32 {
 func fn.4() -> i32 {
   expr <unknown> default
   let counter: Counter = <unknown> default
-  expr void call bind.1(__impl_4_set)(^Counter address_of(Counter local.9(counter)), i32 7, i32 3)
-  expr void call bind.2(__impl_4_add)(^Counter address_of(Counter local.9(counter)), i32 5)
-  return i32 add(i32 call bind.4(add)(i32 1, i32 2, i32 3), i32 call bind.3(__impl_4_get)(Counter local.9(counter)))
+  expr void call bind.1(__impl_Counter_set)(^Counter address_of(Counter local.9(counter)), i32 7, i32 3)
+  expr void call bind.2(__impl_Counter_add)(^Counter address_of(Counter local.9(counter)), i32 5)
+  return i32 add(i32 call bind.4(add)(i32 1, i32 2, i32 3), i32 call bind.3(__impl_Counter_get)(Counter local.9(counter)))
 }
 ¬
 ; nerd llvm-ir 0
@@ -100,8 +100,8 @@ define internal i32 @fn.4() {
   ret i32 %t4
 }
 
-@$__impl_4_set = internal alias void (ptr, i32, i32), ptr @fn.0
-@$__impl_4_add = internal alias void (ptr, i32), ptr @fn.1
-@$__impl_4_get = internal alias i32 ({ i32 }), ptr @fn.2
+@$__impl_Counter_set = internal alias void (ptr, i32, i32), ptr @fn.0
+@$__impl_Counter_add = internal alias void (ptr, i32), ptr @fn.1
+@$__impl_Counter_get = internal alias i32 ({ i32 }), ptr @fn.2
 @$add = internal alias i32 (i32, i32, i32), ptr @fn.3
 @$main = alias i32 (), ptr @fn.4

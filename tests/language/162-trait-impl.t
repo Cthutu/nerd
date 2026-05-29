@@ -32,7 +32,7 @@ import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
 bind prn = import.0
 bind input = import.1
 bind Point = type.0
-bind __impl_8_show = fn.0
+bind __trait_Display_for_Point_show = fn.0
 bind main = fn.1
 type type.0 = Point
 func fn.0(self: Point) -> string {
@@ -40,7 +40,7 @@ func fn.0(self: Point) -> string {
 }
 func fn.1() -> i32 {
   let point: Point = Point plex(x: i32 3, y: i32 4)
-  expr void call bind.0(prn)(string call bind.3(__impl_8_show)(Point local.1(point)))
+  expr void call bind.0(prn)(string call bind.3(__trait_Display_for_Point_show)(Point local.1(point)))
   return i32 add(i32 field(Point local.1(point), x), i32 field(Point local.1(point), y))
 }
 ¬
@@ -118,5 +118,5 @@ define internal i32 @fn.1() {
   ret i32 %t5
 }
 
-@$__impl_8_show = internal alias { ptr, i64 } ({ i32, i32 }), ptr @fn.0
+@$__trait_Display_for_Point_show = internal alias { ptr, i64 } ({ i32, i32 }), ptr @fn.0
 @$main = alias i32 (), ptr @fn.1

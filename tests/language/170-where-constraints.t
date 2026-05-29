@@ -49,7 +49,7 @@ main :: fn () -> i32 {
 ¬
 hir 0
 bind Point = type.0
-bind __impl_13_show = fn.0
+bind __trait_Display_for_Point_show = fn.0
 bind Box = type.1
 bind main = fn.1
 type type.0 = Point
@@ -65,9 +65,9 @@ inst func fn.2(value: Point) -> Point {
   return Point local.2(value)
 }
 inst func fn.3(value: Point) -> string {
-  return string call bind.1(__impl_13_show)(Point local.3(value))
+  return string call bind.1(__trait_Display_for_Point_show)(Point local.3(value))
 }
 inst func fn.4(value: Point) -> string {
-  return string call bind.1(__impl_13_show)(Point local.4(value))
+  return string call bind.1(__trait_Display_for_Point_show)(Point local.4(value))
 }
 ¬
