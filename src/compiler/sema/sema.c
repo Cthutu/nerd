@@ -19945,10 +19945,17 @@ sema_validate_entry_point(const Lexer* lexer, const Ast* ast, Sema* sema)
             sema_type_name(lexer, sema, &temp_arena, type_index));
     }
 
-    const SemaType* fn_type = &sema->types[type_index];
-    if (fn_type->param_count != 0 ||
-        (!sema_type_is_integer(sema, fn_type->return_type) &&
-         sema->types[fn_type->return_type].kind != STK_Void)) {
+    const SemaType* fn_type      = &sema->types[type_index];
+    bool            valid_params = fn_type->param_count == 0;
+    if (!valid_params && fn_type->param_count == 1) {
+        u32 string_type = sema_builtin_type(sema, STK_String);
+        u32 args_type   = sema_add_slice_type(sema, string_type);
+        valid_params    = sema_type_matches(
+            sema, args_type, sema->type_param_types[fn_type->first_param_type]);
+    }
+
+    if (!valid_params || (!sema_type_is_integer(sema, fn_type->return_type) &&
+                          sema->types[fn_type->return_type].kind != STK_Void)) {
         return error_0316_invalid_entry_point(
             lexer->source,
             sema_decl_span(lexer, ast, decl),

@@ -261,16 +261,16 @@ language/runtime layers are stable. Keep the first version host-toolchain only;
 do not imply cross-target packaging or platform ABI guarantees beyond what the
 current LLVM/clang backend can verify.
 
-- [ ] Add program argument support:
-  - [ ] allow the entry point to be either `main :: fn ()` or
+- [x] Add program argument support:
+  - [x] allow the entry point to be either `main :: fn ()` or
     `main :: fn (args: []string)`
-  - [ ] lower the runtime entry wrapper so command-line arguments are exposed as
+  - [x] lower the runtime entry wrapper so command-line arguments are exposed as
     Nerd `string` slices
-  - [ ] define whether `args[0]` is the executable path or the first user
+  - [x] define whether `args[0]` is the executable path or the first user
     argument, and document the choice
-  - [ ] reject unsupported `main` signatures with a targeted diagnostic and
+  - [x] reject unsupported `main` signatures with a targeted diagnostic and
     help text
-  - [ ] add command tests for zero arguments, multiple arguments, and strings
+  - [x] add command tests for zero arguments, multiple arguments, and strings
     containing spaces
 - [ ] Add library/object output:
   - [ ] add a CLI mode or flag for producing relocatable object output instead

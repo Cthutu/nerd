@@ -226,6 +226,45 @@ internal cstr compiler_cmd_absolute_path(Arena* arena, cstr path)
 #endif
 }
 
+internal void compiler_cmd_shell_quote(StringBuilder* sb, string value)
+{
+#if OS_WINDOWS
+    sb_append_char(sb, '"');
+    for (usize i = 0; i < value.count; ++i) {
+        if (value.data[i] == '"' || value.data[i] == '\\') {
+            sb_append_char(sb, '\\');
+        }
+        sb_append_char(sb, (char)value.data[i]);
+    }
+    sb_append_char(sb, '"');
+#else
+    sb_append_char(sb, '\'');
+    for (usize i = 0; i < value.count; ++i) {
+        if (value.data[i] == '\'') {
+            sb_append_cstr(sb, "'\\''");
+        } else {
+            sb_append_char(sb, (char)value.data[i]);
+        }
+    }
+    sb_append_char(sb, '\'');
+#endif
+}
+
+internal string compiler_cmd_run_shell_command(Arena*               arena,
+                                               cstr                 executable,
+                                               const NerdRunConfig* config)
+{
+    StringBuilder command = {0};
+    sb_init(&command, arena);
+    compiler_cmd_shell_quote(&command, s(executable));
+    for (u32 i = 0; i < array_count(config->program_args); ++i) {
+        sb_append_char(&command, ' ');
+        compiler_cmd_shell_quote(&command, config->program_args[i]);
+    }
+    sb_append_null(&command);
+    return sb_to_string(&command);
+}
+
 int compiler_cmd_run(const NerdRunConfig* config)
 {
     Arena arena = {0};
@@ -253,7 +292,8 @@ int compiler_cmd_run(const NerdRunConfig* config)
         arena_done(&arena);
         return 1;
     }
-    string command = string_format(&arena, "\"%s\"", executable_path);
+    string command =
+        compiler_cmd_run_shell_command(&arena, executable_path, config);
 #elif OS_WINDOWS
     cstr executable_path =
         compiler_cmd_absolute_path(&arena, artifacts.binary_path);
@@ -261,7 +301,8 @@ int compiler_cmd_run(const NerdRunConfig* config)
         arena_done(&arena);
         return 1;
     }
-    string command = string_format(&arena, "\"%s\"", executable_path);
+    string command =
+        compiler_cmd_run_shell_command(&arena, executable_path, config);
 #endif
 
     int result = shell((cstr)command.data);

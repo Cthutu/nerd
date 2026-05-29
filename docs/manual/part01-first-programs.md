@@ -32,6 +32,18 @@ next line.
 | `fn () { ... }` | define a function with no parameters |
 | `prn("text")`   | print text followed by a newline     |
 
+`main` can also receive command-line arguments:
+
+```nerd
+main :: fn (args: []string) {
+    prn(args[0])
+}
+```
+
+Run arguments are passed after `--`, as in `nerd run hello.n -- one two`.
+`args[0]` is the executable path supplied by the operating system; user
+arguments start at `args[1]`.
+
 ## Comments
 
 Line comments start with `--`. Comments are for readers of the source file:

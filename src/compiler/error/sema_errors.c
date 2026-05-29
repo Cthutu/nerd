@@ -455,8 +455,9 @@ bool error_0315_missing_entry_point(NerdSource source, ErrorSpan span)
     error_add_note(&error, "Programs currently require a `main` entry point.");
     error_add_help(
         &error,
-        "Add `main :: fn () => 0` or another zero-parameter function bound "
-        "to main returning `i32` or no type at all.");
+        "Add `main :: fn () => 0`, `main :: fn (args: []string) => 0`, or "
+        "another supported function bound to main returning `i32` or no type "
+        "at all.");
     error_render(&error);
     return false;
 }
@@ -477,10 +478,11 @@ bool error_0316_invalid_entry_point(NerdSource source,
         &error,
         ERROR_REF_PRIMARY,
         span,
-        "`main` must be a zero-parameter function returning `i32` or no value");
+        "`main` must be a function with no parameters or one `[]string` "
+        "parameter, returning `i32` or no value");
     error_add_help(&error,
-                   "Change `main` so it takes no parameters and returns `i32` "
-                   "or no type at all.");
+                   "Change `main` to `fn ()`, or to `fn (args: []string)` if "
+                   "the program needs command-line arguments.");
     error_render(&error);
     return false;
 }

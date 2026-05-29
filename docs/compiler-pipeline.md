@@ -197,6 +197,11 @@ LLVM can be inspected locally. Backend tool failures report the exact command,
 the generated LLVM path, the runtime object path, and the first captured tool
 output.
 
+The runtime `main` wrapper accepts the host `argc`/`argv`, constructs a
+`[]string` view when the Nerd entry point is `main :: fn (args: []string)`, and
+passes the operating-system executable path as `args[0]`. `nerd run` forwards
+program arguments written after `--` to that generated executable.
+
 The current toolchain contract is textual LLVM IR plus clang. The compiler does
 not currently invoke `llvm-as`, `llc`, or `opt` directly. That keeps the install
 surface small while still allowing a future measurement-backed switch to LLVM

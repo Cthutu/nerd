@@ -13,6 +13,16 @@ main :: fn () {
 }
 ```
 
+It may also take the command-line argument slice:
+
+```nerd
+main :: fn (args: []string) {
+}
+```
+
+`args[0]` is the executable path supplied by the operating system. User
+arguments passed after `nerd run source.n --` start at `args[1]`.
+
 `main` may return `void` or an integer result, depending on the program's
 intended exit code.
 

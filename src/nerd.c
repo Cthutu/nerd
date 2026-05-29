@@ -710,7 +710,8 @@ nerd_format_config_from_json(const JsonValue* cli_result)
 }
 
 internal NerdRunConfig nerd_run_config_from_json(const JsonValue* cli_result,
-                                                 Array(string) keywords)
+                                                 Array(string) keywords,
+                                                 Array(string) program_args)
 {
     Arena* arena = &temp_arena;
     string input = nerd_default_source_path(
@@ -724,6 +725,7 @@ internal NerdRunConfig nerd_run_config_from_json(const JsonValue* cli_result,
             },
         .output_path = nerd_cli_param_string(
             cli_result, "command.params.output", (string){0}),
+        .program_args = program_args,
         .emit_hir = nerd_cli_flag_bool(cli_result, "command.flags.hir", false),
         .emit_llvm =
             nerd_cli_flag_bool(cli_result, "command.flags.llvm", false),
@@ -774,6 +776,32 @@ internal bool nerd_cli_extract_keywords(Arena*  arena,
     return true;
 }
 
+internal void nerd_cli_split_program_args(Arena*  arena,
+                                          int     argc,
+                                          char**  argv,
+                                          int*    out_argc,
+                                          char*** out_argv,
+                                          Array(string) * out_program_args)
+{
+    char** filtered =
+        (char**)arena_alloc(arena, (usize)argc * sizeof(filtered[0]));
+    int filtered_count = 0;
+
+    for (int i = 0; i < argc; ++i) {
+        if (i > 0 && strcmp(argv[i], "--") == 0) {
+            for (int j = i + 1; j < argc; ++j) {
+                array_push(*out_program_args,
+                           string_format(arena, "%s", argv[j]));
+            }
+            break;
+        }
+        filtered[filtered_count++] = argv[i];
+    }
+
+    *out_argc = filtered_count;
+    *out_argv = filtered;
+}
+
 internal int nerd_run_with_cli(int argc, char** argv)
 {
     Arena arena = {0};
@@ -789,14 +817,19 @@ internal int nerd_run_with_cli(int argc, char** argv)
     int    cli_argc            = argc;
     char** cli_argv            = argv;
     Array(string) cli_keywords = NULL;
+    Array(string) program_args = NULL;
     if (!nerd_cli_extract_keywords(
             &arena, argc, argv, &cli_argc, &cli_argv, &cli_keywords)) {
         cli_done(&parser);
         json_done(schema);
+        array_free(cli_keywords);
+        array_free(program_args);
         arena_done(&arena);
         error_system_done();
         return 1;
     }
+    nerd_cli_split_program_args(
+        &arena, cli_argc, cli_argv, &cli_argc, &cli_argv, &program_args);
 
     JsonValue* cli_result = cli_parse(&parser, &arena, cli_argc, cli_argv);
     JsonValue* command    = json_object_get_cstr(cli_result, "command");
@@ -824,6 +857,8 @@ internal int nerd_run_with_cli(int argc, char** argv)
         json_done(cli_result);
         cli_done(&parser);
         json_done(schema);
+        array_free(cli_keywords);
+        array_free(program_args);
         arena_done(&arena);
         error_system_done();
         return 0;
@@ -838,6 +873,8 @@ internal int nerd_run_with_cli(int argc, char** argv)
             json_done(cli_result);
             cli_done(&parser);
             json_done(schema);
+            array_free(cli_keywords);
+            array_free(program_args);
             arena_done(&arena);
             error_system_done();
             return 1;
@@ -850,6 +887,8 @@ internal int nerd_run_with_cli(int argc, char** argv)
         json_done(cli_result);
         cli_done(&parser);
         json_done(schema);
+        array_free(cli_keywords);
+        array_free(program_args);
         arena_done(&arena);
         error_system_done();
         eprn("CLI parse failed.");
@@ -872,7 +911,11 @@ internal int nerd_run_with_cli(int argc, char** argv)
         nerd_print_args_table(argc, argv);
     }
 
-    if (string_eq_cstr(name, "build") || string_eq_cstr(name, "b")) {
+    if (array_count(program_args) > 0 && !string_eq_cstr(name, "run") &&
+        !string_eq_cstr(name, "r")) {
+        eprn("Program arguments after `--` are only supported by `run`.");
+        result = 1;
+    } else if (string_eq_cstr(name, "build") || string_eq_cstr(name, "b")) {
         NerdBuildConfig config =
             nerd_build_config_from_json(cli_result, cli_keywords);
         result = config.source.source.count == 0 &&
@@ -887,7 +930,7 @@ internal int nerd_run_with_cli(int argc, char** argv)
                      : compiler_cmd_check(&config);
     } else if (string_eq_cstr(name, "run") || string_eq_cstr(name, "r")) {
         NerdRunConfig config =
-            nerd_run_config_from_json(cli_result, cli_keywords);
+            nerd_run_config_from_json(cli_result, cli_keywords, program_args);
         result = config.source.source_path.count == 0
                      ? 1
                      : compiler_cmd_run(&config);
@@ -907,6 +950,8 @@ internal int nerd_run_with_cli(int argc, char** argv)
         json_done(cli_result);
         cli_done(&parser);
         json_done(schema);
+        array_free(cli_keywords);
+        array_free(program_args);
         arena_done(&arena);
         error_system_done();
         kill("Unhandled command " STRINGP, STRINGV(name));
@@ -915,6 +960,8 @@ internal int nerd_run_with_cli(int argc, char** argv)
     json_done(cli_result);
     cli_done(&parser);
     json_done(schema);
+    array_free(cli_keywords);
+    array_free(program_args);
     arena_done(&arena);
     error_system_done();
     return result;

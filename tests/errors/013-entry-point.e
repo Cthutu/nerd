@@ -19,7 +19,7 @@
         "Programs currently require a `main` entry point."
     ],
     "help": [
-        "Add `main :: fn () => 0` or another zero-parameter function bound to main returning `i32` or no type at all."
+        "Add `main :: fn () => 0`, `main :: fn (args: []string) => 0`, or another supported function bound to main returning `i32` or no type at all."
     ]
 }
 ¬
@@ -38,11 +38,11 @@ main :: 1
             "line": 1,
             "column": 1,
             "length": 4,
-            "message": "`main` must be a zero-parameter function returning `i32` or no value"
+            "message": "`main` must be a function with no parameters or one `[]string` parameter, returning `i32` or no value"
         }
     ],
     "notes": [],
     "help": [
-        "Change `main` so it takes no parameters and returns `i32` or no type at all."
+        "Change `main` to `fn ()`, or to `fn (args: []string)` if the program needs command-line arguments."
     ]
 }

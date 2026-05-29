@@ -768,10 +768,9 @@ internal bool back_end_emit_llvm_artifacts(const ProgramInfo*        program,
 
     const FrontEndState* root =
         &program->modules[program->root_module_index].front_end;
-    bool root_main_returns_void =
-        back_end_llvm_runtime_root_main_returns_void(root);
-    string runtime_epilogue = back_end_llvm_runtime_epilogue(
-        root_main_returns_void, program->windowed && OS_WINDOWS);
+    BackEndRootMainInfo main_info = back_end_llvm_runtime_root_main_info(root);
+    string              runtime_epilogue = back_end_llvm_runtime_epilogue(
+        &arena, main_info, program->windowed && OS_WINDOWS);
     string init_ll =
         back_end_llvm_runtime_render_init(&arena, modules.init_module_indices);
     memory_before        = compiler_memory_profile_begin();

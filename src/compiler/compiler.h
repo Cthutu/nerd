@@ -82,12 +82,13 @@ typedef struct {
 typedef struct {
     NerdSource source;
     string     output_path;
-    bool       emit_hir;
-    bool       emit_llvm;
-    bool       keep_binary;
-    bool       release;
-    bool       verbose;
-    bool       timing;
+    Array(string) program_args;
+    bool emit_hir;
+    bool emit_llvm;
+    bool keep_binary;
+    bool release;
+    bool verbose;
+    bool timing;
     Array(string) keywords;
 } NerdRunConfig;
 
