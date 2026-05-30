@@ -768,6 +768,7 @@ internal JsonValue* lsp_local_enum_variant_location(const LspDocument* doc,
 
 internal JsonValue* lsp_ast_enum_variant_location_in_file(Arena* arena,
                                                           cstr   resolved_path,
+                                                          string enum_name,
                                                           string variant_name)
 {
     FileMap map    = {0};
@@ -791,6 +792,11 @@ internal JsonValue* lsp_ast_enum_variant_location_in_file(Arena* arena,
             const AstNode* node = &ast.nodes[node_index];
             if (node->kind != AK_Bind || !ast_has_flag(node, ANF_Public) ||
                 node->b >= array_count(ast.nodes)) {
+                continue;
+            }
+
+            if (enum_name.count > 0 &&
+                !string_eq(lex_symbol(&lexer, node->a), enum_name)) {
                 continue;
             }
 
@@ -859,7 +865,85 @@ internal JsonValue* lsp_ast_imported_enum_variant_location(
         JsonValue* location = NULL;
         if (status == MRS_Found) {
             location = lsp_ast_enum_variant_location_in_file(
-                arena, resolved.resolved_path, variant_name);
+                arena, resolved.resolved_path, s(""), variant_name);
+        }
+        arena_done(&temp);
+        if (location != NULL) {
+            return location;
+        }
+    }
+    return NULL;
+}
+
+internal JsonValue*
+lsp_local_qualified_enum_variant_location(const LspDocument* doc,
+                                          Arena*             arena,
+                                          string             uri,
+                                          u32                enum_symbol,
+                                          u32                variant_symbol)
+{
+    const Ast* ast = &doc->front_end.ast;
+    for (u32 node_index = 0; node_index < array_count(ast->nodes);
+         ++node_index) {
+        const AstNode* node = &ast->nodes[node_index];
+        if (node->kind != AK_Bind || node->a != enum_symbol ||
+            node->b >= array_count(ast->nodes)) {
+            continue;
+        }
+
+        const AstNode* value = &ast->nodes[node->b];
+        if (value->kind != AK_TypeEnum ||
+            value->a >= array_count(ast->enum_types)) {
+            continue;
+        }
+
+        const AstEnumTypeInfo* enum_info = &ast->enum_types[value->a];
+        for (u32 i = 0; i < enum_info->variant_count; ++i) {
+            const AstEnumVariant* variant =
+                &ast->enum_variants[enum_info->first_variant + i];
+            if (variant->symbol_handle == variant_symbol) {
+                return lsp_enum_variant_location(arena,
+                                                 doc->front_end.lexer.source,
+                                                 uri,
+                                                 &doc->front_end.lexer,
+                                                 variant);
+            }
+        }
+    }
+
+    return NULL;
+}
+
+internal JsonValue* lsp_ast_imported_qualified_enum_variant_location(
+    const LspDocument* doc, Arena* arena, string enum_name, string variant_name)
+{
+    const Ast* ast = &doc->front_end.ast;
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (node->kind != AK_Use || node->a >= array_count(ast->nodes)) {
+            continue;
+        }
+
+        const AstNode* modref = &ast->nodes[node->a];
+        if (modref->kind != AK_ModRef ||
+            modref->a >= array_count(ast->module_paths)) {
+            continue;
+        }
+
+        Arena temp = {0};
+        arena_init(&temp);
+        ModuleResolveResult resolved = {0};
+        ModuleResolveStatus status =
+            module_resolve_path(&temp,
+                                doc->front_end.lexer.source,
+                                &doc->front_end.lexer,
+                                ast,
+                                &ast->module_paths[modref->a],
+                                &resolved);
+        JsonValue* location = NULL;
+        if (status == MRS_Found) {
+            location = lsp_ast_enum_variant_location_in_file(
+                arena, resolved.resolved_path, enum_name, variant_name);
         }
         arena_done(&temp);
         if (location != NULL) {
@@ -913,6 +997,42 @@ internal JsonValue* lsp_contextual_enum_variant_location(const LspDocument* doc,
 
     return lsp_ast_imported_enum_variant_location(
         doc, arena, lex_symbol(&doc->front_end.lexer, ref->a));
+}
+
+internal JsonValue* lsp_qualified_enum_variant_location(const LspDocument* doc,
+                                                        Arena* arena,
+                                                        string uri,
+                                                        u32    field_node_index)
+{
+    if (field_node_index >= array_count(doc->front_end.ast.nodes)) {
+        return NULL;
+    }
+
+    const AstNode* field = &doc->front_end.ast.nodes[field_node_index];
+    if (field->kind != AK_Field) {
+        return NULL;
+    }
+
+    if (field->a >= array_count(doc->front_end.ast.nodes)) {
+        return NULL;
+    }
+
+    const AstNode* target = &doc->front_end.ast.nodes[field->a];
+    if (target->kind != AK_SymbolRef) {
+        return NULL;
+    }
+
+    JsonValue* location = lsp_local_qualified_enum_variant_location(
+        doc, arena, uri, target->a, field->b);
+    if (location != NULL) {
+        return location;
+    }
+
+    return lsp_ast_imported_qualified_enum_variant_location(
+        doc,
+        arena,
+        lex_symbol(&doc->front_end.lexer, target->a),
+        lex_symbol(&doc->front_end.lexer, field->b));
 }
 
 internal string lsp_hover_text_from_module_export(Arena* arena,
@@ -3894,6 +4014,14 @@ void lsp_handle_definition(LspState* state, const LspMessage* message)
             lsp_field_location(doc, message->arena, uri, field_node_index);
         if (field_location != NULL) {
             json_object_set_object(response, "result", field_location);
+            lsp_send_response(message->arena, response);
+            return;
+        }
+
+        JsonValue* enum_variant_location = lsp_qualified_enum_variant_location(
+            doc, message->arena, uri, field_node_index);
+        if (enum_variant_location != NULL) {
+            json_object_set_object(response, "result", enum_variant_location);
             lsp_send_response(message->arena, response);
             return;
         }

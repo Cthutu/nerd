@@ -38,7 +38,32 @@ pub X_KEY_RELEASE_MASK    :: 0x00000002 -- Receives key-release events.
 pub X_STRUCTURE_NOTIFY_MASK :: 0x00020000 -- Receives structure-change events.
 pub X_EXPOSURE_MASK         :: 0x00008000 -- Receives expose events.
 
-pub X_KEYSYM_ESCAPE :: 0xff1b -- Xlib keysym for the Escape key.
+pub X_KEYSYM_BACKSPACE :: 0xff08 -- Xlib keysym for Backspace.
+pub X_KEYSYM_TAB       :: 0xff09 -- Xlib keysym for Tab.
+pub X_KEYSYM_ENTER     :: 0xff0d -- Xlib keysym for Enter.
+pub X_KEYSYM_ESCAPE    :: 0xff1b -- Xlib keysym for Escape.
+pub X_KEYSYM_DELETE    :: 0xffff -- Xlib keysym for Delete.
+pub X_KEYSYM_HOME      :: 0xff50 -- Xlib keysym for Home.
+pub X_KEYSYM_ARROW_LEFT  :: 0xff51 -- Xlib keysym for Left.
+pub X_KEYSYM_ARROW_UP    :: 0xff52 -- Xlib keysym for Up.
+pub X_KEYSYM_ARROW_RIGHT :: 0xff53 -- Xlib keysym for Right.
+pub X_KEYSYM_ARROW_DOWN  :: 0xff54 -- Xlib keysym for Down.
+pub X_KEYSYM_PAGE_UP   :: 0xff55 -- Xlib keysym for Page Up.
+pub X_KEYSYM_PAGE_DOWN :: 0xff56 -- Xlib keysym for Page Down.
+pub X_KEYSYM_END       :: 0xff57 -- Xlib keysym for End.
+pub X_KEYSYM_INSERT    :: 0xff63 -- Xlib keysym for Insert.
+pub X_KEYSYM_F1        :: 0xffbe -- Xlib keysym for F1.
+pub X_KEYSYM_F2        :: 0xffbf -- Xlib keysym for F2.
+pub X_KEYSYM_F3        :: 0xffc0 -- Xlib keysym for F3.
+pub X_KEYSYM_F4        :: 0xffc1 -- Xlib keysym for F4.
+pub X_KEYSYM_F5        :: 0xffc2 -- Xlib keysym for F5.
+pub X_KEYSYM_F6        :: 0xffc3 -- Xlib keysym for F6.
+pub X_KEYSYM_F7        :: 0xffc4 -- Xlib keysym for F7.
+pub X_KEYSYM_F8        :: 0xffc5 -- Xlib keysym for F8.
+pub X_KEYSYM_F9        :: 0xffc6 -- Xlib keysym for F9.
+pub X_KEYSYM_F10       :: 0xffc7 -- Xlib keysym for F10.
+pub X_KEYSYM_F11       :: 0xffc8 -- Xlib keysym for F11.
+pub X_KEYSYM_F12       :: 0xffc9 -- Xlib keysym for F12.
 
 -- Stores an arbitrary Xlib event. Cast to a specific event record after
 -- checking `type`.
@@ -139,6 +164,8 @@ ffi "X11" {
     pub XPending (display: XDisplay) -> i32
 
     pub XNextEvent (display: XDisplay, event_return: ^XEvent) -> i32
+
+    pub XLookupKeysym (key_event: ^XKeyEvent, index: i32) -> XKeySym
 
     pub XLookupString (event_struct  : ^XKeyEvent,
                        buffer_return : ^i8,

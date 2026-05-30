@@ -23,8 +23,8 @@ main :: fn () {
             }
             FrameEvent.Closed => {
             }
-            FrameEvent.Character { codepoint } => {
-                on codepoint == FRAME_CODEPOINT_ESCAPE => system.destroy(^frame)
+            KeyPress { scan_code } => {
+                on scan_code == FrameScanCode.Escape => system.destroy(^frame)
             }
         }
     }

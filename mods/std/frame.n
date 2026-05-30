@@ -35,8 +35,8 @@
 --|         None => {}
 --|         Closed => {}
 --|         Resized { width, height } => {}
---|         KeyDown { scan_code } => {}
---|         KeyUp { scan_code } => {}
+--|         KeyPress { scan_code } => {}
+--|         KeyRelease { scan_code } => {}
 --|         Character { codepoint } => {}
 --|     }
 --| }
@@ -63,6 +63,77 @@ pub CLOSED_FRAME : u16 : 65535
 
 -- Unicode escape control character produced by the Escape key on text input.
 pub FRAME_CODEPOINT_ESCAPE :: 27
+
+-- Common key scan-code values for frame keyboard events. Values follow the
+-- same broad convention as terminal key codes and Windows virtual-key macros:
+-- printable ASCII keys use their character value, while non-printable common
+-- keys are assigned stable values above the ASCII range.
+pub FrameScanCode :: enum {
+    Unknown    = 0
+    Backspace  = 8
+    Tab        = 9
+    Enter      = 13
+    Escape     = 27
+    Space      = 32
+    Digit0     = 48
+    Digit1     = 49
+    Digit2     = 50
+    Digit3     = 51
+    Digit4     = 52
+    Digit5     = 53
+    Digit6     = 54
+    Digit7     = 55
+    Digit8     = 56
+    Digit9     = 57
+    A          = 65
+    B          = 66
+    C          = 67
+    D          = 68
+    E          = 69
+    F          = 70
+    G          = 71
+    H          = 72
+    I          = 73
+    J          = 74
+    K          = 75
+    L          = 76
+    M          = 77
+    N          = 78
+    O          = 79
+    P          = 80
+    Q          = 81
+    R          = 82
+    S          = 83
+    T          = 84
+    U          = 85
+    V          = 86
+    W          = 87
+    X          = 88
+    Y          = 89
+    Z          = 90
+    Delete     = 127
+    Insert     = 256
+    Home       = 257
+    End        = 258
+    PageUp     = 259
+    PageDown   = 260
+    ArrowUp    = 261
+    ArrowDown  = 262
+    ArrowLeft  = 263
+    ArrowRight = 264
+    F1         = 265
+    F2         = 266
+    F3         = 267
+    F4         = 268
+    F5         = 269
+    F6         = 270
+    F7         = 271
+    F8         = 272
+    F9         = 273
+    F10        = 274
+    F11        = 275
+    F12        = 276
+}
 
 pub FrameSystem :: plex {
     -- Tracks all currently known frames belonging to this system.
@@ -105,14 +176,16 @@ pub FrameEvent :: enum {
         height u16
     }
 
-    -- A physical key was pressed. The scan code is platform-specific.
-    KeyDown {
-        scan_code u32
+    -- A physical key was pressed. `scan_code` uses the common `FrameScanCode`
+    -- enum when the platform key can be translated.
+    KeyPress {
+        scan_code FrameScanCode
     }
 
-    -- A physical key was released. The scan code is platform-specific.
-    KeyUp {
-        scan_code u32
+    -- A physical key was released. `scan_code` uses the common `FrameScanCode`
+    -- enum when the platform key can be translated.
+    KeyRelease {
+        scan_code FrameScanCode
     }
 
     -- A character was entered after translating a key press through the
@@ -262,6 +335,52 @@ on "linux" {
         info.events.push(FrameEvent.Resized { width: width, height: height })
     }
 
+    -- Converts an X11 keysym to the common frame scan-code enum.
+    frame_linux_scan_code_from_keysym :: fn (keysym: XKeySym) -> FrameScanCode {
+        on keysym {
+            X_KEYSYM_BACKSPACE => return FrameScanCode.Backspace
+            X_KEYSYM_TAB => return FrameScanCode.Tab
+            X_KEYSYM_ENTER => return FrameScanCode.Enter
+            X_KEYSYM_ESCAPE => return FrameScanCode.Escape
+            X_KEYSYM_DELETE => return FrameScanCode.Delete
+            X_KEYSYM_INSERT => return FrameScanCode.Insert
+            X_KEYSYM_HOME => return FrameScanCode.Home
+            X_KEYSYM_END => return FrameScanCode.End
+            X_KEYSYM_PAGE_UP => return FrameScanCode.PageUp
+            X_KEYSYM_PAGE_DOWN => return FrameScanCode.PageDown
+            X_KEYSYM_ARROW_UP => return FrameScanCode.ArrowUp
+            X_KEYSYM_ARROW_DOWN => return FrameScanCode.ArrowDown
+            X_KEYSYM_ARROW_LEFT => return FrameScanCode.ArrowLeft
+            X_KEYSYM_ARROW_RIGHT => return FrameScanCode.ArrowRight
+            X_KEYSYM_F1 => return FrameScanCode.F1
+            X_KEYSYM_F2 => return FrameScanCode.F2
+            X_KEYSYM_F3 => return FrameScanCode.F3
+            X_KEYSYM_F4 => return FrameScanCode.F4
+            X_KEYSYM_F5 => return FrameScanCode.F5
+            X_KEYSYM_F6 => return FrameScanCode.F6
+            X_KEYSYM_F7 => return FrameScanCode.F7
+            X_KEYSYM_F8 => return FrameScanCode.F8
+            X_KEYSYM_F9 => return FrameScanCode.F9
+            X_KEYSYM_F10 => return FrameScanCode.F10
+            X_KEYSYM_F11 => return FrameScanCode.F11
+            X_KEYSYM_F12 => return FrameScanCode.F12
+        }
+
+        on keysym >= '0'.as(XKeySym) && keysym <= '9'.as(XKeySym) => {
+            return keysym.as(u32).as(FrameScanCode)
+        }
+
+        on keysym >= 'A'.as(XKeySym) && keysym <= 'Z'.as(XKeySym) => {
+            return keysym.as(u32).as(FrameScanCode)
+        }
+
+        on keysym >= 'a'.as(XKeySym) && keysym <= 'z'.as(XKeySym) => {
+            return (keysym.as(u32) - 32).as(FrameScanCode)
+        }
+
+        return FrameScanCode.Unknown
+    }
+
     -- Decodes the first UTF-8 codepoint from Xlib text translation output.
     frame_linux_decode_utf8 :: fn (bytes: []u8) -> u32 {
         on bytes.count == 0 => return 0
@@ -292,20 +411,21 @@ on "linux" {
 
     -- Queues key and character events from an X11 key event.
     frame_linux_push_key_event :: fn (info: ^FrameInfo, event: ^XKeyEvent, is_down: bool) {
-        scan_code := event.keycode
+        keysym := XLookupKeysym(event, 0)
+        scan_code := frame_linux_scan_code_from_keysym(keysym)
         on is_down {
-            yes => info.events.push(FrameEvent.KeyDown { scan_code: scan_code })
-            no => info.events.push(FrameEvent.KeyUp { scan_code: scan_code })
+            yes => info.events.push(FrameEvent.KeyPress { scan_code: scan_code })
+            no => info.events.push(FrameEvent.KeyRelease { scan_code: scan_code })
         }
 
         on !is_down => return
 
         buffer : [8]u8
-        keysym : XKeySym
+        translated_keysym : XKeySym
         count := XLookupString(event,
                                buffer[..].data.as(^void).as(^i8),
                                buffer.count.as(i32),
-                               ^keysym,
+                               ^translated_keysym,
                                nil)
         on count <= 0 => return
 
