@@ -3883,10 +3883,26 @@ internal LlvmValue llvm_coerce_value_to_type(LlvmFunctionContext* ctx,
     SemaTypeKind source_kind = llvm_type_kind(ctx->sema, value.type_index);
     if ((target_kind == STK_Pointer || target_kind == STK_DynamicArray ||
          target_kind == STK_Box) &&
-        (source_kind == STK_Nil || source_kind == STK_UntypedInteger) &&
-        string_eq_cstr(value.value, "0")) {
+        source_kind == STK_Nil &&
+        (string_eq_cstr(value.value, "0") ||
+         string_eq_cstr(value.value, "null"))) {
         value.type_index = target_type;
         value.value      = s("null");
+        return value;
+    }
+
+    if ((target_kind == STK_Pointer || target_kind == STK_DynamicArray ||
+         target_kind == STK_Box) &&
+        source_kind == STK_UntypedInteger && string_eq_cstr(value.value, "0")) {
+        value.type_index = target_type;
+        value.value      = s("null");
+        return value;
+    }
+
+    if ((target_kind == STK_Pointer || target_kind == STK_DynamicArray ||
+         target_kind == STK_Box) &&
+        string_eq_cstr(value.value, "null")) {
+        value.type_index = target_type;
         return value;
     }
 
