@@ -8483,6 +8483,12 @@ internal void sema_symbol_list_add_unique(Array(u32) * symbols, u32 symbol)
     array_push(*symbols, symbol);
 }
 
+internal bool sema_generic_param_has_trait_constraint(const Ast*   ast,
+                                                      const Lexer* lexer,
+                                                      u32          node_index,
+                                                      u32          param_symbol,
+                                                      string       trait_name);
+
 internal bool sema_enum_variant_symbol_matches(const Lexer* variant_lexer,
                                                u32          variant_symbol,
                                                const Lexer* target_lexer,
@@ -8594,6 +8600,124 @@ internal bool sema_symbol_is_known_enum_variant(const Lexer* lexer,
         }
     }
     return false;
+}
+
+internal u32 sema_generic_param_symbol_from_type_node(const Ast* ast,
+                                                      Array(u32) generic_params,
+                                                      u32 type_node_index)
+{
+    if (type_node_index == U32_MAX ||
+        type_node_index >= array_count(ast->nodes)) {
+        return U32_MAX;
+    }
+
+    const AstNode* type_node = &ast->nodes[type_node_index];
+    while (
+        (type_node->kind == AK_Expression || type_node->kind == AK_Statement) &&
+        type_node->a < array_count(ast->nodes)) {
+        type_node_index = type_node->a;
+        type_node       = &ast->nodes[type_node_index];
+    }
+
+    if (type_node->kind != AK_SymbolRef ||
+        !sema_symbol_list_contains(generic_params, type_node->a)) {
+        return U32_MAX;
+    }
+    return type_node->a;
+}
+
+internal u32 sema_generic_param_symbol_from_value_node(
+    const Ast* ast, const Sema* sema, Array(u32) generic_params, u32 node_index)
+{
+    if (node_index == U32_MAX || node_index >= array_count(ast->nodes)) {
+        return U32_MAX;
+    }
+
+    const AstNode* node = &ast->nodes[node_index];
+    while ((node->kind == AK_Expression || node->kind == AK_Statement) &&
+           node->a < array_count(ast->nodes)) {
+        node_index = node->a;
+        node       = &ast->nodes[node_index];
+    }
+
+    if (node->kind != AK_SymbolRef) {
+        return U32_MAX;
+    }
+
+    if (node_index < array_count(sema->node_local_indices)) {
+        u32 local_index = sema->node_local_indices[node_index];
+        if (local_index != sema_no_local() &&
+            local_index < array_count(sema->locals)) {
+            return sema_generic_param_symbol_from_type_node(
+                ast, generic_params, sema->locals[local_index].type_node_index);
+        }
+    }
+
+    u32 fn_start_index =
+        sema_ast_enclosing_function_start_node(ast, node_index);
+    if (fn_start_index == U32_MAX ||
+        fn_start_index >= array_count(ast->nodes)) {
+        return U32_MAX;
+    }
+    const AstNode* fn_start = &ast->nodes[fn_start_index];
+    if (fn_start->kind != AK_FnStart ||
+        fn_start->a >= array_count(ast->fn_signatures)) {
+        return U32_MAX;
+    }
+
+    const AstFnSignature* signature = &ast->fn_signatures[fn_start->a];
+    for (u32 i = 0; i < signature->param_count; ++i) {
+        const AstParam* param = &ast->params[signature->first_param + i];
+        if (param->symbol_handle == node->a) {
+            return sema_generic_param_symbol_from_type_node(
+                ast, generic_params, param->type_node_index);
+        }
+    }
+    return U32_MAX;
+}
+
+internal bool
+sema_validate_generic_body_binary_trait_constraint(const Lexer* lexer,
+                                                   const Ast*   ast,
+                                                   const Sema*  sema,
+                                                   Array(u32) generic_params,
+                                                   u32 node_index)
+{
+    const AstNode* node       = &ast->nodes[node_index];
+    string         trait_name = {0};
+    switch (node->kind) {
+    case AK_Equal:
+    case AK_NotEqual:
+        trait_name = s("Eq");
+        break;
+    case AK_Less:
+    case AK_LessEqual:
+    case AK_Greater:
+    case AK_GreaterEqual:
+        trait_name = s("Order");
+        break;
+    default:
+        return true;
+    }
+
+    u32 lhs_param = sema_generic_param_symbol_from_value_node(
+        ast, sema, generic_params, node->a);
+    u32 rhs_param = sema_generic_param_symbol_from_value_node(
+        ast, sema, generic_params, node->b);
+    if (lhs_param == U32_MAX || lhs_param != rhs_param) {
+        return true;
+    }
+
+    if (sema_generic_param_has_trait_constraint(
+            ast, lexer, node_index, lhs_param, trait_name)) {
+        return true;
+    }
+
+    return error_0304_type_mismatch(
+        lexer->source,
+        sema_node_span(lexer, &ast->nodes[node->a]),
+        string_format(&temp_arena, STRINGP " constraint", STRINGV(trait_name)),
+        lex_symbol(lexer, lhs_param));
 }
 
 internal void sema_collect_pattern_symbols(const Ast* ast,
@@ -8866,6 +8990,14 @@ internal bool sema_validate_generic_body_refs_node(const Lexer* lexer,
     case AK_GreaterEqual:
     case AK_LogicalAnd:
     case AK_LogicalOr:
+        if (!sema_validate_generic_body_refs_node(
+                lexer, ast, sema, locals, generic_params, node->a) ||
+            !sema_validate_generic_body_refs_node(
+                lexer, ast, sema, locals, generic_params, node->b)) {
+            return false;
+        }
+        return sema_validate_generic_body_binary_trait_constraint(
+            lexer, ast, sema, generic_params, node_index);
     case AK_RangeExclusive:
     case AK_RangeInclusive:
     case AK_Index:

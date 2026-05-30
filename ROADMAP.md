@@ -306,7 +306,7 @@ These are open trait-system follow-ups that were previously recorded as
 - [ ] Add stricter non-lazy generic body checks once constraints exist:
   - [x] reject unresolved names that do not depend on concrete type arguments
     before a generic function or impl method is instantiated
-  - [ ] check constraint-sensitive operations against trait bounds where
+  - [x] check constraint-sensitive operations against trait bounds where
     possible before monomorphisation
   - [ ] keep concrete instantiation diagnostics for cases that genuinely depend
     on substituted types

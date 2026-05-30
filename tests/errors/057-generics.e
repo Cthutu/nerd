@@ -50,3 +50,59 @@ main :: fn () => 0
         "Add a binding for `missing_value` or fix the spelling."
     ]
 }
+¬
+bad_eq :: fn [T] (lhs: T, rhs: T) -> bool {
+    return lhs == rhs
+}
+
+main :: fn () => 0
+¬
+{
+    "message": "Type mismatch: expected `Eq constraint`, found `T`",
+    "source_file": "tests/errors/057-generics.e",
+    "primary_location": {
+        "line": 2,
+        "column": 12
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 2,
+            "column": 12,
+            "length": 3,
+            "message": "This expression has type `T`"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Change the expression or annotation so both sides use the same type."
+    ]
+}
+¬
+bad_order :: fn [T] (lhs: T, rhs: T) -> bool {
+    return lhs < rhs
+}
+
+main :: fn () => 0
+¬
+{
+    "message": "Type mismatch: expected `Order constraint`, found `T`",
+    "source_file": "tests/errors/057-generics.e",
+    "primary_location": {
+        "line": 2,
+        "column": 12
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 2,
+            "column": 12,
+            "length": 3,
+            "message": "This expression has type `T`"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Change the expression or annotation so both sides use the same type."
+    ]
+}
