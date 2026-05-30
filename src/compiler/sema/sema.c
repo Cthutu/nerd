@@ -20962,6 +20962,39 @@ internal string sema_unused_local_kind_name(const SemaLocal* local)
     return s("local binding");
 }
 
+internal bool sema_local_is_method_receiver(const Sema* sema, u32 local_index)
+{
+    if (local_index >= array_count(sema->locals)) {
+        return false;
+    }
+    const SemaLocal* local = &sema->locals[local_index];
+    if (local->kind != SLK_Param) {
+        return false;
+    }
+
+    bool method_receiver = false;
+    for (u32 i = 0; i < array_count(sema->methods); ++i) {
+        const SemaMethod* method = &sema->methods[i];
+        if (method->decl_index == local->owner_decl_index &&
+            method->first_param_is_receiver) {
+            method_receiver = true;
+            break;
+        }
+    }
+    if (!method_receiver) {
+        return false;
+    }
+
+    for (u32 i = 0; i < array_count(sema->locals); ++i) {
+        const SemaLocal* candidate = &sema->locals[i];
+        if (candidate->owner_decl_index == local->owner_decl_index &&
+            candidate->kind == SLK_Param) {
+            return i == local_index;
+        }
+    }
+    return false;
+}
+
 internal void sema_count_local_ref(const Sema* sema,
                                    u32         local_index,
                                    Array(u32) read_counts,
@@ -21063,6 +21096,7 @@ internal bool sema_validate_unused_locals(const Lexer* lexer,
         }
 
         if (!sema_local_is_runtime_value(local) || generic_function_local ||
+            sema_local_is_method_receiver(sema, i) ||
             sema_symbol_is_deliberately_unused(symbol) || read_counts[i] > 0) {
             continue;
         }

@@ -1,0 +1,165 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Provides a declarative API to open and manipulate OS windows (frames).
+--
+-- `Frame` is the public desired-state object. The user edits a `Frame` to say
+-- what they want, then calls `FrameSystem.apply(^frame)` to create or mutate
+-- the platform window to match it. Applying a frame whose ID is `NEW_FRAME`
+-- creates a window and writes a live ID back into `frame.id`. Applying a frame
+-- whose ID is `CLOSED_FRAME` is a no-op and returns `no`. Failed apply/update
+-- operations write `CLOSED_FRAME` so the user's instance becomes inert.
+--
+-- `FrameSystem.loop()` pumps the platform message loop and returns `no` once no
+-- live frames remain. `FrameSystem.poll(^frame)` returns one event queued for a
+-- specific frame, or `FrameEvent.None` when that frame's queue is empty. This
+-- keeps multi-window code from mapping event IDs back to user `Frame` values.
+--
+-- `FrameSystem.update(^frame)` copies current platform reality back into a
+-- user's `Frame`, for example after the OS or user moves, resizes, closes, or
+-- changes fullscreen state. When the user is finished with a window, they can
+-- call `FrameSystem.destroy(^frame)`.
+--
+-- Typical usage:
+--|
+--| system := FrameSystem.init()
+--| frame := Frame { id: NEW_FRAME width: 800 height: 600 title: "Frame" }
+--| _ := system.apply(^frame)
+--|
+--| for system.loop() {
+--|     _ := system.update(^frame)
+--|     on system.poll(^frame) {
+--|         None => {}
+--|         Closed => {}
+--|         Resized { width, height } => {}
+--|     }
+--| }
+
+pragma windowed
+
+-- A special frame ID that indicates a new frame should be created when `apply`
+-- is called.
+pub NEW_FRAME :: 0
+
+-- A special frame ID that indicates a frame has been closed, destroyed, or
+-- failed to apply/update. It should not be updated or polled anymore.
+pub CLOSED_FRAME : u16 : 65535
+
+pub FrameSystem :: plex {
+    -- Tracks all currently known frames belonging to this system.
+    frames       [..]FrameInfo
+
+    -- The next ID search start. IDs range from 1 through 65534. Implementations
+    -- should scan the current frame array and reuse the first available ID so
+    -- old IDs are recycled.
+    next_id_hint u16
+}
+
+-- OS-specific information regarding a window with the given ID.
+FrameInfo :: plex {
+    -- The ID of the frame.  This is a unique identifier for the frame within
+    -- the system.
+    id            u16
+
+    -- The queue of events for a given window.  The event system will put events
+    -- per window in their own queue so they can be polled separately
+    events        [..]FrameEvent
+
+    -- Platform-specific information of the window
+    platform_info PlatformFrameInfo
+}
+
+-- Platform-agnostic events that can be sent from your OS to the application
+-- regarding the frame.
+pub FrameEvent :: enum {
+    -- No event was queued for the requested frame.
+    None
+
+    -- The frame was closed by the user
+    Closed
+
+    -- The frame was resized by the user.  The new size is given in the event.
+    -- This event is also guaranteed to be called when the window is first
+    -- created.
+    Resized {
+        width u16
+        height u16
+    }
+}
+
+pub Frame :: plex {
+    -- The ID of the frame.  This is a unique identifier for the frame within
+    -- the system.  A value of `NEW_FRAME` indicates that this frame should be
+    -- created when `apply` is called.
+    id u16
+
+    -- The desired width of the frame.  This is ignored if the frame already
+    -- exists and is not resized.
+    width u16
+
+    -- The desired height of the frame.  This is ignored if the frame already
+    -- exists and is not resized.
+    height u16
+
+    -- The title of the frame.
+    title string
+
+    -- Set to yes if we want fullscreen.  When applying no and we're in
+    -- fullscreen the previous dimensions and position should be restored.
+    full_screen bool
+}
+
+impl FrameSystem {
+    -- Creates an empty frame system ready to allocate frame IDs.
+    pub init :: fn () -> Self {
+        return {
+            frames: nil
+            next_id_hint: 1
+        }
+    }
+
+    pub apply :: fn (system: ^Self, _frame: ^Frame) -> bool {
+        return frame_system_has_id_capacity(system) && no
+    }
+
+    pub loop :: fn (system: ^Self) -> bool {
+        system.frames.clear()
+        return no
+    }
+
+    pub update :: fn (system: ^Self, _frame: ^Frame) -> bool {
+        return frame_system_has_id_capacity(system) && no
+    }
+
+    pub poll :: fn (system: ^Self, _frame: ^Frame) -> FrameEvent {
+        return on frame_system_has_id_capacity(system) {
+            yes => FrameEvent.None
+            else => FrameEvent.None
+        }
+    }
+
+    pub destroy :: fn (system: ^Self, _frame: ^Frame) -> bool {
+        return frame_system_has_id_capacity(system) && no
+    }
+}
+
+frame_system_has_id_capacity :: fn (system: ^FrameSystem) -> bool {
+    return system^.frames.count <= 65534
+}
+
+on "linux" {
+    use os.linux
+
+    PlatformFrameInfo :: plex {
+
+    }
+}
+
+on "windows" {
+    use os.windows
+
+    PlatformFrameInfo :: plex {
+
+    }
+}

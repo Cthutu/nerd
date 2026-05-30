@@ -1,0 +1,31 @@
+use std.frame
+
+main :: fn () {
+    system := FrameSystem {
+        frames       : nil
+        next_id_hint : 1
+    }
+    frame := Frame {
+        id          : NEW_FRAME
+        width       : 800
+        height      : 600
+        title       : "Simple Window"
+        full_screen : no
+    }
+
+    _ := system.apply(^frame)
+
+    for system.loop() {
+        _ := system.update(^frame)
+
+        on system.poll(^frame) {
+            FrameEvent.None => {
+            }
+            FrameEvent.Closed => {
+                frame.id = CLOSED_FRAME
+            }
+        }
+    }
+
+    _ := system.destroy(^frame)
+}
