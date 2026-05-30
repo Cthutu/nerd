@@ -161,6 +161,10 @@ bool  lsp_token_range(const Lexer* lexer,
                       u32          token_index,
                       usize*       out_start,
                       usize*       out_end);
+bool  lsp_use_module_path_range(const LspDocument* doc,
+                                u32                use_index,
+                                usize*             out_start,
+                                usize*             out_end);
 bool  lsp_sema_decl(const Sema* sema, u32 decl_index, const SemaDecl** out);
 bool  lsp_sema_local(const Sema* sema, u32 local_index, const SemaLocal** out);
 bool  lsp_sema_scope(const Sema* sema, u32 scope_index, const SemaScope** out);
@@ -235,6 +239,7 @@ void lsp_handle_did_change(LspState* state, const LspMessage* message);
 void lsp_handle_did_close(LspState* state, const LspMessage* message);
 void lsp_handle_hover(LspState* state, const LspMessage* message);
 void lsp_handle_definition(LspState* state, const LspMessage* message);
+void lsp_handle_document_link(LspState* state, const LspMessage* message);
 void lsp_handle_document_symbol(LspState* state, const LspMessage* message);
 void lsp_handle_semantic_tokens_full(LspState*         state,
                                      const LspMessage* message);

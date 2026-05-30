@@ -99,6 +99,7 @@ struct {
     {"textDocument/didClose", lsp_handle_did_close},
     {"textDocument/hover", lsp_handle_hover},
     {"textDocument/definition", lsp_handle_definition},
+    {"textDocument/documentLink", lsp_handle_document_link},
     {"textDocument/documentSymbol", lsp_handle_document_symbol},
     {"textDocument/semanticTokens/full", lsp_handle_semantic_tokens_full},
     {"textDocument/completion", lsp_handle_completion},
@@ -274,6 +275,14 @@ void lsp_handle_initialise(LspState* state, const LspMessage* message)
     json_object_set_bool(capabilities, arena, "hoverProvider", true);
     json_object_set_bool(capabilities, arena, "definitionProvider", true);
     json_object_set_bool(capabilities, arena, "documentSymbolProvider", true);
+    if (json_get_cstr(message->message,
+                      "params.capabilities.textDocument.documentLink")) {
+        JsonValue* document_link_provider = json_new_object(arena);
+        json_object_set_bool(
+            document_link_provider, arena, "resolveProvider", false);
+        json_object_set_object(
+            capabilities, "documentLinkProvider", document_link_provider);
+    }
     if (json_get_cstr(message->message,
                       "params.capabilities.textDocument.codeAction")) {
         json_object_set_bool(capabilities, arena, "codeActionProvider", true);

@@ -342,7 +342,7 @@ These are open trait-system follow-ups that were previously recorded as
   help, such as `:` versus `::` and unused local fixes.
   - [ ] `:` versus `::` function-definition fix
   - [ ] unused local fixes
-- [ ] Add document links for module imports.
+- [x] Add document links for module imports.
 - [ ] Add workspace symbol search for top-level declarations.
 - [ ] Add Tree-sitter support after the LSP intelligence work is useful:
   - [ ] grammar for Nerd source

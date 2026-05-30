@@ -339,10 +339,10 @@ internal bool lsp_use_is_used(const LspDocument* doc, u32 use_index)
     return false;
 }
 
-internal bool lsp_use_module_path_range(const LspDocument* doc,
-                                        u32                use_index,
-                                        usize*             out_start,
-                                        usize*             out_end)
+bool lsp_use_module_path_range(const LspDocument* doc,
+                               u32                use_index,
+                               usize*             out_start,
+                               usize*             out_end)
 {
     const Ast*   ast   = &doc->front_end.ast;
     const Lexer* lexer = &doc->front_end.lexer;
@@ -385,11 +385,11 @@ internal bool lsp_use_module_path_range(const LspDocument* doc,
         }
 
         if (token->kind != TK_Dot) {
-            return false;
+            break;
         }
     }
 
-    return false;
+    return lsp_token_range(lexer, module->token_index, out_start, out_end);
 }
 
 internal void lsp_add_unused_use_diagnostics(Arena*             arena,
