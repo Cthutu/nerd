@@ -8,13 +8,15 @@
 -- what they want, then calls `FrameSystem.apply(^frame)` to create or mutate
 -- the platform window to match it. Applying a frame whose ID is `NEW_FRAME`
 -- creates a window and writes a live ID back into `frame.id`. Applying a frame
--- whose ID is `CLOSED_FRAME` is a no-op and returns `no`. Failed apply/update
--- operations write `CLOSED_FRAME` so the user's instance becomes inert.
+-- whose ID is `CLOSED_FRAME` is a no-op. Failed apply/update operations write
+-- `CLOSED_FRAME` so the user's instance becomes inert.
 --
 -- `FrameSystem.loop()` pumps the platform message loop and returns `no` once no
 -- live frames remain. `FrameSystem.poll(^frame)` returns one event queued for a
 -- specific frame, or `FrameEvent.None` when that frame's queue is empty. This
 -- keeps multi-window code from mapping event IDs back to user `Frame` values.
+-- When `poll` returns `FrameEvent.Closed`, it also writes `CLOSED_FRAME` to the
+-- frame ID so the user's instance becomes inert.
 --
 -- `FrameSystem.update(^frame)` copies current platform reality back into a
 -- user's `Frame`, for example after the OS or user moves, resizes, closes, or
@@ -25,10 +27,10 @@
 --|
 --| system := FrameSystem.init()
 --| frame := Frame { id: NEW_FRAME width: 800 height: 600 title: "Frame" }
---| _ := system.apply(^frame)
+--| system.apply(^frame)
 --|
 --| for system.loop() {
---|     _ := system.update(^frame)
+--|     system.update(^frame)
 --|     on system.poll(^frame) {
 --|         None => {}
 --|         Closed => {}
@@ -119,8 +121,10 @@ impl FrameSystem {
         }
     }
 
-    pub apply :: fn (system: ^Self, _frame: ^Frame) -> bool {
-        return frame_system_has_id_capacity(system) && no
+    pub apply :: fn (system: ^Self, frame: ^Frame) {
+        on frame_system_has_id_capacity(system) {
+            no => frame.id = CLOSED_FRAME
+        }
     }
 
     pub loop :: fn (system: ^Self) -> bool {
@@ -128,19 +132,24 @@ impl FrameSystem {
         return no
     }
 
-    pub update :: fn (system: ^Self, _frame: ^Frame) -> bool {
-        return frame_system_has_id_capacity(system) && no
-    }
-
-    pub poll :: fn (system: ^Self, _frame: ^Frame) -> FrameEvent {
-        return on frame_system_has_id_capacity(system) {
-            yes => FrameEvent.None
-            else => FrameEvent.None
+    pub update :: fn (system: ^Self, frame: ^Frame) {
+        on frame_system_has_id_capacity(system) {
+            no => frame.id = CLOSED_FRAME
         }
     }
 
-    pub destroy :: fn (system: ^Self, _frame: ^Frame) -> bool {
-        return frame_system_has_id_capacity(system) && no
+    pub poll :: fn (system: ^Self, frame: ^Frame) -> FrameEvent {
+        return on frame_system_has_id_capacity(system) {
+            yes => FrameEvent.None
+            else => {
+                frame.id = CLOSED_FRAME
+                break FrameEvent.Closed
+            }
+        }
+    }
+
+    pub destroy :: fn (_system: ^Self, frame: ^Frame) {
+        frame.id = CLOSED_FRAME
     }
 }
 
