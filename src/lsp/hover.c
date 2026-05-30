@@ -203,6 +203,10 @@ internal u32 lsp_find_field_node_at_token(const Ast* ast, u32 token_index)
     return U32_MAX;
 }
 
+internal string lsp_field_hover_text(const LspDocument* doc,
+                                     Arena*             arena,
+                                     u32                field_node_index);
+
 //------------------------------------------------------------------------------
 // Return the call node that uses one field node as its callee.
 
@@ -1839,6 +1843,202 @@ internal string lsp_expression_hover_text(const LspDocument* doc,
                          STRINGV(type));
 }
 
+internal string lsp_source_test_hover_source(Arena* arena, const Lexer* lexer)
+{
+    StringBuilder sb = {0};
+    sb_init(&sb, arena);
+
+    string source = lexer->source.source;
+    usize  cursor = 0;
+    u32    depth  = 0;
+    u32    index  = 0;
+
+    while (index < array_count(lexer->tokens)) {
+        const Token* token = &lexer->tokens[index];
+        u32 symbol_handle  = token->kind == TK_Symbol
+                                 ? lsp_symbol_handle_at_token(lexer, index)
+                                 : U32_MAX;
+        if (depth == 0 && token->kind == TK_Symbol &&
+            symbol_handle != U32_MAX &&
+            string_eq_cstr(lex_symbol(lexer, symbol_handle), "test") &&
+            index + 2 < array_count(lexer->tokens) &&
+            lexer->tokens[index + 1].kind == TK_String &&
+            lexer->tokens[index + 2].kind == TK_LBrace) {
+            sb_append_string(
+                &sb, string_from(source.data + cursor, token->offset - cursor));
+            sb_format(&sb, "__lsp_source_test_%u :: fn () ", index);
+            cursor = lexer->tokens[index + 2].offset;
+            index += 2;
+            continue;
+        }
+
+        if (token->kind == TK_LBrace) {
+            depth += 1;
+        } else if (token->kind == TK_RBrace && depth > 0) {
+            depth -= 1;
+        }
+        index += 1;
+    }
+
+    sb_append_string(&sb,
+                     string_from(source.data + cursor, source.count - cursor));
+    return sb_to_string(&sb);
+}
+
+internal bool lsp_offset_is_in_source_test(const Lexer* lexer, usize offset)
+{
+    u32 depth = 0;
+    for (u32 index = 0; index < array_count(lexer->tokens); ++index) {
+        const Token* token = &lexer->tokens[index];
+        u32 symbol_handle  = token->kind == TK_Symbol
+                                 ? lsp_symbol_handle_at_token(lexer, index)
+                                 : U32_MAX;
+        if (depth == 0 && token->kind == TK_Symbol &&
+            symbol_handle != U32_MAX &&
+            string_eq_cstr(lex_symbol(lexer, symbol_handle), "test") &&
+            index + 2 < array_count(lexer->tokens) &&
+            lexer->tokens[index + 1].kind == TK_String &&
+            lexer->tokens[index + 2].kind == TK_LBrace) {
+            u32 body_depth = 0;
+            for (u32 body_index = index + 2;
+                 body_index < array_count(lexer->tokens);
+                 ++body_index) {
+                const Token* body_token = &lexer->tokens[body_index];
+                if (body_token->kind == TK_LBrace) {
+                    body_depth += 1;
+                } else if (body_token->kind == TK_RBrace) {
+                    if (body_depth == 0) {
+                        break;
+                    }
+                    body_depth -= 1;
+                    if (body_depth == 0) {
+                        usize end = lex_token_end_offset(lexer, body_token);
+                        return offset >= lexer->tokens[index + 2].offset &&
+                               offset <= end;
+                    }
+                }
+            }
+        }
+
+        if (token->kind == TK_LBrace) {
+            depth += 1;
+        } else if (token->kind == TK_RBrace && depth > 0) {
+            depth -= 1;
+        }
+    }
+
+    return false;
+}
+
+internal string lsp_source_test_hover_text(const LspDocument* doc,
+                                           Arena*             arena,
+                                           usize              offset)
+{
+    if (!lsp_offset_is_in_source_test(&doc->front_end.lexer, offset)) {
+        return s("");
+    }
+
+    u32 line = 0;
+    u32 col  = 0;
+    if (!lex_offset_to_line_col(
+            doc->front_end.lexer.source, offset, &line, &col)) {
+        return s("");
+    }
+
+    Arena temp = {0};
+    arena_init(&temp);
+
+    string generated =
+        lsp_source_test_hover_source(&temp, &doc->front_end.lexer);
+    if (string_eq(generated, doc->front_end.lexer.source.source)) {
+        arena_done(&temp);
+        return s("");
+    }
+
+    ErrorRenderMode previous_mode = error_system_mode();
+    bool            previous_emit = error_system_should_emit_output();
+    error_system_set_mode(ERROR_RENDER_DIAGNOSTICS);
+    error_system_set_emit_output(false);
+
+    ProgramInfo     program = {0};
+    FrontEndOptions options = {
+        .verbose              = false,
+        .release              = false,
+        .require_entry_point  = false,
+        .skip_hir_generation  = true,
+        .keep_partial_results = true,
+    };
+    bool ok = front_end_program(
+        (NerdSource){
+            .source      = generated,
+            .source_path = doc->front_end.lexer.source.source_path,
+        },
+        &options,
+        NULL,
+        &program);
+
+    error_system_set_mode(previous_mode);
+    error_system_set_emit_output(previous_emit);
+
+    string hover = s("");
+    if (ok || array_count(program.modules) > 0) {
+        for (u32 i = 0; i < array_count(program.modules); ++i) {
+            program.modules[i].front_end.sema.program = &program;
+        }
+
+        LspModuleView module = {0};
+        if (lsp_program_module_view(
+                &program, program.root_module_index, &module)) {
+            usize generated_offset = 0;
+            if (lex_line_col_to_offset(
+                    module.lexer->source, line, col, &generated_offset)) {
+                u32    token_end = 0;
+                Token* token     = lex_find(
+                    (Lexer*)module.lexer, generated_offset, &token_end);
+                if (token != NULL) {
+                    u32 token_index =
+                        lsp_token_index_from_pointer(module.lexer, token);
+                    LspDocument generated_doc = {
+                        .source    = generated,
+                        .program   = program,
+                        .front_end = program.modules[program.root_module_index]
+                                         .front_end,
+                    };
+
+                    if (token->kind == TK_Symbol) {
+                        u32 local_index = lsp_find_local_index_for_token(
+                            &generated_doc, token_index);
+                        if (local_index != sema_no_local()) {
+                            hover = lsp_local_hover_text(
+                                &generated_doc, arena, local_index);
+                        }
+                        if (hover.count == 0) {
+                            u32 ref_node_index =
+                                lsp_find_symbol_ref_node_at_token(
+                                    &generated_doc.front_end.ast, token_index);
+                            if (ref_node_index != U32_MAX) {
+                                hover = lsp_expression_hover_text(
+                                    &generated_doc, arena, ref_node_index);
+                            }
+                        }
+                    } else if (token->kind == TK_Integer) {
+                        u32 field_node_index = lsp_find_field_node_at_token(
+                            &generated_doc.front_end.ast, token_index);
+                        if (field_node_index != U32_MAX) {
+                            hover = lsp_field_hover_text(
+                                &generated_doc, arena, field_node_index);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    program_info_done(&program);
+    arena_done(&temp);
+    return hover;
+}
+
 internal bool
 lsp_block_contains_node(const Ast* ast, u32 block_node_index, u32 node_index)
 {
@@ -3418,6 +3618,14 @@ void lsp_handle_hover(LspState* state, const LspMessage* message)
                 }
             }
 
+            string source_test_hover =
+                lsp_source_test_hover_text(doc, message->arena, offset);
+            if (source_test_hover.count != 0) {
+                lsp_set_markdown_hover(
+                    response, message->arena, source_test_hover);
+                break;
+            }
+
             usize token_end =
                 lex_token_end_offset(&doc->front_end.lexer, token);
             string raw_text = string_from(
@@ -3523,6 +3731,14 @@ void lsp_handle_hover(LspState* state, const LspMessage* message)
             if (expression_hover.count != 0) {
                 lsp_set_markdown_hover(
                     response, message->arena, expression_hover);
+                break;
+            }
+
+            string source_test_hover =
+                lsp_source_test_hover_text(doc, message->arena, offset);
+            if (source_test_hover.count != 0) {
+                lsp_set_markdown_hover(
+                    response, message->arena, source_test_hover);
                 break;
             }
 
