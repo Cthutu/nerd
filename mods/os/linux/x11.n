@@ -24,8 +24,19 @@ pub XBool :: i32
 -- Xlib long value on the supported Linux ABI.
 pub XLong :: i64
 
+-- Xlib unsigned long value on the supported Linux ABI.
+pub XULong :: u64
+
 -- Xlib key symbol value.
 pub XKeySym :: u64
+
+pub X_SUCCESS :: 0 -- Xlib success status.
+
+pub X_FALSE :: 0 -- Xlib false value.
+
+pub X_ANY_PROPERTY_TYPE :: 0 -- Xlib wildcard property type.
+
+pub X_ATOM_CARDINAL :: 6 -- Xlib `XA_CARDINAL` atom.
 
 pub X_EVENT_KEY_PRESS        :: 2  -- Xlib `KeyPress` event type.
 pub X_EVENT_KEY_RELEASE      :: 3  -- Xlib `KeyRelease` event type.
@@ -200,6 +211,30 @@ ffi "X11" {
                       height_return       : ^u32,
                       border_width_return : ^u32,
                       depth_return        : ^u32) -> XStatus
+
+    pub XGetWindowProperty (display              : XDisplay,
+                            window               : XWindow,
+                            property             : XAtom,
+                            long_offset          : XLong,
+                            long_length          : XLong,
+                            delete               : XBool,
+                            req_type             : XAtom,
+                            actual_type_return   : ^XAtom,
+                            actual_format_return : ^i32,
+                            nitems_return        : ^XULong,
+                            bytes_after_return   : ^XULong,
+                            prop_return          : ^^u8) -> i32
+
+    pub XTranslateCoordinates (display       : XDisplay,
+                               source_window : XWindow,
+                               dest_window   : XWindow,
+                               source_x      : i32,
+                               source_y      : i32,
+                               dest_x_return : ^i32,
+                               dest_y_return : ^i32,
+                               child_return  : ^XWindow) -> XBool
+
+    pub XFree (data: ^void) -> i32
 
     pub XFlush (display: XDisplay) -> i32
 }

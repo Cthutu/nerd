@@ -306,10 +306,13 @@ on "linux" {
         wm_delete_window    XAtom    -- Window-manager close protocol atom.
         wm_state            XAtom    -- EWMH `_NET_WM_STATE` atom.
         wm_state_fullscreen XAtom    -- EWMH fullscreen-state atom.
-        x                   i32      -- Last known normal x position.
-        y                   i32      -- Last known normal y position.
+        frame_extents       XAtom    -- EWMH `_NET_FRAME_EXTENTS` atom.
+        x                   i32      -- Last known normal outer-frame x position.
+        y                   i32      -- Last known normal outer-frame y position.
         width               u16      -- Last known normal width.
         height              u16      -- Last known normal height.
+        frame_left          i32      -- Left window-manager decoration extent.
+        frame_top           i32      -- Top window-manager decoration extent.
         restore_x           i32      -- Position to restore when leaving fullscreen.
         restore_y           i32      -- Position to restore when leaving fullscreen.
         restore_width       u16      -- Width to restore when leaving fullscreen.
@@ -335,6 +338,7 @@ on "linux" {
         info.platform_info.wm_delete_window = 0
         info.platform_info.wm_state = 0
         info.platform_info.wm_state_fullscreen = 0
+        info.platform_info.frame_extents = 0
         info.platform_info.full_screen = no
     }
 
@@ -368,6 +372,73 @@ on "linux" {
         }
     }
 
+    -- Refreshes the window-manager decoration extents used to convert client
+    -- coordinates into outer-frame coordinates.
+    frame_linux_update_frame_extents :: fn (info: ^FrameInfo) {
+        actual_type : XAtom
+        actual_format : i32
+        item_count : XULong
+        bytes_after : XULong
+        data : ^u8
+
+        status := XGetWindowProperty(info.platform_info.display,
+                                     info.platform_info.window,
+                                     info.platform_info.frame_extents,
+                                     0,
+                                     4,
+                                     X_FALSE,
+                                     X_ATOM_CARDINAL,
+                                     ^actual_type,
+                                     ^actual_format,
+                                     ^item_count,
+                                     ^bytes_after,
+                                     ^data)
+        on status != X_SUCCESS || data == nil => return
+        defer XFree(data.as(^void))
+
+        on actual_type != X_ATOM_CARDINAL ||
+           actual_format != 32 ||
+           item_count < 4 => return
+
+        extents := data.as(^void).as(^XULong)
+        info.platform_info.frame_left = extents[0].as(i32)
+        info.platform_info.frame_top = extents[2].as(i32)
+    }
+
+    -- Captures current window geometry, saving the outer-frame position for
+    -- later restoration from fullscreen.
+    frame_linux_capture_geometry :: fn (info: ^FrameInfo,
+                                        fallback_x: i32,
+                                        fallback_y: i32,
+                                        width: u16,
+                                        height: u16) {
+        frame_linux_update_frame_extents(info)
+
+        root := XRootWindow(info.platform_info.display,
+                            XDefaultScreen(info.platform_info.display))
+        client_x := fallback_x
+        client_y := fallback_y
+        child : XWindow
+        translated := XTranslateCoordinates(info.platform_info.display,
+                                            info.platform_info.window,
+                                            root,
+                                            0,
+                                            0,
+                                            ^client_x,
+                                            ^client_y,
+                                            ^child)
+        on translated == X_FALSE => {
+            client_x = fallback_x
+            client_y = fallback_y
+        }
+
+        frame_linux_remember_normal_geometry(info,
+                                             client_x - info.platform_info.frame_left,
+                                             client_y - info.platform_info.frame_top,
+                                             width,
+                                             height)
+    }
+
     -- Sends an EWMH fullscreen-state request to the window manager.
     frame_linux_send_fullscreen :: fn (info: ^FrameInfo, full_screen: bool) {
         event : XEvent
@@ -398,6 +469,11 @@ on "linux" {
 
         on frame.full_screen {
             yes => {
+                frame_linux_capture_geometry(info,
+                                             info.platform_info.x,
+                                             info.platform_info.y,
+                                             info.platform_info.width,
+                                             info.platform_info.height)
                 info.platform_info.restore_x = info.platform_info.x
                 info.platform_info.restore_y = info.platform_info.y
                 info.platform_info.restore_width = info.platform_info.width
@@ -577,6 +653,7 @@ on "linux" {
         wm_state_fullscreen := XInternAtom(display,
                                           frame_c_string_temp("_NET_WM_STATE_FULLSCREEN"),
                                           0)
+        frame_extents := XInternAtom(display, frame_c_string_temp("_NET_FRAME_EXTENTS"), 0)
         _ := XSetWMProtocols(display, window, ^wm_delete, 1)
         _ := XMapWindow(display, window)
         _ := XFlush(display)
@@ -587,6 +664,7 @@ on "linux" {
         platform_info.wm_delete_window = wm_delete
         platform_info.wm_state = wm_state
         platform_info.wm_state_fullscreen = wm_state_fullscreen
+        platform_info.frame_extents = frame_extents
         platform_info.width = frame.width
         platform_info.height = frame.height
         platform_info.restore_width = frame.width
@@ -662,11 +740,11 @@ on "linux" {
         frame.width = width.as(u16)
         frame.height = height.as(u16)
         frame.full_screen = info.platform_info.full_screen
-        frame_linux_remember_normal_geometry(info,
-                                             x,
-                                             y,
-                                             width.as(u16),
-                                             height.as(u16))
+        frame_linux_capture_geometry(info,
+                                     x,
+                                     y,
+                                     width.as(u16),
+                                     height.as(u16))
     }
 
     -- Converts one native X11 event into queued frame events.
@@ -684,11 +762,11 @@ on "linux" {
                 configure := event.as(usize).as(^XConfigureEvent)
                 width := configure.width.as(u16)
                 height := configure.height.as(u16)
-                frame_linux_remember_normal_geometry(info,
-                                                     configure.x,
-                                                     configure.y,
-                                                     width,
-                                                     height)
+                frame_linux_capture_geometry(info,
+                                             configure.x,
+                                             configure.y,
+                                             width,
+                                             height)
                 frame_linux_push_resize(info, width, height)
             }
             X_EVENT_CLIENT_MESSAGE => {
