@@ -68,6 +68,12 @@ pub X_KEYSYM_PAGE_UP   :: 0xff55 -- Xlib keysym for Page Up.
 pub X_KEYSYM_PAGE_DOWN :: 0xff56 -- Xlib keysym for Page Down.
 pub X_KEYSYM_END       :: 0xff57 -- Xlib keysym for End.
 pub X_KEYSYM_INSERT    :: 0xff63 -- Xlib keysym for Insert.
+pub X_KEYSYM_SHIFT_LEFT   :: 0xffe1 -- Xlib keysym for left Shift.
+pub X_KEYSYM_SHIFT_RIGHT  :: 0xffe2 -- Xlib keysym for right Shift.
+pub X_KEYSYM_CONTROL_LEFT :: 0xffe3 -- Xlib keysym for left Control.
+pub X_KEYSYM_CONTROL_RIGHT :: 0xffe4 -- Xlib keysym for right Control.
+pub X_KEYSYM_ALT_LEFT     :: 0xffe9 -- Xlib keysym for left Alt.
+pub X_KEYSYM_ALT_RIGHT    :: 0xffea -- Xlib keysym for right Alt.
 pub X_KEYSYM_F1        :: 0xffbe -- Xlib keysym for F1.
 pub X_KEYSYM_F2        :: 0xffbf -- Xlib keysym for F2.
 pub X_KEYSYM_F3        :: 0xffc0 -- Xlib keysym for F3.

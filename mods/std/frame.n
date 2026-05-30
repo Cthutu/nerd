@@ -35,7 +35,12 @@
 --|         None => {}
 --|         Closed => {}
 --|         Resized { width, height } => {}
---|         KeyPress { scan_code } => {}
+--|         KeyPress { scan_code } => on scan_code {
+--|             Enter => on system.is_alt_down() => {
+--|                 frame.full_screen = !frame.full_screen
+--|                 system.apply(^frame)
+--|             }
+--|         }
 --|         KeyRelease { scan_code } => {}
 --|         Character { codepoint } => {}
 --|     }
@@ -133,6 +138,12 @@ pub FrameScanCode :: enum {
     F10        = 274
     F11        = 275
     F12        = 276
+    LeftShift    = 277
+    RightShift   = 278
+    LeftControl  = 279
+    RightControl = 280
+    LeftAlt      = 281
+    RightAlt     = 282
 }
 
 pub FrameSystem :: plex {
@@ -143,6 +154,14 @@ pub FrameSystem :: plex {
     -- should scan the current frame array and reuse the first available ID so
     -- old IDs are recycled.
     next_id_hint u16
+
+    -- Modifier state tracked from queued key press/release events.
+    left_shift_down    bool
+    right_shift_down   bool
+    left_control_down  bool
+    right_control_down bool
+    left_alt_down      bool
+    right_alt_down     bool
 }
 
 -- OS-specific information regarding a window with the given ID.
@@ -270,8 +289,14 @@ impl FrameSystem {
     -- Creates an empty frame system ready to allocate frame IDs.
     pub init :: fn () -> Self {
         return {
-            frames: nil
-            next_id_hint: 1
+            frames             : nil
+            next_id_hint       : 1
+            left_shift_down    : no
+            right_shift_down   : no
+            left_control_down  : no
+            right_control_down : no
+            left_alt_down      : no
+            right_alt_down     : no
         }
     }
 
@@ -294,6 +319,86 @@ impl FrameSystem {
     pub destroy :: fn (system: ^Self, frame: ^Frame) {
         frame_destroy_impl(system, frame)
     }
+
+    pub is_shift_down :: fn (system: ^Self) -> bool {
+        return system.left_shift_down || system.right_shift_down
+    }
+
+    pub is_left_shift_down :: fn (system: ^Self) -> bool {
+        return system.left_shift_down
+    }
+
+    pub is_right_shift_down :: fn (system: ^Self) -> bool {
+        return system.right_shift_down
+    }
+
+    pub is_ctrl_down :: fn (system: ^Self) -> bool {
+        return system.left_control_down || system.right_control_down
+    }
+
+    pub is_left_ctrl_down :: fn (system: ^Self) -> bool {
+        return system.left_control_down
+    }
+
+    pub is_right_ctrl_down :: fn (system: ^Self) -> bool {
+        return system.right_control_down
+    }
+
+    pub is_control_down :: fn (system: ^Self) -> bool {
+        return system.is_ctrl_down()
+    }
+
+    pub is_left_control_down :: fn (system: ^Self) -> bool {
+        return system.is_left_ctrl_down()
+    }
+
+    pub is_right_control_down :: fn (system: ^Self) -> bool {
+        return system.is_right_ctrl_down()
+    }
+
+    pub is_alt_down :: fn (system: ^Self) -> bool {
+        return system.left_alt_down || system.right_alt_down
+    }
+
+    pub is_left_alt_down :: fn (system: ^Self) -> bool {
+        return system.left_alt_down
+    }
+
+    pub is_right_alt_down :: fn (system: ^Self) -> bool {
+        return system.right_alt_down
+    }
+
+    pub is_mod_down :: fn (system: ^Self) -> bool {
+        return system.is_alt_down()
+    }
+}
+
+test "FrameSystem modifier helpers report combined and sided state" {
+    system := FrameSystem.init()
+    assert !system.is_shift_down()
+    assert !system.is_ctrl_down()
+    assert !system.is_control_down()
+    assert !system.is_alt_down()
+    assert !system.is_mod_down()
+
+    system.left_shift_down = yes
+    assert system.is_shift_down()
+    assert system.is_left_shift_down()
+    assert !system.is_right_shift_down()
+
+    system.right_control_down = yes
+    assert system.is_ctrl_down()
+    assert system.is_control_down()
+    assert !system.is_left_ctrl_down()
+    assert system.is_right_ctrl_down()
+    assert !system.is_left_control_down()
+    assert system.is_right_control_down()
+
+    system.left_alt_down = yes
+    assert system.is_alt_down()
+    assert system.is_mod_down()
+    assert system.is_left_alt_down()
+    assert !system.is_right_alt_down()
 }
 
 on "linux" {
@@ -515,6 +620,12 @@ on "linux" {
             X_KEYSYM_ARROW_DOWN => return FrameScanCode.ArrowDown
             X_KEYSYM_ARROW_LEFT => return FrameScanCode.ArrowLeft
             X_KEYSYM_ARROW_RIGHT => return FrameScanCode.ArrowRight
+            X_KEYSYM_SHIFT_LEFT => return FrameScanCode.LeftShift
+            X_KEYSYM_SHIFT_RIGHT => return FrameScanCode.RightShift
+            X_KEYSYM_CONTROL_LEFT => return FrameScanCode.LeftControl
+            X_KEYSYM_CONTROL_RIGHT => return FrameScanCode.RightControl
+            X_KEYSYM_ALT_LEFT => return FrameScanCode.LeftAlt
+            X_KEYSYM_ALT_RIGHT => return FrameScanCode.RightAlt
             X_KEYSYM_F1 => return FrameScanCode.F1
             X_KEYSYM_F2 => return FrameScanCode.F2
             X_KEYSYM_F3 => return FrameScanCode.F3
@@ -542,6 +653,20 @@ on "linux" {
         }
 
         return FrameScanCode.Unknown
+    }
+
+    -- Updates system-level modifier state from a key transition.
+    frame_linux_update_modifier_state :: fn (system: ^FrameSystem,
+                                             scan_code: FrameScanCode,
+                                             is_down: bool) {
+        on scan_code {
+            LeftShift => system.left_shift_down = is_down
+            RightShift => system.right_shift_down = is_down
+            LeftControl => system.left_control_down = is_down
+            RightControl => system.right_control_down = is_down
+            LeftAlt => system.left_alt_down = is_down
+            RightAlt => system.right_alt_down = is_down
+        }
     }
 
     -- Decodes the first UTF-8 codepoint from Xlib text translation output.
@@ -573,9 +698,14 @@ on "linux" {
     }
 
     -- Queues key and character events from an X11 key event.
-    frame_linux_push_key_event :: fn (info: ^FrameInfo, event: ^XKeyEvent, is_down: bool) {
+    frame_linux_push_key_event :: fn (system: ^FrameSystem,
+                                      info: ^FrameInfo,
+                                      event: ^XKeyEvent,
+                                      is_down: bool) {
         keysym := XLookupKeysym(event, 0)
         scan_code := frame_linux_scan_code_from_keysym(keysym)
+        frame_linux_update_modifier_state(system, scan_code, is_down)
+
         on is_down {
             yes => info.events.push(FrameEvent.KeyPress { scan_code: scan_code })
             no => info.events.push(FrameEvent.KeyRelease { scan_code: scan_code })
@@ -748,15 +878,15 @@ on "linux" {
     }
 
     -- Converts one native X11 event into queued frame events.
-    frame_linux_handle_event :: fn (info: ^FrameInfo, event: ^XEvent) {
+    frame_linux_handle_event :: fn (system: ^FrameSystem, info: ^FrameInfo, event: ^XEvent) {
         on event.type {
             X_EVENT_KEY_PRESS => {
                 key := event.as(usize).as(^XKeyEvent)
-                frame_linux_push_key_event(info, key, yes)
+                frame_linux_push_key_event(system, info, key, yes)
             }
             X_EVENT_KEY_RELEASE => {
                 key := event.as(usize).as(^XKeyEvent)
-                frame_linux_push_key_event(info, key, no)
+                frame_linux_push_key_event(system, info, key, no)
             }
             X_EVENT_CONFIGURE_NOTIFY => {
                 configure := event.as(usize).as(^XConfigureEvent)
@@ -797,7 +927,7 @@ on "linux" {
             for info.platform_info.display != nil && XPending(info.platform_info.display) > 0 {
                 event : XEvent
                 _ := XNextEvent(info.platform_info.display, ^event)
-                frame_linux_handle_event(info, ^event)
+                frame_linux_handle_event(system, info, ^event)
             }
 
             on info.id != CLOSED_FRAME => return yes

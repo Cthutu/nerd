@@ -1,10 +1,7 @@
 use std.frame
 
 main :: fn () {
-    system := FrameSystem {
-        frames       : nil
-        next_id_hint : 1
-    }
+    system := FrameSystem.init()
     frame := Frame {
         id          : NEW_FRAME
         width       : 800
@@ -27,9 +24,11 @@ main :: fn () {
                 on scan_code {
                     Escape => system.destroy(^frame)
                     Q => system.destroy(^frame)
-                    F => {
-                        frame.full_screen = !frame.full_screen
-                        system.apply(^frame)
+                    Enter => {
+                        on system.is_alt_down() => {
+                            frame.full_screen = !frame.full_screen
+                            system.apply(^frame)
+                        }
                     }
                 }
             }
