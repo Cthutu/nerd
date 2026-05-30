@@ -229,6 +229,15 @@ pub Frame :: plex {
     full_screen bool
 }
 
+-- Filled rectangle in client-area pixel coordinates.
+pub FramePixelRect :: plex {
+    x      u16  -- Left client coordinate.
+    y      u16  -- Top client coordinate.
+    width  u16  -- Rectangle width in client pixels.
+    height u16  -- Rectangle height in client pixels.
+    colour u32  -- Packed 0xAARRGGBB colour. Backends may ignore alpha.
+}
+
 -- Copies a Nerd string into temporary NUL-terminated storage for C APIs.
 frame_c_string_temp :: fn (text: string) -> ^i8 {
     bytes := temp_arena.alloc_bytes(text.count + 1)
@@ -312,6 +321,12 @@ impl FrameSystem {
 
     pub destroy :: fn (system: ^Self, frame: ^Frame) {
         frame_destroy_impl(system, frame)
+    }
+
+    pub present_rects :: fn (system : ^Self,
+                             frame  : ^Frame,
+                             rects  : []FramePixelRect) {
+        frame_present_rects_impl(system, frame, rects)
     }
 
     pub is_shift_down :: fn (system: ^Self) -> bool {
@@ -946,6 +961,40 @@ on "linux" {
         frame.id = CLOSED_FRAME
     }
 
+    frame_present_rects_impl :: fn (system : ^FrameSystem,
+                                    frame  : ^Frame,
+                                    rects  : []FramePixelRect) {
+        on frame.id == CLOSED_FRAME || rects.count == 0 => return
+
+        info := frame_system_find_info(system, frame.id)
+        on info == nil ||
+            info.platform_info.display == nil ||
+            info.platform_info.window == 0 => return
+
+        gc := XCreateGC(info.platform_info.display,
+                        info.platform_info.window,
+                        0,
+                        nil)
+        on gc == nil => return
+        defer XFreeGC(info.platform_info.display, gc)
+
+        for rect in rects {
+            on rect.width == 0 || rect.height == 0 => again
+
+            colour := (rect.colour & 0x00ffffff).as(XULong)
+            _ := XSetForeground(info.platform_info.display, gc, colour)
+            _ := XFillRectangle(info.platform_info.display,
+                                info.platform_info.window,
+                                gc,
+                                rect.x.as(i32),
+                                rect.y.as(i32),
+                                rect.width.as(u32),
+                                rect.height.as(u32))
+        }
+
+        _ := XFlush(info.platform_info.display)
+    }
+
 }
 
 on "windows" {
@@ -981,6 +1030,11 @@ on "windows" {
     frame_destroy_impl :: fn (_system: ^FrameSystem, frame: ^Frame) {
         on frame.id == CLOSED_FRAME => return
         frame.id = CLOSED_FRAME
+    }
+
+    frame_present_rects_impl :: fn (_system : ^FrameSystem,
+                                    _frame  : ^Frame,
+                                    _rects  : []FramePixelRect) {
     }
 
 }

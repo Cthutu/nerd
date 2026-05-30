@@ -30,6 +30,9 @@ pub XULong :: u64
 -- Xlib key symbol value.
 pub XKeySym :: u64
 
+-- Opaque Xlib graphics context handle.
+pub XGC :: ^void
+
 pub X_SUCCESS :: 0  -- Xlib success status.
 
 pub X_FALSE :: 0  -- Xlib false value.
@@ -195,6 +198,21 @@ ffi "X11" {
                                propagate  : XBool,
                                event_mask : XLong,
                                event_send : ^XEvent) -> XStatus
+    pub XCreateGC             (display    : XDisplay,
+                               drawable   : XWindow,
+                               value_mask : XULong,
+                               values     : ^void) -> XGC
+    pub XSetForeground        (display    : XDisplay,
+                               gc         : XGC,
+                               foreground : XULong) -> i32
+    pub XFillRectangle        (display  : XDisplay,
+                               drawable : XWindow,
+                               gc       : XGC,
+                               x        : i32,
+                               y        : i32,
+                               width    : u32,
+                               height   : u32) -> i32
+    pub XFreeGC               (display: XDisplay, gc: XGC) -> i32
     pub XDestroyWindow        (display: XDisplay, window: XWindow) -> i32
     pub XPending              (display: XDisplay) -> i32
     pub XNextEvent            (display: XDisplay, event_return: ^XEvent) -> i32

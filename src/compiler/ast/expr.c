@@ -1511,12 +1511,10 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
             bool is_tuple = false;
             for (;;) {
                 if (state->token.kind == TK_Comma) {
-                    is_tuple = true;
-                    if (!ast_next_token(state)) {
-                        return false;
-                    }
-                    if (ast_peek_kind_at(state, 0) == TK_RParen) {
-                        if (!ast_expect_token(state, TK_RParen)) {
+                    is_tuple           = true;
+                    state->token_index = state->token.token_index + 1;
+                    if (ast_expr_cursor_kind(state) == TK_RParen) {
+                        if (!ast_next_token(state)) {
                             return false;
                         }
                         break;
@@ -1965,6 +1963,7 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
                     continue;
                 }
                 if (!state->stop_before_param_separator &&
+                    state->token.kind != TK_RParen &&
                     ast_peek_kind_at(state, 0) == TK_Comma) {
                     if (!ast_expect_token(state, TK_Comma) ||
                         !ast_next_token(state)) {
@@ -1980,10 +1979,7 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
             }
         }
         if (state->token.kind == TK_RParen) {
-            if (!empty_call && !ast_next_token(state)) {
-                array_free(arg_nodes);
-                return false;
-            }
+            state->token_index = state->token.token_index + 1;
         } else if (!ast_expect_token(state, TK_RParen)) {
             array_free(arg_nodes);
             return false;

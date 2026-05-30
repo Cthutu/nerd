@@ -4305,6 +4305,52 @@ internal LlvmValue llvm_address_of_expr(LlvmFunctionContext* ctx,
                                         const HirFunction*   function,
                                         u32                  expr_index);
 
+internal LlvmValue llvm_emit_expr_as_type(LlvmFunctionContext* ctx,
+                                          const HirFunction*   function,
+                                          u32                  expr_index,
+                                          u32                  target_type)
+{
+    if (expr_index >= array_count(ctx->hir->exprs)) {
+        return (LlvmValue){0};
+    }
+
+    const HirExpr* expr = &ctx->hir->exprs[expr_index];
+    if (expr->kind == HIR_EXPR_Tuple &&
+        llvm_type_kind(ctx->sema, target_type) == STK_Tuple) {
+        const SemaType* tuple_type = &ctx->sema->types[target_type];
+        if (tuple_type->param_count != expr->arg_count) {
+            return (LlvmValue){0};
+        }
+
+        Array(LlvmValue) values = NULL;
+        for (u32 i = 0; i < expr->arg_count; ++i) {
+            const HirCallArg* arg = &ctx->hir->call_args[expr->first_arg + i];
+            u32               item_type =
+                ctx->sema->type_param_types[tuple_type->first_param_type + i];
+            LlvmValue item = llvm_emit_expr_as_type(
+                ctx, function, arg->expr_index, item_type);
+            if (!item.ok) {
+                array_free(values);
+                return (LlvmValue){0};
+            }
+            item = llvm_coerce_value_to_type(ctx, item, item_type);
+            if (!item.ok) {
+                array_free(values);
+                return (LlvmValue){0};
+            }
+            array_push(values, item);
+        }
+
+        LlvmValue result = llvm_build_aggregate_value(
+            ctx, target_type, values, expr->arg_count);
+        array_free(values);
+        return result;
+    }
+
+    LlvmValue value = llvm_emit_expr(ctx, function, expr_index);
+    return llvm_coerce_value_to_type(ctx, value, target_type);
+}
+
 internal LlvmValue
 llvm_emit_imported_constant_value(LlvmFunctionContext* ctx,
                                   const HirFunction*   function,
@@ -9074,6 +9120,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     }
 
                     sb_format(ctx->sb, STRINGP ":\n", STRINGV(body_label));
+                    ctx->block_terminated = false;
                     llvm_debug_emit_step_anchor(
                         ctx, branch->source_line, branch->source_path);
                     llvm_bind_symbol_value(
@@ -9201,10 +9248,10 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 }
 
                 sb_format(ctx->sb, STRINGP ":\n", STRINGV(body_label));
+                ctx->block_terminated = false;
                 llvm_debug_emit_step_anchor(
                     ctx, branch->source_line, branch->source_path);
                 if (llvm_type_is_void(ctx->sema, expr->type_index)) {
-                    ctx->block_terminated = false;
                     if (!llvm_emit_block(
                             ctx, function, branch->body_block_index)) {
                         array_free(phi_values);
@@ -11298,7 +11345,10 @@ internal bool llvm_emit_let(LlvmFunctionContext* ctx,
                          expr->kind == HIR_EXPR_DefaultValue)) {
         value = llvm_default_value(ctx, stmt->type_index);
     } else {
+        bool old_discard_expr_value = ctx->discard_expr_value;
+        ctx->discard_expr_value     = false;
         value = llvm_emit_expr(ctx, function, stmt->expr_index);
+        ctx->discard_expr_value = old_discard_expr_value;
     }
     if (!value.ok) {
         return false;
@@ -11868,7 +11918,8 @@ internal bool llvm_emit_return(LlvmFunctionContext* ctx,
 
     bool old_discard_expr_value = ctx->discard_expr_value;
     ctx->discard_expr_value     = false;
-    LlvmValue value         = llvm_emit_expr(ctx, function, stmt->expr_index);
+    LlvmValue value =
+        llvm_emit_expr_as_type(ctx, function, stmt->expr_index, return_type);
     ctx->discard_expr_value = old_discard_expr_value;
     if (!value.ok) {
         return false;

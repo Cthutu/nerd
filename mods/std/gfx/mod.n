@@ -116,6 +116,49 @@ gfx_pixel_layer_index :: fn (layer: ^PixelLayer, x: u32, y: u32) -> usize {
     return (y * layer.width.as(u32) + x).as(usize)
 }
 
+-- Returns the integer presentation scale for a layer in a frame.
+gfx_pixel_layer_present_scale :: fn (frame: ^Frame, layer: ^PixelLayer) -> u16 {
+    on layer.mode {
+        FitToWindow { pixel_scale } => {
+            scale := pixel_scale
+            on scale == 0 => scale = 1
+            return scale
+        }
+        FixedSizeAutoScale { width, height } => {
+            virtual_width := width
+            virtual_height := height
+            on virtual_width == 0 => virtual_width = 1
+            on virtual_height == 0 => virtual_height = 1
+
+            scale_x := frame.width.as(u32) / virtual_width.as(u32)
+            scale_y := frame.height.as(u32) / virtual_height.as(u32)
+            scale := on scale_x < scale_y => scale_x else scale_y
+            on scale == 0 => scale = 1
+            return gfx_u32_to_u16_size(scale)
+        }
+    }
+
+    return 1
+}
+
+-- Returns the left/top client offset for a scaled layer.
+gfx_pixel_layer_present_offset :: fn (frame : ^Frame,
+                                      layer : ^PixelLayer,
+                                      scale : u16) -> (u16, u16) {
+    on layer.mode {
+        FitToWindow { pixel_scale: _ } => return (0, 0)
+        FixedSizeAutoScale { width: _, height: _ } => {
+            draw_width := layer.width.as(u32) * scale.as(u32)
+            draw_height := layer.height.as(u32) * scale.as(u32)
+            x := on frame.width.as(u32) > draw_width => (frame.width.as(u32) - draw_width) / 2 else 0
+            y := on frame.height.as(u32) > draw_height => (frame.height.as(u32) - draw_height) / 2 else 0
+            return (gfx_u32_to_u16_size(x), gfx_u32_to_u16_size(y))
+        }
+    }
+
+    return (0, 0)
+}
+
 impl PixelLayer {
 
     -- Returns the current virtual pixel width.
@@ -227,7 +270,7 @@ impl GfxSystem {
     }
 
     -- Updates frame-sized layers and presents all layers for `frame`.
-    pub render :: fn (system: ^Self, frame: ^Frame) {
+    pub render :: fn (system: ^Self, frame_system: ^FrameSystem, frame: ^Frame) {
         for layer in system.pixel_layers {
             on layer.frame_id == frame.id => {
                 dimensions := gfx_pixel_layer_dimensions(frame, layer.mode)
@@ -239,7 +282,7 @@ impl GfxSystem {
             }
         }
 
-        gfx_render_impl(system, frame)
+        gfx_render_impl(system, frame_system, frame)
     }
 
 }
@@ -247,7 +290,32 @@ impl GfxSystem {
 -- Backend presentation hook. The first milestone stabilises the layer API; GLX
 -- and WGL implementations will upload pixel layers as nearest-filtered
 -- textures.
-gfx_render_impl :: fn (_system: ^GfxSystem, _frame: ^Frame) {
+gfx_render_impl :: fn (system       : ^GfxSystem,
+                       frame_system : ^FrameSystem,
+                       frame        : ^Frame) {
+    for layer in system.pixel_layers {
+        on layer.frame_id != frame.id => again
+        on layer.data.count == 0 => again
+
+        scale := gfx_pixel_layer_present_scale(frame, layer)
+        offset := gfx_pixel_layer_present_offset(frame, layer, scale)
+        rects := temp_arena.alloc_array[FramePixelRect](layer.data.count)
+
+        for y: u32 = 0; y < layer.height.as(u32); y += 1 {
+            for x: u32 = 0; x < layer.width.as(u32); x += 1 {
+                index := gfx_pixel_layer_index(layer, x, y)
+                rects[index] = FramePixelRect {
+                    x      : gfx_u32_to_u16_size(offset.0.as(u32) + x * scale.as(u32))
+                    y      : gfx_u32_to_u16_size(offset.1.as(u32) + y * scale.as(u32))
+                    width  : scale
+                    height : scale
+                    colour : layer.data[index]
+                }
+            }
+        }
+
+        frame_system.present_rects(frame, rects)
+    }
 }
 
 test {
@@ -316,7 +384,8 @@ test "fit-to-window pixel layer follows frame size" {
 
     frame.width = 24
     frame.height = 20
-    gfx.render(^frame)
+    frame_system := FrameSystem.init()
+    gfx.render(^frame_system, ^frame)
     assert layer.pixel_width() == 6
     assert layer.pixel_height() == 5
 }

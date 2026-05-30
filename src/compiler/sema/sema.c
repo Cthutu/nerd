@@ -7437,6 +7437,21 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
                                       sema);
     case AK_Call:
         {
+            const AstNode* callee = &ast->nodes[node->a];
+            if (callee->kind == AK_Index) {
+                const AstNode* generic_target = &ast->nodes[callee->a];
+                bool explicit_generic_call = generic_target->kind == AK_Field;
+                if (generic_target->kind == AK_SymbolRef) {
+                    u32 decl_index = sema_find_decl(sema, generic_target->a);
+                    explicit_generic_call =
+                        decl_index != sema_no_decl() &&
+                        sema->decls[decl_index].kind == SK_GenericFunction;
+                }
+                if (explicit_generic_call) {
+                    sema_mark_type_expr_nodes(ast, sema, callee->b);
+                }
+            }
+
             if (!sema_resolve_node_refs(lexer,
                                         ast,
                                         owner_decl_index,
@@ -12533,10 +12548,21 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
 
             const SemaDecl* source_decl =
                 &source_sema->decls[source_decl_index];
+            if (source_decl->value_node_index >=
+                array_count(source_ast->nodes)) {
+                continue;
+            }
             const AstNode* source_fn_def =
                 &source_ast->nodes[source_decl->value_node_index];
+            if (source_fn_def->kind != AK_FnDef ||
+                source_fn_def->a >= array_count(source_ast->nodes)) {
+                continue;
+            }
             const AstNode* source_fn_start =
                 &source_ast->nodes[source_fn_def->a];
+            if (source_fn_start->a >= array_count(source_ast->fn_signatures)) {
+                continue;
+            }
             const AstFnSignature* source_signature =
                 &source_ast->fn_signatures[source_fn_start->a];
             if (source_signature->param_count == 0) {
