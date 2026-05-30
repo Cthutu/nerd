@@ -723,6 +723,134 @@ internal bool lsp_code_action_has_unused_local_diagnostic(
     return false;
 }
 
+internal bool lsp_code_action_diagnostic_has_text(JsonValue* diagnostic,
+                                                  cstr       needle)
+{
+    string needle_string = s(needle);
+
+    JsonValue* message = json_get_cstr(diagnostic, "message");
+    if (message && message->kind == JSON_STRING &&
+        lsp_code_action_string_contains(message->string, needle_string)) {
+        return true;
+    }
+
+    JsonValue* related = json_get_cstr(diagnostic, "relatedInformation");
+    if (!related || related->kind != JSON_ARRAY) {
+        return false;
+    }
+
+    for (u32 i = 0; i < array_count(related->array.values); ++i) {
+        JsonValue* related_message =
+            json_get_cstr(related->array.values[i], "message");
+        if (related_message && related_message->kind == JSON_STRING &&
+            lsp_code_action_string_contains(related_message->string,
+                                            needle_string)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+internal bool
+lsp_code_action_has_function_definition_colon_diagnostic(
+    const LspMessage* message)
+{
+    JsonValue* diagnostics =
+        json_get_cstr(message->message, "params.context.diagnostics");
+    if (diagnostics == NULL || diagnostics->kind != JSON_ARRAY) {
+        return false;
+    }
+
+    for (u32 i = 0; i < array_count(diagnostics->array.values); ++i) {
+        JsonValue* diagnostic = diagnostics->array.values[i];
+        if (lsp_code_action_diagnostic_has_text(
+                diagnostic,
+                "Function definitions use `::`; did you mean to write `::` "
+                "instead of `:`?") ||
+            lsp_code_action_diagnostic_has_text(
+                diagnostic, "Expected Equal `=` but found")) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+internal bool lsp_code_action_find_function_definition_colon(
+    string source, usize offset, usize* out_start, usize* out_end)
+{
+    if (offset >= source.count || source.data[offset] != ':') {
+        return false;
+    }
+
+    if (offset + 1 < source.count && source.data[offset + 1] == ':') {
+        return false;
+    }
+
+    usize left = offset;
+    while (left > 0 && (source.data[left - 1] == ' ' ||
+                        source.data[left - 1] == '\t')) {
+        left--;
+    }
+    if (left == 0 || !lsp_code_action_is_ident_char(source.data[left - 1])) {
+        return false;
+    }
+    while (left > 0 && lsp_code_action_is_ident_char(source.data[left - 1])) {
+        left--;
+    }
+
+    usize right = offset + 1;
+    while (right < source.count &&
+           (source.data[right] == ' ' || source.data[right] == '\t')) {
+        right++;
+    }
+    if (right + 2 > source.count || memcmp(source.data + right, "fn", 2) != 0 ||
+        (right + 2 < source.count &&
+         lsp_code_action_is_ident_char(source.data[right + 2]))) {
+        return false;
+    }
+
+    *out_start = offset;
+    *out_end   = offset + 1;
+    return true;
+}
+
+internal void lsp_code_action_add_function_definition_colon_fix(
+    Arena* arena, JsonValue* actions, string uri, string source,
+    const LspMessage* message, usize offset)
+{
+    if (!lsp_code_action_has_function_definition_colon_diagnostic(message)) {
+        return;
+    }
+
+    usize colon_start = 0;
+    usize colon_end   = 0;
+    if (!lsp_code_action_find_function_definition_colon(
+            source, offset, &colon_start, &colon_end)) {
+        return;
+    }
+
+    NerdSource nerd_source = {
+        .source      = source,
+        .source_path = uri,
+    };
+    JsonValue* range =
+        lsp_code_action_range(arena, nerd_source, colon_start, colon_end);
+    JsonValue* workspace_edit =
+        lsp_code_action_workspace_range_edit(arena, uri, range, s("::"));
+    if (workspace_edit == NULL) {
+        return;
+    }
+
+    JsonValue* action = json_new_object(arena);
+    json_object_set_string(
+        action, arena, "title", s("Change `:` to `::`"));
+    json_object_set_string(action, arena, "kind", s("quickfix"));
+    json_object_set_object(action, "edit", workspace_edit);
+    json_array_push(actions, action);
+}
+
 internal bool lsp_code_action_parse_member_suggestion(string  help,
                                                       string* out_suggestion)
 {
@@ -2558,6 +2686,21 @@ void lsp_handle_code_action(LspState* state, const LspMessage* message)
         return;
     }
 
+    LspSourceView source_view = {0};
+    if (!lsp_source_view(state, uri, &source_view)) {
+        json_object_set_array(response, "result", actions);
+        lsp_send_response(message->arena, response);
+        return;
+    }
+
+    usize offset = lsp_offset_from_position(source_view.source, line, character);
+    lsp_code_action_add_function_definition_colon_fix(message->arena,
+                                                      actions,
+                                                      uri,
+                                                      source_view.source,
+                                                      message,
+                                                      offset);
+
     LspSyntaxView syntax = {0};
     if (!lsp_syntax_view(state, uri, &syntax)) {
         json_object_set_array(response, "result", actions);
@@ -2569,7 +2712,6 @@ void lsp_handle_code_action(LspState* state, const LspMessage* message)
     lsp_code_action_add_unknown_member_suggestions(
         message->arena, actions, uri, message);
 
-    usize offset      = lsp_offset_from_position(doc->source, line, character);
     u32   token_index = U32_MAX;
     bool  has_symbol_token = lsp_code_action_symbol_token_at_offset(
         &doc->front_end.lexer, offset, &token_index);

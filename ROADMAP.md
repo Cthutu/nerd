@@ -341,7 +341,7 @@ These are open trait-system follow-ups that were previously recorded as
   - [x] cross-module rename
 - [ ] Add code actions for diagnostics where the compiler already has actionable
   help, such as `:` versus `::` and unused local fixes.
-  - [ ] `:` versus `::` function-definition fix
+  - [x] `:` versus `::` function-definition fix
   - [ ] unused local fixes
 - [x] Add document links for module imports.
 - [ ] Add workspace symbol search for top-level declarations.
