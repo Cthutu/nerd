@@ -1595,7 +1595,55 @@ internal bool cst_parse_type(CstParseState* state, u32* out_node)
             u32 variant_symbol     = cst_current_symbol_handle(state);
             u32 variant_type_node  = U32_MAX;
             u32 variant_value_node = U32_MAX;
+            bool braced_payload    = false;
             cst_advance(state);
+            if (cst_current_token(state).kind == TK_LBrace) {
+                braced_payload = true;
+                u32 lbrace = state->token_index;
+                cst_advance(state);
+                u32 first_field = (u32)array_count(state->cst.plex_fields);
+                u32 field_count = 0;
+                while (cst_current_token(state).kind != TK_RBrace) {
+                    if (cst_current_token(state).kind != TK_Symbol) {
+                        return false;
+                    }
+                    u32 field_token  = state->token_index;
+                    u32 field_symbol = cst_current_symbol_handle(state);
+                    cst_advance(state);
+                    u32 type_node = 0;
+                    if (!cst_parse_type(state, &type_node)) {
+                        return false;
+                    }
+                    array_push(state->cst.plex_fields,
+                               (CstPlexField){
+                                   .token_index     = field_token,
+                                   .symbol_handle   = field_symbol,
+                                   .type_node_index = type_node,
+                               });
+                    field_count++;
+                }
+                if (!cst_consume(state, TK_RBrace)) {
+                    return false;
+                }
+                u32 plex_type_index =
+                    (u32)array_count(state->cst.plex_types);
+                array_push(state->cst.plex_types,
+                           (CstPlexTypeInfo){
+                               .first_field          = first_field,
+                               .field_count          = field_count,
+                               .generic_params_index = U32_MAX,
+                               .flags                = CPTF_None,
+                           });
+                if (!cst_emit_node(state,
+                                   (CstNode){
+                                       .kind        = CK_TypePlex,
+                                       .token_index = lbrace,
+                                       .a           = plex_type_index,
+                                   },
+                                   &variant_type_node)) {
+                    return false;
+                }
+            }
             if (cst_current_token(state).kind == TK_LParen) {
                 u32 lparen = state->token_index;
                 cst_advance(state);
@@ -1656,6 +1704,7 @@ internal bool cst_parse_type(CstParseState* state, u32* out_node)
                            .symbol_handle    = variant_symbol,
                            .type_node_index  = variant_type_node,
                            .value_node_index = variant_value_node,
+                           .braced_payload    = braced_payload,
                        });
             variant_count++;
             if (cst_current_token(state).kind == TK_Comma) {

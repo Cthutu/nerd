@@ -1528,18 +1528,73 @@ bool ast_parse_type(AstParseState* state, u32* out_node)
             AstToken variant_token      = state->token;
             u32      variant_type_node  = U32_MAX;
             u32      variant_value_node = U32_MAX;
+            bool     braced_payload     = false;
             if (ast_peek_kind_at(state, 0) == TK_LBrace) {
+                braced_payload = true;
                 if (!ast_next_token(state)) {
                     return false;
                 }
-                return error_0203_expected_token_ex(
-                    state->token.source,
-                    ast_token_span(state, &state->token),
-                    TK_LParen,
-                    state->token.kind,
-                    "Braced enum payload shorthand is not supported.",
-                    "Enum variant payloads use parentheses; write "
-                    "`Resized(plex { ... })` for a plex payload.");
+                AstToken lbrace = state->token;
+                if (!ast_next_token(state)) {
+                    return false;
+                }
+
+                u32 first_field = (u32)array_count(state->plex_fields);
+                u32 field_count = 0;
+                while (state->token.kind != TK_RBrace) {
+                    if (state->token.kind != TK_Symbol) {
+                        return error_0203_expected_token(
+                            state->lexer->source,
+                            ast_token_span(state, &state->token),
+                            TK_Symbol,
+                            state->token.kind);
+                    }
+                    AstToken field = state->token;
+                    if (!ast_next_token(state)) {
+                        return false;
+                    }
+                    if (state->token.kind == TK_Colon) {
+                        return error_0208_expected_type(
+                            state->lexer->source,
+                            ast_token_span(state, &state->token),
+                            state->token.kind,
+                            "Enum payload fields are written as `field Type`.",
+                            "Remove the colon. Colons are used in plex "
+                            "literals such as `Resized { width: 80 }`, not "
+                            "in enum payload definitions.");
+                    }
+                    u32 type_node = 0;
+                    if (!ast_parse_type(state, &type_node)) {
+                        return false;
+                    }
+                    array_push(state->plex_fields,
+                               (AstPlexField){
+                                   .token_index     = field.token_index,
+                                   .symbol_handle   = field.value.symbol_handle,
+                                   .type_node_index = type_node,
+                               });
+                    field_count++;
+                    if (!ast_next_token(state)) {
+                        return false;
+                    }
+                }
+                u32 plex_type_index = (u32)array_count(state->plex_types);
+                array_push(state->plex_types,
+                           (AstPlexTypeInfo){
+                               .first_field          = first_field,
+                               .field_count          = field_count,
+                               .generic_params_index = U32_MAX,
+                               .flags                = APTF_None,
+                           });
+                if (!ast_emit_node(state,
+                                   (AstNode){
+                                       .kind        = AK_TypePlex,
+                                       .token_index = lbrace.token_index,
+                                       .a           = plex_type_index,
+                                   },
+                                   &variant_type_node)) {
+                    return false;
+                }
             }
             if (ast_peek_kind_at(state, 0) == TK_LParen) {
                 AstToken lparen = state->token;
@@ -1603,6 +1658,7 @@ bool ast_parse_type(AstParseState* state, u32* out_node)
                            .symbol_handle   = variant_token.value.symbol_handle,
                            .type_node_index = variant_type_node,
                            .value_node_index = variant_value_node,
+                           .braced_payload   = braced_payload,
                        });
             variant_count++;
             if (!ast_next_token(state)) {

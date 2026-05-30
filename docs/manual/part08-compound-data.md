@@ -515,6 +515,18 @@ value_or_zero :: fn (value: Maybe) -> i32 {
 }
 ```
 
+Named-field payloads use an inline plex body:
+
+```nerd
+FrameEvent :: enum {
+    Closed
+    Resized {
+        width u16
+        height u16
+    }
+}
+```
+
 Enum variants may be separated with commas. A trailing comma is allowed. Variant
 names must be unique within one enum. Explicit `= <value>` discriminants must be
 unique after implicit values are filled in.

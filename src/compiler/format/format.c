@@ -3344,7 +3344,7 @@ internal usize format_emit_enum_variant_prefix(StringBuilder*        sb,
 {
     usize start_size = sb->size;
     sb_append_string(sb, lex_symbol(lexer, variant->symbol_handle));
-    if (variant->type_node_index != U32_MAX) {
+    if (variant->type_node_index != U32_MAX && !variant->braced_payload) {
         sb_append_char(sb, '(');
         const CstNode* variant_type = &cst->nodes[variant->type_node_index];
         if (variant_type->kind == CK_TypeTuple) {
@@ -3366,12 +3366,63 @@ internal usize format_emit_enum_variant_prefix(StringBuilder*        sb,
     return sb->size - start_size;
 }
 
+internal void format_emit_enum_variant_braced_payload(
+    StringBuilder* sb,
+    const Cst* cst,
+    const Lexer* lexer,
+    const CstEnumVariant* variant,
+    u32 indent_level)
+{
+    sb_append_string(sb, lex_symbol(lexer, variant->symbol_handle));
+    sb_append_cstr(sb, " {\n");
+
+    const CstNode* payload_node = &cst->nodes[variant->type_node_index];
+    ASSERT(payload_node->kind == CK_TypePlex,
+           "Expected braced enum payload to use a plex type");
+    const CstPlexTypeInfo* payload = &cst->plex_types[payload_node->a];
+
+    usize max_field_width = 0;
+    for (u32 i = 0; i < payload->field_count; ++i) {
+        const CstPlexField* field =
+            &cst->plex_fields[payload->first_field + i];
+        usize field_width = lex_symbol(lexer, field->symbol_handle).count;
+        if (field_width > max_field_width) {
+            max_field_width = field_width;
+        }
+    }
+
+    for (u32 i = 0; i < payload->field_count; ++i) {
+        const CstPlexField* field =
+            &cst->plex_fields[payload->first_field + i];
+        string field_name = lex_symbol(lexer, field->symbol_handle);
+        format_emit_indent(sb, indent_level + 2);
+        sb_append_string(sb, field_name);
+        for (usize pad = field_name.count; pad <= max_field_width; ++pad) {
+            sb_append_char(sb, ' ');
+        }
+        format_emit_expr(sb, cst, lexer, field->type_node_index, 0);
+        sb_append_char(sb, '\n');
+    }
+
+    format_emit_indent(sb, indent_level + 1);
+    sb_append_char(sb, '}');
+}
+
 internal void format_emit_enum_variant_code(StringBuilder*        sb,
                                             const Cst*            cst,
                                             const Lexer*          lexer,
                                             const CstEnumVariant* variant,
+                                            u32 indent_level,
                                             usize aligned_prefix_width)
 {
+    if (variant->braced_payload &&
+        variant->type_node_index != U32_MAX &&
+        cst->nodes[variant->type_node_index].kind == CK_TypePlex) {
+        format_emit_enum_variant_braced_payload(
+            sb, cst, lexer, variant, indent_level);
+        return;
+    }
+
     usize prefix_width =
         format_emit_enum_variant_prefix(sb, cst, lexer, variant);
     if (variant->value_node_index != U32_MAX) {
@@ -3394,7 +3445,7 @@ internal usize format_rendered_enum_variant_width(const Cst*            cst,
     arena_init(&scratch);
     sb_init(&sb, &scratch);
     format_emit_enum_variant_code(
-        &sb, cst, lexer, variant, aligned_prefix_width);
+        &sb, cst, lexer, variant, indent_level, aligned_prefix_width);
     usize width = (usize)(indent_level + 1) * 4 + sb.size;
     arena_done(&scratch);
     return width;
@@ -3611,7 +3662,7 @@ internal void format_emit_type_enum_multiline(StringBuilder* sb,
                                                 NULL);
         format_emit_indent(sb, indent_level + 1);
         format_emit_enum_variant_code(
-            sb, cst, lexer, variant, variant_aligned_prefix_widths[i]);
+            sb, cst, lexer, variant, indent_level, variant_aligned_prefix_widths[i]);
         usize variant_end_offset =
             format_enum_variant_end_offset(cst, lexer, variant);
         if (variant_has_comments[i]) {

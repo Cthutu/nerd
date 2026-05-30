@@ -26,8 +26,8 @@ Name :: plex { field Type }
 Name :: plex [T, U] { field Type }
 Name :: union { field Type }
 Name :: union [T, U] { field Type }
-Name :: enum { Variant, Payload(Type) }
-Name :: enum [T, U] { Variant, Payload(Type) }
+Name :: enum { Variant, Payload(Type), Resized { width u16 height u16 } }
+Name :: enum [T, U] { Variant, Payload(Type), Resized { width u16 height u16 } }
 Name :: trait {
     member :: fn (Self) -> Type
 }
@@ -200,7 +200,7 @@ plex #c { field Type }
 plex #packed { field Type }
 union { field Type }
 union [T] { field T }
-enum { Variant, Payload(Type) }
+enum { Variant, Payload(Type), Resized { width u16 height u16 } }
 enum [T] { Variant(T) }
 Name[T]
 Name[T, U]

@@ -139,7 +139,8 @@ plex-annotation ::= '#c' | '#packed'
 plex-field      ::= IDENT type
 
 enum-type       ::= 'enum' generic-params? '{' enum-variant-list? '}'
-enum-variant    ::= IDENT [ '(' type-list? ')' ] [ '=' expression ]
+enum-variant    ::= IDENT [ '(' type-list? ')' | plex-field-body ] [ '=' expression ]
+plex-field-body ::= '{' plex-field* '}'
 ```
 
 Plex and union fields are written as `field Type`, not `field: Type`.
@@ -149,10 +150,8 @@ annotations are not accepted on `union` or `enum`.
 
 Enums support unit variants, payload variants, and explicit discriminant
 expressions.
-Payload variants use parentheses. To give a variant a named-field payload,
-write the payload type explicitly as a plex, such as
-`Resized(plex { width u16 height u16 })`; `Resized { ... }` is not enum
-payload syntax.
+Payload variants with named fields use an inline plex payload body, such as
+`Resized { width u16 height u16 }`.
 
 ## Dynamic Array Methods
 

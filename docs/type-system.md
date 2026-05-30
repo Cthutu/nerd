@@ -93,10 +93,11 @@ currently valid. A union value is constructed with exactly one field, such as
 for low-level and FFI-facing code, so they are intentionally not supported in
 pattern matching.
 
-Enum types are written `enum { Variant ... }`. Unit variants have no payload;
-tuple-like payload variants write their payload types after the variant name,
-such as `enum { None Some(i32) Pair(i32, i32) }`. A bare variant name can be
-used where the expected type is already known to be that enum, such as
+Enum types are written `enum { Variant ... }`. Unit variants have no payload.
+Tuple-like payload variants write their payload types after the variant name,
+such as `enum { None Some(i32) Pair(i32, i32) }`. Named-field payload variants
+use an inline plex body, such as `Resized { width u16 height u16 }`.
+A bare variant name can be used where the expected type is already known to be that enum, such as
 `colour: Colour = Red` or an `on colour { Red => ... }` branch. When no context
 is available, use the qualified form `Colour.Red`, or `Maybe.Some(1)` for a
 payload variant. Enums lower as a tag plus a union of payload storage. The
