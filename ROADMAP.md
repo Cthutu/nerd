@@ -334,8 +334,8 @@ These are open trait-system follow-ups that were previously recorded as
   front end already has semantic information that should drive completion,
   signature help, definitions, references, rename, and code actions.
 - [ ] Add references and rename:
-  - [ ] same-file references
-  - [ ] same-file rename
+  - [x] same-file references
+  - [x] same-file rename
   - [ ] cross-module references
   - [ ] cross-module rename
 - [ ] Add code actions for diagnostics where the compiler already has actionable

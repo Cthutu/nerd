@@ -110,6 +110,12 @@ that same syntax fallback. It edits only token ranges that belong to the open
 editor document, so imported declarations and generated folder-module sibling
 content are deliberately left out until workspace-wide edits are implemented.
 
+References use the same target-resolution path as rename for same-document
+locals and local top-level declarations. The handler honours
+`includeDeclaration` and returns only locations visible in the open editor
+document. Cross-module reference discovery is intentionally separate future
+work because it needs workspace indexing rather than a single analysed document.
+
 ## Completion And Signature Help
 
 Completion is semantic where possible:

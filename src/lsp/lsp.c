@@ -105,6 +105,7 @@ struct {
     {"textDocument/completion", lsp_handle_completion},
     {"textDocument/codeAction", lsp_handle_code_action},
     {"textDocument/signatureHelp", lsp_handle_signature_help},
+    {"textDocument/references", lsp_handle_references},
     {"textDocument/prepareRename", lsp_handle_prepare_rename},
     {"textDocument/rename", lsp_handle_rename},
 };
@@ -292,6 +293,10 @@ void lsp_handle_initialise(LspState* state, const LspMessage* message)
         JsonValue* rename_provider = json_new_object(arena);
         json_object_set_bool(rename_provider, arena, "prepareProvider", true);
         json_object_set_object(capabilities, "renameProvider", rename_provider);
+    }
+    if (json_get_cstr(message->message,
+                      "params.capabilities.textDocument.references")) {
+        json_object_set_bool(capabilities, arena, "referencesProvider", true);
     }
 
     JsonValue* completion_provider = json_new_object(arena);

@@ -246,6 +246,7 @@ void lsp_handle_semantic_tokens_full(LspState*         state,
 void lsp_handle_completion(LspState* state, const LspMessage* message);
 void lsp_handle_code_action(LspState* state, const LspMessage* message);
 void lsp_handle_signature_help(LspState* state, const LspMessage* message);
+void lsp_handle_references(LspState* state, const LspMessage* message);
 void lsp_handle_prepare_rename(LspState* state, const LspMessage* message);
 void lsp_handle_rename(LspState* state, const LspMessage* message);
 

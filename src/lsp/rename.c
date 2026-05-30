@@ -620,6 +620,140 @@ internal Array(u32)
     return tokens;
 }
 
+internal bool lsp_rename_token_is_declaration(const LspDocument* doc,
+                                              LspRenameTarget    target,
+                                              u32                token_index)
+{
+    const Ast*  ast  = &doc->front_end.ast;
+    const Sema* sema = &doc->front_end.sema;
+
+    if (target.kind == LSP_RENAME_LOCAL) {
+        const SemaLocal* local = NULL;
+        if (!lsp_sema_local(sema, target.index, &local)) {
+            return false;
+        }
+        if (local->decl_token_index == token_index) {
+            return true;
+        }
+        return local->decl_node_index < array_count(ast->nodes) &&
+               ast->nodes[local->decl_node_index].token_index == token_index;
+    }
+
+    if (target.kind == LSP_RENAME_DECL) {
+        const SemaDecl* decl = NULL;
+        return lsp_sema_decl(sema, target.index, &decl) &&
+               decl->bind_node_index < array_count(ast->nodes) &&
+               ast->nodes[decl->bind_node_index].token_index == token_index;
+    }
+
+    if (target.kind == LSP_RENAME_SYMBOL) {
+        for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+            const AstNode* node = &ast->nodes[i];
+            if ((node->kind == AK_Bind || node->kind == AK_Variable) &&
+                node->a == target.index && node->token_index == token_index) {
+                return true;
+            }
+        }
+        for (u32 i = 0; i < array_count(ast->params); ++i) {
+            const AstParam* param = &ast->params[i];
+            if (param->symbol_handle == target.index &&
+                param->token_index == token_index) {
+                return true;
+            }
+        }
+        for (u32 i = 0; i < array_count(ast->patterns); ++i) {
+            const AstPattern* pattern = &ast->patterns[i];
+            if (pattern->kind == APK_Bind && pattern->a == target.index &&
+                pattern->token_index == token_index) {
+                return true;
+            }
+        }
+        for (u32 i = 0; i < array_count(ast->fors); ++i) {
+            const AstForInfo* for_info = &ast->fors[i];
+            if ((for_info->index_symbol == target.index &&
+                 for_info->index_token_index == token_index) ||
+                (for_info->item_symbol == target.index &&
+                 for_info->item_token_index == token_index)) {
+                return true;
+            }
+        }
+        for (u32 i = 0; i < array_count(ast->on_branches); ++i) {
+            const AstOnBranch* branch = &ast->on_branches[i];
+            if (branch->binder_symbol_handle == target.index &&
+                branch->binder_token_index == token_index) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+internal JsonValue* lsp_rename_make_location(const LspRenameRequestContext* ctx,
+                                             Arena* arena,
+                                             u32    token_index)
+{
+    usize start = 0;
+    usize end   = 0;
+    lsp_rename_token_offsets(
+        &ctx->doc->front_end.lexer, token_index, &start, &end);
+
+    JsonValue* range =
+        lsp_rename_make_document_range(ctx->doc, arena, start, end);
+    if (range == NULL) {
+        return NULL;
+    }
+
+    JsonValue* location = json_new_object(arena);
+    json_object_set_string(location, arena, "uri", ctx->uri);
+    json_object_set_object(location, "range", range);
+    return location;
+}
+
+//------------------------------------------------------------------------------
+
+void lsp_handle_references(LspState* state, const LspMessage* message)
+{
+    JsonValue*              response = lsp_prepare_response(message);
+    LspRenameRequestContext context  = {0};
+    LspRenameTarget         target   = {0};
+
+    if (!lsp_rename_get_context(state, message, &context) ||
+        !lsp_rename_target_from_token(
+            context.doc, context.token_index, &target)) {
+        lsp_rename_request_context_done(&context);
+        lsp_cancel(response, message->arena);
+        return;
+    }
+
+    JsonValue* include_decl_value =
+        json_get_cstr(message->message, "params.context.includeDeclaration");
+    bool include_declaration = include_decl_value &&
+                               include_decl_value->kind == JSON_BOOL &&
+                               json_bool(include_decl_value);
+    Array(u32) tokens        = lsp_rename_collect_tokens(context.doc, target);
+    JsonValue* references    = json_new_array(message->arena);
+    for (u32 i = 0; i < array_count(tokens); ++i) {
+        u32 token = tokens[i];
+        if ((!include_declaration &&
+             lsp_rename_token_is_declaration(context.doc, target, token)) ||
+            !lsp_rename_token_is_visible(context.doc, token)) {
+            continue;
+        }
+
+        JsonValue* location =
+            lsp_rename_make_location(&context, message->arena, token);
+        if (location != NULL) {
+            json_array_push(references, location);
+        }
+    }
+
+    json_object_set_array(response, "result", references);
+    lsp_send_response(message->arena, response);
+    array_free(tokens);
+    lsp_rename_request_context_done(&context);
+}
+
 //------------------------------------------------------------------------------
 
 void lsp_handle_prepare_rename(LspState* state, const LspMessage* message)
