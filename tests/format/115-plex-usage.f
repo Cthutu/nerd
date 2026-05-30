@@ -47,7 +47,7 @@ test :: fn () {
     = { age: 42 name: "Alice" }
 
     prn(on details {
-        { age: 42, name: _ } => $"Hello {details.name}!"
-        else => "Whatever!"
+        { age: 42, name: _ }  => $"Hello {details.name}!"
+        else                  => "Whatever!"
     })
 }

@@ -725,6 +725,12 @@ internal bool   format_emit_sorted_use_run(StringBuilder* sb,
                                            u32 indent_level);
 internal bool
 format_node_is_single_line(const Cst* cst, const Lexer* lexer, u32 node_index);
+internal u32  format_node_end_token_index(const Cst*   cst,
+                                          const Lexer* lexer,
+                                          u32          node_index);
+internal bool format_has_blank_line_between_offsets(NerdSource source,
+                                                    usize      previous_end,
+                                                    usize      current_start);
 internal bool format_node_has_inner_comment(const Cst*   cst,
                                             const Lexer* lexer,
                                             u32          node_index);
@@ -1746,20 +1752,66 @@ internal void format_emit_on_block_multiline(StringBuilder* sb,
 
     Arena branch_arena = {0};
     arena_init(&branch_arena);
-    Array(string) heads  = NULL;
-    usize max_head_width = 0;
-    bool  has_binder     = false;
+    Array(string) heads              = NULL;
+    Array(bool) branch_alignable     = NULL;
+    Array(usize) branch_align_widths = NULL;
+    Array(usize) branch_expr_starts  = NULL;
+    Array(usize) branch_expr_ends    = NULL;
     for (u32 i = 0; i < on->branch_count; ++i) {
         const CstOnBranch* branch = &cst->on_branches[on->first_branch + i];
-        if (branch->binder_symbol_handle != U32_MAX) {
-            has_binder = true;
+        string             head   = {0};
+        if (on->kind == COK_Condition && !(branch->flags & COBF_Else)) {
+            head = format_render_expr_to_string(
+                &branch_arena, cst, lexer, branch->guard_node_index);
+        } else {
+            head =
+                format_render_on_branch_head(&branch_arena, cst, lexer, branch);
         }
-        string head =
-            format_render_on_branch_head(&branch_arena, cst, lexer, branch);
         array_push(heads, head);
-        if (head.count > max_head_width) {
-            max_head_width = head.count;
+        array_push(branch_align_widths, head.count);
+        const CstNode* expr_node = &cst->nodes[branch->expr_node_index];
+        bool           alignable =
+            format_node_is_single_line(cst, lexer, branch->expr_node_index) &&
+            expr_node->kind != CK_Block && expr_node->kind != CK_For &&
+            expr_node->kind != CK_ExprBlock && expr_node->kind != CK_FnBlock &&
+            expr_node->kind != CK_FfiBlock &&
+            !format_node_is_block_form_on(cst, branch->expr_node_index);
+        array_push(branch_alignable, alignable);
+
+        array_push(branch_expr_starts,
+                   lexer->tokens[expr_node->token_index].offset);
+
+        u32 expr_end_token =
+            format_node_end_token_index(cst, lexer, branch->expr_node_index);
+        array_push(branch_expr_ends,
+                   lex_token_end_offset(lexer, &lexer->tokens[expr_end_token]));
+    }
+    for (u32 i = 0; i < on->branch_count;) {
+        if (!branch_alignable[i]) {
+            ++i;
+            continue;
         }
+
+        u32   run_start = i;
+        u32   run_end   = i + 1;
+        usize run_width = heads[i].count;
+        while (run_end < on->branch_count && branch_alignable[run_end] &&
+               !format_has_blank_line_between_offsets(
+                   lexer->source,
+                   branch_expr_ends[run_end - 1],
+                   branch_expr_starts[run_end])) {
+            if (heads[run_end].count > run_width) {
+                run_width = heads[run_end].count;
+            }
+            ++run_end;
+        }
+        if (run_end - run_start > 1) {
+            for (u32 branch_index = run_start; branch_index < run_end;
+                 ++branch_index) {
+                branch_align_widths[branch_index] = run_width + 1;
+            }
+        }
+        i = run_end;
     }
 
     sb_append_cstr(sb, "on");
@@ -1771,15 +1823,9 @@ internal void format_emit_on_block_multiline(StringBuilder* sb,
     for (u32 i = 0; i < on->branch_count; ++i) {
         const CstOnBranch* branch = &cst->on_branches[on->first_branch + i];
         format_emit_indent(sb, indent_level + 1);
-        if (on->kind == COK_Condition && !(branch->flags & COBF_Else)) {
-            format_emit_expr(sb, cst, lexer, branch->guard_node_index, 0);
-        } else {
-            sb_append_string(sb, heads[i]);
-        }
-        if (has_binder) {
-            for (usize pad = heads[i].count; pad < max_head_width; ++pad) {
-                sb_append_char(sb, ' ');
-            }
+        sb_append_string(sb, heads[i]);
+        for (usize pad = heads[i].count; pad < branch_align_widths[i]; ++pad) {
+            sb_append_char(sb, ' ');
         }
         sb_append_cstr(sb, " => ");
         format_emit_expr_with_indent(
@@ -1790,6 +1836,10 @@ internal void format_emit_on_block_multiline(StringBuilder* sb,
     sb_append_char(sb, '}');
 
     array_free(heads);
+    array_free(branch_alignable);
+    array_free(branch_align_widths);
+    array_free(branch_expr_starts);
+    array_free(branch_expr_ends);
     arena_done(&branch_arena);
 }
 

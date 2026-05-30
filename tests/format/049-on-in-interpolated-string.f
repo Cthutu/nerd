@@ -21,9 +21,9 @@ main :: fn () {
 
     prn($"Colour = {
         on colour {
-            RED => "red"
-            GREEN => "green"
-            BLUE => "blue"
+            RED    => "red"
+            GREEN  => "green"
+            BLUE   => "blue"
         }
     }")
 }

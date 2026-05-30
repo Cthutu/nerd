@@ -52,12 +52,12 @@ main :: fn () {
 
 exit_strings :: fn (exit: string) -> string {
     return on exit {
-        "N" => "North"
-        "S" => "South"
-        "E" => "East"
-        "W" => "West"
-        "U" => "Up"
-        "D" => "Down"
-        else => exit
+        "N"   => "North"
+        "S"   => "South"
+        "E"   => "East"
+        "W"   => "West"
+        "U"   => "Up"
+        "D"   => "Down"
+        else  => exit
     }
 }

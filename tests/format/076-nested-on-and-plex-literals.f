@@ -9,8 +9,8 @@ objs: []Object = [
 main :: fn () {
     on value == 2 => {
         on {
-            value == 1 => hit = 1
-            else => hit = 2
+            value == 1  => hit = 1
+            else        => hit = 2
         }
     }
 }

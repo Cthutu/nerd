@@ -18,9 +18,9 @@ Maybe :: enum {
 
 score :: fn (value: Maybe) -> i32 {
     return on value {
-        None => 0
-        Maybe.Some(x) => x
-        Pair(left, right) => left + right
-        Text(_) => 100
+        None               => 0
+        Maybe.Some(x)      => x
+        Pair(left, right)  => left + right
+        Text(_)            => 100
     }
 }
