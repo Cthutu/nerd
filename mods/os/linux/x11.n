@@ -1,0 +1,126 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Provides Linux X11 bindings used by higher-level windowing modules. These
+-- declarations mirror the Xlib C API closely and intentionally expose native
+-- handles, event records, and constants.
+
+-- Opaque Xlib display connection handle.
+pub XDisplay :: ^void
+
+-- Xlib window identifier.
+pub XWindow :: u64
+
+-- Xlib atom identifier.
+pub XAtom :: u64
+
+-- Xlib status result.
+pub XStatus :: i32
+
+-- Xlib boolean value.
+pub XBool :: i32
+
+-- Xlib long value on the supported Linux ABI.
+pub XLong :: i64
+
+pub X_EVENT_CONFIGURE_NOTIFY :: 22 -- Xlib `ConfigureNotify` event type.
+pub X_EVENT_CLIENT_MESSAGE   :: 33 -- Xlib `ClientMessage` event type.
+pub X_EVENT_DESTROY_NOTIFY   :: 17 -- Xlib `DestroyNotify` event type.
+
+pub X_STRUCTURE_NOTIFY_MASK :: 0x00020000 -- Receives structure-change events.
+pub X_EXPOSURE_MASK         :: 0x00008000 -- Receives expose events.
+
+-- Stores an arbitrary Xlib event. Cast to a specific event record after
+-- checking `type`.
+pub XEvent :: plex #c {
+    type i32      -- Xlib event type tag.
+    _pad [188]u8 -- Remaining storage for the largest Xlib event variant.
+}
+
+-- Xlib configure-notify payload used for resize events.
+pub XConfigureEvent :: plex #c {
+    type              i32      -- Xlib event type tag.
+    serial            u64      -- Last processed request serial number.
+    send_event        XBool    -- Non-zero when sent explicitly.
+    display           XDisplay -- Display that produced the event.
+    event             XWindow  -- Event window.
+    window            XWindow  -- Changed window.
+    x                 i32      -- New x position.
+    y                 i32      -- New y position.
+    width             i32      -- New width.
+    height            i32      -- New height.
+    border_width      i32      -- New border width.
+    above             XWindow  -- Sibling stacking reference.
+    override_redirect XBool    -- Override-redirect flag.
+}
+
+-- Xlib client-message payload used for window-manager protocol events.
+pub XClientMessageEvent :: plex #c {
+    type         i32      -- Xlib event type tag.
+    serial       u64      -- Last processed request serial number.
+    send_event   XBool    -- Non-zero when sent explicitly.
+    display      XDisplay -- Display that produced the event.
+    window       XWindow  -- Destination window.
+    message_type XAtom    -- Message atom.
+    format       i32      -- Data element size.
+    data0        XLong    -- First long data element.
+    data1        XLong    -- Second long data element.
+    data2        XLong    -- Third long data element.
+    data3        XLong    -- Fourth long data element.
+    data4        XLong    -- Fifth long data element.
+}
+
+ffi "X11" {
+    pub XOpenDisplay (display_name: ^i8) -> XDisplay
+
+    pub XCloseDisplay (display: XDisplay) -> i32
+
+    pub XDefaultScreen (display: XDisplay) -> i32
+
+    pub XRootWindow (display: XDisplay, screen_number: i32) -> XWindow
+
+    pub XBlackPixel (display: XDisplay, screen_number: i32) -> u64
+
+    pub XWhitePixel (display: XDisplay, screen_number: i32) -> u64
+
+    pub XCreateSimpleWindow (display      : XDisplay,
+                             parent       : XWindow,
+                             x            : i32,
+                             y            : i32,
+                             width        : u32,
+                             height       : u32,
+                             border_width : u32,
+                             border       : u64,
+                             background   : u64) -> XWindow
+
+    pub XStoreName (display: XDisplay, window: XWindow, window_name: ^i8) -> i32
+
+    pub XSelectInput (display: XDisplay, window: XWindow, event_mask: XLong) -> i32
+
+    pub XInternAtom (display: XDisplay, atom_name: ^i8, only_if_exists: XBool) -> XAtom
+
+    pub XSetWMProtocols (display: XDisplay, window: XWindow, protocols: ^XAtom, count: i32) -> XStatus
+
+    pub XMapWindow (display: XDisplay, window: XWindow) -> i32
+
+    pub XResizeWindow (display: XDisplay, window: XWindow, width: u32, height: u32) -> i32
+
+    pub XDestroyWindow (display: XDisplay, window: XWindow) -> i32
+
+    pub XPending (display: XDisplay) -> i32
+
+    pub XNextEvent (display: XDisplay, event_return: ^XEvent) -> i32
+
+    pub XGetGeometry (display             : XDisplay,
+                      drawable            : XWindow,
+                      root_return         : ^XWindow,
+                      x_return            : ^i32,
+                      y_return            : ^i32,
+                      width_return        : ^u32,
+                      height_return       : ^u32,
+                      border_width_return : ^u32,
+                      depth_return        : ^u32) -> XStatus
+
+    pub XFlush (display: XDisplay) -> i32
+}

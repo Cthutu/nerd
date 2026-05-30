@@ -40,6 +40,16 @@
 
 pragma windowed
 
+ffi "nrt" {
+    nrt_arena_mark (arena: ^arena) -> u32
+
+    nrt_arena_restore (arena: ^arena, mark: u32)
+
+    nrt_arena_alloc (arena: ^arena, size: usize, alignment: usize) -> ^void
+
+    nrt_temp_arena () -> ^arena
+}
+
 -- A special frame ID that indicates a new frame should be created when `apply`
 -- is called.
 pub NEW_FRAME :: 0
@@ -112,6 +122,55 @@ pub Frame :: plex {
     full_screen bool
 }
 
+-- Copies a Nerd string into temporary NUL-terminated storage for C APIs.
+frame_c_string_temp :: fn (text: string) -> ^i8 {
+    temp_arena := nrt_temp_arena()
+    data := nrt_arena_alloc(temp_arena, text.count + 1, 1).as(^u8)
+    for i: usize = 0; i < text.count; i += 1 {
+        data[i] = text.data[i]
+    }
+    data[text.count] = 0
+    return data.as(^void).as(^i8)
+}
+
+-- Finds the live frame record with the requested ID, or nil when none exists.
+frame_system_find_info :: fn (system: ^FrameSystem, id: u16) -> ^FrameInfo {
+    return for info in system.frames {
+        on info.id == id => break info
+    } else {
+        break nil
+    }
+}
+
+-- Allocates the first reusable non-zero frame ID, or `CLOSED_FRAME` if full.
+frame_system_allocate_id :: fn (system: ^FrameSystem) -> u16 {
+    candidate := system.next_id_hint
+    on candidate == NEW_FRAME || candidate == CLOSED_FRAME => candidate = 1
+
+    for attempts: u16 = 0; attempts < 65534; attempts += 1 {
+        used := no
+        for info in system.frames {
+            on info.id == candidate => used = yes
+        }
+        on !used => {
+            next := candidate + 1
+            on next == CLOSED_FRAME => next = 1
+            system.next_id_hint = next
+            return candidate
+        }
+
+        candidate += 1
+        on candidate == CLOSED_FRAME => candidate = 1
+    }
+
+    return CLOSED_FRAME
+}
+
+-- Returns yes while the system can still allocate at least one live ID.
+frame_system_has_id_capacity :: fn (system: ^FrameSystem) -> bool {
+    return system^.frames.count <= 65534
+}
+
 impl FrameSystem {
     -- Creates an empty frame system ready to allocate frame IDs.
     pub init :: fn () -> Self {
@@ -122,53 +181,300 @@ impl FrameSystem {
     }
 
     pub apply :: fn (system: ^Self, frame: ^Frame) {
-        on frame_system_has_id_capacity(system) {
-            no => frame.id = CLOSED_FRAME
-        }
+        frame_apply_impl(system, frame)
     }
 
     pub loop :: fn (system: ^Self) -> bool {
-        system.frames.clear()
-        return no
+        return frame_loop_impl(system)
     }
 
     pub update :: fn (system: ^Self, frame: ^Frame) {
-        on frame_system_has_id_capacity(system) {
-            no => frame.id = CLOSED_FRAME
-        }
+        frame_update_impl(system, frame)
     }
 
     pub poll :: fn (system: ^Self, frame: ^Frame) -> FrameEvent {
-        return on frame_system_has_id_capacity(system) {
-            yes => FrameEvent.None
-            else => {
-                frame.id = CLOSED_FRAME
-                break FrameEvent.Closed
+        return frame_poll_impl(system, frame)
+    }
+
+    pub destroy :: fn (system: ^Self, frame: ^Frame) {
+        frame_destroy_impl(system, frame)
+    }
+}
+
+on "linux" {
+    use os.linux.x11
+
+    -- Linux X11 data attached to a public `Frame`.
+    PlatformFrameInfo :: plex {
+        display          XDisplay -- Display connection owning the window.
+        window           XWindow  -- Native X11 window handle.
+        wm_delete_window XAtom    -- Window-manager close protocol atom.
+    }
+
+    -- Destroys native X11 resources associated with a frame record.
+    frame_linux_destroy_info :: fn (info: ^FrameInfo) {
+        on info.platform_info.display != nil && info.platform_info.window != 0 => {
+            _ := XDestroyWindow(info.platform_info.display, info.platform_info.window)
+            _ := XFlush(info.platform_info.display)
+        }
+
+        on info.platform_info.display != nil => {
+            _ := XCloseDisplay(info.platform_info.display)
+        }
+
+        info.events.free()
+        info.id = CLOSED_FRAME
+        info.platform_info.display = nil
+        info.platform_info.window = 0
+        info.platform_info.wm_delete_window = 0
+    }
+
+    -- Marks a public frame and its platform record as closed.
+    frame_linux_mark_closed :: fn (info: ^FrameInfo, frame: ^Frame) {
+        frame.id = CLOSED_FRAME
+        frame_linux_destroy_info(info)
+    }
+
+    -- Queues a platform-agnostic resize event.
+    frame_linux_push_resize :: fn (info: ^FrameInfo, width: u16, height: u16) {
+        info.events.push(FrameEvent.Resized { width: width, height: height })
+    }
+
+    -- Creates and maps a new X11 window for a public frame.
+    frame_linux_create :: fn (system: ^FrameSystem, frame: ^Frame) {
+        on !frame_system_has_id_capacity(system) => {
+            frame.id = CLOSED_FRAME
+            return
+        }
+
+        display := XOpenDisplay(nil)
+        on display == nil => {
+            frame.id = CLOSED_FRAME
+            return
+        }
+
+        id := frame_system_allocate_id(system)
+        on id == CLOSED_FRAME => {
+            _ := XCloseDisplay(display)
+            frame.id = CLOSED_FRAME
+            return
+        }
+
+        screen := XDefaultScreen(display)
+        root := XRootWindow(display, screen)
+        black := XBlackPixel(display, screen)
+        white := XWhitePixel(display, screen)
+
+        window := XCreateSimpleWindow(display,
+                                      root,
+                                      0,
+                                      0,
+                                      frame.width.as(u32),
+                                      frame.height.as(u32),
+                                      1,
+                                      black,
+                                      white)
+        on window == 0 => {
+            _ := XCloseDisplay(display)
+            frame.id = CLOSED_FRAME
+            return
+        }
+
+        temp_arena := nrt_temp_arena()
+        mark := nrt_arena_mark(temp_arena)
+        defer nrt_arena_restore(temp_arena, mark)
+
+        _ := XStoreName(display, window, frame_c_string_temp(frame.title))
+        _ := XSelectInput(display,
+                          window,
+                          (X_STRUCTURE_NOTIFY_MASK | X_EXPOSURE_MASK).as(XLong))
+        wm_delete := XInternAtom(display, frame_c_string_temp("WM_DELETE_WINDOW"), 0)
+        _ := XSetWMProtocols(display, window, ^wm_delete, 1)
+        _ := XMapWindow(display, window)
+        _ := XFlush(display)
+
+        platform_info : PlatformFrameInfo
+        platform_info.display = display
+        platform_info.window = window
+        platform_info.wm_delete_window = wm_delete
+
+        info := FrameInfo {
+            id: id
+            events: nil
+            platform_info: platform_info
+        }
+        frame_linux_push_resize(^info, frame.width, frame.height)
+        system.frames.push(info)
+        frame.id = id
+    }
+
+    -- Applies desired frame data to an existing X11 window.
+    frame_linux_update_existing :: fn (system: ^FrameSystem, frame: ^Frame) {
+        info := frame_system_find_info(system, frame.id)
+        on info == nil => {
+            frame.id = CLOSED_FRAME
+            return
+        }
+
+        temp_arena := nrt_temp_arena()
+        mark := nrt_arena_mark(temp_arena)
+        defer nrt_arena_restore(temp_arena, mark)
+
+        _ := XStoreName(info.platform_info.display,
+                        info.platform_info.window,
+                        frame_c_string_temp(frame.title))
+        _ := XResizeWindow(info.platform_info.display,
+                           info.platform_info.window,
+                           frame.width.as(u32),
+                           frame.height.as(u32))
+        _ := XFlush(info.platform_info.display)
+    }
+
+    -- Copies current X11 geometry into the public frame snapshot.
+    frame_linux_update_snapshot :: fn (_system: ^FrameSystem, frame: ^Frame, info: ^FrameInfo) {
+        root : XWindow
+        x : i32
+        y : i32
+        width : u32
+        height : u32
+        border_width : u32
+        depth : u32
+
+        ok := XGetGeometry(info.platform_info.display,
+                           info.platform_info.window,
+                           ^root,
+                           ^x,
+                           ^y,
+                           ^width,
+                           ^height,
+                           ^border_width,
+                           ^depth)
+        on ok == 0 => {
+            frame.id = CLOSED_FRAME
+            frame_linux_destroy_info(info)
+            return
+        }
+
+        frame.width = width.as(u16)
+        frame.height = height.as(u16)
+    }
+
+    -- Converts one native X11 event into queued frame events.
+    frame_linux_handle_event :: fn (info: ^FrameInfo, event: ^XEvent) {
+        on event.type {
+            X_EVENT_CONFIGURE_NOTIFY => {
+                configure := event.as(usize).as(^XConfigureEvent)
+                width := configure.width.as(u16)
+                height := configure.height.as(u16)
+                frame_linux_push_resize(info, width, height)
+            }
+            X_EVENT_CLIENT_MESSAGE => {
+                client := event.as(usize).as(^XClientMessageEvent)
+                on client.data0.as(XAtom) == info.platform_info.wm_delete_window => {
+                    info.events.push(FrameEvent.Closed)
+                }
+            }
+            X_EVENT_DESTROY_NOTIFY => {
+                info.events.push(FrameEvent.Closed)
             }
         }
     }
 
-    pub destroy :: fn (_system: ^Self, frame: ^Frame) {
-        frame.id = CLOSED_FRAME
+    frame_apply_impl :: fn (system: ^FrameSystem, frame: ^Frame) {
+        on frame.id == CLOSED_FRAME => return
+
+        on frame.id == NEW_FRAME => {
+            frame_linux_create(system, frame)
+            return
+        }
+
+        frame_linux_update_existing(system, frame)
     }
-}
 
-frame_system_has_id_capacity :: fn (system: ^FrameSystem) -> bool {
-    return system^.frames.count <= 65534
-}
+    frame_loop_impl :: fn (system: ^FrameSystem) -> bool {
+        for info in system.frames {
+            for info.platform_info.display != nil && XPending(info.platform_info.display) > 0 {
+                event : XEvent
+                _ := XNextEvent(info.platform_info.display, ^event)
+                frame_linux_handle_event(info, ^event)
+            }
 
-on "linux" {
-    use os.linux
+            on info.id != CLOSED_FRAME => return yes
+        }
 
-    PlatformFrameInfo :: plex {
+        return no
+    }
 
+    frame_update_impl :: fn (system: ^FrameSystem, frame: ^Frame) {
+        on frame.id == CLOSED_FRAME => return
+
+        info := frame_system_find_info(system, frame.id)
+        on info == nil => {
+            frame.id = CLOSED_FRAME
+            return
+        }
+
+        frame_linux_update_snapshot(system, frame, info)
+    }
+
+    frame_poll_impl :: fn (system: ^FrameSystem, frame: ^Frame) -> FrameEvent {
+        on frame.id == CLOSED_FRAME => return FrameEvent.None
+
+        info := frame_system_find_info(system, frame.id)
+        on info == nil => {
+            frame.id = CLOSED_FRAME
+            return FrameEvent.Closed
+        }
+
+        on info.events.count == 0 => return FrameEvent.None
+
+        event := info.events[0]
+        info.events.delete(0)
+        on event == FrameEvent.Closed => frame_linux_mark_closed(info, frame)
+        return event
+    }
+
+    frame_destroy_impl :: fn (system: ^FrameSystem, frame: ^Frame) {
+        on frame.id == CLOSED_FRAME => return
+
+        info := frame_system_find_info(system, frame.id)
+        on info != nil => frame_linux_destroy_info(info)
+        frame.id = CLOSED_FRAME
     }
 }
 
 on "windows" {
     use os.windows
 
+    -- Windows data attached to a public `Frame`.
     PlatformFrameInfo :: plex {
 
+    }
+
+    frame_apply_impl :: fn (_system: ^FrameSystem, frame: ^Frame) {
+        on frame.id == CLOSED_FRAME => return
+        frame.id = CLOSED_FRAME
+    }
+
+    frame_loop_impl :: fn (_system: ^FrameSystem) -> bool {
+        return no
+    }
+
+    frame_update_impl :: fn (_system: ^FrameSystem, frame: ^Frame) {
+        on frame.id == CLOSED_FRAME => return
+        frame.id = CLOSED_FRAME
+    }
+
+    frame_poll_impl :: fn (_system: ^FrameSystem, frame: ^Frame) -> FrameEvent {
+        on frame.id != CLOSED_FRAME => {
+            frame.id = CLOSED_FRAME
+            return FrameEvent.Closed
+        }
+        return FrameEvent.None
+    }
+
+    frame_destroy_impl :: fn (_system: ^FrameSystem, frame: ^Frame) {
+        on frame.id == CLOSED_FRAME => return
+        frame.id = CLOSED_FRAME
     }
 }
