@@ -196,6 +196,12 @@ available while the
 missing-field diagnostic is present and while the cursor is on either the literal
 target or the literal body.
 
+For unused locals, the server offers both a rename quick fix that toggles the
+leading underscore convention and a removal quick fix for simple local
+declaration lines. For mistaken function definitions written as `name : fn`,
+the server offers `Change ':' to '::'` even when the syntax error prevents full
+semantic analysis.
+
 The server also offers import quick fixes for unresolved symbols. It searches
 loaded modules, sibling modules beside the active/root document, roots from
 `NERD_LIB_PATH`, and the available `mods` tree for public exports with the

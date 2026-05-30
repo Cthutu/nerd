@@ -181,6 +181,29 @@ main :: fn () {
                         ]
                     }
                 }
+            },
+            {
+                "title": "Remove value",
+                "kind": "quickfix",
+                "edit": {
+                    "changes": {
+                        "file:///test.n": [
+                            {
+                                "range": {
+                                    "start": {
+                                        "line": 1,
+                                        "character": 0
+                                    },
+                                    "end": {
+                                        "line": 2,
+                                        "character": 0
+                                    }
+                                },
+                                "newText": ""
+                            }
+                        ]
+                    }
+                }
             }
         ]
     },
