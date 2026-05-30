@@ -1528,6 +1528,19 @@ bool ast_parse_type(AstParseState* state, u32* out_node)
             AstToken variant_token      = state->token;
             u32      variant_type_node  = U32_MAX;
             u32      variant_value_node = U32_MAX;
+            if (ast_peek_kind_at(state, 0) == TK_LBrace) {
+                if (!ast_next_token(state)) {
+                    return false;
+                }
+                return error_0203_expected_token_ex(
+                    state->token.source,
+                    ast_token_span(state, &state->token),
+                    TK_LParen,
+                    state->token.kind,
+                    "Braced enum payload shorthand is not supported.",
+                    "Enum variant payloads use parentheses; write "
+                    "`Resized(plex { ... })` for a plex payload.");
+            }
             if (ast_peek_kind_at(state, 0) == TK_LParen) {
                 AstToken lparen = state->token;
                 if (!ast_expect_token(state, TK_LParen) ||

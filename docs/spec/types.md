@@ -149,6 +149,10 @@ annotations are not accepted on `union` or `enum`.
 
 Enums support unit variants, payload variants, and explicit discriminant
 expressions.
+Payload variants use parentheses. To give a variant a named-field payload,
+write the payload type explicitly as a plex, such as
+`Resized(plex { width u16 height u16 })`; `Resized { ... }` is not enum
+payload syntax.
 
 ## Dynamic Array Methods
 
