@@ -286,6 +286,37 @@ def sync_directory(source: Path, destination: Path) -> None:
             shutil.copy2(src_entry, dest_entry)
 
 
+def link_mods_directory(source: Path, destination: Path) -> None:
+    """Point _bin/mods at the real mods/ tree for local standard-library work."""
+    if not source.exists():
+        if destination.is_symlink() or destination.exists():
+            if destination.is_dir() and not destination.is_symlink():
+                shutil.rmtree(destination)
+            else:
+                destination.unlink()
+        return
+
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if destination.is_symlink():
+        current_target = Path(os.readlink(destination))
+        if not current_target.is_absolute():
+            current_target = (destination.parent / current_target).resolve()
+        if current_target == source.resolve():
+            return
+        destination.unlink()
+    elif destination.exists():
+        if destination.is_dir():
+            shutil.rmtree(destination)
+        else:
+            destination.unlink()
+
+    relative_source = os.path.relpath(source, destination.parent)
+    try:
+        destination.symlink_to(relative_source, target_is_directory=True)
+    except OSError:
+        sync_directory(source, destination)
+
+
 def select_cflags(profile: str) -> list[str]:
     base = ["-std=c23", "-Wall", "-Wextra", "-Werror", "-pipe"]
     if profile == "debug":
@@ -302,7 +333,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument(
         "--skip-mod-sync",
         action="store_true",
-        help="Do not mirror mods/ into _bin/ after building",
+        help="Do not link mods/ into _bin/ after building",
     )
     return parser.parse_args(argv[1:])
 
@@ -750,7 +781,7 @@ def main(argv: list[str] | None = None) -> None:
         link_executable(objects, executable_path(project, profile))
 
     if not args.skip_mod_sync:
-        sync_directory(MODS_DIR, BIN_DIR / "mods")
+        link_mods_directory(MODS_DIR, BIN_DIR / "mods")
 
     print(f"{prefix('skip', GREY)} {skipped_sources} source file(s) up to date")
     finish_bar = colour("=" * 48, GREEN)
