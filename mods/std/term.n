@@ -1850,29 +1850,31 @@ pub term_run :: fn () {
     }
 }
 
-term_noop_simulate :: fn (_sim: TermSimulate) {
-}
+test {
+    term_noop_simulate :: fn (_sim: TermSimulate) {
+    }
 
-term_noop_present :: fn (_present: TermPresent) {
-}
+    term_noop_present :: fn (_present: TermPresent) {
+    }
 
-term_test_payload              : u32
-term_test_simulate_user_data   : ^void
-term_test_presentation_user_data : ^void
-term_test_simulate_count       : u32
-term_test_keyboard             : TermKeyboard
+    term_test_payload                : u32
+    term_test_simulate_user_data     : ^void
+    term_test_presentation_user_data : ^void
+    term_test_simulate_count         : u32
+    term_test_keyboard               : TermKeyboard
 
-term_capture_simulate :: fn (sim: TermSimulate) {
-    term_test_simulate_user_data = sim.user_data
-}
+    term_capture_simulate :: fn (sim: TermSimulate) {
+        term_test_simulate_user_data = sim.user_data
+    }
 
-term_capture_present :: fn (present: TermPresent) {
-    term_test_presentation_user_data = present.user_data
-}
+    term_capture_present :: fn (present: TermPresent) {
+        term_test_presentation_user_data = present.user_data
+    }
 
-term_count_simulate :: fn (sim: TermSimulate) {
-    term_test_simulate_count += 1
-    term_test_keyboard = sim.keyboard
+    term_count_simulate :: fn (sim: TermSimulate) {
+        term_test_simulate_count += 1
+        term_test_keyboard       = sim.keyboard
+    }
 }
 
 test "term_get_size returns a column and row tuple" {
