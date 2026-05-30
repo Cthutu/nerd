@@ -194,7 +194,8 @@ internal u32 lsp_find_field_node_at_token(const Ast* ast, u32 token_index)
 {
     for (u32 i = 0; i < array_count(ast->nodes); ++i) {
         const AstNode* node = &ast->nodes[i];
-        if (node->kind == AK_Field && node->token_index == token_index) {
+        if ((node->kind == AK_Field || node->kind == AK_TupleField) &&
+            node->token_index == token_index) {
             return i;
         }
     }
@@ -1802,6 +1803,42 @@ internal string lsp_local_hover_text(const LspDocument* doc,
         STRINGV(type));
 }
 
+internal string lsp_expression_hover_text(const LspDocument* doc,
+                                          Arena*             arena,
+                                          u32                node_index)
+{
+    if (node_index >= array_count(doc->front_end.ast.nodes)) {
+        return s("");
+    }
+
+    const AstNode* node = &doc->front_end.ast.nodes[node_index];
+    if (node->token_index >= array_count(doc->front_end.lexer.tokens)) {
+        return s("");
+    }
+
+    u32 type_index = sema_no_type();
+    if (!lsp_sema_node_type(&doc->front_end.sema, node_index, &type_index)) {
+        return s("");
+    }
+
+    string type = sema_type_name(
+        &doc->front_end.lexer, &doc->front_end.sema, arena, type_index);
+    if (type.count == 0 || string_eq(type, s("<unknown>"))) {
+        return s("");
+    }
+
+    const Token* token = &doc->front_end.lexer.tokens[node->token_index];
+    usize        end   = lex_token_end_offset(&doc->front_end.lexer, token);
+    string       text =
+        string_from(doc->front_end.lexer.source.source.data + token->offset,
+                    end - token->offset);
+
+    return string_format(arena,
+                         STRINGP "\n\n- Type: `" STRINGP "`",
+                         STRINGV(lsp_markdown_code_block(arena, text)),
+                         STRINGV(type));
+}
+
 internal bool
 lsp_block_contains_node(const Ast* ast, u32 block_node_index, u32 node_index)
 {
@@ -2324,6 +2361,42 @@ internal string lsp_field_hover_text(const LspDocument* doc,
     }
 
     const AstNode* field = &doc->front_end.ast.nodes[field_node_index];
+    if (field->kind == AK_TupleField) {
+        u32 target_type = sema_no_type();
+        if (!lsp_sema_node_type(&doc->front_end.sema, field->a, &target_type)) {
+            return s("");
+        }
+
+        const SemaType* target = NULL;
+        if (!lsp_sema_type(&doc->front_end.sema, target_type, &target) ||
+            target->kind != STK_Tuple || field->b >= target->param_count) {
+            return s("");
+        }
+
+        u32 field_type =
+            doc->front_end.sema
+                .type_param_types[target->first_param_type + field->b];
+        string type = sema_type_name(
+            &doc->front_end.lexer, &doc->front_end.sema, arena, field_type);
+        string owner = sema_type_name(
+            &doc->front_end.lexer, &doc->front_end.sema, arena, target_type);
+
+        const Token* token = &doc->front_end.lexer.tokens[field->token_index];
+        usize        end   = lex_token_end_offset(&doc->front_end.lexer, token);
+        string       name =
+            string_from(doc->front_end.lexer.source.source.data + token->offset,
+                        end - token->offset);
+
+        return string_format(
+            arena,
+            STRINGP "\n\n- Kind: tuple field\n- Type: `" STRINGP "`"
+                    "\n- Owner: `" STRINGP "`",
+            STRINGV(lsp_markdown_code_block(
+                arena, string_format(arena, STRINGP, STRINGV(name)))),
+            STRINGV(type),
+            STRINGV(owner));
+    }
+
     if (field->kind != AK_Field) {
         return lsp_ast_field_hover_text(doc, arena, field_node_index);
     }
@@ -3333,6 +3406,18 @@ void lsp_handle_hover(LspState* state, const LspMessage* message)
     switch (token->kind) {
     case TK_Integer:
         {
+            u32 field_node_index =
+                lsp_find_field_node_at_token(&doc->front_end.ast, token_index);
+            if (field_node_index != U32_MAX) {
+                string field_hover =
+                    lsp_field_hover_text(doc, message->arena, field_node_index);
+                if (field_hover.count != 0) {
+                    lsp_set_markdown_hover(
+                        response, message->arena, field_hover);
+                    break;
+                }
+            }
+
             usize token_end =
                 lex_token_end_offset(&doc->front_end.lexer, token);
             string raw_text = string_from(
@@ -3425,6 +3510,19 @@ void lsp_handle_hover(LspState* state, const LspMessage* message)
                           lex_symbol(&doc->front_end.lexer, symbol_handle));
             if (builtin_hover.count != 0) {
                 lsp_set_markdown_hover(response, message->arena, builtin_hover);
+                break;
+            }
+
+            u32 ref_node_index = lsp_find_symbol_ref_node_at_token(
+                &doc->front_end.ast, token_index);
+            string expression_hover =
+                ref_node_index == U32_MAX
+                    ? s("")
+                    : lsp_expression_hover_text(
+                          doc, message->arena, ref_node_index);
+            if (expression_hover.count != 0) {
+                lsp_set_markdown_hover(
+                    response, message->arena, expression_hover);
                 break;
             }
 
