@@ -24,12 +24,21 @@ pub XBool :: i32
 -- Xlib long value on the supported Linux ABI.
 pub XLong :: i64
 
+-- Xlib key symbol value.
+pub XKeySym :: u64
+
+pub X_EVENT_KEY_PRESS        :: 2  -- Xlib `KeyPress` event type.
+pub X_EVENT_KEY_RELEASE      :: 3  -- Xlib `KeyRelease` event type.
 pub X_EVENT_CONFIGURE_NOTIFY :: 22 -- Xlib `ConfigureNotify` event type.
 pub X_EVENT_CLIENT_MESSAGE   :: 33 -- Xlib `ClientMessage` event type.
 pub X_EVENT_DESTROY_NOTIFY   :: 17 -- Xlib `DestroyNotify` event type.
 
+pub X_KEY_PRESS_MASK      :: 0x00000001 -- Receives key-press events.
+pub X_KEY_RELEASE_MASK    :: 0x00000002 -- Receives key-release events.
 pub X_STRUCTURE_NOTIFY_MASK :: 0x00020000 -- Receives structure-change events.
 pub X_EXPOSURE_MASK         :: 0x00008000 -- Receives expose events.
+
+pub X_KEYSYM_ESCAPE :: 0xff1b -- Xlib keysym for the Escape key.
 
 -- Stores an arbitrary Xlib event. Cast to a specific event record after
 -- checking `type`.
@@ -53,6 +62,25 @@ pub XConfigureEvent :: plex #c {
     border_width      i32      -- New border width.
     above             XWindow  -- Sibling stacking reference.
     override_redirect XBool    -- Override-redirect flag.
+}
+
+-- Xlib key payload used for key press/release events.
+pub XKeyEvent :: plex #c {
+    type        i32      -- Xlib event type tag.
+    serial      u64      -- Last processed request serial number.
+    send_event  XBool    -- Non-zero when sent explicitly.
+    display     XDisplay -- Display that produced the event.
+    window      XWindow  -- Event window.
+    root        XWindow  -- Root window.
+    subwindow   XWindow  -- Child window, or none.
+    time        u64      -- Server event time.
+    x           i32      -- Pointer x position in the event window.
+    y           i32      -- Pointer y position in the event window.
+    x_root      i32      -- Pointer x position in the root window.
+    y_root      i32      -- Pointer y position in the root window.
+    state       u32      -- Modifier state mask.
+    keycode     u32      -- Platform key scan code.
+    same_screen XBool    -- Non-zero when root and event windows share a screen.
 }
 
 -- Xlib client-message payload used for window-manager protocol events.
@@ -111,6 +139,12 @@ ffi "X11" {
     pub XPending (display: XDisplay) -> i32
 
     pub XNextEvent (display: XDisplay, event_return: ^XEvent) -> i32
+
+    pub XLookupString (event_struct  : ^XKeyEvent,
+                       buffer_return : ^i8,
+                       bytes_buffer  : i32,
+                       keysym_return : ^XKeySym,
+                       status_in_out : ^void) -> i32
 
     pub XGetGeometry (display             : XDisplay,
                       drawable            : XWindow,

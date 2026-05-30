@@ -35,6 +35,9 @@
 --|         None => {}
 --|         Closed => {}
 --|         Resized { width, height } => {}
+--|         KeyDown { scan_code } => {}
+--|         KeyUp { scan_code } => {}
+--|         Character { codepoint } => {}
 --|     }
 --| }
 
@@ -57,6 +60,9 @@ pub NEW_FRAME :: 0
 -- A special frame ID that indicates a frame has been closed, destroyed, or
 -- failed to apply/update. It should not be updated or polled anymore.
 pub CLOSED_FRAME : u16 : 65535
+
+-- Unicode escape control character produced by the Escape key on text input.
+pub FRAME_CODEPOINT_ESCAPE :: 27
 
 pub FrameSystem :: plex {
     -- Tracks all currently known frames belonging to this system.
@@ -97,6 +103,22 @@ pub FrameEvent :: enum {
     Resized {
         width u16
         height u16
+    }
+
+    -- A physical key was pressed. The scan code is platform-specific.
+    KeyDown {
+        scan_code u32
+    }
+
+    -- A physical key was released. The scan code is platform-specific.
+    KeyUp {
+        scan_code u32
+    }
+
+    -- A character was entered after translating a key press through the
+    -- platform keyboard layout.
+    Character {
+        codepoint u32
     }
 }
 
@@ -240,6 +262,59 @@ on "linux" {
         info.events.push(FrameEvent.Resized { width: width, height: height })
     }
 
+    -- Decodes the first UTF-8 codepoint from Xlib text translation output.
+    frame_linux_decode_utf8 :: fn (bytes: []u8) -> u32 {
+        on bytes.count == 0 => return 0
+
+        first := bytes[0]
+        on first < 0x80 => return first.as(u32)
+
+        on (first & 0xe0) == 0xc0 && bytes.count >= 2 => {
+            return ((first & 0x1f).as(u32) << 6) |
+                   (bytes[1] & 0x3f).as(u32)
+        }
+
+        on (first & 0xf0) == 0xe0 && bytes.count >= 3 => {
+            return ((first & 0x0f).as(u32) << 12) |
+                   ((bytes[1] & 0x3f).as(u32) << 6) |
+                   (bytes[2] & 0x3f).as(u32)
+        }
+
+        on (first & 0xf8) == 0xf0 && bytes.count >= 4 => {
+            return ((first & 0x07).as(u32) << 18) |
+                   ((bytes[1] & 0x3f).as(u32) << 12) |
+                   ((bytes[2] & 0x3f).as(u32) << 6) |
+                   (bytes[3] & 0x3f).as(u32)
+        }
+
+        return 0
+    }
+
+    -- Queues key and character events from an X11 key event.
+    frame_linux_push_key_event :: fn (info: ^FrameInfo, event: ^XKeyEvent, is_down: bool) {
+        scan_code := event.keycode
+        on is_down {
+            yes => info.events.push(FrameEvent.KeyDown { scan_code: scan_code })
+            no => info.events.push(FrameEvent.KeyUp { scan_code: scan_code })
+        }
+
+        on !is_down => return
+
+        buffer : [8]u8
+        keysym : XKeySym
+        count := XLookupString(event,
+                               buffer[..].data.as(^void).as(^i8),
+                               buffer.count.as(i32),
+                               ^keysym,
+                               nil)
+        on count <= 0 => return
+
+        codepoint := frame_linux_decode_utf8(buffer[0..count.as(usize)])
+        on codepoint != 0 => {
+            info.events.push(FrameEvent.Character { codepoint: codepoint })
+        }
+    }
+
     -- Creates and maps a new X11 window for a public frame.
     frame_linux_create :: fn (system: ^FrameSystem, frame: ^Frame) {
         on !frame_system_has_id_capacity(system) => {
@@ -285,9 +360,11 @@ on "linux" {
         defer nrt_arena_restore(temp_arena, mark)
 
         _ := XStoreName(display, window, frame_c_string_temp(frame.title))
-        _ := XSelectInput(display,
-                          window,
-                          (X_STRUCTURE_NOTIFY_MASK | X_EXPOSURE_MASK).as(XLong))
+        event_mask := (X_STRUCTURE_NOTIFY_MASK |
+                       X_EXPOSURE_MASK |
+                       X_KEY_PRESS_MASK |
+                       X_KEY_RELEASE_MASK).as(XLong)
+        _ := XSelectInput(display, window, event_mask)
         wm_delete := XInternAtom(display, frame_c_string_temp("WM_DELETE_WINDOW"), 0)
         _ := XSetWMProtocols(display, window, ^wm_delete, 1)
         _ := XMapWindow(display, window)
@@ -362,6 +439,14 @@ on "linux" {
     -- Converts one native X11 event into queued frame events.
     frame_linux_handle_event :: fn (info: ^FrameInfo, event: ^XEvent) {
         on event.type {
+            X_EVENT_KEY_PRESS => {
+                key := event.as(usize).as(^XKeyEvent)
+                frame_linux_push_key_event(info, key, yes)
+            }
+            X_EVENT_KEY_RELEASE => {
+                key := event.as(usize).as(^XKeyEvent)
+                frame_linux_push_key_event(info, key, no)
+            }
             X_EVENT_CONFIGURE_NOTIFY => {
                 configure := event.as(usize).as(^XConfigureEvent)
                 width := configure.width.as(u16)

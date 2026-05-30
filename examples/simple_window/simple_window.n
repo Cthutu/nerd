@@ -23,6 +23,9 @@ main :: fn () {
             }
             FrameEvent.Closed => {
             }
+            FrameEvent.Character { codepoint } => {
+                on codepoint == FRAME_CODEPOINT_ESCAPE => system.destroy(^frame)
+            }
         }
     }
 
