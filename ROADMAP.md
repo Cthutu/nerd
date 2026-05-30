@@ -308,7 +308,7 @@ These are open trait-system follow-ups that were previously recorded as
     before a generic function or impl method is instantiated
   - [x] check constraint-sensitive operations against trait bounds where
     possible before monomorphisation
-  - [ ] keep concrete instantiation diagnostics for cases that genuinely depend
+  - [x] keep concrete instantiation diagnostics for cases that genuinely depend
     on substituted types
 - [x] Improve diagnostics for non-inferable trait generic parameters:
   - [x] produce useful help text when trait generic parameters are required but

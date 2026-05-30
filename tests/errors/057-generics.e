@@ -106,3 +106,63 @@ main :: fn () => 0
         "Change the expression or annotation so both sides use the same type."
     ]
 }
+¬
+add :: fn [T] (lhs: T, rhs: T) -> T {
+    return lhs + rhs
+}
+
+main :: fn () {
+    _ := add("a", "b")
+}
+¬
+{
+    "message": "Operator `+` requires matching numeric operands, found `string` and `string`",
+    "source_file": "tests/errors/057-generics.e",
+    "primary_location": {
+        "line": 2,
+        "column": 16
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 2,
+            "column": 16,
+            "length": 1,
+            "message": "These operands have types `string` and `string`"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Use `+` only with matching numeric operands."
+    ]
+}
+¬
+field :: fn [T] (value: T) -> i32 {
+    return value.x
+}
+
+main :: fn () -> i32 {
+    return field(42)
+}
+¬
+{
+    "message": "Type mismatch: expected `array, slice, string, dynamic array, module, plex, union, or pointer to memberable value`, found `i32`",
+    "source_file": "tests/errors/057-generics.e",
+    "primary_location": {
+        "line": 2,
+        "column": 18
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 2,
+            "column": 18,
+            "length": 1,
+            "message": "This expression has type `i32`"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Change the expression or annotation so both sides use the same type."
+    ]
+}
