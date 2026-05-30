@@ -5278,8 +5278,11 @@ internal void format_emit_test(StringBuilder* sb,
     const CstNode* test = &cst->nodes[node_index];
 
     format_emit_indent(sb, indent_level);
-    sb_append_cstr(sb, "test ");
-    format_emit_expr(sb, cst, lexer, test->a, 0);
+    sb_append_cstr(sb, "test");
+    if (test->a != U32_MAX) {
+        sb_append_char(sb, ' ');
+        format_emit_expr(sb, cst, lexer, test->a, 0);
+    }
     sb_append_cstr(sb, " {\n");
     format_emit_block_contents(sb, cst, lexer, test->b, indent_level + 1);
     format_emit_indent(sb, indent_level);

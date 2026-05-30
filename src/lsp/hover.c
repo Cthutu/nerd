@@ -1843,6 +1843,37 @@ internal string lsp_expression_hover_text(const LspDocument* doc,
                          STRINGV(type));
 }
 
+internal void lsp_append_space_preserving_newlines(StringBuilder* sb,
+                                                   string         source,
+                                                   usize          start,
+                                                   usize          end)
+{
+    for (usize i = start; i < end && i < source.count; ++i) {
+        sb_append_char(sb, source.data[i] == '\n' ? '\n' : ' ');
+    }
+}
+
+internal u32 lsp_source_test_closing_brace_index(const Lexer* lexer,
+                                                 u32          open_index)
+{
+    u32 depth = 0;
+    for (u32 index = open_index; index < array_count(lexer->tokens); ++index) {
+        const Token* token = &lexer->tokens[index];
+        if (token->kind == TK_LBrace) {
+            depth += 1;
+        } else if (token->kind == TK_RBrace) {
+            if (depth == 0) {
+                return U32_MAX;
+            }
+            depth -= 1;
+            if (depth == 0) {
+                return index;
+            }
+        }
+    }
+    return U32_MAX;
+}
+
 internal string lsp_source_test_hover_source(Arena* arena, const Lexer* lexer)
 {
     StringBuilder sb = {0};
@@ -1860,16 +1891,49 @@ internal string lsp_source_test_hover_source(Arena* arena, const Lexer* lexer)
                                  : U32_MAX;
         if (depth == 0 && token->kind == TK_Symbol &&
             symbol_handle != U32_MAX &&
-            string_eq_cstr(lex_symbol(lexer, symbol_handle), "test") &&
-            index + 2 < array_count(lexer->tokens) &&
-            lexer->tokens[index + 1].kind == TK_String &&
-            lexer->tokens[index + 2].kind == TK_LBrace) {
-            sb_append_string(
-                &sb, string_from(source.data + cursor, token->offset - cursor));
-            sb_format(&sb, "__lsp_source_test_%u :: fn () ", index);
-            cursor = lexer->tokens[index + 2].offset;
-            index += 2;
-            continue;
+            string_eq_cstr(lex_symbol(lexer, symbol_handle), "test")) {
+            if (index + 2 < array_count(lexer->tokens) &&
+                lexer->tokens[index + 1].kind == TK_String &&
+                lexer->tokens[index + 2].kind == TK_LBrace) {
+                sb_append_string(
+                    &sb,
+                    string_from(source.data + cursor, token->offset - cursor));
+                sb_format(&sb, "__lsp_source_test_%u :: fn () ", index);
+                cursor = lexer->tokens[index + 2].offset;
+                index += 2;
+                continue;
+            }
+
+            if (index + 1 < array_count(lexer->tokens) &&
+                lexer->tokens[index + 1].kind == TK_LBrace) {
+                u32 close_index =
+                    lsp_source_test_closing_brace_index(lexer, index + 1);
+                if (close_index != U32_MAX) {
+                    const Token* open  = &lexer->tokens[index + 1];
+                    const Token* close = &lexer->tokens[close_index];
+                    sb_append_string(&sb,
+                                     string_from(source.data + cursor,
+                                                 token->offset - cursor));
+                    lsp_append_space_preserving_newlines(
+                        &sb,
+                        source,
+                        token->offset,
+                        lex_token_end_offset(lexer, open));
+                    sb_append_string(
+                        &sb,
+                        string_from(
+                            source.data + lex_token_end_offset(lexer, open),
+                            close->offset - lex_token_end_offset(lexer, open)));
+                    lsp_append_space_preserving_newlines(
+                        &sb,
+                        source,
+                        close->offset,
+                        lex_token_end_offset(lexer, close));
+                    cursor = lex_token_end_offset(lexer, close);
+                    index  = close_index + 1;
+                    continue;
+                }
+            }
         }
 
         if (token->kind == TK_LBrace) {
@@ -1895,28 +1959,32 @@ internal bool lsp_offset_is_in_source_test(const Lexer* lexer, usize offset)
                                  : U32_MAX;
         if (depth == 0 && token->kind == TK_Symbol &&
             symbol_handle != U32_MAX &&
-            string_eq_cstr(lex_symbol(lexer, symbol_handle), "test") &&
-            index + 2 < array_count(lexer->tokens) &&
-            lexer->tokens[index + 1].kind == TK_String &&
-            lexer->tokens[index + 2].kind == TK_LBrace) {
-            u32 body_depth = 0;
-            for (u32 body_index = index + 2;
-                 body_index < array_count(lexer->tokens);
-                 ++body_index) {
-                const Token* body_token = &lexer->tokens[body_index];
-                if (body_token->kind == TK_LBrace) {
-                    body_depth += 1;
-                } else if (body_token->kind == TK_RBrace) {
-                    if (body_depth == 0) {
-                        break;
-                    }
-                    body_depth -= 1;
-                    if (body_depth == 0) {
-                        usize end = lex_token_end_offset(lexer, body_token);
-                        return offset >= lexer->tokens[index + 2].offset &&
-                               offset <= end;
-                    }
+            string_eq_cstr(lex_symbol(lexer, symbol_handle), "test")) {
+            u32 open_index = U32_MAX;
+            if (index + 2 < array_count(lexer->tokens) &&
+                lexer->tokens[index + 1].kind == TK_String &&
+                lexer->tokens[index + 2].kind == TK_LBrace) {
+                open_index = index + 2;
+            } else if (index + 1 < array_count(lexer->tokens) &&
+                       lexer->tokens[index + 1].kind == TK_LBrace) {
+                open_index = index + 1;
+            }
+            if (open_index == U32_MAX) {
+                index += 1;
+                continue;
+            }
+
+            u32 close_index =
+                lsp_source_test_closing_brace_index(lexer, open_index);
+            if (close_index != U32_MAX) {
+                usize start = lexer->tokens[open_index].offset;
+                usize end =
+                    lex_token_end_offset(lexer, &lexer->tokens[close_index]);
+                if (offset >= start && offset <= end) {
+                    return true;
                 }
+                index = close_index;
+                continue;
             }
         }
 
@@ -1934,7 +2002,9 @@ internal string lsp_source_test_hover_text(const LspDocument* doc,
                                            Arena*             arena,
                                            usize              offset)
 {
-    if (!lsp_offset_is_in_source_test(&doc->front_end.lexer, offset)) {
+    bool in_source_test =
+        lsp_offset_is_in_source_test(&doc->front_end.lexer, offset);
+    if (!in_source_test) {
         return s("");
     }
 

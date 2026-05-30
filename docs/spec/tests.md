@@ -9,14 +9,20 @@ support for source tests is in `ast_parse_test_decl` in
 
 ```bnf
 source-test ::= 'test' STRING block
+test-decls  ::= 'test' block
 ```
 
-Source tests are top-level private declarations. They cannot be marked `pub`.
-The parser recognises `test "name" { ... }` specially only when `test` is not
-followed by `:`, so ordinary bindings named `test` remain possible.
+Source tests and test-only declaration blocks are top-level private
+declarations. They cannot be marked `pub`, and declarations inside `test { ...
+}` cannot be marked `pub`. The parser recognises `test "name" { ... }` and
+`test { ... }` specially only when `test` is not followed by `:`, so ordinary
+bindings named `test` remain possible.
 
-Source test bodies are token-balanced by the parser and are used by the test
-command rather than emitted as normal top-level bindings.
+Source test bodies and test-only declaration blocks are token-balanced by the
+parser and are used by the test command rather than emitted as normal top-level
+bindings. In normal builds, `test { ... }` declarations are ignored. During
+`nerd test`, the wrapper is removed and the contained declarations are compiled
+in the module where they appear.
 
 ## Check Command
 

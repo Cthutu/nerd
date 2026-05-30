@@ -187,6 +187,24 @@ test "name" {
 }
 ```
 
+Test-only declarations can be placed in a bare `test` block. They are ignored
+by normal builds and are compiled only while running source tests:
+
+```nerd
+test {
+    make_answer :: fn () -> i32 {
+        return 42
+    }
+}
+
+test "answer" {
+    assert make_answer() == 42
+}
+```
+
+`test` declarations and declarations inside `test { ... }` cannot be marked
+`pub`.
+
 Run them with:
 
 ```sh

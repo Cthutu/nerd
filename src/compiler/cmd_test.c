@@ -10,13 +10,19 @@
 
 //------------------------------------------------------------------------------
 
+typedef enum {
+    SOURCE_TEST_ITEM_NAMED,
+    SOURCE_TEST_ITEM_DECLS,
+} SourceTestItemKind;
+
 typedef struct {
-    string name;
-    usize  start_offset;
-    usize  body_start_offset;
-    usize  body_end_offset;
-    usize  end_offset;
-    bool   selected;
+    SourceTestItemKind kind;
+    string             name;
+    usize              start_offset;
+    usize              body_start_offset;
+    usize              body_end_offset;
+    usize              end_offset;
+    bool               selected;
 } SourceTestDecl;
 
 typedef struct {
@@ -139,11 +145,12 @@ internal bool source_test_find_body(string source,
                                     usize* offset,
                                     usize* body_start,
                                     usize* body_end,
-                                    usize* end_offset)
+                                    usize* end_offset,
+                                    bool   reject_public_decls)
 {
     source_test_skip_ws_and_comments(source, offset);
     if (*offset >= source.count || source.data[*offset] != '{') {
-        return error_runtime("Expected `{` after test name");
+        return error_runtime("Expected `{` after test declaration");
     }
 
     *body_start = *offset + 1;
@@ -159,6 +166,18 @@ internal bool source_test_find_body(string source,
                 return error_runtime("Unterminated string in test body");
             }
             continue;
+        }
+
+        if (reject_public_decls && depth == 1 &&
+            source_test_starts_with_at(source, *offset, "pub")) {
+            bool left_ok =
+                *offset == 0 || !source_test_is_ident(source.data[*offset - 1]);
+            bool right_ok = *offset + 3 >= source.count ||
+                            !source_test_is_ident(source.data[*offset + 3]);
+            if (left_ok && right_ok) {
+                return error_runtime(
+                    "`pub` is not valid inside a test-only declaration block");
+            }
         }
 
         u8 ch = source.data[*offset];
@@ -234,35 +253,53 @@ internal bool source_test_discover(Arena* arena,
                 usize  test_start = offset;
                 string name       = {0};
                 offset += 4;
-                if (!source_test_parse_name(source, &offset, &name)) {
-                    return false;
+                source_test_skip_ws_and_comments(source, &offset);
+                bool is_named =
+                    offset < source.count && source.data[offset] == '"';
+                if (is_named) {
+                    if (!source_test_parse_name(source, &offset, &name)) {
+                        return false;
+                    }
+                } else if (offset >= source.count ||
+                           source.data[offset] != '{') {
+                    return error_runtime(
+                        "Expected a string literal or `{` after `test`");
                 }
 
                 usize body_start = 0;
                 usize body_end   = 0;
                 usize test_end   = 0;
-                if (!source_test_find_body(
-                        source, &offset, &body_start, &body_end, &test_end)) {
+                if (!source_test_find_body(source,
+                                           &offset,
+                                           &body_start,
+                                           &body_end,
+                                           &test_end,
+                                           !is_named)) {
                     return false;
                 }
 
-                string stable_name =
-                    name_prefix.count > 0
-                        ? string_format(arena,
-                                        STRINGP ": " STRINGP,
-                                        STRINGV(name_prefix),
-                                        STRINGV(name))
-                        : string_format(arena, STRINGP, STRINGV(name));
-                array_push(
-                    *out_tests,
-                    (SourceTestDecl){
-                        .name              = stable_name,
-                        .start_offset      = test_start,
-                        .body_start_offset = body_start,
-                        .body_end_offset   = body_end,
-                        .end_offset        = test_end,
-                        .selected = source_test_contains(stable_name, filter),
-                    });
+                string stable_name = {0};
+                if (is_named) {
+                    stable_name =
+                        name_prefix.count > 0
+                            ? string_format(arena,
+                                            STRINGP ": " STRINGP,
+                                            STRINGV(name_prefix),
+                                            STRINGV(name))
+                            : string_format(arena, STRINGP, STRINGV(name));
+                }
+                array_push(*out_tests,
+                           (SourceTestDecl){
+                               .kind = is_named ? SOURCE_TEST_ITEM_NAMED
+                                                : SOURCE_TEST_ITEM_DECLS,
+                               .name = stable_name,
+                               .start_offset      = test_start,
+                               .body_start_offset = body_start,
+                               .body_end_offset   = body_end,
+                               .end_offset        = test_end,
+                               .selected = is_named && source_test_contains(
+                                                           stable_name, filter),
+                           });
                 continue;
             }
         }
@@ -422,7 +459,14 @@ internal SourceTestGenerated source_test_generated_source(Arena*     arena,
         source_test_append_source_range(
             &sb, source, next_offset, test.start_offset, main_decl, &fragments);
 
-        if (test.selected) {
+        if (test.kind == SOURCE_TEST_ITEM_DECLS) {
+            source_test_append_mapped_range(&sb,
+                                            source,
+                                            test.body_start_offset,
+                                            test.body_end_offset,
+                                            &fragments);
+            sb_append_char(&sb, '\n');
+        } else if (test.selected) {
             sb_format(
                 &sb, "__nerd_test_%u :: fn () -> void {", selected_counter);
             source_test_append_mapped_range(&sb,
@@ -476,7 +520,7 @@ internal int source_test_run_one(Arena*     arena,
     Array(SourceTestDecl) single_tests = NULL;
     for (usize i = 0; i < array_count(tests); ++i) {
         SourceTestDecl test = tests[i];
-        test.selected       = i == test_index;
+        test.selected = test.kind == SOURCE_TEST_ITEM_NAMED && i == test_index;
         array_push(single_tests, test);
     }
 

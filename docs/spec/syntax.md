@@ -45,7 +45,7 @@ top-level-private-item
 top-level-on    ::= 'on' [ '!' ] STRING '{' { top-level-item } '}'
 top-level-assert-on
                 ::= 'assert' 'on' [ '!' ] STRING
-source-test     ::= 'test' STRING block
+source-test     ::= 'test' STRING block | 'test' block
 impl-block      ::= 'impl' type where-clause? '{' { top-level-item } '}'
                   | 'impl' type 'for' type where-clause? '{' { top-level-item } '}'
 ```

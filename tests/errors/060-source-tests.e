@@ -1,24 +1,25 @@
 test {
+    pub helper :: 42
 }
 ¬
 {
-    "message": "Expected String but found LeftBrace `{`",
+    "message": "Unexpected Keyword `pub` after expression",
     "source_file": "tests/errors/060-source-tests.e",
     "primary_location": {
-        "line": 1,
-        "column": 6
+        "line": 2,
+        "column": 5
     },
     "references": [
         {
             "kind": "primary",
-            "line": 1,
-            "column": 6,
-            "length": 1,
-            "message": "Found LeftBrace `{` here"
+            "line": 2,
+            "column": 5,
+            "length": 3,
+            "message": "Found Keyword `pub` here"
         }
     ],
     "notes": [],
     "help": [
-        "Check for a missing closing delimiter or misplaced operator"
+        "`pub` is not valid inside a test-only declaration block"
     ]
 }

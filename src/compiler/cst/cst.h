@@ -81,7 +81,7 @@
 // | CK_Trait           | Trait-info index      | 0                     |
 // | CK_TopOn           | Top-on/assert-on info index | 0              |
 // | CK_Pragma          | Pragma-info index     | 0                     |
-// | CK_Test            | Name string node      | Body block node       |
+// | CK_Test            | Name string node or - | Body block node       |
 // | CK_Statement       | Expr node index       | 0                     |
 // | CK_Return          | Expr node index       | 0                     |
 // | CK_Defer           | Deferred statement node index | 0              |

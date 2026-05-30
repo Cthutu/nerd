@@ -75,6 +75,7 @@ assert on !"platform-key"
 pragma symbol
 pragma symbol(123, 1.5, "text", yes, no)
 test "name" { statements }
+test { declarations }
 ```
 
 The same `Name :: plex`, `Name :: union`, and `Name :: enum` declaration forms

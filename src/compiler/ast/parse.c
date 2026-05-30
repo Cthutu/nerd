@@ -4176,22 +4176,29 @@ internal bool ast_parse_test_decl(AstParseState* state)
     if (!ast_next_token(state)) {
         return error_0203_expected_token(state->lexer->source,
                                          ast_token_span(state, &test_token),
-                                         TK_String,
-                                         TK_EOF);
-    }
-    if (state->token.kind != TK_String) {
-        return error_0203_expected_token(state->lexer->source,
-                                         ast_token_span(state, &state->token),
-                                         TK_String,
-                                         state->token.kind);
-    }
-
-    if (!ast_next_token(state)) {
-        return error_0203_expected_token(state->lexer->source,
-                                         ast_token_span(state, &state->token),
                                          TK_LBrace,
                                          TK_EOF);
     }
+
+    bool is_decl_block = false;
+    if (state->token.kind == TK_String) {
+        if (!ast_next_token(state)) {
+            return error_0203_expected_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                TK_LBrace,
+                TK_EOF);
+        }
+    } else if (state->token.kind == TK_LBrace) {
+        is_decl_block = true;
+    } else {
+        return error_0204_unexpected_token(
+            state->lexer->source,
+            ast_token_span(state, &state->token),
+            state->token.kind,
+            "Expected a string literal or block after `test`");
+    }
+
     if (state->token.kind != TK_LBrace) {
         return error_0203_expected_token(state->lexer->source,
                                          ast_token_span(state, &state->token),
@@ -4203,6 +4210,13 @@ internal bool ast_parse_test_decl(AstParseState* state)
     while (ast_next_token(state)) {
         if (state->token.kind == TK_LBrace) {
             brace_depth += 1;
+        } else if (is_decl_block && brace_depth == 1 &&
+                   state->token.kind == TK_pub) {
+            return error_0204_unexpected_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                state->token.kind,
+                "`pub` is not valid inside a test-only declaration block");
         } else if (state->token.kind == TK_RBrace) {
             brace_depth -= 1;
             if (brace_depth == 0) {
@@ -4277,7 +4291,9 @@ internal bool ast_parse_top_level_item(AstParseState* state)
                     state->lexer->source,
                     ast_token_span(state, &state->token),
                     state->token.kind,
-                    "Source test declarations cannot be public");
+                    ast_peek_kind_at(state, 0) == TK_LBrace
+                        ? "Test-only declaration blocks cannot be public"
+                        : "Source test declarations cannot be public");
             }
             return ast_parse_test_decl(state);
         }

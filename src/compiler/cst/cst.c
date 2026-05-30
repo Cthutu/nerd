@@ -5502,9 +5502,12 @@ internal bool cst_parse_test_decl(CstParseState* state, u32* out_node)
     u32 token_index = state->token_index;
     cst_advance(state);
 
-    u32 name_node = 0;
-    if (cst_current_token(state).kind != TK_String ||
-        !cst_parse_expr_bp(state, 0, &name_node)) {
+    u32 name_node = U32_MAX;
+    if (cst_current_token(state).kind == TK_String) {
+        if (!cst_parse_expr_bp(state, 0, &name_node)) {
+            return false;
+        }
+    } else if (cst_current_token(state).kind != TK_LBrace) {
         return false;
     }
 

@@ -139,9 +139,12 @@ intended exit code.
 ## Source Tests
 
 - Source tests are written as `test "name" { ... }`.
+- Test-only declarations are written as `test { ... }`.
 - Tests are top-level declarations.
 - Test names are string literals.
 - Test declarations are not exported module API.
+- Declarations inside `test { ... }` are ignored by normal builds and compiled
+  only by `nerd test`.
 - `nerd check root.n` checks lexing, parsing, imports, and semantic analysis
   without generating HIR, LLVM, or an executable.
 - `nerd test root.n --list` lists discovered tests.
