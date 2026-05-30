@@ -334,7 +334,7 @@ These are open trait-system follow-ups that were previously recorded as
 - [ ] Prioritise semantic LSP intelligence before Tree-sitter. The compiler
   front end already has semantic information that should drive completion,
   signature help, definitions, references, rename, and code actions.
-- [ ] Add references and rename:
+- [x] Add references and rename:
   - [x] same-file references
   - [x] same-file rename
   - [x] cross-module references
