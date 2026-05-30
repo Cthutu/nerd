@@ -1987,6 +1987,24 @@ internal cstr llvm_debug_cstr(Arena* arena, string text)
     return copy;
 }
 
+internal bool llvm_block_has_direct_return(const Hir* hir, u32 block_index)
+{
+    if (block_index >= array_count(hir->blocks)) {
+        return false;
+    }
+
+    const HirBlock* block = &hir->blocks[block_index];
+    for (u32 i = 0; i < block->stmt_count; ++i) {
+        u32 stmt_index = block->stmt_indices[i];
+        if (stmt_index < array_count(hir->stmts) &&
+            hir->stmts[stmt_index].kind == HIR_STMT_Return) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 internal string llvm_debug_canonical_source_path(Arena* arena, string path)
 {
     if (path.count == 0) {
@@ -4775,6 +4793,7 @@ internal LlvmValue llvm_emit_block_value(LlvmFunctionContext* ctx,
 }
 
 internal void llvm_bind_symbol_value(LlvmFunctionContext* ctx,
+                                     const HirFunction*   function,
                                      u32                  symbol_handle,
                                      LlvmValue            value)
 {
@@ -4787,11 +4806,44 @@ internal void llvm_bind_symbol_value(LlvmFunctionContext* ctx,
         if (ctx->sema->locals[local_index].symbol_handle != symbol_handle) {
             continue;
         }
+        if (ctx->sema->locals[local_index].kind != SLK_Binder) {
+            continue;
+        }
+        if (function != NULL && function->decl_index != U32_MAX &&
+            ctx->sema->locals[local_index].owner_decl_index !=
+                function->decl_index) {
+            continue;
+        }
 
         LlvmValue local_value  = value;
         local_value.type_index = llvm_local_type(ctx, local_index);
         llvm_set_local_value(ctx, local_index, local_value);
     }
+}
+
+internal bool llvm_function_has_binder_symbol(LlvmFunctionContext* ctx,
+                                              const HirFunction*   function,
+                                              u32 symbol_handle)
+{
+    if (ctx->sema == NULL || symbol_handle == U32_MAX) {
+        return false;
+    }
+
+    for (u32 local_index = 0; local_index < array_count(ctx->sema->locals);
+         ++local_index) {
+        const SemaLocal* local = &ctx->sema->locals[local_index];
+        if (local->kind != SLK_Binder ||
+            local->symbol_handle != symbol_handle) {
+            continue;
+        }
+        if (function != NULL && function->decl_index != U32_MAX &&
+            local->owner_decl_index != function->decl_index) {
+            continue;
+        }
+        return true;
+    }
+
+    return false;
 }
 
 internal LlvmValue llvm_emit_pattern_compare(LlvmFunctionContext* ctx,
@@ -4926,7 +4978,8 @@ internal LlvmValue llvm_emit_pattern_condition(LlvmFunctionContext* ctx,
                     };
                 }
             }
-            llvm_bind_symbol_value(ctx, pattern->symbol_handle, bound);
+            llvm_bind_symbol_value(
+                ctx, function, pattern->symbol_handle, bound);
         }
         return (LlvmValue){
             .ok         = true,
@@ -5108,6 +5161,44 @@ internal LlvmValue llvm_emit_pattern_condition(LlvmFunctionContext* ctx,
                                             variant_payload_type);
             if (!variant_payload.ok) {
                 return (LlvmValue){0};
+            }
+            if (!payload_is_tuple &&
+                llvm_type_kind(ctx->sema, variant_payload_type) == STK_Plex) {
+                u32 field_count =
+                    llvm_record_field_count(ctx->sema, variant_payload_type);
+                string variant_payload_type_string =
+                    llvm_type_string(ctx, variant_payload_type);
+                for (u32 field_index = 0; field_index < field_count;
+                     ++field_index) {
+                    u32 field_symbol =
+                        ctx->sema->type_param_symbols
+                            [ctx->sema->types[variant_payload_type]
+                                 .first_param_type +
+                             field_index];
+                    if (!llvm_function_has_binder_symbol(
+                            ctx, function, field_symbol)) {
+                        continue;
+                    }
+
+                    string field_value = llvm_temp(ctx);
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = extractvalue " STRINGP
+                              " " STRINGP ", %u\n",
+                              STRINGV(field_value),
+                              STRINGV(variant_payload_type_string),
+                              STRINGV(variant_payload.value),
+                              field_index);
+                    llvm_bind_symbol_value(
+                        ctx,
+                        function,
+                        field_symbol,
+                        (LlvmValue){
+                            .ok         = true,
+                            .type_index = llvm_record_field_type(
+                                ctx->sema, variant_payload_type, field_index),
+                            .value = field_value,
+                        });
+                }
             }
             for (u32 i = 0; i < pattern->child_count; ++i) {
                 u32 child_index = pattern->first_child + i;
@@ -8831,7 +8922,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
 
                 if (llvm_type_is_void(ctx->sema, expr->type_index) ||
                     ctx->discard_expr_value) {
-                    string end_label = llvm_label(ctx, "on.end");
+                    string end_label         = llvm_label(ctx, "on.end");
+                    bool   end_label_emitted = false;
                     for (u32 i = 0; i < expr->branch_count; ++i) {
                         const HirOnBranch* branch =
                             &ctx->hir->on_branches[expr->first_branch + i];
@@ -8839,7 +8931,14 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                         string next_label = i + 1 < expr->branch_count
                                                 ? llvm_label(ctx, "on.next")
                                                 : end_label;
-
+                        bool   final_enum_direct_return =
+                            i + 1 == expr->branch_count &&
+                            llvm_type_kind(ctx->sema, scrutinee.type_index) ==
+                                STK_Enum &&
+                            !branch->is_else &&
+                            branch->guard_expr_index == U32_MAX &&
+                            llvm_block_has_direct_return(
+                                ctx->hir, branch->body_block_index);
                         if (branch->is_else) {
                             sb_format(ctx->sb,
                                       "  br label %%" STRINGP "\n",
@@ -8859,11 +8958,20 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                                       STRINGV(next_label));
                         }
 
+                        if (final_enum_direct_return) {
+                            sb_format(ctx->sb,
+                                      STRINGP ":\n  unreachable\n",
+                                      STRINGV(end_label));
+                            end_label_emitted = true;
+                        }
+
                         sb_format(ctx->sb, STRINGP ":\n", STRINGV(body_label));
                         llvm_debug_emit_step_anchor(
                             ctx, branch->source_line, branch->source_path);
-                        llvm_bind_symbol_value(
-                            ctx, branch->binder_symbol_handle, scrutinee);
+                        llvm_bind_symbol_value(ctx,
+                                               function,
+                                               branch->binder_symbol_handle,
+                                               scrutinee);
                         ctx->block_terminated = false;
                         if (!llvm_emit_block(
                                 ctx, function, branch->body_block_index)) {
@@ -8884,7 +8992,9 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                                 ctx->sb, STRINGP ":\n", STRINGV(next_label));
                         }
                     }
-                    sb_format(ctx->sb, STRINGP ":\n", STRINGV(end_label));
+                    if (!end_label_emitted) {
+                        sb_format(ctx->sb, STRINGP ":\n", STRINGV(end_label));
+                    }
                     return (LlvmValue){
                         .ok         = true,
                         .type_index = expr->type_index,
@@ -8927,8 +9037,10 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                                       STRINGV(next_label));
                             sb_format(
                                 ctx->sb, STRINGP ":\n", STRINGV(guard_label));
-                            llvm_bind_symbol_value(
-                                ctx, branch->binder_symbol_handle, scrutinee);
+                            llvm_bind_symbol_value(ctx,
+                                                   function,
+                                                   branch->binder_symbol_handle,
+                                                   scrutinee);
                             LlvmValue guard = llvm_emit_expr(
                                 ctx, function, branch->guard_expr_index);
                             if (!guard.ok) {
@@ -8965,7 +9077,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     llvm_debug_emit_step_anchor(
                         ctx, branch->source_line, branch->source_path);
                     llvm_bind_symbol_value(
-                        ctx, branch->binder_symbol_handle, scrutinee);
+                        ctx, function, branch->binder_symbol_handle, scrutinee);
                     LlvmValue value = llvm_emit_block_value(
                         ctx, function, branch->body_block_index);
                     if (!value.ok) {
@@ -9006,6 +9118,9 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 }
 
                 if (array_count(phi_values) == 0) {
+                    sb_format(ctx->sb,
+                              STRINGP ":\n  unreachable\n",
+                              STRINGV(end_label));
                     array_free(phi_values);
                     array_free(phi_labels);
                     ctx->block_terminated = true;
@@ -9155,6 +9270,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 };
             }
             if (array_count(phi_values) == 0) {
+                sb_format(
+                    ctx->sb, STRINGP ":\n  unreachable\n", STRINGV(end_label));
                 array_free(phi_values);
                 array_free(phi_labels);
                 ctx->block_terminated = true;

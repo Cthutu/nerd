@@ -1,0 +1,347 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Provides frame-attached graphics layers. The first layer type is a crisp
+-- software pixel buffer with a backend-neutral presentation API; platform
+-- renderers can later upload the buffer to a nearest-filtered GPU texture.
+
+use std.frame
+
+-- A handle for a pixel layer owned by a `GfxSystem`.
+pub PixelLayerHandle :: plex {
+    index usize  -- Index into the owning graphics system's pixel layer array.
+}
+
+-- Pixel-buffer sizing mode.
+pub PixelLayerMode :: enum {
+    -- The buffer size follows the frame size divided by a fixed pixel scale.
+    FitToWindow {
+        pixel_scale u16
+    }
+
+    -- The buffer keeps a fixed virtual size and presentation scales it up.
+    FixedSizeAutoScale {
+        width u16
+        height u16
+    }
+}
+
+-- Rectangle in pixel-buffer coordinates.
+pub PixelRect :: plex {
+    x      u32  -- Left pixel coordinate.
+    y      u32  -- Top pixel coordinate.
+    width  u32  -- Width in pixels.
+    height u32  -- Height in pixels.
+}
+
+-- Pixel-buffer dimensions.
+PixelSize :: plex {
+    width  u16  -- Width in pixels.
+    height u16  -- Height in pixels.
+}
+
+-- Painter callback for a clipped pixel area.
+pub PixelPaintFn :: fn (pixels: []u32, width: u32, height: u32, stride: u32)
+
+-- A frame-attached pixel buffer layer.
+pub PixelLayer :: plex {
+    frame_id u16             -- ID of the frame this layer belongs to.
+    mode     PixelLayerMode  -- Sizing mode used to maintain the buffer.
+    width    u16             -- Current buffer width in virtual pixels.
+    height   u16             -- Current buffer height in virtual pixels.
+    data     [..]u32         -- Contiguous ARGB/RGBA-style 32-bit pixel storage.
+}
+
+-- A graphics system that owns ordered layers for one or more frames.
+pub GfxSystem :: plex {
+    pixel_layers [..]PixelLayer  -- Pixel layers in render order.
+}
+
+-- Clamps a `u32` size to the public `u16` frame dimension range.
+gfx_u32_to_u16_size :: fn (value: u32) -> u16 {
+    on value == 0 => return 1
+    on value > 65535 => return 65535
+    return value.as(u16)
+}
+
+-- Returns the pixel-buffer dimensions implied by `mode` and `frame`.
+gfx_pixel_layer_dimensions :: fn (frame : ^Frame,
+                                  mode  : PixelLayerMode) -> PixelSize {
+    on mode {
+        FitToWindow { pixel_scale } => {
+            scale := pixel_scale
+            on scale == 0 => scale = 1
+            frame_width := frame.width.as(u32) / scale.as(u32)
+            frame_height := frame.height.as(u32) / scale.as(u32)
+            real_width := gfx_u32_to_u16_size(frame_width)
+            real_height := gfx_u32_to_u16_size(frame_height)
+            return PixelSize { width: real_width height: real_height }
+        }
+        FixedSizeAutoScale { width, height } => {
+            real_width := width
+            real_height := height
+            on real_width == 0 => real_width = 1
+            on real_height == 0 => real_height = 1
+            return PixelSize { width: real_width height: real_height }
+        }
+    }
+
+    return PixelSize { width: 1 height: 1 }
+}
+
+-- Resizes the owned pixel storage to the requested dimensions.
+gfx_pixel_layer_resize :: fn (layer: ^PixelLayer, width: u16, height: u16) {
+    layer.width = width
+    layer.height = height
+    count := width.as(usize) * height.as(usize)
+    layer.data.resize_undefined_to(count)
+}
+
+-- Returns a clipped rectangle that fits inside the layer.
+gfx_pixel_layer_clip :: fn (layer: ^PixelLayer, rect: PixelRect) -> PixelRect {
+    on rect.x >= layer.width.as(u32) || rect.y >= layer.height.as(u32) => {
+        return PixelRect { x: rect.x y: rect.y width: 0 height: 0 }
+    }
+
+    max_width := layer.width.as(u32) - rect.x
+    max_height := layer.height.as(u32) - rect.y
+    width := on rect.width < max_width => rect.width else max_width
+    height := on rect.height < max_height => rect.height else max_height
+    return PixelRect { x: rect.x y: rect.y width height }
+}
+
+-- Returns the linear storage index for a pixel coordinate.
+gfx_pixel_layer_index :: fn (layer: ^PixelLayer, x: u32, y: u32) -> usize {
+    return (y * layer.width.as(u32) + x).as(usize)
+}
+
+impl PixelLayer {
+
+    -- Returns the current virtual pixel width.
+    pub pixel_width :: fn (layer: ^Self) -> u16 {
+        return layer.width
+    }
+
+    -- Returns the current virtual pixel height.
+    pub pixel_height :: fn (layer: ^Self) -> u16 {
+        return layer.height
+    }
+
+    -- Returns the contiguous pixel storage borrowed from this layer.
+    pub pixels :: fn (layer: ^Self) -> []u32 {
+        return layer.data[..]
+    }
+
+    -- Clears every pixel to `colour`.
+    pub clear :: fn (layer: ^Self, colour: u32) {
+        for i: usize = 0; i < layer.data.count; i += 1 {
+            layer.data[i] = colour
+        }
+    }
+
+    -- Writes one pixel when the coordinate is inside the layer.
+    pub put :: fn (layer: ^Self, x: u32, y: u32, colour: u32) {
+        on x >= layer.width.as(u32) || y >= layer.height.as(u32) => return
+        layer.data[gfx_pixel_layer_index(layer, x, y)] = colour
+    }
+
+    -- Fills the clipped area with `colour`.
+    pub fill :: fn (layer: ^Self, rect: PixelRect, colour: u32) {
+        area := gfx_pixel_layer_clip(layer, rect)
+        on area.width == 0 || area.height == 0 => return
+
+        for y: u32 = 0; y < area.height; y += 1 {
+            row := gfx_pixel_layer_index(layer, area.x, area.y + y)
+            for x: u32 = 0; x < area.width; x += 1 {
+                layer.data[row + x.as(usize)] = colour
+            }
+        }
+    }
+
+    -- Calls `painter` with the first pixel of the clipped area and full stride.
+    pub paint :: fn (layer: ^Self, rect: PixelRect, painter: PixelPaintFn) {
+        area := gfx_pixel_layer_clip(layer, rect)
+        on area.width == 0 || area.height == 0 => return
+
+        start := gfx_pixel_layer_index(layer, area.x, area.y)
+        painter(layer.data[start..],
+                area.width,
+                area.height,
+                layer.width.as(u32))
+    }
+
+    -- Releases storage owned by this pixel layer.
+    pub done :: fn (layer: ^Self) {
+        layer.data.free()
+        layer.width = 0
+        layer.height = 0
+        layer.frame_id = CLOSED_FRAME
+    }
+
+}
+
+impl GfxSystem {
+
+    -- Creates an empty graphics system.
+    pub init :: fn () -> Self {
+        return { pixel_layers: nil }
+    }
+
+    -- Releases all layers owned by the graphics system.
+    pub done :: fn (system: ^Self) {
+        for layer in system.pixel_layers {
+            layer.done()
+        }
+        system.pixel_layers.free()
+    }
+
+    -- Creates a pixel layer for `frame` and returns its handle.
+    pub pixel_layer :: fn (system : ^Self,
+                           frame  : ^Frame,
+                           mode   : PixelLayerMode) -> PixelLayerHandle {
+        dimensions := gfx_pixel_layer_dimensions(frame, mode)
+        layer := PixelLayer {
+            frame_id: frame.id
+            mode
+            width  : 0
+            height : 0
+            data   : nil
+        }
+        gfx_pixel_layer_resize(^layer, dimensions.width, dimensions.height)
+        system.pixel_layers.push(layer)
+        return PixelLayerHandle { index: system.pixel_layers.count - 1 }
+    }
+
+    -- Returns the layer referenced by `handle`, or `nil` when it is invalid.
+    pub pixel :: fn (system: ^Self, handle: PixelLayerHandle) -> ^PixelLayer {
+        on handle.index >= system.pixel_layers.count => return nil
+        return ^system.pixel_layers[handle.index]
+    }
+
+    -- Removes a pixel layer and releases its storage.
+    pub destroy :: fn (system: ^Self, handle: PixelLayerHandle) {
+        on handle.index >= system.pixel_layers.count => return
+        system.pixel_layers[handle.index].done()
+        system.pixel_layers.delete(handle.index)
+    }
+
+    -- Updates frame-sized layers and presents all layers for `frame`.
+    pub render :: fn (system: ^Self, frame: ^Frame) {
+        for layer in system.pixel_layers {
+            on layer.frame_id == frame.id => {
+                dimensions := gfx_pixel_layer_dimensions(frame, layer.mode)
+                on dimensions.width != layer.width || dimensions.height != layer.height => {
+                    gfx_pixel_layer_resize(layer,
+                                           dimensions.width,
+                                           dimensions.height)
+                }
+            }
+        }
+
+        gfx_render_impl(system, frame)
+    }
+
+}
+
+-- Backend presentation hook. The first milestone stabilises the layer API; GLX
+-- and WGL implementations will upload pixel layers as nearest-filtered
+-- textures.
+gfx_render_impl :: fn (_system: ^GfxSystem, _frame: ^Frame) {
+}
+
+test {
+
+    gfx_paint_checker :: fn (pixels : []u32,
+                             width  : u32,
+                             height : u32,
+                             stride : u32) {
+        for y: u32 = 0; y < height; y += 1 {
+            for x: u32 = 0; x < width; x += 1 {
+                index := y * stride + x
+                pixels[index.as(usize)] = 0xff000000 | (x << 8) | y
+            }
+        }
+    }
+
+}
+
+test "fixed-size pixel layer initialises storage" {
+    frame := Frame { id: 1 width: 640 height: 480 title: "gfx-test" full_screen: no }
+    gfx := GfxSystem.init()
+    defer gfx.done()
+
+    dimensions := gfx_pixel_layer_dimensions(^frame,
+                                             PixelLayerMode.FixedSizeAutoScale { width: 4 height: 3 })
+    assert dimensions.width == 4
+    assert dimensions.height == 3
+
+    handle := gfx.pixel_layer(^frame,
+                              PixelLayerMode.FixedSizeAutoScale { width: 4 height: 3 })
+    layer := gfx.pixel(handle)
+
+    assert layer != nil
+    assert layer.pixel_width() == 4
+    assert layer.pixel_height() == 3
+    assert layer.pixels().count == 12
+}
+
+test "pixel layer resize mutates the layer" {
+    layer := PixelLayer {
+        frame_id : 1
+        width    : 1
+        height   : 1
+        width    : 1
+        height   : 1
+    }
+    defer layer.done()
+
+    gfx_pixel_layer_resize(^layer, 4, 3)
+
+    assert layer.width == 4
+    assert layer.height == 3
+    assert layer.data.count == 12
+}
+
+test "fit-to-window pixel layer follows frame size" {
+    frame := Frame { id: 1 width: 16 height: 12 title: "gfx-test" full_screen: no }
+    gfx := GfxSystem.init()
+    defer gfx.done()
+
+    handle := gfx.pixel_layer(^frame,
+                              PixelLayerMode.FitToWindow { pixel_scale: 4 })
+    layer := gfx.pixel(handle)
+    assert layer.pixel_width() == 4
+    assert layer.pixel_height() == 3
+
+    frame.width = 24
+    frame.height = 20
+    gfx.render(^frame)
+    assert layer.pixel_width() == 6
+    assert layer.pixel_height() == 5
+}
+
+test "pixel layer clear put fill and paint update pixels" {
+    frame := Frame { id: 1 width: 8 height: 8 title: "gfx-test" full_screen: no }
+    gfx := GfxSystem.init()
+    defer gfx.done()
+
+    handle := gfx.pixel_layer(^frame,
+                              PixelLayerMode.FixedSizeAutoScale { width: 4 height: 4 })
+    layer := gfx.pixel(handle)
+
+    layer.clear(0xff000000)
+    layer.put(2, 1, 0xffffffff)
+    assert layer.pixels()[6] == 0xffffffff
+
+    layer.fill(PixelRect { x: 1 y: 2 width: 8 height: 1 }, 0xff00ff00)
+    assert layer.pixels()[9] == 0xff00ff00
+    assert layer.pixels()[10] == 0xff00ff00
+    assert layer.pixels()[11] == 0xff00ff00
+
+    layer.paint(PixelRect { x: 1 y: 1 width: 2 height: 2 }, gfx_paint_checker)
+    assert layer.pixels()[5] == 0xff000000
+    assert layer.pixels()[6] == 0xff000100
+    assert layer.pixels()[9] == 0xff000001
+    assert layer.pixels()[10] == 0xff000101
+}

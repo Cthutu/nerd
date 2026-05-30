@@ -1698,9 +1698,8 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
         }
     case TK_LBrace:
         {
-            u32 first_field = (u32)array_count(state->plex_literal_fields);
-            u32 field_count = 0;
-            u32 flags       = APLF_None;
+            Array(AstPlexLiteralField) fields = NULL;
+            u32 flags                         = APLF_None;
             if (!ast_next_token(state)) {
                 return error_0201_missing_value(state->token.source,
                                                 ast_token_span(state, &token),
@@ -1731,13 +1730,12 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
                         state, field, &value_node)) {
                     return false;
                 }
-                array_push(state->plex_literal_fields,
+                array_push(fields,
                            (AstPlexLiteralField){
                                .token_index      = field.token_index,
                                .symbol_handle    = field.value.symbol_handle,
                                .value_node_index = value_node,
                            });
-                field_count++;
                 if (state->token.kind == TK_Comma) {
                     if (!ast_next_token(state) || !ast_next_token(state)) {
                         return false;
@@ -1778,6 +1776,13 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
                        !ast_expect_token(state, TK_RBrace)) {
                 return false;
             }
+            u32 first_field = (u32)array_count(state->plex_literal_fields);
+            for (u32 i = 0; i < array_count(fields); ++i) {
+                array_push(state->plex_literal_fields, fields[i]);
+            }
+            u32 field_count = (u32)array_count(fields);
+            array_free(fields);
+
             u32 literal_index = (u32)array_count(state->plex_literals);
             array_push(state->plex_literals,
                        (AstPlexLiteralInfo){
@@ -2107,9 +2112,8 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
                                              TK_RBrace,
                                              TK_EOF);
         }
-        u32 first_field = (u32)array_count(state->plex_literal_fields);
-        u32 field_count = 0;
-        u32 flags       = APLF_None;
+        Array(AstPlexLiteralField) fields = NULL;
+        u32 flags                         = APLF_None;
         while (state->token.kind != TK_RBrace) {
             if (state->token.kind == TK_Ellipsis) {
                 flags |= APLF_DefaultMissing;
@@ -2135,13 +2139,12 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
                     state, field, &value_node)) {
                 return false;
             }
-            array_push(state->plex_literal_fields,
+            array_push(fields,
                        (AstPlexLiteralField){
                            .token_index      = field.token_index,
                            .symbol_handle    = field.value.symbol_handle,
                            .value_node_index = value_node,
                        });
-            field_count++;
             if (state->token.kind == TK_Comma) {
                 if (!ast_next_token(state) || !ast_next_token(state)) {
                     return false;
@@ -2182,6 +2185,13 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
                    !ast_expect_token(state, TK_RBrace)) {
             return false;
         }
+        u32 first_field = (u32)array_count(state->plex_literal_fields);
+        for (u32 i = 0; i < array_count(fields); ++i) {
+            array_push(state->plex_literal_fields, fields[i]);
+        }
+        u32 field_count = (u32)array_count(fields);
+        array_free(fields);
+
         u32 literal_index = (u32)array_count(state->plex_literals);
         array_push(state->plex_literals,
                    (AstPlexLiteralInfo){
@@ -2212,9 +2222,8 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
                                              TK_RBrace,
                                              TK_EOF);
         }
-        u32 first_field = (u32)array_count(state->plex_literal_fields);
-        u32 field_count = 0;
-        u32 flags       = APLF_None;
+        Array(AstPlexLiteralField) fields = NULL;
+        u32 flags                         = APLF_None;
         while (state->token.kind != TK_RBrace) {
             if (state->token.kind == TK_Ellipsis) {
                 flags |= APLF_DefaultMissing;
@@ -2240,13 +2249,12 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
                     state, field, &value_node)) {
                 return false;
             }
-            array_push(state->plex_literal_fields,
+            array_push(fields,
                        (AstPlexLiteralField){
                            .token_index      = field.token_index,
                            .symbol_handle    = field.value.symbol_handle,
                            .value_node_index = value_node,
                        });
-            field_count++;
             if (state->token.kind == TK_Comma) {
                 if (!ast_next_token(state) || !ast_next_token(state)) {
                     return false;
@@ -2285,6 +2293,13 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
                    !ast_expect_token(state, TK_RBrace)) {
             return false;
         }
+        u32 first_field = (u32)array_count(state->plex_literal_fields);
+        for (u32 i = 0; i < array_count(fields); ++i) {
+            array_push(state->plex_literal_fields, fields[i]);
+        }
+        u32 field_count = (u32)array_count(fields);
+        array_free(fields);
+
         u32 literal_index = (u32)array_count(state->plex_literals);
         array_push(state->plex_literals,
                    (AstPlexLiteralInfo){

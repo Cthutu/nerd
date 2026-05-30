@@ -1997,12 +1997,10 @@ ast_parse_plex_pattern(AstParseState* state, u32 type_node, u32* out_pattern)
                    });
         ++field_count;
         if (state->token.kind == TK_Comma) {
-            if (state->token_index == state->token.token_index &&
-                !ast_next_token(state)) {
-                return false;
-            }
-            if (!ast_next_token(state)) {
-                return false;
+            while (state->token.kind == TK_Comma) {
+                if (!ast_next_token(state)) {
+                    return false;
+                }
             }
             if (state->token.kind == TK_RBrace) {
                 break;
@@ -2078,12 +2076,10 @@ internal bool ast_parse_tuple_pattern(AstParseState* state, u32* out_pattern)
             if (state->token.kind != TK_Comma) {
                 break;
             }
-            if (state->token_index == state->token.token_index &&
-                !ast_next_token(state)) {
-                return false;
-            }
-            if (!ast_next_token(state)) {
-                return false;
+            while (state->token.kind == TK_Comma) {
+                if (!ast_next_token(state)) {
+                    return false;
+                }
             }
             if (state->token.kind == TK_RParen) {
                 break;
@@ -2125,7 +2121,8 @@ internal bool ast_pattern_starts_enum_variant(const AstParseState* state)
         return false;
     }
 
-    if (state->lexer->tokens[index].kind == TK_LParen) {
+    if (state->lexer->tokens[index].kind == TK_LParen ||
+        state->lexer->tokens[index].kind == TK_LBrace) {
         return true;
     }
 
@@ -2142,7 +2139,8 @@ internal bool ast_pattern_starts_enum_variant(const AstParseState* state)
     }
 
     return saw_dot && index < array_count(state->lexer->tokens) &&
-           state->lexer->tokens[index].kind == TK_LParen;
+           (state->lexer->tokens[index].kind == TK_LParen ||
+            state->lexer->tokens[index].kind == TK_LBrace);
 }
 
 bool ast_pattern_starts_braced_enum_variant(const AstParseState* state)
@@ -2288,12 +2286,10 @@ bool ast_parse_enum_variant_pattern(AstParseState* state, u32* out_pattern)
                 if (state->token.kind != TK_Comma) {
                     break;
                 }
-                if (state->token_index == state->token.token_index &&
-                    !ast_next_token(state)) {
-                    return false;
-                }
-                if (!ast_next_token(state)) {
-                    return false;
+                while (state->token.kind == TK_Comma) {
+                    if (!ast_next_token(state)) {
+                        return false;
+                    }
                 }
                 if (state->token.kind == TK_RParen) {
                     break;
