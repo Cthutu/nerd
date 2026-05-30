@@ -594,54 +594,47 @@ on "linux" {
 
     -- Converts an X11 keysym to the common frame scan-code enum.
     frame_linux_scan_code_from_keysym :: fn (keysym: XKeySym) -> FrameScanCode {
-        on keysym {
-            X_KEYSYM_BACKSPACE => return FrameScanCode.Backspace
-            X_KEYSYM_TAB => return FrameScanCode.Tab
-            X_KEYSYM_ENTER => return FrameScanCode.Enter
-            X_KEYSYM_ESCAPE => return FrameScanCode.Escape
-            X_KEYSYM_DELETE => return FrameScanCode.Delete
-            X_KEYSYM_INSERT => return FrameScanCode.Insert
-            X_KEYSYM_HOME => return FrameScanCode.Home
-            X_KEYSYM_END => return FrameScanCode.End
-            X_KEYSYM_PAGE_UP => return FrameScanCode.PageUp
-            X_KEYSYM_PAGE_DOWN => return FrameScanCode.PageDown
-            X_KEYSYM_ARROW_UP => return FrameScanCode.ArrowUp
-            X_KEYSYM_ARROW_DOWN => return FrameScanCode.ArrowDown
-            X_KEYSYM_ARROW_LEFT => return FrameScanCode.ArrowLeft
-            X_KEYSYM_ARROW_RIGHT => return FrameScanCode.ArrowRight
-            X_KEYSYM_SHIFT_LEFT => return FrameScanCode.LeftShift
-            X_KEYSYM_SHIFT_RIGHT => return FrameScanCode.RightShift
-            X_KEYSYM_CONTROL_LEFT => return FrameScanCode.LeftControl
-            X_KEYSYM_CONTROL_RIGHT => return FrameScanCode.RightControl
-            X_KEYSYM_ALT_LEFT => return FrameScanCode.LeftAlt
-            X_KEYSYM_ALT_RIGHT => return FrameScanCode.RightAlt
-            X_KEYSYM_F1 => return FrameScanCode.F1
-            X_KEYSYM_F2 => return FrameScanCode.F2
-            X_KEYSYM_F3 => return FrameScanCode.F3
-            X_KEYSYM_F4 => return FrameScanCode.F4
-            X_KEYSYM_F5 => return FrameScanCode.F5
-            X_KEYSYM_F6 => return FrameScanCode.F6
-            X_KEYSYM_F7 => return FrameScanCode.F7
-            X_KEYSYM_F8 => return FrameScanCode.F8
-            X_KEYSYM_F9 => return FrameScanCode.F9
-            X_KEYSYM_F10 => return FrameScanCode.F10
-            X_KEYSYM_F11 => return FrameScanCode.F11
-            X_KEYSYM_F12 => return FrameScanCode.F12
+        return on keysym {
+            X_KEYSYM_BACKSPACE => FrameScanCode.Backspace
+            X_KEYSYM_TAB => FrameScanCode.Tab
+            X_KEYSYM_ENTER => FrameScanCode.Enter
+            X_KEYSYM_ESCAPE => FrameScanCode.Escape
+            X_KEYSYM_DELETE => FrameScanCode.Delete
+            X_KEYSYM_INSERT => FrameScanCode.Insert
+            X_KEYSYM_HOME => FrameScanCode.Home
+            X_KEYSYM_END => FrameScanCode.End
+            X_KEYSYM_PAGE_UP => FrameScanCode.PageUp
+            X_KEYSYM_PAGE_DOWN => FrameScanCode.PageDown
+            X_KEYSYM_ARROW_UP => FrameScanCode.ArrowUp
+            X_KEYSYM_ARROW_DOWN => FrameScanCode.ArrowDown
+            X_KEYSYM_ARROW_LEFT => FrameScanCode.ArrowLeft
+            X_KEYSYM_ARROW_RIGHT => FrameScanCode.ArrowRight
+            X_KEYSYM_SHIFT_LEFT => FrameScanCode.LeftShift
+            X_KEYSYM_SHIFT_RIGHT => FrameScanCode.RightShift
+            X_KEYSYM_CONTROL_LEFT => FrameScanCode.LeftControl
+            X_KEYSYM_CONTROL_RIGHT => FrameScanCode.RightControl
+            X_KEYSYM_ALT_LEFT => FrameScanCode.LeftAlt
+            X_KEYSYM_ALT_RIGHT => FrameScanCode.RightAlt
+            X_KEYSYM_F1 => FrameScanCode.F1
+            X_KEYSYM_F2 => FrameScanCode.F2
+            X_KEYSYM_F3 => FrameScanCode.F3
+            X_KEYSYM_F4 => FrameScanCode.F4
+            X_KEYSYM_F5 => FrameScanCode.F5
+            X_KEYSYM_F6 => FrameScanCode.F6
+            X_KEYSYM_F7 => FrameScanCode.F7
+            X_KEYSYM_F8 => FrameScanCode.F8
+            X_KEYSYM_F9 => FrameScanCode.F9
+            X_KEYSYM_F10 => FrameScanCode.F10
+            X_KEYSYM_F11 => FrameScanCode.F11
+            X_KEYSYM_F12 => FrameScanCode.F12
+            else => on (keysym >= '0'.as(XKeySym) && keysym <= '9'.as(XKeySym)) =>
+                keysym.as(u32).as(FrameScanCode)
+            else on (keysym >= 'A'.as(XKeySym) && keysym <= 'Z'.as(XKeySym)) =>
+                keysym.as(u32).as(FrameScanCode)
+            else on (keysym >= 'a'.as(XKeySym) && keysym <= 'z'.as(XKeySym)) =>
+                (keysym.as(u32) - 32).as(FrameScanCode)
+            else FrameScanCode.Unknown
         }
-
-        on keysym >= '0'.as(XKeySym) && keysym <= '9'.as(XKeySym) => {
-            return keysym.as(u32).as(FrameScanCode)
-        }
-
-        on keysym >= 'A'.as(XKeySym) && keysym <= 'Z'.as(XKeySym) => {
-            return keysym.as(u32).as(FrameScanCode)
-        }
-
-        on keysym >= 'a'.as(XKeySym) && keysym <= 'z'.as(XKeySym) => {
-            return (keysym.as(u32) - 32).as(FrameScanCode)
-        }
-
-        return FrameScanCode.Unknown
     }
 
     -- Updates system-level modifier state from a key transition.
