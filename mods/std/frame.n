@@ -11,12 +11,13 @@
 -- whose ID is `CLOSED_FRAME` is a no-op. Failed apply/update operations write
 -- `CLOSED_FRAME` so the user's instance becomes inert.
 --
--- `FrameSystem.loop()` pumps the platform message loop and returns `no` once no
--- live frames remain. `FrameSystem.poll(^frame)` returns one event queued for a
--- specific frame, or `FrameEvent.None` when that frame's queue is empty. This
--- keeps multi-window code from mapping event IDs back to user `Frame` values.
--- When `poll` returns `FrameEvent.Closed`, it also writes `CLOSED_FRAME` to the
--- frame ID so the user's instance becomes inert.
+-- `FrameSystem.loop()` resets the temporary arena, pumps the platform message
+-- loop, and returns `no` once no live frames remain. Temporary allocations are
+-- therefore valid until the next call to `loop`. `FrameSystem.poll(^frame)`
+-- returns one event queued for a specific frame, or `FrameEvent.None` when that
+-- frame's queue is empty. This keeps multi-window code from mapping event IDs
+-- back to user `Frame` values. When `poll` returns `FrameEvent.Closed`, it also
+-- writes `CLOSED_FRAME` to the frame ID so the user's instance becomes inert.
 --
 -- `FrameSystem.update(^frame)` copies current platform reality back into a
 -- user's `Frame`, for example after the OS or user moves, resizes, closes, or
@@ -294,6 +295,7 @@ impl FrameSystem {
     }
 
     pub loop :: fn (system: ^Self) -> bool {
+        temp_arena.reset()
         return frame_loop_impl(system)
     }
 

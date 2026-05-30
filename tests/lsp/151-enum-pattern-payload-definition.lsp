@@ -113,11 +113,11 @@ main :: fn () {
             "uri": "__REPO_URI__/mods/std/frame.n",
             "range": {
                 "start": {
-                    "line": 189,
+                    "line": 190,
                     "character": 4
                 },
                 "end": {
-                    "line": 189,
+                    "line": 190,
                     "character": 12
                 }
             }
