@@ -29,6 +29,16 @@ continuing to grow this file.
   module scope.
 - Public module exports are explicit with `pub`. Non-exported module members
   are private.
+- `box[T]` is the built-in owning single-value heap allocation type. It
+  supports nil, allocation, pointer adoption, borrowing as `^T`, implicit
+  boolean conversion, member access, `.free()`, move semantics, and automatic
+  scope-exit cleanup.
+- `std.term` includes a terminal framebuffer with views, clipping, dirty-cell
+  presentation, box drawing, 24-bit colours, and width-aware UTF-8 text output.
+- The CLI supports program arguments plus executable, object, static-library,
+  and shared-library output for the host toolchain.
+- Source tests can be declared in imported modules, and `test { ... }` blocks
+  provide test-only top-level declarations.
 
 ## Working Rules
 
@@ -129,37 +139,6 @@ the roadmap before committing the implementation.
 
 ## Active Work
 
-### Boxed Single Allocation Milestone
-
-Add `box[T]` as the built-in owning single-value heap allocation type, backed by
-the runtime heap allocator. The feature exists to replace unsafe byte-slice
-allocation casts when a program wants one heap-allocated plex or value.
-
-- [x] Add `box[T]` type resolution and source-facing type names.
-- [x] Add `box[T] = nil` and nil comparison support.
-- [x] Add `box[T]()` allocation through `nrt_mem_alloc` with call-site file
-  and line information for leak diagnostics.
-- [x] Add `box[T](ptr)` adoption from `^T` without allocating.
-- [x] Add implicit `box[T]` to `^T` borrowing for function calls.
-- [x] Add implicit `box[T]` to `bool` conversion where nil is `no` and non-nil
-  is `yes`.
-- [x] Add field access through boxes so `boxed.field` behaves like pointer
-  member access.
-- [x] Add `.free()` lowering through `nrt_mem_free`, resetting the box to nil.
-- [x] Add formatter coverage for `box[T]` type syntax through existing generic
-  type formatting.
-- [x] Add basic LSP member completion and hover support for `.free()` and boxed
-  pointee fields.
-- [x] Add debugger representation support as pointer-shaped storage with the
-  `box[...]` source type name in debug metadata.
-- [x] Add executable command coverage for allocation, borrowing, field access,
-  nil, and free.
-- [x] Add move assignment/call/return semantics that nil the source box.
-- [x] Add automatic scope-exit cleanup for local and parameter boxes that are
-  not returned or moved.
-- [ ] Add dedicated diagnostics for invalid box adoption and double-free-prone
-  patterns once broader ownership analysis exists.
-
 ### Standard Library Expansion
 
 - Continue expanding the standard library only as the module/export model needs
@@ -173,148 +152,41 @@ allocation casts when a program wants one heap-allocated plex or value.
 - [ ] Keep parsing traits such as `Parse` at standard-library level rather than
   making them language-known traits.
 
-### Terminal Framebuffer Milestone
+### Graphics Pixel Buffer Milestone
 
-Add a terminal framebuffer backing store to `std.term` for single-screen
-terminal applications. The first version should integrate with the existing
-terminal loop, keep the public API small, and favour correctness over terminal
-output micro-optimisation.
+Add `std.gfx` as the first window graphics layer system. Start with a
+hardware-rendered pixel buffer layer attached to `std.frame` windows, while
+keeping the public API backend-neutral enough for later OpenGL, Vulkan,
+tile-map, and ASCII layers.
 
-- [x] Add framebuffer storage:
-  - [x] store cells in row-major order in a dynamic array
-  - [x] store each cell's UTF-8 codepoint as `u32`
-  - [x] store 24-bit foreground colour (`ink`) and background colour (`paper`)
-  - [x] track dirty cells so presentation can emit changed row intervals rather
-    than redrawing the whole screen every time
-  - [x] track wide-character head/tail state so rendering can skip continuation
-    cells safely
-- [x] Add framebuffer lifecycle integration:
-  - [x] initialise the framebuffer on the first `term_loop` iteration
-  - [x] size the framebuffer to the current terminal dimensions
-  - [x] clear the initial framebuffer with default colours and spaces
-  - [x] reset the active view to the full framebuffer on each `term_loop`
-    iteration
-  - [x] call framebuffer presentation from inside `term_loop`
-  - [x] release framebuffer storage when `term_loop` exits after `term_done`
-- [x] Add resize behaviour:
-  - [x] grow capacity when the terminal grows
-  - [x] copy existing rows into the new row width
-  - [x] fill newly exposed cells with spaces and default colours
-  - [x] truncate characters at row ends when shrinking width
-  - [x] drop whole rows when shrinking height
-  - [x] mark affected cells dirty after resize
-- [x] Add framebuffer drawing API:
-  - [x] `term_fb_clear()` to clear the full active view
-  - [x] `term_fb_put(x, y, ch, ink, paper)` for one codepoint
-  - [x] `term_fb_text(x, y, text, ink, paper)` for UTF-8 text
-  - [x] `term_fb_fill_rect(x, y, w, h, ch, ink, paper)` to write a character
-    and optionally colours over a rectangle
-  - [x] `term_fb_paint_rect(x, y, w, h, ink, paper)` to alter only colours over
-    a rectangle
-  - [x] `term_fb_box(x, y, w, h, style, ink, paper)` for 9-sliced box drawing
-  - [x] support transparent colour values that leave the existing ink and/or
-    paper unchanged
-- [x] Add box styles:
-  - [x] built-in styles such as single, double, rounded, and heavy
-  - [x] `BoxStyle.Custom(string)` where the string supplies nine box characters
-    in row-major 9-slice order
-  - [x] validate or gracefully handle custom strings with the wrong number of
-    characters
-- [x] Add views and clipping:
-  - [x] `term_view(x, y, w, h)` sets the active view, clipped to the terminal
-    size
-  - [x] `term_view_reset()` restores the full-terminal view
-  - [x] treat drawing coordinates as relative to the active view
-  - [x] clip every drawing rectangle against the active view and terminal bounds
-  - [x] compute source offsets during clipping, such as `x_offset = -x` when a
-    rectangle begins left of the view
-  - [x] use those offsets to skip clipped text content correctly
-  - [x] keep UTF-8 clipping width-aware so wide characters are emitted only when
-    their full display width fits
-- [x] Add minimal geometry support in `std.math`:
-  - [x] generic `Point[T]` and `Rect[T]` types
-  - [x] aliases such as `PointI32` and `RectI32`
-  - [x] only add operations needed by the terminal framebuffer initially, such
-    as `right`, `bottom`, `is_empty`, and `intersection`
-  - [x] defer broader `union`, `diff`, `contains`, and numeric-trait-driven
-    generic operations until a concrete caller needs them
-- [x] Add presentation:
-  - [x] build one output string per presentation using the terminal arena
-  - [x] emit cursor movement, foreground colour, background colour, and text
-    using ANSI escape sequences
-  - [x] emit row dirty intervals by scanning dirty flags
-  - [x] avoid redundant colour escape sequences when consecutive cells share
-    colours
-  - [x] clear dirty flags after successful presentation
-- [x] Tests and examples:
-  - [x] add source tests for geometry helpers
-  - [x] add source tests for framebuffer resize and clipping helpers where they
-    can be tested without terminal interaction
-  - [x] update `examples/dungeon/dungeon.n` to draw through the framebuffer
-  - [x] keep platform-specific terminal behaviour behind `std.term` and
-    `os.*`
-
-### CLI And Binary Output Polish Milestone
-
-This milestone is for command-line and build-output polish after the current
-language/runtime layers are stable. Keep the first version host-toolchain only;
-do not imply cross-target packaging or platform ABI guarantees beyond what the
-current LLVM/clang backend can verify.
-
-- [x] Add program argument support:
-  - [x] allow the entry point to be either `main :: fn ()` or
-    `main :: fn (args: []string)`
-  - [x] lower the runtime entry wrapper so command-line arguments are exposed as
-    Nerd `string` slices
-  - [x] define whether `args[0]` is the executable path or the first user
-    argument, and document the choice
-  - [x] reject unsupported `main` signatures with a targeted diagnostic and
-    help text
-  - [x] add command tests for zero arguments, multiple arguments, and strings
-    containing spaces
-- [x] Add library/object output:
-  - [x] add a CLI mode or flag for producing relocatable object output instead
-    of an executable
-  - [x] support static library output through `--lib`
-  - [x] support conventional host artefact names such as `.o` on POSIX and
-    `.obj`/`.lib` on Windows where applicable
-  - [x] define how the root module's public surface becomes exported/linkable
-    symbols
-  - [x] keep temporary LLVM/runtime artefact cleanup consistent with existing
-    `run` and `build` cleanup rules
-  - [x] add command tests for object/library generation and stale artefact
-    cleanup
-- [x] Add DLL/shared-library support:
-  - [x] add a CLI mode or flag for producing a host shared library
-  - [x] support `.dll` on Windows and document any deferred POSIX `.so`/macOS
-    `.dylib` behaviour if not implemented together
-  - [x] define explicit export rules for root-public functions and data
-  - [x] decide how, or whether, the Nerd runtime object is linked into shared
-    libraries
-  - [x] add command tests that build a shared library and link/load it from a
-    small host program where practical
-- [x] Update documentation:
-  - [x] CLI help and command reference for argument handling and output modes
-  - [x] manual/language reference for allowed `main` signatures
-  - [x] compiler pipeline notes for object and shared-library output paths
-
-### Trait Polish Milestone
-
-These are open trait-system follow-ups that were previously recorded as
-"Later" notes inside the completed traits milestone.
-
-- [x] Add stricter non-lazy generic body checks once constraints exist:
-  - [x] reject unresolved names that do not depend on concrete type arguments
-    before a generic function or impl method is instantiated
-  - [x] check constraint-sensitive operations against trait bounds where
-    possible before monomorphisation
-  - [x] keep concrete instantiation diagnostics for cases that genuinely depend
-    on substituted types
-- [x] Improve diagnostics for non-inferable trait generic parameters:
-  - [x] produce useful help text when trait generic parameters are required but
-    cannot be inferred
-  - [x] add error tests for non-inferable trait generic parameters
-- [x] Stabilise generated backend names for trait implementation functions.
+- [ ] Add `mods/std/gfx/mods.n` with a small orchestrating `GfxSystem`.
+- [ ] Add `PixelLayerMode`:
+  - [ ] `FitToWindow { pixel_scale u16 }`
+  - [ ] `FixedSizeAutoScale { width u16, height u16 }`
+- [ ] Define crisp-pixel presentation rules:
+  - [ ] `FitToWindow` uses the fixed integer `pixel_scale`, resizes the backing
+    pixel buffer as the frame changes, and keeps the presented frame dimensions
+    on pixel-scale multiples so there is no letterboxing.
+  - [ ] `FixedSizeAutoScale` keeps a fixed virtual buffer size, uses the largest
+    integer scale that fits the frame, and letterboxes unused space.
+- [ ] Add typed pixel-buffer operations:
+  - [ ] create/destroy a pixel layer for a frame
+  - [ ] expose width, height, and contiguous `[]u32` pixels
+  - [ ] `clear`, `put`, and `fill` helpers
+  - [ ] `paint(area, painter)` where the painter receives a contiguous pixel
+    slice, area width/height, and stride
+- [ ] Render through 3D graphics hardware where practical:
+  - [ ] Linux X11 backend using OpenGL/GLX first
+  - [ ] Windows backend using OpenGL/WGL
+  - [ ] upload the pixel buffer to a texture and draw a nearest-filtered quad
+  - [ ] keep whole-texture upload acceptable for the first version; add dirty
+    rectangles later only after the API shape is proven
+- [ ] Add `examples/pixels/pixels.n` showing a frame, pixel layer, clear/fill,
+  simple animation, resize handling, and render loop.
+- [ ] Add standard-library documentation for `std.gfx` and the pixel-buffer
+  sizing modes.
+- [ ] Add source, command, and example tests where the behaviour can be
+  verified without relying on an interactive desktop session.
 
 ### Source Testing Follow-up Milestone
 
