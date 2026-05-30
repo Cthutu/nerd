@@ -1,0 +1,184 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Provides UTF-8 decoding, encoding, and display-width helpers for text
+-- handling code.
+
+-- Unicode replacement character used when malformed UTF-8 is decoded.
+pub REPLACEMENT_CODEPOINT : u32 : 0xfffd
+
+-- Returns a scalar value suitable for UTF-8 encoding.
+utf8_normalise_codepoint :: fn (codepoint: u32) -> u32 {
+    on codepoint > 0x10ffff.as(u32) => return REPLACEMENT_CODEPOINT
+    on codepoint >= 0xd800.as(u32) && codepoint <= 0xdfff.as(u32) => return REPLACEMENT_CODEPOINT
+    return codepoint
+}
+
+-- Decodes one UTF-8 codepoint from byte storage at `index`.
+utf8_decode_storage_at :: fn (data: ^u8, count: usize, index: usize) -> (u32, usize) {
+    on index >= count => return (0, 0)
+
+    first := data[index].as(u32)
+    on first < 0x80 => return (first, 1)
+    on (first & 0xe0) == 0xc0 && index + 1 < count => {
+        second := data[index + 1].as(u32)
+        codepoint := ((first & 0x1f) << 6) | (second & 0x3f)
+        return (codepoint, 2)
+    }
+    on (first & 0xf0) == 0xe0 && index + 2 < count => {
+        second := data[index + 1].as(u32)
+        third := data[index + 2].as(u32)
+        codepoint := ((first & 0x0f) << 12) | ((second & 0x3f) << 6) | (third & 0x3f)
+        return (codepoint, 3)
+    }
+    on (first & 0xf8) == 0xf0 && index + 3 < count => {
+        second := data[index + 1].as(u32)
+        third := data[index + 2].as(u32)
+        fourth := data[index + 3].as(u32)
+        codepoint := ((first & 0x07) << 18) | ((second & 0x3f) << 12) | ((third & 0x3f) << 6) | (fourth & 0x3f)
+        return (codepoint, 4)
+    }
+    return (REPLACEMENT_CODEPOINT, 1)
+}
+
+-- Decodes one UTF-8 codepoint from a string at byte offset `index`.
+pub decode_at :: fn (text: string, index: usize) -> (u32, usize) {
+    return utf8_decode_storage_at(text.data, text.count, index)
+}
+
+-- Decodes one UTF-8 codepoint from a byte slice at byte offset `index`.
+pub decode_bytes_at :: fn (bytes: []u8, index: usize) -> (u32, usize) {
+    return utf8_decode_storage_at(bytes.data, bytes.count, index)
+}
+
+-- Decodes the first UTF-8 codepoint from a byte slice, or zero when empty.
+pub decode_first_byte_slice :: fn (bytes: []u8) -> u32 {
+    decoded := decode_bytes_at(bytes, 0)
+    return decoded.0
+}
+
+-- Returns the number of bytes needed to encode `codepoint` as UTF-8.
+pub encoded_count :: fn (codepoint: u32) -> usize {
+    value := utf8_normalise_codepoint(codepoint)
+    return on value {
+        < 0x80.as(u32) => 1
+        < 0x800.as(u32) => 2
+        < 0x10000.as(u32) => 3
+        else => 4
+    }
+}
+
+-- Encodes `codepoint` into `output` and returns the number of bytes written.
+-- Returns zero without writing when `output` is too small.
+pub encode_to :: fn (codepoint: u32, output: []u8) -> usize {
+    value := utf8_normalise_codepoint(codepoint)
+    needed := encoded_count(value)
+    on output.count < needed => return 0
+
+    on value < 0x80.as(u32) => {
+        output[0] = value.as(u8)
+    } else on (value < 0x800.as(u32)) => {
+        output[0] = (0xc0 | (value >> 6)).as(u8)
+        output[1] = (0x80 | (value & 0x3f)).as(u8)
+    } else on (value < 0x10000.as(u32)) => {
+        output[0] = (0xe0 | (value >> 12)).as(u8)
+        output[1] = (0x80 | ((value >> 6) & 0x3f)).as(u8)
+        output[2] = (0x80 | (value & 0x3f)).as(u8)
+    } else {
+        output[0] = (0xf0 | (value >> 18)).as(u8)
+        output[1] = (0x80 | ((value >> 12) & 0x3f)).as(u8)
+        output[2] = (0x80 | ((value >> 6) & 0x3f)).as(u8)
+        output[3] = (0x80 | (value & 0x3f)).as(u8)
+    }
+
+    return needed
+}
+
+-- Returns the terminal display width of a Unicode codepoint.
+pub codepoint_display_width :: fn (codepoint: u32) -> i32 {
+    on codepoint == 0 => return 0
+    on codepoint < 32 || (codepoint >= 0x7f && codepoint < 0xa0) => return 0
+    on codepoint == 30028.as(u32) => return 2
+    on codepoint >= 0x1100.as(u32) && codepoint <= 0x115f.as(u32) => return 2
+    on codepoint == 0x2329.as(u32) || codepoint == 0x232a.as(u32) => return 2
+    on codepoint >= 0x2e80.as(u32) && codepoint <= 0xa4cf.as(u32) => return 2
+    on codepoint >= 0xac00.as(u32) && codepoint <= 0xd7a3.as(u32) => return 2
+    on codepoint >= 0xf900.as(u32) && codepoint <= 0xfaff.as(u32) => return 2
+    on codepoint >= 0xfe10.as(u32) && codepoint <= 0xfe19.as(u32) => return 2
+    on codepoint >= 0xfe30.as(u32) && codepoint <= 0xfe6f.as(u32) => return 2
+    on codepoint >= 0xff00.as(u32) && codepoint <= 0xff60.as(u32) => return 2
+    on codepoint >= 0xffe0.as(u32) && codepoint <= 0xffe6.as(u32) => return 2
+    return 1
+}
+
+-- Returns the terminal display width of UTF-8 text.
+pub display_width :: fn (text: string) -> i32 {
+    width : i32   = 0
+    index : usize = 0
+
+    for index < text.count {
+        decoded := decode_at(text, index)
+        on decoded.1 == 0 => return width
+        width += codepoint_display_width(decoded.0)
+        index += decoded.1
+    }
+    return width
+}
+
+test "decode_at handles ascii text" {
+    decoded := decode_at("A", 0)
+
+    assert decoded.0 == 'A'.as(u32)
+    assert decoded.1 == 1
+}
+
+test "decode_at handles non-ascii text" {
+    decoded := decode_at("╭", 0)
+
+    assert decoded.0 != 0
+    assert decoded.1 == 3
+}
+
+test "decode_at handles ascii offsets" {
+    text := "ASCII"
+
+    assert decode_at(text, 0).0 == 'A'.as(u32)
+    assert decode_at(text, 1).0 == 'S'.as(u32)
+    assert decode_at(text, 2).0 == 'C'.as(u32)
+    assert decode_at(text, 3).0 == 'I'.as(u32)
+    assert decode_at(text, 4).0 == 'I'.as(u32)
+}
+
+test "decode_bytes_at handles dynamic byte storage" {
+    bytes : [..]u8
+    defer bytes.free()
+
+    bytes.push(0xe2)
+    bytes.push(0x95)
+    bytes.push(0xad)
+
+    decoded := decode_bytes_at(bytes[..], 0)
+
+    assert decoded.0 != 0
+    assert decoded.1 == 3
+}
+
+test "encode_to writes utf-8 bytes" {
+    output : [4]u8
+
+    count := encode_to(0x256d, output[..])
+
+    assert count == 3
+    assert output[0] == 0xe2
+    assert output[1] == 0x95
+    assert output[2] == 0xad
+}
+
+test "codepoint_display_width counts ascii glyph" {
+    assert codepoint_display_width(65.as(u32)) == 1
+}
+
+test "display_width counts wide glyphs" {
+    assert display_width("A界") == 3
+}

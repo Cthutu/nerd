@@ -34,6 +34,8 @@ library is organised into three layers:
   Low-level allocation wrappers.
 - `std.string`
   String utilities.
+- `std.utf8`
+  UTF-8 conversion and display-width utilities.
 - `std.traits`
   Compatibility module for common trait declarations. Language-required traits
   are canonical in `core`.
@@ -126,6 +128,22 @@ and reuses storage, and `done()` releases the reserved arena range.
 
 `split` returns a dynamic array and the caller is responsible for freeing that
 array when it is no longer needed.
+
+### `std.utf8`
+
+- `decode_at(text: string, index: usize) -> (u32, usize)`
+- `decode_bytes_at(bytes: []u8, index: usize) -> (u32, usize)`
+- `decode_first_byte_slice(bytes: []u8) -> u32`
+- `encoded_count(codepoint: u32) -> usize`
+- `encode_to(codepoint: u32, output: []u8) -> usize`
+- `codepoint_display_width(codepoint: u32) -> i32`
+- `display_width(text: string) -> i32`
+
+Decode functions return the decoded UTF-32 codepoint and the number of bytes
+consumed. A byte count of zero means the requested offset was at or beyond the
+end of the input. Malformed input decodes to `REPLACEMENT_CODEPOINT` and
+consumes one byte. `encode_to` returns zero without writing when the output
+slice is too small.
 
 ### `std.term`
 

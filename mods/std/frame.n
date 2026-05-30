@@ -49,6 +49,8 @@
 
 pragma windowed
 
+utf8 :: use std.utf8
+
 -- A special frame ID that indicates a new frame should be created when `apply`
 -- is called.
 pub NEW_FRAME :: 0
@@ -655,30 +657,7 @@ on "linux" {
 
     -- Decodes the first UTF-8 codepoint from Xlib text translation output.
     frame_linux_decode_utf8 :: fn (bytes: []u8) -> u32 {
-        on bytes.count == 0 => return 0
-
-        first := bytes[0]
-        on first < 0x80 => return first.as(u32)
-
-        on (first & 0xe0) == 0xc0 && bytes.count >= 2 => {
-            return ((first & 0x1f).as(u32) << 6) |
-                   (bytes[1] & 0x3f).as(u32)
-        }
-
-        on (first & 0xf0) == 0xe0 && bytes.count >= 3 => {
-            return ((first & 0x0f).as(u32) << 12) |
-                   ((bytes[1] & 0x3f).as(u32) << 6) |
-                   (bytes[2] & 0x3f).as(u32)
-        }
-
-        on (first & 0xf8) == 0xf0 && bytes.count >= 4 => {
-            return ((first & 0x07).as(u32) << 18) |
-                   ((bytes[1] & 0x3f).as(u32) << 12) |
-                   ((bytes[2] & 0x3f).as(u32) << 6) |
-                   (bytes[3] & 0x3f).as(u32)
-        }
-
-        return 0
+        return utf8.decode_first_byte_slice(bytes)
     }
 
     -- Queues key and character events from an X11 key event.
