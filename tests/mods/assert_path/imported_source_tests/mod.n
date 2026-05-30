@@ -1,0 +1,11 @@
+private_answer :: fn () -> i32 {
+    return 42
+}
+
+pub imported_answer :: fn () -> i32 {
+    return private_answer()
+}
+
+test "imported module test" {
+    assert private_answer() == 42
+}

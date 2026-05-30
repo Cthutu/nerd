@@ -200,6 +200,11 @@ Source tests use the normal compiler and runtime assertion path. A failing
 assertion exits with status 127, so the current runner stops at the first
 failing selected test.
 
+The test command collects source tests from the root file and from imported
+modules. Tests in imported modules run in that module's scope, so they can
+exercise private helpers. Imported test names are prefixed with the qualified
+module name, for example `test.math: edge cases`.
+
 With `-v` or `--verbose`, the test command prints one `[PASS] name` or
 `[FAIL] name` result line as each selected test finishes.
 

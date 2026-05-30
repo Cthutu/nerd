@@ -318,7 +318,7 @@ These are open trait-system follow-ups that were previously recorded as
 
 ### Source Testing Follow-up Milestone
 
-- [ ] Collect and run tests declared in imported modules.
+- [x] Collect and run tests declared in imported modules.
 - [ ] Add non-fail-fast test assertions if continuing after failure becomes
   useful.
 
