@@ -24,7 +24,14 @@ main :: fn () {
             FrameEvent.Closed => {
             }
             KeyPress { scan_code } => {
-                on scan_code == FrameScanCode.Escape => system.destroy(^frame)
+                on scan_code {
+                    Escape => system.destroy(^frame)
+                    Q => system.destroy(^frame)
+                    F => {
+                        frame.full_screen = !frame.full_screen
+                        system.apply(^frame)
+                    }
+                }
             }
         }
     }

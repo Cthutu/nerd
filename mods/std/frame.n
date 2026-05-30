@@ -301,9 +301,20 @@ on "linux" {
 
     -- Linux X11 data attached to a public `Frame`.
     PlatformFrameInfo :: plex {
-        display          XDisplay -- Display connection owning the window.
-        window           XWindow  -- Native X11 window handle.
-        wm_delete_window XAtom    -- Window-manager close protocol atom.
+        display             XDisplay -- Display connection owning the window.
+        window              XWindow  -- Native X11 window handle.
+        wm_delete_window    XAtom    -- Window-manager close protocol atom.
+        wm_state            XAtom    -- EWMH `_NET_WM_STATE` atom.
+        wm_state_fullscreen XAtom    -- EWMH fullscreen-state atom.
+        x                   i32      -- Last known normal x position.
+        y                   i32      -- Last known normal y position.
+        width               u16      -- Last known normal width.
+        height              u16      -- Last known normal height.
+        restore_x           i32      -- Position to restore when leaving fullscreen.
+        restore_y           i32      -- Position to restore when leaving fullscreen.
+        restore_width       u16      -- Width to restore when leaving fullscreen.
+        restore_height      u16      -- Height to restore when leaving fullscreen.
+        full_screen         bool     -- Whether this frame is currently fullscreen.
     }
 
     -- Destroys native X11 resources associated with a frame record.
@@ -322,6 +333,9 @@ on "linux" {
         info.platform_info.display = nil
         info.platform_info.window = 0
         info.platform_info.wm_delete_window = 0
+        info.platform_info.wm_state = 0
+        info.platform_info.wm_state_fullscreen = 0
+        info.platform_info.full_screen = no
     }
 
     -- Marks a public frame and its platform record as closed.
@@ -333,6 +347,79 @@ on "linux" {
     -- Queues a platform-agnostic resize event.
     frame_linux_push_resize :: fn (info: ^FrameInfo, width: u16, height: u16) {
         info.events.push(FrameEvent.Resized { width: width, height: height })
+    }
+
+    -- Records the last known non-fullscreen geometry for later restoration.
+    frame_linux_remember_normal_geometry :: fn (info: ^FrameInfo,
+                                                x: i32,
+                                                y: i32,
+                                                width: u16,
+                                                height: u16) {
+        info.platform_info.x = x
+        info.platform_info.y = y
+        info.platform_info.width = width
+        info.platform_info.height = height
+
+        on !info.platform_info.full_screen => {
+            info.platform_info.restore_x = x
+            info.platform_info.restore_y = y
+            info.platform_info.restore_width = width
+            info.platform_info.restore_height = height
+        }
+    }
+
+    -- Sends an EWMH fullscreen-state request to the window manager.
+    frame_linux_send_fullscreen :: fn (info: ^FrameInfo, full_screen: bool) {
+        event : XEvent
+        client := (^event).as(^void).as(^XClientMessageEvent)
+        client.type = X_EVENT_CLIENT_MESSAGE
+        client.display = info.platform_info.display
+        client.window = info.platform_info.window
+        client.message_type = info.platform_info.wm_state
+        client.format = 32
+        client.data0 = X_NET_WM_STATE_REMOVE.as(XLong)
+        on full_screen => client.data0 = X_NET_WM_STATE_ADD.as(XLong)
+        client.data1 = info.platform_info.wm_state_fullscreen.as(XLong)
+        client.data2 = 0
+        client.data3 = 1
+        client.data4 = 0
+
+        root := XRootWindow(info.platform_info.display,
+                            XDefaultScreen(info.platform_info.display))
+        mask := (X_SUBSTRUCTURE_REDIRECT_MASK |
+                 X_SUBSTRUCTURE_NOTIFY_MASK).as(XLong)
+        _ := XSendEvent(info.platform_info.display, root, 0, mask, ^event)
+        _ := XFlush(info.platform_info.display)
+    }
+
+    -- Applies `Frame.full_screen`, preserving and restoring normal geometry.
+    frame_linux_apply_fullscreen :: fn (info: ^FrameInfo, frame: ^Frame) {
+        on frame.full_screen == info.platform_info.full_screen => return
+
+        on frame.full_screen {
+            yes => {
+                info.platform_info.restore_x = info.platform_info.x
+                info.platform_info.restore_y = info.platform_info.y
+                info.platform_info.restore_width = info.platform_info.width
+                info.platform_info.restore_height = info.platform_info.height
+                frame_linux_send_fullscreen(info, yes)
+                info.platform_info.full_screen = yes
+            }
+            no => {
+                frame_linux_send_fullscreen(info, no)
+                info.platform_info.full_screen = no
+
+                _ := XMoveResizeWindow(info.platform_info.display,
+                                       info.platform_info.window,
+                                       info.platform_info.restore_x,
+                                       info.platform_info.restore_y,
+                                       info.platform_info.restore_width.as(u32),
+                                       info.platform_info.restore_height.as(u32))
+                _ := XFlush(info.platform_info.display)
+                frame.width = info.platform_info.restore_width
+                frame.height = info.platform_info.restore_height
+            }
+        }
     }
 
     -- Converts an X11 keysym to the common frame scan-code enum.
@@ -486,6 +573,10 @@ on "linux" {
                        X_KEY_RELEASE_MASK).as(XLong)
         _ := XSelectInput(display, window, event_mask)
         wm_delete := XInternAtom(display, frame_c_string_temp("WM_DELETE_WINDOW"), 0)
+        wm_state := XInternAtom(display, frame_c_string_temp("_NET_WM_STATE"), 0)
+        wm_state_fullscreen := XInternAtom(display,
+                                          frame_c_string_temp("_NET_WM_STATE_FULLSCREEN"),
+                                          0)
         _ := XSetWMProtocols(display, window, ^wm_delete, 1)
         _ := XMapWindow(display, window)
         _ := XFlush(display)
@@ -494,6 +585,13 @@ on "linux" {
         platform_info.display = display
         platform_info.window = window
         platform_info.wm_delete_window = wm_delete
+        platform_info.wm_state = wm_state
+        platform_info.wm_state_fullscreen = wm_state_fullscreen
+        platform_info.width = frame.width
+        platform_info.height = frame.height
+        platform_info.restore_width = frame.width
+        platform_info.restore_height = frame.height
+        platform_info.full_screen = no
 
         info := FrameInfo {
             id: id
@@ -503,6 +601,7 @@ on "linux" {
         frame_linux_push_resize(^info, frame.width, frame.height)
         system.frames.push(info)
         frame.id = id
+        frame_linux_apply_fullscreen(frame_system_find_info(system, id), frame)
     }
 
     -- Applies desired frame data to an existing X11 window.
@@ -520,10 +619,18 @@ on "linux" {
         _ := XStoreName(info.platform_info.display,
                         info.platform_info.window,
                         frame_c_string_temp(frame.title))
-        _ := XResizeWindow(info.platform_info.display,
-                           info.platform_info.window,
-                           frame.width.as(u32),
-                           frame.height.as(u32))
+        frame_linux_apply_fullscreen(info, frame)
+        on !info.platform_info.full_screen => {
+            _ := XResizeWindow(info.platform_info.display,
+                               info.platform_info.window,
+                               frame.width.as(u32),
+                               frame.height.as(u32))
+            frame_linux_remember_normal_geometry(info,
+                                                 info.platform_info.x,
+                                                 info.platform_info.y,
+                                                 frame.width,
+                                                 frame.height)
+        }
         _ := XFlush(info.platform_info.display)
     }
 
@@ -554,6 +661,12 @@ on "linux" {
 
         frame.width = width.as(u16)
         frame.height = height.as(u16)
+        frame.full_screen = info.platform_info.full_screen
+        frame_linux_remember_normal_geometry(info,
+                                             x,
+                                             y,
+                                             width.as(u16),
+                                             height.as(u16))
     }
 
     -- Converts one native X11 event into queued frame events.
@@ -571,6 +684,11 @@ on "linux" {
                 configure := event.as(usize).as(^XConfigureEvent)
                 width := configure.width.as(u16)
                 height := configure.height.as(u16)
+                frame_linux_remember_normal_geometry(info,
+                                                     configure.x,
+                                                     configure.y,
+                                                     width,
+                                                     height)
                 frame_linux_push_resize(info, width, height)
             }
             X_EVENT_CLIENT_MESSAGE => {

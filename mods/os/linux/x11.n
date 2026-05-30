@@ -35,8 +35,13 @@ pub X_EVENT_DESTROY_NOTIFY   :: 17 -- Xlib `DestroyNotify` event type.
 
 pub X_KEY_PRESS_MASK      :: 0x00000001 -- Receives key-press events.
 pub X_KEY_RELEASE_MASK    :: 0x00000002 -- Receives key-release events.
+pub X_SUBSTRUCTURE_NOTIFY_MASK   :: 0x00080000 -- Receives substructure notifications.
+pub X_SUBSTRUCTURE_REDIRECT_MASK :: 0x00100000 -- Receives substructure redirects.
 pub X_STRUCTURE_NOTIFY_MASK :: 0x00020000 -- Receives structure-change events.
 pub X_EXPOSURE_MASK         :: 0x00008000 -- Receives expose events.
+
+pub X_NET_WM_STATE_REMOVE :: 0 -- EWMH request to remove a window state.
+pub X_NET_WM_STATE_ADD    :: 1 -- EWMH request to add a window state.
 
 pub X_KEYSYM_BACKSPACE :: 0xff08 -- Xlib keysym for Backspace.
 pub X_KEYSYM_TAB       :: 0xff09 -- Xlib keysym for Tab.
@@ -158,6 +163,19 @@ ffi "X11" {
     pub XMapWindow (display: XDisplay, window: XWindow) -> i32
 
     pub XResizeWindow (display: XDisplay, window: XWindow, width: u32, height: u32) -> i32
+
+    pub XMoveResizeWindow (display : XDisplay,
+                           window  : XWindow,
+                           x       : i32,
+                           y       : i32,
+                           width   : u32,
+                           height  : u32) -> i32
+
+    pub XSendEvent (display     : XDisplay,
+                    window      : XWindow,
+                    propagate   : XBool,
+                    event_mask  : XLong,
+                    event_send  : ^XEvent) -> XStatus
 
     pub XDestroyWindow (display: XDisplay, window: XWindow) -> i32
 
