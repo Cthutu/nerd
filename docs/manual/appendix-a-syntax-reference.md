@@ -9,6 +9,7 @@ ideas in more detail.
 
 ```nerd
 -- line comment
+--| preserved line comment
 ```
 
 ## Declarations

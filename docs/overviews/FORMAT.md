@@ -19,6 +19,8 @@ The formatter should be deterministic and idempotent.
 - Empty comment lines separate comment paragraphs.
 - Comment paragraphs are reflowed to a width of 80 characters.
 - Reflow keeps the current indentation of the comment block.
+- A comment line that starts with `--|` is preserved by the formatter. Use this
+  for examples, diagrams, or text where line breaks and spacing are meaningful.
 - End-of-line comments stay attached to the formatted line they followed.
 - Consecutive end-of-line comments on plex fields, union fields, enum variants,
   and multiline plex literal fields align their `--` marker.

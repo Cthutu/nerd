@@ -48,10 +48,13 @@ arguments start at `args[1]`.
 
 Line comments start with `--`. Comments are for readers of the source file:
 they can explain intent, leave notes, or temporarily remove code from a
-program. The compiler ignores them.
+program. The compiler ignores them. The formatter may reflow ordinary comment
+paragraphs; use `--|` for comment lines whose spacing and line breaks should be
+preserved.
 
 ```nerd
 -- This is ignored by the compiler.
+--| This comment line is preserved exactly by the formatter.
 main :: fn () {
 }
 ```

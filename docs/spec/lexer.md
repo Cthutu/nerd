@@ -11,7 +11,9 @@ manual. It records every `TokenKind` defined in
 - Whitespace is skipped.
 - Line comments start with `--` and run to the next newline. They are skipped in
   normal lexing. In formatter mode they are stored as `LexerComment` records,
-  not as tokens.
+  not as tokens. A comment whose text starts with `|` is a preserved comment;
+  source spells this as `--|`, and the formatter keeps its line breaks and
+  spacing instead of reflowing it with neighbouring comment paragraphs.
 - The test-section separator `¬` stops lexing by truncating
   `lexer->source.source`; it is not emitted as a token.
 - Identifiers start with an ASCII letter or `_`, then may contain ASCII
