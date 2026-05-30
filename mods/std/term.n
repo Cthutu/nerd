@@ -1851,6 +1851,7 @@ pub term_run :: fn () {
 }
 
 test {
+
     term_noop_simulate :: fn (_sim: TermSimulate) {
     }
 
@@ -1875,6 +1876,7 @@ test {
         term_test_simulate_count += 1
         term_test_keyboard       = sim.keyboard
     }
+
 }
 
 test "term_get_size returns a column and row tuple" {

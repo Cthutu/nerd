@@ -5279,12 +5279,19 @@ internal void format_emit_test(StringBuilder* sb,
 
     format_emit_indent(sb, indent_level);
     sb_append_cstr(sb, "test");
-    if (test->a != U32_MAX) {
+    bool is_decl_block = test->a == U32_MAX;
+    if (!is_decl_block) {
         sb_append_char(sb, ' ');
         format_emit_expr(sb, cst, lexer, test->a, 0);
     }
     sb_append_cstr(sb, " {\n");
+    if (is_decl_block) {
+        sb_append_char(sb, '\n');
+    }
     format_emit_block_contents(sb, cst, lexer, test->b, indent_level + 1);
+    if (is_decl_block) {
+        sb_append_char(sb, '\n');
+    }
     format_emit_indent(sb, indent_level);
     sb_append_char(sb, '}');
 }

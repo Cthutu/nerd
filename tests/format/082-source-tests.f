@@ -10,9 +10,11 @@ test "formats source tests" {
 }
 
 test {
+
     helper :: 41
 
     make_answer :: fn () -> i32 {
         return helper + 1
     }
+
 }
