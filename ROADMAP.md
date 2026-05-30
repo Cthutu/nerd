@@ -304,7 +304,7 @@ These are open trait-system follow-ups that were previously recorded as
 "Later" notes inside the completed traits milestone.
 
 - [ ] Add stricter non-lazy generic body checks once constraints exist:
-  - [ ] reject unresolved names that do not depend on concrete type arguments
+  - [x] reject unresolved names that do not depend on concrete type arguments
     before a generic function or impl method is instantiated
   - [ ] check constraint-sensitive operations against trait bounds where
     possible before monomorphisation
