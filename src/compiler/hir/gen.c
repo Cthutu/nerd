@@ -1919,7 +1919,86 @@ internal u32 hir_lower_expr(Hir*         hir,
             }
 
             const AstPlexLiteralInfo* literal = &ast->plex_literals[node->a];
-            Array(HirCallArg) lowered_args    = NULL;
+            u32 expr_type                     = hir_node_type(sema, node_index);
+            if (node->kind == AK_Plex && expr_type != sema_no_type() &&
+                expr_type < array_count(sema->types) &&
+                sema->types[expr_type].kind == STK_Enum &&
+                literal->target_node_index < array_count(ast->nodes)) {
+                const AstNode* target = &ast->nodes[literal->target_node_index];
+                if (target->kind == AK_Field) {
+                    u32 variant_index =
+                        hir_enum_variant_index(sema, expr_type, target->b);
+                    if (variant_index != U32_MAX) {
+                        u32 payload_type =
+                            sema->type_param_types[sema->types[expr_type]
+                                                       .first_param_type +
+                                                   variant_index];
+                        if (payload_type < array_count(sema->types) &&
+                            sema->types[payload_type].kind == STK_Plex) {
+                            const SemaType* payload =
+                                &sema->types[payload_type];
+                            Array(HirCallArg) lowered_args = NULL;
+                            for (u32 field_index = 0;
+                                 field_index < payload->param_count;
+                                 ++field_index) {
+                                u32 field_symbol =
+                                    sema->type_param_symbols
+                                        [payload->first_param_type +
+                                         field_index];
+                                for (u32 i = 0; i < literal->field_count; ++i) {
+                                    const AstPlexLiteralField* field =
+                                        &ast->plex_literal_fields
+                                             [literal->first_field + i];
+                                    if (field->symbol_handle != field_symbol) {
+                                        continue;
+                                    }
+                                    array_push(
+                                        lowered_args,
+                                        (HirCallArg){
+                                            .expr_index = hir_lower_expr(
+                                                hir,
+                                                lexer,
+                                                ast,
+                                                sema,
+                                                field->value_node_index),
+                                            .symbol_handle = field_symbol,
+                                        });
+                                    break;
+                                }
+                            }
+
+                            u32 first_arg = (u32)array_count(hir->call_args);
+                            for (u32 i = 0; i < array_count(lowered_args);
+                                 ++i) {
+                                array_push(hir->call_args, lowered_args[i]);
+                            }
+                            array_free(lowered_args);
+
+                            return hir_add_expr(
+                                hir,
+                                (HirExpr){
+                                    .kind              = HIR_EXPR_Call,
+                                    .type_index        = expr_type,
+                                    .symbol_handle     = U32_MAX,
+                                    .local_index       = sema_no_local(),
+                                    .callee_expr_index = hir_lower_expr(
+                                        hir,
+                                        lexer,
+                                        ast,
+                                        sema,
+                                        literal->target_node_index),
+                                    .first_arg   = first_arg,
+                                    .arg_count   = payload->param_count,
+                                    .source_line = hir_node_source_line(
+                                        lexer, ast, node_index),
+                                    .source_path = lexer->source.source_path,
+                                });
+                        }
+                    }
+                }
+            }
+
+            Array(HirCallArg) lowered_args = NULL;
             for (u32 i = 0; i < literal->field_count; ++i) {
                 const AstPlexLiteralField* field =
                     &ast->plex_literal_fields[literal->first_field + i];
@@ -1942,7 +2021,7 @@ internal u32 hir_lower_expr(Hir*         hir,
                 (HirExpr){
                     .kind       = node->kind == AK_Plex ? HIR_EXPR_Plex
                                                         : HIR_EXPR_PlexUpdate,
-                    .type_index = hir_node_type(sema, node_index),
+                    .type_index = expr_type,
                     .symbol_handle = U32_MAX,
                     .local_index   = sema_no_local(),
                     .operand_expr_index =

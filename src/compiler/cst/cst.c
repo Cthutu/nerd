@@ -42,6 +42,10 @@ internal bool cst_parse_destructure(CstParseState* state, u32* out_node);
 internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node);
 internal bool cst_parse_on_branch_expr(CstParseState* state, u32* out_node);
 internal bool cst_parse_pattern(CstParseState* state, u32* out_pattern);
+internal bool
+cst_pattern_starts_braced_enum_variant(const CstParseState* state);
+internal bool cst_parse_enum_variant_pattern(CstParseState* state,
+                                             u32*           out_pattern);
 internal bool cst_parse_nested_block(CstParseState* state, u32* out_node);
 internal bool cst_parse_for(CstParseState* state, u32* out_node);
 internal bool cst_parse_top_level_item(CstParseState* state, u32* out_node);
@@ -1591,15 +1595,15 @@ internal bool cst_parse_type(CstParseState* state, u32* out_node)
             if (cst_current_token(state).kind != TK_Symbol) {
                 return false;
             }
-            u32 variant_token      = state->token_index;
-            u32 variant_symbol     = cst_current_symbol_handle(state);
-            u32 variant_type_node  = U32_MAX;
-            u32 variant_value_node = U32_MAX;
-            bool braced_payload    = false;
+            u32  variant_token      = state->token_index;
+            u32  variant_symbol     = cst_current_symbol_handle(state);
+            u32  variant_type_node  = U32_MAX;
+            u32  variant_value_node = U32_MAX;
+            bool braced_payload     = false;
             cst_advance(state);
             if (cst_current_token(state).kind == TK_LBrace) {
                 braced_payload = true;
-                u32 lbrace = state->token_index;
+                u32 lbrace     = state->token_index;
                 cst_advance(state);
                 u32 first_field = (u32)array_count(state->cst.plex_fields);
                 u32 field_count = 0;
@@ -1625,8 +1629,7 @@ internal bool cst_parse_type(CstParseState* state, u32* out_node)
                 if (!cst_consume(state, TK_RBrace)) {
                     return false;
                 }
-                u32 plex_type_index =
-                    (u32)array_count(state->cst.plex_types);
+                u32 plex_type_index = (u32)array_count(state->cst.plex_types);
                 array_push(state->cst.plex_types,
                            (CstPlexTypeInfo){
                                .first_field          = first_field,
@@ -1704,7 +1707,7 @@ internal bool cst_parse_type(CstParseState* state, u32* out_node)
                            .symbol_handle    = variant_symbol,
                            .type_node_index  = variant_type_node,
                            .value_node_index = variant_value_node,
-                           .braced_payload    = braced_payload,
+                           .braced_payload   = braced_payload,
                        });
             variant_count++;
             if (cst_current_token(state).kind == TK_Comma) {
@@ -2402,7 +2405,14 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
                 Array(u32) branch_patterns = NULL;
                 for (;;) {
                     u32 pattern_root = 0;
-                    if (!cst_parse_pattern(state, &pattern_root)) {
+                    if (cst_pattern_starts_braced_enum_variant(state)) {
+                        if (!cst_parse_enum_variant_pattern(state,
+                                                            &pattern_root)) {
+                            array_free(branch_patterns);
+                            array_free(branches);
+                            return false;
+                        }
+                    } else if (!cst_parse_pattern(state, &pattern_root)) {
                         array_free(branch_patterns);
                         array_free(branches);
                         return false;
@@ -3003,6 +3013,27 @@ internal bool cst_pattern_starts_enum_variant(const CstParseState* state)
            state->lexer->tokens[index].kind == TK_LParen;
 }
 
+internal bool cst_pattern_starts_braced_enum_variant(const CstParseState* state)
+{
+    if (cst_current_token(state).kind != TK_Symbol) {
+        return false;
+    }
+
+    u32 index = state->token_index + 1;
+    while (index < array_count(state->lexer->tokens) &&
+           state->lexer->tokens[index].kind == TK_Dot) {
+        index++;
+        if (index >= array_count(state->lexer->tokens) ||
+            state->lexer->tokens[index].kind != TK_Symbol) {
+            return false;
+        }
+        index++;
+    }
+
+    return index < array_count(state->lexer->tokens) &&
+           state->lexer->tokens[index].kind == TK_LBrace;
+}
+
 internal bool
 cst_parse_plex_pattern(CstParseState* state, u32 type_node, u32* out_pattern)
 {
@@ -3133,31 +3164,41 @@ internal bool cst_parse_enum_variant_pattern(CstParseState* state,
         }
     }
 
-    if (!cst_consume(state, TK_LParen)) {
-        return false;
-    }
+    bool braced_payload = cst_current_token(state).kind == TK_LBrace;
+    u32  first_pattern  = (u32)array_count(state->cst.pattern_items);
+    u32  pattern_count  = 0;
+    if (braced_payload) {
+        u32 payload_pattern = U32_MAX;
+        if (!cst_parse_plex_pattern(state, U32_MAX, &payload_pattern)) {
+            return false;
+        }
+        array_push(state->cst.pattern_items, payload_pattern);
+        pattern_count = 1;
+    } else {
+        if (!cst_consume(state, TK_LParen)) {
+            return false;
+        }
 
-    u32 first_pattern = (u32)array_count(state->cst.pattern_items);
-    u32 pattern_count = 0;
-    if (cst_current_token(state).kind != TK_RParen) {
-        for (;;) {
-            u32 item = U32_MAX;
-            if (!cst_parse_pattern(state, &item)) {
-                return false;
-            }
-            array_push(state->cst.pattern_items, item);
-            pattern_count++;
-            if (cst_current_token(state).kind != TK_Comma) {
-                break;
-            }
-            cst_advance(state);
-            if (cst_current_token(state).kind == TK_RParen) {
-                break;
+        if (cst_current_token(state).kind != TK_RParen) {
+            for (;;) {
+                u32 item = U32_MAX;
+                if (!cst_parse_pattern(state, &item)) {
+                    return false;
+                }
+                array_push(state->cst.pattern_items, item);
+                pattern_count++;
+                if (cst_current_token(state).kind != TK_Comma) {
+                    break;
+                }
+                cst_advance(state);
+                if (cst_current_token(state).kind == TK_RParen) {
+                    break;
+                }
             }
         }
-    }
-    if (!cst_consume(state, TK_RParen)) {
-        return false;
+        if (!cst_consume(state, TK_RParen)) {
+            return false;
+        }
     }
 
     u32 enum_pattern_index = (u32)array_count(state->cst.enum_patterns);
@@ -3168,6 +3209,7 @@ internal bool cst_parse_enum_variant_pattern(CstParseState* state,
                    .symbol_handle        = symbol,
                    .first_pattern        = first_pattern,
                    .pattern_count        = pattern_count,
+                   .braced_payload       = braced_payload,
                });
     return cst_emit_pattern(state,
                             (CstPattern){

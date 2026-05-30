@@ -292,10 +292,10 @@ typedef struct {
 } CstPlexTypeInfo;
 
 typedef struct {
-    u32 token_index;
-    u32 symbol_handle;
-    u32 type_node_index;
-    u32 value_node_index;
+    u32  token_index;
+    u32  symbol_handle;
+    u32  type_node_index;
+    u32  value_node_index;
     bool braced_payload;
 } CstEnumVariant;
 
@@ -369,11 +369,12 @@ typedef struct {
 } CstPlexPatternField;
 
 typedef struct {
-    u32 token_index;
-    u32 qualifier_node_index;
-    u32 symbol_handle;
-    u32 first_pattern;
-    u32 pattern_count;
+    u32  token_index;
+    u32  qualifier_node_index;
+    u32  symbol_handle;
+    u32  first_pattern;
+    u32  pattern_count;
+    bool braced_payload;
 } CstEnumPattern;
 
 typedef struct {

@@ -1075,7 +1075,13 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
                 Array(u32) branch_patterns = NULL;
                 for (;;) {
                     u32 pattern_root = 0;
-                    if (!ast_parse_pattern(state, &pattern_root)) {
+                    if (ast_pattern_starts_braced_enum_variant(state)) {
+                        if (!ast_parse_enum_variant_pattern(state,
+                                                            &pattern_root)) {
+                            array_free(branch_patterns);
+                            return false;
+                        }
+                    } else if (!ast_parse_pattern(state, &pattern_root)) {
                         array_free(branch_patterns);
                         return false;
                     }

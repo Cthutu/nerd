@@ -527,6 +527,17 @@ FrameEvent :: enum {
 }
 ```
 
+Construct and match named-field payload variants with the same braced shape:
+
+```nerd
+event := FrameEvent.Resized { width: 80, height: 25 }
+
+on event {
+    Resized { width } => width
+    Closed => 0
+}
+```
+
 Enum variants may be separated with commas. A trailing comma is allowed. Variant
 names must be unique within one enum. Explicit `= <value>` discriminants must be
 unique after implicit values are filled in.

@@ -2145,6 +2145,27 @@ internal bool ast_pattern_starts_enum_variant(const AstParseState* state)
            state->lexer->tokens[index].kind == TK_LParen;
 }
 
+bool ast_pattern_starts_braced_enum_variant(const AstParseState* state)
+{
+    if (state->token.kind != TK_Symbol) {
+        return false;
+    }
+
+    u32 index = state->token.token_index + 1;
+    while (index < array_count(state->lexer->tokens) &&
+           state->lexer->tokens[index].kind == TK_Dot) {
+        index++;
+        if (index >= array_count(state->lexer->tokens) ||
+            state->lexer->tokens[index].kind != TK_Symbol) {
+            return false;
+        }
+        index++;
+    }
+
+    return index < array_count(state->lexer->tokens) &&
+           state->lexer->tokens[index].kind == TK_LBrace;
+}
+
 internal bool ast_pattern_starts_typed_plex(const AstParseState* state)
 {
     if (state->token.kind != TK_Symbol) {
@@ -2166,8 +2187,7 @@ internal bool ast_pattern_starts_typed_plex(const AstParseState* state)
            state->lexer->tokens[index].kind == TK_LBrace;
 }
 
-internal bool ast_parse_enum_variant_pattern(AstParseState* state,
-                                             u32*           out_pattern)
+bool ast_parse_enum_variant_pattern(AstParseState* state, u32* out_pattern)
 {
     AstToken variant   = state->token;
     u32      qualifier = U32_MAX;
@@ -2228,60 +2248,72 @@ internal bool ast_parse_enum_variant_pattern(AstParseState* state,
         }
     }
 
-    if (state->token.kind != TK_LParen) {
+    bool braced_payload = false;
+    if (state->token.kind == TK_LBrace) {
+        braced_payload = true;
+    } else if (state->token.kind != TK_LParen) {
         return error_0203_expected_token(state->lexer->source,
                                          ast_token_span(state, &variant),
                                          TK_LParen,
                                          state->token.kind);
     }
-    if (!ast_next_token(state)) {
-        return false;
-    }
 
     u32 first_pattern = (u32)array_count(state->pattern_items);
     u32 pattern_count = 0;
-    if (state->token.kind != TK_RParen) {
-        for (;;) {
-            u32 item = U32_MAX;
-            if (!ast_parse_pattern(state, &item)) {
-                return false;
-            }
-            array_push(state->pattern_items, item);
-            pattern_count++;
-            if (state->token.kind != TK_Comma &&
-                ast_peek_kind_at(state, 0) == TK_Comma) {
-                if (!ast_expect_token(state, TK_Comma)) {
-                    return false;
-                }
-            }
-            if (state->token.kind != TK_Comma) {
-                break;
-            }
-            if (state->token_index == state->token.token_index &&
-                !ast_next_token(state)) {
-                return false;
-            }
-            if (!ast_next_token(state)) {
-                return false;
-            }
-            if (state->token.kind == TK_RParen) {
-                break;
-            }
+    if (braced_payload) {
+        u32 payload_pattern = U32_MAX;
+        if (!ast_parse_plex_pattern(state, U32_MAX, &payload_pattern)) {
+            return false;
         }
-    }
-    if (state->token.kind == TK_RParen &&
-        state->token_index == state->token.token_index) {
+        array_push(state->pattern_items, payload_pattern);
+        pattern_count = 1;
+    } else {
         if (!ast_next_token(state)) {
             return false;
         }
-    } else if (state->token.kind != TK_RParen &&
-               !ast_expect_token(state, TK_RParen)) {
-        return false;
-    }
-    if (state->token.kind == TK_RParen &&
-        state->token_index != state->token.token_index &&
-        !ast_next_token(state)) {
-        return false;
+        if (state->token.kind != TK_RParen) {
+            for (;;) {
+                u32 item = U32_MAX;
+                if (!ast_parse_pattern(state, &item)) {
+                    return false;
+                }
+                array_push(state->pattern_items, item);
+                pattern_count++;
+                if (state->token.kind != TK_Comma &&
+                    ast_peek_kind_at(state, 0) == TK_Comma) {
+                    if (!ast_expect_token(state, TK_Comma)) {
+                        return false;
+                    }
+                }
+                if (state->token.kind != TK_Comma) {
+                    break;
+                }
+                if (state->token_index == state->token.token_index &&
+                    !ast_next_token(state)) {
+                    return false;
+                }
+                if (!ast_next_token(state)) {
+                    return false;
+                }
+                if (state->token.kind == TK_RParen) {
+                    break;
+                }
+            }
+        }
+        if (state->token.kind == TK_RParen &&
+            state->token_index == state->token.token_index) {
+            if (!ast_next_token(state)) {
+                return false;
+            }
+        } else if (state->token.kind != TK_RParen &&
+                   !ast_expect_token(state, TK_RParen)) {
+            return false;
+        }
+        if (state->token.kind == TK_RParen &&
+            state->token_index != state->token.token_index &&
+            !ast_next_token(state)) {
+            return false;
+        }
     }
 
     u32 enum_pattern_index = (u32)array_count(state->enum_patterns);
@@ -2292,6 +2324,7 @@ internal bool ast_parse_enum_variant_pattern(AstParseState* state,
                    .symbol_handle        = symbol,
                    .first_pattern        = first_pattern,
                    .pattern_count        = pattern_count,
+                   .braced_payload       = braced_payload,
                });
     return ast_emit_pattern(state,
                             (AstPattern){

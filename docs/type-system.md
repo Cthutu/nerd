@@ -96,11 +96,13 @@ pattern matching.
 Enum types are written `enum { Variant ... }`. Unit variants have no payload.
 Tuple-like payload variants write their payload types after the variant name,
 such as `enum { None Some(i32) Pair(i32, i32) }`. Named-field payload variants
-use an inline plex body, such as `Resized { width u16 height u16 }`.
-A bare variant name can be used where the expected type is already known to be that enum, such as
+use an inline plex body, such as `Resized { width u16 height u16 }`, and values
+use the same shape: `Event.Resized { width: 80, height: 25 }` or
+`Resized { width } => ...` in an `on` branch. A bare variant name can be used
+where the expected type is already known to be that enum, such as
 `colour: Colour = Red` or an `on colour { Red => ... }` branch. When no context
 is available, use the qualified form `Colour.Red`, or `Maybe.Some(1)` for a
-payload variant. Enums lower as a tag plus a union of payload storage. The
+tuple-like payload variant. Enums lower as a tag plus a union of payload storage. The
 generated tag uses the smallest practical unsigned integer width for the number
 of variants. Variant names must be unique within one enum. Explicit enum
 discriminants must be non-negative integer constants, and every variant in one

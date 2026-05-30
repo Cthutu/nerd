@@ -779,7 +779,7 @@ internal void lsp_code_action_add_unused_local_remove(Arena*     arena,
                                                       JsonValue* actions,
                                                       string     uri,
                                                       const LspDocument* doc,
-                                                      u32 token_index,
+                                                      u32    token_index,
                                                       string name)
 {
     u32 local_index = sema_no_local();
@@ -800,13 +800,14 @@ internal void lsp_code_action_add_unused_local_remove(Arena*     arena,
 
     usize start = 0;
     usize end   = 0;
-    if (!lsp_code_action_remove_line_range(
-            lexer->source.source, lexer->tokens[token_index].offset, &start, &end)) {
+    if (!lsp_code_action_remove_line_range(lexer->source.source,
+                                           lexer->tokens[token_index].offset,
+                                           &start,
+                                           &end)) {
         return;
     }
 
-    JsonValue* range =
-        lsp_code_action_range(arena, lexer->source, start, end);
+    JsonValue* range = lsp_code_action_range(arena, lexer->source, start, end);
     JsonValue* workspace_edit =
         lsp_code_action_workspace_range_edit(arena, uri, range, s(""));
     if (workspace_edit == NULL) {
@@ -830,7 +831,7 @@ internal bool lsp_code_action_diagnostic_has_text(JsonValue* diagnostic,
 {
     string needle_string = s(needle);
 
-    JsonValue* message = json_get_cstr(diagnostic, "message");
+    JsonValue* message   = json_get_cstr(diagnostic, "message");
     if (message && message->kind == JSON_STRING &&
         lsp_code_action_string_contains(message->string, needle_string)) {
         return true;
@@ -854,8 +855,7 @@ internal bool lsp_code_action_diagnostic_has_text(JsonValue* diagnostic,
     return false;
 }
 
-internal bool
-lsp_code_action_has_function_definition_colon_diagnostic(
+internal bool lsp_code_action_has_function_definition_colon_diagnostic(
     const LspMessage* message)
 {
     JsonValue* diagnostics =
@@ -879,8 +879,10 @@ lsp_code_action_has_function_definition_colon_diagnostic(
     return false;
 }
 
-internal bool lsp_code_action_find_function_definition_colon(
-    string source, usize offset, usize* out_start, usize* out_end)
+internal bool lsp_code_action_find_function_definition_colon(string source,
+                                                             usize  offset,
+                                                             usize* out_start,
+                                                             usize* out_end)
 {
     if (offset >= source.count || source.data[offset] != ':') {
         return false;
@@ -891,8 +893,8 @@ internal bool lsp_code_action_find_function_definition_colon(
     }
 
     usize left = offset;
-    while (left > 0 && (source.data[left - 1] == ' ' ||
-                        source.data[left - 1] == '\t')) {
+    while (left > 0 &&
+           (source.data[left - 1] == ' ' || source.data[left - 1] == '\t')) {
         left--;
     }
     if (left == 0 || !lsp_code_action_is_ident_char(source.data[left - 1])) {
@@ -918,9 +920,13 @@ internal bool lsp_code_action_find_function_definition_colon(
     return true;
 }
 
-internal void lsp_code_action_add_function_definition_colon_fix(
-    Arena* arena, JsonValue* actions, string uri, string source,
-    const LspMessage* message, usize offset)
+internal void
+lsp_code_action_add_function_definition_colon_fix(Arena*            arena,
+                                                  JsonValue*        actions,
+                                                  string            uri,
+                                                  string            source,
+                                                  const LspMessage* message,
+                                                  usize             offset)
 {
     if (!lsp_code_action_has_function_definition_colon_diagnostic(message)) {
         return;
@@ -946,8 +952,7 @@ internal void lsp_code_action_add_function_definition_colon_fix(
     }
 
     JsonValue* action = json_new_object(arena);
-    json_object_set_string(
-        action, arena, "title", s("Change `:` to `::`"));
+    json_object_set_string(action, arena, "title", s("Change `:` to `::`"));
     json_object_set_string(action, arena, "kind", s("quickfix"));
     json_object_set_object(action, "edit", workspace_edit);
     json_array_push(actions, action);
@@ -2795,13 +2800,10 @@ void lsp_handle_code_action(LspState* state, const LspMessage* message)
         return;
     }
 
-    usize offset = lsp_offset_from_position(source_view.source, line, character);
-    lsp_code_action_add_function_definition_colon_fix(message->arena,
-                                                      actions,
-                                                      uri,
-                                                      source_view.source,
-                                                      message,
-                                                      offset);
+    usize offset =
+        lsp_offset_from_position(source_view.source, line, character);
+    lsp_code_action_add_function_definition_colon_fix(
+        message->arena, actions, uri, source_view.source, message, offset);
 
     LspSyntaxView syntax = {0};
     if (!lsp_syntax_view(state, uri, &syntax)) {
@@ -2814,8 +2816,8 @@ void lsp_handle_code_action(LspState* state, const LspMessage* message)
     lsp_code_action_add_unknown_member_suggestions(
         message->arena, actions, uri, message);
 
-    u32   token_index = U32_MAX;
-    bool  has_symbol_token = lsp_code_action_symbol_token_at_offset(
+    u32  token_index      = U32_MAX;
+    bool has_symbol_token = lsp_code_action_symbol_token_at_offset(
         &doc->front_end.lexer, offset, &token_index);
     if (has_symbol_token) {
         const Token* token = &doc->front_end.lexer.tokens[token_index];
@@ -2832,11 +2834,11 @@ void lsp_handle_code_action(LspState* state, const LspMessage* message)
                 if (lsp_code_action_has_remove_unused_local_diagnostic(
                         message->arena, message, symbol)) {
                     lsp_code_action_add_unused_local_remove(message->arena,
-                                                           actions,
-                                                           uri,
-                                                           binding.doc,
-                                                           token_index,
-                                                           symbol);
+                                                            actions,
+                                                            uri,
+                                                            binding.doc,
+                                                            token_index,
+                                                            symbol);
                 }
             }
         }

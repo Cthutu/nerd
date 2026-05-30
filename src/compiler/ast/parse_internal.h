@@ -134,6 +134,8 @@ bool ast_parse_break_on_expr(AstParseState* state,
                              u32*           out_node);
 bool ast_parse_type(AstParseState* state, u32* out_node);
 bool ast_parse_pattern(AstParseState* state, u32* out_pattern);
+bool ast_pattern_starts_braced_enum_variant(const AstParseState* state);
+bool ast_parse_enum_variant_pattern(AstParseState* state, u32* out_pattern);
 bool ast_parse_type_signature(AstParseState* state, u32* out_signature_index);
 bool ast_parse_fn_signature(AstParseState* state,
                             bool           allow_named_params,

@@ -13757,16 +13757,23 @@ internal bool sema_check_on_pattern_type(const Lexer* lexer,
         }
     case APK_EnumVariant:
         {
+            const AstEnumPattern* enum_pattern =
+                &ast->enum_patterns[pattern->a];
             if (value_type == sema_no_type() ||
                 sema->types[value_type].kind != STK_Enum) {
+                if (enum_pattern->braced_payload) {
+                    return error_0304_type_mismatch(
+                        lexer->source,
+                        sema_pattern_span(lexer, pattern),
+                        sema_type_name(lexer, sema, &temp_arena, value_type),
+                        lex_symbol(lexer, enum_pattern->symbol_handle));
+                }
                 return error_0304_type_mismatch(
                     lexer->source,
                     sema_pattern_span(lexer, pattern),
                     s("enum"),
                     sema_type_name(lexer, sema, &temp_arena, value_type));
             }
-            const AstEnumPattern* enum_pattern =
-                &ast->enum_patterns[pattern->a];
             if (enum_pattern->qualifier_node_index != U32_MAX) {
                 u32 qualified_type = sema_no_type();
                 if (!sema_resolve_type_node(lexer,
@@ -16593,16 +16600,58 @@ internal bool sema_infer_node_type(const Lexer* lexer,
     case AK_PlexUpdate:
         {
             const AstPlexLiteralInfo* literal = &ast->plex_literals[node->a];
-            u32                       target_type = sema_no_type();
+            u32                       target_type              = sema_no_type();
+            bool                      enum_variant_constructor = false;
+            u32                       enum_constructor_type    = sema_no_type();
             if (node->kind == AK_Plex) {
                 if (literal->target_node_index == U32_MAX) {
                     target_type = expected_type;
-                } else if (!sema_resolve_type_node(lexer,
-                                                   ast,
+                } else {
+                    const AstNode* target_node =
+                        &ast->nodes[literal->target_node_index];
+                    if (target_node->kind == AK_Field) {
+                        u32 qualified_type = sema_no_type();
+                        if (sema_try_resolve_type_symbol(lexer,
+                                                         ast,
+                                                         sema,
+                                                         target_node->a,
+                                                         &qualified_type) &&
+                            sema->types[qualified_type].kind == STK_Enum) {
+                            u32 variant = sema_enum_variant_index(
+                                sema, qualified_type, target_node->b);
+                            if (variant == U32_MAX) {
+                                return error_0304_type_mismatch(
+                                    lexer->source,
+                                    sema_node_span(lexer, target_node),
+                                    s("known enum variant"),
+                                    lex_symbol(lexer, target_node->b));
+                            }
+                            u32 payload_type = sema_enum_variant_payload_type(
+                                sema, qualified_type, variant);
+                            if (payload_type == sema_no_type() ||
+                                sema->types[payload_type].kind != STK_Plex) {
+                                return error_0304_type_mismatch(
+                                    lexer->source,
+                                    sema_node_span(lexer, node),
+                                    s("enum variant with named-field payload"),
+                                    sema_type_name(lexer,
                                                    sema,
-                                                   literal->target_node_index,
-                                                   &target_type)) {
-                    return false;
+                                                   &temp_arena,
+                                                   payload_type));
+                            }
+                            target_type              = payload_type;
+                            enum_variant_constructor = true;
+                            enum_constructor_type    = qualified_type;
+                        }
+                    }
+                    if (target_type == sema_no_type() &&
+                        !sema_resolve_type_node(lexer,
+                                                ast,
+                                                sema,
+                                                literal->target_node_index,
+                                                &target_type)) {
+                        return false;
+                    }
                 }
             } else {
                 if (!sema_infer_node_type(lexer,
@@ -16747,7 +16796,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                                                     s("missing field"));
                 }
             }
-            type_index = target_type;
+            type_index =
+                enum_variant_constructor ? enum_constructor_type : target_type;
         }
         break;
 

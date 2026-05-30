@@ -152,6 +152,9 @@ Enums support unit variants, payload variants, and explicit discriminant
 expressions.
 Payload variants with named fields use an inline plex payload body, such as
 `Resized { width u16 height u16 }`.
+They are constructed and matched with the same braced variant shape:
+`Event.Resized { width: 80, height: 25 }` and
+`Resized { width } => ...`.
 
 ## Dynamic Array Methods
 
