@@ -48,16 +48,6 @@
 
 pragma windowed
 
-ffi "nrt" {
-    nrt_arena_mark (arena: ^arena) -> u32
-
-    nrt_arena_restore (arena: ^arena, mark: u32)
-
-    nrt_arena_alloc (arena: ^arena, size: usize, alignment: usize) -> ^void
-
-    nrt_temp_arena () -> ^arena
-}
-
 -- A special frame ID that indicates a new frame should be created when `apply`
 -- is called.
 pub NEW_FRAME :: 0
@@ -238,13 +228,12 @@ pub Frame :: plex {
 
 -- Copies a Nerd string into temporary NUL-terminated storage for C APIs.
 frame_c_string_temp :: fn (text: string) -> ^i8 {
-    temp_arena := nrt_temp_arena()
-    data := nrt_arena_alloc(temp_arena, text.count + 1, 1).as(^u8)
+    bytes := temp_arena.alloc_bytes(text.count + 1)
     for i: usize = 0; i < text.count; i += 1 {
-        data[i] = text.data[i]
+        bytes[i] = text.data[i]
     }
-    data[text.count] = 0
-    return data.as(^void).as(^i8)
+    bytes[text.count] = 0
+    return bytes.data.as(^void).as(^i8)
 }
 
 -- Finds the live frame record with the requested ID, or nil when none exists.
@@ -768,9 +757,8 @@ on "linux" {
             return
         }
 
-        temp_arena := nrt_temp_arena()
-        mark := nrt_arena_mark(temp_arena)
-        defer nrt_arena_restore(temp_arena, mark)
+        mark := temp_arena.mark()
+        defer temp_arena.restore(mark)
 
         _ := XStoreName(display, window, frame_c_string_temp(frame.title))
         event_mask := (X_STRUCTURE_NOTIFY_MASK |
@@ -820,9 +808,8 @@ on "linux" {
             return
         }
 
-        temp_arena := nrt_temp_arena()
-        mark := nrt_arena_mark(temp_arena)
-        defer nrt_arena_restore(temp_arena, mark)
+        mark := temp_arena.mark()
+        defer temp_arena.restore(mark)
 
         _ := XStoreName(info.platform_info.display,
                         info.platform_info.window,

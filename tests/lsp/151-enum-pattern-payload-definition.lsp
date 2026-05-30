@@ -1,8 +1,12 @@
 use std.frame
 
 main :: fn () {
-    event := FrameEvent.Character { codepoint: 65 }
-    _ := event
+    event : FrameEvent
+    on event {
+        KeyPress { scan_code } => {
+            _ := scan_code
+        }
+    }
 }
 ¬
 [
@@ -15,8 +19,8 @@ main :: fn () {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 3,
-                "character": 25
+                "line": 5,
+                "character": 9
             }
         }
     }
@@ -80,7 +84,26 @@ main :: fn () {
         "method": "textDocument/publishDiagnostics",
         "params": {
             "uri": "file:///test.n",
-            "diagnostics": []
+            "diagnostics": [
+                {
+                    "range": {
+                        "start": {
+                            "line": 0,
+                            "character": 4
+                        },
+                        "end": {
+                            "line": 0,
+                            "character": 13
+                        }
+                    },
+                    "severity": 4,
+                    "source": "nerd",
+                    "message": "Unused use `std.frame`",
+                    "tags": [
+                        1
+                    ]
+                }
+            ]
         }
     },
     {
@@ -90,12 +113,12 @@ main :: fn () {
             "uri": "__REPO_URI__/mods/std/frame.n",
             "range": {
                 "start": {
-                    "line": 201,
+                    "line": 189,
                     "character": 4
                 },
                 "end": {
-                    "line": 201,
-                    "character": 13
+                    "line": 189,
+                    "character": 12
                 }
             }
         }

@@ -766,6 +766,35 @@ internal JsonValue* lsp_local_enum_variant_location(const LspDocument* doc,
     return NULL;
 }
 
+internal JsonValue* lsp_local_enum_variant_location_by_symbol(
+    const LspDocument* doc, Arena* arena, string uri, u32 variant_symbol)
+{
+    for (u32 node_index = 0; node_index < array_count(doc->front_end.ast.nodes);
+         ++node_index) {
+        const AstNode* node = &doc->front_end.ast.nodes[node_index];
+        if (node->kind != AK_TypeEnum ||
+            node->a >= array_count(doc->front_end.ast.enum_types)) {
+            continue;
+        }
+
+        const AstEnumTypeInfo* enum_info =
+            &doc->front_end.ast.enum_types[node->a];
+        for (u32 i = 0; i < enum_info->variant_count; ++i) {
+            const AstEnumVariant* variant =
+                &doc->front_end.ast.enum_variants[enum_info->first_variant + i];
+            if (variant->symbol_handle == variant_symbol) {
+                return lsp_enum_variant_location(arena,
+                                                 doc->front_end.lexer.source,
+                                                 uri,
+                                                 &doc->front_end.lexer,
+                                                 variant);
+            }
+        }
+    }
+
+    return NULL;
+}
+
 internal JsonValue* lsp_ast_enum_variant_location_in_file(Arena* arena,
                                                           cstr   resolved_path,
                                                           string enum_name,
@@ -1033,6 +1062,58 @@ internal JsonValue* lsp_qualified_enum_variant_location(const LspDocument* doc,
         arena,
         lex_symbol(&doc->front_end.lexer, target->a),
         lex_symbol(&doc->front_end.lexer, field->b));
+}
+
+internal JsonValue* lsp_enum_pattern_variant_location(const LspDocument* doc,
+                                                      Arena*             arena,
+                                                      string             uri,
+                                                      u32 token_index)
+{
+    const Ast* ast = &doc->front_end.ast;
+    for (u32 pattern_index = 0; pattern_index < array_count(ast->patterns);
+         ++pattern_index) {
+        const AstPattern* pattern = &ast->patterns[pattern_index];
+        if (pattern->kind != APK_EnumVariant ||
+            pattern->a >= array_count(ast->enum_patterns)) {
+            continue;
+        }
+
+        const AstEnumPattern* enum_pattern = &ast->enum_patterns[pattern->a];
+        if (enum_pattern->token_index != token_index ||
+            enum_pattern->symbol_handle == U32_MAX) {
+            continue;
+        }
+
+        string variant_name =
+            lex_symbol(&doc->front_end.lexer, enum_pattern->symbol_handle);
+        if (enum_pattern->qualifier_node_index != U32_MAX &&
+            enum_pattern->qualifier_node_index < array_count(ast->nodes)) {
+            const AstNode* qualifier =
+                &ast->nodes[enum_pattern->qualifier_node_index];
+            if (qualifier->kind == AK_SymbolRef && qualifier->a != U32_MAX) {
+                string enum_name =
+                    lex_symbol(&doc->front_end.lexer, qualifier->a);
+                JsonValue* location = lsp_local_qualified_enum_variant_location(
+                    doc, arena, uri, qualifier->a, enum_pattern->symbol_handle);
+                if (location != NULL) {
+                    return location;
+                }
+
+                return lsp_ast_imported_qualified_enum_variant_location(
+                    doc, arena, enum_name, variant_name);
+            }
+        }
+
+        JsonValue* location = lsp_local_enum_variant_location_by_symbol(
+            doc, arena, uri, enum_pattern->symbol_handle);
+        if (location != NULL) {
+            return location;
+        }
+
+        return lsp_ast_imported_enum_variant_location(doc, arena, variant_name);
+    }
+
+    return NULL;
 }
 
 internal string lsp_hover_text_from_module_export(Arena* arena,
@@ -4104,6 +4185,14 @@ void lsp_handle_definition(LspState* state, const LspMessage* message)
 
     u32 decl_index = lsp_find_decl_index_for_token(doc, token_index);
     if (decl_index == LSP_NO_DECL) {
+        JsonValue* enum_pattern_location = lsp_enum_pattern_variant_location(
+            doc, message->arena, uri, token_index);
+        if (enum_pattern_location != NULL) {
+            json_object_set_object(response, "result", enum_pattern_location);
+            lsp_send_response(message->arena, response);
+            return;
+        }
+
         JsonValue* enum_variant_location = lsp_contextual_enum_variant_location(
             doc, message->arena, uri, token_index);
         if (enum_variant_location != NULL) {
