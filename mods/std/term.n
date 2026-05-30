@@ -6,33 +6,29 @@
 -- exposes portable terminal concepts while using platform-specific OS calls
 -- underneath.
 --
--- Application lifecycle:
--- - `term_init()` enters raw mode and the alternate screen, prepares the
---   framebuffer, and captures the initial terminal size.
--- - `term_run()` drives hook-based applications until `term_done()` is called.
---   Use `term_hook_simulation()` for input/state updates and
---   `term_hook_presentation()` for framebuffer drawing.
--- - `term_done()` only requests shutdown. Cleanup happens inside the next
---   terminal step so the cursor, raw mode, and alternate screen are restored.
+-- Application lifecycle: - `term_init()` enters raw mode and the alternate
+-- screen, prepares the framebuffer, and captures the initial terminal size. -
+-- `term_run()` drives hook-based applications until `term_done()` is called.
+-- Use `term_hook_simulation()` for input/state updates and
+-- `term_hook_presentation()` for framebuffer drawing. - `term_done()` only
+-- requests shutdown. Cleanup happens inside the next terminal step so the
+-- cursor, raw mode, and alternate screen are restored.
 --
--- Framebuffer drawing:
--- - `term_fb_clear`, `term_fb_put`, `term_fb_text`, `term_fb_fill_rect`,
---   `term_fb_paint_rect`, and `term_fb_box` write to a retained terminal
---   framebuffer.
--- - The framebuffer tracks dirty cells and is presented by the terminal loop.
---   Hook-based applications should draw from the presentation hook.
--- - `term_view` clips drawing to a rectangular view. The view is reset to the
---   full terminal size each terminal step.
+-- Framebuffer drawing: - `term_fb_clear`, `term_fb_put`, `term_fb_text`,
+-- `term_fb_fill_rect`, `term_fb_paint_rect`, and `term_fb_box` write to a
+-- retained terminal framebuffer. - The framebuffer tracks dirty cells and is
+-- presented by the terminal loop. Hook-based applications should draw from the
+-- presentation hook. - `term_view` clips drawing to a rectangular view. The
+-- view is reset to the full terminal size each terminal step.
 --
--- Input:
--- - `TermKeyboard` snapshots are provided to simulation hooks with key down,
---   pressed, and released state. Use `term_key_down`, `term_key_pressed`, and
---   `term_key_released` instead of indexing the snapshot arrays directly.
+-- Input: - `TermKeyboard` snapshots are provided to simulation hooks with key
+-- down, pressed, and released state. Use `term_key_down`, `term_key_pressed`,
+-- and `term_key_released` instead of indexing the snapshot arrays directly.
 --
--- Direct terminal helpers:
--- - `term_print`, `term_cls`, `term_cursor_move`, `term_cursor_enable`,
---   `term_raw_mode_enable`, and `term_alternate_screen_enable` are available
---   for code that needs direct terminal control.
+-- Direct terminal helpers: - `term_print`, `term_cls`, `term_cursor_move`,
+-- `term_cursor_enable`, `term_raw_mode_enable`, and
+-- `term_alternate_screen_enable` are available for code that needs direct
+-- terminal control.
 
 use std.math
 use std.time
@@ -222,11 +218,11 @@ pub TermMouse :: plex {
 }
 
 pub TermSimulate :: plex {
-    dt       Duration
-    width    u32
-    height   u32
-    keyboard TermKeyboard
-    mouse    TermMouse
+    dt        Duration
+    width     u32
+    height    u32
+    keyboard  TermKeyboard
+    mouse     TermMouse
     user_data ^void
 }
 
@@ -279,38 +275,38 @@ CELL_WIDE_TAIL :: 4
 
 TERM_MAX_FRAMEBUFFER_CELLS :: 1000000
 
-term_initialised       : bool
-term_done_requested    : bool
-term_last_columns      : u32
-term_last_rows         : u32
-term_min_width         : u32
-term_min_height        : u32
-term_too_small_policy  : TermTooSmallPolicy
-term_present_ready     : bool
-term_arena             : arena
-term_arena_ready       : bool
-term_fb_cells          : [..]TermCell
-term_fb_width          : u32
-term_fb_height         : u32
-term_fb_view           : RectI32
-term_fb_ready          : bool
-term_keyboard_down     : [TERM_KEY_CODE_COUNT]bool
-term_keyboard_pressed  : [TERM_KEY_CODE_COUNT]bool
-term_keyboard_released : [TERM_KEY_CODE_COUNT]bool
-term_keyboard_pulse    : [TERM_KEY_CODE_COUNT]bool
-term_mouse             : TermMouse
-term_simulate_hook     : TermSimulateFn
-term_simulate_hook_set : bool
+term_initialised        : bool
+term_done_requested     : bool
+term_last_columns       : u32
+term_last_rows          : u32
+term_min_width          : u32
+term_min_height         : u32
+term_too_small_policy   : TermTooSmallPolicy
+term_present_ready      : bool
+term_arena              : arena
+term_arena_ready        : bool
+term_fb_cells           : [..]TermCell
+term_fb_width           : u32
+term_fb_height          : u32
+term_fb_view            : RectI32
+term_fb_ready           : bool
+term_keyboard_down      : [TERM_KEY_CODE_COUNT]bool
+term_keyboard_pressed   : [TERM_KEY_CODE_COUNT]bool
+term_keyboard_released  : [TERM_KEY_CODE_COUNT]bool
+term_keyboard_pulse     : [TERM_KEY_CODE_COUNT]bool
+term_mouse              : TermMouse
+term_simulate_hook      : TermSimulateFn
+term_simulate_hook_set  : bool
 term_simulate_user_data : ^void
-term_simulate_interval : Duration
-term_simulate_last     : Instant
-term_simulate_ran      : bool
-term_present_hook      : TermPresentFn
-term_present_hook_set  : bool
-term_present_user_data : ^void
-term_present_interval  : Duration
-term_present_last      : Instant
-term_present_ran       : bool
+term_simulate_interval  : Duration
+term_simulate_last      : Instant
+term_simulate_ran       : bool
+term_present_hook       : TermPresentFn
+term_present_hook_set   : bool
+term_present_user_data  : ^void
+term_present_interval   : Duration
+term_present_last       : Instant
+term_present_ran        : bool
 
 term_arena_ensure :: fn () {
     on term_arena_ready => return
@@ -613,7 +609,12 @@ pub term_fb_put :: fn (x     : i32,
     clip := term_fb_prepare_rect(RectI32 { x y w: width h: 1 })
     on !clip.ok || clip.x_offset != 0 || clip.rect.w < width => return
 
-    term_fb_put_clipped(clip.rect.x.as(u32), clip.rect.y.as(u32), ch, ink, paper, clip.rect.w)
+    term_fb_put_clipped(clip.rect.x.as(u32),
+                        clip.rect.y.as(u32),
+                        ch,
+                        ink,
+                        paper,
+                        clip.rect.w)
 }
 
 pub term_fb_fill_rect :: fn (x     : i32,
@@ -721,7 +722,12 @@ pub term_fb_text :: fn (x     : i32,
         width := term_codepoint_width(decoded.0)
         on source_col >= clip.x_offset && source_col + width <= end_col => {
             draw_x := clip.rect.x + source_col - clip.x_offset
-            term_fb_put_clipped(draw_x.as(u32), clip.rect.y.as(u32), decoded.0, ink, paper, end_col - source_col)
+            term_fb_put_clipped(draw_x.as(u32),
+                                clip.rect.y.as(u32),
+                                decoded.0,
+                                ink,
+                                paper,
+                                end_col - source_col)
         }
 
         source_col += width
@@ -749,19 +755,19 @@ term_box_string_char :: fn (chars: string, cell_index: usize) -> u32 {
     return ' '.as(u32)
 }
 
-term_box_cell :: fn (source_x      : i32,
-                     source_y      : i32,
-                     width         : i32,
-                     height        : i32,
-                     top_left      : u32,
-                     top           : u32,
-                     top_right     : u32,
-                     left          : u32,
-                     fill          : u32,
-                     right         : u32,
-                     bottom_left   : u32,
-                     bottom        : u32,
-                     bottom_right  : u32) -> u32 {
+term_box_cell :: fn (source_x     : i32,
+                     source_y     : i32,
+                     width        : i32,
+                     height       : i32,
+                     top_left     : u32,
+                     top          : u32,
+                     top_right    : u32,
+                     left         : u32,
+                     fill         : u32,
+                     right        : u32,
+                     bottom_left  : u32,
+                     bottom       : u32,
+                     bottom_right : u32) -> u32 {
     on width == 1 && height == 1 => return fill
 
     on width == 1 => {
@@ -961,9 +967,7 @@ term_fb_present :: fn () {
             } else {
                 term_output_push(^output, $"\x1b[{y + 1};{x + 1}H")
 
-                for x < term_fb_width &&
-                    term_fb_index_valid(x, y) &&
-                    (term_fb_cells[term_fb_index(x, y)].flags & CELL_DIRTY) != 0 {
+                for x < term_fb_width && term_fb_index_valid(x, y) && (term_fb_cells[term_fb_index(x, y)].flags & CELL_DIRTY) != 0 {
                     cell_index := term_fb_index(x, y)
                     cell := term_fb_cells[cell_index]
 
@@ -1624,18 +1628,18 @@ pub term_valid :: fn () -> bool {
     return term_initialised && !term_too_small()
 }
 
--- Registers a simulation callback. The callback runs from
--- `term_run` no more often than `interval`, receives accumulated
--- keyboard edges and caller-supplied `user_data`, and is skipped while the
--- terminal is below its requested minimum size.
+-- Registers a simulation callback. The callback runs from `term_run` no more
+-- often than `interval`, receives accumulated keyboard edges and
+-- caller-supplied `user_data`, and is skipped while the terminal is below its
+-- requested minimum size.
 pub term_hook_simulation :: fn (interval  : Duration,
                                 callback  : TermSimulateFn,
                                 user_data : ^void = nil) {
-    term_simulate_interval = interval
-    term_simulate_hook     = callback
+    term_simulate_interval  = interval
+    term_simulate_hook      = callback
     term_simulate_user_data = user_data
-    term_simulate_hook_set = yes
-    term_simulate_ran      = no
+    term_simulate_hook_set  = yes
+    term_simulate_ran       = no
 }
 
 -- Registers a presentation callback. The callback runs immediately before the
@@ -1644,25 +1648,25 @@ pub term_hook_simulation :: fn (interval  : Duration,
 pub term_hook_presentation :: fn (interval  : Duration,
                                   callback  : TermPresentFn,
                                   user_data : ^void = nil) {
-    term_present_interval = interval
-    term_present_hook     = callback
+    term_present_interval  = interval
+    term_present_hook      = callback
     term_present_user_data = user_data
-    term_present_hook_set = yes
-    term_present_ran      = no
+    term_present_hook_set  = yes
+    term_present_ran       = no
 }
 
 -- Clears registered terminal callbacks and their timing state.
 pub term_hooks_clear :: fn () {
-    term_simulate_hook_set = no
-    term_present_hook_set  = no
+    term_simulate_hook_set  = no
+    term_present_hook_set   = no
     term_simulate_user_data = nil
-    term_present_user_data = nil
-    term_simulate_interval = 0
-    term_present_interval  = 0
-    term_simulate_last     = 0
-    term_present_last      = 0
-    term_simulate_ran      = no
-    term_present_ran       = no
+    term_present_user_data  = nil
+    term_simulate_interval  = 0
+    term_present_interval   = 0
+    term_simulate_last      = 0
+    term_present_last       = 0
+    term_simulate_ran       = no
+    term_present_ran        = no
 }
 
 term_hook_due :: fn (last     : Instant,
@@ -1693,11 +1697,11 @@ term_run_simulation_hook :: fn (current: Instant) {
 
     sim := TermSimulate {
         dt
-        width    : term_last_columns
-        height   : term_last_rows
-        keyboard : term_keyboard_snapshot()
-        mouse    : term_mouse
-        user_data: term_simulate_user_data
+        width     : term_last_columns
+        height    : term_last_rows
+        keyboard  : term_keyboard_snapshot()
+        mouse     : term_mouse
+        user_data : term_simulate_user_data
     }
     term_simulate_hook(sim)
     term_keyboard_clear_edges()
@@ -1736,8 +1740,8 @@ term_handle_too_small :: fn (current: Instant) {
 }
 
 -- Enters terminal application mode.
-pub term_init :: fn (min_width  : u32 = TERM_DEFAULT_MIN_WIDTH,
-                     min_height : u32 = TERM_DEFAULT_MIN_HEIGHT,
+pub term_init :: fn (min_width        : u32 = TERM_DEFAULT_MIN_WIDTH,
+                     min_height       : u32 = TERM_DEFAULT_MIN_HEIGHT,
                      too_small_policy : TermTooSmallPolicy = TermTooSmallPolicy.PauseSimulation) {
     on term_initialised => return
 
@@ -2153,10 +2157,31 @@ test "framebuffer resize and clipped drawing stay within bounds" {
         assert term_fb_cells.count == width.as(usize) * height.as(usize)
 
         term_view(-1, -1, width + 2, height + 2)
-        term_fb_fill_rect(-3, -2, width + 6, height + 4, '.'.as(u32), rgb(20, 200, 80), rgb(0, 12, 0))
-        term_fb_paint_rect(-2, 0, width + 4, height, rgb(160, 255, 160), COLOUR_TRANSPARENT)
-        term_fb_text(-4, 0, "resize clipping regression", rgb(230, 255, 230), COLOUR_TRANSPARENT)
-        term_fb_box(-2, -1, width + 4, height + 2, BoxStyle.Custom("abcdefghi"), rgb(80, 220, 120), COLOUR_TRANSPARENT)
+        term_fb_fill_rect(-3,
+                          -2,
+                          width + 6,
+                          height + 4,
+                          '.'.as(u32),
+                          rgb(20, 200, 80),
+                          rgb(0, 12, 0))
+        term_fb_paint_rect(-2,
+                           0,
+                           width + 4,
+                           height,
+                           rgb(160, 255, 160),
+                           COLOUR_TRANSPARENT)
+        term_fb_text(-4,
+                     0,
+                     "resize clipping regression",
+                     rgb(230, 255, 230),
+                     COLOUR_TRANSPARENT)
+        term_fb_box(-2,
+                    -1,
+                    width + 4,
+                    height + 2,
+                    BoxStyle.Custom("abcdefghi"),
+                    rgb(80, 220, 120),
+                    COLOUR_TRANSPARENT)
 
         assert term_fb_cells.count == width.as(usize) * height.as(usize)
         assert term_fb_index_valid(width - 1, height - 1)
@@ -2460,8 +2485,12 @@ test "terminal hook due runs first tick then by interval" {
 }
 
 test "terminal hooks clear resets registered callbacks" {
-    term_hook_simulation(50.as(Duration), term_noop_simulate, (^term_test_payload).as(^void))
-    term_hook_presentation(50.as(Duration), term_noop_present, (^term_test_payload).as(^void))
+    term_hook_simulation(50.as(Duration),
+                         term_noop_simulate,
+                         (^term_test_payload).as(^void))
+    term_hook_presentation(50.as(Duration),
+                           term_noop_present,
+                           (^term_test_payload).as(^void))
 
     assert term_simulate_hook_set
     assert term_present_hook_set
@@ -2481,10 +2510,10 @@ test "terminal hooks clear resets registered callbacks" {
 }
 
 test "terminal hooks relay user data" {
-    term_test_simulate_user_data    = nil
+    term_test_simulate_user_data     = nil
     term_test_presentation_user_data = nil
-    term_last_columns              = 80
-    term_last_rows                 = 25
+    term_last_columns                = 80
+    term_last_rows                   = 25
 
     payload := (^term_test_payload).as(^void)
     term_hook_simulation(50.as(Duration), term_capture_simulate, payload)
