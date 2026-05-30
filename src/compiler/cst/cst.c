@@ -2188,9 +2188,8 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
         {
             u32 token_index = state->token_index;
             cst_advance(state);
-            u32 first_field = (u32)array_count(state->cst.plex_literal_fields);
-            u32 field_count = 0;
-            u32 flags       = CPLF_None;
+            Array(CstPlexLiteralField) fields = NULL;
+            u32 flags                         = CPLF_None;
             while (cst_current_token(state).kind != TK_RBrace) {
                 if (cst_current_token(state).kind == TK_Ellipsis) {
                     flags |= CPLF_DefaultMissing;
@@ -2210,13 +2209,12 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
                         state, field_token, field_symbol, &value)) {
                     return false;
                 }
-                array_push(state->cst.plex_literal_fields,
+                array_push(fields,
                            (CstPlexLiteralField){
                                .token_index      = field_token,
                                .symbol_handle    = field_symbol,
                                .value_node_index = value,
                            });
-                field_count++;
                 if (cst_current_token(state).kind == TK_Comma) {
                     cst_advance(state);
                     if (cst_current_token(state).kind == TK_RBrace) {
@@ -2233,8 +2231,16 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
                 break;
             }
             if (!cst_consume(state, TK_RBrace)) {
+                array_free(fields);
                 return false;
             }
+            u32 first_field = (u32)array_count(state->cst.plex_literal_fields);
+            for (u32 i = 0; i < array_count(fields); ++i) {
+                array_push(state->cst.plex_literal_fields, fields[i]);
+            }
+            u32 field_count = (u32)array_count(fields);
+            array_free(fields);
+
             u32 literal_index = (u32)array_count(state->cst.plex_literals);
             array_push(state->cst.plex_literals,
                        (CstPlexLiteralInfo){
@@ -3622,9 +3628,8 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
             continue;
         }
         if (token.kind == TK_LBrace) {
-            u32 first_field = (u32)array_count(state->cst.plex_literal_fields);
-            u32 field_count = 0;
-            u32 flags       = CPLF_None;
+            Array(CstPlexLiteralField) fields = NULL;
+            u32 flags                         = CPLF_None;
             while (cst_current_token(state).kind != TK_RBrace) {
                 if (cst_current_token(state).kind == TK_Ellipsis) {
                     flags |= CPLF_DefaultMissing;
@@ -3643,13 +3648,12 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
                         state, field_token, field_symbol, &right)) {
                     return false;
                 }
-                array_push(state->cst.plex_literal_fields,
+                array_push(fields,
                            (CstPlexLiteralField){
                                .token_index      = field_token,
                                .symbol_handle    = field_symbol,
                                .value_node_index = right,
                            });
-                field_count++;
                 if (cst_current_token(state).kind == TK_Comma) {
                     cst_advance(state);
                     continue;
@@ -3663,8 +3667,16 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
                 break;
             }
             if (!cst_consume(state, TK_RBrace)) {
+                array_free(fields);
                 return false;
             }
+            u32 first_field = (u32)array_count(state->cst.plex_literal_fields);
+            for (u32 i = 0; i < array_count(fields); ++i) {
+                array_push(state->cst.plex_literal_fields, fields[i]);
+            }
+            u32 field_count = (u32)array_count(fields);
+            array_free(fields);
+
             u32 literal_index = (u32)array_count(state->cst.plex_literals);
             array_push(state->cst.plex_literals,
                        (CstPlexLiteralInfo){
@@ -3688,9 +3700,8 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
             if (!cst_consume(state, TK_LBrace)) {
                 return false;
             }
-            u32 first_field = (u32)array_count(state->cst.plex_literal_fields);
-            u32 field_count = 0;
-            u32 flags       = CPLF_None;
+            Array(CstPlexLiteralField) fields = NULL;
+            u32 flags                         = CPLF_None;
             while (cst_current_token(state).kind != TK_RBrace) {
                 if (cst_current_token(state).kind == TK_Ellipsis) {
                     flags |= CPLF_DefaultMissing;
@@ -3709,13 +3720,12 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
                         state, field_token, field_symbol, &right)) {
                     return false;
                 }
-                array_push(state->cst.plex_literal_fields,
+                array_push(fields,
                            (CstPlexLiteralField){
                                .token_index      = field_token,
                                .symbol_handle    = field_symbol,
                                .value_node_index = right,
                            });
-                field_count++;
                 if (cst_current_token(state).kind == TK_Comma) {
                     cst_advance(state);
                     continue;
@@ -3729,8 +3739,16 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
                 break;
             }
             if (!cst_consume(state, TK_RBrace)) {
+                array_free(fields);
                 return false;
             }
+            u32 first_field = (u32)array_count(state->cst.plex_literal_fields);
+            for (u32 i = 0; i < array_count(fields); ++i) {
+                array_push(state->cst.plex_literal_fields, fields[i]);
+            }
+            u32 field_count = (u32)array_count(fields);
+            array_free(fields);
+
             u32 literal_index = (u32)array_count(state->cst.plex_literals);
             array_push(state->cst.plex_literals,
                        (CstPlexLiteralInfo){

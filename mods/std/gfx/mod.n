@@ -289,10 +289,10 @@ test "fixed-size pixel layer initialises storage" {
 test "pixel layer resize mutates the layer" {
     layer := PixelLayer {
         frame_id : 1
+        mode     : PixelLayerMode.FixedSizeAutoScale { width: 1 height: 1 }
         width    : 1
         height   : 1
-        width    : 1
-        height   : 1
+        data     : nil
     }
     defer layer.done()
 
