@@ -1,0 +1,5 @@
+pub answer :: 41
+
+pub twice :: fn () -> i32 {
+    return answer + 1
+}

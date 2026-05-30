@@ -20,6 +20,7 @@ typedef struct {
     u32           index;
     u32           token_index;
     string        name;
+    cstr          origin_path;
 } LspRenameTarget;
 
 typedef struct {
@@ -31,6 +32,18 @@ typedef struct {
     string             uri;
     u32                token_index;
 } LspRenameRequestContext;
+
+typedef struct {
+    string       uri;
+    const Lexer* lexer;
+    u32          token_index;
+    bool         is_declaration;
+} LspRenameOccurrence;
+
+typedef struct {
+    string     uri;
+    JsonValue* edits;
+} LspRenameEditGroup;
 
 //------------------------------------------------------------------------------
 
@@ -181,6 +194,41 @@ internal cstr lsp_rename_cstr(Arena* arena, string value)
     memcpy(data, value.data, value.count);
     data[value.count] = '\0';
     return data;
+}
+
+internal string lsp_rename_path_to_uri(Arena* arena, cstr path)
+{
+    StringBuilder sb = {0};
+    sb_init(&sb, arena);
+    sb_append_cstr(&sb, "file://");
+
+#if OS_WINDOWS
+    if (path[0] == '/' && path[1] != '\0' && path[2] == ':') {
+        path++;
+    }
+    if (path[0] != '\0' && path[1] == ':') {
+        sb_append_char(&sb, '/');
+    }
+#endif
+
+    for (usize i = 0; path[i] != '\0'; ++i) {
+        u8 ch = (u8)path[i];
+#if OS_WINDOWS
+        if (ch == '\\') {
+            sb_append_char(&sb, '/');
+            continue;
+        }
+#endif
+        if ((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') ||
+            (ch >= '0' && ch <= '9') || ch == '/' || ch == '-' || ch == '_' ||
+            ch == '.' || ch == '~') {
+            sb_append_char(&sb, (char)ch);
+        } else {
+            sb_format(&sb, "%%%02X", ch);
+        }
+    }
+
+    return sb_to_string(&sb);
 }
 
 //------------------------------------------------------------------------------
@@ -342,6 +390,61 @@ internal u32 lsp_rename_find_decl_by_symbol(const Sema* sema, u32 symbol_handle)
     return sema_no_decl();
 }
 
+internal bool lsp_rename_decl_origin(const ProgramInfo* program,
+                                     u32                current_module_index,
+                                     const SemaDecl*    decl,
+                                     cstr*              out_path,
+                                     string*            out_name)
+{
+    if (!program || !decl || !out_path || !out_name) {
+        return false;
+    }
+
+    u32 origin_module_index = current_module_index;
+    u32 origin_decl_index   = U32_MAX;
+
+    if (decl->import_module_index != sema_no_decl()) {
+        origin_module_index = decl->import_module_index;
+        origin_decl_index   = decl->import_decl_index;
+    }
+
+    LspModuleView module = {0};
+    if (!lsp_program_module_view(program, origin_module_index, &module)) {
+        return false;
+    }
+
+    const SemaDecl* origin_decl = decl;
+    if (origin_decl_index != U32_MAX &&
+        !lsp_sema_decl(module.sema, origin_decl_index, &origin_decl)) {
+        return false;
+    }
+
+    if (!module.info->resolved_path) {
+        return false;
+    }
+
+    *out_path = module.info->resolved_path;
+    *out_name = lex_symbol(module.lexer, origin_decl->symbol_handle);
+    return true;
+}
+
+internal bool lsp_rename_decl_matches(const ProgramInfo* program,
+                                      u32                current_module_index,
+                                      const SemaDecl*    decl,
+                                      const LspRenameTarget* target)
+{
+    if (!target || target->kind != LSP_RENAME_DECL || !target->origin_path) {
+        return false;
+    }
+
+    cstr   origin_path = NULL;
+    string name        = {0};
+    return lsp_rename_decl_origin(
+               program, current_module_index, decl, &origin_path, &name) &&
+           origin_path && strcmp(origin_path, target->origin_path) == 0 &&
+           string_eq(name, target->name);
+}
+
 internal u32 lsp_rename_symbol_handle_at_token(const Lexer* lexer,
                                                u32          token_index)
 {
@@ -471,13 +574,22 @@ internal bool lsp_rename_target_from_token(const LspDocument* doc,
             lsp_rename_find_decl_by_symbol(sema, ast->nodes[bind_node_index].a);
         const SemaDecl* decl = NULL;
         if (lsp_sema_decl(sema, decl_index, &decl) &&
-            decl->bind_node_index != sema_no_decl() &&
-            decl->import_module_index == sema_no_decl()) {
+            decl->bind_node_index != sema_no_decl()) {
+            cstr   origin_path = NULL;
+            string origin_name = {0};
+            if (!lsp_rename_decl_origin(&doc->program,
+                                        doc->program.root_module_index,
+                                        decl,
+                                        &origin_path,
+                                        &origin_name)) {
+                return false;
+            }
             *out_target = (LspRenameTarget){
                 .kind        = LSP_RENAME_DECL,
                 .index       = decl_index,
                 .token_index = token_index,
-                .name        = lex_symbol(lexer, decl->symbol_handle),
+                .name        = origin_name,
+                .origin_path = origin_path,
             };
             return true;
         }
@@ -503,16 +615,23 @@ internal bool lsp_rename_target_from_token(const LspDocument* doc,
         const SemaDecl* decl       = NULL;
         if (lsp_sema_node_decl(sema, ref_node_index, &decl_index) &&
             lsp_sema_decl(sema, decl_index, &decl)) {
-            if (decl->bind_node_index != sema_no_decl() &&
-                decl->import_module_index == sema_no_decl()) {
-                *out_target = (LspRenameTarget){
-                    .kind        = LSP_RENAME_DECL,
-                    .index       = decl_index,
-                    .token_index = token_index,
-                    .name        = lex_symbol(lexer, decl->symbol_handle),
-                };
-                return true;
+            cstr   origin_path = NULL;
+            string origin_name = {0};
+            if (!lsp_rename_decl_origin(&doc->program,
+                                        doc->program.root_module_index,
+                                        decl,
+                                        &origin_path,
+                                        &origin_name)) {
+                return false;
             }
+            *out_target = (LspRenameTarget){
+                .kind        = LSP_RENAME_DECL,
+                .index       = decl_index,
+                .token_index = token_index,
+                .name        = origin_name,
+                .origin_path = origin_path,
+            };
+            return true;
         }
     }
 
@@ -689,6 +808,210 @@ internal bool lsp_rename_token_is_declaration(const LspDocument* doc,
     return false;
 }
 
+internal void
+lsp_rename_add_occurrence(Array(LspRenameOccurrence) * occurrences,
+                          string                       uri,
+                          const Lexer*                 lexer,
+                          u32                          token_index,
+                          bool                         is_declaration)
+{
+    if (!lexer || token_index == U32_MAX) {
+        return;
+    }
+
+    usize start = 0;
+    usize end   = 0;
+    lsp_rename_token_offsets(lexer, token_index, &start, &end);
+
+    for (u32 i = 0; i < array_count(*occurrences); ++i) {
+        LspRenameOccurrence* occurrence = &(*occurrences)[i];
+        usize occurrence_start = 0;
+        usize occurrence_end   = 0;
+        lsp_rename_token_offsets(occurrence->lexer,
+                                 occurrence->token_index,
+                                 &occurrence_start,
+                                 &occurrence_end);
+        if (string_eq(occurrence->uri, uri) && occurrence_start == start &&
+            occurrence_end == end) {
+            occurrence->is_declaration =
+                occurrence->is_declaration || is_declaration;
+            return;
+        }
+    }
+
+    array_push(*occurrences,
+               ((LspRenameOccurrence){
+                   .uri            = uri,
+                   .lexer          = lexer,
+                   .token_index    = token_index,
+                   .is_declaration = is_declaration,
+               }));
+}
+
+internal void
+lsp_rename_collect_module_decl_occurrences(Array(LspRenameOccurrence) *
+                                               occurrences,
+                                           Arena* arena,
+                                           const ProgramInfo* program,
+                                           u32 module_index,
+                                           string uri,
+                                           const LspRenameTarget* target)
+{
+    LspModuleView module = {0};
+    if (!lsp_program_module_view(program, module_index, &module)) {
+        return;
+    }
+
+    const Ast*   ast   = module.ast;
+    const Sema*  sema  = module.sema;
+    const Lexer* lexer = module.lexer;
+    if (uri.count == 0) {
+        uri = lsp_rename_path_to_uri(arena, module.info->resolved_path);
+    }
+
+    for (u32 i = 0; i < array_count(sema->decls); ++i) {
+        const SemaDecl* decl = &sema->decls[i];
+        if (!lsp_rename_decl_matches(program, module_index, decl, target) ||
+            decl->bind_node_index >= array_count(ast->nodes)) {
+            continue;
+        }
+
+        lsp_rename_add_occurrence(occurrences,
+                                  uri,
+                                  lexer,
+                                  ast->nodes[decl->bind_node_index].token_index,
+                                  true);
+    }
+
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        u32 decl_index = sema_no_decl();
+        if (!lsp_sema_node_decl(sema, i, &decl_index)) {
+            continue;
+        }
+
+        const SemaDecl* decl = NULL;
+        if (!lsp_sema_decl(sema, decl_index, &decl) ||
+            !lsp_rename_decl_matches(program, module_index, decl, target) ||
+            ast->nodes[i].token_index == U32_MAX) {
+            continue;
+        }
+
+        lsp_rename_add_occurrence(
+            occurrences, uri, lexer, ast->nodes[i].token_index, false);
+    }
+}
+
+internal bool lsp_rename_module_already_seen(Array(cstr) paths, cstr path)
+{
+    if (!path) {
+        return true;
+    }
+    for (u32 i = 0; i < array_count(paths); ++i) {
+        if (paths[i] && strcmp(paths[i], path) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+internal Array(LspRenameOccurrence)
+    lsp_rename_collect_decl_occurrences(LspState* state,
+                                        Arena* arena,
+                                        const LspRenameRequestContext* context,
+                                        const LspRenameTarget* target)
+{
+    Array(LspRenameOccurrence) occurrences = NULL;
+    Array(cstr) seen_module_paths          = NULL;
+
+    MapIter iter = LspDocumentMap_iter();
+    string       uri = {0};
+    LspDocument* doc = NULL;
+    while (LspDocumentMap_next(&state->documents, &iter, &uri, &doc)) {
+        if (!doc->bindings_ready) {
+            continue;
+        }
+
+        LspModuleView root = {0};
+        if (lsp_program_module_view(
+                &doc->program, doc->program.root_module_index, &root)) {
+            lsp_rename_collect_module_decl_occurrences(&occurrences,
+                                                       arena,
+                                                       &doc->program,
+                                                       doc->program
+                                                           .root_module_index,
+                                                       uri,
+                                                       target);
+            array_push(seen_module_paths, root.info->resolved_path);
+        }
+
+        for (u32 i = 0; i < array_count(doc->program.modules); ++i) {
+            LspModuleView module = {0};
+            if (i == doc->program.root_module_index ||
+                !lsp_program_module_view(&doc->program, i, &module) ||
+                lsp_rename_module_already_seen(seen_module_paths,
+                                               module.info->resolved_path)) {
+                continue;
+            }
+
+            lsp_rename_collect_module_decl_occurrences(&occurrences,
+                                                       arena,
+                                                       &doc->program,
+                                                       i,
+                                                       (string){0},
+                                                       target);
+            array_push(seen_module_paths, module.info->resolved_path);
+        }
+    }
+
+    if (array_count(occurrences) == 0 && context) {
+        lsp_rename_collect_module_decl_occurrences(&occurrences,
+                                                   arena,
+                                                   &context->doc->program,
+                                                   context->doc->program
+                                                       .root_module_index,
+                                                   context->uri,
+                                                   target);
+    }
+
+    array_free(seen_module_paths);
+    return occurrences;
+}
+
+internal JsonValue* lsp_rename_make_occurrence_location(Arena* arena,
+                                                        LspRenameOccurrence occurrence)
+{
+    usize start = 0;
+    usize end   = 0;
+    lsp_rename_token_offsets(
+        occurrence.lexer, occurrence.token_index, &start, &end);
+
+    JsonValue* range =
+        lsp_rename_make_range(arena, occurrence.lexer->source, start, end);
+    JsonValue* location = json_new_object(arena);
+    json_object_set_string(location, arena, "uri", occurrence.uri);
+    json_object_set_object(location, "range", range);
+    return location;
+}
+
+internal JsonValue* lsp_rename_edit_group(Arena* arena,
+                                          Array(LspRenameEditGroup) * groups,
+                                          string uri)
+{
+    for (u32 i = 0; i < array_count(*groups); ++i) {
+        if (string_eq((*groups)[i].uri, uri)) {
+            return (*groups)[i].edits;
+        }
+    }
+
+    JsonValue* edits = json_new_array(arena);
+    array_push(*groups,
+               ((LspRenameEditGroup){
+                   .uri   = uri,
+                   .edits = edits,
+               }));
+    return edits;
+}
+
 internal JsonValue* lsp_rename_make_location(const LspRenameRequestContext* ctx,
                                              Arena* arena,
                                              u32    token_index)
@@ -731,8 +1054,30 @@ void lsp_handle_references(LspState* state, const LspMessage* message)
     bool include_declaration = include_decl_value &&
                                include_decl_value->kind == JSON_BOOL &&
                                json_bool(include_decl_value);
-    Array(u32) tokens        = lsp_rename_collect_tokens(context.doc, target);
     JsonValue* references    = json_new_array(message->arena);
+
+    if (target.kind == LSP_RENAME_DECL) {
+        Array(LspRenameOccurrence) occurrences =
+            lsp_rename_collect_decl_occurrences(
+                state, message->arena, &context, &target);
+        for (u32 i = 0; i < array_count(occurrences); ++i) {
+            if (!include_declaration && occurrences[i].is_declaration) {
+                continue;
+            }
+            json_array_push(
+                references,
+                lsp_rename_make_occurrence_location(message->arena,
+                                                    occurrences[i]));
+        }
+
+        json_object_set_array(response, "result", references);
+        lsp_send_response(message->arena, response);
+        array_free(occurrences);
+        lsp_rename_request_context_done(&context);
+        return;
+    }
+
+    Array(u32) tokens = lsp_rename_collect_tokens(context.doc, target);
     for (u32 i = 0; i < array_count(tokens); ++i) {
         u32 token = tokens[i];
         if ((!include_declaration &&
@@ -805,40 +1150,76 @@ void lsp_handle_rename(LspState* state, const LspMessage* message)
         return;
     }
 
-    Array(u32) tokens = lsp_rename_collect_tokens(context.doc, target);
-    JsonValue* edits  = json_new_array(message->arena);
-    for (u32 i = 0; i < array_count(tokens); ++i) {
-        u32 token = tokens[i];
-        if (!lsp_rename_token_is_visible(context.doc, token)) {
-            continue;
-        }
-
-        usize start = 0;
-        usize end   = 0;
-        lsp_rename_token_offsets(
-            &context.doc->front_end.lexer, token, &start, &end);
-
-        JsonValue* edit  = json_new_object(message->arena);
-        JsonValue* range = lsp_rename_make_document_range(
-            context.doc, message->arena, start, end);
-        if (range == NULL) {
-            continue;
-        }
-
-        json_object_set_object(edit, "range", range);
-        json_object_set_string(
-            edit, message->arena, "newText", json_string(new_name_value));
-        json_array_push(edits, edit);
-    }
-
     JsonValue* changes = json_new_object(message->arena);
-    json_object_set_array(
-        changes, lsp_rename_cstr(message->arena, context.uri), edits);
+    if (target.kind == LSP_RENAME_DECL) {
+        Array(LspRenameEditGroup) groups      = NULL;
+        Array(LspRenameOccurrence) occurrences =
+            lsp_rename_collect_decl_occurrences(
+                state, message->arena, &context, &target);
+
+        for (u32 i = 0; i < array_count(occurrences); ++i) {
+            LspRenameOccurrence occurrence = occurrences[i];
+            usize start = 0;
+            usize end   = 0;
+            lsp_rename_token_offsets(
+                occurrence.lexer, occurrence.token_index, &start, &end);
+
+            JsonValue* edit  = json_new_object(message->arena);
+            JsonValue* range = lsp_rename_make_range(
+                message->arena, occurrence.lexer->source, start, end);
+            json_object_set_object(edit, "range", range);
+            json_object_set_string(
+                edit, message->arena, "newText", json_string(new_name_value));
+            json_array_push(lsp_rename_edit_group(message->arena,
+                                                  &groups,
+                                                  occurrence.uri),
+                            edit);
+        }
+
+        for (u32 i = 0; i < array_count(groups); ++i) {
+            json_object_set_array(changes,
+                                  lsp_rename_cstr(message->arena,
+                                                  groups[i].uri),
+                                  groups[i].edits);
+        }
+
+        array_free(groups);
+        array_free(occurrences);
+    } else {
+        Array(u32) tokens = lsp_rename_collect_tokens(context.doc, target);
+        JsonValue* edits  = json_new_array(message->arena);
+        for (u32 i = 0; i < array_count(tokens); ++i) {
+            u32 token = tokens[i];
+            if (!lsp_rename_token_is_visible(context.doc, token)) {
+                continue;
+            }
+
+            usize start = 0;
+            usize end   = 0;
+            lsp_rename_token_offsets(
+                &context.doc->front_end.lexer, token, &start, &end);
+
+            JsonValue* edit  = json_new_object(message->arena);
+            JsonValue* range = lsp_rename_make_document_range(
+                context.doc, message->arena, start, end);
+            if (range == NULL) {
+                continue;
+            }
+
+            json_object_set_object(edit, "range", range);
+            json_object_set_string(
+                edit, message->arena, "newText", json_string(new_name_value));
+            json_array_push(edits, edit);
+        }
+
+        json_object_set_array(
+            changes, lsp_rename_cstr(message->arena, context.uri), edits);
+        array_free(tokens);
+    }
 
     JsonValue* workspace_edit = json_new_object(message->arena);
     json_object_set_object(workspace_edit, "changes", changes);
     json_object_set_object(response, "result", workspace_edit);
     lsp_send_response(message->arena, response);
-    array_free(tokens);
     lsp_rename_request_context_done(&context);
 }

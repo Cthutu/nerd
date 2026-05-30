@@ -337,8 +337,8 @@ These are open trait-system follow-ups that were previously recorded as
 - [ ] Add references and rename:
   - [x] same-file references
   - [x] same-file rename
-  - [ ] cross-module references
-  - [ ] cross-module rename
+  - [x] cross-module references
+  - [x] cross-module rename
 - [ ] Add code actions for diagnostics where the compiler already has actionable
   help, such as `:` versus `::` and unused local fixes.
   - [ ] `:` versus `::` function-definition fix

@@ -100,21 +100,24 @@ source and can still resolve unqualified public declarations imported through
 `use`, including standard-library declarations, by reading the imported module's
 AST.
 
-Rename supports same-document semantic renames for locals and local
-top-level declarations, including constant and mutable variable bindings. When
-semantic analysis fails but the AST is still available, rename falls back to
-same-file binding/reference tokens with the same symbol so simple renames keep
-working while code is mid-edit. If imported-module analysis fails before the
-front end preserves a root AST, rename lexes and parses just the open buffer for
-that same syntax fallback. It edits only token ranges that belong to the open
-editor document, so imported declarations and generated folder-module sibling
-content are deliberately left out until workspace-wide edits are implemented.
+Rename supports same-document semantic renames for locals and syntax-fallback
+renames. For top-level declarations, it resolves the declaration origin to a
+module path plus exported name, then returns workspace edits for matching
+references in currently loaded modules and open documents. Imported declarations
+therefore rename both the use sites in the importing file and the declaration
+and internal references in the imported module. When semantic analysis fails but
+the AST is still available, rename falls back to same-file binding/reference
+tokens with the same symbol so simple renames keep working while code is
+mid-edit. If imported-module analysis fails before the front end preserves a
+root AST, rename lexes and parses just the open buffer for that same syntax
+fallback.
 
-References use the same target-resolution path as rename for same-document
-locals and local top-level declarations. The handler honours
-`includeDeclaration` and returns only locations visible in the open editor
-document. Cross-module reference discovery is intentionally separate future
-work because it needs workspace indexing rather than a single analysed document.
+References use the same target-resolution path as rename. The handler honours
+`includeDeclaration` for locals, local top-level declarations, and imported
+top-level declarations, and it returns cross-module locations for loaded
+modules. This is still analysis-driven rather than a persistent workspace index,
+so unopened files that are not imported by any open document are outside the
+search set.
 
 ## Completion And Signature Help
 
