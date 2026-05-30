@@ -55,14 +55,16 @@ or when current docs refer to a settled review decision.
   implementation-derived specs under [docs/spec](docs/spec/README.md) aligned.
 - Prefer `just test` as the full gate; use focussed
   `python3 build/test.py --filter ...` runs while iterating.
-- Run `just test` before finalising.
-- Commit the work, keeping commits small and describing the task slice in the
-  commit message.
-- Install the verified compiler with `just install` so the installed `nerd` and
-  standard modules match the source tree.
 - Do not commit unrelated local changes.
-- When reporting back, include the commit hash, verification run, and useful
-  next step.
+- Before committing a completed task, always run the final workflow in this
+  order:
+  1. `just test`; if it fails, fix the failure and run it again.
+  2. `just format`; if it changes files or fails, review/fix as needed.
+  3. `just install`; if it fails, fix the failure and run it again.
+  4. Commit the work, keeping commits small and describing the task slice in the
+     commit message.
+  5. Report back with the commit hash, verification run, install result, and
+     useful next step.
 
 ## Generated Files
 
