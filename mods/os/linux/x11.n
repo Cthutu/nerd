@@ -30,207 +30,201 @@ pub XULong :: u64
 -- Xlib key symbol value.
 pub XKeySym :: u64
 
-pub X_SUCCESS :: 0 -- Xlib success status.
+pub X_SUCCESS :: 0  -- Xlib success status.
 
-pub X_FALSE :: 0 -- Xlib false value.
+pub X_FALSE :: 0  -- Xlib false value.
 
-pub X_ANY_PROPERTY_TYPE :: 0 -- Xlib wildcard property type.
+pub X_ANY_PROPERTY_TYPE :: 0  -- Xlib wildcard property type.
 
-pub X_ATOM_CARDINAL :: 6 -- Xlib `XA_CARDINAL` atom.
+pub X_ATOM_CARDINAL :: 6  -- Xlib `XA_CARDINAL` atom.
 
 pub X_EVENT_KEY_PRESS        :: 2  -- Xlib `KeyPress` event type.
 pub X_EVENT_KEY_RELEASE      :: 3  -- Xlib `KeyRelease` event type.
-pub X_EVENT_CONFIGURE_NOTIFY :: 22 -- Xlib `ConfigureNotify` event type.
-pub X_EVENT_CLIENT_MESSAGE   :: 33 -- Xlib `ClientMessage` event type.
-pub X_EVENT_DESTROY_NOTIFY   :: 17 -- Xlib `DestroyNotify` event type.
+pub X_EVENT_CONFIGURE_NOTIFY :: 22  -- Xlib `ConfigureNotify` event type.
+pub X_EVENT_CLIENT_MESSAGE   :: 33  -- Xlib `ClientMessage` event type.
+pub X_EVENT_DESTROY_NOTIFY   :: 17  -- Xlib `DestroyNotify` event type.
 
-pub X_KEY_PRESS_MASK      :: 0x00000001 -- Receives key-press events.
-pub X_KEY_RELEASE_MASK    :: 0x00000002 -- Receives key-release events.
-pub X_SUBSTRUCTURE_NOTIFY_MASK   :: 0x00080000 -- Receives substructure notifications.
-pub X_SUBSTRUCTURE_REDIRECT_MASK :: 0x00100000 -- Receives substructure redirects.
-pub X_STRUCTURE_NOTIFY_MASK :: 0x00020000 -- Receives structure-change events.
-pub X_EXPOSURE_MASK         :: 0x00008000 -- Receives expose events.
+pub X_KEY_PRESS_MASK           :: 0x00000001  -- Receives key-press events.
+pub X_KEY_RELEASE_MASK         :: 0x00000002  -- Receives key-release events.
+pub X_SUBSTRUCTURE_NOTIFY_MASK :: 0x00080000  -- Receives substructure
+                                                -- notifications.
+pub X_SUBSTRUCTURE_REDIRECT_MASK :: 0x00100000  -- Receives substructure
+                                                -- redirects.
+pub X_STRUCTURE_NOTIFY_MASK :: 0x00020000  -- Receives structure-change
+                                                -- events.
+pub X_EXPOSURE_MASK :: 0x00008000  -- Receives expose events.
 
-pub X_NET_WM_STATE_REMOVE :: 0 -- EWMH request to remove a window state.
-pub X_NET_WM_STATE_ADD    :: 1 -- EWMH request to add a window state.
+pub X_NET_WM_STATE_REMOVE :: 0  -- EWMH request to remove a window state.
+pub X_NET_WM_STATE_ADD    :: 1  -- EWMH request to add a window state.
 
-pub X_KEYSYM_BACKSPACE :: 0xff08 -- Xlib keysym for Backspace.
-pub X_KEYSYM_TAB       :: 0xff09 -- Xlib keysym for Tab.
-pub X_KEYSYM_ENTER     :: 0xff0d -- Xlib keysym for Enter.
-pub X_KEYSYM_ESCAPE    :: 0xff1b -- Xlib keysym for Escape.
-pub X_KEYSYM_DELETE    :: 0xffff -- Xlib keysym for Delete.
-pub X_KEYSYM_HOME      :: 0xff50 -- Xlib keysym for Home.
-pub X_KEYSYM_ARROW_LEFT  :: 0xff51 -- Xlib keysym for Left.
-pub X_KEYSYM_ARROW_UP    :: 0xff52 -- Xlib keysym for Up.
-pub X_KEYSYM_ARROW_RIGHT :: 0xff53 -- Xlib keysym for Right.
-pub X_KEYSYM_ARROW_DOWN  :: 0xff54 -- Xlib keysym for Down.
-pub X_KEYSYM_PAGE_UP   :: 0xff55 -- Xlib keysym for Page Up.
-pub X_KEYSYM_PAGE_DOWN :: 0xff56 -- Xlib keysym for Page Down.
-pub X_KEYSYM_END       :: 0xff57 -- Xlib keysym for End.
-pub X_KEYSYM_INSERT    :: 0xff63 -- Xlib keysym for Insert.
-pub X_KEYSYM_SHIFT_LEFT   :: 0xffe1 -- Xlib keysym for left Shift.
-pub X_KEYSYM_SHIFT_RIGHT  :: 0xffe2 -- Xlib keysym for right Shift.
-pub X_KEYSYM_CONTROL_LEFT :: 0xffe3 -- Xlib keysym for left Control.
-pub X_KEYSYM_CONTROL_RIGHT :: 0xffe4 -- Xlib keysym for right Control.
-pub X_KEYSYM_ALT_LEFT     :: 0xffe9 -- Xlib keysym for left Alt.
-pub X_KEYSYM_ALT_RIGHT    :: 0xffea -- Xlib keysym for right Alt.
-pub X_KEYSYM_F1        :: 0xffbe -- Xlib keysym for F1.
-pub X_KEYSYM_F2        :: 0xffbf -- Xlib keysym for F2.
-pub X_KEYSYM_F3        :: 0xffc0 -- Xlib keysym for F3.
-pub X_KEYSYM_F4        :: 0xffc1 -- Xlib keysym for F4.
-pub X_KEYSYM_F5        :: 0xffc2 -- Xlib keysym for F5.
-pub X_KEYSYM_F6        :: 0xffc3 -- Xlib keysym for F6.
-pub X_KEYSYM_F7        :: 0xffc4 -- Xlib keysym for F7.
-pub X_KEYSYM_F8        :: 0xffc5 -- Xlib keysym for F8.
-pub X_KEYSYM_F9        :: 0xffc6 -- Xlib keysym for F9.
-pub X_KEYSYM_F10       :: 0xffc7 -- Xlib keysym for F10.
-pub X_KEYSYM_F11       :: 0xffc8 -- Xlib keysym for F11.
-pub X_KEYSYM_F12       :: 0xffc9 -- Xlib keysym for F12.
+pub X_KEYSYM_BACKSPACE     :: 0xff08  -- Xlib keysym for Backspace.
+pub X_KEYSYM_TAB           :: 0xff09  -- Xlib keysym for Tab.
+pub X_KEYSYM_ENTER         :: 0xff0d  -- Xlib keysym for Enter.
+pub X_KEYSYM_ESCAPE        :: 0xff1b  -- Xlib keysym for Escape.
+pub X_KEYSYM_DELETE        :: 0xffff  -- Xlib keysym for Delete.
+pub X_KEYSYM_HOME          :: 0xff50  -- Xlib keysym for Home.
+pub X_KEYSYM_ARROW_LEFT    :: 0xff51  -- Xlib keysym for Left.
+pub X_KEYSYM_ARROW_UP      :: 0xff52  -- Xlib keysym for Up.
+pub X_KEYSYM_ARROW_RIGHT   :: 0xff53  -- Xlib keysym for Right.
+pub X_KEYSYM_ARROW_DOWN    :: 0xff54  -- Xlib keysym for Down.
+pub X_KEYSYM_PAGE_UP       :: 0xff55  -- Xlib keysym for Page Up.
+pub X_KEYSYM_PAGE_DOWN     :: 0xff56  -- Xlib keysym for Page Down.
+pub X_KEYSYM_END           :: 0xff57  -- Xlib keysym for End.
+pub X_KEYSYM_INSERT        :: 0xff63  -- Xlib keysym for Insert.
+pub X_KEYSYM_SHIFT_LEFT    :: 0xffe1  -- Xlib keysym for left Shift.
+pub X_KEYSYM_SHIFT_RIGHT   :: 0xffe2  -- Xlib keysym for right Shift.
+pub X_KEYSYM_CONTROL_LEFT  :: 0xffe3  -- Xlib keysym for left Control.
+pub X_KEYSYM_CONTROL_RIGHT :: 0xffe4  -- Xlib keysym for right Control.
+pub X_KEYSYM_ALT_LEFT      :: 0xffe9  -- Xlib keysym for left Alt.
+pub X_KEYSYM_ALT_RIGHT     :: 0xffea  -- Xlib keysym for right Alt.
+pub X_KEYSYM_F1            :: 0xffbe  -- Xlib keysym for F1.
+pub X_KEYSYM_F2            :: 0xffbf  -- Xlib keysym for F2.
+pub X_KEYSYM_F3            :: 0xffc0  -- Xlib keysym for F3.
+pub X_KEYSYM_F4            :: 0xffc1  -- Xlib keysym for F4.
+pub X_KEYSYM_F5            :: 0xffc2  -- Xlib keysym for F5.
+pub X_KEYSYM_F6            :: 0xffc3  -- Xlib keysym for F6.
+pub X_KEYSYM_F7            :: 0xffc4  -- Xlib keysym for F7.
+pub X_KEYSYM_F8            :: 0xffc5  -- Xlib keysym for F8.
+pub X_KEYSYM_F9            :: 0xffc6  -- Xlib keysym for F9.
+pub X_KEYSYM_F10           :: 0xffc7  -- Xlib keysym for F10.
+pub X_KEYSYM_F11           :: 0xffc8  -- Xlib keysym for F11.
+pub X_KEYSYM_F12           :: 0xffc9  -- Xlib keysym for F12.
 
 -- Stores an arbitrary Xlib event. Cast to a specific event record after
 -- checking `type`.
 pub XEvent :: plex #c {
     type i32      -- Xlib event type tag.
-    _pad [188]u8 -- Remaining storage for the largest Xlib event variant.
+    _pad [188]u8  -- Remaining storage for the largest Xlib event variant.
 }
 
 -- Xlib configure-notify payload used for resize events.
 pub XConfigureEvent :: plex #c {
-    type              i32      -- Xlib event type tag.
-    serial            u64      -- Last processed request serial number.
-    send_event        XBool    -- Non-zero when sent explicitly.
-    display           XDisplay -- Display that produced the event.
-    event             XWindow  -- Event window.
-    window            XWindow  -- Changed window.
-    x                 i32      -- New x position.
-    y                 i32      -- New y position.
-    width             i32      -- New width.
-    height            i32      -- New height.
-    border_width      i32      -- New border width.
-    above             XWindow  -- Sibling stacking reference.
-    override_redirect XBool    -- Override-redirect flag.
+    type              i32       -- Xlib event type tag.
+    serial            u64       -- Last processed request serial number.
+    send_event        XBool     -- Non-zero when sent explicitly.
+    display           XDisplay  -- Display that produced the event.
+    event             XWindow   -- Event window.
+    window            XWindow   -- Changed window.
+    x                 i32       -- New x position.
+    y                 i32       -- New y position.
+    width             i32       -- New width.
+    height            i32       -- New height.
+    border_width      i32       -- New border width.
+    above             XWindow   -- Sibling stacking reference.
+    override_redirect XBool     -- Override-redirect flag.
 }
 
 -- Xlib key payload used for key press/release events.
 pub XKeyEvent :: plex #c {
-    type        i32      -- Xlib event type tag.
-    serial      u64      -- Last processed request serial number.
-    send_event  XBool    -- Non-zero when sent explicitly.
-    display     XDisplay -- Display that produced the event.
-    window      XWindow  -- Event window.
-    root        XWindow  -- Root window.
-    subwindow   XWindow  -- Child window, or none.
-    time        u64      -- Server event time.
-    x           i32      -- Pointer x position in the event window.
-    y           i32      -- Pointer y position in the event window.
-    x_root      i32      -- Pointer x position in the root window.
-    y_root      i32      -- Pointer y position in the root window.
-    state       u32      -- Modifier state mask.
-    keycode     u32      -- Platform key scan code.
-    same_screen XBool    -- Non-zero when root and event windows share a screen.
+    type        i32       -- Xlib event type tag.
+    serial      u64       -- Last processed request serial number.
+    send_event  XBool     -- Non-zero when sent explicitly.
+    display     XDisplay  -- Display that produced the event.
+    window      XWindow   -- Event window.
+    root        XWindow   -- Root window.
+    subwindow   XWindow   -- Child window, or none.
+    time        u64       -- Server event time.
+    x           i32       -- Pointer x position in the event window.
+    y           i32       -- Pointer y position in the event window.
+    x_root      i32       -- Pointer x position in the root window.
+    y_root      i32       -- Pointer y position in the root window.
+    state       u32       -- Modifier state mask.
+    keycode     u32       -- Platform key scan code.
+    same_screen XBool     -- Non-zero when root and event windows share a
+                          --     screen.
 }
 
 -- Xlib client-message payload used for window-manager protocol events.
 pub XClientMessageEvent :: plex #c {
-    type         i32      -- Xlib event type tag.
-    serial       u64      -- Last processed request serial number.
-    send_event   XBool    -- Non-zero when sent explicitly.
-    display      XDisplay -- Display that produced the event.
-    window       XWindow  -- Destination window.
-    message_type XAtom    -- Message atom.
-    format       i32      -- Data element size.
-    data0        XLong    -- First long data element.
-    data1        XLong    -- Second long data element.
-    data2        XLong    -- Third long data element.
-    data3        XLong    -- Fourth long data element.
-    data4        XLong    -- Fifth long data element.
+    type         i32       -- Xlib event type tag.
+    serial       u64       -- Last processed request serial number.
+    send_event   XBool     -- Non-zero when sent explicitly.
+    display      XDisplay  -- Display that produced the event.
+    window       XWindow   -- Destination window.
+    message_type XAtom     -- Message atom.
+    format       i32       -- Data element size.
+    data0        XLong     -- First long data element.
+    data1        XLong     -- Second long data element.
+    data2        XLong     -- Third long data element.
+    data3        XLong     -- Fourth long data element.
+    data4        XLong     -- Fifth long data element.
 }
 
 ffi "X11" {
-    pub XOpenDisplay (display_name: ^i8) -> XDisplay
-
-    pub XCloseDisplay (display: XDisplay) -> i32
-
-    pub XDefaultScreen (display: XDisplay) -> i32
-
-    pub XRootWindow (display: XDisplay, screen_number: i32) -> XWindow
-
-    pub XBlackPixel (display: XDisplay, screen_number: i32) -> u64
-
-    pub XWhitePixel (display: XDisplay, screen_number: i32) -> u64
-
-    pub XCreateSimpleWindow (display      : XDisplay,
-                             parent       : XWindow,
-                             x            : i32,
-                             y            : i32,
-                             width        : u32,
-                             height       : u32,
-                             border_width : u32,
-                             border       : u64,
-                             background   : u64) -> XWindow
-
-    pub XStoreName (display: XDisplay, window: XWindow, window_name: ^i8) -> i32
-
-    pub XSelectInput (display: XDisplay, window: XWindow, event_mask: XLong) -> i32
-
-    pub XInternAtom (display: XDisplay, atom_name: ^i8, only_if_exists: XBool) -> XAtom
-
-    pub XSetWMProtocols (display: XDisplay, window: XWindow, protocols: ^XAtom, count: i32) -> XStatus
-
-    pub XMapWindow (display: XDisplay, window: XWindow) -> i32
-
-    pub XResizeWindow (display: XDisplay, window: XWindow, width: u32, height: u32) -> i32
-
-    pub XMoveResizeWindow (display : XDisplay,
-                           window  : XWindow,
-                           x       : i32,
-                           y       : i32,
-                           width   : u32,
-                           height  : u32) -> i32
-
-    pub XSendEvent (display     : XDisplay,
-                    window      : XWindow,
-                    propagate   : XBool,
-                    event_mask  : XLong,
-                    event_send  : ^XEvent) -> XStatus
-
-    pub XDestroyWindow (display: XDisplay, window: XWindow) -> i32
-
-    pub XPending (display: XDisplay) -> i32
-
-    pub XNextEvent (display: XDisplay, event_return: ^XEvent) -> i32
-
-    pub XLookupKeysym (key_event: ^XKeyEvent, index: i32) -> XKeySym
-
-    pub XLookupString (event_struct  : ^XKeyEvent,
-                       buffer_return : ^i8,
-                       bytes_buffer  : i32,
-                       keysym_return : ^XKeySym,
-                       status_in_out : ^void) -> i32
-
-    pub XGetGeometry (display             : XDisplay,
-                      drawable            : XWindow,
-                      root_return         : ^XWindow,
-                      x_return            : ^i32,
-                      y_return            : ^i32,
-                      width_return        : ^u32,
-                      height_return       : ^u32,
-                      border_width_return : ^u32,
-                      depth_return        : ^u32) -> XStatus
-
-    pub XGetWindowProperty (display              : XDisplay,
-                            window               : XWindow,
-                            property             : XAtom,
-                            long_offset          : XLong,
-                            long_length          : XLong,
-                            delete               : XBool,
-                            req_type             : XAtom,
-                            actual_type_return   : ^XAtom,
-                            actual_format_return : ^i32,
-                            nitems_return        : ^XULong,
-                            bytes_after_return   : ^XULong,
-                            prop_return          : ^^u8) -> i32
-
+    pub XOpenDisplay          (display_name: ^i8) -> XDisplay
+    pub XCloseDisplay         (display: XDisplay) -> i32
+    pub XDefaultScreen        (display: XDisplay) -> i32
+    pub XRootWindow           (display: XDisplay, screen_number: i32) -> XWindow
+    pub XBlackPixel           (display: XDisplay, screen_number: i32) -> u64
+    pub XWhitePixel           (display: XDisplay, screen_number: i32) -> u64
+    pub XCreateSimpleWindow   (display      : XDisplay,
+                               parent       : XWindow,
+                               x            : i32,
+                               y            : i32,
+                               width        : u32,
+                               height       : u32,
+                               border_width : u32,
+                               border       : u64,
+                               background   : u64) -> XWindow
+    pub XStoreName            (display     : XDisplay,
+                               window      : XWindow,
+                               window_name : ^i8) -> i32
+    pub XSelectInput          (display    : XDisplay,
+                               window     : XWindow,
+                               event_mask : XLong) -> i32
+    pub XInternAtom           (display        : XDisplay,
+                               atom_name      : ^i8,
+                               only_if_exists : XBool) -> XAtom
+    pub XSetWMProtocols       (display   : XDisplay,
+                               window    : XWindow,
+                               protocols : ^XAtom,
+                               count     : i32) -> XStatus
+    pub XMapWindow            (display: XDisplay, window: XWindow) -> i32
+    pub XResizeWindow         (display : XDisplay,
+                               window  : XWindow,
+                               width   : u32,
+                               height  : u32) -> i32
+    pub XMoveResizeWindow     (display : XDisplay,
+                               window  : XWindow,
+                               x       : i32,
+                               y       : i32,
+                               width   : u32,
+                               height  : u32) -> i32
+    pub XSendEvent            (display    : XDisplay,
+                               window     : XWindow,
+                               propagate  : XBool,
+                               event_mask : XLong,
+                               event_send : ^XEvent) -> XStatus
+    pub XDestroyWindow        (display: XDisplay, window: XWindow) -> i32
+    pub XPending              (display: XDisplay) -> i32
+    pub XNextEvent            (display: XDisplay, event_return: ^XEvent) -> i32
+    pub XLookupKeysym         (key_event: ^XKeyEvent, index: i32) -> XKeySym
+    pub XLookupString         (event_struct  : ^XKeyEvent,
+                               buffer_return : ^i8,
+                               bytes_buffer  : i32,
+                               keysym_return : ^XKeySym,
+                               status_in_out : ^void) -> i32
+    pub XGetGeometry          (display             : XDisplay,
+                               drawable            : XWindow,
+                               root_return         : ^XWindow,
+                               x_return            : ^i32,
+                               y_return            : ^i32,
+                               width_return        : ^u32,
+                               height_return       : ^u32,
+                               border_width_return : ^u32,
+                               depth_return        : ^u32) -> XStatus
+    pub XGetWindowProperty    (display              : XDisplay,
+                               window               : XWindow,
+                               property             : XAtom,
+                               long_offset          : XLong,
+                               long_length          : XLong,
+                               delete               : XBool,
+                               req_type             : XAtom,
+                               actual_type_return   : ^XAtom,
+                               actual_format_return : ^i32,
+                               nitems_return        : ^XULong,
+                               bytes_after_return   : ^XULong,
+                               prop_return          : ^^u8) -> i32
     pub XTranslateCoordinates (display       : XDisplay,
                                source_window : XWindow,
                                dest_window   : XWindow,
@@ -239,8 +233,6 @@ ffi "X11" {
                                dest_x_return : ^i32,
                                dest_y_return : ^i32,
                                child_return  : ^XWindow) -> XBool
-
-    pub XFree (data: ^void) -> i32
-
-    pub XFlush (display: XDisplay) -> i32
+    pub XFree                 (data: ^void) -> i32
+    pub XFlush                (display: XDisplay) -> i32
 }

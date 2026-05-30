@@ -59,10 +59,10 @@ pub eprn :: fn (text: string = "") -> void {
 -- Returns the natural arena allocation alignment for values of type `T`.
 arena_alignment :: fn [T] () -> usize {
     return on T.size {
-        >= 8 => 8
-        >= 4 => 4
-        >= 2 => 2
-        else => 1
+        >= 8  => 8
+        >= 4  => 4
+        >= 2  => 2
+        else  => 1
     }
 }
 

@@ -55,13 +55,11 @@ on "debug" {
     NrtHeapDebugHeader :: plex #c {
         prev           ^NrtHeapDebugHeader  -- Previous live runtime allocation.
         next           ^NrtHeapDebugHeader  -- Next live runtime allocation.
-        source_path    string
-                                            -- Source file that requested
+        source_path    string               -- Source file that requested
                                             --     allocation.
         requested_size usize                -- Number of bytes requested.
         index          u64                  -- Process-local allocation index.
-        line           u32
-                                            -- Source line that requested
+        line           u32                  -- Source line that requested
                                             --     allocation.
     }
 
@@ -78,15 +76,12 @@ on "debug" {
         reserved_size  usize               -- Number of bytes reserved.
         committed_size usize               -- Number of bytes committed.
         used_size      usize               -- Number of bytes currently used.
-        source_path    string
-                                           -- Source file that created this
+        source_path    string              -- Source file that created this
                                            --     arena.
         index          u64                 -- Process-local arena index.
-        line           u32
-                                           -- Source line that created this
+        line           u32                 -- Source line that created this
                                            --     arena.
-        mapping_size   usize
-                                           -- Number of bytes reserved for this
+        mapping_size   usize               -- Number of bytes reserved for this
                                            --     node.
     }
 

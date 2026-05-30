@@ -1,7 +1,7 @@
 use std.io
 use std.mem
-use term
 use std.string
+use term
 
 main :: fn () {
     state := init()
@@ -14,8 +14,8 @@ main :: fn () {
 
         input_parts := player_input.as(string).split(" ")
         defer input_parts.free()
-        verb: string
-        _nouns: []string
+        verb   : string
+        _nouns : []string
 
         on input_parts.count {
             0 => {
@@ -26,8 +26,8 @@ main :: fn () {
                 verb = input_parts[0]
             }
             else => {
-                verb = input_parts[0]
-                _nouns = input_parts[1 ..]
+                verb   = input_parts[0]
+                _nouns = input_parts[1..]
             }
         }
 
@@ -50,7 +50,7 @@ main :: fn () {
         }
     }
 
-    print_leaks(true)
+    print_leaks(yes)
 }
 
 show_location :: fn (state: ^State) {
@@ -74,9 +74,9 @@ move :: fn (state: ^State, direction: string) {
 
 State :: plex {
     -- Database
-    locations []string  -- location descriptions
-    exits [][](string, usize)
-    verbs [][]string  -- verbs and their synonyms
+    locations  []string    -- location descriptions
+    exits      [][](string, usize)
+    verbs      [][]string  -- verbs and their synonyms
 
     -- Game state
     player_loc usize
@@ -135,18 +135,20 @@ init :: fn () -> State {
             ],
         ]
         verbs: [
-            ["n", "north"
-        ],
-        ["s", "south"],
-        ["e", "east"],
-        ["w", "west"],
-        ["u", "up"],
-        ["d", "down"],
-        ["look", "l"],
-        ["quit", "q"],
-        ["i", "inv", "inventory"],
-        ["get", "take"],
-        ["drop"],
+            [
+                "n",
+                "north",
+            ],
+            ["s", "south"],
+            ["e", "east"],
+            ["w", "west"],
+            ["u", "up"],
+            ["d", "down"],
+            ["look", "l"],
+            ["quit", "q"],
+            ["i", "inv", "inventory"],
+            ["get", "take"],
+            ["drop"],
         ]
         player_loc: 0
     }
@@ -154,12 +156,12 @@ init :: fn () -> State {
 
 exit_strings :: fn (exit: string) -> string {
     return on exit {
-        "n" => "North"
-        "s" => "South"
-        "e" => "East"
-        "w" => "West"
-        "u" => "Up"
-        "d" => "Down"
-        else => exit
+        "n"   => "North"
+        "s"   => "South"
+        "e"   => "East"
+        "w"   => "West"
+        "u"   => "Up"
+        "d"   => "Down"
+        else  => exit
     }
 }

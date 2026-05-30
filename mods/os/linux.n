@@ -53,8 +53,10 @@ pub BRKINT :: 0x0002  -- Input terminal mode flag for break interrupt handling.
 pub INPCK  :: 0x0010  -- Input terminal mode flag for parity checking.
 pub ISTRIP :: 0x0020  -- Input terminal mode flag for stripping the eighth bit.
 
-pub OPOST :: 0x0001  -- Output terminal mode flag for implementation-defined output processing.
-pub ONLCR :: 0x0004  -- Output terminal mode flag for mapping newline to carriage-return newline.
+pub OPOST :: 0x0001  -- Output terminal mode flag for implementation-defined
+                     -- output processing.
+pub ONLCR :: 0x0004  -- Output terminal mode flag for mapping newline to
+                     -- carriage-return newline.
 
 pub CS8 :: 0x0030  -- Control terminal mode flag selecting 8-bit characters.
 

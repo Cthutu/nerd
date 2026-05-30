@@ -123,11 +123,11 @@ ffi "kernel32" {
                               lpNumberOfBytesWritten : ^DWORD,
                               lpOverlapped           : ^void) -> BOOL
 
-    c_WriteConsole :: WriteConsoleA (hConsoleOutput          : HANDLE,
-                                     lpBuffer                : ^void,
-                                     nNumberOfCharsToWrite   : DWORD,
-                                     lpNumberOfCharsWritten  : ^DWORD,
-                                     lpReserved              : ^void) -> BOOL
+    c_WriteConsole :: WriteConsoleA (hConsoleOutput         : HANDLE,
+                                     lpBuffer               : ^void,
+                                     nNumberOfCharsToWrite  : DWORD,
+                                     lpNumberOfCharsWritten : ^DWORD,
+                                     lpReserved             : ^void) -> BOOL
 
     c_ReadConsoleInput :: ReadConsoleInputW (hConsoleInput        : HANDLE,
                                              lpBuffer             : ^INPUT_RECORD,

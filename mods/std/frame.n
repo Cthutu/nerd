@@ -62,75 +62,75 @@ pub CLOSED_FRAME : u16 : 65535
 -- Unicode escape control character produced by the Escape key on text input.
 pub FRAME_CODEPOINT_ESCAPE :: 27
 
--- Common key scan-code values for frame keyboard events. Values follow the
--- same broad convention as terminal key codes and Windows virtual-key macros:
+-- Common key scan-code values for frame keyboard events. Values follow the same
+-- broad convention as terminal key codes and Windows virtual-key macros:
 -- printable ASCII keys use their character value, while non-printable common
 -- keys are assigned stable values above the ASCII range.
 pub FrameScanCode :: enum {
-    Unknown    = 0
-    Backspace  = 8
-    Tab        = 9
-    Enter      = 13
-    Escape     = 27
-    Space      = 32
-    Digit0     = 48
-    Digit1     = 49
-    Digit2     = 50
-    Digit3     = 51
-    Digit4     = 52
-    Digit5     = 53
-    Digit6     = 54
-    Digit7     = 55
-    Digit8     = 56
-    Digit9     = 57
-    A          = 65
-    B          = 66
-    C          = 67
-    D          = 68
-    E          = 69
-    F          = 70
-    G          = 71
-    H          = 72
-    I          = 73
-    J          = 74
-    K          = 75
-    L          = 76
-    M          = 77
-    N          = 78
-    O          = 79
-    P          = 80
-    Q          = 81
-    R          = 82
-    S          = 83
-    T          = 84
-    U          = 85
-    V          = 86
-    W          = 87
-    X          = 88
-    Y          = 89
-    Z          = 90
-    Delete     = 127
-    Insert     = 256
-    Home       = 257
-    End        = 258
-    PageUp     = 259
-    PageDown   = 260
-    ArrowUp    = 261
-    ArrowDown  = 262
-    ArrowLeft  = 263
-    ArrowRight = 264
-    F1         = 265
-    F2         = 266
-    F3         = 267
-    F4         = 268
-    F5         = 269
-    F6         = 270
-    F7         = 271
-    F8         = 272
-    F9         = 273
-    F10        = 274
-    F11        = 275
-    F12        = 276
+    Unknown      = 0
+    Backspace    = 8
+    Tab          = 9
+    Enter        = 13
+    Escape       = 27
+    Space        = 32
+    Digit0       = 48
+    Digit1       = 49
+    Digit2       = 50
+    Digit3       = 51
+    Digit4       = 52
+    Digit5       = 53
+    Digit6       = 54
+    Digit7       = 55
+    Digit8       = 56
+    Digit9       = 57
+    A            = 65
+    B            = 66
+    C            = 67
+    D            = 68
+    E            = 69
+    F            = 70
+    G            = 71
+    H            = 72
+    I            = 73
+    J            = 74
+    K            = 75
+    L            = 76
+    M            = 77
+    N            = 78
+    O            = 79
+    P            = 80
+    Q            = 81
+    R            = 82
+    S            = 83
+    T            = 84
+    U            = 85
+    V            = 86
+    W            = 87
+    X            = 88
+    Y            = 89
+    Z            = 90
+    Delete       = 127
+    Insert       = 256
+    Home         = 257
+    End          = 258
+    PageUp       = 259
+    PageDown     = 260
+    ArrowUp      = 261
+    ArrowDown    = 262
+    ArrowLeft    = 263
+    ArrowRight   = 264
+    F1           = 265
+    F2           = 266
+    F3           = 267
+    F4           = 268
+    F5           = 269
+    F6           = 270
+    F7           = 271
+    F8           = 272
+    F9           = 273
+    F10          = 274
+    F11          = 275
+    F12          = 276
     LeftShift    = 277
     RightShift   = 278
     LeftControl  = 279
@@ -141,12 +141,12 @@ pub FrameScanCode :: enum {
 
 pub FrameSystem :: plex {
     -- Tracks all currently known frames belonging to this system.
-    frames       [..]FrameInfo
+    frames             [..]FrameInfo
 
     -- The next ID search start. IDs range from 1 through 65534. Implementations
     -- should scan the current frame array and reuse the first available ID so
     -- old IDs are recycled.
-    next_id_hint u16
+    next_id_hint       u16
 
     -- Modifier state tracked from queued key press/release events.
     left_shift_down    bool
@@ -278,6 +278,7 @@ frame_system_has_id_capacity :: fn (system: ^FrameSystem) -> bool {
 }
 
 impl FrameSystem {
+
     -- Creates an empty frame system ready to allocate frame IDs.
     pub init :: fn () -> Self {
         return {
@@ -364,6 +365,7 @@ impl FrameSystem {
     pub is_mod_down :: fn (system: ^Self) -> bool {
         return system.is_alt_down()
     }
+
 }
 
 test "FrameSystem modifier helpers report combined and sided state" {
@@ -395,33 +397,42 @@ test "FrameSystem modifier helpers report combined and sided state" {
 }
 
 on "linux" {
+
     use os.linux.x11
 
     -- Linux X11 data attached to a public `Frame`.
     PlatformFrameInfo :: plex {
-        display             XDisplay -- Display connection owning the window.
-        window              XWindow  -- Native X11 window handle.
-        wm_delete_window    XAtom    -- Window-manager close protocol atom.
-        wm_state            XAtom    -- EWMH `_NET_WM_STATE` atom.
-        wm_state_fullscreen XAtom    -- EWMH fullscreen-state atom.
-        frame_extents       XAtom    -- EWMH `_NET_FRAME_EXTENTS` atom.
-        x                   i32      -- Last known normal outer-frame x position.
-        y                   i32      -- Last known normal outer-frame y position.
-        width               u16      -- Last known normal width.
-        height              u16      -- Last known normal height.
-        frame_left          i32      -- Left window-manager decoration extent.
-        frame_top           i32      -- Top window-manager decoration extent.
-        restore_x           i32      -- Position to restore when leaving fullscreen.
-        restore_y           i32      -- Position to restore when leaving fullscreen.
-        restore_width       u16      -- Width to restore when leaving fullscreen.
-        restore_height      u16      -- Height to restore when leaving fullscreen.
-        full_screen         bool     -- Whether this frame is currently fullscreen.
+        display             XDisplay  -- Display connection owning the window.
+        window              XWindow   -- Native X11 window handle.
+        wm_delete_window    XAtom     -- Window-manager close protocol atom.
+        wm_state            XAtom     -- EWMH `_NET_WM_STATE` atom.
+        wm_state_fullscreen XAtom     -- EWMH fullscreen-state atom.
+        frame_extents       XAtom     -- EWMH `_NET_FRAME_EXTENTS` atom.
+        x                   i32       -- Last known normal outer-frame x
+                                      --     position.
+        y                   i32       -- Last known normal outer-frame y
+                                      --     position.
+        width               u16       -- Last known normal width.
+        height              u16       -- Last known normal height.
+        frame_left          i32       -- Left window-manager decoration extent.
+        frame_top           i32       -- Top window-manager decoration extent.
+        restore_x           i32       -- Position to restore when leaving
+                                      --     fullscreen.
+        restore_y           i32       -- Position to restore when leaving
+                                      --     fullscreen.
+        restore_width       u16       -- Width to restore when leaving
+                                      --     fullscreen.
+        restore_height      u16       -- Height to restore when leaving
+                                      --     fullscreen.
+        full_screen         bool      -- Whether this frame is currently
+                                      --     fullscreen.
     }
 
     -- Destroys native X11 resources associated with a frame record.
     frame_linux_destroy_info :: fn (info: ^FrameInfo) {
         on info.platform_info.display != nil && info.platform_info.window != 0 => {
-            _ := XDestroyWindow(info.platform_info.display, info.platform_info.window)
+            _ := XDestroyWindow(info.platform_info.display,
+                                info.platform_info.window)
             _ := XFlush(info.platform_info.display)
         }
 
@@ -448,15 +459,15 @@ on "linux" {
 
     -- Queues a platform-agnostic resize event.
     frame_linux_push_resize :: fn (info: ^FrameInfo, width: u16, height: u16) {
-        info.events.push(FrameEvent.Resized { width: width, height: height })
+        info.events.push(FrameEvent.Resized { width height })
     }
 
     -- Records the last known non-fullscreen geometry for later restoration.
-    frame_linux_remember_normal_geometry :: fn (info: ^FrameInfo,
-                                                x: i32,
-                                                y: i32,
-                                                width: u16,
-                                                height: u16) {
+    frame_linux_remember_normal_geometry :: fn (info   : ^FrameInfo,
+                                                x      : i32,
+                                                y      : i32,
+                                                width  : u16,
+                                                height : u16) {
         info.platform_info.x = x
         info.platform_info.y = y
         info.platform_info.width = width
@@ -473,11 +484,11 @@ on "linux" {
     -- Refreshes the window-manager decoration extents used to convert client
     -- coordinates into outer-frame coordinates.
     frame_linux_update_frame_extents :: fn (info: ^FrameInfo) {
-        actual_type : XAtom
+        actual_type   : XAtom
         actual_format : i32
-        item_count : XULong
-        bytes_after : XULong
-        data : ^u8
+        item_count    : XULong
+        bytes_after   : XULong
+        data          : ^u8
 
         status := XGetWindowProperty(info.platform_info.display,
                                      info.platform_info.window,
@@ -495,8 +506,8 @@ on "linux" {
         defer XFree(data.as(^void))
 
         on actual_type != X_ATOM_CARDINAL ||
-           actual_format != 32 ||
-           item_count < 4 => return
+            actual_format != 32 ||
+            item_count < 4 => return
 
         extents := data.as(^void).as(^XULong)
         info.platform_info.frame_left = extents[0].as(i32)
@@ -505,11 +516,11 @@ on "linux" {
 
     -- Captures current window geometry, saving the outer-frame position for
     -- later restoration from fullscreen.
-    frame_linux_capture_geometry :: fn (info: ^FrameInfo,
-                                        fallback_x: i32,
-                                        fallback_y: i32,
-                                        width: u16,
-                                        height: u16) {
+    frame_linux_capture_geometry :: fn (info       : ^FrameInfo,
+                                        fallback_x : i32,
+                                        fallback_y : i32,
+                                        width      : u16,
+                                        height     : u16) {
         frame_linux_update_frame_extents(info)
 
         root := XRootWindow(info.platform_info.display,
@@ -555,8 +566,7 @@ on "linux" {
 
         root := XRootWindow(info.platform_info.display,
                             XDefaultScreen(info.platform_info.display))
-        mask := (X_SUBSTRUCTURE_REDIRECT_MASK |
-                 X_SUBSTRUCTURE_NOTIFY_MASK).as(XLong)
+        mask := (X_SUBSTRUCTURE_REDIRECT_MASK | X_SUBSTRUCTURE_NOTIFY_MASK).as(XLong)
         _ := XSendEvent(info.platform_info.display, root, 0, mask, ^event)
         _ := XFlush(info.platform_info.display)
     }
@@ -599,59 +609,56 @@ on "linux" {
     -- Converts an X11 keysym to the common frame scan-code enum.
     frame_linux_scan_code_from_keysym :: fn (keysym: XKeySym) -> FrameScanCode {
         return on keysym {
-            X_KEYSYM_BACKSPACE => FrameScanCode.Backspace
-            X_KEYSYM_TAB => FrameScanCode.Tab
-            X_KEYSYM_ENTER => FrameScanCode.Enter
-            X_KEYSYM_ESCAPE => FrameScanCode.Escape
-            X_KEYSYM_DELETE => FrameScanCode.Delete
-            X_KEYSYM_INSERT => FrameScanCode.Insert
-            X_KEYSYM_HOME => FrameScanCode.Home
-            X_KEYSYM_END => FrameScanCode.End
-            X_KEYSYM_PAGE_UP => FrameScanCode.PageUp
-            X_KEYSYM_PAGE_DOWN => FrameScanCode.PageDown
-            X_KEYSYM_ARROW_UP => FrameScanCode.ArrowUp
-            X_KEYSYM_ARROW_DOWN => FrameScanCode.ArrowDown
-            X_KEYSYM_ARROW_LEFT => FrameScanCode.ArrowLeft
-            X_KEYSYM_ARROW_RIGHT => FrameScanCode.ArrowRight
-            X_KEYSYM_SHIFT_LEFT => FrameScanCode.LeftShift
-            X_KEYSYM_SHIFT_RIGHT => FrameScanCode.RightShift
-            X_KEYSYM_CONTROL_LEFT => FrameScanCode.LeftControl
-            X_KEYSYM_CONTROL_RIGHT => FrameScanCode.RightControl
-            X_KEYSYM_ALT_LEFT => FrameScanCode.LeftAlt
-            X_KEYSYM_ALT_RIGHT => FrameScanCode.RightAlt
-            X_KEYSYM_F1 => FrameScanCode.F1
-            X_KEYSYM_F2 => FrameScanCode.F2
-            X_KEYSYM_F3 => FrameScanCode.F3
-            X_KEYSYM_F4 => FrameScanCode.F4
-            X_KEYSYM_F5 => FrameScanCode.F5
-            X_KEYSYM_F6 => FrameScanCode.F6
-            X_KEYSYM_F7 => FrameScanCode.F7
-            X_KEYSYM_F8 => FrameScanCode.F8
-            X_KEYSYM_F9 => FrameScanCode.F9
-            X_KEYSYM_F10 => FrameScanCode.F10
-            X_KEYSYM_F11 => FrameScanCode.F11
-            X_KEYSYM_F12 => FrameScanCode.F12
-            else => on (keysym >= '0'.as(XKeySym) && keysym <= '9'.as(XKeySym)) =>
-                keysym.as(u32).as(FrameScanCode)
-            else on (keysym >= 'A'.as(XKeySym) && keysym <= 'Z'.as(XKeySym)) =>
-                keysym.as(u32).as(FrameScanCode)
-            else on (keysym >= 'a'.as(XKeySym) && keysym <= 'z'.as(XKeySym)) =>
-                (keysym.as(u32) - 32).as(FrameScanCode)
-            else FrameScanCode.Unknown
+            X_KEYSYM_BACKSPACE      => FrameScanCode.Backspace
+            X_KEYSYM_TAB            => FrameScanCode.Tab
+            X_KEYSYM_ENTER          => FrameScanCode.Enter
+            X_KEYSYM_ESCAPE         => FrameScanCode.Escape
+            X_KEYSYM_DELETE         => FrameScanCode.Delete
+            X_KEYSYM_INSERT         => FrameScanCode.Insert
+            X_KEYSYM_HOME           => FrameScanCode.Home
+            X_KEYSYM_END            => FrameScanCode.End
+            X_KEYSYM_PAGE_UP        => FrameScanCode.PageUp
+            X_KEYSYM_PAGE_DOWN      => FrameScanCode.PageDown
+            X_KEYSYM_ARROW_UP       => FrameScanCode.ArrowUp
+            X_KEYSYM_ARROW_DOWN     => FrameScanCode.ArrowDown
+            X_KEYSYM_ARROW_LEFT     => FrameScanCode.ArrowLeft
+            X_KEYSYM_ARROW_RIGHT    => FrameScanCode.ArrowRight
+            X_KEYSYM_SHIFT_LEFT     => FrameScanCode.LeftShift
+            X_KEYSYM_SHIFT_RIGHT    => FrameScanCode.RightShift
+            X_KEYSYM_CONTROL_LEFT   => FrameScanCode.LeftControl
+            X_KEYSYM_CONTROL_RIGHT  => FrameScanCode.RightControl
+            X_KEYSYM_ALT_LEFT       => FrameScanCode.LeftAlt
+            X_KEYSYM_ALT_RIGHT      => FrameScanCode.RightAlt
+            X_KEYSYM_F1             => FrameScanCode.F1
+            X_KEYSYM_F2             => FrameScanCode.F2
+            X_KEYSYM_F3             => FrameScanCode.F3
+            X_KEYSYM_F4             => FrameScanCode.F4
+            X_KEYSYM_F5             => FrameScanCode.F5
+            X_KEYSYM_F6             => FrameScanCode.F6
+            X_KEYSYM_F7             => FrameScanCode.F7
+            X_KEYSYM_F8             => FrameScanCode.F8
+            X_KEYSYM_F9             => FrameScanCode.F9
+            X_KEYSYM_F10            => FrameScanCode.F10
+            X_KEYSYM_F11            => FrameScanCode.F11
+            X_KEYSYM_F12            => FrameScanCode.F12
+            else => on (keysym >= '0'.as(XKeySym) && keysym <= '9'.as(XKeySym)) => keysym.as(u32).as(FrameScanCode)
+                else on (keysym >= 'A'.as(XKeySym) && keysym <= 'Z'.as(XKeySym)) => keysym.as(u32).as(FrameScanCode)
+                else on (keysym >= 'a'.as(XKeySym) && keysym <= 'z'.as(XKeySym)) => (keysym.as(u32) - 32).as(FrameScanCode)
+                else FrameScanCode.Unknown
         }
     }
 
     -- Updates system-level modifier state from a key transition.
-    frame_linux_update_modifier_state :: fn (system: ^FrameSystem,
-                                             scan_code: FrameScanCode,
-                                             is_down: bool) {
+    frame_linux_update_modifier_state :: fn (system    : ^FrameSystem,
+                                             scan_code : FrameScanCode,
+                                             is_down   : bool) {
         on scan_code {
-            LeftShift => system.left_shift_down = is_down
-            RightShift => system.right_shift_down = is_down
-            LeftControl => system.left_control_down = is_down
-            RightControl => system.right_control_down = is_down
-            LeftAlt => system.left_alt_down = is_down
-            RightAlt => system.right_alt_down = is_down
+            LeftShift     => system.left_shift_down = is_down
+            RightShift    => system.right_shift_down = is_down
+            LeftControl   => system.left_control_down = is_down
+            RightControl  => system.right_control_down = is_down
+            LeftAlt       => system.left_alt_down = is_down
+            RightAlt      => system.right_alt_down = is_down
         }
     }
 
@@ -661,23 +668,24 @@ on "linux" {
     }
 
     -- Queues key and character events from an X11 key event.
-    frame_linux_push_key_event :: fn (system: ^FrameSystem,
-                                      info: ^FrameInfo,
-                                      event: ^XKeyEvent,
-                                      is_down: bool) {
+    frame_linux_push_key_event :: fn (system  : ^FrameSystem,
+                                      info    : ^FrameInfo,
+                                      event   : ^XKeyEvent,
+                                      is_down : bool) {
         keysym := XLookupKeysym(event, 0)
         scan_code := frame_linux_scan_code_from_keysym(keysym)
         frame_linux_update_modifier_state(system, scan_code, is_down)
 
         on is_down {
-            yes => info.events.push(FrameEvent.KeyPress { scan_code: scan_code })
-            no => info.events.push(FrameEvent.KeyRelease { scan_code: scan_code })
+            yes  => info.events.push(FrameEvent.KeyPress { scan_code })
+            no   => info.events.push(FrameEvent.KeyRelease { scan_code })
         }
 
         on !is_down => return
 
-        buffer : [8]u8
+        buffer            : [8]u8
         translated_keysym : XKeySym
+
         count := XLookupString(event,
                                buffer[..].data.as(^void).as(^i8),
                                buffer.count.as(i32),
@@ -687,7 +695,7 @@ on "linux" {
 
         codepoint := frame_linux_decode_utf8(buffer[0..count.as(usize)])
         on codepoint != 0 => {
-            info.events.push(FrameEvent.Character { codepoint: codepoint })
+            info.events.push(FrameEvent.Character { codepoint })
         }
     }
 
@@ -735,17 +743,21 @@ on "linux" {
         defer temp_arena.restore(mark)
 
         _ := XStoreName(display, window, frame_c_string_temp(frame.title))
-        event_mask := (X_STRUCTURE_NOTIFY_MASK |
-                       X_EXPOSURE_MASK |
-                       X_KEY_PRESS_MASK |
-                       X_KEY_RELEASE_MASK).as(XLong)
+        event_mask := (X_STRUCTURE_NOTIFY_MASK | X_EXPOSURE_MASK | X_KEY_PRESS_MASK | X_KEY_RELEASE_MASK).as(XLong)
         _ := XSelectInput(display, window, event_mask)
-        wm_delete := XInternAtom(display, frame_c_string_temp("WM_DELETE_WINDOW"), 0)
-        wm_state := XInternAtom(display, frame_c_string_temp("_NET_WM_STATE"), 0)
+        wm_delete := XInternAtom(display,
+                                 frame_c_string_temp("WM_DELETE_WINDOW"),
+                                 0)
+        wm_state := XInternAtom(display,
+                                frame_c_string_temp("_NET_WM_STATE"),
+                                0)
         wm_state_fullscreen := XInternAtom(display,
-                                          frame_c_string_temp("_NET_WM_STATE_FULLSCREEN"),
-                                          0)
-        frame_extents := XInternAtom(display, frame_c_string_temp("_NET_FRAME_EXTENTS"), 0)
+                                           frame_c_string_temp("_NET_WM_STATE_F"
+            +"ULLSCREEN"),
+                                           0)
+        frame_extents := XInternAtom(display,
+                                     frame_c_string_temp("_NET_FRAME_EXTENTS"),
+                                     0)
         _ := XSetWMProtocols(display, window, ^wm_delete, 1)
         _ := XMapWindow(display, window)
         _ := XFlush(display)
@@ -764,9 +776,9 @@ on "linux" {
         platform_info.full_screen = no
 
         info := FrameInfo {
-            id: id
+            id
             events: nil
-            platform_info: platform_info
+            platform_info
         }
         frame_linux_push_resize(^info, frame.width, frame.height)
         system.frames.push(info)
@@ -804,14 +816,16 @@ on "linux" {
     }
 
     -- Copies current X11 geometry into the public frame snapshot.
-    frame_linux_update_snapshot :: fn (_system: ^FrameSystem, frame: ^Frame, info: ^FrameInfo) {
-        root : XWindow
-        x : i32
-        y : i32
-        width : u32
-        height : u32
+    frame_linux_update_snapshot :: fn (_system : ^FrameSystem,
+                                       frame   : ^Frame,
+                                       info    : ^FrameInfo) {
+        root         : XWindow
+        x            : i32
+        y            : i32
+        width        : u32
+        height       : u32
         border_width : u32
-        depth : u32
+        depth        : u32
 
         ok := XGetGeometry(info.platform_info.display,
                            info.platform_info.window,
@@ -831,15 +845,13 @@ on "linux" {
         frame.width = width.as(u16)
         frame.height = height.as(u16)
         frame.full_screen = info.platform_info.full_screen
-        frame_linux_capture_geometry(info,
-                                     x,
-                                     y,
-                                     width.as(u16),
-                                     height.as(u16))
+        frame_linux_capture_geometry(info, x, y, width.as(u16), height.as(u16))
     }
 
     -- Converts one native X11 event into queued frame events.
-    frame_linux_handle_event :: fn (system: ^FrameSystem, info: ^FrameInfo, event: ^XEvent) {
+    frame_linux_handle_event :: fn (system : ^FrameSystem,
+                                    info   : ^FrameInfo,
+                                    event  : ^XEvent) {
         on event.type {
             X_EVENT_KEY_PRESS => {
                 key := event.as(usize).as(^XKeyEvent)
@@ -933,14 +945,15 @@ on "linux" {
         on info != nil => frame_linux_destroy_info(info)
         frame.id = CLOSED_FRAME
     }
+
 }
 
 on "windows" {
+
     use os.windows
 
     -- Windows data attached to a public `Frame`.
     PlatformFrameInfo :: plex {
-
     }
 
     frame_apply_impl :: fn (_system: ^FrameSystem, frame: ^Frame) {
@@ -969,4 +982,5 @@ on "windows" {
         on frame.id == CLOSED_FRAME => return
         frame.id = CLOSED_FRAME
     }
+
 }

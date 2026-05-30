@@ -102,9 +102,9 @@ rand_odd :: fn (min: i32, max: i32) -> i32 {
 dungeon_room_overlaps :: fn (room: Room) -> bool {
     for existing in rooms {
         on room.x < existing.x + existing.w + 1 &&
-           room.x + room.w + 1 > existing.x &&
-           room.y < existing.y + existing.h + 1 &&
-           room.y + room.h + 1 > existing.y => return yes
+            room.x + room.w + 1 > existing.x &&
+            room.y < existing.y + existing.h + 1 &&
+            room.y + room.h + 1 > existing.y => return yes
     }
     return no
 }
@@ -135,7 +135,8 @@ dungeon_add_rooms :: fn (region: ^i32) {
         w := rand_odd(3, max_w)
         h := rand_odd(3, max_h)
 
-        on map_width.as(i32) - w - 2 <= 1 || map_height.as(i32) - h - 2 <= 1 => again
+        on map_width.as(i32) - w - 2 <= 1 ||
+            map_height.as(i32) - h - 2 <= 1 => again
 
         x := rand_odd(1, map_width.as(i32) - w - 2)
         y := rand_odd(1, map_height.as(i32) - h - 2)
@@ -150,19 +151,19 @@ dungeon_add_rooms :: fn (region: ^i32) {
 
 dungeon_direction_dx :: fn (direction: i32) -> i32 {
     return on direction {
-        0 => 0
-        1 => 1
-        2 => 0
-        else => -1
+        0     => 0
+        1     => 1
+        2     => 0
+        else  => -1
     }
 }
 
 dungeon_direction_dy :: fn (direction: i32) -> i32 {
     return on direction {
-        0 => -1
-        1 => 0
-        2 => 1
-        else => 0
+        0     => -1
+        1     => 0
+        2     => 1
+        else  => 0
     }
 }
 
@@ -347,7 +348,7 @@ dungeon_generation_height :: fn (terminal_height: u32) -> u32 {
 }
 
 dungeon_generate :: fn (terminal_width: u32, terminal_height: u32) {
-    map_width = dungeon_generation_width(terminal_width)
+    map_width  = dungeon_generation_width(terminal_width)
     map_height = dungeon_generation_height(terminal_height)
 
     cells.clear()
@@ -395,7 +396,11 @@ dungeon_draw_cell :: fn (x: u32, y: u32) {
                 ink := dungeon_colour_step(wall_ink, noise / 4)
                 term_fb_put(x.as(i32), y.as(i32), '#'.as(u32), ink, paper)
             } else {
-                term_fb_put(x.as(i32), y.as(i32), ' '.as(u32), stone_void, rgb(0, 0, 0))
+                term_fb_put(x.as(i32),
+                            y.as(i32),
+                            ' '.as(u32),
+                            stone_void,
+                            rgb(0, 0, 0))
             }
         }
         Tile.Floor => {
@@ -411,8 +416,8 @@ dungeon_draw_cell :: fn (x: u32, y: u32) {
 
 dungeon_draw :: fn (width: u32, height: u32) {
     on !generated ||
-       map_width != dungeon_generation_width(width) ||
-       map_height != dungeon_generation_height(height) => dungeon_generate(width, height)
+        map_width != dungeon_generation_width(width) ||
+        map_height != dungeon_generation_height(height) => dungeon_generate(width, height)
 
     term_fb_clear()
     term_fb_fill_rect(0, 0, width, height, ' '.as(u32), text_ink, rgb(0, 0, 0))
@@ -425,18 +430,30 @@ dungeon_draw :: fn (width: u32, height: u32) {
     }
 
     status_y := map_height.as(i32)
-    term_fb_fill_rect(0, status_y, width, height - map_height, ' '.as(u32), text_ink, rgb(0, 0, 0))
-    term_fb_text(1, status_y, $"rooms {rooms.count}  seed {seed}  size {map_width}x{map_height}", text_ink, rgb(0, 0, 0))
-    term_fb_text(1, status_y + 1, "any key regenerates   q/Esc exit", rgb(150, 185, 150), rgb(0, 0, 0))
+    term_fb_fill_rect(0,
+                      status_y,
+                      width,
+                      height - map_height,
+                      ' '.as(u32),
+                      text_ink,
+                      rgb(0, 0, 0))
+    term_fb_text(1,
+                 status_y,
+                 $"rooms {rooms.count}  seed {seed}  size {map_width}x{map_height}",
+                 text_ink,
+                 rgb(0, 0, 0))
+    term_fb_text(1,
+                 status_y + 1,
+                 "any key regenerates   q/Esc exit",
+                 rgb(150, 185, 150),
+                 rgb(0, 0, 0))
 
     on offset_x != 0 => {
     }
 }
 
 dungeon_simulate :: fn (sim: TermSimulate) {
-    on term_key_pressed(sim.keyboard, LowerQ) ||
-       term_key_pressed(sim.keyboard, Q) ||
-       term_key_pressed(sim.keyboard, Escape) => {
+    on term_key_pressed(sim.keyboard, LowerQ) || term_key_pressed(sim.keyboard, Q) || term_key_pressed(sim.keyboard, Escape) => {
         term_done()
         return
     }
@@ -571,7 +588,7 @@ test "dungeon generation exposes walls beside floors" {
     for y: u32 = 1; y < map_height - 1; y += 1 {
         for x: u32 = 1; x < map_width - 1; x += 1 {
             on dungeon_cell(x.as(i32), y.as(i32)).tile == Tile.Wall &&
-               dungeon_wall_visible(x.as(i32), y.as(i32)) => visible_wall_count += 1
+                dungeon_wall_visible(x.as(i32), y.as(i32)) => visible_wall_count += 1
         }
     }
 

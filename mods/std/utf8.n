@@ -11,12 +11,15 @@ pub REPLACEMENT_CODEPOINT : u32 : 0xfffd
 -- Returns a scalar value suitable for UTF-8 encoding.
 utf8_normalise_codepoint :: fn (codepoint: u32) -> u32 {
     on codepoint > 0x10ffff.as(u32) => return REPLACEMENT_CODEPOINT
-    on codepoint >= 0xd800.as(u32) && codepoint <= 0xdfff.as(u32) => return REPLACEMENT_CODEPOINT
+    on codepoint >= 0xd800.as(u32) &&
+        codepoint <= 0xdfff.as(u32) => return REPLACEMENT_CODEPOINT
     return codepoint
 }
 
 -- Decodes one UTF-8 codepoint from byte storage at `index`.
-utf8_decode_storage_at :: fn (data: ^u8, count: usize, index: usize) -> (u32, usize) {
+utf8_decode_storage_at :: fn (data  : ^u8,
+                              count : usize,
+                              index : usize) -> (u32, usize) {
     on index >= count => return (0, 0)
 
     first := data[index].as(u32)
@@ -62,10 +65,10 @@ pub decode_first_byte_slice :: fn (bytes: []u8) -> u32 {
 pub encoded_count :: fn (codepoint: u32) -> usize {
     value := utf8_normalise_codepoint(codepoint)
     return on value {
-        < 0x80.as(u32) => 1
-        < 0x800.as(u32) => 2
-        < 0x10000.as(u32) => 3
-        else => 4
+        < 0x80.as(u32)     => 1
+        < 0x800.as(u32)    => 2
+        < 0x10000.as(u32)  => 3
+        else               => 4
     }
 }
 

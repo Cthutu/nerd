@@ -16,14 +16,14 @@ main :: fn () {
         system.update(^frame)
 
         on system.poll(^frame) {
-            FrameEvent.None => {
+            None => {
             }
-            FrameEvent.Closed => {
+            Closed => {
             }
             KeyPress { scan_code } => {
                 on scan_code {
-                    Escape => system.destroy(^frame)
-                    Q => system.destroy(^frame)
+                    Escape  => system.destroy(^frame)
+                    Q       => system.destroy(^frame)
                     Enter => {
                         on system.is_alt_down() => {
                             frame.full_screen = !frame.full_screen

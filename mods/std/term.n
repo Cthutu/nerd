@@ -32,6 +32,7 @@
 
 use std.math
 use std.time
+
 utf8 :: use std.utf8
 
 -- Represents terminal key codes, using ASCII values for byte-sized input and
@@ -999,7 +1000,8 @@ on "linux" {
 
     -- Enables or disables raw terminal input mode.
     pub term_raw_mode_enable :: fn (enabled: bool) {
-        on enabled => term_raw_mode_enable_impl() else term_raw_mode_disable_impl()
+        on enabled => term_raw_mode_enable_impl()
+            else term_raw_mode_disable_impl()
     }
 
     -- Returns the terminal size as `(columns, rows)`, or `(0, 0)` when the terminal
@@ -1076,8 +1078,8 @@ on "linux" {
     term_read_input_event_impl :: fn () -> TermInputEvent {
         key := term_read_key_nonblocking()
         return on key {
-            Some(code) => TermInputEvent.KeyPress(code)
-            None => TermInputEvent.None
+            Some(code)  => TermInputEvent.KeyPress(code)
+            None        => TermInputEvent.None
         }
     }
 
@@ -1138,7 +1140,8 @@ on "windows" {
 
     -- Enables or disables raw terminal input mode.
     pub term_raw_mode_enable :: fn (enabled: bool) {
-        on enabled => term_raw_mode_enable_impl() else term_raw_mode_disable_impl()
+        on enabled => term_raw_mode_enable_impl()
+            else term_raw_mode_disable_impl()
     }
 
     -- Returns the terminal size as `(columns, rows)`, or `(0, 0)` when the terminal
@@ -1193,34 +1196,34 @@ on "windows" {
 
     term_windows_virtual_key :: fn (virtual_key: u16) -> Option[KeyCode] {
         return on virtual_key {
-            VK_BACK => Some(Backspace)
-            VK_TAB => Some(Tab)
-            VK_RETURN => Some(Enter)
-            VK_ESCAPE => Some(Escape)
-            VK_SPACE => Some(Space)
-            VK_PRIOR => Some(PageUp)
-            VK_NEXT => Some(PageDown)
-            VK_END => Some(End)
-            VK_HOME => Some(Home)
-            VK_LEFT => Some(ArrowLeft)
-            VK_UP => Some(ArrowUp)
-            VK_RIGHT => Some(ArrowRight)
-            VK_DOWN => Some(ArrowDown)
-            VK_INSERT => Some(Insert)
-            VK_DELETE => Some(Delete)
-            VK_F1 => Some(F1)
-            VK_F2 => Some(F2)
-            VK_F3 => Some(F3)
-            VK_F4 => Some(F4)
-            VK_F5 => Some(F5)
-            VK_F6 => Some(F6)
-            VK_F7 => Some(F7)
-            VK_F8 => Some(F8)
-            VK_F9 => Some(F9)
-            VK_F10 => Some(F10)
-            VK_F11 => Some(F11)
-            VK_F12 => Some(F12)
-            else => None
+            VK_BACK    => Some(Backspace)
+            VK_TAB     => Some(Tab)
+            VK_RETURN  => Some(Enter)
+            VK_ESCAPE  => Some(Escape)
+            VK_SPACE   => Some(Space)
+            VK_PRIOR   => Some(PageUp)
+            VK_NEXT    => Some(PageDown)
+            VK_END     => Some(End)
+            VK_HOME    => Some(Home)
+            VK_LEFT    => Some(ArrowLeft)
+            VK_UP      => Some(ArrowUp)
+            VK_RIGHT   => Some(ArrowRight)
+            VK_DOWN    => Some(ArrowDown)
+            VK_INSERT  => Some(Insert)
+            VK_DELETE  => Some(Delete)
+            VK_F1      => Some(F1)
+            VK_F2      => Some(F2)
+            VK_F3      => Some(F3)
+            VK_F4      => Some(F4)
+            VK_F5      => Some(F5)
+            VK_F6      => Some(F6)
+            VK_F7      => Some(F7)
+            VK_F8      => Some(F8)
+            VK_F9      => Some(F9)
+            VK_F10     => Some(F10)
+            VK_F11     => Some(F11)
+            VK_F12     => Some(F12)
+            else       => None
         }
     }
 
@@ -1289,7 +1292,8 @@ on "windows" {
             key := term_windows_input_record_key(record)
             on key {
                 Some(code) => {
-                    on record.bKeyDown != 0 => return TermInputEvent.KeyDown(code) else return TermInputEvent.KeyUp(code)
+                    on record.bKeyDown != 0 => return TermInputEvent.KeyDown(code)
+                        else return TermInputEvent.KeyUp(code)
                 }
                 None => {
                 }
@@ -1315,33 +1319,33 @@ on "windows" {
 
 term_csi_final_key :: fn (final: u8) -> Option[KeyCode] {
     return on final {
-        'A' => Some(ArrowUp)
-        'B' => Some(ArrowDown)
-        'C' => Some(ArrowRight)
-        'D' => Some(ArrowLeft)
-        'F' => Some(End)
-        'H' => Some(Home)
-        else => None
+        'A'   => Some(ArrowUp)
+        'B'   => Some(ArrowDown)
+        'C'   => Some(ArrowRight)
+        'D'   => Some(ArrowLeft)
+        'F'   => Some(End)
+        'H'   => Some(Home)
+        else  => None
     }
 }
 
 term_csi_tilde_key :: fn (number: u32) -> Option[KeyCode] {
     return on number {
-        1 => Some(Home)
-        2 => Some(Insert)
-        3 => Some(Delete)
-        4 => Some(End)
-        5 => Some(PageUp)
-        6 => Some(PageDown)
-        15 => Some(F5)
-        17 => Some(F6)
-        18 => Some(F7)
-        19 => Some(F8)
-        20 => Some(F9)
-        21 => Some(F10)
-        23 => Some(F11)
-        24 => Some(F12)
-        else => None
+        1     => Some(Home)
+        2     => Some(Insert)
+        3     => Some(Delete)
+        4     => Some(End)
+        5     => Some(PageUp)
+        6     => Some(PageDown)
+        15    => Some(F5)
+        17    => Some(F6)
+        18    => Some(F7)
+        19    => Some(F8)
+        20    => Some(F9)
+        21    => Some(F10)
+        23    => Some(F11)
+        24    => Some(F12)
+        else  => None
     }
 }
 
@@ -1353,17 +1357,17 @@ term_csi_digit_key :: fn (first: u8, second: u8, third: u8) -> Option[KeyCode] {
 
 term_ss3_key :: fn (final: u8) -> Option[KeyCode] {
     return on final {
-        'A' => Some(ArrowUp)
-        'B' => Some(ArrowDown)
-        'C' => Some(ArrowRight)
-        'D' => Some(ArrowLeft)
-        'F' => Some(End)
-        'H' => Some(Home)
-        'P' => Some(F1)
-        'Q' => Some(F2)
-        'R' => Some(F3)
-        'S' => Some(F4)
-        else => None
+        'A'   => Some(ArrowUp)
+        'B'   => Some(ArrowDown)
+        'C'   => Some(ArrowRight)
+        'D'   => Some(ArrowLeft)
+        'F'   => Some(End)
+        'H'   => Some(Home)
+        'P'   => Some(F1)
+        'Q'   => Some(F2)
+        'R'   => Some(F3)
+        'S'   => Some(F4)
+        else  => None
     }
 }
 

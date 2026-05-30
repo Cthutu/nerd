@@ -30,6 +30,7 @@ internal void  format_emit_for_header_items(StringBuilder* sb,
                                             u32            item_count);
 internal void  format_emit_spaces(StringBuilder* sb, usize count);
 internal void  format_emit_indent(StringBuilder* sb, u32 indent_level);
+internal usize format_sb_current_column(const StringBuilder* sb);
 internal void  format_emit_top_on(StringBuilder* sb,
                                   const Cst*     cst,
                                   const Lexer*   lexer,
@@ -62,38 +63,45 @@ internal bool  format_emit_bool_on_multiline_if_long(StringBuilder* sb,
                                                      const Lexer*   lexer,
                                                      u32            node_index,
                                                      u32 indent_level);
-internal void  format_emit_call_multiline_aligned(StringBuilder* sb,
+internal bool
+format_emit_bool_on_multiline_if_long_with_prefix(StringBuilder* sb,
                                                   const Cst*     cst,
                                                   const Lexer*   lexer,
                                                   u32            node_index,
-                                                  usize call_start_column);
-internal bool  format_emit_wrapped_call_expr_if_long(StringBuilder* sb,
-                                                     const Cst*     cst,
-                                                     const Lexer*   lexer,
-                                                     u32            node_index,
-                                                     usize          prefix_width,
-                                                     u32 indent_level);
-internal usize format_rendered_expr_width(const Cst*   cst,
-                                          const Lexer* lexer,
-                                          u32          node_index,
-                                          u32          indent_level);
-internal void  format_advance_delimiter_depth(const Lexer* lexer,
-                                              u32*         io_token_index,
-                                              usize        end_offset,
-                                              i32*         io_depth);
-internal bool  format_emit_block_comments_before_offset(StringBuilder* sb,
+                                                  usize          prefix_width,
+                                                  u32            indent_level);
+internal void   format_emit_call_multiline_aligned(StringBuilder* sb,
+                                                   const Cst*     cst,
+                                                   const Lexer*   lexer,
+                                                   u32            node_index,
+                                                   usize call_start_column);
+internal bool   format_emit_wrapped_call_expr_if_long(StringBuilder* sb,
+                                                      const Cst*     cst,
+                                                      const Lexer*   lexer,
+                                                      u32            node_index,
+                                                      usize          prefix_width,
+                                                      u32 indent_level);
+internal usize  format_rendered_expr_width(const Cst*   cst,
+                                           const Lexer* lexer,
+                                           u32          node_index,
+                                           u32          indent_level);
+internal void   format_advance_delimiter_depth(const Lexer* lexer,
+                                               u32*         io_token_index,
+                                               usize        end_offset,
+                                               i32*         io_depth);
+internal bool   format_emit_block_comments_before_offset(StringBuilder* sb,
+                                                         const Lexer*   lexer,
+                                                         u32*   io_comment_index,
+                                                         usize  end_offset,
+                                                         u32    indent_level,
+                                                         usize* out_last_end);
+internal bool   format_emit_block_comments_before_token(StringBuilder* sb,
                                                         const Lexer*   lexer,
                                                         u32*   io_comment_index,
-                                                        usize  end_offset,
+                                                        u32    token_index,
                                                         u32    indent_level,
                                                         usize* out_last_end);
-internal bool  format_emit_block_comments_before_token(StringBuilder* sb,
-                                                       const Lexer*   lexer,
-                                                       u32*   io_comment_index,
-                                                       u32    token_index,
-                                                       u32    indent_level,
-                                                       usize* out_last_end);
-internal bool  format_string_has_newline(string text);
+internal bool   format_string_has_newline(string text);
 internal string format_render_expr_to_string(Arena*       arena,
                                              const Cst*   cst,
                                              const Lexer* lexer,
@@ -1775,6 +1783,8 @@ internal void format_emit_on_block_multiline(StringBuilder* sb,
             expr_node->kind != CK_Block && expr_node->kind != CK_For &&
             expr_node->kind != CK_ExprBlock && expr_node->kind != CK_FnBlock &&
             expr_node->kind != CK_FfiBlock &&
+            !(expr_node->kind == CK_On &&
+              cst->ons[expr_node->b].kind == COK_Bool) &&
             !format_node_is_block_form_on(cst, branch->expr_node_index);
         array_push(branch_alignable, alignable);
 
@@ -1828,8 +1838,16 @@ internal void format_emit_on_block_multiline(StringBuilder* sb,
             sb_append_char(sb, ' ');
         }
         sb_append_cstr(sb, " => ");
-        format_emit_expr_with_indent(
-            sb, cst, lexer, branch->expr_node_index, 0, indent_level + 1);
+        if (!format_emit_bool_on_multiline_if_long_with_prefix(
+                sb,
+                cst,
+                lexer,
+                branch->expr_node_index,
+                format_sb_current_column(sb),
+                indent_level + 1)) {
+            format_emit_expr_with_indent(
+                sb, cst, lexer, branch->expr_node_index, 0, indent_level + 1);
+        }
         sb_append_char(sb, '\n');
     }
     format_emit_indent(sb, indent_level);
@@ -1868,27 +1886,24 @@ internal void format_collect_logical_chain(const Cst* cst,
     array_push(*out_parts, node_index);
 }
 
-internal void format_emit_bool_on_multiline(StringBuilder* sb,
-                                            const Cst*     cst,
-                                            const Lexer*   lexer,
-                                            u32            node_index,
-                                            u32            indent_level)
+internal void format_emit_bool_on_condition_multiline(StringBuilder* sb,
+                                                      const Cst*     cst,
+                                                      const Lexer*   lexer,
+                                                      u32 condition_node_index,
+                                                      u32 indent_level)
 {
-    const CstNode*   node = &cst->nodes[node_index];
-    const CstOnInfo* on   = &cst->ons[node->b];
-    ASSERT(node->kind == CK_On && on->kind == COK_Bool,
-           "Expected bool on expression");
+    const CstNode* condition = &cst->nodes[condition_node_index];
+    if (!format_logical_chain_kind(condition->kind)) {
+        format_emit_expr(sb, cst, lexer, condition_node_index, 0);
+        return;
+    }
 
-    const CstNode* condition  = &cst->nodes[node->a];
-    CstKind        chain_kind = condition->kind;
-    ASSERT(format_logical_chain_kind(chain_kind),
-           "Expected logical chain condition");
+    CstKind chain_kind = condition->kind;
 
-    Array(u32) parts = NULL;
-    format_collect_logical_chain(cst, node->a, chain_kind, &parts);
+    Array(u32) parts   = NULL;
+    format_collect_logical_chain(cst, condition_node_index, chain_kind, &parts);
 
     string op = format_logical_chain_operator(chain_kind);
-    sb_append_cstr(sb, "on ");
     for (u32 i = 0; i < array_count(parts); ++i) {
         if (i > 0) {
             format_emit_indent(sb, indent_level + 1);
@@ -1901,6 +1916,28 @@ internal void format_emit_bool_on_multiline(StringBuilder* sb,
         }
     }
 
+    array_free(parts);
+}
+
+internal void format_emit_bool_on_multiline_prefixed(StringBuilder* sb,
+                                                     const Cst*     cst,
+                                                     const Lexer*   lexer,
+                                                     u32            node_index,
+                                                     u32  indent_level,
+                                                     bool is_else)
+{
+    const CstNode*   node = &cst->nodes[node_index];
+    const CstOnInfo* on   = &cst->ons[node->b];
+    ASSERT(node->kind == CK_On && on->kind == COK_Bool,
+           "Expected bool on expression");
+
+    if (is_else) {
+        sb_append_cstr(sb, "else ");
+    }
+    sb_append_cstr(sb, "on ");
+    format_emit_bool_on_condition_multiline(
+        sb, cst, lexer, node->a, indent_level);
+
     const CstOnBranch* true_branch = &cst->on_branches[on->first_branch];
     sb_append_cstr(sb, " => ");
     format_emit_expr_with_indent(
@@ -1909,23 +1946,45 @@ internal void format_emit_bool_on_multiline(StringBuilder* sb,
     if (on->branch_count > 1) {
         const CstOnBranch* else_branch =
             &cst->on_branches[on->first_branch + 1];
-        sb_append_cstr(sb, " else ");
-        format_emit_expr_with_indent(
-            sb, cst, lexer, else_branch->expr_node_index, 0, indent_level);
+        sb_append_char(sb, '\n');
+        format_emit_indent(sb, indent_level + 1);
+        if (cst->nodes[else_branch->expr_node_index].kind == CK_On &&
+            cst->ons[cst->nodes[else_branch->expr_node_index].b].kind ==
+                COK_Bool) {
+            format_emit_bool_on_multiline_prefixed(sb,
+                                                   cst,
+                                                   lexer,
+                                                   else_branch->expr_node_index,
+                                                   indent_level,
+                                                   true);
+        } else {
+            sb_append_cstr(sb, "else ");
+            format_emit_expr_with_indent(
+                sb, cst, lexer, else_branch->expr_node_index, 0, indent_level);
+        }
     }
-
-    array_free(parts);
 }
 
-internal bool format_emit_bool_on_multiline_if_long(StringBuilder* sb,
-                                                    const Cst*     cst,
-                                                    const Lexer*   lexer,
-                                                    u32            node_index,
-                                                    u32            indent_level)
+internal void format_emit_bool_on_multiline(StringBuilder* sb,
+                                            const Cst*     cst,
+                                            const Lexer*   lexer,
+                                            u32            node_index,
+                                            u32            indent_level)
+{
+    format_emit_bool_on_multiline_prefixed(
+        sb, cst, lexer, node_index, indent_level, false);
+}
+
+internal bool
+format_emit_bool_on_multiline_if_long_with_prefix(StringBuilder* sb,
+                                                  const Cst*     cst,
+                                                  const Lexer*   lexer,
+                                                  u32            node_index,
+                                                  usize          prefix_width,
+                                                  u32            indent_level)
 {
     const CstNode* node = &cst->nodes[node_index];
-    if (node->kind != CK_On || cst->ons[node->b].kind != COK_Bool ||
-        !format_logical_chain_kind(cst->nodes[node->a].kind)) {
+    if (node->kind != CK_On || cst->ons[node->b].kind != COK_Bool) {
         return false;
     }
 
@@ -1934,7 +1993,7 @@ internal bool format_emit_bool_on_multiline_if_long(StringBuilder* sb,
     string single =
         format_render_expr_to_string(&arena, cst, lexer, node_index);
     bool wrap = !format_string_has_newline(single) &&
-                (usize)indent_level * 4 + single.count > FORMAT_WRAP_WIDTH;
+                prefix_width + single.count > FORMAT_WRAP_WIDTH;
     arena_done(&arena);
 
     if (!wrap) {
@@ -1943,6 +2002,16 @@ internal bool format_emit_bool_on_multiline_if_long(StringBuilder* sb,
 
     format_emit_bool_on_multiline(sb, cst, lexer, node_index, indent_level);
     return true;
+}
+
+internal bool format_emit_bool_on_multiline_if_long(StringBuilder* sb,
+                                                    const Cst*     cst,
+                                                    const Lexer*   lexer,
+                                                    u32            node_index,
+                                                    u32            indent_level)
+{
+    return format_emit_bool_on_multiline_if_long_with_prefix(
+        sb, cst, lexer, node_index, (usize)indent_level * 4, indent_level);
 }
 
 internal void format_emit_variable_payload(StringBuilder* sb,

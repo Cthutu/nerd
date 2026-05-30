@@ -18,7 +18,7 @@ pub Rect :: plex [U] {
 }
 
 pub PointI32 :: Point[i32]
-pub RectI32 :: Rect[i32]
+pub RectI32  :: Rect[i32]
 
 impl Rect[U] {
 
@@ -41,23 +41,23 @@ impl Rect[U] {
         bottom := on self.bottom() < other.bottom() => self.bottom() else other.bottom()
 
         on right <= left || bottom <= top => {
-            return Self { x: left, y: top, w: 0, h: 0 }
+            return Self { x: left y: top w: 0 h: 0 }
         }
-        return Self { x: left, y: top, w: right - left, h: bottom - top }
+        return Self { x: left y: top w: right - left h: bottom - top }
     }
 
 }
 
 test "rect right and bottom use width and height" {
-    rect := RectI32 { x: 2, y: 3, w: 5, h: 7 }
+    rect := RectI32 { x: 2 y: 3 w: 5 h: 7 }
 
     assert rect.right() == 7
     assert rect.bottom() == 10
 }
 
 test "rect intersection clips overlapping area" {
-    left := RectI32 { x: 2, y: 3, w: 8, h: 6 }
-    right := RectI32 { x: 5, y: 1, w: 3, h: 5 }
+    left := RectI32 { x: 2 y: 3 w: 8 h: 6 }
+    right := RectI32 { x: 5 y: 1 w: 3 h: 5 }
     clipped := left.intersection(right)
 
     assert clipped.x == 5
@@ -68,8 +68,8 @@ test "rect intersection clips overlapping area" {
 }
 
 test "rect intersection can be empty" {
-    left := RectI32 { x: 0, y: 0, w: 2, h: 2 }
-    right := RectI32 { x: 4, y: 4, w: 2, h: 2 }
+    left := RectI32 { x: 0 y: 0 w: 2 h: 2 }
+    right := RectI32 { x: 4 y: 4 w: 2 h: 2 }
     clipped := left.intersection(right)
 
     assert clipped.is_empty()
