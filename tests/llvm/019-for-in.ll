@@ -28,7 +28,7 @@ define internal i32 @fn.0({ ptr, i64 } %values) {
 for.in.cond.0:
   %t2 = load i64, ptr %local.2
   %t3 = icmp ult i64 %t2, %t1
-  br i1 %t3, label %for.in.body.1, label %for.in.end.2
+  br i1 %t3, label %for.in.body.1, label %for.in.end.3
 for.in.body.1:
   %t4 = getelementptr inbounds i32, ptr %t0, i64 %t2
   store ptr %t4, ptr %local.3
@@ -40,11 +40,13 @@ for.in.body.1:
   %t10 = add i32 %t7, %t9
   %t11 = add i32 %t5, %t10
   store i32 %t11, ptr %local.1
+  br label %for.in.update.2
+for.in.update.2:
   %t12 = load i64, ptr %local.2
   %t13 = add i64 %t12, 1
   store i64 %t13, ptr %local.2
   br label %for.in.cond.0
-for.in.end.2:
+for.in.end.3:
   %t14 = load i32, ptr %local.1
   ret i32 %t14
 }

@@ -123,7 +123,7 @@ for.in.ready.2:
 for.in.cond.3:
   %t15 = load i64, ptr %t14
   %t16 = icmp ult i64 %t15, %t3
-  br i1 %t16, label %for.in.body.4, label %for.in.else.5
+  br i1 %t16, label %for.in.body.4, label %for.in.else.6
 for.in.body.4:
   %t17 = getelementptr inbounds { i64 }, ptr %t2, i64 %t15
   store ptr %t17, ptr %local.2
@@ -132,20 +132,22 @@ for.in.body.4:
   %t20 = extractvalue { i64 } %t19, 0
   %t21 = icmp eq i64 %t20, %handle
   %t22 = icmp eq i1 %t21, 1
-  br i1 %t22, label %on.body.8, label %on.end.7
-on.body.8:
+  br i1 %t22, label %on.body.9, label %on.end.8
+on.body.9:
   %t23 = load ptr, ptr %local.2
   store ptr %t23, ptr %t13, align 4
-  br label %for.in.end.6
-on.end.7:
+  br label %for.in.end.7
+on.end.8:
+  br label %for.in.update.5
+for.in.update.5:
   %t24 = load i64, ptr %t14
   %t25 = add i64 %t24, 1
   store i64 %t25, ptr %t14
   br label %for.in.cond.3
-for.in.else.5:
+for.in.else.6:
   store ptr null, ptr %t13, align 4
-  br label %for.in.end.6
-for.in.end.6:
+  br label %for.in.end.7
+for.in.end.7:
   %t26 = load ptr, ptr %t13, align 4
   ret ptr %t26
 }

@@ -98,7 +98,7 @@ define internal i8 @fn.0({ ptr, i64 } %text, i8 %char) {
 for.in.cond.0:
   %t3 = load i64, ptr %t2
   %t4 = icmp ult i64 %t3, %t1
-  br i1 %t4, label %for.in.body.1, label %for.in.end.2
+  br i1 %t4, label %for.in.body.1, label %for.in.end.3
 for.in.body.1:
   %t5 = getelementptr inbounds i8, ptr %t0, i64 %t3
   store ptr %t5, ptr %local.4
@@ -106,7 +106,12 @@ for.in.body.1:
   %t7 = load i8, ptr %t6
   %t8 = call i8 @fn.1(i8 %t7)
   ret i8 %t8
-for.in.end.2:
+for.in.update.2:
+  %t9 = load i64, ptr %t2
+  %t10 = add i64 %t9, 1
+  store i64 %t10, ptr %t2
+  br label %for.in.cond.0
+for.in.end.3:
   ret i8 0
 }
 

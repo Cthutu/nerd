@@ -32,7 +32,7 @@ define internal i32 @fn.0() !dbg !6 {
 for.in.cond.0:
   %t5 = load i64, ptr %t4, !dbg !17
   %t6 = icmp ult i64 %t5, %t3, !dbg !17
-  br i1 %t6, label %for.in.body.1, label %for.in.end.2, !dbg !17
+  br i1 %t6, label %for.in.body.1, label %for.in.end.3, !dbg !17
 for.in.body.1:
   %t7 = getelementptr inbounds i32, ptr %t2, i64 %t5, !dbg !17
   store ptr %t7, ptr %local.2, !dbg !17
@@ -42,11 +42,13 @@ for.in.body.1:
   %t11 = add i32 %t8, %t10, !dbg !21
   store i32 %t11, ptr %local.1, !dbg !21
   call void asm sideeffect "nop", ""(), !dbg !22
+  br label %for.in.update.2, !dbg !22
+for.in.update.2:
   %t12 = load i64, ptr %t4, !dbg !17
   %t13 = add i64 %t12, 1, !dbg !17
   store i64 %t13, ptr %t4, !dbg !17
   br label %for.in.cond.0, !dbg !17
-for.in.end.2:
+for.in.end.3:
   %t14 = load i32, ptr %local.1, !dbg !23
   ret i32 %t14, !dbg !23
 }
@@ -59,7 +61,7 @@ declare void @llvm.dbg.declare(metadata, metadata, metadata)
 !llvm.module.flags = !{!3, !4}
 
 !0 = distinct !DICompileUnit(language: DW_LANG_C, file: !1, producer: "Nerd", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, enums: !2)
-!1 = !DIFile(filename: "040-debug-for-in-step-lines.input.n", directory: "__REPO__/tests/llvm")
+!1 = !DIFile(filename: "040-debug-for-in-step-lines.input.n", directory: "/home/matt/nerd/tests/llvm")
 !2 = !{}
 !5 = !DIExpression()
 !3 = !{i32 2, !"Debug Info Version", i32 3}

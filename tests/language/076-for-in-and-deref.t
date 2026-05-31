@@ -122,15 +122,17 @@ define internal i32 @fn.0() {
 for.in.cond.0:
   %t9 = load i64, ptr %t8
   %t10 = icmp ult i64 %t9, %t7
-  br i1 %t10, label %for.in.body.1, label %for.in.end.2
+  br i1 %t10, label %for.in.body.1, label %for.in.end.3
 for.in.body.1:
   %t11 = getelementptr inbounds i32, ptr %t6, i64 %t9
   store ptr %t11, ptr %local.1
+  br label %for.in.update.2
+for.in.update.2:
   %t12 = load i64, ptr %t8
   %t13 = add i64 %t12, 1
   store i64 %t13, ptr %t8
   br label %for.in.cond.0
-for.in.end.2:
+for.in.end.3:
   store i32 0, ptr %local.2
   %t14 = getelementptr inbounds [3 x i32], ptr %local.0, i64 0, i64 0
   %t15 = insertvalue { ptr, i64 } poison, ptr %t14, 0
@@ -139,12 +141,12 @@ for.in.end.2:
   %t18 = extractvalue { ptr, i64 } %t16, 1
   %t19 = alloca i64
   store i64 0, ptr %t19
-  br label %for.in.cond.3
-for.in.cond.3:
+  br label %for.in.cond.4
+for.in.cond.4:
   %t20 = load i64, ptr %t19
   %t21 = icmp ult i64 %t20, %t18
-  br i1 %t21, label %for.in.body.4, label %for.in.end.5
-for.in.body.4:
+  br i1 %t21, label %for.in.body.5, label %for.in.end.7
+for.in.body.5:
   %t22 = getelementptr inbounds i32, ptr %t17, i64 %t20
   store ptr %t22, ptr %local.3
   %t23 = load i32, ptr %local.2
@@ -152,23 +154,25 @@ for.in.body.4:
   %t25 = load i32, ptr %t24
   %t26 = add i32 %t23, %t25
   store i32 %t26, ptr %local.2
+  br label %for.in.update.6
+for.in.update.6:
   %t27 = load i64, ptr %t19
   %t28 = add i64 %t27, 1
   store i64 %t28, ptr %t19
-  br label %for.in.cond.3
-for.in.end.5:
+  br label %for.in.cond.4
+for.in.end.7:
   store i32 0, ptr %local.5
   store i32 0, ptr %local.6
   %t29 = extractvalue { ptr, i64 } { ptr @.str.m0.0, i64 2 }, 0
   %t30 = extractvalue { ptr, i64 } { ptr @.str.m0.0, i64 2 }, 1
   %t31 = alloca i64
   store i64 0, ptr %t31
-  br label %for.in.cond.6
-for.in.cond.6:
+  br label %for.in.cond.8
+for.in.cond.8:
   %t32 = load i64, ptr %t31
   %t33 = icmp ult i64 %t32, %t30
-  br i1 %t33, label %for.in.body.7, label %for.in.end.8
-for.in.body.7:
+  br i1 %t33, label %for.in.body.9, label %for.in.end.11
+for.in.body.9:
   %t34 = getelementptr inbounds i8, ptr %t29, i64 %t32
   store ptr %t34, ptr %local.7
   %t35 = load i32, ptr %local.5
@@ -180,11 +184,13 @@ for.in.body.7:
   %t40 = zext i8 %t39 to i32
   %t41 = add i32 %t37, %t40
   store i32 %t41, ptr %local.6
+  br label %for.in.update.10
+for.in.update.10:
   %t42 = load i64, ptr %t31
   %t43 = add i64 %t42, 1
   store i64 %t43, ptr %t31
-  br label %for.in.cond.6
-for.in.end.8:
+  br label %for.in.cond.8
+for.in.end.11:
   %t44 = getelementptr inbounds [3 x i32], ptr %local.0, i64 0, i32 1
   %t45 = call i64 @string_builder_mark()
   %t46 = load i32, ptr %t44

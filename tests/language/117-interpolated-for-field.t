@@ -103,19 +103,19 @@ define internal void @fn.0() {
 for.in.cond.0:
   %t3 = load i64, ptr %local.1
   %t4 = icmp ult i64 %t3, %t2
-  br i1 %t4, label %for.in.body.1, label %for.in.end.2
+  br i1 %t4, label %for.in.body.1, label %for.in.end.3
 for.in.body.1:
   %t5 = getelementptr inbounds { { ptr, i64 } }, ptr %t1, i64 %t3
   store ptr %t5, ptr %local.2
   %t6 = load i64, ptr %local.1
   %t7 = icmp eq i64 %t6, 1
-  br i1 %t7, label %on.body.4, label %on.next.5
-on.body.4:
+  br i1 %t7, label %on.body.5, label %on.next.6
+on.body.5:
   call void @$prn({ ptr, i64 } { ptr @.str.m0.1, i64 4 })
-  br label %on.end.3
-on.next.5:
-  br label %on.body.6
-on.body.6:
+  br label %on.end.4
+on.next.6:
+  br label %on.body.7
+on.body.7:
   %t8 = call i64 @string_builder_mark()
   %t9 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.2, i64 10 }, ptr %t10
@@ -136,13 +136,15 @@ on.body.6:
   call void @string_builder_finish(ptr %t18, i64 %t8)
   %t19 = load { ptr, i64 }, ptr %t18
   call void @$prn({ ptr, i64 } %t19)
-  br label %on.end.3
-on.end.3:
+  br label %on.end.4
+on.end.4:
+  br label %for.in.update.2
+for.in.update.2:
   %t20 = load i64, ptr %local.1
   %t21 = add i64 %t20, 1
   store i64 %t21, ptr %local.1
   br label %for.in.cond.0
-for.in.end.2:
+for.in.end.3:
   ret void
 }
 

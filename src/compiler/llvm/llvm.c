@@ -10159,12 +10159,13 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                         ctx, loop->item_local_index, item_type);
                 }
 
-                string cond_label = llvm_label(ctx, "for.in.cond");
-                string body_label = llvm_label(ctx, "for.in.body");
-                string else_label = loop->else_block_index != U32_MAX
-                                        ? llvm_label(ctx, "for.in.else")
-                                        : (string){0};
-                string end_label  = llvm_label(ctx, "for.in.end");
+                string cond_label   = llvm_label(ctx, "for.in.cond");
+                string body_label   = llvm_label(ctx, "for.in.body");
+                string update_label = llvm_label(ctx, "for.in.update");
+                string else_label   = loop->else_block_index != U32_MAX
+                                          ? llvm_label(ctx, "for.in.else")
+                                          : (string){0};
+                string end_label    = llvm_label(ctx, "for.in.end");
                 string false_label =
                     loop->else_block_index != U32_MAX ? else_label : end_label;
                 sb_format(
@@ -10235,7 +10236,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 bool   old_break_emitted        = ctx->emitted_break;
                 u32    loop_defer_base = array_count(ctx->defer_block_indices);
                 ctx->break_label       = end_label;
-                ctx->continue_label    = cond_label;
+                ctx->continue_label    = update_label;
                 ctx->break_value_ptr   = result_ptr;
                 ctx->break_value_type  = expr->type_index;
                 ctx->break_defer_count = loop_defer_base;
@@ -10246,7 +10247,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     (LlvmControlTarget){
                         .symbol_handle        = loop->label_symbol,
                         .break_label          = end_label,
-                        .continue_label       = cond_label,
+                        .continue_label       = update_label,
                         .break_value_ptr      = result_ptr,
                         .break_value_type     = expr->type_index,
                         .break_defer_count    = loop_defer_base,
@@ -10267,62 +10268,62 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 llvm_pop_control_target(ctx, loop->label_symbol);
 
                 if (!ctx->block_terminated) {
-                    llvm_debug_emit_marker(
-                        ctx,
-                        llvm_debug_for_header_line(ctx, loop, expr),
-                        expr->source_path);
-                    if (!hidden_index) {
-                        index_slot =
-                            llvm_find_local_slot(ctx, loop->index_local_index);
-                        if (index_slot == NULL) {
-                            return (LlvmValue){0};
-                        }
-                    }
-                    LlvmValue current = {0};
-                    if (hidden_index) {
-                        string loaded = llvm_temp(ctx);
-                        sb_format(ctx->sb,
-                                  "  " STRINGP " = load i64, ptr " STRINGP "\n",
-                                  STRINGV(loaded),
-                                  STRINGV(index_slot->ptr));
-                        current = (LlvmValue){
-                            .ok         = true,
-                            .type_index = sema_no_type(),
-                            .value      = loaded,
-                        };
-                    } else {
-                        current = llvm_load_local_slot(ctx, index_slot);
-                    }
-                    string next = llvm_temp(ctx);
-                    string type =
-                        hidden_index
-                            ? s("i64")
-                            : llvm_type_string(ctx, current.type_index);
-                    sb_format(ctx->sb,
-                              "  " STRINGP " = add " STRINGP " " STRINGP
-                              ", 1\n",
-                              STRINGV(next),
-                              STRINGV(type),
-                              STRINGV(current.value));
-                    if (hidden_index) {
-                        sb_format(ctx->sb,
-                                  "  store i64 " STRINGP ", ptr " STRINGP "\n",
-                                  STRINGV(next),
-                                  STRINGV(index_slot->ptr));
-                    } else {
-                        llvm_store_local_slot(
-                            ctx,
-                            index_slot,
-                            (LlvmValue){
-                                .ok         = true,
-                                .type_index = current.type_index,
-                                .value      = next,
-                            });
-                    }
                     sb_format(ctx->sb,
                               "  br label %%" STRINGP "\n",
-                              STRINGV(cond_label));
+                              STRINGV(update_label));
                 }
+                sb_format(ctx->sb, STRINGP ":\n", STRINGV(update_label));
+                llvm_debug_emit_marker(
+                    ctx,
+                    llvm_debug_for_header_line(ctx, loop, expr),
+                    expr->source_path);
+                if (!hidden_index) {
+                    index_slot =
+                        llvm_find_local_slot(ctx, loop->index_local_index);
+                    if (index_slot == NULL) {
+                        return (LlvmValue){0};
+                    }
+                }
+                LlvmValue current = {0};
+                if (hidden_index) {
+                    string loaded = llvm_temp(ctx);
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = load i64, ptr " STRINGP "\n",
+                              STRINGV(loaded),
+                              STRINGV(index_slot->ptr));
+                    current = (LlvmValue){
+                        .ok         = true,
+                        .type_index = sema_no_type(),
+                        .value      = loaded,
+                    };
+                } else {
+                    current = llvm_load_local_slot(ctx, index_slot);
+                }
+                string next = llvm_temp(ctx);
+                string type = hidden_index
+                                  ? s("i64")
+                                  : llvm_type_string(ctx, current.type_index);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = add " STRINGP " " STRINGP ", 1\n",
+                          STRINGV(next),
+                          STRINGV(type),
+                          STRINGV(current.value));
+                if (hidden_index) {
+                    sb_format(ctx->sb,
+                              "  store i64 " STRINGP ", ptr " STRINGP "\n",
+                              STRINGV(next),
+                              STRINGV(index_slot->ptr));
+                } else {
+                    llvm_store_local_slot(ctx,
+                                          index_slot,
+                                          (LlvmValue){
+                                              .ok         = true,
+                                              .type_index = current.type_index,
+                                              .value      = next,
+                                          });
+                }
+                sb_format(
+                    ctx->sb, "  br label %%" STRINGP "\n", STRINGV(cond_label));
                 if (loop->else_block_index != U32_MAX) {
                     sb_format(ctx->sb, STRINGP ":\n", STRINGV(else_label));
                     if (!llvm_emit_effect_block(
