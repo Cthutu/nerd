@@ -107,6 +107,15 @@ ffi "GL" {
                            format          : GLenum,
                            type            : GLenum,
                            pixels          : ^void)
+    pub glTexSubImage2D   (target  : GLenum,
+                           level   : GLint,
+                           xoffset : GLint,
+                           yoffset : GLint,
+                           width   : GLsizei,
+                           height  : GLsizei,
+                           format  : GLenum,
+                           type    : GLenum,
+                           pixels  : ^void)
     pub glBegin           (mode: GLenum)
     pub glEnd             ()
     pub glTexCoord2f      (s: GLfloat, t: GLfloat)

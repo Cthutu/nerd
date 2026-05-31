@@ -497,6 +497,8 @@ on "linux" {
         gl_context          GLXContext  -- GLX context used for accelerated
                                         --     pixel presentation.
         gl_texture          GLuint      -- Texture used for pixel presentation.
+        gl_texture_width    u16         -- Current GL texture source width.
+        gl_texture_height   u16         -- Current GL texture source height.
     }
 
     -- Releases GLX resources attached to a frame record.
@@ -510,12 +512,16 @@ on "linux" {
                                 info.platform_info.gl_context)
             glDeleteTextures(1, ^(info.platform_info.gl_texture))
             info.platform_info.gl_texture = 0
+            info.platform_info.gl_texture_width = 0
+            info.platform_info.gl_texture_height = 0
         }
 
         _ := glXMakeCurrent(info.platform_info.display, 0.as(GLXDrawable), nil)
         glXDestroyContext(info.platform_info.display,
                           info.platform_info.gl_context)
         info.platform_info.gl_context = nil
+        info.platform_info.gl_texture_width = 0
+        info.platform_info.gl_texture_height = 0
     }
 
     -- Destroys native X11 resources associated with a frame record.
@@ -544,6 +550,8 @@ on "linux" {
         info.platform_info.resizable = no
         info.platform_info.gl_context = nil
         info.platform_info.gl_texture = 0
+        info.platform_info.gl_texture_width = 0
+        info.platform_info.gl_texture_height = 0
     }
 
     -- Marks a public frame and its platform record as closed.
@@ -1210,15 +1218,35 @@ on "linux" {
         glBindTexture(GL_TEXTURE_2D, info.platform_info.gl_texture)
         glPixelStorei(GL_UNPACK_ALIGNMENT, 4)
         glPixelStorei(GL_UNPACK_ROW_LENGTH, buffer.stride.as(GLint))
-        glTexImage2D(GL_TEXTURE_2D,
-                     0,
-                     GL_RGBA.as(GLint),
-                     buffer.width.as(GLsizei),
-                     buffer.height.as(GLsizei),
-                     0,
-                     GL_BGRA,
-                     GL_UNSIGNED_BYTE,
-                     buffer.pixels.data.as(^void))
+
+        texture_size_changed := (info.platform_info.gl_texture_width != buffer.width) || (info.platform_info.gl_texture_height != buffer.height)
+
+        on texture_size_changed => {
+            glTexImage2D(GL_TEXTURE_2D,
+                         0,
+                         GL_RGBA.as(GLint),
+                         buffer.width.as(GLsizei),
+                         buffer.height.as(GLsizei),
+                         0,
+                         GL_BGRA,
+                         GL_UNSIGNED_BYTE,
+                         buffer.pixels.data.as(^void))
+            info.platform_info.gl_texture_width = buffer.width
+            info.platform_info.gl_texture_height = buffer.height
+        }
+
+        on !texture_size_changed => {
+            glTexSubImage2D(GL_TEXTURE_2D,
+                            0,
+                            0,
+                            0,
+                            buffer.width.as(GLsizei),
+                            buffer.height.as(GLsizei),
+                            GL_BGRA,
+                            GL_UNSIGNED_BYTE,
+                            buffer.pixels.data.as(^void))
+        }
+
         glPixelStorei(GL_UNPACK_ROW_LENGTH, 0)
 
         x0 := buffer.x.as(GLfloat)
