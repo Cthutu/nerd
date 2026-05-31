@@ -293,28 +293,69 @@ impl GfxSystem {
 gfx_render_impl :: fn (system       : ^GfxSystem,
                        frame_system : ^FrameSystem,
                        frame        : ^Frame) {
-    background := temp_arena.alloc_array[FramePixelRect](1)
-    background[0] = FramePixelRect {
-        x      : 0
-        y      : 0
-        width  : frame.width
-        height : frame.height
-        colour : 0xff000000
-    }
-    frame_system.present_rects(frame, background)
-
     for layer in system.pixel_layers {
         on layer.frame_id != frame.id => again
         on layer.data.count == 0 => again
 
         scale := gfx_pixel_layer_present_scale(frame, layer)
         offset := gfx_pixel_layer_present_offset(frame, layer, scale)
-        rects := temp_arena.alloc_array[FramePixelRect](layer.data.count)
+        draw_width := layer.width.as(u32) * scale.as(u32)
+        draw_height := layer.height.as(u32) * scale.as(u32)
+        draw_right := offset.0.as(u32) + draw_width
+        draw_bottom := offset.1.as(u32) + draw_height
+        frame_width := frame.width.as(u32)
+        frame_height := frame.height.as(u32)
+        rects := temp_arena.alloc_array[FramePixelRect](layer.data.count + 4)
+        rect_count : usize = 0
+
+        on offset.1 > 0 => {
+            rects[rect_count] = FramePixelRect {
+                x      : 0
+                y      : 0
+                width  : frame.width
+                height : offset.1
+                colour : 0xff000000
+            }
+            rect_count += 1
+        }
+
+        on draw_bottom < frame_height => {
+            rects[rect_count] = FramePixelRect {
+                x      : 0
+                y      : gfx_u32_to_u16_size(draw_bottom)
+                width  : frame.width
+                height : gfx_u32_to_u16_size(frame_height - draw_bottom)
+                colour : 0xff000000
+            }
+            rect_count += 1
+        }
+
+        on offset.0 > 0 => {
+            rects[rect_count] = FramePixelRect {
+                x      : 0
+                y      : offset.1
+                width  : offset.0
+                height : gfx_u32_to_u16_size(draw_height)
+                colour : 0xff000000
+            }
+            rect_count += 1
+        }
+
+        on draw_right < frame_width => {
+            rects[rect_count] = FramePixelRect {
+                x      : gfx_u32_to_u16_size(draw_right)
+                y      : offset.1
+                width  : gfx_u32_to_u16_size(frame_width - draw_right)
+                height : gfx_u32_to_u16_size(draw_height)
+                colour : 0xff000000
+            }
+            rect_count += 1
+        }
 
         for y: u32 = 0; y < layer.height.as(u32); y += 1 {
             for x: u32 = 0; x < layer.width.as(u32); x += 1 {
                 index := gfx_pixel_layer_index(layer, x, y)
-                rects[index] = FramePixelRect {
+                rects[rect_count + index] = FramePixelRect {
                     x      : gfx_u32_to_u16_size(offset.0.as(u32) + x * scale.as(u32))
                     y      : gfx_u32_to_u16_size(offset.1.as(u32) + y * scale.as(u32))
                     width  : scale
@@ -324,7 +365,8 @@ gfx_render_impl :: fn (system       : ^GfxSystem,
             }
         }
 
-        frame_system.present_rects(frame, rects)
+        rect_count += layer.data.count
+        frame_system.present_rects(frame, rects[..rect_count])
     }
 }
 

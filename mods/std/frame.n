@@ -257,6 +257,15 @@ frame_system_find_info :: fn (system: ^FrameSystem, id: u16) -> ^FrameInfo {
     }
 }
 
+-- Finds the live frame record index with the requested ID.
+frame_system_find_info_index :: fn (system: ^FrameSystem, id: u16) -> usize {
+    for i: usize = 0; i < system.frames.count; i += 1 {
+        on system.frames[i].id == id => return i
+    }
+
+    return system.frames.count
+}
+
 -- Allocates the first reusable non-zero frame ID, or `CLOSED_FRAME` if full.
 frame_system_allocate_id :: fn (system: ^FrameSystem) -> u16 {
     candidate := system.next_id_hint
@@ -467,9 +476,14 @@ on "linux" {
     }
 
     -- Marks a public frame and its platform record as closed.
-    frame_linux_mark_closed :: fn (info: ^FrameInfo, frame: ^Frame) {
+    frame_linux_mark_closed :: fn (system : ^FrameSystem,
+                                   info   : ^FrameInfo,
+                                   frame  : ^Frame) {
+        id := frame.id
+        index := frame_system_find_info_index(system, id)
         frame.id = CLOSED_FRAME
         frame_linux_destroy_info(info)
+        on index < system.frames.count => system.frames.swap_delete(index)
     }
 
     -- Queues a platform-agnostic resize event.
@@ -948,15 +962,18 @@ on "linux" {
 
         event := info.events[0]
         info.events.delete(0)
-        on event == FrameEvent.Closed => frame_linux_mark_closed(info, frame)
+        on event == FrameEvent.Closed => frame_linux_mark_closed(system, info, frame)
         return event
     }
 
     frame_destroy_impl :: fn (system: ^FrameSystem, frame: ^Frame) {
         on frame.id == CLOSED_FRAME => return
 
-        info := frame_system_find_info(system, frame.id)
-        on info != nil => frame_linux_destroy_info(info)
+        index := frame_system_find_info_index(system, frame.id)
+        on index < system.frames.count => {
+            frame_linux_destroy_info(^system.frames[index])
+            system.frames.swap_delete(index)
+        }
         frame.id = CLOSED_FRAME
     }
 
