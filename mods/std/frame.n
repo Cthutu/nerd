@@ -268,11 +268,9 @@ frame_c_string_temp :: fn (text: string) -> ^i8 {
 
 -- Finds the live frame record with the requested ID, or nil when none exists.
 frame_system_find_info :: fn (system: ^FrameSystem, id: u16) -> ^FrameInfo {
-    return for info in system.frames {
-        on info.id == id => break info
-    } else {
-        break nil
-    }
+    index := frame_system_find_info_index(system, id)
+    on index >= system.frames.count => return nil
+    return ^system.frames[index]
 }
 
 -- Finds the live frame record index with the requested ID.
@@ -502,14 +500,14 @@ on "linux" {
     }
 
     -- Marks a public frame and its platform record as closed.
-    frame_linux_mark_closed :: fn (system : ^FrameSystem,
-                                   info   : ^FrameInfo,
-                                   frame  : ^Frame) {
+    frame_linux_mark_closed :: fn (system: ^FrameSystem, frame: ^Frame) {
         id := frame.id
         index := frame_system_find_info_index(system, id)
         frame.id = CLOSED_FRAME
-        frame_linux_destroy_info(info)
-        on index < system.frames.count => system.frames.swap_delete(index)
+        on index < system.frames.count => {
+            frame_linux_destroy_info(^system.frames[index])
+            system.frames.swap_delete(index)
+        }
     }
 
     -- Queues a platform-agnostic resize event.
@@ -972,17 +970,24 @@ on "linux" {
     }
 
     frame_loop_impl :: fn (system: ^FrameSystem) -> bool {
-        for info in system.frames {
+        i : usize = 0
+        for i < system.frames.count {
+            info := ^system.frames[i]
             for info.platform_info.display != nil && XPending(info.platform_info.display) > 0 {
                 event : XEvent
                 _ := XNextEvent(info.platform_info.display, ^event)
                 frame_linux_handle_event(system, info, ^event)
             }
 
-            on info.id != CLOSED_FRAME => return yes
+            on info.id == CLOSED_FRAME => {
+                system.frames.swap_delete(i)
+                again
+            }
+
+            i += 1
         }
 
-        return no
+        return system.frames.count > 0
     }
 
     frame_update_impl :: fn (system: ^FrameSystem, frame: ^Frame) {
@@ -1010,7 +1015,7 @@ on "linux" {
 
         event := info.events[0]
         info.events.delete(0)
-        on event == FrameEvent.Closed => frame_linux_mark_closed(system, info, frame)
+        on event == FrameEvent.Closed => frame_linux_mark_closed(system, frame)
         return event
     }
 
@@ -1160,4 +1165,28 @@ on "windows" {
                                      _buffer : FramePixelBuffer) {
     }
 
+}
+
+test "FrameSystem loop returns no after destroying final frame" {
+    system := FrameSystem.init()
+    platform_info : PlatformFrameInfo
+    system.frames.push(FrameInfo {
+        id     : 1
+        events : nil
+        platform_info
+    })
+
+    frame := Frame {
+        id          : 1
+        width       : 32
+        height      : 24
+        title       : "test"
+        full_screen : no
+        resizable   : yes
+    }
+
+    system.destroy(^frame)
+    assert frame.id == CLOSED_FRAME
+    assert system.frames.count == 0
+    assert !system.loop()
 }
