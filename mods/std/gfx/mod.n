@@ -293,6 +293,16 @@ impl GfxSystem {
 gfx_render_impl :: fn (system       : ^GfxSystem,
                        frame_system : ^FrameSystem,
                        frame        : ^Frame) {
+    background := temp_arena.alloc_array[FramePixelRect](1)
+    background[0] = FramePixelRect {
+        x      : 0
+        y      : 0
+        width  : frame.width
+        height : frame.height
+        colour : 0xff000000
+    }
+    frame_system.present_rects(frame, background)
+
     for layer in system.pixel_layers {
         on layer.frame_id != frame.id => again
         on layer.data.count == 0 => again

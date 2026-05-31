@@ -737,7 +737,6 @@ on "linux" {
         screen := XDefaultScreen(display)
         root := XRootWindow(display, screen)
         black := XBlackPixel(display, screen)
-        white := XWhitePixel(display, screen)
 
         window := XCreateSimpleWindow(display,
                                       root,
@@ -747,7 +746,7 @@ on "linux" {
                                       frame.height.as(u32),
                                       1,
                                       black,
-                                      white)
+                                      black)
         on window == 0 => {
             _ := XCloseDisplay(display)
             frame.id = CLOSED_FRAME
