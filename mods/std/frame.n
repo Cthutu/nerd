@@ -499,6 +499,11 @@ on "linux" {
         gl_texture          GLuint      -- Texture used for pixel presentation.
         gl_texture_width    u16         -- Current GL texture source width.
         gl_texture_height   u16         -- Current GL texture source height.
+        gl_program          GLuint      -- Shader program for pixel
+                                        --     presentation.
+        gl_vertex_buffer    GLuint      -- Dynamic quad vertex buffer.
+        gl_vertex_array     GLuint      -- Vertex array for quad attributes.
+        gl_sampler_location GLint       -- Pixel texture sampler uniform.
     }
 
     -- Releases GLX resources attached to a frame record.
@@ -510,6 +515,18 @@ on "linux" {
             _ := glXMakeCurrent(info.platform_info.display,
                                 info.platform_info.window.as(GLXDrawable),
                                 info.platform_info.gl_context)
+            on info.platform_info.gl_vertex_array != 0 => {
+                glDeleteVertexArrays(1, ^(info.platform_info.gl_vertex_array))
+                info.platform_info.gl_vertex_array = 0
+            }
+            on info.platform_info.gl_vertex_buffer != 0 => {
+                glDeleteBuffers(1, ^(info.platform_info.gl_vertex_buffer))
+                info.platform_info.gl_vertex_buffer = 0
+            }
+            on info.platform_info.gl_program != 0 => {
+                glDeleteProgram(info.platform_info.gl_program)
+                info.platform_info.gl_program = 0
+            }
             glDeleteTextures(1, ^(info.platform_info.gl_texture))
             info.platform_info.gl_texture = 0
             info.platform_info.gl_texture_width = 0
@@ -522,6 +539,10 @@ on "linux" {
         info.platform_info.gl_context = nil
         info.platform_info.gl_texture_width = 0
         info.platform_info.gl_texture_height = 0
+        info.platform_info.gl_program = 0
+        info.platform_info.gl_vertex_buffer = 0
+        info.platform_info.gl_vertex_array = 0
+        info.platform_info.gl_sampler_location = -1
     }
 
     -- Destroys native X11 resources associated with a frame record.
@@ -1122,6 +1143,121 @@ on "linux" {
         _ := XFlush(info.platform_info.display)
     }
 
+    frame_linux_gl_compile_shader :: fn (type: GLenum, source: string) -> GLuint {
+        shader := glCreateShader(type)
+        on shader == 0 => return 0
+
+        source_ptr := source.data.as(^void).as(^i8)
+        source_len := source.count.as(GLint)
+        glShaderSource(shader, 1, ^source_ptr, ^source_len)
+        glCompileShader(shader)
+
+        status : GLint
+        glGetShaderiv(shader, GL_COMPILE_STATUS, ^status)
+        on status == 0 => {
+            glDeleteShader(shader)
+            return 0
+        }
+
+        return shader
+    }
+
+    frame_linux_gl_create_pixel_program :: fn () -> GLuint {
+        vertex_source := "#version 120\nattribute vec2 position;\nattribute vec2 texcoord;\nvarying vec2 v_texcoord;\nvoid main() {\n    v_texcoord = texcoord;\n    gl_Position = vec4(position, 0.0, 1.0);\n}\n"
+        fragment_source := "#version 120\nuniform sampler2D pixels;\nvarying vec2 v_texcoord;\nvoid main() {\n    gl_FragColor = texture2D(pixels, v_texcoord);\n}\n"
+
+        vertex_shader := frame_linux_gl_compile_shader(GL_VERTEX_SHADER,
+                                                       vertex_source)
+        on vertex_shader == 0 => return 0
+
+        fragment_shader := frame_linux_gl_compile_shader(GL_FRAGMENT_SHADER,
+                                                         fragment_source)
+        on fragment_shader == 0 => {
+            glDeleteShader(vertex_shader)
+            return 0
+        }
+
+        program := glCreateProgram()
+        on program == 0 => {
+            glDeleteShader(vertex_shader)
+            glDeleteShader(fragment_shader)
+            return 0
+        }
+
+        position_name := frame_c_string_temp("position")
+        texcoord_name := frame_c_string_temp("texcoord")
+        glAttachShader(program, vertex_shader)
+        glAttachShader(program, fragment_shader)
+        glBindAttribLocation(program, 0, position_name)
+        glBindAttribLocation(program, 1, texcoord_name)
+        glLinkProgram(program)
+        glDeleteShader(vertex_shader)
+        glDeleteShader(fragment_shader)
+
+        status : GLint
+        glGetProgramiv(program, GL_LINK_STATUS, ^status)
+        on status == 0 => {
+            glDeleteProgram(program)
+            return 0
+        }
+
+        return program
+    }
+
+    frame_linux_gl_init_pixel_pipeline :: fn (info: ^FrameInfo) -> bool {
+        on info.platform_info.gl_program != 0 &&
+            info.platform_info.gl_vertex_buffer != 0 &&
+            info.platform_info.gl_vertex_array != 0 => return yes
+
+        program := frame_linux_gl_create_pixel_program()
+        on program == 0 => return no
+
+        vertex_buffer : GLuint
+        glGenBuffers(1, ^vertex_buffer)
+        on vertex_buffer == 0 => {
+            glDeleteProgram(program)
+            return no
+        }
+
+        vertex_array : GLuint
+        glGenVertexArrays(1, ^vertex_array)
+        on vertex_array == 0 => {
+            glDeleteBuffers(1, ^vertex_buffer)
+            glDeleteProgram(program)
+            return no
+        }
+
+        glBindVertexArray(vertex_array)
+        glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer)
+        glBufferData(GL_ARRAY_BUFFER,
+                     (16 * GLfloat.size).as(GLsizeiptr),
+                     nil,
+                     GL_DYNAMIC_DRAW)
+        glEnableVertexAttribArray(0)
+        glVertexAttribPointer(0,
+                              2,
+                              GL_FLOAT,
+                              GL_FALSE.as(GLboolean),
+                              (4 * GLfloat.size).as(GLsizei),
+                              0.as(^void))
+        glEnableVertexAttribArray(1)
+        glVertexAttribPointer(1,
+                              2,
+                              GL_FLOAT,
+                              GL_FALSE.as(GLboolean),
+                              (4 * GLfloat.size).as(GLsizei),
+                              (2 * GLfloat.size).as(^void))
+        glBindVertexArray(0)
+        glBindBuffer(GL_ARRAY_BUFFER, 0)
+
+        sampler_name := frame_c_string_temp("pixels")
+        info.platform_info.gl_program = program
+        info.platform_info.gl_vertex_buffer = vertex_buffer
+        info.platform_info.gl_vertex_array = vertex_array
+        info.platform_info.gl_sampler_location = glGetUniformLocation(program, sampler_name)
+        return yes
+    }
+
     -- Creates the GLX context and texture used for accelerated pixel
     -- presentation. Returns no when the platform cannot provide GL for this
     -- window so the XImage fallback can be used.
@@ -1180,6 +1316,7 @@ on "linux" {
 
         info.platform_info.gl_context = context
         info.platform_info.gl_texture = texture
+        info.platform_info.gl_sampler_location = -1
         return yes
     }
 
@@ -1195,6 +1332,8 @@ on "linux" {
                                        info.platform_info.gl_context)
         on made_current == 0 => return no
 
+        on !frame_linux_gl_init_pixel_pipeline(info) => return no
+
         glViewport(0, 0, frame.width.as(GLsizei), frame.height.as(GLsizei))
         glDisable(GL_DEPTH_TEST)
         glClearColor(0.0.as(GLfloat),
@@ -1203,19 +1342,12 @@ on "linux" {
                      1.0.as(GLfloat))
         glClear(GL_COLOR_BUFFER_BIT)
 
-        glMatrixMode(GL_PROJECTION)
-        glLoadIdentity()
-        glOrtho(0.0.as(GLdouble),
-                frame.width.as(GLdouble),
-                frame.height.as(GLdouble),
-                0.0.as(GLdouble),
-                (-1.0).as(GLdouble),
-                1.0.as(GLdouble))
-        glMatrixMode(GL_MODELVIEW)
-        glLoadIdentity()
-
-        glEnable(GL_TEXTURE_2D)
+        glUseProgram(info.platform_info.gl_program)
+        glActiveTexture(GL_TEXTURE0)
         glBindTexture(GL_TEXTURE_2D, info.platform_info.gl_texture)
+        on info.platform_info.gl_sampler_location >= 0 => {
+            glUniform1i(info.platform_info.gl_sampler_location, 0)
+        }
         glPixelStorei(GL_UNPACK_ALIGNMENT, 4)
         glPixelStorei(GL_UNPACK_ROW_LENGTH, buffer.stride.as(GLint))
 
@@ -1249,21 +1381,40 @@ on "linux" {
 
         glPixelStorei(GL_UNPACK_ROW_LENGTH, 0)
 
-        x0 := buffer.x.as(GLfloat)
-        y0 := buffer.y.as(GLfloat)
-        x1 := (buffer.x.as(u32) + buffer.draw_width.as(u32)).as(GLfloat)
-        y1 := (buffer.y.as(u32) + buffer.draw_height.as(u32)).as(GLfloat)
+        frame_width := frame.width.as(GLfloat)
+        frame_height := frame.height.as(GLfloat)
+        x0 := (buffer.x.as(GLfloat) / frame_width) * 2.0.as(GLfloat) - 1.0.as(GLfloat)
+        y0 := 1.0.as(GLfloat) - (buffer.y.as(GLfloat) / frame_height) * 2.0.as(GLfloat)
+        x1 := ((buffer.x.as(u32) + buffer.draw_width.as(u32)).as(GLfloat) / frame_width) * 2.0.as(GLfloat) - 1.0.as(GLfloat)
+        y1 := 1.0.as(GLfloat) - (((buffer.y.as(u32) + buffer.draw_height.as(u32)).as(GLfloat) / frame_height) * 2.0.as(GLfloat))
 
-        glBegin(GL_QUADS)
-        glTexCoord2f(0.0.as(GLfloat), 0.0.as(GLfloat))
-        glVertex2f(x0, y0)
-        glTexCoord2f(1.0.as(GLfloat), 0.0.as(GLfloat))
-        glVertex2f(x1, y0)
-        glTexCoord2f(1.0.as(GLfloat), 1.0.as(GLfloat))
-        glVertex2f(x1, y1)
-        glTexCoord2f(0.0.as(GLfloat), 1.0.as(GLfloat))
-        glVertex2f(x0, y1)
-        glEnd()
+        vertices : [16]GLfloat
+        vertices[0] = x0
+        vertices[1] = y0
+        vertices[2] = 0.0.as(GLfloat)
+        vertices[3] = 0.0.as(GLfloat)
+        vertices[4] = x1
+        vertices[5] = y0
+        vertices[6] = 1.0.as(GLfloat)
+        vertices[7] = 0.0.as(GLfloat)
+        vertices[8] = x0
+        vertices[9] = y1
+        vertices[10] = 0.0.as(GLfloat)
+        vertices[11] = 1.0.as(GLfloat)
+        vertices[12] = x1
+        vertices[13] = y1
+        vertices[14] = 1.0.as(GLfloat)
+        vertices[15] = 1.0.as(GLfloat)
+
+        glBindVertexArray(info.platform_info.gl_vertex_array)
+        glBindBuffer(GL_ARRAY_BUFFER, info.platform_info.gl_vertex_buffer)
+        glBufferSubData(GL_ARRAY_BUFFER,
+                        0,
+                        vertices.size.as(GLsizeiptr),
+                        (^vertices).as(^void))
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4)
+        glBindBuffer(GL_ARRAY_BUFFER, 0)
+        glBindVertexArray(0)
 
         glXSwapBuffers(info.platform_info.display,
                        info.platform_info.window.as(GLXDrawable))

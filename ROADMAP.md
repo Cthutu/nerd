@@ -179,7 +179,9 @@ tile-map, and ASCII layers.
   - [x] Linux X11 backend using OpenGL/GLX first
   - [ ] Windows backend using OpenGL/WGL
   - [x] upload the pixel buffer to a texture and draw a nearest-filtered quad
-  - [ ] keep whole-texture upload acceptable for the first version; add dirty
+  - [x] render through a shader, vertex buffer, and vertex array rather than
+    fixed-function OpenGL calls
+  - [x] keep whole-texture upload acceptable for the first version; add dirty
     rectangles later only after the API shape is proven
 - [x] Add `examples/pixels/pixels.n` showing a frame, pixel layer, clear/fill,
   simple animation, resize handling, and render loop.
@@ -207,11 +209,13 @@ thin, explicit API first; higher-level graphics layers can build on it later.
 - [ ] Add `gl_done(^FrameSystem, ^Frame)` to release frame-attached OpenGL
   context resources and clear loaded command pointers when appropriate.
 - [ ] Add basic commands needed by the pixel-buffer renderer:
-  - [ ] buffer, texture, shader, and vertex-array creation/destruction
+  - [x] buffer, texture, shader, and vertex-array creation/destruction
   - [ ] shader compile/link/status logging
-  - [ ] viewport, clear, draw, texture upload, and swap buffers
+  - [x] viewport, clear, draw, texture upload, and swap buffers
 - [x] Move `std.gfx` pixel presentation from XImage fallback to a nearest
   filtered texture quad on OpenGL-capable frames.
+- [x] Move frame pixel presentation off fixed-function OpenGL and onto a
+  shader/VBO/VAO path.
 - [x] Keep an XImage/software fallback while OpenGL support is incomplete or
   unavailable.
 - [ ] Add examples and tests that can check loading and symbol availability
