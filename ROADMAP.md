@@ -155,25 +155,25 @@ the roadmap before committing the implementation.
 ### Graphics Pixel Buffer Milestone
 
 Add `std.gfx` as the first window graphics layer system. Start with a
-hardware-rendered pixel buffer layer attached to `std.frame` windows, while
+frame-presented pixel buffer layer attached to `std.frame` windows, while
 keeping the public API backend-neutral enough for later OpenGL, Vulkan,
 tile-map, and ASCII layers.
 
-- [ ] Add `mods/std/gfx/mods.n` with a small orchestrating `GfxSystem`.
-- [ ] Add `PixelLayerMode`:
-  - [ ] `FitToWindow { pixel_scale u16 }`
-  - [ ] `FixedSizeAutoScale { width u16, height u16 }`
+- [x] Add `mods/std/gfx/mod.n` with a small orchestrating `GfxSystem`.
+- [x] Add `PixelLayerMode`:
+  - [x] `FitToWindow { pixel_scale u16 }`
+  - [x] `FixedSizeAutoScale { width u16, height u16 }`
 - [ ] Define crisp-pixel presentation rules:
-  - [ ] `FitToWindow` uses the fixed integer `pixel_scale`, resizes the backing
+  - [x] `FitToWindow` uses the fixed integer `pixel_scale`, resizes the backing
     pixel buffer as the frame changes, and keeps the presented frame dimensions
-    on pixel-scale multiples so there is no letterboxing.
-  - [ ] `FixedSizeAutoScale` keeps a fixed virtual buffer size, uses the largest
+    at the top-left with no intentional letterboxing.
+  - [x] `FixedSizeAutoScale` keeps a fixed virtual buffer size, uses the largest
     integer scale that fits the frame, and letterboxes unused space.
 - [ ] Add typed pixel-buffer operations:
-  - [ ] create/destroy a pixel layer for a frame
-  - [ ] expose width, height, and contiguous `[]u32` pixels
-  - [ ] `clear`, `put`, and `fill` helpers
-  - [ ] `paint(area, painter)` where the painter receives a contiguous pixel
+  - [x] create/destroy a pixel layer for a frame
+  - [x] expose width, height, and contiguous `[]u32` pixels
+  - [x] `clear`, `put`, and `fill` helpers
+  - [x] `paint(area, painter)` where the painter receives a contiguous pixel
     slice, area width/height, and stride
 - [ ] Render through 3D graphics hardware where practical:
   - [ ] Linux X11 backend using OpenGL/GLX first
@@ -181,12 +181,39 @@ tile-map, and ASCII layers.
   - [ ] upload the pixel buffer to a texture and draw a nearest-filtered quad
   - [ ] keep whole-texture upload acceptable for the first version; add dirty
     rectangles later only after the API shape is proven
-- [ ] Add `examples/pixels/pixels.n` showing a frame, pixel layer, clear/fill,
+- [x] Add `examples/pixels/pixels.n` showing a frame, pixel layer, clear/fill,
   simple animation, resize handling, and render loop.
+- [x] Add `examples/pixels_fit/pixels_fit.n` showing `FitToWindow`.
 - [ ] Add standard-library documentation for `std.gfx` and the pixel-buffer
   sizing modes.
 - [ ] Add source, command, and example tests where the behaviour can be
   verified without relying on an interactive desktop session.
+
+### OpenGL Standard Library Milestone
+
+Add `std.opengl` as a frame-compatible OpenGL 3 binding layer. This should be a
+thin, explicit API first; higher-level graphics layers can build on it later.
+
+- [ ] Add `mods/std/opengl/mod.n` with portable public OpenGL type aliases,
+  constants, and command declarations for the basic OpenGL 3 workflow.
+- [ ] Add platform loader support:
+  - [ ] Linux GLX command lookup for frames.
+  - [ ] Windows WGL command lookup for frames.
+- [ ] Add `gl_init(^FrameSystem, ^Frame) -> bool` to create or attach an OpenGL
+  context for a frame and load OpenGL 3 command pointers into module-level
+  function pointer variables.
+- [ ] Add `gl_done(^FrameSystem, ^Frame)` to release frame-attached OpenGL
+  context resources and clear loaded command pointers when appropriate.
+- [ ] Add basic commands needed by the pixel-buffer renderer:
+  - [ ] buffer, texture, shader, and vertex-array creation/destruction
+  - [ ] shader compile/link/status logging
+  - [ ] viewport, clear, draw, texture upload, and swap buffers
+- [ ] Move `std.gfx` pixel presentation from XImage fallback to a nearest
+  filtered texture quad on OpenGL-capable frames.
+- [ ] Keep an XImage/software fallback while OpenGL support is incomplete or
+  unavailable.
+- [ ] Add examples and tests that can check loading and symbol availability
+  without requiring an interactive desktop where possible.
 
 ### Source Testing Follow-up Milestone
 

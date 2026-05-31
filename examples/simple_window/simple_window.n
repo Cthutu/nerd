@@ -8,6 +8,7 @@ main :: fn () {
         height      : 600
         title       : "Simple Window"
         full_screen : no
+        resizable   : yes
     }
 
     system.apply(^frame)

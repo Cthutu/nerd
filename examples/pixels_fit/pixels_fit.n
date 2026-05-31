@@ -2,23 +2,27 @@ use std.frame
 use std.gfx
 use std.time
 
-pixel_colour :: fn (x: u32, y: u32, frame: u32) -> u32 {
-    wave := ((x + frame) ^ (y * 3 + frame * 2)) & 31
-    red := ((x * 4 + frame * 3) & 255) << 16
-    green := ((y * 5 + wave * 8) & 255) << 8
-    blue := ((x * y + frame * 7) & 255)
+fit_colour :: fn (x: u32, y: u32, tick: u32) -> u32 {
+    checker := ((x / 4) + (y / 4) + (tick / 12)) & 1
+    red := ((x * 5 + tick * 2) & 255) << 16
+    green := ((y * 7 + tick) & 255) << 8
+    blue : u32 = on checker == 0 => 0x40 else 0xd0
     return 0xff000000 | red | green | blue
 }
 
-pixels_draw :: fn (layer: ^PixelLayer, frame: u32) {
+fit_draw :: fn (layer: ^PixelLayer, tick: u32) {
     for y: u32 = 0; y < layer.pixel_height().as(u32); y += 1 {
         for x: u32 = 0; x < layer.pixel_width().as(u32); x += 1 {
-            layer.put(x, y, pixel_colour(x, y, frame))
+            layer.put(x, y, fit_colour(x, y, tick))
         }
     }
 
-    bar_width := (frame % layer.pixel_width().as(u32)) + 1
-    layer.fill(PixelRect { x: 0 y: 0 width: bar_width height: 3 }, 0xffffffff)
+    layer.fill(PixelRect {
+        x      : 0
+        y      : 0
+        width  : layer.pixel_width().as(u32)
+        height : 2
+    }, 0xffffffff)
 }
 
 main :: fn () {
@@ -27,7 +31,7 @@ main :: fn () {
         id          : NEW_FRAME
         width       : 640
         height      : 480
-        title       : "Pixels"
+        title       : "Pixels Fit"
         full_screen : no
         resizable   : yes
     }
@@ -38,7 +42,7 @@ main :: fn () {
     defer gfx.done()
 
     handle := gfx.pixel_layer(^frame,
-                              PixelLayerMode.FixedSizeAutoScale { width: 160 height: 120 })
+                              PixelLayerMode.FitToWindow { pixel_scale: 4 })
     tick : u32 = 0
 
     for frame_system.loop() {
@@ -67,7 +71,7 @@ main :: fn () {
 
         layer := gfx.pixel(handle)
         on layer != nil => {
-            pixels_draw(layer, tick)
+            fit_draw(layer, tick)
             gfx.render(^frame_system, ^frame)
         }
 

@@ -27,7 +27,10 @@
 -- Typical usage:
 --|
 --| system := FrameSystem.init()
---| frame := Frame { id: NEW_FRAME width: 800 height: 600 title: "Frame" }
+--| frame := Frame {
+--|     id: NEW_FRAME width: 800 height: 600 title: "Frame"
+--|     full_screen: no resizable: yes
+--| }
 --| system.apply(^frame)
 --|
 --| for system.loop() {
@@ -227,6 +230,10 @@ pub Frame :: plex {
     -- Set to yes if we want fullscreen.  When applying no and we're in
     -- fullscreen the previous dimensions and position should be restored.
     full_screen bool
+
+    -- Set to no to ask the platform window manager to prevent user resizing.
+    -- Programmatic size changes through `apply` are still allowed.
+    resizable bool
 }
 
 -- Filled rectangle in client-area pixel coordinates.
@@ -236,6 +243,17 @@ pub FramePixelRect :: plex {
     width  u16  -- Rectangle width in client pixels.
     height u16  -- Rectangle height in client pixels.
     colour u32  -- Packed 0xAARRGGBB colour. Backends may ignore alpha.
+}
+
+-- Pixel buffer in client-area coordinates. Pixels are packed as 0xAARRGGBB;
+-- backends may ignore alpha.
+pub FramePixelBuffer :: plex {
+    x      u16    -- Left client coordinate.
+    y      u16    -- Top client coordinate.
+    width  u16    -- Width in client pixels.
+    height u16    -- Height in client pixels.
+    stride u16    -- Number of pixels between adjacent rows.
+    pixels []u32  -- Pixel storage with at least `stride * height` pixels.
 }
 
 -- Copies a Nerd string into temporary NUL-terminated storage for C APIs.
@@ -336,6 +354,12 @@ impl FrameSystem {
                              frame  : ^Frame,
                              rects  : []FramePixelRect) {
         frame_present_rects_impl(system, frame, rects)
+    }
+
+    pub present_pixels :: fn (system : ^Self,
+                              frame  : ^Frame,
+                              buffer : FramePixelBuffer) {
+        frame_present_pixels_impl(system, frame, buffer)
     }
 
     pub is_shift_down :: fn (system: ^Self) -> bool {
@@ -450,6 +474,7 @@ on "linux" {
                                       --     fullscreen.
         full_screen         bool      -- Whether this frame is currently
                                       --     fullscreen.
+        resizable           bool      -- Whether user-driven resize is allowed.
     }
 
     -- Destroys native X11 resources associated with a frame record.
@@ -473,6 +498,7 @@ on "linux" {
         info.platform_info.wm_state_fullscreen = 0
         info.platform_info.frame_extents = 0
         info.platform_info.full_screen = no
+        info.platform_info.resizable = no
     }
 
     -- Marks a public frame and its platform record as closed.
@@ -508,6 +534,23 @@ on "linux" {
             info.platform_info.restore_width = width
             info.platform_info.restore_height = height
         }
+    }
+
+    -- Applies platform resize hints for user-driven window resizing.
+    frame_linux_apply_resize_hints :: fn (info: ^FrameInfo, frame: ^Frame) {
+        hints : XSizeHints
+        info.platform_info.resizable = frame.resizable
+        on !frame.resizable => {
+            hints.flags = (X_SIZE_HINT_P_MIN_SIZE | X_SIZE_HINT_P_MAX_SIZE).as(XLong)
+            hints.min_width = frame.width.as(i32)
+            hints.min_height = frame.height.as(i32)
+            hints.max_width = frame.width.as(i32)
+            hints.max_height = frame.height.as(i32)
+        }
+
+        _ := XSetWMNormalHints(info.platform_info.display,
+                               info.platform_info.window,
+                               ^hints)
     }
 
     -- Refreshes the window-manager decoration extents used to convert client
@@ -788,7 +831,6 @@ on "linux" {
                                      0)
         _ := XSetWMProtocols(display, window, ^wm_delete, 1)
         _ := XMapWindow(display, window)
-        _ := XFlush(display)
 
         platform_info : PlatformFrameInfo
         platform_info.display = display
@@ -802,6 +844,7 @@ on "linux" {
         platform_info.restore_width = frame.width
         platform_info.restore_height = frame.height
         platform_info.full_screen = no
+        platform_info.resizable = frame.resizable
 
         info := FrameInfo {
             id
@@ -811,7 +854,10 @@ on "linux" {
         frame_linux_push_resize(^info, frame.width, frame.height)
         system.frames.push(info)
         frame.id = id
+        frame_linux_apply_resize_hints(frame_system_find_info(system, id),
+                                       frame)
         frame_linux_apply_fullscreen(frame_system_find_info(system, id), frame)
+        _ := XFlush(display)
     }
 
     -- Applies desired frame data to an existing X11 window.
@@ -828,6 +874,7 @@ on "linux" {
         _ := XStoreName(info.platform_info.display,
                         info.platform_info.window,
                         frame_c_string_temp(frame.title))
+        frame_linux_apply_resize_hints(info, frame)
         frame_linux_apply_fullscreen(info, frame)
         on !info.platform_info.full_screen => {
             _ := XResizeWindow(info.platform_info.display,
@@ -873,6 +920,7 @@ on "linux" {
         frame.width = width.as(u16)
         frame.height = height.as(u16)
         frame.full_screen = info.platform_info.full_screen
+        frame.resizable = info.platform_info.resizable
         frame_linux_capture_geometry(info, x, y, width.as(u16), height.as(u16))
     }
 
@@ -1011,6 +1059,60 @@ on "linux" {
         _ := XFlush(info.platform_info.display)
     }
 
+    frame_present_pixels_impl :: fn (system : ^FrameSystem,
+                                     frame  : ^Frame,
+                                     buffer : FramePixelBuffer) {
+        on frame.id == CLOSED_FRAME ||
+            buffer.width == 0 ||
+            buffer.height == 0 ||
+            buffer.stride == 0 ||
+            buffer.pixels.count == 0 => return
+
+        info := frame_system_find_info(system, frame.id)
+        on info == nil ||
+            info.platform_info.display == nil ||
+            info.platform_info.window == 0 => return
+
+        required_pixels := buffer.stride.as(usize) * buffer.height.as(usize)
+        on buffer.pixels.count < required_pixels => return
+
+        gc := XCreateGC(info.platform_info.display,
+                        info.platform_info.window,
+                        0,
+                        nil)
+        on gc == nil => return
+        defer XFreeGC(info.platform_info.display, gc)
+
+        screen := XDefaultScreen(info.platform_info.display)
+        visual := XDefaultVisual(info.platform_info.display, screen)
+        depth := XDefaultDepth(info.platform_info.display, screen)
+        image := XCreateImage(info.platform_info.display,
+                              visual,
+                              depth.as(u32),
+                              X_IMAGE_FORMAT_Z_PIXMAP,
+                              0,
+                              buffer.pixels.data.as(^void).as(^i8),
+                              buffer.width.as(u32),
+                              buffer.height.as(u32),
+                              32,
+                              (buffer.stride.as(i32) * 4))
+        on image == nil => return
+
+        _ := XPutImage(info.platform_info.display,
+                       info.platform_info.window,
+                       gc,
+                       image,
+                       0,
+                       0,
+                       buffer.x.as(i32),
+                       buffer.y.as(i32),
+                       buffer.width.as(u32),
+                       buffer.height.as(u32))
+        image.data = nil
+        _ := XDestroyImage(image)
+        _ := XFlush(info.platform_info.display)
+    }
+
 }
 
 on "windows" {
@@ -1051,6 +1153,11 @@ on "windows" {
     frame_present_rects_impl :: fn (_system : ^FrameSystem,
                                     _frame  : ^Frame,
                                     _rects  : []FramePixelRect) {
+    }
+
+    frame_present_pixels_impl :: fn (_system : ^FrameSystem,
+                                     _frame  : ^Frame,
+                                     _buffer : FramePixelBuffer) {
     }
 
 }

@@ -33,6 +33,9 @@ pub XKeySym :: u64
 -- Opaque Xlib graphics context handle.
 pub XGC :: ^void
 
+-- Opaque Xlib visual descriptor handle.
+pub XVisual :: ^void
+
 pub X_SUCCESS :: 0  -- Xlib success status.
 
 pub X_FALSE :: 0  -- Xlib false value.
@@ -59,6 +62,11 @@ pub X_EXPOSURE_MASK :: 0x00008000  -- Receives expose events.
 
 pub X_NET_WM_STATE_REMOVE :: 0  -- EWMH request to remove a window state.
 pub X_NET_WM_STATE_ADD    :: 1  -- EWMH request to add a window state.
+
+pub X_IMAGE_FORMAT_Z_PIXMAP :: 2  -- Xlib `ZPixmap` image format.
+
+pub X_SIZE_HINT_P_MIN_SIZE :: 16  -- Xlib `PMinSize` normal-size hint flag.
+pub X_SIZE_HINT_P_MAX_SIZE :: 32  -- Xlib `PMaxSize` normal-size hint flag.
 
 pub X_KEYSYM_BACKSPACE     :: 0xff08  -- Xlib keysym for Backspace.
 pub X_KEYSYM_TAB           :: 0xff09  -- Xlib keysym for Tab.
@@ -153,10 +161,55 @@ pub XClientMessageEvent :: plex #c {
     data4        XLong     -- Fifth long data element.
 }
 
+-- Xlib image record returned by `XCreateImage`. The standard library only
+-- mutates `data` before destruction when the pixel bytes are temporary.
+pub XImage :: plex #c {
+    width            i32
+    height           i32
+    xoffset          i32
+    format           i32
+    data             ^i8
+    byte_order       i32
+    bitmap_unit      i32
+    bitmap_bit_order i32
+    bitmap_pad       i32
+    depth            i32
+    bytes_per_line   i32
+    bits_per_pixel   i32
+    red_mask         XULong
+    green_mask       XULong
+    blue_mask        XULong
+    obdata           ^void
+}
+
+-- Xlib normal-size hints used to constrain window-manager resizing.
+pub XSizeHints :: plex #c {
+    flags        XLong
+    x            i32
+    y            i32
+    width        i32
+    height       i32
+    min_width    i32
+    min_height   i32
+    max_width    i32
+    max_height   i32
+    width_inc    i32
+    height_inc   i32
+    min_aspect_x i32
+    min_aspect_y i32
+    max_aspect_x i32
+    max_aspect_y i32
+    base_width   i32
+    base_height  i32
+    win_gravity  i32
+}
+
 ffi "X11" {
     pub XOpenDisplay          (display_name: ^i8) -> XDisplay
     pub XCloseDisplay         (display: XDisplay) -> i32
     pub XDefaultScreen        (display: XDisplay) -> i32
+    pub XDefaultDepth         (display: XDisplay, screen_number: i32) -> i32
+    pub XDefaultVisual        (display: XDisplay, screen_number: i32) -> XVisual
     pub XRootWindow           (display: XDisplay, screen_number: i32) -> XWindow
     pub XBlackPixel           (display: XDisplay, screen_number: i32) -> u64
     pub XWhitePixel           (display: XDisplay, screen_number: i32) -> u64
@@ -182,6 +235,9 @@ ffi "X11" {
                                window    : XWindow,
                                protocols : ^XAtom,
                                count     : i32) -> XStatus
+    pub XSetWMNormalHints     (display : XDisplay,
+                               window  : XWindow,
+                               hints   : ^XSizeHints) -> i32
     pub XMapWindow            (display: XDisplay, window: XWindow) -> i32
     pub XResizeWindow         (display : XDisplay,
                                window  : XWindow,
@@ -212,6 +268,27 @@ ffi "X11" {
                                y        : i32,
                                width    : u32,
                                height   : u32) -> i32
+    pub XCreateImage          (display        : XDisplay,
+                               visual         : XVisual,
+                               depth          : u32,
+                               format         : i32,
+                               offset         : i32,
+                               data           : ^i8,
+                               width          : u32,
+                               height         : u32,
+                               bitmap_pad     : i32,
+                               bytes_per_line : i32) -> ^XImage
+    pub XPutImage             (display  : XDisplay,
+                               drawable : XWindow,
+                               gc       : XGC,
+                               image    : ^XImage,
+                               src_x    : i32,
+                               src_y    : i32,
+                               dest_x   : i32,
+                               dest_y   : i32,
+                               width    : u32,
+                               height   : u32) -> i32
+    pub XDestroyImage         (image: ^XImage) -> i32
     pub XFreeGC               (display: XDisplay, gc: XGC) -> i32
     pub XDestroyWindow        (display: XDisplay, window: XWindow) -> i32
     pub XPending              (display: XDisplay) -> i32
