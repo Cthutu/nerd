@@ -256,6 +256,20 @@ pub FramePixelBuffer :: plex {
     pixels []u32  -- Pixel storage with at least `stride * height` pixels.
 }
 
+-- Pixel buffer presented into a destination rectangle. Pixels are packed as
+-- 0xAARRGGBB; backends may ignore alpha. Hardware backends should use
+-- nearest-neighbour scaling.
+pub FrameScaledPixelBuffer :: plex {
+    x           u16    -- Left destination client coordinate.
+    y           u16    -- Top destination client coordinate.
+    width       u16    -- Source width in pixels.
+    height      u16    -- Source height in pixels.
+    stride      u16    -- Number of source pixels between adjacent rows.
+    draw_width  u16    -- Destination width in client pixels.
+    draw_height u16    -- Destination height in client pixels.
+    pixels      []u32  -- Pixel storage with at least `stride * height` pixels.
+}
+
 -- Copies a Nerd string into temporary NUL-terminated storage for C APIs.
 frame_c_string_temp :: fn (text: string) -> ^i8 {
     bytes := temp_arena.alloc_bytes(text.count + 1)
@@ -358,6 +372,12 @@ impl FrameSystem {
                               frame  : ^Frame,
                               buffer : FramePixelBuffer) {
         frame_present_pixels_impl(system, frame, buffer)
+    }
+
+    pub present_scaled_pixels :: fn (system : ^Self,
+                                     frame  : ^Frame,
+                                     buffer : FrameScaledPixelBuffer) {
+        frame_present_scaled_pixels_impl(system, frame, buffer)
     }
 
     pub is_shift_down :: fn (system: ^Self) -> bool {
@@ -1157,9 +1177,9 @@ on "linux" {
 
     -- Presents a packed pixel buffer through an OpenGL texture when GLX is
     -- available for this window.
-    frame_linux_present_pixels_gl :: fn (info   : ^FrameInfo,
-                                         frame  : ^Frame,
-                                         buffer : FramePixelBuffer) -> bool {
+    frame_linux_present_scaled_pixels_gl :: fn (info   : ^FrameInfo,
+                                                frame  : ^Frame,
+                                                buffer : FrameScaledPixelBuffer) -> bool {
         on !frame_linux_gl_init(info) => return no
 
         made_current := glXMakeCurrent(info.platform_info.display,
@@ -1203,8 +1223,8 @@ on "linux" {
 
         x0 := buffer.x.as(GLfloat)
         y0 := buffer.y.as(GLfloat)
-        x1 := (buffer.x.as(u32) + buffer.width.as(u32)).as(GLfloat)
-        y1 := (buffer.y.as(u32) + buffer.height.as(u32)).as(GLfloat)
+        x1 := (buffer.x.as(u32) + buffer.draw_width.as(u32)).as(GLfloat)
+        y1 := (buffer.y.as(u32) + buffer.draw_height.as(u32)).as(GLfloat)
 
         glBegin(GL_QUADS)
         glTexCoord2f(0.0.as(GLfloat), 0.0.as(GLfloat))
@@ -1220,6 +1240,22 @@ on "linux" {
         glXSwapBuffers(info.platform_info.display,
                        info.platform_info.window.as(GLXDrawable))
         return yes
+    }
+
+    -- Presents a packed pixel buffer through an OpenGL texture with no scaling.
+    frame_linux_present_pixels_gl :: fn (info   : ^FrameInfo,
+                                         frame  : ^Frame,
+                                         buffer : FramePixelBuffer) -> bool {
+        return frame_linux_present_scaled_pixels_gl(info, frame, FrameScaledPixelBuffer {
+            x           : buffer.x
+            y           : buffer.y
+            width       : buffer.width
+            height      : buffer.height
+            stride      : buffer.stride
+            draw_width  : buffer.width
+            draw_height : buffer.height
+            pixels      : buffer.pixels
+        })
     }
 
     -- Presents a packed pixel buffer through XImage when accelerated
@@ -1284,6 +1320,60 @@ on "linux" {
         frame_linux_present_pixels_ximage(info, buffer)
     }
 
+    frame_present_scaled_pixels_impl :: fn (system : ^FrameSystem,
+                                            frame  : ^Frame,
+                                            buffer : FrameScaledPixelBuffer) {
+        on frame.id == CLOSED_FRAME ||
+            buffer.width == 0 ||
+            buffer.height == 0 ||
+            buffer.stride == 0 ||
+            buffer.draw_width == 0 ||
+            buffer.draw_height == 0 ||
+            buffer.pixels.count == 0 => return
+
+        info := frame_system_find_info(system, frame.id)
+        on info == nil ||
+            info.platform_info.display == nil ||
+            info.platform_info.window == 0 => return
+
+        required_pixels := buffer.stride.as(usize) * buffer.height.as(usize)
+        on buffer.pixels.count < required_pixels => return
+
+        on frame_linux_present_scaled_pixels_gl(info, frame, buffer) => return
+
+        frame_width := frame.width.as(u32)
+        frame_height := frame.height.as(u32)
+        pixels := temp_arena.alloc_array[u32]((frame_width * frame_height).as(usize))
+        for i: usize = 0; i < pixels.count; i += 1 {
+            pixels[i] = 0x00000000
+        }
+
+        for y: u32 = 0; y < buffer.height.as(u32); y += 1 {
+            for x: u32 = 0; x < buffer.width.as(u32); x += 1 {
+                colour := buffer.pixels[(y * buffer.stride.as(u32) + x).as(usize)] & 0x00ffffff
+                dest_x := buffer.x.as(u32) + (x * buffer.draw_width.as(u32)) / buffer.width.as(u32)
+                dest_y := buffer.y.as(u32) + (y * buffer.draw_height.as(u32)) / buffer.height.as(u32)
+                next_x := buffer.x.as(u32) + ((x + 1) * buffer.draw_width.as(u32)) / buffer.width.as(u32)
+                next_y := buffer.y.as(u32) + ((y + 1) * buffer.draw_height.as(u32)) / buffer.height.as(u32)
+                for py := dest_y; py < next_y && py < frame_height; py += 1 {
+                    row := (py * frame_width).as(usize)
+                    for px := dest_x; px < next_x && px < frame_width; px += 1 {
+                        pixels[row + px.as(usize)] = colour
+                    }
+                }
+            }
+        }
+
+        frame_linux_present_pixels_ximage(info, FramePixelBuffer {
+            x      : 0
+            y      : 0
+            width  : frame.width
+            height : frame.height
+            stride : frame.width
+            pixels
+        })
+    }
+
 }
 
 on "windows" {
@@ -1329,6 +1419,11 @@ on "windows" {
     frame_present_pixels_impl :: fn (_system : ^FrameSystem,
                                      _frame  : ^Frame,
                                      _buffer : FramePixelBuffer) {
+    }
+
+    frame_present_scaled_pixels_impl :: fn (_system : ^FrameSystem,
+                                            _frame  : ^Frame,
+                                            _buffer : FrameScaledPixelBuffer) {
     }
 
 }

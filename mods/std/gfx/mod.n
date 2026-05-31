@@ -296,6 +296,33 @@ gfx_render_impl :: fn (system       : ^GfxSystem,
     frame_height := frame.height.as(u32)
     on frame_width == 0 || frame_height == 0 => return
 
+    layer_count := 0
+    single_layer : ^PixelLayer = nil
+    for layer in system.pixel_layers {
+        on layer.frame_id != frame.id => again
+        on layer.data.count == 0 => again
+        layer_count  += 1
+        single_layer = layer
+    }
+
+    on layer_count == 1 && single_layer != nil => {
+        scale := gfx_pixel_layer_present_scale(frame, single_layer)
+        offset := gfx_pixel_layer_present_offset(frame, single_layer, scale)
+        draw_width := single_layer.width.as(u32) * scale.as(u32)
+        draw_height := single_layer.height.as(u32) * scale.as(u32)
+        frame_system.present_scaled_pixels(frame, FrameScaledPixelBuffer {
+            x           : offset.0
+            y           : offset.1
+            width       : single_layer.width
+            height      : single_layer.height
+            stride      : single_layer.width
+            draw_width  : gfx_u32_to_u16_size(draw_width)
+            draw_height : gfx_u32_to_u16_size(draw_height)
+            pixels      : single_layer.data[..]
+        })
+        return
+    }
+
     pixels := temp_arena.alloc_array[u32]((frame_width * frame_height).as(usize))
     for i: usize = 0; i < pixels.count; i += 1 {
         pixels[i] = 0x00000000
