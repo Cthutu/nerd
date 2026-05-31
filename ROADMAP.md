@@ -176,9 +176,9 @@ tile-map, and ASCII layers.
   - [x] `paint(area, painter)` where the painter receives a contiguous pixel
     slice, area width/height, and stride
 - [ ] Render through 3D graphics hardware where practical:
-  - [ ] Linux X11 backend using OpenGL/GLX first
+  - [x] Linux X11 backend using OpenGL/GLX first
   - [ ] Windows backend using OpenGL/WGL
-  - [ ] upload the pixel buffer to a texture and draw a nearest-filtered quad
+  - [x] upload the pixel buffer to a texture and draw a nearest-filtered quad
   - [ ] keep whole-texture upload acceptable for the first version; add dirty
     rectangles later only after the API shape is proven
 - [x] Add `examples/pixels/pixels.n` showing a frame, pixel layer, clear/fill,
@@ -194,9 +194,11 @@ tile-map, and ASCII layers.
 Add `std.opengl` as a frame-compatible OpenGL 3 binding layer. This should be a
 thin, explicit API first; higher-level graphics layers can build on it later.
 
-- [ ] Add `mods/std/opengl/mod.n` with portable public OpenGL type aliases,
-  constants, and command declarations for the basic OpenGL 3 workflow.
+- [x] Add initial `mods/std/opengl/mod.n` and Linux GLX/OpenGL declarations.
+- [ ] Expand `std.opengl` with portable public OpenGL type aliases, constants,
+  and command declarations for the basic OpenGL 3 workflow.
 - [ ] Add platform loader support:
+  - [x] Linux GLX context creation for frame pixel presentation.
   - [ ] Linux GLX command lookup for frames.
   - [ ] Windows WGL command lookup for frames.
 - [ ] Add `gl_init(^FrameSystem, ^Frame) -> bool` to create or attach an OpenGL
@@ -208,9 +210,9 @@ thin, explicit API first; higher-level graphics layers can build on it later.
   - [ ] buffer, texture, shader, and vertex-array creation/destruction
   - [ ] shader compile/link/status logging
   - [ ] viewport, clear, draw, texture upload, and swap buffers
-- [ ] Move `std.gfx` pixel presentation from XImage fallback to a nearest
+- [x] Move `std.gfx` pixel presentation from XImage fallback to a nearest
   filtered texture quad on OpenGL-capable frames.
-- [ ] Keep an XImage/software fallback while OpenGL support is incomplete or
+- [x] Keep an XImage/software fallback while OpenGL support is incomplete or
   unavailable.
 - [ ] Add examples and tests that can check loading and symbol availability
   without requiring an interactive desktop where possible.

@@ -444,39 +444,64 @@ test "FrameSystem modifier helpers report combined and sided state" {
 
 on "linux" {
 
+    use os.linux.glx
     use os.linux.x11
 
     -- Linux X11 data attached to a public `Frame`.
     PlatformFrameInfo :: plex {
-        display             XDisplay  -- Display connection owning the window.
-        window              XWindow   -- Native X11 window handle.
-        wm_delete_window    XAtom     -- Window-manager close protocol atom.
-        wm_state            XAtom     -- EWMH `_NET_WM_STATE` atom.
-        wm_state_fullscreen XAtom     -- EWMH fullscreen-state atom.
-        frame_extents       XAtom     -- EWMH `_NET_FRAME_EXTENTS` atom.
-        x                   i32       -- Last known normal outer-frame x
-                                      --     position.
-        y                   i32       -- Last known normal outer-frame y
-                                      --     position.
-        width               u16       -- Last known normal width.
-        height              u16       -- Last known normal height.
-        frame_left          i32       -- Left window-manager decoration extent.
-        frame_top           i32       -- Top window-manager decoration extent.
-        restore_x           i32       -- Position to restore when leaving
-                                      --     fullscreen.
-        restore_y           i32       -- Position to restore when leaving
-                                      --     fullscreen.
-        restore_width       u16       -- Width to restore when leaving
-                                      --     fullscreen.
-        restore_height      u16       -- Height to restore when leaving
-                                      --     fullscreen.
-        full_screen         bool      -- Whether this frame is currently
-                                      --     fullscreen.
-        resizable           bool      -- Whether user-driven resize is allowed.
+        display             XDisplay    -- Display connection owning the window.
+        window              XWindow     -- Native X11 window handle.
+        wm_delete_window    XAtom       -- Window-manager close protocol atom.
+        wm_state            XAtom       -- EWMH `_NET_WM_STATE` atom.
+        wm_state_fullscreen XAtom       -- EWMH fullscreen-state atom.
+        frame_extents       XAtom       -- EWMH `_NET_FRAME_EXTENTS` atom.
+        x                   i32         -- Last known normal outer-frame x
+                                        --     position.
+        y                   i32         -- Last known normal outer-frame y
+                                        --     position.
+        width               u16         -- Last known normal width.
+        height              u16         -- Last known normal height.
+        frame_left          i32         -- Left window-manager decoration
+                                        --     extent.
+        frame_top           i32         -- Top window-manager decoration extent.
+        restore_x           i32         -- Outer-frame x restored after
+                                        --     fullscreen.
+        restore_y           i32         -- Outer-frame y restored after
+                                        --     fullscreen.
+        restore_width       u16         -- Width restored after fullscreen.
+        restore_height      u16         -- Height restored after fullscreen.
+        full_screen         bool        -- Whether this frame is currently
+                                        --     fullscreen.
+        resizable           bool        -- Whether user-driven resize is
+                                        --     allowed.
+        gl_context          GLXContext  -- GLX context used for accelerated
+                                        --     pixel presentation.
+        gl_texture          GLuint      -- Texture used for pixel presentation.
+    }
+
+    -- Releases GLX resources attached to a frame record.
+    frame_linux_gl_done :: fn (info: ^FrameInfo) {
+        on info.platform_info.display == nil ||
+            info.platform_info.gl_context == nil => return
+
+        on info.platform_info.gl_texture != 0 && info.platform_info.window != 0 => {
+            _ := glXMakeCurrent(info.platform_info.display,
+                                info.platform_info.window.as(GLXDrawable),
+                                info.platform_info.gl_context)
+            glDeleteTextures(1, ^(info.platform_info.gl_texture))
+            info.platform_info.gl_texture = 0
+        }
+
+        _ := glXMakeCurrent(info.platform_info.display, 0.as(GLXDrawable), nil)
+        glXDestroyContext(info.platform_info.display,
+                          info.platform_info.gl_context)
+        info.platform_info.gl_context = nil
     }
 
     -- Destroys native X11 resources associated with a frame record.
     frame_linux_destroy_info :: fn (info: ^FrameInfo) {
+        frame_linux_gl_done(info)
+
         on info.platform_info.display != nil && info.platform_info.window != 0 => {
             _ := XDestroyWindow(info.platform_info.display,
                                 info.platform_info.window)
@@ -497,6 +522,8 @@ on "linux" {
         info.platform_info.frame_extents = 0
         info.platform_info.full_screen = no
         info.platform_info.resizable = no
+        info.platform_info.gl_context = nil
+        info.platform_info.gl_texture = 0
     }
 
     -- Marks a public frame and its platform record as closed.
@@ -892,6 +919,8 @@ on "linux" {
     frame_linux_update_snapshot :: fn (_system : ^FrameSystem,
                                        frame   : ^Frame,
                                        info    : ^FrameInfo) {
+        on info.platform_info.window == 0 => return
+
         root         : XWindow
         x            : i32
         y            : i32
@@ -954,6 +983,7 @@ on "linux" {
             }
             X_EVENT_DESTROY_NOTIFY => {
                 info.events.push(FrameEvent.Closed)
+                info.platform_info.window = 0
             }
         }
     }
@@ -1064,23 +1094,138 @@ on "linux" {
         _ := XFlush(info.platform_info.display)
     }
 
-    frame_present_pixels_impl :: fn (system : ^FrameSystem,
-                                     frame  : ^Frame,
-                                     buffer : FramePixelBuffer) {
-        on frame.id == CLOSED_FRAME ||
-            buffer.width == 0 ||
-            buffer.height == 0 ||
-            buffer.stride == 0 ||
-            buffer.pixels.count == 0 => return
+    -- Creates the GLX context and texture used for accelerated pixel
+    -- presentation. Returns no when the platform cannot provide GL for this
+    -- window so the XImage fallback can be used.
+    frame_linux_gl_init :: fn (info: ^FrameInfo) -> bool {
+        on info.platform_info.gl_context != nil => return yes
+        on info.platform_info.display == nil ||
+            info.platform_info.window == 0 => return no
 
-        info := frame_system_find_info(system, frame.id)
-        on info == nil ||
-            info.platform_info.display == nil ||
-            info.platform_info.window == 0 => return
+        screen := XDefaultScreen(info.platform_info.display)
+        depth := XDefaultDepth(info.platform_info.display, screen)
+        visual_info : XVisualInfo
+        matched := XMatchVisualInfo(info.platform_info.display,
+                                    screen,
+                                    depth,
+                                    X_VISUAL_CLASS_TRUE_COLOR,
+                                    ^visual_info)
+        on matched == 0 => return no
 
-        required_pixels := buffer.stride.as(usize) * buffer.height.as(usize)
-        on buffer.pixels.count < required_pixels => return
+        context := glXCreateContext(info.platform_info.display,
+                                    ^visual_info,
+                                    nil,
+                                    GL_TRUE.as(i32))
+        on context == nil => return no
 
+        made_current := glXMakeCurrent(info.platform_info.display,
+                                       info.platform_info.window.as(GLXDrawable),
+                                       context)
+        on made_current == 0 => {
+            glXDestroyContext(info.platform_info.display, context)
+            return no
+        }
+
+        texture : GLuint
+        glGenTextures(1, ^texture)
+        on texture == 0 => {
+            _ := glXMakeCurrent(info.platform_info.display,
+                                0.as(GLXDrawable),
+                                nil)
+            glXDestroyContext(info.platform_info.display, context)
+            return no
+        }
+
+        glBindTexture(GL_TEXTURE_2D, texture)
+        glTexParameteri(GL_TEXTURE_2D,
+                        GL_TEXTURE_MIN_FILTER,
+                        GL_NEAREST.as(GLint))
+        glTexParameteri(GL_TEXTURE_2D,
+                        GL_TEXTURE_MAG_FILTER,
+                        GL_NEAREST.as(GLint))
+        glTexParameteri(GL_TEXTURE_2D,
+                        GL_TEXTURE_WRAP_S,
+                        GL_CLAMP_TO_EDGE.as(GLint))
+        glTexParameteri(GL_TEXTURE_2D,
+                        GL_TEXTURE_WRAP_T,
+                        GL_CLAMP_TO_EDGE.as(GLint))
+
+        info.platform_info.gl_context = context
+        info.platform_info.gl_texture = texture
+        return yes
+    }
+
+    -- Presents a packed pixel buffer through an OpenGL texture when GLX is
+    -- available for this window.
+    frame_linux_present_pixels_gl :: fn (info   : ^FrameInfo,
+                                         frame  : ^Frame,
+                                         buffer : FramePixelBuffer) -> bool {
+        on !frame_linux_gl_init(info) => return no
+
+        made_current := glXMakeCurrent(info.platform_info.display,
+                                       info.platform_info.window.as(GLXDrawable),
+                                       info.platform_info.gl_context)
+        on made_current == 0 => return no
+
+        glViewport(0, 0, frame.width.as(GLsizei), frame.height.as(GLsizei))
+        glDisable(GL_DEPTH_TEST)
+        glClearColor(0.0.as(GLfloat),
+                     0.0.as(GLfloat),
+                     0.0.as(GLfloat),
+                     1.0.as(GLfloat))
+        glClear(GL_COLOR_BUFFER_BIT)
+
+        glMatrixMode(GL_PROJECTION)
+        glLoadIdentity()
+        glOrtho(0.0.as(GLdouble),
+                frame.width.as(GLdouble),
+                frame.height.as(GLdouble),
+                0.0.as(GLdouble),
+                (-1.0).as(GLdouble),
+                1.0.as(GLdouble))
+        glMatrixMode(GL_MODELVIEW)
+        glLoadIdentity()
+
+        glEnable(GL_TEXTURE_2D)
+        glBindTexture(GL_TEXTURE_2D, info.platform_info.gl_texture)
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 4)
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, buffer.stride.as(GLint))
+        glTexImage2D(GL_TEXTURE_2D,
+                     0,
+                     GL_RGBA.as(GLint),
+                     buffer.width.as(GLsizei),
+                     buffer.height.as(GLsizei),
+                     0,
+                     GL_BGRA,
+                     GL_UNSIGNED_BYTE,
+                     buffer.pixels.data.as(^void))
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, 0)
+
+        x0 := buffer.x.as(GLfloat)
+        y0 := buffer.y.as(GLfloat)
+        x1 := (buffer.x.as(u32) + buffer.width.as(u32)).as(GLfloat)
+        y1 := (buffer.y.as(u32) + buffer.height.as(u32)).as(GLfloat)
+
+        glBegin(GL_QUADS)
+        glTexCoord2f(0.0.as(GLfloat), 0.0.as(GLfloat))
+        glVertex2f(x0, y0)
+        glTexCoord2f(1.0.as(GLfloat), 0.0.as(GLfloat))
+        glVertex2f(x1, y0)
+        glTexCoord2f(1.0.as(GLfloat), 1.0.as(GLfloat))
+        glVertex2f(x1, y1)
+        glTexCoord2f(0.0.as(GLfloat), 1.0.as(GLfloat))
+        glVertex2f(x0, y1)
+        glEnd()
+
+        glXSwapBuffers(info.platform_info.display,
+                       info.platform_info.window.as(GLXDrawable))
+        return yes
+    }
+
+    -- Presents a packed pixel buffer through XImage when accelerated
+    -- presentation is unavailable.
+    frame_linux_present_pixels_ximage :: fn (info   : ^FrameInfo,
+                                             buffer : FramePixelBuffer) {
         gc := XCreateGC(info.platform_info.display,
                         info.platform_info.window,
                         0,
@@ -1116,6 +1261,27 @@ on "linux" {
         image.data = nil
         _ := XDestroyImage(image)
         _ := XFlush(info.platform_info.display)
+    }
+
+    frame_present_pixels_impl :: fn (system : ^FrameSystem,
+                                     frame  : ^Frame,
+                                     buffer : FramePixelBuffer) {
+        on frame.id == CLOSED_FRAME ||
+            buffer.width == 0 ||
+            buffer.height == 0 ||
+            buffer.stride == 0 ||
+            buffer.pixels.count == 0 => return
+
+        info := frame_system_find_info(system, frame.id)
+        on info == nil ||
+            info.platform_info.display == nil ||
+            info.platform_info.window == 0 => return
+
+        required_pixels := buffer.stride.as(usize) * buffer.height.as(usize)
+        on buffer.pixels.count < required_pixels => return
+
+        on frame_linux_present_pixels_gl(info, frame, buffer) => return
+        frame_linux_present_pixels_ximage(info, buffer)
     }
 
 }

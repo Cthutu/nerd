@@ -30,6 +30,9 @@ pub XULong :: u64
 -- Xlib key symbol value.
 pub XKeySym :: u64
 
+-- Xlib visual identifier.
+pub XVisualID :: XULong
+
 -- Opaque Xlib graphics context handle.
 pub XGC :: ^void
 
@@ -64,6 +67,8 @@ pub X_NET_WM_STATE_REMOVE :: 0  -- EWMH request to remove a window state.
 pub X_NET_WM_STATE_ADD    :: 1  -- EWMH request to add a window state.
 
 pub X_IMAGE_FORMAT_Z_PIXMAP :: 2  -- Xlib `ZPixmap` image format.
+
+pub X_VISUAL_CLASS_TRUE_COLOR :: 4  -- Xlib `TrueColor` visual class.
 
 pub X_SIZE_HINT_P_MIN_SIZE :: 16  -- Xlib `PMinSize` normal-size hint flag.
 pub X_SIZE_HINT_P_MAX_SIZE :: 32  -- Xlib `PMaxSize` normal-size hint flag.
@@ -204,12 +209,31 @@ pub XSizeHints :: plex #c {
     win_gravity  i32
 }
 
+-- Xlib visual information returned by `XMatchVisualInfo`.
+pub XVisualInfo :: plex #c {
+    visual        XVisual
+    visualid      XVisualID
+    screen        i32
+    depth         i32
+    class         i32
+    red_mask      XULong
+    green_mask    XULong
+    blue_mask     XULong
+    colormap_size i32
+    bits_per_rgb  i32
+}
+
 ffi "X11" {
     pub XOpenDisplay          (display_name: ^i8) -> XDisplay
     pub XCloseDisplay         (display: XDisplay) -> i32
     pub XDefaultScreen        (display: XDisplay) -> i32
     pub XDefaultDepth         (display: XDisplay, screen_number: i32) -> i32
     pub XDefaultVisual        (display: XDisplay, screen_number: i32) -> XVisual
+    pub XMatchVisualInfo      (display      : XDisplay,
+                               screen       : i32,
+                               depth        : i32,
+                               class        : i32,
+                               vinfo_return : ^XVisualInfo) -> XStatus
     pub XRootWindow           (display: XDisplay, screen_number: i32) -> XWindow
     pub XBlackPixel           (display: XDisplay, screen_number: i32) -> u64
     pub XWhitePixel           (display: XDisplay, screen_number: i32) -> u64

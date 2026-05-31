@@ -13903,6 +13903,22 @@ sema_node_is_addressable(const Ast* ast, Sema* sema, u32 node_index)
                    sema->types[target_type].kind == STK_DynamicArray ||
                    sema->types[target_type].kind == STK_String;
         }
+    case AK_Field:
+    case AK_TupleField:
+        {
+            u32 target_type = node->a < array_count(sema->node_type_indices)
+                                  ? sema->node_type_indices[node->a]
+                                  : sema_no_type();
+            if (target_type != sema_no_type() &&
+                target_type < array_count(sema->types) &&
+                (sema->types[target_type].kind == STK_Pointer ||
+                 sema->types[target_type].kind == STK_Box)) {
+                return true;
+            }
+            return sema_node_is_addressable(ast, sema, node->a);
+        }
+    case AK_Deref:
+        return true;
     default:
         return false;
     }

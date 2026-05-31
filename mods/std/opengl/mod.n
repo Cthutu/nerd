@@ -1,0 +1,18 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Provides the initial OpenGL surface exposed by the standard library. The
+-- current Linux implementation re-exports low-level GLX/OpenGL declarations
+-- while higher-level frame-owned context management is being developed.
+
+on "linux" {
+
+    pub use os.linux.glx
+
+}
+
+on "windows" {
+
+
+}

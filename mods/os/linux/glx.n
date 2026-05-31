@@ -1,0 +1,114 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Provides Linux GLX and OpenGL bindings used by higher-level frame and
+-- graphics modules. These declarations intentionally stay close to the native C
+-- APIs.
+
+use os.linux.x11
+
+-- Opaque GLX rendering context handle.
+pub GLXContext :: ^void
+
+-- GLX drawable handle. The current frame backend renders directly to X11
+-- windows.
+pub GLXDrawable :: XWindow
+
+-- OpenGL enum value.
+pub GLenum :: u32
+
+-- OpenGL boolean value.
+pub GLboolean :: u8
+
+-- OpenGL signed integer value.
+pub GLint :: i32
+
+-- OpenGL unsigned integer value.
+pub GLuint :: u32
+
+-- OpenGL size value.
+pub GLsizei :: i32
+
+-- OpenGL single-precision floating-point value.
+pub GLfloat :: f32
+
+-- OpenGL double-precision floating-point value.
+pub GLdouble :: f64
+
+-- OpenGL bitfield value.
+pub GLbitfield :: u32
+
+pub GL_FALSE :: 0  -- OpenGL false value.
+pub GL_TRUE  :: 1  -- OpenGL true value.
+
+pub GL_COLOR_BUFFER_BIT :: 0x00004000  -- Clears the colour buffer.
+
+pub GL_TEXTURE_2D :: 0x0de1  -- Two-dimensional texture target.
+pub GL_QUADS      :: 0x0007  -- Four-vertex primitive.
+
+pub GL_PROJECTION :: 0x1701  -- Projection matrix stack.
+pub GL_MODELVIEW  :: 0x1700  -- Model-view matrix stack.
+
+pub GL_DEPTH_TEST :: 0x0b71  -- Depth-test capability.
+
+pub GL_TEXTURE_MIN_FILTER :: 0x2801  -- Texture minification filter.
+pub GL_TEXTURE_MAG_FILTER :: 0x2800  -- Texture magnification filter.
+pub GL_TEXTURE_WRAP_S     :: 0x2802  -- Texture horizontal wrap mode.
+pub GL_TEXTURE_WRAP_T     :: 0x2803  -- Texture vertical wrap mode.
+
+pub GL_NEAREST       :: 0x2600  -- Nearest-neighbour sampling.
+pub GL_CLAMP_TO_EDGE :: 0x812f  -- Clamps texture coordinates to edge texels.
+
+pub GL_RGBA          :: 0x1908  -- RGBA pixel format.
+pub GL_BGRA          :: 0x80e1  -- BGRA pixel format.
+pub GL_UNSIGNED_BYTE :: 0x1401  -- Unsigned byte component type.
+
+pub GL_UNPACK_ALIGNMENT  :: 0x0cf5  -- Pixel row byte alignment.
+pub GL_UNPACK_ROW_LENGTH :: 0x0cf2  -- Source row length in pixels.
+
+ffi "GL" {
+    pub glXCreateContext  (display    : XDisplay,
+                           visual     : ^XVisualInfo,
+                           share_list : GLXContext,
+                           direct     : i32) -> GLXContext
+    pub glXMakeCurrent    (display  : XDisplay,
+                           drawable : GLXDrawable,
+                           context  : GLXContext) -> i32
+    pub glXDestroyContext (display: XDisplay, context: GLXContext)
+    pub glXSwapBuffers    (display: XDisplay, drawable: GLXDrawable)
+    pub glViewport        (x: GLint, y: GLint, width: GLsizei, height: GLsizei)
+    pub glDisable         (cap: GLenum)
+    pub glClearColor      (red   : GLfloat,
+                           green : GLfloat,
+                           blue  : GLfloat,
+                           alpha : GLfloat)
+    pub glClear           (mask: GLbitfield)
+    pub glMatrixMode      (mode: GLenum)
+    pub glLoadIdentity    ()
+    pub glOrtho           (left   : GLdouble,
+                           right  : GLdouble,
+                           bottom : GLdouble,
+                           top    : GLdouble,
+                           near   : GLdouble,
+                           far    : GLdouble)
+    pub glEnable          (cap: GLenum)
+    pub glGenTextures     (count: GLsizei, textures: ^GLuint)
+    pub glDeleteTextures  (count: GLsizei, textures: ^GLuint)
+    pub glBindTexture     (target: GLenum, texture: GLuint)
+    pub glTexParameteri   (target: GLenum, name: GLenum, value: GLint)
+    pub glPixelStorei     (name: GLenum, value: GLint)
+    pub glTexImage2D      (target          : GLenum,
+                           level           : GLint,
+                           internal_format : GLint,
+                           width           : GLsizei,
+                           height          : GLsizei,
+                           border          : GLint,
+                           format          : GLenum,
+                           type            : GLenum,
+                           pixels          : ^void)
+    pub glBegin           (mode: GLenum)
+    pub glEnd             ()
+    pub glTexCoord2f      (s: GLfloat, t: GLfloat)
+    pub glVertex2f        (x: GLfloat, y: GLfloat)
+}
