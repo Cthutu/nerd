@@ -1,0 +1,78 @@
+use std.frame
+use std.gfx
+use std.time
+
+pixel_colour :: fn (x: u32, y: u32, frame: u32) -> u32 {
+    wave := ((x + frame) ^ (y * 3 + frame * 2)) & 31
+    red := ((x * 4 + frame * 3) & 255) << 16
+    green := ((y * 5 + wave * 8) & 255) << 8
+    blue := ((x * y + frame * 7) & 255)
+    return 0xff000000 | red | green | blue
+}
+
+pixels_draw :: fn (layer: ^PixelLayer, frame: u32) {
+    for y: u32 = 0; y < layer.pixel_height().as(u32); y += 1 {
+        for x: u32 = 0; x < layer.pixel_width().as(u32); x += 1 {
+            layer.put(x, y, pixel_colour(x, y, frame))
+        }
+    }
+
+    bar_width := (frame % layer.pixel_width().as(u32)) + 1
+    layer.fill(PixelRect { x: 0 y: 0 width: bar_width height: 3 }, 0xffffffff)
+}
+
+main :: fn () {
+    frame_system := FrameSystem.init()
+    frame := Frame {
+        id          : NEW_FRAME
+        width       : 640
+        height      : 480
+        title       : "Pixels"
+        full_screen : no
+    }
+
+    frame_system.apply(^frame)
+
+    gfx := GfxSystem.init()
+    defer gfx.done()
+
+    handle := gfx.pixel_layer(^frame,
+                              PixelLayerMode.FixedSizeAutoScale { width: 160 height: 120 })
+    tick : u32 = 0
+
+    for frame_system.loop() {
+        frame_system.update(^frame)
+
+        for event := frame_system.poll(^frame); event != FrameEvent.None; event = frame_system.poll(^frame) {
+            on event {
+                None => {
+                }
+                Closed => {
+                }
+                KeyPress { scan_code } => {
+                    on scan_code {
+                        Escape  => frame_system.destroy(^frame)
+                        Q       => frame_system.destroy(^frame)
+                        Enter => {
+                            on frame_system.is_alt_down() => {
+                                frame.full_screen = !frame.full_screen
+                                frame_system.apply(^frame)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        layer := gfx.pixel(handle)
+        on layer != nil => {
+            pixels_draw(layer, tick)
+            gfx.render(^frame_system, ^frame)
+        }
+
+        tick += 1
+        sleep_ms(16)
+    }
+
+    frame_system.destroy(^frame)
+}

@@ -264,6 +264,19 @@ internal u32 hir_decl_binding(const Hir* hir, u32 decl_index)
                : hir_no_index();
 }
 
+internal u32 hir_find_decl_by_symbol(const Sema* sema, u32 symbol_handle)
+{
+    if (symbol_handle == U32_MAX) {
+        return sema_no_decl();
+    }
+    for (u32 i = 0; i < array_count(sema->decls); ++i) {
+        if (sema->decls[i].symbol_handle == symbol_handle) {
+            return i;
+        }
+    }
+    return sema_no_decl();
+}
+
 internal void hir_set_decl_binding(Hir* hir, u32 decl_index, u32 binding_index)
 {
     if (decl_index < array_count(hir->decl_binding_indices)) {
@@ -1720,6 +1733,75 @@ internal u32 hir_lower_expr(Hir*         hir,
                                });
                 }
 
+                u32 first_arg = (u32)array_count(hir->call_args);
+                for (u32 i = 0; i < array_count(lowered_args); ++i) {
+                    array_push(hir->call_args, lowered_args[i]);
+                }
+                u32 arg_count = (u32)array_count(lowered_args);
+                array_free(lowered_args);
+
+                return hir_add_expr(
+                    hir,
+                    (HirExpr){
+                        .kind              = HIR_EXPR_Call,
+                        .type_index        = hir_node_type(sema, node_index),
+                        .symbol_handle     = U32_MAX,
+                        .local_index       = sema_no_local(),
+                        .callee_expr_index = callee_expr_index,
+                        .first_arg         = first_arg,
+                        .arg_count         = arg_count,
+                        .source_line =
+                            hir_node_source_line(lexer, ast, node_index),
+                        .source_path = lexer->source.source_path,
+                    });
+            }
+
+            u32 lowered_symbol =
+                node->a < array_count(sema->node_lowered_symbol_handles)
+                    ? sema->node_lowered_symbol_handles[node->a]
+                    : U32_MAX;
+            u32 decl_index = hir_find_decl_by_symbol(sema, lowered_symbol);
+            if (node->a < array_count(ast->nodes) &&
+                ast->nodes[node->a].kind == AK_Field &&
+                decl_index != sema_no_decl()) {
+                u32 binding_index     = hir_decl_binding(hir, decl_index);
+                u32 callee_type       = hir_node_type(sema, node->a);
+                u32 callee_expr_index = hir_add_expr(
+                    hir,
+                    (HirExpr){
+                        .kind          = HIR_EXPR_LocalRef,
+                        .type_index    = callee_type,
+                        .symbol_handle = lowered_symbol,
+                        .local_index   = sema_no_local(),
+                        .ref_kind      = binding_index != hir_no_index()
+                                             ? HIR_REF_Binding
+                                             : HIR_REF_Decl,
+                        .ref_index     = binding_index != hir_no_index()
+                                             ? binding_index
+                                             : decl_index,
+                    });
+
+                const AstCallInfo* call        = &ast->calls[node->b];
+                Array(HirCallArg) lowered_args = NULL;
+                for (u32 i = 0; i < call->arg_count; ++i) {
+                    u32 arg_node_index = ast->call_args[call->first_arg + i];
+                    u32 arg_symbol     = U32_MAX;
+                    arg_node_index     = hir_call_arg_value_node(
+                        ast, arg_node_index, &arg_symbol);
+                    u32 expected_arg_type =
+                        hir_function_param_type(sema, callee_type, i);
+                    array_push(lowered_args,
+                               (HirCallArg){
+                                   .expr_index = hir_lower_expr_with_expected(
+                                       hir,
+                                       lexer,
+                                       ast,
+                                       sema,
+                                       arg_node_index,
+                                       expected_arg_type),
+                                   .symbol_handle = arg_symbol,
+                               });
+                }
                 u32 first_arg = (u32)array_count(hir->call_args);
                 for (u32 i = 0; i < array_count(lowered_args); ++i) {
                     array_push(hir->call_args, lowered_args[i]);
