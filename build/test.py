@@ -164,26 +164,33 @@ def normalized_returncode(code: int) -> int:
 
 
 def command_artifact_path(input_path: pathlib.Path, cli_args: list[str]) -> pathlib.Path:
+    explicit_output: pathlib.Path | None = None
     if "--output" in cli_args:
         index = cli_args.index("--output")
         if index + 1 < len(cli_args):
-            return input_path.parent / cli_args[index + 1]
+            explicit_output = input_path.parent / cli_args[index + 1]
     if "-o" in cli_args:
         index = cli_args.index("-o")
         if index + 1 < len(cli_args):
-            return input_path.parent / cli_args[index + 1]
+            explicit_output = input_path.parent / cli_args[index + 1]
 
     stem = input_path.with_suffix("")
     if "--obj" in cli_args:
-        return pathlib.Path(str(stem) + (".obj" if os.name == "nt" else ".o"))
+        return explicit_output or pathlib.Path(str(stem) + (".obj" if os.name == "nt" else ".o"))
     if "--lib" in cli_args:
-        return pathlib.Path(str(stem) + (".lib" if os.name == "nt" else ".a"))
+        return explicit_output or pathlib.Path(str(stem) + (".lib" if os.name == "nt" else ".a"))
     if "--dll" in cli_args:
+        if explicit_output:
+            return explicit_output
         if os.name == "nt":
             return pathlib.Path(str(stem) + ".dll")
         if sys.platform == "darwin":
             return pathlib.Path(str(stem) + ".dylib")
         return pathlib.Path(str(stem) + ".so")
+    if explicit_output:
+        if os.name == "nt" and explicit_output.suffix.lower() != ".exe":
+            return explicit_output.with_suffix(explicit_output.suffix + ".exe")
+        return explicit_output
     return stem.with_suffix(".exe") if os.name == "nt" else stem
 
 
@@ -1012,6 +1019,8 @@ def test_command(path: pathlib.Path) -> list[Failure]:
         else:
             input_path.unlink(missing_ok=True)
             cleanup_generated_outputs(path)
+            if run_mode.startswith("build-artifact"):
+                command_artifact_path(input_path, cli_args).unlink(missing_ok=True)
         executable.unlink(missing_ok=True)
         debug_symbols.unlink(missing_ok=True)
     return failures

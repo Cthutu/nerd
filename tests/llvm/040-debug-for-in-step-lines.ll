@@ -61,7 +61,7 @@ declare void @llvm.dbg.declare(metadata, metadata, metadata)
 !llvm.module.flags = !{!3, !4}
 
 !0 = distinct !DICompileUnit(language: DW_LANG_C, file: !1, producer: "Nerd", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, enums: !2)
-!1 = !DIFile(filename: "040-debug-for-in-step-lines.input.n", directory: "/home/matt/nerd/tests/llvm")
+!1 = !DIFile(filename: "040-debug-for-in-step-lines.input.n", directory: "__REPO__/tests/llvm")
 !2 = !{}
 !5 = !DIExpression()
 !3 = !{i32 2, !"Debug Info Version", i32 3}

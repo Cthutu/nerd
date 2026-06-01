@@ -73,8 +73,6 @@ declare void @to_string$f64(ptr, double)
 @$locs = internal global { ptr, i64 } zeroinitializer
 
 define void @m0.init() {
-  %t0 = insertvalue { { ptr, i64 }, { ptr, i64 } } poison, { ptr, i64 } { ptr @.str.m0.0, i64 1 }, 0
-  %t1 = insertvalue { { ptr, i64 }, { ptr, i64 } } %t0, { ptr, i64 } { ptr @.str.m0.1, i64 1 }, 1
   store { ptr, i64 } { ptr @.slice.const.m0.3, i64 1 }, ptr @$locs
   ret void
 }

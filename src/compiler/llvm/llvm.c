@@ -1168,17 +1168,6 @@ internal bool llvm_import_source_function(const Sema*      sema,
         sema, import_lexer, import, out_hir, out_function_index, 0);
 }
 
-internal const Lexer* llvm_program_lexer_for_hir(const Sema*  sema,
-                                                 const Hir*   hir,
-                                                 const Lexer* fallback)
-{
-    if (sema == NULL || sema->program == NULL || hir == NULL ||
-        hir->current_module_index >= array_count(sema->program->modules)) {
-        return fallback;
-    }
-    return &sema->program->modules[hir->current_module_index].front_end.lexer;
-}
-
 internal bool llvm_import_source_generic_function(const Sema*      sema,
                                                   const Lexer*     lexer,
                                                   const HirImport* import,
@@ -1535,21 +1524,6 @@ internal string llvm_import_name_string(const Sema*      sema,
                         &sema->program->modules[module_index];
                     const Hir*   hir    = &module->front_end.hir;
                     const Lexer* lexer0 = &module->front_end.lexer;
-                    const Sema*  sema0  = &module->front_end.sema;
-                    for (u32 function_index = 0;
-                         function_index < array_count(hir->functions);
-                         ++function_index) {
-                        const HirFunction* function =
-                            &hir->functions[function_index];
-                        u32 symbol =
-                            llvm_function_decl_symbol_handle(sema0, function);
-                        if (symbol != U32_MAX &&
-                            string_eq(wanted_name,
-                                      lex_symbol(lexer0, symbol))) {
-                            return llvm_function_name_string(
-                                hir, lexer0, arena, function_index);
-                        }
-                    }
                     for (u32 i = 0; i < array_count(hir->imports); ++i) {
                         const HirImport* candidate = &hir->imports[i];
                         if (candidate->ffi_symbol_handle == U32_MAX ||
@@ -2015,7 +1989,8 @@ llvm_eval_constant_float_expr(const Hir* hir, u32 expr_index, f64* out)
         if (expr->unary_op != HIR_UNARY_Negate) {
             return false;
         }
-        if (!llvm_eval_constant_float_expr(hir, expr->operand_expr_index, out)) {
+        if (!llvm_eval_constant_float_expr(
+                hir, expr->operand_expr_index, out)) {
             return false;
         }
         *out = -*out;
@@ -7036,21 +7011,6 @@ internal bool llvm_callee_name(LlvmFunctionContext* ctx,
         if (import != NULL) {
             const Hir* source_hir     = NULL;
             u32        function_index = U32_MAX;
-            if (llvm_import_source_function(ctx->sema,
-                                            ctx->lexer,
-                                            import,
-                                            &source_hir,
-                                            &function_index) &&
-                source_hir != NULL &&
-                function_index < array_count(source_hir->functions) &&
-                source_hir->functions[function_index].kind !=
-                    HIR_FUNCTION_Ffi) {
-                const Lexer* source_lexer = llvm_program_lexer_for_hir(
-                    ctx->sema, source_hir, ctx->lexer);
-                *out = llvm_function_name_string(
-                    source_hir, source_lexer, ctx->arena, function_index);
-                return true;
-            }
             if (llvm_import_source_generic_function(ctx->sema,
                                                     ctx->lexer,
                                                     import,
@@ -7129,21 +7089,6 @@ internal bool llvm_callee_name(LlvmFunctionContext* ctx,
             }
             const Hir* source_hir     = NULL;
             u32        function_index = U32_MAX;
-            if (llvm_import_source_function(ctx->sema,
-                                            ctx->lexer,
-                                            import,
-                                            &source_hir,
-                                            &function_index) &&
-                source_hir != NULL &&
-                function_index < array_count(source_hir->functions) &&
-                source_hir->functions[function_index].kind !=
-                    HIR_FUNCTION_Ffi) {
-                const Lexer* source_lexer = llvm_program_lexer_for_hir(
-                    ctx->sema, source_hir, ctx->lexer);
-                *out = llvm_function_name_string(
-                    source_hir, source_lexer, ctx->arena, function_index);
-                return true;
-            }
             if (llvm_import_source_generic_function(ctx->sema,
                                                     ctx->lexer,
                                                     import,
@@ -11667,8 +11612,11 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 for (u32 i = 0; i < expr->arg_count; ++i) {
                     const HirCallArg* arg =
                         &ctx->hir->call_args[expr->first_arg + i];
+                    bool old_discard_expr_value = ctx->discard_expr_value;
+                    ctx->discard_expr_value     = false;
                     LlvmValue value =
                         llvm_emit_expr(ctx, function, arg->expr_index);
+                    ctx->discard_expr_value = old_discard_expr_value;
                     if (!value.ok) {
                         array_free(args);
                         return (LlvmValue){0};
@@ -11864,8 +11812,11 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             for (u32 i = 0; i < expr->arg_count; ++i) {
                 const HirCallArg* arg =
                     &ctx->hir->call_args[expr->first_arg + i];
+                bool old_discard_expr_value = ctx->discard_expr_value;
+                ctx->discard_expr_value     = false;
                 LlvmValue value =
                     llvm_emit_expr(ctx, function, arg->expr_index);
+                ctx->discard_expr_value = old_discard_expr_value;
                 if (!value.ok) {
                     array_free(args);
                     return (LlvmValue){0};

@@ -84,7 +84,6 @@ declare void @$prn({ ptr, i64 })
 @$locs = internal global { ptr, i64 } zeroinitializer
 
 define void @m0.init() {
-  %t0 = insertvalue { { ptr, i64 } } poison, { ptr, i64 } { ptr @.str.m0.0, i64 5 }, 0
   store { ptr, i64 } { ptr @.slice.const.m0.2, i64 1 }, ptr @$locs
   ret void
 }
