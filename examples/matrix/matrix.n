@@ -22,11 +22,11 @@ matrix_glyph :: fn (x: u32, y: u32, frame_number: u64) -> u32 {
     value ^= value >> 7
     value ^= value << 11
     return on (value % 6) {
-        0     => '0'.as(u32)
-        1     => '1'.as(u32)
-        2     => (('a'.as(u64) + (value % 26))).as(u32)
-        3     => (('A'.as(u64) + (value % 26))).as(u32)
-        4     => (('0'.as(u64) + (value % 10))).as(u32)
+        0     => '0'
+        1     => '1'
+        2     => (('a' + (value % 26))).as(u32)
+        3     => (('A' + (value % 26))).as(u32)
+        4     => (('0' + (value % 10))).as(u32)
         else  => (33 + (value % 15)).as(u32)
     }
 }
@@ -86,7 +86,7 @@ matrix_draw :: fn (width: u32, height: u32) {
                       0,
                       width,
                       height,
-                      ' '.as(u32),
+                      ' ',
                       matrix_green_faint,
                       rgb(0, 0, 0))
 

@@ -17886,6 +17886,12 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                  sema->types[sema->types[target_type].first_param_type].kind ==
                      STK_Void);
 
+            bool pointer_pointer_cast =
+                source_type != sema_no_type() &&
+                target_type != sema_no_type() &&
+                sema->types[source_type].kind == STK_Pointer &&
+                sema->types[target_type].kind == STK_Pointer;
+
             bool pointer_function_cast =
                 source_type != sema_no_type() &&
                 target_type != sema_no_type() &&
@@ -17898,7 +17904,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                   untyped_integer_pointer_cast ||
                   pointer_sized_integer_pointer_cast ||
                   pointer_pointer_sized_integer_cast || void_pointer_cast ||
-                  pointer_function_cast)) {
+                  pointer_pointer_cast || pointer_function_cast)) {
                 return error_0307_invalid_cast(
                     lexer->source,
                     sema_node_span(lexer, node),

@@ -28,8 +28,8 @@ global_event   : DebugEvent
 
 debugger_seed_globals :: fn () {
     global_counter = 41
-    global_cells.push(DebugCell { ch: 'G'.as(u32) ink: 1 paper: 2 flags: 3 })
-    global_cells.push(DebugCell { ch: 'H'.as(u32) ink: 4 paper: 5 flags: 6 })
+    global_cells.push(DebugCell { ch: 'G' ink: 1 paper: 2 flags: 3 })
+    global_cells.push(DebugCell { ch: 'H' ink: 4 paper: 5 flags: 6 })
     global_event = DebugEvent.Count(global_cells.count.as(i32))
 }
 
@@ -63,9 +63,9 @@ debugger_values :: fn (scale: i32) -> i32 {
     pair := ("east", 7)
 
     bytes : [..]u8
-    bytes.push('A'.as(u8))
-    bytes.push('B'.as(u8))
-    bytes.push('C'.as(u8))
+    bytes.push('A')
+    bytes.push('B')
+    bytes.push('C')
     byte_slice := bytes[..]
 
     numbers : [..]i32
@@ -76,9 +76,9 @@ debugger_values :: fn (scale: i32) -> i32 {
     tail_slice := numbers[1..]
 
     cells : [..]DebugCell
-    cells.push(DebugCell { ch: 'a'.as(u32) ink: 10 paper: 20 flags: 1 })
-    cells.push(DebugCell { ch: 'b'.as(u32) ink: 11 paper: 21 flags: 2 })
-    cells.push(DebugCell { ch: 'c'.as(u32) ink: 12 paper: 22 flags: 3 })
+    cells.push(DebugCell { ch: 'a' ink: 10 paper: 20 flags: 1 })
+    cells.push(DebugCell { ch: 'b' ink: 11 paper: 21 flags: 2 })
+    cells.push(DebugCell { ch: 'c' ink: 12 paper: 22 flags: 3 })
 
     none_event : DebugEvent = DebugEvent.None
     local_event := DebugEvent.Move(point)
