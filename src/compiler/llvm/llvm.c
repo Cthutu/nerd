@@ -1082,6 +1082,13 @@ internal string llvm_symbol_name_string(const Lexer* lexer,
     return sb_to_string(&sb);
 }
 
+internal bool llvm_string_starts_with(string value, cstr prefix)
+{
+    string prefix_string = s(prefix);
+    return value.count >= prefix_string.count &&
+           memcmp(value.data, prefix_string.data, prefix_string.count) == 0;
+}
+
 internal bool llvm_import_source_function_depth(const Sema*      sema,
                                                 const Lexer*     import_lexer,
                                                 const HirImport* import,
@@ -1099,33 +1106,39 @@ internal bool llvm_import_source_function_depth(const Sema*      sema,
     const Hir*        hir    = &module->front_end.hir;
     const Lexer*      source_lexer = &module->front_end.lexer;
     const Sema*       source_sema  = &module->front_end.sema;
-    string            wanted_name =
+    string            import_wanted_name =
         import->symbol_handle != U32_MAX && import_lexer != NULL
             ? lex_symbol(import_lexer, import->symbol_handle)
             : (string){0};
+    string source_wanted_name =
+        import->symbol_handle != U32_MAX
+            ? lex_symbol(source_lexer, import->symbol_handle)
+            : (string){0};
+    if (import->decl_index < array_count(source_sema->decls)) {
+        u32 decl_symbol = source_sema->decls[import->decl_index].symbol_handle;
+        if (decl_symbol != U32_MAX) {
+            source_wanted_name = lex_symbol(source_lexer, decl_symbol);
+        }
+    }
     for (u32 i = 0; i < array_count(hir->functions); ++i) {
         const HirFunction* function = &hir->functions[i];
-        u32                function_symbol =
-            llvm_function_decl_symbol_handle(source_sema, function);
-        bool symbol_matches =
-            wanted_name.count == 0 ||
-            (function_symbol != U32_MAX &&
-             string_eq(wanted_name, lex_symbol(source_lexer, function_symbol)));
-        if (function->decl_index == import->decl_index && symbol_matches) {
+        if (function->decl_index == import->decl_index) {
             *out_hir            = hir;
             *out_function_index = i;
             return true;
         }
     }
 
-    if (wanted_name.count > 0) {
+    if (import_wanted_name.count > 0 || source_wanted_name.count > 0) {
         for (u32 i = 0; i < array_count(hir->functions); ++i) {
             const HirFunction* function = &hir->functions[i];
             u32                function_symbol =
                 llvm_function_decl_symbol_handle(source_sema, function);
             if (function_symbol != U32_MAX &&
-                string_eq(wanted_name,
-                          lex_symbol(source_lexer, function_symbol))) {
+                (string_eq(import_wanted_name,
+                           lex_symbol(source_lexer, function_symbol)) ||
+                 string_eq(source_wanted_name,
+                           lex_symbol(source_lexer, function_symbol)))) {
                 *out_hir            = hir;
                 *out_function_index = i;
                 return true;
@@ -1136,8 +1149,12 @@ internal bool llvm_import_source_function_depth(const Sema*      sema,
     if (import->decl_index < array_count(source_sema->decls)) {
         u32 source_symbol =
             source_sema->decls[import->decl_index].symbol_handle;
-        if (wanted_name.count > 0 && source_symbol != U32_MAX &&
-            !string_eq(wanted_name, lex_symbol(source_lexer, source_symbol))) {
+        if ((import_wanted_name.count > 0 || source_wanted_name.count > 0) &&
+            source_symbol != U32_MAX &&
+            !string_eq(import_wanted_name,
+                       lex_symbol(source_lexer, source_symbol)) &&
+            !string_eq(source_wanted_name,
+                       lex_symbol(source_lexer, source_symbol))) {
             return false;
         }
         for (u32 i = 0; i < array_count(hir->bindings); ++i) {
@@ -1507,13 +1524,62 @@ internal string llvm_import_name_string(const Sema*      sema,
         string     wanted_name = import->symbol_handle != U32_MAX
                                      ? lex_symbol(lexer, import->symbol_handle)
                                      : (string){0};
-        if (llvm_import_source_function(
+        if (import->symbol_handle != U32_MAX && sema != NULL &&
+            sema->program != NULL &&
+            import->module_index < array_count(sema->program->modules)) {
+            const ModuleInfo* import_source_module =
+                &sema->program->modules[import->module_index];
+            const Lexer* import_source_lexer =
+                &import_source_module->front_end.lexer;
+            const Sema* import_source_sema =
+                &import_source_module->front_end.sema;
+            if (import->decl_index < array_count(import_source_sema->decls)) {
+                u32 decl_symbol =
+                    import_source_sema->decls[import->decl_index].symbol_handle;
+                if (decl_symbol != U32_MAX) {
+                    wanted_name = lex_symbol(import_source_lexer, decl_symbol);
+                }
+            } else {
+                string import_source_name =
+                    lex_symbol(import_source_lexer, import->symbol_handle);
+                if (llvm_string_starts_with(import_source_name, "__impl_") &&
+                    !llvm_string_starts_with(wanted_name, "__impl_")) {
+                    wanted_name = import_source_name;
+                }
+            }
+        }
+        bool source_import_found =
+            llvm_import_source_function(
                 sema, lexer, import, &source_hir, &function_index) &&
+            source_hir != NULL &&
+            function_index < array_count(source_hir->functions);
+        if (source_import_found && sema != NULL && sema->program != NULL &&
+            source_hir->current_module_index <
+                array_count(sema->program->modules)) {
+            const ModuleInfo* source_module =
+                &sema->program->modules[source_hir->current_module_index];
+            const Lexer*       source_lexer = &source_module->front_end.lexer;
+            const Sema*        source_sema  = &source_module->front_end.sema;
+            const HirFunction* source_function =
+                &source_hir->functions[function_index];
+            u32 source_symbol =
+                llvm_function_decl_symbol_handle(source_sema, source_function);
+            if (source_symbol == U32_MAX) {
+                source_symbol = llvm_function_method_symbol_handle(
+                    source_sema, source_function);
+            }
+            if (wanted_name.count == 0 && source_symbol != U32_MAX) {
+                wanted_name = lex_symbol(source_lexer, source_symbol);
+            }
+        }
+        if (source_import_found &&
             (llvm_program_function_symbol_conflicts(
                  sema, source_hir, function_index) ||
              llvm_root_exports_symbol(sema, wanted_name))) {
             llvm_append_generated_function_name(
                 &sb, source_hir, function_index);
+        } else if (source_import_found) {
+            llvm_append_symbol_name(&sb, wanted_name);
         } else {
             if (wanted_name.count > 0 && sema != NULL &&
                 sema->program != NULL) {

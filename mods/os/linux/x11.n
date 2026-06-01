@@ -354,4 +354,5 @@ ffi "X11" {
                                child_return  : ^XWindow) -> XBool
     pub XFree                 (data: ^void) -> i32
     pub XFlush                (display: XDisplay) -> i32
+    pub XSync                 (display: XDisplay, discard: XBool) -> i32
 }

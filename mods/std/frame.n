@@ -964,7 +964,7 @@ on "linux" {
         frame_linux_apply_resize_hints(frame_system_find_info(system, id),
         frame)
         frame_linux_apply_fullscreen(frame_system_find_info(system, id), frame)
-        _ := XFlush(display)
+        _ := XSync(display, X_FALSE)
     }
 
     -- Applies desired frame data to an existing X11 window.
@@ -1099,7 +1099,7 @@ on "linux" {
             i += 1
         }
 
-        return yes
+        return system.frames.count > 0
     }
 
     frame_update_impl :: fn (system: ^FrameSystem, frame: ^Frame) {
