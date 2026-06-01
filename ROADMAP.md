@@ -139,6 +139,58 @@ the roadmap before committing the implementation.
 
 ## Active Work
 
+### Frame, Graphics, And OpenGL Refactor Plan
+
+Separate window ownership, pixel presentation, and raw OpenGL binding concerns
+so the standard library has clear layering:
+
+- `std.frame` owns windows, events, frame lifecycle, fullscreen/windowed state,
+  keyboard/mouse input, and the platform-specific `FrameContext` handle.
+- `Frame` keeps only public frame state plus a weak link back to its
+  `FrameSystem`; live platform resources remain owned by the corresponding
+  internal `FrameInfo`.
+- `Frame.context()` returns `Result[FrameContext, FrameError]` and should be the
+  public bridge from a frame handle to platform resources. Invalid, closed, or
+  detached frames must fail explicitly.
+- `std.gfx` owns pixel-layer orchestration and pixel presentation policy. Move
+  the current pixel-buffer OpenGL upload, shader, texture, VAO/VBO, and
+  letterbox clearing code out of `std.frame` into `std.gfx`.
+- `std.opengl` owns the public OpenGL surface:
+  - portable GL aliases, constants, and command names
+  - platform command loading through `gl_init(^Frame)` and cleanup through
+    `gl_done(^Frame)`
+  - current-context and swap helpers that operate from `Frame.context()`
+- Raw platform bindings stay under `os.<platform>` and should mirror the
+  original OS APIs as directly as practical. Convenience wrappers belong in
+  `std.frame`, `std.gfx`, or `std.opengl`, not `os.<platform>`.
+- `std.frame` may create or expose the native graphics context needed by
+  `FrameContext`, but it should not contain renderer-specific shader or draw
+  code.
+- Examples should remain small users of the public modules:
+  - `pixels` and `pixels_fit` use `std.frame` plus `std.gfx`
+  - `triangle` uses `std.frame` plus `std.opengl`
+- While this refactor is in progress, keep the existing examples working on
+  Windows and Linux. Treat compiler bugs and invalid LLVM IR as higher priority
+  than library cleanup.
+
+Refactor sequence:
+
+- [x] Add `Frame.system`, `FrameContext`, `FrameError`, and `Frame.context()`.
+- [x] Change `std.opengl` helpers to accept `^Frame` and resolve context through
+  `Frame.context()`.
+- [ ] Move raw OpenGL command-pointer storage and loading out of `os.linux.glx`
+  and `os.windows.wgl` into `std.opengl`, leaving direct platform loader
+  bindings in `os.<platform>`.
+- [ ] Move pixel presentation shader/program/buffer/texture state from
+  `std.frame` into `std.gfx`.
+- [ ] Keep only platform window/context creation, event processing, and
+  lifecycle management in `std.frame`.
+- [ ] Add focused tests for invalid/closed `Frame.context()` results and command
+  loader reset behaviour where this can be checked without an interactive
+  desktop.
+- [ ] Update `docs/stdlib.md` once the public `std.frame`, `std.gfx`, and
+  `std.opengl` boundaries settle.
+
 ### Standard Library Expansion
 
 - Continue expanding the standard library only as the module/export model needs
