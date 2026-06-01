@@ -1475,10 +1475,10 @@ on "linux" {
 
         frame_width := frame.width.as(GLfloat)
         frame_height := frame.height.as(GLfloat)
-        x0 := (buffer.x.as(GLfloat) / frame_width) * 2.0.as(GLfloat) - 1.0.as(GLfloat)
-        y0 := 1.0.as(GLfloat) - (buffer.y.as(GLfloat) / frame_height) * 2.0.as(GLfloat)
-        x1 := ((buffer.x.as(u32) + buffer.draw_width.as(u32)).as(GLfloat) / frame_width) * 2.0.as(GLfloat) - 1.0.as(GLfloat)
-        y1 := 1.0.as(GLfloat) - (((buffer.y.as(u32) + buffer.draw_height.as(u32)).as(GLfloat) / frame_height) * 2.0.as(GLfloat))
+        x0 := (buffer.x.as(GLfloat) / frame_width) * 2.0 - 1.0
+        y0 := 1.0 - (buffer.y.as(GLfloat) / frame_height) * 2.0
+        x1 := ((buffer.x.as(u32) + buffer.draw_width.as(u32)).as(GLfloat) / frame_width) * 2.0 - 1.0
+        y1 := 1.0 - (((buffer.y.as(u32) + buffer.draw_height.as(u32)).as(GLfloat) / frame_height) * 2.0)
 
         vertices : [16]GLfloat
         vertices[0] = x0
