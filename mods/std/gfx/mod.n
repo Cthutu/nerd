@@ -7,6 +7,7 @@
 -- renderers can later upload the buffer to a nearest-filtered GPU texture.
 
 use std.frame
+use std.opengl
 
 -- A handle for a pixel layer owned by a `GfxSystem`.
 pub PixelLayerHandle :: plex {
@@ -56,6 +57,19 @@ pub PixelLayer :: plex {
 -- A graphics system that owns ordered layers for one or more frames.
 pub GfxSystem :: plex {
     pixel_layers [..]PixelLayer  -- Pixel layers in render order.
+    renderers    [..]GfxFrameRenderer
+}
+
+-- OpenGL presentation state owned by `std.gfx` for one frame.
+GfxFrameRenderer :: plex {
+    frame_id         u16
+    texture          GLuint
+    texture_width    u16
+    texture_height   u16
+    program          GLuint
+    vertex_buffer    GLuint
+    vertex_array     GLuint
+    sampler_location GLint
 }
 
 -- Clamps a `u32` size to the public `u16` frame dimension range.
@@ -159,6 +173,276 @@ gfx_pixel_layer_present_offset :: fn (frame : ^Frame,
     return (0, 0)
 }
 
+gfx_find_renderer :: fn (system: ^GfxSystem, frame_id: u16) -> ^GfxFrameRenderer {
+    for renderer in system.renderers {
+        on renderer.frame_id == frame_id => return renderer
+    }
+
+    renderer := GfxFrameRenderer {
+        frame_id
+        texture          : 0
+        texture_width    : 0
+        texture_height   : 0
+        program          : 0
+        vertex_buffer    : 0
+        vertex_array     : 0
+        sampler_location : -1
+    }
+    system.renderers.push(renderer)
+    return ^system.renderers[system.renderers.count - 1]
+}
+
+gfx_gl_compile_shader :: fn (type: GLenum, source: string) -> GLuint {
+    shader := glCreateShader(type)
+    on shader == 0 => return 0
+
+    source_ptr := source.data.as(^i8)
+    source_len := source.count.as(GLint)
+    glShaderSource(shader, 1, ^source_ptr, ^source_len)
+    glCompileShader(shader)
+
+    status : GLint
+    glGetShaderiv(shader, GL_COMPILE_STATUS, ^status)
+    on status == 0 => {
+        glDeleteShader(shader)
+        return 0
+    }
+
+    return shader
+}
+
+gfx_gl_create_pixel_program :: fn () -> GLuint {
+    vertex_source := """
+        #version 120
+        attribute vec2 position;
+        attribute vec2 texcoord;
+        varying vec2 v_texcoord;
+        void main() {
+            v_texcoord = texcoord;
+            gl_Position = vec4(position, 0.0, 1.0);
+        }
+        """
+
+    fragment_source := """
+        #version 120
+        uniform sampler2D pixels;
+        varying vec2 v_texcoord;
+        void main() {
+            gl_FragColor = texture2D(pixels, v_texcoord);
+        }
+        """
+
+    vertex_shader := gfx_gl_compile_shader(GL_VERTEX_SHADER, vertex_source)
+    on vertex_shader == 0 => return 0
+
+    fragment_shader := gfx_gl_compile_shader(GL_FRAGMENT_SHADER,
+                                             fragment_source)
+    on fragment_shader == 0 => {
+        glDeleteShader(vertex_shader)
+        return 0
+    }
+
+    program := glCreateProgram()
+    on program == 0 => {
+        glDeleteShader(vertex_shader)
+        glDeleteShader(fragment_shader)
+        return 0
+    }
+
+    glAttachShader(program, vertex_shader)
+    glAttachShader(program, fragment_shader)
+    glBindAttribLocation(program, 0, c"position")
+    glBindAttribLocation(program, 1, c"texcoord")
+    glLinkProgram(program)
+    glDeleteShader(vertex_shader)
+    glDeleteShader(fragment_shader)
+
+    status : GLint
+    glGetProgramiv(program, GL_LINK_STATUS, ^status)
+    on status == 0 => {
+        glDeleteProgram(program)
+        return 0
+    }
+
+    return program
+}
+
+gfx_gl_init_renderer :: fn (renderer: ^GfxFrameRenderer) -> bool {
+    on renderer.texture == 0 => {
+        glGenTextures(1, ^renderer.texture)
+        on renderer.texture == 0 => return no
+
+        glBindTexture(GL_TEXTURE_2D, renderer.texture)
+        glTexParameteri(GL_TEXTURE_2D,
+                        GL_TEXTURE_MIN_FILTER,
+                        GL_NEAREST.as(GLint))
+        glTexParameteri(GL_TEXTURE_2D,
+                        GL_TEXTURE_MAG_FILTER,
+                        GL_NEAREST.as(GLint))
+        glTexParameteri(GL_TEXTURE_2D,
+                        GL_TEXTURE_WRAP_S,
+                        GL_CLAMP_TO_EDGE.as(GLint))
+        glTexParameteri(GL_TEXTURE_2D,
+                        GL_TEXTURE_WRAP_T,
+                        GL_CLAMP_TO_EDGE.as(GLint))
+    }
+
+    on renderer.program != 0 &&
+        renderer.vertex_buffer != 0 &&
+        renderer.vertex_array != 0 => return yes
+
+    program := gfx_gl_create_pixel_program()
+    on program == 0 => return no
+
+    vertex_buffer : GLuint
+    glGenBuffers(1, ^vertex_buffer)
+    on vertex_buffer == 0 => {
+        glDeleteProgram(program)
+        return no
+    }
+
+    vertex_array : GLuint
+    glGenVertexArrays(1, ^vertex_array)
+    on vertex_array == 0 => {
+        glDeleteBuffers(1, ^vertex_buffer)
+        glDeleteProgram(program)
+        return no
+    }
+
+    glBindVertexArray(vertex_array)
+    glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer)
+    glBufferData(GL_ARRAY_BUFFER,
+                 (16 * GLfloat.size).as(GLsizeiptr),
+                 nil,
+                 GL_DYNAMIC_DRAW)
+    glEnableVertexAttribArray(0)
+    glVertexAttribPointer(0,
+                          2,
+                          GL_FLOAT,
+                          GL_FALSE,
+                          (4 * GLfloat.size).as(GLsizei),
+                          nil)
+    glEnableVertexAttribArray(1)
+    glVertexAttribPointer(1,
+                          2,
+                          GL_FLOAT,
+                          GL_FALSE,
+                          (4 * GLfloat.size).as(GLsizei),
+                          (2 * GLfloat.size).as(^void))
+    glBindVertexArray(0)
+    glBindBuffer(GL_ARRAY_BUFFER, 0)
+
+    renderer.program = program
+    renderer.vertex_buffer = vertex_buffer
+    renderer.vertex_array = vertex_array
+    renderer.sampler_location = glGetUniformLocation(program, c"pixels")
+    return yes
+}
+
+gfx_present_scaled_pixels_gl :: fn (system : ^GfxSystem,
+                                    frame  : ^Frame,
+                                    buffer : FrameScaledPixelBuffer) -> bool {
+    on !gl_init(frame) => return no
+    on !gl_make_current(frame) => return no
+
+    renderer := gfx_find_renderer(system, frame.id)
+    on renderer == nil => return no
+    on !gfx_gl_init_renderer(renderer) => return no
+
+    glViewport(0, 0, frame.width.as(GLsizei), frame.height.as(GLsizei))
+    glDisable(GL_DEPTH_TEST)
+    glClearColor(0.0, 0.0, 0.0, 1.0)
+    glClear(GL_COLOR_BUFFER_BIT)
+
+    glUseProgram(renderer.program)
+    glActiveTexture(GL_TEXTURE0)
+    glBindTexture(GL_TEXTURE_2D, renderer.texture)
+    on renderer.sampler_location >= 0 => {
+        glUniform1i(renderer.sampler_location, 0)
+    }
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 4)
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, buffer.stride.as(GLint))
+
+    texture_size_changed := renderer.texture_width != buffer.width || renderer.texture_height != buffer.height
+    on texture_size_changed => {
+        glTexImage2D(GL_TEXTURE_2D,
+                     0,
+                     GL_RGBA.as(GLint),
+                     buffer.width.as(GLsizei),
+                     buffer.height.as(GLsizei),
+                     0,
+                     GL_BGRA,
+                     GL_UNSIGNED_BYTE,
+                     buffer.pixels.data.as(^void))
+        renderer.texture_width = buffer.width
+        renderer.texture_height = buffer.height
+    }
+
+    on !texture_size_changed => {
+        glTexSubImage2D(GL_TEXTURE_2D,
+                        0,
+                        0,
+                        0,
+                        buffer.width.as(GLsizei),
+                        buffer.height.as(GLsizei),
+                        GL_BGRA,
+                        GL_UNSIGNED_BYTE,
+                        buffer.pixels.data.as(^void))
+    }
+
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0)
+
+    frame_width := frame.width.as(GLfloat)
+    frame_height := frame.height.as(GLfloat)
+    x0 := (buffer.x.as(GLfloat) / frame_width) * 2.0 - 1.0
+    y0 := 1.0 - (buffer.y.as(GLfloat) / frame_height) * 2.0
+    x1 := ((buffer.x.as(u32) + buffer.draw_width.as(u32)).as(GLfloat) / frame_width) * 2.0 - 1.0
+    y1 := 1.0 - (((buffer.y.as(u32) + buffer.draw_height.as(u32)).as(GLfloat) / frame_height) * 2.0)
+
+    vertices : [16]GLfloat
+    vertices[0] = x0
+    vertices[1] = y0
+    vertices[2] = 0.0
+    vertices[3] = 0.0
+    vertices[4] = x1
+    vertices[5] = y0
+    vertices[6] = 1.0
+    vertices[7] = 0.0
+    vertices[8] = x0
+    vertices[9] = y1
+    vertices[10] = 0.0
+    vertices[11] = 1.0
+    vertices[12] = x1
+    vertices[13] = y1
+    vertices[14] = 1.0
+    vertices[15] = 1.0
+
+    glBindVertexArray(renderer.vertex_array)
+    glBindBuffer(GL_ARRAY_BUFFER, renderer.vertex_buffer)
+    glBufferSubData(GL_ARRAY_BUFFER, 0, vertices.size.as(GLsizeiptr), ^vertices)
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4)
+    glBindBuffer(GL_ARRAY_BUFFER, 0)
+    glBindVertexArray(0)
+
+    gl_swap_buffers(frame)
+    return yes
+}
+
+gfx_present_pixels_gl :: fn (system : ^GfxSystem,
+                             frame  : ^Frame,
+                             buffer : FramePixelBuffer) -> bool {
+    return gfx_present_scaled_pixels_gl(system, frame, FrameScaledPixelBuffer {
+        x           : buffer.x
+        y           : buffer.y
+        width       : buffer.width
+        height      : buffer.height
+        stride      : buffer.stride
+        draw_width  : buffer.width
+        draw_height : buffer.height
+        pixels      : buffer.pixels
+    })
+}
+
 impl PixelLayer {
 
     -- Returns the current virtual pixel width.
@@ -228,7 +512,10 @@ impl GfxSystem {
 
     -- Creates an empty graphics system.
     pub init :: fn () -> Self {
-        return { pixel_layers: nil }
+        return {
+            pixel_layers : nil
+            renderers    : nil
+        }
     }
 
     -- Releases all layers owned by the graphics system.
@@ -237,6 +524,7 @@ impl GfxSystem {
             layer.done()
         }
         system.pixel_layers.free()
+        system.renderers.free()
     }
 
     -- Creates a pixel layer for `frame` and returns its handle.
@@ -316,7 +604,7 @@ gfx_render_impl :: fn (system: ^GfxSystem, frame: ^Frame) {
         offset := gfx_pixel_layer_present_offset(frame, single_layer, scale)
         draw_width := single_layer.width.as(u32) * scale.as(u32)
         draw_height := single_layer.height.as(u32) * scale.as(u32)
-        frame_system.present_scaled_pixels(frame, FrameScaledPixelBuffer {
+        buffer := FrameScaledPixelBuffer {
             x           : offset.0
             y           : offset.1
             width       : single_layer.width
@@ -325,7 +613,9 @@ gfx_render_impl :: fn (system: ^GfxSystem, frame: ^Frame) {
             draw_width  : gfx_u32_to_u16_size(draw_width)
             draw_height : gfx_u32_to_u16_size(draw_height)
             pixels      : single_layer.data[..]
-        })
+        }
+        on gfx_present_scaled_pixels_gl(system, frame, buffer) => return
+        frame_system.present_scaled_pixels(frame, buffer)
         return
     }
 
@@ -362,14 +652,16 @@ gfx_render_impl :: fn (system: ^GfxSystem, frame: ^Frame) {
         }
     }
 
-    frame_system.present_pixels(frame, FramePixelBuffer {
+    buffer := FramePixelBuffer {
         x      : 0
         y      : 0
         width  : frame.width
         height : frame.height
         stride : frame.width
         pixels
-    })
+    }
+    on gfx_present_pixels_gl(system, frame, buffer) => return
+    frame_system.present_pixels(frame, buffer)
 }
 
 test {

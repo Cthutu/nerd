@@ -2,36 +2,554 @@
 --
 -- Copyright (c) 2026 Matt Davies
 --
--- Provides the initial OpenGL surface exposed by the standard library. The
--- command surface is shared across platforms; context management delegates to
--- the active frame backend.
+-- Provides the public OpenGL surface exposed by the standard library. Platform
+-- frame backends create and bind contexts; this module owns command loading and
+-- the cross-platform command API.
 
 use std.frame
 
 on "linux" {
 
-    pub use os.linux.glx
+    use os.linux.glx
 
-    gl_unload_platform_commands :: fn () {
-        glx_unload_commands()
+    gl_get_proc_address :: fn (name: ^i8) -> ^void {
+        return glXGetProcAddress(name)
     }
 
 }
 
 on "windows" {
 
-    pub use os.windows
+    use os.windows
 
-    gl_unload_platform_commands :: fn () {
-        wgl_unload_commands()
+    gl_get_proc_address :: fn (name: ^i8) -> ^void {
+        return wglGetProcAddress(name)
     }
 
 }
 
+-- OpenGL enum value.
+pub GLenum :: u32
+
+-- OpenGL boolean value.
+pub GLboolean :: u8
+
+-- OpenGL signed integer value.
+pub GLint :: i32
+
+-- OpenGL unsigned integer value.
+pub GLuint :: u32
+
+-- OpenGL size value.
+pub GLsizei :: i32
+
+-- OpenGL single-precision floating-point value.
+pub GLfloat :: f32
+
+-- OpenGL double-precision floating-point value.
+pub GLdouble :: f64
+
+-- OpenGL bitfield value.
+pub GLbitfield :: u32
+
+-- OpenGL pointer-sized signed offset/size values.
+pub GLintptr   :: isize
+pub GLsizeiptr :: isize
+
+pub GL_FALSE :: 0
+pub GL_TRUE  :: 1
+
+pub GL_COLOR_BUFFER_BIT :: 0x00004000
+
+pub GL_TEXTURE_2D     :: 0x0de1
+pub GL_QUADS          :: 0x0007
+pub GL_TRIANGLES      :: 0x0004
+pub GL_TRIANGLE_STRIP :: 0x0005
+
+pub GL_PROJECTION :: 0x1701
+pub GL_MODELVIEW  :: 0x1700
+
+pub GL_DEPTH_TEST :: 0x0b71
+
+pub GL_TEXTURE_MIN_FILTER :: 0x2801
+pub GL_TEXTURE_MAG_FILTER :: 0x2800
+pub GL_TEXTURE_WRAP_S     :: 0x2802
+pub GL_TEXTURE_WRAP_T     :: 0x2803
+
+pub GL_NEAREST       :: 0x2600
+pub GL_CLAMP_TO_EDGE :: 0x812f
+
+pub GL_FLOAT :: 0x1406
+
+pub GL_RGBA          :: 0x1908
+pub GL_BGRA          :: 0x80e1
+pub GL_UNSIGNED_BYTE :: 0x1401
+
+pub GL_UNPACK_ALIGNMENT  :: 0x0cf5
+pub GL_UNPACK_ROW_LENGTH :: 0x0cf2
+
+pub GL_TEXTURE0 :: 0x84c0
+
+pub GL_ARRAY_BUFFER :: 0x8892
+pub GL_DYNAMIC_DRAW :: 0x88e8
+pub GL_STATIC_DRAW  :: 0x88e4
+
+pub GL_VERTEX_SHADER   :: 0x8b31
+pub GL_FRAGMENT_SHADER :: 0x8b30
+pub GL_COMPILE_STATUS  :: 0x8b81
+pub GL_LINK_STATUS     :: 0x8b82
+
+GLActiveTextureFn           :: fn (texture: GLenum)
+GLCreateShaderFn            :: fn (type: GLenum) -> GLuint
+GLShaderSourceFn            :: fn (shader  : GLuint,
+                                   count   : GLsizei,
+                                   strings : ^^i8,
+                                   lengths : ^GLint)
+GLCompileShaderFn           :: fn (shader: GLuint)
+GLGetShaderivFn             :: fn (shader: GLuint, name: GLenum, values: ^GLint)
+GLDeleteShaderFn            :: fn (shader: GLuint)
+GLCreateProgramFn           :: fn () -> GLuint
+GLAttachShaderFn            :: fn (program: GLuint, shader: GLuint)
+GLBindAttribLocationFn      :: fn (program: GLuint, index: GLuint, name: ^i8)
+GLLinkProgramFn             :: fn (program: GLuint)
+GLGetProgramivFn            ::
+                               fn (program : GLuint,
+                                   name    : GLenum,
+                                   values  : ^GLint)
+GLDeleteProgramFn           :: fn (program: GLuint)
+GLUseProgramFn              :: fn (program: GLuint)
+GLGetUniformLocationFn      :: fn (program: GLuint, name: ^i8) -> GLint
+GLUniform1iFn               :: fn (location: GLint, value: GLint)
+GLGenBuffersFn              :: fn (count: GLsizei, buffers: ^GLuint)
+GLDeleteBuffersFn           :: fn (count: GLsizei, buffers: ^GLuint)
+GLBindBufferFn              :: fn (target: GLenum, buffer: GLuint)
+GLBufferDataFn              :: fn (target : GLenum,
+                                   size   : GLsizeiptr,
+                                   data   : ^void,
+                                   usage  : GLenum)
+GLBufferSubDataFn           :: fn (target : GLenum,
+                                   offset : GLintptr,
+                                   size   : GLsizeiptr,
+                                   data   : ^void)
+GLGenVertexArraysFn         :: fn (count: GLsizei, arrays: ^GLuint)
+GLDeleteVertexArraysFn      :: fn (count: GLsizei, arrays: ^GLuint)
+GLBindVertexArrayFn         :: fn (array: GLuint)
+GLEnableVertexAttribArrayFn :: fn (index: GLuint)
+
+GLVertexAttribPointerFn :: fn (index      : GLuint,
+                               size       : GLint,
+                               type       : GLenum,
+                               normalized : GLboolean,
+                               stride     : GLsizei,
+                               pointer    : ^void)
+
+gl_abort_unloaded_command :: fn () {
+    eprn("OpenGL command called before address loading completed.")
+    assert no
+}
+
+gl_stub_active_texture :: fn (_texture: GLenum) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_create_shader :: fn (_type: GLenum) -> GLuint {
+    gl_abort_unloaded_command()
+    return 0
+}
+
+gl_stub_shader_source :: fn (_shader  : GLuint,
+                             _count   : GLsizei,
+                             _strings : ^^i8,
+                             _lengths : ^GLint) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_compile_shader :: fn (_shader: GLuint) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_get_shader_iv :: fn (_shader: GLuint, _name: GLenum, _values: ^GLint) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_delete_shader :: fn (_shader: GLuint) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_create_program :: fn () -> GLuint {
+    gl_abort_unloaded_command()
+    return 0
+}
+
+gl_stub_attach_shader :: fn (_program: GLuint, _shader: GLuint) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_bind_attrib_location :: fn (_program : GLuint,
+                                    _index   : GLuint,
+                                    _name    : ^i8) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_link_program :: fn (_program: GLuint) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_get_program_iv :: fn (_program: GLuint, _name: GLenum, _values: ^GLint) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_delete_program :: fn (_program: GLuint) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_use_program :: fn (_program: GLuint) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_get_uniform_location :: fn (_program: GLuint, _name: ^i8) -> GLint {
+    gl_abort_unloaded_command()
+    return -1
+}
+
+gl_stub_uniform_1i :: fn (_location: GLint, _value: GLint) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_gen_buffers :: fn (_count: GLsizei, _buffers: ^GLuint) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_delete_buffers :: fn (_count: GLsizei, _buffers: ^GLuint) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_bind_buffer :: fn (_target: GLenum, _buffer: GLuint) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_buffer_data :: fn (_target : GLenum,
+                           _size   : GLsizeiptr,
+                           _data   : ^void,
+                           _usage  : GLenum) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_buffer_sub_data :: fn (_target : GLenum,
+                               _offset : GLintptr,
+                               _size   : GLsizeiptr,
+                               _data   : ^void) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_gen_vertex_arrays :: fn (_count: GLsizei, _arrays: ^GLuint) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_delete_vertex_arrays :: fn (_count: GLsizei, _arrays: ^GLuint) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_bind_vertex_array :: fn (_array: GLuint) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_enable_vertex_attrib_array :: fn (_index: GLuint) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_vertex_attrib_pointer :: fn (_index      : GLuint,
+                                     _size       : GLint,
+                                     _type       : GLenum,
+                                     _normalized : GLboolean,
+                                     _stride     : GLsizei,
+                                     _pointer    : ^void) {
+    gl_abort_unloaded_command()
+}
+
+gl_active_texture_proc             : GLActiveTextureFn           =
+                                                                   gl_stub_active_texture
+gl_create_shader_proc              : GLCreateShaderFn            =
+                                                                   gl_stub_create_shader
+gl_shader_source_proc              : GLShaderSourceFn            =
+                                                                   gl_stub_shader_source
+gl_compile_shader_proc             : GLCompileShaderFn           =
+                                                                   gl_stub_compile_shader
+gl_get_shader_iv_proc              : GLGetShaderivFn             =
+                                                                   gl_stub_get_shader_iv
+gl_delete_shader_proc              : GLDeleteShaderFn            =
+                                                                   gl_stub_delete_shader
+gl_create_program_proc             : GLCreateProgramFn           =
+                                                                   gl_stub_create_program
+gl_attach_shader_proc              : GLAttachShaderFn            =
+                                                                   gl_stub_attach_shader
+gl_bind_attrib_location_proc       : GLBindAttribLocationFn      =
+                                                                   gl_stub_bind_attrib_location
+gl_link_program_proc               : GLLinkProgramFn             =
+                                                                   gl_stub_link_program
+gl_get_program_iv_proc             : GLGetProgramivFn            =
+                                                                   gl_stub_get_program_iv
+gl_delete_program_proc             : GLDeleteProgramFn           =
+                                                                   gl_stub_delete_program
+gl_use_program_proc                : GLUseProgramFn              =
+                                                                   gl_stub_use_program
+gl_get_uniform_location_proc       : GLGetUniformLocationFn      =
+                                                                   gl_stub_get_uniform_location
+gl_uniform_1i_proc                 : GLUniform1iFn               =
+                                                                   gl_stub_uniform_1i
+gl_gen_buffers_proc                : GLGenBuffersFn              =
+                                                                   gl_stub_gen_buffers
+gl_delete_buffers_proc             : GLDeleteBuffersFn           =
+                                                                   gl_stub_delete_buffers
+gl_bind_buffer_proc                : GLBindBufferFn              =
+                                                                   gl_stub_bind_buffer
+gl_buffer_data_proc                : GLBufferDataFn              =
+                                                                   gl_stub_buffer_data
+gl_buffer_sub_data_proc            : GLBufferSubDataFn           =
+                                                                   gl_stub_buffer_sub_data
+gl_gen_vertex_arrays_proc          : GLGenVertexArraysFn         =
+                                                                   gl_stub_gen_vertex_arrays
+gl_delete_vertex_arrays_proc       : GLDeleteVertexArraysFn      =
+                                                                   gl_stub_delete_vertex_arrays
+gl_bind_vertex_array_proc          : GLBindVertexArrayFn         =
+                                                                   gl_stub_bind_vertex_array
+gl_enable_vertex_attrib_array_proc : GLEnableVertexAttribArrayFn =
+                                                                   gl_stub_enable_vertex_attrib_array
+gl_vertex_attrib_pointer_proc      : GLVertexAttribPointerFn     =
+                                                                   gl_stub_vertex_attrib_pointer
+
+gl_commands_loaded := no
+
+on "linux" {
+
+    ffi "GL" {
+        pub glViewport       (x      : GLint,
+                              y      : GLint,
+                              width  : GLsizei,
+                              height : GLsizei)
+        pub glDisable        (cap: GLenum)
+        pub glClearColor     (red   : GLfloat,
+                              green : GLfloat,
+                              blue  : GLfloat,
+                              alpha : GLfloat)
+        pub glClear          (mask: GLbitfield)
+        pub glMatrixMode     (mode: GLenum)
+        pub glLoadIdentity   ()
+        pub glOrtho          (left   : GLdouble,
+                              right  : GLdouble,
+                              bottom : GLdouble,
+                              top    : GLdouble,
+                              near   : GLdouble,
+                              far    : GLdouble)
+        pub glEnable         (cap: GLenum)
+        pub glGenTextures    (count: GLsizei, textures: ^GLuint)
+        pub glDeleteTextures (count: GLsizei, textures: ^GLuint)
+        pub glBindTexture    (target: GLenum, texture: GLuint)
+        pub glTexParameteri  (target: GLenum, name: GLenum, value: GLint)
+        pub glPixelStorei    (name: GLenum, value: GLint)
+        pub glTexImage2D     (target          : GLenum,
+                              level           : GLint,
+                              internal_format : GLint,
+                              width           : GLsizei,
+                              height          : GLsizei,
+                              border          : GLint,
+                              format          : GLenum,
+                              type            : GLenum,
+                              pixels          : ^void)
+        pub glTexSubImage2D  (target  : GLenum,
+                              level   : GLint,
+                              xoffset : GLint,
+                              yoffset : GLint,
+                              width   : GLsizei,
+                              height  : GLsizei,
+                              format  : GLenum,
+                              type    : GLenum,
+                              pixels  : ^void)
+        pub glDrawArrays     (mode: GLenum, first: GLint, count: GLsizei)
+        pub glBegin          (mode: GLenum)
+        pub glEnd            ()
+        pub glTexCoord2f     (s: GLfloat, t: GLfloat)
+        pub glVertex2f       (x: GLfloat, y: GLfloat)
+    }
+
+}
+
+on "windows" {
+
+    ffi "opengl32" {
+        pub glViewport       (x      : GLint,
+                              y      : GLint,
+                              width  : GLsizei,
+                              height : GLsizei)
+        pub glDisable        (cap: GLenum)
+        pub glClearColor     (red   : GLfloat,
+                              green : GLfloat,
+                              blue  : GLfloat,
+                              alpha : GLfloat)
+        pub glClear          (mask: GLbitfield)
+        pub glMatrixMode     (mode: GLenum)
+        pub glLoadIdentity   ()
+        pub glOrtho          (left   : GLdouble,
+                              right  : GLdouble,
+                              bottom : GLdouble,
+                              top    : GLdouble,
+                              near   : GLdouble,
+                              far    : GLdouble)
+        pub glEnable         (cap: GLenum)
+        pub glGenTextures    (count: GLsizei, textures: ^GLuint)
+        pub glDeleteTextures (count: GLsizei, textures: ^GLuint)
+        pub glBindTexture    (target: GLenum, texture: GLuint)
+        pub glTexParameteri  (target: GLenum, name: GLenum, value: GLint)
+        pub glPixelStorei    (name: GLenum, value: GLint)
+        pub glTexImage2D     (target          : GLenum,
+                              level           : GLint,
+                              internal_format : GLint,
+                              width           : GLsizei,
+                              height          : GLsizei,
+                              border          : GLint,
+                              format          : GLenum,
+                              type            : GLenum,
+                              pixels          : ^void)
+        pub glTexSubImage2D  (target  : GLenum,
+                              level   : GLint,
+                              xoffset : GLint,
+                              yoffset : GLint,
+                              width   : GLsizei,
+                              height  : GLsizei,
+                              format  : GLenum,
+                              type    : GLenum,
+                              pixels  : ^void)
+        pub glDrawArrays     (mode: GLenum, first: GLint, count: GLsizei)
+        pub glBegin          (mode: GLenum)
+        pub glEnd            ()
+        pub glTexCoord2f     (s: GLfloat, t: GLfloat)
+        pub glVertex2f       (x: GLfloat, y: GLfloat)
+        pub glColor3f        (red: GLfloat, green: GLfloat, blue: GLfloat)
+    }
+
+}
+
+gl_load_commands :: fn () -> bool {
+    on gl_commands_loaded => return yes
+
+    active_texture := gl_get_proc_address(c"glActiveTexture")
+    create_shader := gl_get_proc_address(c"glCreateShader")
+    shader_source := gl_get_proc_address(c"glShaderSource")
+    compile_shader := gl_get_proc_address(c"glCompileShader")
+    get_shader_iv := gl_get_proc_address(c"glGetShaderiv")
+    delete_shader := gl_get_proc_address(c"glDeleteShader")
+    create_program := gl_get_proc_address(c"glCreateProgram")
+    attach_shader := gl_get_proc_address(c"glAttachShader")
+    bind_attrib_location := gl_get_proc_address(c"glBindAttribLocation")
+    link_program := gl_get_proc_address(c"glLinkProgram")
+    get_program_iv := gl_get_proc_address(c"glGetProgramiv")
+    delete_program := gl_get_proc_address(c"glDeleteProgram")
+    use_program := gl_get_proc_address(c"glUseProgram")
+    get_uniform_location := gl_get_proc_address(c"glGetUniformLocation")
+    uniform_1i := gl_get_proc_address(c"glUniform1i")
+    gen_buffers := gl_get_proc_address(c"glGenBuffers")
+    delete_buffers := gl_get_proc_address(c"glDeleteBuffers")
+    bind_buffer := gl_get_proc_address(c"glBindBuffer")
+    buffer_data := gl_get_proc_address(c"glBufferData")
+    buffer_sub_data := gl_get_proc_address(c"glBufferSubData")
+    gen_vertex_arrays := gl_get_proc_address(c"glGenVertexArrays")
+    delete_vertex_arrays := gl_get_proc_address(c"glDeleteVertexArrays")
+    bind_vertex_array := gl_get_proc_address(c"glBindVertexArray")
+    enable_vertex_attrib_array := gl_get_proc_address(c"glEnableVertexAttribArray")
+    vertex_attrib_pointer := gl_get_proc_address(c"glVertexAttribPointer")
+
+    on active_texture == nil ||
+        create_shader == nil ||
+        shader_source == nil ||
+        compile_shader == nil ||
+        get_shader_iv == nil ||
+        delete_shader == nil ||
+        create_program == nil ||
+        attach_shader == nil ||
+        bind_attrib_location == nil ||
+        link_program == nil ||
+        get_program_iv == nil ||
+        delete_program == nil ||
+        use_program == nil ||
+        get_uniform_location == nil ||
+        uniform_1i == nil ||
+        gen_buffers == nil ||
+        delete_buffers == nil ||
+        bind_buffer == nil ||
+        buffer_data == nil ||
+        buffer_sub_data == nil ||
+        gen_vertex_arrays == nil ||
+        delete_vertex_arrays == nil ||
+        bind_vertex_array == nil ||
+        enable_vertex_attrib_array == nil ||
+        vertex_attrib_pointer == nil => return no
+
+    gl_active_texture_proc             = active_texture.as(GLActiveTextureFn)
+    gl_create_shader_proc              = create_shader.as(GLCreateShaderFn)
+    gl_shader_source_proc              = shader_source.as(GLShaderSourceFn)
+    gl_compile_shader_proc             = compile_shader.as(GLCompileShaderFn)
+    gl_get_shader_iv_proc              = get_shader_iv.as(GLGetShaderivFn)
+    gl_delete_shader_proc              = delete_shader.as(GLDeleteShaderFn)
+    gl_create_program_proc             = create_program.as(GLCreateProgramFn)
+    gl_attach_shader_proc              = attach_shader.as(GLAttachShaderFn)
+    gl_bind_attrib_location_proc       = bind_attrib_location.as(GLBindAttribLocationFn)
+    gl_link_program_proc               = link_program.as(GLLinkProgramFn)
+    gl_get_program_iv_proc             = get_program_iv.as(GLGetProgramivFn)
+    gl_delete_program_proc             = delete_program.as(GLDeleteProgramFn)
+    gl_use_program_proc                = use_program.as(GLUseProgramFn)
+    gl_get_uniform_location_proc       = get_uniform_location.as(GLGetUniformLocationFn)
+    gl_uniform_1i_proc                 = uniform_1i.as(GLUniform1iFn)
+    gl_gen_buffers_proc                = gen_buffers.as(GLGenBuffersFn)
+    gl_delete_buffers_proc             = delete_buffers.as(GLDeleteBuffersFn)
+    gl_bind_buffer_proc                = bind_buffer.as(GLBindBufferFn)
+    gl_buffer_data_proc                = buffer_data.as(GLBufferDataFn)
+    gl_buffer_sub_data_proc            = buffer_sub_data.as(GLBufferSubDataFn)
+    gl_gen_vertex_arrays_proc          = gen_vertex_arrays.as(GLGenVertexArraysFn)
+    gl_delete_vertex_arrays_proc       = delete_vertex_arrays.as(GLDeleteVertexArraysFn)
+    gl_bind_vertex_array_proc          = bind_vertex_array.as(GLBindVertexArrayFn)
+    gl_enable_vertex_attrib_array_proc = enable_vertex_attrib_array.as(GLEnableVertexAttribArrayFn)
+    gl_vertex_attrib_pointer_proc      = vertex_attrib_pointer.as(GLVertexAttribPointerFn)
+
+    gl_commands_loaded = yes
+    return yes
+}
+
+pub gl_reset_commands :: fn () {
+    gl_active_texture_proc             = gl_stub_active_texture
+    gl_create_shader_proc              = gl_stub_create_shader
+    gl_shader_source_proc              = gl_stub_shader_source
+    gl_compile_shader_proc             = gl_stub_compile_shader
+    gl_get_shader_iv_proc              = gl_stub_get_shader_iv
+    gl_delete_shader_proc              = gl_stub_delete_shader
+    gl_create_program_proc             = gl_stub_create_program
+    gl_attach_shader_proc              = gl_stub_attach_shader
+    gl_bind_attrib_location_proc       = gl_stub_bind_attrib_location
+    gl_link_program_proc               = gl_stub_link_program
+    gl_get_program_iv_proc             = gl_stub_get_program_iv
+    gl_delete_program_proc             = gl_stub_delete_program
+    gl_use_program_proc                = gl_stub_use_program
+    gl_get_uniform_location_proc       = gl_stub_get_uniform_location
+    gl_uniform_1i_proc                 = gl_stub_uniform_1i
+    gl_gen_buffers_proc                = gl_stub_gen_buffers
+    gl_delete_buffers_proc             = gl_stub_delete_buffers
+    gl_bind_buffer_proc                = gl_stub_bind_buffer
+    gl_buffer_data_proc                = gl_stub_buffer_data
+    gl_buffer_sub_data_proc            = gl_stub_buffer_sub_data
+    gl_gen_vertex_arrays_proc          = gl_stub_gen_vertex_arrays
+    gl_delete_vertex_arrays_proc       = gl_stub_delete_vertex_arrays
+    gl_bind_vertex_array_proc          = gl_stub_bind_vertex_array
+    gl_enable_vertex_attrib_array_proc = gl_stub_enable_vertex_attrib_array
+    gl_vertex_attrib_pointer_proc      = gl_stub_vertex_attrib_pointer
+    gl_commands_loaded                 = no
+}
+
 pub gl_init :: fn (frame: ^Frame) -> bool {
     on frame.context() {
-        Ok(_)   => return frame.system.opengl_init(frame)
-        Err(_)  => return no
+        Ok(_) => {
+            on !frame.system.opengl_init(frame) => return no
+            return gl_load_commands()
+        }
+        Err(_) => return no
     }
     return no
 }
@@ -39,7 +557,7 @@ pub gl_init :: fn (frame: ^Frame) -> bool {
 pub gl_done :: fn (frame: ^Frame) {
     on frame.system == nil => return
     frame.system.opengl_done(frame)
-    gl_unload_platform_commands()
+    gl_reset_commands()
 }
 
 pub gl_make_current :: fn (frame: ^Frame) -> bool {
@@ -53,4 +571,129 @@ pub gl_make_current :: fn (frame: ^Frame) -> bool {
 pub gl_swap_buffers :: fn (frame: ^Frame) {
     on frame.system == nil => return
     frame.system.opengl_swap_buffers(frame)
+}
+
+pub glActiveTexture :: fn (texture: GLenum) {
+    gl_active_texture_proc(texture)
+}
+
+pub glCreateShader :: fn (type: GLenum) -> GLuint {
+    return gl_create_shader_proc(type)
+}
+
+pub glShaderSource :: fn (shader  : GLuint,
+                          count   : GLsizei,
+                          strings : ^^i8,
+                          lengths : ^GLint) {
+    gl_shader_source_proc(shader, count, strings, lengths)
+}
+
+pub glCompileShader :: fn (shader: GLuint) {
+    gl_compile_shader_proc(shader)
+}
+
+pub glGetShaderiv :: fn (shader: GLuint, name: GLenum, values: ^GLint) {
+    gl_get_shader_iv_proc(shader, name, values)
+}
+
+pub glDeleteShader :: fn (shader: GLuint) {
+    gl_delete_shader_proc(shader)
+}
+
+pub glCreateProgram :: fn () -> GLuint {
+    return gl_create_program_proc()
+}
+
+pub glAttachShader :: fn (program: GLuint, shader: GLuint) {
+    gl_attach_shader_proc(program, shader)
+}
+
+pub glBindAttribLocation :: fn (program: GLuint, index: GLuint, name: ^i8) {
+    gl_bind_attrib_location_proc(program, index, name)
+}
+
+pub glLinkProgram :: fn (program: GLuint) {
+    gl_link_program_proc(program)
+}
+
+pub glGetProgramiv :: fn (program: GLuint, name: GLenum, values: ^GLint) {
+    gl_get_program_iv_proc(program, name, values)
+}
+
+pub glDeleteProgram :: fn (program: GLuint) {
+    gl_delete_program_proc(program)
+}
+
+pub glUseProgram :: fn (program: GLuint) {
+    gl_use_program_proc(program)
+}
+
+pub glGetUniformLocation :: fn (program: GLuint, name: ^i8) -> GLint {
+    return gl_get_uniform_location_proc(program, name)
+}
+
+pub glUniform1i :: fn (location: GLint, value: GLint) {
+    gl_uniform_1i_proc(location, value)
+}
+
+pub glGenBuffers :: fn (count: GLsizei, buffers: ^GLuint) {
+    gl_gen_buffers_proc(count, buffers)
+}
+
+pub glDeleteBuffers :: fn (count: GLsizei, buffers: ^GLuint) {
+    gl_delete_buffers_proc(count, buffers)
+}
+
+pub glBindBuffer :: fn (target: GLenum, buffer: GLuint) {
+    gl_bind_buffer_proc(target, buffer)
+}
+
+pub glBufferData :: fn (target : GLenum,
+                        size   : GLsizeiptr,
+                        data   : ^void,
+                        usage  : GLenum) {
+    gl_buffer_data_proc(target, size, data, usage)
+}
+
+pub glBufferSubData :: fn (target : GLenum,
+                           offset : GLintptr,
+                           size   : GLsizeiptr,
+                           data   : ^void) {
+    gl_buffer_sub_data_proc(target, offset, size, data)
+}
+
+pub glGenVertexArrays :: fn (count: GLsizei, arrays: ^GLuint) {
+    gl_gen_vertex_arrays_proc(count, arrays)
+}
+
+pub glDeleteVertexArrays :: fn (count: GLsizei, arrays: ^GLuint) {
+    gl_delete_vertex_arrays_proc(count, arrays)
+}
+
+pub glBindVertexArray :: fn (array: GLuint) {
+    gl_bind_vertex_array_proc(array)
+}
+
+pub glEnableVertexAttribArray :: fn (index: GLuint) {
+    gl_enable_vertex_attrib_array_proc(index)
+}
+
+pub glVertexAttribPointer :: fn (index      : GLuint,
+                                 size       : GLint,
+                                 type       : GLenum,
+                                 normalized : GLboolean,
+                                 stride     : GLsizei,
+                                 pointer    : ^void) {
+    gl_vertex_attrib_pointer_proc(index,
+                                  size,
+                                  type,
+                                  normalized,
+                                  stride,
+                                  pointer)
+}
+
+test "OpenGL command reset is idempotent" {
+    gl_reset_commands()
+    gl_reset_commands()
+    assert yes
 }

@@ -178,17 +178,17 @@ Refactor sequence:
 - [x] Add `Frame.system`, `FrameContext`, `FrameError`, and `Frame.context()`.
 - [x] Change `std.opengl` helpers to accept `^Frame` and resolve context through
   `Frame.context()`.
-- [ ] Move raw OpenGL command-pointer storage and loading out of `os.linux.glx`
+- [x] Move raw OpenGL command-pointer storage and loading out of `os.linux.glx`
   and `os.windows.wgl` into `std.opengl`, leaving direct platform loader
   bindings in `os.<platform>`.
-- [ ] Move pixel presentation shader/program/buffer/texture state from
+- [x] Move pixel presentation shader/program/buffer/texture state from
   `std.frame` into `std.gfx`.
-- [ ] Keep only platform window/context creation, event processing, and
+- [x] Keep only platform window/context creation, event processing, and
   lifecycle management in `std.frame`.
-- [ ] Add focused tests for invalid/closed `Frame.context()` results and command
+- [x] Add focused tests for invalid/closed `Frame.context()` results and command
   loader reset behaviour where this can be checked without an interactive
   desktop.
-- [ ] Update `docs/stdlib.md` once the public `std.frame`, `std.gfx`, and
+- [x] Update `docs/stdlib.md` once the public `std.frame`, `std.gfx`, and
   `std.opengl` boundaries settle.
 
 ### Standard Library Expansion

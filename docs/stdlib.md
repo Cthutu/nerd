@@ -170,6 +170,22 @@ the configured minimum size and discards key/mouse edge state, while preserving
 current key-down state. `ContinueSimulation` keeps simulation hooks running but
 still lets `std.term` own presentation until the terminal is large enough again.
 
+### `std.frame`, `std.gfx`, and `std.opengl`
+
+`std.frame` owns native windows, input/events, frame lifecycle, fullscreen
+state, and platform context creation. `Frame.context() ->
+Result[FrameContext, FrameError]` is the public way to resolve platform handles;
+detached, closed, and invalid frames report explicit `FrameError` values.
+
+`std.gfx` owns frame-attached pixel layers and pixel presentation. It may use an
+OpenGL texture path internally when a frame has a usable context, with software
+platform presentation as the fallback.
+
+`std.opengl` owns portable OpenGL aliases, constants, command wrappers, command
+address loading, and current/swap helpers. Call `gl_init(^Frame)` before using
+loaded OpenGL commands and `gl_done(^Frame)` when finished with that frame's GL
+surface.
+
 ### `std.traits`
 
 - `Display`
