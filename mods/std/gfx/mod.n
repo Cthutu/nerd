@@ -580,11 +580,6 @@ impl GfxSystem {
 gfx_render_impl :: fn (system: ^GfxSystem, frame: ^Frame) {
     frame_system := frame.system
     on frame_system == nil => return
-    on frame.context() {
-        Ok(_) => {
-        }
-        Err(_) => return
-    }
 
     frame_width := frame.width.as(u32)
     frame_height := frame.height.as(u32)
