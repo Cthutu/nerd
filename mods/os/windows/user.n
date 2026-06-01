@@ -5,16 +5,266 @@
 -- Provides Windows User API bindings used by higher-level NSL modules and
 -- examples. The exported names intentionally mirror Win32 API names and casing.
 
-pub HWND :: ^void
-pub UINT :: u32
+use kernel
+
+pub HWND      :: ^void
+pub HDC       :: ^void
+pub HINSTANCE :: ^void
+pub HICON     :: ^void
+pub HCURSOR   :: ^void
+pub HBRUSH    :: ^void
+pub HMENU     :: ^void
+pub HGDIOBJ   :: ^void
+pub HGLRC     :: ^void
+pub HMODULE   :: ^void
+pub HMONITOR  :: ^void
+pub FARPROC   :: ^void
+pub UINT      :: u32
+pub WORD      :: u16
+pub BYTE      :: u8
+pub ATOM      :: u16
+pub LONG      :: i32
+pub LONG_PTR  :: isize
+pub ULONG_PTR :: usize
+pub WPARAM    :: usize
+pub LPARAM    :: isize
+pub LRESULT   :: isize
+pub LPCSTR    :: ^i8
+pub LPSTR     :: ^i8
+pub COLORREF  :: DWORD
+pub WNDPROC   :: fn (hWnd   : HWND,
+                     msg    : UINT,
+                     wParam : WPARAM,
+                     lParam : LPARAM) -> LRESULT
 
 pub MB_OK :: 0x00000000
 
+pub CS_OWNDC      :     : 0x0020
+pub CS_HREDRAW    :     : 0x0002
+pub CS_VREDRAW    :     : 0x0001
+pub CW_USEDEFAULT : i32 : -2147483648
+
+pub WS_OVERLAPPED       :: 0x00000000
+pub WS_CAPTION          :: 0x00c00000
+pub WS_SYSMENU          :: 0x00080000
+pub WS_THICKFRAME       :: 0x00040000
+pub WS_MINIMIZEBOX      :: 0x00020000
+pub WS_MAXIMIZEBOX      :: 0x00010000
+pub WS_VISIBLE          :: 0x10000000
+pub WS_POPUP            :: 0x80000000
+pub WS_OVERLAPPEDWINDOW :: 0x00cf0000
+
+pub SW_SHOW :: 5
+
+pub SWP_NOSIZE       :: 0x0001
+pub SWP_NOMOVE       :: 0x0002
+pub SWP_NOZORDER     :: 0x0004
+pub SWP_NOACTIVATE   :: 0x0010
+pub SWP_FRAMECHANGED :: 0x0020
+
+pub GWLP_USERDATA :: -21
+pub GWL_STYLE     :: -16
+
+pub PM_REMOVE :: 0x0001
+
+pub WM_DESTROY    :: 0x0002
+pub WM_CLOSE      :: 0x0010
+pub WM_SIZE       :: 0x0005
+pub WM_KEYDOWN    :: 0x0100
+pub WM_KEYUP      :: 0x0101
+pub WM_CHAR       :: 0x0102
+pub WM_SYSKEYDOWN :: 0x0104
+pub WM_SYSKEYUP   :: 0x0105
+
+pub SM_CXSCREEN :: 0
+pub SM_CYSCREEN :: 1
+
+pub BI_RGB         :: 0
+pub DIB_RGB_COLORS :: 0
+pub SRCCOPY        :: 0x00cc0020
+
+pub PFD_TYPE_RGBA      :: 0
+pub PFD_MAIN_PLANE     :: 0
+pub PFD_DOUBLEBUFFER   :: 0x00000001
+pub PFD_DRAW_TO_WINDOW :: 0x00000004
+pub PFD_SUPPORT_OPENGL :: 0x00000020
+
+pub RECT :: plex #c {
+    left   LONG
+    top    LONG
+    right  LONG
+    bottom LONG
+}
+
+pub POINT :: plex #c {
+    x LONG
+    y LONG
+}
+
+pub MSG :: plex #c {
+    hwnd    HWND
+    message UINT
+    wParam  WPARAM
+    lParam  LPARAM
+    time    DWORD
+    pt      POINT
+}
+
+pub WNDCLASSEX :: plex #c {
+    cbSize        UINT
+    style         UINT
+    lpfnWndProc   WNDPROC
+    cbClsExtra    i32
+    cbWndExtra    i32
+    hInstance     HINSTANCE
+    hIcon         HICON
+    hCursor       HCURSOR
+    hbrBackground HBRUSH
+    lpszMenuName  LPCSTR
+    lpszClassName LPCSTR
+    hIconSm       HICON
+}
+
+pub BITMAPINFOHEADER :: plex #c {
+    biSize          DWORD
+    biWidth         LONG
+    biHeight        LONG
+    biPlanes        WORD
+    biBitCount      WORD
+    biCompression   DWORD
+    biSizeImage     DWORD
+    biXPelsPerMeter LONG
+    biYPelsPerMeter LONG
+    biClrUsed       DWORD
+    biClrImportant  DWORD
+}
+
+pub RGBQUAD :: plex #c {
+    rgbBlue     BYTE
+    rgbGreen    BYTE
+    rgbRed      BYTE
+    rgbReserved BYTE
+}
+
+pub BITMAPINFO :: plex #c {
+    bmiHeader BITMAPINFOHEADER
+    bmiColors [1]RGBQUAD
+}
+
+pub PIXELFORMATDESCRIPTOR :: plex #c {
+    nSize           WORD
+    nVersion        WORD
+    dwFlags         DWORD
+    iPixelType      BYTE
+    cColorBits      BYTE
+    cRedBits        BYTE
+    cRedShift       BYTE
+    cGreenBits      BYTE
+    cGreenShift     BYTE
+    cBlueBits       BYTE
+    cBlueShift      BYTE
+    cAlphaBits      BYTE
+    cAlphaShift     BYTE
+    cAccumBits      BYTE
+    cAccumRedBits   BYTE
+    cAccumGreenBits BYTE
+    cAccumBlueBits  BYTE
+    cAccumAlphaBits BYTE
+    cDepthBits      BYTE
+    cStencilBits    BYTE
+    cAuxBuffers     BYTE
+    iLayerType      BYTE
+    bReserved       BYTE
+    dwLayerMask     DWORD
+    dwVisibleMask   DWORD
+    dwDamageMask    DWORD
+}
+
 ffi "user32" {
-    c_MessageBox :: MessageBoxA (hWnd      : HWND,
-                                 lpText    : ^u8,
-                                 lpCaption : ^u8,
-                                 uType     : UINT) -> i32
+    c_MessageBox         :: MessageBoxA        (hWnd      : HWND,
+                                                lpText    : ^u8,
+                                                lpCaption : ^u8,
+                                                uType     : UINT) -> i32
+    pub RegisterClassEx  :: RegisterClassExA   (lpwcx: ^WNDCLASSEX) -> ATOM
+    pub CreateWindowEx   :: CreateWindowExA    (dwExStyle    : DWORD,
+                                                lpClassName  : LPCSTR,
+                                                lpWindowName : LPCSTR,
+                                                dwStyle      : DWORD,
+                                                x            : i32,
+                                                y            : i32,
+                                                nWidth       : i32,
+                                                nHeight      : i32,
+                                                hWndParent   : HWND,
+                                                hMenu        : HMENU,
+                                                hInstance    : HINSTANCE,
+                                                lpParam      : ^void) -> HWND
+    pub DefWindowProc    :: DefWindowProcA     (hWnd   : HWND,
+                                                Msg    : UINT,
+                                                wParam : WPARAM,
+                                                lParam : LPARAM) -> LRESULT
+    pub                     DestroyWindow      (hWnd: HWND) -> BOOL
+    pub                     ShowWindow         (hWnd     : HWND,
+                                                nCmdShow : i32) -> BOOL
+    pub                     UpdateWindow       (hWnd: HWND) -> BOOL
+    pub SetWindowText    :: SetWindowTextA     (hWnd     : HWND,
+                                                lpString : LPCSTR) -> BOOL
+    pub                     SetWindowPos       (hWnd            : HWND,
+                                                hWndInsertAfter : HWND,
+                                                X               : i32,
+                                                Y               : i32,
+                                                cx              : i32,
+                                                cy              : i32,
+                                                uFlags          : UINT) -> BOOL
+    pub                     AdjustWindowRectEx (lpRect    : ^RECT,
+                                                dwStyle   : DWORD,
+                                                bMenu     : BOOL,
+                                                dwExStyle : DWORD) -> BOOL
+    pub                     GetClientRect      (hWnd   : HWND,
+                                                lpRect : ^RECT) -> BOOL
+    pub                     GetWindowRect      (hWnd   : HWND,
+                                                lpRect : ^RECT) -> BOOL
+    pub SetWindowLongPtr :: SetWindowLongPtrA  (hWnd      : HWND,
+                                                nIndex    : i32,
+                                                dwNewLong : LONG_PTR) -> LONG_PTR
+    pub GetWindowLongPtr :: GetWindowLongPtrA  (hWnd   : HWND,
+                                                nIndex : i32) -> LONG_PTR
+    pub PeekMessage      :: PeekMessageA       (lpMsg         : ^MSG,
+                                                hWnd          : HWND,
+                                                wMsgFilterMin : UINT,
+                                                wMsgFilterMax : UINT,
+                                                wRemoveMsg    : UINT) -> BOOL
+    pub                     TranslateMessage   (lpMsg: ^MSG) -> BOOL
+    pub DispatchMessage  :: DispatchMessageA   (lpMsg: ^MSG) -> LRESULT
+    pub                     PostQuitMessage    (nExitCode: i32)
+    pub                     GetDC              (hWnd: HWND) -> HDC
+    pub                     ReleaseDC          (hWnd: HWND, hDC: HDC) -> i32
+    pub                     FillRect           (hDC  : HDC,
+                                                lprc : ^RECT,
+                                                hbr  : HBRUSH) -> i32
+    pub                     GetSystemMetrics   (nIndex: i32) -> i32
+}
+
+ffi "gdi32" {
+    pub CreateSolidBrush  (color: COLORREF) -> HBRUSH
+    pub DeleteObject      (ho: HGDIOBJ) -> BOOL
+    pub StretchDIBits     (hdc        : HDC,
+                           xDest      : i32,
+                           yDest      : i32,
+                           DestWidth  : i32,
+                           DestHeight : i32,
+                           xSrc       : i32,
+                           ySrc       : i32,
+                           SrcWidth   : i32,
+                           SrcHeight  : i32,
+                           lpBits     : ^void,
+                           lpbmi      : ^BITMAPINFO,
+                           iUsage     : UINT,
+                           rop        : DWORD) -> i32
+    pub ChoosePixelFormat (hdc: HDC, ppfd: ^PIXELFORMATDESCRIPTOR) -> i32
+    pub SetPixelFormat    (hdc    : HDC,
+                           format : i32,
+                           ppfd   : ^PIXELFORMATDESCRIPTOR) -> BOOL
+    pub SwapBuffers       (hdc: HDC) -> BOOL
 }
 
 pub MessageBox :: fn (hWnd      : HWND,

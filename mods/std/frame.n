@@ -1629,67 +1629,805 @@ on "linux" {
 
 on "windows" {
 
-    use os.windows
+    windows :: use os.windows
+
+    HWND                  :: windows.HWND
+    HDC                   :: windows.HDC
+    HGLRC                 :: windows.HGLRC
+    COLORREF              :: windows.COLORREF
+    DWORD                 :: windows.DWORD
+    RECT                  :: windows.RECT
+    LONG                  :: windows.LONG
+    WNDCLASSEX            :: windows.WNDCLASSEX
+    UINT                  :: windows.UINT
+    WPARAM                :: windows.WPARAM
+    LPARAM                :: windows.LPARAM
+    LRESULT               :: windows.LRESULT
+    MSG                   :: windows.MSG
+    LONG_PTR              :: windows.LONG_PTR
+    BITMAPINFO            :: windows.BITMAPINFO
+    BITMAPINFOHEADER      :: windows.BITMAPINFOHEADER
+    WORD                  :: windows.WORD
+    BYTE                  :: windows.BYTE
+    PIXELFORMATDESCRIPTOR :: windows.PIXELFORMATDESCRIPTOR
+
+    CS_OWNDC            :: windows.CS_OWNDC
+    CS_HREDRAW          :: windows.CS_HREDRAW
+    CS_VREDRAW          :: windows.CS_VREDRAW
+    CW_USEDEFAULT       :: windows.CW_USEDEFAULT
+    WS_OVERLAPPEDWINDOW :: windows.WS_OVERLAPPEDWINDOW
+    WS_THICKFRAME       :: windows.WS_THICKFRAME
+    WS_MAXIMIZEBOX      :: windows.WS_MAXIMIZEBOX
+    WS_VISIBLE          :: windows.WS_VISIBLE
+    WS_POPUP            :: windows.WS_POPUP
+    SW_SHOW             :: windows.SW_SHOW
+    SWP_NOMOVE          :: windows.SWP_NOMOVE
+    SWP_NOZORDER        :: windows.SWP_NOZORDER
+    SWP_NOACTIVATE      :: windows.SWP_NOACTIVATE
+    SWP_FRAMECHANGED    :: windows.SWP_FRAMECHANGED
+    GWLP_USERDATA       :: windows.GWLP_USERDATA
+    GWL_STYLE           :: windows.GWL_STYLE
+    PM_REMOVE           :: windows.PM_REMOVE
+    WM_CLOSE            :: windows.WM_CLOSE
+    WM_DESTROY          :: windows.WM_DESTROY
+    WM_SIZE             :: windows.WM_SIZE
+    WM_KEYDOWN          :: windows.WM_KEYDOWN
+    WM_SYSKEYDOWN       :: windows.WM_SYSKEYDOWN
+    WM_KEYUP            :: windows.WM_KEYUP
+    WM_SYSKEYUP         :: windows.WM_SYSKEYUP
+    WM_CHAR             :: windows.WM_CHAR
+    VK_BACK             :: windows.VK_BACK
+    VK_TAB              :: windows.VK_TAB
+    VK_RETURN           :: windows.VK_RETURN
+    VK_ESCAPE           :: windows.VK_ESCAPE
+    VK_SPACE            :: windows.VK_SPACE
+    VK_DELETE           :: windows.VK_DELETE
+    VK_INSERT           :: windows.VK_INSERT
+    VK_HOME             :: windows.VK_HOME
+    VK_END              :: windows.VK_END
+    VK_PRIOR            :: windows.VK_PRIOR
+    VK_NEXT             :: windows.VK_NEXT
+    VK_UP               :: windows.VK_UP
+    VK_DOWN             :: windows.VK_DOWN
+    VK_LEFT             :: windows.VK_LEFT
+    VK_RIGHT            :: windows.VK_RIGHT
+    VK_LSHIFT           :: windows.VK_LSHIFT
+    VK_RSHIFT           :: windows.VK_RSHIFT
+    VK_SHIFT            :: windows.VK_SHIFT
+    VK_LCONTROL         :: windows.VK_LCONTROL
+    VK_RCONTROL         :: windows.VK_RCONTROL
+    VK_CONTROL          :: windows.VK_CONTROL
+    VK_LMENU            :: windows.VK_LMENU
+    VK_RMENU            :: windows.VK_RMENU
+    VK_MENU             :: windows.VK_MENU
+    VK_F1               :: windows.VK_F1
+    VK_F2               :: windows.VK_F2
+    VK_F3               :: windows.VK_F3
+    VK_F4               :: windows.VK_F4
+    VK_F5               :: windows.VK_F5
+    VK_F6               :: windows.VK_F6
+    VK_F7               :: windows.VK_F7
+    VK_F8               :: windows.VK_F8
+    VK_F9               :: windows.VK_F9
+    VK_F10              :: windows.VK_F10
+    VK_F11              :: windows.VK_F11
+    VK_F12              :: windows.VK_F12
+    SM_CXSCREEN         :: windows.SM_CXSCREEN
+    SM_CYSCREEN         :: windows.SM_CYSCREEN
+    BI_RGB              :: windows.BI_RGB
+    DIB_RGB_COLORS      :: windows.DIB_RGB_COLORS
+    SRCCOPY             :: windows.SRCCOPY
+    PFD_DRAW_TO_WINDOW  :: windows.PFD_DRAW_TO_WINDOW
+    PFD_SUPPORT_OPENGL  :: windows.PFD_SUPPORT_OPENGL
+    PFD_DOUBLEBUFFER    :: windows.PFD_DOUBLEBUFFER
+    PFD_TYPE_RGBA       :: windows.PFD_TYPE_RGBA
+    PFD_MAIN_PLANE      :: windows.PFD_MAIN_PLANE
+
+    RegisterClassEx    :: windows.RegisterClassEx
+    CreateWindowEx     :: windows.CreateWindowEx
+    DefWindowProc      :: windows.DefWindowProc
+    DestroyWindow      :: windows.DestroyWindow
+    ShowWindow         :: windows.ShowWindow
+    UpdateWindow       :: windows.UpdateWindow
+    SetWindowText      :: windows.SetWindowText
+    SetWindowPos       :: windows.SetWindowPos
+    AdjustWindowRectEx :: windows.AdjustWindowRectEx
+    GetClientRect      :: windows.GetClientRect
+    GetWindowRect      :: windows.GetWindowRect
+    SetWindowLongPtr   :: windows.SetWindowLongPtr
+    GetWindowLongPtr   :: windows.GetWindowLongPtr
+    PeekMessage        :: windows.PeekMessage
+    TranslateMessage   :: windows.TranslateMessage
+    DispatchMessage    :: windows.DispatchMessage
+    GetDC              :: windows.GetDC
+    ReleaseDC          :: windows.ReleaseDC
+    FillRect           :: windows.FillRect
+    GetSystemMetrics   :: windows.GetSystemMetrics
+    CreateSolidBrush   :: windows.CreateSolidBrush
+    DeleteObject       :: windows.DeleteObject
+    StretchDIBits      :: windows.StretchDIBits
+    ChoosePixelFormat  :: windows.ChoosePixelFormat
+    SetPixelFormat     :: windows.SetPixelFormat
+    SwapBuffers        :: windows.SwapBuffers
+    wglCreateContext   :: windows.wglCreateContext
+    wglMakeCurrent     :: windows.wglMakeCurrent
+    wglDeleteContext   :: windows.wglDeleteContext
+    wgl_load_commands  :: windows.wgl_load_commands
 
     -- Windows data attached to a public `Frame`.
     PlatformFrameInfo :: plex {
+        window         ^void
+        device_context ^void
+        gl_context     ^void
+        width          u16
+        height         u16
+        restore_x      i32
+        restore_y      i32
+        restore_width  u16
+        restore_height u16
+        full_screen    bool
+        resizable      bool
+        closed_queued  bool
     }
 
-    frame_apply_impl :: fn (_system: ^FrameSystem, frame: ^Frame) {
-        on frame.id == CLOSED_FRAME => return
+    FRAME_WINDOWS_CLASS_NAME :: c"NerdFrameWindow"
+
+    frame_windows_current_system : ^FrameSystem
+    frame_windows_class_registered := no
+
+    frame_windows_colour_ref :: fn (colour: u32) -> u32 {
+        r := (colour >> 16) & 0xff
+        g := (colour >> 8) & 0xff
+        b := colour & 0xff
+        return (b << 16) | (g << 8) | r
+    }
+
+    frame_windows_window_style :: fn (resizable: bool) -> u32 {
+        style := WS_OVERLAPPEDWINDOW
+        on !resizable => {
+            style = style & !WS_THICKFRAME
+            style = style & !WS_MAXIMIZEBOX
+        }
+        return style.as(u32)
+    }
+
+    frame_windows_adjusted_rect :: fn (width    : u16,
+                                       height   : u16,
+                                       style    : u32,
+                                       ex_style : u32) -> (i32, i32) {
+        rect : RECT
+        rect.left = 0
+        rect.top = 0
+        rect.right = width.as(LONG)
+        rect.bottom = height.as(LONG)
+        _ := AdjustWindowRectEx(^rect, style.as(DWORD), 0, ex_style.as(DWORD))
+        return (rect.right - rect.left, rect.bottom - rect.top)
+    }
+
+    frame_windows_register_class :: fn () -> bool {
+        on frame_windows_class_registered => return yes
+
+        wc : WNDCLASSEX
+        wc.cbSize = WNDCLASSEX.size.as(UINT)
+        wc.style = (CS_OWNDC | CS_HREDRAW | CS_VREDRAW).as(UINT)
+        wc.lpfnWndProc = frame_windows_window_proc
+        wc.cbClsExtra = 0
+        wc.cbWndExtra = 0
+        wc.hInstance = nil
+        wc.hIcon = nil
+        wc.hCursor = nil
+        wc.hbrBackground = nil
+        wc.lpszMenuName = nil
+        wc.lpszClassName = FRAME_WINDOWS_CLASS_NAME
+        wc.hIconSm = nil
+
+        atom := RegisterClassEx(^wc)
+        on atom == 0 => return no
+        frame_windows_class_registered = yes
+        return yes
+    }
+
+    frame_windows_find_info_for_window :: fn (window: ^void) -> ^FrameInfo {
+        system := frame_windows_current_system
+        on system == nil => return nil
+
+        id := GetWindowLongPtr(window, GWLP_USERDATA).as(u16)
+        on id == NEW_FRAME || id == CLOSED_FRAME => return nil
+
+        return frame_system_find_info(system, id)
+    }
+
+    frame_windows_push_closed :: fn (info: ^FrameInfo) {
+        on info == nil || info.platform_info.closed_queued => return
+        info.platform_info.closed_queued = yes
+        info.events.push(FrameEvent.Closed)
+    }
+
+    frame_windows_push_resize :: fn (info: ^FrameInfo, width: u16, height: u16) {
+        info.platform_info.width = width
+        info.platform_info.height = height
+        info.events.push(FrameEvent.Resized { width height })
+    }
+
+    frame_windows_scan_code_from_virtual_key :: fn (key: usize) -> FrameScanCode {
+        vk := key.as(u32)
+        return on vk {
+            VK_BACK      => FrameScanCode.Backspace
+            VK_TAB       => FrameScanCode.Tab
+            VK_RETURN    => FrameScanCode.Enter
+            VK_ESCAPE    => FrameScanCode.Escape
+            VK_SPACE     => FrameScanCode.Space
+            VK_DELETE    => FrameScanCode.Delete
+            VK_INSERT    => FrameScanCode.Insert
+            VK_HOME      => FrameScanCode.Home
+            VK_END       => FrameScanCode.End
+            VK_PRIOR     => FrameScanCode.PageUp
+            VK_NEXT      => FrameScanCode.PageDown
+            VK_UP        => FrameScanCode.ArrowUp
+            VK_DOWN      => FrameScanCode.ArrowDown
+            VK_LEFT      => FrameScanCode.ArrowLeft
+            VK_RIGHT     => FrameScanCode.ArrowRight
+            VK_LSHIFT    => FrameScanCode.LeftShift
+            VK_RSHIFT    => FrameScanCode.RightShift
+            VK_SHIFT     => FrameScanCode.LeftShift
+            VK_LCONTROL  => FrameScanCode.LeftControl
+            VK_RCONTROL  => FrameScanCode.RightControl
+            VK_CONTROL   => FrameScanCode.LeftControl
+            VK_LMENU     => FrameScanCode.LeftAlt
+            VK_RMENU     => FrameScanCode.RightAlt
+            VK_MENU      => FrameScanCode.LeftAlt
+            VK_F1        => FrameScanCode.F1
+            VK_F2        => FrameScanCode.F2
+            VK_F3        => FrameScanCode.F3
+            VK_F4        => FrameScanCode.F4
+            VK_F5        => FrameScanCode.F5
+            VK_F6        => FrameScanCode.F6
+            VK_F7        => FrameScanCode.F7
+            VK_F8        => FrameScanCode.F8
+            VK_F9        => FrameScanCode.F9
+            VK_F10       => FrameScanCode.F10
+            VK_F11       => FrameScanCode.F11
+            VK_F12       => FrameScanCode.F12
+            else => on (vk >= '0'.as(u32) && vk <= '9'.as(u32)) => vk.as(FrameScanCode)
+                else on (vk >= 'A'.as(u32) && vk <= 'Z'.as(u32)) => vk.as(FrameScanCode)
+                else FrameScanCode.Unknown
+        }
+    }
+
+    frame_windows_update_modifier_state :: fn (system    : ^FrameSystem,
+                                               scan_code : FrameScanCode,
+                                               is_down   : bool) {
+        on scan_code {
+            LeftShift     => system.left_shift_down = is_down
+            RightShift    => system.right_shift_down = is_down
+            LeftControl   => system.left_control_down = is_down
+            RightControl  => system.right_control_down = is_down
+            LeftAlt       => system.left_alt_down = is_down
+            RightAlt      => system.right_alt_down = is_down
+        }
+    }
+
+    frame_windows_window_proc :: fn (window  : ^void,
+                                     message : u32,
+                                     wparam  : usize,
+                                     lparam  : isize) -> isize {
+        info := frame_windows_find_info_for_window(window)
+
+        on message {
+            WM_CLOSE => {
+                frame_windows_push_closed(info)
+                return 0
+            }
+            WM_DESTROY => {
+                frame_windows_push_closed(info)
+                return 0
+            }
+            WM_SIZE => {
+                on info != nil => {
+                    value := lparam.as(usize)
+                    width := (value & 0xffff).as(u16)
+                    height := ((value >> 16) & 0xffff).as(u16)
+                    frame_windows_push_resize(info, width, height)
+                }
+                return 0
+            }
+            WM_KEYDOWN => {
+                on info != nil && frame_windows_current_system != nil => {
+                    scan_code := frame_windows_scan_code_from_virtual_key(wparam)
+                    frame_windows_update_modifier_state(frame_windows_current_system,
+                                                        scan_code,
+                                                        yes)
+                    info.events.push(FrameEvent.KeyPress { scan_code })
+                }
+                return 0
+            }
+            WM_SYSKEYDOWN => {
+                on info != nil && frame_windows_current_system != nil => {
+                    scan_code := frame_windows_scan_code_from_virtual_key(wparam)
+                    frame_windows_update_modifier_state(frame_windows_current_system,
+                                                        scan_code,
+                                                        yes)
+                    info.events.push(FrameEvent.KeyPress { scan_code })
+                }
+                return 0
+            }
+            WM_KEYUP => {
+                on info != nil && frame_windows_current_system != nil => {
+                    scan_code := frame_windows_scan_code_from_virtual_key(wparam)
+                    frame_windows_update_modifier_state(frame_windows_current_system,
+                                                        scan_code,
+                                                        no)
+                    info.events.push(FrameEvent.KeyRelease { scan_code })
+                }
+                return 0
+            }
+            WM_SYSKEYUP => {
+                on info != nil && frame_windows_current_system != nil => {
+                    scan_code := frame_windows_scan_code_from_virtual_key(wparam)
+                    frame_windows_update_modifier_state(frame_windows_current_system,
+                                                        scan_code,
+                                                        no)
+                    info.events.push(FrameEvent.KeyRelease { scan_code })
+                }
+                return 0
+            }
+            WM_CHAR => {
+                on info != nil => {
+                    codepoint := wparam.as(u32)
+                    on codepoint != 0 => {
+                        info.events.push(FrameEvent.Character { codepoint })
+                    }
+                }
+                return 0
+            }
+        }
+
+        return DefWindowProc(window, message, wparam, lparam)
+    }
+
+    frame_windows_release_gl :: fn (info: ^FrameInfo) {
+        on info.platform_info.gl_context == nil => return
+
+        _ := wglMakeCurrent(nil, nil)
+        _ := wglDeleteContext(info.platform_info.gl_context)
+        info.platform_info.gl_context = nil
+    }
+
+    frame_windows_destroy_info :: fn (info: ^FrameInfo) {
+        frame_windows_release_gl(info)
+
+        on info.platform_info.window != nil && info.platform_info.device_context != nil => {
+            _ := ReleaseDC(info.platform_info.window,
+                           info.platform_info.device_context)
+        }
+
+        on info.platform_info.window != nil => {
+            _ := DestroyWindow(info.platform_info.window)
+        }
+
+        info.events.free()
+        info.id = CLOSED_FRAME
+        info.platform_info.window = nil
+        info.platform_info.device_context = nil
+        info.platform_info.gl_context = nil
+        info.platform_info.closed_queued = no
+    }
+
+    frame_windows_mark_closed :: fn (system: ^FrameSystem, frame: ^Frame) {
+        id := frame.id
+        index := frame_system_find_info_index(system, id)
         frame.id = CLOSED_FRAME
+        on index < system.frames.count => {
+            frame_windows_destroy_info(^system.frames[index])
+            system.frames.swap_delete(index)
+        }
     }
 
-    frame_loop_impl :: fn (_system: ^FrameSystem) -> bool {
-        return no
+    frame_windows_apply_fullscreen :: fn (info: ^FrameInfo, frame: ^Frame) {
+        on frame.full_screen == info.platform_info.full_screen => return
+
+        on frame.full_screen {
+            yes => {
+                rect : RECT
+                on GetWindowRect(info.platform_info.window, ^rect) != 0 => {
+                    info.platform_info.restore_x = rect.left
+                    info.platform_info.restore_y = rect.top
+                    info.platform_info.restore_width = (rect.right - rect.left).as(u16)
+                    info.platform_info.restore_height = (rect.bottom - rect.top).as(u16)
+                }
+
+                _ := SetWindowLongPtr(info.platform_info.window,
+                                      GWL_STYLE,
+                                      (WS_POPUP | WS_VISIBLE).as(LONG_PTR))
+                _ := SetWindowPos(info.platform_info.window,
+                                  nil,
+                                  0,
+                                  0,
+                                  GetSystemMetrics(SM_CXSCREEN),
+                                  GetSystemMetrics(SM_CYSCREEN),
+                                  (SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED).as(UINT))
+                info.platform_info.full_screen = yes
+            }
+            no => {
+                style := frame_windows_window_style(info.platform_info.resizable)
+                _ := SetWindowLongPtr(info.platform_info.window,
+                                      GWL_STYLE,
+                                      style.as(LONG_PTR))
+                _ := SetWindowPos(info.platform_info.window,
+                                  nil,
+                                  info.platform_info.restore_x,
+                                  info.platform_info.restore_y,
+                                  info.platform_info.restore_width.as(i32),
+                                  info.platform_info.restore_height.as(i32),
+                                  (SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED).as(UINT))
+                info.platform_info.full_screen = no
+            }
+        }
     }
 
-    frame_update_impl :: fn (_system: ^FrameSystem, frame: ^Frame) {
+    frame_windows_create :: fn (system: ^FrameSystem, frame: ^Frame) {
+        frame_windows_current_system = system
+        on !frame_system_has_id_capacity(system) || !frame_windows_register_class() => {
+            frame.id = CLOSED_FRAME
+            return
+        }
+
+        id := frame_system_allocate_id(system)
+        on id == CLOSED_FRAME => {
+            frame.id = CLOSED_FRAME
+            return
+        }
+
+        mark := temp_arena.mark()
+        defer temp_arena.restore(mark)
+
+        ex_style : DWORD = 0
+        style := frame_windows_window_style(frame.resizable)
+        (window_width, window_height) := frame_windows_adjusted_rect(frame.width, frame.height, style, ex_style)
+
+        window := CreateWindowEx(ex_style,
+                                 FRAME_WINDOWS_CLASS_NAME,
+                                 frame_c_string_temp(frame.title),
+                                 style | WS_VISIBLE,
+                                 CW_USEDEFAULT,
+                                 CW_USEDEFAULT,
+                                 window_width,
+                                 window_height,
+                                 nil,
+                                 nil,
+                                 nil,
+                                 nil)
+        on window == nil => {
+            frame.id = CLOSED_FRAME
+            return
+        }
+
+        device_context := GetDC(window)
+        on device_context == nil => {
+            _ := DestroyWindow(window)
+            frame.id = CLOSED_FRAME
+            return
+        }
+
+        platform_info : PlatformFrameInfo
+        platform_info.window = window
+        platform_info.device_context = device_context
+        platform_info.width = frame.width
+        platform_info.height = frame.height
+        platform_info.restore_width = frame.width
+        platform_info.restore_height = frame.height
+        platform_info.full_screen = no
+        platform_info.resizable = frame.resizable
+
+        info := FrameInfo {
+            id
+            events: nil
+            platform_info
+        }
+        frame_windows_push_resize(^info, frame.width, frame.height)
+        system.frames.push(info)
+        _ := SetWindowLongPtr(window, GWLP_USERDATA, id.as(LONG_PTR))
+        frame.id = id
+
+        _ := ShowWindow(window, SW_SHOW)
+        _ := UpdateWindow(window)
+        frame_windows_apply_fullscreen(frame_system_find_info(system, id),
+                                       frame)
+    }
+
+    frame_windows_update_existing :: fn (system: ^FrameSystem, frame: ^Frame) {
+        info := frame_system_find_info(system, frame.id)
+        on info == nil => {
+            frame.id = CLOSED_FRAME
+            return
+        }
+
+        mark := temp_arena.mark()
+        defer temp_arena.restore(mark)
+
+        _ := SetWindowText(info.platform_info.window,
+                           frame_c_string_temp(frame.title))
+        info.platform_info.resizable = frame.resizable
+        frame_windows_apply_fullscreen(info, frame)
+
+        on !info.platform_info.full_screen => {
+            style := frame_windows_window_style(frame.resizable)
+            (window_width, window_height) := frame_windows_adjusted_rect(frame.width, frame.height, style, 0)
+            _ := SetWindowLongPtr(info.platform_info.window,
+                                  GWL_STYLE,
+                                  (style | WS_VISIBLE).as(LONG_PTR))
+            _ := SetWindowPos(info.platform_info.window,
+                              nil,
+                              0,
+                              0,
+                              window_width,
+                              window_height,
+                              (SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED).as(UINT))
+            info.platform_info.width = frame.width
+            info.platform_info.height = frame.height
+        }
+    }
+
+    frame_apply_impl :: fn (system: ^FrameSystem, frame: ^Frame) {
         on frame.id == CLOSED_FRAME => return
-        frame.id = CLOSED_FRAME
+
+        on frame.id == NEW_FRAME => {
+            frame_windows_create(system, frame)
+            return
+        }
+
+        frame_windows_update_existing(system, frame)
     }
 
-    frame_poll_impl :: fn (_system: ^FrameSystem, frame: ^Frame) -> FrameEvent {
-        on frame.id != CLOSED_FRAME => {
+    frame_loop_impl :: fn (system: ^FrameSystem) -> bool {
+        frame_windows_current_system = system
+
+        message : MSG
+        for PeekMessage(^message, nil, 0, 0, PM_REMOVE) != 0 {
+            _ := TranslateMessage(^message)
+            _ := DispatchMessage(^message)
+        }
+
+        return system.frames.count > 0
+    }
+
+    frame_update_impl :: fn (system: ^FrameSystem, frame: ^Frame) {
+        on frame.id == CLOSED_FRAME => return
+
+        info := frame_system_find_info(system, frame.id)
+        on info == nil => {
+            frame.id = CLOSED_FRAME
+            return
+        }
+
+        rect : RECT
+        on GetClientRect(info.platform_info.window, ^rect) == 0 => {
+            frame.id = CLOSED_FRAME
+            frame_windows_destroy_info(info)
+            return
+        }
+
+        frame.width = (rect.right - rect.left).as(u16)
+        frame.height = (rect.bottom - rect.top).as(u16)
+        frame.full_screen = info.platform_info.full_screen
+        frame.resizable = info.platform_info.resizable
+    }
+
+    frame_poll_impl :: fn (system: ^FrameSystem, frame: ^Frame) -> FrameEvent {
+        on frame.id == CLOSED_FRAME => return FrameEvent.None
+
+        info := frame_system_find_info(system, frame.id)
+        on info == nil => {
             frame.id = CLOSED_FRAME
             return FrameEvent.Closed
         }
-        return FrameEvent.None
+
+        on info.events.count == 0 => return FrameEvent.None
+
+        event := info.events[0]
+        info.events.delete(0)
+        on event == FrameEvent.Closed => frame_windows_mark_closed(system, frame)
+        return event
     }
 
-    frame_destroy_impl :: fn (_system: ^FrameSystem, frame: ^Frame) {
+    frame_destroy_impl :: fn (system: ^FrameSystem, frame: ^Frame) {
         on frame.id == CLOSED_FRAME => return
+
+        index := frame_system_find_info_index(system, frame.id)
+        on index < system.frames.count => {
+            frame_windows_destroy_info(^system.frames[index])
+            system.frames.swap_delete(index)
+        }
         frame.id = CLOSED_FRAME
     }
 
-    frame_present_rects_impl :: fn (_system : ^FrameSystem,
-                                    _frame  : ^Frame,
-                                    _rects  : []FramePixelRect) {
+    frame_present_rects_impl :: fn (system : ^FrameSystem,
+                                    frame  : ^Frame,
+                                    rects  : []FramePixelRect) {
+        on frame.id == CLOSED_FRAME || rects.count == 0 => return
+
+        info := frame_system_find_info(system, frame.id)
+        on info == nil ||
+            info.platform_info.window == nil ||
+            info.platform_info.device_context == nil => return
+
+        for rect in rects {
+            on rect.width == 0 || rect.height == 0 => again
+
+            win_rect : RECT
+            win_rect.left = rect.x.as(LONG)
+            win_rect.top = rect.y.as(LONG)
+            win_rect.right = (rect.x.as(u32) + rect.width.as(u32)).as(LONG)
+            win_rect.bottom = (rect.y.as(u32) + rect.height.as(u32)).as(LONG)
+            brush := CreateSolidBrush(frame_windows_colour_ref(rect.colour))
+            on brush == nil => again
+            _ := FillRect(info.platform_info.device_context, ^win_rect, brush)
+            _ := DeleteObject(brush.as(HGDIOBJ))
+        }
     }
 
-    frame_present_pixels_impl :: fn (_system : ^FrameSystem,
-                                     _frame  : ^Frame,
-                                     _buffer : FramePixelBuffer) {
+    frame_windows_present_scaled_dib :: fn (info   : ^FrameInfo,
+                                            buffer : FrameScaledPixelBuffer) {
+        bitmap : BITMAPINFO
+        bitmap.bmiHeader.biSize = BITMAPINFOHEADER.size.as(DWORD)
+        bitmap.bmiHeader.biWidth = buffer.width.as(LONG)
+        bitmap.bmiHeader.biHeight = -(buffer.height.as(LONG))
+        bitmap.bmiHeader.biPlanes = 1
+        bitmap.bmiHeader.biBitCount = 32
+        bitmap.bmiHeader.biCompression = BI_RGB
+        bitmap.bmiHeader.biSizeImage = 0
+        bitmap.bmiHeader.biXPelsPerMeter = 0
+        bitmap.bmiHeader.biYPelsPerMeter = 0
+        bitmap.bmiHeader.biClrUsed = 0
+        bitmap.bmiHeader.biClrImportant = 0
+
+        _ := StretchDIBits(info.platform_info.device_context,
+                           buffer.x.as(i32),
+                           buffer.y.as(i32),
+                           buffer.draw_width.as(i32),
+                           buffer.draw_height.as(i32),
+                           0,
+                           0,
+                           buffer.width.as(i32),
+                           buffer.height.as(i32),
+                           buffer.pixels.data.as(^void),
+                           ^bitmap,
+                           DIB_RGB_COLORS,
+                           SRCCOPY)
     }
 
-    frame_present_scaled_pixels_impl :: fn (_system : ^FrameSystem,
-                                            _frame  : ^Frame,
-                                            _buffer : FrameScaledPixelBuffer) {
+    frame_present_pixels_impl :: fn (system : ^FrameSystem,
+                                     frame  : ^Frame,
+                                     buffer : FramePixelBuffer) {
+        on frame.id == CLOSED_FRAME ||
+            buffer.width == 0 ||
+            buffer.height == 0 ||
+            buffer.stride == 0 ||
+            buffer.pixels.count == 0 => return
+
+        info := frame_system_find_info(system, frame.id)
+        on info == nil ||
+            info.platform_info.window == nil ||
+            info.platform_info.device_context == nil => return
+
+        required_pixels := buffer.stride.as(usize) * buffer.height.as(usize)
+        on buffer.pixels.count < required_pixels => return
+
+        frame_windows_present_scaled_dib(info, FrameScaledPixelBuffer {
+            x           : buffer.x
+            y           : buffer.y
+            width       : buffer.width
+            height      : buffer.height
+            stride      : buffer.stride
+            draw_width  : buffer.width
+            draw_height : buffer.height
+            pixels      : buffer.pixels
+        })
     }
 
-    frame_opengl_init_impl :: fn (_system: ^FrameSystem, _frame: ^Frame) -> bool {
-        return no
+    frame_present_scaled_pixels_impl :: fn (system : ^FrameSystem,
+                                            frame  : ^Frame,
+                                            buffer : FrameScaledPixelBuffer) {
+        on frame.id == CLOSED_FRAME ||
+            buffer.width == 0 ||
+            buffer.height == 0 ||
+            buffer.stride == 0 ||
+            buffer.draw_width == 0 ||
+            buffer.draw_height == 0 ||
+            buffer.pixels.count == 0 => return
+
+        info := frame_system_find_info(system, frame.id)
+        on info == nil ||
+            info.platform_info.window == nil ||
+            info.platform_info.device_context == nil => return
+
+        required_pixels := buffer.stride.as(usize) * buffer.height.as(usize)
+        on buffer.pixels.count < required_pixels => return
+
+        frame_windows_present_scaled_dib(info, buffer)
     }
 
-    frame_opengl_done_impl :: fn (_system: ^FrameSystem, _frame: ^Frame) {
+    frame_windows_choose_pixel_format :: fn (dc: ^void) -> bool {
+        descriptor : PIXELFORMATDESCRIPTOR
+        descriptor.nSize = PIXELFORMATDESCRIPTOR.size.as(WORD)
+        descriptor.nVersion = 1
+        descriptor.dwFlags = (PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER).as(DWORD)
+        descriptor.iPixelType = PFD_TYPE_RGBA.as(BYTE)
+        descriptor.cColorBits = 32
+        descriptor.cRedBits = 0
+        descriptor.cRedShift = 0
+        descriptor.cGreenBits = 0
+        descriptor.cGreenShift = 0
+        descriptor.cBlueBits = 0
+        descriptor.cBlueShift = 0
+        descriptor.cAlphaBits = 8
+        descriptor.cAlphaShift = 0
+        descriptor.cAccumBits = 0
+        descriptor.cAccumRedBits = 0
+        descriptor.cAccumGreenBits = 0
+        descriptor.cAccumBlueBits = 0
+        descriptor.cAccumAlphaBits = 0
+        descriptor.cDepthBits = 24
+        descriptor.cStencilBits = 8
+        descriptor.cAuxBuffers = 0
+        descriptor.iLayerType = PFD_MAIN_PLANE.as(BYTE)
+        descriptor.bReserved = 0
+        descriptor.dwLayerMask = 0
+        descriptor.dwVisibleMask = 0
+        descriptor.dwDamageMask = 0
+
+        format := ChoosePixelFormat(dc, ^descriptor)
+        on format == 0 => return no
+        return SetPixelFormat(dc, format, ^descriptor) != 0
     }
 
-    frame_opengl_make_current_impl :: fn (_system : ^FrameSystem,
-                                          _frame  : ^Frame) -> bool {
-        return no
+    frame_windows_gl_init :: fn (info: ^FrameInfo) -> bool {
+        on info.platform_info.gl_context != nil => return yes
+        on info.platform_info.device_context == nil => return no
+
+        on !frame_windows_choose_pixel_format(info.platform_info.device_context) => return no
+
+        context := wglCreateContext(info.platform_info.device_context)
+        on context == nil => return no
+        on wglMakeCurrent(info.platform_info.device_context, context) == 0 => {
+            _ := wglDeleteContext(context)
+            return no
+        }
+
+        on !wgl_load_commands() => {
+            _ := wglMakeCurrent(nil, nil)
+            _ := wglDeleteContext(context)
+            return no
+        }
+
+        info.platform_info.gl_context = context
+        return yes
     }
 
-    frame_opengl_swap_buffers_impl :: fn (_system: ^FrameSystem, _frame: ^Frame) {
+    frame_opengl_init_impl :: fn (system: ^FrameSystem, frame: ^Frame) -> bool {
+        info := frame_system_find_info(system, frame.id)
+        on info == nil => return no
+        return frame_windows_gl_init(info)
+    }
+
+    frame_opengl_done_impl :: fn (system: ^FrameSystem, frame: ^Frame) {
+        info := frame_system_find_info(system, frame.id)
+        on info == nil => return
+        frame_windows_release_gl(info)
+    }
+
+    frame_opengl_make_current_impl :: fn (system : ^FrameSystem,
+                                          frame  : ^Frame) -> bool {
+        info := frame_system_find_info(system, frame.id)
+        on info == nil => return no
+        on !frame_windows_gl_init(info) => return no
+        return wglMakeCurrent(info.platform_info.device_context, info.platform_info.gl_context) != 0
+    }
+
+    frame_opengl_swap_buffers_impl :: fn (system: ^FrameSystem, frame: ^Frame) {
+        info := frame_system_find_info(system, frame.id)
+        on info == nil || info.platform_info.device_context == nil => return
+        _ := SwapBuffers(info.platform_info.device_context)
     }
 
 }

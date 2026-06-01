@@ -16,6 +16,7 @@ on "linux" {
 
 on "windows" {
 
+    pub use os.windows.wgl
 
 }
 
