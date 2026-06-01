@@ -63,8 +63,10 @@ or when current docs refer to a settled review decision.
   3. `just install`; if it fails, fix the failure and run it again.
   4. Commit the work, keeping commits small and describing the task slice in the
      commit message.
-  5. Report back with the commit hash, verification run, install result, and
-     useful next step.
+  5. Push the completed commit with `git push agent main` when the local
+     `agent` remote is configured for the Codex SSH identity.
+  6. Report back with the commit hash, verification run, install result, push
+     result, and useful next step.
 
 ## Generated Files
 
