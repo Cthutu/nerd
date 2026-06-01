@@ -1,0 +1,19 @@
+main :: fn() -> i32 {
+    values: [2]i32 = [1, 2]
+    view: []i32 = values[..]
+    array_ptr := ^values
+    slice_ptr := ^view
+    elem_ptr := ^view[0]
+    return array_ptr[0][0] + slice_ptr[0][1] + elem_ptr[0]
+}
+¬
+hir 0
+bind main = fn.0
+func fn.0() -> i32 {
+  let values: [2]i32 = [2]i32 array(i32 1, i32 2)
+  let view: []i32 = []i32 slice([2]i32 local.0(values), <none>, <none>)
+  let array_ptr: ^[2]i32 = ^[2]i32 address_of([2]i32 local.0(values))
+  let slice_ptr: ^[]i32 = ^[]i32 address_of([]i32 local.1(view))
+  let elem_ptr: ^i32 = ^i32 address_of(i32 index([]i32 local.1(view), untyped integer 0))
+  return i32 add(i32 add(i32 index([2]i32 index(^[2]i32 local.2(array_ptr), untyped integer 0), untyped integer 0), i32 index([]i32 index(^[]i32 local.3(slice_ptr), untyped integer 0), untyped integer 1)), i32 index(^i32 local.4(elem_ptr), untyped integer 0))
+}

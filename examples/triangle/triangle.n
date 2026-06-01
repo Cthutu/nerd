@@ -105,7 +105,7 @@ main :: fn () {
         return
     }
 
-    vertices: [15]GLfloat = [
+    vertices: []GLfloat = [
         0.0,
         0.6,
         1.0,
@@ -131,8 +131,8 @@ main :: fn () {
     glBindVertexArray(vertex_array)
     glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer)
     glBufferData(GL_ARRAY_BUFFER,
-                 vertices.size.as(GLsizeiptr),
-                 (^vertices).as(^void),
+                 (vertices.count * GLfloat.size).as(GLsizeiptr),
+                 ^vertices[0],
                  GL_STATIC_DRAW)
     glEnableVertexAttribArray(0)
     glVertexAttribPointer(0,

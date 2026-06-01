@@ -1944,6 +1944,87 @@ internal bool llvm_append_constant_record_value(StringBuilder* sb,
     return true;
 }
 
+internal bool
+llvm_eval_constant_bool_expr(const Hir* hir, u32 expr_index, bool* out)
+{
+    if (expr_index >= array_count(hir->exprs)) {
+        return false;
+    }
+    const HirExpr* expr = &hir->exprs[expr_index];
+    switch (expr->kind) {
+    case HIR_EXPR_BoolLiteral:
+        *out = expr->boolean;
+        return true;
+    case HIR_EXPR_Unary:
+        if (expr->unary_op != HIR_UNARY_LogicalNot) {
+            return false;
+        }
+        if (!llvm_eval_constant_bool_expr(hir, expr->operand_expr_index, out)) {
+            return false;
+        }
+        *out = !*out;
+        return true;
+    default:
+        return false;
+    }
+}
+
+internal bool
+llvm_eval_constant_integer_expr(const Hir* hir, u32 expr_index, i64* out)
+{
+    if (expr_index >= array_count(hir->exprs)) {
+        return false;
+    }
+    const HirExpr* expr = &hir->exprs[expr_index];
+    switch (expr->kind) {
+    case HIR_EXPR_IntegerLiteral:
+        *out = (i64)expr->integer;
+        return true;
+    case HIR_EXPR_Unary:
+        if (!llvm_eval_constant_integer_expr(
+                hir, expr->operand_expr_index, out)) {
+            return false;
+        }
+        switch (expr->unary_op) {
+        case HIR_UNARY_Negate:
+            *out = -*out;
+            return true;
+        case HIR_UNARY_BitwiseNot:
+            *out = ~*out;
+            return true;
+        default:
+            return false;
+        }
+    default:
+        return false;
+    }
+}
+
+internal bool
+llvm_eval_constant_float_expr(const Hir* hir, u32 expr_index, f64* out)
+{
+    if (expr_index >= array_count(hir->exprs)) {
+        return false;
+    }
+    const HirExpr* expr = &hir->exprs[expr_index];
+    switch (expr->kind) {
+    case HIR_EXPR_FloatLiteral:
+        *out = expr->floating;
+        return true;
+    case HIR_EXPR_Unary:
+        if (expr->unary_op != HIR_UNARY_Negate) {
+            return false;
+        }
+        if (!llvm_eval_constant_float_expr(hir, expr->operand_expr_index, out)) {
+            return false;
+        }
+        *out = -*out;
+        return true;
+    default:
+        return false;
+    }
+}
+
 internal bool llvm_append_constant_expr_value(StringBuilder* sb,
                                               const Hir*     hir,
                                               const Lexer*   lexer,
@@ -1976,6 +2057,57 @@ internal bool llvm_append_constant_expr_value(StringBuilder* sb,
     case HIR_EXPR_BoolLiteral:
         sb_append_cstr(sb, expr->boolean ? "1" : "0");
         return true;
+    case HIR_EXPR_Unary:
+        {
+            if (expr->operand_expr_index >= array_count(hir->exprs)) {
+                return false;
+            }
+            switch (expr->unary_op) {
+            case HIR_UNARY_LogicalNot:
+                {
+                    bool value = false;
+                    if (!llvm_eval_constant_bool_expr(
+                            hir, expr->operand_expr_index, &value)) {
+                        return false;
+                    }
+                    sb_append_cstr(sb, value ? "0" : "1");
+                    return true;
+                }
+            case HIR_UNARY_Negate:
+                if (llvm_float_bits(sema, type_index) > 0) {
+                    f64 value = 0;
+                    if (!llvm_eval_constant_float_expr(
+                            hir, expr->operand_expr_index, &value)) {
+                        return false;
+                    }
+                    sb_append_string(sb,
+                                     llvm_float_literal_string(
+                                         sema, arena, type_index, -value));
+                    return true;
+                }
+                {
+                    i64 value = 0;
+                    if (!llvm_eval_constant_integer_expr(
+                            hir, expr->operand_expr_index, &value)) {
+                        return false;
+                    }
+                    sb_format(sb, "%lld", -(long long)value);
+                    return true;
+                }
+            case HIR_UNARY_BitwiseNot:
+                {
+                    i64 value = 0;
+                    if (!llvm_eval_constant_integer_expr(
+                            hir, expr->operand_expr_index, &value)) {
+                        return false;
+                    }
+                    sb_format(sb, "%lld", ~(long long)value);
+                    return true;
+                }
+            default:
+                return false;
+            }
+        }
     case HIR_EXPR_BuiltinMacro:
         {
             string name = expr->symbol_handle != U32_MAX
@@ -2092,6 +2224,14 @@ internal bool llvm_expr_is_constant_value(const Hir*   hir,
             arena_done(&temp);
             return ok;
         }
+    case HIR_EXPR_Unary:
+        if (expr->unary_op != HIR_UNARY_LogicalNot &&
+            expr->unary_op != HIR_UNARY_Negate &&
+            expr->unary_op != HIR_UNARY_BitwiseNot) {
+            return false;
+        }
+        return llvm_expr_is_constant_value(
+            hir, lexer, sema, expr->operand_expr_index);
     case HIR_EXPR_Array:
     case HIR_EXPR_Tuple:
         for (u32 i = 0; i < expr->arg_count; ++i) {
@@ -7603,23 +7743,10 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
         };
     case HIR_EXPR_Array:
         {
-            Array(LlvmValue) values = NULL;
-            for (u32 i = 0; i < expr->arg_count; ++i) {
-                const HirCallArg* arg =
-                    &ctx->hir->call_args[expr->first_arg + i];
-                LlvmValue item = llvm_emit_expr(ctx, function, arg->expr_index);
-                if (!item.ok) {
-                    array_free(values);
-                    return (LlvmValue){0};
-                }
-                array_push(values, item);
-            }
-
             if (llvm_type_kind(ctx->sema, expr->type_index) == STK_Slice) {
                 u32 item_type =
                     llvm_collection_item_type(ctx->sema, expr->type_index);
                 if (item_type == sema_no_type()) {
-                    array_free(values);
                     return (LlvmValue){0};
                 }
 
@@ -7631,12 +7758,24 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                         STRINGV(llvm_const_slice_backing_name_string(
                             ctx->hir, ctx->arena, expr_index)),
                         expr->arg_count);
-                    array_free(values);
                     return (LlvmValue){
                         .ok         = true,
                         .type_index = expr->type_index,
                         .value      = slice,
                     };
+                }
+
+                Array(LlvmValue) values = NULL;
+                for (u32 i = 0; i < expr->arg_count; ++i) {
+                    const HirCallArg* arg =
+                        &ctx->hir->call_args[expr->first_arg + i];
+                    LlvmValue item =
+                        llvm_emit_expr(ctx, function, arg->expr_index);
+                    if (!item.ok) {
+                        array_free(values);
+                        return (LlvmValue){0};
+                    }
+                    array_push(values, item);
                 }
 
                 string item_type_string = llvm_type_string(ctx, item_type);
@@ -7712,6 +7851,18 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     .type_index = expr->type_index,
                     .value      = slice1,
                 };
+            }
+
+            Array(LlvmValue) values = NULL;
+            for (u32 i = 0; i < expr->arg_count; ++i) {
+                const HirCallArg* arg =
+                    &ctx->hir->call_args[expr->first_arg + i];
+                LlvmValue item = llvm_emit_expr(ctx, function, arg->expr_index);
+                if (!item.ok) {
+                    array_free(values);
+                    return (LlvmValue){0};
+                }
+                array_push(values, item);
             }
 
             if (llvm_type_kind(ctx->sema, expr->type_index) ==
