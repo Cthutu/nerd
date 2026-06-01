@@ -406,6 +406,26 @@ internal void error_print_reference_line(const ErrorInfo* error_info,
         marker_end = MIN(marker_start + 1, line_length == 0 ? 1 : line_length);
     }
 
+    while (marker_start < marker_end) {
+        char c = error_info->source.source.data[line_start + marker_start];
+        if (c != ' ' && c != '\t') {
+            break;
+        }
+        marker_start++;
+    }
+
+    while (marker_end > marker_start) {
+        char c = error_info->source.source.data[line_start + marker_end - 1];
+        if (c != ' ' && c != '\t') {
+            break;
+        }
+        marker_end--;
+    }
+
+    if (marker_end <= marker_start) {
+        marker_end = MIN(marker_start + 1, line_length == 0 ? 1 : line_length);
+    }
+
     char marker_char   = ref->ref_kind == ERROR_REF_PRIMARY ? '^' : '~';
     cstr marker_colour = error_reference_colour(error_info, ref);
 

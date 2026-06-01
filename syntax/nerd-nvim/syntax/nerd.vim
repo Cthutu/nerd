@@ -10,6 +10,7 @@ syn keyword nerdType i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 bool isize usize stri
 syn match nerdComment "--.*$"
 syn match nerdNumber "\v<\d+(\.\d+)?>"
 syn match nerdOperator "::\|:=\|=>\|->\|\.\.<\|\.\.=\|==\|!=\|<=\|>=\|&&\|[|][|]\|[+*/%<>=:|&^$-]"
+syn region nerdTripleString start=+"""+ skip=+\\\\\|\\"+ end=+"""+
 syn region nerdCString start=+c"+ skip=+\\\\\|\\"+ end=+"+
 syn region nerdString start=+"+ skip=+\\\\\|\\"+ end=+"+
 
@@ -18,6 +19,7 @@ hi def link nerdType Type
 hi def link nerdComment Comment
 hi def link nerdNumber Number
 hi def link nerdOperator Operator
+hi def link nerdTripleString String
 hi def link nerdCString String
 hi def link nerdString String
 

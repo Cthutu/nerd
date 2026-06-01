@@ -6993,6 +6993,13 @@ internal string llvm_cast_instruction(LlvmFunctionContext* ctx,
         return s("");
     }
 
+    if ((llvm_type_kind(ctx->sema, source_type) == STK_Pointer &&
+         llvm_type_kind(ctx->sema, target_type) == STK_Function) ||
+        (llvm_type_kind(ctx->sema, source_type) == STK_Function &&
+         llvm_type_kind(ctx->sema, target_type) == STK_Pointer)) {
+        return s("");
+    }
+
     return (string){0};
 }
 

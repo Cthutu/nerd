@@ -557,6 +557,8 @@ internal int format_expr_precedence(const CstNode* node)
 //------------------------------------------------------------------------------
 // Format one expression node with the minimal required parentheses.
 
+internal u32 g_format_expr_indent_level = 0;
+
 internal void format_emit_string_text(StringBuilder* sb, string text)
 {
     for (usize i = 0; i < text.count; ++i) {
@@ -618,6 +620,69 @@ internal void format_emit_interpolated_string_text(StringBuilder* sb,
             break;
         }
     }
+}
+
+internal void format_emit_triple_string_text(StringBuilder* sb, string text)
+{
+    for (usize i = 0; i < text.count; ++i) {
+        if (i + 2 < text.count && text.data[i] == '"' &&
+            text.data[i + 1] == '"' && text.data[i + 2] == '"') {
+            sb_append_cstr(sb, "\\\"");
+            continue;
+        }
+
+        switch (text.data[i]) {
+        case '\t':
+            sb_append_cstr(sb, "\\t");
+            break;
+        case '\0':
+            sb_append_cstr(sb, "\\0");
+            break;
+        case '\a':
+            sb_append_cstr(sb, "\\a");
+            break;
+        case '\b':
+            sb_append_cstr(sb, "\\b");
+            break;
+        case '\f':
+            sb_append_cstr(sb, "\\f");
+            break;
+        case '\v':
+            sb_append_cstr(sb, "\\v");
+            break;
+        case '\\':
+            sb_append_cstr(sb, "\\\\");
+            break;
+        case '\r':
+            break;
+        default:
+            if (text.data[i] < 0x20 || text.data[i] == 0x7f) {
+                sb_format(sb, "\\x%02x", text.data[i]);
+            } else {
+                sb_append_char(sb, (char)text.data[i]);
+            }
+            break;
+        }
+    }
+}
+
+internal void format_emit_triple_string_literal(StringBuilder* sb, string text)
+{
+    sb_append_cstr(sb, "\"\"\"\n");
+    usize line_start = 0;
+    while (line_start < text.count) {
+        format_emit_indent(sb, g_format_expr_indent_level + 1);
+        usize line_end = line_start;
+        while (line_end < text.count && text.data[line_end] != '\n') {
+            line_end++;
+        }
+        format_emit_triple_string_text(
+            sb, string_from(text.data + line_start, line_end - line_start));
+        sb_append_char(sb, '\n');
+        line_start = line_end < text.count ? line_end + 1 : line_end;
+    }
+    format_emit_indent(sb, g_format_expr_indent_level + 1);
+    sb_append_cstr(sb, "\"\"\"");
 }
 
 internal void format_emit_float_literal(StringBuilder* sb,
@@ -783,8 +848,6 @@ internal void format_emit_expr_with_indent(StringBuilder* sb,
                                            u32            node_index,
                                            int            parent_precedence,
                                            u32            indent_level);
-
-internal u32 g_format_expr_indent_level = 0;
 
 typedef struct {
     u32    node_index;
@@ -2112,6 +2175,20 @@ internal bool format_string_has_newline(string text)
     return false;
 }
 
+internal bool format_string_should_use_triple_literal(string text)
+{
+    bool has_newline = false;
+    bool has_content = false;
+    for (usize i = 0; i < text.count; ++i) {
+        if (text.data[i] == '\n' || text.data[i] == '\r') {
+            has_newline = true;
+        } else {
+            has_content = true;
+        }
+    }
+    return has_newline && has_content;
+}
+
 internal int format_string_compare(string a, string b)
 {
     usize count = a.count < b.count ? a.count : b.count;
@@ -2145,6 +2222,11 @@ internal usize format_find_string_split(string text, usize start, usize max_end)
 internal void
 format_emit_string_literal(StringBuilder* sb, string text, bool is_c_string)
 {
+    if (!is_c_string && format_string_should_use_triple_literal(text)) {
+        format_emit_triple_string_literal(sb, text);
+        return;
+    }
+
     usize column          = format_sb_current_column(sb);
     usize available_width = column < FORMAT_WRAP_WIDTH
                                 ? FORMAT_WRAP_WIDTH - column

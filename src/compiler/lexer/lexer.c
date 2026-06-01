@@ -33,6 +33,7 @@ internal bool lexer_lex_one_token(NerdSource source,
                                   usize*     io_index,
                                   Lexer*     lexer,
                                   bool       allow_interpolation_start);
+internal u8 lexer_decode_escape(string source_code, usize* io_index, u8 quote);
 
 internal bool lexer_is_decimal_digit(u8 c) { return c >= '0' && c <= '9'; }
 
@@ -272,6 +273,176 @@ internal bool lexer_lex_string_literal(NerdSource source,
                (Token){.kind = token_kind, .offset = (u32)token_offset});
     array_push(lexer->strings, string_from(buffer, length));
     *io_index = i;
+    return true;
+}
+
+internal bool
+lexer_source_starts_with(string source_code, usize offset, cstr prefix)
+{
+    usize length = strlen(prefix);
+    return offset + length <= source_code.count &&
+           memcmp(source_code.data + offset, prefix, length) == 0;
+}
+
+internal bool lexer_is_line_whitespace(u8 ch)
+{
+    return ch == ' ' || ch == '\t';
+}
+
+internal usize lexer_line_start_before(string source_code, usize offset)
+{
+    usize line_start = offset;
+    while (line_start > 0 && source_code.data[line_start - 1] != '\n' &&
+           source_code.data[line_start - 1] != '\r') {
+        line_start--;
+    }
+    return line_start;
+}
+
+internal bool
+lexer_span_is_line_whitespace(string source_code, usize start, usize end)
+{
+    for (usize i = start; i < end && i < source_code.count; ++i) {
+        if (!lexer_is_line_whitespace(source_code.data[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+
+internal bool
+lexer_line_is_blank_until_newline(string source_code, usize start, usize end)
+{
+    for (usize i = start; i < end && i < source_code.count; ++i) {
+        u8 ch = source_code.data[i];
+        if (ch == '\n' || ch == '\r') {
+            return true;
+        }
+        if (!lexer_is_line_whitespace(ch)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+internal usize lexer_skip_triple_string_line_indent(string source_code,
+                                                    usize  line_start,
+                                                    usize  line_end,
+                                                    string indent)
+{
+    if (indent.count == 0) {
+        return line_start;
+    }
+
+    if (line_start + indent.count <= line_end &&
+        memcmp(source_code.data + line_start, indent.data, indent.count) == 0) {
+        return line_start + indent.count;
+    }
+
+    if (lexer_line_is_blank_until_newline(source_code, line_start, line_end)) {
+        usize cursor = line_start;
+        usize count  = 0;
+        while (cursor < line_end && count < indent.count &&
+               lexer_is_line_whitespace(source_code.data[cursor])) {
+            cursor++;
+            count++;
+        }
+        return cursor;
+    }
+
+    return line_start;
+}
+
+internal bool lexer_lex_triple_string_literal(NerdSource source,
+                                              string     source_code,
+                                              usize*     io_index,
+                                              Lexer*     lexer,
+                                              usize      token_offset)
+{
+    usize start  = *io_index;
+    usize i      = start + 3;
+    bool  closed = false;
+
+    while (i < source_code.count) {
+        if (source_code.data[i] == '\\') {
+            i += i + 1 < source_code.count ? 2 : 1;
+            continue;
+        }
+        if (lexer_source_starts_with(source_code, i, "\"\"\"")) {
+            closed = true;
+            break;
+        }
+        i++;
+    }
+
+    if (!closed) {
+        return error_0106_unterminated_string_literal(
+            source, (ErrorSpan){.start = start, .end = i});
+    }
+
+    usize body_start = start + 3;
+    usize body_end   = i;
+    if (body_start < body_end && source_code.data[body_start] == '\r' &&
+        body_start + 1 < body_end && source_code.data[body_start + 1] == '\n') {
+        body_start += 2;
+    } else if (body_start < body_end &&
+               (source_code.data[body_start] == '\n' ||
+                source_code.data[body_start] == '\r')) {
+        body_start += 1;
+    }
+
+    usize  close_line_start = lexer_line_start_before(source_code, body_end);
+    string indent           = {0};
+    if (lexer_span_is_line_whitespace(
+            source_code, close_line_start, body_end)) {
+        indent = string_from(source_code.data + close_line_start,
+                             body_end - close_line_start);
+        if (body_start > close_line_start) {
+            body_start = body_end;
+        }
+    }
+
+    if (lexer->string_arena.data == NULL) {
+        arena_init(&lexer->string_arena);
+    }
+
+    usize capacity   = body_end >= body_start ? body_end - body_start : 0;
+    u8*   buffer     = (u8*)arena_alloc(&lexer->string_arena, capacity);
+    usize length     = 0;
+    usize line_start = body_start;
+    while (line_start < body_end) {
+        usize line_end = line_start;
+        while (line_end < body_end && source_code.data[line_end] != '\n' &&
+               source_code.data[line_end] != '\r') {
+            line_end++;
+        }
+
+        usize cursor = lexer_skip_triple_string_line_indent(
+            source_code, line_start, line_end, indent);
+        while (cursor < line_end) {
+            u8 ch = source_code.data[cursor++];
+            if (ch == '\\' && cursor < line_end) {
+                ch = lexer_decode_escape(source_code, &cursor, '"');
+            }
+            buffer[length++] = ch;
+        }
+
+        if (line_end < body_end) {
+            if (source_code.data[line_end] == '\r' && line_end + 1 < body_end &&
+                source_code.data[line_end + 1] == '\n') {
+                line_end += 2;
+            } else {
+                line_end += 1;
+            }
+            buffer[length++] = '\n';
+        }
+        line_start = line_end;
+    }
+
+    array_push(lexer->tokens,
+               (Token){.kind = TK_String, .offset = (u32)token_offset});
+    array_push(lexer->strings, string_from(buffer, length));
+    *io_index = body_end + 3;
     return true;
 }
 
@@ -707,6 +878,10 @@ internal bool lexer_lex_one_token(NerdSource source,
     }
 
     if (c == '"') {
+        if (lexer_source_starts_with(source_code, *io_index, "\"\"\"")) {
+            return lexer_lex_triple_string_literal(
+                source, source_code, io_index, lexer, *io_index);
+        }
         return lexer_lex_string_literal(
             source, source_code, io_index, lexer, TK_String, *io_index);
     }
@@ -1209,16 +1384,26 @@ usize lex_token_end_offset(const Lexer* lexer, const Token* token)
     case TK_String:
     case TK_CString:
         {
-            usize index = token->offset + (token->kind == TK_CString ? 2 : 1);
+            bool  triple = token->kind == TK_String &&
+                           lexer_source_starts_with(
+                               lexer->source.source, token->offset, "\"\"\"");
+            usize index  = token->offset + (token->kind == TK_CString ? 2
+                                            : triple                  ? 3
+                                                                      : 1);
             while (index < lexer->source.source.count) {
                 if (lexer->source.source.data[index] == '\\') {
                     index += 2;
                     continue;
                 }
-                if (lexer->source.source.data[index] == '"') {
+                if (triple) {
+                    if (lexer_source_starts_with(
+                            lexer->source.source, index, "\"\"\"")) {
+                        return index + 3;
+                    }
+                } else if (lexer->source.source.data[index] == '"') {
                     return index + 1;
                 }
-                if (lexer->source.source.data[index] == '{') {
+                if (!triple && lexer->source.source.data[index] == '{') {
                     return index;
                 }
                 index++;

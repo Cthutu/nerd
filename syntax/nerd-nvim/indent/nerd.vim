@@ -28,10 +28,19 @@ function! s:StripLineComment(line) abort
         let l:escaped = v:false
       elseif l:ch ==# '\'
         let l:escaped = v:true
+      elseif strpart(a:line, l:i, 3) ==# '"""'
+        let l:in_string = v:false
+        let l:i += 2
       elseif l:ch ==# '"'
         let l:in_string = v:false
       endif
       let l:i += 1
+      continue
+    endif
+
+    if strpart(a:line, l:i, 3) ==# '"""'
+      let l:in_string = v:true
+      let l:i += 3
       continue
     endif
 
@@ -53,6 +62,53 @@ endfunction
 
 function! s:TrimCode(line) abort
   return substitute(s:StripLineComment(a:line), '\s\+$', '', '')
+endfunction
+
+function! s:TripleQuoteCount(line) abort
+  let l:line = s:StripLineComment(a:line)
+  let l:escaped = v:false
+  let l:count = 0
+  let l:i = 0
+
+  while l:i < strlen(l:line)
+    let l:ch = strpart(l:line, l:i, 1)
+
+    if l:escaped
+      let l:escaped = v:false
+      let l:i += 1
+      continue
+    endif
+
+    if l:ch ==# '\'
+      let l:escaped = v:true
+      let l:i += 1
+      continue
+    endif
+
+    if strpart(l:line, l:i, 3) ==# '"""'
+      let l:count += 1
+      let l:i += 3
+      continue
+    endif
+
+    let l:i += 1
+  endwhile
+
+  return l:count
+endfunction
+
+function! s:OpenTripleStringLine(lnum) abort
+  let l:open = 0
+  let l:line = 1
+
+  while l:line < a:lnum
+    if s:TripleQuoteCount(getline(l:line)) % 2 == 1
+      let l:open = l:open == 0 ? l:line : 0
+    endif
+    let l:line += 1
+  endwhile
+
+  return l:open
 endfunction
 
 function! s:ScanDelimiterLine(line, lnum, stack, last_closed) abort
@@ -131,6 +187,11 @@ function! s:UnclosedOpenDelimiter(line) abort
 endfunction
 
 function! GetNerdIndent(lnum) abort
+  let l:triple_open = s:OpenTripleStringLine(a:lnum)
+  if l:triple_open > 0
+    return indent(l:triple_open) + shiftwidth()
+  endif
+
   let l:prevnum = prevnonblank(a:lnum - 1)
   if l:prevnum == 0
     return 0

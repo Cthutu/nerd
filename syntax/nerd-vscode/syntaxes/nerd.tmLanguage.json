@@ -94,6 +94,17 @@
         "strings": {
             "patterns": [
                 {
+                    "name": "string.quoted.triple.nerd",
+                    "begin": "\"\"\"",
+                    "end": "\"\"\"",
+                    "patterns": [
+                        {
+                            "match": "\\\\.",
+                            "name": "constant.character.escape.nerd"
+                        }
+                    ]
+                },
+                {
                     "name": "string.quoted.double.c.nerd",
                     "match": "c\"(?:\\\\.|[^\"\\\\])*\""
                 },

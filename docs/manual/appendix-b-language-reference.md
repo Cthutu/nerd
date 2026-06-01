@@ -258,5 +258,7 @@ intended exit code.
 - `local :: ffi "lib" foreign (...)` uses `local` in Nerd and `foreign` for
   linking.
 - C strings use `c"..."`.
+- Multi-line strings use `"""..."""`; a leading newline is dropped and closing
+  delimiter indentation is trimmed from body lines.
 - Prefer wrappers around raw FFI declarations.
 - Keep ownership explicit at the boundary.

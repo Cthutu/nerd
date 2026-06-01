@@ -1782,9 +1782,18 @@ function stripLineComment(line: string): string {
                 escaped = false;
             } else if (ch === "\\") {
                 escaped = true;
+            } else if (line.startsWith("\"\"\"", i)) {
+                i += 2;
+                inString = false;
             } else if (ch === "\"") {
                 inString = false;
             }
+            continue;
+        }
+
+        if (line.startsWith("\"\"\"", i)) {
+            inString = true;
+            i += 2;
             continue;
         }
 
@@ -1803,6 +1812,44 @@ function stripLineComment(line: string): string {
 
 function trimCode(line: string): string {
     return stripLineComment(line).replace(/\s+$/, "");
+}
+
+function lineTripleQuoteCount(line: string): number {
+    const code = stripLineComment(line);
+    let count = 0;
+    let escaped = false;
+
+    for (let i = 0; i < code.length; i++) {
+        const ch = code[i];
+        if (escaped) {
+            escaped = false;
+            continue;
+        }
+        if (ch === "\\") {
+            escaped = true;
+            continue;
+        }
+        if (code.startsWith("\"\"\"", i)) {
+            count++;
+            i += 2;
+        }
+    }
+
+    return count;
+}
+
+function openTripleStringLine(lines: string[], lineIndex: number): number | undefined {
+    let openLine: number | undefined;
+
+    for (let current = 0; current < lineIndex; current++) {
+        const count = lineTripleQuoteCount(lines[current]);
+        if (count % 2 === 0) {
+            continue;
+        }
+        openLine = openLine === undefined ? current : undefined;
+    }
+
+    return openLine;
 }
 
 function unclosedOpenDelimiter(line: string): { ch: string; column: number } | undefined {
@@ -1873,6 +1920,11 @@ function previousNonBlankLine(lines: string[], lineIndex: number): number | unde
 }
 
 function computeNerdIndent(lines: string[], lineIndex: number, shiftWidth = 4): number {
+    const tripleOpenLine = openTripleStringLine(lines, lineIndex);
+    if (tripleOpenLine !== undefined) {
+        return leadingWhitespaceWidth(lines[tripleOpenLine]) + shiftWidth;
+    }
+
     const prevIndex = previousNonBlankLine(lines, lineIndex);
     if (prevIndex === undefined) {
         return 0;

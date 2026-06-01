@@ -1,0 +1,203 @@
+use std.frame
+use std.opengl
+use std.time
+
+compile_shader :: fn (type: GLenum, source: string) -> GLuint {
+    shader := glCreateShader(type)
+    on shader == 0 => return 0
+
+    source_data := source.data.as(^void).as(^i8)
+    source_length := source.count.as(GLint)
+    glShaderSource(shader, 1, ^source_data, ^source_length)
+    glCompileShader(shader)
+
+    status : GLint
+    glGetShaderiv(shader, GL_COMPILE_STATUS, ^status)
+    on status == 0 => {
+        glDeleteShader(shader)
+        return 0
+    }
+
+    return shader
+}
+
+create_program :: fn () -> GLuint {
+    vertex_source := """
+        #version 120
+        
+        attribute vec2 position;
+        attribute vec3 colour;
+        varying vec3 v_colour;
+        
+        void main() {
+            v_colour = colour;
+            gl_Position = vec4(position, 0.0, 1.0);
+        }
+        """
+
+    fragment_source := """
+        #version 120
+        
+        varying vec3 v_colour;
+        
+        void main() {
+            gl_FragColor = vec4(v_colour, 1.0);
+        }
+        """
+
+    vertex_shader := compile_shader(GL_VERTEX_SHADER, vertex_source)
+    on vertex_shader == 0 => return 0
+
+    fragment_shader := compile_shader(GL_FRAGMENT_SHADER, fragment_source)
+    on fragment_shader == 0 => {
+        glDeleteShader(vertex_shader)
+        return 0
+    }
+
+    program := glCreateProgram()
+    on program == 0 => {
+        glDeleteShader(vertex_shader)
+        glDeleteShader(fragment_shader)
+        return 0
+    }
+
+    glAttachShader(program, vertex_shader)
+    glAttachShader(program, fragment_shader)
+    glBindAttribLocation(program, 0, c"position")
+    glBindAttribLocation(program, 1, c"colour")
+    glLinkProgram(program)
+    glDeleteShader(vertex_shader)
+    glDeleteShader(fragment_shader)
+
+    status : GLint
+    glGetProgramiv(program, GL_LINK_STATUS, ^status)
+    on status == 0 => {
+        glDeleteProgram(program)
+        return 0
+    }
+
+    return program
+}
+
+main :: fn () {
+    frame_system := FrameSystem.init()
+    frame := Frame {
+        id          : NEW_FRAME
+        width       : 800
+        height      : 600
+        title       : "OpenGL Triangle"
+        full_screen : no
+        resizable   : yes
+    }
+
+    frame_system.apply(^frame)
+    on !gl_init(^frame_system, ^frame) => {
+        eprn("OpenGL could not be initialised for this frame.")
+        frame_system.destroy(^frame)
+        return
+    }
+
+    program := create_program()
+    on program == 0 => {
+        eprn("OpenGL triangle shader program could not be created.")
+        gl_done(^frame_system, ^frame)
+        frame_system.destroy(^frame)
+        return
+    }
+
+    vertices := [
+        0.0.as(GLfloat),
+        0.6.as(GLfloat),
+        1.0.as(GLfloat),
+        0.2.as(GLfloat),
+        0.2.as(GLfloat),
+        -0.6.as(GLfloat),
+        -0.5.as(GLfloat),
+        0.2.as(GLfloat),
+        1.0.as(GLfloat),
+        0.3.as(GLfloat),
+        0.6.as(GLfloat),
+        -0.5.as(GLfloat),
+        0.2.as(GLfloat),
+        0.4.as(GLfloat),
+        1.0.as(GLfloat),
+    ]
+
+    vertex_buffer : GLuint
+    glGenBuffers(1, ^vertex_buffer)
+    vertex_array : GLuint
+    glGenVertexArrays(1, ^vertex_array)
+
+    glBindVertexArray(vertex_array)
+    glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer)
+    glBufferData(GL_ARRAY_BUFFER,
+                 vertices.size.as(GLsizeiptr),
+                 (^vertices).as(^void),
+                 GL_STATIC_DRAW)
+    glEnableVertexAttribArray(0)
+    glVertexAttribPointer(0,
+                          2,
+                          GL_FLOAT,
+                          GL_FALSE.as(GLboolean),
+                          (5 * GLfloat.size).as(GLsizei),
+                          0.as(^void))
+    glEnableVertexAttribArray(1)
+    glVertexAttribPointer(1,
+                          3,
+                          GL_FLOAT,
+                          GL_FALSE.as(GLboolean),
+                          (5 * GLfloat.size).as(GLsizei),
+                          (2 * GLfloat.size).as(^void))
+    glBindBuffer(GL_ARRAY_BUFFER, 0)
+    glBindVertexArray(0)
+
+    for frame_system.loop() {
+        frame_system.update(^frame)
+
+        for event := frame_system.poll(^frame); event != FrameEvent.None; event = frame_system.poll(^frame) {
+            on event {
+                None => {
+                }
+                Closed => {
+                }
+                KeyPress { scan_code } => {
+                    on scan_code {
+                        Escape => {
+                            frame_system.destroy(^frame)
+                        }
+                        Q => {
+                            frame_system.destroy(^frame)
+                        }
+                    }
+                }
+            }
+        }
+
+        on !gl_make_current(^frame_system, ^frame) => {
+            frame_system.destroy(^frame)
+        }
+
+        glViewport(0, 0, frame.width.as(GLsizei), frame.height.as(GLsizei))
+        glDisable(GL_DEPTH_TEST)
+        glClearColor(0.06.as(GLfloat),
+                     0.07.as(GLfloat),
+                     0.09.as(GLfloat),
+                     1.0.as(GLfloat))
+        glClear(GL_COLOR_BUFFER_BIT)
+        glUseProgram(program)
+        glBindVertexArray(vertex_array)
+        glDrawArrays(GL_TRIANGLES, 0, 3)
+        glBindVertexArray(0)
+        gl_swap_buffers(^frame_system, ^frame)
+
+        sleep_ms(16)
+    }
+
+    on gl_make_current(^frame_system, ^frame) => {
+        glDeleteVertexArrays(1, ^vertex_array)
+        glDeleteBuffers(1, ^vertex_buffer)
+        glDeleteProgram(program)
+    }
+    gl_done(^frame_system, ^frame)
+    frame_system.destroy(^frame)
+}

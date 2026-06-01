@@ -3,8 +3,10 @@
 -- Copyright (c) 2026 Matt Davies
 --
 -- Provides the initial OpenGL surface exposed by the standard library. The
--- current Linux implementation re-exports low-level GLX/OpenGL declarations
--- while higher-level frame-owned context management is being developed.
+-- command surface is shared across platforms; context management delegates to
+-- the active frame backend.
+
+use std.frame
 
 on "linux" {
 
@@ -15,4 +17,20 @@ on "linux" {
 on "windows" {
 
 
+}
+
+pub gl_init :: fn (system: ^FrameSystem, frame: ^Frame) -> bool {
+    return system.opengl_init(frame)
+}
+
+pub gl_done :: fn (system: ^FrameSystem, frame: ^Frame) {
+    system.opengl_done(frame)
+}
+
+pub gl_make_current :: fn (system: ^FrameSystem, frame: ^Frame) -> bool {
+    return system.opengl_make_current(frame)
+}
+
+pub gl_swap_buffers :: fn (system: ^FrameSystem, frame: ^Frame) {
+    system.opengl_swap_buffers(frame)
 }

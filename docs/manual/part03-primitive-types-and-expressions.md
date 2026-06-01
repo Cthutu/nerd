@@ -257,6 +257,24 @@ message := "hello, world"
 Bare adjacent string literals are not joined. Use `+"..."` for an intentional
 continuation so adjacent string syntax stays unambiguous in other contexts.
 
+Multi-line string literals use triple quotes. If the first character after the
+opening delimiter is a newline, that newline is not part of the value. When the
+closing delimiter is on its own indented line, that indentation is trimmed from
+each body line:
+
+```nerd
+message := """
+    alpha
+      beta
+    """
+```
+
+This is equivalent to:
+
+```nerd
+message := "alpha\n  beta\n"
+```
+
 An interpolated string is a string built from literal text and embedded
 expressions. Interpolated strings start with `$`:
 
