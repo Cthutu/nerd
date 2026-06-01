@@ -39,6 +39,8 @@ pub WNDPROC   :: fn (hWnd   : HWND,
 
 pub MB_OK :: 0x00000000
 
+pub IDC_ARROW :: 32512.as(LPCSTR)
+
 pub CS_OWNDC      :     : 0x0020
 pub CS_HREDRAW    :     : 0x0002
 pub CS_VREDRAW    :     : 0x0001
@@ -243,6 +245,8 @@ ffi "user32" {
                                                 lprc : ^RECT,
                                                 hbr  : HBRUSH) -> i32
     pub                     GetSystemMetrics   (nIndex: i32) -> i32
+    pub LoadCursor       :: LoadCursorA        (hInstance    : HINSTANCE,
+                                                lpCursorName : LPCSTR) -> HCURSOR
 }
 
 ffi "gdi32" {

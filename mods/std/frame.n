@@ -1646,133 +1646,7 @@ on "linux" {
 
 on "windows" {
 
-    windows :: use os.windows
-
-    HWND                  :: windows.HWND
-    HDC                   :: windows.HDC
-    HGLRC                 :: windows.HGLRC
-    HGDIOBJ               :: windows.HGDIOBJ
-    COLORREF              :: windows.COLORREF
-    DWORD                 :: windows.DWORD
-    RECT                  :: windows.RECT
-    LONG                  :: windows.LONG
-    WNDCLASSEX            :: windows.WNDCLASSEX
-    UINT                  :: windows.UINT
-    WPARAM                :: windows.WPARAM
-    LPARAM                :: windows.LPARAM
-    LRESULT               :: windows.LRESULT
-    MSG                   :: windows.MSG
-    LONG_PTR              :: windows.LONG_PTR
-    BITMAPINFO            :: windows.BITMAPINFO
-    BITMAPINFOHEADER      :: windows.BITMAPINFOHEADER
-    WORD                  :: windows.WORD
-    BYTE                  :: windows.BYTE
-    PIXELFORMATDESCRIPTOR :: windows.PIXELFORMATDESCRIPTOR
-
-    CS_OWNDC            :: windows.CS_OWNDC
-    CS_HREDRAW          :: windows.CS_HREDRAW
-    CS_VREDRAW          :: windows.CS_VREDRAW
-    CW_USEDEFAULT       :: windows.CW_USEDEFAULT
-    WS_OVERLAPPEDWINDOW :: windows.WS_OVERLAPPEDWINDOW
-    WS_THICKFRAME       :: windows.WS_THICKFRAME
-    WS_MAXIMIZEBOX      :: windows.WS_MAXIMIZEBOX
-    WS_VISIBLE          :: windows.WS_VISIBLE
-    WS_POPUP            :: windows.WS_POPUP
-    SW_SHOW             :: windows.SW_SHOW
-    SWP_NOSIZE          :: windows.SWP_NOSIZE
-    SWP_NOMOVE          :: windows.SWP_NOMOVE
-    SWP_NOZORDER        :: windows.SWP_NOZORDER
-    SWP_NOACTIVATE      :: windows.SWP_NOACTIVATE
-    SWP_FRAMECHANGED    :: windows.SWP_FRAMECHANGED
-    GWLP_USERDATA       :: windows.GWLP_USERDATA
-    GWL_STYLE           :: windows.GWL_STYLE
-    PM_REMOVE           :: windows.PM_REMOVE
-    WM_CLOSE            :: windows.WM_CLOSE
-    WM_DESTROY          :: windows.WM_DESTROY
-    WM_SIZE             :: windows.WM_SIZE
-    WM_KEYDOWN          :: windows.WM_KEYDOWN
-    WM_SYSKEYDOWN       :: windows.WM_SYSKEYDOWN
-    WM_KEYUP            :: windows.WM_KEYUP
-    WM_SYSKEYUP         :: windows.WM_SYSKEYUP
-    WM_CHAR             :: windows.WM_CHAR
-    VK_BACK             :: windows.VK_BACK
-    VK_TAB              :: windows.VK_TAB
-    VK_RETURN           :: windows.VK_RETURN
-    VK_ESCAPE           :: windows.VK_ESCAPE
-    VK_SPACE            :: windows.VK_SPACE
-    VK_DELETE           :: windows.VK_DELETE
-    VK_INSERT           :: windows.VK_INSERT
-    VK_HOME             :: windows.VK_HOME
-    VK_END              :: windows.VK_END
-    VK_PRIOR            :: windows.VK_PRIOR
-    VK_NEXT             :: windows.VK_NEXT
-    VK_UP               :: windows.VK_UP
-    VK_DOWN             :: windows.VK_DOWN
-    VK_LEFT             :: windows.VK_LEFT
-    VK_RIGHT            :: windows.VK_RIGHT
-    VK_LSHIFT           :: windows.VK_LSHIFT
-    VK_RSHIFT           :: windows.VK_RSHIFT
-    VK_SHIFT            :: windows.VK_SHIFT
-    VK_LCONTROL         :: windows.VK_LCONTROL
-    VK_RCONTROL         :: windows.VK_RCONTROL
-    VK_CONTROL          :: windows.VK_CONTROL
-    VK_LMENU            :: windows.VK_LMENU
-    VK_RMENU            :: windows.VK_RMENU
-    VK_MENU             :: windows.VK_MENU
-    VK_F1               :: windows.VK_F1
-    VK_F2               :: windows.VK_F2
-    VK_F3               :: windows.VK_F3
-    VK_F4               :: windows.VK_F4
-    VK_F5               :: windows.VK_F5
-    VK_F6               :: windows.VK_F6
-    VK_F7               :: windows.VK_F7
-    VK_F8               :: windows.VK_F8
-    VK_F9               :: windows.VK_F9
-    VK_F10              :: windows.VK_F10
-    VK_F11              :: windows.VK_F11
-    VK_F12              :: windows.VK_F12
-    SM_CXSCREEN         :: windows.SM_CXSCREEN
-    SM_CYSCREEN         :: windows.SM_CYSCREEN
-    BI_RGB              :: windows.BI_RGB
-    DIB_RGB_COLORS      :: windows.DIB_RGB_COLORS
-    SRCCOPY             :: windows.SRCCOPY
-    PFD_DRAW_TO_WINDOW  :: windows.PFD_DRAW_TO_WINDOW
-    PFD_SUPPORT_OPENGL  :: windows.PFD_SUPPORT_OPENGL
-    PFD_DOUBLEBUFFER    :: windows.PFD_DOUBLEBUFFER
-    PFD_TYPE_RGBA       :: windows.PFD_TYPE_RGBA
-    PFD_MAIN_PLANE      :: windows.PFD_MAIN_PLANE
-
-    RegisterClassEx    :: windows.RegisterClassEx
-    CreateWindowEx     :: windows.CreateWindowEx
-    DefWindowProc      :: windows.DefWindowProc
-    DestroyWindow      :: windows.DestroyWindow
-    IsWindow           :: windows.IsWindow
-    ShowWindow         :: windows.ShowWindow
-    UpdateWindow       :: windows.UpdateWindow
-    SetWindowText      :: windows.SetWindowText
-    SetWindowPos       :: windows.SetWindowPos
-    AdjustWindowRectEx :: windows.AdjustWindowRectEx
-    GetClientRect      :: windows.GetClientRect
-    GetWindowRect      :: windows.GetWindowRect
-    SetWindowLongPtr   :: windows.SetWindowLongPtr
-    GetWindowLongPtr   :: windows.GetWindowLongPtr
-    PeekMessage        :: windows.PeekMessage
-    TranslateMessage   :: windows.TranslateMessage
-    DispatchMessage    :: windows.DispatchMessage
-    GetDC              :: windows.GetDC
-    ReleaseDC          :: windows.ReleaseDC
-    FillRect           :: windows.FillRect
-    GetSystemMetrics   :: windows.GetSystemMetrics
-    CreateSolidBrush   :: windows.CreateSolidBrush
-    DeleteObject       :: windows.DeleteObject
-    StretchDIBits      :: windows.StretchDIBits
-    ChoosePixelFormat  :: windows.ChoosePixelFormat
-    SetPixelFormat     :: windows.SetPixelFormat
-    SwapBuffers        :: windows.SwapBuffers
-    wglCreateContext   :: windows.wglCreateContext
-    wglMakeCurrent     :: windows.wglMakeCurrent
-    wglDeleteContext   :: windows.wglDeleteContext
-    wgl_load_commands  :: windows.wgl_load_commands
+    use os.windows
 
     -- Windows data attached to a public `Frame`.
     PlatformFrameInfo :: plex {
@@ -1855,7 +1729,7 @@ on "windows" {
         system := frame_windows_current_system
         on system == nil => return nil
 
-        id := windows.GetWindowLongPtr(window, GWLP_USERDATA).as(u16)
+        id := GetWindowLongPtr(window, GWLP_USERDATA).as(u16)
         on id == NEW_FRAME || id == CLOSED_FRAME => return nil
 
         return frame_system_find_info(system, id)
@@ -1905,7 +1779,7 @@ on "windows" {
         wc.cbWndExtra = 0
         wc.hInstance = nil
         wc.hIcon = nil
-        wc.hCursor = nil
+        wc.hCursor = LoadCursor(nil, IDC_ARROW)
         wc.hbrBackground = nil
         wc.lpszMenuName = nil
         wc.lpszClassName = FRAME_WINDOWS_CLASS_NAME
