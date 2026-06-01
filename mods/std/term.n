@@ -2150,7 +2150,12 @@ test "terminal framebuffer prepare returns draw rect and source offsets" {
     assert term_fb_resize(5, 3)
     term_view(1, 0, 3, 3)
 
-    clip := term_fb_prepare_rect(RectI32 { x: -1 y: 1 w: 5 h: 1 })
+    clip := term_fb_prepare_rect(RectI32 {
+        x : -1
+        y : 1
+        w : 5
+        h : 1
+    })
 
     assert clip.ok
     assert clip.rect.x == 1
@@ -2166,11 +2171,21 @@ test "terminal framebuffer prepare returns draw rect and source offsets" {
 test "terminal framebuffer prepare rejects unavailable draw surfaces" {
     term_fb_release()
 
-    unready := term_fb_prepare_rect(RectI32 { x: 0 y: 0 w: 1 h: 1 })
+    unready := term_fb_prepare_rect(RectI32 {
+        x : 0
+        y : 0
+        w : 1
+        h : 1
+    })
     assert !unready.ok
 
     assert term_fb_resize(5, 3)
-    empty := term_fb_prepare_rect(RectI32 { x: 0 y: 0 w: 0 h: 1 })
+    empty := term_fb_prepare_rect(RectI32 {
+        x : 0
+        y : 0
+        w : 0
+        h : 1
+    })
     assert !empty.ok
 
     term_fb_release()

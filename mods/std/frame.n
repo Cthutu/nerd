@@ -492,31 +492,31 @@ on "linux" {
         wm_state_fullscreen XAtom       -- EWMH fullscreen-state atom.
         frame_extents       XAtom       -- EWMH `_NET_FRAME_EXTENTS` atom.
         x                   i32         -- Last known normal outer-frame x
-                                        --     position.
+        --     position.
         y                   i32         -- Last known normal outer-frame y
-                                        --     position.
+        --     position.
         width               u16         -- Last known normal width.
         height              u16         -- Last known normal height.
         frame_left          i32         -- Left window-manager decoration
-                                        --     extent.
+        --     extent.
         frame_top           i32         -- Top window-manager decoration extent.
         restore_x           i32         -- Outer-frame x restored after
-                                        --     fullscreen.
+        --     fullscreen.
         restore_y           i32         -- Outer-frame y restored after
-                                        --     fullscreen.
+        --     fullscreen.
         restore_width       u16         -- Width restored after fullscreen.
         restore_height      u16         -- Height restored after fullscreen.
         full_screen         bool        -- Whether this frame is currently
-                                        --     fullscreen.
+        --     fullscreen.
         resizable           bool        -- Whether user-driven resize is
-                                        --     allowed.
+        --     allowed.
         gl_context          GLXContext  -- GLX context used for accelerated
-                                        --     pixel presentation.
+        --     pixel presentation.
         gl_texture          GLuint      -- Texture used for pixel presentation.
         gl_texture_width    u16         -- Current GL texture source width.
         gl_texture_height   u16         -- Current GL texture source height.
         gl_program          GLuint      -- Shader program for pixel
-                                        --     presentation.
+        --     presentation.
         gl_vertex_buffer    GLuint      -- Dynamic quad vertex buffer.
         gl_vertex_array     GLuint      -- Vertex array for quad attributes.
         gl_sampler_location GLint       -- Pixel texture sampler uniform.
@@ -604,7 +604,10 @@ on "linux" {
 
     -- Queues a platform-agnostic resize event.
     frame_linux_push_resize :: fn (info: ^FrameInfo, width: u16, height: u16) {
-        info.events.push(FrameEvent.Resized { width height })
+        info.events.push(FrameEvent.Resized {
+            width
+            height
+        })
     }
 
     -- Records the last known non-fullscreen geometry for later restoration.
@@ -839,8 +842,12 @@ on "linux" {
         frame_linux_update_modifier_state(system, scan_code, is_down)
 
         on is_down {
-            yes  => info.events.push(FrameEvent.KeyPress { scan_code })
-            no   => info.events.push(FrameEvent.KeyRelease { scan_code })
+            yes => info.events.push(FrameEvent.KeyPress {
+                scan_code
+            })
+            no => info.events.push(FrameEvent.KeyRelease {
+                scan_code
+            })
         }
 
         on !is_down => return
@@ -857,7 +864,9 @@ on "linux" {
 
         codepoint := frame_linux_decode_utf8(buffer[0..count.as(usize)])
         on codepoint != 0 => {
-            info.events.push(FrameEvent.Character { codepoint })
+            info.events.push(FrameEvent.Character {
+                codepoint
+            })
         }
     }
 
@@ -935,6 +944,7 @@ on "linux" {
         platform_info.restore_height = frame.height
         platform_info.full_screen = no
         platform_info.resizable = frame.resizable
+        platform_info.closed_queued = no
 
         info := FrameInfo {
             id
@@ -1082,7 +1092,7 @@ on "linux" {
             i += 1
         }
 
-        return system.frames.count > 0
+        return yes
     }
 
     frame_update_impl :: fn (system: ^FrameSystem, frame: ^Frame) {
@@ -1179,24 +1189,34 @@ on "linux" {
     }
 
     frame_linux_gl_create_pixel_program :: fn () -> GLuint {
-        vertex_source := """
-            #version 120
-            attribute vec2 position;
-            attribute vec2 texcoord;
-            varying vec2 v_texcoord;
-            void main() {
-                v_texcoord = texcoord;
-                gl_Position = vec4(position, 0.0, 1.0);
-            }
+        vertex_source := ""
+        """
+
+                        #version 120
+                        attribute vec2 position;
+                        attribute vec2 texcoord;
+                        varying vec2 v_texcoord;
+                        void main() {
+                            v_texcoord = texcoord;
+                            gl_Position = vec4(position, 0.0, 1.0);
+                        }
+
             """
-        fragment_source := """
-            #version 120
-            uniform sampler2D pixels;
-            varying vec2 v_texcoord;
-            void main() {
-                gl_FragColor = texture2D(pixels, v_texcoord);
-            }
+
+        ""
+        fragment_source := ""
+        """
+
+                        #version 120
+                        uniform sampler2D pixels;
+                        varying vec2 v_texcoord;
+                        void main() {
+                            gl_FragColor = texture2D(pixels, v_texcoord);
+                        }
+
             """
+
+        ""
 
         vertex_shader := frame_linux_gl_compile_shader(GL_VERTEX_SHADER,
                                                        vertex_source)
@@ -1634,6 +1654,7 @@ on "windows" {
     HWND                  :: windows.HWND
     HDC                   :: windows.HDC
     HGLRC                 :: windows.HGLRC
+    HGDIOBJ               :: windows.HGDIOBJ
     COLORREF              :: windows.COLORREF
     DWORD                 :: windows.DWORD
     RECT                  :: windows.RECT
@@ -1661,6 +1682,7 @@ on "windows" {
     WS_VISIBLE          :: windows.WS_VISIBLE
     WS_POPUP            :: windows.WS_POPUP
     SW_SHOW             :: windows.SW_SHOW
+    SWP_NOSIZE          :: windows.SWP_NOSIZE
     SWP_NOMOVE          :: windows.SWP_NOMOVE
     SWP_NOZORDER        :: windows.SWP_NOZORDER
     SWP_NOACTIVATE      :: windows.SWP_NOACTIVATE
@@ -1727,6 +1749,7 @@ on "windows" {
     CreateWindowEx     :: windows.CreateWindowEx
     DefWindowProc      :: windows.DefWindowProc
     DestroyWindow      :: windows.DestroyWindow
+    IsWindow           :: windows.IsWindow
     ShowWindow         :: windows.ShowWindow
     UpdateWindow       :: windows.UpdateWindow
     SetWindowText      :: windows.SetWindowText
@@ -1770,7 +1793,8 @@ on "windows" {
         closed_queued  bool
     }
 
-    FRAME_WINDOWS_CLASS_NAME :: c"NerdFrameWindow"
+    FRAME_WINDOWS_CLASS_NAME        :: c"NerdFrameWindow"
+    FRAME_WINDOWS_SYSTEM_CLASS_NAME :: c"STATIC"
 
     frame_windows_current_system : ^FrameSystem
     frame_windows_class_registered := no
@@ -1785,10 +1809,29 @@ on "windows" {
     frame_windows_window_style :: fn (resizable: bool) -> u32 {
         style := WS_OVERLAPPEDWINDOW
         on !resizable => {
-            style = style & !WS_THICKFRAME
-            style = style & !WS_MAXIMIZEBOX
+            style = style & ~WS_THICKFRAME
+            style = style & ~WS_MAXIMIZEBOX
         }
         return style.as(u32)
+    }
+
+    frame_windows_create_window :: fn (window_width  : i32,
+                                       window_height : i32,
+                                       style         : u32) -> HWND {
+        on !frame_windows_register_class() => return nil
+
+        return CreateWindowEx(0,
+                              FRAME_WINDOWS_CLASS_NAME,
+                              FRAME_WINDOWS_CLASS_NAME,
+                              style | WS_VISIBLE,
+                              CW_USEDEFAULT,
+                              CW_USEDEFAULT,
+                              window_width,
+                              window_height,
+                              nil,
+                              nil,
+                              nil,
+                              nil)
     }
 
     frame_windows_adjusted_rect :: fn (width    : u16,
@@ -1802,6 +1845,49 @@ on "windows" {
         rect.bottom = height.as(LONG)
         _ := AdjustWindowRectEx(^rect, style.as(DWORD), 0, ex_style.as(DWORD))
         return (rect.right - rect.left, rect.bottom - rect.top)
+    }
+
+    frame_windows_find_info_for_window :: fn (window: ^void) -> ^FrameInfo {
+        system := frame_windows_current_system
+        on system == nil => return nil
+
+        id := windows.GetWindowLongPtr(window, GWLP_USERDATA).as(u16)
+        on id == NEW_FRAME || id == CLOSED_FRAME => return nil
+
+        return frame_system_find_info(system, id)
+    }
+
+    frame_windows_find_info_by_window :: fn (system : ^FrameSystem,
+                                             window : ^void) -> ^FrameInfo {
+        on system == nil || window == nil => return nil
+
+        for i: usize = 0; i < system.frames.count; i += 1 {
+            on system.frames[i].platform_info.window == window => return ^system.frames[i]
+        }
+
+        return nil
+    }
+
+    frame_windows_push_closed :: fn (info: ^FrameInfo) {
+        on info == nil || info.platform_info.closed_queued => return
+        info.platform_info.closed_queued = yes
+        info.events.push(FrameEvent.Closed)
+    }
+
+    frame_windows_push_resize :: fn (info: ^FrameInfo, width: u16, height: u16) {
+        info.platform_info.width = width
+        info.platform_info.height = height
+        info.events.push(FrameEvent.Resized {
+            width
+            height
+        })
+    }
+
+    frame_windows_default_proc :: fn (window  : HWND,
+                                      message : UINT,
+                                      wparam  : WPARAM,
+                                      lparam  : LPARAM) -> LRESULT {
+        return DefWindowProc(window, message, wparam, lparam)
     }
 
     frame_windows_register_class :: fn () -> bool {
@@ -1823,30 +1909,9 @@ on "windows" {
 
         atom := RegisterClassEx(^wc)
         on atom == 0 => return no
+
         frame_windows_class_registered = yes
         return yes
-    }
-
-    frame_windows_find_info_for_window :: fn (window: ^void) -> ^FrameInfo {
-        system := frame_windows_current_system
-        on system == nil => return nil
-
-        id := GetWindowLongPtr(window, GWLP_USERDATA).as(u16)
-        on id == NEW_FRAME || id == CLOSED_FRAME => return nil
-
-        return frame_system_find_info(system, id)
-    }
-
-    frame_windows_push_closed :: fn (info: ^FrameInfo) {
-        on info == nil || info.platform_info.closed_queued => return
-        info.platform_info.closed_queued = yes
-        info.events.push(FrameEvent.Closed)
-    }
-
-    frame_windows_push_resize :: fn (info: ^FrameInfo, width: u16, height: u16) {
-        info.platform_info.width = width
-        info.platform_info.height = height
-        info.events.push(FrameEvent.Resized { width height })
     }
 
     frame_windows_scan_code_from_virtual_key :: fn (key: usize) -> FrameScanCode {
@@ -1916,6 +1981,7 @@ on "windows" {
         on message {
             WM_CLOSE => {
                 frame_windows_push_closed(info)
+                _ := DestroyWindow(window)
                 return 0
             }
             WM_DESTROY => {
@@ -1937,7 +2003,9 @@ on "windows" {
                     frame_windows_update_modifier_state(frame_windows_current_system,
                                                         scan_code,
                                                         yes)
-                    info.events.push(FrameEvent.KeyPress { scan_code })
+                    info.events.push(FrameEvent.KeyPress {
+                        scan_code
+                    })
                 }
                 return 0
             }
@@ -1947,7 +2015,9 @@ on "windows" {
                     frame_windows_update_modifier_state(frame_windows_current_system,
                                                         scan_code,
                                                         yes)
-                    info.events.push(FrameEvent.KeyPress { scan_code })
+                    info.events.push(FrameEvent.KeyPress {
+                        scan_code
+                    })
                 }
                 return 0
             }
@@ -1957,7 +2027,9 @@ on "windows" {
                     frame_windows_update_modifier_state(frame_windows_current_system,
                                                         scan_code,
                                                         no)
-                    info.events.push(FrameEvent.KeyRelease { scan_code })
+                    info.events.push(FrameEvent.KeyRelease {
+                        scan_code
+                    })
                 }
                 return 0
             }
@@ -1967,7 +2039,9 @@ on "windows" {
                     frame_windows_update_modifier_state(frame_windows_current_system,
                                                         scan_code,
                                                         no)
-                    info.events.push(FrameEvent.KeyRelease { scan_code })
+                    info.events.push(FrameEvent.KeyRelease {
+                        scan_code
+                    })
                 }
                 return 0
             }
@@ -1975,7 +2049,9 @@ on "windows" {
                 on info != nil => {
                     codepoint := wparam.as(u32)
                     on codepoint != 0 => {
-                        info.events.push(FrameEvent.Character { codepoint })
+                        info.events.push(FrameEvent.Character {
+                            codepoint
+                        })
                     }
                 }
                 return 0
@@ -1996,12 +2072,12 @@ on "windows" {
     frame_windows_destroy_info :: fn (info: ^FrameInfo) {
         frame_windows_release_gl(info)
 
-        on info.platform_info.window != nil && info.platform_info.device_context != nil => {
+        window_alive := info.platform_info.window != nil && IsWindow(info.platform_info.window) != 0
+        on info.platform_info.device_context != nil && window_alive => {
             _ := ReleaseDC(info.platform_info.window,
                            info.platform_info.device_context)
         }
-
-        on info.platform_info.window != nil => {
+        on window_alive => {
             _ := DestroyWindow(info.platform_info.window)
         }
 
@@ -2016,123 +2092,127 @@ on "windows" {
     frame_windows_mark_closed :: fn (system: ^FrameSystem, frame: ^Frame) {
         id := frame.id
         index := frame_system_find_info_index(system, id)
-        frame.id = CLOSED_FRAME
         on index < system.frames.count => {
+            on system.frames[index].platform_info.gl_context != nil => {
+                system.frames[index].platform_info.closed_queued = yes
+                return
+            }
+            frame.id = CLOSED_FRAME
             frame_windows_destroy_info(^system.frames[index])
             system.frames.swap_delete(index)
         }
     }
 
+    frame_windows_prune_closed :: fn (system: ^FrameSystem) {
+        i : usize = 0
+        for i < system.frames.count {
+            on system.frames[i].platform_info.closed_queued => {
+                frame_windows_destroy_info(^system.frames[i])
+                system.frames.swap_delete(i)
+                again
+            }
+            i += 1
+        }
+    }
+
+    frame_windows_enter_fullscreen :: fn (info: ^FrameInfo) {
+        rect : RECT
+        on GetWindowRect(info.platform_info.window, ^rect) != 0 => {
+            info.platform_info.restore_x = rect.left
+            info.platform_info.restore_y = rect.top
+            info.platform_info.restore_width = (rect.right - rect.left).as(u16)
+            info.platform_info.restore_height = (rect.bottom - rect.top).as(u16)
+        }
+
+        _ := SetWindowLongPtr(info.platform_info.window,
+                              GWL_STYLE,
+                              (WS_POPUP | WS_VISIBLE).as(LONG_PTR))
+        _ := SetWindowPos(info.platform_info.window,
+                          nil,
+                          0,
+                          0,
+                          GetSystemMetrics(SM_CXSCREEN),
+                          GetSystemMetrics(SM_CYSCREEN),
+                          (SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED).as(UINT))
+        info.platform_info.full_screen = yes
+    }
+
+    frame_windows_leave_fullscreen :: fn (info: ^FrameInfo) {
+        style := frame_windows_window_style(info.platform_info.resizable)
+        _ := SetWindowLongPtr(info.platform_info.window,
+                              GWL_STYLE,
+                              (style | WS_VISIBLE).as(LONG_PTR))
+        _ := SetWindowPos(info.platform_info.window,
+                          nil,
+                          info.platform_info.restore_x,
+                          info.platform_info.restore_y,
+                          info.platform_info.restore_width.as(i32),
+                          info.platform_info.restore_height.as(i32),
+                          (SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED).as(UINT))
+        info.platform_info.full_screen = no
+    }
+
     frame_windows_apply_fullscreen :: fn (info: ^FrameInfo, frame: ^Frame) {
         on frame.full_screen == info.platform_info.full_screen => return
-
-        on frame.full_screen {
-            yes => {
-                rect : RECT
-                on GetWindowRect(info.platform_info.window, ^rect) != 0 => {
-                    info.platform_info.restore_x = rect.left
-                    info.platform_info.restore_y = rect.top
-                    info.platform_info.restore_width = (rect.right - rect.left).as(u16)
-                    info.platform_info.restore_height = (rect.bottom - rect.top).as(u16)
-                }
-
-                _ := SetWindowLongPtr(info.platform_info.window,
-                                      GWL_STYLE,
-                                      (WS_POPUP | WS_VISIBLE).as(LONG_PTR))
-                _ := SetWindowPos(info.platform_info.window,
-                                  nil,
-                                  0,
-                                  0,
-                                  GetSystemMetrics(SM_CXSCREEN),
-                                  GetSystemMetrics(SM_CYSCREEN),
-                                  (SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED).as(UINT))
-                info.platform_info.full_screen = yes
-            }
-            no => {
-                style := frame_windows_window_style(info.platform_info.resizable)
-                _ := SetWindowLongPtr(info.platform_info.window,
-                                      GWL_STYLE,
-                                      style.as(LONG_PTR))
-                _ := SetWindowPos(info.platform_info.window,
-                                  nil,
-                                  info.platform_info.restore_x,
-                                  info.platform_info.restore_y,
-                                  info.platform_info.restore_width.as(i32),
-                                  info.platform_info.restore_height.as(i32),
-                                  (SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED).as(UINT))
-                info.platform_info.full_screen = no
-            }
-        }
+        on frame.full_screen => frame_windows_enter_fullscreen(info)
+        on !frame.full_screen => frame_windows_leave_fullscreen(info)
     }
 
     frame_windows_create :: fn (system: ^FrameSystem, frame: ^Frame) {
         frame_windows_current_system = system
-        on !frame_system_has_id_capacity(system) || !frame_windows_register_class() => {
+
+        on !frame_system_has_id_capacity(system) => {
             frame.id = CLOSED_FRAME
             return
         }
 
         id := frame_system_allocate_id(system)
-        on id == CLOSED_FRAME => {
-            frame.id = CLOSED_FRAME
-            return
-        }
 
-        mark := temp_arena.mark()
-        defer temp_arena.restore(mark)
-
-        ex_style : DWORD = 0
         style := frame_windows_window_style(frame.resizable)
-        (window_width, window_height) := frame_windows_adjusted_rect(frame.width, frame.height, style, ex_style)
+        (window_width, window_height) := frame_windows_adjusted_rect(frame.width, frame.height, style, 0)
+        window := frame_windows_create_window(window_width,
+                                              window_height,
+                                              style)
+        on window != nil => {
+            mark := temp_arena.mark()
+            defer temp_arena.restore(mark)
+            _ := SetWindowText(window, frame_c_string_temp(frame.title))
 
-        window := CreateWindowEx(ex_style,
-                                 FRAME_WINDOWS_CLASS_NAME,
-                                 frame_c_string_temp(frame.title),
-                                 style | WS_VISIBLE,
-                                 CW_USEDEFAULT,
-                                 CW_USEDEFAULT,
-                                 window_width,
-                                 window_height,
-                                 nil,
-                                 nil,
-                                 nil,
-                                 nil)
-        on window == nil => {
-            frame.id = CLOSED_FRAME
-            return
+            device_context := GetDC(window)
+
+            platform_info : PlatformFrameInfo
+            platform_info.window = window
+            platform_info.device_context = device_context
+            platform_info.width = frame.width
+            platform_info.height = frame.height
+            platform_info.restore_width = frame.width
+            platform_info.restore_height = frame.height
+            platform_info.full_screen = no
+            platform_info.resizable = frame.resizable
+            platform_info.closed_queued = no
+
+            info := FrameInfo {
+                id
+                events: nil
+                platform_info
+            }
+            frame_windows_push_resize(^info, frame.width, frame.height)
+            system.frames.push(info)
+            frame.id = id
+            _ := SetWindowLongPtr(window, GWLP_USERDATA, id.as(LONG_PTR))
+            frame_windows_apply_fullscreen(frame_system_find_info(system, id),
+                                           frame)
         }
+    }
 
-        device_context := GetDC(window)
-        on device_context == nil => {
-            _ := DestroyWindow(window)
-            frame.id = CLOSED_FRAME
-            return
+    frame_windows_pump_messages :: fn (system: ^FrameSystem) {
+        frame_windows_current_system = system
+
+        msg : MSG
+        for PeekMessage(^msg, nil, 0, 0, PM_REMOVE) != 0 {
+            _ := TranslateMessage(^msg)
+            _ := DispatchMessage(^msg)
         }
-
-        platform_info : PlatformFrameInfo
-        platform_info.window = window
-        platform_info.device_context = device_context
-        platform_info.width = frame.width
-        platform_info.height = frame.height
-        platform_info.restore_width = frame.width
-        platform_info.restore_height = frame.height
-        platform_info.full_screen = no
-        platform_info.resizable = frame.resizable
-
-        info := FrameInfo {
-            id
-            events: nil
-            platform_info
-        }
-        frame_windows_push_resize(^info, frame.width, frame.height)
-        system.frames.push(info)
-        _ := SetWindowLongPtr(window, GWLP_USERDATA, id.as(LONG_PTR))
-        frame.id = id
-
-        _ := ShowWindow(window, SW_SHOW)
-        _ := UpdateWindow(window)
-        frame_windows_apply_fullscreen(frame_system_find_info(system, id),
-                                       frame)
     }
 
     frame_windows_update_existing :: fn (system: ^FrameSystem, frame: ^Frame) {
@@ -2144,13 +2224,14 @@ on "windows" {
 
         mark := temp_arena.mark()
         defer temp_arena.restore(mark)
-
         _ := SetWindowText(info.platform_info.window,
                            frame_c_string_temp(frame.title))
+
+        was_full_screen := info.platform_info.full_screen
         info.platform_info.resizable = frame.resizable
         frame_windows_apply_fullscreen(info, frame)
 
-        on !info.platform_info.full_screen => {
+        on !info.platform_info.full_screen && !was_full_screen => {
             style := frame_windows_window_style(frame.resizable)
             (window_width, window_height) := frame_windows_adjusted_rect(frame.width, frame.height, style, 0)
             _ := SetWindowLongPtr(info.platform_info.window,
@@ -2170,28 +2251,21 @@ on "windows" {
 
     frame_apply_impl :: fn (system: ^FrameSystem, frame: ^Frame) {
         on frame.id == CLOSED_FRAME => return
-
         on frame.id == NEW_FRAME => {
             frame_windows_create(system, frame)
             return
         }
-
         frame_windows_update_existing(system, frame)
     }
 
     frame_loop_impl :: fn (system: ^FrameSystem) -> bool {
-        frame_windows_current_system = system
-
-        message : MSG
-        for PeekMessage(^message, nil, 0, 0, PM_REMOVE) != 0 {
-            _ := TranslateMessage(^message)
-            _ := DispatchMessage(^message)
-        }
-
+        frame_windows_prune_closed(system)
+        frame_windows_pump_messages(system)
         return system.frames.count > 0
     }
 
     frame_update_impl :: fn (system: ^FrameSystem, frame: ^Frame) {
+        frame_windows_pump_messages(system)
         on frame.id == CLOSED_FRAME => return
 
         info := frame_system_find_info(system, frame.id)
@@ -2200,15 +2274,8 @@ on "windows" {
             return
         }
 
-        rect : RECT
-        on GetClientRect(info.platform_info.window, ^rect) == 0 => {
-            frame.id = CLOSED_FRAME
-            frame_windows_destroy_info(info)
-            return
-        }
-
-        frame.width = (rect.right - rect.left).as(u16)
-        frame.height = (rect.bottom - rect.top).as(u16)
+        frame.width = info.platform_info.width
+        frame.height = info.platform_info.height
         frame.full_screen = info.platform_info.full_screen
         frame.resizable = info.platform_info.resizable
     }
@@ -2235,6 +2302,10 @@ on "windows" {
 
         index := frame_system_find_info_index(system, frame.id)
         on index < system.frames.count => {
+            on system.frames[index].platform_info.gl_context != nil => {
+                system.frames[index].platform_info.closed_queued = yes
+                return
+            }
             frame_windows_destroy_info(^system.frames[index])
             system.frames.swap_delete(index)
         }
@@ -2250,20 +2321,16 @@ on "windows" {
         on info == nil ||
             info.platform_info.window == nil ||
             info.platform_info.device_context == nil => return
+    }
 
-        for rect in rects {
-            on rect.width == 0 || rect.height == 0 => again
+    frame_windows_clear_client :: fn (info: ^FrameInfo) {
+        rect : RECT
+        on GetClientRect(info.platform_info.window, ^rect) == 0 => return
 
-            win_rect : RECT
-            win_rect.left = rect.x.as(LONG)
-            win_rect.top = rect.y.as(LONG)
-            win_rect.right = (rect.x.as(u32) + rect.width.as(u32)).as(LONG)
-            win_rect.bottom = (rect.y.as(u32) + rect.height.as(u32)).as(LONG)
-            brush := CreateSolidBrush(frame_windows_colour_ref(rect.colour))
-            on brush == nil => again
-            _ := FillRect(info.platform_info.device_context, ^win_rect, brush)
-            _ := DeleteObject(brush.as(HGDIOBJ))
-        }
+        brush := CreateSolidBrush(0)
+        on brush == nil => return
+        _ := FillRect(info.platform_info.device_context, ^rect, brush)
+        _ := DeleteObject(brush.as(HGDIOBJ))
     }
 
     frame_windows_present_scaled_dib :: fn (info   : ^FrameInfo,
@@ -2344,6 +2411,15 @@ on "windows" {
         required_pixels := buffer.stride.as(usize) * buffer.height.as(usize)
         on buffer.pixels.count < required_pixels => return
 
+        rect : RECT
+        on GetClientRect(info.platform_info.window, ^rect) != 0 => {
+            client_width := rect.right - rect.left
+            client_height := rect.bottom - rect.top
+            on buffer.x != 0 || buffer.y != 0 || buffer.draw_width.as(i32) < client_width || buffer.draw_height.as(i32) < client_height => {
+                frame_windows_clear_client(info)
+            }
+        }
+
         frame_windows_present_scaled_dib(info, buffer)
     }
 
@@ -2388,17 +2464,15 @@ on "windows" {
         on !frame_windows_choose_pixel_format(info.platform_info.device_context) => return no
 
         context := wglCreateContext(info.platform_info.device_context)
-        on context == nil => return no
+        on context == nil => {
+            return no
+        }
         on wglMakeCurrent(info.platform_info.device_context, context) == 0 => {
             _ := wglDeleteContext(context)
             return no
         }
 
-        on !wgl_load_commands() => {
-            _ := wglMakeCurrent(nil, nil)
-            _ := wglDeleteContext(context)
-            return no
-        }
+        _ := wgl_load_commands()
 
         info.platform_info.gl_context = context
         return yes

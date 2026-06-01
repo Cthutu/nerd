@@ -850,7 +850,11 @@ internal bool back_end_emit_llvm_artifacts(const ProgramInfo*        program,
             : back_end_cstr(
                   &arena,
                   string_format(&arena, "%s.nrt.o", artifacts->binary_path));
-    nerd_side_file_register_cleanup(artifacts->side_files, combined_llvm_path);
+    const char* keep_combined_llvm = getenv("NERD_DEBUG_KEEP_LINK_LLVM");
+    if (keep_combined_llvm == NULL || strcmp(keep_combined_llvm, "1") != 0) {
+        nerd_side_file_register_cleanup(artifacts->side_files,
+                                        combined_llvm_path);
+    }
     nerd_side_file_register_cleanup(artifacts->side_files, runtime_object_path);
 
     string runtime_epilogue = s("");
@@ -949,9 +953,12 @@ internal bool back_end_emit_llvm_artifacts(const ProgramInfo*        program,
     back_end_timing_end(timing, phase, timing_start);
     compiler_memory_profile_end(COMPILER_STAGE_BACK_END, phase, memory_before);
 
+    bool keep_combined_llvm_file =
+        keep_combined_llvm != NULL && strcmp(keep_combined_llvm, "1") == 0;
     back_end_cleanup_llvm_artifacts(modules.llvm_paths,
                                     !artifacts->emit_llvm_file,
-                                    !artifacts->emit_llvm_file,
+                                    !artifacts->emit_llvm_file &&
+                                        !keep_combined_llvm_file,
                                     combined_llvm_path,
                                     runtime_object_path);
 

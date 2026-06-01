@@ -847,6 +847,12 @@ internal bool program_load_module_by_path(ProgramInfo*           program,
 
     Lexer module_lexer = current->front_end.lexer;
     Ast   module_ast   = current->front_end.ast;
+    program_apply_pragmas(program,
+                          options,
+                          &module_lexer,
+                          &module_ast,
+                          0,
+                          (u32)array_count(module_ast.nodes));
     if (!program_collect_module_dependencies(
             program,
             options,

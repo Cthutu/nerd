@@ -4467,6 +4467,33 @@ internal bool sema_node_is_inside_top_on_body(const Ast* ast,
            innermost_body != current_body_node_index;
 }
 
+internal bool
+sema_node_is_inside_disabled_top_on_body(const FrontEndOptions* options,
+                                         const Lexer*           lexer,
+                                         const Ast*             ast,
+                                         u32                    node_index)
+{
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* owner = &ast->nodes[i];
+        if (owner->kind != AK_TopOn) {
+            continue;
+        }
+
+        const AstTopOnInfo* info = &ast->top_ons[owner->a];
+        if (info->is_assert || info->body_node_index == U32_MAX ||
+            sema_top_on_is_enabled(options, lexer, ast, owner)) {
+            continue;
+        }
+
+        const AstNode* body = &ast->nodes[info->body_node_index];
+        if (body->a <= node_index && node_index < body->b) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 internal u32 sema_trait_symbol_from_type_node(const Ast* ast, u32 node_index)
 {
     if (node_index >= array_count(ast->nodes)) {
@@ -5146,6 +5173,9 @@ internal bool sema_collect_decls_in_range(const Lexer*           lexer,
 {
     for (u32 i = first_node; i < end_node; ++i) {
         const AstNode* node = &ast->nodes[i];
+        if (sema_node_is_inside_top_on_body(ast, i, current_body_node_index)) {
+            continue;
+        }
         if (node->kind == AK_Impl) {
             const AstImplInfo* impl = &ast->impls[node->a];
             const AstNode*     body = &ast->nodes[impl->body_node_index];
@@ -5274,9 +5304,6 @@ internal bool sema_collect_decls_in_range(const Lexer*           lexer,
         if (node->kind == AK_Trait) {
             continue;
         }
-        if (sema_node_is_inside_top_on_body(ast, i, current_body_node_index)) {
-            continue;
-        }
         if (node->kind == AK_TopOn) {
             const AstTopOnInfo* info = &ast->top_ons[node->a];
             if (info->is_assert) {
@@ -5300,6 +5327,9 @@ internal bool sema_collect_decls_in_range(const Lexer*           lexer,
                     return false;
                 }
             }
+            const AstNode* body = &ast->nodes[info->body_node_index];
+            ASSERT(body->kind == AK_Block, "Expected top-level on body");
+            i = body->b - 1;
             continue;
         }
         if (node->kind != AK_Bind && node->kind != AK_Variable &&
@@ -9393,9 +9423,9 @@ sema_collect_top_level_uses_in_range(const Lexer*           lexer,
                 i++;
                 continue;
             }
+            const AstNode* body = &ast->nodes[info->body_node_index];
+            ASSERT(body->kind == AK_Block, "Expected top-level on body");
             if (sema_top_on_is_enabled(options, lexer, ast, node)) {
-                const AstNode* body = &ast->nodes[info->body_node_index];
-                ASSERT(body->kind == AK_Block, "Expected top-level on body");
                 if (!sema_collect_top_level_uses_in_range(lexer,
                                                           ast,
                                                           options,
@@ -9406,7 +9436,7 @@ sema_collect_top_level_uses_in_range(const Lexer*           lexer,
                     return false;
                 }
             }
-            i++;
+            i = body->b;
             continue;
         }
         if (node->kind == AK_FnStart) {
@@ -14691,12 +14721,17 @@ internal bool sema_seed_function_return_contexts(const Lexer* lexer,
     return true;
 }
 
-internal bool sema_seed_return_context_local_types(const Lexer* lexer,
-                                                   const Ast*   ast,
-                                                   Sema*        sema)
+internal bool
+sema_seed_return_context_local_types(const Lexer*           lexer,
+                                     const Ast*             ast,
+                                     const FrontEndOptions* options,
+                                     Sema*                  sema)
 {
     for (u32 i = 0; i < array_count(ast->nodes); ++i) {
         if (ast->nodes[i].kind != AK_FnDef) {
+            continue;
+        }
+        if (sema_node_is_inside_disabled_top_on_body(options, lexer, ast, i)) {
             continue;
         }
         if (!sema_seed_function_return_contexts(lexer, ast, sema, i)) {
@@ -20975,13 +21010,19 @@ internal bool sema_validate_definite_assignment_function(const Lexer* lexer,
     return ok;
 }
 
-internal bool sema_validate_definite_assignment(const Lexer* lexer,
-                                                const Ast*   ast,
-                                                const Sema*  sema)
+internal bool sema_validate_definite_assignment(const Lexer*           lexer,
+                                                const Ast*             ast,
+                                                const FrontEndOptions* options,
+                                                const Sema*            sema)
 {
     for (u32 i = 0; i < array_count(ast->nodes); ++i) {
-        if (ast->nodes[i].kind == AK_FnDef &&
-            !sema_validate_definite_assignment_function(lexer, ast, sema, i)) {
+        if (ast->nodes[i].kind != AK_FnDef) {
+            continue;
+        }
+        if (sema_node_is_inside_disabled_top_on_body(options, lexer, ast, i)) {
+            continue;
+        }
+        if (!sema_validate_definite_assignment_function(lexer, ast, sema, i)) {
             return false;
         }
     }
@@ -21706,12 +21747,19 @@ internal bool sema_validate_loop_control(const Lexer* lexer,
     }
 }
 
-internal bool sema_validate_all_loop_control(const Lexer* lexer, const Ast* ast)
+internal bool sema_validate_all_loop_control(const Lexer*           lexer,
+                                             const Ast*             ast,
+                                             const FrontEndOptions* options)
 {
     for (u32 i = 0; i < array_count(ast->nodes); ++i) {
         u32 expr_labels[SEMA_MAX_CONTROL_LABELS] = {0};
-        if (ast->nodes[i].kind == AK_FnDef &&
-            !sema_validate_loop_control(lexer, ast, i, 0, 0, expr_labels, 0)) {
+        if (ast->nodes[i].kind != AK_FnDef) {
+            continue;
+        }
+        if (sema_node_is_inside_disabled_top_on_body(options, lexer, ast, i)) {
+            continue;
+        }
+        if (!sema_validate_loop_control(lexer, ast, i, 0, 0, expr_labels, 0)) {
             return false;
         }
     }
@@ -21822,7 +21870,7 @@ bool sema_analyse(const Lexer*           lexer,
         sema_done(&sema);
         return false;
     }
-    if (!sema_validate_all_loop_control(lexer, ast)) {
+    if (!sema_validate_all_loop_control(lexer, ast, options)) {
         sema_done(&sema);
         return false;
     }
@@ -21831,7 +21879,7 @@ bool sema_analyse(const Lexer*           lexer,
         sema_done(&sema);
         return false;
     }
-    if (!sema_seed_return_context_local_types(lexer, ast, &sema)) {
+    if (!sema_seed_return_context_local_types(lexer, ast, options, &sema)) {
         sema_done(&sema);
         return false;
     }
@@ -21847,7 +21895,7 @@ bool sema_analyse(const Lexer*           lexer,
         sema_done(&sema);
         return false;
     }
-    if (!sema_validate_definite_assignment(lexer, ast, &sema)) {
+    if (!sema_validate_definite_assignment(lexer, ast, options, &sema)) {
         sema_done(&sema);
         return false;
     }

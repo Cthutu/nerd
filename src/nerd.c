@@ -2,7 +2,8 @@
 //> use: core intern compiler timing table cli lsp object
 // clang-format off
 //> run: clang -std=c23 -Wall -Wextra -Werror -O2 -c data/nrt.c -o _obj/runtime/nrt.o
-//> run: clang -std=c23 -Wall -Wextra -Werror -O2 -fPIC -c data/nrt.c -o _obj/runtime/nrt.pic.o
+//> run(windows): clang -std=c23 -Wall -Wextra -Werror -O2 -c data/nrt.c -o _obj/runtime/nrt.pic.o
+//> run(posix): clang -std=c23 -Wall -Wextra -Werror -O2 -fPIC -c data/nrt.c -o _obj/runtime/nrt.pic.o
 // clang-format on
 
 #include <cli/cli.h>

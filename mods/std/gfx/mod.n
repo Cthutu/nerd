@@ -383,17 +383,28 @@ test {
 }
 
 test "fixed-size pixel layer initialises storage" {
-    frame := Frame { id: 1 width: 640 height: 480 title: "gfx-test" full_screen: no resizable: yes }
+    frame := Frame {
+        id          : 1
+        width       : 640
+        height      : 480
+        title       : "gfx-test"
+        full_screen : no
+        resizable   : yes
+    }
     gfx := GfxSystem.init()
     defer gfx.done()
 
-    dimensions := gfx_pixel_layer_dimensions(^frame,
-                                             PixelLayerMode.FixedSizeAutoScale { width: 4 height: 3 })
+    dimensions := gfx_pixel_layer_dimensions(^frame, PixelLayerMode.FixedSizeAutoScale {
+        width  : 4
+        height : 3
+    })
     assert dimensions.width == 4
     assert dimensions.height == 3
 
-    handle := gfx.pixel_layer(^frame,
-                              PixelLayerMode.FixedSizeAutoScale { width: 4 height: 3 })
+    handle := gfx.pixel_layer(^frame, PixelLayerMode.FixedSizeAutoScale {
+        width  : 4
+        height : 3
+    })
     layer := gfx.pixel(handle)
 
     assert layer != nil
@@ -404,11 +415,14 @@ test "fixed-size pixel layer initialises storage" {
 
 test "pixel layer resize mutates the layer" {
     layer := PixelLayer {
-        frame_id : 1
-        mode     : PixelLayerMode.FixedSizeAutoScale { width: 1 height: 1 }
-        width    : 1
-        height   : 1
-        data     : nil
+        frame_id: 1
+        mode: PixelLayerMode.FixedSizeAutoScale {
+            width  : 1
+            height : 1
+        }
+        width  : 1
+        height : 1
+        data   : nil
     }
     defer layer.done()
 
@@ -420,12 +434,20 @@ test "pixel layer resize mutates the layer" {
 }
 
 test "fit-to-window pixel layer follows frame size" {
-    frame := Frame { id: 1 width: 16 height: 12 title: "gfx-test" full_screen: no resizable: yes }
+    frame := Frame {
+        id          : 1
+        width       : 16
+        height      : 12
+        title       : "gfx-test"
+        full_screen : no
+        resizable   : yes
+    }
     gfx := GfxSystem.init()
     defer gfx.done()
 
-    handle := gfx.pixel_layer(^frame,
-                              PixelLayerMode.FitToWindow { pixel_scale: 4 })
+    handle := gfx.pixel_layer(^frame, PixelLayerMode.FitToWindow {
+        pixel_scale: 4
+    })
     layer := gfx.pixel(handle)
     assert layer.pixel_width() == 4
     assert layer.pixel_height() == 3
@@ -439,24 +461,43 @@ test "fit-to-window pixel layer follows frame size" {
 }
 
 test "pixel layer clear put fill and paint update pixels" {
-    frame := Frame { id: 1 width: 8 height: 8 title: "gfx-test" full_screen: no resizable: yes }
+    frame := Frame {
+        id          : 1
+        width       : 8
+        height      : 8
+        title       : "gfx-test"
+        full_screen : no
+        resizable   : yes
+    }
     gfx := GfxSystem.init()
     defer gfx.done()
 
-    handle := gfx.pixel_layer(^frame,
-                              PixelLayerMode.FixedSizeAutoScale { width: 4 height: 4 })
+    handle := gfx.pixel_layer(^frame, PixelLayerMode.FixedSizeAutoScale {
+        width  : 4
+        height : 4
+    })
     layer := gfx.pixel(handle)
 
     layer.clear(0xff000000)
     layer.put(2, 1, 0xffffffff)
     assert layer.pixels()[6] == 0xffffffff
 
-    layer.fill(PixelRect { x: 1 y: 2 width: 8 height: 1 }, 0xff00ff00)
+    layer.fill(PixelRect {
+        x      : 1
+        y      : 2
+        width  : 8
+        height : 1
+    }, 0xff00ff00)
     assert layer.pixels()[9] == 0xff00ff00
     assert layer.pixels()[10] == 0xff00ff00
     assert layer.pixels()[11] == 0xff00ff00
 
-    layer.paint(PixelRect { x: 1 y: 1 width: 2 height: 2 }, gfx_paint_checker)
+    layer.paint(PixelRect {
+        x      : 1
+        y      : 1
+        width  : 2
+        height : 2
+    }, gfx_paint_checker)
     assert layer.pixels()[5] == 0xff000000
     assert layer.pixels()[6] == 0xff000100
     assert layer.pixels()[9] == 0xff000001

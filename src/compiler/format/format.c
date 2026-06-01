@@ -4128,6 +4128,14 @@ internal bool format_collect_aligned_statement(Arena*       arena,
             type = format_render_expr_to_string(arena, cst, lexer, payload->a);
             value =
                 format_render_value_to_string(arena, cst, lexer, payload->b);
+            const CstNode* value_payload = &cst->nodes[payload->b];
+            bool           is_multiline_string_value =
+                value_payload->kind == CK_StringLiteral ||
+                value_payload->kind == CK_StringConcat;
+            if (!is_multiline_string_value &&
+                format_string_has_newline(value)) {
+                return false;
+            }
         } else if (payload->kind == CK_ZeroInit) {
             type = format_render_expr_to_string(arena, cst, lexer, payload->a);
         } else if (payload->kind == CK_Undefined) {
@@ -4190,8 +4198,7 @@ internal bool format_collect_aligned_statement(Arena*       arena,
         bool is_multiline_string_value =
             value_payload->kind == CK_StringLiteral ||
             value_payload->kind == CK_StringConcat;
-        if (!format_statement_is_single_line(cst, lexer, node_index) &&
-            !is_multiline_string_value && format_string_has_newline(value)) {
+        if (!is_multiline_string_value && format_string_has_newline(value)) {
             return false;
         }
 

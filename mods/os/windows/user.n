@@ -203,6 +203,7 @@ ffi "user32" {
                                                 wParam : WPARAM,
                                                 lParam : LPARAM) -> LRESULT
     pub                     DestroyWindow      (hWnd: HWND) -> BOOL
+    pub                     IsWindow           (hWnd: HWND) -> BOOL
     pub                     ShowWindow         (hWnd     : HWND,
                                                 nCmdShow : i32) -> BOOL
     pub                     UpdateWindow       (hWnd: HWND) -> BOOL

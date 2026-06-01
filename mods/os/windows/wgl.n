@@ -351,6 +351,7 @@ ffi "opengl32" {
     pub glEnd             ()
     pub glTexCoord2f      (s: GLfloat, t: GLfloat)
     pub glVertex2f        (x: GLfloat, y: GLfloat)
+    pub glColor3f         (red: GLfloat, green: GLfloat, blue: GLfloat)
 }
 
 -- Loads OpenGL commands that are not guaranteed to be exported as link-time

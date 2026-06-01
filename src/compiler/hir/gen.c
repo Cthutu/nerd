@@ -733,6 +733,22 @@ internal u32 hir_ffi_foreign_symbol_handle_from(const Lexer*    root_lexer,
                                       &source_decl)) {
             return U32_MAX;
         }
+        if (decl->symbol_handle != U32_MAX &&
+            source_decl->symbol_handle != U32_MAX &&
+            !string_eq(lex_symbol(lexer, decl->symbol_handle),
+                       lex_symbol(source_lexer, source_decl->symbol_handle))) {
+            string wanted_name = lex_symbol(lexer, decl->symbol_handle);
+            for (u32 i = 0; i < array_count(source_sema->decls); ++i) {
+                const SemaDecl* candidate = &source_sema->decls[i];
+                if (candidate->symbol_handle != U32_MAX &&
+                    string_eq(
+                        wanted_name,
+                        lex_symbol(source_lexer, candidate->symbol_handle))) {
+                    source_decl = candidate;
+                    break;
+                }
+            }
+        }
         return hir_ffi_foreign_symbol_handle_from(root_lexer,
                                                   source_lexer,
                                                   source_ast,
