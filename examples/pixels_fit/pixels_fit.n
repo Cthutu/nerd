@@ -34,6 +34,7 @@ main :: fn () {
         title       : "Pixels Fit"
         full_screen : no
         resizable   : yes
+        ...
     }
 
     frame_system.apply(^frame)
@@ -72,7 +73,7 @@ main :: fn () {
         layer := gfx.pixel(handle)
         on layer != nil => {
             fit_draw(layer, tick)
-            gfx.render(^frame_system, ^frame)
+            gfx.render(^frame)
         }
 
         tick += 1

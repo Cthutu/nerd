@@ -270,7 +270,7 @@ impl GfxSystem {
     }
 
     -- Updates frame-sized layers and presents all layers for `frame`.
-    pub render :: fn (system: ^Self, frame_system: ^FrameSystem, frame: ^Frame) {
+    pub render :: fn (system: ^Self, frame: ^Frame) {
         for layer in system.pixel_layers {
             on layer.frame_id == frame.id => {
                 dimensions := gfx_pixel_layer_dimensions(frame, layer.mode)
@@ -282,16 +282,22 @@ impl GfxSystem {
             }
         }
 
-        gfx_render_impl(system, frame_system, frame)
+        gfx_render_impl(system, frame)
     }
 
 }
 
 -- Backend presentation hook. Layers are composed into a temporary client-sized
 -- pixel buffer and presented in one platform call.
-gfx_render_impl :: fn (system       : ^GfxSystem,
-                       frame_system : ^FrameSystem,
-                       frame        : ^Frame) {
+gfx_render_impl :: fn (system: ^GfxSystem, frame: ^Frame) {
+    frame_system := frame.system
+    on frame_system == nil => return
+    on frame.context() {
+        Ok(_) => {
+        }
+        Err(_) => return
+    }
+
     frame_width := frame.width.as(u32)
     frame_height := frame.height.as(u32)
     on frame_width == 0 || frame_height == 0 => return
@@ -390,6 +396,7 @@ test "fixed-size pixel layer initialises storage" {
         title       : "gfx-test"
         full_screen : no
         resizable   : yes
+        ...
     }
     gfx := GfxSystem.init()
     defer gfx.done()
@@ -441,6 +448,7 @@ test "fit-to-window pixel layer follows frame size" {
         title       : "gfx-test"
         full_screen : no
         resizable   : yes
+        ...
     }
     gfx := GfxSystem.init()
     defer gfx.done()
@@ -455,7 +463,7 @@ test "fit-to-window pixel layer follows frame size" {
     frame.width = 24
     frame.height = 20
     frame_system := FrameSystem.init()
-    gfx.render(^frame_system, ^frame)
+    gfx.render(^frame)
     assert layer.pixel_width() == 6
     assert layer.pixel_height() == 5
 }
@@ -468,6 +476,7 @@ test "pixel layer clear put fill and paint update pixels" {
         title       : "gfx-test"
         full_screen : no
         resizable   : yes
+        ...
     }
     gfx := GfxSystem.init()
     defer gfx.done()

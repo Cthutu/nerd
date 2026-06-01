@@ -211,6 +211,10 @@ pub FrameEvent :: enum {
 }
 
 pub Frame :: plex {
+    -- Weak link back to the owning system. `FrameSystem.apply` fills this in.
+    -- It is used to resolve the internal live `FrameInfo` record by ID.
+    system ^FrameSystem
+
     -- The ID of the frame.  This is a unique identifier for the frame within
     -- the system.  A value of `NEW_FRAME` indicates that this frame should be
     -- created when `apply` is called.
@@ -234,6 +238,12 @@ pub Frame :: plex {
     -- Set to no to ask the platform window manager to prevent user resizing.
     -- Programmatic size changes through `apply` are still allowed.
     resizable bool
+}
+
+pub FrameError :: enum {
+    NoSystem
+    Invalid
+    Closed
 }
 
 -- Filled rectangle in client-area pixel coordinates.
@@ -342,6 +352,7 @@ impl FrameSystem {
     }
 
     pub apply :: fn (system: ^Self, frame: ^Frame) {
+        frame.system = system
         frame_apply_impl(system, frame)
     }
 
@@ -450,6 +461,14 @@ impl FrameSystem {
 
 }
 
+impl Frame {
+
+    pub context :: fn (frame: ^Self) -> Result[FrameContext, FrameError] {
+        return frame_context_impl(frame)
+    }
+
+}
+
 test "FrameSystem modifier helpers report combined and sided state" {
     system := FrameSystem.init()
     assert !system.is_shift_down()
@@ -482,6 +501,15 @@ on "linux" {
 
     use os.linux.glx
     use os.linux.x11
+
+    pub FrameContext :: plex {
+        display    XDisplay
+        window     XWindow
+        drawable   GLXDrawable
+        gl_context GLXContext
+        width      u16
+        height     u16
+    }
 
     -- Linux X11 data attached to a public `Frame`.
     PlatformFrameInfo :: plex {
@@ -589,6 +617,25 @@ on "linux" {
         info.platform_info.gl_texture = 0
         info.platform_info.gl_texture_width = 0
         info.platform_info.gl_texture_height = 0
+    }
+
+    frame_context_impl :: fn (frame: ^Frame) -> Result[FrameContext, FrameError] {
+        on frame.system == nil => return Err(FrameError.NoSystem)
+        on frame.id == CLOSED_FRAME => return Err(FrameError.Closed)
+
+        info := frame_system_find_info(frame.system, frame.id)
+        on info == nil ||
+            info.platform_info.display == nil ||
+            info.platform_info.window == 0 => return Err(FrameError.Invalid)
+
+        return Ok(FrameContext {
+            display    : info.platform_info.display
+            window     : info.platform_info.window
+            drawable   : info.platform_info.window.as(GLXDrawable)
+            gl_context : info.platform_info.gl_context
+            width      : info.platform_info.width
+            height     : info.platform_info.height
+        })
     }
 
     -- Marks a public frame and its platform record as closed.
@@ -1189,34 +1236,25 @@ on "linux" {
     }
 
     frame_linux_gl_create_pixel_program :: fn () -> GLuint {
-        vertex_source := ""
-        """
-            
-                        #version 120
-                        attribute vec2 position;
-                        attribute vec2 texcoord;
-                        varying vec2 v_texcoord;
-                        void main() {
-                            v_texcoord = texcoord;
-                            gl_Position = vec4(position, 0.0, 1.0);
-                        }
-            
+        vertex_source := """
+            #version 120
+            attribute vec2 position;
+            attribute vec2 texcoord;
+            varying vec2 v_texcoord;
+            void main() {
+                v_texcoord = texcoord;
+                gl_Position = vec4(position, 0.0, 1.0);
+            }
             """
 
-        ""
-        fragment_source := ""
-        """
-            
-                        #version 120
-                        uniform sampler2D pixels;
-                        varying vec2 v_texcoord;
-                        void main() {
-                            gl_FragColor = texture2D(pixels, v_texcoord);
-                        }
-            
+        fragment_source := """
+            #version 120
+            uniform sampler2D pixels;
+            varying vec2 v_texcoord;
+            void main() {
+                gl_FragColor = texture2D(pixels, v_texcoord);
+            }
             """
-
-        ""
 
         vertex_shader := frame_linux_gl_compile_shader(GL_VERTEX_SHADER,
                                                        vertex_source)
@@ -1648,6 +1686,14 @@ on "windows" {
 
     use os.windows
 
+    pub FrameContext :: plex {
+        window         HWND
+        device_context HDC
+        gl_context     HGLRC
+        width          u16
+        height         u16
+    }
+
     -- Windows data attached to a public `Frame`.
     PlatformFrameInfo :: plex {
         window         ^void
@@ -1965,6 +2011,24 @@ on "windows" {
         info.platform_info.device_context = nil
         info.platform_info.gl_context = nil
         info.platform_info.closed_queued = no
+    }
+
+    frame_context_impl :: fn (frame: ^Frame) -> Result[FrameContext, FrameError] {
+        on frame.system == nil => return Err(FrameError.NoSystem)
+        on frame.id == CLOSED_FRAME => return Err(FrameError.Closed)
+
+        info := frame_system_find_info(frame.system, frame.id)
+        on info == nil ||
+            info.platform_info.window == nil ||
+            info.platform_info.device_context == nil => return Err(FrameError.Invalid)
+
+        return Ok(FrameContext {
+            window         : info.platform_info.window
+            device_context : info.platform_info.device_context
+            gl_context     : info.platform_info.gl_context
+            width          : info.platform_info.width
+            height         : info.platform_info.height
+        })
     }
 
     frame_windows_mark_closed :: fn (system: ^FrameSystem, frame: ^Frame) {
@@ -2428,6 +2492,7 @@ test "FrameSystem loop returns no after destroying final frame" {
         title       : "test"
         full_screen : no
         resizable   : yes
+        ...
     }
 
     system.destroy(^frame)

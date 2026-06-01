@@ -88,10 +88,11 @@ main :: fn () {
         title       : "OpenGL Triangle"
         full_screen : no
         resizable   : yes
+        ...
     }
 
     frame_system.apply(^frame)
-    on !gl_init(^frame_system, ^frame) => {
+    on !gl_init(^frame) => {
         eprn("OpenGL could not be initialised for this frame.")
         frame_system.destroy(^frame)
         return
@@ -100,7 +101,7 @@ main :: fn () {
     program := create_program()
     on program == 0 => {
         eprn("OpenGL triangle shader program could not be created.")
-        gl_done(^frame_system, ^frame)
+        gl_done(^frame)
         frame_system.destroy(^frame)
         return
     }
@@ -173,7 +174,7 @@ main :: fn () {
             }
         }
 
-        on !gl_make_current(^frame_system, ^frame) => {
+        on !gl_make_current(^frame) => {
             frame_system.destroy(^frame)
         }
 
@@ -185,16 +186,16 @@ main :: fn () {
         glBindVertexArray(vertex_array)
         glDrawArrays(GL_TRIANGLES, 0, 3)
         glBindVertexArray(0)
-        gl_swap_buffers(^frame_system, ^frame)
+        gl_swap_buffers(^frame)
 
         sleep_ms(16)
     }
 
-    on gl_make_current(^frame_system, ^frame) => {
+    on gl_make_current(^frame) => {
         glDeleteVertexArrays(1, ^vertex_array)
         glDeleteBuffers(1, ^vertex_buffer)
         glDeleteProgram(program)
     }
-    gl_done(^frame_system, ^frame)
+    gl_done(^frame)
     frame_system.destroy(^frame)
 }

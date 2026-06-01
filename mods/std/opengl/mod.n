@@ -12,26 +12,45 @@ on "linux" {
 
     pub use os.linux.glx
 
+    gl_unload_platform_commands :: fn () {
+        glx_unload_commands()
+    }
+
 }
 
 on "windows" {
 
     pub use os.windows
 
+    gl_unload_platform_commands :: fn () {
+        wgl_unload_commands()
+    }
+
 }
 
-pub gl_init :: fn (system: ^FrameSystem, frame: ^Frame) -> bool {
-    return system.opengl_init(frame)
+pub gl_init :: fn (frame: ^Frame) -> bool {
+    on frame.context() {
+        Ok(_)   => return frame.system.opengl_init(frame)
+        Err(_)  => return no
+    }
+    return no
 }
 
-pub gl_done :: fn (system: ^FrameSystem, frame: ^Frame) {
-    system.opengl_done(frame)
+pub gl_done :: fn (frame: ^Frame) {
+    on frame.system == nil => return
+    frame.system.opengl_done(frame)
+    gl_unload_platform_commands()
 }
 
-pub gl_make_current :: fn (system: ^FrameSystem, frame: ^Frame) -> bool {
-    return system.opengl_make_current(frame)
+pub gl_make_current :: fn (frame: ^Frame) -> bool {
+    on frame.context() {
+        Ok(_)   => return frame.system.opengl_make_current(frame)
+        Err(_)  => return no
+    }
+    return no
 }
 
-pub gl_swap_buffers :: fn (system: ^FrameSystem, frame: ^Frame) {
-    system.opengl_swap_buffers(frame)
+pub gl_swap_buffers :: fn (frame: ^Frame) {
+    on frame.system == nil => return
+    frame.system.opengl_swap_buffers(frame)
 }

@@ -441,6 +441,35 @@ pub wgl_load_commands :: fn () -> bool {
     return yes
 }
 
+pub wgl_unload_commands :: fn () {
+    gl_active_texture_proc             = gl_stub_active_texture
+    gl_create_shader_proc              = gl_stub_create_shader
+    gl_shader_source_proc              = gl_stub_shader_source
+    gl_compile_shader_proc             = gl_stub_compile_shader
+    gl_get_shader_iv_proc              = gl_stub_get_shader_iv
+    gl_delete_shader_proc              = gl_stub_delete_shader
+    gl_create_program_proc             = gl_stub_create_program
+    gl_attach_shader_proc              = gl_stub_attach_shader
+    gl_bind_attrib_location_proc       = gl_stub_bind_attrib_location
+    gl_link_program_proc               = gl_stub_link_program
+    gl_get_program_iv_proc             = gl_stub_get_program_iv
+    gl_delete_program_proc             = gl_stub_delete_program
+    gl_use_program_proc                = gl_stub_use_program
+    gl_get_uniform_location_proc       = gl_stub_get_uniform_location
+    gl_uniform_1i_proc                 = gl_stub_uniform_1i
+    gl_gen_buffers_proc                = gl_stub_gen_buffers
+    gl_delete_buffers_proc             = gl_stub_delete_buffers
+    gl_bind_buffer_proc                = gl_stub_bind_buffer
+    gl_buffer_data_proc                = gl_stub_buffer_data
+    gl_buffer_sub_data_proc            = gl_stub_buffer_sub_data
+    gl_gen_vertex_arrays_proc          = gl_stub_gen_vertex_arrays
+    gl_delete_vertex_arrays_proc       = gl_stub_delete_vertex_arrays
+    gl_bind_vertex_array_proc          = gl_stub_bind_vertex_array
+    gl_enable_vertex_attrib_array_proc = gl_stub_enable_vertex_attrib_array
+    gl_vertex_attrib_pointer_proc      = gl_stub_vertex_attrib_pointer
+    wgl_commands_loaded                = no
+}
+
 pub glActiveTexture :: fn (texture: GLenum) {
     gl_active_texture_proc(texture)
 }
