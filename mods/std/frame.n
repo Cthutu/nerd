@@ -1191,7 +1191,7 @@ on "linux" {
     frame_linux_gl_create_pixel_program :: fn () -> GLuint {
         vertex_source := ""
         """
-
+            
                         #version 120
                         attribute vec2 position;
                         attribute vec2 texcoord;
@@ -1200,20 +1200,20 @@ on "linux" {
                             v_texcoord = texcoord;
                             gl_Position = vec4(position, 0.0, 1.0);
                         }
-
+            
             """
 
         ""
         fragment_source := ""
         """
-
+            
                         #version 120
                         uniform sampler2D pixels;
                         varying vec2 v_texcoord;
                         void main() {
                             gl_FragColor = texture2D(pixels, v_texcoord);
                         }
-
+            
             """
 
         ""
@@ -1791,6 +1791,13 @@ on "windows" {
         full_screen    bool
         resizable      bool
         closed_queued  bool
+        clear_valid    bool
+        clear_client_w i32
+        clear_client_h i32
+        clear_x        u16
+        clear_y        u16
+        clear_w        u16
+        clear_h        u16
     }
 
     FRAME_WINDOWS_CLASS_NAME        :: c"NerdFrameWindow"
@@ -2333,6 +2340,28 @@ on "windows" {
         _ := DeleteObject(brush.as(HGDIOBJ))
     }
 
+    frame_windows_invalidate_clear_cache :: fn (info: ^FrameInfo) {
+        info.platform_info.clear_valid = no
+    }
+
+    frame_windows_clear_client_if_needed :: fn (info          : ^FrameInfo,
+                                                client_width  : i32,
+                                                client_height : i32,
+                                                buffer        : FrameScaledPixelBuffer) {
+        changed := !info.platform_info.clear_valid || info.platform_info.clear_client_w != client_width || info.platform_info.clear_client_h != client_height || info.platform_info.clear_x != buffer.x || info.platform_info.clear_y != buffer.y || info.platform_info.clear_w != buffer.draw_width || info.platform_info.clear_h != buffer.draw_height
+
+        on !changed => return
+
+        frame_windows_clear_client(info)
+        info.platform_info.clear_valid = yes
+        info.platform_info.clear_client_w = client_width
+        info.platform_info.clear_client_h = client_height
+        info.platform_info.clear_x = buffer.x
+        info.platform_info.clear_y = buffer.y
+        info.platform_info.clear_w = buffer.draw_width
+        info.platform_info.clear_h = buffer.draw_height
+    }
+
     frame_windows_present_scaled_dib :: fn (info   : ^FrameInfo,
                                             buffer : FrameScaledPixelBuffer) {
         bitmap : BITMAPINFO
@@ -2390,6 +2419,7 @@ on "windows" {
             draw_height : buffer.height
             pixels      : buffer.pixels
         })
+        frame_windows_invalidate_clear_cache(info)
     }
 
     frame_present_scaled_pixels_impl :: fn (system : ^FrameSystem,
@@ -2416,7 +2446,12 @@ on "windows" {
             client_width := rect.right - rect.left
             client_height := rect.bottom - rect.top
             on buffer.x != 0 || buffer.y != 0 || buffer.draw_width.as(i32) < client_width || buffer.draw_height.as(i32) < client_height => {
-                frame_windows_clear_client(info)
+                frame_windows_clear_client_if_needed(info,
+                                                     client_width,
+                                                     client_height,
+                                                     buffer)
+            } else {
+                frame_windows_invalidate_clear_cache(info)
             }
         }
 
