@@ -21,7 +21,7 @@ c_string_temp :: fn (text: string) -> ^i8 {
         data[i] = text.data[i]
     }
     data[text.count] = 0
-    return data.as(^void).as(^i8)
+    return data.as(^i8)
 }
 
 on "linux" {

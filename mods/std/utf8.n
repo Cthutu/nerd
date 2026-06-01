@@ -10,9 +10,9 @@ pub REPLACEMENT_CODEPOINT : u32 : 0xfffd
 
 -- Returns a scalar value suitable for UTF-8 encoding.
 utf8_normalise_codepoint :: fn (codepoint: u32) -> u32 {
-    on codepoint > 0x10ffff.as(u32) => return REPLACEMENT_CODEPOINT
-    on codepoint >= 0xd800.as(u32) &&
-        codepoint <= 0xdfff.as(u32) => return REPLACEMENT_CODEPOINT
+    on codepoint > 0x10ffff => return REPLACEMENT_CODEPOINT
+    on codepoint >= 0xd800 &&
+        codepoint <= 0xdfff => return REPLACEMENT_CODEPOINT
     return codepoint
 }
 
@@ -65,10 +65,10 @@ pub decode_first_byte_slice :: fn (bytes: []u8) -> u32 {
 pub encoded_count :: fn (codepoint: u32) -> usize {
     value := utf8_normalise_codepoint(codepoint)
     return on value {
-        < 0x80.as(u32)     => 1
-        < 0x800.as(u32)    => 2
-        < 0x10000.as(u32)  => 3
-        else               => 4
+        < 0x80     => 1
+        < 0x800    => 2
+        < 0x10000  => 3
+        else       => 4
     }
 }
 
@@ -79,12 +79,12 @@ pub encode_to :: fn (codepoint: u32, output: []u8) -> usize {
     needed := encoded_count(value)
     on output.count < needed => return 0
 
-    on value < 0x80.as(u32) => {
+    on value < 0x80 => {
         output[0] = value.as(u8)
-    } else on (value < 0x800.as(u32)) => {
+    } else on (value < 0x800) => {
         output[0] = (0xc0 | (value >> 6)).as(u8)
         output[1] = (0x80 | (value & 0x3f)).as(u8)
-    } else on (value < 0x10000.as(u32)) => {
+    } else on (value < 0x10000) => {
         output[0] = (0xe0 | (value >> 12)).as(u8)
         output[1] = (0x80 | ((value >> 6) & 0x3f)).as(u8)
         output[2] = (0x80 | (value & 0x3f)).as(u8)
@@ -102,16 +102,16 @@ pub encode_to :: fn (codepoint: u32, output: []u8) -> usize {
 pub codepoint_display_width :: fn (codepoint: u32) -> i32 {
     on codepoint == 0 => return 0
     on codepoint < 32 || (codepoint >= 0x7f && codepoint < 0xa0) => return 0
-    on codepoint == 30028.as(u32) => return 2
-    on codepoint >= 0x1100.as(u32) && codepoint <= 0x115f.as(u32) => return 2
-    on codepoint == 0x2329.as(u32) || codepoint == 0x232a.as(u32) => return 2
-    on codepoint >= 0x2e80.as(u32) && codepoint <= 0xa4cf.as(u32) => return 2
-    on codepoint >= 0xac00.as(u32) && codepoint <= 0xd7a3.as(u32) => return 2
-    on codepoint >= 0xf900.as(u32) && codepoint <= 0xfaff.as(u32) => return 2
-    on codepoint >= 0xfe10.as(u32) && codepoint <= 0xfe19.as(u32) => return 2
-    on codepoint >= 0xfe30.as(u32) && codepoint <= 0xfe6f.as(u32) => return 2
-    on codepoint >= 0xff00.as(u32) && codepoint <= 0xff60.as(u32) => return 2
-    on codepoint >= 0xffe0.as(u32) && codepoint <= 0xffe6.as(u32) => return 2
+    on codepoint == 30028 => return 2
+    on codepoint >= 0x1100 && codepoint <= 0x115f => return 2
+    on codepoint == 0x2329 || codepoint == 0x232a => return 2
+    on codepoint >= 0x2e80 && codepoint <= 0xa4cf => return 2
+    on codepoint >= 0xac00 && codepoint <= 0xd7a3 => return 2
+    on codepoint >= 0xf900 && codepoint <= 0xfaff => return 2
+    on codepoint >= 0xfe10 && codepoint <= 0xfe19 => return 2
+    on codepoint >= 0xfe30 && codepoint <= 0xfe6f => return 2
+    on codepoint >= 0xff00 && codepoint <= 0xff60 => return 2
+    on codepoint >= 0xffe0 && codepoint <= 0xffe6 => return 2
     return 1
 }
 
@@ -132,7 +132,7 @@ pub display_width :: fn (text: string) -> i32 {
 test "decode_at handles ascii text" {
     decoded := decode_at("A", 0)
 
-    assert decoded.0 == 'A'.as(u32)
+    assert decoded.0 == 'A'
     assert decoded.1 == 1
 }
 
@@ -146,11 +146,11 @@ test "decode_at handles non-ascii text" {
 test "decode_at handles ascii offsets" {
     text := "ASCII"
 
-    assert decode_at(text, 0).0 == 'A'.as(u32)
-    assert decode_at(text, 1).0 == 'S'.as(u32)
-    assert decode_at(text, 2).0 == 'C'.as(u32)
-    assert decode_at(text, 3).0 == 'I'.as(u32)
-    assert decode_at(text, 4).0 == 'I'.as(u32)
+    assert decode_at(text, 0).0 == 'A'
+    assert decode_at(text, 1).0 == 'S'
+    assert decode_at(text, 2).0 == 'C'
+    assert decode_at(text, 3).0 == 'I'
+    assert decode_at(text, 4).0 == 'I'
 }
 
 test "decode_bytes_at handles dynamic byte storage" {
@@ -179,7 +179,7 @@ test "encode_to writes utf-8 bytes" {
 }
 
 test "codepoint_display_width counts ascii glyph" {
-    assert codepoint_display_width(65.as(u32)) == 1
+    assert codepoint_display_width(65) == 1
 }
 
 test "display_width counts wide glyphs" {

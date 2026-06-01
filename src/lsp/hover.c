@@ -356,11 +356,15 @@ lsp_module_decl_location(LspModuleView module, Arena* arena, u32 decl_index)
         return NULL;
     }
 
-    const AstNode* bind = &module.ast->nodes[decl->bind_node_index];
-    usize          start_offset;
-    usize          end_offset;
-    lsp_token_offsets(
-        module.lexer, bind->token_index, &start_offset, &end_offset);
+    const AstNode* bind        = &module.ast->nodes[decl->bind_node_index];
+    u32            token_index = bind->token_index;
+    if (bind->kind == AK_FfiDef &&
+        bind->a < array_count(module.ast->ffi_infos)) {
+        token_index = module.ast->ffi_infos[bind->a].symbol_token_index;
+    }
+    usize start_offset;
+    usize end_offset;
+    lsp_token_offsets(module.lexer, token_index, &start_offset, &end_offset);
 
     JsonValue* location = json_new_object(arena);
     json_object_set_string(location,
@@ -634,6 +638,7 @@ lsp_ast_export_location_in_file(Arena* arena, cstr resolved_path, string symbol)
             } else if (node->kind == AK_FfiDef &&
                        node->a < array_count(ast.ffi_infos)) {
                 symbol_handle = ast.ffi_infos[node->a].symbol_handle;
+                token_index   = ast.ffi_infos[node->a].symbol_token_index;
             }
             if (symbol_handle == U32_MAX ||
                 !string_eq(lex_symbol(&lexer, symbol_handle), symbol) ||
@@ -1461,7 +1466,36 @@ internal string lsp_param_type_source(const LspDocument* doc,
                                       const AstParam*    param)
 {
     const Lexer* lexer = &doc->front_end.lexer;
-    u32          colon = U32_MAX;
+    if (param->type_node_index < array_count(doc->front_end.ast.nodes)) {
+        const AstNode* node = &doc->front_end.ast.nodes[param->type_node_index];
+        if (node->token_index < array_count(lexer->tokens)) {
+            usize start = lexer->tokens[node->token_index].offset;
+            usize end   = start;
+            u32   depth = 0;
+            for (u32 i = node->token_index; i < array_count(lexer->tokens);
+                 ++i) {
+                TokenKind kind = lexer->tokens[i].kind;
+                if (depth == 0 && (kind == TK_Comma || kind == TK_RParen ||
+                                   kind == TK_Equal)) {
+                    end = lexer->tokens[i].offset;
+                    break;
+                }
+                if (kind == TK_LParen || kind == TK_LBracket) {
+                    depth++;
+                } else if (kind == TK_RParen || kind == TK_RBracket) {
+                    if (depth == 0) {
+                        end = lexer->tokens[i].offset;
+                        break;
+                    }
+                    depth--;
+                }
+                end = lex_token_end_offset(lexer, &lexer->tokens[i]);
+            }
+            return lsp_trim_source(doc, start, end);
+        }
+    }
+
+    u32 colon = U32_MAX;
     for (u32 i = param->token_index; i < array_count(lexer->tokens); ++i) {
         TokenKind kind = lexer->tokens[i].kind;
         if (kind == TK_Colon) {
@@ -1514,6 +1548,16 @@ internal string lsp_return_type_source(const LspDocument* doc,
     u32            depth = 0;
     for (u32 i = node->token_index; i < array_count(lexer->tokens); ++i) {
         TokenKind kind = lexer->tokens[i].kind;
+        if (depth == 0 && i > node->token_index) {
+            usize previous_end =
+                lex_token_end_offset(lexer, &lexer->tokens[i - 1]);
+            for (usize j = previous_end; j < lexer->tokens[i].offset; ++j) {
+                if (lexer->source.source.data[j] == '\n' ||
+                    lexer->source.source.data[j] == '\r') {
+                    return lsp_trim_source(doc, start, end);
+                }
+            }
+        }
         if (depth == 0 && (kind == TK_LBrace || kind == TK_FatArrow)) {
             end = lexer->tokens[i].offset;
             break;
@@ -1618,8 +1662,9 @@ internal bool lsp_decl_ast_signature(const LspDocument* doc,
                 &sb, lex_symbol(&doc->front_end.lexer, param->symbol_handle));
             sb_append_cstr(&sb, ": ");
         }
-        if (has_generic) {
-            sb_append_string(&sb, lsp_param_type_source(doc, param));
+        string source_type = lsp_param_type_source(doc, param);
+        if (!string_eq(source_type, s("<unknown>"))) {
+            sb_append_string(&sb, source_type);
         } else {
             u32 param_type =
                 i < type->param_count
@@ -1644,7 +1689,7 @@ internal bool lsp_decl_ast_signature(const LspDocument* doc,
         sb_append_cstr(&sb, "...");
     }
     sb_append_char(&sb, ')');
-    if (has_generic && signature->return_type_node_index != U32_MAX) {
+    if (signature->return_type_node_index != U32_MAX) {
         sb_append_cstr(&sb, " -> ");
         sb_append_string(
             &sb,
@@ -3071,10 +3116,15 @@ internal JsonValue* lsp_decl_location(const LspDocument* doc,
         return NULL;
     }
     const AstNode* bind = &doc->front_end.ast.nodes[decl->bind_node_index];
-    usize          start_offset;
-    usize          end_offset;
+    u32            token_index = bind->token_index;
+    if (bind->kind == AK_FfiDef &&
+        bind->a < array_count(doc->front_end.ast.ffi_infos)) {
+        token_index = doc->front_end.ast.ffi_infos[bind->a].symbol_token_index;
+    }
+    usize start_offset;
+    usize end_offset;
     lsp_token_offsets(
-        &doc->front_end.lexer, bind->token_index, &start_offset, &end_offset);
+        &doc->front_end.lexer, token_index, &start_offset, &end_offset);
 
     JsonValue* location = json_new_object(arena);
     json_object_set_string(location, arena, "uri", uri);

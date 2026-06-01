@@ -101,7 +101,36 @@ internal string lsp_signature_type_source(const LspTypeFactView* view,
                                           const AstParam*        param)
 {
     const Lexer* lexer = view->lexer;
-    u32          colon = U32_MAX;
+    if (param->type_node_index < array_count(view->ast->nodes)) {
+        const AstNode* node = &view->ast->nodes[param->type_node_index];
+        if (node->token_index < array_count(lexer->tokens)) {
+            usize start = lexer->tokens[node->token_index].offset;
+            usize end   = start;
+            u32   depth = 0;
+            for (u32 i = node->token_index; i < array_count(lexer->tokens);
+                 ++i) {
+                TokenKind kind = lexer->tokens[i].kind;
+                if (depth == 0 && (kind == TK_Comma || kind == TK_RParen ||
+                                   kind == TK_Equal)) {
+                    end = lexer->tokens[i].offset;
+                    break;
+                }
+                if (kind == TK_LParen || kind == TK_LBracket) {
+                    depth++;
+                } else if (kind == TK_RParen || kind == TK_RBracket) {
+                    if (depth == 0) {
+                        end = lexer->tokens[i].offset;
+                        break;
+                    }
+                    depth--;
+                }
+                end = lex_token_end_offset(lexer, &lexer->tokens[i]);
+            }
+            return lsp_signature_trim_source(view, start, end);
+        }
+    }
+
+    u32 colon = U32_MAX;
     for (u32 i = param->token_index; i < array_count(lexer->tokens); ++i) {
         TokenKind kind = lexer->tokens[i].kind;
         if (kind == TK_Colon) {
@@ -158,6 +187,16 @@ internal string lsp_signature_return_type_source(const LspTypeFactView* view,
     u32   depth = 0;
     for (u32 i = node->token_index; i < array_count(lexer->tokens); ++i) {
         TokenKind kind = lexer->tokens[i].kind;
+        if (depth == 0 && i > node->token_index) {
+            usize previous_end =
+                lex_token_end_offset(lexer, &lexer->tokens[i - 1]);
+            for (usize j = previous_end; j < lexer->tokens[i].offset; ++j) {
+                if (view->source.data[j] == '\n' ||
+                    view->source.data[j] == '\r') {
+                    return lsp_signature_trim_source(view, start, end);
+                }
+            }
+        }
         if (depth == 0 && (kind == TK_LBrace || kind == TK_FatArrow)) {
             end = lexer->tokens[i].offset;
             break;
@@ -383,9 +422,9 @@ internal bool lsp_signature_decl_label(const LspTypeFactView* view,
             sb_append_string(&param_label, param_name);
             sb_append_cstr(&param_label, ": ");
         }
-        if (has_generic || type == NULL) {
-            sb_append_string(&param_label,
-                             lsp_signature_type_source(view, param));
+        string source_type = lsp_signature_type_source(view, param);
+        if (!string_eq(source_type, s("<unknown>"))) {
+            sb_append_string(&param_label, source_type);
         } else {
             u32 param_type       = sema_no_type();
             u32 param_type_index = type->first_param_type + i;
@@ -419,8 +458,7 @@ internal bool lsp_signature_decl_label(const LspTypeFactView* view,
         sb_append_cstr(&sb, "...");
     }
     sb_append_cstr(&sb, ")");
-    if ((has_generic || type == NULL) &&
-        signature->return_type_node_index != U32_MAX) {
+    if (signature->return_type_node_index != U32_MAX) {
         sb_append_cstr(&sb, " -> ");
         sb_append_string(&sb,
                          lsp_signature_return_type_source(

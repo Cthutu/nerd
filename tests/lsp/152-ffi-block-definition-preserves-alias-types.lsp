@@ -1,22 +1,56 @@
-use std.term
+GLfloat :: f32
+
+ffi "GL" {
+    pub glClearColor      (red   : GLfloat,
+                           green : GLfloat,
+                           blue  : GLfloat,
+                           alpha : GLfloat)
+}
 
 main :: fn () {
-    missing()
-    term_fb_box()
+    glClearColor(0.0, 0.0, 0.0, 1.0)
 }
 ¬
 [
     {
         "jsonrpc": "2.0",
         "id": 2,
+        "method": "textDocument/hover",
+        "params": {
+            "textDocument": {
+                "uri": "file:///test.n"
+            },
+            "position": {
+                "line": 10,
+                "character": 5
+            }
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "method": "textDocument/definition",
+        "params": {
+            "textDocument": {
+                "uri": "file:///test.n"
+            },
+            "position": {
+                "line": 10,
+                "character": 5
+            }
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 4,
         "method": "textDocument/signatureHelp",
         "params": {
             "textDocument": {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 4,
-                "character": 16
+                "line": 10,
+                "character": 17
             }
         }
     }
@@ -80,92 +114,67 @@ main :: fn () {
         "method": "textDocument/publishDiagnostics",
         "params": {
             "uri": "file:///test.n",
-            "diagnostics": [
-                {
-                    "range": {
-                        "start": {
-                            "line": 3,
-                            "character": 4
-                        },
-                        "end": {
-                            "line": 3,
-                            "character": 11
-                        }
-                    },
-                    "severity": 1,
-                    "source": "nerd",
-                    "message": "Unknown symbol `missing`",
-                    "relatedInformation": [
-                        {
-                            "location": {
-                                "uri": "file:///test.n",
-                                "range": {
-                                    "start": {
-                                        "line": 3,
-                                        "character": 4
-                                    },
-                                    "end": {
-                                        "line": 3,
-                                        "character": 11
-                                    }
-                                }
-                            },
-                            "message": "help: Add a binding for `missing` or fix the spelling."
-                        }
-                    ]
-                }
-            ]
+            "diagnostics": []
         }
     },
     {
         "jsonrpc": "2.0",
         "id": 2,
         "result": {
+            "contents": {
+                "kind": "markdown",
+                "value": "```nerd\nglClearColor :: fn (red: GLfloat, green: GLfloat, blue: GLfloat, alpha: GLfloat) -> void\n```\n\n- Kind: function"
+            }
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "result": {
+            "uri": "file:///test.n",
+            "range": {
+                "start": {
+                    "line": 3,
+                    "character": 8
+                },
+                "end": {
+                    "line": 3,
+                    "character": 20
+                }
+            }
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 4,
+        "result": {
             "signatures": [
                 {
-                    "label": "term_fb_box(x: i32, y: i32, w: u32, h: u32, style: BoxStyle = BoxStyle.Single, ink: Colour = COLOUR_TRANSPARENT, paper: Colour = COLOUR_TRANSPARENT) -> void",
+                    "label": "glClearColor(red: GLfloat, green: GLfloat, blue: GLfloat, alpha: GLfloat) -> void",
                     "documentation": "Named arguments use `name = value`; omitted parameters use declared defaults when available.",
                     "parameters": [
                         {
                             "label": [
-                                12,
-                                18
+                                13,
+                                25
                             ]
                         },
                         {
                             "label": [
-                                20,
-                                26
+                                27,
+                                41
                             ]
                         },
                         {
                             "label": [
-                                28,
-                                34
+                                43,
+                                56
                             ]
                         },
                         {
                             "label": [
-                                36,
-                                42
-                            ]
-                        },
-                        {
-                            "label": [
-                                44,
-                                77
-                            ]
-                        },
-                        {
-                            "label": [
-                                79,
-                                111
-                            ]
-                        },
-                        {
-                            "label": [
-                                113,
-                                147
+                                58,
+                                72
                             ]
                         }
                     ]

@@ -4611,6 +4611,7 @@ bool ast_parse_declaration(AstParseState* state,
                 }
 
                 u32 symbol_handle         = state->token.value.symbol_handle;
+                u32 symbol_token_index    = state->token.token_index;
                 u32 foreign_symbol_handle = symbol_handle;
                 u32 foreign_symbol_token_index = state->token.token_index;
                 if (state->token_index == state->token.token_index &&
@@ -4689,6 +4690,7 @@ bool ast_parse_declaration(AstParseState* state,
                     state->ffi_infos,
                     (AstFfiInfo){.library_node_index    = library_node_index,
                                  .symbol_handle         = symbol_handle,
+                                 .symbol_token_index    = symbol_token_index,
                                  .foreign_symbol_handle = foreign_symbol_handle,
                                  .foreign_symbol_token_index =
                                      foreign_symbol_token_index,
@@ -4774,6 +4776,7 @@ bool ast_parse_declaration(AstParseState* state,
             state->ffi_infos,
             (AstFfiInfo){.library_node_index         = library_node_index,
                          .symbol_handle              = symbol_handle,
+                         .symbol_token_index         = symbol_token_index,
                          .foreign_symbol_handle      = symbol_handle,
                          .foreign_symbol_token_index = symbol_token_index,
                          .signature_index            = signature_index});

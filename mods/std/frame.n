@@ -277,7 +277,7 @@ frame_c_string_temp :: fn (text: string) -> ^i8 {
         bytes[i] = text.data[i]
     }
     bytes[text.count] = 0
-    return bytes.data.as(^void).as(^i8)
+    return bytes.data.as(^i8)
 }
 
 -- Finds the live frame record with the requested ID, or nil when none exists.
@@ -674,7 +674,7 @@ on "linux" {
             actual_format != 32 ||
             item_count < 4 => return
 
-        extents := data.as(^void).as(^XULong)
+        extents := data.as(^XULong)
         info.platform_info.frame_left = extents[0].as(i32)
         info.platform_info.frame_top = extents[2].as(i32)
     }
@@ -716,7 +716,7 @@ on "linux" {
     -- Sends an EWMH fullscreen-state request to the window manager.
     frame_linux_send_fullscreen :: fn (info: ^FrameInfo, full_screen: bool) {
         event : XEvent
-        client := (^event).as(^void).as(^XClientMessageEvent)
+        client := (^event).as(^XClientMessageEvent)
         client.type = X_EVENT_CLIENT_MESSAGE
         client.display = info.platform_info.display
         client.window = info.platform_info.window
@@ -856,7 +856,7 @@ on "linux" {
         translated_keysym : XKeySym
 
         count := XLookupString(event,
-                               buffer[..].data.as(^void).as(^i8),
+                               buffer[..].data.as(^i8),
                                buffer.count.as(i32),
                                ^translated_keysym,
                                nil)
@@ -1173,7 +1173,7 @@ on "linux" {
         shader := glCreateShader(type)
         on shader == 0 => return 0
 
-        source_ptr := source.data.as(^void).as(^i8)
+        source_ptr := source.data.as(^i8)
         source_len := source.count.as(GLint)
         glShaderSource(shader, 1, ^source_ptr, ^source_len)
         glCompileShader(shader)
@@ -1289,14 +1289,14 @@ on "linux" {
         glVertexAttribPointer(0,
                               2,
                               GL_FLOAT,
-                              GL_FALSE.as(GLboolean),
+                              GL_FALSE,
                               (4 * GLfloat.size).as(GLsizei),
-                              0.as(^void))
+                              nil)
         glEnableVertexAttribArray(1)
         glVertexAttribPointer(1,
                               2,
                               GL_FLOAT,
-                              GL_FALSE.as(GLboolean),
+                              GL_FALSE,
                               (4 * GLfloat.size).as(GLsizei),
                               (2 * GLfloat.size).as(^void))
         glBindVertexArray(0)
@@ -1428,10 +1428,7 @@ on "linux" {
 
         glViewport(0, 0, frame.width.as(GLsizei), frame.height.as(GLsizei))
         glDisable(GL_DEPTH_TEST)
-        glClearColor(0.0.as(GLfloat),
-                     0.0.as(GLfloat),
-                     0.0.as(GLfloat),
-                     1.0.as(GLfloat))
+        glClearColor(0.0, 0.0, 0.0, 1.0)
         glClear(GL_COLOR_BUFFER_BIT)
 
         glUseProgram(info.platform_info.gl_program)
@@ -1483,20 +1480,20 @@ on "linux" {
         vertices : [16]GLfloat
         vertices[0] = x0
         vertices[1] = y0
-        vertices[2] = 0.0.as(GLfloat)
-        vertices[3] = 0.0.as(GLfloat)
+        vertices[2] = 0.0
+        vertices[3] = 0.0
         vertices[4] = x1
         vertices[5] = y0
-        vertices[6] = 1.0.as(GLfloat)
-        vertices[7] = 0.0.as(GLfloat)
+        vertices[6] = 1.0
+        vertices[7] = 0.0
         vertices[8] = x0
         vertices[9] = y1
-        vertices[10] = 0.0.as(GLfloat)
-        vertices[11] = 1.0.as(GLfloat)
+        vertices[10] = 0.0
+        vertices[11] = 1.0
         vertices[12] = x1
         vertices[13] = y1
-        vertices[14] = 1.0.as(GLfloat)
-        vertices[15] = 1.0.as(GLfloat)
+        vertices[14] = 1.0
+        vertices[15] = 1.0
 
         glBindVertexArray(info.platform_info.gl_vertex_array)
         glBindBuffer(GL_ARRAY_BUFFER, info.platform_info.gl_vertex_buffer)
@@ -1548,7 +1545,7 @@ on "linux" {
                               depth.as(u32),
                               X_IMAGE_FORMAT_Z_PIXMAP,
                               0,
-                              buffer.pixels.data.as(^void).as(^i8),
+                              buffer.pixels.data.as(^i8),
                               buffer.width.as(u32),
                               buffer.height.as(u32),
                               32,
