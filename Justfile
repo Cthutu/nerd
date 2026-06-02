@@ -111,7 +111,11 @@ do:
     just test-release
     just install
 
-run-example:
-    cd examples/dungeon && nerd run dungeon.n
+run-example *example:
+    cd examples/{{example}} && nerd run
+
+list-examples:
+    ls examples
 
 alias re := run-example
+alias le := list-examples
