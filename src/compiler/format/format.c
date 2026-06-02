@@ -14,6 +14,11 @@
 
 #define FORMAT_WRAP_WIDTH 80
 
+// Expensive parity check for trivia-table development. Keep off for normal
+// debug formatting; it recomputes the old trailing-comment scan for every
+// token.
+#define FORMAT_VALIDATE_TRIVIA 0
+
 typedef struct {
     Array(u16) newlines_before_token;
     Array(u32) first_comment_before_token;
@@ -335,7 +340,7 @@ format_trivia_has_blank_line_between_tokens(const FormatTrivia* trivia,
 internal void format_trivia_validate(const Lexer*        lexer,
                                      const FormatTrivia* trivia)
 {
-#if CONFIG_DEBUG
+#if CONFIG_DEBUG && FORMAT_VALIDATE_TRIVIA
     for (u32 token_index = 0; token_index < array_count(lexer->tokens);
          ++token_index) {
         usize end_offset =
