@@ -262,7 +262,7 @@ internal bool
 cst_current_token_starts_on_branch_head(const CstParseState* state)
 {
     Token token = cst_current_token(state);
-    if (token.kind == TK_else) {
+    if (token.kind == TK_else || token.kind == TK_FatArrow) {
         return true;
     }
 
@@ -298,11 +298,6 @@ cst_current_token_starts_on_branch_head(const CstParseState* state)
         return false;
     }
 
-    if (token.kind == TK_Dot && cst_peek_kind_at(state, 1) == TK_Symbol) {
-        return cst_token_can_continue_on_branch_head(
-            cst_peek_kind_at(state, 2));
-    }
-
     if (token.kind == TK_Symbol) {
         return cst_token_can_continue_on_branch_head(
             cst_peek_kind_at(state, 1));
@@ -315,6 +310,23 @@ cst_current_token_starts_on_branch_head(const CstParseState* state)
     }
 
     return false;
+}
+
+internal bool
+cst_lbrace_starts_on_value_branch_block(const CstParseState* state)
+{
+    TokenKind first = cst_peek_kind_at(state, 1);
+    if (first == TK_else || first == TK_RBrace) {
+        return true;
+    }
+
+    if (first != TK_Symbol) {
+        return false;
+    }
+
+    TokenKind second = cst_peek_kind_at(state, 2);
+    return second == TK_Comma || second == TK_FatArrow || second == TK_as ||
+           second == TK_on || second == TK_LBrace;
 }
 
 internal TokenKind cst_kind_at_stream_index(const CstParseState* state,
@@ -2427,7 +2439,14 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
                     if (cst_current_token(state).kind != TK_Comma) {
                         break;
                     }
-                    cst_advance(state);
+                    while (cst_current_token(state).kind == TK_Comma) {
+                        cst_advance(state);
+                    }
+                    if (cst_current_token(state).kind == TK_FatArrow) {
+                        array_free(branch_patterns);
+                        array_free(branches);
+                        return false;
+                    }
                 }
                 branch.pattern_index =
                     (u32)array_count(state->cst.pattern_items);
@@ -2802,6 +2821,18 @@ internal bool cst_symbol_starts_with_uppercase(const Lexer* lexer,
 {
     string name = lex_symbol(lexer, symbol_handle);
     return name.count > 0 && name.data[0] >= 'A' && name.data[0] <= 'Z';
+}
+
+internal bool
+cst_symbol_starts_bare_enum_variant_pattern(const CstParseState* state)
+{
+    if (cst_current_token(state).kind != TK_Symbol ||
+        !cst_symbol_starts_with_uppercase(state->lexer,
+                                          cst_current_symbol_handle(state))) {
+        return false;
+    }
+
+    return cst_peek_kind_at(state, 1) == TK_Comma;
 }
 
 internal bool
@@ -3193,6 +3224,9 @@ internal bool cst_parse_enum_variant_pattern(CstParseState* state,
                 }
                 array_push(state->cst.pattern_items, item);
                 pattern_count++;
+                if (cst_current_token(state).kind == TK_RParen) {
+                    break;
+                }
                 if (cst_current_token(state).kind != TK_Comma) {
                     break;
                 }
@@ -3335,6 +3369,31 @@ internal bool cst_parse_pattern(CstParseState* state, u32* out_pattern)
         return cst_parse_enum_variant_pattern(state, out_pattern);
     }
 
+    if (cst_symbol_starts_bare_enum_variant_pattern(state)) {
+        u32 token_index = state->token_index;
+        u32 symbol      = cst_current_symbol_handle(state);
+        cst_advance(state);
+
+        u32 enum_pattern_index = (u32)array_count(state->cst.enum_patterns);
+        array_push(
+            state->cst.enum_patterns,
+            (CstEnumPattern){
+                .token_index          = token_index,
+                .qualifier_node_index = U32_MAX,
+                .symbol_handle        = symbol,
+                .first_pattern  = (u32)array_count(state->cst.pattern_items),
+                .pattern_count  = 0,
+                .braced_payload = false,
+            });
+        return cst_emit_pattern(state,
+                                (CstPattern){
+                                    .kind        = CPK_EnumVariant,
+                                    .token_index = token_index,
+                                    .a           = enum_pattern_index,
+                                },
+                                out_pattern);
+    }
+
     if (cst_current_token(state).kind == TK_Symbol &&
         !cst_symbol_starts_with_uppercase(state->lexer,
                                           cst_current_symbol_handle(state))) {
@@ -3351,12 +3410,17 @@ internal bool cst_parse_pattern(CstParseState* state, u32* out_pattern)
                                 out_pattern);
     }
 
-    u32 start_node = 0;
+    bool previous_stop_before_on_branch_head =
+        state->stop_before_on_branch_head;
+    state->stop_before_on_branch_head = true;
+    u32 start_node                    = 0;
     if (!cst_parse_expr_bp(state, 0, &start_node)) {
+        state->stop_before_on_branch_head = previous_stop_before_on_branch_head;
         return false;
     }
+    state->stop_before_on_branch_head = previous_stop_before_on_branch_head;
 
-    CstPatternKind range_kind = CPK_Value;
+    CstPatternKind range_kind         = CPK_Value;
     if (cst_current_token(state).kind == TK_Range) {
         range_kind = CPK_RangeExclusive;
     } else if (cst_current_token(state).kind == TK_RangeInclusive) {
@@ -3418,6 +3482,11 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
             break;
         }
         if (state->stop_before_ffi_name && token.kind == TK_LBrace) {
+            break;
+        }
+
+        if (state->stop_before_block_lbrace && token.kind == TK_LBrace &&
+            cst_lbrace_starts_on_value_branch_block(state)) {
             break;
         }
 

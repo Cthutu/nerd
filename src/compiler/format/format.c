@@ -970,6 +970,9 @@ internal void format_emit_pattern(StringBuilder* sb,
                     false);
                 break;
             }
+            if (enum_pattern->pattern_count == 0) {
+                break;
+            }
             sb_append_char(sb, '(');
             for (u32 i = 0; i < enum_pattern->pattern_count; ++i) {
                 if (i > 0) {
