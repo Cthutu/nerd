@@ -163,10 +163,7 @@ main :: fn () {
                 }
                 KeyPress { scan_code } => {
                     on scan_code {
-                        Escape => {
-                            frame_system.destroy(^frame)
-                        }
-                        Q => {
+                        Escape, Q => {
                             frame_system.destroy(^frame)
                         }
                     }
