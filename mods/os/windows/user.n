@@ -77,6 +77,7 @@ pub WM_KEYUP      :: 0x0101
 pub WM_CHAR       :: 0x0102
 pub WM_SYSKEYDOWN :: 0x0104
 pub WM_SYSKEYUP   :: 0x0105
+pub WM_SYSCHAR    :: 0x0106
 
 pub SM_CXSCREEN :: 0
 pub SM_CYSCREEN :: 1

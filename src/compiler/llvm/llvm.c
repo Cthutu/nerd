@@ -8459,19 +8459,79 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     .value      = temp,
                 };
             }
+            if (expr->binary_op == HIR_BINARY_LogicalAnd ||
+                expr->binary_op == HIR_BINARY_LogicalOr) {
+                u32       bool_type = llvm_builtin_type(ctx->sema, STK_Bool);
+                LlvmValue lhs =
+                    llvm_emit_expr(ctx, function, expr->lhs_expr_index);
+                lhs = llvm_coerce_value_to_type(ctx, lhs, bool_type);
+                if (!lhs.ok) {
+                    return (LlvmValue){0};
+                }
+
+                string result_ptr  = llvm_temp(ctx);
+                string rhs_label   = llvm_label(ctx, "logical.rhs");
+                string short_label = llvm_label(ctx, "logical.short");
+                string end_label   = llvm_label(ctx, "logical.end");
+                string result      = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = alloca i1\n",
+                          STRINGV(result_ptr));
+                if (expr->binary_op == HIR_BINARY_LogicalAnd) {
+                    sb_format(ctx->sb,
+                              "  br i1 " STRINGP ", label %%" STRINGP
+                              ", label %%" STRINGP "\n",
+                              STRINGV(lhs.value),
+                              STRINGV(rhs_label),
+                              STRINGV(short_label));
+                    sb_format(ctx->sb, STRINGP ":\n", STRINGV(short_label));
+                    sb_format(ctx->sb,
+                              "  store i1 0, ptr " STRINGP "\n",
+                              STRINGV(result_ptr));
+                } else {
+                    sb_format(ctx->sb,
+                              "  br i1 " STRINGP ", label %%" STRINGP
+                              ", label %%" STRINGP "\n",
+                              STRINGV(lhs.value),
+                              STRINGV(short_label),
+                              STRINGV(rhs_label));
+                    sb_format(ctx->sb, STRINGP ":\n", STRINGV(short_label));
+                    sb_format(ctx->sb,
+                              "  store i1 1, ptr " STRINGP "\n",
+                              STRINGV(result_ptr));
+                }
+                sb_format(
+                    ctx->sb, "  br label %%" STRINGP "\n", STRINGV(end_label));
+
+                sb_format(ctx->sb, STRINGP ":\n", STRINGV(rhs_label));
+                LlvmValue rhs =
+                    llvm_emit_expr(ctx, function, expr->rhs_expr_index);
+                rhs = llvm_coerce_value_to_type(ctx, rhs, bool_type);
+                if (!rhs.ok) {
+                    return (LlvmValue){0};
+                }
+                sb_format(ctx->sb,
+                          "  store i1 " STRINGP ", ptr " STRINGP "\n",
+                          STRINGV(rhs.value),
+                          STRINGV(result_ptr));
+                sb_format(
+                    ctx->sb, "  br label %%" STRINGP "\n", STRINGV(end_label));
+
+                sb_format(ctx->sb, STRINGP ":\n", STRINGV(end_label));
+                sb_format(ctx->sb,
+                          "  " STRINGP " = load i1, ptr " STRINGP "\n",
+                          STRINGV(result),
+                          STRINGV(result_ptr));
+                return (LlvmValue){
+                    .ok         = true,
+                    .type_index = bool_type,
+                    .value      = result,
+                };
+            }
             LlvmValue lhs = llvm_emit_expr(ctx, function, expr->lhs_expr_index);
             LlvmValue rhs = llvm_emit_expr(ctx, function, expr->rhs_expr_index);
             if (!lhs.ok || !rhs.ok) {
                 return (LlvmValue){0};
-            }
-            if (expr->binary_op == HIR_BINARY_LogicalAnd ||
-                expr->binary_op == HIR_BINARY_LogicalOr) {
-                u32 bool_type = llvm_builtin_type(ctx->sema, STK_Bool);
-                lhs           = llvm_coerce_value_to_type(ctx, lhs, bool_type);
-                rhs           = llvm_coerce_value_to_type(ctx, rhs, bool_type);
-                if (!lhs.ok || !rhs.ok) {
-                    return (LlvmValue){0};
-                }
             }
 
             LlvmValue pointer_arithmetic = {0};

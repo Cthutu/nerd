@@ -100,8 +100,8 @@ define internal i32 @fn.1() {
   %t10 = alloca { ptr, i64 }
   %t15 = alloca { ptr, i64 }
   %t16 = alloca { ptr, i64 }
-  %t20 = alloca { ptr, i64 }
-  %t21 = alloca { ptr, i64 }
+  %t22 = alloca { ptr, i64 }
+  %t23 = alloca { ptr, i64 }
   %t0 = call i64 @string_builder_mark()
   %t1 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.1, i64 7 }, ptr %t2
@@ -133,15 +133,25 @@ define internal i32 @fn.1() {
   store { ptr, i64 } { ptr @.str.m0.6, i64 30 }, ptr %t16
   %t14 = call i1 @string_eq(ptr %t15, ptr %t16)
   %t17 = xor i1 %t14, 1
-  %t18 = call { ptr, i64 } @fn.0()
-  store { ptr, i64 } %t18, ptr %t20
-  store { ptr, i64 } { ptr @.str.m0.7, i64 17 }, ptr %t21
-  %t19 = call i1 @string_eq(ptr %t20, ptr %t21)
-  %t22 = xor i1 %t19, 1
-  %t23 = or i1 %t17, %t22
-  %t24 = zext i1 %t23 to i32
-  ret i32 %t24
+  %t18 = alloca i1
+  br i1 %t17, label %logical.short.1, label %logical.rhs.0
+logical.short.1:
+  store i1 1, ptr %t18
+  br label %logical.end.2
+logical.rhs.0:
+  %t20 = call { ptr, i64 } @fn.0()
+  store { ptr, i64 } %t20, ptr %t22
+  store { ptr, i64 } { ptr @.str.m0.7, i64 17 }, ptr %t23
+  %t21 = call i1 @string_eq(ptr %t22, ptr %t23)
+  %t24 = xor i1 %t21, 1
+  store i1 %t24, ptr %t18
+  br label %logical.end.2
+logical.end.2:
+  %t19 = load i1, ptr %t18
+  %t25 = zext i1 %t19 to i32
+  ret i32 %t25
 }
 
 @$make = internal alias { ptr, i64 } (), ptr @fn.0
 @$main = alias i32 (), ptr @fn.1
+

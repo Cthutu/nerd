@@ -221,7 +221,6 @@ on "windows" {
         on message {
             WM_CLOSE => {
                 frame_windows_push_closed(info)
-                _ := DestroyWindow(window)
                 return 0
             }
             WM_DESTROY => {
@@ -296,6 +295,9 @@ on "windows" {
                 }
                 return 0
             }
+            WM_SYSCHAR => {
+                return 0
+            }
         }
 
         return DefWindowProc(window, message, wparam, lparam)
@@ -353,6 +355,7 @@ on "windows" {
         on index < system.frames.count => {
             on system.frames[index].platform_info.gl_context != nil => {
                 system.frames[index].platform_info.closed_queued = yes
+                frame.id = CLOSED_FRAME
                 return
             }
             frame.id = CLOSED_FRAME
@@ -562,6 +565,7 @@ on "windows" {
         on index < system.frames.count => {
             on system.frames[index].platform_info.gl_context != nil => {
                 system.frames[index].platform_info.closed_queued = yes
+                frame.id = CLOSED_FRAME
                 return
             }
             frame_windows_destroy_info(^system.frames[index])

@@ -68,68 +68,114 @@ func fn.0() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [67 x i8] c"tests/language/075-packed-integer-literals.t\00"
+@.macro.file.m0 = private unnamed_addr constant [45 x i8] c"tests/language/075-packed-integer-literals.t\00"
 
 declare ptr @$input({ ptr, i64 })
 
 define internal i32 @fn.0() {
   %t0 = icmp eq i32 97, 97
-  %t1 = icmp eq i16 24930, 24930
-  %t2 = and i1 %t0, %t1
-  %t3 = icmp eq i32 6382179, 6382179
-  %t4 = and i1 %t2, %t3
-  %t5 = icmp eq i64 418262508645, 418262508645
-  %t6 = and i1 %t4, %t5
-  %t7 = icmp sge i32 81, 65
-  %t8 = icmp sle i32 81, 90
-  %t9 = and i1 %t7, %t8
-  br i1 %t9, label %on.body.1, label %on.next.2
-on.body.1:
-  br label %on.value.3
-on.value.3:
-  br label %on.end.0
-on.next.2:
-  br label %on.body.4
-on.body.4:
-  br label %on.value.6
-on.value.6:
-  br label %on.end.0
-on.end.0:
-  %t10 = phi i1 [1, %on.value.3], [0, %on.value.6]
-  %t11 = icmp sge i32 113, 65
-  %t12 = icmp sle i32 113, 90
-  %t13 = and i1 %t11, %t12
-  br i1 %t13, label %on.body.8, label %on.next.9
-on.body.8:
-  br label %on.value.10
-on.value.10:
-  br label %on.end.7
-on.next.9:
-  br label %on.body.11
-on.body.11:
-  br label %on.value.13
-on.value.13:
-  br label %on.end.7
-on.end.7:
-  %t14 = phi i1 [1, %on.value.10], [0, %on.value.13]
-  %t15 = and i1 %t6, %t10
-  %t16 = xor i1 %t14, 1
-  %t17 = and i1 %t15, %t16
-  %t18 = icmp eq i1 %t17, 1
-  br i1 %t18, label %on.body.15, label %on.next.16
-on.body.15:
-  br label %on.value.17
-on.value.17:
-  br label %on.end.14
-on.next.16:
-  br label %on.body.18
-on.body.18:
-  br label %on.value.20
-on.value.20:
-  br label %on.end.14
-on.end.14:
-  %t19 = phi i32 [0, %on.value.17], [1, %on.value.20]
-  ret i32 %t19
+  %t1 = alloca i1
+  br i1 %t0, label %logical.rhs.0, label %logical.short.1
+logical.short.1:
+  store i1 0, ptr %t1
+  br label %logical.end.2
+logical.rhs.0:
+  %t3 = icmp eq i16 24930, 24930
+  store i1 %t3, ptr %t1
+  br label %logical.end.2
+logical.end.2:
+  %t2 = load i1, ptr %t1
+  %t4 = alloca i1
+  br i1 %t2, label %logical.rhs.3, label %logical.short.4
+logical.short.4:
+  store i1 0, ptr %t4
+  br label %logical.end.5
+logical.rhs.3:
+  %t6 = icmp eq i32 6382179, 6382179
+  store i1 %t6, ptr %t4
+  br label %logical.end.5
+logical.end.5:
+  %t5 = load i1, ptr %t4
+  %t7 = alloca i1
+  br i1 %t5, label %logical.rhs.6, label %logical.short.7
+logical.short.7:
+  store i1 0, ptr %t7
+  br label %logical.end.8
+logical.rhs.6:
+  %t9 = icmp eq i64 418262508645, 418262508645
+  store i1 %t9, ptr %t7
+  br label %logical.end.8
+logical.end.8:
+  %t8 = load i1, ptr %t7
+  %t10 = icmp sge i32 81, 65
+  %t11 = icmp sle i32 81, 90
+  %t12 = and i1 %t10, %t11
+  br i1 %t12, label %on.body.10, label %on.next.11
+on.body.10:
+  br label %on.value.12
+on.value.12:
+  br label %on.end.9
+on.next.11:
+  br label %on.body.13
+on.body.13:
+  br label %on.value.15
+on.value.15:
+  br label %on.end.9
+on.end.9:
+  %t13 = phi i1 [1, %on.value.12], [0, %on.value.15]
+  %t14 = icmp sge i32 113, 65
+  %t15 = icmp sle i32 113, 90
+  %t16 = and i1 %t14, %t15
+  br i1 %t16, label %on.body.17, label %on.next.18
+on.body.17:
+  br label %on.value.19
+on.value.19:
+  br label %on.end.16
+on.next.18:
+  br label %on.body.20
+on.body.20:
+  br label %on.value.22
+on.value.22:
+  br label %on.end.16
+on.end.16:
+  %t17 = phi i1 [1, %on.value.19], [0, %on.value.22]
+  %t18 = alloca i1
+  br i1 %t8, label %logical.rhs.23, label %logical.short.24
+logical.short.24:
+  store i1 0, ptr %t18
+  br label %logical.end.25
+logical.rhs.23:
+  store i1 %t13, ptr %t18
+  br label %logical.end.25
+logical.end.25:
+  %t19 = load i1, ptr %t18
+  %t20 = alloca i1
+  br i1 %t19, label %logical.rhs.26, label %logical.short.27
+logical.short.27:
+  store i1 0, ptr %t20
+  br label %logical.end.28
+logical.rhs.26:
+  %t22 = xor i1 %t17, 1
+  store i1 %t22, ptr %t20
+  br label %logical.end.28
+logical.end.28:
+  %t21 = load i1, ptr %t20
+  %t23 = icmp eq i1 %t21, 1
+  br i1 %t23, label %on.body.30, label %on.next.31
+on.body.30:
+  br label %on.value.32
+on.value.32:
+  br label %on.end.29
+on.next.31:
+  br label %on.body.33
+on.body.33:
+  br label %on.value.35
+on.value.35:
+  br label %on.end.29
+on.end.29:
+  %t24 = phi i32 [0, %on.value.32], [1, %on.value.35]
+  ret i32 %t24
 }
 
 @$main = alias i32 (), ptr @fn.0
+

@@ -152,7 +152,7 @@ func fn.2() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [62 x i8] c"tests/language/077-enum-discriminants.t\00"
+@.macro.file.m0 = private unnamed_addr constant [40 x i8] c"tests/language/077-enum-discriminants.t\00"
 @.str.m0.0 = private unnamed_addr constant [2 x i8] c"0\00"
 @.str.m0.1 = private unnamed_addr constant [2 x i8] c"1\00"
 @.str.m0.2 = private unnamed_addr constant [2 x i8] c"2\00"
@@ -343,42 +343,52 @@ on.value.6:
   br label %on.end.0
 on.end.0:
   %t15 = phi i1 [1, %on.value.3], [0, %on.value.6]
-  %t16 = insertvalue { i64, i64 } poison, i64 11, 0
-  %t17 = insertvalue { i64, i64 } %t16, i64 0, 1
-  %t18 = extractvalue { i64, i64 } %t3, 0
-  %t19 = extractvalue { i64, i64 } %t17, 0
-  %t20 = icmp eq i64 %t18, %t19
-  br i1 %t20, label %on.body.8, label %on.next.9
-on.body.8:
-  br label %on.value.10
-on.value.10:
-  br label %on.end.7
-on.next.9:
-  br label %on.body.11
+  %t16 = alloca i1
+  br i1 %t15, label %logical.rhs.7, label %logical.short.8
+logical.short.8:
+  store i1 0, ptr %t16
+  br label %logical.end.9
+logical.rhs.7:
+  %t18 = insertvalue { i64, i64 } poison, i64 11, 0
+  %t19 = insertvalue { i64, i64 } %t18, i64 0, 1
+  %t20 = extractvalue { i64, i64 } %t3, 0
+  %t21 = extractvalue { i64, i64 } %t19, 0
+  %t22 = icmp eq i64 %t20, %t21
+  br i1 %t22, label %on.body.11, label %on.next.12
 on.body.11:
   br label %on.value.13
 on.value.13:
-  br label %on.end.7
-on.end.7:
-  %t21 = phi i1 [1, %on.value.10], [0, %on.value.13]
-  %t22 = and i1 %t15, %t21
-  %t23 = icmp eq i1 %t22, 1
-  br i1 %t23, label %on.body.15, label %on.next.16
-on.body.15:
-  br label %on.value.17
-on.value.17:
-  br label %on.end.14
-on.next.16:
-  br label %on.body.18
+  br label %on.end.10
+on.next.12:
+  br label %on.body.14
+on.body.14:
+  br label %on.value.16
+on.value.16:
+  br label %on.end.10
+on.end.10:
+  %t23 = phi i1 [1, %on.value.13], [0, %on.value.16]
+  store i1 %t23, ptr %t16
+  br label %logical.end.9
+logical.end.9:
+  %t17 = load i1, ptr %t16
+  %t24 = icmp eq i1 %t17, 1
+  br i1 %t24, label %on.body.18, label %on.next.19
 on.body.18:
   br label %on.value.20
 on.value.20:
-  br label %on.end.14
-on.end.14:
-  %t24 = phi i32 [0, %on.value.17], [1, %on.value.20]
-  ret i32 %t24
+  br label %on.end.17
+on.next.19:
+  br label %on.body.21
+on.body.21:
+  br label %on.value.23
+on.value.23:
+  br label %on.end.17
+on.end.17:
+  %t25 = phi i32 [0, %on.value.20], [1, %on.value.23]
+  ret i32 %t25
 }
 
 @$describe_direction = internal alias { ptr, i64 } ({ i64, i64 }), ptr @fn.0
 @$describe_token = internal alias { ptr, i64 } ({ i64, i64 }), ptr @fn.1
 @$main = alias i32 (), ptr @fn.2
+

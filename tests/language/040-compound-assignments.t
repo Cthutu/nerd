@@ -85,8 +85,8 @@ define internal void @fn.0() {
   %local.0 = alloca i32
   %local.1 = alloca i32
   %local.2 = alloca i1
-  %t24 = alloca { ptr, i64 }
-  %t28 = alloca { ptr, i64 }
+  %t26 = alloca { ptr, i64 }
+  %t30 = alloca { ptr, i64 }
   store i32 1, ptr %local.0
   %t0 = load i32, ptr %local.0
   %t1 = add i32 %t0, 2
@@ -115,37 +115,56 @@ define internal void @fn.0() {
   store i32 %t15, ptr %local.1
   store i1 1, ptr %local.2
   %t16 = load i1, ptr %local.2
-  %t17 = and i1 %t16, 0
-  store i1 %t17, ptr %local.2
-  %t18 = load i1, ptr %local.2
-  %t19 = or i1 %t18, 1
-  store i1 %t19, ptr %local.2
-  %t20 = call i64 @string_builder_mark()
-  %t21 = load i32, ptr %local.0
-  %t22 = alloca { ptr, i64 }
-  call void @to_string$i32(ptr %t22, i32 %t21)
-  call void @string_builder_append_string(ptr %t22)
-  %t23 = alloca { ptr, i64 }
-  store { ptr, i64 } { ptr @.str.m0.0, i64 1 }, ptr %t24
-  call void @to_string$string(ptr %t23, ptr %t24)
-  call void @string_builder_append_string(ptr %t23)
-  %t25 = load i32, ptr %local.1
-  %t26 = alloca { ptr, i64 }
-  call void @to_string$i32(ptr %t26, i32 %t25)
-  call void @string_builder_append_string(ptr %t26)
-  %t27 = alloca { ptr, i64 }
-  store { ptr, i64 } { ptr @.str.m0.1, i64 1 }, ptr %t28
-  call void @to_string$string(ptr %t27, ptr %t28)
-  call void @string_builder_append_string(ptr %t27)
-  %t29 = load i1, ptr %local.2
-  %t30 = alloca { ptr, i64 }
-  call void @to_string$bool(ptr %t30, i1 zeroext %t29)
-  call void @string_builder_append_string(ptr %t30)
-  %t31 = alloca { ptr, i64 }
-  call void @string_builder_finish(ptr %t31, i64 %t20)
-  %t32 = load { ptr, i64 }, ptr %t31
-  call void @$prn({ ptr, i64 } %t32)
+  %t17 = alloca i1
+  br i1 %t16, label %logical.rhs.0, label %logical.short.1
+logical.short.1:
+  store i1 0, ptr %t17
+  br label %logical.end.2
+logical.rhs.0:
+  store i1 0, ptr %t17
+  br label %logical.end.2
+logical.end.2:
+  %t18 = load i1, ptr %t17
+  store i1 %t18, ptr %local.2
+  %t19 = load i1, ptr %local.2
+  %t20 = alloca i1
+  br i1 %t19, label %logical.short.4, label %logical.rhs.3
+logical.short.4:
+  store i1 1, ptr %t20
+  br label %logical.end.5
+logical.rhs.3:
+  store i1 1, ptr %t20
+  br label %logical.end.5
+logical.end.5:
+  %t21 = load i1, ptr %t20
+  store i1 %t21, ptr %local.2
+  %t22 = call i64 @string_builder_mark()
+  %t23 = load i32, ptr %local.0
+  %t24 = alloca { ptr, i64 }
+  call void @to_string$i32(ptr %t24, i32 %t23)
+  call void @string_builder_append_string(ptr %t24)
+  %t25 = alloca { ptr, i64 }
+  store { ptr, i64 } { ptr @.str.m0.0, i64 1 }, ptr %t26
+  call void @to_string$string(ptr %t25, ptr %t26)
+  call void @string_builder_append_string(ptr %t25)
+  %t27 = load i32, ptr %local.1
+  %t28 = alloca { ptr, i64 }
+  call void @to_string$i32(ptr %t28, i32 %t27)
+  call void @string_builder_append_string(ptr %t28)
+  %t29 = alloca { ptr, i64 }
+  store { ptr, i64 } { ptr @.str.m0.1, i64 1 }, ptr %t30
+  call void @to_string$string(ptr %t29, ptr %t30)
+  call void @string_builder_append_string(ptr %t29)
+  %t31 = load i1, ptr %local.2
+  %t32 = alloca { ptr, i64 }
+  call void @to_string$bool(ptr %t32, i1 zeroext %t31)
+  call void @string_builder_append_string(ptr %t32)
+  %t33 = alloca { ptr, i64 }
+  call void @string_builder_finish(ptr %t33, i64 %t22)
+  %t34 = load { ptr, i64 }, ptr %t33
+  call void @$prn({ ptr, i64 } %t34)
   ret void
 }
 
 @$main = alias void (), ptr @fn.0
+

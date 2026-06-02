@@ -82,7 +82,7 @@ func fn.0() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [63 x i8] c"tests/language/031-primitive-operators.t\00"
+@.macro.file.m0 = private unnamed_addr constant [41 x i8] c"tests/language/031-primitive-operators.t\00"
 @.str.m0.0 = private unnamed_addr constant [6 x i8] c"float\00"
 @.str.m0.1 = private unnamed_addr constant [4 x i8] c"bad\00"
 @.str.m0.2 = private unnamed_addr constant [4 x i8] c"cmp\00"
@@ -106,101 +106,156 @@ define void @m0.init() {
 
 define internal i32 @fn.0() {
   %t0 = icmp slt i32 3, 4
-  %t1 = icmp sle i32 4, 4
-  %t2 = and i1 %t0, %t1
-  %t3 = icmp sgt i32 5, 4
-  %t4 = and i1 %t2, %t3
-  %t5 = icmp sge i32 5, 5
-  %t6 = and i1 %t4, %t5
-  %t7 = load double, ptr @$limit
-  %t8 = fcmp olt double 0x3FF8000000000000, %t7
-  %t9 = xor i1 0, 1
-  %t10 = and i1 %t8, %t9
-  %t11 = icmp eq i1 %t10, 1
-  br i1 %t11, label %on.body.1, label %on.next.2
-on.body.1:
-  br label %on.value.3
-on.value.3:
-  br label %on.end.0
-on.next.2:
-  br label %on.body.4
-on.body.4:
-  br label %on.value.6
-on.value.6:
-  br label %on.end.0
-on.end.0:
-  %t12 = phi { ptr, i64 } [{ ptr @.str.m0.0, i64 5 }, %on.value.3], [{ ptr @.str.m0.1, i64 3 }, %on.value.6]
-  call void @$prn({ ptr, i64 } %t12)
-  %t13 = icmp eq i1 %t6, 1
-  br i1 %t13, label %on.body.8, label %on.next.9
-on.body.8:
-  br label %on.value.10
-on.value.10:
-  br label %on.end.7
-on.next.9:
-  br label %on.body.11
-on.body.11:
-  br label %on.value.13
-on.value.13:
-  br label %on.end.7
-on.end.7:
-  %t14 = phi { ptr, i64 } [{ ptr @.str.m0.2, i64 3 }, %on.value.10], [{ ptr @.str.m0.3, i64 3 }, %on.value.13]
-  call void @$prn({ ptr, i64 } %t14)
-  %t15 = srem i32 5, 2
-  %t16 = icmp eq i32 %t15, 1
-  %t17 = icmp eq i1 %t16, 1
-  br i1 %t17, label %on.body.15, label %on.next.16
-on.body.15:
-  br label %on.value.17
-on.value.17:
-  br label %on.end.14
-on.next.16:
-  br label %on.body.18
-on.body.18:
-  br label %on.value.20
-on.value.20:
-  br label %on.end.14
-on.end.14:
-  %t18 = phi { ptr, i64 } [{ ptr @.str.m0.4, i64 3 }, %on.value.17], [{ ptr @.str.m0.5, i64 3 }, %on.value.20]
+  %t1 = alloca i1
+  br i1 %t0, label %logical.rhs.0, label %logical.short.1
+logical.short.1:
+  store i1 0, ptr %t1
+  br label %logical.end.2
+logical.rhs.0:
+  %t3 = icmp sle i32 4, 4
+  store i1 %t3, ptr %t1
+  br label %logical.end.2
+logical.end.2:
+  %t2 = load i1, ptr %t1
+  %t4 = alloca i1
+  br i1 %t2, label %logical.rhs.3, label %logical.short.4
+logical.short.4:
+  store i1 0, ptr %t4
+  br label %logical.end.5
+logical.rhs.3:
+  %t6 = icmp sgt i32 5, 4
+  store i1 %t6, ptr %t4
+  br label %logical.end.5
+logical.end.5:
+  %t5 = load i1, ptr %t4
+  %t7 = alloca i1
+  br i1 %t5, label %logical.rhs.6, label %logical.short.7
+logical.short.7:
+  store i1 0, ptr %t7
+  br label %logical.end.8
+logical.rhs.6:
+  %t9 = icmp sge i32 5, 5
+  store i1 %t9, ptr %t7
+  br label %logical.end.8
+logical.end.8:
+  %t8 = load i1, ptr %t7
+  %t10 = load double, ptr @$limit
+  %t11 = fcmp olt double 0x3FF8000000000000, %t10
+  %t12 = alloca i1
+  br i1 %t11, label %logical.rhs.9, label %logical.short.10
+logical.short.10:
+  store i1 0, ptr %t12
+  br label %logical.end.11
+logical.rhs.9:
+  %t14 = xor i1 0, 1
+  store i1 %t14, ptr %t12
+  br label %logical.end.11
+logical.end.11:
+  %t13 = load i1, ptr %t12
+  %t15 = icmp eq i1 %t13, 1
+  br i1 %t15, label %on.body.13, label %on.next.14
+on.body.13:
+  br label %on.value.15
+on.value.15:
+  br label %on.end.12
+on.next.14:
+  br label %on.body.16
+on.body.16:
+  br label %on.value.18
+on.value.18:
+  br label %on.end.12
+on.end.12:
+  %t16 = phi { ptr, i64 } [{ ptr @.str.m0.0, i64 5 }, %on.value.15], [{ ptr @.str.m0.1, i64 3 }, %on.value.18]
+  call void @$prn({ ptr, i64 } %t16)
+  %t17 = icmp eq i1 %t8, 1
+  br i1 %t17, label %on.body.20, label %on.next.21
+on.body.20:
+  br label %on.value.22
+on.value.22:
+  br label %on.end.19
+on.next.21:
+  br label %on.body.23
+on.body.23:
+  br label %on.value.25
+on.value.25:
+  br label %on.end.19
+on.end.19:
+  %t18 = phi { ptr, i64 } [{ ptr @.str.m0.2, i64 3 }, %on.value.22], [{ ptr @.str.m0.3, i64 3 }, %on.value.25]
   call void @$prn({ ptr, i64 } %t18)
-  %t19 = and i32 14, 11
-  %t20 = xor i32 %t19, 3
-  %t21 = icmp eq i32 %t20, 9
-  %t22 = or i1 %t21, 0
-  %t23 = icmp eq i1 %t22, 1
-  br i1 %t23, label %on.body.22, label %on.next.23
-on.body.22:
-  br label %on.value.24
-on.value.24:
-  br label %on.end.21
-on.next.23:
-  br label %on.body.25
-on.body.25:
-  br label %on.value.27
-on.value.27:
-  br label %on.end.21
-on.end.21:
-  %t24 = phi { ptr, i64 } [{ ptr @.str.m0.6, i64 4 }, %on.value.24], [{ ptr @.str.m0.7, i64 3 }, %on.value.27]
-  call void @$prn({ ptr, i64 } %t24)
-  %t25 = load float, ptr @$half
-  %t26 = fcmp ole float %t25, 0x3FE0000000000000
-  %t27 = icmp ne i32 3, 4
-  %t28 = and i1 %t26, %t27
-  %t29 = icmp eq i1 %t28, 1
-  br i1 %t29, label %on.body.29, label %on.next.30
-on.body.29:
-  br label %on.value.31
-on.value.31:
-  br label %on.end.28
-on.next.30:
-  br label %on.body.32
-on.body.32:
-  br label %on.value.34
-on.value.34:
-  br label %on.end.28
-on.end.28:
-  %t30 = phi i32 [1, %on.value.31], [0, %on.value.34]
-  ret i32 %t30
+  %t19 = srem i32 5, 2
+  %t20 = icmp eq i32 %t19, 1
+  %t21 = icmp eq i1 %t20, 1
+  br i1 %t21, label %on.body.27, label %on.next.28
+on.body.27:
+  br label %on.value.29
+on.value.29:
+  br label %on.end.26
+on.next.28:
+  br label %on.body.30
+on.body.30:
+  br label %on.value.32
+on.value.32:
+  br label %on.end.26
+on.end.26:
+  %t22 = phi { ptr, i64 } [{ ptr @.str.m0.4, i64 3 }, %on.value.29], [{ ptr @.str.m0.5, i64 3 }, %on.value.32]
+  call void @$prn({ ptr, i64 } %t22)
+  %t23 = and i32 14, 11
+  %t24 = xor i32 %t23, 3
+  %t25 = icmp eq i32 %t24, 9
+  %t26 = alloca i1
+  br i1 %t25, label %logical.short.34, label %logical.rhs.33
+logical.short.34:
+  store i1 1, ptr %t26
+  br label %logical.end.35
+logical.rhs.33:
+  store i1 0, ptr %t26
+  br label %logical.end.35
+logical.end.35:
+  %t27 = load i1, ptr %t26
+  %t28 = icmp eq i1 %t27, 1
+  br i1 %t28, label %on.body.37, label %on.next.38
+on.body.37:
+  br label %on.value.39
+on.value.39:
+  br label %on.end.36
+on.next.38:
+  br label %on.body.40
+on.body.40:
+  br label %on.value.42
+on.value.42:
+  br label %on.end.36
+on.end.36:
+  %t29 = phi { ptr, i64 } [{ ptr @.str.m0.6, i64 4 }, %on.value.39], [{ ptr @.str.m0.7, i64 3 }, %on.value.42]
+  call void @$prn({ ptr, i64 } %t29)
+  %t30 = load float, ptr @$half
+  %t31 = fcmp ole float %t30, 0x3FE0000000000000
+  %t32 = alloca i1
+  br i1 %t31, label %logical.rhs.43, label %logical.short.44
+logical.short.44:
+  store i1 0, ptr %t32
+  br label %logical.end.45
+logical.rhs.43:
+  %t34 = icmp ne i32 3, 4
+  store i1 %t34, ptr %t32
+  br label %logical.end.45
+logical.end.45:
+  %t33 = load i1, ptr %t32
+  %t35 = icmp eq i1 %t33, 1
+  br i1 %t35, label %on.body.47, label %on.next.48
+on.body.47:
+  br label %on.value.49
+on.value.49:
+  br label %on.end.46
+on.next.48:
+  br label %on.body.50
+on.body.50:
+  br label %on.value.52
+on.value.52:
+  br label %on.end.46
+on.end.46:
+  %t36 = phi i32 [1, %on.value.49], [0, %on.value.52]
+  ret i32 %t36
 }
 
 @$main = alias i32 (), ptr @fn.0
+
