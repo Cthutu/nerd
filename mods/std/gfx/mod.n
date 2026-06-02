@@ -43,7 +43,11 @@ PixelSize :: plex {
 }
 
 -- Painter callback for a clipped pixel area.
-pub PixelPaintFn :: fn (pixels: []u32, width: u32, height: u32, stride: u32)
+pub PixelPaintFn :: fn (pixels : []u32,
+                        width  : u32,
+                        height : u32,
+                        stride : u32,
+                        user   : ^void)
 
 -- A frame-attached pixel buffer layer.
 pub PixelLayer :: plex {
@@ -487,7 +491,10 @@ impl PixelLayer {
     }
 
     -- Calls `painter` with the first pixel of the clipped area and full stride.
-    pub paint :: fn (layer: ^Self, rect: PixelRect, painter: PixelPaintFn) {
+    pub paint :: fn (layer   : ^Self,
+                     rect    : PixelRect,
+                     painter : PixelPaintFn,
+                     user    : ^void = nil) {
         area := gfx_pixel_layer_clip(layer, rect)
         on area.width == 0 || area.height == 0 => return
 
@@ -495,7 +502,8 @@ impl PixelLayer {
         painter(layer.data[start..],
                 area.width,
                 area.height,
-                layer.width.as(u32))
+                layer.width.as(u32),
+                user)
     }
 
     -- Releases storage owned by this pixel layer.
@@ -664,7 +672,8 @@ test {
     gfx_paint_checker :: fn (pixels : []u32,
                              width  : u32,
                              height : u32,
-                             stride : u32) {
+                             stride : u32,
+                             _user  : ^void) {
         for y: u32 = 0; y < height; y += 1 {
             for x: u32 = 0; x < width; x += 1 {
                 index := y * stride + x
@@ -749,7 +758,7 @@ test "fit-to-window pixel layer follows frame size" {
 
     frame.width = 24
     frame.height = 20
-    frame_system := FrameSystem.init()
+    _frame_system := FrameSystem.init()
     gfx.render(^frame)
     assert layer.pixel_width() == 6
     assert layer.pixel_height() == 5

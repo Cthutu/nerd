@@ -11,14 +11,28 @@ pixel_colour :: fn (x: u32, y: u32, frame: u32) -> u32 {
 }
 
 pixels_draw :: fn (layer: ^PixelLayer, frame: u32) {
-    for y: u32 = 0; y < layer.pixel_height().as(u32); y += 1 {
-        for x: u32 = 0; x < layer.pixel_width().as(u32); x += 1 {
-            layer.put(x, y, pixel_colour(x, y, frame))
+    layer.paint({
+        x      : 0
+        y      : 0
+        width  : layer.pixel_width().as(u32)
+        height : layer.pixel_height().as(u32)
+    }, fn (pixels: []u32, width: u32, height: u32, stride: u32, user: ^void) {
+        frame := (user.as(^u32))^
+        for y in [0 .. height] {
+            for x in [0 .. width] {
+                colour := pixel_colour(x, y, frame)
+                pixels[y * stride + x] = colour
+            }
         }
-    }
+    }, ^frame)
 
     bar_width := (frame % layer.pixel_width().as(u32)) + 1
-    layer.fill(PixelRect { x: 0 y: 0 width: bar_width height: 3 }, 0xffffffff)
+    layer.fill(PixelRect {
+        x      : 0
+        y      : 0
+        width  : bar_width
+        height : 3
+    }, 0xffffffff)
 }
 
 main :: fn () {
@@ -38,8 +52,10 @@ main :: fn () {
     gfx := GfxSystem.init()
     defer gfx.done()
 
-    handle := gfx.pixel_layer(^frame,
-                              PixelLayerMode.FixedSizeAutoScale { width: 160 height: 120 })
+    handle := gfx.pixel_layer(^frame, PixelLayerMode.FixedSizeAutoScale {
+        width  : 160
+        height : 120
+    })
     tick : u32 = 0
 
     for frame_system.loop() {
