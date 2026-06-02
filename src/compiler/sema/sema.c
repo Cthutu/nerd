@@ -21171,6 +21171,46 @@ internal void sema_count_local_ref(const Sema* sema,
     read_counts[local_index] += (u32)delta;
 }
 
+internal u32 sema_symbol_ref_runtime_local(const Ast*  ast,
+                                           const Sema* sema,
+                                           u32         node_index)
+{
+    if (node_index >= array_count(ast->nodes) ||
+        ast->nodes[node_index].kind != AK_SymbolRef) {
+        return sema_no_local();
+    }
+
+    u32 local_index = sema->node_local_indices[node_index];
+    if (local_index != sema_no_local()) {
+        return local_index;
+    }
+
+    u32 scope_index = sema->node_scope_indices[node_index];
+    if (scope_index == sema_no_scope()) {
+        u32 symbol     = ast->nodes[node_index].a;
+        u32 best_local = sema_no_local();
+        u32 best_token = 0;
+        for (u32 i = 0; i < array_count(sema->locals); ++i) {
+            const SemaLocal* local = &sema->locals[i];
+            if (local->symbol_handle != symbol ||
+                !sema_local_is_runtime_value(local)) {
+                continue;
+            }
+            if (ast->nodes[node_index].token_index <= local->decl_token_index) {
+                continue;
+            }
+            if (best_local == sema_no_local() ||
+                local->decl_token_index > best_token) {
+                best_local = i;
+                best_token = local->decl_token_index;
+            }
+        }
+        return best_local;
+    }
+
+    return sema_lookup_local(sema, scope_index, ast->nodes[node_index].a);
+}
+
 internal u32 sema_first_local_read_node(const Ast*  ast,
                                         const Sema* sema,
                                         u32         local_index)
@@ -21178,9 +21218,7 @@ internal u32 sema_first_local_read_node(const Ast*  ast,
     for (u32 i = 0; i < array_count(ast->nodes); ++i) {
         const AstNode* node = &ast->nodes[i];
         if (node->kind != AK_SymbolRef ||
-            (i < array_count(sema->node_is_type_expr) &&
-             sema->node_is_type_expr[i]) ||
-            sema->node_local_indices[i] != local_index) {
+            sema_symbol_ref_runtime_local(ast, sema, i) != local_index) {
             continue;
         }
 
@@ -21211,11 +21249,11 @@ internal bool sema_validate_unused_locals(const Lexer* lexer,
 
     for (u32 i = 0; i < array_count(ast->nodes); ++i) {
         const AstNode* node = &ast->nodes[i];
-        if (node->kind == AK_SymbolRef &&
-            !(i < array_count(sema->node_is_type_expr) &&
-              sema->node_is_type_expr[i])) {
-            sema_count_local_ref(
-                sema, sema->node_local_indices[i], read_counts, 1);
+        if (node->kind == AK_SymbolRef) {
+            sema_count_local_ref(sema,
+                                 sema_symbol_ref_runtime_local(ast, sema, i),
+                                 read_counts,
+                                 1);
         }
     }
 
@@ -21227,7 +21265,10 @@ internal bool sema_validate_unused_locals(const Lexer* lexer,
         const AstNode* target = &ast->nodes[node->a];
         if (target->kind == AK_SymbolRef) {
             sema_count_local_ref(
-                sema, sema->node_local_indices[node->a], read_counts, -1);
+                sema,
+                sema_symbol_ref_runtime_local(ast, sema, node->a),
+                read_counts,
+                -1);
         }
     }
 

@@ -18,8 +18,8 @@ consume :: fn(_value: string) {
 score :: fn(choice: Choice) -> i32 {
     return on choice {
         None => 0
-        Pair(as pair) => pair.left + pair.right.as(i32)
-        Text(as text) => text.count.as(i32)
+        Pair(pair) => pair.left + pair.right.as(i32)
+        Text(text) => text.count.as(i32)
     }
 }
 

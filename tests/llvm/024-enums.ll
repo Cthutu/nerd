@@ -7,8 +7,8 @@ Choice :: enum {
 describe_choice :: fn(choice: Choice) -> i32 {
     return on choice {
         Empty() => 0
-        Value(as value) => value
-        Pair(as left, 4) => left
+        Value(value) => value
+        Pair(left, 4) => left
         else => 99
     }
 }

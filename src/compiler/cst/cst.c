@@ -3152,6 +3152,9 @@ internal bool cst_pattern_starts_typed_plex(const CstParseState* state)
            state->lexer->tokens[index].kind == TK_LBrace;
 }
 
+internal bool cst_parse_enum_payload_pattern(CstParseState* state,
+                                             u32*           out_pattern);
+
 internal bool cst_parse_enum_variant_pattern(CstParseState* state,
                                              u32*           out_pattern)
 {
@@ -3219,7 +3222,7 @@ internal bool cst_parse_enum_variant_pattern(CstParseState* state,
         if (cst_current_token(state).kind != TK_RParen) {
             for (;;) {
                 u32 item = U32_MAX;
-                if (!cst_parse_pattern(state, &item)) {
+                if (!cst_parse_enum_payload_pattern(state, &item)) {
                     return false;
                 }
                 array_push(state->cst.pattern_items, item);
@@ -3258,6 +3261,15 @@ internal bool cst_parse_enum_variant_pattern(CstParseState* state,
                                 .a           = enum_pattern_index,
                             },
                             out_pattern);
+}
+
+internal bool cst_parse_enum_payload_pattern(CstParseState* state,
+                                             u32*           out_pattern)
+{
+    if (cst_current_token(state).kind == TK_as) {
+        return false;
+    }
+    return cst_parse_pattern(state, out_pattern);
 }
 
 internal CstPatternKind cst_comparison_pattern_kind(TokenKind kind)

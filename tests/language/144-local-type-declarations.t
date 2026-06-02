@@ -16,8 +16,8 @@ main :: fn () -> i32 {
     choice: Choice = Right(5)
 
     extra := on choice {
-        Left(as n) => n
-        Right(as n) => n
+        Left(n) => n
+        Right(n) => n
     }
 
     return point.x + point.y + value.i + extra

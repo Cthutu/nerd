@@ -2185,6 +2185,9 @@ internal bool ast_pattern_starts_typed_plex(const AstParseState* state)
            state->lexer->tokens[index].kind == TK_LBrace;
 }
 
+internal bool ast_parse_enum_payload_pattern(AstParseState* state,
+                                             u32*           out_pattern);
+
 bool ast_parse_enum_variant_pattern(AstParseState* state, u32* out_pattern)
 {
     AstToken variant   = state->token;
@@ -2272,7 +2275,7 @@ bool ast_parse_enum_variant_pattern(AstParseState* state, u32* out_pattern)
         if (state->token.kind != TK_RParen) {
             for (;;) {
                 u32 item = U32_MAX;
-                if (!ast_parse_pattern(state, &item)) {
+                if (!ast_parse_enum_payload_pattern(state, &item)) {
                     return false;
                 }
                 array_push(state->pattern_items, item);
@@ -2333,6 +2336,18 @@ bool ast_parse_enum_variant_pattern(AstParseState* state, u32* out_pattern)
                                 .a           = enum_pattern_index,
                             },
                             out_pattern);
+}
+
+internal bool ast_parse_enum_payload_pattern(AstParseState* state,
+                                             u32*           out_pattern)
+{
+    if (state->token.kind == TK_as) {
+        return error_0203_expected_token(state->lexer->source,
+                                         ast_token_span(state, &state->token),
+                                         TK_Symbol,
+                                         state->token.kind);
+    }
+    return ast_parse_pattern(state, out_pattern);
 }
 
 internal bool ast_symbol_starts_with_uppercase(const Lexer* lexer,

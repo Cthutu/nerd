@@ -3,7 +3,7 @@ payloads :: use test.lsp_payloads
 main :: fn () {
     event : payloads.Event
     on event {
-        KeyDown(as key_event) => {
+        KeyDown(key_event) => {
             key_event.
         }
     }

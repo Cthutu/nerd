@@ -35,7 +35,19 @@ pub WAIT_OBJECT_0 :: 0x00000000
 pub WAIT_TIMEOUT  :: 0x00000102
 pub CP_UTF8       :: 65001
 
-pub KEY_EVENT :: 0x0001
+pub KEY_EVENT   :: 0x0001
+pub MOUSE_EVENT :: 0x0002
+
+pub FROM_LEFT_1ST_BUTTON_PRESSED :: 0x0001
+pub RIGHTMOST_BUTTON_PRESSED     :: 0x0002
+pub FROM_LEFT_2ND_BUTTON_PRESSED :: 0x0004
+pub FROM_LEFT_3RD_BUTTON_PRESSED :: 0x0008
+pub FROM_LEFT_4TH_BUTTON_PRESSED :: 0x0010
+
+pub MOUSE_MOVED    :: 0x0001
+pub DOUBLE_CLICK   :: 0x0002
+pub MOUSE_WHEELED  :: 0x0004
+pub MOUSE_HWHEELED :: 0x0008
 
 pub VK_BACK     :: 0x08
 pub VK_TAB      :: 0x09
@@ -103,6 +115,15 @@ pub INPUT_RECORD :: plex #c {
     wVirtualScanCode  u16
     UnicodeChar       u16
     dwControlKeyState DWORD
+}
+
+pub MOUSE_INPUT_RECORD :: plex #c {
+    EventType         u16
+    _padding          u16
+    dwMousePosition   COORD
+    dwButtonState     DWORD
+    dwControlKeyState DWORD
+    dwEventFlags      DWORD
 }
 
 ffi "kernel32" {

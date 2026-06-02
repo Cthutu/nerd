@@ -116,11 +116,8 @@ on "linux" {
     }
 
     term_read_input_event_impl :: fn () -> TermInputEvent {
-        key := term_read_key_nonblocking()
-        return on key {
-            Some(code)  => TermInputEvent.KeyPress(code)
-            None        => TermInputEvent.None
-        }
+        first := term_read_byte_timeout(0)
+        return on first == 0 => TermInputEvent.None else on (first == KeyCode.Escape.as(u8)) => term_read_escape_input_sequence() else TermInputEvent.KeyPress(first.as(KeyCode))
     }
 
 }
@@ -151,6 +148,14 @@ pub term_cursor_enable :: fn (enabled: bool) {
         term_print("\x1b[?25h")
     } else {
         term_print("\x1b[?25l")
+    }
+}
+
+term_mouse_input_enable :: fn (enabled: bool) {
+    on enabled => {
+        term_print("\x1b[?1000h\x1b[?1006h")
+    } else {
+        term_print("\x1b[?1006l\x1b[?1000l")
     }
 }
 
@@ -203,6 +208,8 @@ term_keyboard_clear_edges :: fn () {
 
     term_mouse.pressed = 0
     term_mouse.released = 0
+    term_mouse.wheel_x = 0
+    term_mouse.wheel_y = 0
 }
 
 term_keyboard_snapshot :: fn () -> TermKeyboard {
@@ -232,6 +239,43 @@ pub term_key_pressed :: fn (keyboard: TermKeyboard, key: KeyCode) -> bool {
 pub term_key_released :: fn (keyboard: TermKeyboard, key: KeyCode) -> bool {
     index := term_key_index(key)
     return term_key_index_valid(index) && keyboard.released[index]
+}
+
+term_mouse_move :: fn (x: i32, y: i32) {
+    term_mouse.x = x
+    term_mouse.y = y
+}
+
+term_mouse_press :: fn (x: i32, y: i32, buttons: u32) {
+    term_mouse_move(x, y)
+    changed := buttons & ~term_mouse.buttons
+    term_mouse.buttons |= buttons
+    term_mouse.pressed |= changed
+}
+
+term_mouse_release :: fn (x: i32, y: i32, buttons: u32) {
+    term_mouse_move(x, y)
+    changed := buttons & term_mouse.buttons
+    term_mouse.buttons &= ~buttons
+    term_mouse.released |= changed
+}
+
+term_mouse_wheel :: fn (x: i32, y: i32, dx: i32, dy: i32) {
+    term_mouse_move(x, y)
+    term_mouse.wheel_x += dx
+    term_mouse.wheel_y += dy
+}
+
+pub term_mouse_down :: fn (mouse: TermMouse, button: u32) -> bool {
+    return (mouse.buttons & button) != 0
+}
+
+pub term_mouse_pressed :: fn (mouse: TermMouse, button: u32) -> bool {
+    return (mouse.pressed & button) != 0
+}
+
+pub term_mouse_released :: fn (mouse: TermMouse, button: u32) -> bool {
+    return (mouse.released & button) != 0
 }
 
 term_keyboard_record_event :: fn (event: TermInputEvent) {
@@ -267,6 +311,14 @@ term_keyboard_record_event :: fn (event: TermInputEvent) {
 
 term_event_record :: fn (event: TermInputEvent) {
     term_keyboard_record_event(event)
+    on event {
+        MouseMove(x, y)           => term_mouse_move(x, y)
+        MouseDown(x, y, buttons)  => term_mouse_press(x, y, buttons)
+        MouseUp(x, y, buttons)    => term_mouse_release(x, y, buttons)
+        MouseWheel(x, y, dx, dy)  => term_mouse_wheel(x, y, dx, dy)
+        else => {
+        }
+    }
 }
 
 term_too_small :: fn () -> bool {
@@ -432,6 +484,7 @@ pub term_init :: fn (min_width        : u32 = TERM_DEFAULT_MIN_WIDTH,
     term_keyboard_clear()
     term_raw_mode_enable(yes)
     term_alternate_screen_enable(yes)
+    term_mouse_input_enable(yes)
 
     size := term_get_size()
     term_last_columns = size.0
@@ -475,6 +528,7 @@ term_run_step :: fn () -> bool {
         term_fb_present()
         term_fb_release()
         term_cursor_enable(yes)
+        term_mouse_input_enable(no)
         term_alternate_screen_enable(no)
         term_raw_mode_enable(no)
         term_arena_done()

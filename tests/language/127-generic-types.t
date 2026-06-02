@@ -18,7 +18,7 @@ main :: fn () {
 
     m: Maybe[i32] = Some(c.number)
     on m {
-        Some(as value) => prn($"generic {value}")
+        Some(value) => prn($"generic {value}")
         None => prn("none")
     }
 }

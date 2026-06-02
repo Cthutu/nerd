@@ -26,9 +26,10 @@ on "windows" {
         term_original_output_cp   = GetConsoleOutputCP()
         term_original_mode_saved  = yes
 
-        input_mask := (ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT | ENABLE_MOUSE_INPUT | ENABLE_WINDOW_INPUT).as(DWORD)
+        input_mask := (ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT).as(DWORD)
 
         input_mode  &= ~input_mask
+        input_mode  |= (ENABLE_MOUSE_INPUT | ENABLE_WINDOW_INPUT).as(DWORD)
         output_mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING.as(DWORD)
 
         _ := SetConsoleCP(CP_UTF8)
@@ -148,6 +149,49 @@ on "windows" {
         return term_windows_virtual_key(record.wVirtualKeyCode)
     }
 
+    term_windows_mouse_buttons :: fn (button_state: DWORD) -> u32 {
+        buttons : u32 = 0
+        on (button_state & FROM_LEFT_1ST_BUTTON_PRESSED.as(DWORD)) != 0 => buttons |= TERM_MOUSE_LEFT
+        on (button_state & RIGHTMOST_BUTTON_PRESSED.as(DWORD)) != 0 => buttons |= TERM_MOUSE_RIGHT
+        on (button_state & FROM_LEFT_2ND_BUTTON_PRESSED.as(DWORD)) != 0 => buttons |= TERM_MOUSE_MIDDLE
+        on (button_state & FROM_LEFT_3RD_BUTTON_PRESSED.as(DWORD)) != 0 => buttons |= TERM_MOUSE_X1
+        on (button_state & FROM_LEFT_4TH_BUTTON_PRESSED.as(DWORD)) != 0 => buttons |= TERM_MOUSE_X2
+        return buttons
+    }
+
+    term_windows_mouse_wheel_delta :: fn (button_state: DWORD) -> i32 {
+        high := ((button_state >> 16) & 0xffff).as(u32)
+        return on high >= 0x8000 => high.as(i32) - 0x10000 else high.as(i32)
+    }
+
+    term_windows_input_record_mouse :: fn (record : INPUT_RECORD) -> TermInputEvent {
+        on record.EventType != MOUSE_EVENT => return TermInputEvent.None
+
+        mouse := (^record).as(^MOUSE_INPUT_RECORD)
+        x := mouse^.dwMousePosition.X.as(i32)
+        y := mouse^.dwMousePosition.Y.as(i32)
+
+        on (mouse^.dwEventFlags & MOUSE_WHEELED.as(DWORD)) != 0 => {
+            delta := term_windows_mouse_wheel_delta(mouse^.dwButtonState)
+            return on delta > 0 => TermInputEvent.MouseWheel(x, y, 0, 1) else on (delta < 0) => TermInputEvent.MouseWheel(x, y, 0, -1) else TermInputEvent.None
+        }
+
+        on (mouse^.dwEventFlags & MOUSE_HWHEELED.as(DWORD)) != 0 => {
+            delta := term_windows_mouse_wheel_delta(mouse^.dwButtonState)
+            return on delta > 0 => TermInputEvent.MouseWheel(x, y, 1, 0) else on (delta < 0) => TermInputEvent.MouseWheel(x, y, -1, 0) else TermInputEvent.None
+        }
+
+        buttons := term_windows_mouse_buttons(mouse^.dwButtonState)
+        pressed := buttons & ~term_mouse.buttons
+        released := term_mouse.buttons & ~buttons
+
+        on pressed != 0 => return TermInputEvent.MouseDown(x, y, pressed)
+        on released != 0 => return TermInputEvent.MouseUp(x, y, released)
+        on (mouse^.dwEventFlags & MOUSE_MOVED.as(DWORD)) != 0 => return TermInputEvent.MouseMove(x, y)
+
+        return TermInputEvent.None
+    }
+
     term_windows_console_key :: fn () -> Option[KeyCode] {
         input := GetStdHandle(STD_INPUT_HANDLE)
         mode : DWORD
@@ -210,6 +254,13 @@ on "windows" {
                 }
                 None => {
                 }
+            }
+
+            mouse := term_windows_input_record_mouse(record)
+            on mouse {
+                TermInputEvent.None => {
+                }
+                else => return mouse
             }
         }
         return TermInputEvent.None

@@ -24,6 +24,8 @@
 -- Input: - `TermKeyboard` snapshots are provided to simulation hooks with key
 -- down, pressed, and released state. Use `term_key_down`, `term_key_pressed`,
 -- and `term_key_released` instead of indexing the snapshot arrays directly.
+-- `TermMouse` snapshots report the last known zero-based terminal cell
+-- position, button state, per-frame button edges, and wheel deltas.
 --
 -- Direct terminal helpers: - `term_print`, `term_cls`, `term_cursor_move`,
 -- `term_cursor_enable`, `term_raw_mode_enable`, and
@@ -194,6 +196,10 @@ TermInputEvent :: enum {
     KeyPress(KeyCode)
     KeyDown(KeyCode)
     KeyUp(KeyCode)
+    MouseMove(i32, i32)
+    MouseDown(i32, i32, u32)
+    MouseUp(i32, i32, u32)
+    MouseWheel(i32, i32, i32, i32)
 }
 
 pub Colour :: u32
@@ -204,6 +210,11 @@ pub COLOUR_TRANSPARENT      :: 0xffffffff.as(Colour)
 pub TERM_DEFAULT_MIN_WIDTH  :: 80
 pub TERM_DEFAULT_MIN_HEIGHT :: 25
 pub TERM_KEY_CODE_COUNT     :: 303
+pub TERM_MOUSE_LEFT         :: 0x01
+pub TERM_MOUSE_RIGHT        :: 0x02
+pub TERM_MOUSE_MIDDLE       :: 0x04
+pub TERM_MOUSE_X1           :: 0x08
+pub TERM_MOUSE_X2           :: 0x10
 
 pub TermKeyboard :: plex {
     down     [TERM_KEY_CODE_COUNT]bool
@@ -217,6 +228,8 @@ pub TermMouse :: plex {
     buttons  u32
     pressed  u32
     released u32
+    wheel_x  i32
+    wheel_y  i32
 }
 
 pub TermSimulate :: plex {
@@ -1012,6 +1025,87 @@ term_ss3_key :: fn (final: u8) -> Option[KeyCode] {
     }
 }
 
+term_input_event_from_key :: fn (key: Option[KeyCode]) -> TermInputEvent {
+    return on key {
+        Some(code)  => TermInputEvent.KeyPress(code)
+        None        => TermInputEvent.None
+    }
+}
+
+term_read_decimal_until :: fn (first_terminator  : u8,
+                               second_terminator : u8) -> (bool, u32, u8) {
+    value : u32  = 0
+    seen  : bool = no
+
+    for {
+        byte := term_read_byte()
+        on byte == 0 => return (no, 0, 0)
+
+        on byte >= '0' && byte <= '9' => {
+            seen  = yes
+            value = value * 10 + (byte - '0').as(u32)
+            again
+        }
+
+        on byte == first_terminator ||
+            byte == second_terminator => return (seen, value, byte)
+
+        return (no, 0, byte)
+    }
+
+    return (no, 0, 0)
+}
+
+term_mouse_button_from_sgr :: fn (button_code: u32) -> u32 {
+    base := button_code & 3
+    return on base {
+        0     => TERM_MOUSE_LEFT
+        1     => TERM_MOUSE_MIDDLE
+        2     => TERM_MOUSE_RIGHT
+        else  => 0
+    }
+}
+
+term_read_sgr_mouse_sequence :: fn () -> TermInputEvent {
+    button := term_read_decimal_until(';', ';')
+    on !button.0 || button.2 != ';' => return TermInputEvent.None
+
+    x_param := term_read_decimal_until(';', ';')
+    on !x_param.0 || x_param.2 != ';' => return TermInputEvent.None
+
+    y_param := term_read_decimal_until('M', 'm')
+    on !y_param.0 ||
+        (y_param.2 != 'M' && y_param.2 != 'm') => return TermInputEvent.None
+
+    x : i32 = x_param.1.as(i32) - 1
+    y : i32 = y_param.1.as(i32) - 1
+
+    on x < 0 => x = 0
+    on y < 0 => y = 0
+
+    code := button.1
+    on (code & 64) != 0 => {
+        wheel := code & 3
+        return on wheel {
+            0     => TermInputEvent.MouseWheel(x, y, 0, 1)
+            1     => TermInputEvent.MouseWheel(x, y, 0, -1)
+            2     => TermInputEvent.MouseWheel(x, y, -1, 0)
+            3     => TermInputEvent.MouseWheel(x, y, 1, 0)
+            else  => TermInputEvent.None
+        }
+    }
+
+    button_mask := term_mouse_button_from_sgr(code)
+    on y_param.2 == 'm' => {
+        on button_mask == 0 => return TermInputEvent.MouseUp(x, y, term_mouse.buttons)
+        return TermInputEvent.MouseUp(x, y, button_mask)
+    }
+
+    on (code & 32) != 0 ||
+        button_mask == 0 => return TermInputEvent.MouseMove(x, y)
+    return TermInputEvent.MouseDown(x, y, button_mask)
+}
+
 term_read_csi_sequence :: fn () -> Option[KeyCode] {
     final := term_read_byte()
     on final == 0 => return None
@@ -1029,13 +1123,47 @@ term_read_csi_sequence :: fn () -> Option[KeyCode] {
     return term_csi_final_key(final)
 }
 
+term_read_csi_input_sequence :: fn () -> TermInputEvent {
+    first := term_read_byte()
+    on first == 0 => return TermInputEvent.None
+
+    on first == '<' => return term_read_sgr_mouse_sequence()
+
+    on first >= '0' && first <= '9' => {
+        next := term_read_byte()
+        on next == 0 => return TermInputEvent.None
+        terminator : u8 = 0
+        on next >= '0' && next <= '9' => {
+            terminator = term_read_byte()
+        }
+        key := term_csi_digit_key(first, next, terminator)
+        return term_input_event_from_key(key)
+    }
+
+    key := term_csi_final_key(first)
+    return term_input_event_from_key(key)
+}
+
 term_read_ss3_sequence :: fn () -> Option[KeyCode] {
     final := term_read_byte()
     on final == 0 => return None
     return term_ss3_key(final)
 }
 
-term_read_escape_sequence :: fn () -> Option[KeyCode] {
+term_read_ss3_input_sequence :: fn () -> TermInputEvent {
+    key := term_read_ss3_sequence()
+    return term_input_event_from_key(key)
+}
+
+term_read_escape_input_sequence :: fn () -> TermInputEvent {
     second := term_read_byte_timeout(25)
-    return on second == 0 => Some(Escape) else on (second == '[') => term_read_csi_sequence() else on (second == 'O') => term_read_ss3_sequence() else Some(Escape)
+    return on second == 0 => TermInputEvent.KeyPress(Escape) else on (second == '[') => term_read_csi_input_sequence() else on (second == 'O') => term_read_ss3_input_sequence() else TermInputEvent.KeyPress(Escape)
+}
+
+term_read_escape_sequence :: fn () -> Option[KeyCode] {
+    event := term_read_escape_input_sequence()
+    return on event {
+        TermInputEvent.KeyPress(code)  => Some(code)
+        else                           => None
+    }
 }

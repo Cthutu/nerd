@@ -60,7 +60,7 @@ Other :: enum { None Some(i64) }
 main :: fn () -> i32 {
     value: Maybe = Some(1)
     return on value {
-        Other.Some(as x) => x
+        Other.Some(x) => x
         else => 0
     }
 }¬
@@ -90,7 +90,7 @@ main :: fn () -> i32 {
 main :: fn () -> i32 {
     value: Maybe = Some(1)
     return on value {
-        Some(as x), None => x
+        Some(x), None => x
     }
 }¬
 {

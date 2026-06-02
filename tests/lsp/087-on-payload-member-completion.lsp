@@ -10,7 +10,7 @@ Event :: enum {
 main :: fn () {
     event : Event
     on event {
-        KeyDown(as key_event) => {
+        KeyDown(key_event) => {
             key_event.
         }
     }
