@@ -87,7 +87,7 @@ main :: fn () {
         "jsonrpc": "2.0",
         "id": 2,
         "result": {
-            "uri": "__REPO_URI__/mods/std/frame.n",
+            "uri": "__REPO_URI__/mods/std/frame/frame.n",
             "range": {
                 "start": {
                     "line": 207,

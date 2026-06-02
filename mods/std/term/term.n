@@ -1,0 +1,1041 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Provides terminal helpers for interactive command-line programs. This module
+-- exposes portable terminal concepts while using platform-specific OS calls
+-- underneath.
+--
+-- Application lifecycle: - `term_init()` enters raw mode and the alternate
+-- screen, prepares the framebuffer, and captures the initial terminal size. -
+-- `term_run()` drives hook-based applications until `term_done()` is called.
+-- Use `term_hook_simulation()` for input/state updates and
+-- `term_hook_presentation()` for framebuffer drawing. - `term_done()` only
+-- requests shutdown. Cleanup happens inside the next terminal step so the
+-- cursor, raw mode, and alternate screen are restored.
+--
+-- Framebuffer drawing: - `term_fb_clear`, `term_fb_put`, `term_fb_text`,
+-- `term_fb_fill_rect`, `term_fb_paint_rect`, and `term_fb_box` write to a
+-- retained terminal framebuffer. - The framebuffer tracks dirty cells and is
+-- presented by the terminal loop. Hook-based applications should draw from the
+-- presentation hook. - `term_view` clips drawing to a rectangular view. The
+-- view is reset to the full terminal size each terminal step.
+--
+-- Input: - `TermKeyboard` snapshots are provided to simulation hooks with key
+-- down, pressed, and released state. Use `term_key_down`, `term_key_pressed`,
+-- and `term_key_released` instead of indexing the snapshot arrays directly.
+--
+-- Direct terminal helpers: - `term_print`, `term_cls`, `term_cursor_move`,
+-- `term_cursor_enable`, `term_raw_mode_enable`, and
+-- `term_alternate_screen_enable` are available for code that needs direct
+-- terminal control.
+
+use std.math
+use std.time
+
+utf8 :: use std.utf8
+
+-- Represents terminal key codes, using ASCII values for byte-sized input and
+-- reserved values for keys reported through terminal escape sequences.
+pub KeyCode :: enum {
+    Nul          = 0
+    Backspace    = 8
+    Tab          = 9
+    LineFeed     = 10
+    Enter        = 13
+    Escape       = 27
+    Space        = 32
+    Exclamation  = 33
+    DoubleQuote  = 34
+    Hash         = 35
+    Dollar       = 36
+    Percent      = 37
+    Ampersand    = 38
+    SingleQuote  = 39
+    LeftParen    = 40
+    RightParen   = 41
+    Star         = 42
+    Plus         = 43
+    Comma        = 44
+    Minus        = 45
+    Dot          = 46
+    Slash        = 47
+    Digit0       = 48
+    Digit1       = 49
+    Digit2       = 50
+    Digit3       = 51
+    Digit4       = 52
+    Digit5       = 53
+    Digit6       = 54
+    Digit7       = 55
+    Digit8       = 56
+    Digit9       = 57
+    Colon        = 58
+    Semicolon    = 59
+    Less         = 60
+    Equal        = 61
+    Greater      = 62
+    Question     = 63
+    At           = 64
+    A            = 65
+    B            = 66
+    C            = 67
+    D            = 68
+    E            = 69
+    F            = 70
+    G            = 71
+    H            = 72
+    I            = 73
+    J            = 74
+    K            = 75
+    L            = 76
+    M            = 77
+    N            = 78
+    O            = 79
+    P            = 80
+    Q            = 81
+    R            = 82
+    S            = 83
+    T            = 84
+    U            = 85
+    V            = 86
+    W            = 87
+    X            = 88
+    Y            = 89
+    Z            = 90
+    LeftBracket  = 91
+    Backslash    = 92
+    RightBracket = 93
+    Caret        = 94
+    Underscore   = 95
+    Backtick     = 96
+    LowerA       = 97
+    LowerB       = 98
+    LowerC       = 99
+    LowerD       = 100
+    LowerE       = 101
+    LowerF       = 102
+    LowerG       = 103
+    LowerH       = 104
+    LowerI       = 105
+    LowerJ       = 106
+    LowerK       = 107
+    LowerL       = 108
+    LowerM       = 109
+    LowerN       = 110
+    LowerO       = 111
+    LowerP       = 112
+    LowerQ       = 113
+    LowerR       = 114
+    LowerS       = 115
+    LowerT       = 116
+    LowerU       = 117
+    LowerV       = 118
+    LowerW       = 119
+    LowerX       = 120
+    LowerY       = 121
+    LowerZ       = 122
+    LeftBrace    = 123
+    Pipe         = 124
+    RightBrace   = 125
+    Tilde        = 126
+    Delete       = 127
+    Insert       = 256
+    Home         = 257
+    End          = 258
+    PageUp       = 259
+    PageDown     = 260
+    ArrowUp      = 261
+    ArrowDown    = 262
+    ArrowLeft    = 263
+    ArrowRight   = 264
+    F1           = 265
+    F2           = 266
+    F3           = 267
+    F4           = 268
+    F5           = 269
+    F6           = 270
+    F7           = 271
+    F8           = 272
+    F9           = 273
+    F10          = 274
+    F11          = 275
+    F12          = 276
+    Shift        = 277
+    Control      = 278
+    Alt          = 279
+    Meta         = 280
+    CapsLock     = 281
+    NumLock      = 282
+    ScrollLock   = 283
+    PrintScreen  = 284
+    Pause        = 285
+    Menu         = 286
+    Numpad0      = 287
+    Numpad1      = 288
+    Numpad2      = 289
+    Numpad3      = 290
+    Numpad4      = 291
+    Numpad5      = 292
+    Numpad6      = 293
+    Numpad7      = 294
+    Numpad8      = 295
+    Numpad9      = 296
+    NumpadAdd    = 297
+    NumpadSub    = 298
+    NumpadMul    = 299
+    NumpadDiv    = 300
+    NumpadDot    = 301
+    NumpadEnter  = 302
+}
+
+TermInputEvent :: enum {
+    None
+    KeyPress(KeyCode)
+    KeyDown(KeyCode)
+    KeyUp(KeyCode)
+}
+
+pub Colour :: u32
+
+pub TERM_DEFAULT_INK        :: 0xdcdcdc.as(Colour)
+pub TERM_DEFAULT_PAPER      :: 0x000000.as(Colour)
+pub COLOUR_TRANSPARENT      :: 0xffffffff.as(Colour)
+pub TERM_DEFAULT_MIN_WIDTH  :: 80
+pub TERM_DEFAULT_MIN_HEIGHT :: 25
+pub TERM_KEY_CODE_COUNT     :: 303
+
+pub TermKeyboard :: plex {
+    down     [TERM_KEY_CODE_COUNT]bool
+    pressed  [TERM_KEY_CODE_COUNT]bool
+    released [TERM_KEY_CODE_COUNT]bool
+}
+
+pub TermMouse :: plex {
+    x        i32
+    y        i32
+    buttons  u32
+    pressed  u32
+    released u32
+}
+
+pub TermSimulate :: plex {
+    dt        Duration
+    width     u32
+    height    u32
+    keyboard  TermKeyboard
+    mouse     TermMouse
+    user_data ^void
+}
+
+pub TermPresent :: plex {
+    dt        Duration
+    width     u32
+    height    u32
+    user_data ^void
+}
+
+pub TermTooSmallPolicy :: enum {
+    PauseSimulation
+    ContinueSimulation
+}
+
+pub TermSimulateFn :: fn (TermSimulate)
+pub TermPresentFn  :: fn (TermPresent)
+
+pub BoxStyle :: enum {
+    Single
+    Double
+    Rounded
+    Heavy
+    Custom(string)
+}
+
+TermCell :: plex {
+    ch    u32
+    ink   Colour
+    paper Colour
+    flags u32
+}
+
+TermOutput :: plex {
+    bytes     []u8
+    count     usize
+    truncated bool
+}
+
+PreparedRect :: plex {
+    ok       bool
+    rect     RectI32
+    x_offset i32
+    y_offset i32
+}
+
+CELL_DIRTY     :: 1
+CELL_WIDE_HEAD :: 2
+CELL_WIDE_TAIL :: 4
+
+TERM_MAX_FRAMEBUFFER_CELLS :: 1000000
+
+term_initialised        : bool
+term_done_requested     : bool
+term_last_columns       : u32
+term_last_rows          : u32
+term_min_width          : u32
+term_min_height         : u32
+term_too_small_policy   : TermTooSmallPolicy
+term_present_ready      : bool
+term_arena              : arena
+term_arena_ready        : bool
+term_fb_cells           : [..]TermCell
+term_fb_width           : u32
+term_fb_height          : u32
+term_fb_view            : RectI32
+term_fb_ready           : bool
+term_keyboard_down      : [TERM_KEY_CODE_COUNT]bool
+term_keyboard_pressed   : [TERM_KEY_CODE_COUNT]bool
+term_keyboard_released  : [TERM_KEY_CODE_COUNT]bool
+term_keyboard_pulse     : [TERM_KEY_CODE_COUNT]bool
+term_mouse              : TermMouse
+term_simulate_hook      : TermSimulateFn
+term_simulate_hook_set  : bool
+term_simulate_user_data : ^void
+term_simulate_interval  : Duration
+term_simulate_last      : Instant
+term_simulate_ran       : bool
+term_present_hook       : TermPresentFn
+term_present_hook_set   : bool
+term_present_user_data  : ^void
+term_present_interval   : Duration
+term_present_last       : Instant
+term_present_ran        : bool
+
+term_arena_ensure :: fn () {
+    on term_arena_ready => return
+
+    term_arena       = arena(1024 * 1024, 64 * 1024)
+    term_arena_ready = yes
+}
+
+term_arena_reset :: fn () {
+    term_arena_ensure()
+    term_arena.reset()
+}
+
+term_arena_done :: fn () {
+    on !term_arena_ready => return
+
+    term_arena.done()
+    term_arena_ready = no
+}
+
+pub rgb :: fn (r: u8, g: u8, b: u8) -> Colour {
+    return (r.as(u32) << 16 | b.as(u32) | (g.as(u32) << 8)).as(Colour)
+}
+
+term_fb_index :: fn (x: u32, y: u32) -> usize {
+    return (y * term_fb_width + x).as(usize)
+}
+
+term_size_supported :: fn (width: u32, height: u32) -> bool {
+    on width == 0 || height == 0 => return no
+    max_cells := TERM_MAX_FRAMEBUFFER_CELLS.as(usize)
+    return width.as(usize) <= max_cells / height.as(usize)
+}
+
+term_fb_index_valid :: fn (x: u32, y: u32) -> bool {
+    on x >= term_fb_width || y >= term_fb_height => return no
+
+    index := term_fb_index(x, y)
+    return index < term_fb_cells.count
+}
+
+term_normalise_size :: fn (width: i32, height: i32) -> (u32, u32) {
+    on width <= 0 || height <= 0 => return (0, 0)
+    normalised_width := width.as(u32)
+    normalised_height := height.as(u32)
+    on !term_size_supported(normalised_width, normalised_height) => return (0, 0)
+    return (normalised_width, normalised_height)
+}
+
+term_window_span :: fn (first: i16, last: i16) -> i32 {
+    return last.as(i32) - first.as(i32) + 1
+}
+
+term_fb_default_cell :: fn () -> TermCell {
+    return TermCell { ch: ' '.as(u32) ink: TERM_DEFAULT_INK paper: TERM_DEFAULT_PAPER flags: CELL_DIRTY }
+}
+
+term_fb_screen_rect :: fn () -> RectI32 {
+    return RectI32 { x: 0 y: 0 w: term_fb_width.as(i32) h: term_fb_height.as(i32) }
+}
+
+pub term_view_reset :: fn () {
+    term_fb_view = term_fb_screen_rect()
+}
+
+pub term_view :: fn (x: i32, y: i32, w: u32, h: u32) {
+    requested := RectI32 { x y w: w.as(i32) h: h.as(i32) }
+    term_fb_view = requested.intersection(term_fb_screen_rect())
+}
+
+term_fb_mark_dirty :: fn (x: u32, y: u32) {
+    on !term_fb_index_valid(x, y) => return
+    index := term_fb_index(x, y)
+    term_fb_cells[index].flags |= CELL_DIRTY
+}
+
+term_fb_clear_wide_link :: fn (x: u32, y: u32) {
+    on !term_fb_index_valid(x, y) => return
+
+    index := term_fb_index(x, y)
+    flags := term_fb_cells[index].flags
+
+    on (flags & CELL_WIDE_TAIL) != 0 && x > 0 && term_fb_index_valid(x - 1, y) => {
+        head_index := term_fb_index(x - 1, y)
+        term_fb_cells[head_index].ch = ' '.as(u32)
+        term_fb_cells[head_index].flags &= ~CELL_WIDE_HEAD
+        term_fb_cells[head_index].flags |= CELL_DIRTY
+    }
+
+    on (flags & CELL_WIDE_HEAD) != 0 && x + 1 < term_fb_width && term_fb_index_valid(x + 1, y) => {
+        tail_index := term_fb_index(x + 1, y)
+        term_fb_cells[tail_index].ch = ' '.as(u32)
+        term_fb_cells[tail_index].flags &= ~CELL_WIDE_TAIL
+        term_fb_cells[tail_index].flags |= CELL_DIRTY
+    }
+
+    term_fb_cells[index].flags &= ~(CELL_WIDE_HEAD | CELL_WIDE_TAIL)
+    term_fb_cells[index].flags |= CELL_DIRTY
+}
+
+term_fb_fill_cell :: fn (index: usize) {
+    on index >= term_fb_cells.count => return
+    term_fb_cells[index] = term_fb_default_cell()
+}
+
+term_fb_cell_ch :: fn (x: u32, y: u32) -> u32 {
+    on !term_fb_index_valid(x, y) => return ' '.as(u32)
+    return term_fb_cells[term_fb_index(x, y)].ch
+}
+
+term_fb_cell_ink :: fn (x: u32, y: u32) -> Colour {
+    on !term_fb_index_valid(x, y) => return TERM_DEFAULT_INK
+    return term_fb_cells[term_fb_index(x, y)].ink
+}
+
+term_fb_cell_paper :: fn (x: u32, y: u32) -> Colour {
+    on !term_fb_index_valid(x, y) => return TERM_DEFAULT_PAPER
+    return term_fb_cells[term_fb_index(x, y)].paper
+}
+
+term_fb_cell_flags :: fn (x: u32, y: u32) -> u32 {
+    on !term_fb_index_valid(x, y) => return 0
+    return term_fb_cells[term_fb_index(x, y)].flags
+}
+
+term_fb_resize :: fn (width: u32, height: u32) -> bool {
+    on !term_size_supported(width, height) => return no
+
+    new_count := width.as(usize) * height.as(usize)
+    new_cells : [..]TermCell
+    new_cells.resize_undefined_to(new_count)
+
+    i : usize = 0
+    for i < new_cells.count {
+        new_cells[i] = term_fb_default_cell()
+        i += 1
+    }
+
+    copy_width := term_fb_width
+    on width < term_fb_width => copy_width = width
+    copy_height := term_fb_height
+    on height < term_fb_height => copy_height = height
+
+    for y: u32 = 0; y < copy_height; y += 1 {
+        for x: u32 = 0; x < copy_width; x += 1 {
+            on !term_fb_index_valid(x, y) => again
+            old_index := term_fb_index(x, y)
+            new_index := (y * width + x).as(usize)
+            new_cells[new_index] = term_fb_cells[old_index]
+            new_cells[new_index].flags |= CELL_DIRTY
+        }
+    }
+
+    term_fb_cells.clear()
+    i = 0
+    for i < new_cells.count {
+        term_fb_cells.push(new_cells[i])
+        i += 1
+    }
+    new_cells.free()
+    term_fb_width  = width
+    term_fb_height = height
+    term_fb_ready  = yes
+    term_view_reset()
+    return yes
+}
+
+term_fb_release :: fn () {
+    term_fb_cells.free()
+    term_fb_width  = 0
+    term_fb_height = 0
+    term_fb_ready  = no
+    term_view_reset()
+}
+
+term_fb_ensure :: fn () {
+    size := term_get_size()
+    width := size.0
+    height := size.1
+    on width == 0 => width = 1
+    on height == 0 => height = 1
+
+    on !term_fb_ready || width != term_fb_width || height != term_fb_height => {
+        _ := term_fb_resize(width, height)
+    } else {
+        term_view_reset()
+    }
+}
+
+term_fb_prepare_rect :: fn (rect: RectI32) -> PreparedRect {
+    on !term_fb_ready || rect.is_empty() => {
+        empty := RectI32 { x: 0 y: 0 w: 0 h: 0 }
+        return PreparedRect { ok: no rect: empty x_offset: 0 y_offset: 0 }
+    }
+
+    absolute := RectI32 { x: rect.x + term_fb_view.x y: rect.y + term_fb_view.y w: rect.w h: rect.h }
+    clipped := absolute.intersection(term_fb_view).intersection(term_fb_screen_rect())
+    on clipped.is_empty() => return PreparedRect { ok: no rect: clipped x_offset: 0 y_offset: 0 }
+
+    return PreparedRect { ok: yes rect: clipped x_offset: clipped.x - absolute.x y_offset: clipped.y - absolute.y }
+}
+
+term_fb_apply_colour :: fn (cell: ^TermCell, ink: Colour, paper: Colour) {
+    on ink != COLOUR_TRANSPARENT => cell^.ink = ink
+    on paper != COLOUR_TRANSPARENT => cell^.paper = paper
+}
+
+term_fb_put_clipped :: fn (x     : u32,
+                           y     : u32,
+                           ch    : u32,
+                           ink   : Colour,
+                           paper : Colour,
+                           cells : i32) {
+    on !term_fb_index_valid(x, y) => return
+
+    width := term_codepoint_width(ch)
+    on width <= 0 || width > cells => return
+
+    term_fb_clear_wide_link(x, y)
+    index := term_fb_index(x, y)
+    term_fb_cells[index].ch = ch
+    term_fb_apply_colour(^term_fb_cells[index], ink, paper)
+    term_fb_cells[index].flags &= ~(CELL_WIDE_HEAD | CELL_WIDE_TAIL)
+    term_fb_cells[index].flags |= CELL_DIRTY
+
+    on width == 2 && x + 1 < term_fb_width && term_fb_index_valid(x + 1, y) => {
+        term_fb_clear_wide_link(x + 1, y)
+        tail_index := term_fb_index(x + 1, y)
+        term_fb_cells[index].flags |= CELL_WIDE_HEAD
+        term_fb_cells[tail_index].ch = 0
+        term_fb_cells[tail_index].ink = term_fb_cells[index].ink
+        term_fb_cells[tail_index].paper = term_fb_cells[index].paper
+        term_fb_cells[tail_index].flags = CELL_DIRTY | CELL_WIDE_TAIL
+    }
+}
+
+term_codepoint_width :: fn (ch: u32) -> i32 {
+    return utf8.codepoint_display_width(ch)
+}
+
+term_utf8_decode_at :: fn (text: string, index: usize) -> (u32, usize) {
+    return utf8.decode_at(text, index)
+}
+
+term_text_display_width :: fn (text: string) -> i32 {
+    return utf8.display_width(text)
+}
+
+pub term_fb_put :: fn (x     : i32,
+                       y     : i32,
+                       ch    : u32,
+                       ink   : Colour = COLOUR_TRANSPARENT,
+                       paper : Colour = COLOUR_TRANSPARENT) {
+    width := term_codepoint_width(ch)
+    on width <= 0 => return
+
+    clip := term_fb_prepare_rect(RectI32 { x y w: width h: 1 })
+    on !clip.ok || clip.x_offset != 0 || clip.rect.w < width => return
+
+    term_fb_put_clipped(clip.rect.x.as(u32),
+                        clip.rect.y.as(u32),
+                        ch,
+                        ink,
+                        paper,
+                        clip.rect.w)
+}
+
+pub term_fb_fill_rect :: fn (x     : i32,
+                             y     : i32,
+                             w     : u32,
+                             h     : u32,
+                             ch    : u32 = ' '.as(u32),
+                             ink   : Colour = COLOUR_TRANSPARENT,
+                             paper : Colour = COLOUR_TRANSPARENT) {
+    clip := term_fb_prepare_rect(RectI32 { x y w: w.as(i32) h: h.as(i32) })
+    on !clip.ok => return
+
+    char_width := term_codepoint_width(ch)
+    yy : i32 = 0
+    xx : i32 = 0
+
+    for yy < clip.rect.h {
+        xx = 0
+        for xx < clip.rect.w {
+            on char_width == 1 => {
+                dx := (clip.rect.x + xx).as(u32)
+                dy := (clip.rect.y + yy).as(u32)
+                on !term_fb_index_valid(dx, dy) => {
+                    xx += 1
+                    again
+                }
+                term_fb_clear_wide_link(dx, dy)
+                index := term_fb_index(dx, dy)
+                term_fb_cells[index].ch = ch
+                term_fb_apply_colour(^term_fb_cells[index], ink, paper)
+                term_fb_cells[index].flags &= ~(CELL_WIDE_HEAD | CELL_WIDE_TAIL)
+                term_fb_cells[index].flags |= CELL_DIRTY
+            } else {
+                term_fb_put_clipped((clip.rect.x + xx).as(u32),
+                                    (clip.rect.y + yy).as(u32),
+                                    ch,
+                                    ink,
+                                    paper,
+                                    clip.rect.w - xx)
+            }
+            xx += 1
+        }
+        yy += 1
+    }
+}
+
+pub term_fb_paint_rect :: fn (x     : i32,
+                              y     : i32,
+                              w     : u32,
+                              h     : u32,
+                              ink   : Colour = COLOUR_TRANSPARENT,
+                              paper : Colour = COLOUR_TRANSPARENT) {
+    clip := term_fb_prepare_rect(RectI32 { x y w: w.as(i32) h: h.as(i32) })
+    on !clip.ok => return
+
+    yy : i32 = 0
+    xx : i32 = 0
+
+    for yy < clip.rect.h {
+        xx = 0
+        for xx < clip.rect.w {
+            dx := (clip.rect.x + xx).as(u32)
+            dy := (clip.rect.y + yy).as(u32)
+            on !term_fb_index_valid(dx, dy) => {
+                xx += 1
+                again
+            }
+            index := term_fb_index(dx, dy)
+            term_fb_apply_colour(^term_fb_cells[index], ink, paper)
+            term_fb_mark_dirty(dx, dy)
+            xx += 1
+        }
+        yy += 1
+    }
+}
+
+pub term_fb_clear :: fn () {
+    term_fb_fill_rect(0,
+                      0,
+                      term_fb_view.w.as(u32),
+                      term_fb_view.h.as(u32),
+                      ' '.as(u32),
+                      TERM_DEFAULT_INK,
+                      TERM_DEFAULT_PAPER)
+}
+
+pub term_fb_text :: fn (x     : i32,
+                        y     : i32,
+                        text  : string,
+                        ink   : Colour = COLOUR_TRANSPARENT,
+                        paper : Colour = COLOUR_TRANSPARENT) {
+    text_width := term_text_display_width(text)
+    clip := term_fb_prepare_rect(RectI32 { x y w: text_width h: 1 })
+    on !clip.ok => return
+
+    byte_index : usize = 0
+    source_col : i32   = 0
+
+    end_col := clip.x_offset + clip.rect.w
+
+    for byte_index < text.count {
+        decoded := term_utf8_decode_at(text, byte_index)
+        on decoded.1 == 0 => return
+
+        width := term_codepoint_width(decoded.0)
+        on source_col >= clip.x_offset && source_col + width <= end_col => {
+            draw_x := clip.rect.x + source_col - clip.x_offset
+            term_fb_put_clipped(draw_x.as(u32),
+                                clip.rect.y.as(u32),
+                                decoded.0,
+                                ink,
+                                paper,
+                                end_col - source_col)
+        }
+
+        source_col += width
+        byte_index += decoded.1
+    }
+}
+
+term_fb_text_centered :: fn (y: i32, text: string, ink: Colour, paper: Colour) {
+    width := term_text_display_width(text)
+    x := (term_fb_width.as(i32) - width) / 2
+    term_fb_text(x, y, text, ink, paper)
+}
+
+term_box_string_char :: fn (chars: string, cell_index: usize) -> u32 {
+    byte_index : usize = 0
+    current    : usize = 0
+
+    for byte_index < chars.count {
+        decoded := term_utf8_decode_at(chars, byte_index)
+        on decoded.1 == 0 => return ' '.as(u32)
+        on current == cell_index => return decoded.0
+        byte_index += decoded.1
+        current    += 1
+    }
+    return ' '.as(u32)
+}
+
+term_box_cell :: fn (source_x     : i32,
+                     source_y     : i32,
+                     width        : i32,
+                     height       : i32,
+                     top_left     : u32,
+                     top          : u32,
+                     top_right    : u32,
+                     left         : u32,
+                     fill         : u32,
+                     right        : u32,
+                     bottom_left  : u32,
+                     bottom       : u32,
+                     bottom_right : u32) -> u32 {
+    on width == 1 && height == 1 => return fill
+
+    on width == 1 => {
+        on source_y == 0 => return top
+        on source_y == height - 1 => return bottom
+        return left
+    }
+
+    on height == 1 => {
+        on source_x == 0 => return left
+        on source_x == width - 1 => return right
+        return top
+    }
+
+    on source_x == 0 && source_y == 0 => return top_left
+    on source_x == width - 1 && source_y == 0 => return top_right
+    on source_x == 0 && source_y == height - 1 => return bottom_left
+    on source_x == width - 1 && source_y == height - 1 => return bottom_right
+    on source_y == 0 => return top
+    on source_y == height - 1 => return bottom
+    on source_x == 0 => return left
+    on source_x == width - 1 => return right
+    return fill
+}
+
+pub term_fb_box :: fn (x     : i32,
+                       y     : i32,
+                       w     : u32,
+                       h     : u32,
+                       style : BoxStyle = BoxStyle.Single,
+                       ink   : Colour = COLOUR_TRANSPARENT,
+                       paper : Colour = COLOUR_TRANSPARENT) {
+    top_left     : u32 = 0x250c
+    top          : u32 = 0x2500
+    top_right    : u32 = 0x2510
+    left         : u32 = 0x2502
+    fill         : u32 = ' '.as(u32)
+    right        : u32 = 0x2502
+    bottom_left  : u32 = 0x2514
+    bottom       : u32 = 0x2500
+    bottom_right : u32 = 0x2518
+
+    on w == 0 || h == 0 => return
+
+    on style {
+        Double => {
+            top_left     = 0x2554
+            top          = 0x2550
+            top_right    = 0x2557
+            left         = 0x2551
+            right        = 0x2551
+            bottom_left  = 0x255a
+            bottom       = 0x2550
+            bottom_right = 0x255d
+        }
+        Rounded => {
+            top_left     = 0x256d
+            top_right    = 0x256e
+            bottom_left  = 0x2570
+            bottom_right = 0x256f
+        }
+        Heavy => {
+            top_left     = 0x250f
+            top          = 0x2501
+            top_right    = 0x2513
+            left         = 0x2503
+            right        = 0x2503
+            bottom_left  = 0x2517
+            bottom       = 0x2501
+            bottom_right = 0x251b
+        }
+        Custom(chars) => {
+            top_left     = term_box_string_char(chars, 0)
+            top          = term_box_string_char(chars, 1)
+            top_right    = term_box_string_char(chars, 2)
+            left         = term_box_string_char(chars, 3)
+            fill         = term_box_string_char(chars, 4)
+            right        = term_box_string_char(chars, 5)
+            bottom_left  = term_box_string_char(chars, 6)
+            bottom       = term_box_string_char(chars, 7)
+            bottom_right = term_box_string_char(chars, 8)
+        }
+        else => {
+        }
+    }
+
+    clip := term_fb_prepare_rect(RectI32 { x y w: w.as(i32) h: h.as(i32) })
+    on !clip.ok => return
+
+    yy : i32 = 0
+    xx : i32 = 0
+
+    for yy < clip.rect.h {
+        xx = 0
+        for xx < clip.rect.w {
+            source_x := clip.x_offset + xx
+            source_y := clip.y_offset + yy
+            ch := term_box_cell(source_x,
+                                source_y,
+                                w.as(i32),
+                                h.as(i32),
+                                top_left,
+                                top,
+                                top_right,
+                                left,
+                                fill,
+                                right,
+                                bottom_left,
+                                bottom,
+                                bottom_right)
+            term_fb_put_clipped((clip.rect.x + xx).as(u32),
+                                (clip.rect.y + yy).as(u32),
+                                ch,
+                                ink,
+                                paper,
+                                clip.rect.w - xx)
+            xx += 1
+        }
+        yy += 1
+    }
+}
+
+term_output_make :: fn (capacity: usize) -> TermOutput {
+    return TermOutput { bytes: term_arena.alloc_bytes(capacity) count: 0 truncated: no }
+}
+
+term_output_push_byte :: fn (output: ^TermOutput, byte: u8) {
+    capacity := output^.bytes.count
+    on output^.count >= capacity => {
+        output^.truncated = yes
+        return
+    }
+
+    output^.bytes[output^.count] = byte
+    output^.count += 1
+}
+
+term_output_push :: fn (output: ^TermOutput, text: string) {
+    i : usize = 0
+    for i < text.count {
+        term_output_push_byte(output, text.data[i])
+        i += 1
+    }
+}
+
+term_output_push_codepoint :: fn (output: ^TermOutput, ch: u32) {
+    bytes : [4]u8
+    count := utf8.encode_to(ch, bytes[..])
+
+    for i: usize = 0; i < count; i += 1 {
+        term_output_push_byte(output, bytes[i])
+    }
+}
+
+term_output_colour :: fn (output: ^TermOutput, prefix: string, colour: Colour) {
+    r := ((colour >> 16) & 0xff).as(u8)
+    g := ((colour >> 8) & 0xff).as(u8)
+    b := (colour & 0xff).as(u8)
+    term_output_push(output, $"\x1b[{prefix};2;{r};{g};{b}m")
+}
+
+term_output_string :: fn (output: TermOutput) -> string {
+    return output.bytes[..output.count].as(string)
+}
+
+term_fb_present :: fn () {
+    on !term_fb_ready => return
+
+    term_arena_ensure()
+    output_capacity := term_fb_width.as(usize) * term_fb_height.as(usize) * 64 + 1024
+    output := term_output_make(output_capacity)
+    current_ink   : Colour = COLOUR_TRANSPARENT
+    current_paper : Colour = COLOUR_TRANSPARENT
+
+    x : u32 = 0
+    y : u32 = 0
+
+    for y < term_fb_height {
+        x = 0
+        for x < term_fb_width {
+            on !term_fb_index_valid(x, y) => {
+                x += 1
+                again
+            }
+            index := term_fb_index(x, y)
+            on (term_fb_cells[index].flags & CELL_DIRTY) == 0 => {
+                x += 1
+            } else {
+                term_output_push(^output, $"\x1b[{y + 1};{x + 1}H")
+
+                for x < term_fb_width && term_fb_index_valid(x, y) && (term_fb_cells[term_fb_index(x, y)].flags & CELL_DIRTY) != 0 {
+                    cell_index := term_fb_index(x, y)
+                    cell := term_fb_cells[cell_index]
+
+                    on (cell.flags & CELL_WIDE_TAIL) != 0 => {
+                        term_fb_cells[cell_index].flags &= ~CELL_DIRTY
+                        x += 1
+                    } else {
+                        on cell.ink != current_ink => {
+                            term_output_colour(^output, "38", cell.ink)
+                            current_ink = cell.ink
+                        }
+                        on cell.paper != current_paper => {
+                            term_output_colour(^output, "48", cell.paper)
+                            current_paper = cell.paper
+                        }
+
+                        ch := cell.ch
+                        on ch == 0 => ch = ' '.as(u32)
+                        term_output_push_codepoint(^output, ch)
+                        term_fb_cells[cell_index].flags &= ~CELL_DIRTY
+                        on (cell.flags & CELL_WIDE_HEAD) != 0 && x + 1 < term_fb_width && term_fb_index_valid(x + 1, y) => {
+                            tail_index := term_fb_index(x + 1, y)
+                            term_fb_cells[tail_index].flags &= ~CELL_DIRTY
+                            x += 2
+                        } else {
+                            x += 1
+                        }
+                    }
+                }
+            }
+        }
+        y += 1
+    }
+
+    on output.count > 0 => {
+        term_output_push(^output, "\x1b[0m")
+        term_print(term_output_string(output))
+    }
+}
+
+term_csi_final_key :: fn (final: u8) -> Option[KeyCode] {
+    return on final {
+        'A'   => Some(ArrowUp)
+        'B'   => Some(ArrowDown)
+        'C'   => Some(ArrowRight)
+        'D'   => Some(ArrowLeft)
+        'F'   => Some(End)
+        'H'   => Some(Home)
+        else  => None
+    }
+}
+
+term_csi_tilde_key :: fn (number: u32) -> Option[KeyCode] {
+    return on number {
+        1     => Some(Home)
+        2     => Some(Insert)
+        3     => Some(Delete)
+        4     => Some(End)
+        5     => Some(PageUp)
+        6     => Some(PageDown)
+        15    => Some(F5)
+        17    => Some(F6)
+        18    => Some(F7)
+        19    => Some(F8)
+        20    => Some(F9)
+        21    => Some(F10)
+        23    => Some(F11)
+        24    => Some(F12)
+        else  => None
+    }
+}
+
+term_csi_digit_key :: fn (first: u8, second: u8, third: u8) -> Option[KeyCode] {
+    number := first.as(u32) - 48
+    two_digit_number := number * 10 + second.as(u32) - 48
+    return on second == '~' => term_csi_tilde_key(number) else on (second >= '0' && second <= '9' && third == '~') => term_csi_tilde_key(two_digit_number) else None
+}
+
+term_ss3_key :: fn (final: u8) -> Option[KeyCode] {
+    return on final {
+        'A'   => Some(ArrowUp)
+        'B'   => Some(ArrowDown)
+        'C'   => Some(ArrowRight)
+        'D'   => Some(ArrowLeft)
+        'F'   => Some(End)
+        'H'   => Some(Home)
+        'P'   => Some(F1)
+        'Q'   => Some(F2)
+        'R'   => Some(F3)
+        'S'   => Some(F4)
+        else  => None
+    }
+}
+
+term_read_csi_sequence :: fn () -> Option[KeyCode] {
+    final := term_read_byte()
+    on final == 0 => return None
+
+    on final >= '0' && final <= '9' => {
+        next := term_read_byte()
+        on next == 0 => return None
+        terminator : u8 = 0
+        on next >= '0' && next <= '9' => {
+            terminator = term_read_byte()
+        }
+        return term_csi_digit_key(final, next, terminator)
+    }
+
+    return term_csi_final_key(final)
+}
+
+term_read_ss3_sequence :: fn () -> Option[KeyCode] {
+    final := term_read_byte()
+    on final == 0 => return None
+    return term_ss3_key(final)
+}
+
+term_read_escape_sequence :: fn () -> Option[KeyCode] {
+    second := term_read_byte_timeout(25)
+    return on second == 0 => Some(Escape) else on (second == '[') => term_read_csi_sequence() else on (second == 'O') => term_read_ss3_sequence() else Some(Escape)
+}

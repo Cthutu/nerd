@@ -1,0 +1,587 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Provides a declarative API to open and manipulate OS windows (frames).
+--
+-- `Frame` is the public desired-state object. The user edits a `Frame` to say
+-- what they want, then calls `FrameSystem.apply(^frame)` to create or mutate
+-- the platform window to match it. Applying a frame whose ID is `NEW_FRAME`
+-- creates a window and writes a live ID back into `frame.id`. Applying a frame
+-- whose ID is `CLOSED_FRAME` is a no-op. Failed apply/update operations write
+-- `CLOSED_FRAME` so the user's instance becomes inert.
+--
+-- `FrameSystem.loop()` resets the temporary arena, pumps the platform message
+-- loop, and returns `no` once no live frames remain. Temporary allocations are
+-- therefore valid until the next call to `loop`. `FrameSystem.poll(^frame)`
+-- returns one event queued for a specific frame, or `FrameEvent.None` when that
+-- frame's queue is empty. This keeps multi-window code from mapping event IDs
+-- back to user `Frame` values. When `poll` returns `FrameEvent.Closed`, it also
+-- writes `CLOSED_FRAME` to the frame ID so the user's instance becomes inert.
+--
+-- `FrameSystem.update(^frame)` copies current platform reality back into a
+-- user's `Frame`, for example after the OS or user moves, resizes, closes, or
+-- changes fullscreen state. When the user is finished with a window, they can
+-- call `FrameSystem.destroy(^frame)`.
+--
+-- Typical usage:
+--|
+--| system := FrameSystem.init()
+--| frame := Frame {
+--|     id: NEW_FRAME width: 800 height: 600 title: "Frame"
+--|     full_screen: no resizable: yes
+--| }
+--| system.apply(^frame)
+--|
+--| for system.loop() {
+--|     system.update(^frame)
+--|     on system.poll(^frame) {
+--|         None => {}
+--|         Closed => {}
+--|         Resized { width, height } => {}
+--|         KeyPress { scan_code } => on scan_code {
+--|             Enter => on system.is_alt_down() => {
+--|                 frame.full_screen = !frame.full_screen
+--|                 system.apply(^frame)
+--|             }
+--|         }
+--|         KeyRelease { scan_code } => {}
+--|         Character { codepoint } => {}
+--|     }
+--| }
+
+pragma windowed
+
+utf8 :: use std.utf8
+
+-- A special frame ID that indicates a new frame should be created when `apply`
+-- is called.
+pub NEW_FRAME :: 0
+
+-- A special frame ID that indicates a frame has been closed, destroyed, or
+-- failed to apply/update. It should not be updated or polled anymore.
+pub CLOSED_FRAME : u16 : 65535
+
+-- Unicode escape control character produced by the Escape key on text input.
+pub FRAME_CODEPOINT_ESCAPE :: 27
+
+-- Common key scan-code values for frame keyboard events. Values follow the same
+-- broad convention as terminal key codes and Windows virtual-key macros:
+-- printable ASCII keys use their character value, while non-printable common
+-- keys are assigned stable values above the ASCII range.
+pub FrameScanCode :: enum {
+    Unknown      = 0
+    Backspace    = 8
+    Tab          = 9
+    Enter        = 13
+    Escape       = 27
+    Space        = 32
+    Digit0       = 48
+    Digit1       = 49
+    Digit2       = 50
+    Digit3       = 51
+    Digit4       = 52
+    Digit5       = 53
+    Digit6       = 54
+    Digit7       = 55
+    Digit8       = 56
+    Digit9       = 57
+    A            = 65
+    B            = 66
+    C            = 67
+    D            = 68
+    E            = 69
+    F            = 70
+    G            = 71
+    H            = 72
+    I            = 73
+    J            = 74
+    K            = 75
+    L            = 76
+    M            = 77
+    N            = 78
+    O            = 79
+    P            = 80
+    Q            = 81
+    R            = 82
+    S            = 83
+    T            = 84
+    U            = 85
+    V            = 86
+    W            = 87
+    X            = 88
+    Y            = 89
+    Z            = 90
+    Delete       = 127
+    Insert       = 256
+    Home         = 257
+    End          = 258
+    PageUp       = 259
+    PageDown     = 260
+    ArrowUp      = 261
+    ArrowDown    = 262
+    ArrowLeft    = 263
+    ArrowRight   = 264
+    F1           = 265
+    F2           = 266
+    F3           = 267
+    F4           = 268
+    F5           = 269
+    F6           = 270
+    F7           = 271
+    F8           = 272
+    F9           = 273
+    F10          = 274
+    F11          = 275
+    F12          = 276
+    LeftShift    = 277
+    RightShift   = 278
+    LeftControl  = 279
+    RightControl = 280
+    LeftAlt      = 281
+    RightAlt     = 282
+}
+
+pub FrameSystem :: plex {
+    -- Tracks all currently known frames belonging to this system.
+    frames             [..]FrameInfo
+
+    -- The next ID search start. IDs range from 1 through 65534. Implementations
+    -- should scan the current frame array and reuse the first available ID so
+    -- old IDs are recycled.
+    next_id_hint       u16
+
+    -- Modifier state tracked from queued key press/release events.
+    left_shift_down    bool
+    right_shift_down   bool
+    left_control_down  bool
+    right_control_down bool
+    left_alt_down      bool
+    right_alt_down     bool
+}
+
+-- OS-specific information regarding a window with the given ID.
+FrameInfo :: plex {
+    -- The ID of the frame.  This is a unique identifier for the frame within
+    -- the system.
+    id            u16
+
+    -- The queue of events for a given window.  The event system will put events
+    -- per window in their own queue so they can be polled separately
+    events        [..]FrameEvent
+
+    -- Platform-specific information of the window
+    platform_info PlatformFrameInfo
+}
+
+-- Platform-agnostic events that can be sent from your OS to the application
+-- regarding the frame.
+pub FrameEvent :: enum {
+    -- No event was queued for the requested frame.
+    None
+
+    -- The frame was closed by the user
+    Closed
+
+    -- The frame was resized by the user.  The new size is given in the event.
+    -- This event is also guaranteed to be called when the window is first
+    -- created.
+    Resized {
+        width u16
+        height u16
+    }
+
+    -- A physical key was pressed. `scan_code` uses the common `FrameScanCode`
+    -- enum when the platform key can be translated.
+    KeyPress {
+        scan_code FrameScanCode
+    }
+
+    -- A physical key was released. `scan_code` uses the common `FrameScanCode`
+    -- enum when the platform key can be translated.
+    KeyRelease {
+        scan_code FrameScanCode
+    }
+
+    -- A character was entered after translating a key press through the
+    -- platform keyboard layout.
+    Character {
+        codepoint u32
+    }
+}
+
+pub Frame :: plex {
+    -- Weak link back to the owning system. `FrameSystem.apply` fills this in.
+    -- It is used to resolve the internal live `FrameInfo` record by ID.
+    system ^FrameSystem
+
+    -- The ID of the frame.  This is a unique identifier for the frame within
+    -- the system.  A value of `NEW_FRAME` indicates that this frame should be
+    -- created when `apply` is called.
+    id u16
+
+    -- The desired width of the frame.  This is ignored if the frame already
+    -- exists and is not resized.
+    width u16
+
+    -- The desired height of the frame.  This is ignored if the frame already
+    -- exists and is not resized.
+    height u16
+
+    -- The title of the frame.
+    title string
+
+    -- Set to yes if we want fullscreen.  When applying no and we're in
+    -- fullscreen the previous dimensions and position should be restored.
+    full_screen bool
+
+    -- Set to no to ask the platform window manager to prevent user resizing.
+    -- Programmatic size changes through `apply` are still allowed.
+    resizable bool
+}
+
+pub FrameError :: enum {
+    NoSystem
+    Invalid
+    Closed
+}
+
+-- Filled rectangle in client-area pixel coordinates.
+pub FramePixelRect :: plex {
+    x      u16  -- Left client coordinate.
+    y      u16  -- Top client coordinate.
+    width  u16  -- Rectangle width in client pixels.
+    height u16  -- Rectangle height in client pixels.
+    colour u32  -- Packed 0xAARRGGBB colour. Backends may ignore alpha.
+}
+
+-- Pixel buffer in client-area coordinates. Pixels are packed as 0xAARRGGBB;
+-- backends may ignore alpha.
+pub FramePixelBuffer :: plex {
+    x      u16    -- Left client coordinate.
+    y      u16    -- Top client coordinate.
+    width  u16    -- Width in client pixels.
+    height u16    -- Height in client pixels.
+    stride u16    -- Number of pixels between adjacent rows.
+    pixels []u32  -- Pixel storage with at least `stride * height` pixels.
+}
+
+-- Pixel buffer presented into a destination rectangle. Pixels are packed as
+-- 0xAARRGGBB; backends may ignore alpha. Hardware backends should use
+-- nearest-neighbour scaling.
+pub FrameScaledPixelBuffer :: plex {
+    x           u16    -- Left destination client coordinate.
+    y           u16    -- Top destination client coordinate.
+    width       u16    -- Source width in pixels.
+    height      u16    -- Source height in pixels.
+    stride      u16    -- Number of source pixels between adjacent rows.
+    draw_width  u16    -- Destination width in client pixels.
+    draw_height u16    -- Destination height in client pixels.
+    pixels      []u32  -- Pixel storage with at least `stride * height` pixels.
+}
+
+-- Copies a Nerd string into temporary NUL-terminated storage for C APIs.
+frame_c_string_temp :: fn (text: string) -> ^i8 {
+    bytes := temp_arena.alloc_bytes(text.count + 1)
+    for i: usize = 0; i < text.count; i += 1 {
+        bytes[i] = text.data[i]
+    }
+    bytes[text.count] = 0
+    return bytes.data.as(^i8)
+}
+
+-- Finds the live frame record with the requested ID, or nil when none exists.
+frame_system_find_info :: fn (system: ^FrameSystem, id: u16) -> ^FrameInfo {
+    index := frame_system_find_info_index(system, id)
+    on index >= system.frames.count => return nil
+    return ^system.frames[index]
+}
+
+-- Finds the live frame record index with the requested ID.
+frame_system_find_info_index :: fn (system: ^FrameSystem, id: u16) -> usize {
+    for i: usize = 0; i < system.frames.count; i += 1 {
+        on system.frames[i].id == id => return i
+    }
+
+    return system.frames.count
+}
+
+-- Allocates the first reusable non-zero frame ID, or `CLOSED_FRAME` if full.
+frame_system_allocate_id :: fn (system: ^FrameSystem) -> u16 {
+    candidate := system.next_id_hint
+    on candidate == NEW_FRAME || candidate == CLOSED_FRAME => candidate = 1
+
+    for attempts: u16 = 0; attempts < 65534; attempts += 1 {
+        used := no
+        for info in system.frames {
+            on info.id == candidate => used = yes
+        }
+        on !used => {
+            next := candidate + 1
+            on next == CLOSED_FRAME => next = 1
+            system.next_id_hint = next
+            return candidate
+        }
+
+        candidate += 1
+        on candidate == CLOSED_FRAME => candidate = 1
+    }
+
+    return CLOSED_FRAME
+}
+
+-- Returns yes while the system can still allocate at least one live ID.
+frame_system_has_id_capacity :: fn (system: ^FrameSystem) -> bool {
+    return system^.frames.count <= 65534
+}
+
+impl FrameSystem {
+
+    -- Creates an empty frame system ready to allocate frame IDs.
+    pub init :: fn () -> Self {
+        return {
+            frames : nil
+            next_id_hint : 1
+            left_shift_down : no
+            right_shift_down : no
+            left_control_down : no
+            right_control_down : no
+            left_alt_down : no
+            right_alt_down : no
+        }
+    }
+
+    pub apply :: fn (system: ^Self, frame: ^Frame) {
+        frame.system = system
+        frame_apply_impl(system, frame)
+    }
+
+    pub loop :: fn (system: ^Self) -> bool {
+        temp_arena.reset()
+        return frame_loop_impl(system)
+    }
+
+    pub update :: fn (system: ^Self, frame: ^Frame) {
+        frame_update_impl(system, frame)
+    }
+
+    pub poll :: fn (system: ^Self, frame: ^Frame) -> FrameEvent {
+        return frame_poll_impl(system, frame)
+    }
+
+    pub destroy :: fn (system: ^Self, frame: ^Frame) {
+        frame_destroy_impl(system, frame)
+    }
+
+    pub present_rects :: fn (system : ^Self,
+    frame : ^Frame,
+    rects : []FramePixelRect) {
+        frame_present_rects_impl(system, frame, rects)
+    }
+
+    pub present_pixels :: fn (system : ^Self,
+    frame : ^Frame,
+    buffer : FramePixelBuffer) {
+        frame_present_pixels_impl(system, frame, buffer)
+    }
+
+    pub present_scaled_pixels :: fn (system : ^Self,
+    frame : ^Frame,
+    buffer : FrameScaledPixelBuffer) {
+        frame_present_scaled_pixels_impl(system, frame, buffer)
+    }
+
+    pub opengl_init :: fn (system: ^Self, frame: ^Frame) -> bool {
+        return frame_opengl_init_impl(system, frame)
+    }
+
+    pub opengl_done :: fn (system: ^Self, frame: ^Frame) {
+        frame_opengl_done_impl(system, frame)
+    }
+
+    pub opengl_make_current :: fn (system: ^Self, frame: ^Frame) -> bool {
+        return frame_opengl_make_current_impl(system, frame)
+    }
+
+    pub opengl_swap_buffers :: fn (system: ^Self, frame: ^Frame) {
+        frame_opengl_swap_buffers_impl(system, frame)
+    }
+
+    pub is_shift_down :: fn (system: ^Self) -> bool {
+        return system.left_shift_down || system.right_shift_down
+    }
+
+    pub is_left_shift_down :: fn (system: ^Self) -> bool {
+        return system.left_shift_down
+    }
+
+    pub is_right_shift_down :: fn (system: ^Self) -> bool {
+        return system.right_shift_down
+    }
+
+    pub is_ctrl_down :: fn (system: ^Self) -> bool {
+        return system.left_control_down || system.right_control_down
+    }
+
+    pub is_left_ctrl_down :: fn (system: ^Self) -> bool {
+        return system.left_control_down
+    }
+
+    pub is_right_ctrl_down :: fn (system: ^Self) -> bool {
+        return system.right_control_down
+    }
+
+    pub is_control_down :: fn (system: ^Self) -> bool {
+        return system.is_ctrl_down()
+    }
+
+    pub is_left_control_down :: fn (system: ^Self) -> bool {
+        return system.is_left_ctrl_down()
+    }
+
+    pub is_right_control_down :: fn (system: ^Self) -> bool {
+        return system.is_right_ctrl_down()
+    }
+
+    pub is_alt_down :: fn (system: ^Self) -> bool {
+        return system.left_alt_down || system.right_alt_down
+    }
+
+    pub is_left_alt_down :: fn (system: ^Self) -> bool {
+        return system.left_alt_down
+    }
+
+    pub is_right_alt_down :: fn (system: ^Self) -> bool {
+        return system.right_alt_down
+    }
+
+    pub is_mod_down :: fn (system: ^Self) -> bool {
+        return system.is_alt_down()
+    }
+
+}
+
+impl Frame {
+
+    pub context :: fn (frame: ^Self) -> Result[FrameContext, FrameError] {
+        return frame_context_impl(frame)
+    }
+
+}
+
+test "FrameSystem modifier helpers report combined and sided state" {
+    system := FrameSystem.init()
+    assert !system.is_shift_down()
+    assert !system.is_ctrl_down()
+    assert !system.is_control_down()
+    assert !system.is_alt_down()
+    assert !system.is_mod_down()
+
+    system.left_shift_down = yes
+    assert system.is_shift_down()
+    assert system.is_left_shift_down()
+    assert !system.is_right_shift_down()
+
+    system.right_control_down = yes
+    assert system.is_ctrl_down()
+    assert system.is_control_down()
+    assert !system.is_left_ctrl_down()
+    assert system.is_right_ctrl_down()
+    assert !system.is_left_control_down()
+    assert system.is_right_control_down()
+
+    system.left_alt_down = yes
+    assert system.is_alt_down()
+    assert system.is_mod_down()
+    assert system.is_left_alt_down()
+    assert !system.is_right_alt_down()
+}
+
+test "FrameSystem loop returns no after destroying final frame" {
+    system := FrameSystem.init()
+    platform_info : PlatformFrameInfo
+    system.frames.push(FrameInfo {
+        id : 1
+        events : nil
+        platform_info
+    }
+    )
+
+    frame := Frame {
+        id : 1
+        width : 32
+        height : 24
+        title : "test"
+        full_screen : no
+        resizable : yes
+        ...
+    }
+
+    system.destroy(^frame)
+    assert frame.id == CLOSED_FRAME
+    assert system.frames.count == 0
+    assert !system.loop()
+}
+
+test "Frame context reports missing system" {
+    frame := Frame {
+        id : 1
+        width : 32
+        height : 24
+        title : "test"
+        full_screen : no
+        resizable : yes
+        ...
+    }
+
+    on frame.context() {
+        Err(error) => assert error == FrameError.NoSystem
+        else => assert no
+    }
+}
+
+test "Frame context reports closed frame" {
+    system := FrameSystem.init()
+    frame := Frame {
+        system : ^system
+        id : CLOSED_FRAME
+        width : 32
+        height : 24
+        title : "test"
+        full_screen : no
+        resizable : yes
+        ...
+    }
+
+    on frame.context() {
+        Err(error) => assert error == FrameError.Closed
+        else => assert no
+    }
+}
+
+test "Frame context reports invalid platform record" {
+    system := FrameSystem.init()
+    platform_info : PlatformFrameInfo
+    system.frames.push(FrameInfo {
+        id : 1
+        events : nil
+        platform_info
+    }
+    )
+
+    frame := Frame {
+        system : ^system
+        id : 1
+        width : 32
+        height : 24
+        title : "test"
+        full_screen : no
+        resizable : yes
+        ...
+    }
+
+    on frame.context() {
+        Err(error) => assert error == FrameError.Invalid
+        else => assert no
+    }
+}

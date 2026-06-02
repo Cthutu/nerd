@@ -110,7 +110,7 @@ simulate :: fn (s: TermSimulate) {
         "jsonrpc": "2.0",
         "id": 3,
         "result": {
-            "uri": "file:///home/matt/nerd/mods/std/term.n",
+            "uri": "file:///home/matt/nerd/mods/std/term/term.n",
             "range": {
                 "start": {
                     "line": 127,

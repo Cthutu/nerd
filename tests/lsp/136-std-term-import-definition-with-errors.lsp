@@ -139,14 +139,14 @@ simulate :: fn (s: TermSimulate) {
         "jsonrpc": "2.0",
         "id": 2,
         "result": {
-            "uri": "file:///home/matt/nerd/mods/std/term.n",
+            "uri": "file:///home/matt/nerd/mods/std/term/term.linux.n",
             "range": {
                 "start": {
-                    "line": 1695,
+                    "line": 421,
                     "character": 4
                 },
                 "end": {
-                    "line": 1695,
+                    "line": 421,
                     "character": 13
                 }
             }
@@ -156,7 +156,7 @@ simulate :: fn (s: TermSimulate) {
         "jsonrpc": "2.0",
         "id": 3,
         "result": {
-            "uri": "file:///home/matt/nerd/mods/std/term.n",
+            "uri": "file:///home/matt/nerd/mods/std/term/term.n",
             "range": {
                 "start": {
                     "line": 221,

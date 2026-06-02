@@ -1,0 +1,231 @@
+on "windows" {
+
+    use os.windows
+
+    term_original_input_mode  : DWORD
+    term_original_output_mode : DWORD
+    term_original_input_cp    : DWORD
+    term_original_output_cp   : DWORD
+    term_original_mode_saved  : bool
+
+    -- Applies raw terminal input mode and saves the original Windows console modes.
+    term_raw_mode_enable_impl :: fn () {
+        on term_original_mode_saved => return
+
+        input := GetStdHandle(STD_INPUT_HANDLE)
+        output := GetStdHandle(STD_OUTPUT_HANDLE)
+
+        input_mode  : DWORD
+        output_mode : DWORD
+
+        _ := GetConsoleMode(input, ^input_mode)
+        _ := GetConsoleMode(output, ^output_mode)
+        term_original_input_mode  = input_mode
+        term_original_output_mode = output_mode
+        term_original_input_cp    = GetConsoleCP()
+        term_original_output_cp   = GetConsoleOutputCP()
+        term_original_mode_saved  = yes
+
+        input_mask := (ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT | ENABLE_MOUSE_INPUT | ENABLE_WINDOW_INPUT).as(DWORD)
+
+        input_mode  &= ~input_mask
+        output_mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING.as(DWORD)
+
+        _ := SetConsoleCP(CP_UTF8)
+        _ := SetConsoleOutputCP(CP_UTF8)
+        _ := SetConsoleMode(input, input_mode)
+        _ := SetConsoleMode(output, output_mode)
+    }
+
+    -- Restores the saved Windows console modes.
+    term_raw_mode_disable_impl :: fn () {
+        on !term_original_mode_saved => return
+
+        input := GetStdHandle(STD_INPUT_HANDLE)
+        output := GetStdHandle(STD_OUTPUT_HANDLE)
+
+        _ := SetConsoleMode(input, term_original_input_mode)
+        _ := SetConsoleMode(output, term_original_output_mode)
+        _ := SetConsoleCP(term_original_input_cp)
+        _ := SetConsoleOutputCP(term_original_output_cp)
+        term_original_mode_saved = no
+    }
+
+    -- Enables or disables raw terminal input mode.
+    pub term_raw_mode_enable :: fn (enabled: bool) {
+        on enabled => term_raw_mode_enable_impl()
+            else term_raw_mode_disable_impl()
+    }
+
+    -- Returns the terminal size as `(columns, rows)`, or `(0, 0)` when the terminal
+    -- size cannot be read.
+    pub term_get_size :: fn () -> (u32, u32) {
+        output := GetStdHandle(STD_OUTPUT_HANDLE)
+        info : CONSOLE_SCREEN_BUFFER_INFO
+        result := GetConsoleScreenBufferInfo(output, ^info)
+        on result == 0 => return (0, 0)
+
+        columns := term_window_span(info.srWindow.Left, info.srWindow.Right)
+        rows := term_window_span(info.srWindow.Top, info.srWindow.Bottom)
+        return term_normalise_size(columns, rows)
+    }
+
+    -- Writes text directly to the terminal output stream.
+    pub term_print :: fn (text: string) {
+        output := GetStdHandle(STD_OUTPUT_HANDLE)
+
+        bytes_written : DWORD
+        _ := WriteFile(output,
+                       text.data.as(^void),
+                       text.count.as(DWORD),
+                       ^bytes_written,
+                       nil)
+    }
+
+    -- Reads one byte from terminal input, returning `0` on EOF or error.
+    term_read_byte :: fn () -> u8 {
+        input := GetStdHandle(STD_INPUT_HANDLE)
+        key        : [1]u8
+        bytes_read : DWORD
+
+        ok := ReadFile(input, key[..].data.as(^void), 1, ^bytes_read, nil)
+        on ok == 0 || bytes_read == 0 => return 0
+        return key[0]
+    }
+
+    -- Reads one byte from terminal input, returning `0` when the timeout elapses.
+    term_read_byte_timeout :: fn (timeout_ms: u32) -> u8 {
+        input := GetStdHandle(STD_INPUT_HANDLE)
+        wait_result := WaitForSingleObject(input, timeout_ms.as(DWORD))
+        on wait_result != WAIT_OBJECT_0 => return 0
+        return term_read_byte()
+    }
+
+    term_input_is_console :: fn () -> bool {
+        input := GetStdHandle(STD_INPUT_HANDLE)
+        mode : DWORD
+        return GetConsoleMode(input, ^mode) != 0
+    }
+
+    term_windows_virtual_key :: fn (virtual_key: u16) -> Option[KeyCode] {
+        return on virtual_key {
+            VK_BACK    => Some(Backspace)
+            VK_TAB     => Some(Tab)
+            VK_RETURN  => Some(Enter)
+            VK_ESCAPE  => Some(Escape)
+            VK_SPACE   => Some(Space)
+            VK_PRIOR   => Some(PageUp)
+            VK_NEXT    => Some(PageDown)
+            VK_END     => Some(End)
+            VK_HOME    => Some(Home)
+            VK_LEFT    => Some(ArrowLeft)
+            VK_UP      => Some(ArrowUp)
+            VK_RIGHT   => Some(ArrowRight)
+            VK_DOWN    => Some(ArrowDown)
+            VK_INSERT  => Some(Insert)
+            VK_DELETE  => Some(Delete)
+            VK_F1      => Some(F1)
+            VK_F2      => Some(F2)
+            VK_F3      => Some(F3)
+            VK_F4      => Some(F4)
+            VK_F5      => Some(F5)
+            VK_F6      => Some(F6)
+            VK_F7      => Some(F7)
+            VK_F8      => Some(F8)
+            VK_F9      => Some(F9)
+            VK_F10     => Some(F10)
+            VK_F11     => Some(F11)
+            VK_F12     => Some(F12)
+            else       => None
+        }
+    }
+
+    term_windows_input_record_key :: fn (record : INPUT_RECORD) -> Option[KeyCode] {
+        on record.EventType != KEY_EVENT => return None
+        on record.UnicodeChar > 0 && record.UnicodeChar <= 127 => {
+            return Some(record.UnicodeChar.as(u8).as(KeyCode))
+        }
+        return term_windows_virtual_key(record.wVirtualKeyCode)
+    }
+
+    term_windows_console_key :: fn () -> Option[KeyCode] {
+        input := GetStdHandle(STD_INPUT_HANDLE)
+        mode : DWORD
+        is_console := GetConsoleMode(input, ^mode)
+        on is_console == 0 => return None
+
+        for {
+            record       : INPUT_RECORD
+            records_read : DWORD
+
+            ok := ReadConsoleInput(input, ^record, 1, ^records_read)
+            on ok == 0 || records_read == 0 => return None
+
+            key := term_windows_input_record_key(record)
+            on key {
+                Some(_) => {
+                    on record.bKeyDown != 0 => return key
+                }
+                None => {
+                }
+            }
+        }
+        return None
+    }
+
+    -- Reads one translated terminal key.
+    pub term_get_key :: fn () -> Option[KeyCode] {
+        key := term_windows_console_key()
+        on key {
+            Some(_) => return key
+            None => {
+                byte := term_read_byte()
+                on byte == 0 => return None
+                return Some(byte.as(KeyCode))
+            }
+        }
+    }
+
+    term_windows_console_event :: fn () -> TermInputEvent {
+        input := GetStdHandle(STD_INPUT_HANDLE)
+        mode : DWORD
+        is_console := GetConsoleMode(input, ^mode)
+        on is_console == 0 => return TermInputEvent.None
+
+        for {
+            wait_result := WaitForSingleObject(input, 0)
+            on wait_result != WAIT_OBJECT_0 => return TermInputEvent.None
+
+            record       : INPUT_RECORD
+            records_read : DWORD
+
+            ok := ReadConsoleInput(input, ^record, 1, ^records_read)
+            on ok == 0 || records_read == 0 => return TermInputEvent.None
+
+            key := term_windows_input_record_key(record)
+            on key {
+                Some(code) => {
+                    on record.bKeyDown != 0 => return TermInputEvent.KeyDown(code)
+                        else return TermInputEvent.KeyUp(code)
+                }
+                None => {
+                }
+            }
+        }
+        return TermInputEvent.None
+    }
+
+    term_read_input_event_impl :: fn () -> TermInputEvent {
+        event := term_windows_console_event()
+        on term_input_is_console() => return event
+
+        on event {
+            TermInputEvent.None => {
+                byte := term_read_byte_timeout(0)
+                return on byte == 0 => TermInputEvent.None else TermInputEvent.KeyPress(byte.as(KeyCode))
+            }
+            else => return event
+        }
+    }
+
+}

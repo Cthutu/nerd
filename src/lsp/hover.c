@@ -606,6 +606,20 @@ internal string lsp_decl_hover_text(const LspDocument* doc,
                                     Arena*             arena,
                                     u32                decl_index);
 
+internal bool lsp_path_is_module_part_file(cstr path)
+{
+    string filename = path_filename(s(path));
+    return !string_eq(filename, s("mod.n")) &&
+           path_has_extension(filename, ".n");
+}
+
+internal int lsp_compare_cstr_ptr(const void* lhs, const void* rhs)
+{
+    const cstr* a = lhs;
+    const cstr* b = rhs;
+    return strcmp(*a, *b);
+}
+
 internal JsonValue*
 lsp_ast_export_location_in_file(Arena* arena, cstr resolved_path, string symbol)
 {
@@ -668,6 +682,54 @@ lsp_ast_export_location_in_file(Arena* arena, cstr resolved_path, string symbol)
     return location;
 }
 
+internal JsonValue* lsp_ast_export_location_in_module(Arena* arena,
+                                                      cstr   resolved_path,
+                                                      string symbol)
+{
+    JsonValue* location =
+        lsp_ast_export_location_in_file(arena, resolved_path, symbol);
+    if (location != NULL ||
+        !string_eq(path_filename(s(resolved_path)), s("mod.n"))) {
+        return location;
+    }
+
+    Arena temp = {0};
+    arena_init(&temp);
+    cstr module_dir        = path_dirname(&temp, resolved_path);
+
+    Array(cstr) part_paths = NULL;
+    DirIter iter           = {0};
+    if (dir_iter_init(&iter, module_dir)) {
+        cstr path         = NULL;
+        bool is_directory = false;
+        while (dir_iter_next(&iter, &temp, &path, &is_directory)) {
+            if (!is_directory && lsp_path_is_module_part_file(path)) {
+                array_push(part_paths, path);
+            }
+        }
+        dir_iter_done(&iter);
+    }
+
+    if (array_count(part_paths) > 1) {
+        qsort(part_paths,
+              array_count(part_paths),
+              sizeof(part_paths[0]),
+              lsp_compare_cstr_ptr);
+    }
+
+    for (u32 i = 0; i < array_count(part_paths); ++i) {
+        location =
+            lsp_ast_export_location_in_file(arena, part_paths[i], symbol);
+        if (location != NULL) {
+            break;
+        }
+    }
+
+    array_free(part_paths);
+    arena_done(&temp);
+    return location;
+}
+
 internal JsonValue* lsp_ast_imported_symbol_location(const LspDocument* doc,
                                                      Arena*             arena,
                                                      string             symbol)
@@ -697,7 +759,7 @@ internal JsonValue* lsp_ast_imported_symbol_location(const LspDocument* doc,
                                 &resolved);
         JsonValue* location = NULL;
         if (status == MRS_Found) {
-            location = lsp_ast_export_location_in_file(
+            location = lsp_ast_export_location_in_module(
                 arena, resolved.resolved_path, symbol);
         }
         arena_done(&temp);
@@ -870,6 +932,55 @@ internal JsonValue* lsp_ast_enum_variant_location_in_file(Arena* arena,
     return location;
 }
 
+internal JsonValue* lsp_ast_enum_variant_location_in_module(Arena* arena,
+                                                            cstr resolved_path,
+                                                            string enum_name,
+                                                            string variant_name)
+{
+    JsonValue* location = lsp_ast_enum_variant_location_in_file(
+        arena, resolved_path, enum_name, variant_name);
+    if (location != NULL ||
+        !string_eq(path_filename(s(resolved_path)), s("mod.n"))) {
+        return location;
+    }
+
+    Arena temp = {0};
+    arena_init(&temp);
+    cstr module_dir        = path_dirname(&temp, resolved_path);
+
+    Array(cstr) part_paths = NULL;
+    DirIter iter           = {0};
+    if (dir_iter_init(&iter, module_dir)) {
+        cstr path         = NULL;
+        bool is_directory = false;
+        while (dir_iter_next(&iter, &temp, &path, &is_directory)) {
+            if (!is_directory && lsp_path_is_module_part_file(path)) {
+                array_push(part_paths, path);
+            }
+        }
+        dir_iter_done(&iter);
+    }
+
+    if (array_count(part_paths) > 1) {
+        qsort(part_paths,
+              array_count(part_paths),
+              sizeof(part_paths[0]),
+              lsp_compare_cstr_ptr);
+    }
+
+    for (u32 i = 0; i < array_count(part_paths); ++i) {
+        location = lsp_ast_enum_variant_location_in_file(
+            arena, part_paths[i], enum_name, variant_name);
+        if (location != NULL) {
+            break;
+        }
+    }
+
+    array_free(part_paths);
+    arena_done(&temp);
+    return location;
+}
+
 internal JsonValue* lsp_ast_imported_enum_variant_location(
     const LspDocument* doc, Arena* arena, string variant_name)
 {
@@ -898,7 +1009,7 @@ internal JsonValue* lsp_ast_imported_enum_variant_location(
                                 &resolved);
         JsonValue* location = NULL;
         if (status == MRS_Found) {
-            location = lsp_ast_enum_variant_location_in_file(
+            location = lsp_ast_enum_variant_location_in_module(
                 arena, resolved.resolved_path, s(""), variant_name);
         }
         arena_done(&temp);
@@ -976,7 +1087,7 @@ internal JsonValue* lsp_ast_imported_qualified_enum_variant_location(
                                 &resolved);
         JsonValue* location = NULL;
         if (status == MRS_Found) {
-            location = lsp_ast_enum_variant_location_in_file(
+            location = lsp_ast_enum_variant_location_in_module(
                 arena, resolved.resolved_path, enum_name, variant_name);
         }
         arena_done(&temp);

@@ -2496,6 +2496,56 @@ internal bool lsp_completion_add_text_enum_variants_from_file(Arena*     arena,
     return added;
 }
 
+internal bool lsp_completion_add_text_enum_variants_from_module(
+    Arena* arena, JsonValue* items, cstr resolved, string type_name)
+{
+    if (lsp_completion_add_text_enum_variants_from_file(
+            arena, items, resolved, type_name)) {
+        return true;
+    }
+    if (!string_eq(path_filename(s(resolved)), s("mod.n"))) {
+        return false;
+    }
+
+    Arena temp = {0};
+    arena_init(&temp);
+    cstr module_dir        = path_dirname(&temp, resolved);
+
+    Array(cstr) part_paths = NULL;
+    DirIter iter           = {0};
+    if (dir_iter_init(&iter, module_dir)) {
+        cstr path         = NULL;
+        bool is_directory = false;
+        while (dir_iter_next(&iter, &temp, &path, &is_directory)) {
+            if (!is_directory &&
+                lsp_completion_path_is_module_part_file(path)) {
+                array_push(part_paths, path);
+            }
+        }
+        dir_iter_done(&iter);
+    }
+
+    if (array_count(part_paths) > 1) {
+        qsort(part_paths,
+              array_count(part_paths),
+              sizeof(part_paths[0]),
+              lsp_completion_compare_cstr_ptr);
+    }
+
+    bool added = false;
+    for (u32 i = 0; i < array_count(part_paths); ++i) {
+        if (lsp_completion_add_text_enum_variants_from_file(
+                arena, items, part_paths[i], type_name)) {
+            added = true;
+            break;
+        }
+    }
+
+    array_free(part_paths);
+    arena_done(&temp);
+    return added;
+}
+
 internal bool lsp_completion_seen_name(Array(string) seen, string name)
 {
     for (u32 i = 0; i < array_count(seen); ++i) {
@@ -2884,6 +2934,58 @@ internal bool lsp_completion_add_text_plex_fields_from_file(Arena*     arena,
     return added;
 }
 
+internal bool lsp_completion_add_text_plex_fields_from_module(Arena*     arena,
+                                                              JsonValue* items,
+                                                              cstr   resolved,
+                                                              string type_name)
+{
+    if (lsp_completion_add_text_plex_fields_from_file(
+            arena, items, resolved, type_name)) {
+        return true;
+    }
+    if (!string_eq(path_filename(s(resolved)), s("mod.n"))) {
+        return false;
+    }
+
+    Arena temp = {0};
+    arena_init(&temp);
+    cstr module_dir        = path_dirname(&temp, resolved);
+
+    Array(cstr) part_paths = NULL;
+    DirIter iter           = {0};
+    if (dir_iter_init(&iter, module_dir)) {
+        cstr path         = NULL;
+        bool is_directory = false;
+        while (dir_iter_next(&iter, &temp, &path, &is_directory)) {
+            if (!is_directory &&
+                lsp_completion_path_is_module_part_file(path)) {
+                array_push(part_paths, path);
+            }
+        }
+        dir_iter_done(&iter);
+    }
+
+    if (array_count(part_paths) > 1) {
+        qsort(part_paths,
+              array_count(part_paths),
+              sizeof(part_paths[0]),
+              lsp_completion_compare_cstr_ptr);
+    }
+
+    bool added = false;
+    for (u32 i = 0; i < array_count(part_paths); ++i) {
+        if (lsp_completion_add_text_plex_fields_from_file(
+                arena, items, part_paths[i], type_name)) {
+            added = true;
+            break;
+        }
+    }
+
+    array_free(part_paths);
+    arena_done(&temp);
+    return added;
+}
+
 internal void lsp_completion_add_imported_type_members(Arena*             arena,
                                                        JsonValue*         items,
                                                        const LspDocument* doc,
@@ -2944,7 +3046,7 @@ internal void lsp_completion_add_imported_type_members(Arena*             arena,
         cstr   resolved    = NULL;
         if (lsp_completion_resolve_text_module(
                 &temp, doc, module_path, uri, &resolved)) {
-            if (lsp_completion_add_text_plex_fields_from_file(
+            if (lsp_completion_add_text_plex_fields_from_module(
                     arena, items, resolved, type_name)) {
                 break;
             }
@@ -4069,7 +4171,7 @@ internal bool lsp_completion_add_qualified_enum_variants(Arena*     arena,
                 module_path,
                 doc->front_end.lexer.source.source_path,
                 &resolved) &&
-            lsp_completion_add_text_enum_variants_from_file(
+            lsp_completion_add_text_enum_variants_from_module(
                 arena, items, resolved, receiver)) {
             arena_done(&temp);
             return true;
