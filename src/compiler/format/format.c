@@ -1637,7 +1637,9 @@ internal void format_emit_expr(StringBuilder* sb,
     case CK_FnBlock:
         format_emit_fn_signature(sb, cst, lexer, node->a, true);
         sb_append_cstr(sb, " {\n");
-        format_emit_block_contents(sb, cst, lexer, node->b, 1);
+        format_emit_block_contents(
+            sb, cst, lexer, node->b, g_format_expr_indent_level + 1);
+        format_emit_indent(sb, g_format_expr_indent_level);
         sb_append_cstr(sb, "}");
         break;
     case CK_FfiDef:
@@ -4271,6 +4273,9 @@ internal bool format_node_is_owned_by_later_statement(const Cst* cst,
             if (owner->kind == CK_Test && owner->b == node_index) {
                 return true;
             }
+            if (owner->kind == CK_FnBlock && owner->b == node_index) {
+                return true;
+            }
             if (owner->kind == CK_Bind) {
                 u32 value_node_index = owner->b;
                 if (cst->nodes[value_node_index].kind == CK_AnnotatedValue) {
@@ -4372,6 +4377,9 @@ internal bool format_node_is_owned_by_later_statement(const Cst* cst,
             if (owner->kind == CK_Test && owner->b == i) {
                 return true;
             }
+            if (owner->kind == CK_FnBlock && owner->b == i) {
+                return true;
+            }
             if (owner->kind == CK_Bind) {
                 u32 value_node_index = owner->b;
                 if (cst->nodes[value_node_index].kind == CK_AnnotatedValue) {
@@ -4425,6 +4433,9 @@ internal bool format_node_is_owned_by_later_statement(const Cst* cst,
             return true;
         }
         if (node->kind == CK_Test && node->b == node_index) {
+            return true;
+        }
+        if (node->kind == CK_FnBlock && node->b == node_index) {
             return true;
         }
         if (node->kind == CK_Call) {
