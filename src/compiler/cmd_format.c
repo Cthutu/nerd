@@ -43,6 +43,10 @@ int compiler_cmd_format(const NerdFormatConfig* config)
     } else {
         output_path = input_path;
     }
+    if (config->verbose) {
+        prn(ANSI_BOLD_CYAN "[fmt]" ANSI_RESET " " ANSI_GREEN "%s" ANSI_RESET,
+            input_path);
+    }
     bool ok = format_file(input_path, output_path);
 
     arena_done(&arena);

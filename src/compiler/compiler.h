@@ -85,6 +85,7 @@ typedef struct {
     string input_path;
     string output_path;
     bool   write_stdout;
+    bool   verbose;
 } NerdFormatConfig;
 
 typedef struct {

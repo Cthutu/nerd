@@ -79,7 +79,7 @@ def main() -> int:
             )
             return 1
         for path in nerd_files:
-            result = subprocess.run([nerd, "format", str(path)])
+            result = subprocess.run([nerd, "format", "-v", str(path)])
             if result.returncode != 0:
                 return result.returncode
 

@@ -17,6 +17,7 @@
 
 #include <errno.h>
 #include <stdio.h>
+#include <string.h>
 
 #if OS_WINDOWS
 #    include <direct.h>
@@ -77,6 +78,16 @@ internal JsonValue* nerd_cli_make_command(
         json_object_set_array(command, "params", params);
     }
     return command;
+}
+
+internal bool nerd_argv_has_verbose_flag(int argc, char** argv)
+{
+    for (int i = 1; i < argc; i += 1) {
+        if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--verbose") == 0) {
+            return true;
+        }
+    }
+    return false;
 }
 
 internal string nerd_cli_param_string(const JsonValue* cli_result,
@@ -470,6 +481,10 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
             flags,
             nerd_cli_make_flag(
                 arena, "stdout", NULL, "Write formatted output to stdout"));
+        json_array_push(
+            flags,
+            nerd_cli_make_flag(
+                arena, "verbose", "v", "Print formatted file progress"));
         json_array_push(params,
                         nerd_cli_make_param(arena,
                                             "input",
@@ -748,6 +763,9 @@ nerd_format_config_from_json(const JsonValue* cli_result)
             cli_result, "command.params.output", (string){0}),
         .write_stdout =
             nerd_cli_flag_bool(cli_result, "command.flags.stdout", false),
+        .verbose =
+            nerd_cli_flag_bool(cli_result, "command.flags.verbose", false) ||
+            nerd_cli_flag_bool(cli_result, "global_flags.verbose", false),
     };
 }
 
@@ -909,6 +927,10 @@ internal int nerd_run_with_cli(int argc, char** argv)
     if (!ok || ok->kind != JSON_BOOL || !json_bool(ok)) {
         JsonValue* error = json_object_get_cstr(cli_result, "error");
         cli_print_help(&parser);
+        if (nerd_argv_has_verbose_flag(argc, argv) &&
+            (!command || command->kind != JSON_OBJECT)) {
+            nerd_print_args_table(argc, argv);
+        }
         if (error && error->kind == JSON_STRING) {
             string error_message = json_string(error);
             eprn("%.*s", STRINGV(error_message));
@@ -946,12 +968,6 @@ internal int nerd_run_with_cli(int argc, char** argv)
 
     string name   = json_string(command_name);
     int    result = 1;
-    bool   verbose =
-        nerd_cli_flag_bool(cli_result, "global_flags.verbose", false);
-
-    if (verbose && !string_eq_cstr(name, "lsp")) {
-        nerd_print_args_table(argc, argv);
-    }
 
     if (array_count(program_args) > 0 && !string_eq_cstr(name, "run") &&
         !string_eq_cstr(name, "r")) {
