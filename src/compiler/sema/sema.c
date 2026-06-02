@@ -13904,6 +13904,53 @@ internal bool sema_check_on_pattern_type(const Lexer* lexer,
     return true;
 }
 
+internal bool sema_check_multi_on_pattern_payload_variant(const Lexer* lexer,
+                                                          const Ast*   ast,
+                                                          Sema*        sema,
+                                                          u32 pattern_index,
+                                                          u32 value_type)
+{
+    if (value_type == sema_no_type() ||
+        sema->types[value_type].kind != STK_Enum ||
+        pattern_index >= array_count(ast->patterns)) {
+        return true;
+    }
+
+    const AstPattern* pattern        = &ast->patterns[pattern_index];
+    u32               variant_symbol = U32_MAX;
+    if (pattern->kind == APK_EnumVariant) {
+        const AstEnumPattern* enum_pattern = &ast->enum_patterns[pattern->a];
+        variant_symbol                     = enum_pattern->symbol_handle;
+    } else if (pattern->kind == APK_Value &&
+               pattern->a < array_count(ast->nodes)) {
+        const AstNode* node = &ast->nodes[pattern->a];
+        if (node->kind == AK_EnumVariant || node->kind == AK_SymbolRef) {
+            variant_symbol = node->a;
+        } else if (node->kind == AK_Field &&
+                   sema->node_type_indices[pattern->a] == value_type) {
+            variant_symbol = node->b;
+        }
+    }
+    if (variant_symbol == U32_MAX) {
+        return true;
+    }
+
+    u32 variant = sema_enum_variant_index(sema, value_type, variant_symbol);
+    if (variant == U32_MAX) {
+        return true;
+    }
+    u32 payload_type =
+        sema_enum_variant_payload_type(sema, value_type, variant);
+    if (payload_type == sema_no_type()) {
+        return true;
+    }
+
+    return error_0304_type_mismatch(lexer->source,
+                                    sema_pattern_span(lexer, pattern),
+                                    s("non-payload enum variant"),
+                                    lex_symbol(lexer, variant_symbol));
+}
+
 internal bool
 sema_node_is_addressable(const Ast* ast, Sema* sema, u32 node_index)
 {
@@ -18074,6 +18121,15 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                                                         pattern_index,
                                                         scrutinee_type,
                                                         true)) {
+                            return false;
+                        }
+                        if (branch->pattern_count > 1 &&
+                            !sema_check_multi_on_pattern_payload_variant(
+                                lexer,
+                                ast,
+                                sema,
+                                pattern_index,
+                                scrutinee_type)) {
                             return false;
                         }
                     }

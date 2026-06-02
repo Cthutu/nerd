@@ -85,3 +85,32 @@ main :: fn () -> i32 {
         "Change the expression or annotation so both sides use the same type."
     ]
 }
+¬Maybe :: enum { None Some(i32) }
+
+main :: fn () -> i32 {
+    value: Maybe = Some(1)
+    return on value {
+        Some(as x), None => x
+    }
+}¬
+{
+    "message": "Type mismatch: expected `non-payload enum variant`, found `Some`",
+    "source_file": "tests/errors/035-enum-payloads.e",
+    "primary_location": {
+        "line": 6,
+        "column": 9
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 6,
+            "column": 9,
+            "length": 4,
+            "message": "This expression has type `Some`"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Change the expression or annotation so both sides use the same type."
+    ]
+}

@@ -261,7 +261,7 @@ internal bool ast_token_is_assignment_operator(TokenKind kind)
 internal bool ast_next_token_starts_on_branch_head(const AstParseState* state,
                                                    AstToken             next)
 {
-    if (next.kind == TK_else) {
+    if (next.kind == TK_else || next.kind == TK_FatArrow) {
         return true;
     }
 
@@ -297,11 +297,6 @@ internal bool ast_next_token_starts_on_branch_head(const AstParseState* state,
         return false;
     }
 
-    if (next.kind == TK_Dot && ast_peek_kind_at(state, 0) == TK_Symbol) {
-        return ast_token_can_continue_on_branch_head(
-            ast_peek_kind_at(state, 1));
-    }
-
     if (next.kind == TK_Symbol) {
         return ast_token_can_continue_on_branch_head(
             ast_peek_kind_at(state, 0));
@@ -314,6 +309,23 @@ internal bool ast_next_token_starts_on_branch_head(const AstParseState* state,
     }
 
     return false;
+}
+
+internal bool
+ast_lbrace_starts_on_value_branch_block(const AstParseState* state)
+{
+    TokenKind first = ast_peek_kind_at(state, 0);
+    if (first == TK_else || first == TK_RBrace) {
+        return true;
+    }
+
+    if (first != TK_Symbol) {
+        return false;
+    }
+
+    TokenKind second = ast_peek_kind_at(state, 1);
+    return second == TK_Comma || second == TK_FatArrow || second == TK_as ||
+           second == TK_on || second == TK_LBrace;
 }
 
 //------------------------------------------------------------------------------
@@ -1086,15 +1098,35 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
                         return false;
                     }
                     array_push(branch_patterns, pattern_root);
-                    if (state->token.kind != TK_Comma) {
+                    if (state->token.kind != TK_Comma &&
+                        ast_peek_kind_at(state, 0) != TK_Comma) {
                         break;
                     }
-                    if (!ast_next_token(state) || !ast_next_token(state)) {
+                    if (state->token.kind != TK_Comma &&
+                        !ast_next_token(state)) {
                         array_free(branch_patterns);
                         return error_0201_missing_value(
                             state->token.source,
                             ast_token_span(state, &state->token),
                             TK_FatArrow);
+                    }
+                    ASSERT(state->token.kind == TK_Comma,
+                           "Expected current token to be comma");
+                    while (state->token.kind == TK_Comma) {
+                        if (!ast_next_token(state)) {
+                            array_free(branch_patterns);
+                            return error_0201_missing_value(
+                                state->token.source,
+                                ast_token_span(state, &state->token),
+                                TK_FatArrow);
+                        }
+                    }
+                    if (state->token.kind == TK_FatArrow) {
+                        array_free(branch_patterns);
+                        return error_0201_missing_value(
+                            state->token.source,
+                            ast_token_span(state, &state->token),
+                            TK_Symbol);
                     }
                 }
                 branch.pattern_index = (u32)array_count(state->pattern_items);
@@ -2478,6 +2510,10 @@ bool ast_parse_expr_bp(AstParseState* state, u8 min_bp, u32* out_node)
 
         if (state->stop_before_for_body &&
             (next.kind == TK_LBrace || next.kind == TK_Dollar)) {
+            break;
+        }
+        if (state->stop_before_block_lbrace && next.kind == TK_LBrace &&
+            ast_lbrace_starts_on_value_branch_block(state)) {
             break;
         }
         bool starts_plex = false;

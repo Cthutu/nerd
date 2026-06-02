@@ -2277,6 +2277,10 @@ bool ast_parse_enum_variant_pattern(AstParseState* state, u32* out_pattern)
                 }
                 array_push(state->pattern_items, item);
                 pattern_count++;
+                if (state->token.kind == TK_RParen ||
+                    ast_peek_kind_at(state, 0) == TK_RParen) {
+                    break;
+                }
                 if (state->token.kind != TK_Comma &&
                     ast_peek_kind_at(state, 0) == TK_Comma) {
                     if (!ast_expect_token(state, TK_Comma)) {
@@ -2336,6 +2340,18 @@ internal bool ast_symbol_starts_with_uppercase(const Lexer* lexer,
 {
     string name = lex_symbol(lexer, symbol_handle);
     return name.count > 0 && name.data[0] >= 'A' && name.data[0] <= 'Z';
+}
+
+internal bool
+ast_symbol_starts_bare_enum_variant_pattern(const AstParseState* state)
+{
+    if (state->token.kind != TK_Symbol ||
+        !ast_symbol_starts_with_uppercase(state->lexer,
+                                          state->token.value.symbol_handle)) {
+        return false;
+    }
+
+    return ast_peek_kind_at(state, 0) == TK_Comma;
 }
 
 internal AstPatternKind ast_parse_comparison_pattern_kind(TokenKind kind)
@@ -2488,6 +2504,31 @@ bool ast_parse_pattern(AstParseState* state, u32* out_pattern)
         return ast_parse_enum_variant_pattern(state, out_pattern);
     }
 
+    if (ast_symbol_starts_bare_enum_variant_pattern(state)) {
+        AstToken variant = state->token;
+        if (!ast_next_token(state)) {
+            return false;
+        }
+
+        u32 enum_pattern_index = (u32)array_count(state->enum_patterns);
+        array_push(state->enum_patterns,
+                   (AstEnumPattern){
+                       .token_index          = variant.token_index,
+                       .qualifier_node_index = U32_MAX,
+                       .symbol_handle        = variant.value.symbol_handle,
+                       .first_pattern  = (u32)array_count(state->pattern_items),
+                       .pattern_count  = 0,
+                       .braced_payload = false,
+                   });
+        return ast_emit_pattern(state,
+                                (AstPattern){
+                                    .kind        = APK_EnumVariant,
+                                    .token_index = variant.token_index,
+                                    .a           = enum_pattern_index,
+                                },
+                                out_pattern);
+    }
+
     if (state->token.kind == TK_Symbol &&
         !ast_symbol_starts_with_uppercase(state->lexer,
                                           state->token.value.symbol_handle)) {
@@ -2505,16 +2546,20 @@ bool ast_parse_pattern(AstParseState* state, u32* out_pattern)
                                 out_pattern);
     }
 
-    bool saved_statement_boundary   = state->allow_statement_boundary;
-    state->allow_statement_boundary = true;
-    u32 start_node                  = 0;
+    bool saved_statement_boundary      = state->allow_statement_boundary;
+    bool saved_stop_before_branch_head = state->stop_before_on_branch_head;
+    state->allow_statement_boundary    = true;
+    state->stop_before_on_branch_head  = true;
+    u32 start_node                     = 0;
     if (!ast_parse_expr_bp(state, 0, &start_node)) {
-        state->allow_statement_boundary = saved_statement_boundary;
+        state->allow_statement_boundary   = saved_statement_boundary;
+        state->stop_before_on_branch_head = saved_stop_before_branch_head;
         return false;
     }
-    state->allow_statement_boundary = saved_statement_boundary;
+    state->allow_statement_boundary   = saved_statement_boundary;
+    state->stop_before_on_branch_head = saved_stop_before_branch_head;
 
-    AstPatternKind range_kind       = APK_Value;
+    AstPatternKind range_kind         = APK_Value;
     if (state->token.kind == TK_Range) {
         range_kind = APK_RangeExclusive;
     } else if (state->token.kind == TK_RangeInclusive) {
