@@ -166,11 +166,13 @@ done :: fn (frame: ^Frame) {
         "result": [
             {
                 "label": "handle",
-                "kind": 5
+                "kind": 5,
+                "detail": "field"
             },
             {
                 "label": "system",
-                "kind": 5
+                "kind": 5,
+                "detail": "field"
             }
         ]
     },

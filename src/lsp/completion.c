@@ -401,6 +401,28 @@ internal void lsp_completion_add_plex_literal_field(Arena*     arena,
     json_array_push(items, item);
 }
 
+internal void lsp_completion_add_member_details(Arena* arena, JsonValue* items)
+{
+    if (items->kind != JSON_ARRAY) {
+        return;
+    }
+
+    for (usize i = 0; i < array_count(items->array.values); ++i) {
+        JsonValue* item = items->array.values[i];
+        JsonValue* kind = json_object_get_cstr(item, "kind");
+        if (kind == NULL || kind->kind != JSON_NUMBER) {
+            continue;
+        }
+
+        u32 completion_kind = (u32)kind->number;
+        if (completion_kind == 2) { // Method
+            json_object_set_string(item, arena, "detail", s("method"));
+        } else if (completion_kind == 5) { // Field
+            json_object_set_string(item, arena, "detail", s("field"));
+        }
+    }
+}
+
 internal void lsp_completion_add_dynamic_array_members(Arena*     arena,
                                                        JsonValue* items)
 {
@@ -4829,6 +4851,7 @@ void lsp_handle_completion(LspState* state, const LspMessage* message)
             lsp_completion_add_repaired_members(
                 message->arena, items, doc, uri, offset, receiver);
         }
+        lsp_completion_add_member_details(message->arena, items);
         lsp_completion_filter_items(items, prefix);
         json_object_set_array(response, "result", items);
         lsp_send_response(message->arena, response);

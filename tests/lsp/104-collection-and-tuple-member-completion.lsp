@@ -133,11 +133,13 @@ main :: fn () {
         "result": [
             {
                 "label": "0",
-                "kind": 5
+                "kind": 5,
+                "detail": "field"
             },
             {
                 "label": "1",
-                "kind": 5
+                "kind": 5,
+                "detail": "field"
             }
         ]
     },
@@ -147,7 +149,8 @@ main :: fn () {
         "result": [
             {
                 "label": "count",
-                "kind": 5
+                "kind": 5,
+                "detail": "field"
             }
         ]
     },
@@ -157,11 +160,13 @@ main :: fn () {
         "result": [
             {
                 "label": "data",
-                "kind": 5
+                "kind": 5,
+                "detail": "field"
             },
             {
                 "label": "count",
-                "kind": 5
+                "kind": 5,
+                "detail": "field"
             }
         ]
     },

@@ -89,31 +89,38 @@ main :: fn () {
         "result": [
             {
                 "label": "alloc",
-                "kind": 2
+                "kind": 2,
+                "detail": "method"
             },
             {
                 "label": "alloc_array",
-                "kind": 2
+                "kind": 2,
+                "detail": "method"
             },
             {
                 "label": "alloc_bytes",
-                "kind": 2
+                "kind": 2,
+                "detail": "method"
             },
             {
                 "label": "reset",
-                "kind": 2
+                "kind": 2,
+                "detail": "method"
             },
             {
                 "label": "mark",
-                "kind": 2
+                "kind": 2,
+                "detail": "method"
             },
             {
                 "label": "restore",
-                "kind": 2
+                "kind": 2,
+                "detail": "method"
             },
             {
                 "label": "done",
-                "kind": 2
+                "kind": 2,
+                "detail": "method"
             }
         ]
     },

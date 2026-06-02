@@ -138,11 +138,13 @@ main :: fn () {
         "result": [
             {
                 "label": "code",
-                "kind": 5
+                "kind": 5,
+                "detail": "field"
             },
             {
                 "label": "mods",
-                "kind": 5
+                "kind": 5,
+                "detail": "field"
             }
         ]
     },

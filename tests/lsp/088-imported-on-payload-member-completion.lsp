@@ -131,15 +131,18 @@ main :: fn () {
         "result": [
             {
                 "label": "keycode",
-                "kind": 5
+                "kind": 5,
+                "detail": "field"
             },
             {
                 "label": "modifiers",
-                "kind": 5
+                "kind": 5,
+                "detail": "field"
             },
             {
                 "label": "char",
-                "kind": 5
+                "kind": 5,
+                "detail": "field"
             }
         ]
     },

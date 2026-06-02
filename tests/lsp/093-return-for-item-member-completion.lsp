@@ -148,11 +148,13 @@ impl FrameSystem {
         "result": [
             {
                 "label": "handle",
-                "kind": 5
+                "kind": 5,
+                "detail": "field"
             },
             {
                 "label": "frame",
-                "kind": 5
+                "kind": 5,
+                "detail": "field"
             }
         ]
     },

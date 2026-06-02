@@ -127,15 +127,18 @@ main :: fn () {
         "result": [
             {
                 "label": "value",
-                "kind": 5
+                "kind": 5,
+                "detail": "field"
             },
             {
                 "label": "bump",
-                "kind": 2
+                "kind": 2,
+                "detail": "method"
             },
             {
                 "label": "get",
-                "kind": 2
+                "kind": 2,
+                "detail": "method"
             }
         ]
     },

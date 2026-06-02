@@ -167,67 +167,83 @@ main :: fn () {
         "result": [
             {
                 "label": "data",
-                "kind": 5
+                "kind": 5,
+                "detail": "field"
             },
             {
                 "label": "count",
-                "kind": 5
+                "kind": 5,
+                "detail": "field"
             },
             {
                 "label": "capacity",
-                "kind": 5
+                "kind": 5,
+                "detail": "field"
             },
             {
                 "label": "append",
-                "kind": 2
+                "kind": 2,
+                "detail": "method"
             },
             {
                 "label": "clear",
-                "kind": 2
+                "kind": 2,
+                "detail": "method"
             },
             {
                 "label": "delete",
-                "kind": 2
+                "kind": 2,
+                "detail": "method"
             },
             {
                 "label": "free",
-                "kind": 2
+                "kind": 2,
+                "detail": "method"
             },
             {
                 "label": "pop",
-                "kind": 2
+                "kind": 2,
+                "detail": "method"
             },
             {
                 "label": "push",
-                "kind": 2
+                "kind": 2,
+                "detail": "method"
             },
             {
                 "label": "reserve_to",
-                "kind": 2
+                "kind": 2,
+                "detail": "method"
             },
             {
                 "label": "reserve_extra",
-                "kind": 2
+                "kind": 2,
+                "detail": "method"
             },
             {
                 "label": "resize_to",
-                "kind": 2
+                "kind": 2,
+                "detail": "method"
             },
             {
                 "label": "swap_delete",
-                "kind": 2
+                "kind": 2,
+                "detail": "method"
             },
             {
                 "label": "resize_undefined_to",
-                "kind": 2
+                "kind": 2,
+                "detail": "method"
             },
             {
                 "label": "extend",
-                "kind": 2
+                "kind": 2,
+                "detail": "method"
             },
             {
                 "label": "extend_undefined",
-                "kind": 2
+                "kind": 2,
+                "detail": "method"
             }
         ]
     },

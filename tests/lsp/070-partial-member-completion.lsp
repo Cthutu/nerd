@@ -127,7 +127,8 @@ main :: fn () {
         "result": [
             {
                 "label": "value",
-                "kind": 5
+                "kind": 5,
+                "detail": "field"
             }
         ]
     },

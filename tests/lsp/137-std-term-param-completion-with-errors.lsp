@@ -130,27 +130,33 @@ simulate :: fn (s: TermSimulate) {
         "result": [
             {
                 "label": "dt",
-                "kind": 5
+                "kind": 5,
+                "detail": "field"
             },
             {
                 "label": "width",
-                "kind": 5
+                "kind": 5,
+                "detail": "field"
             },
             {
                 "label": "height",
-                "kind": 5
+                "kind": 5,
+                "detail": "field"
             },
             {
                 "label": "keyboard",
-                "kind": 5
+                "kind": 5,
+                "detail": "field"
             },
             {
                 "label": "mouse",
-                "kind": 5
+                "kind": 5,
+                "detail": "field"
             },
             {
                 "label": "user_data",
-                "kind": 5
+                "kind": 5,
+                "detail": "field"
             }
         ]
     },
