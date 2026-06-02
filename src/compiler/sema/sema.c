@@ -19410,6 +19410,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 return false;
             }
 
+            local      = &sema->locals[local_index];
             type_index = annotated != sema_no_type()
                              ? annotated
                              : sema_materialise_type(sema, type_index);
