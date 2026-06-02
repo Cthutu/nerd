@@ -6392,6 +6392,10 @@ internal bool sema_collect_block_statements(const Lexer* lexer,
             continue;
         }
         const AstNode* node = &ast->nodes[i];
+        if (node->kind == AK_FnStart) {
+            i = node->b + 2;
+            continue;
+        }
         if (node->kind == AK_Block) {
             u32 child_scope =
                 sema_add_scope(sema, owner_decl_index, scope_index);
