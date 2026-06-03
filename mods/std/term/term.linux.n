@@ -153,9 +153,9 @@ pub term_cursor_enable :: fn (enabled: bool) {
 
 term_mouse_input_enable :: fn (enabled: bool) {
     on enabled => {
-        term_print("\x1b[?1000h\x1b[?1006h")
+        term_print("\x1b[?1003h\x1b[?1006h")
     } else {
-        term_print("\x1b[?1006l\x1b[?1000l")
+        term_print("\x1b[?1006l\x1b[?1003l")
     }
 }
 
