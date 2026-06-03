@@ -239,7 +239,7 @@ gfx_gl_print_program_log :: fn (program: GLuint, context: string) {
     }
 
     text := bytes[..written.as(usize)].as(string)
-    eprn($"OpenGL shader {context} failed: {text}")
+    eprn($"OpenGL program {context} failed: {text}")
     bytes.free()
 }
 
