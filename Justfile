@@ -112,7 +112,7 @@ do:
     just install
 
 run-example *example:
-    cd examples/{{example}} && nerd run
+    cd examples/{{example}} && nerd run -r
 
 list-examples:
     ls examples
