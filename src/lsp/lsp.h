@@ -241,6 +241,7 @@ void lsp_handle_hover(LspState* state, const LspMessage* message);
 void lsp_handle_definition(LspState* state, const LspMessage* message);
 void lsp_handle_document_link(LspState* state, const LspMessage* message);
 void lsp_handle_document_symbol(LspState* state, const LspMessage* message);
+void lsp_handle_workspace_symbol(LspState* state, const LspMessage* message);
 void lsp_handle_semantic_tokens_full(LspState*         state,
                                      const LspMessage* message);
 void lsp_handle_completion(LspState* state, const LspMessage* message);

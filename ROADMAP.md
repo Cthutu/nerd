@@ -215,13 +215,13 @@ tile-map, and ASCII layers.
 - [x] Add `PixelLayerMode`:
   - [x] `FitToWindow { pixel_scale u16 }`
   - [x] `FixedSizeAutoScale { width u16, height u16 }`
-- [ ] Define crisp-pixel presentation rules:
+- [x] Define crisp-pixel presentation rules:
   - [x] `FitToWindow` uses the fixed integer `pixel_scale`, resizes the backing
     pixel buffer as the frame changes, and keeps the presented frame dimensions
     at the top-left with no intentional letterboxing.
   - [x] `FixedSizeAutoScale` keeps a fixed virtual buffer size, uses the largest
     integer scale that fits the frame, and letterboxes unused space.
-- [ ] Add typed pixel-buffer operations:
+- [x] Add typed pixel-buffer operations:
   - [x] create/destroy a pixel layer for a frame
   - [x] expose width, height, and contiguous `[]u32` pixels
   - [x] `clear`, `put`, and `fill` helpers
@@ -238,9 +238,9 @@ tile-map, and ASCII layers.
 - [x] Add `examples/pixels/pixels.n` showing a frame, pixel layer, clear/fill,
   simple animation, resize handling, and render loop.
 - [x] Add `examples/pixels_fit/pixels_fit.n` showing `FitToWindow`.
-- [ ] Add standard-library documentation for `std.gfx` and the pixel-buffer
+- [x] Add standard-library documentation for `std.gfx` and the pixel-buffer
   sizing modes.
-- [ ] Add source, command, and example tests where the behaviour can be
+- [x] Add source, command, and example tests where the behaviour can be
   verified without relying on an interactive desktop session.
 
 ### OpenGL Standard Library Milestone
@@ -253,16 +253,16 @@ thin, explicit API first; higher-level graphics layers can build on it later.
   and command declarations for the basic OpenGL 3 workflow.
 - [ ] Add platform loader support:
   - [x] Linux GLX context creation for frame pixel presentation.
-  - [ ] Linux GLX command lookup for frames.
-  - [ ] Windows WGL command lookup for frames.
-- [ ] Add `gl_init(^FrameSystem, ^Frame) -> bool` to create or attach an OpenGL
-  context for a frame and load OpenGL 3 command pointers into module-level
-  function pointer variables.
-- [ ] Add `gl_done(^FrameSystem, ^Frame)` to release frame-attached OpenGL
-  context resources and clear loaded command pointers when appropriate.
+  - [x] Linux GLX command lookup for frames through `gl_init(^Frame)`.
+  - [x] Windows WGL command lookup for frames through `gl_init(^Frame)`.
+- [x] Add `gl_init(^Frame) -> bool` to create or attach an OpenGL context for a
+  frame and load OpenGL command pointers into module-level function pointer
+  variables.
+- [x] Add `gl_done(^Frame)` to release frame-attached OpenGL context resources
+  and clear loaded command pointers when appropriate.
 - [ ] Add basic commands needed by the pixel-buffer renderer:
   - [x] buffer, texture, shader, and vertex-array creation/destruction
-  - [ ] shader compile/link/status logging
+  - [x] shader compile/link/status logging
   - [x] viewport, clear, draw, texture upload, and swap buffers
 - [x] Move `std.gfx` pixel presentation from XImage fallback to a nearest
   filtered texture quad on OpenGL-capable frames.
@@ -301,7 +301,7 @@ thin, explicit API first; higher-level graphics layers can build on it later.
   - [x] `:` versus `::` function-definition fix
   - [x] unused local fixes
 - [x] Add document links for module imports.
-- [ ] Add workspace symbol search for top-level declarations.
+- [x] Add workspace symbol search for top-level declarations.
 - [ ] Add Tree-sitter support after the LSP intelligence work is useful:
   - [ ] grammar for Nerd source
   - [ ] editor-native highlighting

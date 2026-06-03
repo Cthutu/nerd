@@ -83,6 +83,12 @@ gfx_u32_to_u16_size :: fn (value: u32) -> u16 {
     return value.as(u16)
 }
 
+-- Clamps a `u32` coordinate to the public `u16` frame coordinate range.
+gfx_u32_to_u16_coord :: fn (value: u32) -> u16 {
+    on value > 65535 => return 65535
+    return value.as(u16)
+}
+
 -- Returns the pixel-buffer dimensions implied by `mode` and `frame`.
 gfx_pixel_layer_dimensions :: fn (frame : ^Frame,
                                   mode  : PixelLayerMode) -> PixelSize {
@@ -170,7 +176,7 @@ gfx_pixel_layer_present_offset :: fn (frame : ^Frame,
             draw_height := layer.height.as(u32) * scale.as(u32)
             x := on frame.width.as(u32) > draw_width => (frame.width.as(u32) - draw_width) / 2 else 0
             y := on frame.height.as(u32) > draw_height => (frame.height.as(u32) - draw_height) / 2 else 0
-            return (gfx_u32_to_u16_size(x), gfx_u32_to_u16_size(y))
+            return (gfx_u32_to_u16_coord(x), gfx_u32_to_u16_coord(y))
         }
     }
 
@@ -196,6 +202,47 @@ gfx_find_renderer :: fn (system: ^GfxSystem, frame_id: u16) -> ^GfxFrameRenderer
     return ^system.renderers[system.renderers.count - 1]
 }
 
+gfx_gl_print_shader_log :: fn (shader: GLuint, context: string) {
+    length : GLint
+    glGetShaderiv(shader, GL_INFO_LOG_LENGTH, ^length)
+    on length <= 1 => return
+
+    bytes : [..]u8
+    bytes.resize_undefined_to(length.as(usize))
+    written : GLsizei
+    glGetShaderInfoLog(shader, length.as(GLsizei), ^written, bytes.data.as(^i8))
+    on written <= 0 => {
+        bytes.free()
+        return
+    }
+
+    text := bytes[..written.as(usize)].as(string)
+    eprn($"OpenGL shader {context} failed: {text}")
+    bytes.free()
+}
+
+gfx_gl_print_program_log :: fn (program: GLuint, context: string) {
+    length : GLint
+    glGetProgramiv(program, GL_INFO_LOG_LENGTH, ^length)
+    on length <= 1 => return
+
+    bytes : [..]u8
+    bytes.resize_undefined_to(length.as(usize))
+    written : GLsizei
+    glGetProgramInfoLog(program,
+                        length.as(GLsizei),
+                        ^written,
+                        bytes.data.as(^i8))
+    on written <= 0 => {
+        bytes.free()
+        return
+    }
+
+    text := bytes[..written.as(usize)].as(string)
+    eprn($"OpenGL shader {context} failed: {text}")
+    bytes.free()
+}
+
 gfx_gl_compile_shader :: fn (type: GLenum, source: string) -> GLuint {
     shader := glCreateShader(type)
     on shader == 0 => return 0
@@ -208,6 +255,7 @@ gfx_gl_compile_shader :: fn (type: GLenum, source: string) -> GLuint {
     status : GLint
     glGetShaderiv(shader, GL_COMPILE_STATUS, ^status)
     on status == 0 => {
+        gfx_gl_print_shader_log(shader, "compile")
         glDeleteShader(shader)
         return 0
     }
@@ -264,6 +312,7 @@ gfx_gl_create_pixel_program :: fn () -> GLuint {
     status : GLint
     glGetProgramiv(program, GL_LINK_STATUS, ^status)
     on status == 0 => {
+        gfx_gl_print_program_log(program, "link")
         glDeleteProgram(program)
         return 0
     }
@@ -682,6 +731,24 @@ test {
         }
     }
 
+    gfx_paint_user :: plex {
+        frame u32
+    }
+
+    gfx_paint_with_user :: fn (pixels : []u32,
+                               width  : u32,
+                               height : u32,
+                               stride : u32,
+                               user   : ^void) {
+        state := user.as(^gfx_paint_user)
+        for y: u32 = 0; y < height; y += 1 {
+            for x: u32 = 0; x < width; x += 1 {
+                index := y * stride + x
+                pixels[index.as(usize)] = state.frame + x + y * 10
+            }
+        }
+    }
+
 }
 
 test "fixed-size pixel layer initialises storage" {
@@ -692,7 +759,7 @@ test "fixed-size pixel layer initialises storage" {
         title       : "gfx-test"
         full_screen : no
         resizable   : yes
-        ...
+        system      : nil
     }
     gfx := GfxSystem.init()
     defer gfx.done()
@@ -744,7 +811,7 @@ test "fit-to-window pixel layer follows frame size" {
         title       : "gfx-test"
         full_screen : no
         resizable   : yes
-        ...
+        system      : nil
     }
     gfx := GfxSystem.init()
     defer gfx.done()
@@ -764,6 +831,60 @@ test "fit-to-window pixel layer follows frame size" {
     assert layer.pixel_height() == 5
 }
 
+test "pixel layer dimensions normalise zero sizes" {
+    frame := Frame {
+        id          : 1
+        width       : 8
+        height      : 6
+        title       : "gfx-test"
+        full_screen : no
+        resizable   : yes
+        system      : nil
+    }
+
+    fit := gfx_pixel_layer_dimensions(^frame, PixelLayerMode.FitToWindow {
+        pixel_scale: 0
+    })
+    assert fit.width == 8
+    assert fit.height == 6
+
+    fixed := gfx_pixel_layer_dimensions(^frame, PixelLayerMode.FixedSizeAutoScale {
+        width  : 0
+        height : 0
+    })
+    assert fixed.width == 1
+    assert fixed.height == 1
+}
+
+test "fixed-size pixel layer presentation scale letterboxes" {
+    frame := Frame {
+        id          : 1
+        width       : 10
+        height      : 8
+        title       : "gfx-test"
+        full_screen : no
+        resizable   : yes
+        system      : nil
+    }
+    layer := PixelLayer {
+        frame_id: 1
+        mode: PixelLayerMode.FixedSizeAutoScale {
+            width  : 3
+            height : 2
+        }
+        width  : 3
+        height : 2
+        data   : nil
+    }
+
+    scale := gfx_pixel_layer_present_scale(^frame, ^layer)
+    offset := gfx_pixel_layer_present_offset(^frame, ^layer, scale)
+
+    assert scale == 3
+    assert offset.0 == 0
+    assert offset.1 == 1
+}
+
 test "pixel layer clear put fill and paint update pixels" {
     frame := Frame {
         id          : 1
@@ -772,7 +893,7 @@ test "pixel layer clear put fill and paint update pixels" {
         title       : "gfx-test"
         full_screen : no
         resizable   : yes
-        ...
+        system      : nil
     }
     gfx := GfxSystem.init()
     defer gfx.done()
@@ -807,4 +928,42 @@ test "pixel layer clear put fill and paint update pixels" {
     assert layer.pixels()[6] == 0xff000100
     assert layer.pixels()[9] == 0xff000001
     assert layer.pixels()[10] == 0xff000101
+}
+
+test "pixel layer paint forwards user data and full stride" {
+    frame := Frame {
+        id          : 1
+        width       : 8
+        height      : 8
+        title       : "gfx-test"
+        full_screen : no
+        resizable   : yes
+        system      : nil
+    }
+    gfx := GfxSystem.init()
+    defer gfx.done()
+
+    handle := gfx.pixel_layer(^frame, PixelLayerMode.FixedSizeAutoScale {
+        width  : 4
+        height : 3
+    })
+    layer := gfx.pixel(handle)
+    state := gfx_paint_user { frame: 100 }
+
+    layer.clear(0)
+    layer.paint(PixelRect {
+        x      : 1
+        y      : 1
+        width  : 5
+        height : 5
+    }, gfx_paint_with_user, ^state)
+
+    assert layer.pixels()[0] == 0
+    assert layer.pixels()[4] == 0
+    assert layer.pixels()[5] == 100
+    assert layer.pixels()[6] == 101
+    assert layer.pixels()[7] == 102
+    assert layer.pixels()[9] == 110
+    assert layer.pixels()[10] == 111
+    assert layer.pixels()[11] == 112
 }

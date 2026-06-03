@@ -98,6 +98,7 @@ pub GL_VERTEX_SHADER   :: 0x8b31
 pub GL_FRAGMENT_SHADER :: 0x8b30
 pub GL_COMPILE_STATUS  :: 0x8b81
 pub GL_LINK_STATUS     :: 0x8b82
+pub GL_INFO_LOG_LENGTH :: 0x8b84
 
 GLActiveTextureFn           :: fn (texture: GLenum)
 GLCreateShaderFn            :: fn (type: GLenum) -> GLuint
@@ -107,6 +108,10 @@ GLShaderSourceFn            :: fn (shader  : GLuint,
                                    lengths : ^GLint)
 GLCompileShaderFn           :: fn (shader: GLuint)
 GLGetShaderivFn             :: fn (shader: GLuint, name: GLenum, values: ^GLint)
+GLGetShaderInfoLogFn        :: fn (shader : GLuint,
+                                   size   : GLsizei,
+                                   length : ^GLsizei,
+                                   log    : ^i8)
 GLDeleteShaderFn            :: fn (shader: GLuint)
 GLCreateProgramFn           :: fn () -> GLuint
 GLAttachShaderFn            :: fn (program: GLuint, shader: GLuint)
@@ -116,6 +121,10 @@ GLGetProgramivFn            ::
                                fn (program : GLuint,
                                    name    : GLenum,
                                    values  : ^GLint)
+GLGetProgramInfoLogFn       :: fn (program : GLuint,
+                                   size    : GLsizei,
+                                   length  : ^GLsizei,
+                                   log     : ^i8)
 GLDeleteProgramFn           :: fn (program: GLuint)
 GLUseProgramFn              :: fn (program: GLuint)
 GLGetUniformLocationFn      :: fn (program: GLuint, name: ^i8) -> GLint
@@ -172,6 +181,13 @@ gl_stub_get_shader_iv :: fn (_shader: GLuint, _name: GLenum, _values: ^GLint) {
     gl_abort_unloaded_command()
 }
 
+gl_stub_get_shader_info_log :: fn (_shader : GLuint,
+                                   _size   : GLsizei,
+                                   _length : ^GLsizei,
+                                   _log    : ^i8) {
+    gl_abort_unloaded_command()
+}
+
 gl_stub_delete_shader :: fn (_shader: GLuint) {
     gl_abort_unloaded_command()
 }
@@ -196,6 +212,13 @@ gl_stub_link_program :: fn (_program: GLuint) {
 }
 
 gl_stub_get_program_iv :: fn (_program: GLuint, _name: GLenum, _values: ^GLint) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_get_program_info_log :: fn (_program : GLuint,
+                                    _size    : GLsizei,
+                                    _length  : ^GLsizei,
+                                    _log     : ^i8) {
     gl_abort_unloaded_command()
 }
 
@@ -277,6 +300,8 @@ gl_compile_shader_proc             : GLCompileShaderFn           =
                                                                    gl_stub_compile_shader
 gl_get_shader_iv_proc              : GLGetShaderivFn             =
                                                                    gl_stub_get_shader_iv
+gl_get_shader_info_log_proc        : GLGetShaderInfoLogFn        =
+                                                                   gl_stub_get_shader_info_log
 gl_delete_shader_proc              : GLDeleteShaderFn            =
                                                                    gl_stub_delete_shader
 gl_create_program_proc             : GLCreateProgramFn           =
@@ -289,6 +314,8 @@ gl_link_program_proc               : GLLinkProgramFn             =
                                                                    gl_stub_link_program
 gl_get_program_iv_proc             : GLGetProgramivFn            =
                                                                    gl_stub_get_program_iv
+gl_get_program_info_log_proc       : GLGetProgramInfoLogFn       =
+                                                                   gl_stub_get_program_info_log
 gl_delete_program_proc             : GLDeleteProgramFn           =
                                                                    gl_stub_delete_program
 gl_use_program_proc                : GLUseProgramFn              =
@@ -437,12 +464,14 @@ gl_load_commands :: fn () -> bool {
     shader_source := gl_get_proc_address(c"glShaderSource")
     compile_shader := gl_get_proc_address(c"glCompileShader")
     get_shader_iv := gl_get_proc_address(c"glGetShaderiv")
+    get_shader_info_log := gl_get_proc_address(c"glGetShaderInfoLog")
     delete_shader := gl_get_proc_address(c"glDeleteShader")
     create_program := gl_get_proc_address(c"glCreateProgram")
     attach_shader := gl_get_proc_address(c"glAttachShader")
     bind_attrib_location := gl_get_proc_address(c"glBindAttribLocation")
     link_program := gl_get_proc_address(c"glLinkProgram")
     get_program_iv := gl_get_proc_address(c"glGetProgramiv")
+    get_program_info_log := gl_get_proc_address(c"glGetProgramInfoLog")
     delete_program := gl_get_proc_address(c"glDeleteProgram")
     use_program := gl_get_proc_address(c"glUseProgram")
     get_uniform_location := gl_get_proc_address(c"glGetUniformLocation")
@@ -463,12 +492,14 @@ gl_load_commands :: fn () -> bool {
         shader_source == nil ||
         compile_shader == nil ||
         get_shader_iv == nil ||
+        get_shader_info_log == nil ||
         delete_shader == nil ||
         create_program == nil ||
         attach_shader == nil ||
         bind_attrib_location == nil ||
         link_program == nil ||
         get_program_iv == nil ||
+        get_program_info_log == nil ||
         delete_program == nil ||
         use_program == nil ||
         get_uniform_location == nil ||
@@ -489,12 +520,14 @@ gl_load_commands :: fn () -> bool {
     gl_shader_source_proc              = shader_source.as(GLShaderSourceFn)
     gl_compile_shader_proc             = compile_shader.as(GLCompileShaderFn)
     gl_get_shader_iv_proc              = get_shader_iv.as(GLGetShaderivFn)
+    gl_get_shader_info_log_proc        = get_shader_info_log.as(GLGetShaderInfoLogFn)
     gl_delete_shader_proc              = delete_shader.as(GLDeleteShaderFn)
     gl_create_program_proc             = create_program.as(GLCreateProgramFn)
     gl_attach_shader_proc              = attach_shader.as(GLAttachShaderFn)
     gl_bind_attrib_location_proc       = bind_attrib_location.as(GLBindAttribLocationFn)
     gl_link_program_proc               = link_program.as(GLLinkProgramFn)
     gl_get_program_iv_proc             = get_program_iv.as(GLGetProgramivFn)
+    gl_get_program_info_log_proc       = get_program_info_log.as(GLGetProgramInfoLogFn)
     gl_delete_program_proc             = delete_program.as(GLDeleteProgramFn)
     gl_use_program_proc                = use_program.as(GLUseProgramFn)
     gl_get_uniform_location_proc       = get_uniform_location.as(GLGetUniformLocationFn)
@@ -520,12 +553,14 @@ pub gl_reset_commands :: fn () {
     gl_shader_source_proc              = gl_stub_shader_source
     gl_compile_shader_proc             = gl_stub_compile_shader
     gl_get_shader_iv_proc              = gl_stub_get_shader_iv
+    gl_get_shader_info_log_proc        = gl_stub_get_shader_info_log
     gl_delete_shader_proc              = gl_stub_delete_shader
     gl_create_program_proc             = gl_stub_create_program
     gl_attach_shader_proc              = gl_stub_attach_shader
     gl_bind_attrib_location_proc       = gl_stub_bind_attrib_location
     gl_link_program_proc               = gl_stub_link_program
     gl_get_program_iv_proc             = gl_stub_get_program_iv
+    gl_get_program_info_log_proc       = gl_stub_get_program_info_log
     gl_delete_program_proc             = gl_stub_delete_program
     gl_use_program_proc                = gl_stub_use_program
     gl_get_uniform_location_proc       = gl_stub_get_uniform_location
@@ -596,6 +631,13 @@ pub glGetShaderiv :: fn (shader: GLuint, name: GLenum, values: ^GLint) {
     gl_get_shader_iv_proc(shader, name, values)
 }
 
+pub glGetShaderInfoLog :: fn (shader : GLuint,
+                              size   : GLsizei,
+                              length : ^GLsizei,
+                              log    : ^i8) {
+    gl_get_shader_info_log_proc(shader, size, length, log)
+}
+
 pub glDeleteShader :: fn (shader: GLuint) {
     gl_delete_shader_proc(shader)
 }
@@ -618,6 +660,13 @@ pub glLinkProgram :: fn (program: GLuint) {
 
 pub glGetProgramiv :: fn (program: GLuint, name: GLenum, values: ^GLint) {
     gl_get_program_iv_proc(program, name, values)
+}
+
+pub glGetProgramInfoLog :: fn (program : GLuint,
+                               size    : GLsizei,
+                               length  : ^GLsizei,
+                               log     : ^i8) {
+    gl_get_program_info_log_proc(program, size, length, log)
 }
 
 pub glDeleteProgram :: fn (program: GLuint) {

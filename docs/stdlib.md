@@ -181,6 +181,36 @@ detached, closed, and invalid frames report explicit `FrameError` values.
 OpenGL texture path internally when a frame has a usable context, with software
 platform presentation as the fallback.
 
+Create a graphics system with `GfxSystem.init()` and release it with
+`GfxSystem.done()`. A `PixelLayer` belongs to the graphics system that created
+it; callers should keep the returned `PixelLayerHandle` and use
+`GfxSystem.pixel(handle)` to borrow the layer. `GfxSystem.destroy(handle)`
+removes the layer and releases its pixel storage. Layer pointers are borrowed
+from the graphics system and can be invalidated by layer creation or
+destruction.
+
+Pixel layers use two sizing modes:
+
+- `PixelLayerMode.FitToWindow { pixel_scale }`
+  The layer buffer follows the frame size divided by `pixel_scale`. A zero
+  scale is treated as one. Presentation starts at the top-left of the frame and
+  does not intentionally letterbox.
+- `PixelLayerMode.FixedSizeAutoScale { width, height }`
+  The layer keeps a fixed virtual size. Presentation uses the largest integer
+  scale that fits inside the frame, with unused frame space letterboxed around
+  the centred layer. Zero width or height is treated as one.
+
+`PixelLayer.pixels()` returns a borrowed contiguous `[]u32` view of the whole
+virtual buffer. `clear`, `put`, and `fill` mutate the buffer in virtual pixel
+coordinates. `fill` clips rectangles to the layer bounds. `paint(area, painter,
+user = nil)` clips `area`, then calls `painter` with a borrowed slice starting
+at the first clipped pixel, the clipped width and height, the full layer stride,
+and the optional opaque user pointer.
+
+`GfxSystem.render(^frame)` resizes `FitToWindow` layers as needed and presents
+the layers for that frame. Multiple pixel layers are composited in layer order
+into a temporary frame-sized buffer before presentation.
+
 `std.opengl` owns portable OpenGL aliases, constants, command wrappers, command
 address loading, and current/swap helpers. Call `gl_init(^Frame)` before using
 loaded OpenGL commands and `gl_done(^Frame)` when finished with that frame's GL

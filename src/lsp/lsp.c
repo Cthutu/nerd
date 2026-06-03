@@ -101,6 +101,7 @@ struct {
     {"textDocument/definition", lsp_handle_definition},
     {"textDocument/documentLink", lsp_handle_document_link},
     {"textDocument/documentSymbol", lsp_handle_document_symbol},
+    {"workspace/symbol", lsp_handle_workspace_symbol},
     {"textDocument/semanticTokens/full", lsp_handle_semantic_tokens_full},
     {"textDocument/completion", lsp_handle_completion},
     {"textDocument/codeAction", lsp_handle_code_action},
@@ -297,6 +298,11 @@ void lsp_handle_initialise(LspState* state, const LspMessage* message)
     if (json_get_cstr(message->message,
                       "params.capabilities.textDocument.references")) {
         json_object_set_bool(capabilities, arena, "referencesProvider", true);
+    }
+    if (json_get_cstr(message->message,
+                      "params.capabilities.workspace.symbol")) {
+        json_object_set_bool(
+            capabilities, arena, "workspaceSymbolProvider", true);
     }
 
     JsonValue* completion_provider = json_new_object(arena);

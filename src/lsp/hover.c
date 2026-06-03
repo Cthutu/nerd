@@ -4447,3 +4447,196 @@ void lsp_handle_document_symbol(LspState* state, const LspMessage* message)
 }
 
 //------------------------------------------------------------------------------
+// Respond to workspace symbol requests with top-level semantic declarations
+// from open documents and the modules already analysed through their imports.
+
+internal u8 lsp_workspace_symbol_lower(u8 ch)
+{
+    return (ch >= 'A' && ch <= 'Z') ? (ch - 'A' + 'a') : ch;
+}
+
+internal bool lsp_workspace_symbol_is_internal(string name)
+{
+    return name.count >= 2 && name.data[0] == '_' && name.data[1] == '_';
+}
+
+internal bool lsp_workspace_symbol_matches(string name, string query)
+{
+    if (query.count == 0) {
+        return true;
+    }
+    if (query.count > name.count) {
+        return false;
+    }
+
+    for (usize start = 0; start + query.count <= name.count; ++start) {
+        bool matched = true;
+        for (usize i = 0; i < query.count; ++i) {
+            if (lsp_workspace_symbol_lower(name.data[start + i]) !=
+                lsp_workspace_symbol_lower(query.data[i])) {
+                matched = false;
+                break;
+            }
+        }
+        if (matched) {
+            return true;
+        }
+    }
+    return false;
+}
+
+internal string lsp_workspace_path_to_uri(Arena* arena, string path)
+{
+    if (path.count >= strlen("file://") &&
+        memcmp(path.data, "file://", strlen("file://")) == 0) {
+        return path;
+    }
+
+    StringBuilder sb = {0};
+    sb_init(&sb, arena);
+    sb_append_cstr(&sb, "file://");
+
+#if OS_WINDOWS
+    if (path.count > 1 && path.data[0] == '/' && path.data[2] == ':') {
+        path.data += 1;
+        path.count -= 1;
+    }
+    if (path.count > 1 && path.data[1] == ':') {
+        sb_append_char(&sb, '/');
+    }
+#endif
+
+    for (usize i = 0; i < path.count; ++i) {
+        u8 ch = path.data[i];
+#if OS_WINDOWS
+        if (ch == '\\') {
+            sb_append_char(&sb, '/');
+            continue;
+        }
+#endif
+        if ((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') ||
+            (ch >= '0' && ch <= '9') || ch == '/' || ch == '-' || ch == '_' ||
+            ch == '.' || ch == '~') {
+            sb_append_char(&sb, (char)ch);
+        } else {
+            sb_format(&sb, "%%%02X", ch);
+        }
+    }
+
+    return sb_to_string(&sb);
+}
+
+internal bool lsp_workspace_seen_module(Array(string) seen, string uri)
+{
+    for (usize i = 0; i < array_count(seen); ++i) {
+        if (string_eq(seen[i], uri)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+internal void lsp_workspace_append_symbol(Arena*       arena,
+                                          JsonValue*   result,
+                                          string       uri,
+                                          NerdSource   source,
+                                          const Lexer* lexer,
+                                          const Ast*   ast,
+                                          const Sema*  sema,
+                                          u32          decl_index,
+                                          string       query)
+{
+    const SemaDecl* decl = NULL;
+    if (!lsp_sema_decl(sema, decl_index, &decl) ||
+        decl->symbol_handle == U32_MAX || decl->kind == SK_Module ||
+        decl->kind == SK_BuiltinFunction) {
+        return;
+    }
+
+    string name = lex_symbol(lexer, decl->symbol_handle);
+    if (lsp_workspace_symbol_is_internal(name) ||
+        !lsp_workspace_symbol_matches(name, query) ||
+        decl->bind_node_index >= array_count(ast->nodes)) {
+        return;
+    }
+
+    u32 token_index = ast->nodes[decl->bind_node_index].token_index;
+    if (token_index >= array_count(lexer->tokens)) {
+        return;
+    }
+
+    usize start = 0;
+    usize end   = 0;
+    lsp_token_offsets(lexer, token_index, &start, &end);
+
+    JsonValue* location = json_new_object(arena);
+    json_object_set_string(location, arena, "uri", uri);
+    json_object_set_object(
+        location, "range", lsp_make_range(arena, source, start, end));
+
+    JsonValue* symbol = json_new_object(arena);
+    json_object_set_string(symbol, arena, "name", name);
+    json_object_set_number(symbol, arena, "kind", lsp_decl_symbol_kind(decl));
+    json_object_set_object(symbol, "location", location);
+    json_array_push(result, symbol);
+}
+
+internal void lsp_workspace_collect_module(Arena*     arena,
+                                           JsonValue* result,
+                                           Array(string) * seen_modules,
+                                           LspModuleView module,
+                                           string        query)
+{
+    string path = module.info && module.info->resolved_path
+                      ? s(module.info->resolved_path)
+                      : module.lexer->source.source_path;
+    string uri  = lsp_workspace_path_to_uri(arena, path);
+    if (lsp_workspace_seen_module(*seen_modules, uri)) {
+        return;
+    }
+    array_push(*seen_modules, uri);
+
+    for (u32 i = 0; i < array_count(module.sema->decls); ++i) {
+        lsp_workspace_append_symbol(arena,
+                                    result,
+                                    uri,
+                                    module.lexer->source,
+                                    module.lexer,
+                                    module.ast,
+                                    module.sema,
+                                    i,
+                                    query);
+    }
+}
+
+void lsp_handle_workspace_symbol(LspState* state, const LspMessage* message)
+{
+    JsonValue* response = lsp_prepare_response(message);
+    JsonValue* result   = json_new_array(message->arena);
+    string     query    = {0};
+    (void)lsp_get_string_param(message, "params.query", &query);
+
+    Array(string) seen_modules = {0};
+
+    MapIter      iter          = LspDocumentMap_iter();
+    string       uri;
+    LspDocument* doc;
+    while (LspDocumentMap_next(&state->documents, &iter, &uri, &doc)) {
+        if (!doc->sema_partial) {
+            continue;
+        }
+        for (u32 i = 0; i < array_count(doc->program.modules); ++i) {
+            LspModuleView module = {0};
+            if (lsp_program_module_view(&doc->program, i, &module) &&
+                module.lexer && module.ast && module.sema) {
+                lsp_workspace_collect_module(
+                    message->arena, result, &seen_modules, module, query);
+            }
+        }
+    }
+
+    json_object_set_array(response, "result", result);
+    lsp_send_response(message->arena, response);
+}
+
+//------------------------------------------------------------------------------
