@@ -4,6 +4,9 @@ use std.time
 mouse         : TermMouse
 click_count   : u32
 release_count : u32
+move_count    : u32
+last_x        : i32       = -1
+last_y        : i32       = -1
 wheel_x       : i32
 wheel_y       : i32
 
@@ -23,7 +26,14 @@ mouse_simulate :: fn (sim: TermSimulate) {
         return
     }
 
-    mouse         = sim.mouse
+    last_x = mouse.x
+    last_y = mouse.y
+    mouse  = sim.mouse
+
+    on mouse.x != last_x || mouse.y != last_y => {
+        move_count += 1
+    }
+
     click_count   += mouse_button_count(sim.mouse.pressed)
     release_count += mouse_button_count(sim.mouse.released)
     wheel_x       += sim.mouse.wheel_x
@@ -55,16 +65,21 @@ mouse_present :: fn (present: TermPresent) {
                  rgb(10, 16, 24))
     term_fb_text(2,
                  4,
+                 $"movement {move_count}  previous {last_x}, {last_y}",
+                 rgb(220, 230, 245),
+                 rgb(10, 16, 24))
+    term_fb_text(2,
+                 5,
                  $"buttons {mouse.buttons}  pressed {mouse.pressed}  released {mouse.released}",
                  rgb(190, 225, 205),
                  rgb(10, 16, 24))
     term_fb_text(2,
-                 5,
+                 6,
                  $"clicks {click_count}  releases {release_count}",
                  rgb(190, 225, 205),
                  rgb(10, 16, 24))
     term_fb_text(2,
-                 6,
+                 7,
                  $"wheel x {wheel_x}  y {wheel_y}",
                  rgb(235, 200, 255),
                  rgb(10, 16, 24))
@@ -74,13 +89,17 @@ mouse_present :: fn (present: TermPresent) {
                  rgb(150, 170, 190),
                  rgb(10, 16, 24))
 
+    on (mouse.x != last_x || mouse.y != last_y) && last_x >= 0 && last_y >= 0 && last_x < present.width.as(i32) && last_y < present.height.as(i32) => {
+        term_fb_put(last_x, last_y, '.', rgb(110, 190, 255), rgb(10, 16, 24))
+    }
+
     on mouse.x >= 0 && mouse.y >= 0 && mouse.x < present.width.as(i32) && mouse.y < present.height.as(i32) => {
         term_fb_put(mouse.x, mouse.y, '+', rgb(10, 16, 24), rgb(255, 245, 180))
     }
 }
 
 main :: fn () {
-    term_init(50, 12)
+    term_init(54, 13)
     term_cursor_enable(no)
     defer term_cursor_enable(yes)
 

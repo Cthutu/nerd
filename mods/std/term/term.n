@@ -1057,6 +1057,15 @@ term_read_decimal_until :: fn (first_terminator  : u8,
 }
 
 term_mouse_button_from_sgr :: fn (button_code: u32) -> u32 {
+    on (button_code & 128) != 0 => {
+        base := button_code & 3
+        return on base {
+            0     => TERM_MOUSE_X1
+            1     => TERM_MOUSE_X2
+            else  => 0
+        }
+    }
+
     base := button_code & 3
     return on base {
         0     => TERM_MOUSE_LEFT
@@ -1241,4 +1250,11 @@ test "SGR mouse wheel decodes shifted vertical wheel as horizontal" {
             assert no
         }
     }
+}
+
+test "SGR mouse buttons decode side buttons" {
+    assert term_mouse_button_from_sgr(128) == TERM_MOUSE_X1
+    assert term_mouse_button_from_sgr(129) == TERM_MOUSE_X2
+    assert term_mouse_button_from_sgr(160) == TERM_MOUSE_X1
+    assert term_mouse_button_from_sgr(161) == TERM_MOUSE_X2
 }
