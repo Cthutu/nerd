@@ -26,13 +26,19 @@ foreground_colour :: fn (x: u32, y: u32, tick: u32) -> u32 {
 }
 
 draw_background :: fn (layer: ^PixelLayer, tick: u32) {
-    width := layer.pixel_width().as(u32)
-    height := layer.pixel_height().as(u32)
-    for y: u32 = 0; y < height; y += 1 {
-        for x: u32 = 0; x < width; x += 1 {
-            layer.put(x, y, background_colour(x, y, tick))
+    layer.paint({
+        x      : 0
+        y      : 0
+        width  : layer.pixel_width().as(u32)
+        height : layer.pixel_height().as(u32)
+    }, fn (pixels: []u32, width: u32, height: u32, stride: u32, user: ^void) {
+        tick := (user.as(^u32))^
+        for y in [0 .. height] {
+            for x in [0 .. width] {
+                pixels[y * stride + x] = background_colour(x, y, tick)
+            }
         }
-    }
+    }, ^tick)
 }
 
 draw_foreground :: fn (layer: ^PixelLayer, tick: u32) {
@@ -40,16 +46,25 @@ draw_foreground :: fn (layer: ^PixelLayer, tick: u32) {
 
     width := layer.pixel_width().as(u32)
     height := layer.pixel_height().as(u32)
-    for y: u32 = 0; y < height; y += 1 {
-        for x: u32 = 0; x < width; x += 1 {
-            cx := width / 2
-            cy := height / 2
-            dx := on x > cx => x - cx else cx - x
-            dy := on y > cy => y - cy else cy - y
-            on dx * dx + dy * dy > 32 * 32 => again
-            layer.put(x, y, foreground_colour(x, y, tick))
+    layer.paint({
+        x : 0
+        y : 0
+        width
+        height
+    }, fn (pixels: []u32, width: u32, height: u32, stride: u32, user: ^void) {
+        tick := (user.as(^u32))^
+        for y in [0 .. height] {
+            for x in [0 .. width] {
+                index := y * stride + x
+                cx := width / 2
+                cy := height / 2
+                dx := on x > cx => x - cx else cx - x
+                dy := on y > cy => y - cy else cy - y
+                on dx * dx + dy * dy > 32 * 32 => again
+                pixels[index] = foreground_colour(x, y, tick)
+            }
         }
-    }
+    }, ^tick)
 
     layer.fill(PixelRect {
         x : 0
