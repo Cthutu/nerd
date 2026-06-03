@@ -23,7 +23,7 @@ on "windows" {
     use os.windows
 
     gl_get_proc_address :: fn (name: ^i8) -> ^void {
-        return wglGetProcAddress(name)
+        return wglGetValidProcAddress(name)
     }
 
 }

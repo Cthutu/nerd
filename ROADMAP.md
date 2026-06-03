@@ -229,7 +229,7 @@ tile-map, and ASCII layers.
     slice, area width/height, and stride
 - [ ] Render through 3D graphics hardware where practical:
   - [x] Linux X11 backend using OpenGL/GLX first
-  - [ ] Windows backend using OpenGL/WGL
+  - [x] Windows backend using OpenGL/WGL
   - [x] upload the pixel buffer to a texture and draw a nearest-filtered quad
   - [x] render through a shader, vertex buffer, and vertex array rather than
     fixed-function OpenGL calls
@@ -251,7 +251,7 @@ thin, explicit API first; higher-level graphics layers can build on it later.
 - [x] Add initial `mods/std/opengl/mod.n` and Linux GLX/OpenGL declarations.
 - [ ] Expand `std.opengl` with portable public OpenGL type aliases, constants,
   and command declarations for the basic OpenGL 3 workflow.
-- [ ] Add platform loader support:
+- [x] Add platform loader support:
   - [x] Linux GLX context creation for frame pixel presentation.
   - [x] Linux GLX command lookup for frames through `gl_init(^Frame)`.
   - [x] Windows WGL command lookup for frames through `gl_init(^Frame)`.

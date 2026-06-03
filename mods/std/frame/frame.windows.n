@@ -12,25 +12,26 @@ on "windows" {
 
     -- Windows data attached to a public `Frame`.
     PlatformFrameInfo :: plex {
-        window         ^void
-        device_context ^void
-        gl_context     ^void
-        width          u16
-        height         u16
-        restore_x      i32
-        restore_y      i32
-        restore_width  u16
-        restore_height u16
-        full_screen    bool
-        resizable      bool
-        closed_queued  bool
-        clear_valid    bool
-        clear_client_w i32
-        clear_client_h i32
-        clear_x        u16
-        clear_y        u16
-        clear_w        u16
-        clear_h        u16
+        window           ^void
+        device_context   ^void
+        gl_context       ^void
+        width            u16
+        height           u16
+        pixel_format_set bool
+        restore_x        i32
+        restore_y        i32
+        restore_width    u16
+        restore_height   u16
+        full_screen      bool
+        resizable        bool
+        closed_queued    bool
+        clear_valid      bool
+        clear_client_w   i32
+        clear_client_h   i32
+        clear_x          u16
+        clear_y          u16
+        clear_w          u16
+        clear_h          u16
     }
 
     FRAME_WINDOWS_CLASS_NAME        :: c"NerdFrameWindow"
@@ -747,20 +748,58 @@ on "windows" {
         return SetPixelFormat(dc, format, ^descriptor) != 0
     }
 
+    frame_windows_create_modern_gl_context :: fn (dc             : HDC,
+                                                  legacy_context : HGLRC) -> HGLRC {
+        _ := wglMakeCurrent(dc, legacy_context)
+
+        create_attribs_address := wglGetValidProcAddress(c"wglCreateContextAttribsARB")
+        on create_attribs_address == nil => return legacy_context
+
+        create_attribs := create_attribs_address.as(WGLCreateContextAttribsARBFn)
+        attribs: [7]i32 = [
+            WGL_CONTEXT_MAJOR_VERSION_ARB,
+            3,
+            WGL_CONTEXT_MINOR_VERSION_ARB,
+            0,
+            WGL_CONTEXT_PROFILE_MASK_ARB,
+            WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB,
+            0,
+        ]
+
+        context := create_attribs(dc, nil, ^attribs[0])
+        on context == nil => return legacy_context
+
+        _ := wglMakeCurrent(nil, nil)
+        _ := wglDeleteContext(legacy_context)
+        on wglMakeCurrent(dc, context) == 0 => {
+            _ := wglDeleteContext(context)
+            return nil
+        }
+
+        return context
+    }
+
     frame_windows_gl_init :: fn (info: ^FrameInfo) -> bool {
         on info.platform_info.gl_context != nil => return yes
         on info.platform_info.device_context == nil => return no
 
-        on !frame_windows_choose_pixel_format(info.platform_info.device_context) => return no
+        on !info.platform_info.pixel_format_set => {
+            on !frame_windows_choose_pixel_format(info.platform_info.device_context) => return no
+            info.platform_info.pixel_format_set = yes
+        }
 
-        context := wglCreateContext(info.platform_info.device_context)
-        on context == nil => {
+        legacy_context := wglCreateContext(info.platform_info.device_context)
+        on legacy_context == nil => {
             return no
         }
-        on wglMakeCurrent(info.platform_info.device_context, context) == 0 => {
-            _ := wglDeleteContext(context)
+        on wglMakeCurrent(info.platform_info.device_context, legacy_context) == 0 => {
+            _ := wglDeleteContext(legacy_context)
             return no
         }
+
+        context := frame_windows_create_modern_gl_context(info.platform_info.device_context,
+                                                          legacy_context)
+        on context == nil => return no
 
         info.platform_info.gl_context = context
         return yes

@@ -8,9 +8,31 @@
 use kernel
 use user
 
+pub WGL_CONTEXT_MAJOR_VERSION_ARB :: 0x2091
+pub WGL_CONTEXT_MINOR_VERSION_ARB :: 0x2092
+pub WGL_CONTEXT_PROFILE_MASK_ARB  :: 0x9126
+
+pub WGL_CONTEXT_CORE_PROFILE_BIT_ARB          :: 0x00000001
+pub WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB :: 0x00000002
+
+pub WGLCreateContextAttribsARBFn :: fn (hdc           : HDC,
+                                        share_context : HGLRC,
+                                        attribs       : ^i32) -> HGLRC
+
 ffi "opengl32" {
     pub wglCreateContext  (hdc: HDC) -> HGLRC
     pub wglMakeCurrent    (hdc: HDC, hglrc: HGLRC) -> BOOL
     pub wglDeleteContext  (hglrc: HGLRC) -> BOOL
     pub wglGetProcAddress (name: ^i8) -> ^void
+}
+
+pub wglGetValidProcAddress :: fn (name: ^i8) -> ^void {
+    address := wglGetProcAddress(name)
+    value := address.as(usize)
+    on value == 0 ||
+        value == 1 ||
+        value == 2 ||
+        value == 3 ||
+        value == 0xffffffffffffffff => return nil
+    return address
 }
