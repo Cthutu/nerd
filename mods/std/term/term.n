@@ -1066,6 +1066,32 @@ term_mouse_button_from_sgr :: fn (button_code: u32) -> u32 {
     }
 }
 
+term_mouse_wheel_from_sgr :: fn (button_code : u32,
+                                 x           : i32,
+                                 y           : i32) -> TermInputEvent {
+    wheel := button_code & 3
+
+    -- Some terminals report horizontal wheel/trackpad scrolling as shifted
+    -- vertical wheel events rather than xterm's direct 66/67 codes.
+    on (button_code & 4) != 0 => {
+        return on wheel {
+            0     => TermInputEvent.MouseWheel(x, y, -1, 0)
+            1     => TermInputEvent.MouseWheel(x, y, 1, 0)
+            2     => TermInputEvent.MouseWheel(x, y, -1, 0)
+            3     => TermInputEvent.MouseWheel(x, y, 1, 0)
+            else  => TermInputEvent.None
+        }
+    }
+
+    return on wheel {
+        0     => TermInputEvent.MouseWheel(x, y, 0, 1)
+        1     => TermInputEvent.MouseWheel(x, y, 0, -1)
+        2     => TermInputEvent.MouseWheel(x, y, -1, 0)
+        3     => TermInputEvent.MouseWheel(x, y, 1, 0)
+        else  => TermInputEvent.None
+    }
+}
+
 term_read_sgr_mouse_sequence :: fn () -> TermInputEvent {
     button := term_read_decimal_until(';', ';')
     on !button.0 || button.2 != ';' => return TermInputEvent.None
@@ -1085,14 +1111,7 @@ term_read_sgr_mouse_sequence :: fn () -> TermInputEvent {
 
     code := button.1
     on (code & 64) != 0 => {
-        wheel := code & 3
-        return on wheel {
-            0     => TermInputEvent.MouseWheel(x, y, 0, 1)
-            1     => TermInputEvent.MouseWheel(x, y, 0, -1)
-            2     => TermInputEvent.MouseWheel(x, y, -1, 0)
-            3     => TermInputEvent.MouseWheel(x, y, 1, 0)
-            else  => TermInputEvent.None
-        }
+        return term_mouse_wheel_from_sgr(code, x, y)
     }
 
     button_mask := term_mouse_button_from_sgr(code)
@@ -1165,5 +1184,61 @@ term_read_escape_sequence :: fn () -> Option[KeyCode] {
     return on event {
         TermInputEvent.KeyPress(code)  => Some(code)
         else                           => None
+    }
+}
+
+test "SGR mouse wheel decodes direct horizontal wheel codes" {
+    left := term_mouse_wheel_from_sgr(66, 4, 5)
+    on left {
+        MouseWheel(x, y, dx, dy) => {
+            assert x == 4
+            assert y == 5
+            assert dx == -1
+            assert dy == 0
+        }
+        else => {
+            assert no
+        }
+    }
+
+    right := term_mouse_wheel_from_sgr(67, 4, 5)
+    on right {
+        MouseWheel(x, y, dx, dy) => {
+            assert x == 4
+            assert y == 5
+            assert dx == 1
+            assert dy == 0
+        }
+        else => {
+            assert no
+        }
+    }
+}
+
+test "SGR mouse wheel decodes shifted vertical wheel as horizontal" {
+    left := term_mouse_wheel_from_sgr(68, 2, 3)
+    on left {
+        MouseWheel(x, y, dx, dy) => {
+            assert x == 2
+            assert y == 3
+            assert dx == -1
+            assert dy == 0
+        }
+        else => {
+            assert no
+        }
+    }
+
+    right := term_mouse_wheel_from_sgr(69, 2, 3)
+    on right {
+        MouseWheel(x, y, dx, dy) => {
+            assert x == 2
+            assert y == 3
+            assert dx == 1
+            assert dy == 0
+        }
+        else => {
+            assert no
+        }
     }
 }
