@@ -1,0 +1,155 @@
+use std.frame
+use std.gfx
+use std.time
+
+background_colour :: fn (x: u32, y: u32, tick: u32) -> u32 {
+    band := ((x / 6) + (y / 6) + (tick / 10)) & 1
+    red := ((x * 3 + tick * 2) & 255) << 16
+    green := ((y * 5 + tick) & 255) << 8
+    blue : u32 = on band == 0 => 0x38 else 0xa8
+    return 0xff000000 | red | green | blue
+}
+
+foreground_colour :: fn (x: u32, y: u32, tick: u32) -> u32 {
+    cx : u32 = 48
+    cy : u32 = 36
+
+    dx := on x > cx => x - cx else cx - x
+    dy := on y > cy => y - cy else cy - y
+    pulse := (tick / 4) & 31
+    ring := (dx + dy + pulse) & 31
+    red := (220 - ring * 4) << 16
+    green := ((x * 2 + tick * 3) & 255) << 8
+    blue := (80 + ring * 5) & 255
+    alpha : u32 = on ring < 8 => 0xe0 else 0x90
+    return (alpha << 24) | red | green | blue
+}
+
+draw_background :: fn (layer: ^PixelLayer, tick: u32) {
+    width := layer.pixel_width().as(u32)
+    height := layer.pixel_height().as(u32)
+    for y: u32 = 0; y < height; y += 1 {
+        for x: u32 = 0; x < width; x += 1 {
+            layer.put(x, y, background_colour(x, y, tick))
+        }
+    }
+}
+
+draw_foreground :: fn (layer: ^PixelLayer, tick: u32) {
+    layer.clear(0x00000000)
+
+    width := layer.pixel_width().as(u32)
+    height := layer.pixel_height().as(u32)
+    for y: u32 = 0; y < height; y += 1 {
+        for x: u32 = 0; x < width; x += 1 {
+            cx := width / 2
+            cy := height / 2
+            dx := on x > cx => x - cx else cx - x
+            dy := on y > cy => y - cy else cy - y
+            on dx * dx + dy * dy > 32 * 32 => again
+            layer.put(x, y, foreground_colour(x, y, tick))
+        }
+    }
+
+    layer.fill(PixelRect {
+        x : 0
+        y : 0
+        width
+        height: 2
+    }, 0xffffffff)
+    layer.fill(PixelRect {
+        x : 0
+        y : height - 2
+        width
+        height: 2
+    }, 0xffffffff)
+    layer.fill(PixelRect {
+        x     : 0
+        y     : 0
+        width : 2
+        height
+    }, 0xffffffff)
+    layer.fill(PixelRect {
+        x     : width - 2
+        y     : 0
+        width : 2
+        height
+    }, 0xffffffff)
+
+    bar_width := (tick % width) + 1
+    layer.fill(PixelRect {
+        x      : 4
+        y      : height - 8
+        width  : bar_width
+        height : 4
+    }, 0xffffcc40)
+}
+
+main :: fn () {
+    frame_system := FrameSystem.init()
+    frame := Frame {
+        id          : NEW_FRAME
+        width       : 768
+        height      : 512
+        title       : "Pixel Layers"
+        full_screen : no
+        resizable   : yes
+        ...
+    }
+
+    frame_system.apply(^frame)
+
+    gfx := GfxSystem.init()
+    defer gfx.done()
+
+    background := gfx.pixel_layer(^frame,
+                                  PixelLayerMode.FitToWindow { pixel_scale: 4 })
+    foreground := gfx.pixel_layer(^frame, PixelLayerMode.FixedSizeAutoScale {
+        width  : 96
+        height : 72
+    })
+
+    tick : u32 = 0
+
+    for frame_system.loop() {
+        frame_system.update(^frame)
+
+        for event := frame_system.poll(^frame); event != FrameEvent.None; event = frame_system.poll(^frame) {
+            on event {
+                None => {
+                }
+                Closed => {
+                }
+                KeyPress { scan_code } => {
+                    on scan_code {
+                        Escape => {
+                            frame_system.destroy(^frame)
+                        }
+                        Q => {
+                            frame_system.destroy(^frame)
+                        }
+                        Enter => {
+                            on frame_system.is_alt_down() => {
+                                frame.full_screen = !frame.full_screen
+                                frame_system.apply(^frame)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        background_layer := gfx.pixel(background)
+        foreground_layer := gfx.pixel(foreground)
+        on background_layer != nil && foreground_layer != nil => {
+            draw_background(background_layer, tick)
+            draw_foreground(foreground_layer, tick)
+            gfx.render(^frame)
+        }
+
+        tick += 1
+        sleep_ms(16)
+    }
+
+    frame_system.destroy(^frame)
+}

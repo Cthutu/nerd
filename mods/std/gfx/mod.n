@@ -140,6 +140,36 @@ gfx_pixel_layer_index :: fn (layer: ^PixelLayer, x: u32, y: u32) -> usize {
     return (y * layer.width.as(u32) + x).as(usize)
 }
 
+gfx_blend_channel :: fn (source: u32, dest: u32, alpha: u32) -> u32 {
+    return (source * alpha + dest * (255 - alpha) + 127) / 255
+}
+
+-- Blends an ARGB source pixel over an opaque destination pixel.
+gfx_blend_pixel :: fn (dest: u32, source: u32) -> u32 {
+    alpha := (source >> 24) & 0xff
+    on alpha == 0 => return dest
+    on alpha == 255 => return 0xff000000 | (source & 0x00ffffff)
+
+    sr := (source >> 16) & 0xff
+    sg := (source >> 8) & 0xff
+    sb := source & 0xff
+    dr := (dest >> 16) & 0xff
+    dg := (dest >> 8) & 0xff
+    db := dest & 0xff
+
+    r := gfx_blend_channel(sr, dr, alpha)
+    g := gfx_blend_channel(sg, dg, alpha)
+    b := gfx_blend_channel(sb, db, alpha)
+    return 0xff000000 | (r << 16) | (g << 8) | b
+}
+
+gfx_pixel_layer_is_opaque :: fn (layer: ^PixelLayer) -> bool {
+    for pixel in layer.data {
+        on (pixel^ >> 24) != 0xff => return no
+    }
+    return yes
+}
+
 -- Returns the integer presentation scale for a layer in a frame.
 gfx_pixel_layer_present_scale :: fn (frame: ^Frame, layer: ^PixelLayer) -> u16 {
     on layer.mode {
@@ -651,7 +681,7 @@ gfx_render_impl :: fn (system: ^GfxSystem, frame: ^Frame) {
         single_layer = layer
     }
 
-    on layer_count == 1 && single_layer != nil => {
+    on layer_count == 1 && single_layer != nil && gfx_pixel_layer_is_opaque(single_layer) => {
         scale := gfx_pixel_layer_present_scale(frame, single_layer)
         offset := gfx_pixel_layer_present_offset(frame, single_layer, scale)
         draw_width := single_layer.width.as(u32) * scale.as(u32)
@@ -673,7 +703,7 @@ gfx_render_impl :: fn (system: ^GfxSystem, frame: ^Frame) {
 
     pixels := temp_arena.alloc_array[u32]((frame_width * frame_height).as(usize))
     for i: usize = 0; i < pixels.count; i += 1 {
-        pixels[i] = 0x00000000
+        pixels[i] = 0xff000000
     }
 
     for layer in system.pixel_layers {
@@ -688,7 +718,7 @@ gfx_render_impl :: fn (system: ^GfxSystem, frame: ^Frame) {
 
         for y: u32 = 0; y < layer.height.as(u32); y += 1 {
             for x: u32 = 0; x < layer.width.as(u32); x += 1 {
-                colour := layer.data[gfx_pixel_layer_index(layer, x, y)] & 0x00ffffff
+                colour := layer.data[gfx_pixel_layer_index(layer, x, y)]
                 dest_x := offset.0.as(u32) + x * scale.as(u32)
                 dest_y := offset.1.as(u32) + y * scale.as(u32)
                 for sy: u32 = 0; sy < scale.as(u32); sy += 1 {
@@ -697,7 +727,10 @@ gfx_render_impl :: fn (system: ^GfxSystem, frame: ^Frame) {
                     row := (py * frame_width + dest_x).as(usize)
                     for sx: u32 = 0; sx < scale.as(u32); sx += 1 {
                         px := dest_x + sx
-                        on px < frame_width => pixels[row + sx.as(usize)] = colour
+                        on px < frame_width => {
+                            index := row + sx.as(usize)
+                            pixels[index] = gfx_blend_pixel(pixels[index], colour)
+                        }
                     }
                 }
             }
@@ -883,6 +916,35 @@ test "fixed-size pixel layer presentation scale letterboxes" {
     assert scale == 3
     assert offset.0 == 0
     assert offset.1 == 1
+}
+
+test "alpha blending composites over opaque pixels" {
+    assert gfx_blend_pixel(0xff102030, 0x00000000) == 0xff102030
+    assert gfx_blend_pixel(0xff102030, 0xffff0000) == 0xffff0000
+    assert gfx_blend_pixel(0xff000000, 0x80ffffff) == 0xff808080
+    assert gfx_blend_pixel(0xff204060, 0x800000ff) == 0xff1020b0
+}
+
+test "pixel layer opacity follows alpha channel" {
+    layer := PixelLayer {
+        frame_id: 1
+        mode: PixelLayerMode.FixedSizeAutoScale {
+            width  : 2
+            height : 1
+        }
+        width  : 2
+        height : 1
+        data   : nil
+    }
+    defer layer.done()
+
+    gfx_pixel_layer_resize(^layer, 2, 1)
+    layer.data[0] = 0xff000000
+    layer.data[1] = 0xffffffff
+    assert gfx_pixel_layer_is_opaque(^layer)
+
+    layer.data[1] = 0x7fffffff
+    assert !gfx_pixel_layer_is_opaque(^layer)
 }
 
 test "pixel layer clear put fill and paint update pixels" {

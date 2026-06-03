@@ -201,7 +201,8 @@ Pixel layers use two sizing modes:
   the centred layer. Zero width or height is treated as one.
 
 `PixelLayer.pixels()` returns a borrowed contiguous `[]u32` view of the whole
-virtual buffer. `clear`, `put`, and `fill` mutate the buffer in virtual pixel
+virtual buffer. Pixels are `0xAARRGGBB`; alpha is used when multiple layers are
+composited. `clear`, `put`, and `fill` mutate the buffer in virtual pixel
 coordinates. `fill` clips rectangles to the layer bounds. `paint(area, painter,
 user = nil)` clips `area`, then calls `painter` with a borrowed slice starting
 at the first clipped pixel, the clipped width and height, the full layer stride,
