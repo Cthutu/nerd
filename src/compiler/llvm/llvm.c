@@ -15130,10 +15130,21 @@ internal void llvm_render_imported_generic_function_declarations(
     }
 }
 
-internal bool llvm_hir_has_globals(const Hir* hir)
+internal bool llvm_hir_value_is_imported(const Sema*     sema,
+                                         const HirValue* value)
+{
+    if (sema == NULL || value == NULL ||
+        value->decl_index >= array_count(sema->decls)) {
+        return false;
+    }
+    return sema->decls[value->decl_index].import_module_index != sema_no_decl();
+}
+
+internal bool llvm_hir_has_globals(const Sema* sema, const Hir* hir)
 {
     for (u32 i = 0; i < array_count(hir->values); ++i) {
-        if (hir->values[i].kind == HIR_VALUE_Global) {
+        if (hir->values[i].kind == HIR_VALUE_Global &&
+            !llvm_hir_value_is_imported(sema, &hir->values[i])) {
             return true;
         }
     }
@@ -15218,6 +15229,9 @@ internal void llvm_render_global_values(StringBuilder*   sb,
         if (value->kind != HIR_VALUE_Global) {
             continue;
         }
+        if (llvm_hir_value_is_imported(sema, value)) {
+            continue;
+        }
 
         u32 symbol_handle = llvm_value_symbol_handle(hir, i);
         if (symbol_handle == U32_MAX) {
@@ -15250,6 +15264,7 @@ internal void llvm_render_global_slice_backing_values(StringBuilder* sb,
     for (u32 i = 0; i < array_count(hir->values); ++i) {
         const HirValue* value = &hir->values[i];
         if (value->kind != HIR_VALUE_Global ||
+            llvm_hir_value_is_imported(sema, value) ||
             value->value_expr_index >= array_count(hir->exprs)) {
             continue;
         }
@@ -15280,7 +15295,7 @@ internal void llvm_render_global_init(StringBuilder* sb,
                                       const Sema*    sema,
                                       Arena*         arena)
 {
-    if (!llvm_hir_has_globals(hir)) {
+    if (!llvm_hir_has_globals(sema, hir)) {
         return;
     }
 
@@ -15311,6 +15326,7 @@ internal void llvm_render_global_init(StringBuilder* sb,
     for (u32 i = 0; i < array_count(hir->values); ++i) {
         const HirValue* value = &hir->values[i];
         if (value->kind != HIR_VALUE_Global ||
+            llvm_hir_value_is_imported(sema, value) ||
             value->value_expr_index == U32_MAX) {
             continue;
         }
@@ -15593,7 +15609,8 @@ string llvm_render_hir(const Hir*   hir,
     LlvmDebugModule* debug         = NULL;
     if (emit_debug) {
         debug = &debug_storage;
-        llvm_debug_init(debug, arena, lexer, llvm_hir_has_globals(hir));
+        llvm_debug_init(
+            debug, arena, lexer, llvm_hir_has_globals(render_sema, hir));
     }
 
     sb_append_cstr(&sb, "; nerd llvm-ir 0\n");
@@ -15662,7 +15679,7 @@ string llvm_render_hir(const Hir*   hir,
         sb_append_char(&sb, '\n');
     }
 
-    if (llvm_hir_has_globals(hir)) {
+    if (llvm_hir_has_globals(render_sema, hir)) {
         llvm_render_global_slice_backing_values(&sb, hir, lexer, render_sema);
         llvm_render_global_values(&sb, hir, lexer, render_sema, arena, debug);
         sb_append_char(&sb, '\n');

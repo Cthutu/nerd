@@ -132,6 +132,10 @@ main :: fn () {}
                 "kind": 9
             },
             {
+                "label": "folder_part_global",
+                "kind": 9
+            },
+            {
                 "label": "folder_priority",
                 "kind": 9
             },
