@@ -637,6 +637,23 @@ internal void back_end_llvm_modules_done(BackEndLlvmModules* modules)
     *modules = (BackEndLlvmModules){0};
 }
 
+internal bool back_end_llvm_module_defines_init(string module_llvm,
+                                                u32    module_index)
+{
+    char needle[64] = {0};
+    snprintf(needle, sizeof(needle), "define void @m%u.init()", module_index);
+    usize needle_count = strlen(needle);
+    if (needle_count == 0 || module_llvm.count < needle_count) {
+        return false;
+    }
+    for (usize i = 0; i + needle_count <= module_llvm.count; ++i) {
+        if (memcmp(module_llvm.data + i, needle, needle_count) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
 internal bool back_end_render_llvm_modules(Arena*                    arena,
                                            const ProgramInfo*        program,
                                            const NerdArtifactConfig* artifacts,
@@ -679,7 +696,7 @@ internal bool back_end_render_llvm_modules(Arena*                    arena,
             cstr llvm_path = back_end_module_llvm_path(arena, artifacts, i);
             nerd_side_file_register_cleanup(artifacts->side_files, llvm_path);
         }
-        if (back_end_llvm_runtime_hir_has_globals(&front_end->hir)) {
+        if (back_end_llvm_module_defines_init(module_llvm, i)) {
             array_push(out->init_module_indices, i);
         }
     }

@@ -47,16 +47,6 @@ bool back_end_llvm_runtime_write_pic_object(cstr path)
         path, g_nrt_pic_object, sizeof(g_nrt_pic_object));
 }
 
-bool back_end_llvm_runtime_hir_has_globals(const Hir* hir)
-{
-    for (u32 i = 0; i < array_count(hir->values); ++i) {
-        if (hir->values[i].kind == HIR_VALUE_Global) {
-            return true;
-        }
-    }
-    return false;
-}
-
 BackEndRootMainInfo
 back_end_llvm_runtime_root_main_info(const FrontEndState* root)
 {

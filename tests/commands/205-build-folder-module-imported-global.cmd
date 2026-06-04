@@ -1,7 +1,7 @@
 use test.folder_part_global
 
 main :: fn () -> i32 {
-    return part_value() - 42
+    return (counter + part_value()) - 83
 }
 ¬
 0

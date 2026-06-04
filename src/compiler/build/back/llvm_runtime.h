@@ -18,7 +18,6 @@ typedef struct {
 
 bool back_end_llvm_runtime_write_object(cstr path);
 bool back_end_llvm_runtime_write_pic_object(cstr path);
-bool back_end_llvm_runtime_hir_has_globals(const Hir* hir);
 BackEndRootMainInfo
 back_end_llvm_runtime_root_main_info(const FrontEndState* root);
 string back_end_llvm_runtime_epilogue(Arena*              arena,
