@@ -61,6 +61,14 @@ internal u32 lsp_token_index_from_pointer(const Lexer* lexer,
     return (u32)(token - lexer->tokens);
 }
 
+internal cstr lsp_cstr_from_string(Arena* arena, string text)
+{
+    char* copy = arena_alloc(arena, text.count + 1);
+    memcpy(copy, text.data, text.count);
+    copy[text.count] = '\0';
+    return copy;
+}
+
 //------------------------------------------------------------------------------
 // Return the analysed-source offset where the open editor document begins.
 // Folder modules analyse `mod.n` plus implicit sibling parts as one source, but
@@ -343,6 +351,35 @@ internal string lsp_path_to_uri(Arena* arena, cstr path)
 //------------------------------------------------------------------------------
 // Build a location object for one declaration inside a specific module.
 
+internal bool lsp_source_fragment_for_range(NerdSource          source,
+                                            usize               start_offset,
+                                            usize               end_offset,
+                                            NerdSourceFragment* out_fragment,
+                                            NerdSource*         out_source,
+                                            usize*              out_start,
+                                            usize*              out_end)
+{
+    for (u32 i = 0; i < array_count(source.fragments); ++i) {
+        NerdSourceFragment fragment = source.fragments[i];
+        if (start_offset < fragment.start || end_offset > fragment.end) {
+            continue;
+        }
+
+        usize source_prefix_start = fragment.start - fragment.source_start;
+        usize source_count        = fragment.end - source_prefix_start;
+        *out_fragment             = fragment;
+        *out_source               = (NerdSource){
+            .source      = string_from(source.source.data + source_prefix_start,
+                                       source_count),
+            .source_path = fragment.source_path,
+        };
+        *out_start = start_offset - fragment.start + fragment.source_start;
+        *out_end   = end_offset - fragment.start + fragment.source_start;
+        return true;
+    }
+    return false;
+}
+
 internal JsonValue*
 lsp_module_decl_location(LspModuleView module, Arena* arena, u32 decl_index)
 {
@@ -366,15 +403,40 @@ lsp_module_decl_location(LspModuleView module, Arena* arena, u32 decl_index)
     usize end_offset;
     lsp_token_offsets(module.lexer, token_index, &start_offset, &end_offset);
 
-    JsonValue* location = json_new_object(arena);
-    json_object_set_string(location,
-                           arena,
-                           "uri",
-                           lsp_path_to_uri(arena, module.info->resolved_path));
-    json_object_set_object(
-        location,
-        "range",
-        lsp_make_range(arena, module.lexer->source, start_offset, end_offset));
+    JsonValue*         location      = json_new_object(arena);
+    NerdSourceFragment fragment      = {0};
+    NerdSource         mapped_source = {0};
+    usize              mapped_start  = 0;
+    usize              mapped_end    = 0;
+    if (lsp_source_fragment_for_range(module.lexer->source,
+                                      start_offset,
+                                      end_offset,
+                                      &fragment,
+                                      &mapped_source,
+                                      &mapped_start,
+                                      &mapped_end)) {
+        json_object_set_string(
+            location,
+            arena,
+            "uri",
+            lsp_path_to_uri(arena,
+                            lsp_cstr_from_string(arena, fragment.source_path)));
+        json_object_set_object(
+            location,
+            "range",
+            lsp_make_range(arena, mapped_source, mapped_start, mapped_end));
+    } else {
+        json_object_set_string(
+            location,
+            arena,
+            "uri",
+            lsp_path_to_uri(arena, module.info->resolved_path));
+        json_object_set_object(
+            location,
+            "range",
+            lsp_make_range(
+                arena, module.lexer->source, start_offset, end_offset));
+    }
     return location;
 }
 

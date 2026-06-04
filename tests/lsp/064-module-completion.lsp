@@ -148,6 +148,10 @@ main :: fn () {}
                 "kind": 9
             },
             {
+                "label": "imported_callback",
+                "kind": 9
+            },
+            {
                 "label": "imported_const_codegen",
                 "kind": 9
             },

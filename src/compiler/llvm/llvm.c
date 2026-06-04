@@ -8192,6 +8192,28 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 const HirImport* import =
                     llvm_binding_import(ctx->hir, expr->ref_index);
                 if (import != NULL) {
+                    const Hir* source_hir     = NULL;
+                    u32        function_index = U32_MAX;
+                    if ((llvm_type_is_function(ctx->sema, expr->type_index) ||
+                         llvm_type_is_function(ctx->sema,
+                                               import->type_index)) &&
+                        llvm_import_source_function(ctx->sema,
+                                                    ctx->lexer,
+                                                    import,
+                                                    &source_hir,
+                                                    &function_index)) {
+                        return (LlvmValue){
+                            .ok         = true,
+                            .type_index = expr->type_index,
+                            .value      = llvm_function_name_string(
+                                source_hir,
+                                &ctx->sema->program
+                                     ->modules[import->module_index]
+                                     .front_end.lexer,
+                                ctx->arena,
+                                function_index),
+                        };
+                    }
                     return llvm_emit_imported_constant_value(
                         ctx, function, import, expr->type_index);
                 }

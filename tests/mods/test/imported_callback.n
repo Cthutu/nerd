@@ -1,0 +1,9 @@
+pub Callback :: fn () -> i32
+
+pub imported_callback :: fn () -> i32 {
+    return 41
+}
+
+pub call_callback :: fn (callback: Callback) -> i32 {
+    return callback()
+}
