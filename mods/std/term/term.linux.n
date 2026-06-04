@@ -359,6 +359,15 @@ pub term_valid :: fn () -> bool {
     return term_initialised && !term_too_small()
 }
 
+-- Registers an input callback. The callback runs from `term_run` after input is
+-- drained and before the too-small policy can pause simulation, making it
+-- suitable for global keys such as quit.
+pub term_hook_input :: fn (callback: TermInputFn, user_data: ^void = nil) {
+    term_input_hook      = callback
+    term_input_user_data = user_data
+    term_input_hook_set  = yes
+}
+
 -- Registers a simulation callback. The callback runs from `term_run` no more
 -- often than `interval`, receives accumulated keyboard edges and
 -- caller-supplied `user_data`, and is skipped while the terminal is below its
@@ -388,8 +397,10 @@ pub term_hook_presentation :: fn (interval  : Duration,
 
 -- Clears registered terminal callbacks and their timing state.
 pub term_hooks_clear :: fn () {
+    term_input_hook_set     = no
     term_simulate_hook_set  = no
     term_present_hook_set   = no
+    term_input_user_data    = nil
     term_simulate_user_data = nil
     term_present_user_data  = nil
     term_simulate_interval  = 0
@@ -414,6 +425,19 @@ term_hooks_reset_timing :: fn (current: Instant) {
     term_simulate_ran  = no
     term_present_ran   = no
     term_keyboard_clear_edges()
+}
+
+term_run_input_hook :: fn () {
+    on !term_input_hook_set => return
+
+    input := TermInput {
+        width     : term_last_columns
+        height    : term_last_rows
+        keyboard  : term_keyboard_snapshot()
+        mouse     : term_mouse
+        user_data : term_input_user_data
+    }
+    term_input_hook(input)
 }
 
 term_run_simulation_hook :: fn (current: Instant) {
@@ -553,6 +577,8 @@ term_run_step :: fn () -> bool {
     }
 
     term_resize_if_needed()
+    term_run_input_hook()
+    on term_done_requested => return yes
 
     current := now()
     term_view_reset()
@@ -596,10 +622,17 @@ test {
     }
 
     term_test_payload                : u32
+    term_test_input_user_data        : ^void
     term_test_simulate_user_data     : ^void
     term_test_presentation_user_data : ^void
+    term_test_input_count            : u32
     term_test_simulate_count         : u32
+    term_test_input_keyboard         : TermKeyboard
     term_test_keyboard               : TermKeyboard
+
+    term_capture_input :: fn (input: TermInput) {
+        term_test_input_user_data = input.user_data
+    }
 
     term_capture_simulate :: fn (sim: TermSimulate) {
         term_test_simulate_user_data = sim.user_data
@@ -612,6 +645,15 @@ test {
     term_count_simulate :: fn (sim: TermSimulate) {
         term_test_simulate_count += 1
         term_test_keyboard       = sim.keyboard
+    }
+
+    term_count_input :: fn (input: TermInput) {
+        term_test_input_count    += 1
+        term_test_input_keyboard = input.keyboard
+    }
+
+    term_quit_input :: fn (input: TermInput) {
+        on term_key_pressed(input.keyboard, KeyCode.LowerQ) => term_done()
     }
 
 }
@@ -1170,6 +1212,65 @@ test "too-small pause policy clears key edges but keeps down state" {
     assert !term_simulate_ran
     assert !term_present_ran
 
+    term_keyboard_clear()
+    term_fb_release()
+}
+
+test "too-small pause policy still runs input hook" {
+    term_fb_release()
+    assert term_fb_resize(10, 3)
+    term_keyboard_clear()
+    term_test_input_count = 0
+    term_min_width        = 80
+    term_min_height       = 25
+    term_too_small_policy = TermTooSmallPolicy.PauseSimulation
+    term_last_columns     = 79
+    term_last_rows        = 25
+    term_simulate_ran     = yes
+    term_present_ran      = yes
+    term_hook_input(term_count_input)
+    term_hook_simulation(50.as(Duration), term_count_simulate)
+
+    term_event_record(TermInputEvent.KeyPress(KeyCode.LowerQ))
+    term_run_input_hook()
+    term_handle_too_small(100.as(Instant))
+
+    assert term_test_input_count == 1
+    assert term_key_down(term_test_input_keyboard, KeyCode.LowerQ)
+    assert term_key_pressed(term_test_input_keyboard, KeyCode.LowerQ)
+    assert !term_simulate_ran
+    assert !term_present_ran
+
+    keyboard := term_keyboard_snapshot()
+    assert !term_key_down(keyboard, KeyCode.LowerQ)
+    assert !term_key_pressed(keyboard, KeyCode.LowerQ)
+    assert !term_key_released(keyboard, KeyCode.LowerQ)
+
+    term_hooks_clear()
+    term_keyboard_clear()
+    term_fb_release()
+}
+
+test "too-small input hook can request shutdown" {
+    term_fb_release()
+    assert term_fb_resize(10, 3)
+    term_keyboard_clear()
+    term_initialised      = yes
+    term_done_requested   = no
+    term_min_width        = 80
+    term_min_height       = 25
+    term_too_small_policy = TermTooSmallPolicy.PauseSimulation
+    term_last_columns     = 79
+    term_last_rows        = 25
+    term_hook_input(term_quit_input)
+
+    term_event_record(TermInputEvent.KeyPress(KeyCode.LowerQ))
+    term_run_input_hook()
+    assert term_done_requested
+
+    term_initialised    = no
+    term_done_requested = no
+    term_hooks_clear()
     term_keyboard_clear()
     term_fb_release()
 }

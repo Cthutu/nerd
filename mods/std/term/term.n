@@ -9,10 +9,10 @@
 -- Application lifecycle: - `term_init()` enters raw mode and the alternate
 -- screen, prepares the framebuffer, and captures the initial terminal size. -
 -- `term_run()` drives hook-based applications until `term_done()` is called.
--- Use `term_hook_simulation()` for input/state updates and
--- `term_hook_presentation()` for framebuffer drawing. - `term_done()` only
--- requests shutdown. Cleanup happens inside the next terminal step so the
--- cursor, raw mode, and alternate screen are restored.
+-- Use `term_hook_input()` for global input, `term_hook_simulation()` for
+-- input/state updates, and `term_hook_presentation()` for framebuffer drawing.
+-- - `term_done()` only requests shutdown. Cleanup happens inside the next
+-- terminal step so the cursor, raw mode, and alternate screen are restored.
 --
 -- Framebuffer drawing: - `term_fb_clear`, `term_fb_put`, `term_fb_text`,
 -- `term_fb_fill_rect`, `term_fb_paint_rect`, and `term_fb_box` write to a
@@ -248,11 +248,20 @@ pub TermPresent :: plex {
     user_data ^void
 }
 
+pub TermInput :: plex {
+    width     u32
+    height    u32
+    keyboard  TermKeyboard
+    mouse     TermMouse
+    user_data ^void
+}
+
 pub TermTooSmallPolicy :: enum {
     PauseSimulation
     ContinueSimulation
 }
 
+pub TermInputFn    :: fn (TermInput)
 pub TermSimulateFn :: fn (TermSimulate)
 pub TermPresentFn  :: fn (TermPresent)
 
@@ -310,6 +319,9 @@ term_keyboard_pressed   : [TERM_KEY_CODE_COUNT]bool
 term_keyboard_released  : [TERM_KEY_CODE_COUNT]bool
 term_keyboard_pulse     : [TERM_KEY_CODE_COUNT]bool
 term_mouse              : TermMouse
+term_input_hook         : TermInputFn
+term_input_hook_set     : bool
+term_input_user_data    : ^void
 term_simulate_hook      : TermSimulateFn
 term_simulate_hook_set  : bool
 term_simulate_user_data : ^void
