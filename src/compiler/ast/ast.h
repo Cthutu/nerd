@@ -23,7 +23,7 @@
 // | AK_StringConcat        | Ast index of lhs                  | Ast index of rhs                |
 // | AK_InterpPartExpr      | Ast index of expr                 | 0                               |
 // | AK_InterpolatedString  | First part index                  | End-exclusive part index        |
-// | AK_BuiltinMacro        | Symbol handle                     | 0                               |
+// | AK_BuiltinMacro        | Symbol handle                     | Optional arg expr or U32_MAX     |
 // | AK_SymbolRef           | Symbol handle                     | 0                               |
 // | AK_EnumVariant         | Symbol handle                     | 0                               |
 // | AK_LogicalNot          | Ast index of rhs                  | 0                               |

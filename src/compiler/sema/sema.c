@@ -23,6 +23,39 @@ internal u32 sema_no_scope(void) { return U32_MAX; }
 
 u32 sema_no_type(void) { return U32_MAX; }
 
+internal cstr sema_cstr_from_string(Arena* arena, string value)
+{
+    char* result = arena_alloc(arena, value.count + 1);
+    memcpy(result, value.data, value.count);
+    result[value.count] = '\0';
+    return result;
+}
+
+internal bool sema_path_is_absolute(string path)
+{
+    if (path.count == 0) {
+        return false;
+    }
+    if (path.data[0] == '/' || path.data[0] == '\\') {
+        return true;
+    }
+    return path.count >= 3 && path.data[1] == ':' &&
+           (path.data[2] == '/' || path.data[2] == '\\');
+}
+
+internal cstr sema_resolve_source_relative_path(Arena* arena,
+                                                string source_path,
+                                                string relative_path)
+{
+    cstr path = sema_cstr_from_string(arena, relative_path);
+    if (sema_path_is_absolute(relative_path)) {
+        return path;
+    }
+
+    cstr source = sema_cstr_from_string(arena, source_path);
+    return path_join(arena, path_dirname(arena, source), path);
+}
+
 //------------------------------------------------------------------------------
 // Predeclare the current built-in runtime functions.
 
@@ -2561,10 +2594,7 @@ internal bool sema_windows_library_should_validate(string library)
 #if OS_WINDOWS
 internal cstr sema_string_to_cstr(Arena* arena, string value)
 {
-    char* result = arena_alloc(arena, value.count + 1);
-    memcpy(result, value.data, value.count);
-    result[value.count] = '\0';
-    return result;
+    return sema_cstr_from_string(arena, value);
 }
 #endif
 
@@ -10002,6 +10032,13 @@ sema_type_matches(const Sema* sema, u32 expected_type, u32 actual_type)
         return true;
     }
 
+    if (sema->types[expected_type].kind == STK_Slice &&
+        sema->types[actual_type].kind == STK_Array &&
+        sema->types[expected_type].first_param_type ==
+            sema->types[actual_type].first_param_type) {
+        return true;
+    }
+
     if (sema->types[expected_type].kind == STK_Pointer &&
         sema->types[actual_type].kind == STK_Pointer &&
         sema->types[sema->types[expected_type].first_param_type].kind ==
@@ -16543,13 +16580,36 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 type_index = sema_type_is_concrete_integer(sema, expected_type)
                                  ? expected_type
                                  : sema_builtin_type(sema, STK_UntypedInteger);
+            } else if (string_eq_cstr(name, "embed")) {
+                if (node->b == U32_MAX ||
+                    ast->nodes[node->b].kind != AK_StringLiteral) {
+                    return error_0304_type_mismatch(lexer->source,
+                                                    sema_node_span(lexer, node),
+                                                    s("string literal"),
+                                                    s("@embed argument"));
+                }
+
+                string relative_path = lexer->strings[ast->nodes[node->b].a];
+                cstr   resolved_path = sema_resolve_source_relative_path(
+                    &temp_arena, lexer->source.source_path, relative_path);
+                if (!path_exists(resolved_path) ||
+                    path_is_directory(resolved_path)) {
+                    return error_0304_type_mismatch(
+                        lexer->source,
+                        sema_node_span(lexer, node),
+                        s("readable embedded file"),
+                        string_format(&temp_arena, "`%s`", resolved_path));
+                }
+
+                type_index =
+                    sema_add_slice_type(sema, sema_builtin_type(sema, STK_U8));
             } else {
                 return error_0204_unexpected_token_here(
                     lexer->source,
                     sema_node_span(lexer, node),
                     lexer->tokens[node->token_index].kind,
                     "unknown built-in macro",
-                    "Use `@file` or `@line`");
+                    "Use `@file`, `@line`, or `@embed(\"path\")`");
             }
         }
         break;

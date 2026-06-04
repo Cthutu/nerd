@@ -1,0 +1,11 @@
+pub static_bytes :: @embed("data.bin")
+
+pub static_total :: fn () -> i32 {
+    return static_bytes[0].as(i32) + static_bytes[1].as(i32) + static_bytes[2].as(i32) + static_bytes[3].as(i32) + static_bytes[4].as(i32)
+}
+
+pub inferred_total :: fn () -> i32 {
+    bytes := @embed("data.bin")
+    on bytes.count != 5 => return 1
+    return bytes[4].as(i32)
+}

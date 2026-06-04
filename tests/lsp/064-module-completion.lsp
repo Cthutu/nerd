@@ -112,6 +112,14 @@ main :: fn () {}
                 "kind": 9
             },
             {
+                "label": "embed_forms",
+                "kind": 9
+            },
+            {
+                "label": "embed_relative",
+                "kind": 9
+            },
+            {
                 "label": "ffi_alias",
                 "kind": 9
             },

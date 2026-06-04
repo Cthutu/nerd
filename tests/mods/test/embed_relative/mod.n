@@ -1,0 +1,5 @@
+pub local_bytes :: @embed("local.bin")
+
+pub local_total :: fn () -> i32 {
+    return local_bytes[0].as(i32) + local_bytes[1].as(i32) + local_bytes[2].as(i32)
+}

@@ -40,6 +40,40 @@ internal u32 hir_node_scope(const Sema* sema, u32 node_index)
                : hir_no_index();
 }
 
+internal cstr hir_cstr_from_string(Arena* arena, string value)
+{
+    char* result = arena_alloc(arena, value.count + 1);
+    memcpy(result, value.data, value.count);
+    result[value.count] = '\0';
+    return result;
+}
+
+internal bool hir_path_is_absolute(string path)
+{
+    if (path.count == 0) {
+        return false;
+    }
+    if (path.data[0] == '/' || path.data[0] == '\\') {
+        return true;
+    }
+    return path.count >= 3 && path.data[1] == ':' &&
+           (path.data[2] == '/' || path.data[2] == '\\');
+}
+
+internal string hir_resolve_source_relative_path(Arena* arena,
+                                                 string source_path,
+                                                 string relative_path)
+{
+    cstr path = hir_cstr_from_string(arena, relative_path);
+    if (hir_path_is_absolute(relative_path)) {
+        return string_from_cstr(path);
+    }
+
+    cstr source = hir_cstr_from_string(arena, source_path);
+    return string_from_cstr(
+        path_join(arena, path_dirname(arena, source), path));
+}
+
 internal u32 hir_node_line(const Lexer* lexer, const Ast* ast, u32 node_index)
 {
     if (lexer == NULL || ast == NULL || node_index >= array_count(ast->nodes)) {
@@ -1459,6 +1493,15 @@ internal u32 hir_lower_expr(Hir*         hir,
         }
     case AK_BuiltinMacro:
         {
+            string source_path = lexer->source.source_path;
+            if (node->b != U32_MAX &&
+                ast->nodes[node->b].kind == AK_StringLiteral) {
+                source_path = hir_resolve_source_relative_path(
+                    &hir->arena,
+                    lexer->source.source_path,
+                    lexer->strings[ast->nodes[node->b].a]);
+            }
+
             u32 line = 0;
             u32 col  = 0;
             if (node->token_index < array_count(lexer->tokens)) {
@@ -1475,7 +1518,7 @@ internal u32 hir_lower_expr(Hir*         hir,
                     .symbol_handle = node->a,
                     .local_index   = sema_no_local(),
                     .source_line   = line + 1,
-                    .source_path   = lexer->source.source_path,
+                    .source_path   = source_path,
                 });
         }
     case AK_StringConcat:

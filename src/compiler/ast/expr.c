@@ -113,6 +113,71 @@ ast_parse_builtin_macro(AstParseState* state, AstToken token, u32* out_node)
                                  .kind        = AK_BuiltinMacro,
                                  .token_index = token.token_index,
                                  .a           = symbol_handle,
+                                 .b           = U32_MAX,
+                             },
+                             out_node);
+    }
+
+    if (string_eq_cstr(name, "embed")) {
+        if (!ast_next_token(state)) {
+            return error_0203_expected_token(state->lexer->source,
+                                             ast_token_span(state, &token),
+                                             TK_LParen,
+                                             state->token.kind);
+        }
+        if (state->token.kind != TK_LParen) {
+            return error_0203_expected_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                TK_LParen,
+                state->token.kind);
+        }
+        if (!ast_next_token(state)) {
+            return error_0203_expected_token(state->lexer->source,
+                                             ast_token_span(state, &token),
+                                             TK_String,
+                                             state->token.kind);
+        }
+
+        if (state->token.kind != TK_String) {
+            return error_0203_expected_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                TK_String,
+                state->token.kind);
+        }
+
+        u32 arg_node = 0;
+        if (!ast_emit_node(state,
+                           (AstNode){
+                               .kind        = AK_StringLiteral,
+                               .token_index = state->token.token_index,
+                               .a           = state->token.value.string_index,
+                           },
+                           &arg_node)) {
+            return false;
+        }
+
+        if (!ast_next_token(state)) {
+            return error_0203_expected_token(state->lexer->source,
+                                             ast_token_span(state, &token),
+                                             TK_RParen,
+                                             state->token.kind);
+        }
+        if (state->token.kind != TK_RParen) {
+            return error_0203_expected_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                TK_RParen,
+                state->token.kind);
+        }
+
+        return ast_emit_node(state,
+                             (AstNode){
+                                 .kind        = AK_BuiltinMacro,
+                                 .token_index = token.token_index,
+                                 .a           = symbol_handle,
+                                 .b           = arg_node,
                              },
                              out_node);
     }
@@ -122,7 +187,7 @@ ast_parse_builtin_macro(AstParseState* state, AstToken token, u32* out_node)
         ast_token_span(state, &state->token),
         state->token.kind,
         "unknown built-in macro",
-        "Use `@file` or `@line`");
+        "Use `@file`, `@line`, or `@embed(\"path\")`");
 }
 
 internal TokenKind ast_expr_cursor_kind(const AstParseState* state)

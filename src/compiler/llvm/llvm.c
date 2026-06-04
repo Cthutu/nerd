@@ -35,6 +35,14 @@ internal const LlvmLayout* llvm_default_layout(void)
     return &layout;
 }
 
+internal cstr llvm_cstr_from_string(Arena* arena, string text)
+{
+    char* copy = (char*)arena_alloc(arena, text.count + 1);
+    memcpy(copy, text.data, text.count);
+    copy[text.count] = '\0';
+    return copy;
+}
+
 internal string llvm_layout_string_type(const LlvmLayout* layout)
 {
     (void)layout;
@@ -962,6 +970,16 @@ internal void llvm_append_const_slice_backing_name(StringBuilder* sb,
     sb_format(sb, "@.slice.const.m%u.%u", module_index, expr_index);
 }
 
+internal void
+llvm_append_embed_global_name(StringBuilder* sb, const Hir* hir, u32 expr_index)
+{
+    u32 module_index = hir != NULL ? hir->current_module_index : 0;
+    if (module_index == U32_MAX) {
+        module_index = 0;
+    }
+    sb_format(sb, "@.embed.m%u.%u", module_index, expr_index);
+}
+
 internal void llvm_append_assert_source_path_global_name(StringBuilder* sb,
                                                          const Hir*     hir,
                                                          u32 stmt_index)
@@ -1020,6 +1038,16 @@ internal string llvm_string_global_name_string(const Hir* hir,
     StringBuilder sb = {0};
     sb_init(&sb, arena);
     llvm_append_string_global_name(&sb, hir, string_index);
+    return sb_to_string(&sb);
+}
+
+internal string llvm_embed_global_name_string(const Hir* hir,
+                                              Arena*     arena,
+                                              u32        expr_index)
+{
+    StringBuilder sb = {0};
+    sb_init(&sb, arena);
+    llvm_append_embed_global_name(&sb, hir, expr_index);
     return sb_to_string(&sb);
 }
 
@@ -2166,6 +2194,22 @@ internal bool llvm_append_constant_expr_value(StringBuilder* sb,
             }
             if (string_eq_cstr(name, "line")) {
                 sb_format(sb, "%u", expr->source_line);
+                return true;
+            }
+            if (string_eq_cstr(name, "embed")) {
+                FileMap map   = {0};
+                cstr    path  = llvm_cstr_from_string(arena, expr->source_path);
+                string  bytes = filemap_load(path, &map);
+                if (bytes.data == NULL) {
+                    return false;
+                }
+                string global =
+                    llvm_embed_global_name_string(hir, arena, expr_index);
+                sb_format(sb,
+                          "{ ptr " STRINGP ", i64 %zu }",
+                          STRINGV(global),
+                          bytes.count);
+                filemap_unload(&map);
                 return true;
             }
             return false;
@@ -4089,6 +4133,17 @@ internal void llvm_store_local_slot(LlvmFunctionContext* ctx,
                                     LlvmLocalSlot*       slot,
                                     LlvmValue            value)
 {
+    if (string_eq_cstr(value.value, "zeroinitializer") &&
+        llvm_type_sizeof_bytes(ctx->sema, slot->type_index) >= 1024) {
+        sb_format(ctx->sb,
+                  "  call void @llvm.memset.p0.i64(ptr " STRINGP
+                  ", i8 0, i64 %llu, i1 false)\n",
+                  STRINGV(slot->ptr),
+                  (unsigned long long)llvm_type_sizeof_bytes(ctx->sema,
+                                                             slot->type_index));
+        return;
+    }
+
     string type = llvm_type_string(ctx, slot->type_index);
     sb_format(ctx->sb,
               "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n",
@@ -4399,6 +4454,79 @@ internal LlvmValue llvm_coerce_value_to_type(LlvmFunctionContext* ctx,
             .ok         = true,
             .type_index = target_type,
             .value      = temp,
+        };
+    }
+
+    u32 source_int_bits = llvm_integer_bits(ctx->sema, value.type_index);
+    u32 target_int_bits = llvm_integer_bits(ctx->sema, target_type);
+    if (source_int_bits > 0 && target_int_bits > 0 &&
+        source_int_bits != target_int_bits) {
+        string source_type        = llvm_type_string(ctx, value.type_index);
+        string target_type_string = llvm_type_string(ctx, target_type);
+        string temp               = llvm_temp(ctx);
+        string instr =
+            source_int_bits > target_int_bits
+                ? s("trunc")
+                : (llvm_type_is_unsigned_integer(ctx->sema, value.type_index) ||
+                           source_kind == STK_UntypedInteger
+                       ? s("zext")
+                       : s("sext"));
+        sb_format(ctx->sb,
+                  "  " STRINGP " = " STRINGP " " STRINGP " " STRINGP
+                  " to " STRINGP "\n",
+                  STRINGV(temp),
+                  STRINGV(instr),
+                  STRINGV(source_type),
+                  STRINGV(value.value),
+                  STRINGV(target_type_string));
+        return (LlvmValue){
+            .ok         = true,
+            .type_index = target_type,
+            .value      = temp,
+        };
+    }
+
+    if (target_kind == STK_Slice && source_kind == STK_Array &&
+        ctx->sema->types[target_type].first_param_type ==
+            ctx->sema->types[value.type_index].first_param_type) {
+        string array_type = llvm_type_string(ctx, value.type_index);
+        string slot       = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = alloca " STRINGP "\n"
+                  "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n",
+                  STRINGV(slot),
+                  STRINGV(array_type),
+                  STRINGV(array_type),
+                  STRINGV(value.value),
+                  STRINGV(slot));
+
+        string data_ptr = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = getelementptr inbounds " STRINGP
+                  ", ptr " STRINGP ", i64 0, i64 0\n",
+                  STRINGV(data_ptr),
+                  STRINGV(array_type),
+                  STRINGV(slot));
+
+        string slice0 = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP
+                  " = insertvalue { ptr, i64 } poison, ptr " STRINGP ", 0\n",
+                  STRINGV(slice0),
+                  STRINGV(data_ptr));
+
+        string slice1 = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = insertvalue { ptr, i64 } " STRINGP
+                  ", i64 %u, 1\n",
+                  STRINGV(slice1),
+                  STRINGV(slice0),
+                  ctx->sema->types[value.type_index].return_type);
+
+        return (LlvmValue){
+            .ok         = true,
+            .type_index = target_type,
+            .value      = slice1,
         };
     }
 
@@ -7680,6 +7808,27 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     .value      = string_format(ctx->arena, "%u", line),
                 };
             }
+            if (string_eq_cstr(name, "embed")) {
+                FileMap map = {0};
+                cstr    path =
+                    llvm_cstr_from_string(ctx->arena, expr->source_path);
+                string bytes = filemap_load(path, &map);
+                if (bytes.data == NULL) {
+                    return (LlvmValue){0};
+                }
+                string global = llvm_embed_global_name_string(
+                    ctx->hir, ctx->arena, expr_index);
+                usize count = bytes.count;
+                filemap_unload(&map);
+                return (LlvmValue){
+                    .ok         = true,
+                    .type_index = expr->type_index,
+                    .value      = string_format(ctx->arena,
+                                                "{ ptr " STRINGP ", i64 %zu }",
+                                                STRINGV(global),
+                                                count),
+                };
+            }
             return (LlvmValue){0};
         }
     case HIR_EXPR_BoolLiteral:
@@ -8466,6 +8615,10 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                               STRINGV(lhs.value),
                               STRINGV(rhs.value));
                 } else {
+                    rhs = llvm_coerce_value_to_type(ctx, rhs, lhs.type_index);
+                    if (!rhs.ok) {
+                        return (LlvmValue){0};
+                    }
                     sb_format(ctx->sb,
                               "  " STRINGP " = icmp " STRINGP " " STRINGP
                               " " STRINGP ", " STRINGP "\n",
@@ -8733,6 +8886,55 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                                                        ctx->arena,
                                                        generic_function_index),
                 };
+            }
+
+            if (expr->operand_expr_index < array_count(ctx->hir->exprs)) {
+                const HirExpr* target_expr =
+                    &ctx->hir->exprs[expr->operand_expr_index];
+                if (llvm_type_kind(ctx->sema, target_expr->type_index) ==
+                        STK_Array &&
+                    llvm_type_sizeof_bytes(ctx->sema,
+                                           target_expr->type_index) >= 1024) {
+                    LlvmValue index =
+                        llvm_emit_expr(ctx, function, expr->extra_expr_index);
+                    if (!index.ok) {
+                        return (LlvmValue){0};
+                    }
+                    if (llvm_integer_bits(ctx->sema, index.type_index) == 0) {
+                        index = llvm_coerce_value_to_type(
+                            ctx,
+                            index,
+                            llvm_builtin_type(ctx->sema, STK_Usize));
+                        if (!index.ok) {
+                            return (LlvmValue){0};
+                        }
+                    }
+
+                    LlvmValue item_ptr =
+                        llvm_address_of_expr(ctx, function, expr_index);
+                    if (!item_ptr.ok) {
+                        return (LlvmValue){0};
+                    }
+
+                    u32 item_type = llvm_collection_item_type(
+                        ctx->sema, target_expr->type_index);
+                    if (item_type == sema_no_type()) {
+                        item_type = expr->type_index;
+                    }
+                    string item_type_string = llvm_type_string(ctx, item_type);
+                    string loaded           = llvm_temp(ctx);
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = load " STRINGP ", ptr " STRINGP
+                              "\n",
+                              STRINGV(loaded),
+                              STRINGV(item_type_string),
+                              STRINGV(item_ptr.value));
+                    return (LlvmValue){
+                        .ok         = true,
+                        .type_index = item_type,
+                        .value      = loaded,
+                    };
+                }
             }
 
             LlvmValue target =
@@ -9443,6 +9645,32 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                                 .return_type),
                     };
                 }
+            }
+
+            u32 operand_type =
+                ctx->hir->exprs[expr->operand_expr_index].type_index;
+            u32 member_type = llvm_member_target_type(ctx->sema, operand_type);
+            if ((llvm_type_kind(ctx->sema, member_type) == STK_Tuple ||
+                 llvm_type_kind(ctx->sema, member_type) == STK_Plex) &&
+                llvm_type_sizeof_bytes(ctx->sema, member_type) >= 1024) {
+                LlvmValue field_ptr =
+                    llvm_address_of_expr(ctx, function, expr_index);
+                if (!field_ptr.ok || field_ptr.type_index == sema_no_type()) {
+                    return (LlvmValue){0};
+                }
+
+                string field_type = llvm_type_string(ctx, field_ptr.type_index);
+                string loaded     = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = load " STRINGP ", ptr " STRINGP "\n",
+                          STRINGV(loaded),
+                          STRINGV(field_type),
+                          STRINGV(field_ptr.value));
+                return (LlvmValue){
+                    .ok         = true,
+                    .type_index = field_ptr.type_index,
+                    .value      = loaded,
+                };
             }
 
             LlvmValue target =
@@ -14708,6 +14936,38 @@ internal void llvm_render_string_literals(StringBuilder* sb,
     }
 }
 
+internal void
+llvm_render_embed_globals(StringBuilder* sb, const Hir* hir, const Lexer* lexer)
+{
+    for (u32 i = 0; i < array_count(hir->exprs); ++i) {
+        const HirExpr* expr = &hir->exprs[i];
+        if (expr->kind != HIR_EXPR_BuiltinMacro ||
+            expr->symbol_handle == U32_MAX) {
+            continue;
+        }
+        string name = lex_symbol(lexer, expr->symbol_handle);
+        if (!string_eq_cstr(name, "embed")) {
+            continue;
+        }
+
+        FileMap map   = {0};
+        Arena   arena = {0};
+        arena_init(&arena);
+        cstr   path  = llvm_cstr_from_string(&arena, expr->source_path);
+        string bytes = filemap_load(path, &map);
+        if (bytes.data != NULL) {
+            llvm_append_embed_global_name(sb, hir, i);
+            sb_format(sb,
+                      " = private unnamed_addr constant [%zu x i8] c\"",
+                      bytes.count);
+            llvm_append_escaped_string_bytes(sb, bytes);
+            sb_append_cstr(sb, "\"\n");
+            filemap_unload(&map);
+        }
+        arena_done(&arena);
+    }
+}
+
 internal void llvm_render_builtin_macro_globals(StringBuilder* sb,
                                                 const Hir*     hir,
                                                 const Lexer*   lexer)
@@ -15643,6 +15903,7 @@ string llvm_render_hir(const Hir*   hir,
         llvm_render_string_literals(&sb, hir, lexer);
         llvm_render_concat_string_literals(&sb, hir, lexer, arena);
     }
+    llvm_render_embed_globals(&sb, hir, lexer);
     (void)llvm_render_const_slice_backing_values(
         &sb, hir, lexer, render_sema, arena);
     if (llvm_hir_uses_assert(hir)) {
@@ -15728,6 +15989,7 @@ string llvm_render_hir(const Hir*   hir,
         sb_append_char(&sb, '\n');
     }
 
+    sb_append_cstr(&sb, "declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)\n");
     if (debug != NULL && debug->uses_dbg_declare) {
         sb_append_cstr(
             &sb,

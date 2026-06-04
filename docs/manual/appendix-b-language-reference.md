@@ -122,6 +122,8 @@ intended exit code.
   requested tuple, collection, plex, or union member.
 - `@file` expands to the current source filename as a `string`.
 - `@line` expands to the current 1-based source line as an untyped integer.
+- `@embed("path")` embeds a source-relative file as static binary data and
+  expands to a `[]u8` slice backed by that data.
 
 ## Control Flow
 

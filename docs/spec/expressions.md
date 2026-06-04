@@ -113,12 +113,16 @@ returned string.
 Built-in macro expressions start with `@`.
 
 ```bnf
-built-in-macro ::= '@file' | '@line'
+built-in-macro ::= '@file' | '@line' | '@embed' '(' string-literal ')'
 ```
 
 `@file` expands to a `string` literal containing the current source filename.
 `@line` expands to an untyped integer literal containing the current source line
 number. Line numbers are 1-based.
+`@embed("path")` embeds the referenced file as static binary data and expands
+to a `[]u8` slice backed by that data. Relative embed paths are resolved against
+the source file containing the `@embed` expression. Missing, unreadable, or
+directory paths are compile-time errors reported at the macro expression.
 
 When a built-in macro appears in a default parameter expression, it is evaluated
 at the call site where that default argument is inserted.

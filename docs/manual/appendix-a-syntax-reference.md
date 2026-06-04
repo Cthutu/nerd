@@ -233,6 +233,7 @@ Type.size
 | `$"interpolated {value}"`, `$"literal \{brace\}"` | `string` |
 | `@file` | `string`; current source filename |
 | `@line` | `untyped integer`; current 1-based source line |
+| `@embed("path")` | `[]u8`; static file bytes resolved relative to source |
 | `[1, 2, 3]` | `[3]i32` |
 | `[start..end]`, `[start..=end]` | integer range usable by `for in` |
 | `(1, "two")` | `(i32, string)` |
