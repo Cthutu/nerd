@@ -4349,7 +4349,7 @@ internal bool llvm_consume_box_expr(LlvmFunctionContext* ctx,
         llvm_type_kind(ctx->sema, consumed_type) == STK_Tuple) {
         for (u32 i = 0; i < expr->arg_count; ++i) {
             const HirCallArg* arg = &ctx->hir->call_args[expr->first_arg + i];
-            u32 field_type =
+            u32               field_type =
                 llvm_record_field_type(ctx->sema, consumed_type, i);
             if (!llvm_consume_box_expr(
                     ctx, arg->expr_index, field_type, excluded_local)) {
@@ -4362,15 +4362,13 @@ internal bool llvm_consume_box_expr(LlvmFunctionContext* ctx,
     if ((expr->kind == HIR_EXPR_Plex || expr->kind == HIR_EXPR_PlexUpdate) &&
         llvm_type_kind(ctx->sema, consumed_type) == STK_Plex) {
         if (expr->kind == HIR_EXPR_PlexUpdate &&
-            !llvm_consume_box_expr(ctx,
-                                   expr->operand_expr_index,
-                                   consumed_type,
-                                   excluded_local)) {
+            !llvm_consume_box_expr(
+                ctx, expr->operand_expr_index, consumed_type, excluded_local)) {
             return false;
         }
         for (u32 i = 0; i < expr->arg_count; ++i) {
             const HirCallArg* arg = &ctx->hir->call_args[expr->first_arg + i];
-            u32 field_index = llvm_record_field_index(
+            u32               field_index = llvm_record_field_index(
                 ctx->sema, consumed_type, arg->symbol_handle);
             if (field_index == U32_MAX) {
                 continue;
@@ -4389,7 +4387,8 @@ internal bool llvm_consume_box_expr(LlvmFunctionContext* ctx,
         u32 source_local = llvm_box_move_source_local(ctx, expr_index);
         if (source_local == U32_MAX || source_local == excluded_local) {
             u32 binding_index = U32_MAX;
-            if (llvm_expr_is_box_global_binding(ctx, expr_index, &binding_index)) {
+            if (llvm_expr_is_box_global_binding(
+                    ctx, expr_index, &binding_index)) {
                 return llvm_emit_nil_box_binding(ctx, binding_index);
             }
             return true;
@@ -15052,13 +15051,30 @@ internal LlvmValue llvm_emit_dynamic_array_resize(LlvmFunctionContext* ctx,
 
 internal void llvm_append_escaped_string_bytes(StringBuilder* sb, string value)
 {
+    static const char hex[]            = "0123456789ABCDEF";
+    bool              after_hex_escape = false;
+    for (usize i = 0; i < value.count; ++i) {
+        u8   ch        = value.data[i];
+        bool printable = ch >= 0x20 && ch <= 0x7e && ch != '"' && ch != '\\';
+        bool hex_digit = (ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'F') ||
+                         (ch >= 'a' && ch <= 'f');
+        if (printable && (!after_hex_escape || !hex_digit)) {
+            sb_append_char(sb, (char)ch);
+            after_hex_escape = false;
+            continue;
+        }
+        sb_append_char(sb, '\\');
+        sb_append_char(sb, hex[(ch >> 4) & 0xf]);
+        sb_append_char(sb, hex[ch & 0xf]);
+        after_hex_escape = true;
+    }
+}
+
+internal void llvm_append_escaped_binary_bytes(StringBuilder* sb, string value)
+{
     static const char hex[] = "0123456789ABCDEF";
     for (usize i = 0; i < value.count; ++i) {
         u8 ch = value.data[i];
-        if (ch >= 0x20 && ch <= 0x7e && ch != '"' && ch != '\\') {
-            sb_append_char(sb, (char)ch);
-            continue;
-        }
         sb_append_char(sb, '\\');
         sb_append_char(sb, hex[(ch >> 4) & 0xf]);
         sb_append_char(sb, hex[ch & 0xf]);
@@ -15104,7 +15120,7 @@ llvm_render_embed_globals(StringBuilder* sb, const Hir* hir, const Lexer* lexer)
             sb_format(sb,
                       " = private unnamed_addr constant [%zu x i8] c\"",
                       bytes.count);
-            llvm_append_escaped_string_bytes(sb, bytes);
+            llvm_append_escaped_binary_bytes(sb, bytes);
             sb_append_cstr(sb, "\"\n");
             filemap_unload(&map);
         }
