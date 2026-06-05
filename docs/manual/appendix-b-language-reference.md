@@ -58,8 +58,11 @@ intended exit code.
 - Slices are borrowing views. A `[]T` carries data and count, but it does not
   own or free the referenced storage.
 - `box[T]` owns one runtime heap allocation for a `T`, or is nil.
-- `box[T]()` allocates one default-initialised `T`; `box[T](ptr)` adopts a
+- `box[T]()` allocates one default-initialised `T`; `box[T](count)` allocates
+  contiguous storage for `count` values of `T`; `box[T](ptr)` adopts a
   runtime-heap-compatible `^T`.
+- `box.data` borrows the owned pointer as `^T`; `box.count` reports the number
+  of `T` values recorded by the allocation metadata.
 - `box[T]` moves on assignment, box-parameter calls, and return; the source
   box is set to nil.
 - `box[T]` borrows implicitly as `^T` for function calls and dot access.

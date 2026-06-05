@@ -47,8 +47,15 @@ ownership model.
 
 ## Boxes
 
-`box[T]` is an owning heap pointer. `box[T]()` allocates one default-initialised
-`T`; `box[T](ptr)` adopts an existing runtime-heap-compatible `^T` allocation.
+`box[T]` is an owning heap pointer with transparent allocation metadata.
+`box[T]()` allocates one default-initialised `T`; `box[T](count)` allocates
+contiguous storage for `count` values of `T`; `box[T](ptr)` adopts an existing
+runtime-heap-compatible `^T` allocation.
+
+The box value itself is pointer-shaped. The allocation header/runtime metadata
+stores the byte size, and the language exposes `box.count` as the allocation
+byte size divided by `T.size`. `box.data` exposes the owned pointer as `^T` for
+borrowing views such as `box.data.as([]T, box.count)`.
 
 Box ownership moves when a `box[T]` is assigned to another `box[T]`, passed to a
 parameter of type `box[T]`, or returned from a function. The source box is set

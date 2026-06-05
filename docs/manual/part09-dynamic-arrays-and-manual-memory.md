@@ -183,7 +183,8 @@ make_map :: fn () -> box[Map] {
 ```
 
 `box[T]()` allocates one `T` with the runtime heap allocator and records the
-call site's `@file` and `@line` for memory leak diagnostics.
+call site's `@file` and `@line` for memory leak diagnostics. `box[T](count)`
+allocates contiguous storage for `count` values of `T`.
 
 Boxes are nilable:
 
@@ -200,6 +201,15 @@ must be represented in the type. Passing a `box[T]` to a function that expects
 `box[T]`, assigning it to another `box[T]`, or returning it moves ownership and
 sets the source box to nil. Passing a `box[T]` to a function expecting `^T`
 only borrows the pointer and does not move ownership.
+
+Boxes expose `.data` and `.count`. The `.data` field is a borrowed `^T`; the
+`.count` field is derived from the allocation metadata and reports the number
+of `T` values in the allocation. To view a counted box as a slice:
+
+```nerd
+bytes := box[u8](4096)
+view := bytes.data.as([]u8, bytes.count)
+```
 
 A `box[T]` can be passed to a function expecting `^T`. This is a weak pointer
 borrow and does not transfer ownership:

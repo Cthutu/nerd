@@ -17023,6 +17023,18 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     lexer, ast, sema, node->a, sema_no_type(), &target_type)) {
                 return false;
             }
+            if (target_type != sema_no_type() &&
+                sema->types[target_type].kind == STK_Box) {
+                if (string_eq(field, s("data"))) {
+                    type_index = sema_add_pointer_type(
+                        sema, sema->types[target_type].first_param_type);
+                    break;
+                }
+                if (string_eq(field, s("count"))) {
+                    type_index = sema_builtin_type(sema, STK_Usize);
+                    break;
+                }
+            }
             u32 field_target_type = target_type;
             field_target_type     = sema_member_target_type(sema, target_type);
             if (field_target_type != sema_no_type() &&
@@ -18636,16 +18648,22 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                                               ast,
                                               sema,
                                               arg_node,
-                                              pointer_type,
+                                              sema_no_type(),
                                               &arg_type)) {
                         return false;
                     }
-                    if (!sema_type_matches(sema, pointer_type, arg_type)) {
+                    bool pointer_arg =
+                        sema_type_matches(sema, pointer_type, arg_type);
+                    bool count_arg = sema_type_is_integer(sema, arg_type);
+                    if (!pointer_arg && !count_arg) {
                         return error_0304_type_mismatch(
                             lexer->source,
                             sema_node_span(lexer, &ast->nodes[arg_node]),
-                            sema_type_name(
-                                lexer, sema, &temp_arena, pointer_type),
+                            string_format(
+                                &temp_arena,
+                                STRINGP " or integer count",
+                                STRINGV(sema_type_name(
+                                    lexer, sema, &temp_arena, pointer_type))),
                             sema_type_name(lexer, sema, &temp_arena, arg_type));
                     }
                 }

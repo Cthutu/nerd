@@ -7864,7 +7864,53 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
 
             if (expr->arg_count == 1) {
                 const HirCallArg* arg = &ctx->hir->call_args[expr->first_arg];
-                LlvmValue         pointer =
+                u32 arg_type = arg->expr_index < array_count(ctx->hir->exprs)
+                                   ? ctx->hir->exprs[arg->expr_index].type_index
+                                   : sema_no_type();
+
+                if (sema_type_is_integer(ctx->sema, arg_type)) {
+                    LlvmValue count = llvm_emit_expr_as_type(
+                        ctx,
+                        function,
+                        arg->expr_index,
+                        llvm_builtin_type(ctx->sema, STK_Usize));
+                    if (!count.ok) {
+                        return (LlvmValue){0};
+                    }
+
+                    u64 item_size =
+                        llvm_type_storage_bytes(ctx->sema, item_type);
+                    string size       = llvm_temp(ctx);
+                    string usize_type = llvm_type_string(
+                        ctx, llvm_builtin_type(ctx->sema, STK_Usize));
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = mul " STRINGP " " STRINGP
+                              ", %llu\n",
+                              STRINGV(size),
+                              STRINGV(usize_type),
+                              STRINGV(count.value),
+                              (unsigned long long)item_size);
+
+                    string source_path =
+                        llvm_builtin_module_file_global_name_string(ctx->hir,
+                                                                    ctx->arena);
+                    string pointer = llvm_temp(ctx);
+                    sb_format(ctx->sb,
+                              "  " STRINGP
+                              " = call ptr @nrt_mem_alloc(i64 " STRINGP
+                              ", i64 16, ptr " STRINGP ", i32 %u)\n",
+                              STRINGV(pointer),
+                              STRINGV(size),
+                              STRINGV(source_path),
+                              expr->source_line);
+                    return (LlvmValue){
+                        .ok         = true,
+                        .type_index = expr->type_index,
+                        .value      = pointer,
+                    };
+                }
+
+                LlvmValue pointer =
                     llvm_emit_expr(ctx, function, arg->expr_index);
                 if (!pointer.ok) {
                     return (LlvmValue){0};
@@ -9692,6 +9738,44 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 llvm_emit_expr(ctx, function, expr->operand_expr_index);
             if (!target.ok) {
                 return (LlvmValue){0};
+            }
+
+            if (expr->kind == HIR_EXPR_Field &&
+                llvm_type_kind(ctx->sema, target.type_index) == STK_Box &&
+                expr->symbol_handle != U32_MAX) {
+                string field = lex_symbol(ctx->lexer, expr->symbol_handle);
+                if (string_eq_cstr(field, "data")) {
+                    target.type_index = expr->type_index;
+                    return target;
+                }
+                if (string_eq_cstr(field, "count")) {
+                    string bytes = llvm_temp(ctx);
+                    sb_format(ctx->sb,
+                              "  " STRINGP
+                              " = call i64 @nrt_mem_size(ptr " STRINGP ")\n",
+                              STRINGV(bytes),
+                              STRINGV(target.value));
+
+                    u32 item_type =
+                        ctx->sema->types[target.type_index].first_param_type;
+                    u64 item_size =
+                        llvm_type_storage_bytes(ctx->sema, item_type) / 8;
+                    string count = bytes;
+                    if (item_size > 1) {
+                        count = llvm_temp(ctx);
+                        sb_format(ctx->sb,
+                                  "  " STRINGP " = udiv i64 " STRINGP
+                                  ", %llu\n",
+                                  STRINGV(count),
+                                  STRINGV(bytes),
+                                  (unsigned long long)item_size);
+                    }
+                    return (LlvmValue){
+                        .ok         = true,
+                        .type_index = expr->type_index,
+                        .value      = count,
+                    };
+                }
             }
 
             if (llvm_type_kind(ctx->sema, target.type_index) ==
@@ -15244,6 +15328,7 @@ internal void llvm_render_dynamic_array_runtime_declarations(StringBuilder* sb)
         {"ptr", "nrt_mem_alloc", "i64, i64, ptr, i32"},
         {"ptr", "nrt_mem_realloc", "ptr, i64, i64, ptr, i32"},
         {"void", "nrt_mem_free", "ptr"},
+        {"i64", "nrt_mem_size", "ptr"},
     };
     llvm_render_runtime_declarations(
         sb, decls, (u32)(sizeof(decls) / sizeof(decls[0])));
