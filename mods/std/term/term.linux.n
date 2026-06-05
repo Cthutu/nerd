@@ -565,8 +565,9 @@ pub term_init :: fn (min_width        : u32 = TERM_DEFAULT_MIN_WIDTH,
     on term_last_rows == 0 => term_last_rows = 1
     term_fb_ensure()
     term_fb_clear()
-    term_present_ready = no
-    term_initialised   = yes
+    term_present_ready      = no
+    term_present_cursor_set = no
+    term_initialised        = yes
     current := now()
     term_hooks_reset_timing(current)
 }
@@ -606,11 +607,12 @@ term_run_step :: fn () -> bool {
         term_raw_mode_enable(no)
         term_arena_done()
         term_keyboard_clear()
-        term_initialised    = no
-        term_done_requested = no
-        term_present_ready  = no
-        term_simulate_ran   = no
-        term_present_ran    = no
+        term_initialised        = no
+        term_done_requested     = no
+        term_present_ready      = no
+        term_present_cursor_set = no
+        term_simulate_ran       = no
+        term_present_ran        = no
         term_hooks_clear()
         return no
     }

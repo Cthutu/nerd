@@ -314,6 +314,10 @@ term_fb_width           : u32
 term_fb_height          : u32
 term_fb_view            : RectI32
 term_fb_ready           : bool
+term_present_cursor_set : bool
+term_present_cursor_x   : u32
+term_present_cursor_y   : u32
+term_present_cursor_on  : bool
 term_keyboard_down      : [TERM_KEY_CODE_COUNT]bool
 term_keyboard_pressed   : [TERM_KEY_CODE_COUNT]bool
 term_keyboard_released  : [TERM_KEY_CODE_COUNT]bool
@@ -917,6 +921,34 @@ term_output_string :: fn (output: TermOutput) -> string {
     return output.bytes[..output.count].as(string)
 }
 
+-- Requests where the terminal cursor should be placed after the next retained
+-- framebuffer presentation.
+pub term_present_cursor :: fn (x: u32, y: u32, visible: bool = yes) {
+    term_present_cursor_set = yes
+    term_present_cursor_x   = x
+    term_present_cursor_y   = y
+    term_present_cursor_on  = visible
+}
+
+-- Requests that the cursor be hidden after the next retained framebuffer
+-- presentation.
+pub term_present_cursor_clear :: fn () {
+    term_present_cursor_set = yes
+    term_present_cursor_on  = no
+}
+
+term_output_present_cursor :: fn (output: ^TermOutput) {
+    on !term_present_cursor_set => return
+
+    on term_present_cursor_on => {
+        term_output_push(output,
+                         $"\x1b[{term_present_cursor_y + 1};{term_present_cursor_x + 1}H")
+        term_output_push(output, "\x1b[?25h")
+    } else {
+        term_output_push(output, "\x1b[?25l")
+    }
+}
+
 term_fb_present :: fn () {
     on !term_fb_ready => return
 
@@ -979,6 +1011,7 @@ term_fb_present :: fn () {
 
     on output.count > 0 => {
         term_output_push(^output, "\x1b[0m")
+        term_output_present_cursor(^output)
         term_print(term_output_string(output))
     }
 }
