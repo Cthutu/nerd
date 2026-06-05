@@ -77,8 +77,9 @@ main :: fn () {
 }
 ```
 
-Slices have `.data` and `.count`. They do not own storage and do not imply
-allocation. A slice is always a view over existing storage, or over
+Slices have `.data` and `.count`. They are borrowing views: a slice does not
+own storage, does not free storage, and does not extend the lifetime of the
+memory it points at. A slice is always a view over existing storage, or over
 compiler-emitted constant backing data for constant slice literals. The
 compiler must not allocate hidden heap storage to make a slice work.
 
@@ -93,7 +94,8 @@ view := pointer.as([]u8, count)  -- pointer plus count becomes a slice
 ```
 
 The cast requires the element type and count. The resulting slice borrows the
-memory behind the pointer.
+memory behind the pointer; ownership stays with whatever allocated or otherwise
+controls that memory.
 
 Use `nil` for null pointers. Integer address constants must use explicit casts:
 

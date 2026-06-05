@@ -195,7 +195,8 @@ map = box[Map]()
 A `box[T]` also converts implicitly to `bool`: nil boxes are `no`, non-nil
 boxes are `yes`.
 
-Boxes are owning values. Passing a `box[T]` to a function that expects
+Boxes are owning values. Use slices for borrowed views and boxes when ownership
+must be represented in the type. Passing a `box[T]` to a function that expects
 `box[T]`, assigning it to another `box[T]`, or returning it moves ownership and
 sets the source box to nil. Passing a `box[T]` to a function expecting `^T`
 only borrows the pointer and does not move ownership.

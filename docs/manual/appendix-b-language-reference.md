@@ -55,6 +55,8 @@ intended exit code.
 - `name: Type = undefined` opts out of both `Default` and default storage
   initialisation.
 - `nil` is available for pointer-like and slice-like values where supported.
+- Slices are borrowing views. A `[]T` carries data and count, but it does not
+  own or free the referenced storage.
 - `box[T]` owns one runtime heap allocation for a `T`, or is nil.
 - `box[T]()` allocates one default-initialised `T`; `box[T](ptr)` adopts a
   runtime-heap-compatible `^T`.

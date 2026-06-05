@@ -39,6 +39,27 @@ distinct semantic types. Explicit casts support conversion between `string` and
 
 String slicing returns `string`; byte-slice slicing returns `[]u8`.
 
+Slices are borrowing views. A slice value contains a pointer and a count, but it
+does not own, free, or extend the lifetime of the storage it views. Slicing an
+array, slicing another slice, converting a pointer and count with
+`ptr.as([]T, count)`, or receiving a `[]T` parameter all preserve this borrowed
+ownership model.
+
+## Boxes
+
+`box[T]` is an owning heap pointer. `box[T]()` allocates one default-initialised
+`T`; `box[T](ptr)` adopts an existing runtime-heap-compatible `^T` allocation.
+
+Box ownership moves when a `box[T]` is assigned to another `box[T]`, passed to a
+parameter of type `box[T]`, or returned from a function. The source box is set
+to nil by the move. Passing a box where `^T` is expected borrows the pointee and
+does not transfer ownership.
+
+`box.free()` releases the owned allocation and resets the box to nil. Local and
+parameter boxes that still own an allocation are freed automatically when they
+leave scope, but owned fields inside the boxed value remain the program's
+responsibility.
+
 ## Dynamic Arrays
 
 Dynamic arrays own storage and expose language-recognised operations:

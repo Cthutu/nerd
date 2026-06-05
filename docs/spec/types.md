@@ -36,6 +36,11 @@ bytes: []u8 = nil
 items: [..]i32 = nil
 ```
 
+Slices are non-owning views over storage owned elsewhere. `box[T]` is the
+language-owned heap pointer form; boxes move ownership through assignment,
+box-typed parameters, and return values. See `runtime-model.md` for the
+language-visible ownership rules.
+
 ## Type Syntax
 
 ```bnf
