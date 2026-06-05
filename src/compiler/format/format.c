@@ -56,6 +56,8 @@ internal void  format_emit_test(StringBuilder* sb,
                                 u32            node_index,
                                 u32            indent_level);
 internal bool  format_node_is_block_form_on(const Cst* cst, u32 node_index);
+internal bool  format_node_renders_multiline_on_expr(const Cst* cst,
+                                                     u32        node_index);
 internal bool  format_plex_field_is_shorthand(const Cst*                 cst,
                                               const CstPlexLiteralField* field);
 internal void  format_emit_on_block_multiline(StringBuilder* sb,
@@ -1189,7 +1191,12 @@ internal void format_emit_expr(StringBuilder* sb,
         sb_append_cstr(sb, "return");
         if (node->a != U32_MAX) {
             sb_append_char(sb, ' ');
-            format_emit_expr(sb, cst, lexer, node->a, 0);
+            if (format_node_is_block_form_on(cst, node->a)) {
+                format_emit_on_block_multiline(
+                    sb, cst, lexer, node->a, g_format_expr_indent_level);
+            } else {
+                format_emit_expr(sb, cst, lexer, node->a, 0);
+            }
         }
         break;
     case CK_BreakExpr:
@@ -1691,7 +1698,12 @@ internal void format_emit_expr_with_indent(StringBuilder* sb,
 {
     u32 saved_indent           = g_format_expr_indent_level;
     g_format_expr_indent_level = indent_level;
-    format_emit_expr(sb, cst, lexer, node_index, parent_precedence);
+    if (format_node_is_block_form_on(cst, node_index)) {
+        format_emit_on_block_multiline(
+            sb, cst, lexer, node_index, indent_level);
+    } else {
+        format_emit_expr(sb, cst, lexer, node_index, parent_precedence);
+    }
     g_format_expr_indent_level = saved_indent;
 }
 
@@ -1858,7 +1870,8 @@ internal void format_emit_on_block_multiline(StringBuilder* sb,
             expr_node->kind != CK_FfiBlock &&
             !(expr_node->kind == CK_On &&
               cst->ons[expr_node->b].kind == COK_Bool) &&
-            !format_node_is_block_form_on(cst, branch->expr_node_index);
+            !format_node_renders_multiline_on_expr(cst,
+                                                   branch->expr_node_index);
         array_push(branch_alignable, alignable);
 
         array_push(branch_expr_starts,
@@ -2350,6 +2363,17 @@ internal bool format_node_is_block_form_on(const Cst* cst, u32 node_index)
 {
     const CstNode* node = &cst->nodes[node_index];
     return node->kind == CK_On && cst->ons[node->b].kind != COK_Bool;
+}
+
+internal bool format_node_renders_multiline_on_expr(const Cst* cst,
+                                                    u32        node_index)
+{
+    const CstNode* node = &cst->nodes[node_index];
+    if (format_node_is_block_form_on(cst, node_index)) {
+        return true;
+    }
+    return node->kind == CK_ReturnExpr && node->a != U32_MAX &&
+           format_node_is_block_form_on(cst, node->a);
 }
 
 typedef struct {
