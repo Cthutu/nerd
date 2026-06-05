@@ -4340,20 +4340,65 @@ internal bool llvm_consume_box_expr(LlvmFunctionContext* ctx,
                                     u32                  consumed_type,
                                     u32                  excluded_local)
 {
-    if (!llvm_type_is_box(ctx->sema, consumed_type)) {
+    if (expr_index >= array_count(ctx->hir->exprs)) {
         return true;
     }
 
-    u32 source_local = llvm_box_move_source_local(ctx, expr_index);
-    if (source_local == U32_MAX || source_local == excluded_local) {
-        u32 binding_index = U32_MAX;
-        if (llvm_expr_is_box_global_binding(ctx, expr_index, &binding_index)) {
-            return llvm_emit_nil_box_binding(ctx, binding_index);
+    const HirExpr* expr = &ctx->hir->exprs[expr_index];
+    if (expr->kind == HIR_EXPR_Tuple &&
+        llvm_type_kind(ctx->sema, consumed_type) == STK_Tuple) {
+        for (u32 i = 0; i < expr->arg_count; ++i) {
+            const HirCallArg* arg = &ctx->hir->call_args[expr->first_arg + i];
+            u32 field_type =
+                llvm_record_field_type(ctx->sema, consumed_type, i);
+            if (!llvm_consume_box_expr(
+                    ctx, arg->expr_index, field_type, excluded_local)) {
+                return false;
+            }
         }
         return true;
     }
 
-    return llvm_emit_nil_box_local(ctx, source_local);
+    if ((expr->kind == HIR_EXPR_Plex || expr->kind == HIR_EXPR_PlexUpdate) &&
+        llvm_type_kind(ctx->sema, consumed_type) == STK_Plex) {
+        if (expr->kind == HIR_EXPR_PlexUpdate &&
+            !llvm_consume_box_expr(ctx,
+                                   expr->operand_expr_index,
+                                   consumed_type,
+                                   excluded_local)) {
+            return false;
+        }
+        for (u32 i = 0; i < expr->arg_count; ++i) {
+            const HirCallArg* arg = &ctx->hir->call_args[expr->first_arg + i];
+            u32 field_index = llvm_record_field_index(
+                ctx->sema, consumed_type, arg->symbol_handle);
+            if (field_index == U32_MAX) {
+                continue;
+            }
+            u32 field_type =
+                llvm_record_field_type(ctx->sema, consumed_type, field_index);
+            if (!llvm_consume_box_expr(
+                    ctx, arg->expr_index, field_type, excluded_local)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    if (llvm_type_is_box(ctx->sema, consumed_type)) {
+        u32 source_local = llvm_box_move_source_local(ctx, expr_index);
+        if (source_local == U32_MAX || source_local == excluded_local) {
+            u32 binding_index = U32_MAX;
+            if (llvm_expr_is_box_global_binding(ctx, expr_index, &binding_index)) {
+                return llvm_emit_nil_box_binding(ctx, binding_index);
+            }
+            return true;
+        }
+
+        return llvm_emit_nil_box_local(ctx, source_local);
+    }
+
+    return true;
 }
 
 internal LlvmValue llvm_default_value(LlvmFunctionContext* ctx, u32 type_index)
