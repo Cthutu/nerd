@@ -7236,8 +7236,23 @@ internal bool llvm_callee_name(LlvmFunctionContext* ctx,
                 return true;
             }
         }
-        *out = llvm_symbol_name_string(
-            ctx->lexer, ctx->arena, callee->symbol_handle);
+        if (callee->operand_expr_index < array_count(ctx->hir->exprs)) {
+            const HirExpr* operand =
+                &ctx->hir->exprs[callee->operand_expr_index];
+            if (llvm_type_kind(ctx->sema, operand->type_index) == STK_Module) {
+                *out = llvm_symbol_name_string(
+                    ctx->lexer, ctx->arena, callee->symbol_handle);
+                return true;
+            }
+        }
+
+        LlvmValue callee_value =
+            llvm_emit_expr(ctx, function, callee_expr_index);
+        if (!callee_value.ok ||
+            !llvm_type_is_function(ctx->sema, callee_value.type_index)) {
+            return false;
+        }
+        *out = callee_value.value;
         return true;
     }
 
