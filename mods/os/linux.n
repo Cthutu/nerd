@@ -15,6 +15,7 @@ pub SYS_READ          :: 0  -- Linux syscall number for `read`.
 pub SYS_WRITE         :: 1  -- Linux syscall number for `write`.
 pub SYS_OPEN          :: 2  -- Linux syscall number for `open`.
 pub SYS_CLOSE         :: 3  -- Linux syscall number for `close`.
+pub SYS_POLL          :: 7  -- Linux syscall number for `poll`.
 pub SYS_IOCTL         :: 16  -- Linux syscall number for `ioctl`.
 pub SYS_NANOSLEEP     :: 35  -- Linux syscall number for `nanosleep`.
 pub SYS_FSYNC         :: 74  -- Linux syscall number for `fsync`.
@@ -25,6 +26,8 @@ pub O_CREAT  :: 0x0040
 pub O_APPEND :: 0x0400
 
 pub CLOCK_MONOTONIC :: 1  -- Linux clock identifier for monotonic time.
+
+pub POLLIN :: 0x0001  -- File descriptor has data available to read.
 
 pub TIOCGWINSZ :: 0x5413
                           -- Linux terminal request for reading window
@@ -89,6 +92,13 @@ pub TimeSpec :: plex #c {
     tv_nsec i64  -- Additional nanoseconds.
 }
 
+-- Represents one Linux pollfd entry.
+pub PollFd :: plex #c {
+    fd      i32
+    events  i16
+    revents i16
+}
+
 -- Reads bytes from a file descriptor using the Linux `read` syscall.
 pub sys_read :: fn (fd: i32, buf: ^void, count: usize) -> isize {
     return syscall(SYS_READ, fd.as(u64), buf.as(usize).as(u64), count.as(u64), 0, 0, 0).as(isize)
@@ -107,6 +117,11 @@ pub sys_open :: fn (path: ^i8, flags: i32, mode: i32) -> i32 {
 -- Closes a file descriptor using the Linux `close` syscall.
 pub sys_close :: fn (fd: i32) -> i32 {
     return syscall(SYS_CLOSE, fd.as(u64), 0, 0, 0, 0, 0).as(i32)
+}
+
+-- Waits for events on file descriptors using the Linux `poll` syscall.
+pub sys_poll :: fn (fds: ^PollFd, nfds: usize, timeout_ms: i32) -> i32 {
+    return syscall(SYS_POLL, fds.as(usize).as(u64), nfds.as(u64), timeout_ms.as(u64), 0, 0, 0).as(i32)
 }
 
 -- Flushes file contents and metadata using the Linux `fsync` syscall.
