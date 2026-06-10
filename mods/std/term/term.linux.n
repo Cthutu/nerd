@@ -246,6 +246,22 @@ pub term_key_released :: fn (keyboard: TermKeyboard, key: KeyCode) -> bool {
     return term_key_index_valid(index) && keyboard.released[index]
 }
 
+pub term_alt_down :: fn (keyboard: TermKeyboard) -> bool {
+    return term_key_down(keyboard, KeyCode.Alt) || term_key_down(keyboard, KeyCode.Meta)
+}
+
+pub term_left_alt_down :: fn (keyboard: TermKeyboard) -> bool {
+    return term_key_down(keyboard, KeyCode.Alt)
+}
+
+pub term_right_alt_down :: fn (keyboard: TermKeyboard) -> bool {
+    return term_key_down(keyboard, KeyCode.Meta)
+}
+
+pub term_mod_down :: fn (keyboard: TermKeyboard) -> bool {
+    return term_alt_down(keyboard)
+}
+
 term_mouse_move :: fn (x: i32, y: i32) {
     term_mouse.x = x
     term_mouse.y = y
@@ -1184,6 +1200,33 @@ test "terminal repeated key down records another press edge" {
     assert term_key_down(keyboard, KeyCode.LowerQ)
     assert term_key_pressed(keyboard, KeyCode.LowerQ)
     assert !term_key_released(keyboard, KeyCode.LowerQ)
+
+    term_keyboard_clear()
+}
+
+test "terminal modifier helpers report alt state" {
+    term_keyboard_clear()
+
+    keyboard := term_keyboard_snapshot()
+    assert !term_alt_down(keyboard)
+    assert !term_left_alt_down(keyboard)
+    assert !term_right_alt_down(keyboard)
+    assert !term_mod_down(keyboard)
+
+    term_event_record(TermInputEvent.KeyDown(KeyCode.Alt))
+    keyboard = term_keyboard_snapshot()
+    assert term_alt_down(keyboard)
+    assert term_left_alt_down(keyboard)
+    assert !term_right_alt_down(keyboard)
+    assert term_mod_down(keyboard)
+
+    term_keyboard_clear()
+    term_event_record(TermInputEvent.KeyDown(KeyCode.Meta))
+    keyboard = term_keyboard_snapshot()
+    assert term_alt_down(keyboard)
+    assert !term_left_alt_down(keyboard)
+    assert term_right_alt_down(keyboard)
+    assert term_mod_down(keyboard)
 
     term_keyboard_clear()
 }
