@@ -194,6 +194,7 @@ pub KeyCode :: enum {
 TermInputEvent :: enum {
     None
     KeyPress(KeyCode)
+    KeyPressModified(KeyCode, u32)
     KeyDown(KeyCode)
     KeyUp(KeyCode)
     MouseMove(i32, i32)
@@ -215,6 +216,9 @@ pub TERM_MOUSE_RIGHT        :: 0x02
 pub TERM_MOUSE_MIDDLE       :: 0x04
 pub TERM_MOUSE_X1           :: 0x08
 pub TERM_MOUSE_X2           :: 0x10
+pub TERM_MOD_SHIFT          :: 0x01
+pub TERM_MOD_ALT            :: 0x02
+pub TERM_MOD_CONTROL        :: 0x04
 
 pub TermKeyboard :: plex {
     down     [TERM_KEY_CODE_COUNT]bool
@@ -1077,6 +1081,23 @@ term_input_event_from_key :: fn (key: Option[KeyCode]) -> TermInputEvent {
     }
 }
 
+term_csi_modifier_flags :: fn (modifier: u32) -> u32 {
+    on modifier <= 1 => return 0
+    return modifier - 1
+}
+
+term_input_event_from_modified_key :: fn (key      : Option[KeyCode],
+                                          modifier : u32) -> TermInputEvent {
+    return on key {
+        Some(code) => {
+            flags := term_csi_modifier_flags(modifier)
+            on flags == 0 => return TermInputEvent.KeyPress(code)
+            return TermInputEvent.KeyPressModified(code, flags)
+        }
+        None => TermInputEvent.None
+    }
+}
+
 term_read_decimal_until :: fn (first_terminator  : u8,
                                second_terminator : u8) -> (bool, u32, u8) {
     value : u32  = 0
@@ -1096,6 +1117,26 @@ term_read_decimal_until :: fn (first_terminator  : u8,
             byte == second_terminator => return (seen, value, byte)
 
         return (no, 0, byte)
+    }
+
+    return (no, 0, 0)
+}
+
+term_read_decimal_until_csi_final :: fn () -> (bool, u32, u8) {
+    value : u32  = 0
+    seen  : bool = no
+
+    for {
+        byte := term_read_byte()
+        on byte == 0 => return (no, 0, 0)
+
+        on byte >= '0' && byte <= '9' => {
+            seen  = yes
+            value = value * 10 + (byte - '0').as(u32)
+            again
+        }
+
+        return (seen, value, byte)
     }
 
     return (no, 0, 0)
@@ -1180,20 +1221,12 @@ term_read_sgr_mouse_sequence :: fn () -> TermInputEvent {
 }
 
 term_read_csi_sequence :: fn () -> Option[KeyCode] {
-    final := term_read_byte()
-    on final == 0 => return None
-
-    on final >= '0' && final <= '9' => {
-        next := term_read_byte()
-        on next == 0 => return None
-        terminator : u8 = 0
-        on next >= '0' && next <= '9' => {
-            terminator = term_read_byte()
-        }
-        return term_csi_digit_key(final, next, terminator)
+    event := term_read_csi_input_sequence()
+    return on event {
+        TermInputEvent.KeyPress(code)                 => Some(code)
+        TermInputEvent.KeyPressModified(code, _mods)  => Some(code)
+        else                                          => None
     }
-
-    return term_csi_final_key(final)
 }
 
 term_read_csi_input_sequence :: fn () -> TermInputEvent {
@@ -1205,6 +1238,14 @@ term_read_csi_input_sequence :: fn () -> TermInputEvent {
     on first >= '0' && first <= '9' => {
         next := term_read_byte()
         on next == 0 => return TermInputEvent.None
+
+        on next == ';' => {
+            modifier := term_read_decimal_until_csi_final()
+            on !modifier.0 => return TermInputEvent.None
+            key := term_csi_final_key(modifier.2)
+            return term_input_event_from_modified_key(key, modifier.1)
+        }
+
         terminator : u8 = 0
         on next >= '0' && next <= '9' => {
             terminator = term_read_byte()
@@ -1236,8 +1277,9 @@ term_read_escape_input_sequence :: fn () -> TermInputEvent {
 term_read_escape_sequence :: fn () -> Option[KeyCode] {
     event := term_read_escape_input_sequence()
     return on event {
-        TermInputEvent.KeyPress(code)  => Some(code)
-        else                           => None
+        TermInputEvent.KeyPress(code)                 => Some(code)
+        TermInputEvent.KeyPressModified(code, _mods)  => Some(code)
+        else                                          => None
     }
 }
 

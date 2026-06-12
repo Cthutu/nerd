@@ -287,6 +287,15 @@ term_mouse_wheel :: fn (x: i32, y: i32, dx: i32, dy: i32) {
     term_mouse.wheel_y += dy
 }
 
+term_keyboard_record_press :: fn (key: KeyCode) {
+    index := term_key_index(key)
+    on term_key_index_valid(index) => {
+        term_keyboard_pressed[index] = yes
+        term_keyboard_down[index] = yes
+        term_keyboard_pulse[index] = yes
+    }
+}
+
 pub term_mouse_down :: fn (mouse: TermMouse, button: u32) -> bool {
     return (mouse.buttons & button) != 0
 }
@@ -302,12 +311,13 @@ pub term_mouse_released :: fn (mouse: TermMouse, button: u32) -> bool {
 term_keyboard_record_event :: fn (event: TermInputEvent) {
     on event {
         KeyPress(key) => {
-            index := term_key_index(key)
-            on term_key_index_valid(index) => {
-                term_keyboard_pressed[index] = yes
-                term_keyboard_down[index] = yes
-                term_keyboard_pulse[index] = yes
-            }
+            term_keyboard_record_press(key)
+        }
+        KeyPressModified(key, modifiers) => {
+            on (modifiers & TERM_MOD_SHIFT) != 0 => term_keyboard_record_press(KeyCode.Shift)
+            on (modifiers & TERM_MOD_ALT) != 0 => term_keyboard_record_press(KeyCode.Alt)
+            on (modifiers & TERM_MOD_CONTROL) != 0 => term_keyboard_record_press(KeyCode.Control)
+            term_keyboard_record_press(key)
         }
         KeyDown(key) => {
             index := term_key_index(key)
@@ -762,6 +772,9 @@ test "terminal escape sequences map to key codes" {
     assert term_ss3_key('D') == Some(ArrowLeft)
     assert term_ss3_key('P') == Some(F1)
     assert term_ss3_key('S') == Some(F4)
+    assert term_csi_modifier_flags(1) == 0
+    assert term_csi_modifier_flags(3) == TERM_MOD_ALT
+    assert term_csi_modifier_flags(7) == (TERM_MOD_ALT | TERM_MOD_CONTROL)
 }
 
 test "rgb packs 24-bit colour channels" {
@@ -1227,6 +1240,25 @@ test "terminal modifier helpers report alt state" {
     assert !term_left_alt_down(keyboard)
     assert term_right_alt_down(keyboard)
     assert term_mod_down(keyboard)
+
+    term_keyboard_clear()
+}
+
+test "terminal modified key presses report key and modifiers together" {
+    term_keyboard_clear()
+
+    term_event_record(TermInputEvent.KeyPressModified(KeyCode.ArrowLeft, TERM_MOD_ALT))
+    keyboard := term_keyboard_snapshot()
+    assert term_alt_down(keyboard)
+    assert term_mod_down(keyboard)
+    assert term_key_down(keyboard, KeyCode.ArrowLeft)
+    assert term_key_pressed(keyboard, KeyCode.ArrowLeft)
+
+    term_keyboard_clear_edges()
+    keyboard = term_keyboard_snapshot()
+    assert !term_alt_down(keyboard)
+    assert !term_mod_down(keyboard)
+    assert !term_key_down(keyboard, KeyCode.ArrowLeft)
 
     term_keyboard_clear()
 }
