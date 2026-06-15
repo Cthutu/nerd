@@ -13,6 +13,7 @@
     ],
     "main": "./out/extension.js",
     "activationEvents": [
+        "onLanguage:nerd",
         "onDebugResolve:nerd"
     ],
     "scripts": {
@@ -120,6 +121,28 @@
             {
                 "command": "nerd.buildActiveFileForDebug",
                 "title": "Nerd: Build Active File for Debug"
+            }
+        ],
+        "taskDefinitions": [
+            {
+                "type": "nerd",
+                "required": [
+                    "command",
+                    "file"
+                ],
+                "properties": {
+                    "command": {
+                        "type": "string",
+                        "enum": [
+                            "check"
+                        ],
+                        "description": "Nerd command to run."
+                    },
+                    "file": {
+                        "type": "string",
+                        "description": "Nerd source file to check."
+                    }
+                }
             }
         ],
         "configuration": {

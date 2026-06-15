@@ -333,6 +333,74 @@ function getToolExecutablePath(): string {
     return configuredPath || findWorkspaceServer() || findUserServer() || "nerd";
 }
 
+const nerdTaskType = "nerd";
+
+function shellExecutionEnv(env: NodeJS.ProcessEnv): { [key: string]: string } {
+    const result: { [key: string]: string } = {};
+    for (const [key, value] of Object.entries(env)) {
+        if (value !== undefined) {
+            result[key] = value;
+        }
+    }
+    return result;
+}
+
+function createNerdCheckTask(uri: vscode.Uri): vscode.Task {
+    const folder = vscode.workspace.getWorkspaceFolder(uri);
+    const cwd = folder?.uri.fsPath ?? path.dirname(uri.fsPath);
+    const labelPath =
+        folder !== undefined
+            ? path.relative(folder.uri.fsPath, uri.fsPath)
+            : path.basename(uri.fsPath);
+    const toolPath = getToolExecutablePath();
+    const env = shellExecutionEnv(
+        getServerEnvironment(toolPath === "nerd" ? undefined : toolPath)
+    );
+    const definition: vscode.TaskDefinition = {
+        type: nerdTaskType,
+        command: "check",
+        file: uri.fsPath,
+    };
+
+    const task = new vscode.Task(
+        definition,
+        folder ?? vscode.TaskScope.Workspace,
+        `check ${labelPath}`,
+        "nerd",
+        new vscode.ShellExecution(toolPath, ["check", uri.fsPath], {
+            cwd,
+            env,
+        })
+    );
+    task.group = vscode.TaskGroup.Build;
+    return task;
+}
+
+class NerdTaskProvider implements vscode.TaskProvider {
+    provideTasks(): vscode.ProviderResult<vscode.Task[]> {
+        const active = vscode.window.activeTextEditor?.document;
+        if (
+            active === undefined ||
+            active.languageId !== "nerd" ||
+            active.uri.scheme !== "file"
+        ) {
+            return [];
+        }
+
+        return [createNerdCheckTask(active.uri)];
+    }
+
+    resolveTask(task: vscode.Task): vscode.ProviderResult<vscode.Task> {
+        const command = task.definition.command;
+        const file = task.definition.file;
+        if (command !== "check" || typeof file !== "string" || file.length === 0) {
+            return undefined;
+        }
+
+        return createNerdCheckTask(vscode.Uri.file(file));
+    }
+}
+
 function workspaceFolderForDocument(
     document: vscode.TextDocument
 ): vscode.WorkspaceFolder | undefined {
@@ -2148,6 +2216,9 @@ export function activate(
 
     registerFormatter(context);
     registerEnterIndentation(context);
+    context.subscriptions.push(
+        vscode.tasks.registerTaskProvider(nerdTaskType, new NerdTaskProvider())
+    );
     context.subscriptions.push(
         vscode.debug.registerDebugAdapterDescriptorFactory(
             "nerd",
