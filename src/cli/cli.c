@@ -533,6 +533,34 @@ cli_parse_error(const CliParser* parser, Arena* arena, cstr format, ...)
     return result;
 }
 
+internal JsonValue* cli_consume_positional(const CliParser*  parser,
+                                           Arena*            arena,
+                                           JsonValue*        result,
+                                           JsonValue*        command_result,
+                                           const CliCommand* command,
+                                           usize*            io_position,
+                                           cstr              arg)
+{
+    CliParam* positional = cli_next_positional_param(command, io_position);
+    if (!positional) {
+        json_done(result);
+        return cli_parse_error(
+            parser,
+            arena,
+            "Too many positional arguments for command " STRINGP ".",
+            STRINGV(command->name));
+    }
+
+    JsonValue* command_params = json_object_get_cstr(command_result, "params");
+    JsonValue* command_positionals =
+        json_object_get_cstr(command_result, "positionals");
+    JsonValue* positionals = json_object_get_cstr(result, "positionals");
+    cli_set_json_string(command_params, arena, positional->name, s(arg));
+    json_array_push(command_positionals, json_new_string(arena, s(arg)));
+    json_array_push(positionals, json_new_string(arena, s(arg)));
+    return result;
+}
+
 void cli_init(CliParser* parser, const JsonValue* schema)
 {
     ASSERT(parser != NULL, "CliParser cannot be NULL");
@@ -798,17 +826,16 @@ cli_parse(const CliParser* parser, Arena* arena, int argc, char** argv)
                 option);
         }
 
-        isize command_index = cli_find_command_index(parser, arg);
-        if (command_index >= 0) {
-            if (current_command) {
+        if (!current_command) {
+            isize command_index = cli_find_command_index(parser, arg);
+            if (command_index < 0) {
                 json_done(result);
                 return cli_parse_error(
                     parser,
                     arena,
-                    "Only one command can be used at a time. Got '%s'.",
+                    "Unknown argument '%s'. Use --help to list options.",
                     arg);
             }
-
             current_command  = &parser->commands[command_index];
             positional_index = 0;
 
@@ -825,33 +852,16 @@ cli_parse(const CliParser* parser, Arena* arena, int argc, char** argv)
             continue;
         }
 
-        if (!current_command) {
-            json_done(result);
-            return cli_parse_error(
-                parser,
-                arena,
-                "Unknown argument '%s'. Use --help to list options.",
-                arg);
+        JsonValue* positional_result = cli_consume_positional(parser,
+                                                              arena,
+                                                              result,
+                                                              command_result,
+                                                              current_command,
+                                                              &positional_index,
+                                                              arg);
+        if (positional_result != result) {
+            return positional_result;
         }
-
-        CliParam* positional =
-            cli_next_positional_param(current_command, &positional_index);
-        if (!positional) {
-            json_done(result);
-            return cli_parse_error(
-                parser,
-                arena,
-                "Too many positional arguments for command " STRINGP ".",
-                STRINGV(current_command->name));
-        }
-
-        JsonValue* command_params =
-            json_object_get_cstr(command_result, "params");
-        JsonValue* command_positionals =
-            json_object_get_cstr(command_result, "positionals");
-        cli_set_json_string(command_params, arena, positional->name, s(arg));
-        json_array_push(command_positionals, json_new_string(arena, s(arg)));
-        json_array_push(positionals, json_new_string(arena, s(arg)));
     }
 
     if (!current_command) {
