@@ -2776,6 +2776,299 @@ internal void lsp_code_action_add_trait_impl_stub_action(Arena*     arena,
     json_array_push(actions, action);
 }
 
+internal bool lsp_code_action_find_on_block_range(const Lexer* lexer,
+                                                  u32          on_token_index,
+                                                  usize        offset,
+                                                  u32*         out_open_token,
+                                                  u32*         out_close_token)
+{
+    if (on_token_index >= array_count(lexer->tokens)) {
+        return false;
+    }
+    bool  found     = false;
+    usize best_span = SIZE_MAX;
+    for (u32 i = 0; i < array_count(lexer->tokens); ++i) {
+        const Token* token = &lexer->tokens[i];
+        if (token->kind != TK_LBrace) {
+            continue;
+        }
+        u32 close_token = U32_MAX;
+        if (!lsp_code_action_matching_close(lexer, i, &close_token)) {
+            return false;
+        }
+        usize start = token->offset;
+        usize end   = lex_token_end_offset(lexer, &lexer->tokens[close_token]);
+        if (offset >= start && offset <= end && close_token > on_token_index &&
+            end - start < best_span) {
+            *out_open_token  = i;
+            *out_close_token = close_token;
+            best_span        = end - start;
+            found            = true;
+        }
+    }
+    return found;
+}
+
+internal u32 lsp_code_action_find_on_at_offset(const LspDocument* doc,
+                                               usize              offset,
+                                               u32* out_close_token)
+{
+    const Ast*   ast       = &doc->front_end.ast;
+    const Lexer* lexer     = &doc->front_end.lexer;
+    u32          best_node = U32_MAX;
+    usize        best_span = (usize)-1;
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (node->kind != AK_On || node->b >= array_count(ast->ons) ||
+            node->token_index >= array_count(lexer->tokens)) {
+            continue;
+        }
+        u32 open_token  = U32_MAX;
+        u32 close_token = U32_MAX;
+        if (!lsp_code_action_find_on_block_range(
+                lexer, node->token_index, offset, &open_token, &close_token)) {
+            continue;
+        }
+        usize start = lexer->tokens[open_token].offset;
+        usize end   = lex_token_end_offset(lexer, &lexer->tokens[close_token]);
+        usize span  = end - start;
+        if (span < best_span) {
+            best_node        = i;
+            best_span        = span;
+            *out_close_token = close_token;
+        }
+    }
+    return best_node;
+}
+
+internal u32 lsp_code_action_enum_variant_index(const Sema* sema,
+                                                u32         enum_type,
+                                                u32         symbol)
+{
+    enum_type = sema_materialise_type(sema, enum_type);
+    if (enum_type == sema_no_type() || enum_type >= array_count(sema->types) ||
+        sema->types[enum_type].kind != STK_Enum) {
+        return U32_MAX;
+    }
+    const SemaType* type = &sema->types[enum_type];
+    for (u32 i = 0; i < type->param_count; ++i) {
+        if (sema->type_param_symbols[type->first_param_type + i] == symbol) {
+            return i;
+        }
+    }
+    return U32_MAX;
+}
+
+internal void lsp_code_action_mark_on_covered_variants(const Ast*  ast,
+                                                       const Sema* sema,
+                                                       u32         on_index,
+                                                       u32         enum_type,
+                                                       bool*       covered)
+{
+    const AstOnInfo* on = &ast->ons[on_index];
+    for (u32 branch_index = 0; branch_index < on->branch_count;
+         ++branch_index) {
+        const AstOnBranch* branch =
+            &ast->on_branches[on->first_branch + branch_index];
+        if ((branch->flags & AOBF_Else) ||
+            branch->guard_node_index != U32_MAX) {
+            continue;
+        }
+        for (u32 pattern_index = 0; pattern_index < branch->pattern_count;
+             ++pattern_index) {
+            u32 ast_pattern_index =
+                ast->pattern_items[branch->pattern_index + pattern_index];
+            if (ast_pattern_index >= array_count(ast->patterns)) {
+                continue;
+            }
+
+            const AstPattern* pattern = &ast->patterns[ast_pattern_index];
+            u32               variant = U32_MAX;
+            if (pattern->kind == APK_EnumVariant &&
+                pattern->a < array_count(ast->enum_patterns)) {
+                const AstEnumPattern* enum_pattern =
+                    &ast->enum_patterns[pattern->a];
+                variant = lsp_code_action_enum_variant_index(
+                    sema, enum_type, enum_pattern->symbol_handle);
+            } else if (pattern->kind == APK_Value &&
+                       pattern->a < array_count(ast->nodes)) {
+                const AstNode* pattern_node = &ast->nodes[pattern->a];
+                if (pattern_node->kind == AK_Field &&
+                    pattern_node->b != U32_MAX) {
+                    variant = lsp_code_action_enum_variant_index(
+                        sema, enum_type, pattern_node->b);
+                } else if ((pattern_node->kind == AK_EnumVariant ||
+                            pattern_node->kind == AK_SymbolRef) &&
+                           pattern_node->a != U32_MAX) {
+                    variant = lsp_code_action_enum_variant_index(
+                        sema, enum_type, pattern_node->a);
+                }
+            }
+            if (variant != U32_MAX) {
+                covered[variant] = true;
+            }
+        }
+    }
+}
+
+internal void lsp_code_action_append_enum_variant_pattern(Arena*         arena,
+                                                          StringBuilder* sb,
+                                                          const Lexer*   lexer,
+                                                          const Sema*    sema,
+                                                          u32 enum_type,
+                                                          u32 variant_index)
+{
+    const SemaType* enum_info = &sema->types[enum_type];
+    u32             variant_symbol =
+        sema->type_param_symbols[enum_info->first_param_type + variant_index];
+    sb_append_string(sb, lex_symbol(lexer, variant_symbol));
+
+    u32 payload_type =
+        sema->type_param_types[enum_info->first_param_type + variant_index];
+    payload_type = sema_materialise_type(sema, payload_type);
+    if (payload_type == sema_no_type() ||
+        payload_type >= array_count(sema->types)) {
+        return;
+    }
+
+    const SemaType* payload = &sema->types[payload_type];
+    if (payload->kind == STK_Tuple) {
+        sb_append_char(sb, '(');
+        for (u32 i = 0; i < payload->param_count; ++i) {
+            if (i > 0) {
+                sb_append_cstr(sb, ", ");
+            }
+            sb_append_char(sb, '_');
+        }
+        sb_append_char(sb, ')');
+    } else if (payload->kind == STK_Plex) {
+        sb_append_cstr(sb, " { ");
+        for (u32 i = 0; i < payload->param_count; ++i) {
+            if (i > 0) {
+                sb_append_cstr(sb, ", ");
+            }
+            u32 field_symbol =
+                sema->type_param_symbols[payload->first_param_type + i];
+            sb_append_string(sb, lex_symbol(lexer, field_symbol));
+            sb_append_cstr(sb, ": _");
+        }
+        sb_append_cstr(sb, " }");
+    } else {
+        (void)arena;
+        sb_append_cstr(sb, "(_)");
+    }
+}
+
+internal bool lsp_code_action_missing_enum_variants(Arena*             arena,
+                                                    const LspDocument* doc,
+                                                    u32     on_node_index,
+                                                    usize   insert_offset,
+                                                    string* out_insert_text)
+{
+    const Ast*   ast   = &doc->front_end.ast;
+    const Lexer* lexer = &doc->front_end.lexer;
+    const Sema*  sema  = &doc->front_end.sema;
+    if (on_node_index >= array_count(ast->nodes)) {
+        return false;
+    }
+    const AstNode* on_node = &ast->nodes[on_node_index];
+    if (on_node->kind != AK_On || on_node->a >= array_count(ast->nodes) ||
+        on_node->b >= array_count(ast->ons)) {
+        return false;
+    }
+
+    u32 enum_type = sema_no_type();
+    if (!lsp_sema_node_type(sema, on_node->a, &enum_type)) {
+        return false;
+    }
+    enum_type = sema_materialise_type(sema, enum_type);
+    if (enum_type == sema_no_type() || enum_type >= array_count(sema->types) ||
+        sema->types[enum_type].kind != STK_Enum) {
+        return false;
+    }
+
+    const SemaType* enum_info = &sema->types[enum_type];
+    bool* covered = arena_alloc(arena, sizeof(bool) * enum_info->param_count);
+    memset(covered, 0, sizeof(bool) * enum_info->param_count);
+    lsp_code_action_mark_on_covered_variants(
+        ast, sema, on_node->b, enum_type, covered);
+
+    string base_indent = lsp_code_action_line_indent(
+        arena, doc->source, lexer->tokens[on_node->token_index].offset);
+    StringBuilder branch_indent = {0};
+    sb_init(&branch_indent, arena);
+    sb_append_string(&branch_indent, base_indent);
+    sb_append_cstr(&branch_indent, "    ");
+
+    StringBuilder sb = {0};
+    sb_init(&sb, arena);
+    if (insert_offset > 0 && doc->source.data[insert_offset - 1] != '\n') {
+        sb_append_char(&sb, '\n');
+    } else if (ast->ons[on_node->b].branch_count > 0) {
+        sb_append_char(&sb, '\n');
+    }
+
+    u32 missing_count = 0;
+    for (u32 i = 0; i < enum_info->param_count; ++i) {
+        if (covered[i]) {
+            continue;
+        }
+        if (missing_count > 0) {
+            sb_append_char(&sb, '\n');
+        }
+        sb_append_string(&sb, sb_to_string(&branch_indent));
+        lsp_code_action_append_enum_variant_pattern(
+            arena, &sb, lexer, sema, enum_type, i);
+        sb_append_cstr(&sb, " => {\n");
+        sb_append_string(&sb, sb_to_string(&branch_indent));
+        sb_append_cstr(&sb, "}\n");
+        missing_count++;
+    }
+
+    if (missing_count == 0) {
+        return false;
+    }
+
+    sb_append_string(&sb, base_indent);
+    *out_insert_text = sb_to_string(&sb);
+    return true;
+}
+
+internal void
+lsp_code_action_add_missing_enum_variants_action(Arena*             arena,
+                                                 JsonValue*         actions,
+                                                 string             uri,
+                                                 const LspDocument* doc,
+                                                 usize              offset)
+{
+    u32 close_token = U32_MAX;
+    u32 on_node_index =
+        lsp_code_action_find_on_at_offset(doc, offset, &close_token);
+    if (on_node_index == U32_MAX || close_token == U32_MAX) {
+        return;
+    }
+
+    usize  insert_offset = doc->front_end.lexer.tokens[close_token].offset;
+    string insert_text   = {0};
+    if (!lsp_code_action_missing_enum_variants(
+            arena, doc, on_node_index, insert_offset, &insert_text)) {
+        return;
+    }
+
+    JsonValue* workspace_edit = lsp_code_action_workspace_edit(
+        arena, uri, doc->front_end.lexer.source, insert_offset, insert_text);
+    if (workspace_edit == NULL) {
+        return;
+    }
+
+    JsonValue* action = json_new_object(arena);
+    json_object_set_string(
+        action, arena, "title", s("Add missing enum variants"));
+    json_object_set_string(action, arena, "kind", s("quickfix"));
+    json_object_set_object(action, "edit", workspace_edit);
+    json_array_push(actions, action);
+}
+
 void lsp_handle_code_action(LspState* state, const LspMessage* message)
 {
     JsonValue* response = lsp_prepare_response(message);
@@ -2858,6 +3151,8 @@ void lsp_handle_code_action(LspState* state, const LspMessage* message)
     }
 
     lsp_code_action_add_trait_impl_stub_action(
+        message->arena, actions, uri, doc, offset);
+    lsp_code_action_add_missing_enum_variants_action(
         message->arena, actions, uri, doc, offset);
 
     u32 close_token = U32_MAX;

@@ -1,49 +1,34 @@
-use std.io
+use std.frame
 
 main :: fn () {
-    prn("Hello")
+    event: FrameEvent = None
+    on event {
+        None => {
+        }
+    }
 }
 ¬
 [
     {
         "jsonrpc": "2.0",
         "id": 2,
-        "method": "textDocument/hover",
+        "method": "textDocument/codeAction",
         "params": {
             "textDocument": {
                 "uri": "file:///test.n"
             },
-            "position": {
-                "line": 3,
-                "character": 4
-            }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 3,
-        "method": "textDocument/definition",
-        "params": {
-            "textDocument": {
-                "uri": "file:///test.n"
+            "range": {
+                "start": {
+                    "line": 5,
+                    "character": 8
+                },
+                "end": {
+                    "line": 5,
+                    "character": 8
+                }
             },
-            "position": {
-                "line": 3,
-                "character": 4
-            }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 4,
-        "method": "textDocument/definition",
-        "params": {
-            "textDocument": {
-                "uri": "file:///test.n"
-            },
-            "position": {
-                "line": 0,
-                "character": 4
+            "context": {
+                "diagnostics": []
             }
         }
     }
@@ -116,12 +101,12 @@ main :: fn () {
                         },
                         "end": {
                             "line": 0,
-                            "character": 10
+                            "character": 13
                         }
                     },
                     "severity": 4,
                     "source": "nerd",
-                    "message": "Unused use `std.io`",
+                    "message": "Unused use `std.frame`",
                     "tags": [
                         1
                     ]
@@ -132,46 +117,31 @@ main :: fn () {
     {
         "jsonrpc": "2.0",
         "id": 2,
-        "result": {
-            "contents": {
-                "kind": "markdown",
-                "value": "```nerd\nprn :: fn (string) -> void\n```\n\n- Kind: function\n\nPrints text to standard output and appends a newline."
-            }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 3,
-        "result": {
-            "uri": "__REPO_URI__/mods/core.n",
-            "range": {
-                "start": {
-                    "line": 49,
-                    "character": 4
-                },
-                "end": {
-                    "line": 49,
-                    "character": 7
+        "result": [
+            {
+                "title": "Add missing enum variants",
+                "kind": "quickfix",
+                "edit": {
+                    "changes": {
+                        "file:///test.n": [
+                            {
+                                "range": {
+                                    "start": {
+                                        "line": 7,
+                                        "character": 4
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "character": 4
+                                    }
+                                },
+                                "newText": "\n        Closed => {\n        }\n\n        Resized { width: _, height: _ } => {\n        }\n\n        KeyPress { scan_code: _ } => {\n        }\n\n        KeyRelease { scan_code: _ } => {\n        }\n\n        Character { codepoint: _ } => {\n        }\n    "
+                            }
+                        ]
+                    }
                 }
             }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 4,
-        "result": {
-            "uri": "__REPO_URI__/mods/std/io.n",
-            "range": {
-                "start": {
-                    "line": 0,
-                    "character": 0
-                },
-                "end": {
-                    "line": 0,
-                    "character": 0
-                }
-            }
-        }
+        ]
     },
     {
         "jsonrpc": "2.0",

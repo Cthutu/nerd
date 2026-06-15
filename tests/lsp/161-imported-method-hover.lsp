@@ -1,7 +1,8 @@
-print :: use core
+use test.associated_parts
 
 main :: fn () {
-    print.prn("Hello")
+    factory := PartFactory.init()
+    factory.apply()
 }
 ¬
 [
@@ -14,50 +15,8 @@ main :: fn () {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 0,
-                "character": 0
-            }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 3,
-        "method": "textDocument/hover",
-        "params": {
-            "textDocument": {
-                "uri": "file:///test.n"
-            },
-            "position": {
-                "line": 3,
-                "character": 11
-            }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 4,
-        "method": "textDocument/definition",
-        "params": {
-            "textDocument": {
-                "uri": "file:///test.n"
-            },
-            "position": {
-                "line": 3,
-                "character": 11
-            }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 5,
-        "method": "textDocument/definition",
-        "params": {
-            "textDocument": {
-                "uri": "file:///test.n"
-            },
-            "position": {
-                "line": 0,
-                "character": 13
+                "line": 4,
+                "character": 12
             }
         }
     }
@@ -130,51 +89,7 @@ main :: fn () {
         "result": {
             "contents": {
                 "kind": "markdown",
-                "value": "```nerd\nprint\n```\n\n- Kind: module\n- Type: `module`"
-            }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 3,
-        "result": {
-            "contents": {
-                "kind": "markdown",
-                "value": "```nerd\nprn :: fn (string) -> void\n```\n\n- Kind: function\n\nPrints text to standard output and appends a newline."
-            }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 4,
-        "result": {
-            "uri": "file:///home/matt/nerd/mods/core.n",
-            "range": {
-                "start": {
-                    "line": 49,
-                    "character": 4
-                },
-                "end": {
-                    "line": 49,
-                    "character": 7
-                }
-            }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 5,
-        "result": {
-            "uri": "file:///home/matt/nerd/mods/core.n",
-            "range": {
-                "start": {
-                    "line": 0,
-                    "character": 0
-                },
-                "end": {
-                    "line": 0,
-                    "character": 0
-                }
+                "value": "```nerd\napply :: fn (factory: ^Self) -> void\n```\n\n- Kind: method"
             }
         }
     },

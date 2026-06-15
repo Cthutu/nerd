@@ -104,6 +104,10 @@ main :: fn () {}
         "id": 2,
         "result": [
             {
+                "label": "associated_parts",
+                "kind": 9
+            },
+            {
                 "label": "broken_import_exports",
                 "kind": 9
             },

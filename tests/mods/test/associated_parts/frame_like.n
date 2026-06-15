@@ -1,0 +1,13 @@
+pub PartFactory :: plex {
+    value i32
+}
+
+impl PartFactory {
+    pub init :: fn () -> Self {
+        return { value: 1 }
+    }
+
+    pub apply :: fn (factory: ^Self) {
+        factory.value += 1
+    }
+}

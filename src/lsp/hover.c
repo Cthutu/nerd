@@ -211,6 +211,64 @@ internal u32 lsp_find_field_node_at_token(const Ast* ast, u32 token_index)
     return U32_MAX;
 }
 
+internal bool lsp_find_plex_literal_field_at_token(const Ast* ast,
+                                                   u32        token_index,
+                                                   u32* out_literal_node_index,
+                                                   u32* out_field_index)
+{
+    for (u32 node_index = 0; node_index < array_count(ast->nodes);
+         ++node_index) {
+        const AstNode* node = &ast->nodes[node_index];
+        if ((node->kind != AK_Plex && node->kind != AK_PlexUpdate) ||
+            node->a >= array_count(ast->plex_literals)) {
+            continue;
+        }
+
+        const AstPlexLiteralInfo* literal = &ast->plex_literals[node->a];
+        for (u32 i = 0; i < literal->field_count; ++i) {
+            u32 field_index = literal->first_field + i;
+            if (field_index >= array_count(ast->plex_literal_fields)) {
+                break;
+            }
+            if (ast->plex_literal_fields[field_index].token_index ==
+                token_index) {
+                *out_literal_node_index = node_index;
+                *out_field_index        = field_index;
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+internal bool lsp_find_plex_pattern_field_at_token(const Ast* ast,
+                                                   u32        token_index,
+                                                   u32*       out_pattern_index,
+                                                   u32*       out_field_index)
+{
+    for (u32 pattern_index = 0; pattern_index < array_count(ast->patterns);
+         ++pattern_index) {
+        const AstPattern* pattern = &ast->patterns[pattern_index];
+        if (pattern->kind != APK_Plex) {
+            continue;
+        }
+        for (u32 i = 0; i < pattern->b; ++i) {
+            u32 field_index = pattern->a + i;
+            if (field_index >= array_count(ast->pattern_fields)) {
+                break;
+            }
+            if (ast->pattern_fields[field_index].token_index == token_index) {
+                *out_pattern_index = pattern_index;
+                *out_field_index   = field_index;
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 internal string lsp_field_hover_text(const LspDocument* doc,
                                      Arena*             arena,
                                      u32                field_node_index);
@@ -261,6 +319,75 @@ internal u32 lsp_selected_method_decl_for_field(const LspDocument* doc,
     u32 decl_index =
         doc->front_end.sema.node_method_call_decl_indices[call_node_index];
     return decl_index == sema_no_decl() ? LSP_NO_DECL : decl_index;
+}
+
+internal bool lsp_record_field_type(const Sema* sema,
+                                    u32         record_type,
+                                    u32         field_symbol,
+                                    u32*        out_field_type)
+{
+    if (record_type == sema_no_type() ||
+        record_type >= array_count(sema->types)) {
+        return false;
+    }
+
+    const SemaType* type = &sema->types[record_type];
+    if (type->kind != STK_Plex && type->kind != STK_Union) {
+        return false;
+    }
+
+    for (u32 i = 0; i < type->param_count; ++i) {
+        u32 param_index = type->first_param_type + i;
+        if (param_index >= array_count(sema->type_param_symbols)) {
+            break;
+        }
+        if (sema->type_param_symbols[param_index] == field_symbol) {
+            if (out_field_type != NULL) {
+                *out_field_type = sema->type_param_types[param_index];
+            }
+            return true;
+        }
+    }
+
+    return false;
+}
+
+internal u32 lsp_enum_variant_index(const Sema* sema,
+                                    u32         enum_type,
+                                    u32         variant_symbol)
+{
+    if (enum_type == sema_no_type() || enum_type >= array_count(sema->types) ||
+        sema->types[enum_type].kind != STK_Enum) {
+        return U32_MAX;
+    }
+
+    const SemaType* type = &sema->types[enum_type];
+    for (u32 i = 0; i < type->param_count; ++i) {
+        u32 param_index = type->first_param_type + i;
+        if (param_index >= array_count(sema->type_param_symbols)) {
+            break;
+        }
+        if (sema->type_param_symbols[param_index] == variant_symbol) {
+            return i;
+        }
+    }
+    return U32_MAX;
+}
+
+internal u32 lsp_enum_variant_payload_type(const Sema* sema,
+                                           u32         enum_type,
+                                           u32         variant_index)
+{
+    if (enum_type == sema_no_type() || enum_type >= array_count(sema->types) ||
+        sema->types[enum_type].kind != STK_Enum ||
+        variant_index >= sema->types[enum_type].param_count) {
+        return sema_no_type();
+    }
+
+    u32 param_index = sema->types[enum_type].first_param_type + variant_index;
+    return param_index < array_count(sema->type_param_types)
+               ? sema->type_param_types[param_index]
+               : sema_no_type();
 }
 
 internal u32 lsp_method_decl_for_bind_node(const LspDocument* doc,
@@ -667,6 +794,12 @@ internal JsonValue* lsp_ast_definition_location(const LspDocument* doc,
 internal string lsp_decl_hover_text(const LspDocument* doc,
                                     Arena*             arena,
                                     u32                decl_index);
+internal string lsp_decl_doc_comment(const LspDocument* doc,
+                                     Arena*             arena,
+                                     const SemaDecl*    decl);
+internal string lsp_method_hover_text(const LspDocument* doc,
+                                      Arena*             arena,
+                                      u32                decl_index);
 
 internal bool lsp_path_is_module_part_file(cstr path)
 {
@@ -1404,6 +1537,17 @@ internal u32 lsp_find_local_index_for_token(const LspDocument* doc,
 {
     const Ast*  ast  = &doc->front_end.ast;
     const Sema* sema = &doc->front_end.sema;
+    for (u32 i = 0; i < array_count(ast->patterns); ++i) {
+        const AstPattern* pattern = &ast->patterns[i];
+        if (pattern->token_index == token_index &&
+            i < array_count(sema->pattern_local_indices)) {
+            u32 local_index = sema->pattern_local_indices[i];
+            if (lsp_sema_local(sema, local_index, NULL)) {
+                return local_index;
+            }
+        }
+    }
+
     for (u32 i = 0; i < array_count(ast->on_branches); ++i) {
         const AstOnBranch* branch = &ast->on_branches[i];
         if (branch->binder_token_index == token_index &&
@@ -2203,6 +2347,42 @@ internal string lsp_decl_hover_text(const LspDocument* doc,
         STRINGV(inferred_type));
 }
 
+internal string lsp_method_hover_text(const LspDocument* doc,
+                                      Arena*             arena,
+                                      u32                decl_index)
+{
+    const SemaDecl* decl = NULL;
+    if (!lsp_sema_decl(&doc->front_end.sema, decl_index, &decl)) {
+        return s("");
+    }
+
+    const SemaMethod* method = NULL;
+    for (u32 i = 0; i < array_count(doc->front_end.sema.methods); ++i) {
+        if (doc->front_end.sema.methods[i].decl_index == decl_index) {
+            method = &doc->front_end.sema.methods[i];
+            break;
+        }
+    }
+    if (method == NULL) {
+        return lsp_decl_hover_text(doc, arena, decl_index);
+    }
+
+    string name      = lex_symbol(&doc->front_end.lexer, method->symbol_handle);
+    string signature = lsp_decl_signature(doc, arena, decl);
+    string rendered  = string_format(
+        arena, STRINGP " :: " STRINGP, STRINGV(name), STRINGV(signature));
+    string comment = lsp_decl_doc_comment(doc, arena, decl);
+    string suffix =
+        comment.count == 0
+            ? s("")
+            : string_format(arena, "\n\n" STRINGP, STRINGV(comment));
+
+    return string_format(arena,
+                         STRINGP "\n\n- Kind: method" STRINGP,
+                         STRINGV(lsp_markdown_code_block(arena, rendered)),
+                         STRINGV(suffix));
+}
+
 internal string lsp_local_hover_text(const LspDocument* doc,
                                      Arena*             arena,
                                      u32                local_index)
@@ -2224,6 +2404,338 @@ internal string lsp_local_hover_text(const LspDocument* doc,
             arena, string_format(arena, STRINGP, STRINGV(name)))),
         STRINGV(kind),
         STRINGV(type));
+}
+
+internal string lsp_record_field_hover_text(const LspDocument* doc,
+                                            Arena*             arena,
+                                            u32                owner_type,
+                                            u32                field_symbol,
+                                            string             kind)
+{
+    u32 field_type = sema_no_type();
+    if (!lsp_record_field_type(
+            &doc->front_end.sema, owner_type, field_symbol, &field_type)) {
+        return s("");
+    }
+
+    string name = lex_symbol(&doc->front_end.lexer, field_symbol);
+    string type = sema_type_name(
+        &doc->front_end.lexer, &doc->front_end.sema, arena, field_type);
+    string owner = sema_type_name(
+        &doc->front_end.lexer, &doc->front_end.sema, arena, owner_type);
+
+    return string_format(
+        arena,
+        STRINGP "\n\n- Kind: " STRINGP "\n- Type: `" STRINGP "`"
+                "\n- Owner: `" STRINGP "`",
+        STRINGV(lsp_markdown_code_block(
+            arena, string_format(arena, STRINGP, STRINGV(name)))),
+        STRINGV(kind),
+        STRINGV(type),
+        STRINGV(owner));
+}
+
+internal string lsp_plex_literal_field_hover_text(const LspDocument* doc,
+                                                  Arena*             arena,
+                                                  u32 literal_node_index,
+                                                  u32 field_index)
+{
+    if (literal_node_index >= array_count(doc->front_end.ast.nodes) ||
+        field_index >= array_count(doc->front_end.ast.plex_literal_fields)) {
+        return s("");
+    }
+
+    u32 owner_type = sema_no_type();
+    if (!lsp_sema_node_type(
+            &doc->front_end.sema, literal_node_index, &owner_type)) {
+        return s("");
+    }
+
+    const SemaType* owner = NULL;
+    if (!lsp_sema_type(&doc->front_end.sema, owner_type, &owner)) {
+        return s("");
+    }
+
+    string kind = owner->kind == STK_Union ? s("union field") : s("plex field");
+    return lsp_record_field_hover_text(
+        doc,
+        arena,
+        owner_type,
+        doc->front_end.ast.plex_literal_fields[field_index].symbol_handle,
+        kind);
+}
+
+internal bool lsp_pattern_expected_type_from(const LspDocument* doc,
+                                             u32                pattern_index,
+                                             u32                value_type,
+                                             u32  target_pattern_index,
+                                             u32* out_type)
+{
+    if (pattern_index >= array_count(doc->front_end.ast.patterns)) {
+        return false;
+    }
+    if (pattern_index == target_pattern_index) {
+        *out_type = value_type;
+        return true;
+    }
+
+    const Ast*        ast     = &doc->front_end.ast;
+    const Sema*       sema    = &doc->front_end.sema;
+    const SemaType*   value_t = NULL;
+    const AstPattern* pattern = &ast->patterns[pattern_index];
+
+    switch (pattern->kind) {
+    case APK_Bind:
+        return pattern->b != U32_MAX &&
+               lsp_pattern_expected_type_from(
+                   doc, pattern->b, value_type, target_pattern_index, out_type);
+    case APK_Tuple:
+        if (!lsp_sema_type(sema, value_type, &value_t) ||
+            value_t->kind != STK_Tuple) {
+            return false;
+        }
+        for (u32 i = 0; i < pattern->b; ++i) {
+            u32 item_index = pattern->a + i;
+            if (item_index >= array_count(ast->pattern_items) ||
+                i >= value_t->param_count) {
+                break;
+            }
+            u32 item_type =
+                sema->type_param_types[value_t->first_param_type + i];
+            if (lsp_pattern_expected_type_from(doc,
+                                               ast->pattern_items[item_index],
+                                               item_type,
+                                               target_pattern_index,
+                                               out_type)) {
+                return true;
+            }
+        }
+        return false;
+    case APK_Plex:
+        if (!lsp_sema_type(sema, value_type, &value_t) ||
+            value_t->kind != STK_Plex) {
+            return false;
+        }
+        for (u32 i = 0; i < pattern->b; ++i) {
+            u32 field_index = pattern->a + i;
+            if (field_index >= array_count(ast->pattern_fields)) {
+                break;
+            }
+            const AstPlexPatternField* field =
+                &ast->pattern_fields[field_index];
+            u32 field_type = sema_no_type();
+            if (!lsp_record_field_type(
+                    sema, value_type, field->symbol_handle, &field_type)) {
+                continue;
+            }
+            if (lsp_pattern_expected_type_from(doc,
+                                               field->pattern_index,
+                                               field_type,
+                                               target_pattern_index,
+                                               out_type)) {
+                return true;
+            }
+        }
+        return false;
+    case APK_EnumVariant:
+        if (!lsp_sema_type(sema, value_type, &value_t) ||
+            value_t->kind != STK_Enum) {
+            return false;
+        }
+        {
+            const AstEnumPattern* enum_pattern =
+                &ast->enum_patterns[pattern->a];
+            u32 variant = lsp_enum_variant_index(
+                sema, value_type, enum_pattern->symbol_handle);
+            u32 payload_type =
+                lsp_enum_variant_payload_type(sema, value_type, variant);
+            const SemaType* payload = NULL;
+            for (u32 i = 0; i < enum_pattern->pattern_count; ++i) {
+                u32 item_index = enum_pattern->first_pattern + i;
+                if (item_index >= array_count(ast->pattern_items)) {
+                    break;
+                }
+                u32 item_type = payload_type;
+                if (lsp_sema_type(sema, payload_type, &payload) &&
+                    payload->kind == STK_Tuple && i < payload->param_count) {
+                    item_type =
+                        sema->type_param_types[payload->first_param_type + i];
+                }
+                if (lsp_pattern_expected_type_from(
+                        doc,
+                        ast->pattern_items[item_index],
+                        item_type,
+                        target_pattern_index,
+                        out_type)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    default:
+        return false;
+    }
+}
+
+internal bool lsp_pattern_expected_type(const LspDocument* doc,
+                                        u32                target_pattern_index,
+                                        u32*               out_type)
+{
+    const Ast* ast = &doc->front_end.ast;
+    for (u32 node_index = 0; node_index < array_count(ast->nodes);
+         ++node_index) {
+        const AstNode* node = &ast->nodes[node_index];
+        if (node->kind == AK_On && node->b < array_count(ast->ons)) {
+            u32 scrutinee_type = sema_no_type();
+            if (!lsp_sema_node_type(
+                    &doc->front_end.sema, node->a, &scrutinee_type)) {
+                continue;
+            }
+            const AstOnInfo* on = &ast->ons[node->b];
+            for (u32 i = 0; i < on->branch_count; ++i) {
+                u32 branch_index = on->first_branch + i;
+                if (branch_index >= array_count(ast->on_branches)) {
+                    break;
+                }
+                const AstOnBranch* branch = &ast->on_branches[branch_index];
+                for (u32 j = 0; j < branch->pattern_count; ++j) {
+                    u32 item_index = branch->pattern_index + j;
+                    if (item_index >= array_count(ast->pattern_items)) {
+                        break;
+                    }
+                    if (lsp_pattern_expected_type_from(
+                            doc,
+                            ast->pattern_items[item_index],
+                            scrutinee_type,
+                            target_pattern_index,
+                            out_type)) {
+                        return true;
+                    }
+                }
+            }
+        } else if ((node->kind == AK_DestructureBind ||
+                    node->kind == AK_DestructureVariable ||
+                    node->kind == AK_DestructureAssign) &&
+                   node->b < array_count(ast->nodes)) {
+            u32 value_type = sema_no_type();
+            if (lsp_sema_node_type(
+                    &doc->front_end.sema, node->b, &value_type) &&
+                lsp_pattern_expected_type_from(
+                    doc, node->a, value_type, target_pattern_index, out_type)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+internal string lsp_plex_pattern_field_hover_text(const LspDocument* doc,
+                                                  Arena*             arena,
+                                                  u32 pattern_index,
+                                                  u32 field_index)
+{
+    if (field_index >= array_count(doc->front_end.ast.pattern_fields)) {
+        return s("");
+    }
+    u32 owner_type = sema_no_type();
+    if (!lsp_pattern_expected_type(doc, pattern_index, &owner_type)) {
+        return s("");
+    }
+    return lsp_record_field_hover_text(
+        doc,
+        arena,
+        owner_type,
+        doc->front_end.ast.pattern_fields[field_index].symbol_handle,
+        s("plex field"));
+}
+
+internal string lsp_enum_variant_hover_text_for_type(const LspDocument* doc,
+                                                     Arena*             arena,
+                                                     u32 enum_type,
+                                                     u32 variant_symbol)
+{
+    u32 variant =
+        lsp_enum_variant_index(&doc->front_end.sema, enum_type, variant_symbol);
+    if (variant == U32_MAX) {
+        return s("");
+    }
+
+    string name  = lex_symbol(&doc->front_end.lexer, variant_symbol);
+    string owner = sema_type_name(
+        &doc->front_end.lexer, &doc->front_end.sema, arena, enum_type);
+    u32 payload_type =
+        lsp_enum_variant_payload_type(&doc->front_end.sema, enum_type, variant);
+    string payload =
+        payload_type == sema_no_type()
+            ? s("")
+            : string_format(arena,
+                            "\n- Payload: `" STRINGP "`",
+                            STRINGV(sema_type_name(&doc->front_end.lexer,
+                                                   &doc->front_end.sema,
+                                                   arena,
+                                                   payload_type)));
+
+    return string_format(
+        arena,
+        STRINGP "\n\n- Kind: enum variant\n- Owner: `" STRINGP "`" STRINGP,
+        STRINGV(lsp_markdown_code_block(
+            arena, string_format(arena, STRINGP, STRINGV(name)))),
+        STRINGV(owner),
+        STRINGV(payload));
+}
+
+internal string lsp_enum_variant_hover_text(const LspDocument* doc,
+                                            Arena*             arena,
+                                            u32                token_index)
+{
+    const Ast* ast = &doc->front_end.ast;
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (node->kind == AK_EnumVariant && node->token_index == token_index) {
+            u32 enum_type = sema_no_type();
+            if (lsp_sema_node_type(&doc->front_end.sema, i, &enum_type)) {
+                string hover = lsp_enum_variant_hover_text_for_type(
+                    doc, arena, enum_type, node->a);
+                if (hover.count != 0) {
+                    return hover;
+                }
+            }
+        }
+    }
+
+    for (u32 pattern_index = 0; pattern_index < array_count(ast->patterns);
+         ++pattern_index) {
+        const AstPattern* pattern = &ast->patterns[pattern_index];
+        if (pattern->kind == APK_EnumVariant &&
+            pattern->a < array_count(ast->enum_patterns)) {
+            const AstEnumPattern* enum_pattern =
+                &ast->enum_patterns[pattern->a];
+            if (enum_pattern->token_index != token_index) {
+                continue;
+            }
+            u32 enum_type = sema_no_type();
+            if (lsp_pattern_expected_type(doc, pattern_index, &enum_type)) {
+                return lsp_enum_variant_hover_text_for_type(
+                    doc, arena, enum_type, enum_pattern->symbol_handle);
+            }
+        } else if (pattern->kind == APK_Value &&
+                   pattern->a < array_count(ast->nodes)) {
+            const AstNode* value = &ast->nodes[pattern->a];
+            if (value->token_index != token_index ||
+                (value->kind != AK_EnumVariant &&
+                 value->kind != AK_SymbolRef)) {
+                continue;
+            }
+            u32 enum_type = sema_no_type();
+            if (lsp_pattern_expected_type(doc, pattern_index, &enum_type)) {
+                return lsp_enum_variant_hover_text_for_type(
+                    doc, arena, enum_type, value->a);
+            }
+        }
+    }
+
+    return s("");
 }
 
 internal string lsp_expression_hover_text(const LspDocument* doc,
@@ -3094,7 +3606,7 @@ internal string lsp_field_hover_text(const LspDocument* doc,
         u32 method_decl =
             lsp_selected_method_decl_for_field(doc, field_node_index);
         if (method_decl != LSP_NO_DECL) {
-            return lsp_decl_hover_text(doc, arena, method_decl);
+            return lsp_method_hover_text(doc, arena, method_decl);
         }
     }
 
@@ -4180,6 +4692,47 @@ void lsp_handle_hover(LspState* state, const LspMessage* message)
                         response, message->arena, field_hover);
                     break;
                 }
+            }
+
+            u32 literal_node_index  = U32_MAX;
+            u32 literal_field_index = U32_MAX;
+            if (lsp_find_plex_literal_field_at_token(&doc->front_end.ast,
+                                                     token_index,
+                                                     &literal_node_index,
+                                                     &literal_field_index)) {
+                string literal_field_hover =
+                    lsp_plex_literal_field_hover_text(doc,
+                                                      message->arena,
+                                                      literal_node_index,
+                                                      literal_field_index);
+                if (literal_field_hover.count != 0) {
+                    lsp_set_markdown_hover(
+                        response, message->arena, literal_field_hover);
+                    break;
+                }
+            }
+
+            u32 pattern_index       = U32_MAX;
+            u32 pattern_field_index = U32_MAX;
+            if (lsp_find_plex_pattern_field_at_token(&doc->front_end.ast,
+                                                     token_index,
+                                                     &pattern_index,
+                                                     &pattern_field_index)) {
+                string pattern_field_hover = lsp_plex_pattern_field_hover_text(
+                    doc, message->arena, pattern_index, pattern_field_index);
+                if (pattern_field_hover.count != 0) {
+                    lsp_set_markdown_hover(
+                        response, message->arena, pattern_field_hover);
+                    break;
+                }
+            }
+
+            string enum_variant_hover =
+                lsp_enum_variant_hover_text(doc, message->arena, token_index);
+            if (enum_variant_hover.count != 0) {
+                lsp_set_markdown_hover(
+                    response, message->arena, enum_variant_hover);
+                break;
             }
 
             u32 decl_index = lsp_find_decl_index_for_token(doc, token_index);

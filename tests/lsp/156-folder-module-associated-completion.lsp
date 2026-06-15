@@ -1,63 +1,40 @@
-print :: use core
+use test.associated_parts
 
 main :: fn () {
-    print.prn("Hello")
+    PartFa
+    _factory := PartFactory.
 }
 ¬
 [
     {
         "jsonrpc": "2.0",
         "id": 2,
-        "method": "textDocument/hover",
+        "method": "textDocument/completion",
         "params": {
             "textDocument": {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 0,
-                "character": 0
+                "line": 3,
+                "character": 10
             }
         }
     },
     {
         "jsonrpc": "2.0",
         "id": 3,
-        "method": "textDocument/hover",
+        "method": "textDocument/completion",
         "params": {
             "textDocument": {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 3,
-                "character": 11
-            }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 4,
-        "method": "textDocument/definition",
-        "params": {
-            "textDocument": {
-                "uri": "file:///test.n"
+                "line": 4,
+                "character": 28
             },
-            "position": {
-                "line": 3,
-                "character": 11
-            }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 5,
-        "method": "textDocument/definition",
-        "params": {
-            "textDocument": {
-                "uri": "file:///test.n"
-            },
-            "position": {
-                "line": 0,
-                "character": 13
+            "context": {
+                "triggerKind": 2,
+                "triggerCharacter": "."
             }
         }
     }
@@ -121,62 +98,63 @@ main :: fn () {
         "method": "textDocument/publishDiagnostics",
         "params": {
             "uri": "file:///test.n",
-            "diagnostics": []
+            "diagnostics": [
+                {
+                    "range": {
+                        "start": {
+                            "line": 5,
+                            "character": 0
+                        },
+                        "end": {
+                            "line": 5,
+                            "character": 1
+                        }
+                    },
+                    "severity": 1,
+                    "source": "nerd",
+                    "message": "Expected Symbol but found RightBrace `}`",
+                    "relatedInformation": [
+                        {
+                            "location": {
+                                "uri": "file:///test.n",
+                                "range": {
+                                "start": {
+                                    "line": 5,
+                                    "character": 0
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "character": 1
+                                }
+                                }
+                            },
+                            "message": "help: Check for a missing closing delimiter or misplaced operator"
+                        }
+                    ]
+                }
+            ]
         }
     },
     {
         "jsonrpc": "2.0",
         "id": 2,
-        "result": {
-            "contents": {
-                "kind": "markdown",
-                "value": "```nerd\nprint\n```\n\n- Kind: module\n- Type: `module`"
+        "result": [
+            {
+                "label": "PartFactory",
+                "kind": 22
             }
-        }
+        ]
     },
     {
         "jsonrpc": "2.0",
         "id": 3,
-        "result": {
-            "contents": {
-                "kind": "markdown",
-                "value": "```nerd\nprn :: fn (string) -> void\n```\n\n- Kind: function\n\nPrints text to standard output and appends a newline."
+        "result": [
+            {
+                "label": "init",
+                "kind": 2,
+                "detail": "method"
             }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 4,
-        "result": {
-            "uri": "file:///home/matt/nerd/mods/core.n",
-            "range": {
-                "start": {
-                    "line": 49,
-                    "character": 4
-                },
-                "end": {
-                    "line": 49,
-                    "character": 7
-                }
-            }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 5,
-        "result": {
-            "uri": "file:///home/matt/nerd/mods/core.n",
-            "range": {
-                "start": {
-                    "line": 0,
-                    "character": 0
-                },
-                "end": {
-                    "line": 0,
-                    "character": 0
-                }
-            }
-        }
+        ]
     },
     {
         "jsonrpc": "2.0",

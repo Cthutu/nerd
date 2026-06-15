@@ -1,49 +1,26 @@
-use std.io
+use test.associated_parts
 
 main :: fn () {
-    prn("Hello")
+    factory := PartFactory.init()
+    factory.
 }
 ¬
 [
     {
         "jsonrpc": "2.0",
         "id": 2,
-        "method": "textDocument/hover",
+        "method": "textDocument/completion",
         "params": {
             "textDocument": {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 3,
-                "character": 4
-            }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 3,
-        "method": "textDocument/definition",
-        "params": {
-            "textDocument": {
-                "uri": "file:///test.n"
+                "line": 4,
+                "character": 12
             },
-            "position": {
-                "line": 3,
-                "character": 4
-            }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 4,
-        "method": "textDocument/definition",
-        "params": {
-            "textDocument": {
-                "uri": "file:///test.n"
-            },
-            "position": {
-                "line": 0,
-                "character": 4
+            "context": {
+                "triggerKind": 2,
+                "triggerCharacter": "."
             }
         }
     }
@@ -111,19 +88,34 @@ main :: fn () {
                 {
                     "range": {
                         "start": {
-                            "line": 0,
-                            "character": 4
+                            "line": 5,
+                            "character": 0
                         },
                         "end": {
-                            "line": 0,
-                            "character": 10
+                            "line": 5,
+                            "character": 1
                         }
                     },
-                    "severity": 4,
+                    "severity": 1,
                     "source": "nerd",
-                    "message": "Unused use `std.io`",
-                    "tags": [
-                        1
+                    "message": "Expected Symbol but found RightBrace `}`",
+                    "relatedInformation": [
+                        {
+                            "location": {
+                                "uri": "file:///test.n",
+                                "range": {
+                                    "start": {
+                                        "line": 5,
+                                        "character": 0
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "character": 1
+                                    }
+                                }
+                            },
+                            "message": "help: Check for a missing closing delimiter or misplaced operator"
+                        }
                     ]
                 }
             ]
@@ -132,46 +124,18 @@ main :: fn () {
     {
         "jsonrpc": "2.0",
         "id": 2,
-        "result": {
-            "contents": {
-                "kind": "markdown",
-                "value": "```nerd\nprn :: fn (string) -> void\n```\n\n- Kind: function\n\nPrints text to standard output and appends a newline."
+        "result": [
+            {
+                "label": "init",
+                "kind": 2,
+                "detail": "method"
+            },
+            {
+                "label": "apply",
+                "kind": 2,
+                "detail": "method"
             }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 3,
-        "result": {
-            "uri": "__REPO_URI__/mods/core.n",
-            "range": {
-                "start": {
-                    "line": 49,
-                    "character": 4
-                },
-                "end": {
-                    "line": 49,
-                    "character": 7
-                }
-            }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 4,
-        "result": {
-            "uri": "__REPO_URI__/mods/std/io.n",
-            "range": {
-                "start": {
-                    "line": 0,
-                    "character": 0
-                },
-                "end": {
-                    "line": 0,
-                    "character": 0
-                }
-            }
-        }
+        ]
     },
     {
         "jsonrpc": "2.0",
