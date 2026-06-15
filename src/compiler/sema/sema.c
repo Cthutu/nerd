@@ -12524,6 +12524,12 @@ typedef struct {
     bool receiver_deref;
 } SemaResolvedMethodCall;
 
+internal bool sema_seed_local_from_call_arg_expected(const Lexer* lexer,
+                                                     const Ast*   ast,
+                                                     Sema*        sema,
+                                                     u32 arg_node_index,
+                                                     u32 expected_type);
+
 internal bool sema_method_matches_trait_symbol(const Lexer*      lexer,
                                                const Lexer*      source_lexer,
                                                const Ast*        source_ast,
@@ -12563,6 +12569,7 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
                                            u32          explicit_arg_node_index,
                                            u32          explicit_trait_symbol,
                                            u32          call_arg_offset,
+                                           bool         seed_arg_contexts,
                                            bool*        out_found,
                                            SemaResolvedMethodCall* out_call)
 {
@@ -12572,8 +12579,8 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
     bool                   found_trait_call = false;
     SemaResolvedMethodCall trait_call       = {0};
 
-    if (!sema_import_implicit_core_arena_methods(
-            (Lexer*)lexer, sema, receiver_type)) {
+    if (!seed_arg_contexts && !sema_import_implicit_core_arena_methods(
+                                  (Lexer*)lexer, sema, receiver_type)) {
         return false;
     }
 
@@ -12647,6 +12654,10 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
                     : NULL;
             Array(u32) source_arg_types = NULL;
             if (generic != NULL) {
+                if (seed_arg_contexts) {
+                    array_free(source_arg_types);
+                    continue;
+                }
                 for (u32 j = 0; j < generic->symbol_count; ++j) {
                     array_push(source_arg_types, sema_no_type());
                 }
@@ -12885,6 +12896,14 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
                                               &arg_node)) {
                     array_free(source_arg_types);
                     return false;
+                }
+                if (seed_arg_contexts) {
+                    if (!sema_seed_local_from_call_arg_expected(
+                            lexer, ast, sema, arg_node, expected_dst)) {
+                        array_free(source_arg_types);
+                        return false;
+                    }
+                    continue;
                 }
                 u32 arg_type = sema_no_type();
                 if (!sema_infer_node_type(
@@ -13835,11 +13854,28 @@ internal bool sema_check_on_pattern_type(const Lexer* lexer,
                     }
                 }
                 if (field_type == sema_no_type()) {
-                    return error_0304_type_mismatch(
+                    string field_name = lex_symbol(lexer, field->symbol_handle);
+                    string suggested_field_name = {0};
+                    if (field_name.count > 1 && field_name.data[0] == '_') {
+                        string unprefixed_field_name = string_from(
+                            field_name.data + 1, field_name.count - 1);
+                        for (u32 j = 0; j < plex->param_count; ++j) {
+                            string plex_field_name =
+                                lex_symbol(lexer,
+                                           sema->type_param_symbols
+                                               [plex->first_param_type + j]);
+                            if (string_eq(plex_field_name,
+                                          unprefixed_field_name)) {
+                                suggested_field_name = plex_field_name;
+                                break;
+                            }
+                        }
+                    }
+                    return error_0304_unknown_plex_pattern_field(
                         lexer->source,
-                        sema_pattern_span(lexer, pattern),
-                        s("known plex field"),
-                        lex_symbol(lexer, field->symbol_handle));
+                        sema_token_span(lexer, field->token_index),
+                        field_name,
+                        suggested_field_name);
                 }
                 if (!sema_check_on_pattern_type(lexer,
                                                 ast,
@@ -13900,6 +13936,24 @@ internal bool sema_check_on_pattern_type(const Lexer* lexer,
             }
             u32 payload_type =
                 sema_enum_variant_payload_type(sema, value_type, variant);
+            if (payload_type != sema_no_type() &&
+                sema->types[payload_type].kind == STK_Plex &&
+                !enum_pattern->braced_payload &&
+                enum_pattern->pattern_count > 1) {
+                return error_0304_enum_payload_pattern_field_names(
+                    lexer->source,
+                    sema_pattern_span(lexer, pattern),
+                    lex_symbol(lexer, enum_pattern->symbol_handle));
+            }
+            if (payload_type != sema_no_type() &&
+                sema->types[payload_type].kind == STK_Tuple &&
+                enum_pattern->braced_payload) {
+                return error_0304_type_mismatch(
+                    lexer->source,
+                    sema_pattern_span(lexer, pattern),
+                    s("tuple enum payload pattern"),
+                    s("braced enum payload pattern"));
+            }
             u32 expected_count =
                 payload_type == sema_no_type()
                     ? 0
@@ -14378,6 +14432,32 @@ internal bool sema_type_can_adopt_expected_return_context(const Sema* sema,
            natural_kind == STK_UntypedFloat || natural_kind == STK_Nil;
 }
 
+internal bool sema_local_value_is_contextual_plex_literal(const Ast* ast,
+                                                          Sema*      sema,
+                                                          u32 value_node_index,
+                                                          u32 expected_type)
+{
+    if (value_node_index >= array_count(ast->nodes) ||
+        expected_type == sema_no_type()) {
+        return false;
+    }
+
+    u32 node_index = sema_unwrap_expr_node(ast, value_node_index);
+    if (node_index >= array_count(ast->nodes) ||
+        ast->nodes[node_index].kind != AK_Plex) {
+        return false;
+    }
+
+    const AstPlexLiteralInfo* literal =
+        &ast->plex_literals[ast->nodes[node_index].a];
+    if (literal->target_node_index != U32_MAX) {
+        return false;
+    }
+
+    SemaTypeKind expected_kind = sema->types[expected_type].kind;
+    return expected_kind == STK_Plex || expected_kind == STK_Union;
+}
+
 internal bool sema_seed_local_type_from_expected(const Lexer* lexer,
                                                  const Ast*   ast,
                                                  Sema*        sema,
@@ -14396,22 +14476,25 @@ internal bool sema_seed_local_type_from_expected(const Lexer* lexer,
         return true;
     }
 
-    u32 natural_type = sema_no_type();
-    if (!sema_infer_node_type(lexer,
-                              ast,
-                              sema,
-                              local->value_node_index,
-                              sema_no_type(),
-                              &natural_type)) {
-        return false;
-    }
+    if (!sema_local_value_is_contextual_plex_literal(
+            ast, sema, local->value_node_index, expected_type)) {
+        u32 natural_type = sema_no_type();
+        if (!sema_infer_node_type(lexer,
+                                  ast,
+                                  sema,
+                                  local->value_node_index,
+                                  sema_no_type(),
+                                  &natural_type)) {
+            return false;
+        }
 
-    if (!sema_type_can_adopt_expected_return_context(
-            sema, natural_type, expected_type)) {
-        return true;
-    }
-    if (sema_materialise_type(sema, natural_type) == expected_type) {
-        return true;
+        if (!sema_type_can_adopt_expected_return_context(
+                sema, natural_type, expected_type)) {
+            return true;
+        }
+        if (sema_materialise_type(sema, natural_type) == expected_type) {
+            return true;
+        }
     }
 
     u32 contextual_type = sema_no_type();
@@ -14767,6 +14850,44 @@ internal bool sema_node_is_inside_generic_impl(const Ast* ast, u32 node_index)
     return false;
 }
 
+internal bool sema_node_is_inside_generic_function(const Ast* ast,
+                                                   u32        node_index)
+{
+    u32 fn_start_index =
+        sema_ast_enclosing_function_start_node(ast, node_index);
+    if (fn_start_index == U32_MAX) {
+        return false;
+    }
+
+    const AstNode* fn_start = &ast->nodes[fn_start_index];
+    if (fn_start->kind != AK_FnStart ||
+        fn_start->a >= array_count(ast->fn_signatures)) {
+        return false;
+    }
+
+    const AstFnSignature* signature = &ast->fn_signatures[fn_start->a];
+    return signature->generic_params_index != U32_MAX;
+}
+
+internal bool sema_node_is_inside_function_with_params(const Ast* ast,
+                                                       u32        node_index)
+{
+    u32 fn_start_index =
+        sema_ast_enclosing_function_start_node(ast, node_index);
+    if (fn_start_index == U32_MAX) {
+        return false;
+    }
+
+    const AstNode* fn_start = &ast->nodes[fn_start_index];
+    if (fn_start->kind != AK_FnStart ||
+        fn_start->a >= array_count(ast->fn_signatures)) {
+        return false;
+    }
+
+    const AstFnSignature* signature = &ast->fn_signatures[fn_start->a];
+    return signature->param_count != 0;
+}
+
 internal bool sema_seed_function_return_contexts(const Lexer* lexer,
                                                  const Ast*   ast,
                                                  Sema*        sema,
@@ -14823,6 +14944,165 @@ sema_seed_return_context_local_types(const Lexer*           lexer,
             continue;
         }
         if (!sema_seed_function_return_contexts(lexer, ast, sema, i)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+internal bool sema_seed_local_from_call_arg_expected(const Lexer* lexer,
+                                                     const Ast*   ast,
+                                                     Sema*        sema,
+                                                     u32 arg_node_index,
+                                                     u32 expected_type)
+{
+    if (arg_node_index >= array_count(ast->nodes) ||
+        expected_type == sema_no_type()) {
+        return true;
+    }
+
+    arg_node_index                = sema_unwrap_expr_node(ast, arg_node_index);
+    const AstNode* node           = &ast->nodes[arg_node_index];
+    u32            local_expected = expected_type;
+
+    if (node->kind == AK_AddressOf &&
+        sema->types[expected_type].kind == STK_Pointer) {
+        arg_node_index = sema_unwrap_expr_node(ast, node->a);
+        node           = &ast->nodes[arg_node_index];
+        local_expected = sema->types[expected_type].first_param_type;
+    }
+
+    if (node->kind != AK_SymbolRef) {
+        return true;
+    }
+
+    return sema_seed_local_type_from_expected(
+        lexer,
+        ast,
+        sema,
+        sema->node_local_indices[arg_node_index],
+        local_expected);
+}
+
+internal bool sema_seed_method_call_arg_contexts(const Lexer* lexer,
+                                                 const Ast*   ast,
+                                                 Sema*        sema,
+                                                 u32          call_node_index,
+                                                 u32          field_node_index,
+                                                 u32          call_arg_offset)
+{
+    const AstNode* field_node = &ast->nodes[field_node_index];
+    if (field_node->kind != AK_Field) {
+        return true;
+    }
+
+    u32 receiver_type = sema_no_type();
+    if (!sema_infer_node_type(
+            lexer, ast, sema, field_node->a, sema_no_type(), &receiver_type)) {
+        return false;
+    }
+    if (receiver_type == sema_no_type()) {
+        return true;
+    }
+
+    bool                   found_method = false;
+    SemaResolvedMethodCall method_call  = {0};
+    if (!sema_try_resolve_method_call(lexer,
+                                      ast,
+                                      sema,
+                                      call_node_index,
+                                      receiver_type,
+                                      field_node->b,
+                                      U32_MAX,
+                                      U32_MAX,
+                                      call_arg_offset,
+                                      true,
+                                      &found_method,
+                                      &method_call)) {
+        return false;
+    }
+    return true;
+}
+
+internal bool sema_call_has_seedable_local_arg(const Ast*         ast,
+                                               const AstCallInfo* call,
+                                               u32 call_arg_offset)
+{
+    if (call->arg_count <= call_arg_offset) {
+        return false;
+    }
+
+    for (u32 i = call_arg_offset; i < call->arg_count; ++i) {
+        u32 arg_node_index = ast->call_args[call->first_arg + i];
+        if (arg_node_index >= array_count(ast->nodes)) {
+            continue;
+        }
+
+        const AstNode* arg_node = &ast->nodes[arg_node_index];
+        if (arg_node->kind == AK_Assign) {
+            arg_node_index = arg_node->b;
+        }
+
+        arg_node_index = sema_unwrap_expr_node(ast, arg_node_index);
+        if (arg_node_index >= array_count(ast->nodes)) {
+            continue;
+        }
+
+        arg_node = &ast->nodes[arg_node_index];
+        if (arg_node->kind == AK_AddressOf) {
+            arg_node_index = sema_unwrap_expr_node(ast, arg_node->a);
+            if (arg_node_index >= array_count(ast->nodes)) {
+                continue;
+            }
+            arg_node = &ast->nodes[arg_node_index];
+        }
+
+        if (arg_node->kind == AK_SymbolRef) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+internal bool
+sema_seed_call_arg_context_local_types(const Lexer*           lexer,
+                                       const Ast*             ast,
+                                       const FrontEndOptions* options,
+                                       Sema*                  sema)
+{
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (node->kind != AK_Call) {
+            continue;
+        }
+        if (sema_node_is_inside_disabled_top_on_body(options, lexer, ast, i)) {
+            continue;
+        }
+        if (sema_node_is_inside_generic_function(ast, i) ||
+            sema_node_is_inside_generic_impl(ast, i) ||
+            sema_node_is_inside_function_with_params(ast, i)) {
+            continue;
+        }
+
+        const AstCallInfo* call = &ast->calls[node->b];
+        if (!sema_call_has_seedable_local_arg(ast, call, 0)) {
+            continue;
+        }
+
+        u32            callee_node_index = sema_unwrap_expr_node(ast, node->a);
+        const AstNode* callee            = &ast->nodes[callee_node_index];
+        u32            call_arg_offset   = 0;
+        if (callee->kind == AK_Index) {
+            const AstNode* generic_target = &ast->nodes[callee->a];
+            if (generic_target->kind == AK_Field) {
+                callee_node_index = callee->a;
+                callee            = generic_target;
+            }
+        }
+        if (callee->kind == AK_Field &&
+            !sema_seed_method_call_arg_contexts(
+                lexer, ast, sema, i, callee_node_index, call_arg_offset)) {
             return false;
         }
     }
@@ -18845,6 +19125,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                                 explicit_method_arg_node_index,
                                 trait_symbol,
                                 1,
+                                false,
                                 &found_trait_method,
                                 &trait_method_call)) {
                             return false;
@@ -19076,6 +19357,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                         explicit_method_arg_node_index,
                         U32_MAX,
                         0,
+                        false,
                         &found_method,
                         &method_call)) {
                     return false;
@@ -22066,6 +22348,10 @@ bool sema_analyse(const Lexer*           lexer,
         return false;
     }
     if (!sema_seed_return_context_local_types(lexer, ast, options, &sema)) {
+        sema_done(&sema);
+        return false;
+    }
+    if (!sema_seed_call_arg_context_local_types(lexer, ast, options, &sema)) {
         sema_done(&sema);
         return false;
     }

@@ -2460,14 +2460,41 @@ internal u32 hir_lower_pattern(Hir*         hir,
             const AstEnumPattern* enum_pattern =
                 &ast->enum_patterns[pattern->a];
             u32 first_child = (u32)array_count(hir->pattern_children);
-            for (u32 i = 0; i < enum_pattern->pattern_count; ++i) {
-                u32 child = ast->pattern_items[enum_pattern->first_pattern + i];
-                array_push(hir->pattern_children,
-                           (HirPatternChild){
-                               .symbol_handle = U32_MAX,
-                               .pattern_index = hir_lower_pattern(
-                                   hir, lexer, ast, sema, child),
-                           });
+            u32 child_count = enum_pattern->pattern_count;
+            if (enum_pattern->braced_payload &&
+                enum_pattern->pattern_count == 1) {
+                u32 payload_pattern_index =
+                    ast->pattern_items[enum_pattern->first_pattern];
+                const AstPattern* payload_pattern =
+                    &ast->patterns[payload_pattern_index];
+                if (payload_pattern->kind == APK_Plex) {
+                    child_count = payload_pattern->b;
+                    for (u32 i = 0; i < payload_pattern->b; ++i) {
+                        const AstPlexPatternField* field =
+                            &ast->pattern_fields[payload_pattern->a + i];
+                        array_push(hir->pattern_children,
+                                   (HirPatternChild){
+                                       .symbol_handle = field->symbol_handle,
+                                       .pattern_index = hir_lower_pattern(
+                                           hir,
+                                           lexer,
+                                           ast,
+                                           sema,
+                                           field->pattern_index),
+                                   });
+                    }
+                }
+            } else {
+                for (u32 i = 0; i < enum_pattern->pattern_count; ++i) {
+                    u32 child =
+                        ast->pattern_items[enum_pattern->first_pattern + i];
+                    array_push(hir->pattern_children,
+                               (HirPatternChild){
+                                   .symbol_handle = U32_MAX,
+                                   .pattern_index = hir_lower_pattern(
+                                       hir, lexer, ast, sema, child),
+                               });
+                }
             }
             return hir_add_pattern(
                 hir,
@@ -2483,7 +2510,7 @@ internal u32 hir_lower_pattern(Hir*         hir,
                                              enum_pattern->qualifier_node_index)
                             : hir_no_index(),
                     .first_child = first_child,
-                    .child_count = enum_pattern->pattern_count,
+                    .child_count = child_count,
                 });
         }
     default:

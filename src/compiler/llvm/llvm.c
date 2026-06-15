@@ -5496,7 +5496,13 @@ internal void llvm_bind_symbol_value(LlvmFunctionContext* ctx,
 
         LlvmValue local_value  = value;
         local_value.type_index = llvm_local_type(ctx, local_index);
-        llvm_set_local_value(ctx, local_index, local_value);
+        if (ctx->debug != NULL) {
+            LlvmLocalSlot* slot = llvm_ensure_local_slot(
+                ctx, local_index, local_value.type_index);
+            llvm_store_local_slot(ctx, slot, local_value);
+        } else {
+            llvm_set_local_value(ctx, local_index, local_value);
+        }
     }
 }
 
@@ -5906,6 +5912,28 @@ internal LlvmValue llvm_emit_pattern_condition(LlvmFunctionContext* ctx,
 
                 const HirPatternChild* child =
                     &ctx->hir->pattern_children[child_index];
+                if (!payload_is_tuple &&
+                    llvm_type_is_record(ctx->sema, variant_payload_type) &&
+                    child->symbol_handle != U32_MAX) {
+                    u32 field_index = llvm_record_field_index(
+                        ctx->sema, variant_payload_type, child->symbol_handle);
+                    if (field_index == U32_MAX) {
+                        return (LlvmValue){0};
+                    }
+
+                    string variant_payload_type_string =
+                        llvm_type_string(ctx, variant_payload_type);
+                    child_value = llvm_temp(ctx);
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = extractvalue " STRINGP
+                              " " STRINGP ", %u\n",
+                              STRINGV(child_value),
+                              STRINGV(variant_payload_type_string),
+                              STRINGV(variant_payload.value),
+                              field_index);
+                    child_type = llvm_record_field_type(
+                        ctx->sema, variant_payload_type, field_index);
+                }
                 if (!payload_is_tuple &&
                     llvm_type_is_record(ctx->sema, variant_payload_type) &&
                     child->pattern_index < array_count(ctx->hir->patterns)) {
@@ -12859,7 +12887,7 @@ internal bool llvm_emit_destructure(LlvmFunctionContext* ctx,
         const HirDestructureItem* item =
             &ctx->hir->destructure_items[stmt->target_expr_index + i];
         LlvmValue field = fields[i];
-        if (stmt->kind == HIR_STMT_DestructureLet &&
+        if (stmt->kind == HIR_STMT_DestructureLet && ctx->debug == NULL &&
             !llvm_local_is_assigned(ctx, item->local_index)) {
             llvm_set_local_value(ctx, item->local_index, field);
             continue;

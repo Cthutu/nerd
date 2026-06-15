@@ -32,24 +32,24 @@ main :: fn () => on Point { x: 1, y: 2 } {
 }
 ¬
 {
-    "message": "Type mismatch: expected `known plex field`, found `z`",
+    "message": "Unknown field `z` in plex pattern",
     "source_file": "tests/errors/032-on-structural-patterns.e",
     "primary_location": {
         "line": 3,
-        "column": 5
+        "column": 7
     },
     "references": [
         {
             "kind": "primary",
             "line": 3,
-            "column": 5,
+            "column": 7,
             "length": 1,
-            "message": "This expression has type `z`"
+            "message": "No field named `z` exists on the matched plex type"
         }
     ],
     "notes": [],
     "help": [
-        "Change the expression or annotation so both sides use the same type."
+        "If you meant to bind an existing field to a differently named local, write `field: binding`. Pattern shorthand only works when the field and binding have the same name."
     ]
 }
 ¬

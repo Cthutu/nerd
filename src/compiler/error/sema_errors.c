@@ -229,6 +229,69 @@ bool error_0304_missing_plex_fields(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
+// Report tuple-style enum pattern syntax used for a braced enum payload.
+
+bool error_0304_enum_payload_pattern_field_names(NerdSource source,
+                                                 ErrorSpan  span,
+                                                 string     variant_name)
+{
+    ErrorInfo error =
+        error_init(source, span, "Enum payload pattern is missing field names");
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This variant has a braced payload with named fields");
+    error_add_help(&error,
+                   "Name the fields in the pattern, for example `" STRINGP
+                   " { field: binding }`. If the binding name is the same as "
+                   "the field name, `" STRINGP " { field }` is shorthand.",
+                   STRINGV(variant_name),
+                   STRINGV(variant_name));
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------
+// Report a named field pattern that does not match the plex payload fields.
+
+bool error_0304_unknown_plex_pattern_field(NerdSource source,
+                                           ErrorSpan  span,
+                                           string     field_name,
+                                           string     suggested_field_name)
+{
+    ErrorInfo error = error_init(source,
+                                 span,
+                                 "Unknown field `" STRINGP "` in plex pattern",
+                                 STRINGV(field_name));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "No field named `" STRINGP
+                        "` exists on the matched plex type",
+                        STRINGV(field_name));
+    if (suggested_field_name.count > 0) {
+        error_add_help(&error,
+                       "Write `" STRINGP ": " STRINGP
+                       "` to bind field `" STRINGP "` to local `" STRINGP
+                       "`. Pattern shorthand only works when the field and "
+                       "binding have the same name.",
+                       STRINGV(suggested_field_name),
+                       STRINGV(field_name),
+                       STRINGV(suggested_field_name),
+                       STRINGV(field_name));
+    } else {
+        error_add_help(
+            &error,
+            "If you meant to bind an existing field to a differently "
+            "named local, write `field: binding`. Pattern shorthand "
+            "only works when the field and binding have the same "
+            "name.");
+    }
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------
 // Report assignment to a non-variable symbol.
 
 bool error_0305_invalid_assignment_target(NerdSource source,

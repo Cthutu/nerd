@@ -24,6 +24,40 @@ main :: fn () {
         "Change the expression or annotation so both sides use the same type."
     ]
 }
+¬Event :: enum {
+    Resized {
+        width u16
+        height u16
+    }
+}
+
+main :: fn () {
+    event := Event.Resized { width: 1, height: 2 }
+    on event {
+        Resized(width, height) => {}
+    }
+}¬
+{
+    "message": "Enum payload pattern is missing field names",
+    "source_file": "tests/errors/035-enum-payloads.e",
+    "primary_location": {
+        "line": 11,
+        "column": 9
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 11,
+            "column": 9,
+            "length": 7,
+            "message": "This variant has a braced payload with named fields"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Name the fields in the pattern, for example `Resized { field: binding }`. If the binding name is the same as the field name, `Resized { field }` is shorthand."
+    ]
+}
 ¬Maybe :: enum { None Some(i32) }
 
 main :: fn () -> i32 {
