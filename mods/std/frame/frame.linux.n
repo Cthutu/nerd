@@ -39,6 +39,9 @@ on "linux" {
         --     fullscreen.
         resizable           bool        -- Whether user-driven resize is
         --     allowed.
+        resize_event_valid  bool        -- Whether a resize has been reported.
+        resize_event_width  u16         -- Last width reported via Resized.
+        resize_event_height u16         -- Last height reported via Resized.
         gl_context          GLXContext  -- GLX context exposed through
         --     `FrameContext`.
     }
@@ -113,6 +116,14 @@ on "linux" {
 
     -- Queues a platform-agnostic resize event.
     frame_linux_push_resize :: fn (info: ^FrameInfo, width: u16, height: u16) {
+        on width == 0 || height == 0 => return
+        on info.platform_info.resize_event_valid &&
+            info.platform_info.resize_event_width == width &&
+            info.platform_info.resize_event_height == height => return
+
+        info.platform_info.resize_event_valid = yes
+        info.platform_info.resize_event_width = width
+        info.platform_info.resize_event_height = height
         info.events.push(FrameEvent.Resized {
             width
             height
@@ -459,7 +470,6 @@ on "linux" {
             events: nil
             platform_info
         }
-        frame_linux_push_resize(^info, frame.width, frame.height)
         system.frames.push(info)
         frame.id = id
         frame_linux_apply_resize_hints(frame_system_find_info(system, id),
@@ -551,6 +561,7 @@ on "linux" {
                 configure := event.as(usize).as(^XConfigureEvent)
                 width := configure.width.as(u16)
                 height := configure.height.as(u16)
+                on width == 0 || height == 0 => return
                 frame_linux_capture_geometry(info,
                                              configure.x,
                                              configure.y,
