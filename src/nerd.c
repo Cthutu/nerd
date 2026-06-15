@@ -21,10 +21,14 @@
 
 #if OS_WINDOWS
 #    include <direct.h>
+#    define nerd_chdir _chdir
+#    define nerd_mkdir(path) _mkdir(path)
 #else
 #    include <sys/stat.h>
 #    include <sys/types.h>
 #    include <unistd.h>
+#    define nerd_chdir chdir
+#    define nerd_mkdir(path) mkdir(path, 0775)
 #endif
 
 //------------------------------------------------------------------------------
@@ -94,6 +98,20 @@ internal string nerd_cli_param_string(const JsonValue* cli_result,
                                       cstr             path,
                                       string           fallback);
 
+internal cstr nerd_cli_param_cstr(Arena*           arena,
+                                  const JsonValue* cli_result,
+                                  cstr             path)
+{
+    string value = nerd_cli_param_string(cli_result, path, (string){0});
+    if (value.count == 0) {
+        return NULL;
+    }
+    char* result = (char*)arena_alloc(arena, value.count + 1);
+    memcpy(result, value.data, value.count);
+    result[value.count] = '\0';
+    return result;
+}
+
 internal bool nerd_write_test_file(cstr path, cstr text)
 {
     FILE* file = fopen(path, "wb");
@@ -104,6 +122,174 @@ internal bool nerd_write_test_file(cstr path, cstr text)
     usize written  = fwrite(text, 1, text_len, file);
     bool  close_ok = fclose(file) == 0;
     return written == text_len && close_ok;
+}
+
+internal bool nerd_init_create_dir(cstr path)
+{
+    if (nerd_mkdir(path) == 0) {
+        return true;
+    }
+    return error_runtime(
+        "Failed to create directory `%s`: %s", path, strerror(errno));
+}
+
+internal bool nerd_init_write_file(cstr path, cstr text)
+{
+    if (nerd_write_test_file(path, text)) {
+        return true;
+    }
+    return error_runtime("Failed to write `%s`: %s", path, strerror(errno));
+}
+
+internal bool nerd_init_run_git(cstr command)
+{
+    ShellResult result = shell_capture(command, &temp_arena);
+    if (result.exit_code == 0) {
+        return true;
+    }
+
+    if (result.stderr_text.count > 0) {
+        return error_runtime("`%s` failed with exit code %d\n" STRINGP,
+                             command,
+                             result.exit_code,
+                             STRINGV(result.stderr_text));
+    }
+    return error_runtime(
+        "`%s` failed with exit code %d", command, result.exit_code);
+}
+
+internal int nerd_cmd_init(const JsonValue* cli_result)
+{
+    Arena arena = {0};
+    arena_init(&arena);
+
+    cstr project =
+        nerd_cli_param_cstr(&arena, cli_result, "command.params.project");
+    if (!project || project[0] == '\0') {
+        error_runtime("Expected a project name for `nerd init`");
+        arena_done(&arena);
+        return 1;
+    }
+    if (path_exists(project)) {
+        error_runtime("Project path already exists: %s", project);
+        arena_done(&arena);
+        return 1;
+    }
+
+    cstr vscode_dir     = path_join(&arena, project, ".vscode");
+    cstr justfile       = path_join(&arena, project, "Justfile");
+    cstr gitignore      = path_join(&arena, project, ".gitignore");
+    cstr main_file      = path_join(&arena, project, "main.n");
+    cstr tasks_file     = path_join(&arena, vscode_dir, "tasks.json");
+    cstr launch_file    = path_join(&arena, vscode_dir, "launch.json");
+
+    cstr main_text      = "main :: fn () {\n"
+                          "    prn(\"Hello, World!\")\n"
+                          "}\n";
+    cstr gitignore_text = "_*/\n";
+    cstr justfile_text  = "default:\n"
+                          "    @just --list\n"
+                          "\n"
+                          "check:\n"
+                          "    nerd check main.n\n"
+                          "\n"
+                          "build:\n"
+                          "    @mkdir -p _bin\n"
+                          "    nerd build --output _bin/main main.n\n"
+                          "\n"
+                          "run *args:\n"
+                          "    just build\n"
+                          "    ./_bin/main {{args}}\n"
+                          "\n"
+                          "clean:\n"
+                          "    rm -rf _*\n"
+                          "\n"
+                          "alias ch := check\n"
+                          "alias b := build\n"
+                          "alias r := run\n"
+                          "alias c := clean\n";
+    cstr tasks_text     = "{\n"
+                          "    \"version\": \"2.0.0\",\n"
+                          "    \"tasks\": [\n"
+                          "        {\n"
+                          "            \"label\": \"nerd: check main.n\",\n"
+                          "            \"type\": \"shell\",\n"
+                          "            \"command\": \"just\",\n"
+                          "            \"args\": [\n"
+                          "                \"check\"\n"
+                          "            ],\n"
+                          "            \"group\": {\n"
+                          "                \"kind\": \"build\",\n"
+                          "                \"isDefault\": true\n"
+                          "            },\n"
+                          "            \"problemMatcher\": [],\n"
+                          "            \"presentation\": {\n"
+                          "                \"echo\": true,\n"
+                          "                \"reveal\": \"always\",\n"
+                          "                \"focus\": false,\n"
+                          "                \"panel\": \"shared\",\n"
+                          "                \"showReuseMessage\": true,\n"
+                          "                \"clear\": true\n"
+                          "            }\n"
+                          "        },\n"
+                          "        {\n"
+                          "            \"label\": \"nerd: build main.n\",\n"
+                          "            \"type\": \"shell\",\n"
+                          "            \"command\": \"just\",\n"
+                          "            \"args\": [\n"
+                          "                \"build\"\n"
+                          "            ],\n"
+                          "            \"group\": \"build\",\n"
+                          "            \"problemMatcher\": []\n"
+                          "        }\n"
+                          "    ]\n"
+                          "}\n";
+    cstr launch_text =
+        "{\n"
+        "    \"version\": \"0.2.0\",\n"
+        "    \"configurations\": [\n"
+        "        {\n"
+        "            \"type\": \"nerd\",\n"
+        "            \"request\": \"launch\",\n"
+        "            \"name\": \"Debug main.n\",\n"
+        "            \"program\": \"${workspaceFolder}/_bin/main\",\n"
+        "            \"preLaunchTask\": \"nerd: build main.n\",\n"
+        "            \"args\": [],\n"
+        "            \"cwd\": \"${workspaceFolder}\",\n"
+        "            \"terminal\": \"integrated\"\n"
+        "        }\n"
+        "    ]\n"
+        "}\n";
+
+    bool ok  = nerd_init_create_dir(project) &&
+               nerd_init_create_dir(vscode_dir) &&
+               nerd_init_write_file(justfile, justfile_text) &&
+               nerd_init_write_file(gitignore, gitignore_text) &&
+               nerd_init_write_file(main_file, main_text) &&
+               nerd_init_write_file(tasks_file, tasks_text) &&
+               nerd_init_write_file(launch_file, launch_text);
+
+    cstr cwd = path_canonical(&arena, ".");
+    if (ok && !cwd) {
+        ok = error_runtime("Failed to resolve current working directory");
+    }
+    if (ok && nerd_chdir(project) != 0) {
+        ok = error_runtime("Failed to enter project directory `%s`: %s",
+                           project,
+                           strerror(errno));
+    }
+    if (ok) {
+        ok = nerd_init_run_git("git init") && nerd_init_run_git("git add .") &&
+             nerd_init_run_git("git commit -m \"Initial commit\"");
+    }
+    if (cwd && nerd_chdir(cwd) != 0) {
+        ok = error_runtime("Failed to restore working directory `%s`: %s",
+                           cwd,
+                           strerror(errno));
+    }
+
+    arena_done(&arena);
+    return ok ? 0 : 1;
 }
 
 internal int nerd_internal_module_filemap_test(void)
@@ -432,6 +618,21 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
                                               "generation",
                                               check_flags,
                                               check_params));
+    }
+    {
+        JsonValue* init_params = json_new_array(arena);
+        json_array_push(init_params,
+                        nerd_cli_make_param(arena,
+                                            "project",
+                                            "positional",
+                                            NULL,
+                                            NULL,
+                                            "Project directory to create",
+                                            true));
+        json_array_push(
+            commands,
+            nerd_cli_make_command(
+                arena, "init", "Create a new Nerd project", NULL, init_params));
     }
     {
         JsonValue* flags  = json_new_array(arena);
@@ -988,6 +1189,8 @@ internal int nerd_run_with_cli(int argc, char** argv)
         result = config.source.source_path.count == 0
                      ? 1
                      : compiler_cmd_check(&config);
+    } else if (string_eq_cstr(name, "init")) {
+        result = nerd_cmd_init(cli_result);
     } else if (string_eq_cstr(name, "run") || string_eq_cstr(name, "r")) {
         NerdRunConfig config =
             nerd_run_config_from_json(cli_result, cli_keywords, program_args);

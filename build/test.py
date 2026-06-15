@@ -804,6 +804,13 @@ def test_command(path: pathlib.Path) -> list[Failure]:
 
     cleanup_generated_outputs(path)
 
+    init_project: pathlib.Path | None = None
+    if run_mode == "init-project":
+        if len(cli_args) != 1:
+            return [Failure(path, "init-project run mode expects one project argument")]
+        init_project = cwd / cli_args[0]
+        shutil.rmtree(init_project, ignore_errors=True)
+
     if run_mode == "clean-llvm" and command in {"run", "r"}:
         for stale in (
             cwd / f"_{path.stem}.out.link.ll",
@@ -845,7 +852,7 @@ def test_command(path: pathlib.Path) -> list[Failure]:
     args = [str(NERD), command, *cli_args]
     if command in {"run", "r"} and run_mode == "keep" and "--keep" not in args:
         args.append("--keep")
-    if command not in {"explain", "internal-test"} and not default_run_mode:
+    if command not in {"explain", "init", "internal-test"} and not default_run_mode:
         args.append(str(input_path.name))
     proc = run_cmd(args, cwd=cwd)
 
@@ -868,6 +875,70 @@ def test_command(path: pathlib.Path) -> list[Failure]:
                 failures.append(stderr_failure)
     if command in {"run", "r"} and not input_path.exists():
         failures.append(Failure(path, "run command deleted its input source file"))
+
+    if run_mode == "init-project" and actual_exit == 0 and init_project is not None:
+        expected_files = {
+            "Justfile": None,
+            ".gitignore": "_*/\n",
+            "main.n": 'main :: fn () {\n    prn("Hello, World!")\n}\n',
+            ".vscode/tasks.json": None,
+            ".vscode/launch.json": None,
+        }
+        for relative, expected_text in expected_files.items():
+            item = init_project / relative
+            if not item.is_file():
+                failures.append(Failure(path, f"expected generated file: {relative}"))
+                continue
+            if expected_text is not None and item.read_text(encoding="utf-8") != expected_text:
+                failures.append(Failure(path, f"unexpected generated contents for: {relative}"))
+        justfile = init_project / "Justfile"
+        if justfile.is_file():
+            text = justfile.read_text(encoding="utf-8")
+            for snippet in (
+                "nerd check main.n",
+                "nerd build --output _bin/main main.n",
+                "./_bin/main {{args}}",
+            ):
+                if snippet not in text:
+                    failures.append(Failure(path, f"generated Justfile missing: {snippet}"))
+        tasks_json = init_project / ".vscode" / "tasks.json"
+        if tasks_json.is_file():
+            text = tasks_json.read_text(encoding="utf-8")
+            for snippet in ("nerd: check main.n", "\"isDefault\": true", "\"check\""):
+                if snippet not in text:
+                    failures.append(Failure(path, f"generated tasks.json missing: {snippet}"))
+        launch_json = init_project / ".vscode" / "launch.json"
+        if launch_json.is_file():
+            text = launch_json.read_text(encoding="utf-8")
+            for snippet in ("Debug main.n", "${workspaceFolder}/_bin/main", "nerd: build main.n"):
+                if snippet not in text:
+                    failures.append(Failure(path, f"generated launch.json missing: {snippet}"))
+        git_log = subprocess.run(
+            ["git", "log", "--format=%s", "-1"],
+            cwd=init_project,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        if git_log.returncode != 0:
+            failures.append(Failure(path, f"git log failed with {git_log.returncode}\n{git_log.stderr}"))
+        elif git_log.stdout.strip() != "Initial commit":
+            failures.append(Failure(path, f"unexpected initial commit message: {git_log.stdout.strip()}"))
+        git_status = subprocess.run(
+            ["git", "status", "--short"],
+            cwd=init_project,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        if git_status.returncode != 0:
+            failures.append(Failure(path, f"git status failed with {git_status.returncode}\n{git_status.stderr}"))
+        elif git_status.stdout.strip():
+            failures.append(Failure(path, f"generated project has uncommitted files:\n{git_status.stdout}"))
 
     debug_symbols = executable.with_suffix(".pdb")
     if run_mode in {"keep", "debug-info", "no-debug-info"} and not executable.exists():
@@ -1021,6 +1092,8 @@ def test_command(path: pathlib.Path) -> list[Failure]:
             cleanup_generated_outputs(path)
             if run_mode.startswith("build-artifact"):
                 command_artifact_path(input_path, cli_args).unlink(missing_ok=True)
+            if run_mode == "init-project" and init_project is not None:
+                shutil.rmtree(init_project, ignore_errors=True)
         executable.unlink(missing_ok=True)
         debug_symbols.unlink(missing_ok=True)
     return failures
