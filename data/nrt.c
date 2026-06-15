@@ -113,6 +113,12 @@ void nrt_eprn(const void* data, size_t count)
     fputc('\n', stderr);
 }
 
+void nrt_abort(const void* data, size_t count)
+{
+    nrt_eprn(data, count);
+    exit(127);
+}
+
 void nerd_assert(bool condition,
                  const char* source_path,
                  uint32_t    line,

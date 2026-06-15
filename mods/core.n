@@ -16,6 +16,8 @@ ffi "nrt" {
 
     nrt_eprn (^u8, usize)
 
+    nrt_abort (^u8, usize)
+
     nrt_arena_done (arena: ^arena)
 
     nrt_arena_reset (arena: ^arena)
@@ -53,6 +55,12 @@ pub prn :: fn (text: string = "") -> void {
 -- Prints text to standard error and appends a newline.
 pub eprn :: fn (text: string = "") -> void {
     nrt_eprn(text.data, text.count)
+    return
+}
+
+-- Prints text to standard error and terminates the process.
+pub abort :: fn (text: string = "aborted") -> void {
+    nrt_abort(text.data, text.count)
     return
 }
 

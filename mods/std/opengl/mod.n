@@ -6,6 +6,7 @@
 -- frame backends create and bind contexts; this module owns command loading and
 -- the cross-platform command API.
 
+use core
 use std.frame
 
 on "linux" {
@@ -153,8 +154,7 @@ GLVertexAttribPointerFn :: fn (index      : GLuint,
                                pointer    : ^void)
 
 gl_abort_unloaded_command :: fn () {
-    eprn("OpenGL command called before address loading completed.")
-    assert no
+    abort("OpenGL command called before address loading completed.")
 }
 
 gl_stub_active_texture :: fn (_texture: GLenum) {
