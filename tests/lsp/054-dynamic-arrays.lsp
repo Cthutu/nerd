@@ -244,6 +244,11 @@ main :: fn () {
                 "label": "extend_undefined",
                 "kind": 2,
                 "detail": "method"
+            },
+            {
+                "label": "size",
+                "kind": 5,
+                "detail": "field"
             }
         ]
     },

@@ -273,7 +273,7 @@ internal u32 lsp_completion_field_type(const Sema*  sema,
     }
 
     if (type->kind == STK_Array) {
-        return string_eq(field, s("count"))
+        return (string_eq(field, s("count")) || string_eq(field, s("size")))
                    ? lsp_completion_builtin_type(sema, STK_Usize)
                    : sema_no_type();
     }
@@ -285,7 +285,7 @@ internal u32 lsp_completion_field_type(const Sema*  sema,
                                 : type->first_param_type;
             return lsp_completion_pointer_type(sema, item_type);
         }
-        return string_eq(field, s("count"))
+        return (string_eq(field, s("count")) || string_eq(field, s("size")))
                    ? lsp_completion_builtin_type(sema, STK_Usize)
                    : sema_no_type();
     }
@@ -294,7 +294,8 @@ internal u32 lsp_completion_field_type(const Sema*  sema,
         if (string_eq(field, s("data"))) {
             return lsp_completion_pointer_type(sema, type->first_param_type);
         }
-        if (string_eq(field, s("count")) || string_eq(field, s("capacity"))) {
+        if (string_eq(field, s("count")) || string_eq(field, s("capacity")) ||
+            string_eq(field, s("size"))) {
             return lsp_completion_builtin_type(sema, STK_Usize);
         }
         return sema_no_type();
@@ -447,6 +448,19 @@ internal void lsp_completion_add_dynamic_array_members(Arena*     arena,
 internal void lsp_completion_add_box_members(Arena* arena, JsonValue* items)
 {
     lsp_completion_add(arena, items, s("free"), 2); // Method
+}
+
+internal void lsp_completion_add_array_members(Arena* arena, JsonValue* items)
+{
+    lsp_completion_add(arena, items, s("count"), 5); // Field
+    lsp_completion_add(arena, items, s("size"), 5);  // Field
+}
+
+internal void lsp_completion_add_slice_members(Arena* arena, JsonValue* items)
+{
+    lsp_completion_add(arena, items, s("data"), 5);  // Field
+    lsp_completion_add(arena, items, s("count"), 5); // Field
+    lsp_completion_add(arena, items, s("size"), 5);  // Field
 }
 
 internal bool lsp_completion_items_have_label(JsonValue* items, string label)
@@ -962,12 +976,12 @@ internal void lsp_completion_add_members(Arena*             arena,
 
     const Lexer* lexer = &doc->front_end.lexer;
     if (type->kind == STK_String || type->kind == STK_Slice) {
-        lsp_completion_add(arena, items, s("data"), 5);  // Field
-        lsp_completion_add(arena, items, s("count"), 5); // Field
+        lsp_completion_add_slice_members(arena, items);
     } else if (type->kind == STK_Array) {
-        lsp_completion_add(arena, items, s("count"), 5); // Field
+        lsp_completion_add_array_members(arena, items);
     } else if (type->kind == STK_DynamicArray) {
         lsp_completion_add_dynamic_array_members(arena, items);
+        lsp_completion_add(arena, items, s("size"), 5); // Field
     } else if (type->kind == STK_Tuple) {
         for (u32 i = 0; i < type->param_count; ++i) {
             lsp_completion_add(arena, items, string_format(arena, "%u", i), 5);
@@ -1741,6 +1755,82 @@ internal bool lsp_completion_source_receiver_type_name(string  source,
         }
     }
     return out_type_name->count != 0;
+}
+
+internal bool lsp_completion_add_source_collection_members(JsonValue* items,
+                                                           Arena*     arena,
+                                                           string     source,
+                                                           usize      offset,
+                                                           string     receiver)
+{
+    usize line_start = 0;
+    bool  added      = false;
+    while (line_start < source.count && line_start < offset) {
+        usize line_end = line_start;
+        while (line_end < source.count && source.data[line_end] != '\n') {
+            line_end++;
+        }
+
+        string line = {.data  = source.data + line_start,
+                       .count = MIN(line_end, offset) - line_start};
+        line        = lsp_completion_trim(lsp_completion_strip_comment(line));
+
+        usize i     = 0;
+        if (!lsp_completion_match_ident_at(line, &i, receiver)) {
+            line_start = line_end + (line_end < source.count ? 1 : 0);
+            continue;
+        }
+        while (i < line.count &&
+               (line.data[i] == ' ' || line.data[i] == '\t')) {
+            i++;
+        }
+        if (i >= line.count || line.data[i] != ':') {
+            line_start = line_end + (line_end < source.count ? 1 : 0);
+            continue;
+        }
+        i++;
+
+        bool constant_decl = false;
+        if (i < line.count && line.data[i] == ':') {
+            constant_decl = true;
+            i++;
+        }
+        while (i < line.count &&
+               (line.data[i] == ' ' || line.data[i] == '\t')) {
+            i++;
+        }
+        if (i >= line.count || line.data[i] != '[') {
+            line_start = line_end + (line_end < source.count ? 1 : 0);
+            continue;
+        }
+        i++;
+
+        if (constant_decl) {
+            lsp_completion_add_array_members(arena, items);
+            added = true;
+        } else if (i + 1 < line.count && line.data[i] == '.' &&
+                   line.data[i + 1] == '.') {
+            lsp_completion_add_dynamic_array_members(arena, items);
+            lsp_completion_add(arena, items, s("size"), 5); // Field
+            added = true;
+        } else if (i < line.count && line.data[i] == ']') {
+            lsp_completion_add_slice_members(arena, items);
+            added = true;
+        } else {
+            usize digit_start = i;
+            while (i < line.count && line.data[i] >= '0' &&
+                   line.data[i] <= '9') {
+                i++;
+            }
+            if (i > digit_start && i < line.count && line.data[i] == ']') {
+                lsp_completion_add_array_members(arena, items);
+                added = true;
+            }
+        }
+
+        line_start = line_end + (line_end < source.count ? 1 : 0);
+    }
+    return added;
 }
 
 internal bool lsp_completion_line_use_path(string line, string* out_path)
@@ -5599,6 +5689,10 @@ void lsp_handle_completion(LspState* state, const LspMessage* message)
             items,
             doc,
             lsp_completion_type_for_receiver(doc, receiver, offset));
+        if (array_count(items->array.values) == 0) {
+            lsp_completion_add_source_collection_members(
+                items, message->arena, view.source, offset, receiver);
+        }
         if (array_count(items->array.values) == 0) {
             lsp_completion_add_ast_members(
                 message->arena, items, doc, receiver, offset);

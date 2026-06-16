@@ -1,12 +1,10 @@
+vertices :: [
+    -0.5,
+    0.5,
+]
+
 main :: fn () {
-    pair: (i32, string) = (1, "one")
-    pair_ptr := ^pair
-    values: [3]i32 = [1, 2, 3]
-    slice := values[..]
-    slice_ptr := ^slice
-    _ := pair_ptr.0
-    _ := values.count
-    _ := slice_ptr.count
+    vertices.
 }
 ¬
 [
@@ -20,43 +18,7 @@ main :: fn () {
             },
             "position": {
                 "line": 6,
-                "character": 18
-            },
-            "context": {
-                "triggerKind": 2,
-                "triggerCharacter": "."
-            }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 3,
-        "method": "textDocument/completion",
-        "params": {
-            "textDocument": {
-                "uri": "file:///test.n"
-            },
-            "position": {
-                "line": 7,
-                "character": 16
-            },
-            "context": {
-                "triggerKind": 2,
-                "triggerCharacter": "."
-            }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 4,
-        "method": "textDocument/completion",
-        "params": {
-            "textDocument": {
-                "uri": "file:///test.n"
-            },
-            "position": {
-                "line": 8,
-                "character": 19
+                "character": 13
             },
             "context": {
                 "triggerKind": 2,
@@ -124,50 +86,47 @@ main :: fn () {
         "method": "textDocument/publishDiagnostics",
         "params": {
             "uri": "file:///test.n",
-            "diagnostics": []
+            "diagnostics": [
+                {
+                    "range": {
+                        "start": {
+                            "line": 7,
+                            "character": 0
+                        },
+                        "end": {
+                            "line": 7,
+                            "character": 1
+                        }
+                    },
+                    "severity": 1,
+                    "source": "nerd",
+                    "message": "Expected Symbol but found RightBrace `}`",
+                    "relatedInformation": [
+                        {
+                            "location": {
+                                "uri": "file:///test.n",
+                                "range": {
+                                    "start": {
+                                        "line": 7,
+                                        "character": 0
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "character": 1
+                                    }
+                                }
+                            },
+                            "message": "help: Check for a missing closing delimiter or misplaced operator"
+                        }
+                    ]
+                }
+            ]
         }
     },
     {
         "jsonrpc": "2.0",
         "id": 2,
         "result": [
-            {
-                "label": "0",
-                "kind": 5,
-                "detail": "field"
-            },
-            {
-                "label": "1",
-                "kind": 5,
-                "detail": "field"
-            }
-        ]
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 3,
-        "result": [
-            {
-                "label": "count",
-                "kind": 5,
-                "detail": "field"
-            },
-            {
-                "label": "size",
-                "kind": 5,
-                "detail": "field"
-            }
-        ]
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 4,
-        "result": [
-            {
-                "label": "data",
-                "kind": 5,
-                "detail": "field"
-            },
             {
                 "label": "count",
                 "kind": 5,
