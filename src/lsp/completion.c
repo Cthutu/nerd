@@ -3595,6 +3595,97 @@ internal void lsp_completion_add_source_top_level_symbols(Arena*     arena,
     }
 }
 
+internal bool lsp_completion_line_starts_string_literal(string line)
+{
+    line = lsp_completion_trim(lsp_completion_strip_comment(line));
+    return line.count > 0 && line.data[0] == '"';
+}
+
+internal bool lsp_completion_source_top_level_string_binding(string source,
+                                                             string receiver)
+{
+    if (!lsp_completion_receiver_is_single_ident(receiver)) {
+        return false;
+    }
+
+    i32   depth      = 0;
+    usize line_start = 0;
+    while (line_start < source.count) {
+        usize line_end = line_start;
+        while (line_end < source.count && source.data[line_end] != '\n') {
+            line_end++;
+        }
+        string line = {.data  = source.data + line_start,
+                       .count = line_end - line_start};
+
+        if (depth == 0) {
+            string trimmed =
+                lsp_completion_trim(lsp_completion_strip_comment(line));
+
+            usize i = 0;
+            if (lsp_completion_match_ident_at(trimmed, &i, s("pub"))) {
+                while (i < trimmed.count &&
+                       (trimmed.data[i] == ' ' || trimmed.data[i] == '\t')) {
+                    i++;
+                }
+            }
+
+            if (!lsp_completion_match_ident_at(trimmed, &i, receiver)) {
+                lsp_completion_update_impl_depth(line, &depth);
+                if (depth < 0) {
+                    depth = 0;
+                }
+                line_start = line_end + (line_end < source.count ? 1 : 0);
+                continue;
+            }
+            while (i < trimmed.count &&
+                   (trimmed.data[i] == ' ' || trimmed.data[i] == '\t')) {
+                i++;
+            }
+            if (i + 1 < trimmed.count && trimmed.data[i] == ':' &&
+                trimmed.data[i + 1] == ':') {
+                i += 2;
+                while (i < trimmed.count &&
+                       (trimmed.data[i] == ' ' || trimmed.data[i] == '\t')) {
+                    i++;
+                }
+                if (i < trimmed.count && trimmed.data[i] == '"') {
+                    return true;
+                }
+                if (i >= trimmed.count) {
+                    usize next_start =
+                        line_end + (line_end < source.count ? 1 : 0);
+                    while (next_start < source.count) {
+                        usize next_end = next_start;
+                        while (next_end < source.count &&
+                               source.data[next_end] != '\n') {
+                            next_end++;
+                        }
+                        string next_line    = {.data  = source.data + next_start,
+                                               .count = next_end - next_start};
+                        string next_trimmed = lsp_completion_trim(
+                            lsp_completion_strip_comment(next_line));
+                        if (next_trimmed.count == 0) {
+                            next_start =
+                                next_end + (next_end < source.count ? 1 : 0);
+                            continue;
+                        }
+                        return lsp_completion_line_starts_string_literal(
+                            next_trimmed);
+                    }
+                }
+            }
+        }
+
+        lsp_completion_update_impl_depth(line, &depth);
+        if (depth < 0) {
+            depth = 0;
+        }
+        line_start = line_end + (line_end < source.count ? 1 : 0);
+    }
+    return false;
+}
+
 internal void lsp_completion_add_source_use_exports(Arena*             arena,
                                                     JsonValue*         items,
                                                     const LspDocument* doc,
@@ -5766,6 +5857,11 @@ void lsp_handle_completion(LspState* state, const LspMessage* message)
         if (array_count(items->array.values) == 0) {
             lsp_completion_add_source_collection_members(
                 items, message->arena, view.source, offset, receiver);
+        }
+        if (array_count(items->array.values) == 0 &&
+            lsp_completion_source_top_level_string_binding(view.source,
+                                                           receiver)) {
+            lsp_completion_add_string_members(message->arena, items);
         }
         if (array_count(items->array.values) == 0) {
             lsp_completion_add_ast_members(
