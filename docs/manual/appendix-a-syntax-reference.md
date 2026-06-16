@@ -214,6 +214,9 @@ value.as(Type)
 pointer.as([]T, count)
 value.size
 Type.size
+value.count
+value.bytes
+value.data
 ```
 
 ## Literals

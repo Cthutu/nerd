@@ -72,8 +72,12 @@ Dynamic arrays expose:
 
 | Field | Meaning |
 | --- | --- |
+| `.data` | pointer to the live storage |
 | `.count` | number of live items |
 | `.capacity` | number of items that fit before growing |
+
+Dynamic arrays do not expose `.bytes` directly. Slice the array first when you
+need the byte size of its live element payload.
 
 ## Slicing
 

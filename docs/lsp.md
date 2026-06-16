@@ -156,8 +156,8 @@ should include the built-in fields `data`, `count`, `capacity`, plus methods
 `push`, `reserve_extra`, `reserve_to`, `resize_to`, `resize_undefined_to`, and
 `swap_delete`.
 
-Collection member completion should include `bytes` for fixed arrays and slices
-only. Strings and dynamic arrays should not offer `bytes`.
+Collection member completion should include `bytes` for fixed arrays, slices,
+and strings. Dynamic arrays should not offer `bytes`.
 
 Completion results are filtered by the server using the exact typed prefix.
 Matching is case-sensitive, matching Nerd symbol resolution.

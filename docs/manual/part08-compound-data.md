@@ -60,7 +60,9 @@ An explicit fixed array type is written `[N]T`:
 values: [3]i32 = [1, 2, 3]  -- array length is part of the type
 ```
 
-Fixed arrays expose `.count` as their element count.
+Fixed arrays expose `.count` as their element count. They also expose `.bytes`
+as the byte size of their element storage. For a `[N]T`, `.bytes` and `.size`
+are the same value, while `.count` is `N`.
 
 ## Slices
 
@@ -77,11 +79,14 @@ main :: fn () {
 }
 ```
 
-Slices have `.data` and `.count`. They are borrowing views: a slice does not
-own storage, does not free storage, and does not extend the lifetime of the
-memory it points at. A slice is always a view over existing storage, or over
-compiler-emitted constant backing data for constant slice literals. The
-compiler must not allocate hidden heap storage to make a slice work.
+Slices have `.data`, `.count`, and `.bytes`. `.data` is the borrowed pointer to
+the first element, `.count` is the number of live elements, and `.bytes` is
+`.count * T.size`. `.size` is the size of the slice header value itself. Slices
+are borrowing views: a slice does not own storage, does not free storage, and
+does not extend the lifetime of the memory it points at. A slice is always a
+view over existing storage, or over compiler-emitted constant backing data for
+constant slice literals. The compiler must not allocate hidden heap storage to
+make a slice work.
 
 Dot access automatically dereferences pointers to collection headers.
 
@@ -122,6 +127,10 @@ Arithmetic on `^void` is rejected because `void` has no element size.
 ## Strings And String Slices
 
 `string` is distinct from `[]u8`, but it uses the same data/count shape.
+Strings expose `.data`, `.count`, and `.bytes`. `.data` is a `^u8` pointing at
+the first byte, `.count` is the number of bytes in the string, and `.bytes` is
+an alias for `.count`. Use `.size` when you want the size of the string header
+value itself.
 
 ```nerd
 main :: fn () -> string {

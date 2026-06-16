@@ -132,8 +132,18 @@ language form is a non-empty type list.
 | `union { ... }`        | Raw union with named alternatives sharing storage.                               |
 | `enum { ... }`         | Tagged enum, optionally with payload variants.                                   |
 
-Arrays, slices, strings, and dynamic arrays expose `.data` and `.count` where
-semantically valid. Dynamic arrays also expose `.capacity`.
+Array-like values use these member meanings where semantically valid: `.data`
+is a pointer to the payload, `.count` is the number of live elements, `.bytes`
+is the byte size of the payload, and `.size` is the byte size of the value
+itself.
+
+| Member | Fixed array `[N]T` | Slice `[]T` | `string` | Dynamic array `[..]T` |
+| --- | --- | --- | --- | --- |
+| `.data` | no | `^T` | `^u8` | `^T` |
+| `.count` | `N` as `usize` | live element count | byte count | live element count |
+| `.bytes` | `N * T.size` | `.count * T.size` | same as `.count` | no |
+| `.size` | same as `.bytes` | header size in bytes | header size in bytes | header size in bytes |
+| `.capacity` | no | no | no | allocated element capacity |
 
 ## Aggregate Definitions
 

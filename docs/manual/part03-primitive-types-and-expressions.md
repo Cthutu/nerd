@@ -130,23 +130,35 @@ count or shifted value comes from another numeric type.
 
 ## Value Size
 
-Use `.size` to ask for the runtime size of a type or value in bytes. The result
-has type `usize`:
+Use `.size` to ask for the storage size of a type or value in bytes. The result
+has type `usize`. For a value, this means the size the variable would have if it
+stored that value:
 
 ```nerd
 i32_bytes := i32.size    -- size of an i32 value
 ptr_bytes := nil.size    -- nil itself has size 0
-text_bytes := "hi".size  -- size of a string value, not its character count
+text_header := "hi".size -- size of a string value, not its character count
 ```
 
-For fixed arrays, `.size` is the size of the whole array value and `.count` is
-the fixed element count. Fixed arrays also expose `.bytes`, which is the number
-of bytes occupied by their elements.
+Array-like values use these names consistently where the member is available:
 
-For strings, slices, and dynamic arrays, `.size` is the size of the value
-header. Use `.count` when you want the number of live elements. Slices also
-expose `.bytes`, which is `slice.count * T.size` for a `[]T` slice. Strings and
-dynamic arrays do not expose `.bytes`.
+| Member | Meaning |
+| --- | --- |
+| `.data` | pointer to the first element or byte of the payload |
+| `.count` | number of live elements in the payload |
+| `.bytes` | byte size of the payload |
+| `.size` | byte size of the value itself |
+
+For fixed arrays, `.count` is the fixed element count and `.bytes` is the byte
+size of the whole array payload. Since a fixed array value is its payload,
+`.size` and `.bytes` are the same.
+
+For strings, slices, and dynamic arrays, `.size` is the size of the header or
+fat-pointer value, not the size of the payload it points at. For `string`,
+`.count` and `.bytes` are the same value because strings are byte strings. For
+`[]T` slices, `.bytes` is `slice.count * T.size`. Dynamic arrays expose
+`.data`, `.count`, and `.capacity`, but not `.bytes`; take a slice when you need
+the byte size of their live element payload.
 
 Untyped integer literals use the default materialised integer type for `.size`,
 so `128.size` is the same as `i32.size` unless context gives the literal a

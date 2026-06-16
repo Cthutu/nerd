@@ -119,12 +119,15 @@ intended exit code.
 - `usize` and `isize` values may be explicitly cast to pointer types at FFI or
   platform boundaries.
 - Casts do not imply ownership transfer.
-- Use `.size` for the runtime byte size of a type or value. It returns `usize`.
-- Strings, slices, and dynamic arrays report the size of their value header.
-  Fixed arrays, strings, slices, and dynamic arrays expose `.count` for element
-  counts.
-- Fixed arrays and slices expose `.bytes` for the byte size of their element
-  payload.
+- Use `.data` for the pointer to the payload of an array-like value when that
+  member is available.
+- Use `.count` for the number of live elements in an array-like value.
+- Use `.bytes` for the byte size of an array-like payload. For strings,
+  `.bytes` is the same value as `.count`. Dynamic arrays do not expose `.bytes`
+  directly.
+- Use `.size` for the byte size of a type or value itself. Fixed arrays have
+  the same `.size` and `.bytes`; strings, slices, and dynamic arrays report the
+  size of their header or fat-pointer value.
 - Dot access automatically dereferences pointers when the pointee provides the
   requested tuple, collection, plex, or union member.
 - `@file` expands to the current source filename as a `string`.
