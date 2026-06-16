@@ -296,11 +296,6 @@ internal int nerd_cmd_init(const JsonValue* cli_result)
                            strerror(errno));
     }
 
-    if (ok) {
-        prn("Created Nerd project: %s", project);
-        prn("Next: cd %s", project);
-    }
-
     arena_done(&arena);
     return ok ? 0 : 1;
 }
