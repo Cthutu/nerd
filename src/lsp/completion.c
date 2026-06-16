@@ -1118,6 +1118,7 @@ lsp_completion_match_ident_at(string source, usize* cursor, string ident);
 internal bool   lsp_completion_receiver_is_single_ident(string receiver);
 internal string lsp_completion_trim(string value);
 internal string lsp_completion_strip_comment(string line);
+internal void   lsp_completion_update_impl_depth(string line, i32* impl_depth);
 internal void
 lsp_completion_add_qualified_ast_on_payload_members(Arena*             arena,
                                                     JsonValue*         items,
@@ -3535,6 +3536,65 @@ internal void lsp_completion_add_source_symbols(Arena*     arena,
     }
 }
 
+internal void lsp_completion_add_source_top_level_symbols(Arena*     arena,
+                                                          JsonValue* items,
+                                                          string     source)
+{
+    i32   depth      = 0;
+    usize line_start = 0;
+    while (line_start < source.count) {
+        usize line_end = line_start;
+        while (line_end < source.count && source.data[line_end] != '\n') {
+            line_end++;
+        }
+        string line = {.data  = source.data + line_start,
+                       .count = line_end - line_start};
+
+        if (depth == 0) {
+            string trimmed =
+                lsp_completion_trim(lsp_completion_strip_comment(line));
+
+            usize i = 0;
+            if (lsp_completion_match_ident_at(trimmed, &i, s("pub"))) {
+                while (i < trimmed.count &&
+                       (trimmed.data[i] == ' ' || trimmed.data[i] == '\t')) {
+                    i++;
+                }
+            }
+
+            usize start = i;
+            while (i < trimmed.count &&
+                   lsp_completion_is_ident_char(trimmed.data[i])) {
+                i++;
+            }
+            if (i > start) {
+                string label = {.data  = trimmed.data + start,
+                                .count = i - start};
+
+                while (i < trimmed.count &&
+                       (trimmed.data[i] == ' ' || trimmed.data[i] == '\t')) {
+                    i++;
+                }
+                if (i + 1 < trimmed.count && trimmed.data[i] == ':' &&
+                    trimmed.data[i + 1] == ':') {
+                    lsp_completion_add_unique(arena, items, label, 21);
+                } else if (i + 1 < trimmed.count && trimmed.data[i] == ':' &&
+                           trimmed.data[i + 1] == '=') {
+                    lsp_completion_add_unique(arena, items, label, 6);
+                } else if (i < trimmed.count && trimmed.data[i] == ':') {
+                    lsp_completion_add_unique(arena, items, label, 6);
+                }
+            }
+        }
+
+        lsp_completion_update_impl_depth(line, &depth);
+        if (depth < 0) {
+            depth = 0;
+        }
+        line_start = line_end + (line_end < source.count ? 1 : 0);
+    }
+}
+
 internal void lsp_completion_add_source_use_exports(Arena*             arena,
                                                     JsonValue*         items,
                                                     const LspDocument* doc,
@@ -5761,6 +5821,10 @@ void lsp_handle_completion(LspState* state, const LspMessage* message)
     }
     lsp_completion_add_source_symbols(
         message->arena, items, view.source, offset);
+    if (!doc->sema_complete) {
+        lsp_completion_add_source_top_level_symbols(
+            message->arena, items, view.source);
+    }
     if (!doc->bindings_ready || !doc->sema_complete) {
         lsp_completion_add_source_use_exports(message->arena, items, doc, uri);
     }
