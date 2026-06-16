@@ -6,6 +6,22 @@
 -- return views into existing string storage unless they explicitly document an
 -- owned result.
 
+-- Returns a view of `text` ending before the first zero byte.
+--
+-- This is useful for fixed buffers filled by C APIs. The returned string
+-- borrows the same storage as `text`; no bytes are copied or validated.
+pub from_null_terminated :: fn (text: string) -> string {
+    end := text.count
+    for i: usize = 0; i < text.count; i += 1 {
+        on text.data[i] == 0 => {
+            end = i
+            break
+        }
+    }
+
+    return text[..end]
+}
+
 impl string {
 
     -- Splits a string around every occurrence of `separator`.
@@ -55,6 +71,11 @@ impl string {
         return text[start..end]
     }
 
+    -- Returns a view ending before the first zero byte.
+    pub trim_null_terminated :: fn (text: Self) -> string {
+        return from_null_terminated(text)
+    }
+
 }
 
 test "split returns original text for empty separator" {
@@ -96,4 +117,26 @@ test "trim_whitespace returns empty string for all whitespace" {
     trimmed := "\t  \t".trim_whitespace()
 
     assert trimmed == ""
+}
+
+test "from_null_terminated trims at first zero byte" {
+    bytes : [8]i8
+    bytes[0] = 'O'
+    bytes[1] = 'p'
+    bytes[2] = 'e'
+    bytes[3] = 'n'
+    bytes[4] = 0
+    bytes[5] = 'G'
+    bytes[6] = 'L'
+    bytes[7] = 0
+
+    trimmed := from_null_terminated(bytes.as(string))
+
+    assert trimmed == "Open"
+}
+
+test "trim_null_terminated leaves strings without zero bytes unchanged" {
+    trimmed := "plain".trim_null_terminated()
+
+    assert trimmed == "plain"
 }

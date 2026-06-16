@@ -145,6 +145,19 @@ main :: fn () {
 C strings are not Nerd `string` values. Convert deliberately at the boundary.
 They are null-terminated so C functions can read them through `^i8`.
 
+When a C API writes text into a fixed byte buffer, cast the buffer to `string`
+and use `std.string.from_null_terminated` to trim at the first zero byte:
+
+```nerd
+str :: use std.string
+
+buffer: [512]i8
+text := str.from_null_terminated(buffer.as(string))
+```
+
+The result is a borrowed view over `buffer`; it does not copy or validate the
+bytes.
+
 ## Pointer-To-Slice At Boundaries
 
 C APIs often return a pointer plus a size. Convert that pair to a Nerd slice
