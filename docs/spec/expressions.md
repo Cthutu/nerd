@@ -67,6 +67,11 @@ function signature. Tuple fields use integer selectors. Generic functions and
 methods can provide explicit type arguments before the call parentheses, as in
 `id[i32](value)` or `arena.alloc[i32]()`.
 
+Casts are explicit semantic conversions. Pointer-to-slice casts use the optional
+count operand. Fixed arrays, slices, and dynamic arrays whose element type is
+`i8` or `u8` can be cast to `string`; the cast creates a counted view over the
+existing bytes and does not copy, null-trim, or validate the data.
+
 ## Indexing And Slicing
 
 ```bnf

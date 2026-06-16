@@ -10294,16 +10294,23 @@ internal bool sema_type_is_u8_slice(const Sema* sema, u32 type_index)
            sema->types[type->first_param_type].kind == STK_U8;
 }
 
-internal bool sema_type_is_u8_dynamic_array(const Sema* sema, u32 type_index)
+internal bool sema_type_is_byte_collection(const Sema* sema, u32 type_index)
 {
     if (type_index == sema_no_type()) {
         return false;
     }
 
     const SemaType* type = &sema->types[type_index];
-    return type->kind == STK_DynamicArray &&
-           type->first_param_type != sema_no_type() &&
-           sema->types[type->first_param_type].kind == STK_U8;
+    if (type->kind != STK_Array && type->kind != STK_Slice &&
+        type->kind != STK_DynamicArray) {
+        return false;
+    }
+    if (type->first_param_type == sema_no_type()) {
+        return false;
+    }
+
+    SemaTypeKind item_kind = sema->types[type->first_param_type].kind;
+    return item_kind == STK_I8 || item_kind == STK_U8;
 }
 
 internal const AstCastInfo* sema_cast_info(const Ast* ast, const AstNode* node)
@@ -18275,8 +18282,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 (source_type == sema_builtin_type(sema, STK_String) &&
                  sema_type_is_u8_slice(sema, target_type)) ||
                 (target_type == sema_builtin_type(sema, STK_String) &&
-                 (sema_type_is_u8_slice(sema, source_type) ||
-                  sema_type_is_u8_dynamic_array(sema, source_type)));
+                 sema_type_is_byte_collection(sema, source_type));
 
             bool untyped_integer_pointer_cast =
                 source_type != sema_no_type() &&

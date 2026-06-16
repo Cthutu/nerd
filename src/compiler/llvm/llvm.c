@@ -12095,6 +12095,61 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 };
             }
 
+            if (llvm_type_kind(ctx->sema, operand.type_index) == STK_Array &&
+                llvm_type_kind(ctx->sema, expr->type_index) == STK_String) {
+                const HirExpr* source_expr =
+                    &ctx->hir->exprs[expr->operand_expr_index];
+                string array_type = llvm_type_string(ctx, operand.type_index);
+                string data_ptr   = llvm_temp(ctx);
+                if (source_expr->kind == HIR_EXPR_Array &&
+                    llvm_expr_is_constant_value(ctx->hir,
+                                                ctx->lexer,
+                                                ctx->sema,
+                                                expr->operand_expr_index)) {
+                    string backing = llvm_const_slice_backing_name_string(
+                        ctx->hir, ctx->arena, expr->operand_expr_index);
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = getelementptr inbounds " STRINGP
+                              ", ptr " STRINGP ", i64 0, i64 0\n",
+                              STRINGV(data_ptr),
+                              STRINGV(array_type),
+                              STRINGV(backing));
+                } else {
+                    LlvmValue array_address = llvm_address_of_expr(
+                        ctx, function, expr->operand_expr_index);
+                    if (!array_address.ok) {
+                        return (LlvmValue){0};
+                    }
+
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = getelementptr inbounds " STRINGP
+                              ", ptr " STRINGP ", i64 0, i64 0\n",
+                              STRINGV(data_ptr),
+                              STRINGV(array_type),
+                              STRINGV(array_address.value));
+                }
+
+                string string0 = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP
+                          " = insertvalue { ptr, i64 } poison, ptr " STRINGP
+                          ", 0\n",
+                          STRINGV(string0),
+                          STRINGV(data_ptr));
+                string string1 = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = insertvalue { ptr, i64 } " STRINGP
+                          ", i64 %u, 1\n",
+                          STRINGV(string1),
+                          STRINGV(string0),
+                          ctx->sema->types[operand.type_index].return_type);
+                return (LlvmValue){
+                    .ok         = true,
+                    .type_index = expr->type_index,
+                    .value      = string1,
+                };
+            }
+
             if (llvm_type_kind(ctx->sema, operand.type_index) ==
                     STK_DynamicArray &&
                 llvm_type_kind(ctx->sema, expr->type_index) == STK_String) {

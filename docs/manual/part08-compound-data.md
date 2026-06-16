@@ -142,6 +142,18 @@ main :: fn () -> string {
 
 String slices produce strings.
 
+Byte arrays and byte slices can be viewed as strings with `.as(string)` when
+their element type is `i8` or `u8`. This is useful for fixed FFI buffers:
+
+```nerd
+buffer: [512]i8
+text := buffer.as(string)
+```
+
+The resulting string borrows the original storage and uses the source element
+count as its byte count. It does not stop at a null terminator, so slice to the
+number of bytes actually written when a C API reports one.
+
 ## Pointers
 
 Pointer types are written `^T`.

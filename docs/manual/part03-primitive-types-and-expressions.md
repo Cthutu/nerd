@@ -180,6 +180,23 @@ Numeric values can be cast between concrete numeric types, such as `usize` to
 `i32` or `f64` to `f32`. Pointer and slice casts are more restricted and are
 introduced below, then covered again in Part 8.
 
+Byte collections can be viewed as strings with an explicit cast. The source
+must be a fixed array, slice, or dynamic array whose element type is `i8` or
+`u8`:
+
+```nerd
+log: [512]i8
+text := log.as(string)
+```
+
+The cast is a view over the existing bytes. It does not copy, trim a trailing
+zero byte, or validate UTF-8. The string count is the collection element count,
+so slice first when only part of a buffer is meaningful:
+
+```nerd
+text := log[..written].as(string)
+```
+
 Use `nil` for null pointers. Integer address constants must be written with an
 explicit pointer cast:
 

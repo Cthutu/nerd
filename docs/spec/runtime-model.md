@@ -35,7 +35,10 @@ arrays compare against `nil` by their runtime representation.
 
 Runtime `string` and `[]u8` share a pointer/count representation, but are
 distinct semantic types. Explicit casts support conversion between `string` and
-`[]u8` when the cast is permitted by semantic analysis.
+`[]u8`, and from byte collections to `string`, when the cast is permitted by
+semantic analysis. Byte collections are fixed arrays, slices, and dynamic
+arrays whose element type is `i8` or `u8`. The conversion is a view cast: it
+does not copy, trim null terminators, or validate UTF-8.
 
 String slicing returns `string`; byte-slice slicing returns `[]u8`.
 
