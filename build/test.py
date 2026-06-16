@@ -907,6 +907,14 @@ def test_command(path: pathlib.Path) -> list[Failure]:
             for snippet in ("nerd: check main.n", "\"isDefault\": true", "\"check\""):
                 if snippet not in text:
                     failures.append(Failure(path, f"generated tasks.json missing: {snippet}"))
+            try:
+                tasks = json.loads(text)["tasks"]
+            except Exception as exc:
+                failures.append(Failure(path, f"failed to parse generated tasks.json: {exc}"))
+            else:
+                presentations = [task.get("presentation") for task in tasks]
+                if len(presentations) != 2 or presentations[0] != presentations[1]:
+                    failures.append(Failure(path, "expected both generated tasks to use matching presentation settings"))
         launch_json = init_project / ".vscode" / "launch.json"
         if launch_json.is_file():
             text = launch_json.read_text(encoding="utf-8")

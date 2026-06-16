@@ -240,7 +240,15 @@ internal int nerd_cmd_init(const JsonValue* cli_result)
                           "                \"build\"\n"
                           "            ],\n"
                           "            \"group\": \"build\",\n"
-                          "            \"problemMatcher\": []\n"
+                          "            \"problemMatcher\": [],\n"
+                          "            \"presentation\": {\n"
+                          "                \"echo\": true,\n"
+                          "                \"reveal\": \"always\",\n"
+                          "                \"focus\": false,\n"
+                          "                \"panel\": \"shared\",\n"
+                          "                \"showReuseMessage\": true,\n"
+                          "                \"clear\": true\n"
+                          "            }\n"
                           "        }\n"
                           "    ]\n"
                           "}\n";
@@ -286,6 +294,11 @@ internal int nerd_cmd_init(const JsonValue* cli_result)
         ok = error_runtime("Failed to restore working directory `%s`: %s",
                            cwd,
                            strerror(errno));
+    }
+
+    if (ok) {
+        prn("Created Nerd project: %s", project);
+        prn("Next: cd %s", project);
     }
 
     arena_done(&arena);
