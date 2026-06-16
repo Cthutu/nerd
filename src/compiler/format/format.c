@@ -4668,6 +4668,92 @@ internal bool format_aligned_statement_value_is_multiline_string(
            stmt->value.data[3] == '\n';
 }
 
+internal usize format_multiline_string_delimiter_indent(string value)
+{
+    if (value.count < 3) {
+        return 0;
+    }
+
+    usize line_start = value.count;
+    while (line_start > 0 && value.data[line_start - 1] != '\n') {
+        line_start--;
+    }
+
+    usize indent = 0;
+    while (line_start + indent < value.count &&
+           value.data[line_start + indent] == ' ') {
+        indent++;
+    }
+    return indent;
+}
+
+internal usize format_emit_multiline_string_value_at_indent(StringBuilder* sb,
+                                                            string value,
+                                                            usize  indent)
+{
+    usize delimiter_indent = format_multiline_string_delimiter_indent(value);
+    usize line_start       = 0;
+    usize current_column   = indent;
+    while (line_start <= value.count) {
+        usize line_end = line_start;
+        while (line_end < value.count && value.data[line_end] != '\n') {
+            line_end++;
+        }
+
+        usize content_start = line_start;
+        if (line_start > 0) {
+            usize stripped = 0;
+            while (stripped < delimiter_indent && content_start < line_end &&
+                   value.data[content_start] == ' ') {
+                content_start++;
+                stripped++;
+            }
+        }
+
+        format_emit_spaces(sb, indent);
+        sb_append_string(
+            sb,
+            string_from(value.data + content_start, line_end - content_start));
+        current_column = indent + line_end - content_start;
+
+        if (line_end >= value.count) {
+            break;
+        }
+        sb_append_char(sb, '\n');
+        line_start = line_end + 1;
+    }
+
+    return current_column;
+}
+
+internal bool
+format_emit_multiline_string_node_after_operator(StringBuilder* sb,
+                                                 const Cst*     cst,
+                                                 const Lexer*   lexer,
+                                                 u32            node_index,
+                                                 usize          indent,
+                                                 usize*         out_column)
+{
+    Arena arena = {0};
+    arena_init(&arena);
+    string value =
+        format_render_value_to_string(&arena, cst, lexer, node_index);
+    if (!format_aligned_statement_value_is_multiline_string(
+            &(FormatAlignedStatement){.value = value})) {
+        arena_done(&arena);
+        return false;
+    }
+
+    sb_append_char(sb, '\n');
+    usize column =
+        format_emit_multiline_string_value_at_indent(sb, value, indent);
+    if (out_column) {
+        *out_column = column;
+    }
+    arena_done(&arena);
+    return true;
+}
+
 internal bool
 format_emit_aligned_statement_node_value(StringBuilder*                sb,
                                          const Cst*                    cst,
@@ -4751,11 +4837,10 @@ format_emit_aligned_statement_group(StringBuilder*                sb,
                     }
                 } else if (format_aligned_statement_value_is_multiline_string(
                                &stmts[i])) {
-                    sb_append_cstr(sb, " :: ");
-                    sb_append_string(sb, stmts[i].value);
+                    sb_append_cstr(sb, " ::\n");
                     current_column =
-                        value_start_width +
-                        format_string_last_line_width(stmts[i].value);
+                        format_emit_multiline_string_value_at_indent(
+                            sb, stmts[i].value, ((usize)indent_level + 1) * 4);
                 } else if (value_start_width + stmts[i].value.count <=
                            FORMAT_WRAP_WIDTH) {
                     sb_append_cstr(sb, " :: ");
@@ -4816,11 +4901,10 @@ format_emit_aligned_statement_group(StringBuilder*                sb,
                 usize first_op_end   = 0;
                 if (format_aligned_statement_value_is_multiline_string(
                         &stmts[i])) {
-                    sb_append_char(sb, ' ');
-                    sb_append_string(sb, stmts[i].value);
+                    sb_append_char(sb, '\n');
                     current_column =
-                        value_start_width +
-                        format_string_last_line_width(stmts[i].value);
+                        format_emit_multiline_string_value_at_indent(
+                            sb, stmts[i].value, ((usize)indent_level + 1) * 4);
                 } else if (!format_string_has_newline(stmts[i].value) &&
                            format_find_wrappable_infix_operator(
                                stmts[i].value,
@@ -6798,14 +6882,23 @@ internal void format_emit_block_statement(StringBuilder* sb,
             sb_append_cstr(sb, ": ");
             format_emit_variable_payload(sb, cst, lexer, stmt->b, indent_level);
         } else {
-            sb_append_cstr(sb, " := ");
-            format_emit_wrapped_call_expr_if_long(sb,
-                                                  cst,
-                                                  lexer,
-                                                  stmt->b,
-                                                  (usize)indent_level * 4 +
-                                                      symbol.count + 4,
-                                                  indent_level);
+            sb_append_cstr(sb, " :=");
+            if (!format_emit_multiline_string_node_after_operator(
+                    sb,
+                    cst,
+                    lexer,
+                    stmt->b,
+                    ((usize)indent_level + 1) * 4,
+                    NULL)) {
+                sb_append_char(sb, ' ');
+                format_emit_wrapped_call_expr_if_long(sb,
+                                                      cst,
+                                                      lexer,
+                                                      stmt->b,
+                                                      (usize)indent_level * 4 +
+                                                          symbol.count + 4,
+                                                      indent_level);
+            }
         }
         sb_append_char(sb, '\n');
         return;
@@ -6816,17 +6909,37 @@ internal void format_emit_block_statement(StringBuilder* sb,
             sb_append_cstr(sb, "pub ");
         }
         sb_append_string(sb, lex_symbol(lexer, cst_get_symbol(stmt)));
-        sb_append_cstr(
-            sb, cst->nodes[stmt->b].kind == CK_AnnotatedValue ? " : " : " :: ");
+        bool is_annotated = cst->nodes[stmt->b].kind == CK_AnnotatedValue;
+        sb_append_cstr(sb, is_annotated ? " : " : " ::");
         if (cst->nodes[stmt->b].kind == CK_TypePlex) {
+            if (!is_annotated) {
+                sb_append_char(sb, ' ');
+            }
             format_emit_type_plex_multiline(
                 sb, cst, lexer, stmt->b, indent_level);
         } else if (cst->nodes[stmt->b].kind == CK_TypeEnum) {
+            if (!is_annotated) {
+                sb_append_char(sb, ' ');
+            }
             format_emit_type_enum_multiline(
                 sb, cst, lexer, stmt->b, indent_level);
         } else if (cst->nodes[stmt->b].kind == CK_Trait) {
+            if (!is_annotated) {
+                sb_append_char(sb, ' ');
+            }
             format_emit_trait_multiline(sb, cst, lexer, stmt->b, indent_level);
+        } else if (!is_annotated &&
+                   format_emit_multiline_string_node_after_operator(
+                       sb,
+                       cst,
+                       lexer,
+                       stmt->b,
+                       ((usize)indent_level + 1) * 4,
+                       NULL)) {
         } else {
+            if (!is_annotated) {
+                sb_append_char(sb, ' ');
+            }
             format_emit_value_with_indent(
                 sb, cst, lexer, stmt->b, indent_level);
         }
@@ -7069,7 +7182,17 @@ internal void format_emit_value(StringBuilder* sb,
 
     if (node->kind == CK_AnnotatedValue) {
         format_emit_expr(sb, cst, lexer, node->a, 0);
-        sb_append_cstr(sb, " : ");
+        sb_append_cstr(sb, " :");
+        if (format_emit_multiline_string_node_after_operator(
+                sb,
+                cst,
+                lexer,
+                node->b,
+                ((usize)g_format_value_indent_level + 1) * 4,
+                NULL)) {
+            return;
+        }
+        sb_append_char(sb, ' ');
         format_emit_value(sb, cst, lexer, node->b);
         return;
     }
@@ -7158,7 +7281,12 @@ internal void format_emit_variable_payload(StringBuilder* sb,
             return;
         }
         format_emit_expr(sb, cst, lexer, node->a, 0);
-        sb_append_cstr(sb, " = ");
+        sb_append_cstr(sb, " =");
+        if (format_emit_multiline_string_node_after_operator(
+                sb, cst, lexer, node->b, ((usize)indent_level + 1) * 4, NULL)) {
+            return;
+        }
+        sb_append_char(sb, ' ');
         format_emit_value_with_indent(sb, cst, lexer, node->b, indent_level);
         return;
     }
@@ -7411,16 +7539,30 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
                 sb_append_cstr(sb, "pub ");
             }
             sb_append_string(sb, lex_symbol(&lexer, cst_get_symbol(node)));
-            sb_append_cstr(
-                sb,
-                cst.nodes[node->b].kind == CK_AnnotatedValue ? " : " : " :: ");
+            bool is_annotated = cst.nodes[node->b].kind == CK_AnnotatedValue;
+            sb_append_cstr(sb, is_annotated ? " : " : " ::");
             if (cst.nodes[node->b].kind == CK_TypePlex) {
+                if (!is_annotated) {
+                    sb_append_char(sb, ' ');
+                }
                 format_emit_type_plex_multiline(sb, &cst, &lexer, node->b, 0);
             } else if (cst.nodes[node->b].kind == CK_TypeEnum) {
+                if (!is_annotated) {
+                    sb_append_char(sb, ' ');
+                }
                 format_emit_type_enum_multiline(sb, &cst, &lexer, node->b, 0);
             } else if (cst.nodes[node->b].kind == CK_Trait) {
+                if (!is_annotated) {
+                    sb_append_char(sb, ' ');
+                }
                 format_emit_trait_multiline(sb, &cst, &lexer, node->b, 0);
+            } else if (!is_annotated &&
+                       format_emit_multiline_string_node_after_operator(
+                           sb, &cst, &lexer, node->b, 4, NULL)) {
             } else {
+                if (!is_annotated) {
+                    sb_append_char(sb, ' ');
+                }
                 format_emit_value(sb, &cst, &lexer, node->b);
             }
         } else {
@@ -7431,8 +7573,12 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
                 sb_append_cstr(sb, ": ");
                 format_emit_variable_payload(sb, &cst, &lexer, node->b, 0);
             } else {
-                sb_append_cstr(sb, " := ");
-                format_emit_expr(sb, &cst, &lexer, node->b, 0);
+                sb_append_cstr(sb, " :=");
+                if (!format_emit_multiline_string_node_after_operator(
+                        sb, &cst, &lexer, node->b, 4, NULL)) {
+                    sb_append_char(sb, ' ');
+                    format_emit_expr(sb, &cst, &lexer, node->b, 0);
+                }
             }
         }
         sb_append_char(sb, '\n');

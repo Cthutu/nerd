@@ -9,6 +9,7 @@ vertex_shader ::
 """
 #version 330 core
 void main() {
+    indented()
 }
 """
 
@@ -16,24 +17,29 @@ typed_shader: string: """alpha
 beta"""
 ¬
 main :: fn () {
-    text := """
+    text :=
+        """
         alpha
         beta
         """
-    escaped := """
+    escaped :=
+        """
         alpha
           beta
         """
 }
 
 plain_shader  :: ""
-vertex_shader :: """
+vertex_shader ::
+    """
     #version 330 core
     void main() {
+        indented()
     }
     """
 
-typed_shader : string : """
+typed_shader : string :
+    """
     alpha
     beta
     """

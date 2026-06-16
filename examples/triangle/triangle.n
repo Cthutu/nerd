@@ -22,7 +22,8 @@ compile_shader :: fn (type: GLenum, source: string) -> GLuint {
 }
 
 create_program :: fn () -> GLuint {
-    vertex_source := """
+    vertex_source :=
+        """
         #version 120
         
         attribute vec2 position;
@@ -35,7 +36,8 @@ create_program :: fn () -> GLuint {
         }
         """
 
-    fragment_source := """
+    fragment_source :=
+        """
         #version 120
         
         varying vec3 v_colour;

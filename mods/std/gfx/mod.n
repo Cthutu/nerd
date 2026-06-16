@@ -294,7 +294,8 @@ gfx_gl_compile_shader :: fn (type: GLenum, source: string) -> GLuint {
 }
 
 gfx_gl_create_pixel_program :: fn () -> GLuint {
-    vertex_source := """
+    vertex_source :=
+        """
         #version 120
         attribute vec2 position;
         attribute vec2 texcoord;
@@ -305,7 +306,8 @@ gfx_gl_create_pixel_program :: fn () -> GLuint {
         }
         """
 
-    fragment_source := """
+    fragment_source :=
+        """
         #version 120
         uniform sampler2D pixels;
         varying vec2 v_texcoord;
