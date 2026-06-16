@@ -97,7 +97,7 @@ fragment_shader_program ::
                     },
                     "severity": 1,
                     "source": "nerd",
-                    "message": "Type mismatch: expected `string field `.data` or `.count``, found `broken`",
+                    "message": "Type mismatch: expected `string field `.data`, `.count`, or `.bytes``, found `broken`",
                     "relatedInformation": [
                         {
                             "location": {
@@ -136,6 +136,11 @@ fragment_shader_program ::
             },
             {
                 "label": "size",
+                "kind": 5,
+                "detail": "field"
+            },
+            {
+                "label": "bytes",
                 "kind": 5,
                 "detail": "field"
             }

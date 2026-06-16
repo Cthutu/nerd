@@ -287,7 +287,7 @@ internal u32 lsp_completion_field_type(const Sema*  sema,
             return lsp_completion_pointer_type(sema, item_type);
         }
         if (string_eq(field, s("count")) || string_eq(field, s("size")) ||
-            (type->kind == STK_Slice && string_eq(field, s("bytes")))) {
+            string_eq(field, s("bytes"))) {
             return lsp_completion_builtin_type(sema, STK_Usize);
         }
         return sema_no_type();
@@ -473,6 +473,7 @@ internal void lsp_completion_add_string_members(Arena* arena, JsonValue* items)
     lsp_completion_add(arena, items, s("data"), 5);  // Field
     lsp_completion_add(arena, items, s("count"), 5); // Field
     lsp_completion_add(arena, items, s("size"), 5);  // Field
+    lsp_completion_add(arena, items, s("bytes"), 5); // Field
 }
 
 internal bool lsp_completion_items_have_label(JsonValue* items, string label)

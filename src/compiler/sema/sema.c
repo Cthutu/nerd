@@ -17344,12 +17344,13 @@ internal bool sema_infer_node_type(const Lexer* lexer,
             }
             if (string_eq(field, s("bytes"))) {
                 if (target_type == sema_no_type() ||
-                    (sema->types[field_target_type].kind != STK_Array &&
+                    (sema->types[field_target_type].kind != STK_String &&
+                     sema->types[field_target_type].kind != STK_Array &&
                      sema->types[field_target_type].kind != STK_Slice)) {
                     return error_0304_type_mismatch(
                         lexer->source,
                         sema_node_span(lexer, node),
-                        s("array or slice field `.bytes`"),
+                        s("string, array, or slice field `.bytes`"),
                         sema_type_name(lexer, sema, &temp_arena, target_type));
                 }
                 type_index = sema_builtin_type(sema, STK_Usize);
@@ -17425,7 +17426,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 type_index = sema_add_pointer_type(sema, item_type);
             } else if (string_eq(field, s("count")) ||
                        (string_eq(field, s("bytes")) &&
-                        (sema->types[field_target_type].kind == STK_Array ||
+                        (sema->types[field_target_type].kind == STK_String ||
+                         sema->types[field_target_type].kind == STK_Array ||
                          sema->types[field_target_type].kind == STK_Slice))) {
                 type_index = sema_builtin_type(sema, STK_Usize);
             } else if (sema->types[field_target_type].kind ==
@@ -17443,7 +17445,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
             } else {
                 string expected =
                     sema->types[field_target_type].kind == STK_String
-                        ? s("string field `.data` or `.count`")
+                        ? s("string field `.data`, `.count`, or `.bytes`")
                     : sema->types[field_target_type].kind == STK_DynamicArray
                         ? s("dynamic array field `.data`, `.count`, "
                             "`.capacity`, or method")

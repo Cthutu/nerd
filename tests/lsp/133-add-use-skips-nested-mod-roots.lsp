@@ -102,7 +102,7 @@ main :: fn () {
                     },
                     "severity": 1,
                     "source": "nerd",
-                    "message": "Type mismatch: expected `string field `.data` or `.count``, found `split`",
+                    "message": "Type mismatch: expected `string field `.data`, `.count`, or `.bytes``, found `split`",
                     "relatedInformation": [
                         {
                             "location": {

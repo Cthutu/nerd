@@ -5152,7 +5152,7 @@ internal u32 llvm_field_index_for_value(LlvmFunctionContext* ctx,
         if (string_eq_cstr(field, "data")) {
             return 0;
         }
-        if (string_eq_cstr(field, "count")) {
+        if (string_eq_cstr(field, "count") || string_eq_cstr(field, "bytes")) {
             return 1;
         }
         return U32_MAX;
@@ -6088,7 +6088,8 @@ internal LlvmValue llvm_address_of_expr(LlvmFunctionContext* ctx,
             string field = lex_symbol(ctx->lexer, expr->symbol_handle);
             if (string_eq_cstr(field, "data")) {
                 field_index = 0;
-            } else if (string_eq_cstr(field, "count")) {
+            } else if (string_eq_cstr(field, "count") ||
+                       string_eq_cstr(field, "bytes")) {
                 field_index = 1;
             }
         } else {
@@ -9954,7 +9955,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 string field = lex_symbol(ctx->lexer, expr->symbol_handle);
                 if (string_eq_cstr(field, "data")) {
                     field_index = 0;
-                } else if (string_eq_cstr(field, "count")) {
+                } else if (string_eq_cstr(field, "count") ||
+                           string_eq_cstr(field, "bytes")) {
                     field_index = 1;
                 }
             } else if (llvm_type_kind(ctx->sema, target.type_index) ==

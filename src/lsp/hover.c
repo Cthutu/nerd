@@ -3675,14 +3675,13 @@ internal string lsp_field_hover_text(const LspDocument* doc,
             }
         } else if (target->kind == STK_String || target->kind == STK_Slice) {
             if (string_eq(name, s("data"))) {
-                kind       = s("slice field");
+                kind       = target->kind == STK_String ? s("string field")
+                                                        : s("slice field");
                 recognised = true;
-            } else if (string_eq(name, s("count"))) {
-                kind       = s("slice field");
-                recognised = true;
-            } else if (target->kind == STK_Slice &&
+            } else if (string_eq(name, s("count")) ||
                        string_eq(name, s("bytes"))) {
-                kind       = s("slice field");
+                kind       = target->kind == STK_String ? s("string field")
+                                                        : s("slice field");
                 recognised = true;
             }
         } else if (target->kind == STK_DynamicArray) {
