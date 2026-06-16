@@ -26,8 +26,7 @@ string_is_trim_byte :: fn (byte: u8) -> bool {
     return byte == 0 || byte == ' ' || byte == '\t' || byte == '\n' || byte == '\r' || byte == 11 || byte == 12
 }
 
--- Returns a view with leading zero bytes and ASCII whitespace removed.
-pub trim_start :: fn (text: string) -> string {
+string_trim_start :: fn (text: string) -> string {
     start : usize = 0
 
     for start < text.count && string_is_trim_byte(text.data[start]) {
@@ -37,8 +36,7 @@ pub trim_start :: fn (text: string) -> string {
     return text[start..]
 }
 
--- Returns a view with trailing zero bytes and ASCII whitespace removed.
-pub trim_end :: fn (text: string) -> string {
+string_trim_end :: fn (text: string) -> string {
     end := text.count
 
     for end > 0 && string_is_trim_byte(text.data[end - 1]) {
@@ -48,10 +46,8 @@ pub trim_end :: fn (text: string) -> string {
     return text[..end]
 }
 
--- Returns a view with leading and trailing zero bytes and ASCII whitespace
--- removed.
-pub trim :: fn (text: string) -> string {
-    return trim_end(trim_start(text))
+string_trim :: fn (text: string) -> string {
+    return string_trim_end(string_trim_start(text))
 }
 
 impl string {
@@ -89,24 +85,24 @@ impl string {
 
     -- Returns a view with leading zero bytes and ASCII whitespace removed.
     pub trim_start :: fn (text: Self) -> string {
-        return trim_start(text)
+        return string_trim_start(text)
     }
 
     -- Returns a view with trailing zero bytes and ASCII whitespace removed.
     pub trim_end :: fn (text: Self) -> string {
-        return trim_end(text)
+        return string_trim_end(text)
     }
 
     -- Returns a view with leading and trailing zero bytes and ASCII whitespace
     -- removed.
     pub trim :: fn (text: Self) -> string {
-        return trim(text)
+        return string_trim(text)
     }
 
     -- Returns a view with leading and trailing zero bytes and ASCII whitespace
     -- removed.
     pub trim_whitespace :: fn (text: Self) -> string {
-        return trim(text)
+        return string_trim(text)
     }
 
     -- Returns a view ending before the first zero byte.
@@ -173,10 +169,12 @@ test "trim_start and trim_end trim only one side" {
     assert text.trim_end() == "\t  clean"
 }
 
-test "module trim functions trim borrowed string views" {
-    assert trim("  clean  ") == "clean"
-    assert trim_start("  clean  ") == "clean  "
-    assert trim_end("  clean  ") == "  clean"
+test "trim methods trim borrowed string views" {
+    text := "  clean  "
+
+    assert text.trim() == "clean"
+    assert text.trim_start() == "clean  "
+    assert text.trim_end() == "  clean"
 }
 
 test "trim returns empty string for all trimmable bytes" {

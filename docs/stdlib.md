@@ -126,9 +126,6 @@ and reuses storage, and `done()` releases the reserved arena range.
 
 - `from_null_terminated(text: string) -> string`
 - `split(s: string, sep: string) -> [..]string`
-- `trim(text: string) -> string`
-- `trim_start(text: string) -> string`
-- `trim_end(text: string) -> string`
 - `string.trim() -> string`
 - `string.trim_start() -> string`
 - `string.trim_end() -> string`
