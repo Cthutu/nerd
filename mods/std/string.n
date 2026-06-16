@@ -22,6 +22,38 @@ pub from_null_terminated :: fn (text: string) -> string {
     return text[..end]
 }
 
+string_is_trim_byte :: fn (byte: u8) -> bool {
+    return byte == 0 || byte == ' ' || byte == '\t' || byte == '\n' || byte == '\r' || byte == 11 || byte == 12
+}
+
+-- Returns a view with leading zero bytes and ASCII whitespace removed.
+pub trim_start :: fn (text: string) -> string {
+    start : usize = 0
+
+    for start < text.count && string_is_trim_byte(text.data[start]) {
+        start += 1
+    }
+
+    return text[start..]
+}
+
+-- Returns a view with trailing zero bytes and ASCII whitespace removed.
+pub trim_end :: fn (text: string) -> string {
+    end := text.count
+
+    for end > 0 && string_is_trim_byte(text.data[end - 1]) {
+        end -= 1
+    }
+
+    return text[..end]
+}
+
+-- Returns a view with leading and trailing zero bytes and ASCII whitespace
+-- removed.
+pub trim :: fn (text: string) -> string {
+    return trim_end(trim_start(text))
+}
+
 impl string {
 
     -- Splits a string around every occurrence of `separator`.
@@ -55,20 +87,26 @@ impl string {
         return parts
     }
 
-    -- Returns a view with leading and trailing ASCII spaces and tabs removed.
+    -- Returns a view with leading zero bytes and ASCII whitespace removed.
+    pub trim_start :: fn (text: Self) -> string {
+        return trim_start(text)
+    }
+
+    -- Returns a view with trailing zero bytes and ASCII whitespace removed.
+    pub trim_end :: fn (text: Self) -> string {
+        return trim_end(text)
+    }
+
+    -- Returns a view with leading and trailing zero bytes and ASCII whitespace
+    -- removed.
+    pub trim :: fn (text: Self) -> string {
+        return trim(text)
+    }
+
+    -- Returns a view with leading and trailing zero bytes and ASCII whitespace
+    -- removed.
     pub trim_whitespace :: fn (text: Self) -> string {
-        start : usize = 0
-        end   : usize = text.count
-
-        for start < end && (text.data[start] == ' ' || text.data[start] == '\t') {
-            start += 1
-        }
-
-        for end > start && (text.data[end - 1] == ' ' || text.data[end - 1] == '\t') {
-            end -= 1
-        }
-
-        return text[start..end]
+        return trim(text)
     }
 
     -- Returns a view ending before the first zero byte.
@@ -107,16 +145,57 @@ test "split keeps empty parts around repeated separators" {
     assert parts[3] == ""
 }
 
-test "trim_whitespace removes leading and trailing spaces and tabs" {
-    trimmed := " \t clean \t ".trim_whitespace()
+test "trim removes leading and trailing whitespace and nulls" {
+    bytes : [13]u8
+    bytes[0] = 0
+    bytes[1] = ' '
+    bytes[2] = '\t'
+    bytes[3] = '\n'
+    bytes[4] = 'c'
+    bytes[5] = 'l'
+    bytes[6] = 'e'
+    bytes[7] = 'a'
+    bytes[8] = 'n'
+    bytes[9] = '\r'
+    bytes[10] = 12
+    bytes[11] = ' '
+    bytes[12] = 0
+
+    trimmed := bytes.as(string).trim()
 
     assert trimmed == "clean"
 }
 
-test "trim_whitespace returns empty string for all whitespace" {
-    trimmed := "\t  \t".trim_whitespace()
+test "trim_start and trim_end trim only one side" {
+    text := "\t  clean  "
+
+    assert text.trim_start() == "clean  "
+    assert text.trim_end() == "\t  clean"
+}
+
+test "module trim functions trim borrowed string views" {
+    assert trim("  clean  ") == "clean"
+    assert trim_start("  clean  ") == "clean  "
+    assert trim_end("  clean  ") == "  clean"
+}
+
+test "trim returns empty string for all trimmable bytes" {
+    bytes : [5]u8
+    bytes[0] = 0
+    bytes[1] = '\t'
+    bytes[2] = ' '
+    bytes[3] = '\n'
+    bytes[4] = 0
+
+    trimmed := bytes.as(string).trim()
 
     assert trimmed == ""
+}
+
+test "trim_whitespace is an alias for trim" {
+    trimmed := "\t  clean ".trim_whitespace()
+
+    assert trimmed == "clean"
 }
 
 test "from_null_terminated trims at first zero byte" {

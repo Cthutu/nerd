@@ -126,12 +126,20 @@ and reuses storage, and `done()` releases the reserved arena range.
 
 - `from_null_terminated(text: string) -> string`
 - `split(s: string, sep: string) -> [..]string`
+- `trim(text: string) -> string`
+- `trim_start(text: string) -> string`
+- `trim_end(text: string) -> string`
+- `string.trim() -> string`
+- `string.trim_start() -> string`
+- `string.trim_end() -> string`
 - `string.trim_null_terminated() -> string`
 - `string.trim_whitespace() -> string`
 
 `from_null_terminated` and `trim_null_terminated` return a borrowed view ending
 before the first zero byte. They are useful after casting fixed C-style byte
 buffers to `string`, for example `str.from_null_terminated(buffer.as(string))`.
+The `trim` family returns borrowed views with leading and/or trailing zero bytes
+and ASCII whitespace removed. `trim_whitespace` is kept as an alias for `trim`.
 `split` returns a dynamic array and the caller is responsible for freeing that
 array when it is no longer needed.
 
