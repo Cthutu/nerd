@@ -4660,6 +4660,14 @@ internal bool format_aligned_statement_node_value_prefers_multiline(
            cst->fn_signatures[signature_index].param_count >= 4;
 }
 
+internal bool format_aligned_statement_value_is_multiline_string(
+    const FormatAlignedStatement* stmt)
+{
+    return stmt->value.count >= 4 && stmt->value.data[0] == '"' &&
+           stmt->value.data[1] == '"' && stmt->value.data[2] == '"' &&
+           stmt->value.data[3] == '\n';
+}
+
 internal bool
 format_emit_aligned_statement_node_value(StringBuilder*                sb,
                                          const Cst*                    cst,
@@ -4741,6 +4749,13 @@ format_emit_aligned_statement_group(StringBuilder*                sb,
                         current_column =
                             value_start_width + stmts[i].value.count;
                     }
+                } else if (format_aligned_statement_value_is_multiline_string(
+                               &stmts[i])) {
+                    sb_append_cstr(sb, " :: ");
+                    sb_append_string(sb, stmts[i].value);
+                    current_column =
+                        value_start_width +
+                        format_string_last_line_width(stmts[i].value);
                 } else if (value_start_width + stmts[i].value.count <=
                            FORMAT_WRAP_WIDTH) {
                     sb_append_cstr(sb, " :: ");
@@ -4799,9 +4814,19 @@ format_emit_aligned_statement_group(StringBuilder*                sb,
                 sb_append_char(sb, stmts[i].is_bind ? ':' : '=');
                 usize first_op_start = 0;
                 usize first_op_end   = 0;
-                if (!format_string_has_newline(stmts[i].value) &&
-                    format_find_wrappable_infix_operator(
-                        stmts[i].value, 0, &first_op_start, &first_op_end)) {
+                if (format_aligned_statement_value_is_multiline_string(
+                        &stmts[i])) {
+                    sb_append_char(sb, ' ');
+                    sb_append_string(sb, stmts[i].value);
+                    current_column =
+                        value_start_width +
+                        format_string_last_line_width(stmts[i].value);
+                } else if (!format_string_has_newline(stmts[i].value) &&
+                           format_find_wrappable_infix_operator(
+                               stmts[i].value,
+                               0,
+                               &first_op_start,
+                               &first_op_end)) {
                     sb_append_char(sb, ' ');
                     bool wrapped =
                         format_emit_wrapped_infix_value(sb,
