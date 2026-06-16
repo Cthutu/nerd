@@ -273,7 +273,8 @@ internal u32 lsp_completion_field_type(const Sema*  sema,
     }
 
     if (type->kind == STK_Array) {
-        return (string_eq(field, s("count")) || string_eq(field, s("size")))
+        return (string_eq(field, s("count")) || string_eq(field, s("size")) ||
+                string_eq(field, s("bytes")))
                    ? lsp_completion_builtin_type(sema, STK_Usize)
                    : sema_no_type();
     }
@@ -285,9 +286,11 @@ internal u32 lsp_completion_field_type(const Sema*  sema,
                                 : type->first_param_type;
             return lsp_completion_pointer_type(sema, item_type);
         }
-        return (string_eq(field, s("count")) || string_eq(field, s("size")))
-                   ? lsp_completion_builtin_type(sema, STK_Usize)
-                   : sema_no_type();
+        if (string_eq(field, s("count")) || string_eq(field, s("size")) ||
+            (type->kind == STK_Slice && string_eq(field, s("bytes")))) {
+            return lsp_completion_builtin_type(sema, STK_Usize);
+        }
+        return sema_no_type();
     }
 
     if (type->kind == STK_DynamicArray) {
@@ -454,9 +457,18 @@ internal void lsp_completion_add_array_members(Arena* arena, JsonValue* items)
 {
     lsp_completion_add(arena, items, s("count"), 5); // Field
     lsp_completion_add(arena, items, s("size"), 5);  // Field
+    lsp_completion_add(arena, items, s("bytes"), 5); // Field
 }
 
 internal void lsp_completion_add_slice_members(Arena* arena, JsonValue* items)
+{
+    lsp_completion_add(arena, items, s("data"), 5);  // Field
+    lsp_completion_add(arena, items, s("count"), 5); // Field
+    lsp_completion_add(arena, items, s("size"), 5);  // Field
+    lsp_completion_add(arena, items, s("bytes"), 5); // Field
+}
+
+internal void lsp_completion_add_string_members(Arena* arena, JsonValue* items)
 {
     lsp_completion_add(arena, items, s("data"), 5);  // Field
     lsp_completion_add(arena, items, s("count"), 5); // Field
@@ -975,7 +987,9 @@ internal void lsp_completion_add_members(Arena*             arena,
     }
 
     const Lexer* lexer = &doc->front_end.lexer;
-    if (type->kind == STK_String || type->kind == STK_Slice) {
+    if (type->kind == STK_String) {
+        lsp_completion_add_string_members(arena, items);
+    } else if (type->kind == STK_Slice) {
         lsp_completion_add_slice_members(arena, items);
     } else if (type->kind == STK_Array) {
         lsp_completion_add_array_members(arena, items);

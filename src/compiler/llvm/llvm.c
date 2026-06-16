@@ -9780,6 +9780,27 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 }
             }
 
+            if (expr->kind == HIR_EXPR_Field &&
+                expr->symbol_handle != U32_MAX &&
+                string_eq_cstr(lex_symbol(ctx->lexer, expr->symbol_handle),
+                               "bytes")) {
+                u32 source_type =
+                    ctx->hir->exprs[expr->operand_expr_index].type_index;
+                u32 member_type =
+                    llvm_member_target_type(ctx->sema, source_type);
+                if (llvm_type_kind(ctx->sema, member_type) == STK_Array) {
+                    return (LlvmValue){
+                        .ok         = true,
+                        .type_index = llvm_builtin_type(ctx->sema, STK_Usize),
+                        .value      = string_format(
+                            ctx->arena,
+                            "%llu",
+                            (unsigned long long)llvm_type_sizeof_bytes(
+                                ctx->sema, member_type)),
+                    };
+                }
+            }
+
             u32 operand_type =
                 ctx->hir->exprs[expr->operand_expr_index].type_index;
             u32 member_type = llvm_member_target_type(ctx->sema, operand_type);
@@ -9880,6 +9901,49 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                           STRINGV(target.value));
                 target.type_index = pointee_type;
                 target.value      = loaded;
+            }
+
+            if (expr->kind == HIR_EXPR_Field &&
+                expr->symbol_handle != U32_MAX &&
+                string_eq_cstr(lex_symbol(ctx->lexer, expr->symbol_handle),
+                               "bytes") &&
+                llvm_type_kind(ctx->sema, target.type_index) == STK_Slice) {
+                string count = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = extractvalue { ptr, i64 } " STRINGP
+                          ", 1\n",
+                          STRINGV(count),
+                          STRINGV(target.value));
+
+                u32 item_type =
+                    ctx->sema->types[target.type_index].first_param_type;
+                u64 item_size = llvm_type_sizeof_bytes(ctx->sema, item_type);
+                if (item_size == 0) {
+                    return (LlvmValue){
+                        .ok         = true,
+                        .type_index = llvm_builtin_type(ctx->sema, STK_Usize),
+                        .value      = s("0"),
+                    };
+                }
+                if (item_size == 1) {
+                    return (LlvmValue){
+                        .ok         = true,
+                        .type_index = llvm_builtin_type(ctx->sema, STK_Usize),
+                        .value      = count,
+                    };
+                }
+
+                string bytes = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = mul i64 " STRINGP ", %llu\n",
+                          STRINGV(bytes),
+                          STRINGV(count),
+                          (unsigned long long)item_size);
+                return (LlvmValue){
+                    .ok         = true,
+                    .type_index = llvm_builtin_type(ctx->sema, STK_Usize),
+                    .value      = bytes,
+                };
             }
 
             u32 field_index = U32_MAX;

@@ -3625,7 +3625,8 @@ internal string lsp_field_hover_text(const LspDocument* doc,
         if (lsp_sema_type(&doc->front_end.sema, pointee_type, &pointee) &&
             (pointee->kind == STK_Plex || pointee->kind == STK_Union ||
              pointee->kind == STK_Box || pointee->kind == STK_DynamicArray ||
-             pointee->kind == STK_Arena)) {
+             pointee->kind == STK_Array || pointee->kind == STK_Slice ||
+             pointee->kind == STK_String || pointee->kind == STK_Arena)) {
             target_type = pointee_type;
             target      = pointee;
         }
@@ -3651,8 +3652,8 @@ internal string lsp_field_hover_text(const LspDocument* doc,
         }
     }
 
-    if (target->kind == STK_Slice || target->kind == STK_String ||
-        target->kind == STK_DynamicArray) {
+    if (target->kind == STK_Array || target->kind == STK_Slice ||
+        target->kind == STK_String || target->kind == STK_DynamicArray) {
         string name       = lex_symbol(&doc->front_end.lexer, field->b);
         u32    field_type = sema_no_type();
         string type       = lsp_sema_node_type(
@@ -3667,11 +3668,20 @@ internal string lsp_field_hover_text(const LspDocument* doc,
         string kind       = s("");
         bool   recognised = false;
 
-        if (target->kind == STK_String || target->kind == STK_Slice) {
+        if (target->kind == STK_Array) {
+            if (string_eq(name, s("count")) || string_eq(name, s("bytes"))) {
+                kind       = s("array field");
+                recognised = true;
+            }
+        } else if (target->kind == STK_String || target->kind == STK_Slice) {
             if (string_eq(name, s("data"))) {
                 kind       = s("slice field");
                 recognised = true;
             } else if (string_eq(name, s("count"))) {
+                kind       = s("slice field");
+                recognised = true;
+            } else if (target->kind == STK_Slice &&
+                       string_eq(name, s("bytes"))) {
                 kind       = s("slice field");
                 recognised = true;
             }

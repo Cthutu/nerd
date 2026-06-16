@@ -61,7 +61,7 @@ main :: fn () {
 }
 ¬
 {
-    "message": "Type mismatch: expected `slice field `.data` or `.count``, found `len`",
+    "message": "Type mismatch: expected `slice field `.data`, `.count`, or `.bytes``, found `len`",
     "source_file": "tests/errors/026-slices.e",
     "primary_location": {
         "line": 6,

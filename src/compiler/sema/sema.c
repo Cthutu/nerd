@@ -17342,6 +17342,19 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 type_index = sema_builtin_type(sema, STK_Usize);
                 break;
             }
+            if (string_eq(field, s("bytes"))) {
+                if (target_type == sema_no_type() ||
+                    (sema->types[field_target_type].kind != STK_Array &&
+                     sema->types[field_target_type].kind != STK_Slice)) {
+                    return error_0304_type_mismatch(
+                        lexer->source,
+                        sema_node_span(lexer, node),
+                        s("array or slice field `.bytes`"),
+                        sema_type_name(lexer, sema, &temp_arena, target_type));
+                }
+                type_index = sema_builtin_type(sema, STK_Usize);
+                break;
+            }
             if (target_type != sema_no_type() &&
                 sema->types[target_type].kind == STK_Module) {
                 const SemaType* module = &sema->types[target_type];
@@ -17410,7 +17423,10 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                         ? sema_builtin_type(sema, STK_U8)
                         : sema->types[field_target_type].first_param_type;
                 type_index = sema_add_pointer_type(sema, item_type);
-            } else if (string_eq(field, s("count"))) {
+            } else if (string_eq(field, s("count")) ||
+                       (string_eq(field, s("bytes")) &&
+                        (sema->types[field_target_type].kind == STK_Array ||
+                         sema->types[field_target_type].kind == STK_Slice))) {
                 type_index = sema_builtin_type(sema, STK_Usize);
             } else if (sema->types[field_target_type].kind ==
                            STK_DynamicArray &&
@@ -17432,8 +17448,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                         ? s("dynamic array field `.data`, `.count`, "
                             "`.capacity`, or method")
                     : sema->types[field_target_type].kind == STK_Array
-                        ? s("array field `.count`")
-                        : s("slice field `.data` or `.count`");
+                        ? s("array field `.count` or `.bytes`")
+                        : s("slice field `.data`, `.count`, or `.bytes`");
                 return error_0304_type_mismatch(lexer->source,
                                                 sema_node_span(lexer, node),
                                                 expected,
@@ -20974,7 +20990,8 @@ internal bool sema_validate_assignment_node(const Lexer*     lexer,
         }
 
     case AK_Field:
-        if (string_eq(lex_symbol(lexer, node->b), s("size"))) {
+        if (string_eq(lex_symbol(lexer, node->b), s("size")) ||
+            string_eq(lex_symbol(lexer, node->b), s("bytes"))) {
             return true;
         }
         return sema_validate_assignment_node(lexer, ast, sema, node->a, state);

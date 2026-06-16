@@ -57,6 +57,11 @@ stores the byte size, and the language exposes `box.count` as the allocation
 byte size divided by `T.size`. `box.data` exposes the owned pointer as `^T` for
 borrowing views such as `box.data.as([]T, box.count)`.
 
+Fixed arrays and slices expose `value.bytes` as the byte size of their element
+payload. For `[N]T`, this is the fixed array storage size. For `[]T`, this is
+the live element count multiplied by `T.size`. Strings and dynamic arrays do not
+expose `bytes`.
+
 Box ownership moves when a `box[T]` is assigned to another `box[T]`, passed to a
 parameter of type `box[T]`, or returned from a function. The source box is set
 to nil by the move. Passing a box where `^T` is expected borrows the pointee and

@@ -123,6 +123,8 @@ intended exit code.
 - Strings, slices, and dynamic arrays report the size of their value header.
   Fixed arrays, strings, slices, and dynamic arrays expose `.count` for element
   counts.
+- Fixed arrays and slices expose `.bytes` for the byte size of their element
+  payload.
 - Dot access automatically dereferences pointers when the pointee provides the
   requested tuple, collection, plex, or union member.
 - `@file` expands to the current source filename as a `string`.

@@ -140,9 +140,13 @@ text_bytes := "hi".size  -- size of a string value, not its character count
 ```
 
 For fixed arrays, `.size` is the size of the whole array value and `.count` is
-the fixed element count. For strings, slices, and dynamic arrays, `.size` is the
-size of the value header. Use `.count` when you want the number of live
-elements.
+the fixed element count. Fixed arrays also expose `.bytes`, which is the number
+of bytes occupied by their elements.
+
+For strings, slices, and dynamic arrays, `.size` is the size of the value
+header. Use `.count` when you want the number of live elements. Slices also
+expose `.bytes`, which is `slice.count * T.size` for a `[]T` slice. Strings and
+dynamic arrays do not expose `.bytes`.
 
 Untyped integer literals use the default materialised integer type for `.size`,
 so `128.size` is the same as `i32.size` unless context gives the literal a

@@ -156,6 +156,11 @@ main :: fn () {
                 "label": "size",
                 "kind": 5,
                 "detail": "field"
+            },
+            {
+                "label": "bytes",
+                "kind": 5,
+                "detail": "field"
             }
         ]
     },
@@ -175,6 +180,11 @@ main :: fn () {
             },
             {
                 "label": "size",
+                "kind": 5,
+                "detail": "field"
+            },
+            {
+                "label": "bytes",
                 "kind": 5,
                 "detail": "field"
             }
