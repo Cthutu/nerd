@@ -3669,7 +3669,8 @@ internal string lsp_field_hover_text(const LspDocument* doc,
         bool   recognised = false;
 
         if (target->kind == STK_Array) {
-            if (string_eq(name, s("count")) || string_eq(name, s("bytes"))) {
+            if (string_eq(name, s("data")) || string_eq(name, s("count")) ||
+                string_eq(name, s("bytes"))) {
                 kind       = s("array field");
                 recognised = true;
             }

@@ -12,13 +12,16 @@ main :: fn () -> i32 {
 
     prn($"tuple {pair_ptr.0} {pair_ptr_ptr.1}")
     prn($"counts {values.count} {values_ptr.count} {slice.count} {slice_ptr.count}")
-    return pair_ptr.0 + pair_ptr_ptr.1
+    prn($"data {values.data[0]} {values_ptr.data[1]} {[4, 5, 6].data[2]}")
+    return pair_ptr.0 + pair_ptr_ptr.1 + values.data[0] +
+        values_ptr.data[1] + [4, 5, 6].data[2]
 }
 ¬
-30
+39
 ¬
 tuple 10 20
 counts 3 3 3 3
+data 1 2 6
 
 ¬
 delete

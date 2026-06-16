@@ -139,7 +139,7 @@ itself.
 
 | Member | Fixed array `[N]T` | Slice `[]T` | `string` | Dynamic array `[..]T` |
 | --- | --- | --- | --- | --- |
-| `.data` | no | `^T` | `^u8` | `^T` |
+| `.data` | `^T` | `^T` | `^u8` | `^T` |
 | `.count` | `N` as `usize` | live element count | byte count | live element count |
 | `.bytes` | `N * T.size` | `.count * T.size` | same as `.count` | no |
 | `.size` | same as `.bytes` | header size in bytes | header size in bytes | header size in bytes |

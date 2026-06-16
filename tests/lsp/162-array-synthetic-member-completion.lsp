@@ -128,6 +128,11 @@ main :: fn () {
         "id": 2,
         "result": [
             {
+                "label": "data",
+                "kind": 5,
+                "detail": "field"
+            },
+            {
                 "label": "count",
                 "kind": 5,
                 "detail": "field"

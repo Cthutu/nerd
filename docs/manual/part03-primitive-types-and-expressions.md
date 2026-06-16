@@ -150,8 +150,8 @@ Array-like values use these names consistently where the member is available:
 | `.size` | byte size of the value itself |
 
 For fixed arrays, `.count` is the fixed element count and `.bytes` is the byte
-size of the whole array payload. Since a fixed array value is its payload,
-`.size` and `.bytes` are the same.
+size of the whole array payload. `.data` points at the first element. Since a
+fixed array value is its payload, `.size` and `.bytes` are the same.
 
 For strings, slices, and dynamic arrays, `.size` is the size of the header or
 fat-pointer value, not the size of the payload it points at. For `string`,

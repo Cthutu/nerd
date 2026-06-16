@@ -9763,6 +9763,70 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             if (expr->kind == HIR_EXPR_Field &&
                 expr->symbol_handle != U32_MAX &&
                 string_eq_cstr(lex_symbol(ctx->lexer, expr->symbol_handle),
+                               "data")) {
+                u32 source_type =
+                    ctx->hir->exprs[expr->operand_expr_index].type_index;
+                u32 member_type =
+                    llvm_member_target_type(ctx->sema, source_type);
+                if (llvm_type_kind(ctx->sema, member_type) == STK_Array) {
+                    const HirExpr* source_expr =
+                        &ctx->hir->exprs[expr->operand_expr_index];
+                    if (source_expr->kind == HIR_EXPR_Array &&
+                        llvm_expr_is_constant_value(ctx->hir,
+                                                    ctx->lexer,
+                                                    ctx->sema,
+                                                    expr->operand_expr_index)) {
+                        string backing = llvm_const_slice_backing_name_string(
+                            ctx->hir, ctx->arena, expr->operand_expr_index);
+                        string array_type = llvm_type_string(ctx, member_type);
+                        string data_ptr   = llvm_temp(ctx);
+                        sb_format(ctx->sb,
+                                  "  " STRINGP
+                                  " = getelementptr inbounds " STRINGP
+                                  ", ptr " STRINGP ", i64 0, i64 0\n",
+                                  STRINGV(data_ptr),
+                                  STRINGV(array_type),
+                                  STRINGV(backing));
+                        return (LlvmValue){
+                            .ok         = true,
+                            .type_index = expr->type_index,
+                            .value      = data_ptr,
+                        };
+                    }
+
+                    LlvmValue    target_address = {0};
+                    SemaTypeKind source_kind =
+                        llvm_type_kind(ctx->sema, source_type);
+                    if (source_kind == STK_Pointer || source_kind == STK_Box) {
+                        target_address = llvm_emit_expr(
+                            ctx, function, expr->operand_expr_index);
+                    } else {
+                        target_address = llvm_address_of_expr(
+                            ctx, function, expr->operand_expr_index);
+                    }
+                    if (!target_address.ok) {
+                        return (LlvmValue){0};
+                    }
+
+                    string array_type = llvm_type_string(ctx, member_type);
+                    string data_ptr   = llvm_temp(ctx);
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = getelementptr inbounds " STRINGP
+                              ", ptr " STRINGP ", i64 0, i64 0\n",
+                              STRINGV(data_ptr),
+                              STRINGV(array_type),
+                              STRINGV(target_address.value));
+                    return (LlvmValue){
+                        .ok         = true,
+                        .type_index = expr->type_index,
+                        .value      = data_ptr,
+                    };
+                }
+            }
+
+            if (expr->kind == HIR_EXPR_Field &&
+                expr->symbol_handle != U32_MAX &&
+                string_eq_cstr(lex_symbol(ctx->lexer, expr->symbol_handle),
                                "count")) {
                 u32 source_type =
                     ctx->hir->exprs[expr->operand_expr_index].type_index;
@@ -15372,9 +15436,10 @@ internal bool llvm_render_const_slice_backing_values(StringBuilder* sb,
 {
     bool rendered = false;
     for (u32 i = 0; i < array_count(hir->exprs); ++i) {
-        const HirExpr* expr = &hir->exprs[i];
+        const HirExpr* expr      = &hir->exprs[i];
+        SemaTypeKind   expr_kind = llvm_type_kind(sema, expr->type_index);
         if (expr->kind != HIR_EXPR_Array ||
-            llvm_type_kind(sema, expr->type_index) != STK_Slice ||
+            (expr_kind != STK_Slice && expr_kind != STK_Array) ||
             !llvm_expr_is_constant_value(hir, lexer, sema, i)) {
             continue;
         }

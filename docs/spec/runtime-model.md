@@ -59,7 +59,8 @@ borrowing views such as `box.data.as([]T, box.count)`.
 
 For array-like values, `data` is the pointer to the payload, `count` is the
 number of live elements, and `bytes` is the payload byte size. Fixed arrays,
-slices, and strings expose `value.bytes`. For `[N]T`, this is the fixed array
+slices, and strings expose `value.bytes`. Fixed arrays also expose `value.data`
+as a pointer to element zero. For `[N]T`, `value.bytes` is the fixed array
 storage size and matches `value.size`. For `[]T`, this is the live element count
 multiplied by `T.size`. For `string`, this is the same value as `value.count`,
 because strings are byte strings. Dynamic arrays do not expose `bytes`; code

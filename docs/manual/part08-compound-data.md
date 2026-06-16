@@ -60,9 +60,10 @@ An explicit fixed array type is written `[N]T`:
 values: [3]i32 = [1, 2, 3]  -- array length is part of the type
 ```
 
-Fixed arrays expose `.count` as their element count. They also expose `.bytes`
-as the byte size of their element storage. For a `[N]T`, `.bytes` and `.size`
-are the same value, while `.count` is `N`.
+Fixed arrays expose `.data`, `.count`, and `.bytes`. `.data` is a `^T` pointing
+at the first element, `.count` is the element count, and `.bytes` is the byte
+size of their element storage. For a `[N]T`, `.bytes` and `.size` are the same
+value, while `.count` is `N`.
 
 ## Slices
 

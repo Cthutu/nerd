@@ -17417,8 +17417,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                       "union, or pointer to memberable value"),
                     sema_type_name(lexer, sema, &temp_arena, target_type));
             }
-            if (string_eq(field, s("data")) &&
-                sema->types[field_target_type].kind != STK_Array) {
+            if (string_eq(field, s("data"))) {
                 u32 item_type =
                     sema->types[field_target_type].kind == STK_String
                         ? sema_builtin_type(sema, STK_U8)
@@ -17450,7 +17449,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                         ? s("dynamic array field `.data`, `.count`, "
                             "`.capacity`, or method")
                     : sema->types[field_target_type].kind == STK_Array
-                        ? s("array field `.count` or `.bytes`")
+                        ? s("array field `.data`, `.count`, or `.bytes`")
                         : s("slice field `.data`, `.count`, or `.bytes`");
                 return error_0304_type_mismatch(lexer->source,
                                                 sema_node_span(lexer, node),
