@@ -9,6 +9,7 @@ import pathlib
 import re
 import shutil
 import shlex
+import stat
 import subprocess
 import sys
 from urllib.parse import quote, unquote
@@ -43,7 +44,7 @@ class SuiteCounts:
     skipped: int = 0
 
 
-console = Console() if Console else None
+console = Console() if Console and os.name != "nt" else None
 
 ANSI_RESET = "\033[0m"
 ANSI_BOLD_WHITE = "\033[1;37m"
@@ -89,6 +90,20 @@ def llvm_escaped_path(path: pathlib.Path) -> str:
     return str(path).replace("\\", "\\5C")
 
 
+def llvm_input_path_variants(path: pathlib.Path) -> set[str]:
+    resolved = path.resolve()
+    return {
+        str(path),
+        str(path).replace("\\", "\\\\"),
+        llvm_escaped_path(path),
+        path.as_posix(),
+        str(resolved),
+        str(resolved).replace("\\", "\\\\"),
+        llvm_escaped_path(resolved),
+        resolved.as_posix(),
+    }
+
+
 def normalize_llvm_source_path_lengths(text: str) -> str:
     pattern = r'(@\.(?:assert\.source_path|macro\.file)\.m\d+(?:\.\d+)? = .* constant )\[\d+ x i8\] c"([^"]*)\\00"'
 
@@ -97,6 +112,12 @@ def normalize_llvm_source_path_lengths(text: str) -> str:
         return f'{match.group(1)}[{count} x i8] c"{match.group(2)}\\00"'
 
     return re.sub(pattern, replace, text)
+
+
+def normalize_llvm_source_file_constants(text: str, source_path: str) -> str:
+    pattern = r'(@\.(?:assert\.source_path|macro\.file)\.m\d+(?:\.\d+)? = .* constant )\[\d+ x i8\] c"[^"]*\\00"'
+    count = len(source_path) + 1
+    return re.sub(pattern, rf'\1[{count} x i8] c"{source_path}\\00"', text)
 
 
 def normalize_hir_import_ids(text: str) -> str:
@@ -384,6 +405,21 @@ def cleanup_generated_outputs(path: pathlib.Path) -> None:
                 sidecar.unlink(missing_ok=True)
 
 
+def remove_generated_path(path: pathlib.Path) -> None:
+    if not path.exists():
+        return
+
+    def make_writable(func, item, _exc_info) -> None:
+        os.chmod(item, stat.S_IWRITE)
+        func(item)
+
+    if path.is_dir():
+        shutil.rmtree(path, onerror=make_writable)
+    else:
+        path.chmod(stat.S_IWRITE)
+        path.unlink(missing_ok=True)
+
+
 def test_language(path: pathlib.Path) -> list[Failure]:
     parts = split_sections(path)
     if len(parts) < 5:
@@ -442,12 +478,7 @@ def test_language(path: pathlib.Path) -> list[Failure]:
         if stdout_failure:
             failures.append(stdout_failure)
 
-    input_variants = {
-        str(input_path),
-        str(input_path).replace("\\", "\\\\"),
-        llvm_escaped_path(input_path),
-        input_path.as_posix(),
-    }
+    input_variants = llvm_input_path_variants(input_path)
 
     hir_path = path.parent / f"_{path.stem}.hir"
     if expected_hir.strip():
@@ -463,10 +494,12 @@ def test_language(path: pathlib.Path) -> list[Failure]:
 
     llvm_path = path.parent / f"_{path.stem}.ll"
     if expected_llvm.strip():
+        expected_llvm = normalize_llvm_source_file_constants(expected_llvm, rel(path))
         expected_llvm = normalize_llvm_source_path_lengths(expected_llvm)
         actual_llvm = llvm_path.read_text(encoding="utf-8") if llvm_path.exists() else ""
         for input_variant in input_variants:
             actual_llvm = actual_llvm.replace(input_variant, rel(path))
+        actual_llvm = normalize_llvm_source_file_constants(actual_llvm, rel(path))
         actual_llvm = normalize_llvm_source_path_lengths(actual_llvm)
         expected_llvm = normalize_llvm_imported_module_ids(expected_llvm)
         actual_llvm = normalize_llvm_imported_module_ids(actual_llvm)
@@ -551,17 +584,14 @@ def test_llvm(path: pathlib.Path) -> list[Failure]:
     if proc.returncode != 0:
         failures.append(Failure(path, f"build failed with {proc.returncode}\n{proc.stderr}"))
     else:
-        input_variants = {
-            str(input_path),
-            str(input_path).replace("\\", "\\\\"),
-            llvm_escaped_path(input_path),
-            input_path.as_posix(),
-            f"/home/matt/nerd/{rel(input_path)}",
-        }
+        input_variants = llvm_input_path_variants(input_path)
+        input_variants.add(f"/home/matt/nerd/{rel(input_path)}")
         actual_llvm = llvm_path.read_text(encoding="utf-8") if llvm_path.exists() else ""
         for input_variant in input_variants:
             expected_llvm = expected_llvm.replace(input_variant, rel(input_path))
             actual_llvm = actual_llvm.replace(input_variant, rel(input_path))
+        expected_llvm = normalize_llvm_source_file_constants(expected_llvm, rel(input_path))
+        actual_llvm = normalize_llvm_source_file_constants(actual_llvm, rel(input_path))
         expected_llvm = normalize_llvm_source_path_lengths(expected_llvm)
         actual_llvm = normalize_llvm_source_path_lengths(actual_llvm)
         expected_llvm = normalize_llvm_debug_paths(expected_llvm)
@@ -786,10 +816,11 @@ def test_command(path: pathlib.Path) -> list[Failure]:
     expected_stderr = parts[6] if len(parts) > 6 else ""
 
     default_run_mode = run_mode in {"default-main", "default-folder"}
+    isolated_cwd_mode = default_run_mode or run_mode == "init-project"
     cwd = path.parent
-    if default_run_mode:
+    if isolated_cwd_mode:
         cwd = path.parent / f"_{path.stem.replace('-', '_')}_cwd"
-        shutil.rmtree(cwd, ignore_errors=True)
+        remove_generated_path(cwd)
         cwd.mkdir(parents=True)
 
     input_path = cwd / f"{path.stem}.input.n"
@@ -809,7 +840,7 @@ def test_command(path: pathlib.Path) -> list[Failure]:
         if len(cli_args) != 1:
             return [Failure(path, "init-project run mode expects one project argument")]
         init_project = cwd / cli_args[0]
-        shutil.rmtree(init_project, ignore_errors=True)
+        remove_generated_path(init_project)
 
     if run_mode == "clean-llvm" and command in {"run", "r"}:
         for stale in (
@@ -1093,15 +1124,15 @@ def test_command(path: pathlib.Path) -> list[Failure]:
             names = ", ".join(item.name for item in leftovers)
             failures.append(Failure(path, f"expected LLVM run to clean generated files, found: {names}"))
     if not failures:
-        if default_run_mode:
-            shutil.rmtree(cwd, ignore_errors=True)
+        if isolated_cwd_mode:
+            remove_generated_path(cwd)
         else:
             input_path.unlink(missing_ok=True)
             cleanup_generated_outputs(path)
             if run_mode.startswith("build-artifact"):
                 command_artifact_path(input_path, cli_args).unlink(missing_ok=True)
             if run_mode == "init-project" and init_project is not None:
-                shutil.rmtree(init_project, ignore_errors=True)
+                remove_generated_path(init_project)
         executable.unlink(missing_ok=True)
         debug_symbols.unlink(missing_ok=True)
     return failures

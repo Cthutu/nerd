@@ -279,4 +279,10 @@ on "windows" {
         }
     }
 
+    term_wait_for_input_impl :: fn (timeout_ms: i32) {
+        input := GetStdHandle(STD_INPUT_HANDLE)
+        wait_ms := on timeout_ms < 0 => 0xffffffff.as(DWORD) else timeout_ms.as(DWORD)
+        _ := WaitForSingleObject(input, wait_ms)
+    }
+
 }
