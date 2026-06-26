@@ -6795,7 +6795,14 @@ internal bool sema_collect_block_statements(const Lexer* lexer,
                     sema->node_decl_indices[i] = decl_index;
                 }
             }
-            i++;
+            if (i + 2 < end_node && ast->nodes[i + 1].kind == AK_Expression &&
+                ast->nodes[i + 1].a == i &&
+                ast->nodes[i + 2].kind == AK_Statement &&
+                ast->nodes[i + 2].a == i + 1) {
+                i += 3;
+            } else {
+                i++;
+            }
             continue;
         }
 
