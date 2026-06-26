@@ -18532,12 +18532,10 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 }
 
                 if (statement_form) {
-                    u32            ignored         = sema_no_type();
-                    u32            branch_expected = sema_no_type();
-                    const AstNode* branch_expr =
-                        &ast->nodes[branch->expr_node_index];
-                    if (branch_expr->kind == AK_Return ||
-                        branch_expr->kind == AK_ReturnExpr) {
+                    u32 ignored         = sema_no_type();
+                    u32 branch_expected = sema_no_type();
+                    if (sema_node_definitely_returns(
+                            ast, sema, branch->expr_node_index)) {
                         branch_expected = sema_enclosing_function_return_type(
                             sema, node_index);
                     }
@@ -18552,20 +18550,21 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     continue;
                 }
 
-                u32            current_expected = expected_type;
-                const AstNode* branch_expr =
-                    &ast->nodes[branch->expr_node_index];
+                u32  current_expected          = expected_type;
+                bool branch_definitely_returns = sema_node_definitely_returns(
+                    ast, sema, branch->expr_node_index);
                 if (current_expected == sema_no_type() &&
-                    (branch_expr->kind == AK_Return ||
-                     branch_expr->kind == AK_ReturnExpr)) {
+                    branch_definitely_returns) {
                     current_expected =
                         sema_enclosing_function_return_type(sema, node_index);
                 }
                 if (current_expected == sema_no_type() &&
+                    !branch_definitely_returns &&
                     branch_type != sema_no_type() &&
                     sema_type_is_concrete_integer(sema, branch_type)) {
                     current_expected = branch_type;
                 } else if (current_expected == sema_no_type() &&
+                           !branch_definitely_returns &&
                            branch_type != sema_no_type() &&
                            sema_type_is_concrete_float(sema, branch_type)) {
                     current_expected = branch_type;
@@ -18579,6 +18578,10 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                                           current_expected,
                                           &current_type)) {
                     return false;
+                }
+
+                if (branch_definitely_returns) {
+                    continue;
                 }
 
                 if (branch_type == sema_no_type()) {
@@ -18629,6 +18632,11 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                         lexer->source, sema_node_span(lexer, node));
                 }
                 type_index = branch_type;
+                if (type_index == sema_no_type()) {
+                    type_index = expected_type != sema_no_type()
+                                     ? expected_type
+                                     : sema_builtin_type(sema, STK_Void);
+                }
             }
         }
         break;
