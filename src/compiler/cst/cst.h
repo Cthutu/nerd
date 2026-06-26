@@ -63,6 +63,7 @@
 // | CK_DestructureBind | Pattern index         | Value node index      |
 // | CK_DestructureVariable | Pattern index      | Value node index      |
 // | CK_DestructureAssign | Pattern index        | Value node index      |
+// | CK_TypeNever       | 0                     | 0                     |
 // | CK_TypeFn          | Fn-signature index    | 0                     |
 // | CK_TypeApply       | Type-apply info index | 0                     |
 // | CK_TypeTuple       | First item index      | Item count            |
@@ -154,6 +155,7 @@ typedef enum {
     CK_DestructureBind,
     CK_DestructureVariable,
     CK_DestructureAssign,
+    CK_TypeNever,
     CK_TypeFn,
     CK_TypeApply,
     CK_TypeTuple,

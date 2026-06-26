@@ -1555,6 +1555,9 @@ internal void format_emit_expr(StringBuilder* sb,
     case CK_TypeFn:
         format_emit_fn_signature(sb, cst, lexer, node->a, true);
         break;
+    case CK_TypeNever:
+        sb_append_char(sb, '!');
+        break;
     case CK_TypeApply:
         {
             const CstTypeApplyInfo* apply = &cst->type_applications[node->a];
@@ -2578,6 +2581,7 @@ internal u32 format_node_end_token_index(const Cst*   cst,
     case CK_BoolLiteral:
     case CK_NilLiteral:
     case CK_SymbolRef:
+    case CK_TypeNever:
         return node->token_index;
     case CK_MacroRef:
         return node->token_index + 1;

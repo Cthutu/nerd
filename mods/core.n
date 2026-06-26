@@ -16,7 +16,7 @@ ffi "nrt" {
 
     nrt_eprn (^u8, usize)
 
-    nrt_abort (^u8, usize)
+    nrt_abort (^u8, usize) -> !
 
     nrt_arena_done (arena: ^arena)
 
@@ -59,9 +59,8 @@ pub eprn :: fn (text: string = "") -> void {
 }
 
 -- Prints text to standard error and terminates the process.
-pub abort :: fn (text: string = "aborted") -> void {
+pub abort :: fn (text: string = "aborted") -> ! {
     nrt_abort(text.data, text.count)
-    return
 }
 
 -- Returns the natural arena allocation alignment for values of type `T`.

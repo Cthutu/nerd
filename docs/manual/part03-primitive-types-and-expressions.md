@@ -12,6 +12,7 @@ Common primitive types include:
 | Type family       | Types                                      | Notes                                      |
 | ----------------- | ------------------------------------------ | ------------------------------------------ |
 | no value          | `void`                                     | used when no value is produced             |
+| never returns     | `!`                                        | used when control flow does not continue   |
 | truth values      | `bool`                                     | exactly two values: `yes` and `no`         |
 | text              | `string`                                   | immutable text value                       |
 | signed integers   | `i8`, `i16`, `i32`, `i64`, `isize`         | whole numbers, including negative numbers  |

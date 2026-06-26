@@ -1241,6 +1241,17 @@ internal bool cst_parse_type(CstParseState* state, u32* out_node)
 {
     Token token = cst_current_token(state);
 
+    if (token.kind == TK_Bang) {
+        u32 token_index = state->token_index;
+        cst_advance(state);
+        return cst_emit_node(state,
+                             (CstNode){
+                                 .kind        = CK_TypeNever,
+                                 .token_index = token_index,
+                             },
+                             out_node);
+    }
+
     if (token.kind == TK_Symbol) {
         u32 symbol_handle = cst_current_symbol_handle(state);
         if (symbol_handle == CST_NO_VALUE) {

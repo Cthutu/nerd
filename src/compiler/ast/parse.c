@@ -1153,6 +1153,15 @@ bool ast_parse_type(AstParseState* state, u32* out_node)
 {
     ASSERT(out_node != NULL, "Type parser requires an output node");
 
+    if (state->token.kind == TK_Bang) {
+        return ast_emit_node(state,
+                             (AstNode){
+                                 .kind        = AK_TypeNever,
+                                 .token_index = state->token.token_index,
+                             },
+                             out_node);
+    }
+
     if (state->token.kind == TK_Symbol) {
         AstNode node = {
             .kind        = AK_SymbolRef,

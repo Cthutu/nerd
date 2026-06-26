@@ -98,6 +98,8 @@ string ast_kind_to_string(AstKind kind)
         return s("RangeInclusive");
     case AK_On:
         return s("On");
+    case AK_TypeNever:
+        return s("TypeNever");
     case AK_TypeFn:
         return s("TypeFn");
     case AK_TypeTuple:

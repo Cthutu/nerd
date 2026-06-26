@@ -114,6 +114,18 @@ A block-bodied function without `-> Type` returns no value, so `return <expr>`
 inside it is an error. The entry point `main` is the compatibility exception:
 an unannotated block-bodied `main` may still return an integer process status.
 
+Use `-> !` for a function that never returns to its caller:
+
+```nerd
+fail :: fn (message: string) -> ! {
+    abort(message)
+}
+```
+
+The standard library `abort` function returns `!`. A `!` expression can appear
+where another value type is expected because evaluation never reaches the point
+where that value would be used.
+
 ## Expression-Bodied Functions
 
 Use `=>` when the whole function is one expression:

@@ -70,9 +70,10 @@ back_end_llvm_runtime_root_main_info(const FrontEndState* root)
         }
         const SemaType* fn_type     = &sema->types[function->type_index];
         u32             return_type = fn_type->return_type;
-        info.returns_void           = return_type < array_count(sema->types) &&
-                                      sema->types[return_type].kind == STK_Void;
-        info.takes_args             = fn_type->param_count == 1;
+        info.returns_void = return_type < array_count(sema->types) &&
+                            (sema->types[return_type].kind == STK_Void ||
+                             sema->types[return_type].kind == STK_Never);
+        info.takes_args   = fn_type->param_count == 1;
         return info;
     }
     return info;

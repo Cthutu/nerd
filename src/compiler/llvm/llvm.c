@@ -79,7 +79,8 @@ internal string llvm_string_type(const LlvmLayout* layout)
 internal bool llvm_type_is_void(const Sema* sema, u32 type_index)
 {
     return sema != NULL && type_index < array_count(sema->types) &&
-           sema->types[type_index].kind == STK_Void;
+           (sema->types[type_index].kind == STK_Void ||
+            sema->types[type_index].kind == STK_Never);
 }
 
 internal u32 llvm_function_return_type(const Sema* sema, u32 type_index)
@@ -444,7 +445,8 @@ llvm_record_type_has_field(const Sema* sema, u32 type_index, u32 symbol_handle)
 internal u64 llvm_type_sizeof_bytes(const Sema* sema, u32 type_index)
 {
     SemaTypeKind kind = llvm_type_kind(sema, type_index);
-    if (kind == STK_Void || kind == STK_Nil || kind == STK_Module) {
+    if (kind == STK_Void || kind == STK_Never || kind == STK_Nil ||
+        kind == STK_Module) {
         return 0;
     }
 
@@ -697,6 +699,7 @@ llvm_append_type(StringBuilder* sb, const Sema* sema, u32 type_index)
     const SemaType* type = &sema->types[type_index];
     switch (type->kind) {
     case STK_Void:
+    case STK_Never:
         sb_append_cstr(sb, "void");
         break;
     case STK_Bool:
@@ -5452,7 +5455,14 @@ internal LlvmValue llvm_emit_block_value(LlvmFunctionContext* ctx,
 
         const HirStmt* stmt = &ctx->hir->stmts[stmt_index];
         if (stmt->kind == HIR_STMT_Expr || stmt->kind == HIR_STMT_Break) {
-            return llvm_emit_expr(ctx, function, stmt->expr_index);
+            LlvmValue value = llvm_emit_expr(ctx, function, stmt->expr_index);
+            if (value.ok &&
+                llvm_type_kind(ctx->sema, value.type_index) == STK_Never &&
+                !ctx->block_terminated) {
+                sb_append_cstr(ctx->sb, "  unreachable\n");
+                ctx->block_terminated = true;
+            }
+            return value;
         }
         if (stmt->kind == HIR_STMT_Return) {
             bool ok = llvm_emit_return(ctx, function, stmt);

@@ -55,6 +55,7 @@ typedef enum : u8 {
     STK_Plex,
     STK_Union,
     STK_Enum,
+    STK_Never,
 } SemaTypeKind;
 
 //------------------------------------------------------------------------------

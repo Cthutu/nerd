@@ -71,4 +71,5 @@ Condition branches and guards must type as `bool`. Value-producing block-form
 
 An `on` branch can be an expression, block, `return`, `break`, or `again`.
 Statement-only branches type as `void`; value-producing branches must agree on a
-common expected type.
+common expected type. A branch with type `!` exits instead of producing a value,
+so it does not force the common branch value type.

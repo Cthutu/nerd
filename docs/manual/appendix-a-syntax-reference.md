@@ -182,6 +182,7 @@ for index, item in [start..end] { ... }
 
 ```nerd
 void
+!
 bool
 string
 i8 i16 i32 i64 isize

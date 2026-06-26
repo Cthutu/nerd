@@ -464,6 +464,7 @@ an existing runtime value.
 
 ```bnf
 type            ::= type-name
+                  | never-type
                   | '(' type ')'
                   | tuple-type
                   | slice-type
@@ -481,6 +482,7 @@ type-application
 type-name       ::= type-path { type-application }
 type-list       ::= type { ',' type }
 
+never-type      ::= '!'
 tuple-type      ::= '(' type ',' type-list? ')'
 
 slice-type      ::= '[]' type

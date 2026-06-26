@@ -147,3 +147,7 @@ assert count > 0, $"count was {count}"
 An assertion statement has type `void`. If the condition is false at runtime,
 the runtime assertion path reports the source location and message. When no
 message is supplied, the compiler uses the default assertion message.
+
+The standard library `abort` helper has return type `!`. Code after a call to a
+`!` function is unreachable for return checking, and that call can appear where a
+value would otherwise be required.

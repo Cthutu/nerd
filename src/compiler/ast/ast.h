@@ -65,6 +65,7 @@
 // | AK_DestructureBind     | Ast pattern index                 | Ast index of value              |
 // | AK_DestructureVariable | Ast pattern index                 | Ast index of value              |
 // | AK_DestructureAssign   | Ast pattern index                 | Ast index of value              |
+// | AK_TypeNever           | 0                                 | 0                               |
 // | AK_TypeFn              | Ast fn-signature index            | 0                               |
 // | AK_TypeApply           | Ast type-apply info index         | 0                               |
 // | AK_TypeTuple           | First item index                  | Item count                      |
@@ -157,6 +158,7 @@ typedef enum {
     AK_DestructureBind,
     AK_DestructureVariable,
     AK_DestructureAssign,
+    AK_TypeNever,
     AK_TypeFn,
     AK_TypeApply,
     AK_TypeTuple,

@@ -12,6 +12,7 @@ The semantic analyser recognises these built-in type families:
 | Type                               | Role                                                              |
 | ---------------------------------- | ----------------------------------------------------------------- |
 | `void`                             | No value. Used for statements and functions with no return value. |
+| `!`                                | Never returns. Used for functions that terminate control flow.     |
 | `bool`                             | Boolean value, written with `yes`/`no` or `true`/`false`.         |
 | `string`                           | Runtime string slice with string-specific typing.                 |
 | `i8`, `i16`, `i32`, `i64`, `isize` | Signed integer types.                                             |
@@ -30,6 +31,10 @@ literals. They materialise to concrete types from context, or to `i32` and
 `nil` is a temporary semantic type that materialises as a nil pointer, nil
 slice, or nil dynamic array when the destination type is known.
 
+`!` is the never type. A value of type `!` is never produced because evaluation
+does not continue. For type checking, `!` can satisfy any expected type. The
+reverse is not true: ordinary values do not satisfy an expected `!`.
+
 ```nerd
 ptr: ^i32 = nil
 bytes: []u8 = nil
@@ -45,6 +50,7 @@ language-visible ownership rules.
 
 ```bnf
 type            ::= type-name
+                  | '!'
                   | '(' type ')'
                   | '(' type ',' type-list? ')'
                   | '[]' type
