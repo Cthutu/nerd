@@ -14,10 +14,10 @@ manual. It records every `TokenKind` defined in
   not as tokens. A comment whose text starts with `|` is a preserved comment;
   source spells this as `--|`, and the formatter keeps its line breaks and
   spacing instead of reflowing it with neighbouring comment paragraphs.
-- Formatter protected regions start at a line comment whose body is `[` and end
-  at a line comment whose body is `]`; source spells these as `--[` and `--]`.
-  The formatter copies the whole region exactly and formats only the source
-  outside it.
+- Inside array literals, formatter protected regions start at a line comment
+  whose body is `[` and end at a line comment whose body is `]`; source spells
+  these as `--[` and `--]`. The formatter copies the array literal source
+  exactly when it contains a matched protected region.
 - The test-section separator `¬` stops lexing by truncating
   `lexer->source.source`; it is not emitted as a token.
 - Identifiers start with an ASCII letter or `_`, then may contain ASCII

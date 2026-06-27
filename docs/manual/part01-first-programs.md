@@ -50,16 +50,19 @@ Line comments start with `--`. Comments are for readers of the source file:
 they can explain intent, leave notes, or temporarily remove code from a
 program. The compiler ignores them. The formatter may reflow ordinary comment
 paragraphs; use `--|` for comment lines whose spacing and line breaks should be
-preserved. Use `--[` and `--]` around a region when the formatter should copy
-everything between those marker comments exactly.
+preserved. Inside array literals, use `--[` and `--]` around elements whose
+layout should be copied exactly by the formatter.
 
 ```nerd
 -- This is ignored by the compiler.
 --| This comment line is preserved exactly by the formatter.
---[
-This region is copied by the formatter without lexing or reflowing it.
---]
 main :: fn () {
+    values := [
+        --[
+        1,      2, 3,
+        4, 5,      6,
+        --]
+    ]
 }
 ```
 
