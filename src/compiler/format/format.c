@@ -28,6 +28,11 @@ typedef struct {
 
 global_variable const FormatTrivia* g_format_trivia = NULL;
 
+typedef struct {
+    u32 start_offset;
+    u32 end_offset;
+} FormatProtectedRegion;
+
 internal void  format_emit_for_header_items(StringBuilder* sb,
                                             const Cst*     cst,
                                             const Lexer*   lexer,
@@ -424,6 +429,111 @@ internal bool format_parse_comment_line(string  line,
 internal bool format_comment_body_is_protected(string comment_body)
 {
     return comment_body.count > 0 && comment_body.data[0] == '|';
+}
+
+internal bool format_comment_body_is_region_start(string comment_body)
+{
+    string body = format_trim_ascii(comment_body);
+    return body.count == 1 && body.data[0] == '[';
+}
+
+internal bool format_comment_body_is_region_end(string comment_body)
+{
+    string body = format_trim_ascii(comment_body);
+    return body.count == 1 && body.data[0] == ']';
+}
+
+internal Array(FormatProtectedRegion) format_find_protected_regions(string text)
+{
+    Array(FormatProtectedRegion) regions = NULL;
+
+    usize offset                         = 0;
+    while (offset < text.count) {
+        usize line_end = offset;
+        while (line_end < text.count && text.data[line_end] != '\n') {
+            line_end++;
+        }
+        bool has_newline = line_end < text.count && text.data[line_end] == '\n';
+        string line      = string_from(text.data + offset, line_end - offset);
+
+        string indent    = {0};
+        string body      = {0};
+        if (!format_parse_comment_line(line, &indent, &body) ||
+            !format_comment_body_is_region_start(body)) {
+            offset = has_newline ? line_end + 1 : line_end;
+            continue;
+        }
+
+        usize region_start = offset;
+        usize cursor       = has_newline ? line_end + 1 : line_end;
+        usize region_end   = cursor;
+        while (cursor < text.count) {
+            usize end_line_end = cursor;
+            while (end_line_end < text.count &&
+                   text.data[end_line_end] != '\n') {
+                end_line_end++;
+            }
+            bool end_has_newline =
+                end_line_end < text.count && text.data[end_line_end] == '\n';
+            string end_line =
+                string_from(text.data + cursor, end_line_end - cursor);
+
+            string end_indent = {0};
+            string end_body   = {0};
+            region_end = end_has_newline ? end_line_end + 1 : end_line_end;
+            if (format_parse_comment_line(end_line, &end_indent, &end_body) &&
+                format_comment_body_is_region_end(end_body)) {
+                break;
+            }
+
+            cursor = region_end;
+        }
+
+        if (cursor >= text.count) {
+            region_end = text.count;
+        }
+
+        array_push(regions,
+                   (FormatProtectedRegion){
+                       .start_offset = (u32)region_start,
+                       .end_offset   = (u32)region_end,
+                   });
+        offset = region_end;
+    }
+
+    return regions;
+}
+
+internal string format_sanitise_protected_regions(
+    Arena* arena, string text, const FormatProtectedRegion* regions, u32 count)
+{
+    if (count == 0) {
+        return text;
+    }
+
+    u8* data = arena_alloc(arena, text.count);
+    if (text.count > 0) {
+        memcpy(data, text.data, text.count);
+    }
+
+    for (u32 region_index = 0; region_index < count; ++region_index) {
+        FormatProtectedRegion region = regions[region_index];
+        usize                 start  = region.start_offset;
+        usize                 end    = region.end_offset;
+        if (start > text.count) {
+            start = text.count;
+        }
+        if (end > text.count) {
+            end = text.count;
+        }
+        for (usize i = start; i < end; ++i) {
+            if (data[i] != '\n' && data[i] != '\r') {
+                data[i] = ' ';
+            }
+        }
+    }
+
+    return string_from(data, text.count);
 }
 
 //------------------------------------------------------------------------------
@@ -7315,6 +7425,14 @@ internal void format_emit_variable_payload(StringBuilder* sb,
 
 internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
 {
+    Array(FormatProtectedRegion) protected_regions =
+        format_find_protected_regions(source.source);
+    if (array_count(protected_regions) > 0) {
+        array_free(protected_regions);
+        return false;
+    }
+    array_free(protected_regions);
+
     Lexer lexer = {0};
     if (!lex_with_config(
             source, &(LexerConfig){.mode = LEXER_MODE_FORMAT}, &lexer)) {
@@ -7967,9 +8085,26 @@ internal bool format_emit_token_comments_before(FormatTokenState*   state,
 internal bool format_emit_token_stream_block(StringBuilder* sb,
                                              NerdSource     source)
 {
+    Arena protected_arena = {0};
+    arena_init(&protected_arena);
+    Array(FormatProtectedRegion) protected_regions =
+        format_find_protected_regions(source.source);
+    string lex_text =
+        format_sanitise_protected_regions(&protected_arena,
+                                          source.source,
+                                          protected_regions,
+                                          (u32)array_count(protected_regions));
+
     Lexer lexer = {0};
     if (!lex_with_config(
-            source, &(LexerConfig){.mode = LEXER_MODE_FORMAT}, &lexer)) {
+            (NerdSource){
+                .source      = lex_text,
+                .source_path = source.source_path,
+            },
+            &(LexerConfig){.mode = LEXER_MODE_FORMAT},
+            &lexer)) {
+        array_free(protected_regions);
+        arena_done(&protected_arena);
         return false;
     }
 
@@ -7992,7 +8127,28 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
     TokenKind previous_kind                  = TK_EOF;
     bool      previous_plus_continues_string = false;
     bool      in_on_header                   = false;
+    u32       protected_region_index         = 0;
     for (u32 i = 0; i < array_count(lexer.tokens); ++i) {
+        bool emitted_protected_before_token = false;
+        while (protected_region_index < array_count(protected_regions) &&
+               protected_regions[protected_region_index].start_offset <=
+                   lexer.tokens[i].offset) {
+            FormatProtectedRegion region =
+                protected_regions[protected_region_index];
+            sb_append_string(
+                sb,
+                string_from(source.source.data + region.start_offset,
+                            region.end_offset - region.start_offset));
+            state.at_line_start =
+                region.end_offset == 0 ||
+                source.source.data[region.end_offset - 1] == '\n' ||
+                source.source.data[region.end_offset - 1] == '\r';
+            previous_kind                  = TK_EOF;
+            previous_plus_continues_string = false;
+            emitted_protected_before_token = true;
+            protected_region_index++;
+        }
+
         TokenKind kind      = lexer.tokens[i].kind;
         TokenKind next_kind = i + 1 < array_count(lexer.tokens)
                                   ? lexer.tokens[i + 1].kind
@@ -8005,7 +8161,10 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
             i + 1 < array_count(lexer.tokens) &&
             format_trivia_comments_before_token(&trivia, i + 1, NULL, NULL);
 
-        u16  newlines_before      = trivia.newlines_before_token[i];
+        u16 newlines_before = trivia.newlines_before_token[i];
+        if (emitted_protected_before_token) {
+            newlines_before = 0;
+        }
         u32  first_comment_before = U32_MAX;
         u32  comment_count_before = 0;
         bool has_comments_before  = format_trivia_comments_before_token(
@@ -8189,18 +8348,40 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
     }
 
     while (comment_index < array_count(lexer.comments)) {
+        while (protected_region_index < array_count(protected_regions) &&
+               protected_regions[protected_region_index].start_offset <=
+                   lexer.comments[comment_index].offset) {
+            FormatProtectedRegion region =
+                protected_regions[protected_region_index];
+            sb_append_string(
+                sb,
+                string_from(source.source.data + region.start_offset,
+                            region.end_offset - region.start_offset));
+            protected_region_index++;
+        }
         format_emit_line_comment(
             sb, state.indent_level, lexer.comments[comment_index].text);
         state.at_line_start = true;
         comment_index++;
     }
 
+    while (protected_region_index < array_count(protected_regions)) {
+        FormatProtectedRegion region =
+            protected_regions[protected_region_index];
+        sb_append_string(sb,
+                         string_from(source.source.data + region.start_offset,
+                                     region.end_offset - region.start_offset));
+        protected_region_index++;
+    }
+
     if (sb->size > 0 && sb->data[sb->size - 1] != '\n') {
         sb_append_char(sb, '\n');
     }
 
+    array_free(protected_regions);
     format_trivia_done(&trivia);
     lex_done(&lexer);
+    arena_done(&protected_arena);
     return true;
 }
 
@@ -8209,10 +8390,27 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
 
 bool format_source(NerdSource source, Arena* arena, string* out_text)
 {
-    MemoryStats memory_before = compiler_memory_profile_begin();
-    Lexer       lexer         = {0};
+    MemoryStats memory_before   = compiler_memory_profile_begin();
+    Arena       protected_arena = {0};
+    arena_init(&protected_arena);
+    Array(FormatProtectedRegion) protected_regions =
+        format_find_protected_regions(source.source);
+    string lex_text =
+        format_sanitise_protected_regions(&protected_arena,
+                                          source.source,
+                                          protected_regions,
+                                          (u32)array_count(protected_regions));
+
+    Lexer lexer = {0};
     if (!lex_with_config(
-            source, &(LexerConfig){.mode = LEXER_MODE_FORMAT}, &lexer)) {
+            (NerdSource){
+                .source      = lex_text,
+                .source_path = source.source_path,
+            },
+            &(LexerConfig){.mode = LEXER_MODE_FORMAT},
+            &lexer)) {
+        array_free(protected_regions);
+        arena_done(&protected_arena);
         compiler_memory_profile_end(COMPILER_STAGE_FORMATTER,
                                     COMPILER_PHASE_FORMAT_SOURCE,
                                     memory_before);
@@ -8230,8 +8428,30 @@ bool format_source(NerdSource source, Arena* arena, string* out_text)
     const usize  wrap_width              = FORMAT_WRAP_WIDTH;
     usize        offset                  = 0;
     bool         just_emitted_blank_line = false;
+    u32          protected_region_index  = 0;
 
     while (offset < text.count) {
+        while (protected_region_index < array_count(protected_regions) &&
+               protected_regions[protected_region_index].end_offset <= offset) {
+            protected_region_index++;
+        }
+        if (protected_region_index < array_count(protected_regions) &&
+            offset == protected_regions[protected_region_index].start_offset) {
+            FormatProtectedRegion region =
+                protected_regions[protected_region_index];
+            sb_append_string(
+                &sb,
+                string_from(text.data + region.start_offset,
+                            region.end_offset - region.start_offset));
+            offset = region.end_offset;
+            just_emitted_blank_line =
+                region.end_offset == 0 ||
+                text.data[region.end_offset - 1] == '\n' ||
+                text.data[region.end_offset - 1] == '\r';
+            protected_region_index++;
+            continue;
+        }
+
         usize line_end = offset;
         while (line_end < text.count && text.data[line_end] != '\n') {
             line_end++;
@@ -8306,8 +8526,10 @@ bool format_source(NerdSource source, Arena* arena, string* out_text)
                     });
             }
             if (!ok) {
+                array_free(protected_regions);
                 format_trivia_done(&trivia);
                 lex_done(&lexer);
+                arena_done(&protected_arena);
                 compiler_memory_profile_end(COMPILER_STAGE_FORMATTER,
                                             COMPILER_PHASE_FORMAT_SOURCE,
                                             memory_before);
@@ -8396,8 +8618,10 @@ bool format_source(NerdSource source, Arena* arena, string* out_text)
     }
 
     *out_text = sb_to_string(&sb);
+    array_free(protected_regions);
     format_trivia_done(&trivia);
     lex_done(&lexer);
+    arena_done(&protected_arena);
     compiler_memory_profile_end(
         COMPILER_STAGE_FORMATTER, COMPILER_PHASE_FORMAT_SOURCE, memory_before);
     return true;
