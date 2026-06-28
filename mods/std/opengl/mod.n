@@ -35,11 +35,26 @@ pub GLenum :: u32
 -- OpenGL boolean value.
 pub GLboolean :: u8
 
+-- OpenGL signed byte value.
+pub GLbyte :: i8
+
+-- OpenGL unsigned byte value.
+pub GLubyte :: u8
+
+-- OpenGL signed short value.
+pub GLshort :: i16
+
+-- OpenGL unsigned short value.
+pub GLushort :: u16
+
 -- OpenGL signed integer value.
 pub GLint :: i32
 
 -- OpenGL unsigned integer value.
 pub GLuint :: u32
+
+-- OpenGL character value.
+pub GLchar :: i8
 
 -- OpenGL size value.
 pub GLsizei :: i32
@@ -47,8 +62,14 @@ pub GLsizei :: i32
 -- OpenGL single-precision floating-point value.
 pub GLfloat :: f32
 
+-- OpenGL single-precision clamped floating-point value.
+pub GLclampf :: f32
+
 -- OpenGL double-precision floating-point value.
 pub GLdouble :: f64
+
+-- OpenGL double-precision clamped floating-point value.
+pub GLclampd :: f64
 
 -- OpenGL bitfield value.
 pub GLbitfield :: u32
@@ -121,16 +142,35 @@ pub GL_LINEAR        :: 0x2601
 pub GL_REPEAT        :: 0x2901
 pub GL_CLAMP_TO_EDGE :: 0x812f
 
-pub GL_FLOAT :: 0x1406
-
-pub GL_RGBA           :: 0x1908
-pub GL_BGRA           :: 0x80e1
+pub GL_BYTE           :: 0x1400
 pub GL_UNSIGNED_BYTE  :: 0x1401
+pub GL_SHORT          :: 0x1402
 pub GL_UNSIGNED_SHORT :: 0x1403
+pub GL_INT            :: 0x1404
 pub GL_UNSIGNED_INT   :: 0x1405
+pub GL_FLOAT          :: 0x1406
+pub GL_DOUBLE         :: 0x140a
+
+pub GL_STENCIL_INDEX   :: 0x1901
+pub GL_DEPTH_COMPONENT :: 0x1902
+pub GL_RED             :: 0x1903
+pub GL_RGB             :: 0x1907
+pub GL_RGBA            :: 0x1908
+pub GL_BGRA            :: 0x80e1
+pub GL_DEPTH_STENCIL   :: 0x84f9
+
+pub GL_POINT_SIZE      :: 0x0b11
+pub GL_LINE_WIDTH      :: 0x0b21
+pub GL_POLYGON_MODE    :: 0x0b40
+pub GL_CULL_FACE_MODE  :: 0x0b45
+pub GL_FRONT_FACE      :: 0x0b46
+pub GL_DEPTH_WRITEMASK :: 0x0b72
+pub GL_COLOR_WRITEMASK :: 0x0c23
+pub GL_VIEWPORT        :: 0x0ba2
 
 pub GL_UNPACK_ALIGNMENT  :: 0x0cf5
 pub GL_UNPACK_ROW_LENGTH :: 0x0cf2
+pub GL_MAX_TEXTURE_SIZE  :: 0x0d33
 
 pub GL_VENDOR     :: 0x1f00
 pub GL_RENDERER   :: 0x1f01
@@ -143,19 +183,103 @@ pub GL_INVALID_VALUE     :: 0x0501
 pub GL_INVALID_OPERATION :: 0x0502
 pub GL_OUT_OF_MEMORY     :: 0x0505
 
-pub GL_TEXTURE0 :: 0x84c0
+pub GL_FUNC_ADD              :: 0x8006
+pub GL_BLEND_EQUATION        :: 0x8009
+pub GL_BLEND_EQUATION_RGB    :: 0x8009
+pub GL_FUNC_SUBTRACT         :: 0x800a
+pub GL_FUNC_REVERSE_SUBTRACT :: 0x800b
+pub GL_BLEND_DST_RGB         :: 0x80c8
+pub GL_BLEND_SRC_RGB         :: 0x80c9
+pub GL_BLEND_DST_ALPHA       :: 0x80ca
+pub GL_BLEND_SRC_ALPHA       :: 0x80cb
+pub GL_TEXTURE_BINDING_2D    :: 0x8069
+pub GL_TEXTURE_BASE_LEVEL    :: 0x813c
+pub GL_TEXTURE_MAX_LEVEL     :: 0x813d
 
-pub GL_ARRAY_BUFFER         :: 0x8892
-pub GL_ELEMENT_ARRAY_BUFFER :: 0x8893
-pub GL_DYNAMIC_DRAW         :: 0x88e8
-pub GL_STATIC_DRAW          :: 0x88e4
+pub GL_TEXTURE0  :: 0x84c0
+pub GL_TEXTURE1  :: 0x84c1
+pub GL_TEXTURE2  :: 0x84c2
+pub GL_TEXTURE3  :: 0x84c3
+pub GL_TEXTURE4  :: 0x84c4
+pub GL_TEXTURE5  :: 0x84c5
+pub GL_TEXTURE6  :: 0x84c6
+pub GL_TEXTURE7  :: 0x84c7
+pub GL_TEXTURE8  :: 0x84c8
+pub GL_TEXTURE9  :: 0x84c9
+pub GL_TEXTURE10 :: 0x84ca
+pub GL_TEXTURE11 :: 0x84cb
+pub GL_TEXTURE12 :: 0x84cc
+pub GL_TEXTURE13 :: 0x84cd
+pub GL_TEXTURE14 :: 0x84ce
+pub GL_TEXTURE15 :: 0x84cf
+pub GL_TEXTURE16 :: 0x84d0
+pub GL_TEXTURE17 :: 0x84d1
+pub GL_TEXTURE18 :: 0x84d2
+pub GL_TEXTURE19 :: 0x84d3
+pub GL_TEXTURE20 :: 0x84d4
+pub GL_TEXTURE21 :: 0x84d5
+pub GL_TEXTURE22 :: 0x84d6
+pub GL_TEXTURE23 :: 0x84d7
+pub GL_TEXTURE24 :: 0x84d8
+pub GL_TEXTURE25 :: 0x84d9
+pub GL_TEXTURE26 :: 0x84da
+pub GL_TEXTURE27 :: 0x84db
+pub GL_TEXTURE28 :: 0x84dc
+pub GL_TEXTURE29 :: 0x84dd
+pub GL_TEXTURE30 :: 0x84de
+pub GL_TEXTURE31 :: 0x84df
 
-pub GL_VERTEX_SHADER            :: 0x8b31
-pub GL_FRAGMENT_SHADER          :: 0x8b30
-pub GL_COMPILE_STATUS           :: 0x8b81
-pub GL_LINK_STATUS              :: 0x8b82
-pub GL_INFO_LOG_LENGTH          :: 0x8b84
-pub GL_SHADING_LANGUAGE_VERSION :: 0x8b8c
+pub GL_ACTIVE_TEXTURE :: 0x84e0
+
+pub GL_ARRAY_BUFFER                       :: 0x8892
+pub GL_ELEMENT_ARRAY_BUFFER               :: 0x8893
+pub GL_ARRAY_BUFFER_BINDING               :: 0x8894
+pub GL_ELEMENT_ARRAY_BUFFER_BINDING       :: 0x8895
+pub GL_VERTEX_ARRAY_BINDING               :: 0x85b5
+pub GL_CURRENT_VERTEX_ATTRIB              :: 0x8626
+pub GL_VERTEX_ATTRIB_ARRAY_ENABLED        :: 0x8622
+pub GL_VERTEX_ATTRIB_ARRAY_SIZE           :: 0x8623
+pub GL_VERTEX_ATTRIB_ARRAY_STRIDE         :: 0x8624
+pub GL_VERTEX_ATTRIB_ARRAY_TYPE           :: 0x8625
+pub GL_VERTEX_ATTRIB_ARRAY_NORMALIZED     :: 0x886a
+pub GL_VERTEX_ATTRIB_ARRAY_POINTER        :: 0x8645
+pub GL_VERTEX_ATTRIB_ARRAY_BUFFER_BINDING :: 0x889f
+pub GL_BUFFER_SIZE                        :: 0x8764
+pub GL_BUFFER_USAGE                       :: 0x8765
+pub GL_BUFFER_ACCESS                      :: 0x88bb
+pub GL_BUFFER_MAPPED                      :: 0x88bc
+pub GL_STREAM_DRAW                        :: 0x88e0
+pub GL_STREAM_READ                        :: 0x88e1
+pub GL_STREAM_COPY                        :: 0x88e2
+pub GL_DYNAMIC_DRAW                       :: 0x88e8
+pub GL_STATIC_DRAW                        :: 0x88e4
+pub GL_STATIC_READ                        :: 0x88e5
+pub GL_STATIC_COPY                        :: 0x88e6
+pub GL_DYNAMIC_READ                       :: 0x88e9
+pub GL_DYNAMIC_COPY                       :: 0x88ea
+
+pub GL_VERTEX_SHADER                    :: 0x8b31
+pub GL_FRAGMENT_SHADER                  :: 0x8b30
+pub GL_SHADER_TYPE                      :: 0x8b4f
+pub GL_DELETE_STATUS                    :: 0x8b80
+pub GL_COMPILE_STATUS                   :: 0x8b81
+pub GL_LINK_STATUS                      :: 0x8b82
+pub GL_VALIDATE_STATUS                  :: 0x8b83
+pub GL_INFO_LOG_LENGTH                  :: 0x8b84
+pub GL_ATTACHED_SHADERS                 :: 0x8b85
+pub GL_ACTIVE_UNIFORMS                  :: 0x8b86
+pub GL_ACTIVE_UNIFORM_MAX_LENGTH        :: 0x8b87
+pub GL_SHADER_SOURCE_LENGTH             :: 0x8b88
+pub GL_ACTIVE_ATTRIBUTES                :: 0x8b89
+pub GL_ACTIVE_ATTRIBUTE_MAX_LENGTH      :: 0x8b8a
+pub GL_SHADING_LANGUAGE_VERSION         :: 0x8b8c
+pub GL_CURRENT_PROGRAM                  :: 0x8b8d
+pub GL_MAX_VERTEX_ATTRIBS               :: 0x8869
+pub GL_MAX_TEXTURE_IMAGE_UNITS          :: 0x8872
+pub GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS :: 0x8b4d
+pub GL_MAJOR_VERSION                    :: 0x821b
+pub GL_MINOR_VERSION                    :: 0x821c
+pub GL_NUM_EXTENSIONS                   :: 0x821d
 
 GLActiveTextureFn           :: fn (texture: GLenum)
 GLCreateShaderFn            :: fn (type: GLenum) -> GLuint
@@ -459,6 +583,8 @@ on "linux" {
         pub                  glFlush          ()
         pub                  glFrontFace      (mode: GLenum)
         pub                  glGetError       () -> GLenum
+        pub                  glGetBooleanv    (name: GLenum, data: ^GLboolean)
+        pub                  glGetDoublev     (name: GLenum, data: ^GLdouble)
         pub                  glGetFloatv      (name: GLenum, data: ^GLfloat)
         pub                  glGetIntegerv    (name: GLenum, data: ^GLint)
         gl_get_string_raw :: glGetString      (name: GLenum) -> ^u8
@@ -553,6 +679,8 @@ on "windows" {
         pub                  glFlush          ()
         pub                  glFrontFace      (mode: GLenum)
         pub                  glGetError       () -> GLenum
+        pub                  glGetBooleanv    (name: GLenum, data: ^GLboolean)
+        pub                  glGetDoublev     (name: GLenum, data: ^GLdouble)
         pub                  glGetFloatv      (name: GLenum, data: ^GLfloat)
         pub                  glGetIntegerv    (name: GLenum, data: ^GLint)
         gl_get_string_raw :: glGetString      (name: GLenum) -> ^u8
