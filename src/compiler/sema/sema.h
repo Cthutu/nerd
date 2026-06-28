@@ -115,10 +115,11 @@ typedef struct {
 } SemaLocal;
 
 typedef struct {
-    u32 owner_decl_index;
-    u32 parent_scope_index;
-    u32 first_local;
-    u32 local_count;
+    u32  owner_decl_index;
+    u32  parent_scope_index;
+    u32  first_local;
+    u32  local_count;
+    bool locals_collected;
 } SemaScope;
 
 typedef struct {

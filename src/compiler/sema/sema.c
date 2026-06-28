@@ -6338,6 +6338,11 @@ internal bool sema_collect_block_statements(const Lexer* lexer,
                                             u32   end_node,
                                             Sema* sema)
 {
+    if (scope_index != sema_no_scope() &&
+        scope_index < array_count(sema->scopes)) {
+        sema->scopes[scope_index].locals_collected = true;
+    }
+
     for (u32 i = first_node; i < end_node;) {
         if (sema->node_is_type_expr[i]) {
             i++;
@@ -6846,6 +6851,31 @@ internal bool sema_collect_block_statements(const Lexer* lexer,
     return true;
 }
 
+internal bool sema_ensure_block_scope_collected(const Lexer* lexer,
+                                                const Ast*   ast,
+                                                u32          owner_decl_index,
+                                                u32   current_function_symbol,
+                                                u32   scope_index,
+                                                u32   first_node,
+                                                u32   end_node,
+                                                Sema* sema)
+{
+    if (scope_index == sema_no_scope() ||
+        scope_index >= array_count(sema->scopes) ||
+        sema->scopes[scope_index].locals_collected) {
+        return true;
+    }
+
+    return sema_collect_block_statements(lexer,
+                                         ast,
+                                         owner_decl_index,
+                                         current_function_symbol,
+                                         scope_index,
+                                         first_node,
+                                         end_node,
+                                         sema);
+}
+
 internal u32 sema_node_find_symbol_ref(const Ast* ast,
                                        u32        node_index,
                                        u32        symbol_handle)
@@ -7221,7 +7251,10 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
                 block_scope =
                     sema_add_scope(sema, owner_decl_index, scope_index);
                 sema->node_scope_indices[node_index] = block_scope;
-                if (!sema_collect_block_statements(lexer,
+            } else if (block_scope < array_count(sema->scopes)) {
+                sema->scopes[block_scope].parent_scope_index = scope_index;
+            }
+            if (!sema_ensure_block_scope_collected(lexer,
                                                    ast,
                                                    owner_decl_index,
                                                    current_function_symbol,
@@ -7229,8 +7262,7 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
                                                    node->a,
                                                    node->b,
                                                    sema)) {
-                    return false;
-                }
+                return false;
             }
             for (u32 i = node->a; i < node->b; ++i) {
                 if (!ast_node_is_block_statement(&ast->nodes[i])) {
@@ -7265,6 +7297,24 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
         {
             const AstNode* block = &ast->nodes[node->a];
             ASSERT(block->kind == AK_Block, "Expected expression block body");
+            u32 block_scope = sema->node_scope_indices[node->a];
+            if (block_scope == sema_no_scope()) {
+                block_scope =
+                    sema_add_scope(sema, owner_decl_index, scope_index);
+                sema->node_scope_indices[node->a] = block_scope;
+            } else if (block_scope < array_count(sema->scopes)) {
+                sema->scopes[block_scope].parent_scope_index = scope_index;
+            }
+            if (!sema_ensure_block_scope_collected(lexer,
+                                                   ast,
+                                                   owner_decl_index,
+                                                   current_function_symbol,
+                                                   block_scope,
+                                                   block->a,
+                                                   block->b,
+                                                   sema)) {
+                return false;
+            }
             for (u32 i = block->a; i < block->b; ++i) {
                 if (!ast_node_is_block_statement(&ast->nodes[i])) {
                     continue;
@@ -7274,7 +7324,7 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
                                             owner_decl_index,
                                             current_function_symbol,
                                             capture_scope_index,
-                                            scope_index,
+                                            block_scope,
                                             i,
                                             sema)) {
                     return false;
