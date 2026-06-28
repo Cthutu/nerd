@@ -82,9 +82,11 @@ pub GL_CLAMP_TO_EDGE :: 0x812f
 
 pub GL_FLOAT :: 0x1406
 
-pub GL_RGBA          :: 0x1908
-pub GL_BGRA          :: 0x80e1
-pub GL_UNSIGNED_BYTE :: 0x1401
+pub GL_RGBA           :: 0x1908
+pub GL_BGRA           :: 0x80e1
+pub GL_UNSIGNED_BYTE  :: 0x1401
+pub GL_UNSIGNED_SHORT :: 0x1403
+pub GL_UNSIGNED_INT   :: 0x1405
 
 pub GL_UNPACK_ALIGNMENT  :: 0x0cf5
 pub GL_UNPACK_ROW_LENGTH :: 0x0cf2
@@ -146,6 +148,10 @@ GLGenVertexArraysFn         :: fn (count: GLsizei, arrays: ^GLuint)
 GLDeleteVertexArraysFn      :: fn (count: GLsizei, arrays: ^GLuint)
 GLBindVertexArrayFn         :: fn (array: GLuint)
 GLEnableVertexAttribArrayFn :: fn (index: GLuint)
+GLDrawElementsFn            :: fn (mode    : GLenum,
+                                   count   : GLsizei,
+                                   type    : GLenum,
+                                   indices : ^void)
 
 GLVertexAttribPointerFn :: fn (index      : GLuint,
                                size       : GLint,
@@ -282,6 +288,13 @@ gl_stub_enable_vertex_attrib_array :: fn (_index: GLuint) {
     gl_abort_unloaded_command()
 }
 
+gl_stub_draw_elements :: fn (_mode    : GLenum,
+                             _count   : GLsizei,
+                             _type    : GLenum,
+                             _indices : ^void) {
+    gl_abort_unloaded_command()
+}
+
 gl_stub_vertex_attrib_pointer :: fn (_index      : GLuint,
                                      _size       : GLint,
                                      _type       : GLenum,
@@ -343,6 +356,8 @@ gl_bind_vertex_array_proc          : GLBindVertexArrayFn         =
                                                                    gl_stub_bind_vertex_array
 gl_enable_vertex_attrib_array_proc : GLEnableVertexAttribArrayFn =
                                                                    gl_stub_enable_vertex_attrib_array
+gl_draw_elements_proc              : GLDrawElementsFn            =
+                                                                   gl_stub_draw_elements
 gl_vertex_attrib_pointer_proc      : GLVertexAttribPointerFn     =
                                                                    gl_stub_vertex_attrib_pointer
 
@@ -486,6 +501,7 @@ gl_load_commands :: fn () -> bool {
     delete_vertex_arrays := gl_get_proc_address(c"glDeleteVertexArrays")
     bind_vertex_array := gl_get_proc_address(c"glBindVertexArray")
     enable_vertex_attrib_array := gl_get_proc_address(c"glEnableVertexAttribArray")
+    draw_elements := gl_get_proc_address(c"glDrawElements")
     vertex_attrib_pointer := gl_get_proc_address(c"glVertexAttribPointer")
 
     on active_texture == nil ||
@@ -514,6 +530,7 @@ gl_load_commands :: fn () -> bool {
         delete_vertex_arrays == nil ||
         bind_vertex_array == nil ||
         enable_vertex_attrib_array == nil ||
+        draw_elements == nil ||
         vertex_attrib_pointer == nil => return no
 
     gl_active_texture_proc             = active_texture.as(GLActiveTextureFn)
@@ -542,6 +559,7 @@ gl_load_commands :: fn () -> bool {
     gl_delete_vertex_arrays_proc       = delete_vertex_arrays.as(GLDeleteVertexArraysFn)
     gl_bind_vertex_array_proc          = bind_vertex_array.as(GLBindVertexArrayFn)
     gl_enable_vertex_attrib_array_proc = enable_vertex_attrib_array.as(GLEnableVertexAttribArrayFn)
+    gl_draw_elements_proc              = draw_elements.as(GLDrawElementsFn)
     gl_vertex_attrib_pointer_proc      = vertex_attrib_pointer.as(GLVertexAttribPointerFn)
 
     gl_commands_loaded = yes
@@ -575,6 +593,7 @@ pub gl_reset_commands :: fn () {
     gl_delete_vertex_arrays_proc       = gl_stub_delete_vertex_arrays
     gl_bind_vertex_array_proc          = gl_stub_bind_vertex_array
     gl_enable_vertex_attrib_array_proc = gl_stub_enable_vertex_attrib_array
+    gl_draw_elements_proc              = gl_stub_draw_elements
     gl_vertex_attrib_pointer_proc      = gl_stub_vertex_attrib_pointer
     gl_commands_loaded                 = no
 }
@@ -726,6 +745,13 @@ pub glBindVertexArray :: fn (array: GLuint) {
 
 pub glEnableVertexAttribArray :: fn (index: GLuint) {
     gl_enable_vertex_attrib_array_proc(index)
+}
+
+pub glDrawElements :: fn (mode    : GLenum,
+                          count   : GLsizei,
+                          type    : GLenum,
+                          indices : ^void) {
+    gl_draw_elements_proc(mode, count, type, indices)
 }
 
 pub glVertexAttribPointer :: fn (index      : GLuint,
