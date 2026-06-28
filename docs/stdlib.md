@@ -30,6 +30,8 @@ library is organised into three layers:
   Pointer-stable arena construction, allocation, reset, and release helpers.
 - `std.io`
   Basic input helpers.
+- `std.math`
+  Mathematical constants, scalar functions, and small geometry helper types.
 - `std.mem`
   Low-level allocation wrappers.
 - `std.string`
@@ -82,6 +84,24 @@ This inventory is intentionally brief until the standard library settles.
 Low-level allocation helpers backed by C allocation functions. These APIs should
 be documented with exact ownership and lifetime rules before being presented as
 stable user-facing library functions.
+
+### `std.math`
+
+- `pi`
+  Untyped floating-point literal for the circle constant.
+- `sin(value: f64) -> f64`
+- `cos(value: f64) -> f64`
+- `tan(value: f64) -> f64`
+- `Point[T]`
+- `Rect[U]`
+- `PointI32`
+- `RectI32`
+- `Rect.right() -> U`
+- `Rect.bottom() -> U`
+- `Rect.is_empty() -> bool`
+- `Rect.intersection(other: Self) -> Self`
+
+The trigonometric functions take radians and return `f64` values.
 
 ### `core`
 
