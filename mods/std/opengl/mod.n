@@ -66,6 +66,12 @@ pub GL_TEXTURE_2D     :: 0x0de1
 pub GL_QUADS          :: 0x0007
 pub GL_TRIANGLES      :: 0x0004
 pub GL_TRIANGLE_STRIP :: 0x0005
+pub GL_FRONT          :: 0x0404
+pub GL_BACK           :: 0x0405
+pub GL_FRONT_AND_BACK :: 0x0408
+pub GL_POINT          :: 0x1b00
+pub GL_LINE           :: 0x1b01
+pub GL_FILL           :: 0x1b02
 
 pub GL_PROJECTION :: 0x1701
 pub GL_MODELVIEW  :: 0x1700
@@ -152,6 +158,7 @@ GLDrawElementsFn            :: fn (mode    : GLenum,
                                    count   : GLsizei,
                                    type    : GLenum,
                                    indices : ^void)
+GLPolygonModeFn             :: fn (face: GLenum, mode: GLenum)
 
 GLVertexAttribPointerFn :: fn (index      : GLuint,
                                size       : GLint,
@@ -295,6 +302,10 @@ gl_stub_draw_elements :: fn (_mode    : GLenum,
     gl_abort_unloaded_command()
 }
 
+gl_stub_polygon_mode :: fn (_face: GLenum, _mode: GLenum) {
+    gl_abort_unloaded_command()
+}
+
 gl_stub_vertex_attrib_pointer :: fn (_index      : GLuint,
                                      _size       : GLint,
                                      _type       : GLenum,
@@ -358,6 +369,8 @@ gl_enable_vertex_attrib_array_proc : GLEnableVertexAttribArrayFn =
                                                                    gl_stub_enable_vertex_attrib_array
 gl_draw_elements_proc              : GLDrawElementsFn            =
                                                                    gl_stub_draw_elements
+gl_polygon_mode_proc               : GLPolygonModeFn             =
+                                                                   gl_stub_polygon_mode
 gl_vertex_attrib_pointer_proc      : GLVertexAttribPointerFn     =
                                                                    gl_stub_vertex_attrib_pointer
 
@@ -502,6 +515,7 @@ gl_load_commands :: fn () -> bool {
     bind_vertex_array := gl_get_proc_address(c"glBindVertexArray")
     enable_vertex_attrib_array := gl_get_proc_address(c"glEnableVertexAttribArray")
     draw_elements := gl_get_proc_address(c"glDrawElements")
+    polygon_mode := gl_get_proc_address(c"glPolygonMode")
     vertex_attrib_pointer := gl_get_proc_address(c"glVertexAttribPointer")
 
     on active_texture == nil ||
@@ -531,6 +545,7 @@ gl_load_commands :: fn () -> bool {
         bind_vertex_array == nil ||
         enable_vertex_attrib_array == nil ||
         draw_elements == nil ||
+        polygon_mode == nil ||
         vertex_attrib_pointer == nil => return no
 
     gl_active_texture_proc             = active_texture.as(GLActiveTextureFn)
@@ -560,6 +575,7 @@ gl_load_commands :: fn () -> bool {
     gl_bind_vertex_array_proc          = bind_vertex_array.as(GLBindVertexArrayFn)
     gl_enable_vertex_attrib_array_proc = enable_vertex_attrib_array.as(GLEnableVertexAttribArrayFn)
     gl_draw_elements_proc              = draw_elements.as(GLDrawElementsFn)
+    gl_polygon_mode_proc               = polygon_mode.as(GLPolygonModeFn)
     gl_vertex_attrib_pointer_proc      = vertex_attrib_pointer.as(GLVertexAttribPointerFn)
 
     gl_commands_loaded = yes
@@ -594,6 +610,7 @@ pub gl_reset_commands :: fn () {
     gl_bind_vertex_array_proc          = gl_stub_bind_vertex_array
     gl_enable_vertex_attrib_array_proc = gl_stub_enable_vertex_attrib_array
     gl_draw_elements_proc              = gl_stub_draw_elements
+    gl_polygon_mode_proc               = gl_stub_polygon_mode
     gl_vertex_attrib_pointer_proc      = gl_stub_vertex_attrib_pointer
     gl_commands_loaded                 = no
 }
@@ -752,6 +769,10 @@ pub glDrawElements :: fn (mode    : GLenum,
                           type    : GLenum,
                           indices : ^void) {
     gl_draw_elements_proc(mode, count, type, indices)
+}
+
+pub glPolygonMode :: fn (face: GLenum, mode: GLenum) {
+    gl_polygon_mode_proc(face, mode)
 }
 
 pub glVertexAttribPointer :: fn (index      : GLuint,
