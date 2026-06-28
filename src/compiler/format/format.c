@@ -4337,7 +4337,8 @@ internal bool format_collect_aligned_statement(Arena*       arena,
             .is_bind          = true,
             .has_value        = true,
             .is_public        = (node->flags & CNF_Public) != 0,
-            .uses_standard_single_line = false,
+            .uses_standard_single_line = payload->kind != CK_AnnotatedValue &&
+                                         payload->kind != CK_TypeFn,
         };
         return true;
     }
@@ -4956,6 +4957,22 @@ format_emit_aligned_statement_group(StringBuilder*                sb,
                 current_column += 4 + stmts[i].value.count;
             }
         } else {
+            usize value_start_width =
+                (usize)indent_level * 4 + max_symbol_width + max_type_width + 6;
+            if (stmts[i].type.count == 0 &&
+                stmts[i].uses_standard_single_line) {
+                usize op_start_width = value_start_width - 2;
+                while (current_column < op_start_width) {
+                    sb_append_char(sb, ' ');
+                    current_column++;
+                }
+                sb_append_cstr(sb, stmts[i].is_bind ? ":: " : ":= ");
+                current_column += 3;
+                sb_append_string(sb, stmts[i].value);
+                current_column += stmts[i].value.count;
+                goto aligned_statement_done;
+            }
+
             sb_append_cstr(sb, " : ");
             sb_append_string(sb, stmts[i].type);
             if (!stmts[i].has_value) {
@@ -4967,8 +4984,6 @@ format_emit_aligned_statement_group(StringBuilder*                sb,
                 sb_append_char(sb, ' ');
             }
             current_column += 3 + max_type_width + 1;
-            usize value_start_width =
-                (usize)indent_level * 4 + max_symbol_width + max_type_width + 6;
             bool force_multiline =
                 format_aligned_statement_node_value_prefers_multiline(
                     cst, &stmts[i]);

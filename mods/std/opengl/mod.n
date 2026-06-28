@@ -60,15 +60,24 @@ pub GLsizeiptr :: isize
 pub GL_FALSE :: 0
 pub GL_TRUE  :: 1
 
-pub GL_COLOR_BUFFER_BIT :: 0x00004000
+pub GL_DEPTH_BUFFER_BIT   :: 0x00000100
+pub GL_STENCIL_BUFFER_BIT :: 0x00000400
+pub GL_COLOR_BUFFER_BIT   :: 0x00004000
 
 pub GL_TEXTURE_2D     :: 0x0de1
+pub GL_POINTS         :: 0x0000
+pub GL_LINES          :: 0x0001
+pub GL_LINE_LOOP      :: 0x0002
+pub GL_LINE_STRIP     :: 0x0003
 pub GL_QUADS          :: 0x0007
 pub GL_TRIANGLES      :: 0x0004
 pub GL_TRIANGLE_STRIP :: 0x0005
+pub GL_TRIANGLE_FAN   :: 0x0006
 pub GL_FRONT          :: 0x0404
 pub GL_BACK           :: 0x0405
 pub GL_FRONT_AND_BACK :: 0x0408
+pub GL_CW             :: 0x0900
+pub GL_CCW            :: 0x0901
 pub GL_POINT          :: 0x1b00
 pub GL_LINE           :: 0x1b01
 pub GL_FILL           :: 0x1b02
@@ -76,7 +85,31 @@ pub GL_FILL           :: 0x1b02
 pub GL_PROJECTION :: 0x1701
 pub GL_MODELVIEW  :: 0x1700
 
-pub GL_DEPTH_TEST :: 0x0b71
+pub GL_CULL_FACE    :: 0x0b44
+pub GL_DEPTH_TEST   :: 0x0b71
+pub GL_SCISSOR_TEST :: 0x0c11
+pub GL_BLEND        :: 0x0be2
+
+pub GL_NEVER    :: 0x0200
+pub GL_LESS     :: 0x0201
+pub GL_EQUAL    :: 0x0202
+pub GL_LEQUAL   :: 0x0203
+pub GL_GREATER  :: 0x0204
+pub GL_NOTEQUAL :: 0x0205
+pub GL_GEQUAL   :: 0x0206
+pub GL_ALWAYS   :: 0x0207
+
+pub GL_ZERO                :: 0
+pub GL_ONE                 :: 1
+pub GL_SRC_COLOR           :: 0x0300
+pub GL_ONE_MINUS_SRC_COLOR :: 0x0301
+pub GL_SRC_ALPHA           :: 0x0302
+pub GL_ONE_MINUS_SRC_ALPHA :: 0x0303
+pub GL_DST_ALPHA           :: 0x0304
+pub GL_ONE_MINUS_DST_ALPHA :: 0x0305
+pub GL_DST_COLOR           :: 0x0306
+pub GL_ONE_MINUS_DST_COLOR :: 0x0307
+pub GL_SRC_ALPHA_SATURATE  :: 0x0308
 
 pub GL_TEXTURE_MIN_FILTER :: 0x2801
 pub GL_TEXTURE_MAG_FILTER :: 0x2800
@@ -84,6 +117,8 @@ pub GL_TEXTURE_WRAP_S     :: 0x2802
 pub GL_TEXTURE_WRAP_T     :: 0x2803
 
 pub GL_NEAREST       :: 0x2600
+pub GL_LINEAR        :: 0x2601
+pub GL_REPEAT        :: 0x2901
 pub GL_CLAMP_TO_EDGE :: 0x812f
 
 pub GL_FLOAT :: 0x1406
@@ -97,6 +132,17 @@ pub GL_UNSIGNED_INT   :: 0x1405
 pub GL_UNPACK_ALIGNMENT  :: 0x0cf5
 pub GL_UNPACK_ROW_LENGTH :: 0x0cf2
 
+pub GL_VENDOR     :: 0x1f00
+pub GL_RENDERER   :: 0x1f01
+pub GL_VERSION    :: 0x1f02
+pub GL_EXTENSIONS :: 0x1f03
+
+pub GL_NO_ERROR          :: 0
+pub GL_INVALID_ENUM      :: 0x0500
+pub GL_INVALID_VALUE     :: 0x0501
+pub GL_INVALID_OPERATION :: 0x0502
+pub GL_OUT_OF_MEMORY     :: 0x0505
+
 pub GL_TEXTURE0 :: 0x84c0
 
 pub GL_ARRAY_BUFFER         :: 0x8892
@@ -104,11 +150,12 @@ pub GL_ELEMENT_ARRAY_BUFFER :: 0x8893
 pub GL_DYNAMIC_DRAW         :: 0x88e8
 pub GL_STATIC_DRAW          :: 0x88e4
 
-pub GL_VERTEX_SHADER   :: 0x8b31
-pub GL_FRAGMENT_SHADER :: 0x8b30
-pub GL_COMPILE_STATUS  :: 0x8b81
-pub GL_LINK_STATUS     :: 0x8b82
-pub GL_INFO_LOG_LENGTH :: 0x8b84
+pub GL_VERTEX_SHADER            :: 0x8b31
+pub GL_FRAGMENT_SHADER          :: 0x8b30
+pub GL_COMPILE_STATUS           :: 0x8b81
+pub GL_LINK_STATUS              :: 0x8b82
+pub GL_INFO_LOG_LENGTH          :: 0x8b84
+pub GL_SHADING_LANGUAGE_VERSION :: 0x8b8c
 
 GLActiveTextureFn           :: fn (texture: GLenum)
 GLCreateShaderFn            :: fn (type: GLenum) -> GLuint
@@ -379,53 +426,93 @@ gl_commands_loaded := no
 on "linux" {
 
     ffi "GL" {
-        pub glViewport       (x      : GLint,
-                              y      : GLint,
-                              width  : GLsizei,
-                              height : GLsizei)
-        pub glDisable        (cap: GLenum)
-        pub glClearColor     (red   : GLfloat,
-                              green : GLfloat,
-                              blue  : GLfloat,
-                              alpha : GLfloat)
-        pub glClear          (mask: GLbitfield)
-        pub glMatrixMode     (mode: GLenum)
-        pub glLoadIdentity   ()
-        pub glOrtho          (left   : GLdouble,
-                              right  : GLdouble,
-                              bottom : GLdouble,
-                              top    : GLdouble,
-                              near   : GLdouble,
-                              far    : GLdouble)
-        pub glEnable         (cap: GLenum)
-        pub glGenTextures    (count: GLsizei, textures: ^GLuint)
-        pub glDeleteTextures (count: GLsizei, textures: ^GLuint)
-        pub glBindTexture    (target: GLenum, texture: GLuint)
-        pub glTexParameteri  (target: GLenum, name: GLenum, value: GLint)
-        pub glPixelStorei    (name: GLenum, value: GLint)
-        pub glTexImage2D     (target          : GLenum,
-                              level           : GLint,
-                              internal_format : GLint,
-                              width           : GLsizei,
-                              height          : GLsizei,
-                              border          : GLint,
-                              format          : GLenum,
-                              type            : GLenum,
-                              pixels          : ^void)
-        pub glTexSubImage2D  (target  : GLenum,
-                              level   : GLint,
-                              xoffset : GLint,
-                              yoffset : GLint,
-                              width   : GLsizei,
-                              height  : GLsizei,
-                              format  : GLenum,
-                              type    : GLenum,
-                              pixels  : ^void)
-        pub glDrawArrays     (mode: GLenum, first: GLint, count: GLsizei)
-        pub glBegin          (mode: GLenum)
-        pub glEnd            ()
-        pub glTexCoord2f     (s: GLfloat, t: GLfloat)
-        pub glVertex2f       (x: GLfloat, y: GLfloat)
+        pub                  glViewport       (x      : GLint,
+                                               y      : GLint,
+                                               width  : GLsizei,
+                                               height : GLsizei)
+        pub                  glDisable        (cap: GLenum)
+        pub                  glClearColor     (red   : GLfloat,
+                                               green : GLfloat,
+                                               blue  : GLfloat,
+                                               alpha : GLfloat)
+        pub                  glClear          (mask: GLbitfield)
+        pub                  glClearDepth     (depth: GLdouble)
+        pub                  glMatrixMode     (mode: GLenum)
+        pub                  glLoadIdentity   ()
+        pub                  glOrtho          (left   : GLdouble,
+                                               right  : GLdouble,
+                                               bottom : GLdouble,
+                                               top    : GLdouble,
+                                               near   : GLdouble,
+                                               far    : GLdouble)
+        pub                  glEnable         (cap: GLenum)
+        pub                  glBlendFunc      (source_factor      : GLenum,
+                                               destination_factor : GLenum)
+        pub                  glColorMask      (red   : GLboolean,
+                                               green : GLboolean,
+                                               blue  : GLboolean,
+                                               alpha : GLboolean)
+        pub                  glCullFace       (mode: GLenum)
+        pub                  glDepthFunc      (func: GLenum)
+        pub                  glDepthMask      (flag: GLboolean)
+        pub                  glFinish         ()
+        pub                  glFlush          ()
+        pub                  glFrontFace      (mode: GLenum)
+        pub                  glGetError       () -> GLenum
+        pub                  glGetFloatv      (name: GLenum, data: ^GLfloat)
+        pub                  glGetIntegerv    (name: GLenum, data: ^GLint)
+        gl_get_string_raw :: glGetString      (name: GLenum) -> ^u8
+        pub                  glIsEnabled      (cap: GLenum) -> GLboolean
+        pub                  glLineWidth      (width: GLfloat)
+        pub                  glPointSize      (size: GLfloat)
+        pub                  glReadPixels     (x      : GLint,
+                                               y      : GLint,
+                                               width  : GLsizei,
+                                               height : GLsizei,
+                                               format : GLenum,
+                                               type   : GLenum,
+                                               pixels : ^void)
+        pub                  glScissor        (x      : GLint,
+                                               y      : GLint,
+                                               width  : GLsizei,
+                                               height : GLsizei)
+        pub                  glGenTextures    (count    : GLsizei,
+                                               textures : ^GLuint)
+        pub                  glDeleteTextures (count    : GLsizei,
+                                               textures : ^GLuint)
+        pub                  glBindTexture    (target: GLenum, texture: GLuint)
+        pub                  glTexParameteri  (target : GLenum,
+                                               name   : GLenum,
+                                               value  : GLint)
+        pub                  glPixelStorei    (name: GLenum, value: GLint)
+        pub                  glTexImage2D     (target          : GLenum,
+                                               level           : GLint,
+                                               internal_format : GLint,
+                                               width           : GLsizei,
+                                               height          : GLsizei,
+                                               border          : GLint,
+                                               format          : GLenum,
+                                               type            : GLenum,
+                                               pixels          : ^void)
+        pub                  glTexSubImage2D  (target  : GLenum,
+                                               level   : GLint,
+                                               xoffset : GLint,
+                                               yoffset : GLint,
+                                               width   : GLsizei,
+                                               height  : GLsizei,
+                                               format  : GLenum,
+                                               type    : GLenum,
+                                               pixels  : ^void)
+        pub                  glDrawArrays     (mode  : GLenum,
+                                               first : GLint,
+                                               count : GLsizei)
+        pub                  glBegin          (mode: GLenum)
+        pub                  glEnd            ()
+        pub                  glTexCoord2f     (s: GLfloat, t: GLfloat)
+        pub                  glVertex2f       (x: GLfloat, y: GLfloat)
+        pub                  glColor3f        (red   : GLfloat,
+                                               green : GLfloat,
+                                               blue  : GLfloat)
     }
 
 }
@@ -433,54 +520,93 @@ on "linux" {
 on "windows" {
 
     ffi "opengl32" {
-        pub glViewport       (x      : GLint,
-                              y      : GLint,
-                              width  : GLsizei,
-                              height : GLsizei)
-        pub glDisable        (cap: GLenum)
-        pub glClearColor     (red   : GLfloat,
-                              green : GLfloat,
-                              blue  : GLfloat,
-                              alpha : GLfloat)
-        pub glClear          (mask: GLbitfield)
-        pub glMatrixMode     (mode: GLenum)
-        pub glLoadIdentity   ()
-        pub glOrtho          (left   : GLdouble,
-                              right  : GLdouble,
-                              bottom : GLdouble,
-                              top    : GLdouble,
-                              near   : GLdouble,
-                              far    : GLdouble)
-        pub glEnable         (cap: GLenum)
-        pub glGenTextures    (count: GLsizei, textures: ^GLuint)
-        pub glDeleteTextures (count: GLsizei, textures: ^GLuint)
-        pub glBindTexture    (target: GLenum, texture: GLuint)
-        pub glTexParameteri  (target: GLenum, name: GLenum, value: GLint)
-        pub glPixelStorei    (name: GLenum, value: GLint)
-        pub glTexImage2D     (target          : GLenum,
-                              level           : GLint,
-                              internal_format : GLint,
-                              width           : GLsizei,
-                              height          : GLsizei,
-                              border          : GLint,
-                              format          : GLenum,
-                              type            : GLenum,
-                              pixels          : ^void)
-        pub glTexSubImage2D  (target  : GLenum,
-                              level   : GLint,
-                              xoffset : GLint,
-                              yoffset : GLint,
-                              width   : GLsizei,
-                              height  : GLsizei,
-                              format  : GLenum,
-                              type    : GLenum,
-                              pixels  : ^void)
-        pub glDrawArrays     (mode: GLenum, first: GLint, count: GLsizei)
-        pub glBegin          (mode: GLenum)
-        pub glEnd            ()
-        pub glTexCoord2f     (s: GLfloat, t: GLfloat)
-        pub glVertex2f       (x: GLfloat, y: GLfloat)
-        pub glColor3f        (red: GLfloat, green: GLfloat, blue: GLfloat)
+        pub                  glViewport       (x      : GLint,
+                                               y      : GLint,
+                                               width  : GLsizei,
+                                               height : GLsizei)
+        pub                  glDisable        (cap: GLenum)
+        pub                  glClearColor     (red   : GLfloat,
+                                               green : GLfloat,
+                                               blue  : GLfloat,
+                                               alpha : GLfloat)
+        pub                  glClear          (mask: GLbitfield)
+        pub                  glClearDepth     (depth: GLdouble)
+        pub                  glMatrixMode     (mode: GLenum)
+        pub                  glLoadIdentity   ()
+        pub                  glOrtho          (left   : GLdouble,
+                                               right  : GLdouble,
+                                               bottom : GLdouble,
+                                               top    : GLdouble,
+                                               near   : GLdouble,
+                                               far    : GLdouble)
+        pub                  glEnable         (cap: GLenum)
+        pub                  glBlendFunc      (source_factor      : GLenum,
+                                               destination_factor : GLenum)
+        pub                  glColorMask      (red   : GLboolean,
+                                               green : GLboolean,
+                                               blue  : GLboolean,
+                                               alpha : GLboolean)
+        pub                  glCullFace       (mode: GLenum)
+        pub                  glDepthFunc      (func: GLenum)
+        pub                  glDepthMask      (flag: GLboolean)
+        pub                  glFinish         ()
+        pub                  glFlush          ()
+        pub                  glFrontFace      (mode: GLenum)
+        pub                  glGetError       () -> GLenum
+        pub                  glGetFloatv      (name: GLenum, data: ^GLfloat)
+        pub                  glGetIntegerv    (name: GLenum, data: ^GLint)
+        gl_get_string_raw :: glGetString      (name: GLenum) -> ^u8
+        pub                  glIsEnabled      (cap: GLenum) -> GLboolean
+        pub                  glLineWidth      (width: GLfloat)
+        pub                  glPointSize      (size: GLfloat)
+        pub                  glReadPixels     (x      : GLint,
+                                               y      : GLint,
+                                               width  : GLsizei,
+                                               height : GLsizei,
+                                               format : GLenum,
+                                               type   : GLenum,
+                                               pixels : ^void)
+        pub                  glScissor        (x      : GLint,
+                                               y      : GLint,
+                                               width  : GLsizei,
+                                               height : GLsizei)
+        pub                  glGenTextures    (count    : GLsizei,
+                                               textures : ^GLuint)
+        pub                  glDeleteTextures (count    : GLsizei,
+                                               textures : ^GLuint)
+        pub                  glBindTexture    (target: GLenum, texture: GLuint)
+        pub                  glTexParameteri  (target : GLenum,
+                                               name   : GLenum,
+                                               value  : GLint)
+        pub                  glPixelStorei    (name: GLenum, value: GLint)
+        pub                  glTexImage2D     (target          : GLenum,
+                                               level           : GLint,
+                                               internal_format : GLint,
+                                               width           : GLsizei,
+                                               height          : GLsizei,
+                                               border          : GLint,
+                                               format          : GLenum,
+                                               type            : GLenum,
+                                               pixels          : ^void)
+        pub                  glTexSubImage2D  (target  : GLenum,
+                                               level   : GLint,
+                                               xoffset : GLint,
+                                               yoffset : GLint,
+                                               width   : GLsizei,
+                                               height  : GLsizei,
+                                               format  : GLenum,
+                                               type    : GLenum,
+                                               pixels  : ^void)
+        pub                  glDrawArrays     (mode  : GLenum,
+                                               first : GLint,
+                                               count : GLsizei)
+        pub                  glBegin          (mode: GLenum)
+        pub                  glEnd            ()
+        pub                  glTexCoord2f     (s: GLfloat, t: GLfloat)
+        pub                  glVertex2f       (x: GLfloat, y: GLfloat)
+        pub                  glColor3f        (red   : GLfloat,
+                                               green : GLfloat,
+                                               blue  : GLfloat)
     }
 
 }
@@ -643,6 +769,18 @@ pub gl_make_current :: fn (frame: ^Frame) -> bool {
 pub gl_swap_buffers :: fn (frame: ^Frame) {
     on frame.system == nil => return
     frame.system.opengl_swap_buffers(frame)
+}
+
+pub glGetString :: fn (name: GLenum) -> []u8 {
+    data := gl_get_string_raw(name)
+    on data == nil => return nil
+
+    count : usize = 0
+    for data[count] != 0 {
+        count += 1
+    }
+
+    return data.as([]u8, count)
 }
 
 pub glActiveTexture :: fn (texture: GLenum) {

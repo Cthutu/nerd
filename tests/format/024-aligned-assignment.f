@@ -81,7 +81,7 @@ test :: fn () {
 }
 
 main :: fn () {
-    answer :        : 3.14
+    answer          :: 3.14
     typed  : f64    : 2.0
     ratio  : f64    = 3.14 + 2.0 * 3.0
     s      : string = "hello"
