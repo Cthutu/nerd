@@ -246,7 +246,9 @@ into a temporary frame-sized buffer before presentation.
 `std.opengl` owns portable OpenGL aliases, constants, command wrappers, command
 address loading, and current/swap helpers. Call `gl_init(^Frame)` before using
 loaded OpenGL commands and `gl_done(^Frame)` when finished with that frame's GL
-surface.
+surface. Uniform uploads cover scalar/vector `glUniform*f` and `glUniform*i`,
+pointer-array `glUniform*fv` and `glUniform*iv`, and float matrix
+`glUniformMatrix*fv` wrappers.
 
 ### `std.traits`
 
