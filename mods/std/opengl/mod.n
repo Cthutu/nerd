@@ -136,11 +136,18 @@ pub GL_TEXTURE_MIN_FILTER :: 0x2801
 pub GL_TEXTURE_MAG_FILTER :: 0x2800
 pub GL_TEXTURE_WRAP_S     :: 0x2802
 pub GL_TEXTURE_WRAP_T     :: 0x2803
+pub GL_TEXTURE_WRAP_R     :: 0x8072
 
-pub GL_NEAREST       :: 0x2600
-pub GL_LINEAR        :: 0x2601
-pub GL_REPEAT        :: 0x2901
-pub GL_CLAMP_TO_EDGE :: 0x812f
+pub GL_NEAREST                :: 0x2600
+pub GL_LINEAR                 :: 0x2601
+pub GL_NEAREST_MIPMAP_NEAREST :: 0x2700
+pub GL_LINEAR_MIPMAP_NEAREST  :: 0x2701
+pub GL_NEAREST_MIPMAP_LINEAR  :: 0x2702
+pub GL_LINEAR_MIPMAP_LINEAR   :: 0x2703
+pub GL_REPEAT                 :: 0x2901
+pub GL_CLAMP_TO_BORDER        :: 0x812d
+pub GL_CLAMP_TO_EDGE          :: 0x812f
+pub GL_MIRRORED_REPEAT        :: 0x8370
 
 pub GL_BYTE           :: 0x1400
 pub GL_UNSIGNED_BYTE  :: 0x1401
