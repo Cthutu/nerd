@@ -390,5 +390,26 @@ bool error_0208_expected_type(NerdSource source,
     return false;
 }
 
+bool error_0209_reserved_keyword_binding_name(NerdSource source,
+                                              ErrorSpan  span,
+                                              string     keyword)
+{
+    ErrorInfo error =
+        error_init(source,
+                   span,
+                   "Keyword `" STRINGP "` cannot be used as a binding name",
+                   STRINGV(keyword));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "`" STRINGP "` is reserved for the language grammar",
+                        STRINGV(keyword));
+    error_add_help(&error,
+                   "Choose a non-keyword name such as `bind`, `activate`, or "
+                   "`use_shader`.");
+    error_render(&error);
+    return false;
+}
+
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------

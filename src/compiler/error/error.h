@@ -182,6 +182,9 @@ bool error_0208_expected_type(NerdSource source,
                               TokenKind  actual_kind,
                               cstr       note,
                               cstr       help);
+bool error_0209_reserved_keyword_binding_name(NerdSource source,
+                                              ErrorSpan  span,
+                                              string     keyword);
 
 //------------------------------------------------------------------------------
 // Semantic analysis errors

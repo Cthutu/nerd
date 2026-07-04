@@ -756,48 +756,50 @@ internal void format_emit_integer_literal(StringBuilder* sb,
         sb, string_from(lexer->source.source.data + start, end - start));
 }
 
-internal void   format_emit_fn_signature(StringBuilder* sb,
-                                         const Cst*     cst,
-                                         const Lexer*   lexer,
-                                         u32            signature_index,
-                                         bool           include_return_type);
-internal void   format_emit_fn_signature_multiline(StringBuilder* sb,
-                                                   const Cst*     cst,
-                                                   const Lexer*   lexer,
-                                                   u32            signature_index,
-                                                   bool include_return_type);
-internal void   format_emit_ffi_def(StringBuilder* sb,
-                                    const Cst*     cst,
-                                    const Lexer*   lexer,
-                                    u32            ffi_info_index,
-                                    u32            flags);
-internal void   format_emit_ffi_block(StringBuilder* sb,
-                                      const Cst*     cst,
-                                      const Lexer*   lexer,
-                                      u32            ffi_block_info_index,
-                                      u32            indent_level);
-internal void   format_emit_pragma(StringBuilder* sb,
-                                   const Cst*     cst,
-                                   const Lexer*   lexer,
-                                   u32            pragma_index);
-internal void   format_emit_mod_ref(StringBuilder* sb,
-                                    const Cst*     cst,
-                                    const Lexer*   lexer,
-                                    u32            module_path_index);
-internal void   format_emit_module_path(StringBuilder* sb,
-                                        const Cst*     cst,
-                                        const Lexer*   lexer,
-                                        u32            module_path_index);
-internal void   format_emit_value(StringBuilder* sb,
+internal void format_emit_fn_signature(StringBuilder* sb,
+                                       const Cst*     cst,
+                                       const Lexer*   lexer,
+                                       u32            signature_index,
+                                       bool           include_return_type);
+internal void format_emit_fn_signature_multiline(StringBuilder* sb,
+                                                 const Cst*     cst,
+                                                 const Lexer*   lexer,
+                                                 u32            signature_index,
+                                                 bool include_return_type);
+internal void format_emit_ffi_def(StringBuilder* sb,
                                   const Cst*     cst,
                                   const Lexer*   lexer,
-                                  u32            node_index);
-internal void   format_emit_block_contents(StringBuilder* sb,
-                                           const Cst*     cst,
-                                           const Lexer*   lexer,
-                                           u32            block_node_index,
-                                           u32            indent_level);
-internal void   format_emit_indent(StringBuilder* sb, u32 indent_level);
+                                  u32            ffi_info_index,
+                                  u32            flags);
+internal void format_emit_ffi_block(StringBuilder* sb,
+                                    const Cst*     cst,
+                                    const Lexer*   lexer,
+                                    u32            ffi_block_info_index,
+                                    u32            indent_level);
+internal void format_emit_pragma(StringBuilder* sb,
+                                 const Cst*     cst,
+                                 const Lexer*   lexer,
+                                 u32            pragma_index);
+internal void format_emit_mod_ref(StringBuilder* sb,
+                                  const Cst*     cst,
+                                  const Lexer*   lexer,
+                                  u32            module_path_index);
+internal void format_emit_module_path(StringBuilder* sb,
+                                      const Cst*     cst,
+                                      const Lexer*   lexer,
+                                      u32            module_path_index);
+internal void format_emit_value(StringBuilder* sb,
+                                const Cst*     cst,
+                                const Lexer*   lexer,
+                                u32            node_index);
+internal void format_emit_block_contents(StringBuilder* sb,
+                                         const Cst*     cst,
+                                         const Lexer*   lexer,
+                                         u32            block_node_index,
+                                         u32            indent_level);
+internal void format_emit_indent(StringBuilder* sb, u32 indent_level);
+internal void
+format_trim_trailing_space_after_multiline_close(StringBuilder* sb, char close);
 internal void   format_emit_type_plex_multiline(StringBuilder* sb,
                                                 const Cst*     cst,
                                                 const Lexer*   lexer,
@@ -1449,13 +1451,24 @@ internal void format_emit_expr(StringBuilder* sb,
         format_emit_expr(sb, cst, lexer, node->a, node_precedence);
         sb_append_char(sb, '(');
         {
-            const CstCallInfo* call = &cst->calls[node->b];
+            const CstCallInfo* call                = &cst->calls[node->b];
+            bool               trim_plex_arg_close = false;
+            if (call->arg_count == 1) {
+                u32            arg_index = cst->call_args[call->first_arg];
+                const CstNode* arg       = &cst->nodes[arg_index];
+                trim_plex_arg_close =
+                    (arg->kind == CK_Plex || arg->kind == CK_PlexUpdate) &&
+                    !format_node_is_single_line(cst, lexer, arg_index);
+            }
             for (u32 i = 0; i < call->arg_count; ++i) {
                 if (i > 0) {
                     sb_append_cstr(sb, ", ");
                 }
                 format_emit_expr(
                     sb, cst, lexer, cst->call_args[call->first_arg + i], 0);
+            }
+            if (trim_plex_arg_close) {
+                format_trim_trailing_space_after_multiline_close(sb, '}');
             }
         }
         sb_append_char(sb, ')');
@@ -2337,6 +2350,20 @@ internal usize format_sb_current_line_indent(const StringBuilder* sb)
         ++indent;
     }
     return indent;
+}
+
+internal void
+format_trim_trailing_space_after_multiline_close(StringBuilder* sb, char close)
+{
+    usize cursor = sb->size;
+    while (cursor > 0 &&
+           (sb->data[cursor - 1] == ' ' || sb->data[cursor - 1] == '\n')) {
+        cursor--;
+    }
+    if (cursor < sb->size && cursor > 0 && sb->data[cursor - 1] == close) {
+        sb->size           = cursor;
+        sb->data[sb->size] = '\0';
+    }
 }
 
 internal bool format_string_has_newline(string text)

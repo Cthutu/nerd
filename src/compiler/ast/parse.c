@@ -3712,6 +3712,10 @@ internal bool ast_parse_module_ref_after_use(AstParseState* state,
             TK_EOF,
             "Expected a module expression after 'use', but found end of file");
     }
+    if (state->token.kind == TK_Colon) {
+        return error_0209_reserved_keyword_binding_name(
+            state->lexer->source, ast_token_span(state, &use_token), s("use"));
+    }
 
     AstToken path_token = state->token;
     Array(u32) symbols  = NULL;
@@ -3756,6 +3760,10 @@ internal bool ast_parse_use(AstParseState* state,
             ast_token_span(state, &use_token),
             TK_EOF,
             "Expected a module expression after 'use', but found end of file");
+    }
+    if (state->token.kind == TK_Colon) {
+        return error_0209_reserved_keyword_binding_name(
+            state->lexer->source, ast_token_span(state, &use_token), s("use"));
     }
 
     if (state->token.kind == TK_Symbol &&
