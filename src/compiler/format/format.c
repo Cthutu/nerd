@@ -26,7 +26,8 @@ typedef struct {
     Array(u32) trailing_comment_index_by_token;
 } FormatTrivia;
 
-global_variable const FormatTrivia* g_format_trivia = NULL;
+global_variable const FormatTrivia* g_format_trivia    = NULL;
+global_variable Array(bool) g_format_consumed_comments = NULL;
 
 internal void  format_emit_for_header_items(StringBuilder* sb,
                                             const Cst*     cst,
@@ -113,30 +114,43 @@ internal string format_render_expr_to_string(Arena*       arena,
                                              const Cst*   cst,
                                              const Lexer* lexer,
                                              u32          node_index);
-internal void   format_skip_block_comments_before_offset(const Lexer* lexer,
-                                                         u32*  io_comment_index,
-                                                         usize end_offset);
-internal bool   format_comment_is_trailing_after_offset(NerdSource   source,
-                                                        usize        end_offset,
-                                                        LexerComment comment);
-internal bool   format_comments_have_blank_line_between(NerdSource   source,
-                                                        LexerComment previous,
-                                                        LexerComment current);
-internal bool   format_node_has_trailing_comment(const Cst*   cst,
-                                                 const Lexer* lexer,
-                                                 u32          node_index);
-internal bool   format_emit_trailing_comment_after_offset(StringBuilder* sb,
-                                                          const Lexer*   lexer,
-                                                          u32*  io_comment_index,
-                                                          usize end_offset);
-internal bool   format_emit_trailing_comment_after_token(StringBuilder* sb,
-                                                         const Lexer*   lexer,
-                                                         u32* io_comment_index,
-                                                         u32  token_index);
-internal bool   format_emit_trailing_comment_by_index(StringBuilder* sb,
-                                                      const Lexer*   lexer,
-                                                      u32* io_comment_index,
-                                                      u32  comment_index);
+internal void
+format_plan_trailing_comment_columns(const Lexer* lexer,
+                                     u32          item_count,
+                                     Array(usize) item_start_offsets,
+                                     Array(usize) item_end_offsets,
+                                     Array(usize) item_code_widths,
+                                     Array(bool) item_has_comments,
+                                     Array(u32) item_comment_indices,
+                                     Array(usize) item_comment_columns);
+internal void format_skip_block_comments_before_offset(const Lexer* lexer,
+                                                       u32*  io_comment_index,
+                                                       usize end_offset);
+internal bool format_comment_index_is_consumed(u32 comment_index);
+internal void format_mark_comment_index_consumed(u32 comment_index);
+internal void format_mark_comment_range_consumed(u32 first_comment_index,
+                                                 u32 end_comment_index);
+internal bool format_comment_is_trailing_after_offset(NerdSource   source,
+                                                      usize        end_offset,
+                                                      LexerComment comment);
+internal bool format_comments_have_blank_line_between(NerdSource   source,
+                                                      LexerComment previous,
+                                                      LexerComment current);
+internal bool format_node_has_trailing_comment(const Cst*   cst,
+                                               const Lexer* lexer,
+                                               u32          node_index);
+internal bool format_emit_trailing_comment_after_offset(StringBuilder* sb,
+                                                        const Lexer*   lexer,
+                                                        u32*  io_comment_index,
+                                                        usize end_offset);
+internal bool format_emit_trailing_comment_after_token(StringBuilder* sb,
+                                                       const Lexer*   lexer,
+                                                       u32* io_comment_index,
+                                                       u32  token_index);
+internal bool format_emit_trailing_comment_by_index(StringBuilder* sb,
+                                                    const Lexer*   lexer,
+                                                    u32* io_comment_index,
+                                                    u32  comment_index);
 internal bool
 format_find_trailing_comment_index_after_offset(NerdSource   source,
                                                 const Lexer* lexer,
@@ -1755,16 +1769,128 @@ internal void format_emit_call_multiline_aligned(StringBuilder* sb,
         return;
     }
 
-    usize arg_column = call_start_column + callee.count + 1;
+    Array(string) arg_texts             = NULL;
+    Array(usize) arg_start_offsets      = NULL;
+    Array(usize) arg_end_offsets        = NULL;
+    Array(usize) arg_code_widths        = NULL;
+    Array(bool) arg_has_comments        = NULL;
+    Array(u32) arg_comment_indices      = NULL;
+    Array(usize) arg_comment_columns    = NULL;
+    Array(usize) arg_before_offsets     = NULL;
+    Array(bool) arg_comment_after_close = NULL;
+
+    usize arg_column                    = call_start_column + callee.count + 1;
+    u32   close_token = format_node_end_token_index(cst, lexer, node_index);
+    for (u32 i = 0; i < call->arg_count; ++i) {
+        u32    arg_index = cst->call_args[call->first_arg + i];
+        string arg_text =
+            format_render_expr_to_string(&arena, cst, lexer, arg_index);
+        u32 line_end_token = format_node_end_token_index(cst, lexer, arg_index);
+        bool comment_after_close = false;
+        if (i + 1 < call->arg_count) {
+            u32 next_arg_index = cst->call_args[call->first_arg + i + 1];
+            u32 next_arg_token = cst->nodes[next_arg_index].token_index;
+            for (u32 token = line_end_token + 1;
+                 token < next_arg_token && token < array_count(lexer->tokens);
+                 ++token) {
+                if (lexer->tokens[token].kind == TK_Comma) {
+                    line_end_token = token;
+                    break;
+                }
+            }
+        } else {
+            line_end_token      = close_token;
+            comment_after_close = true;
+        }
+
+        usize line_end_offset =
+            lex_token_end_offset(lexer, &lexer->tokens[line_end_token]);
+        u32  comment_index = U32_MAX;
+        bool has_comment   = format_trivia_trailing_comment_after_token(
+            g_format_trivia, line_end_token, &comment_index);
+        if (g_format_trivia == NULL) {
+            has_comment = format_find_trailing_comment_index_after_offset(
+                lexer->source, lexer, line_end_offset, &comment_index);
+        }
+
+        usize before_offset = lexer->source.source.count;
+        if (i + 1 < call->arg_count) {
+            u32 next_arg_index = cst->call_args[call->first_arg + i + 1];
+            before_offset =
+                lexer->tokens[cst->nodes[next_arg_index].token_index].offset;
+        }
+
+        usize code_width = arg_column + arg_text.count;
+        if (i + 1 < call->arg_count) {
+            code_width++;
+        } else if (comment_after_close) {
+            code_width++;
+        }
+
+        array_push(arg_texts, arg_text);
+        array_push(arg_start_offsets,
+                   lexer->tokens[cst->nodes[arg_index].token_index].offset);
+        array_push(arg_end_offsets, line_end_offset);
+        array_push(arg_code_widths, code_width);
+        array_push(arg_has_comments, has_comment);
+        array_push(arg_comment_indices, comment_index);
+        array_push(arg_comment_columns, 0);
+        array_push(arg_before_offsets, before_offset);
+        array_push(arg_comment_after_close, comment_after_close);
+    }
+
+    format_plan_trailing_comment_columns(lexer,
+                                         call->arg_count,
+                                         arg_start_offsets,
+                                         arg_end_offsets,
+                                         arg_code_widths,
+                                         arg_has_comments,
+                                         arg_comment_indices,
+                                         arg_comment_columns);
+
+    u32  comment_index = 0;
+    bool close_emitted = false;
     for (u32 i = 0; i < call->arg_count; ++i) {
         if (i > 0) {
-            sb_append_cstr(sb, ",\n");
+            if (sb->size == 0 || sb->data[sb->size - 1] != '\n') {
+                sb_append_char(sb, '\n');
+            }
             format_emit_spaces(sb, arg_column);
         }
-        format_emit_expr(
-            sb, cst, lexer, cst->call_args[call->first_arg + i], 0);
+        sb_append_string(sb, arg_texts[i]);
+        if (i + 1 < call->arg_count) {
+            sb_append_char(sb, ',');
+        } else if (arg_comment_after_close[i] && arg_has_comments[i]) {
+            sb_append_char(sb, ')');
+            close_emitted = true;
+        }
+        if (arg_has_comments[i]) {
+            u32    first_comment_index = arg_comment_indices[i];
+            string comment_text =
+                format_merged_trailing_comment_text(lexer,
+                                                    first_comment_index,
+                                                    arg_comment_columns[i],
+                                                    arg_before_offsets[i],
+                                                    &comment_index);
+            format_emit_trailing_comment_text_aligned(
+                sb, comment_text, arg_comment_columns[i], arg_code_widths[i]);
+            format_mark_comment_range_consumed(first_comment_index,
+                                               comment_index);
+        }
     }
-    sb_append_char(sb, ')');
+    if (!close_emitted) {
+        sb_append_char(sb, ')');
+    }
+
+    array_free(arg_texts);
+    array_free(arg_start_offsets);
+    array_free(arg_end_offsets);
+    array_free(arg_code_widths);
+    array_free(arg_has_comments);
+    array_free(arg_comment_indices);
+    array_free(arg_comment_columns);
+    array_free(arg_before_offsets);
+    array_free(arg_comment_after_close);
 
     arena_done(&arena);
 }
@@ -5836,6 +5962,10 @@ internal bool format_emit_block_comments_before_offset(StringBuilder* sb,
     bool         emitted          = false;
     LexerComment previous_comment = {0};
     while (*io_comment_index < array_count(lexer->comments)) {
+        if (format_comment_index_is_consumed(*io_comment_index)) {
+            (*io_comment_index)++;
+            continue;
+        }
         LexerComment comment = lexer->comments[*io_comment_index];
         if (comment.offset >= end_offset) {
             break;
@@ -5908,6 +6038,10 @@ internal bool format_emit_block_comments_before_token(StringBuilder* sb,
     LexerComment previous_comment = {0};
     while (*io_comment_index < end_comment_index &&
            *io_comment_index < array_count(lexer->comments)) {
+        if (format_comment_index_is_consumed(*io_comment_index)) {
+            (*io_comment_index)++;
+            continue;
+        }
         LexerComment comment = lexer->comments[*io_comment_index];
         if (emitted && format_comments_have_blank_line_between(
                            lexer->source, previous_comment, comment)) {
@@ -5981,6 +6115,32 @@ internal bool format_comments_have_blank_line_between(NerdSource   source,
                source.source, previous.end_offset, current.offset) > 1;
 }
 
+internal bool format_comment_index_is_consumed(u32 comment_index)
+{
+    return g_format_consumed_comments != NULL &&
+           comment_index < array_count(g_format_consumed_comments) &&
+           g_format_consumed_comments[comment_index];
+}
+
+internal void format_mark_comment_index_consumed(u32 comment_index)
+{
+    if (g_format_consumed_comments == NULL ||
+        comment_index >= array_count(g_format_consumed_comments)) {
+        return;
+    }
+    g_format_consumed_comments[comment_index] = true;
+}
+
+internal void format_mark_comment_range_consumed(u32 first_comment_index,
+                                                 u32 end_comment_index)
+{
+    for (u32 comment_index = first_comment_index;
+         comment_index < end_comment_index;
+         ++comment_index) {
+        format_mark_comment_index_consumed(comment_index);
+    }
+}
+
 internal bool format_node_has_trailing_comment(const Cst*   cst,
                                                const Lexer* lexer,
                                                u32          node_index)
@@ -6008,6 +6168,10 @@ internal bool format_emit_trailing_comment_by_index(StringBuilder* sb,
 {
     if (comment_index >= array_count(lexer->comments) ||
         comment_index < *io_comment_index) {
+        return false;
+    }
+    if (format_comment_index_is_consumed(comment_index)) {
+        *io_comment_index = comment_index + 1;
         return false;
     }
 
@@ -7175,7 +7339,9 @@ internal void format_emit_block_statement(StringBuilder* sb,
             format_emit_wrapped_call_expr_if_long(
                 sb, cst, lexer, stmt->a, (usize)indent_level * 4, indent_level);
         }
-        sb_append_char(sb, '\n');
+        if (sb->size == 0 || sb->data[sb->size - 1] != '\n') {
+            sb_append_char(sb, '\n');
+        }
     }
 }
 
@@ -7427,12 +7593,21 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
     FormatTrivia trivia = {0};
     format_trivia_build(&lexer, &trivia);
     format_trivia_validate(&lexer, &trivia);
-    const FormatTrivia* previous_trivia = g_format_trivia;
-    g_format_trivia                     = &trivia;
+    const FormatTrivia* previous_trivia    = g_format_trivia;
+    Array(bool) previous_consumed_comments = g_format_consumed_comments;
+    Array(bool) consumed_comments          = NULL;
+    array_requires_size(consumed_comments, array_count(lexer.comments));
+    for (u32 i = 0; i < array_count(consumed_comments); ++i) {
+        consumed_comments[i] = false;
+    }
+    g_format_trivia            = &trivia;
+    g_format_consumed_comments = consumed_comments;
 
-    Cst cst                             = {0};
+    Cst cst                    = {0};
     if (!cst_parse(&lexer, &cst) || array_count(cst.bindings) == 0) {
-        g_format_trivia = previous_trivia;
+        g_format_trivia            = previous_trivia;
+        g_format_consumed_comments = previous_consumed_comments;
+        array_free(consumed_comments);
         format_trivia_done(&trivia);
         cst_done(&cst);
         lex_done(&lexer);
@@ -7696,7 +7871,9 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
     }
 
     arena_done(&align_arena);
-    g_format_trivia = previous_trivia;
+    g_format_trivia            = previous_trivia;
+    g_format_consumed_comments = previous_consumed_comments;
+    array_free(consumed_comments);
     format_trivia_done(&trivia);
     cst_done(&cst);
     lex_done(&lexer);

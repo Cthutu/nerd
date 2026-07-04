@@ -442,8 +442,7 @@ on "linux" {
                                 frame_c_string_temp("_NET_WM_STATE"),
                                 0)
         wm_state_fullscreen := XInternAtom(display,
-                                           frame_c_string_temp("_NET_WM_STATE_F"
-            +"ULLSCREEN"),
+                                           frame_c_string_temp("_NET_WM_STATE_FULLSCREEN"),
                                            0)
         frame_extents := XInternAtom(display,
                                      frame_c_string_temp("_NET_FRAME_EXTENTS"),
