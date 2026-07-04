@@ -249,7 +249,7 @@ internal bool ast_token_has_newline_before(const AstParseState* state,
 
 internal bool ast_postfix_token_can_cross_statement_boundary(TokenKind kind)
 {
-    return kind == TK_with;
+    return kind == TK_with || kind == TK_Dot;
 }
 
 internal bool ast_caret_is_postfix_deref(const AstParseState* state,

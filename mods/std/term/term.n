@@ -545,7 +545,8 @@ term_fb_prepare_rect :: fn (rect: RectI32) -> PreparedRect {
     }
 
     absolute := RectI32 { x: rect.x + term_fb_view.x y: rect.y + term_fb_view.y w: rect.w h: rect.h }
-    clipped := absolute.intersection(term_fb_view).intersection(term_fb_screen_rect())
+    clipped := absolute.intersection(term_fb_view)
+               .intersection(term_fb_screen_rect())
     on clipped.is_empty() => return PreparedRect { ok: no rect: clipped x_offset: 0 y_offset: 0 }
 
     return PreparedRect { ok: yes rect: clipped x_offset: clipped.x - absolute.x y_offset: clipped.y - absolute.y }

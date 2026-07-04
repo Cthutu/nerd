@@ -26,8 +26,9 @@ typedef struct {
     Array(u32) trailing_comment_index_by_token;
 } FormatTrivia;
 
-global_variable const FormatTrivia* g_format_trivia    = NULL;
-global_variable Array(bool) g_format_consumed_comments = NULL;
+global_variable const FormatTrivia* g_format_trivia         = NULL;
+global_variable      Array(bool) g_format_consumed_comments = NULL;
+global_variable bool g_format_suppress_string_wrap          = false;
 
 internal void  format_emit_for_header_items(StringBuilder* sb,
                                             const Cst*     cst,
@@ -83,6 +84,9 @@ internal void   format_emit_call_multiline_aligned(StringBuilder* sb,
                                                    const Lexer*   lexer,
                                                    u32            node_index,
                                                    usize call_start_column);
+internal bool   format_emit_wrapped_method_chain_if_long(StringBuilder* sb,
+                                                         string         single,
+                                                         usize prefix_width);
 internal bool   format_emit_wrapped_call_expr_if_long(StringBuilder* sb,
                                                       const Cst*     cst,
                                                       const Lexer*   lexer,
@@ -1211,7 +1215,12 @@ internal void format_emit_expr(StringBuilder* sb,
         sb_append_char(sb, ' ');
         sb_append_string(sb, format_assignment_operator(lexer, node));
         sb_append_char(sb, ' ');
-        format_emit_expr(sb, cst, lexer, node->b, node_precedence);
+        format_emit_wrapped_call_expr_if_long(sb,
+                                              cst,
+                                              lexer,
+                                              node->b,
+                                              format_sb_current_column(sb),
+                                              g_format_expr_indent_level);
         break;
     case CK_IntegerNegate:
         sb_append_char(sb, '-');
@@ -1967,6 +1976,177 @@ internal void format_emit_call_multiline_aligned(StringBuilder* sb,
     arena_done(&arena);
 }
 
+internal bool format_chain_identifier_start(u8 ch)
+{
+    return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch == '_';
+}
+
+internal bool format_chain_identifier_continue(u8 ch)
+{
+    return format_chain_identifier_start(ch) || (ch >= '0' && ch <= '9');
+}
+
+internal bool format_chain_dot_starts_call(string text, usize dot_index)
+{
+    usize i = dot_index + 1;
+    if (i >= text.count || !format_chain_identifier_start(text.data[i])) {
+        return false;
+    }
+    ++i;
+    while (i < text.count && format_chain_identifier_continue(text.data[i])) {
+        ++i;
+    }
+    return i < text.count && text.data[i] == '(';
+}
+
+internal string format_flatten_method_chain_continuations(Arena* arena,
+                                                          string text,
+                                                          bool*  out_changed)
+{
+    StringBuilder sb = {0};
+    sb_init(&sb, arena);
+    bool changed = false;
+    for (usize i = 0; i < text.count; ++i) {
+        if (text.data[i] == '\n') {
+            usize next = i + 1;
+            while (next < text.count &&
+                   (text.data[next] == ' ' || text.data[next] == '\t')) {
+                ++next;
+            }
+            if (next < text.count && text.data[next] == '.') {
+                changed = true;
+                i       = next - 1;
+                continue;
+            }
+        }
+        sb_append_char(&sb, text.data[i]);
+    }
+
+    *out_changed = changed;
+    return changed ? sb_to_string(&sb) : text;
+}
+
+internal bool format_emit_wrapped_method_chain_if_long(StringBuilder* sb,
+                                                       string         single,
+                                                       usize prefix_width)
+{
+    Arena arena     = {0};
+    bool  has_arena = false;
+    if (format_string_has_newline(single)) {
+        arena_init(&arena);
+        has_arena      = true;
+        bool flattened = false;
+        single         = format_flatten_method_chain_continuations(
+            &arena, single, &flattened);
+        if (!flattened || format_string_has_newline(single)) {
+            arena_done(&arena);
+            return false;
+        }
+    }
+
+    if (prefix_width + single.count <= FORMAT_WRAP_WIDTH) {
+        if (has_arena) {
+            arena_done(&arena);
+        }
+        return false;
+    }
+    Array(usize) dots  = NULL;
+    i32  paren_depth   = 0;
+    i32  bracket_depth = 0;
+    i32  brace_depth   = 0;
+    bool in_string     = false;
+    bool escaped       = false;
+    for (usize i = 0; i < single.count; ++i) {
+        u8 ch = single.data[i];
+        if (in_string) {
+            if (escaped) {
+                escaped = false;
+            } else if (ch == '\\') {
+                escaped = true;
+            } else if (ch == '"') {
+                in_string = false;
+            }
+            continue;
+        }
+
+        if (ch == '"') {
+            in_string = true;
+            continue;
+        }
+
+        switch (ch) {
+        case '(':
+            ++paren_depth;
+            break;
+        case ')':
+            --paren_depth;
+            break;
+        case '[':
+            ++bracket_depth;
+            break;
+        case ']':
+            --bracket_depth;
+            break;
+        case '{':
+            ++brace_depth;
+            break;
+        case '}':
+            --brace_depth;
+            break;
+        case '.':
+            if (paren_depth == 0 && bracket_depth == 0 && brace_depth == 0 &&
+                format_chain_dot_starts_call(single, i)) {
+                array_push(dots, i);
+            }
+            break;
+        }
+    }
+
+    if (array_count(dots) < 2) {
+        array_free(dots);
+        if (has_arena) {
+            arena_done(&arena);
+        }
+        return false;
+    }
+
+    usize first_count = dots[1];
+    if (prefix_width + first_count > FORMAT_WRAP_WIDTH) {
+        array_free(dots);
+        if (has_arena) {
+            arena_done(&arena);
+        }
+        return false;
+    }
+
+    for (u32 i = 1; i < array_count(dots); ++i) {
+        usize start = dots[i];
+        usize end   = i + 1 < array_count(dots) ? dots[i + 1] : single.count;
+        if (prefix_width + (end - start) > FORMAT_WRAP_WIDTH) {
+            array_free(dots);
+            if (has_arena) {
+                arena_done(&arena);
+            }
+            return false;
+        }
+    }
+
+    sb_append_string(sb, string_from(single.data, first_count));
+    for (u32 i = 1; i < array_count(dots); ++i) {
+        usize start = dots[i];
+        usize end   = i + 1 < array_count(dots) ? dots[i + 1] : single.count;
+        sb_append_char(sb, '\n');
+        format_emit_spaces(sb, prefix_width);
+        sb_append_string(sb, string_from(single.data + start, end - start));
+    }
+
+    array_free(dots);
+    if (has_arena) {
+        arena_done(&arena);
+    }
+    return true;
+}
+
 internal bool format_emit_wrapped_call_expr_if_long(StringBuilder* sb,
                                                     const Cst*     cst,
                                                     const Lexer*   lexer,
@@ -1985,13 +2165,22 @@ internal bool format_emit_wrapped_call_expr_if_long(StringBuilder* sb,
     arena_init(&arena);
     StringBuilder single_sb = {0};
     sb_init(&single_sb, &arena);
+    bool saved_suppress_string_wrap = g_format_suppress_string_wrap;
+    g_format_suppress_string_wrap   = true;
     format_emit_expr_with_indent(
         &single_sb, cst, lexer, node_index, 0, indent_level);
-    string single = sb_to_string(&single_sb);
+    g_format_suppress_string_wrap = saved_suppress_string_wrap;
+    string single                 = sb_to_string(&single_sb);
+
     if (node->kind != CK_Call) {
         sb_append_string(sb, single);
         arena_done(&arena);
         return false;
+    }
+
+    if (format_emit_wrapped_method_chain_if_long(sb, single, prefix_width)) {
+        arena_done(&arena);
+        return true;
     }
 
     bool call_parts_are_single_line = true;
@@ -2543,8 +2732,8 @@ format_emit_string_literal(StringBuilder* sb, string text, bool is_c_string)
     usize available_width = column < FORMAT_WRAP_WIDTH
                                 ? FORMAT_WRAP_WIDTH - column
                                 : FORMAT_WRAP_WIDTH;
-    if (is_c_string || text.count + 2 <= available_width ||
-        format_string_has_newline(text)) {
+    if (g_format_suppress_string_wrap || is_c_string ||
+        text.count + 2 <= available_width || format_string_has_newline(text)) {
         if (is_c_string) {
             sb_append_char(sb, 'c');
         }

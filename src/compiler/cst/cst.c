@@ -941,7 +941,7 @@ internal bool cst_token_has_newline_before(const CstParseState* state,
 
 internal bool cst_postfix_token_can_cross_statement_boundary(TokenKind kind)
 {
-    return kind == TK_with;
+    return kind == TK_with || kind == TK_Dot;
 }
 
 internal bool cst_caret_is_postfix_deref(const CstParseState* state)
