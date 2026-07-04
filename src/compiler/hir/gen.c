@@ -2609,7 +2609,9 @@ internal u32 hir_lower_on_branch_block(Hir*         hir,
     u32 root_index = hir_unwrap_node(ast, expr_node_index);
     if (root_index < array_count(ast->nodes)) {
         const AstNode* root = &ast->nodes[root_index];
-        if (root->kind == AK_ExprBlock && root->b == U32_MAX) {
+        if (root->kind == AK_ExprBlock && root->b == U32_MAX &&
+            root->token_index < array_count(lexer->tokens) &&
+            lexer->tokens[root->token_index].kind == TK_LBrace) {
             return hir_lower_block_node(hir, lexer, ast, sema, root->a);
         }
     }

@@ -3895,10 +3895,6 @@ internal string llvm_label(LlvmFunctionContext* ctx, cstr prefix)
 internal LlvmControlTarget* llvm_find_control_target(LlvmFunctionContext* ctx,
                                                      u32 symbol_handle)
 {
-    if (symbol_handle == U32_MAX) {
-        return NULL;
-    }
-
     for (u32 i = array_count(ctx->control_targets); i > 0; --i) {
         LlvmControlTarget* target = &ctx->control_targets[i - 1];
         if (target->symbol_handle == symbol_handle) {
@@ -3911,15 +3907,14 @@ internal LlvmControlTarget* llvm_find_control_target(LlvmFunctionContext* ctx,
 internal void llvm_push_control_target(LlvmFunctionContext* ctx,
                                        LlvmControlTarget    target)
 {
-    if (target.symbol_handle != U32_MAX) {
-        array_push(ctx->control_targets, target);
-    }
+    array_push(ctx->control_targets, target);
 }
 
 internal void llvm_pop_control_target(LlvmFunctionContext* ctx,
                                       u32                  symbol_handle)
 {
-    if (symbol_handle != U32_MAX && array_count(ctx->control_targets) > 0) {
+    (void)symbol_handle;
+    if (array_count(ctx->control_targets) > 0) {
         array_pop(ctx->control_targets);
     }
 }
