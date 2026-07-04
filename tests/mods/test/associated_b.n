@@ -1,0 +1,11 @@
+pub B :: plex {
+    id i32
+}
+
+impl B {
+
+    pub new :: fn (_left: i32, _right: i32) -> Option[Self] {
+        return Some(Self { id: 0 })
+    }
+
+}

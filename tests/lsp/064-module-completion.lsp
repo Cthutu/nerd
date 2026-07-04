@@ -104,6 +104,14 @@ main :: fn () {}
         "id": 2,
         "result": [
             {
+                "label": "associated_a",
+                "kind": 9
+            },
+            {
+                "label": "associated_b",
+                "kind": 9
+            },
+            {
                 "label": "associated_parts",
                 "kind": 9
             },

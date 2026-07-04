@@ -13544,9 +13544,22 @@ internal bool sema_try_resolve_associated_call(const Lexer* lexer,
                                                bool* out_found,
                                                SemaResolvedMethodCall* out_call)
 {
-    const AstNode*     call_node = &ast->nodes[call_node_index];
-    const AstCallInfo* call      = &ast->calls[call_node->b];
-    *out_found                   = false;
+    const AstNode*     call_node     = &ast->nodes[call_node_index];
+    const AstCallInfo* call          = &ast->calls[call_node->b];
+    *out_found                       = false;
+
+    u32 associated_target_node_index = U32_MAX;
+    if (call_node->a < array_count(ast->nodes)) {
+        u32            callee_index = sema_unwrap_expr_node(ast, call_node->a);
+        const AstNode* callee       = &ast->nodes[callee_index];
+        if (callee->kind == AK_Field) {
+            associated_target_node_index = callee->a;
+        } else if (callee->kind == AK_Index &&
+                   callee->a < array_count(ast->nodes) &&
+                   ast->nodes[callee->a].kind == AK_Field) {
+            associated_target_node_index = ast->nodes[callee->a].a;
+        }
+    }
 
     for (u32 i = 0; i < array_count(sema->methods); ++i) {
         const SemaMethod* method = &sema->methods[i];
@@ -13582,6 +13595,37 @@ internal bool sema_try_resolve_associated_call(const Lexer* lexer,
                                               source_method,
                                               explicit_trait_symbol)) {
             continue;
+        }
+
+        if (explicit_trait_symbol == U32_MAX &&
+            associated_target_node_index < array_count(ast->nodes) &&
+            source_method->target_type_node_index <
+                array_count(source_ast->nodes)) {
+            u32 target_node_index = associated_target_node_index;
+            while (ast->nodes[target_node_index].kind == AK_Expression ||
+                   ast->nodes[target_node_index].kind == AK_Statement) {
+                target_node_index = ast->nodes[target_node_index].a;
+            }
+
+            u32 source_target_node_index =
+                source_method->target_type_node_index;
+            while (source_ast->nodes[source_target_node_index].kind ==
+                       AK_Expression ||
+                   source_ast->nodes[source_target_node_index].kind ==
+                       AK_Statement) {
+                source_target_node_index =
+                    source_ast->nodes[source_target_node_index].a;
+            }
+
+            const AstNode* target_node = &ast->nodes[target_node_index];
+            const AstNode* source_target_node =
+                &source_ast->nodes[source_target_node_index];
+            if (target_node->kind == AK_SymbolRef &&
+                source_target_node->kind == AK_SymbolRef &&
+                !string_eq(lex_symbol(lexer, target_node->a),
+                           lex_symbol(source_lexer, source_target_node->a))) {
+                continue;
+            }
         }
 
         const SemaDecl* source_decl = &source_sema->decls[source_decl_index];
