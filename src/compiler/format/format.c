@@ -2119,10 +2119,11 @@ internal bool format_emit_wrapped_method_chain_if_long(StringBuilder* sb,
         return false;
     }
 
+    usize continuation_prefix_width = prefix_width + dots[0];
     for (u32 i = 1; i < array_count(dots); ++i) {
         usize start = dots[i];
         usize end   = i + 1 < array_count(dots) ? dots[i + 1] : single.count;
-        if (prefix_width + (end - start) > FORMAT_WRAP_WIDTH) {
+        if (continuation_prefix_width + (end - start) > FORMAT_WRAP_WIDTH) {
             array_free(dots);
             if (has_arena) {
                 arena_done(&arena);
@@ -2136,7 +2137,7 @@ internal bool format_emit_wrapped_method_chain_if_long(StringBuilder* sb,
         usize start = dots[i];
         usize end   = i + 1 < array_count(dots) ? dots[i + 1] : single.count;
         sb_append_char(sb, '\n');
-        format_emit_spaces(sb, prefix_width);
+        format_emit_spaces(sb, continuation_prefix_width);
         sb_append_string(sb, string_from(single.data + start, end - start));
     }
 
@@ -8626,6 +8627,12 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
         u32  comment_count_before = 0;
         bool has_comments_before  = format_trivia_comments_before_token(
             &trivia, i, &first_comment_before, &comment_count_before);
+        bool current_starts_binding =
+            kind == TK_Symbol &&
+            (next_kind == TK_Colon || next_kind == TK_Equal);
+        if (in_on_header && newlines_before > 0 && current_starts_binding) {
+            in_on_header = false;
+        }
         bool suppress_newline_before =
             in_on_header && !has_comments_before && newlines_before > 0;
         if (has_comments_before) {

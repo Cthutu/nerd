@@ -32,6 +32,8 @@ int compiler_cmd_format(const NerdFormatConfig* config)
         bool   ok       = format_file_to_string(input_path, &arena, &rendered);
         if (ok) {
             fwrite(rendered.data, 1, rendered.count, stdout);
+        } else {
+            error_runtime("Failed to format source");
         }
         arena_done(&arena);
         return ok ? 0 : 1;
@@ -48,6 +50,9 @@ int compiler_cmd_format(const NerdFormatConfig* config)
             input_path);
     }
     bool ok = format_file(input_path, output_path);
+    if (!ok) {
+        error_runtime("Failed to format source");
+    }
 
     arena_done(&arena);
     return ok ? 0 : 1;
