@@ -563,13 +563,12 @@ internal bool lsp_stage_document(LspState*    state,
     error_system_set_mode(ERROR_RENDER_DIAGNOSTICS);
     error_system_set_emit_output(false);
     FrontEndOptions options = {
-        .verbose              = false,
-        .release              = false,
-        .require_entry_point  = false,
-        .skip_hir_generation  = true,
-        .keep_partial_results = true,
-        .module_root_source_path =
-            state != NULL ? state->workspace_root_source_path : (string){0},
+        .verbose                   = false,
+        .release                   = false,
+        .require_entry_point       = false,
+        .skip_hir_generation       = true,
+        .keep_partial_results      = true,
+        .module_root_source_path   = {0},
         .module_source_loader      = lsp_load_open_module_source,
         .module_source_loader_data = state,
     };

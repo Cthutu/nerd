@@ -45,7 +45,6 @@ DEF_MAP(LspDocumentMap,
 typedef struct {
     Arena          arena;
     LspDocumentMap documents;
-    string         workspace_root_source_path;
 } LspState;
 
 typedef struct {

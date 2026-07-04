@@ -223,6 +223,8 @@ int lsp_run(void)
 
 void lsp_handle_initialise(LspState* state, const LspMessage* message)
 {
+    (void)state;
+
     JsonValue* response = lsp_prepare_response(message);
     JsonValue* result   = json_new_object(message->arena);
 
@@ -250,15 +252,6 @@ void lsp_handle_initialise(LspState* state, const LspMessage* message)
     if (root_uri && root_uri->kind == JSON_STRING) {
         string uri = json_string(root_uri);
         if (uri.count > 0) {
-            StringBuilder sb = {0};
-            sb_init(&sb, &state->arena);
-            sb_append_string(&sb, uri);
-            if (uri.data[uri.count - 1] != '/' &&
-                uri.data[uri.count - 1] != '\\') {
-                sb_append_char(&sb, '/');
-            }
-            sb_append_cstr(&sb, "__workspace__.n");
-            state->workspace_root_source_path = sb_to_string(&sb);
             lsp_log("Workspace root: " STRINGP, STRINGV(uri));
         }
     }
