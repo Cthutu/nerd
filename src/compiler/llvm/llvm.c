@@ -5516,31 +5516,6 @@ internal void llvm_bind_symbol_value(LlvmFunctionContext* ctx,
     }
 }
 
-internal bool llvm_function_has_binder_symbol(LlvmFunctionContext* ctx,
-                                              const HirFunction*   function,
-                                              u32 symbol_handle)
-{
-    if (ctx->sema == NULL || symbol_handle == U32_MAX) {
-        return false;
-    }
-
-    for (u32 local_index = 0; local_index < array_count(ctx->sema->locals);
-         ++local_index) {
-        const SemaLocal* local = &ctx->sema->locals[local_index];
-        if (local->kind != SLK_Binder ||
-            local->symbol_handle != symbol_handle) {
-            continue;
-        }
-        if (function != NULL && function->decl_index != U32_MAX &&
-            local->owner_decl_index != function->decl_index) {
-            continue;
-        }
-        return true;
-    }
-
-    return false;
-}
-
 internal LlvmValue llvm_emit_pattern_compare(LlvmFunctionContext* ctx,
                                              const HirFunction*   function,
                                              LlvmValue            scrutinee,
@@ -5648,34 +5623,8 @@ internal LlvmValue llvm_emit_pattern_condition(LlvmFunctionContext* ctx,
             .value      = s("1"),
         };
     case HIR_PATTERN_Bind:
-        {
-            LlvmValue bound = scrutinee;
-            if (pattern->symbol_handle != U32_MAX &&
-                llvm_type_is_record(ctx->sema, scrutinee.type_index)) {
-                u32 field_index = llvm_record_field_index(
-                    ctx->sema, scrutinee.type_index, pattern->symbol_handle);
-                if (field_index != U32_MAX) {
-                    string temp = llvm_temp(ctx);
-                    string record_type =
-                        llvm_type_string(ctx, scrutinee.type_index);
-                    sb_format(ctx->sb,
-                              "  " STRINGP " = extractvalue " STRINGP
-                              " " STRINGP ", %u\n",
-                              STRINGV(temp),
-                              STRINGV(record_type),
-                              STRINGV(scrutinee.value),
-                              field_index);
-                    bound = (LlvmValue){
-                        .ok         = true,
-                        .type_index = llvm_record_field_type(
-                            ctx->sema, scrutinee.type_index, field_index),
-                        .value = temp,
-                    };
-                }
-            }
-            llvm_bind_symbol_value(
-                ctx, function, pattern->symbol_handle, bound);
-        }
+        llvm_bind_symbol_value(
+            ctx, function, pattern->symbol_handle, scrutinee);
         return (LlvmValue){
             .ok         = true,
             .type_index = sema_no_type(),
@@ -5857,44 +5806,6 @@ internal LlvmValue llvm_emit_pattern_condition(LlvmFunctionContext* ctx,
             if (!variant_payload.ok) {
                 return (LlvmValue){0};
             }
-            if (!payload_is_tuple &&
-                llvm_type_kind(ctx->sema, variant_payload_type) == STK_Plex) {
-                u32 field_count =
-                    llvm_record_field_count(ctx->sema, variant_payload_type);
-                string variant_payload_type_string =
-                    llvm_type_string(ctx, variant_payload_type);
-                for (u32 field_index = 0; field_index < field_count;
-                     ++field_index) {
-                    u32 field_symbol =
-                        ctx->sema->type_param_symbols
-                            [ctx->sema->types[variant_payload_type]
-                                 .first_param_type +
-                             field_index];
-                    if (!llvm_function_has_binder_symbol(
-                            ctx, function, field_symbol)) {
-                        continue;
-                    }
-
-                    string field_value = llvm_temp(ctx);
-                    sb_format(ctx->sb,
-                              "  " STRINGP " = extractvalue " STRINGP
-                              " " STRINGP ", %u\n",
-                              STRINGV(field_value),
-                              STRINGV(variant_payload_type_string),
-                              STRINGV(variant_payload.value),
-                              field_index);
-                    llvm_bind_symbol_value(
-                        ctx,
-                        function,
-                        field_symbol,
-                        (LlvmValue){
-                            .ok         = true,
-                            .type_index = llvm_record_field_type(
-                                ctx->sema, variant_payload_type, field_index),
-                            .value = field_value,
-                        });
-                }
-            }
             for (u32 i = 0; i < pattern->child_count; ++i) {
                 u32 child_index = pattern->first_child + i;
                 if (child_index >= array_count(ctx->hir->pattern_children)) {
@@ -5924,7 +5835,7 @@ internal LlvmValue llvm_emit_pattern_condition(LlvmFunctionContext* ctx,
                     &ctx->hir->pattern_children[child_index];
                 if (!payload_is_tuple &&
                     llvm_type_is_record(ctx->sema, variant_payload_type) &&
-                    child->symbol_handle != U32_MAX) {
+                    child->has_field_name && child->symbol_handle != U32_MAX) {
                     u32 field_index = llvm_record_field_index(
                         ctx->sema, variant_payload_type, child->symbol_handle);
                     if (field_index == U32_MAX) {

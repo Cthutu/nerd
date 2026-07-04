@@ -2419,6 +2419,7 @@ internal u32 hir_lower_pattern(Hir*         hir,
                                .symbol_handle = U32_MAX,
                                .pattern_index = hir_lower_pattern(
                                    hir, lexer, ast, sema, child),
+                               .has_field_name = false,
                            });
             }
             return hir_add_pattern(hir,
@@ -2440,6 +2441,7 @@ internal u32 hir_lower_pattern(Hir*         hir,
                                .symbol_handle = field->symbol_handle,
                                .pattern_index = hir_lower_pattern(
                                    hir, lexer, ast, sema, field->pattern_index),
+                               .has_field_name = true,
                            });
             }
             return hir_add_pattern(hir,
@@ -2481,6 +2483,7 @@ internal u32 hir_lower_pattern(Hir*         hir,
                                            ast,
                                            sema,
                                            field->pattern_index),
+                                       .has_field_name = true,
                                    });
                     }
                 }
@@ -2493,6 +2496,7 @@ internal u32 hir_lower_pattern(Hir*         hir,
                                    .symbol_handle = U32_MAX,
                                    .pattern_index = hir_lower_pattern(
                                        hir, lexer, ast, sema, child),
+                                   .has_field_name = false,
                                });
                 }
             }

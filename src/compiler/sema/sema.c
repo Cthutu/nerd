@@ -2834,6 +2834,61 @@ internal u32 sema_unwrap_type_candidate_node(const Ast* ast, u32 node_index)
     return node_index;
 }
 
+internal bool sema_type_syntax_contains_self(const Lexer* lexer,
+                                             const Ast*   ast,
+                                             u32          node_index)
+{
+    node_index = sema_unwrap_type_candidate_node(ast, node_index);
+    if (node_index >= array_count(ast->nodes)) {
+        return false;
+    }
+
+    const AstNode* node = &ast->nodes[node_index];
+    switch (node->kind) {
+    case AK_SymbolRef:
+        return string_eq(lex_symbol(lexer, node->a), s("Self"));
+
+    case AK_TypeApply:
+        {
+            if (node->a >= array_count(ast->type_applications)) {
+                return false;
+            }
+            const AstTypeApplyInfo* apply = &ast->type_applications[node->a];
+            if (sema_type_syntax_contains_self(
+                    lexer, ast, apply->target_node_index)) {
+                return true;
+            }
+            for (u32 i = 0; i < apply->arg_count; ++i) {
+                if (sema_type_syntax_contains_self(
+                        lexer, ast, ast->tuple_items[apply->first_arg + i])) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+    case AK_TypeTuple:
+        for (u32 i = 0; i < node->b; ++i) {
+            if (sema_type_syntax_contains_self(
+                    lexer, ast, ast->tuple_items[node->a + i])) {
+                return true;
+            }
+        }
+        return false;
+
+    case AK_TypeArray:
+    case AK_TypeDynamicArray:
+        return sema_type_syntax_contains_self(lexer, ast, node->b);
+
+    case AK_TypeSlice:
+    case AK_TypePointer:
+        return sema_type_syntax_contains_self(lexer, ast, node->a);
+
+    default:
+        return false;
+    }
+}
+
 internal bool sema_node_is_type_syntax(const Ast* ast, u32 node_index)
 {
     node_index = sema_unwrap_type_candidate_node(ast, node_index);
@@ -5299,28 +5354,8 @@ internal bool sema_collect_decls_in_range(const Lexer*           lexer,
 
                 bool returns_self = false;
                 if (signature->return_type_node_index != U32_MAX) {
-                    u32 return_type = signature->return_type_node_index;
-                    while (ast->nodes[return_type].kind == AK_Expression ||
-                           ast->nodes[return_type].kind == AK_Statement) {
-                        return_type = ast->nodes[return_type].a;
-                    }
-                    const AstNode* return_node = &ast->nodes[return_type];
-                    if (return_node->kind == AK_SymbolRef &&
-                        string_eq(lex_symbol(lexer, return_node->a),
-                                  s("Self"))) {
-                        returns_self = true;
-                    } else if (return_node->kind == AK_TypePointer) {
-                        u32 pointee = return_node->a;
-                        while (ast->nodes[pointee].kind == AK_Expression ||
-                               ast->nodes[pointee].kind == AK_Statement) {
-                            pointee = ast->nodes[pointee].a;
-                        }
-                        const AstNode* pointee_node = &ast->nodes[pointee];
-                        returns_self =
-                            pointee_node->kind == AK_SymbolRef &&
-                            string_eq(lex_symbol(lexer, pointee_node->a),
-                                      s("Self"));
-                    }
+                    returns_self = sema_type_syntax_contains_self(
+                        lexer, ast, signature->return_type_node_index);
                 }
 
                 SemaDeclKind kind = (impl->generic_params_index != U32_MAX ||
@@ -13636,14 +13671,7 @@ internal bool sema_try_resolve_associated_call(const Lexer* lexer,
             array_free(source_arg_types);
             return false;
         }
-        u32 pointer_target =
-            sema_add_pointer_type(source_sema, source_target_type);
-        if (!sema_type_matches(
-                source_sema, source_return, source_target_type) &&
-            !sema_type_matches(source_sema, source_return, pointer_target)) {
-            array_free(source_arg_types);
-            continue;
-        }
+        (void)source_return;
 
         u32 required_count =
             sema_signature_required_param_count(source_ast, source_signature);

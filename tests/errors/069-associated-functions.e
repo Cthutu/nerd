@@ -28,11 +28,11 @@ main :: fn () -> i32 {
             "line": 14,
             "column": 23,
             "length": 1,
-            "message": "`init` is called through a type, so it must return `Self` or `^Self`"
+            "message": "`init` is called through a type, so its return type must contain `Self`"
         }
     ],
     "notes": [],
     "help": [
-        "Change the impl function return type to `Self` or `^Self`, or call it through a receiver value."
+        "Change the impl function return type to `Self`, `^Self`, or a type such as `Option[Self]`, or call it through a receiver value."
     ]
 }

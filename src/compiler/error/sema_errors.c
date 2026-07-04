@@ -1307,12 +1307,13 @@ bool error_0344_invalid_associated_function_return(NerdSource source,
                         ERROR_REF_PRIMARY,
                         span,
                         "`" STRINGP
-                        "` is called through a type, so it must return `Self` "
-                        "or `^Self`",
+                        "` is called through a type, so its return type must "
+                        "contain `Self`",
                         STRINGV(symbol));
     error_add_help(&error,
-                   "Change the impl function return type to `Self` or "
-                   "`^Self`, or call it through a receiver value.");
+                   "Change the impl function return type to `Self`, `^Self`, "
+                   "or a type such as `Option[Self]`, or call it through a "
+                   "receiver value.");
     error_render(&error);
     return false;
 }

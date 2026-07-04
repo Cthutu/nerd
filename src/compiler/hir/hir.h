@@ -293,8 +293,9 @@ typedef struct {
 } HirPattern;
 
 typedef struct {
-    u32 symbol_handle;
-    u32 pattern_index;
+    u32  symbol_handle;
+    u32  pattern_index;
+    bool has_field_name;
 } HirPatternChild;
 
 typedef struct {
