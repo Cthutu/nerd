@@ -889,6 +889,14 @@ internal void format_emit_expr_with_indent(StringBuilder* sb,
                                            u32            node_index,
                                            int            parent_precedence,
                                            u32            indent_level);
+internal bool
+format_emit_block_form_on_single_line_if_fits(StringBuilder* sb,
+                                              const Cst*     cst,
+                                              const Lexer*   lexer,
+                                              u32            node_index,
+                                              int            parent_precedence,
+                                              usize          prefix_width,
+                                              u32            indent_level);
 
 typedef struct {
     u32    node_index;
@@ -1741,6 +1749,48 @@ internal void format_emit_expr(StringBuilder* sb,
     }
 }
 
+internal bool
+format_emit_block_form_on_single_line_if_fits(StringBuilder* sb,
+                                              const Cst*     cst,
+                                              const Lexer*   lexer,
+                                              u32            node_index,
+                                              int            parent_precedence,
+                                              usize          prefix_width,
+                                              u32            indent_level)
+{
+    if (!format_node_is_block_form_on(cst, node_index)) {
+        return false;
+    }
+
+    const CstNode*   node = &cst->nodes[node_index];
+    const CstOnInfo* on   = &cst->ons[node->b];
+    if (on->branch_count > 2) {
+        return false;
+    }
+
+    Arena temp_arena = {0};
+    arena_init(&temp_arena);
+
+    StringBuilder single_line = {0};
+    sb_init(&single_line, &temp_arena);
+
+    u32 saved_indent           = g_format_expr_indent_level;
+    g_format_expr_indent_level = indent_level;
+    format_emit_expr(&single_line, cst, lexer, node_index, parent_precedence);
+    g_format_expr_indent_level = saved_indent;
+
+    string rendered            = sb_to_string(&single_line);
+    if (!format_string_has_newline(rendered) &&
+        prefix_width + rendered.count <= FORMAT_WRAP_WIDTH) {
+        sb_append_string(sb, rendered);
+        arena_done(&temp_arena);
+        return true;
+    }
+
+    arena_done(&temp_arena);
+    return false;
+}
+
 internal void format_emit_expr_with_indent(StringBuilder* sb,
                                            const Cst*     cst,
                                            const Lexer*   lexer,
@@ -1751,8 +1801,17 @@ internal void format_emit_expr_with_indent(StringBuilder* sb,
     u32 saved_indent           = g_format_expr_indent_level;
     g_format_expr_indent_level = indent_level;
     if (format_node_is_block_form_on(cst, node_index)) {
-        format_emit_on_block_multiline(
-            sb, cst, lexer, node_index, indent_level);
+        if (!format_emit_block_form_on_single_line_if_fits(
+                sb,
+                cst,
+                lexer,
+                node_index,
+                parent_precedence,
+                format_sb_current_column(sb),
+                indent_level)) {
+            format_emit_on_block_multiline(
+                sb, cst, lexer, node_index, indent_level);
+        }
     } else {
         format_emit_expr(sb, cst, lexer, node_index, parent_precedence);
     }
@@ -7049,8 +7108,17 @@ internal void format_emit_block_statement(StringBuilder* sb,
         if (stmt->a != U32_MAX) {
             if (format_node_is_block_form_on(cst, stmt->a)) {
                 sb_append_char(sb, ' ');
-                format_emit_on_block_multiline(
-                    sb, cst, lexer, stmt->a, indent_level);
+                if (!format_emit_block_form_on_single_line_if_fits(
+                        sb,
+                        cst,
+                        lexer,
+                        stmt->a,
+                        0,
+                        (usize)indent_level * 4 + 7,
+                        indent_level)) {
+                    format_emit_on_block_multiline(
+                        sb, cst, lexer, stmt->a, indent_level);
+                }
             } else {
                 sb_append_char(sb, ' ');
                 format_emit_wrapped_call_expr_if_long(sb,
