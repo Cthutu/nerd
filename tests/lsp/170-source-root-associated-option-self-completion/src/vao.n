@@ -1,0 +1,14 @@
+use core
+
+pub VAO :: plex {
+    id i32
+}
+
+impl VAO {
+    pub new :: fn () -> Option[Self] {
+        return Some(Self { id: 1 })
+    }
+
+    pub bind :: fn (self: ^Self) {
+    }
+}

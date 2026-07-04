@@ -1298,7 +1298,9 @@ lsp_completion_match_ident_at(string source, usize* cursor, string ident);
 internal bool   lsp_completion_receiver_is_single_ident(string receiver);
 internal string lsp_completion_trim(string value);
 internal string lsp_completion_strip_comment(string line);
-internal void   lsp_completion_update_impl_depth(string line, i32* impl_depth);
+internal bool
+lsp_completion_line_contains_ident(string line, usize start, string ident);
+internal void lsp_completion_update_impl_depth(string line, i32* impl_depth);
 internal void
 lsp_completion_add_qualified_ast_on_payload_members(Arena*             arena,
                                                     JsonValue*         items,
@@ -1904,6 +1906,9 @@ internal bool lsp_completion_source_receiver_has_binding(string source,
             cursor++;
         }
         if (cursor < limit && source.data[cursor] == ':') {
+            if (cursor + 1 < limit && source.data[cursor + 1] == ':') {
+                continue;
+            }
             return true;
         }
     }
@@ -2290,7 +2295,7 @@ internal void lsp_completion_add_text_impl_methods(Arena*     arena,
                 i++;
             }
             if (first_param_is_receiver ||
-                !lsp_completion_match_ident_at(line, &i, s("Self"))) {
+                !lsp_completion_line_contains_ident(line, i, s("Self"))) {
                 lsp_completion_update_impl_depth(line, &impl_depth);
                 if (impl_depth <= 0) {
                     in_impl = false;
@@ -2396,8 +2401,7 @@ lsp_completion_add_text_impl_methods_from_uses(Arena*             arena,
     Arena temp = {0};
     arena_init(&temp);
 
-    (void)uri;
-    string current_path = {0};
+    string current_path = uri;
     usize  line_start   = 0;
     while (line_start < doc->source.count) {
         usize line_end = line_start;
@@ -2493,6 +2497,64 @@ internal void lsp_completion_add_imported_ast_methods(Arena*             arena,
         arena, items, doc, uri, type_name, false);
 }
 
+internal bool lsp_completion_ast_type_contains_symbol_with_self(
+    const Lexer* lexer, const Ast* ast, u32 type_node_index, u32 self_symbol)
+{
+    if (type_node_index >= array_count(ast->nodes)) {
+        return false;
+    }
+
+    const AstNode* type_node = &ast->nodes[type_node_index];
+    if (type_node->kind == AK_Expression || type_node->kind == AK_Statement ||
+        type_node->kind == AK_TypePointer) {
+        return lsp_completion_ast_type_contains_symbol_with_self(
+            lexer, ast, type_node->a, self_symbol);
+    }
+    if (type_node->kind == AK_SymbolRef) {
+        return type_node->a == self_symbol ||
+               (self_symbol != U32_MAX &&
+                string_eq(lex_symbol(lexer, type_node->a), s("Self")));
+    }
+    if (type_node->kind == AK_TypeApply) {
+        if (type_node->a >= array_count(ast->type_applications)) {
+            return false;
+        }
+        const AstTypeApplyInfo* apply = &ast->type_applications[type_node->a];
+        if (lsp_completion_ast_type_contains_symbol_with_self(
+                lexer, ast, apply->target_node_index, self_symbol)) {
+            return true;
+        }
+        for (u32 i = 0; i < apply->arg_count; ++i) {
+            u32 arg_index = apply->first_arg + i;
+            if (arg_index < array_count(ast->tuple_items) &&
+                lsp_completion_ast_type_contains_symbol_with_self(
+                    lexer, ast, ast->tuple_items[arg_index], self_symbol)) {
+                return true;
+            }
+        }
+        return false;
+    }
+    if (type_node->kind == AK_TypeTuple) {
+        for (u32 i = 0; i < type_node->b; ++i) {
+            if (lsp_completion_ast_type_contains_symbol_with_self(
+                    lexer, ast, type_node->a + i, self_symbol)) {
+                return true;
+            }
+        }
+        return false;
+    }
+    if (type_node->kind == AK_TypeArray) {
+        return lsp_completion_ast_type_contains_symbol_with_self(
+            lexer, ast, type_node->b, self_symbol);
+    }
+    if (type_node->kind == AK_TypeSlice ||
+        type_node->kind == AK_TypeDynamicArray) {
+        return lsp_completion_ast_type_contains_symbol_with_self(
+            lexer, ast, type_node->b, self_symbol);
+    }
+    return false;
+}
+
 internal bool lsp_completion_ast_method_is_associated(const Lexer*       lexer,
                                                       const Ast*         ast,
                                                       const AstImplInfo* impl,
@@ -2539,9 +2601,9 @@ internal bool lsp_completion_ast_method_is_associated(const Lexer*       lexer,
     if (signature->return_type_node_index == U32_MAX) {
         return false;
     }
-    u32 return_type = lsp_completion_ast_type_symbol_with_self(
-        lexer, ast, signature->return_type_node_index, target_symbol);
-    return return_type == target_symbol && !first_param_is_receiver;
+    return !first_param_is_receiver &&
+           lsp_completion_ast_type_contains_symbol_with_self(
+               lexer, ast, signature->return_type_node_index, target_symbol);
 }
 
 internal void lsp_completion_add_associated_ast_methods_from_module(
@@ -2612,6 +2674,8 @@ internal void lsp_completion_add_associated_methods(Arena*             arena,
             arena, items, &module, receiver);
     }
 
+    lsp_completion_add_text_impl_methods(
+        arena, items, doc->source, receiver, true);
     lsp_completion_add_text_impl_methods_from_uses(
         arena, items, doc, uri, receiver, true);
 }
@@ -2917,6 +2981,28 @@ internal string lsp_completion_strip_comment(string line)
         }
     }
     return line;
+}
+
+internal bool
+lsp_completion_line_contains_ident(string line, usize start, string ident)
+{
+    usize i = start;
+    while (i < line.count) {
+        if (!lsp_completion_is_ident_char(line.data[i])) {
+            i++;
+            continue;
+        }
+
+        usize ident_start = i;
+        while (i < line.count && lsp_completion_is_ident_char(line.data[i])) {
+            i++;
+        }
+        if (i - ident_start == ident.count &&
+            memcmp(line.data + ident_start, ident.data, ident.count) == 0) {
+            return true;
+        }
+    }
+    return false;
 }
 
 internal bool
