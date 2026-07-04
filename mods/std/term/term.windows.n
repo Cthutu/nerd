@@ -143,7 +143,8 @@ on "windows" {
 
     term_windows_input_record_key :: fn (record : INPUT_RECORD) -> Option[KeyCode] {
         on record.EventType != KEY_EVENT => return None
-        on record.UnicodeChar > 0 && record.UnicodeChar <= 127 => {
+        on record.UnicodeChar > 0 &&
+            record.UnicodeChar <= 127 => {
             return Some(record.UnicodeChar.as(u8).as(KeyCode))
         }
         return term_windows_virtual_key(record.wVirtualKeyCode)

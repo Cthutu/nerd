@@ -124,7 +124,8 @@ gfx_pixel_layer_resize :: fn (layer: ^PixelLayer, width: u16, height: u16) {
 
 -- Returns a clipped rectangle that fits inside the layer.
 gfx_pixel_layer_clip :: fn (layer: ^PixelLayer, rect: PixelRect) -> PixelRect {
-    on rect.x >= layer.width.as(u32) || rect.y >= layer.height.as(u32) => {
+    on rect.x >= layer.width.as(u32) ||
+        rect.y >= layer.height.as(u32) => {
         return PixelRect { x: rect.x y: rect.y width: 0 height: 0 }
     }
 
@@ -651,7 +652,8 @@ impl GfxSystem {
         for layer in system.pixel_layers {
             on layer.frame_id == frame.id => {
                 dimensions := gfx_pixel_layer_dimensions(frame, layer.mode)
-                on dimensions.width != layer.width || dimensions.height != layer.height => {
+                on dimensions.width != layer.width ||
+                    dimensions.height != layer.height => {
                     gfx_pixel_layer_resize(layer,
                                            dimensions.width,
                                            dimensions.height)
@@ -683,7 +685,9 @@ gfx_render_impl :: fn (system: ^GfxSystem, frame: ^Frame) {
         single_layer = layer
     }
 
-    on layer_count == 1 && single_layer != nil && gfx_pixel_layer_is_opaque(single_layer) => {
+    on layer_count == 1 &&
+        single_layer != nil &&
+        gfx_pixel_layer_is_opaque(single_layer) => {
         scale := gfx_pixel_layer_present_scale(frame, single_layer)
         offset := gfx_pixel_layer_present_offset(frame, single_layer, scale)
         draw_width := single_layer.width.as(u32) * scale.as(u32)

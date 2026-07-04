@@ -24,18 +24,21 @@ utf8_decode_storage_at :: fn (data  : ^u8,
 
     first := data[index].as(u32)
     on first < 0x80 => return (first, 1)
-    on (first & 0xe0) == 0xc0 && index + 1 < count => {
+    on (first & 0xe0) == 0xc0 &&
+        index + 1 < count => {
         second := data[index + 1].as(u32)
         codepoint := ((first & 0x1f) << 6) | (second & 0x3f)
         return (codepoint, 2)
     }
-    on (first & 0xf0) == 0xe0 && index + 2 < count => {
+    on (first & 0xf0) == 0xe0 &&
+        index + 2 < count => {
         second := data[index + 1].as(u32)
         third := data[index + 2].as(u32)
         codepoint := ((first & 0x0f) << 12) | ((second & 0x3f) << 6) | (third & 0x3f)
         return (codepoint, 3)
     }
-    on (first & 0xf8) == 0xf0 && index + 3 < count => {
+    on (first & 0xf8) == 0xf0 &&
+        index + 3 < count => {
         second := data[index + 1].as(u32)
         third := data[index + 2].as(u32)
         fourth := data[index + 3].as(u32)
@@ -81,10 +84,12 @@ pub encode_to :: fn (codepoint: u32, output: []u8) -> usize {
 
     on value < 0x80 => {
         output[0] = value.as(u8)
-    } else on (value < 0x800) => {
+    }
+        else on (value < 0x800) => {
         output[0] = (0xc0 | (value >> 6)).as(u8)
         output[1] = (0x80 | (value & 0x3f)).as(u8)
-    } else on (value < 0x10000) => {
+    }
+        else on (value < 0x10000) => {
         output[0] = (0xe0 | (value >> 12)).as(u8)
         output[1] = (0x80 | ((value >> 6) & 0x3f)).as(u8)
         output[2] = (0x80 | (value & 0x3f)).as(u8)

@@ -271,7 +271,8 @@ dungeon_remove_nearby_connectors :: fn (connector: Connector) {
         dx := dungeon_abs_i32(other.x - connector.x)
         dy := dungeon_abs_i32(other.y - connector.y)
 
-        on dx <= 1 && dy <= 1 => {
+        on dx <= 1 &&
+            dy <= 1 => {
             connectors.swap_delete(i)
             again
         }
@@ -298,7 +299,8 @@ dungeon_connect_regions :: fn (region_count: i32) {
         root_b := region_find(parents, connector.b)
         extra_loop := random_range_u64(0, 18) == 0
 
-        on root_a != root_b || extra_loop => {
+        on root_a != root_b ||
+            extra_loop => {
             dungeon_set(connector.x, connector.y, Tile.Door, connector.a)
             region_union(parents, root_a, root_b)
             dungeon_remove_nearby_connectors(connector)
@@ -449,7 +451,9 @@ dungeon_draw :: fn (width: u32, height: u32) {
 }
 
 dungeon_simulate :: fn (sim: TermSimulate) {
-    on term_key_pressed(sim.keyboard, LowerQ) || term_key_pressed(sim.keyboard, Q) || term_key_pressed(sim.keyboard, Escape) => {
+    on term_key_pressed(sim.keyboard, LowerQ) ||
+        term_key_pressed(sim.keyboard, Q) ||
+        term_key_pressed(sim.keyboard, Escape) => {
         term_done()
         return
     }
@@ -530,7 +534,8 @@ test "dungeon generation creates regioned passable cells" {
     for y: u32 = 0; y < map_height; y += 1 {
         for x: u32 = 0; x < map_width; x += 1 {
             cell := dungeon_cell(x.as(i32), y.as(i32))
-            on cell.tile == Tile.Floor || cell.tile == Tile.Door => {
+            on cell.tile == Tile.Floor ||
+                cell.tile == Tile.Door => {
                 on cell.region < 0 => valid = no
             }
         }

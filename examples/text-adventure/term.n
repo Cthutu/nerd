@@ -88,7 +88,8 @@ pub wrap :: fn (s: string, width: i32) -> [..]string {
     end    : usize      = 0
     result : [..]string
 
-    on width <= 0 || s.count == 0 => {
+    on width <= 0 ||
+        s.count == 0 => {
         result.push(s)
         return result
     }

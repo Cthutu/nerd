@@ -61,7 +61,8 @@ on "linux" {
     frame_linux_destroy_info :: fn (info: ^FrameInfo) {
         frame_linux_gl_done(info)
 
-        on info.platform_info.display != nil && info.platform_info.window != 0 => {
+        on info.platform_info.display != nil &&
+            info.platform_info.window != 0 => {
             _ := XDestroyWindow(info.platform_info.display,
                                 info.platform_info.window)
             _ := XFlush(info.platform_info.display)

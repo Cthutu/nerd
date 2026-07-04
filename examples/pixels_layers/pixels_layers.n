@@ -156,7 +156,8 @@ main :: fn () {
 
         background_layer := gfx.pixel(background)
         foreground_layer := gfx.pixel(foreground)
-        on background_layer != nil && foreground_layer != nil => {
+        on background_layer != nil &&
+            foreground_layer != nil => {
             draw_background(background_layer, tick)
             draw_foreground(foreground_layer, tick)
             gfx.render(^frame)

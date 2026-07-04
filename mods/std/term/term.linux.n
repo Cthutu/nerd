@@ -75,7 +75,8 @@ on "linux" {
             on text.data[index] == '\n' => {
                 on index > start => term_write(text[start..index])
 
-                on index == 0 || text.data[index - 1] != '\r' => {
+                on index == 0 ||
+                    text.data[index - 1] != '\r' => {
                     term_write_byte('\r')
                 }
                 term_write_byte('\n')
@@ -373,12 +374,14 @@ term_draw_too_small :: fn () {
 
     -- If even the status text cannot fit, the warning background still gives a
     -- visible signal that the app is intentionally withholding its normal view.
-    on term_fb_width >= term_text_display_width(message).as(u32) && term_fb_height >= 1 => {
+    on term_fb_width >= term_text_display_width(message).as(u32) &&
+        term_fb_height >= 1 => {
         center_y := term_fb_height.as(i32) / 2
         on term_fb_height >= 3 => center_y -= 1
         term_fb_text_centered(center_y, message, ink, paper)
 
-        on term_fb_width >= term_text_display_width(detail).as(u32) && term_fb_height >= 3 => {
+        on term_fb_width >= term_text_display_width(detail).as(u32) &&
+            term_fb_height >= 3 => {
             term_fb_text_centered(center_y + 1, detail, ink, paper)
         }
     }

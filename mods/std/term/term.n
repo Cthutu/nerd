@@ -424,14 +424,18 @@ term_fb_clear_wide_link :: fn (x: u32, y: u32) {
     index := term_fb_index(x, y)
     flags := term_fb_cells[index].flags
 
-    on (flags & CELL_WIDE_TAIL) != 0 && x > 0 && term_fb_index_valid(x - 1, y) => {
+    on (flags & CELL_WIDE_TAIL) != 0 &&
+        x > 0 &&
+        term_fb_index_valid(x - 1, y) => {
         head_index := term_fb_index(x - 1, y)
         term_fb_cells[head_index].ch = ' '.as(u32)
         term_fb_cells[head_index].flags &= ~CELL_WIDE_HEAD
         term_fb_cells[head_index].flags |= CELL_DIRTY
     }
 
-    on (flags & CELL_WIDE_HEAD) != 0 && x + 1 < term_fb_width && term_fb_index_valid(x + 1, y) => {
+    on (flags & CELL_WIDE_HEAD) != 0 &&
+        x + 1 < term_fb_width &&
+        term_fb_index_valid(x + 1, y) => {
         tail_index := term_fb_index(x + 1, y)
         term_fb_cells[tail_index].ch = ' '.as(u32)
         term_fb_cells[tail_index].flags &= ~CELL_WIDE_TAIL
@@ -524,7 +528,9 @@ term_fb_ensure :: fn () {
     on width == 0 => width = 1
     on height == 0 => height = 1
 
-    on !term_fb_ready || width != term_fb_width || height != term_fb_height => {
+    on !term_fb_ready ||
+        width != term_fb_width ||
+        height != term_fb_height => {
         _ := term_fb_resize(width, height)
     } else {
         term_view_reset()
@@ -532,7 +538,8 @@ term_fb_ensure :: fn () {
 }
 
 term_fb_prepare_rect :: fn (rect: RectI32) -> PreparedRect {
-    on !term_fb_ready || rect.is_empty() => {
+    on !term_fb_ready ||
+        rect.is_empty() => {
         empty := RectI32 { x: 0 y: 0 w: 0 h: 0 }
         return PreparedRect { ok: no rect: empty x_offset: 0 y_offset: 0 }
     }
@@ -567,7 +574,9 @@ term_fb_put_clipped :: fn (x     : u32,
     term_fb_cells[index].flags &= ~(CELL_WIDE_HEAD | CELL_WIDE_TAIL)
     term_fb_cells[index].flags |= CELL_DIRTY
 
-    on width == 2 && x + 1 < term_fb_width && term_fb_index_valid(x + 1, y) => {
+    on width == 2 &&
+        x + 1 < term_fb_width &&
+        term_fb_index_valid(x + 1, y) => {
         term_fb_clear_wide_link(x + 1, y)
         tail_index := term_fb_index(x + 1, y)
         term_fb_cells[index].flags |= CELL_WIDE_HEAD
@@ -712,7 +721,8 @@ pub term_fb_text :: fn (x     : i32,
         on decoded.1 == 0 => return
 
         width := term_codepoint_width(decoded.0)
-        on source_col >= clip.x_offset && source_col + width <= end_col => {
+        on source_col >= clip.x_offset &&
+            source_col + width <= end_col => {
             draw_x := clip.rect.x + source_col - clip.x_offset
             term_fb_put_clipped(draw_x.as(u32),
                                 clip.rect.y.as(u32),
@@ -999,7 +1009,9 @@ term_fb_present :: fn () {
                         on ch == 0 => ch = ' '.as(u32)
                         term_output_push_codepoint(^output, ch)
                         term_fb_cells[cell_index].flags &= ~CELL_DIRTY
-                        on (cell.flags & CELL_WIDE_HEAD) != 0 && x + 1 < term_fb_width && term_fb_index_valid(x + 1, y) => {
+                        on (cell.flags & CELL_WIDE_HEAD) != 0 &&
+                            x + 1 < term_fb_width &&
+                            term_fb_index_valid(x + 1, y) => {
                             tail_index := term_fb_index(x + 1, y)
                             term_fb_cells[tail_index].flags &= ~CELL_DIRTY
                             x += 2
@@ -1107,7 +1119,8 @@ term_read_decimal_until :: fn (first_terminator  : u8,
         byte := term_read_byte()
         on byte == 0 => return (no, 0, 0)
 
-        on byte >= '0' && byte <= '9' => {
+        on byte >= '0' &&
+            byte <= '9' => {
             seen  = yes
             value = value * 10 + (byte - '0').as(u32)
             again
@@ -1130,7 +1143,8 @@ term_read_decimal_until_csi_final :: fn () -> (bool, u32, u8) {
         byte := term_read_byte()
         on byte == 0 => return (no, 0, 0)
 
-        on byte >= '0' && byte <= '9' => {
+        on byte >= '0' &&
+            byte <= '9' => {
             seen  = yes
             value = value * 10 + (byte - '0').as(u32)
             again
@@ -1235,7 +1249,8 @@ term_read_csi_input_sequence :: fn () -> TermInputEvent {
 
     on first == '<' => return term_read_sgr_mouse_sequence()
 
-    on first >= '0' && first <= '9' => {
+    on first >= '0' &&
+        first <= '9' => {
         next := term_read_byte()
         on next == 0 => return TermInputEvent.None
 
@@ -1247,7 +1262,8 @@ term_read_csi_input_sequence :: fn () -> TermInputEvent {
         }
 
         terminator : u8 = 0
-        on next >= '0' && next <= '9' => {
+        on next >= '0' &&
+            next <= '9' => {
             terminator = term_read_byte()
         }
         key := term_csi_digit_key(first, next, terminator)

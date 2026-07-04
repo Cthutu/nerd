@@ -148,7 +148,8 @@ on "debug" {
     pub print_leaks :: fn (show_message_on_no_leaks: bool = no) {
         heap_current := nrt_mem_live_head()
         arena_current := nrt_arena_live_head()
-        on heap_current == nil && arena_current == nil => {
+        on heap_current == nil &&
+            arena_current == nil => {
             on show_message_on_no_leaks => eprn($"{ANSI_BOLD_GREEN}std.mem: no memory leaks detected{ANSI_RESET}")
             return
         }

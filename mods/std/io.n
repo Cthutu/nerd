@@ -25,7 +25,8 @@ append_chunk_until_enter :: fn (line: ^[..]u8, chunk: []u8) -> bool {
     done := no
     for i < chunk.count && !done {
         byte := chunk[i]
-        on byte == 10 || byte == 13 => {
+        on byte == 10 ||
+            byte == 13 => {
             done = yes
         } else {
             line^.push(byte)

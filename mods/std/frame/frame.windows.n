@@ -238,7 +238,8 @@ on "windows" {
                 return 0
             }
             WM_KEYDOWN => {
-                on info != nil && frame_windows_current_system != nil => {
+                on info != nil &&
+                    frame_windows_current_system != nil => {
                     scan_code := frame_windows_scan_code_from_virtual_key(wparam)
                     frame_windows_update_modifier_state(frame_windows_current_system,
                                                         scan_code,
@@ -250,7 +251,8 @@ on "windows" {
                 return 0
             }
             WM_SYSKEYDOWN => {
-                on info != nil && frame_windows_current_system != nil => {
+                on info != nil &&
+                    frame_windows_current_system != nil => {
                     scan_code := frame_windows_scan_code_from_virtual_key(wparam)
                     frame_windows_update_modifier_state(frame_windows_current_system,
                                                         scan_code,
@@ -262,7 +264,8 @@ on "windows" {
                 return 0
             }
             WM_KEYUP => {
-                on info != nil && frame_windows_current_system != nil => {
+                on info != nil &&
+                    frame_windows_current_system != nil => {
                     scan_code := frame_windows_scan_code_from_virtual_key(wparam)
                     frame_windows_update_modifier_state(frame_windows_current_system,
                                                         scan_code,
@@ -274,7 +277,8 @@ on "windows" {
                 return 0
             }
             WM_SYSKEYUP => {
-                on info != nil && frame_windows_current_system != nil => {
+                on info != nil &&
+                    frame_windows_current_system != nil => {
                     scan_code := frame_windows_scan_code_from_virtual_key(wparam)
                     frame_windows_update_modifier_state(frame_windows_current_system,
                                                         scan_code,
@@ -316,7 +320,8 @@ on "windows" {
         frame_windows_release_gl(info)
 
         window_alive := info.platform_info.window != nil && IsWindow(info.platform_info.window) != 0
-        on info.platform_info.device_context != nil && window_alive => {
+        on info.platform_info.device_context != nil &&
+            window_alive => {
             _ := ReleaseDC(info.platform_info.window,
                            info.platform_info.device_context)
         }
@@ -493,7 +498,8 @@ on "windows" {
         info.platform_info.resizable = frame.resizable
         frame_windows_apply_fullscreen(info, frame)
 
-        on !info.platform_info.full_screen && !was_full_screen => {
+        on !info.platform_info.full_screen &&
+            !was_full_screen => {
             style := frame_windows_window_style(frame.resizable)
             (window_width, window_height) := frame_windows_adjusted_rect(frame.width, frame.height, style, 0)
             _ := SetWindowLongPtr(info.platform_info.window,
@@ -701,7 +707,10 @@ on "windows" {
         on GetClientRect(info.platform_info.window, ^rect) != 0 => {
             client_width := rect.right - rect.left
             client_height := rect.bottom - rect.top
-            on buffer.x != 0 || buffer.y != 0 || buffer.draw_width.as(i32) < client_width || buffer.draw_height.as(i32) < client_height => {
+            on buffer.x != 0 ||
+                buffer.y != 0 ||
+                buffer.draw_width.as(i32) < client_width ||
+                buffer.draw_height.as(i32) < client_height => {
                 frame_windows_clear_client_if_needed(info,
                                                      client_width,
                                                      client_height,

@@ -95,7 +95,8 @@ matrix_draw :: fn (width: u32, height: u32) {
 
         for distance: u32 = 0; distance < column.length; distance += 1 {
             y := column.head - distance.as(i32)
-            on y >= 0 && y < height.as(i32) => {
+            on y >= 0 &&
+                y < height.as(i32) => {
                 colour := matrix_trail_colour(distance, column.length)
                 glyph := matrix_glyph(x, y.as(u32), frame + distance.as(u64))
                 term_fb_put(x.as(i32), y, glyph, colour, rgb(0, 0, 0))
@@ -108,7 +109,9 @@ matrix_draw :: fn (width: u32, height: u32) {
 }
 
 matrix_simulate :: fn (sim: TermSimulate) {
-    on term_key_pressed(sim.keyboard, LowerQ) || term_key_pressed(sim.keyboard, Q) || term_key_pressed(sim.keyboard, Escape) => {
+    on term_key_pressed(sim.keyboard, LowerQ) ||
+        term_key_pressed(sim.keyboard, Q) ||
+        term_key_pressed(sim.keyboard, Escape) => {
         term_done()
         return
     }
