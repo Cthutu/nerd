@@ -12755,6 +12755,7 @@ internal bool llvm_emit_let(LlvmFunctionContext* ctx,
     if (!value.ok) {
         return false;
     }
+    llvm_debug_emit_marker(ctx, stmt->source_line, stmt->source_path);
     if (!llvm_consume_box_expr(
             ctx, stmt->expr_index, stmt->type_index, stmt->local_index)) {
         return false;
@@ -12951,6 +12952,7 @@ internal bool llvm_emit_assign_stmt(LlvmFunctionContext* ctx,
     if (!value.ok) {
         return false;
     }
+    llvm_debug_emit_marker(ctx, stmt->source_line, stmt->source_path);
     u32 excluded_local = U32_MAX;
     if (stmt->target_expr_index < array_count(ctx->hir->exprs)) {
         const HirExpr* target = &ctx->hir->exprs[stmt->target_expr_index];
@@ -13051,6 +13053,7 @@ internal bool llvm_emit_destructure(LlvmFunctionContext* ctx,
     if (!value.ok) {
         return false;
     }
+    llvm_debug_emit_marker(ctx, stmt->source_line, stmt->source_path);
 
     string tuple_type       = llvm_type_string(ctx, value.type_index);
     Array(LlvmValue) fields = NULL;
