@@ -1,0 +1,5 @@
+use test.public_impl
+
+pub helper :: fn () -> i32 {
+    return 1
+}

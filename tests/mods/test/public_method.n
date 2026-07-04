@@ -1,0 +1,15 @@
+pub Widget :: plex {
+    value i32
+}
+
+impl Widget {
+
+    pub init :: fn (value: i32) -> Self {
+        return Widget { value: value }
+    }
+
+    pub get :: fn (widget: Self) -> i32 {
+        return widget.value
+    }
+
+}

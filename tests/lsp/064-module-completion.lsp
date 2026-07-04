@@ -216,7 +216,19 @@ main :: fn () {}
                 "kind": 9
             },
             {
+                "label": "private_public_impl_import",
+                "kind": 9
+            },
+            {
+                "label": "private_public_method_import",
+                "kind": 9
+            },
+            {
                 "label": "public_impl",
+                "kind": 9
+            },
+            {
+                "label": "public_method",
                 "kind": 9
             },
             {

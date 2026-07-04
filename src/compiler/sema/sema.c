@@ -3103,6 +3103,16 @@ internal void sema_import_method_for_decl(Lexer*       dst_lexer,
         });
 }
 
+internal bool sema_module_exports_decl(const ModuleInfo* module, u32 decl_index)
+{
+    for (u32 i = 0; i < array_count(module->export_decl_indices); ++i) {
+        if (module->export_decl_indices[i] == decl_index) {
+            return true;
+        }
+    }
+    return false;
+}
+
 internal void sema_import_public_methods_from_module(Lexer* dst_lexer,
                                                      Sema*  sema,
                                                      const ModuleInfo* module,
@@ -3119,6 +3129,11 @@ internal void sema_import_public_methods_from_module(Lexer* dst_lexer,
 
         const SemaDecl* source_decl =
             &source_sema->decls[source_method->decl_index];
+        if (source_decl->import_module_index != sema_no_decl() &&
+            !sema_module_exports_decl(module, source_method->decl_index)) {
+            continue;
+        }
+
         u32 symbol = sema_import_symbol_handle(
             dst_lexer, source_lexer, source_decl->symbol_handle);
         u32 type = sema_import_type(dst_lexer,
