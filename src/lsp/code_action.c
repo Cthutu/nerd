@@ -1064,7 +1064,11 @@ internal bool lsp_code_action_symbol_ref_is_resolved(const LspDocument* doc,
         u32 local = i < array_count(sema->node_local_indices)
                         ? sema->node_local_indices[i]
                         : sema_no_local();
-        return decl != sema_no_decl() || local != sema_no_local();
+        u32 type  = i < array_count(sema->node_type_indices)
+                        ? sema->node_type_indices[i]
+                        : sema_no_type();
+        return decl != sema_no_decl() || local != sema_no_local() ||
+               type != sema_no_type();
     }
 
     return true;
