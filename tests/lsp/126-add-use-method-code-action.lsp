@@ -102,7 +102,7 @@ main :: fn () {
                     },
                     "severity": 1,
                     "source": "nerd",
-                    "message": "Type mismatch: expected `string field `.data`, `.count`, or `.bytes``, found `split_words`",
+                    "message": "Type mismatch: expected `string field .data, .count, .bytes, or defined method`, found `split_words`",
                     "relatedInformation": [
                         {
                             "location": {

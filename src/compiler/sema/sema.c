@@ -17613,13 +17613,16 @@ internal bool sema_infer_node_type(const Lexer* lexer,
             } else {
                 string expected =
                     sema->types[field_target_type].kind == STK_String
-                        ? s("string field `.data`, `.count`, or `.bytes`")
+                        ? s("string field .data, .count, .bytes, or defined "
+                            "method")
                     : sema->types[field_target_type].kind == STK_DynamicArray
-                        ? s("dynamic array field `.data`, `.count`, "
-                            "`.capacity`, or method")
+                        ? s("dynamic array field .data, .count, .capacity, "
+                            "or defined method")
                     : sema->types[field_target_type].kind == STK_Array
-                        ? s("array field `.data`, `.count`, or `.bytes`")
-                        : s("slice field `.data`, `.count`, or `.bytes`");
+                        ? s("array field .data, .count, .bytes, or defined "
+                            "method")
+                        : s("slice field .data, .count, .bytes, or defined "
+                            "method");
                 return error_0304_type_mismatch(lexer->source,
                                                 sema_node_span(lexer, node),
                                                 expected,

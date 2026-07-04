@@ -2,11 +2,11 @@ use std.io
 
 main :: fn () {
     text :: "hello"
-    prn($"{text.len}")
+    prn($"{text.c_string}")
 }
 ¬
 {
-    "message": "Type mismatch: expected `string field `.data`, `.count`, or `.bytes``, found `len`",
+    "message": "Type mismatch: expected `string field .data, .count, .bytes, or defined method`, found `c_string`",
     "source_file": "tests/errors/027-string-slices.e",
     "primary_location": {
         "line": 5,
@@ -17,8 +17,8 @@ main :: fn () {
             "kind": "primary",
             "line": 5,
             "column": 17,
-            "length": 3,
-            "message": "This expression has type `len`"
+            "length": 8,
+            "message": "This expression has type `c_string`"
         }
     ],
     "notes": [],
