@@ -135,21 +135,59 @@ lsp_completion_member_context(string source, usize offset, string* out_receiver)
 
     usize receiver_end   = prefix_start - 1;
     usize receiver_start = receiver_end;
+    i32   paren_depth    = 0;
+    i32   bracket_depth  = 0;
     while (receiver_start > 0) {
-        usize ident_end   = receiver_start;
-        usize ident_start = ident_end;
-        while (ident_start > 0 &&
-               lsp_completion_is_ident_char(source.data[ident_start - 1])) {
-            ident_start--;
+        u8 c = source.data[receiver_start - 1];
+        if (c == ')') {
+            paren_depth++;
+            receiver_start--;
+            continue;
         }
-        if (ident_start == ident_end) {
+        if (c == ']') {
+            bracket_depth++;
+            receiver_start--;
+            continue;
+        }
+        if (c == '(') {
+            if (paren_depth == 0) {
+                break;
+            }
+            paren_depth--;
+            receiver_start--;
+            continue;
+        }
+        if (c == '[') {
+            if (bracket_depth == 0) {
+                break;
+            }
+            bracket_depth--;
+            receiver_start--;
+            continue;
+        }
+        if (paren_depth > 0 || bracket_depth > 0) {
+            receiver_start--;
+            continue;
+        }
+
+        if (lsp_completion_is_ident_char(c) || c == '.') {
+            receiver_start--;
+            continue;
+        }
+        if (c == ' ' || c == '\t') {
+            usize cursor = receiver_start;
+            while (cursor > 0 && (source.data[cursor - 1] == ' ' ||
+                                  source.data[cursor - 1] == '\t')) {
+                cursor--;
+            }
+            if (cursor > 0 &&
+                lsp_completion_is_ident_char(source.data[cursor - 1])) {
+                receiver_start = cursor;
+                continue;
+            }
             break;
         }
-        receiver_start = ident_start;
-        if (receiver_start == 0 || source.data[receiver_start - 1] != '.') {
-            break;
-        }
-        receiver_start--;
+        break;
     }
 
     string receiver = {
@@ -980,6 +1018,53 @@ lsp_completion_module_method_matches_receiver(const LspDocument*   doc,
     bool source_is_target = false;
     if (!lsp_completion_method_receiver_type(
             module->sema, method, &source_type)) {
+        if (method->generic_params_index != U32_MAX &&
+            method->generic_params_index <
+                array_count(module->ast->generic_params)) {
+            const Lexer* lexer       = &doc->front_end.lexer;
+            const Sema*  sema        = &doc->front_end.sema;
+            u32 source_receiver_type = sema_import_type((Lexer*)module->lexer,
+                                                        (Sema*)module->sema,
+                                                        lexer,
+                                                        sema,
+                                                        receiver_type);
+            Array(u32) source_arg_types = NULL;
+            const AstGenericParams* generic =
+                &module->ast->generic_params[method->generic_params_index];
+            for (u32 i = 0; i < generic->symbol_count; ++i) {
+                array_push(source_arg_types, sema_no_type());
+            }
+            if (sema_bind_generic_type_node(module->lexer,
+                                            module->ast,
+                                            (Sema*)module->sema,
+                                            generic,
+                                            method->target_type_node_index,
+                                            source_receiver_type,
+                                            source_arg_types)) {
+                source_type = source_receiver_type;
+            } else if (source_receiver_type != sema_no_type() &&
+                       source_receiver_type <
+                           array_count(module->sema->types) &&
+                       module->sema->types[source_receiver_type].kind ==
+                           STK_Pointer) {
+                u32 pointee =
+                    module->sema->types[source_receiver_type].first_param_type;
+                if (sema_bind_generic_type_node(module->lexer,
+                                                module->ast,
+                                                (Sema*)module->sema,
+                                                generic,
+                                                method->target_type_node_index,
+                                                pointee,
+                                                source_arg_types)) {
+                    source_type = pointee;
+                }
+            }
+            array_free(source_arg_types);
+        }
+        if (source_type != sema_no_type()) {
+            goto match_source_type;
+        }
+
         u32 target_node_index = method->target_type_node_index;
         while (target_node_index < array_count(module->ast->nodes) &&
                (module->ast->nodes[target_node_index].kind == AK_Expression ||
@@ -1012,6 +1097,7 @@ lsp_completion_module_method_matches_receiver(const LspDocument*   doc,
         }
     }
 
+match_source_type:
     const Lexer* lexer       = &doc->front_end.lexer;
     const Sema*  sema        = &doc->front_end.sema;
     u32          target_type = sema_import_type(
@@ -1170,9 +1256,8 @@ internal string lsp_completion_repair_member_line(Arena* arena,
     sb_append_string(&sb,
                      (string){.data  = source.data + line_start,
                               .count = indent_end - line_start});
-    sb_append_cstr(&sb, "_ := ");
+    sb_append_cstr(&sb, "__nerd_completion_probe := ");
     sb_append_string(&sb, receiver);
-    sb_append_cstr(&sb, ".__nerd_completion_probe");
     sb_append_string(&sb,
                      (string){.data  = source.data + line_end,
                               .count = source.count - line_end});
@@ -1227,6 +1312,25 @@ lsp_completion_add_source_on_payload_members(Arena*             arena,
                                              string             uri,
                                              usize              offset,
                                              string             receiver);
+
+internal u32 lsp_completion_probe_receiver_type(const LspDocument* doc)
+{
+    const Lexer* lexer = &doc->front_end.lexer;
+    const Sema*  sema  = &doc->front_end.sema;
+
+    for (u32 i = 0; i < array_count(sema->locals); ++i) {
+        const SemaLocal* local = &sema->locals[i];
+        if (local->symbol_handle == U32_MAX ||
+            !string_eq(lex_symbol(lexer, local->symbol_handle),
+                       s("__nerd_completion_probe")) ||
+            local->type_index == sema_no_type()) {
+            continue;
+        }
+
+        return local->type_index;
+    }
+    return sema_no_type();
+}
 
 internal void lsp_completion_add_repaired_members(Arena*             arena,
                                                   JsonValue*         items,
@@ -1299,11 +1403,12 @@ internal void lsp_completion_add_repaired_members(Arena*             arena,
             program.modules[i].front_end.sema.program = &program;
         }
         repaired_doc.front_end.sema.program = &program;
-        lsp_completion_add_members(
-            arena,
-            items,
-            &repaired_doc,
-            lsp_completion_type_for_receiver(&repaired_doc, receiver, offset));
+        u32 receiver_type = lsp_completion_probe_receiver_type(&repaired_doc);
+        if (receiver_type == sema_no_type()) {
+            receiver_type = lsp_completion_type_for_receiver(
+                &repaired_doc, receiver, offset);
+        }
+        lsp_completion_add_members(arena, items, &repaired_doc, receiver_type);
         lsp_completion_add_imported_ast_methods(
             arena, items, &repaired_doc, uri, receiver, offset);
         if (array_count(items->array.values) == 0) {

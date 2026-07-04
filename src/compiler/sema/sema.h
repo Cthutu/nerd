@@ -76,6 +76,12 @@ typedef enum : u16 {
     STF_FunctionVarargs = 1 << 2,
 } SemaTypeFlag;
 
+typedef struct {
+    const u32* param_symbols;
+    const u32* arg_types;
+    u32        count;
+} SemaTypeSubstitution;
+
 //------------------------------------------------------------------------------
 // A top-level declaration collected from an AK_Bind node.
 
@@ -224,5 +230,12 @@ string sema_type_name(const Lexer* lexer,
                       const Sema*  sema,
                       Arena*       arena,
                       u32          type_index);
+bool   sema_bind_generic_type_node(const Lexer*            lexer,
+                                   const Ast*              ast,
+                                   Sema*                   sema,
+                                   const AstGenericParams* generic,
+                                   u32                     type_node_index,
+                                   u32                     actual_type,
+                                   Array(u32) arg_types);
 
 //------------------------------------------------------------------------------

@@ -1,15 +1,20 @@
-FrameInfo :: plex {
-    handle u64
+use core
+
+VAO :: plex {
+    id i32
 }
 
-FrameSystem :: plex {
-    frames [..]FrameInfo
-}
-
-impl FrameSystem {
-    done :: fn (fs: ^Self) {
-        fs.frames.
+impl VAO {
+    new :: fn () -> Option[Self] {
+        return Some(Self { id: 1 })
     }
+
+    bind :: fn (self: ^Self) {
+    }
+}
+
+main :: fn () {
+    VAO.new().expect("missing").
 }
 ¬
 [
@@ -22,8 +27,8 @@ impl FrameSystem {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 10,
-                "character": 18
+                "line": 16,
+                "character": 32
             },
             "context": {
                 "triggerKind": 2,
@@ -95,12 +100,12 @@ impl FrameSystem {
                 {
                     "range": {
                         "start": {
-                            "line": 11,
-                            "character": 4
+                            "line": 17,
+                            "character": 0
                         },
                         "end": {
-                            "line": 11,
-                            "character": 5
+                            "line": 17,
+                            "character": 1
                         }
                     },
                     "severity": 1,
@@ -112,12 +117,12 @@ impl FrameSystem {
                                 "uri": "file:///test.n",
                                 "range": {
                                     "start": {
-                                        "line": 11,
-                                        "character": 4
+                                        "line": 17,
+                                        "character": 0
                                     },
                                     "end": {
-                                        "line": 11,
-                                        "character": 5
+                                        "line": 17,
+                                        "character": 1
                                     }
                                 }
                             },
@@ -133,89 +138,14 @@ impl FrameSystem {
         "id": 2,
         "result": [
             {
-                "label": "data",
+                "label": "id",
                 "kind": 5,
                 "detail": "field"
             },
             {
-                "label": "count",
-                "kind": 5,
-                "detail": "field"
-            },
-            {
-                "label": "capacity",
-                "kind": 5,
-                "detail": "field"
-            },
-            {
-                "label": "append",
+                "label": "bind",
                 "kind": 2,
                 "detail": "method"
-            },
-            {
-                "label": "clear",
-                "kind": 2,
-                "detail": "method"
-            },
-            {
-                "label": "delete",
-                "kind": 2,
-                "detail": "method"
-            },
-            {
-                "label": "free",
-                "kind": 2,
-                "detail": "method"
-            },
-            {
-                "label": "pop",
-                "kind": 2,
-                "detail": "method"
-            },
-            {
-                "label": "push",
-                "kind": 2,
-                "detail": "method"
-            },
-            {
-                "label": "reserve_to",
-                "kind": 2,
-                "detail": "method"
-            },
-            {
-                "label": "reserve_extra",
-                "kind": 2,
-                "detail": "method"
-            },
-            {
-                "label": "resize_to",
-                "kind": 2,
-                "detail": "method"
-            },
-            {
-                "label": "swap_delete",
-                "kind": 2,
-                "detail": "method"
-            },
-            {
-                "label": "resize_undefined_to",
-                "kind": 2,
-                "detail": "method"
-            },
-            {
-                "label": "extend",
-                "kind": 2,
-                "detail": "method"
-            },
-            {
-                "label": "extend_undefined",
-                "kind": 2,
-                "detail": "method"
-            },
-            {
-                "label": "size",
-                "kind": 5,
-                "detail": "field"
             }
         ]
     },

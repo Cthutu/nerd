@@ -60,12 +60,6 @@ internal cstr sema_resolve_source_relative_path(Arena* arena,
 // Predeclare the current built-in runtime functions.
 
 typedef struct {
-    const u32* param_symbols;
-    const u32* arg_types;
-    u32        count;
-} SemaTypeSubstitution;
-
-typedef struct {
     const Lexer*          lexer;
     const Ast*            ast;
     Sema*                 sema;
@@ -11594,13 +11588,13 @@ internal u32 sema_generic_param_position(const Ast*              ast,
     return U32_MAX;
 }
 
-internal bool sema_bind_generic_type_node(const Lexer*            lexer,
-                                          const Ast*              ast,
-                                          Sema*                   sema,
-                                          const AstGenericParams* generic,
-                                          u32 type_node_index,
-                                          u32 actual_type,
-                                          Array(u32) arg_types)
+bool sema_bind_generic_type_node(const Lexer*            lexer,
+                                 const Ast*              ast,
+                                 Sema*                   sema,
+                                 const AstGenericParams* generic,
+                                 u32                     type_node_index,
+                                 u32                     actual_type,
+                                 Array(u32) arg_types)
 {
     const AstNode* type_node = &ast->nodes[type_node_index];
     if (type_node->kind == AK_SymbolRef) {
