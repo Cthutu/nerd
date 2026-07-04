@@ -1394,9 +1394,8 @@ internal void sema_import_public_methods_from_module(Lexer* dst_lexer,
                                                      Sema*  sema,
                                                      const ModuleInfo* module,
                                                      u32 module_index);
-internal bool sema_import_implicit_core_arena_methods(Lexer* lexer,
-                                                      Sema*  sema,
-                                                      u32    receiver_type);
+internal bool
+sema_import_implicit_core_method(Lexer* lexer, Sema* sema, u32 method_symbol);
 internal bool
 sema_type_matches(const Sema* sema, u32 expected_type, u32 actual_type);
 internal bool sema_method_matches_trait_symbol(const Lexer*      lexer,
@@ -3212,39 +3211,54 @@ internal void sema_import_public_methods_from_module(Lexer* dst_lexer,
     }
 }
 
-internal bool sema_type_is_arena_or_arena_pointer(const Sema* sema,
-                                                  u32         type_index)
-{
-    if (type_index == sema_no_type() ||
-        type_index >= array_count(sema->types)) {
-        return false;
-    }
-
-    if (sema->types[type_index].kind == STK_Arena) {
-        return true;
-    }
-    if (sema->types[type_index].kind == STK_Pointer) {
-        u32 target = sema->types[type_index].first_param_type;
-        return target < array_count(sema->types) &&
-               sema->types[target].kind == STK_Arena;
-    }
-    return false;
-}
-
-internal bool sema_import_implicit_core_arena_methods(Lexer* lexer,
-                                                      Sema*  sema,
-                                                      u32    receiver_type)
+internal bool
+sema_import_implicit_core_method(Lexer* lexer, Sema* sema, u32 method_symbol)
 {
     if (sema == NULL || sema->program == NULL ||
-        !sema_type_is_arena_or_arena_pointer(sema, receiver_type) ||
         sema_module_is_core(sema->program, sema->current_module_index)) {
         return true;
     }
 
     for (u32 i = 0; i < array_count(sema->program->modules); ++i) {
         if (sema_module_is_core(sema->program, i)) {
-            sema_import_public_methods_from_module(
-                lexer, sema, &sema->program->modules[i], i);
+            const ModuleInfo* module       = &sema->program->modules[i];
+            const Lexer*      source_lexer = &module->front_end.lexer;
+            const Sema*       source_sema  = &module->front_end.sema;
+            string            method_name  = lex_symbol(lexer, method_symbol);
+            for (u32 j = 0; j < array_count(source_sema->methods); ++j) {
+                const SemaMethod* source_method = &source_sema->methods[j];
+                if (!source_method->is_public ||
+                    source_method->decl_index >=
+                        array_count(source_sema->decls) ||
+                    !string_eq(
+                        lex_symbol(source_lexer, source_method->symbol_handle),
+                        method_name)) {
+                    continue;
+                }
+
+                const SemaDecl* source_decl =
+                    &source_sema->decls[source_method->decl_index];
+                u32 symbol = sema_import_symbol_handle(
+                    lexer, source_lexer, source_decl->symbol_handle);
+                u32 type = sema_import_type(lexer,
+                                            sema,
+                                            source_lexer,
+                                            source_sema,
+                                            source_decl->type_index);
+                u32 imported_decl =
+                    sema_ensure_module_export_decl(sema,
+                                                   symbol,
+                                                   type,
+                                                   source_decl->kind,
+                                                   i,
+                                                   source_method->decl_index);
+                sema_import_method_for_decl(lexer,
+                                            sema,
+                                            source_lexer,
+                                            source_sema,
+                                            source_method->decl_index,
+                                            imported_decl);
+            }
             return true;
         }
     }
@@ -11707,6 +11721,60 @@ internal bool sema_bind_generic_type_node(const Lexer*            lexer,
         return true;
     }
 
+    if (type_node->kind == AK_TypeEnum &&
+        sema->types[actual_type].kind == STK_Enum) {
+        const AstEnumTypeInfo* enum_type = &ast->enum_types[type_node->a];
+        const SemaType*        actual    = &sema->types[actual_type];
+        if (enum_type->variant_count != actual->param_count) {
+            return false;
+        }
+
+        i64 next_discriminant = 0;
+        for (u32 i = 0; i < enum_type->variant_count; ++i) {
+            const AstEnumVariant* variant =
+                &ast->enum_variants[enum_type->first_variant + i];
+            if (variant->symbol_handle !=
+                sema->type_param_symbols[actual->first_param_type + i]) {
+                return false;
+            }
+
+            i64 discriminant = next_discriminant;
+            if (variant->value_node_index != U32_MAX &&
+                !sema_try_eval_integer_constant(lexer,
+                                                ast,
+                                                sema,
+                                                variant->value_node_index,
+                                                &discriminant)) {
+                return false;
+            }
+            if (discriminant !=
+                sema->type_param_values[actual->first_param_type + i]) {
+                return false;
+            }
+            next_discriminant = discriminant + 1;
+
+            u32 payload_type =
+                sema->type_param_types[actual->first_param_type + i];
+            if (variant->type_node_index == U32_MAX) {
+                if (payload_type != sema_no_type()) {
+                    return false;
+                }
+                continue;
+            }
+            if (payload_type == sema_no_type() ||
+                !sema_bind_generic_type_node(lexer,
+                                             ast,
+                                             sema,
+                                             generic,
+                                             variant->type_node_index,
+                                             payload_type,
+                                             arg_types)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     u32                  expected = sema_no_type();
     SemaTypeSubstitution subst    = {
         .param_symbols = &ast->generic_param_symbols[generic->first_symbol],
@@ -12732,8 +12800,8 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
     bool                   found_trait_call = false;
     SemaResolvedMethodCall trait_call       = {0};
 
-    if (!seed_arg_contexts && !sema_import_implicit_core_arena_methods(
-                                  (Lexer*)lexer, sema, receiver_type)) {
+    if (!seed_arg_contexts &&
+        !sema_import_implicit_core_method((Lexer*)lexer, sema, method_symbol)) {
         return false;
     }
 
@@ -17622,12 +17690,13 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 (sema->types[field_target_type].kind != STK_Array &&
                  sema->types[field_target_type].kind != STK_Slice &&
                  sema->types[field_target_type].kind != STK_String &&
-                 sema->types[field_target_type].kind != STK_DynamicArray)) {
+                 sema->types[field_target_type].kind != STK_DynamicArray &&
+                 sema->types[field_target_type].kind != STK_Enum)) {
                 return error_0304_type_mismatch(
                     lexer->source,
                     sema_node_span(lexer, node),
                     s("array, slice, string, dynamic array, module, plex, "
-                      "union, or pointer to memberable value"),
+                      "union, enum, or pointer to memberable value"),
                     sema_type_name(lexer, sema, &temp_arena, target_type));
             }
             if (string_eq(field, s("data"))) {
@@ -17654,6 +17723,9 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                                                       node->b,
                                                       &type_index)) {
                 break;
+            } else if (sema->types[field_target_type].kind == STK_Enum) {
+                return sema_error_unknown_member(
+                    lexer, ast, sema, node, target_type, node->b);
             } else {
                 string expected =
                     sema->types[field_target_type].kind == STK_String

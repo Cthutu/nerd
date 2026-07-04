@@ -852,6 +852,70 @@ internal bool lsp_completion_receiver_types_match(const Sema* sema,
     return false;
 }
 
+internal bool lsp_completion_builtin_type_kind_by_name(string        name,
+                                                       SemaTypeKind* out_kind)
+{
+    if (string_eq(name, s("void"))) {
+        *out_kind = STK_Void;
+    } else if (string_eq(name, s("bool"))) {
+        *out_kind = STK_Bool;
+    } else if (string_eq(name, s("string"))) {
+        *out_kind = STK_String;
+    } else if (string_eq(name, s("i8"))) {
+        *out_kind = STK_I8;
+    } else if (string_eq(name, s("i16"))) {
+        *out_kind = STK_I16;
+    } else if (string_eq(name, s("i32"))) {
+        *out_kind = STK_I32;
+    } else if (string_eq(name, s("i64"))) {
+        *out_kind = STK_I64;
+    } else if (string_eq(name, s("u8"))) {
+        *out_kind = STK_U8;
+    } else if (string_eq(name, s("u16"))) {
+        *out_kind = STK_U16;
+    } else if (string_eq(name, s("u32"))) {
+        *out_kind = STK_U32;
+    } else if (string_eq(name, s("u64"))) {
+        *out_kind = STK_U64;
+    } else if (string_eq(name, s("f32"))) {
+        *out_kind = STK_F32;
+    } else if (string_eq(name, s("f64"))) {
+        *out_kind = STK_F64;
+    } else if (string_eq(name, s("isize"))) {
+        *out_kind = STK_Isize;
+    } else if (string_eq(name, s("usize"))) {
+        *out_kind = STK_Usize;
+    } else if (string_eq(name, s("arena"))) {
+        *out_kind = STK_Arena;
+    } else {
+        return false;
+    }
+    return true;
+}
+
+internal bool
+lsp_completion_find_builtin_type(const Sema* sema, string name, u32* out_type)
+{
+    SemaTypeKind kind = STK_Void;
+    if (!lsp_completion_builtin_type_kind_by_name(name, &kind)) {
+        return false;
+    }
+    for (u32 i = 0; i < array_count(sema->types); ++i) {
+        if (sema->types[i].kind == kind) {
+            *out_type = i;
+            return true;
+        }
+    }
+    return false;
+}
+
+internal bool
+lsp_completion_module_method_matches_receiver(const LspDocument*   doc,
+                                              const LspModuleView* module,
+                                              const SemaMethod*    method,
+                                              u32 receiver_type,
+                                              u32 member_type);
+
 internal bool lsp_completion_method_matches_receiver(const LspDocument* doc,
                                                      const SemaMethod*  method,
                                                      u32 receiver_type,
@@ -864,10 +928,30 @@ internal bool lsp_completion_method_matches_receiver(const LspDocument* doc,
     const Sema* sema     = &doc->front_end.sema;
     u32         expected = sema_no_type();
     if (!lsp_completion_method_receiver_type(sema, method, &expected)) {
+        if (method->decl_index < array_count(sema->decls)) {
+            const SemaDecl* decl   = &sema->decls[method->decl_index];
+            LspModuleView   module = {0};
+            if (decl->import_module_index != sema_no_decl() &&
+                lsp_program_module_view(
+                    &doc->program, decl->import_module_index, &module)) {
+                for (u32 i = 0; i < array_count(module.sema->methods); ++i) {
+                    const SemaMethod* source_method = &module.sema->methods[i];
+                    if (source_method->decl_index == decl->import_decl_index) {
+                        return lsp_completion_module_method_matches_receiver(
+                            doc,
+                            &module,
+                            source_method,
+                            receiver_type,
+                            member_type);
+                    }
+                }
+            }
+        }
+
         u32 target_type = sema_no_type();
         if (!lsp_sema_node_type(
                 sema, method->target_type_node_index, &target_type)) {
-            return true;
+            return false;
         }
         target_type   = sema_materialise_type(sema, target_type);
         receiver_type = sema_materialise_type(sema, receiver_type);
@@ -916,6 +1000,12 @@ lsp_completion_module_method_matches_receiver(const LspDocument*   doc,
                 source_is_target = true;
                 break;
             }
+        }
+        if (source_type == sema_no_type()) {
+            (void)lsp_completion_find_builtin_type(
+                module->sema,
+                lex_symbol(module->lexer, target_symbol),
+                &source_type);
         }
         if (source_type == sema_no_type()) {
             return false;

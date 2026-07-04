@@ -144,6 +144,15 @@ pub Option :: enum [T] {
     Some(T)
 }
 
+impl Option[T] {
+
+    -- Returns the contained value, or aborts with `message`.
+    pub expect :: fn (self: Self, message: string) -> T {
+        return on self { Some(value) => value None => abort(message) }
+    }
+
+}
+
 -- Represents either a successful value or an error value.
 pub Result :: enum [T, E] {
     Ok(T)

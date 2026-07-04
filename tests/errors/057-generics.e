@@ -146,7 +146,7 @@ main :: fn () -> i32 {
 }
 ¬
 {
-    "message": "Type mismatch: expected `array, slice, string, dynamic array, module, plex, union, or pointer to memberable value`, found `i32`",
+    "message": "Type mismatch: expected `array, slice, string, dynamic array, module, plex, union, enum, or pointer to memberable value`, found `i32`",
     "source_file": "tests/errors/057-generics.e",
     "primary_location": {
         "line": 2,
