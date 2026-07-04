@@ -450,11 +450,11 @@ function isNerdExecutableBreakpointLine(line: string): boolean {
     if (text === "{" || text === "}") {
         return false;
     }
-    if (text.endsWith("{")) {
-        return false;
-    }
     if (/^[A-Za-z_][A-Za-z0-9_.$]*\s*::/.test(text)) {
         return false;
+    }
+    if (text.endsWith("{")) {
+        return /\bon\b/.test(text);
     }
     return true;
 }
