@@ -1,0 +1,204 @@
+use std.frame
+use std.gfx
+use std.time
+
+DemoImage :: plex {
+    width  u16
+    height u16
+    data   [..]u32
+}
+
+impl DemoImage {
+
+    new :: fn (width: u16, height: u16) -> Self {
+        image := Self {
+            width
+            height
+            data: nil
+        }
+        image.data.resize_undefined_to(width.as(usize) * height.as(usize))
+
+        for y: u32 = 0; y < height.as(u32); y += 1 {
+            for x: u32 = 0; x < width.as(u32); x += 1 {
+                image.data[(y * width.as(u32) + x).as(usize)] = demo_image_pixel(x,
+                                                                 y,
+                                                                 width.as(u32),
+                                                                 height.as(u32))
+            }
+        }
+
+        return image
+    }
+
+    done :: fn (image: ^Self) {
+        image.data.free()
+        image.width = 0
+        image.height = 0
+    }
+
+    pixel :: fn (image: ^Self, x: u32, y: u32) -> u32 {
+        on image.width == 0 || image.height == 0 => return 0xff000000
+        clamped_x := on x < image.width.as(u32) => x else image.width.as(u32) - 1
+        clamped_y := on y < image.height.as(u32) => y else image.height.as(u32) - 1
+        return image.data[(clamped_y * image.width.as(u32) + clamped_x).as(usize)]
+    }
+
+}
+
+demo_image_pixel :: fn (x: u32, y: u32, width: u32, height: u32) -> u32 {
+    border := x < 2 || y < 2 || x >= width - 2 || y >= height - 2
+    on border => return 0xffffffff
+
+    tile := ((x / 16) + (y / 16)) & 1
+    red := ((x * 255) / width) << 16
+    green := ((y * 255) / height) << 8
+    blue : u32 = on tile == 0 => 0x50 else 0xd8
+
+    cx := width / 2
+    cy := height / 2
+    dx := on x > cx => x - cx else cx - x
+    dy := on y > cy => y - cy else cy - y
+    on dx * dx + dy * dy < 30 * 30 => {
+        return 0xffffcc33
+    }
+
+    return 0xff000000 | red | green | blue
+}
+
+image_view_rect :: fn (view_width   : u32,
+                       view_height  : u32,
+                       image_width  : u32,
+                       image_height : u32) -> PixelRect {
+    on image_width == 0 ||
+        image_height == 0 ||
+        view_width == 0 ||
+        view_height == 0 => {
+        return PixelRect { x: 0 y: 0 width: 0 height: 0 }
+    }
+
+    width_from_height := (view_height * image_width) / image_height
+    draw_width := view_width
+    draw_height := (view_width * image_height) / image_width
+
+    on draw_height > view_height => {
+        draw_width  = width_from_height
+        draw_height = view_height
+    }
+
+    on draw_width == 0 => draw_width = 1
+    on draw_height == 0 => draw_height = 1
+
+    return PixelRect {
+        x      : (view_width - draw_width) / 2
+        y      : (view_height - draw_height) / 2
+        width  : draw_width
+        height : draw_height
+    }
+}
+
+draw_image_viewer :: fn (layer: ^PixelLayer, image: ^DemoImage) {
+    layer.clear(0xff181818)
+
+    view_width := layer.pixel_width().as(u32)
+    view_height := layer.pixel_height().as(u32)
+    rect := image_view_rect(view_width,
+                            view_height,
+                            image.width.as(u32),
+                            image.height.as(u32))
+
+    on rect.width == 0 || rect.height == 0 => return
+
+    for y: u32 = 0; y < rect.height; y += 1 {
+        source_y := (y * image.height.as(u32)) / rect.height
+        for x: u32 = 0; x < rect.width; x += 1 {
+            source_x := (x * image.width.as(u32)) / rect.width
+            layer.put(rect.x + x, rect.y + y, image.pixel(source_x, source_y))
+        }
+    }
+
+    layer.fill(PixelRect {
+        x      : rect.x
+        y      : rect.y
+        width  : rect.width
+        height : 1
+    }, 0xffffffff)
+    layer.fill(PixelRect {
+        x      : rect.x
+        y      : rect.y + rect.height - 1
+        width  : rect.width
+        height : 1
+    }, 0xffffffff)
+    layer.fill(PixelRect {
+        x      : rect.x
+        y      : rect.y
+        width  : 1
+        height : rect.height
+    }, 0xffffffff)
+    layer.fill(PixelRect {
+        x      : rect.x + rect.width - 1
+        y      : rect.y
+        width  : 1
+        height : rect.height
+    }, 0xffffffff)
+}
+
+main :: fn () {
+    frame_system := FrameSystem.init()
+    frame := Frame {
+        id          : NEW_FRAME
+        width       : 960
+        height      : 640
+        title       : "Image Viewer"
+        full_screen : no
+        resizable   : yes
+        ...
+    }
+
+    frame_system.apply(^frame)
+
+    gfx := GfxSystem.init()
+    defer gfx.done()
+
+    image := DemoImage.new(192, 128)
+    defer image.done()
+
+    layer_handle := gfx.pixel_layer(^frame, PixelLayerMode.FixedSizeAutoScale {
+        width  : 320
+        height : 200
+    })
+
+    for frame_system.loop() {
+        frame_system.update(^frame)
+
+        for event := frame_system.poll(^frame); event != FrameEvent.None; event = frame_system.poll(^frame) {
+            on event {
+                None => {
+                }
+                Closed => {
+                }
+                KeyPress { scan_code } => {
+                    on scan_code {
+                        Escape  => frame_system.destroy(^frame)
+                        Q       => frame_system.destroy(^frame)
+                        Enter => {
+                            on frame_system.is_alt_down() => {
+                                frame.full_screen = !frame.full_screen
+                                frame_system.apply(^frame)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        layer := gfx.pixel(layer_handle)
+        on layer != nil => {
+            draw_image_viewer(layer, ^image)
+            gfx.render(^frame)
+        }
+
+        sleep_ms(16)
+    }
+
+    frame_system.destroy(^frame)
+}
