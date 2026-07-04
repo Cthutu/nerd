@@ -145,6 +145,7 @@ and reuses storage, and `done()` releases the reserved arena range.
 ### `std.string`
 
 - `from_null_terminated(text: string) -> string`
+- `string.c_string() -> ^i8`
 - `split(s: string, sep: string) -> [..]string`
 - `string.trim() -> string`
 - `string.trim_start() -> string`
@@ -152,13 +153,15 @@ and reuses storage, and `done()` releases the reserved arena range.
 - `string.trim_null_terminated() -> string`
 - `string.trim_whitespace() -> string`
 
-`from_null_terminated` and `trim_null_terminated` return a borrowed view ending
-before the first zero byte. They are useful after casting fixed C-style byte
-buffers to `string`, for example `str.from_null_terminated(buffer.as(string))`.
-The `trim` family returns borrowed views with leading and/or trailing zero bytes
-and ASCII whitespace removed. `trim_whitespace` is kept as an alias for `trim`.
-`split` returns a dynamic array and the caller is responsible for freeing that
-array when it is no longer needed.
+`c_string` copies a Nerd string into temporary arena storage and appends a zero
+byte for C APIs that expect `^i8`. `from_null_terminated` and
+`trim_null_terminated` return a borrowed view ending before the first zero byte.
+They are useful after casting fixed C-style byte buffers to `string`, for
+example `str.from_null_terminated(buffer.as(string))`. The `trim` family returns
+borrowed views with leading and/or trailing zero bytes and ASCII whitespace
+removed. `trim_whitespace` is kept as an alias for `trim`. `split` returns a
+dynamic array and the caller is responsible for freeing that array when it is no
+longer needed.
 
 ### `std.utf8`
 

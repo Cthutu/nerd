@@ -52,6 +52,16 @@ string_trim :: fn (text: string) -> string {
 
 impl string {
 
+    -- Copies the string into temporary NUL-terminated storage for C APIs.
+    pub c_string :: fn (text: Self) -> ^i8 {
+        bytes := temp_arena.alloc_bytes(text.count + 1)
+        for i: usize = 0; i < text.count; i += 1 {
+            bytes[i] = text.data[i]
+        }
+        bytes[text.count] = 0
+        return bytes.data.as(^i8)
+    }
+
     -- Splits a string around every occurrence of `separator`.
     pub split :: fn (text: Self, separator: string) -> [..]string {
         parts : [..]string
@@ -216,4 +226,17 @@ test "trim_null_terminated leaves strings without zero bytes unchanged" {
     trimmed := "plain".trim_null_terminated()
 
     assert trimmed == "plain"
+}
+
+test "c_string copies text to null-terminated temp storage" {
+    text := "OpenGL"
+    c_text := text.c_string()
+
+    assert c_text[0] == 'O'
+    assert c_text[1] == 'p'
+    assert c_text[2] == 'e'
+    assert c_text[3] == 'n'
+    assert c_text[4] == 'G'
+    assert c_text[5] == 'L'
+    assert c_text[6] == 0
 }

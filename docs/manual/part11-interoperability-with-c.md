@@ -145,6 +145,18 @@ main :: fn () {
 C strings are not Nerd `string` values. Convert deliberately at the boundary.
 They are null-terminated so C functions can read them through `^i8`.
 
+When a C API expects a mutable pointer to null-terminated text, use
+`std.string.c_string` to copy a Nerd string into the temporary arena and append
+the zero terminator:
+
+```nerd
+str :: use std.string
+
+name := "OpenGL".c_string()
+```
+
+The returned pointer is valid until the temporary arena is restored or reset.
+
 When a C API writes text into a fixed byte buffer, cast the buffer to `string`
 and use `std.string.from_null_terminated` to trim at the first zero byte:
 
