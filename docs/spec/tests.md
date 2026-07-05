@@ -43,6 +43,7 @@ compilation.
 | `.f` tests          | Formatter input/output checks.                                        |
 | `.lsp` tests        | Transcript-style LSP request/response checks.                         |
 | `.cmd` tests        | Public command-level regression tests.                                |
+| `mods/std` tests    | Source tests inside standard-library modules run by `just test`.       |
 
 Use the closest family to the behaviour being specified. Language syntax and
 semantic guarantees usually belong in `.t` or `.e`; editor behaviour belongs in

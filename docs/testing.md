@@ -129,6 +129,16 @@ binaries correctly when the input path is relative to the current directory.
 Use command tests for public CLI behaviour such as `nerd check` exiting
 successfully without generating an executable.
 
+## Standard Library Source Tests
+
+The runner treats source files under `mods/std/` that declare source tests as
+standard-library test roots. Each root is run with `nerd test`, so standard
+library implementation coverage should live next to the code in `test "name" {
+... }` sections and test-only `test { ... }` declaration blocks.
+
+Use command tests for the public `nerd test` command itself, not for ordinary
+standard-library unit coverage.
+
 ## Example Checks
 
 The runner also treats source files under `examples/` that declare `main` as

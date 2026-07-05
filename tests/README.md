@@ -36,6 +36,8 @@ source files. Repository regression tests are run by the Python harness via
   Language-server transcript tests.
 - `commands`
   Public command regressions that exercise the real command path.
+- `stdlib`
+  Source-level unit tests declared with `test` blocks inside `mods/std`.
 - `examples`
   Real programs under `examples/` that declare `main`; the runner checks them
   with `nerd check`, which also checks their imported support modules.

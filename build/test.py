@@ -63,6 +63,7 @@ SUITE_LABELS = {
     "format": "format",
     "lsp": "lsp",
     "commands": "command",
+    "stdlib": "stdlib",
     "examples": "example",
 }
 
@@ -1151,6 +1152,36 @@ def test_example(path: pathlib.Path) -> list[Failure]:
     return [Failure(path, f"example check failed with exit {proc.returncode}\n{stderr}")]
 
 
+SOURCE_TEST_RE = re.compile(r"(?m)^\s*test\s*(?:\"|\{)")
+
+
+def source_has_tests(path: pathlib.Path) -> bool:
+    return SOURCE_TEST_RE.search(path.read_text(encoding="utf-8")) is not None
+
+
+def source_path_matches_platform(path: pathlib.Path) -> bool:
+    name = path.name
+    if ".linux." in name:
+        return current_platform() == "linux"
+    if ".windows." in name:
+        return current_platform() == "windows"
+    return True
+
+
+def test_stdlib(path: pathlib.Path) -> list[Failure]:
+    proc = run_cmd([str(NERD), "test", str(path)])
+    if proc.returncode == 0:
+        return []
+    stdout = normalize_repo_paths(strip_ansi(proc.stdout))
+    stderr = normalize_repo_paths(strip_ansi(proc.stderr))
+    return [
+        Failure(
+            path,
+            f"standard library source tests failed with exit {proc.returncode}\nstdout:\n{stdout}\nstderr:\n{stderr}",
+        )
+    ]
+
+
 def collect() -> list[tuple[str, pathlib.Path]]:
     cases: list[tuple[str, pathlib.Path]] = []
     for kind, directory, suffix in [
@@ -1168,6 +1199,9 @@ def collect() -> list[tuple[str, pathlib.Path]]:
             if kind == "llvm" and re.search(r"(\.input)?\.m\d+\.ll$", path.name):
                 continue
             cases.append((kind, path))
+    for path in sorted((ROOT / "mods" / "std").glob("**/*.n")):
+        if source_path_matches_platform(path) and source_has_tests(path):
+            cases.append(("stdlib", path))
     for path in sorted((ROOT / "examples").glob("**/*.n")):
         if example_has_entry_point(path):
             cases.append(("examples", path))
@@ -1187,6 +1221,7 @@ def main() -> int:
         "format": test_format,
         "lsp": test_lsp,
         "commands": test_command,
+        "stdlib": test_stdlib,
         "examples": test_example,
     }
 

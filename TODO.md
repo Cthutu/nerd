@@ -74,8 +74,8 @@ test "png signature" {
 }
 ```
 
-Add command regressions that run `nerd test` for the module so source tests are
-included in `just test`.
+`just test` discovers source tests in `mods/std`, so standard-library coverage
+should live in module-local `test` sections rather than `.cmd` wrappers.
 
 ### Milestone 1: Module Skeleton
 
@@ -87,10 +87,8 @@ included in `just test`.
 - [ ] Add `Image.free()` only if the chosen ownership model requires it.
 - [ ] Add placeholder `Image.load_bytes()` returning `UnsupportedFormat`.
 - [ ] Add placeholder `Image.load()` returning `UnsupportedFormat`.
-- [ ] Add `tests/commands/*-test-std-image.cmd` that runs `nerd test` for the
-      module.
-- [ ] Add an initial source test proving the module test command is wired into
-      `just test`.
+- [ ] Add an initial source test proving the stdlib source-test suite discovers
+      `std.image`.
 
 ### Milestone 2: Reader Helpers
 
