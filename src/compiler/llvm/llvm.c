@@ -9906,6 +9906,11 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 target.value      = loaded;
             }
 
+            if (llvm_type_kind(ctx->sema, target.type_index) ==
+                STK_DynamicArray) {
+                return llvm_emit_dynamic_array_field(ctx, target, expr);
+            }
+
             if (expr->kind == HIR_EXPR_Field &&
                 expr->symbol_handle != U32_MAX &&
                 string_eq_cstr(lex_symbol(ctx->lexer, expr->symbol_handle),

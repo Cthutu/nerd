@@ -5,6 +5,8 @@
 -- Parses PNG container structure. Pixel decompression and colour conversion are
 -- implemented by later decoder milestones.
 
+use std.compress
+
 PNG_SIGNATURE_SIZE :: 8
 
 PNG_CHUNK_IHDR ::
@@ -464,6 +466,107 @@ test "png collects IDAT chunks" {
             assert png.idat_chunks[0].count == 2
             assert png.idat_chunks[0][0] == 10
             assert png.idat_chunks[0][1] == 20
+            png.free()
+        }
+        else => {
+            assert no
+        }
+    }
+}
+
+test "png IDAT payload can be decompressed" {
+    bytes: [70]u8 = [
+        0x89,
+        'P',
+        'N',
+        'G',
+        13,
+        10,
+        26,
+        10,
+        0,
+        0,
+        0,
+        13,
+        'I',
+        'H',
+        'D',
+        'R',
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        8,
+        6,
+        0,
+        0,
+        0,
+        0x1f,
+        0x15,
+        0xc4,
+        0x89,
+        0,
+        0,
+        0,
+        13,
+        'I',
+        'D',
+        'A',
+        'T',
+        120,
+        156,
+        99,
+        248,
+        207,
+        192,
+        240,
+        31,
+        0,
+        5,
+        0,
+        1,
+        255,
+        0x89,
+        0x99,
+        0x3d,
+        0x1d,
+        0,
+        0,
+        0,
+        0,
+        'I',
+        'E',
+        'N',
+        'D',
+        0xae,
+        0x42,
+        0x60,
+        0x82,
+    ]
+
+    parsed := png_parse(bytes[..])
+
+    on parsed {
+        Ok(png) => {
+            decompressed := png.idat_chunks[0].deflate_zlib()
+            on decompressed {
+                Ok(scanline) => {
+                    assert scanline.count == 5
+                    assert scanline[0] == 0
+                    assert scanline[1] == 255
+                    assert scanline[2] == 0
+                    assert scanline[3] == 0
+                    assert scanline[4] == 255
+                    scanline.free()
+                }
+                else => {
+                    assert no
+                }
+            }
             png.free()
         }
         else => {

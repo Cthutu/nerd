@@ -83,6 +83,24 @@ bool ast_node_is_block_statement(const AstNode* node)
 u32 ast_block_statement_end_exclusive(const Ast* ast, u32 node_index)
 {
     const AstNode* node = &ast->nodes[node_index];
+    if (node->kind == AK_On) {
+        u32              end = node_index + 1;
+        const AstOnInfo* on  = &ast->ons[node->b];
+        for (u32 i = 0; i < on->branch_count; ++i) {
+            const AstOnBranch* branch = &ast->on_branches[on->first_branch + i];
+            u32                branch_expr = branch->expr_node_index;
+            if (branch_expr < array_count(ast->nodes) &&
+                ast->nodes[branch_expr].kind == AK_ExprBlock) {
+                branch_expr = ast->nodes[branch_expr].a;
+            }
+            u32 branch_end =
+                ast_block_statement_end_exclusive(ast, branch_expr);
+            if (branch_end > end) {
+                end = branch_end;
+            }
+        }
+        return end;
+    }
     if (node->kind == AK_Block) {
         return node->b;
     }
@@ -123,6 +141,10 @@ u32 ast_block_statement_end_exclusive(const Ast* ast, u32 node_index)
         if (child->kind == AK_Expression) {
             const AstNode* root = &ast->nodes[child->a];
             if (root->kind == AK_For || root->kind == AK_Block) {
+                u32 end = ast_block_statement_end_exclusive(ast, child->a);
+                return end > node_index + 1 ? end : node_index + 1;
+            }
+            if (root->kind == AK_On) {
                 u32 end = ast_block_statement_end_exclusive(ast, child->a);
                 return end > node_index + 1 ? end : node_index + 1;
             }

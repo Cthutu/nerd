@@ -6218,6 +6218,19 @@ internal bool sema_collect_on_pattern_binders(const Lexer* lexer,
 {
     const AstPattern* pattern = &ast->patterns[pattern_index];
     if (pattern->kind == APK_Bind) {
+        if (sema->pattern_local_indices[pattern_index] != sema_no_local()) {
+            if (pattern->b != U32_MAX) {
+                return sema_collect_on_pattern_binders(lexer,
+                                                       ast,
+                                                       sema,
+                                                       owner_decl_index,
+                                                       current_function_symbol,
+                                                       scope_index,
+                                                       pattern->b);
+            }
+            return true;
+        }
+
         bool discard = sema_symbol_is_discard(lexer, pattern->a);
         u32  duplicate =
             discard ? sema_no_local()
@@ -15721,8 +15734,8 @@ internal bool sema_infer_block_statements(const Lexer* lexer,
             continue;
         }
 
-        if (stmt->kind == AK_Variable || stmt->kind == AK_Assign ||
-            stmt->kind == AK_DestructureBind ||
+        if (stmt->kind == AK_Bind || stmt->kind == AK_Variable ||
+            stmt->kind == AK_Assign || stmt->kind == AK_DestructureBind ||
             stmt->kind == AK_DestructureVariable ||
             stmt->kind == AK_DestructureAssign) {
             u32 ignored = sema_no_type();
@@ -15890,6 +15903,10 @@ internal bool sema_infer_expr_block_type(const Lexer* lexer,
 
     for (u32 i = block->a; i < block->b; ++i) {
         const AstNode* stmt = &ast->nodes[i];
+        if (stmt->kind == AK_Block && sema_block_is_expr_block_body(ast, i)) {
+            i = stmt->b - 1;
+            continue;
+        }
         if (!ast_node_is_block_statement(stmt)) {
             continue;
         }
@@ -20584,7 +20601,6 @@ sema_assign_local_types(const Lexer* lexer, const Ast* ast, Sema* sema)
         if (!sema_local_is_decl_binding(local)) {
             continue;
         }
-
         u32 ignored = sema_no_type();
         if (!sema_infer_local_binding_type(lexer, ast, sema, i, &ignored)) {
             return false;
@@ -22044,6 +22060,25 @@ internal bool sema_block_is_expr_block_body(const Ast* ast, u32 block_index)
         const AstNode* node = &ast->nodes[i];
         if (node->kind == AK_ExprBlock && node->a == block_index) {
             return true;
+        }
+        if (node->kind == AK_On) {
+            const AstOnInfo* on = &ast->ons[node->b];
+            for (u32 branch = 0; branch < on->branch_count; ++branch) {
+                const AstOnBranch* on_branch =
+                    &ast->on_branches[on->first_branch + branch];
+                u32 branch_expr = on_branch->expr_node_index;
+                if (branch_expr < array_count(ast->nodes) &&
+                    ast->nodes[branch_expr].kind == AK_Expression) {
+                    branch_expr = ast->nodes[branch_expr].a;
+                }
+                if (branch_expr < array_count(ast->nodes) &&
+                    ast->nodes[branch_expr].kind == AK_ExprBlock) {
+                    branch_expr = ast->nodes[branch_expr].a;
+                }
+                if (branch_expr == block_index) {
+                    return true;
+                }
+            }
         }
     }
     return false;

@@ -38,15 +38,15 @@ pattern matching.
 
 ### Companion `std.compress` Module
 
-- [ ] Create `mods/std/compress/mod.n` before PNG zlib/deflate work starts.
-- [ ] Keep compression algorithms separate from image decoding so PNG can use
+- [x] Create `mods/std/compress/mod.n` before PNG zlib/deflate work starts.
+- [x] Keep compression algorithms separate from image decoding so PNG can use
       the same public decompression APIs as other callers.
-- [ ] Design a small Nerd-native API using `Result`, slices, default
+- [x] Design a small Nerd-native API using `Result`, slices, default
       parameters, and method-style helpers where useful.
-- [ ] Start with zlib-wrapped deflate because PNG requires it.
-- [ ] Keep raw deflate and gzip as explicit future extensions, not accidental
+- [x] Start with zlib-wrapped deflate because PNG requires it.
+- [x] Keep raw deflate and gzip as explicit future extensions, not accidental
       behaviours.
-- [ ] Put compression implementation tests in `test { ... }` sections inside
+- [x] Put compression implementation tests in `test { ... }` sections inside
       `std.compress` module parts.
 
 API sketch:
@@ -165,19 +165,19 @@ should live in module-local `test` sections rather than `.cmd` wrappers.
 
 ### Milestone 5: `std.compress` Zlib And Deflate
 
-- [ ] Create the `std.compress` folder module.
-- [ ] Add `CompressionError`.
-- [ ] Add placeholder public zlib/deflate API.
-- [ ] Parse zlib header and checksum fields.
-- [ ] Implement stored blocks.
-- [ ] Implement fixed Huffman blocks.
-- [ ] Implement dynamic Huffman blocks.
-- [ ] Implement length/distance copy logic.
-- [ ] Validate end-of-block handling.
-- [ ] Validate truncated stream failures.
-- [ ] Add `std.compress` source tests for small compressed streams independent
+- [x] Create the `std.compress` folder module.
+- [x] Add `CompressionError`.
+- [x] Add placeholder public zlib/deflate API.
+- [x] Parse zlib header and checksum fields.
+- [x] Implement stored blocks.
+- [x] Implement fixed Huffman blocks.
+- [x] Implement dynamic Huffman blocks.
+- [x] Implement length/distance copy logic.
+- [x] Validate end-of-block handling.
+- [x] Validate truncated stream failures.
+- [x] Add `std.compress` source tests for small compressed streams independent
       of PNG.
-- [ ] Add `std.image` tests against embedded PNG `IDAT` payloads once PNG chunk
+- [x] Add `std.image` tests against embedded PNG `IDAT` payloads once PNG chunk
       parsing exists.
 
 ### Milestone 6: PNG Filters And RGBA Decode
