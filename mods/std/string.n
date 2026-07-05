@@ -76,7 +76,9 @@ impl string {
 
         for index + separator.count <= text.count {
             matched := yes
-            for separator_index: usize = 0; matched && separator_index < separator.count; separator_index += 1 {
+            for separator_index: usize = 0;
+                matched && separator_index < separator.count;
+                separator_index += 1 {
                 on text.data[index + separator_index] != separator.data[separator_index] => matched = no
             }
 

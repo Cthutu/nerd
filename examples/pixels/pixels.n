@@ -61,7 +61,9 @@ main :: fn () {
     for frame_system.loop() {
         frame_system.update(^frame)
 
-        for event := frame_system.poll(^frame); event != FrameEvent.None; event = frame_system.poll(^frame) {
+        for event := frame_system.poll(^frame);
+            event != FrameEvent.None;
+            event = frame_system.poll(^frame) {
             on event {
                 None => {
                 }

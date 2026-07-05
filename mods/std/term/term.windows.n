@@ -141,7 +141,7 @@ on "windows" {
         }
     }
 
-    term_windows_input_record_key :: fn (record : INPUT_RECORD) -> Option[KeyCode] {
+    term_windows_input_record_key :: fn (record: INPUT_RECORD) -> Option[KeyCode] {
         on record.EventType != KEY_EVENT => return None
         on record.UnicodeChar > 0 &&
             record.UnicodeChar <= 127 => {
@@ -165,7 +165,7 @@ on "windows" {
         return on high >= 0x8000 => high.as(i32) - 0x10000 else high.as(i32)
     }
 
-    term_windows_input_record_mouse :: fn (record : INPUT_RECORD) -> TermInputEvent {
+    term_windows_input_record_mouse :: fn (record: INPUT_RECORD) -> TermInputEvent {
         on record.EventType != MOUSE_EVENT => return TermInputEvent.None
 
         mouse := (^record).as(^MOUSE_INPUT_RECORD)

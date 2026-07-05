@@ -23,7 +23,7 @@ pub PixelLayerMode :: enum {
 
     -- The buffer keeps a fixed virtual size and presentation scales it up.
     FixedSizeAutoScale {
-        width u16
+        width  u16
         height u16
     }
 }

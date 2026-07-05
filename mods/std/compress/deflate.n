@@ -2,8 +2,8 @@
 --
 -- Copyright (c) 2026 Matt Davies
 
-DEFLATE_MAX_BITS :: 15
-DEFLATE_MAX_LITERAL_SYMBOLS :: 288
+DEFLATE_MAX_BITS             :: 15
+DEFLATE_MAX_LITERAL_SYMBOLS  :: 288
 DEFLATE_MAX_DISTANCE_SYMBOLS :: 32
 
 pub CompressionError :: enum {
@@ -16,16 +16,16 @@ pub CompressionError :: enum {
 }
 
 DeflateReader :: plex {
-    bytes []u8
+    bytes      []u8
     byte_index usize
     bit_buffer u32
-    bit_count u8
-    failed bool
+    bit_count  u8
+    failed     bool
 }
 
 HuffmanEntry :: plex {
     symbol u16
-    code u16
+    code   u16
     length u8
 }
 
@@ -44,8 +44,7 @@ impl Huffman {
 compress_invalid :: fn (message: string) -> Result[[..]u8, CompressionError] {
     return Err(CompressionError.InvalidData {
         message
-    }
-    )
+    })
 }
 
 compress_error :: fn (error: CompressionError) -> Result[[..]u8, CompressionError] {
@@ -59,8 +58,7 @@ compress_ok :: fn (bytes: [..]u8) -> Result[[..]u8, CompressionError] {
 compress_huffman_invalid :: fn (message: string) -> Result[Huffman, CompressionError] {
     return Err(CompressionError.InvalidData {
         message
-    }
-    )
+    })
 }
 
 compress_huffman_ok :: fn (huffman: Huffman) -> Result[Huffman, CompressionError] {
@@ -69,11 +67,11 @@ compress_huffman_ok :: fn (huffman: Huffman) -> Result[Huffman, CompressionError
 
 deflate_reader_new :: fn (bytes: []u8) -> DeflateReader {
     return {
-        bytes : bytes
+        bytes
         byte_index : 0
         bit_buffer : 0
-        bit_count : 0
-        failed : no
+        bit_count  : 0
+        failed     : no
     }
 }
 
@@ -106,7 +104,7 @@ deflate_reverse_bits :: fn (code: u16, length: u8) -> u16 {
     reversed : u16 = 0
 
     for _ in [0 .. length.as(i32)] {
-        reversed = (reversed << 1) | (remaining & 1)
+        reversed  = (reversed << 1) | (remaining & 1)
         remaining >>= 1
     }
 
@@ -114,12 +112,12 @@ deflate_reverse_bits :: fn (code: u16, length: u8) -> u16 {
 }
 
 deflate_build_huffman :: fn (lengths: []u8) -> Result[Huffman, CompressionError] {
-    counts : [16]u16
+    counts     : [16]u16
     next_codes : [16]u16
 
     for i: usize = 0;
-    i < lengths.count;
-    i += 1 {
+        i < lengths.count;
+        i += 1 {
         length := lengths[i]
         on (length > DEFLATE_MAX_BITS) => return compress_huffman_invalid("Defl"
             +"ate Huffman code length is too large")
@@ -131,8 +129,8 @@ deflate_build_huffman :: fn (lengths: []u8) -> Result[Huffman, CompressionError]
 
     code : u16 = 0
     for bits: usize = 1;
-    bits <= DEFLATE_MAX_BITS;
-    bits += 1 {
+        bits <= DEFLATE_MAX_BITS;
+        bits += 1 {
         code = (code + counts[bits - 1]) << 1
         next_codes[bits] = code
     }
@@ -141,8 +139,8 @@ deflate_build_huffman :: fn (lengths: []u8) -> Result[Huffman, CompressionError]
         entries: nil
     }
     for symbol: usize = 0;
-    symbol < lengths.count;
-    symbol += 1 {
+        symbol < lengths.count;
+        symbol += 1 {
         length := lengths[symbol]
         on (length == 0) => again
 
@@ -151,10 +149,9 @@ deflate_build_huffman :: fn (lengths: []u8) -> Result[Huffman, CompressionError]
         next_codes[length_index] = next_codes[length_index] + 1
         huffman.entries.push({
             symbol : symbol.as(u16)
-            code : deflate_reverse_bits(next, length)
-            length : length
-        }
-        )
+            code   : deflate_reverse_bits(next, length)
+            length
+        })
     }
 
     return compress_huffman_ok(huffman)
@@ -164,98 +161,98 @@ deflate_decode_symbol :: fn (reader: ^DeflateReader, huffman: ^Huffman) -> i32 {
     code : u16 = 0
 
     for length: u8 = 1;
-    length <= DEFLATE_MAX_BITS;
-    length += 1 {
+        length <= DEFLATE_MAX_BITS;
+        length += 1 {
         code |= deflate_read_bits(reader, 1).as(u16) << (length - 1).as(u16)
-        on reader.failed => return - 1
+        on reader.failed => return -1
 
         for entry in huffman.entries {
             on (entry^.length == length && entry^.code == code) => return entry^.symbol.as(i32)
         }
     }
 
-    return - 1
+    return -1
 }
 
 deflate_length_base :: fn (symbol: i32) -> usize {
     return on symbol {
-        257 => 3
-        258 => 4
-        259 => 5
-        260 => 6
-        261 => 7
-        262 => 8
-        263 => 9
-        264 => 10
-        265 => 11
-        266 => 13
-        267 => 15
-        268 => 17
-        269 => 19
-        270 => 23
-        271 => 27
-        272 => 31
-        273 => 35
-        274 => 43
-        275 => 51
-        276 => 59
-        277 => 67
-        278 => 83
-        279 => 99
-        280 => 115
-        281 => 131
-        282 => 163
-        283 => 195
-        284 => 227
-        285 => 258
-        else => 0
+        257   => 3
+        258   => 4
+        259   => 5
+        260   => 6
+        261   => 7
+        262   => 8
+        263   => 9
+        264   => 10
+        265   => 11
+        266   => 13
+        267   => 15
+        268   => 17
+        269   => 19
+        270   => 23
+        271   => 27
+        272   => 31
+        273   => 35
+        274   => 43
+        275   => 51
+        276   => 59
+        277   => 67
+        278   => 83
+        279   => 99
+        280   => 115
+        281   => 131
+        282   => 163
+        283   => 195
+        284   => 227
+        285   => 258
+        else  => 0
     }
 }
 
 deflate_length_extra_bits :: fn (symbol: i32) -> u8 {
     return on symbol {
-        265, 266, 267, 268 => 1
-        269, 270, 271, 272 => 2
-        273, 274, 275, 276 => 3
-        277, 278, 279, 280 => 4
-        281, 282, 283, 284 => 5
-        else => 0
+        265, 266, 267, 268  => 1
+        269, 270, 271, 272  => 2
+        273, 274, 275, 276  => 3
+        277, 278, 279, 280  => 4
+        281, 282, 283, 284  => 5
+        else                => 0
     }
 }
 
 deflate_distance_base :: fn (symbol: i32) -> usize {
     return on symbol {
-        0 => 1
-        1 => 2
-        2 => 3
-        3 => 4
-        4 => 5
-        5 => 7
-        6 => 9
-        7 => 13
-        8 => 17
-        9 => 25
-        10 => 33
-        11 => 49
-        12 => 65
-        13 => 97
-        14 => 129
-        15 => 193
-        16 => 257
-        17 => 385
-        18 => 513
-        19 => 769
-        20 => 1025
-        21 => 1537
-        22 => 2049
-        23 => 3073
-        24 => 4097
-        25 => 6145
-        26 => 8193
-        27 => 12289
-        28 => 16385
-        29 => 24577
-        else => 0
+        0     => 1
+        1     => 2
+        2     => 3
+        3     => 4
+        4     => 5
+        5     => 7
+        6     => 9
+        7     => 13
+        8     => 17
+        9     => 25
+        10    => 33
+        11    => 49
+        12    => 65
+        13    => 97
+        14    => 129
+        15    => 193
+        16    => 257
+        17    => 385
+        18    => 513
+        19    => 769
+        20    => 1025
+        21    => 1537
+        22    => 2049
+        23    => 3073
+        24    => 4097
+        25    => 6145
+        26    => 8193
+        27    => 12289
+        28    => 16385
+        29    => 24577
+        else  => 0
     }
 }
 
@@ -264,27 +261,32 @@ deflate_distance_extra_bits :: fn (symbol: i32) -> u8 {
     return ((symbol - 2) / 2).as(u8)
 }
 
-deflate_output_push :: fn (output: ^[..]u8, byte: u8, max_output_bytes: usize) -> Result[bool, CompressionError] {
+deflate_output_push :: fn (output           : ^[..]u8,
+                           byte             : u8,
+                           max_output_bytes : usize) -> Result[bool, CompressionError] {
     on (max_output_bytes != 0 && output.count >= max_output_bytes) => return Err(OutputLimitExceeded)
 
     (output^).push(byte)
     return Ok(yes)
 }
 
-deflate_decode_compressed_block :: fn (reader : ^DeflateReader,
-output : ^[..]u8,
-literals : ^Huffman,
-distances : ^Huffman,
-max_output_bytes : usize) -> Result[bool, CompressionError] {
+deflate_decode_compressed_block :: fn (reader           : ^DeflateReader,
+                                       output           : ^[..]u8,
+                                       literals         : ^Huffman,
+                                       distances        : ^Huffman,
+                                       max_output_bytes : usize) -> Result[bool, CompressionError] {
     for {
         symbol := deflate_decode_symbol(reader, literals)
         on reader.failed => return compress_bool_error(UnexpectedEnd)
         on (symbol < 0) => return compress_bool_invalid("Invalid deflate "
             +"literal code")
         on (symbol < 256) => {
-            pushed := deflate_output_push(output, symbol.as(u8), max_output_bytes)
+            pushed := deflate_output_push(output,
+                                          symbol.as(u8),
+                                          max_output_bytes)
             on pushed {
-                Err(OutputLimitExceeded) => return compress_bool_error(OutputLimitExceeded) else => {
+                Err(OutputLimitExceeded) => return compress_bool_error(OutputLimitExceeded)
+                else => {
                 }
             }
             again
@@ -316,7 +318,8 @@ max_output_bytes : usize) -> Result[bool, CompressionError] {
             byte := (output^)[output.count - distance]
             pushed := deflate_output_push(output, byte, max_output_bytes)
             on pushed {
-                Err(OutputLimitExceeded) => return compress_bool_error(OutputLimitExceeded) else => {
+                Err(OutputLimitExceeded) => return compress_bool_error(OutputLimitExceeded)
+                else => {
                 }
             }
         }
@@ -336,11 +339,12 @@ compress_bool_error :: fn (error: CompressionError) -> Result[bool, CompressionE
 compress_bool_invalid :: fn (message: string) -> Result[bool, CompressionError] {
     return Err(CompressionError.InvalidData {
         message
-    }
-    )
+    })
 }
 
-deflate_decode_stored_block :: fn (reader: ^DeflateReader, output: ^[..]u8, max_output_bytes: usize) -> Result[bool, CompressionError] {
+deflate_decode_stored_block :: fn (reader           : ^DeflateReader,
+                                   output           : ^[..]u8,
+                                   max_output_bytes : usize) -> Result[bool, CompressionError] {
     deflate_align_byte(reader)
 
     on (reader.byte_index + 4 > reader.bytes.count) => return compress_bool_error(UnexpectedEnd)
@@ -355,9 +359,12 @@ deflate_decode_stored_block :: fn (reader: ^DeflateReader, output: ^[..]u8, max_
     on (reader.byte_index + length.as(usize) > reader.bytes.count) => return compress_bool_error(UnexpectedEnd)
 
     for _ in [0 .. length.as(usize)] {
-        pushed := deflate_output_push(output, reader.bytes[reader.byte_index], max_output_bytes)
+        pushed := deflate_output_push(output,
+                                      reader.bytes[reader.byte_index],
+                                      max_output_bytes)
         on pushed {
-            Err(OutputLimitExceeded) => return compress_bool_error(OutputLimitExceeded) else => {
+            Err(OutputLimitExceeded) => return compress_bool_error(OutputLimitExceeded)
+            else => {
             }
         }
         reader.byte_index += 1
@@ -371,23 +378,23 @@ deflate_fixed_literal_lengths :: fn () -> [..]u8 {
     lengths.resize_undefined_to(DEFLATE_MAX_LITERAL_SYMBOLS)
 
     for i: usize = 0;
-    i <= 143;
-    i += 1 {
+        i <= 143;
+        i += 1 {
         lengths[i] = 8
     }
     for i: usize = 144;
-    i <= 255;
-    i += 1 {
+        i <= 255;
+        i += 1 {
         lengths[i] = 9
     }
     for i: usize = 256;
-    i <= 279;
-    i += 1 {
+        i <= 279;
+        i += 1 {
         lengths[i] = 7
     }
     for i: usize = 280;
-    i <= 287;
-    i += 1 {
+        i <= 287;
+        i += 1 {
         lengths[i] = 8
     }
 
@@ -399,15 +406,17 @@ deflate_fixed_distance_lengths :: fn () -> [..]u8 {
     lengths.resize_undefined_to(DEFLATE_MAX_DISTANCE_SYMBOLS)
 
     for i: usize = 0;
-    i < DEFLATE_MAX_DISTANCE_SYMBOLS;
-    i += 1 {
+        i < DEFLATE_MAX_DISTANCE_SYMBOLS;
+        i += 1 {
         lengths[i] = 5
     }
 
     return lengths
 }
 
-deflate_decode_fixed_block :: fn (reader: ^DeflateReader, output: ^[..]u8, max_output_bytes: usize) -> Result[bool, CompressionError] {
+deflate_decode_fixed_block :: fn (reader           : ^DeflateReader,
+                                  output           : ^[..]u8,
+                                  max_output_bytes : usize) -> Result[bool, CompressionError] {
     literal_lengths := deflate_fixed_literal_lengths()
     defer literal_lengths.free()
     distance_lengths := deflate_fixed_distance_lengths()
@@ -415,53 +424,58 @@ deflate_decode_fixed_block :: fn (reader: ^DeflateReader, output: ^[..]u8, max_o
 
     literals_result := deflate_build_huffman(literal_lengths[..])
     literals := on literals_result {
-        Ok(value) => value
-        Err(error) => return compress_bool_error(error)
+        Ok(value)   => value
+        Err(error)  => return compress_bool_error(error)
     }
     defer literals.free()
 
     distances_result := deflate_build_huffman(distance_lengths[..])
     distances := on distances_result {
-        Ok(value) => value
-        Err(error) => return compress_bool_error(error)
+        Ok(value)   => value
+        Err(error)  => return compress_bool_error(error)
     }
     defer distances.free()
 
-    return deflate_decode_compressed_block(reader, output, ^literals, ^distances, max_output_bytes)
+    return deflate_decode_compressed_block(reader,
+                                           output,
+                                           ^literals,
+                                           ^distances,
+                                           max_output_bytes)
 }
 
 deflate_code_length_order :: fn (index: usize) -> usize {
     return on index {
-        0 => 16
-        1 => 17
-        2 => 18
-        3 => 0
-        4 => 8
-        5 => 7
-        6 => 9
-        7 => 6
-        8 => 10
-        9 => 5
-        10 => 11
-        11 => 4
-        12 => 12
-        13 => 3
-        14 => 13
-        15 => 2
-        16 => 14
-        17 => 1
-        else => 15
+        0     => 16
+        1     => 17
+        2     => 18
+        3     => 0
+        4     => 8
+        5     => 7
+        6     => 9
+        7     => 6
+        8     => 10
+        9     => 5
+        10    => 11
+        11    => 4
+        12    => 12
+        13    => 3
+        14    => 13
+        15    => 2
+        16    => 14
+        17    => 1
+        else  => 15
     }
 }
 
-deflate_decode_dynamic_lengths :: fn (reader: ^DeflateReader,
-total_lengths: usize,
-code_lengths: ^Huffman) -> Result[[..]u8, CompressionError] {
+deflate_decode_dynamic_lengths :: fn (reader        : ^DeflateReader,
+                                      total_lengths : usize,
+                                      code_lengths  : ^Huffman) -> Result[[..]u8, CompressionError] {
     lengths : [..]u8
     lengths.resize_undefined_to(total_lengths)
 
-    index : usize = 0
-    previous : u8 = 0
+    index    : usize = 0
+    previous : u8    = 0
+
     for index < total_lengths {
         symbol := deflate_decode_symbol(reader, code_lengths)
         on reader.failed => {
@@ -476,9 +490,9 @@ code_lengths: ^Huffman) -> Result[[..]u8, CompressionError] {
         on symbol <= 15 => {
             lengths[index] = symbol.as(u8)
             previous = symbol.as(u8)
-            index += 1
+            index    += 1
         }
-        else on (symbol == 16) => {
+            else on (symbol == 16) => {
             repeat := 3 + deflate_read_bits(reader, 2).as(usize)
             on (reader.failed || index == 0 || index + repeat > total_lengths) => {
                 lengths.free()
@@ -489,7 +503,7 @@ code_lengths: ^Huffman) -> Result[[..]u8, CompressionError] {
                 index += 1
             }
         }
-        else on (symbol == 17) => {
+            else on (symbol == 17) => {
             repeat := 3 + deflate_read_bits(reader, 3).as(usize)
             on (reader.failed || index + repeat > total_lengths) => {
                 lengths.free()
@@ -501,7 +515,7 @@ code_lengths: ^Huffman) -> Result[[..]u8, CompressionError] {
             }
             previous = 0
         }
-        else on (symbol == 18) => {
+            else on (symbol == 18) => {
             repeat := 11 + deflate_read_bits(reader, 7).as(usize)
             on (reader.failed || index + repeat > total_lengths) => {
                 lengths.free()
@@ -512,8 +526,7 @@ code_lengths: ^Huffman) -> Result[[..]u8, CompressionError] {
                 index += 1
             }
             previous = 0
-        }
-        else {
+        } else {
             lengths.free()
             return compress_invalid("Invalid dynamic deflate code length symbol")
         }
@@ -522,7 +535,9 @@ code_lengths: ^Huffman) -> Result[[..]u8, CompressionError] {
     return compress_ok(lengths)
 }
 
-deflate_decode_dynamic_block :: fn (reader: ^DeflateReader, output: ^[..]u8, max_output_bytes: usize) -> Result[bool, CompressionError] {
+deflate_decode_dynamic_block :: fn (reader           : ^DeflateReader,
+                                    output           : ^[..]u8,
+                                    max_output_bytes : usize) -> Result[bool, CompressionError] {
     hlit := deflate_read_bits(reader, 5).as(usize) + 257
     hdist := deflate_read_bits(reader, 5).as(usize) + 1
     hclen := deflate_read_bits(reader, 4).as(usize) + 4
@@ -532,52 +547,59 @@ deflate_decode_dynamic_block :: fn (reader: ^DeflateReader, output: ^[..]u8, max
     code_length_lengths.resize_undefined_to(19)
     defer code_length_lengths.free()
     for i: usize = 0;
-    i < 19;
-    i += 1 {
+        i < 19;
+        i += 1 {
         code_length_lengths[i] = 0
     }
     for i: usize = 0;
-    i < hclen;
-    i += 1 {
+        i < hclen;
+        i += 1 {
         code_length_lengths[deflate_code_length_order(i)] = deflate_read_bits(reader, 3).as(u8)
     }
     on reader.failed => return compress_bool_error(UnexpectedEnd)
 
     code_lengths_result := deflate_build_huffman(code_length_lengths[..])
     code_lengths := on code_lengths_result {
-        Ok(value) => value
-        Err(error) => return compress_bool_error(error)
+        Ok(value)   => value
+        Err(error)  => return compress_bool_error(error)
     }
     defer code_lengths.free()
 
-    all_lengths_result := deflate_decode_dynamic_lengths(reader, hlit + hdist, ^code_lengths)
+    all_lengths_result := deflate_decode_dynamic_lengths(reader,
+                                                         hlit + hdist,
+                                                         ^code_lengths)
     all_lengths := on all_lengths_result {
-        Ok(value) => value
-        Err(error) => return compress_bool_error(error)
+        Ok(value)   => value
+        Err(error)  => return compress_bool_error(error)
     }
     defer all_lengths.free()
 
-    literal_lengths := all_lengths[.. hlit]
-    distance_lengths := all_lengths[hlit ..]
+    literal_lengths := all_lengths[..hlit]
+    distance_lengths := all_lengths[hlit..]
 
     literals_result := deflate_build_huffman(literal_lengths)
     literals := on literals_result {
-        Ok(value) => value
-        Err(error) => return compress_bool_error(error)
+        Ok(value)   => value
+        Err(error)  => return compress_bool_error(error)
     }
     defer literals.free()
 
     distances_result := deflate_build_huffman(distance_lengths)
     distances := on distances_result {
-        Ok(value) => value
-        Err(error) => return compress_bool_error(error)
+        Ok(value)   => value
+        Err(error)  => return compress_bool_error(error)
     }
     defer distances.free()
 
-    return deflate_decode_compressed_block(reader, output, ^literals, ^distances, max_output_bytes)
+    return deflate_decode_compressed_block(reader,
+                                           output,
+                                           ^literals,
+                                           ^distances,
+                                           max_output_bytes)
 }
 
-deflate_decode_raw :: fn (bytes: []u8, max_output_bytes: usize) -> Result[[..]u8, CompressionError] {
+deflate_decode_raw :: fn (bytes            : []u8,
+                          max_output_bytes : usize) -> Result[[..]u8, CompressionError] {
     reader := deflate_reader_new(bytes)
     output : [..]u8 = nil
     final := no
@@ -591,10 +613,10 @@ deflate_decode_raw :: fn (bytes: []u8, max_output_bytes: usize) -> Result[[..]u8
         }
 
         block := on block_type {
-            0 => deflate_decode_stored_block(^reader, ^output, max_output_bytes)
-            1 => deflate_decode_fixed_block(^reader, ^output, max_output_bytes)
-            2 => deflate_decode_dynamic_block(^reader, ^output, max_output_bytes)
-            else => compress_bool_invalid("Reserved deflate block type")
+            0     => deflate_decode_stored_block(^reader, ^output, max_output_bytes)
+            1     => deflate_decode_fixed_block(^reader, ^output, max_output_bytes)
+            2     => deflate_decode_dynamic_block(^reader, ^output, max_output_bytes)
+            else  => compress_bool_invalid("Reserved deflate block type")
         }
 
         on block {
@@ -626,7 +648,8 @@ compress_be_u32_at :: fn (bytes: []u8, index: usize) -> u32 {
     return (bytes[index].as(u32) << 24) | (bytes[index + 1].as(u32) << 16) | (bytes[index + 2].as(u32) << 8) | bytes[index + 3].as(u32)
 }
 
-deflate_zlib_bytes :: fn (bytes: []u8, max_output_bytes: usize = 0) -> Result[[..]u8, CompressionError] {
+deflate_zlib_bytes :: fn (bytes            : []u8,
+                          max_output_bytes : usize = 0) -> Result[[..]u8, CompressionError] {
     on (bytes.count < 6) => return compress_error(UnexpectedEnd)
 
     cmf := bytes[0]
@@ -637,12 +660,12 @@ deflate_zlib_bytes :: fn (bytes: []u8, max_output_bytes: usize = 0) -> Result[[.
     on (flg & 0x20) != 0 => return compress_error(UnsupportedFormat)
 
     expected_adler := compress_be_u32_at(bytes, bytes.count - 4)
-    deflate_bytes := bytes[2 .. bytes.count - 4]
+    deflate_bytes := bytes[2..bytes.count - 4]
     output_result := deflate_decode_raw(deflate_bytes, max_output_bytes)
 
     output := on output_result {
-        Ok(value) => value
-        Err(error) => return compress_error(error)
+        Ok(value)   => value
+        Err(error)  => return compress_error(error)
     }
 
     actual_adler := compress_adler32(output[..])
@@ -656,7 +679,8 @@ deflate_zlib_bytes :: fn (bytes: []u8, max_output_bytes: usize = 0) -> Result[[.
 
 pub impl []u8 {
 
-    pub deflate_zlib :: fn (bytes: Self, max_output_bytes: usize = 0) -> Result[[..]u8, CompressionError] {
+    pub deflate_zlib :: fn (bytes            : Self,
+                            max_output_bytes : usize = 0) -> Result[[..]u8, CompressionError] {
         return deflate_zlib_bytes(bytes, max_output_bytes)
     }
 
@@ -679,7 +703,8 @@ test "zlib decompresses empty stream" {
 }
 
 test "zlib decompresses stored block" {
-    compressed : [14]u8 = [120, 1, 1, 3, 0, 252, 255, 'a', 'b', 'c', 2, 77, 1, 39]
+    compressed : [14]u8 =
+                          [120, 1, 1, 3, 0, 252, 255, 'a', 'b', 'c', 2, 77, 1, 39]
 
     result := compressed[..].deflate_zlib()
 
@@ -698,7 +723,8 @@ test "zlib decompresses stored block" {
 }
 
 test "zlib decompresses fixed Huffman stream" {
-    compressed : [16]u8 = [120, 1, 203, 72, 205, 201, 201, 87, 200, 64, 144, 0, 58, 46, 6, 125]
+    compressed : [16]u8 =
+                          [120, 1, 203, 72, 205, 201, 201, 87, 200, 64, 144, 0, 58, 46, 6, 125]
 
     result := compressed[..].deflate_zlib()
 
@@ -715,7 +741,8 @@ test "zlib decompresses fixed Huffman stream" {
 }
 
 test "zlib decompresses dynamic Huffman stream" {
-    compressed : [17]u8 = [120, 218, 203, 72, 205, 201, 201, 87, 200, 32, 150, 4, 0, 163, 150, 17, 129]
+    compressed : [17]u8 =
+                          [120, 218, 203, 72, 205, 201, 201, 87, 200, 32, 150, 4, 0, 163, 150, 17, 129]
 
     result := compressed[..].deflate_zlib()
 
@@ -724,6 +751,7 @@ test "zlib decompresses dynamic Huffman stream" {
             assert output.count == 47
             assert output.as(string) == "hello hello hello hello hello hello "
                 +"hello hello"
+
             output.free()
         }
         else => {
@@ -747,7 +775,8 @@ test "zlib rejects invalid checksum" {
 }
 
 test "zlib enforces output limit" {
-    compressed : [14]u8 = [120, 1, 1, 3, 0, 252, 255, 'a', 'b', 'c', 2, 77, 1, 39]
+    compressed : [14]u8 =
+                          [120, 1, 1, 3, 0, 252, 255, 'a', 'b', 'c', 2, 77, 1, 39]
 
     result := compressed[..].deflate_zlib(2)
 

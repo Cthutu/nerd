@@ -164,7 +164,7 @@ ffi "kernel32" {
                                              nLength              : DWORD,
                                              lpNumberOfEventsRead : ^DWORD) -> BOOL
 
-    c_FlushConsoleInputBuffer :: FlushConsoleInputBuffer (hConsoleInput : HANDLE) -> BOOL
+    c_FlushConsoleInputBuffer :: FlushConsoleInputBuffer (hConsoleInput: HANDLE) -> BOOL
 
     c_GetConsoleScreenBufferInfo :: GetConsoleScreenBufferInfo (hConsoleOutput            : HANDLE,
                                                                 lpConsoleScreenBufferInfo : ^CONSOLE_SCREEN_BUFFER_INFO) -> BOOL
@@ -188,9 +188,9 @@ ffi "kernel32" {
     c_WaitForSingleObject :: WaitForSingleObject (hHandle        : HANDLE,
                                                   dwMilliseconds : DWORD) -> DWORD
 
-    c_QueryPerformanceCounter :: QueryPerformanceCounter (lpPerformanceCount : ^LARGE_INTEGER) -> BOOL
+    c_QueryPerformanceCounter :: QueryPerformanceCounter (lpPerformanceCount: ^LARGE_INTEGER) -> BOOL
 
-    c_QueryPerformanceFrequency :: QueryPerformanceFrequency (lpFrequency : ^LARGE_INTEGER) -> BOOL
+    c_QueryPerformanceFrequency :: QueryPerformanceFrequency (lpFrequency: ^LARGE_INTEGER) -> BOOL
 
     c_Sleep :: Sleep (dwMilliseconds: DWORD)
 }

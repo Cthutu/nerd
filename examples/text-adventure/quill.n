@@ -95,17 +95,11 @@ show_exits :: fn (state: ^State) {
 init :: fn () -> State {
     return {
         locations: [
-            "I am in a Hall.  The Kitchen is to the East, the Bedroom to the "
-                +"West and the Lounge to the South.  Steps lead Down to the "
-                +"Cellar.",
-            "I am in the Kitchen.  The Hall is to the West and the Dining room "
-                +"is to the South.",
-            "I am in the Dining room.  The Kitchen is to the North and the "
-                +"Lounge is to the West.",
-            "I am in the Lounge.  To the North is the Hall while the Dining "
-                +"room is to the East.",
-            "I am in the Bedroom.  The Hall is to the East and a bed is "
-                +"against the North wall.",
+            "I am in a Hall.  The Kitchen is to the East, the Bedroom to the West and the Lounge to the South.  Steps lead Down to the Cellar.",
+            "I am in the Kitchen.  The Hall is to the West and the Dining room is to the South.",
+            "I am in the Dining room.  The Kitchen is to the North and the Lounge is to the West.",
+            "I am in the Lounge.  To the North is the Hall while the Dining room is to the East.",
+            "I am in the Bedroom.  The Hall is to the East and a bed is against the North wall.",
             "I am in the Cellar.  Steps lead Up to the Hall.",
         ]
         exits: [

@@ -187,7 +187,7 @@ pub FrameEvent :: enum {
     -- This event is also guaranteed to be called when the window is first
     -- created.
     Resized {
-        width u16
+        width  u16
         height u16
     }
 
@@ -213,23 +213,23 @@ pub FrameEvent :: enum {
 pub Frame :: plex {
     -- Weak link back to the owning system. `FrameSystem.apply` fills this in.
     -- It is used to resolve the internal live `FrameInfo` record by ID.
-    system ^FrameSystem
+    system      ^FrameSystem
 
     -- The ID of the frame.  This is a unique identifier for the frame within
     -- the system.  A value of `NEW_FRAME` indicates that this frame should be
     -- created when `apply` is called.
-    id u16
+    id          u16
 
     -- The desired width of the frame.  This is ignored if the frame already
     -- exists and is not resized.
-    width u16
+    width       u16
 
     -- The desired height of the frame.  This is ignored if the frame already
     -- exists and is not resized.
-    height u16
+    height      u16
 
     -- The title of the frame.
-    title string
+    title       string
 
     -- Set to yes if we want fullscreen.  When applying no and we're in
     -- fullscreen the previous dimensions and position should be restored.
@@ -237,7 +237,7 @@ pub Frame :: plex {
 
     -- Set to no to ask the platform window manager to prevent user resizing.
     -- Programmatic size changes through `apply` are still allowed.
-    resizable bool
+    resizable   bool
 }
 
 pub FrameError :: enum {

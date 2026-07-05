@@ -616,6 +616,22 @@ internal bool cst_skip_type_tokens(const CstParseState* state, u32* io_index)
                 }
                 (*io_index)++;
             }
+            if (cst_kind_at_stream_index(state, *io_index) == TK_LBrace) {
+                (*io_index)++;
+                while (cst_kind_at_stream_index(state, *io_index) !=
+                       TK_RBrace) {
+                    if (cst_kind_at_stream_index(state, *io_index) == TK_EOF ||
+                        cst_kind_at_stream_index(state, *io_index) !=
+                            TK_Symbol) {
+                        return false;
+                    }
+                    (*io_index)++;
+                    if (!cst_skip_type_tokens(state, io_index)) {
+                        return false;
+                    }
+                }
+                (*io_index)++;
+            }
             if (cst_kind_at_stream_index(state, *io_index) == TK_Equal) {
                 (*io_index)++;
                 if (!cst_skip_enum_value_tokens(state, io_index)) {

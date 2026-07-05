@@ -35,6 +35,12 @@ internal void  format_emit_for_header_items(StringBuilder* sb,
                                             const Lexer*   lexer,
                                             u32            first_item,
                                             u32            item_count);
+internal void  format_emit_c_style_for_header(StringBuilder*    sb,
+                                              const Cst*        cst,
+                                              const Lexer*      lexer,
+                                              const CstForInfo* for_info,
+                                              u32               for_token_index,
+                                              u32               indent_level);
 internal void  format_emit_spaces(StringBuilder* sb, usize count);
 internal void  format_emit_indent(StringBuilder* sb, u32 indent_level);
 internal usize format_sb_current_column(const StringBuilder* sb);
@@ -114,6 +120,7 @@ internal bool   format_emit_block_comments_before_token(StringBuilder* sb,
                                                         u32    indent_level,
                                                         usize* out_last_end);
 internal bool   format_string_has_newline(string text);
+internal bool   format_node_kind_is_type_syntax(CstKind kind);
 internal string format_render_expr_to_string(Arena*       arena,
                                              const Cst*   cst,
                                              const Lexer* lexer,
@@ -1318,27 +1325,12 @@ internal void format_emit_expr(StringBuilder* sb,
                 format_emit_expr(
                     sb, cst, lexer, for_info->iterable_node_index, 0);
             } else if (for_info->mode == CFM_CStyle) {
-                sb_append_char(sb, ' ');
-                if (for_info->init_count > 0) {
-                    format_emit_for_header_items(sb,
-                                                 cst,
-                                                 lexer,
-                                                 for_info->first_init,
-                                                 for_info->init_count);
-                }
-                sb_append_cstr(sb, "; ");
-                if (for_info->condition_node_index != U32_MAX) {
-                    format_emit_expr(
-                        sb, cst, lexer, for_info->condition_node_index, 0);
-                }
-                sb_append_cstr(sb, "; ");
-                if (for_info->update_count > 0) {
-                    format_emit_for_header_items(sb,
-                                                 cst,
-                                                 lexer,
-                                                 for_info->first_update,
-                                                 for_info->update_count);
-                }
+                format_emit_c_style_for_header(sb,
+                                               cst,
+                                               lexer,
+                                               for_info,
+                                               node->token_index,
+                                               g_format_expr_indent_level);
             } else if (for_info->condition_node_index != U32_MAX) {
                 sb_append_char(sb, ' ');
                 format_emit_expr(
@@ -1468,15 +1460,7 @@ internal void format_emit_expr(StringBuilder* sb,
         format_emit_expr(sb, cst, lexer, node->a, node_precedence);
         sb_append_char(sb, '(');
         {
-            const CstCallInfo* call                = &cst->calls[node->b];
-            bool               trim_plex_arg_close = false;
-            if (call->arg_count == 1) {
-                u32            arg_index = cst->call_args[call->first_arg];
-                const CstNode* arg       = &cst->nodes[arg_index];
-                trim_plex_arg_close =
-                    (arg->kind == CK_Plex || arg->kind == CK_PlexUpdate) &&
-                    !format_node_is_single_line(cst, lexer, arg_index);
-            }
+            const CstCallInfo* call = &cst->calls[node->b];
             for (u32 i = 0; i < call->arg_count; ++i) {
                 if (i > 0) {
                     sb_append_cstr(sb, ", ");
@@ -1484,7 +1468,7 @@ internal void format_emit_expr(StringBuilder* sb,
                 format_emit_expr(
                     sb, cst, lexer, cst->call_args[call->first_arg + i], 0);
             }
-            if (trim_plex_arg_close) {
+            if (call->arg_count == 1) {
                 format_trim_trailing_space_after_multiline_close(sb, '}');
             }
         }
@@ -2675,6 +2659,25 @@ internal bool format_string_has_newline(string text)
         }
     }
     return false;
+}
+
+internal bool format_node_kind_is_type_syntax(CstKind kind)
+{
+    switch (kind) {
+    case CK_TypeNever:
+    case CK_TypeFn:
+    case CK_TypeApply:
+    case CK_TypeTuple:
+    case CK_TypeArray:
+    case CK_TypeSlice:
+    case CK_TypeDynamicArray:
+    case CK_TypePointer:
+    case CK_TypePlex:
+    case CK_TypeEnum:
+        return true;
+    default:
+        return false;
+    }
 }
 
 internal bool format_string_should_use_triple_literal(string text)
@@ -4721,6 +4724,8 @@ internal bool format_collect_aligned_statement(Arena*       arena,
         } else if (payload->kind == CK_Undefined) {
             type  = format_render_expr_to_string(arena, cst, lexer, payload->a);
             value = s("undefined");
+        } else if (format_node_kind_is_type_syntax(payload->kind)) {
+            type = format_render_expr_to_string(arena, cst, lexer, node->b);
         } else {
             if (!include_inferred_variables) {
                 return false;
@@ -4738,7 +4743,8 @@ internal bool format_collect_aligned_statement(Arena*       arena,
             .type             = type,
             .value            = value,
             .is_bind          = false,
-            .has_value        = payload->kind != CK_ZeroInit,
+            .has_value        = payload->kind != CK_ZeroInit &&
+                                !format_node_kind_is_type_syntax(payload->kind),
             .is_public        = (node->flags & CNF_Public) != 0,
             .uses_standard_single_line = payload->kind != CK_AnnotatedValue &&
                                          payload->kind != CK_ZeroInit &&
@@ -5618,6 +5624,10 @@ internal void format_emit_fn_param(StringBuilder*  sb,
 internal usize format_fn_signature_param_name_width(
     const Cst* cst, const Lexer* lexer, const CstFnSignature* signature)
 {
+    if (signature->param_count <= 1) {
+        return 0;
+    }
+
     usize name_width = 0;
     for (u32 i = 0; i < signature->param_count; ++i) {
         const CstParam* param = &cst->params[signature->first_param + i];
@@ -7267,6 +7277,80 @@ internal void format_emit_for_header_items(StringBuilder* sb,
     }
 }
 
+internal bool format_c_style_for_header_has_newline(const Lexer* lexer,
+                                                    u32 for_token_index)
+{
+    for (u32 i = for_token_index; i < array_count(lexer->tokens); ++i) {
+        if (lexer->tokens[i].kind == TK_LBrace) {
+            return format_count_newlines_between(
+                       lexer->source.source,
+                       lexer->tokens[for_token_index].offset,
+                       lexer->tokens[i].offset) > 0;
+        }
+    }
+    return false;
+}
+
+internal void format_emit_c_style_for_header(StringBuilder*    sb,
+                                             const Cst*        cst,
+                                             const Lexer*      lexer,
+                                             const CstForInfo* for_info,
+                                             u32               for_token_index,
+                                             u32               indent_level)
+{
+    Arena arena = {0};
+    arena_init(&arena);
+
+    StringBuilder one_line = {0};
+    sb_init(&one_line, &arena);
+    sb_append_char(&one_line, ' ');
+    if (for_info->init_count > 0) {
+        format_emit_for_header_items(
+            &one_line, cst, lexer, for_info->first_init, for_info->init_count);
+    }
+    sb_append_cstr(&one_line, "; ");
+    if (for_info->condition_node_index != U32_MAX) {
+        format_emit_expr(
+            &one_line, cst, lexer, for_info->condition_node_index, 0);
+    }
+    sb_append_cstr(&one_line, "; ");
+    if (for_info->update_count > 0) {
+        format_emit_for_header_items(&one_line,
+                                     cst,
+                                     lexer,
+                                     for_info->first_update,
+                                     for_info->update_count);
+    }
+
+    bool multiline =
+        format_c_style_for_header_has_newline(lexer, for_token_index) ||
+        format_sb_current_column(sb) + one_line.size > FORMAT_WRAP_WIDTH;
+    if (!multiline) {
+        sb_append_string(sb, sb_to_string(&one_line));
+        arena_done(&arena);
+        return;
+    }
+
+    sb_append_char(sb, ' ');
+    if (for_info->init_count > 0) {
+        format_emit_for_header_items(
+            sb, cst, lexer, for_info->first_init, for_info->init_count);
+    }
+    sb_append_cstr(sb, ";\n");
+    format_emit_indent(sb, indent_level + 1);
+    if (for_info->condition_node_index != U32_MAX) {
+        format_emit_expr(sb, cst, lexer, for_info->condition_node_index, 0);
+    }
+    sb_append_cstr(sb, ";\n");
+    format_emit_indent(sb, indent_level + 1);
+    if (for_info->update_count > 0) {
+        format_emit_for_header_items(
+            sb, cst, lexer, for_info->first_update, for_info->update_count);
+    }
+
+    arena_done(&arena);
+}
+
 internal void format_emit_block_statement(StringBuilder* sb,
                                           const Cst*     cst,
                                           const Lexer*   lexer,
@@ -7304,24 +7388,8 @@ internal void format_emit_block_statement(StringBuilder* sb,
             sb_append_cstr(sb, " in ");
             format_emit_expr(sb, cst, lexer, for_info->iterable_node_index, 0);
         } else if (for_info->mode == CFM_CStyle) {
-            sb_append_char(sb, ' ');
-            if (for_info->init_count > 0) {
-                format_emit_for_header_items(
-                    sb, cst, lexer, for_info->first_init, for_info->init_count);
-            }
-            sb_append_cstr(sb, "; ");
-            if (for_info->condition_node_index != U32_MAX) {
-                format_emit_expr(
-                    sb, cst, lexer, for_info->condition_node_index, 0);
-            }
-            sb_append_cstr(sb, "; ");
-            if (for_info->update_count > 0) {
-                format_emit_for_header_items(sb,
-                                             cst,
-                                             lexer,
-                                             for_info->first_update,
-                                             for_info->update_count);
-            }
+            format_emit_c_style_for_header(
+                sb, cst, lexer, for_info, stmt->token_index, indent_level);
         } else if (for_info->condition_node_index != U32_MAX) {
             sb_append_char(sb, ' ');
             format_emit_expr(sb, cst, lexer, for_info->condition_node_index, 0);
