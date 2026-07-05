@@ -1,0 +1,99 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Provides image loading and pixel storage helpers. Format decoders are added
+-- as separate module parts so each file can keep a narrow responsibility.
+
+-- Decoded image data.
+--
+-- Pixel bytes are owned by the image and must be released with `free` when the
+-- caller is done with them.
+pub Image :: plex {
+    width    i32     -- Width in pixels.
+    height   i32     -- Height in pixels.
+    channels i32     -- Number of byte channels per pixel.
+    data     [..]u8  -- Owned contiguous pixel bytes.
+}
+
+-- Image loading failure.
+pub ImageError :: enum {
+    -- The input does not match a supported image format.
+    UnsupportedFormat
+
+    -- The input matches a known format but contains invalid data.
+    InvalidData {
+        message string
+    }
+
+    -- The input ended before a complete value could be decoded.
+    UnexpectedEnd
+
+    -- Pixel storage or decode scratch allocation failed.
+    OutOfMemory
+}
+
+impl Image {
+
+    -- Loads an image from a file path.
+    pub load :: fn (_path: string, _desired_channels: i32 = 0) -> Result[Self, ImageError] {
+        return Err(UnsupportedFormat)
+    }
+
+    -- Loads an image from bytes already available in memory.
+    pub load_bytes :: fn (_bytes: []u8,
+    _desired_channels: i32 = 0) -> Result[Self, ImageError] {
+        return Err(UnsupportedFormat)
+    }
+
+    -- Releases owned pixel storage and resets the image to an empty value.
+    pub free :: fn (image: ^Self) {
+        image.data.free()
+        image.width = 0
+        image.height = 0
+        image.channels = 0
+    }
+
+}
+
+test "image placeholder load_bytes reports unsupported format" {
+    bytes : [4]u8 = [0, 1, 2, 3]
+    result := Image.load_bytes(bytes[..])
+
+    on result {
+        Err(UnsupportedFormat) => {
+        }
+        else => {
+            assert no
+        }
+    }
+}
+
+test "image placeholder load reports unsupported format" {
+    result := Image.load("missing.png")
+
+    on result {
+        Err(UnsupportedFormat) => {
+        }
+        else => {
+            assert no
+        }
+    }
+}
+
+test "image free releases storage and clears dimensions" {
+    image := Image {
+        width : 2
+        height : 2
+        channels : 4
+        data : nil
+    }
+    image.data.resize_undefined_to(16)
+
+    image.free()
+
+    assert image.width == 0
+    assert image.height == 0
+    assert image.channels == 0
+    assert image.data.count == 0
+}

@@ -22,9 +22,9 @@ pattern matching.
 
 ### Target Module Shape
 
-- [ ] Create `mods/std/image/mod.n` as the public entry point.
+- [x] Create `mods/std/image/mod.n` as the public entry point.
 - [ ] Split implementation across module parts:
-  - [ ] `image.n`: public `Image`, `ImageError`, loading API, and channel
+  - [x] `image.n`: public `Image`, `ImageError`, loading API, and channel
         conversion.
   - [ ] `reader.n`: byte reader/cursor helpers over `[]u8`.
   - [ ] `png.n`: PNG container, zlib/deflate, filters, and colour conversion.
@@ -35,6 +35,43 @@ pattern matching.
 - [ ] Keep the public import as `use std.image`.
 - [ ] Keep implementation details private unless a helper type is intentionally
       part of the public API.
+
+### Companion `std.compress` Module
+
+- [ ] Create `mods/std/compress/mod.n` before PNG zlib/deflate work starts.
+- [ ] Keep compression algorithms separate from image decoding so PNG can use
+      the same public decompression APIs as other callers.
+- [ ] Design a small Nerd-native API using `Result`, slices, default
+      parameters, and method-style helpers where useful.
+- [ ] Start with zlib-wrapped deflate because PNG requires it.
+- [ ] Keep raw deflate and gzip as explicit future extensions, not accidental
+      behaviours.
+- [ ] Put compression implementation tests in `test { ... }` sections inside
+      `std.compress` module parts.
+
+API sketch:
+
+```nerd
+use std.compress
+
+bytes := compressed.deflate_zlib().expect("decompression failed")
+```
+
+Possible public shape:
+
+```nerd
+CompressionError :: enum {
+    UnsupportedFormat
+    InvalidData { message string }
+    UnexpectedEnd
+    OutputLimitExceeded
+}
+
+impl []u8 {
+    pub deflate_zlib :: fn (bytes: Self,
+                            max_output_bytes: usize = 0) -> Result[[..]u8, CompressionError]
+}
+```
 
 ### Public API Sketch
 
@@ -79,15 +116,15 @@ should live in module-local `test` sections rather than `.cmd` wrappers.
 
 ### Milestone 1: Module Skeleton
 
-- [ ] Create `mods/std/image/mod.n`.
-- [ ] Add a minimal `Image` plex.
-- [ ] Add `ImageError`.
-- [ ] Decide whether `Image.data` is heap-owned, temp-arena-owned, or
+- [x] Create `mods/std/image/mod.n`.
+- [x] Add a minimal `Image` plex.
+- [x] Add `ImageError`.
+- [x] Decide whether `Image.data` is heap-owned, temp-arena-owned, or
       caller-arena-owned.
-- [ ] Add `Image.free()` only if the chosen ownership model requires it.
-- [ ] Add placeholder `Image.load_bytes()` returning `UnsupportedFormat`.
-- [ ] Add placeholder `Image.load()` returning `UnsupportedFormat`.
-- [ ] Add an initial source test proving the stdlib source-test suite discovers
+- [x] Add `Image.free()` only if the chosen ownership model requires it.
+- [x] Add placeholder `Image.load_bytes()` returning `UnsupportedFormat`.
+- [x] Add placeholder `Image.load()` returning `UnsupportedFormat`.
+- [x] Add an initial source test proving the stdlib source-test suite discovers
       `std.image`.
 
 ### Milestone 2: Reader Helpers
@@ -126,8 +163,11 @@ should live in module-local `test` sections rather than `.cmd` wrappers.
 - [ ] Add source tests for valid `IHDR`, missing `IEND`, truncated chunks, and
       unexpected chunk order.
 
-### Milestone 5: Zlib And Deflate For PNG
+### Milestone 5: `std.compress` Zlib And Deflate
 
+- [ ] Create the `std.compress` folder module.
+- [ ] Add `CompressionError`.
+- [ ] Add placeholder public zlib/deflate API.
 - [ ] Parse zlib header and checksum fields.
 - [ ] Implement stored blocks.
 - [ ] Implement fixed Huffman blocks.
@@ -135,8 +175,10 @@ should live in module-local `test` sections rather than `.cmd` wrappers.
 - [ ] Implement length/distance copy logic.
 - [ ] Validate end-of-block handling.
 - [ ] Validate truncated stream failures.
-- [ ] Add tests for small compressed streams independent of PNG.
-- [ ] Add tests against embedded PNG `IDAT` payloads.
+- [ ] Add `std.compress` source tests for small compressed streams independent
+      of PNG.
+- [ ] Add `std.image` tests against embedded PNG `IDAT` payloads once PNG chunk
+      parsing exists.
 
 ### Milestone 6: PNG Filters And RGBA Decode
 
