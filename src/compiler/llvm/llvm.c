@@ -5511,6 +5511,26 @@ internal void llvm_bind_symbol_value(LlvmFunctionContext* ctx,
     }
 }
 
+internal void llvm_bind_local_value(LlvmFunctionContext* ctx,
+                                    u32                  local_index,
+                                    LlvmValue            value)
+{
+    if (ctx->sema == NULL || local_index == U32_MAX ||
+        local_index >= array_count(ctx->sema->locals)) {
+        return;
+    }
+
+    LlvmValue local_value  = value;
+    local_value.type_index = llvm_local_type(ctx, local_index);
+    if (ctx->debug != NULL) {
+        LlvmLocalSlot* slot =
+            llvm_ensure_local_slot(ctx, local_index, local_value.type_index);
+        llvm_store_local_slot(ctx, slot, local_value);
+    } else {
+        llvm_set_local_value(ctx, local_index, local_value);
+    }
+}
+
 internal LlvmValue llvm_emit_pattern_compare(LlvmFunctionContext* ctx,
                                              const HirFunction*   function,
                                              LlvmValue            scrutinee,
@@ -5603,7 +5623,8 @@ internal LlvmValue llvm_emit_pattern_compare(LlvmFunctionContext* ctx,
 internal LlvmValue llvm_emit_pattern_condition(LlvmFunctionContext* ctx,
                                                const HirFunction*   function,
                                                LlvmValue            scrutinee,
-                                               u32 pattern_index)
+                                               u32  pattern_index,
+                                               bool bind_values)
 {
     if (pattern_index >= array_count(ctx->hir->patterns)) {
         return (LlvmValue){0};
@@ -5618,8 +5639,7 @@ internal LlvmValue llvm_emit_pattern_condition(LlvmFunctionContext* ctx,
             .value      = s("1"),
         };
     case HIR_PATTERN_Bind:
-        llvm_bind_symbol_value(
-            ctx, function, pattern->symbol_handle, scrutinee);
+        llvm_bind_local_value(ctx, pattern->local_index, scrutinee);
         return (LlvmValue){
             .ok         = true,
             .type_index = sema_no_type(),
@@ -5711,7 +5731,7 @@ internal LlvmValue llvm_emit_pattern_condition(LlvmFunctionContext* ctx,
                     .value = temp,
                 };
                 LlvmValue condition = llvm_emit_pattern_condition(
-                    ctx, function, field, child->pattern_index);
+                    ctx, function, field, child->pattern_index, bind_values);
                 if (!condition.ok) {
                     return (LlvmValue){0};
                 }
@@ -5905,7 +5925,8 @@ internal LlvmValue llvm_emit_pattern_condition(LlvmFunctionContext* ctx,
                                                     .type_index = child_type,
                                                     .value      = child_value,
                                                 },
-                                                child->pattern_index);
+                                                child->pattern_index,
+                                                bind_values);
                 if (!child_condition.ok) {
                     return (LlvmValue){0};
                 }
@@ -5942,7 +5963,8 @@ llvm_emit_branch_pattern_condition(LlvmFunctionContext* ctx,
             ctx,
             function,
             scrutinee,
-            ctx->hir->on_branch_patterns[pattern_index_index]);
+            ctx->hir->on_branch_patterns[pattern_index_index],
+            false);
         if (!condition.ok) {
             return (LlvmValue){0};
         }

@@ -33,17 +33,49 @@ pub ImageError :: enum {
     OutOfMemory
 }
 
+-- Image container or codec detected from the first bytes.
+ImageFormat :: enum {
+    PNG
+    JPEG
+    BMP
+}
+
+image_is_png :: fn (bytes: []u8) -> bool {
+    return bytes.count >= 8 && bytes[0] == 0x89 && bytes[1] == 'P' && bytes[2] == 'N' && bytes[3] == 'G' && bytes[4] == 13 && bytes[5] == 10 && bytes[6] == 26 && bytes[7] == 10
+}
+
+image_is_jpeg :: fn (bytes: []u8) -> bool {
+    return bytes.count >= 3 && bytes[0] == 0xff && bytes[1] == 0xd8 && bytes[2] == 0xff
+}
+
+image_is_bmp :: fn (bytes: []u8) -> bool {
+    return bytes.count >= 2 && bytes[0] == 'B' && bytes[1] == 'M'
+}
+
+image_format :: fn (bytes: []u8) -> Option[ImageFormat] {
+    on image_is_png(bytes) => return Some(PNG)
+    on image_is_jpeg(bytes) => return Some(JPEG)
+    on image_is_bmp(bytes) => return Some(BMP)
+    return None
+}
+
 impl Image {
 
     -- Loads an image from a file path.
-    pub load :: fn (_path: string, _desired_channels: i32 = 0) -> Result[Self, ImageError] {
+    pub load :: fn (_path             : string,
+                    _desired_channels : i32 = 0) -> Result[Self, ImageError] {
         return Err(UnsupportedFormat)
     }
 
     -- Loads an image from bytes already available in memory.
-    pub load_bytes :: fn (_bytes: []u8,
-    _desired_channels: i32 = 0) -> Result[Self, ImageError] {
-        return Err(UnsupportedFormat)
+    pub load_bytes :: fn (bytes             : []u8,
+                          _desired_channels : i32 = 0) -> Result[Self, ImageError] {
+        return on image_format(bytes) {
+            Some(PNG)   => Err(UnsupportedFormat)
+            Some(JPEG)  => Err(UnsupportedFormat)
+            Some(BMP)   => Err(UnsupportedFormat)
+            None        => Err(UnsupportedFormat)
+        }
     }
 
     -- Releases owned pixel storage and resets the image to an empty value.
@@ -81,12 +113,72 @@ test "image placeholder load reports unsupported format" {
     }
 }
 
+test "image format detects PNG signature" {
+    bytes : [8]u8 = [0x89, 'P', 'N', 'G', 13, 10, 26, 10]
+
+    format := image_format(bytes[..])
+
+    on format {
+        Some(PNG) => {
+            assert yes
+        }
+        else => {
+            assert no
+        }
+    }
+}
+
+test "image format detects JPEG signature" {
+    bytes : [4]u8 = [0xff, 0xd8, 0xff, 0xdb]
+
+    format := image_format(bytes[..])
+
+    on format {
+        Some(JPEG) => {
+            assert yes
+        }
+        else => {
+            assert no
+        }
+    }
+}
+
+test "image format detects BMP signature" {
+    bytes : [2]u8 = ['B', 'M']
+
+    format := image_format(bytes[..])
+
+    on format {
+        Some(BMP) => {
+            assert yes
+        }
+        else => {
+            assert no
+        }
+    }
+}
+
+test "image format rejects unknown data" {
+    bytes : [4]u8 = [1, 2, 3, 4]
+
+    format := image_format(bytes[..])
+
+    on format {
+        None => {
+            assert yes
+        }
+        else => {
+            assert no
+        }
+    }
+}
+
 test "image free releases storage and clears dimensions" {
     image := Image {
-        width : 2
-        height : 2
+        width    : 2
+        height   : 2
         channels : 4
-        data : nil
+        data     : nil
     }
     image.data.resize_undefined_to(16)
 

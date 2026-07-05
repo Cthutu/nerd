@@ -286,6 +286,7 @@ typedef struct {
 typedef struct {
     HirPatternKind kind;
     u32            symbol_handle;
+    u32            local_index;
     u32            expr_index;
     u32            extra_expr_index;
     u32            first_child;

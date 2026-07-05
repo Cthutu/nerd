@@ -26,7 +26,7 @@ pattern matching.
 - [ ] Split implementation across module parts:
   - [x] `image.n`: public `Image`, `ImageError`, loading API, and channel
         conversion.
-  - [ ] `reader.n`: byte reader/cursor helpers over `[]u8`.
+  - [x] `reader.n`: byte reader/cursor helpers over `[]u8`.
   - [ ] `png.n`: PNG container, zlib/deflate, filters, and colour conversion.
   - [ ] `jpeg.n`: JPEG markers, entropy decode, IDCT, and colour conversion.
   - [ ] `bmp.n`: BMP container and pixel formats.
@@ -129,26 +129,26 @@ should live in module-local `test` sections rather than `.cmd` wrappers.
 
 ### Milestone 2: Reader Helpers
 
-- [ ] Add a private `ImageReader` over `[]u8`.
-- [ ] Implement `remaining()`, `position()`, and `done()`.
-- [ ] Implement `read_u8()`.
-- [ ] Implement big-endian reads for PNG: `read_be_u16()` and `read_be_u32()`.
-- [ ] Implement little-endian reads for BMP/TGA: `read_le_u16()` and
+- [x] Add a private `ImageReader` over `[]u8`.
+- [x] Implement `remaining()`, `position()`, and `done()`.
+- [x] Implement `read_u8()`.
+- [x] Implement big-endian reads for PNG: `read_be_u16()` and `read_be_u32()`.
+- [x] Implement little-endian reads for BMP/TGA: `read_le_u16()` and
       `read_le_u32()`.
-- [ ] Implement `take(count)` returning a slice or `UnexpectedEnd`.
-- [ ] Add source tests for empty input, exact reads, short reads, and cursor
+- [x] Implement `take(count)` returning a slice or `UnexpectedEnd`.
+- [x] Add source tests for empty input, exact reads, short reads, and cursor
       advancement.
 
 ### Milestone 3: Format Detection
 
-- [ ] Add `ImageFormat` enum.
-- [ ] Implement PNG signature detection.
-- [ ] Implement JPEG SOI marker detection.
-- [ ] Implement BMP signature detection.
+- [x] Add `ImageFormat` enum.
+- [x] Implement PNG signature detection.
+- [x] Implement JPEG SOI marker detection.
+- [x] Implement BMP signature detection.
 - [ ] Implement TGA heuristic detection only once the TGA decoder starts.
-- [ ] Route `Image.load_bytes()` through format detection.
-- [ ] Return `UnsupportedFormat` for unknown data.
-- [ ] Add tests using embedded tiny files and invalid byte sequences.
+- [x] Route `Image.load_bytes()` through format detection.
+- [x] Return `UnsupportedFormat` for unknown data.
+- [x] Add tests using embedded tiny signatures and invalid byte sequences.
 
 ### Milestone 4: PNG Container
 

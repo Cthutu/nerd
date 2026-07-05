@@ -2396,12 +2396,20 @@ internal u32 hir_lower_pattern(Hir*         hir,
                     hir_lower_expr(hir, lexer, ast, sema, pattern->b),
             });
     case APK_Bind:
-        return hir_add_pattern(hir,
-                               (HirPattern){
-                                   .kind          = HIR_PATTERN_Bind,
-                                   .symbol_handle = pattern->a,
-                                   .expr_index    = hir_no_index(),
-                               });
+        {
+            u32 local_index =
+                pattern_index < array_count(sema->pattern_local_indices)
+                    ? sema->pattern_local_indices[pattern_index]
+                    : U32_MAX;
+
+            return hir_add_pattern(hir,
+                                   (HirPattern){
+                                       .kind          = HIR_PATTERN_Bind,
+                                       .symbol_handle = pattern->a,
+                                       .local_index   = local_index,
+                                       .expr_index    = hir_no_index(),
+                                   });
+        }
     case APK_Ignore:
         return hir_add_pattern(hir,
                                (HirPattern){
