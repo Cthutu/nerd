@@ -1,0 +1,675 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Parses PNG container structure. Pixel decompression and colour conversion are
+-- implemented by later decoder milestones.
+
+PNG_SIGNATURE_SIZE :: 8
+
+PNG_CHUNK_IHDR ::
+                  ('I'.as(u32) << 24) | ('H'.as(u32) << 16) | ('D'.as(u32) << 8) | 'R'.as(u32)
+PNG_CHUNK_IDAT ::
+                  ('I'.as(u32) << 24) | ('D'.as(u32) << 16) | ('A'.as(u32) << 8) | 'T'.as(u32)
+PNG_CHUNK_IEND ::
+                  ('I'.as(u32) << 24) | ('E'.as(u32) << 16) | ('N'.as(u32) << 8) | 'D'.as(u32)
+
+PngChunk :: plex {
+    length u32
+    kind   u32
+    data   []u8
+    crc    u32
+}
+
+PngIhdr :: plex {
+    width       u32
+    height      u32
+    bit_depth   u8
+    color_type  u8
+    compression u8
+    filter      u8
+    interlace   u8
+}
+
+PngContainer :: plex {
+    ihdr        PngIhdr
+    idat_chunks [..][]u8
+}
+
+impl PngContainer {
+
+    free :: fn (png: ^Self) {
+        png.idat_chunks.free()
+    }
+
+}
+
+png_invalid :: fn (message: string) -> Result[PngContainer, ImageError] {
+    return Err(ImageError.InvalidData { message })
+}
+
+png_error :: fn (error: ImageError) -> Result[PngContainer, ImageError] {
+    return Err(error)
+}
+
+png_ok :: fn (png: PngContainer) -> Result[PngContainer, ImageError] {
+    return Ok(png)
+}
+
+png_invalid_chunk :: fn (message: string) -> Result[PngChunk, ImageError] {
+    return Err(ImageError.InvalidData { message })
+}
+
+png_chunk_error :: fn (error: ImageError) -> Result[PngChunk, ImageError] {
+    return Err(error)
+}
+
+png_signature_matches :: fn (signature: []u8) -> bool {
+    return signature.count == PNG_SIGNATURE_SIZE && signature[0] == 0x89 && signature[1] == 'P' && signature[2] == 'N' && signature[3] == 'G' && signature[4] == 13 && signature[5] == 10 && signature[6] == 26 && signature[7] == 10
+}
+
+png_chunk_kind_byte :: fn (kind: u32, index: i32) -> u8 {
+    return on index {
+        0     => ((kind >> 24) & 0xff).as(u8)
+        1     => ((kind >> 16) & 0xff).as(u8)
+        2     => ((kind >> 8) & 0xff).as(u8)
+        else  => (kind & 0xff).as(u8)
+    }
+}
+
+png_crc32_update :: fn (crc: u32, byte: u8) -> u32 {
+    next := crc ^ byte.as(u32)
+
+    for _ in [0 .. 8] {
+        next = on (next & 1) == 1 => ((next >> 1) ^ 0xedb88320.as(u32)) else next >> 1
+    }
+
+    return next
+}
+
+png_chunk_crc :: fn (kind: u32, data: []u8) -> u32 {
+    crc := 0xffffffff.as(u32)
+
+    for index in [0 .. 4] {
+        crc = png_crc32_update(crc, png_chunk_kind_byte(kind, index))
+    }
+
+    for byte in data {
+        crc = png_crc32_update(crc, byte^)
+    }
+
+    return ~crc
+}
+
+png_be_u32_at :: fn (bytes: []u8, index: usize) -> u32 {
+    return (bytes[index].as(u32) << 24) | (bytes[index + 1].as(u32) << 16) | (bytes[index + 2].as(u32) << 8) | bytes[index + 3].as(u32)
+}
+
+png_parse_ihdr :: fn (chunk: PngChunk) -> PngIhdr {
+    return {
+        width       : png_be_u32_at(chunk.data, 0)
+        height      : png_be_u32_at(chunk.data, 4)
+        bit_depth   : chunk.data[8]
+        color_type  : chunk.data[9]
+        compression : chunk.data[10]
+        filter      : chunk.data[11]
+        interlace   : chunk.data[12]
+    }
+}
+
+png_read_chunk :: fn (reader: ^ImageReader) -> Result[PngChunk, ImageError] {
+    on reader.remaining() < 8 => return png_chunk_error(UnexpectedEnd)
+
+    chunk_length := png_be_u32_at(reader.bytes, reader.offset)
+    reader.offset += 4
+
+    chunk_kind := png_be_u32_at(reader.bytes, reader.offset)
+    reader.offset += 4
+
+    on reader.remaining() < chunk_length.as(usize) + 4 => return png_chunk_error(UnexpectedEnd)
+
+    data_start := reader.offset
+    data_end := data_start + chunk_length.as(usize)
+    chunk_data := reader.bytes[data_start..data_end]
+    reader.offset = data_end
+
+    chunk_crc := png_be_u32_at(reader.bytes, reader.offset)
+    reader.offset += 4
+
+    on (png_chunk_crc(chunk_kind, chunk_data) != chunk_crc) => {
+        return png_invalid_chunk("PNG chunk CRC mismatch")
+    }
+
+    return Ok({
+        length : chunk_length
+        kind   : chunk_kind
+        data   : chunk_data
+        crc    : chunk_crc
+    })
+}
+
+png_parse :: fn (bytes: []u8) -> Result[PngContainer, ImageError] {
+    on !image_is_png(bytes) => return png_error(UnsupportedFormat)
+
+    reader := ImageReader.new(bytes)
+    signature := reader.take(PNG_SIGNATURE_SIZE)
+    on signature {
+        Err(error) => return png_error(error)
+        Ok(value) => {
+            on !png_signature_matches(value) => return png_error(UnsupportedFormat)
+        }
+    }
+
+    ihdr := PngIhdr {
+        width       : 0
+        height      : 0
+        bit_depth   : 0
+        color_type  : 0
+        compression : 0
+        filter      : 0
+        interlace   : 0
+    }
+    idat_chunks : [..][]u8 = nil
+    seen_ihdr := no
+    seen_idat := no
+
+    for !reader.done() {
+        chunk : Result[PngChunk, ImageError] = png_read_chunk(^reader)
+        on chunk {
+            Ok(value) => {
+                on (value.kind == PNG_CHUNK_IHDR) => {
+                    on seen_ihdr => {
+                        idat_chunks.free()
+                        return png_invalid("PNG contains more than one IHDR chunk")
+                    }
+                    on seen_idat => {
+                        idat_chunks.free()
+                        return png_invalid("PNG IHDR chunk must appear before IDAT")
+                    }
+
+                    on (value.length != 13) => {
+                        idat_chunks.free()
+                        return png_invalid("PNG IHDR chunk must be 13 bytes")
+                    }
+                    header := png_parse_ihdr(value)
+
+                    on header.width == 0 ||
+                        header.height == 0 => {
+                        idat_chunks.free()
+                        return png_invalid("PNG IHDR width and height must be nonzero")
+                    }
+                    ihdr.width = header.width
+                    ihdr.height = header.height
+                    ihdr.bit_depth = header.bit_depth
+                    ihdr.color_type = header.color_type
+                    ihdr.compression = header.compression
+                    ihdr.filter = header.filter
+                    ihdr.interlace = header.interlace
+                    seen_ihdr = yes
+                }
+                on (value.kind == PNG_CHUNK_IDAT) => {
+                    on !seen_ihdr => {
+                        idat_chunks.free()
+                        return png_invalid("PNG IDAT chunk appeared before IHDR")
+                    }
+                    idat_chunks.push(value.data)
+                    seen_idat = yes
+                }
+                on (value.kind == PNG_CHUNK_IEND) => {
+                    on (value.length != 0) => {
+                        idat_chunks.free()
+                        return png_invalid("PNG IEND chunk must be empty")
+                    }
+                    on !seen_ihdr => {
+                        idat_chunks.free()
+                        return png_invalid("PNG ended before IHDR")
+                    }
+                    on !seen_idat => {
+                        idat_chunks.free()
+                        return png_invalid("PNG ended before IDAT")
+                    }
+                    return png_ok({
+                        ihdr
+                        idat_chunks
+                    })
+                }
+                again
+            }
+            Err(error) => {
+                idat_chunks.free()
+                return png_error(error)
+            }
+        }
+    }
+
+    idat_chunks.free()
+    return Err(UnexpectedEnd)
+}
+
+test "png parses valid IHDR IDAT and IEND" {
+    bytes: [57]u8 = [
+        0x89,
+        'P',
+        'N',
+        'G',
+        13,
+        10,
+        26,
+        10,
+        0,
+        0,
+        0,
+        13,
+        'I',
+        'H',
+        'D',
+        'R',
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        3,
+        8,
+        2,
+        0,
+        0,
+        0,
+        0x36,
+        0x88,
+        0x49,
+        0xd6,
+        0,
+        0,
+        0,
+        0,
+        'I',
+        'D',
+        'A',
+        'T',
+        0x35,
+        0xaf,
+        0x06,
+        0x1e,
+        0,
+        0,
+        0,
+        0,
+        'I',
+        'E',
+        'N',
+        'D',
+        0xae,
+        0x42,
+        0x60,
+        0x82,
+    ]
+
+    parsed := png_parse(bytes[..])
+
+    on parsed {
+        Ok(png) => {
+            assert png.ihdr.width == 2, "width"
+            assert png.ihdr.height == 3, "height"
+            assert png.ihdr.bit_depth == 8, "bit depth"
+            assert png.ihdr.color_type == 2, "color type"
+            assert png.idat_chunks.count == 1, "idat chunk count"
+            assert png.idat_chunks[0].count == 0, "empty idat count"
+            png.free()
+        }
+        else => {
+            assert no
+        }
+    }
+}
+
+test "png reads IHDR chunk" {
+    bytes: [25]u8 = [
+        0,
+        0,
+        0,
+        13,
+        'I',
+        'H',
+        'D',
+        'R',
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        3,
+        8,
+        2,
+        0,
+        0,
+        0,
+        0x36,
+        0x88,
+        0x49,
+        0xd6,
+    ]
+    reader := ImageReader.new(bytes[..])
+
+    chunk := png_read_chunk(^reader)
+
+    on chunk {
+        Ok(value) => {
+            assert value.length == 13
+            assert value.kind == PNG_CHUNK_IHDR
+            assert value.data.count == 13
+            assert value.crc == 914901462.as(u32)
+        }
+        else => {
+            assert no
+        }
+    }
+}
+
+test "png computes chunk CRC" {
+    ihdr: [13]u8 = [
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        3,
+        8,
+        2,
+        0,
+        0,
+        0,
+    ]
+    empty : [0]u8 = []
+
+    assert png_chunk_crc(PNG_CHUNK_IHDR, ihdr[..]) == 914901462.as(u32)
+    assert png_chunk_crc(PNG_CHUNK_IDAT, empty[..]) == 900662814.as(u32)
+    assert png_chunk_crc(PNG_CHUNK_IEND, empty[..]) == 2923585666.as(u32)
+}
+
+test "png collects IDAT chunks" {
+    bytes: [59]u8 = [
+        0x89,
+        'P',
+        'N',
+        'G',
+        13,
+        10,
+        26,
+        10,
+        0,
+        0,
+        0,
+        13,
+        'I',
+        'H',
+        'D',
+        'R',
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        8,
+        6,
+        0,
+        0,
+        0,
+        0x1f,
+        0x15,
+        0xc4,
+        0x89,
+        0,
+        0,
+        0,
+        2,
+        'I',
+        'D',
+        'A',
+        'T',
+        10,
+        20,
+        0x9c,
+        0xce,
+        0x81,
+        0x4d,
+        0,
+        0,
+        0,
+        0,
+        'I',
+        'E',
+        'N',
+        'D',
+        0xae,
+        0x42,
+        0x60,
+        0x82,
+    ]
+
+    parsed := png_parse(bytes[..])
+
+    on parsed {
+        Ok(png) => {
+            assert png.idat_chunks.count == 1
+            assert png.idat_chunks[0].count == 2
+            assert png.idat_chunks[0][0] == 10
+            assert png.idat_chunks[0][1] == 20
+            png.free()
+        }
+        else => {
+            assert no
+        }
+    }
+}
+
+test "png rejects missing IEND" {
+    bytes: [33]u8 = [
+        0x89,
+        'P',
+        'N',
+        'G',
+        13,
+        10,
+        26,
+        10,
+        0,
+        0,
+        0,
+        13,
+        'I',
+        'H',
+        'D',
+        'R',
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        8,
+        2,
+        0,
+        0,
+        0,
+        0x90,
+        0x77,
+        0x53,
+        0xde,
+    ]
+
+    parsed := png_parse(bytes[..])
+
+    on parsed {
+        Err(UnexpectedEnd) => {
+        }
+        else => {
+            assert no
+        }
+    }
+}
+
+test "png rejects truncated chunk data" {
+    bytes: [20]u8 = [
+        0x89,
+        'P',
+        'N',
+        'G',
+        13,
+        10,
+        26,
+        10,
+        0,
+        0,
+        0,
+        13,
+        'I',
+        'H',
+        'D',
+        'R',
+        0,
+        0,
+        0,
+        1,
+    ]
+
+    parsed := png_parse(bytes[..])
+
+    on parsed {
+        Err(UnexpectedEnd) => {
+        }
+        else => {
+            assert no
+        }
+    }
+}
+
+test "png rejects IDAT before IHDR" {
+    bytes: [32]u8 = [
+        0x89,
+        'P',
+        'N',
+        'G',
+        13,
+        10,
+        26,
+        10,
+        0,
+        0,
+        0,
+        0,
+        'I',
+        'D',
+        'A',
+        'T',
+        0x35,
+        0xaf,
+        0x06,
+        0x1e,
+        0,
+        0,
+        0,
+        0,
+        'I',
+        'E',
+        'N',
+        'D',
+        0xae,
+        0x42,
+        0x60,
+        0x82,
+    ]
+
+    parsed := png_parse(bytes[..])
+
+    on parsed {
+        Err(_) => {
+        }
+        else => {
+            assert no
+        }
+    }
+}
+
+test "png rejects invalid CRC" {
+    bytes: [57]u8 = [
+        0x89,
+        'P',
+        'N',
+        'G',
+        13,
+        10,
+        26,
+        10,
+        0,
+        0,
+        0,
+        13,
+        'I',
+        'H',
+        'D',
+        'R',
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        3,
+        8,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        'I',
+        'D',
+        'A',
+        'T',
+        0x35,
+        0xaf,
+        0x06,
+        0x1e,
+        0,
+        0,
+        0,
+        0,
+        'I',
+        'E',
+        'N',
+        'D',
+        0xae,
+        0x42,
+        0x60,
+        0x82,
+    ]
+
+    parsed := png_parse(bytes[..])
+
+    on parsed {
+        Err(_) => {
+        }
+        else => {
+            assert no
+        }
+    }
+}

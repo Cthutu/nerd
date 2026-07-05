@@ -21858,30 +21858,35 @@ internal u32 sema_symbol_ref_runtime_local(const Ast*  ast,
         return local_index;
     }
 
-    u32 scope_index = sema->node_scope_indices[node_index];
-    if (scope_index == sema_no_scope()) {
-        u32 symbol     = ast->nodes[node_index].a;
-        u32 best_local = sema_no_local();
-        u32 best_token = 0;
-        for (u32 i = 0; i < array_count(sema->locals); ++i) {
-            const SemaLocal* local = &sema->locals[i];
-            if (local->symbol_handle != symbol ||
-                !sema_local_is_runtime_value(local)) {
-                continue;
-            }
-            if (ast->nodes[node_index].token_index <= local->decl_token_index) {
-                continue;
-            }
-            if (best_local == sema_no_local() ||
-                local->decl_token_index > best_token) {
-                best_local = i;
-                best_token = local->decl_token_index;
-            }
+    u32 scope_index  = sema->node_scope_indices[node_index];
+    u32 scoped_local = sema_no_local();
+    if (scope_index != sema_no_scope()) {
+        scoped_local =
+            sema_lookup_local(sema, scope_index, ast->nodes[node_index].a);
+        if (scoped_local != sema_no_local()) {
+            return scoped_local;
         }
-        return best_local;
     }
 
-    return sema_lookup_local(sema, scope_index, ast->nodes[node_index].a);
+    u32 symbol     = ast->nodes[node_index].a;
+    u32 best_local = sema_no_local();
+    u32 best_token = 0;
+    for (u32 i = 0; i < array_count(sema->locals); ++i) {
+        const SemaLocal* local = &sema->locals[i];
+        if (local->symbol_handle != symbol ||
+            !sema_local_is_runtime_value(local)) {
+            continue;
+        }
+        if (ast->nodes[node_index].token_index <= local->decl_token_index) {
+            continue;
+        }
+        if (best_local == sema_no_local() ||
+            local->decl_token_index > best_token) {
+            best_local = i;
+            best_token = local->decl_token_index;
+        }
+    }
+    return best_local;
 }
 
 internal u32 sema_first_local_read_node(const Ast*  ast,

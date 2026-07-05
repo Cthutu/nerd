@@ -152,15 +152,15 @@ should live in module-local `test` sections rather than `.cmd` wrappers.
 
 ### Milestone 4: PNG Container
 
-- [ ] Parse PNG signature.
-- [ ] Parse chunk headers: length, chunk type, data, CRC.
-- [ ] Parse `IHDR`.
-- [ ] Collect one or more `IDAT` chunks.
-- [ ] Stop at `IEND`.
-- [ ] Validate mandatory chunk order enough to reject malformed inputs.
-- [ ] Decide CRC policy: strict by default, optional relaxed mode later if
+- [x] Parse PNG signature.
+- [x] Parse chunk headers: length, chunk type, data, CRC.
+- [x] Parse `IHDR`.
+- [x] Collect one or more `IDAT` chunks.
+- [x] Stop at `IEND`.
+- [x] Validate mandatory chunk order enough to reject malformed inputs.
+- [x] Decide CRC policy: strict by default, optional relaxed mode later if
       useful.
-- [ ] Add source tests for valid `IHDR`, missing `IEND`, truncated chunks, and
+- [x] Add source tests for valid `IHDR`, missing `IEND`, truncated chunks, and
       unexpected chunk order.
 
 ### Milestone 5: `std.compress` Zlib And Deflate
