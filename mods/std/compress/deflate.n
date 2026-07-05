@@ -1,8 +1,6 @@
 -- Nerd Standard Library (NSL)
 --
 -- Copyright (c) 2026 Matt Davies
---
--- Provides zlib-wrapped deflate decompression.
 
 DEFLATE_MAX_BITS :: 15
 DEFLATE_MAX_LITERAL_SYMBOLS :: 288

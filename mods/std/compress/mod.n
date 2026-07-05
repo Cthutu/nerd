@@ -1,6 +1,3 @@
 -- Nerd Standard Library (NSL)
 --
 -- Copyright (c) 2026 Matt Davies
---
--- Folder module root for std.compress. Implementation lives in sibling part
--- files.
