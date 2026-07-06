@@ -19,8 +19,7 @@ pattern matching.
 - [ ] Make image ownership explicit before landing the first decoder.
 - [ ] Use source-level unit tests in module parts so private helpers can be
       tested directly.
-- [ ] Limit active format work to PNG, JPEG, and BMP until those decoders are
-      solid.
+- [ ] Limit active format work to PNG and JPEG until those decoders are solid.
 - [ ] Defer file/path loading until Nerd has a stable standard filesystem
       module.
 
@@ -33,7 +32,6 @@ pattern matching.
   - [x] `reader.n`: byte reader/cursor helpers over `[]u8`.
   - [x] `png.n`: PNG container, zlib/deflate, filters, and colour conversion.
   - [ ] `jpeg.n`: JPEG markers, entropy decode, IDCT, and colour conversion.
-  - [x] `bmp.n`: BMP container and pixel formats.
   - [ ] `tests.n`: source-level unit tests and tiny embedded fixtures.
 - [ ] Keep the public import as `use std.image`.
 - [ ] Keep implementation details private unless a helper type is intentionally
@@ -133,7 +131,7 @@ should live in module-local `test` sections rather than `.cmd` wrappers.
 - [x] Implement `remaining()`, `position()`, and `done()`.
 - [x] Implement `read_u8()`.
 - [x] Implement big-endian reads for PNG: `read_be_u16()` and `read_be_u32()`.
-- [x] Implement little-endian reads for BMP and other binary containers:
+- [x] Implement little-endian reads for future binary containers:
       `read_le_u16()` and `read_le_u32()`.
 - [x] Implement `take(count)` returning a slice or `UnexpectedEnd`.
 - [x] Add source tests for empty input, exact reads, short reads, and cursor
@@ -144,7 +142,6 @@ should live in module-local `test` sections rather than `.cmd` wrappers.
 - [x] Add `ImageFormat` enum.
 - [x] Implement PNG signature detection.
 - [x] Implement JPEG SOI marker detection.
-- [x] Implement BMP signature detection.
 - [x] Route `Image.load_bytes()` through format detection.
 - [x] Return `UnsupportedFormat` for unknown data.
 - [x] Add tests using embedded tiny signatures and invalid byte sequences.
@@ -206,7 +203,21 @@ should live in module-local `test` sections rather than `.cmd` wrappers.
 - [x] Add fixtures for greyscale, greyscale-alpha, indexed, and transparent
       PNGs.
 
-### Milestone 8: Image Viewer Integration
+### Milestone 8: JPEG Baseline
+
+- [x] Parse JPEG markers.
+- [x] Parse SOF0 frame headers.
+- [x] Parse DQT quantisation tables.
+- [x] Parse DHT Huffman tables.
+- [x] Parse SOS scan headers.
+- [ ] Implement entropy decoding for baseline sequential JPEG.
+- [ ] Implement dequantisation and IDCT.
+- [ ] Implement YCbCr to RGB conversion.
+- [ ] Add desired-channel conversion.
+- [ ] Add tests with embedded baseline JPEG fixtures.
+- [x] Explicitly reject progressive JPEG until supported.
+
+### Milestone 9: Image Viewer Integration
 
 - [x] Replace the generated `DemoImage` path in
       `examples/image_viewer/image_viewer.n` with an embedded asset decoded via
@@ -216,30 +227,6 @@ should live in module-local `test` sections rather than `.cmd` wrappers.
 - [x] Add optional checkerboard background for transparent PNGs.
 - [x] Add `flip_vertically := no` as either a load option or a viewer option.
 
-### Milestone 9: JPEG Baseline
-
-- [x] Parse JPEG markers.
-- [x] Parse SOF0 frame headers.
-- [ ] Parse DQT quantisation tables.
-- [ ] Parse DHT Huffman tables.
-- [ ] Parse SOS scan headers.
-- [ ] Implement entropy decoding for baseline sequential JPEG.
-- [ ] Implement dequantisation and IDCT.
-- [ ] Implement YCbCr to RGB conversion.
-- [ ] Add desired-channel conversion.
-- [ ] Add tests with embedded baseline JPEG fixtures.
-- [x] Explicitly reject progressive JPEG until supported.
-
-### Milestone 10: BMP
-
-- [x] Parse BMP file header.
-- [x] Parse DIB headers needed for common Windows BMPs.
-- [x] Decode 24-bit BGR.
-- [x] Decode 32-bit BGRA/BGRX.
-- [x] Handle row padding.
-- [x] Handle top-down and bottom-up images.
-- [x] Add fixtures for 24-bit, 32-bit, and padded rows.
-
 ### Deferred: File Loading And Extra Formats
 
 - [ ] Add `Image.load(path, desired_channels := 0)` after a stable `std.fs` or
@@ -247,9 +234,9 @@ should live in module-local `test` sections rather than `.cmd` wrappers.
 - [ ] Add source-relative fixture tests once file loading exists.
 - [ ] Add command regressions for missing files and corrupted file contents once
       file loading exists.
-- [ ] Revisit TGA only after PNG, JPEG, and BMP are complete.
+- [ ] Revisit BMP and TGA only after PNG and JPEG are complete.
 - [ ] Revisit other `stb_image` formats such as HDR, GIF, PSD, PIC, and PNM only
-      after the core three formats are complete.
+      after PNG and JPEG are complete.
 
 ### Demo Assets
 

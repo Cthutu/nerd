@@ -14,15 +14,20 @@ JPEG_SOF0          :: 0xc0
 JPEG_SOF2          :: 0xc2
 
 JpegInfo :: plex {
-    width      i32
-    height     i32
-    components i32
-    saw_dqt    bool
-    saw_dht    bool
-    saw_sos    bool
+    width               i32
+    height              i32
+    components          i32
+    quantization_tables i32
+    huffman_tables      i32
+    scan_components     i32
+    saw_sos             bool
 }
 
 jpeg_invalid :: fn (message: string) -> Result[JpegInfo, ImageError] {
+    return Err(ImageError.InvalidData { message })
+}
+
+jpeg_bool_invalid :: fn (message: string) -> Result[bool, ImageError] {
     return Err(ImageError.InvalidData { message })
 }
 
@@ -60,17 +65,113 @@ jpeg_parse_sof0 :: fn (data: []u8, info: ^JpegInfo) -> Result[bool, ImageError] 
     return Ok(yes)
 }
 
+jpeg_parse_dqt :: fn (data: []u8, info: ^JpegInfo) -> Result[bool, ImageError] {
+    offset : usize = 0
+
+    for offset < data.count {
+        table_info := data[offset]
+        offset += 1
+
+        precision := table_info >> 4
+        table_id := table_info & 0x0f
+
+        on precision != 0 => return Err(UnsupportedFormat)
+        on table_id > 3 => return jpeg_bool_invalid("JPEG DQT table id is "
+            +"invalid")
+        on offset + 64 > data.count => return Err(UnexpectedEnd)
+
+        offset += 64
+        info.quantization_tables += 1
+    }
+
+    on info.quantization_tables == 0 => return jpeg_bool_invalid("JPEG DQT "
+        +"segment contains no tables")
+    return Ok(yes)
+}
+
+jpeg_parse_dht :: fn (data: []u8, info: ^JpegInfo) -> Result[bool, ImageError] {
+    offset : usize = 0
+
+    for offset < data.count {
+        on offset + 17 > data.count => return Err(UnexpectedEnd)
+
+        table_info := data[offset]
+        offset += 1
+
+        table_class := table_info >> 4
+        table_id := table_info & 0x0f
+
+        on table_class > 1 => return jpeg_bool_invalid("JPEG DHT table class "
+            +"is invalid")
+        on table_id > 3 => return jpeg_bool_invalid("JPEG DHT table id is "
+            +"invalid")
+
+        symbol_count : usize = 0
+        for i in [0 .. 16] {
+            symbol_count += data[offset + i.as(usize)].as(usize)
+        }
+        offset += 16
+
+        on offset + symbol_count > data.count => return Err(UnexpectedEnd)
+        offset += symbol_count
+        info.huffman_tables += 1
+    }
+
+    on info.huffman_tables == 0 => return jpeg_bool_invalid("JPEG DHT segment "
+        +"contains no tables")
+    return Ok(yes)
+}
+
+jpeg_parse_sos :: fn (data: []u8, info: ^JpegInfo) -> Result[bool, ImageError] {
+    on data.count < 4 => return Err(UnexpectedEnd)
+
+    components := data[0]
+    on components != 1 && components != 3 => return Err(UnsupportedFormat)
+    on info.components != 0 &&
+        components.as(i32) != info.components => return jpeg_bool_invalid("JPEG"
+        +" SOS component count does not match SOF0")
+    on data.count != 1 + components.as(usize) * 2 + 3 => return jpeg_bool_invalid("JPEG SOS segment length is invalid")
+
+    offset : usize = 1
+    for _ in [0 .. components.as(usize)] {
+        component_id := data[offset]
+        table_selector := data[offset + 1]
+        dc_table := table_selector >> 4
+        ac_table := table_selector & 0x0f
+
+        on component_id == 0 => return jpeg_bool_invalid("JPEG SOS component "
+            +"id is invalid")
+        on dc_table > 3 ||
+            ac_table > 3 => return jpeg_bool_invalid("JPEG SOS Huffman "
+            +"selector is invalid")
+        offset += 2
+    }
+
+    start_selection := data[offset]
+    end_selection := data[offset + 1]
+    approx := data[offset + 2]
+
+    on start_selection != 0 ||
+        end_selection != 63 ||
+        approx != 0 => return Err(UnsupportedFormat)
+
+    info.scan_components = components.as(i32)
+    info.saw_sos = yes
+    return Ok(yes)
+}
+
 jpeg_parse_headers :: fn (bytes: []u8) -> Result[JpegInfo, ImageError] {
     on !image_is_jpeg(bytes) => return Err(UnsupportedFormat)
     on bytes.count < 4 => return Err(UnexpectedEnd)
 
     info := JpegInfo {
-        width      : 0
-        height     : 0
-        components : 0
-        saw_dqt    : no
-        saw_dht    : no
-        saw_sos    : no
+        width               : 0
+        height              : 0
+        components          : 0
+        quantization_tables : 0
+        huffman_tables      : 0
+        scan_components     : 0
+        saw_sos             : no
     }
 
     offset : usize = 2
@@ -107,10 +208,20 @@ jpeg_parse_headers :: fn (bytes: []u8) -> Result[JpegInfo, ImageError] {
         offset += data_length
 
         on marker == JPEG_DQT => {
-            info.saw_dqt = yes
+            parsed := jpeg_parse_dqt(data, ^info)
+            on parsed {
+                Err(error) => return Err(error)
+                Ok(_) => {
+                }
+            }
         }
         on marker == JPEG_DHT => {
-            info.saw_dht = yes
+            parsed := jpeg_parse_dht(data, ^info)
+            on parsed {
+                Err(error) => return Err(error)
+                Ok(_) => {
+                }
+            }
         }
         on marker == JPEG_SOF0 => {
             parsed := jpeg_parse_sof0(data, ^info)
@@ -121,13 +232,18 @@ jpeg_parse_headers :: fn (bytes: []u8) -> Result[JpegInfo, ImageError] {
             }
         }
         on marker == JPEG_SOS => {
-            info.saw_sos = yes
             on info.width == 0 ||
                 info.height == 0 => return jpeg_invalid("JPEG SOS appeared "
                 +"before SOF0")
-            on !info.saw_dqt ||
-                !info.saw_dht => return jpeg_invalid("JPEG missing tables "
-                +"before SOS")
+            on info.quantization_tables == 0 ||
+                info.huffman_tables == 0 => return jpeg_invalid("JPEG missing "
+                +"tables before SOS")
+            parsed := jpeg_parse_sos(data, ^info)
+            on parsed {
+                Err(error) => return Err(error)
+                Ok(_) => {
+                }
+            }
             return Ok(info)
         }
     }
@@ -283,8 +399,9 @@ test "jpeg parses baseline header prefix" {
             assert info.width == 1
             assert info.height == 1
             assert info.components == 3
-            assert info.saw_dqt
-            assert info.saw_dht
+            assert info.quantization_tables == 1
+            assert info.huffman_tables == 1
+            assert info.scan_components == 3
             assert info.saw_sos
         }
         Err(error) => {

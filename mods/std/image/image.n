@@ -37,7 +37,6 @@ pub ImageError :: enum {
 ImageFormat :: enum {
     PNG
     JPEG
-    BMP
 }
 
 image_is_png :: fn (bytes: []u8) -> bool {
@@ -48,14 +47,9 @@ image_is_jpeg :: fn (bytes: []u8) -> bool {
     return bytes.count >= 3 && bytes[0] == 0xff && bytes[1] == 0xd8 && bytes[2] == 0xff
 }
 
-image_is_bmp :: fn (bytes: []u8) -> bool {
-    return bytes.count >= 2 && bytes[0] == 'B' && bytes[1] == 'M'
-}
-
 image_format :: fn (bytes: []u8) -> Option[ImageFormat] {
     on image_is_png(bytes) => return Some(PNG)
     on image_is_jpeg(bytes) => return Some(JPEG)
-    on image_is_bmp(bytes) => return Some(BMP)
     return None
 }
 
@@ -67,7 +61,6 @@ impl Image {
         return on image_format(bytes) {
             Some(PNG)   => png_decode(bytes, desired_channels)
             Some(JPEG)  => jpeg_decode(bytes, desired_channels)
-            Some(BMP)   => bmp_decode(bytes, desired_channels)
             None        => Err(UnsupportedFormat)
         }
     }
@@ -117,21 +110,6 @@ test "image format detects JPEG signature" {
 
     on format {
         Some(JPEG) => {
-            assert yes
-        }
-        else => {
-            assert no
-        }
-    }
-}
-
-test "image format detects BMP signature" {
-    bytes : [2]u8 = ['B', 'M']
-
-    format := image_format(bytes[..])
-
-    on format {
-        Some(BMP) => {
             assert yes
         }
         else => {
