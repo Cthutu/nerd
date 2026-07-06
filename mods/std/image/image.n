@@ -68,10 +68,10 @@ impl Image {
     }
 
     -- Loads an image from bytes already available in memory.
-    pub load_bytes :: fn (bytes             : []u8,
-                          _desired_channels : i32 = 0) -> Result[Self, ImageError] {
+    pub load_bytes :: fn (bytes            : []u8,
+                          desired_channels : i32 = 0) -> Result[Self, ImageError] {
         return on image_format(bytes) {
-            Some(PNG)   => Err(UnsupportedFormat)
+            Some(PNG)   => png_decode(bytes, desired_channels)
             Some(JPEG)  => Err(UnsupportedFormat)
             Some(BMP)   => Err(UnsupportedFormat)
             None        => Err(UnsupportedFormat)

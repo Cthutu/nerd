@@ -182,21 +182,21 @@ should live in module-local `test` sections rather than `.cmd` wrappers.
 
 ### Milestone 6: PNG Filters And RGBA Decode
 
-- [ ] Implement filter type 0: None.
-- [ ] Implement filter type 1: Sub.
-- [ ] Implement filter type 2: Up.
-- [ ] Implement filter type 3: Average.
-- [ ] Implement filter type 4: Paeth.
-- [ ] Decode non-interlaced 8-bit RGB.
-- [ ] Decode non-interlaced 8-bit RGBA.
-- [ ] Convert RGB to desired channels `0`, `3`, and `4`.
-- [ ] Add source tests for every filter using tiny handcrafted scanlines.
-- [ ] Add tests for embedded 1x1 and 2x2 PNG fixtures with known pixels.
+- [x] Implement filter type 0: None.
+- [x] Implement filter type 1: Sub.
+- [x] Implement filter type 2: Up.
+- [x] Implement filter type 3: Average.
+- [x] Implement filter type 4: Paeth.
+- [x] Decode non-interlaced 8-bit RGB.
+- [x] Decode non-interlaced 8-bit RGBA.
+- [x] Convert RGB to desired channels `0`, `3`, and `4`.
+- [x] Add source tests for every filter using tiny handcrafted scanlines.
+- [x] Add tests for embedded 1x1 and 2x2 PNG fixtures with known pixels.
 
 ### Milestone 7: More PNG Colour Modes
 
-- [ ] Decode grayscale 8-bit.
-- [ ] Decode grayscale with alpha.
+- [ ] Decode greyscale 8-bit.
+- [ ] Decode greyscale with alpha.
 - [ ] Decode indexed colour with `PLTE`.
 - [ ] Apply `tRNS` transparency where supported.
 - [ ] Add channel conversion for desired channels `1` and `2`.
@@ -204,7 +204,7 @@ should live in module-local `test` sections rather than `.cmd` wrappers.
       stable `UnsupportedFormat` reason.
 - [ ] Decide whether to support Adam7 interlace now or explicitly reject it with
       a stable `UnsupportedFormat` reason.
-- [ ] Add fixtures for grayscale, grayscale-alpha, indexed, and transparent
+- [ ] Add fixtures for greyscale, greyscale-alpha, indexed, and transparent
       PNGs.
 
 ### Milestone 8: File Loading
