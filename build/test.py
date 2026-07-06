@@ -247,6 +247,9 @@ def current_platform() -> str:
 
 
 def case_platforms(path: pathlib.Path) -> set[str]:
+    if path.is_dir():
+        return set()
+
     text = path.read_text(encoding="utf-8")
     source = text.split("¬", 1)[0]
     for line in source.splitlines():
@@ -1182,7 +1185,7 @@ def test_stdlib(path: pathlib.Path) -> list[Failure]:
     ]
 
 
-def collect() -> list[tuple[str, pathlib.Path]]:
+def collect(filter_text: str = "") -> list[tuple[str, pathlib.Path]]:
     cases: list[tuple[str, pathlib.Path]] = []
     for kind, directory, suffix in [
         ("language", "tests/language", "*.t"),
@@ -1199,9 +1202,13 @@ def collect() -> list[tuple[str, pathlib.Path]]:
             if kind == "llvm" and re.search(r"(\.input)?\.m\d+\.ll$", path.name):
                 continue
             cases.append((kind, path))
-    for path in sorted((ROOT / "mods" / "std").glob("**/*.n")):
-        if source_path_matches_platform(path) and source_has_tests(path):
-            cases.append(("stdlib", path))
+    stdlib_root = ROOT / "mods" / "std"
+    if filter_text == "" or filter_text in rel(stdlib_root):
+        cases.append(("stdlib", stdlib_root))
+    else:
+        for path in sorted(stdlib_root.glob("**/*.n")):
+            if source_path_matches_platform(path) and source_has_tests(path):
+                cases.append(("stdlib", path))
     for path in sorted((ROOT / "examples").glob("**/*.n")):
         if example_has_entry_point(path):
             cases.append(("examples", path))
@@ -1225,7 +1232,7 @@ def main() -> int:
         "examples": test_example,
     }
 
-    cases = [(kind, path) for kind, path in collect() if args.filter in rel(path)]
+    cases = [(kind, path) for kind, path in collect(args.filter) if args.filter in rel(path)]
     counts: dict[str, SuiteCounts] = {kind: SuiteCounts() for kind in runners}
     failures: list[Failure] = []
     for kind, path in cases:
