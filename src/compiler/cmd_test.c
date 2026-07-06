@@ -612,6 +612,18 @@ internal bool source_test_file_has_named_tests(Arena* arena, cstr path)
     return found;
 }
 
+internal string source_test_summary_label(Arena* arena, cstr path)
+{
+    string filename = path_filename(s(path));
+    if (!string_eq(filename, s("mod.n"))) {
+        return s(path);
+    }
+
+    cstr   module_dir  = path_dirname(arena, path);
+    string module_name = path_filename(s(module_dir));
+    return string_format(arena, "module:" STRINGP, STRINGV(module_name));
+}
+
 internal int source_test_run_directory(Arena*                arena,
                                        cstr                  path,
                                        const NerdTestConfig* config,
@@ -643,8 +655,9 @@ internal int source_test_run_directory(Arena*                arena,
 
         NerdTestConfig child_config = *config;
         child_config.input_path     = s(child_path);
-        child_config.summary_label  = s(child_path);
-        result                      = compiler_cmd_test(&child_config);
+        child_config.summary_label =
+            source_test_summary_label(arena, child_path);
+        result = compiler_cmd_test(&child_config);
         if (result != 0) {
             break;
         }
