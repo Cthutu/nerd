@@ -4,7 +4,7 @@ test "directory source test" {
 ¬
 0
 ¬
-1 tests passed
+./_239_source_test_directory_cwd.n: 1 tests passed
 
 ¬
 default-folder

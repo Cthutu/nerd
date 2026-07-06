@@ -74,6 +74,7 @@ typedef struct {
 
 typedef struct {
     string input_path;
+    string summary_label;
     string filter;
     bool   list;
     bool   list_results;

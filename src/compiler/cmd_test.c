@@ -643,6 +643,7 @@ internal int source_test_run_directory(Arena*                arena,
 
         NerdTestConfig child_config = *config;
         child_config.input_path     = s(child_path);
+        child_config.summary_label  = s(child_path);
         result                      = compiler_cmd_test(&child_config);
         if (result != 0) {
             break;
@@ -745,7 +746,14 @@ int compiler_cmd_test(const NerdTestConfig* config)
                                         config,
                                         &result_count);
             if (result == 0) {
-                prn(ANSI_BOLD_GREEN "%u tests passed" ANSI_RESET, result_count);
+                if (config->summary_label.count > 0) {
+                    prn(ANSI_BOLD_GREEN STRINGP ": %u tests passed" ANSI_RESET,
+                        STRINGV(config->summary_label),
+                        result_count);
+                } else {
+                    prn(ANSI_BOLD_GREEN "%u tests passed" ANSI_RESET,
+                        result_count);
+                }
             } else {
                 eprn(ANSI_BOLD_RED "source test run failed" ANSI_RESET);
             }
@@ -776,8 +784,14 @@ int compiler_cmd_test(const NerdTestConfig* config)
 
         int result = compiler_cmd_run(&run_config);
         if (result == 0) {
-            prn(ANSI_BOLD_GREEN "%u tests passed" ANSI_RESET,
-                root_selected_count);
+            if (config->summary_label.count > 0) {
+                prn(ANSI_BOLD_GREEN STRINGP ": %u tests passed" ANSI_RESET,
+                    STRINGV(config->summary_label),
+                    root_selected_count);
+            } else {
+                prn(ANSI_BOLD_GREEN "%u tests passed" ANSI_RESET,
+                    root_selected_count);
+            }
         } else {
             eprn(ANSI_BOLD_RED "source test run failed" ANSI_RESET);
         }
@@ -910,7 +924,13 @@ int compiler_cmd_test(const NerdTestConfig* config)
         }
     }
     if (result == 0) {
-        prn(ANSI_BOLD_GREEN "%u tests passed" ANSI_RESET, selected_count);
+        if (config->summary_label.count > 0) {
+            prn(ANSI_BOLD_GREEN STRINGP ": %u tests passed" ANSI_RESET,
+                STRINGV(config->summary_label),
+                selected_count);
+        } else {
+            prn(ANSI_BOLD_GREEN "%u tests passed" ANSI_RESET, selected_count);
+        }
     } else {
         eprn(ANSI_BOLD_RED "source test run failed" ANSI_RESET);
     }
