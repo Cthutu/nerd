@@ -7,6 +7,7 @@
 
 use std.compress
 
+-- PNG signature and chunk kind constants used by the container parser.
 PNG_SIGNATURE_SIZE :: 8
 
 PNG_CHUNK_IHDR ::
@@ -16,6 +17,7 @@ PNG_CHUNK_IDAT ::
 PNG_CHUNK_IEND ::
                   ('I'.as(u32) << 24) | ('E'.as(u32) << 16) | ('N'.as(u32) << 8) | 'D'.as(u32)
 
+-- A PNG chunk view borrowed from the original input bytes.
 PngChunk :: plex {
     length u32
     kind   u32
@@ -23,6 +25,7 @@ PngChunk :: plex {
     crc    u32
 }
 
+-- Parsed IHDR fields needed before image data can be decoded.
 PngIhdr :: plex {
     width       u32
     height      u32
@@ -33,6 +36,7 @@ PngIhdr :: plex {
     interlace   u8
 }
 
+-- Parsed container state. IDAT slices are borrowed from the source image.
 PngContainer :: plex {
     ihdr        PngIhdr
     idat_chunks [..][]u8
@@ -78,10 +82,12 @@ png_chunk_error :: fn (error: ImageError) -> Result[PngChunk, ImageError] {
     return Err(error)
 }
 
+-- Checks the fixed eight-byte PNG signature.
 png_signature_matches :: fn (signature: []u8) -> bool {
     return signature.count == PNG_SIGNATURE_SIZE && signature[0] == 0x89 && signature[1] == 'P' && signature[2] == 'N' && signature[3] == 'G' && signature[4] == 13 && signature[5] == 10 && signature[6] == 26 && signature[7] == 10
 }
 
+-- Extracts one byte from a big-endian chunk kind.
 png_chunk_kind_byte :: fn (kind: u32, index: i32) -> u8 {
     return on index {
         0     => ((kind >> 24) & 0xff).as(u8)
@@ -91,6 +97,7 @@ png_chunk_kind_byte :: fn (kind: u32, index: i32) -> u8 {
     }
 }
 
+-- Updates the PNG CRC-32 accumulator with one byte.
 png_crc32_update :: fn (crc: u32, byte: u8) -> u32 {
     next := crc ^ byte.as(u32)
 
@@ -101,6 +108,7 @@ png_crc32_update :: fn (crc: u32, byte: u8) -> u32 {
     return next
 }
 
+-- Computes the CRC for the chunk kind and payload.
 png_chunk_crc :: fn (kind: u32, data: []u8) -> u32 {
     crc := 0xffffffff.as(u32)
 
@@ -115,10 +123,12 @@ png_chunk_crc :: fn (kind: u32, data: []u8) -> u32 {
     return ~crc
 }
 
+-- Reads a big-endian u32 from PNG byte data.
 png_be_u32_at :: fn (bytes: []u8, index: usize) -> u32 {
     return (bytes[index].as(u32) << 24) | (bytes[index + 1].as(u32) << 16) | (bytes[index + 2].as(u32) << 8) | bytes[index + 3].as(u32)
 }
 
+-- Converts the raw IHDR payload into a typed header.
 png_parse_ihdr :: fn (chunk: PngChunk) -> PngIhdr {
     return {
         width       : png_be_u32_at(chunk.data, 0)
@@ -131,6 +141,7 @@ png_parse_ihdr :: fn (chunk: PngChunk) -> PngIhdr {
     }
 }
 
+-- Reads and validates one chunk from the input stream.
 png_read_chunk :: fn (reader: ^ImageReader) -> Result[PngChunk, ImageError] {
     on reader.remaining() < 8 => return png_chunk_error(UnexpectedEnd)
 
@@ -162,6 +173,7 @@ png_read_chunk :: fn (reader: ^ImageReader) -> Result[PngChunk, ImageError] {
     })
 }
 
+-- Parses the PNG container and collects IDAT chunk payloads.
 png_parse :: fn (bytes: []u8) -> Result[PngContainer, ImageError] {
     on !image_is_png(bytes) => return png_error(UnsupportedFormat)
 
@@ -260,6 +272,7 @@ png_parse :: fn (bytes: []u8) -> Result[PngContainer, ImageError] {
     return Err(UnexpectedEnd)
 }
 
+-- Returns the byte channels represented by a supported PNG colour type.
 png_source_channels :: fn (color_type: u8) -> Result[i32, ImageError] {
     return on color_type {
         2     => Ok(3)
@@ -268,6 +281,7 @@ png_source_channels :: fn (color_type: u8) -> Result[i32, ImageError] {
     }
 }
 
+-- Resolves the caller's desired output channels for the supported modes.
 png_desired_channels :: fn (source_channels  : i32,
                             desired_channels : i32) -> Result[i32, ImageError] {
     on desired_channels == 0 => return Ok(source_channels)
@@ -276,6 +290,7 @@ png_desired_channels :: fn (source_channels  : i32,
     return Err(UnsupportedFormat)
 }
 
+-- Rejects PNG features that this decoder does not implement yet.
 png_validate_ihdr_for_decode :: fn (ihdr: PngIhdr) -> Result[i32, ImageError] {
     on ihdr.bit_depth != 8 => return Err(UnsupportedFormat)
     on ihdr.compression != 0 ||
@@ -286,6 +301,7 @@ png_validate_ihdr_for_decode :: fn (ihdr: PngIhdr) -> Result[i32, ImageError] {
     return png_source_channels(ihdr.color_type)
 }
 
+-- Concatenates borrowed IDAT chunks into the compressed zlib payload.
 png_idat_bytes :: fn (png: ^PngContainer) -> [..]u8 {
     bytes : [..]u8 = nil
 
@@ -298,6 +314,7 @@ png_idat_bytes :: fn (png: ^PngContainer) -> [..]u8 {
     return bytes
 }
 
+-- Paeth predictor used by PNG filter type 4.
 png_paeth :: fn (left: u8, up: u8, upper_left: u8) -> u8 {
     p := left.as(i32) + up.as(i32) - upper_left.as(i32)
     pa := p - left.as(i32)
@@ -313,6 +330,7 @@ png_paeth :: fn (left: u8, up: u8, upper_left: u8) -> u8 {
     return upper_left
 }
 
+-- Reconstructs one filtered scanline byte.
 png_unfilter_byte :: fn (filter     : u8,
                          encoded    : u8,
                          left       : u8,
@@ -325,6 +343,7 @@ png_unfilter_byte :: fn (filter     : u8,
     return (encoded.as(u16) + png_paeth(left, up, upper_left).as(u16)).as(u8)
 }
 
+-- Reconstructs all scanlines into contiguous pixel bytes.
 png_unfilter :: fn (bytes           : []u8,
                     width           : u32,
                     height          : u32,
@@ -359,6 +378,7 @@ png_unfilter :: fn (bytes           : []u8,
     return Ok(pixels)
 }
 
+-- Converts decoded RGB/RGBA pixels into the requested channel count.
 png_convert_channels :: fn (pixels           : []u8,
                             width            : u32,
                             height           : u32,
@@ -393,6 +413,7 @@ png_convert_channels :: fn (pixels           : []u8,
     return Ok(output)
 }
 
+-- Loads, decompresses, unfilters, and converts a PNG byte slice.
 png_decode :: fn (bytes            : []u8,
                   desired_channels : i32 = 0) -> Result[Image, ImageError] {
     parsed := png_parse(bytes)

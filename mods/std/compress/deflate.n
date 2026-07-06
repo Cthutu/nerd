@@ -1,11 +1,16 @@
 -- Nerd Standard Library (NSL)
 --
 -- Copyright (c) 2026 Matt Davies
+--
+-- Decodes zlib-wrapped DEFLATE streams. The implementation supports stored,
+-- fixed-Huffman, and dynamic-Huffman blocks.
 
+-- DEFLATE limits from RFC 1951.
 DEFLATE_MAX_BITS             :: 15
 DEFLATE_MAX_LITERAL_SYMBOLS  :: 288
 DEFLATE_MAX_DISTANCE_SYMBOLS :: 32
 
+-- Compression and decompression failure.
 pub CompressionError :: enum {
     UnsupportedFormat
     InvalidData {
@@ -15,6 +20,7 @@ pub CompressionError :: enum {
     OutputLimitExceeded
 }
 
+-- Bit-level reader for little-endian DEFLATE bit streams.
 DeflateReader :: plex {
     bytes      []u8
     byte_index usize
@@ -23,12 +29,14 @@ DeflateReader :: plex {
     failed     bool
 }
 
+-- One canonical Huffman code entry after lengths have been expanded.
 HuffmanEntry :: plex {
     symbol u16
     code   u16
     length u8
 }
 
+-- Linear Huffman lookup table used by the decoder.
 Huffman :: plex {
     entries [..]HuffmanEntry
 }
@@ -65,6 +73,7 @@ compress_huffman_ok :: fn (huffman: Huffman) -> Result[Huffman, CompressionError
     return Ok(huffman)
 }
 
+-- Creates a reader over raw DEFLATE block bytes.
 deflate_reader_new :: fn (bytes: []u8) -> DeflateReader {
     return {
         bytes
@@ -75,6 +84,7 @@ deflate_reader_new :: fn (bytes: []u8) -> DeflateReader {
     }
 }
 
+-- Reads bits in the order DEFLATE stores them.
 deflate_read_bits :: fn (reader: ^DeflateReader, count: u8) -> u32 {
     for reader.bit_count < count {
         on (reader.byte_index >= reader.bytes.count) => {
@@ -94,11 +104,13 @@ deflate_read_bits :: fn (reader: ^DeflateReader, count: u8) -> u32 {
     return value
 }
 
+-- Discards buffered bits before reading byte-aligned stored block fields.
 deflate_align_byte :: fn (reader: ^DeflateReader) {
     reader.bit_buffer = 0
     reader.bit_count = 0
 }
 
+-- Reverses canonical Huffman codes into the on-wire bit order.
 deflate_reverse_bits :: fn (code: u16, length: u8) -> u16 {
     remaining := code
     reversed : u16 = 0
@@ -111,6 +123,7 @@ deflate_reverse_bits :: fn (code: u16, length: u8) -> u16 {
     return reversed
 }
 
+-- Builds canonical Huffman entries from a code-length table.
 deflate_build_huffman :: fn (lengths: []u8) -> Result[Huffman, CompressionError] {
     counts     : [16]u16
     next_codes : [16]u16
@@ -157,6 +170,7 @@ deflate_build_huffman :: fn (lengths: []u8) -> Result[Huffman, CompressionError]
     return compress_huffman_ok(huffman)
 }
 
+-- Decodes one Huffman symbol by growing the input code one bit at a time.
 deflate_decode_symbol :: fn (reader: ^DeflateReader, huffman: ^Huffman) -> i32 {
     code : u16 = 0
 
@@ -174,6 +188,7 @@ deflate_decode_symbol :: fn (reader: ^DeflateReader, huffman: ^Huffman) -> i32 {
     return -1
 }
 
+-- Base literal/length values for symbols 257 through 285.
 deflate_length_base :: fn (symbol: i32) -> usize {
     return on symbol {
         257   => 3
@@ -209,6 +224,7 @@ deflate_length_base :: fn (symbol: i32) -> usize {
     }
 }
 
+-- Number of extra bits following each literal/length symbol.
 deflate_length_extra_bits :: fn (symbol: i32) -> u8 {
     return on symbol {
         265, 266, 267, 268  => 1
@@ -220,6 +236,7 @@ deflate_length_extra_bits :: fn (symbol: i32) -> u8 {
     }
 }
 
+-- Base copy distances for distance symbols.
 deflate_distance_base :: fn (symbol: i32) -> usize {
     return on symbol {
         0     => 1
@@ -256,11 +273,13 @@ deflate_distance_base :: fn (symbol: i32) -> usize {
     }
 }
 
+-- Number of extra bits following each distance symbol.
 deflate_distance_extra_bits :: fn (symbol: i32) -> u8 {
     on (symbol < 4) => return 0
     return ((symbol - 2) / 2).as(u8)
 }
 
+-- Appends one decoded byte while enforcing an optional output limit.
 deflate_output_push :: fn (output           : ^[..]u8,
                            byte             : u8,
                            max_output_bytes : usize) -> Result[bool, CompressionError] {
@@ -270,6 +289,7 @@ deflate_output_push :: fn (output           : ^[..]u8,
     return Ok(yes)
 }
 
+-- Decodes literal bytes and length/distance copies from Huffman tables.
 deflate_decode_compressed_block :: fn (reader           : ^DeflateReader,
                                        output           : ^[..]u8,
                                        literals         : ^Huffman,
@@ -328,6 +348,7 @@ deflate_decode_compressed_block :: fn (reader           : ^DeflateReader,
     return compress_bool_invalid("Deflate block ended unexpectedly")
 }
 
+-- Result helpers for block decoders that only need success or failure.
 compress_bool_ok :: fn () -> Result[bool, CompressionError] {
     return Ok(yes)
 }
@@ -342,6 +363,7 @@ compress_bool_invalid :: fn (message: string) -> Result[bool, CompressionError] 
     })
 }
 
+-- Decodes an uncompressed stored block.
 deflate_decode_stored_block :: fn (reader           : ^DeflateReader,
                                    output           : ^[..]u8,
                                    max_output_bytes : usize) -> Result[bool, CompressionError] {
@@ -373,6 +395,7 @@ deflate_decode_stored_block :: fn (reader           : ^DeflateReader,
     return compress_bool_ok()
 }
 
+-- Fixed Huffman literal/length table from RFC 1951.
 deflate_fixed_literal_lengths :: fn () -> [..]u8 {
     lengths : [..]u8
     lengths.resize_undefined_to(DEFLATE_MAX_LITERAL_SYMBOLS)
@@ -401,6 +424,7 @@ deflate_fixed_literal_lengths :: fn () -> [..]u8 {
     return lengths
 }
 
+-- Fixed Huffman distance table from RFC 1951.
 deflate_fixed_distance_lengths :: fn () -> [..]u8 {
     lengths : [..]u8
     lengths.resize_undefined_to(DEFLATE_MAX_DISTANCE_SYMBOLS)
@@ -414,6 +438,7 @@ deflate_fixed_distance_lengths :: fn () -> [..]u8 {
     return lengths
 }
 
+-- Decodes a fixed-Huffman compressed block.
 deflate_decode_fixed_block :: fn (reader           : ^DeflateReader,
                                   output           : ^[..]u8,
                                   max_output_bytes : usize) -> Result[bool, CompressionError] {
@@ -443,6 +468,7 @@ deflate_decode_fixed_block :: fn (reader           : ^DeflateReader,
                                            max_output_bytes)
 }
 
+-- Permutation used by dynamic block code-length headers.
 deflate_code_length_order :: fn (index: usize) -> usize {
     return on index {
         0     => 16
@@ -467,6 +493,7 @@ deflate_code_length_order :: fn (index: usize) -> usize {
     }
 }
 
+-- Decodes the literal/length and distance code lengths for a dynamic block.
 deflate_decode_dynamic_lengths :: fn (reader        : ^DeflateReader,
                                       total_lengths : usize,
                                       code_lengths  : ^Huffman) -> Result[[..]u8, CompressionError] {
@@ -535,6 +562,7 @@ deflate_decode_dynamic_lengths :: fn (reader        : ^DeflateReader,
     return compress_ok(lengths)
 }
 
+-- Decodes a dynamic-Huffman compressed block.
 deflate_decode_dynamic_block :: fn (reader           : ^DeflateReader,
                                     output           : ^[..]u8,
                                     max_output_bytes : usize) -> Result[bool, CompressionError] {
@@ -598,6 +626,7 @@ deflate_decode_dynamic_block :: fn (reader           : ^DeflateReader,
                                            max_output_bytes)
 }
 
+-- Decodes a raw DEFLATE stream without the surrounding zlib header/checksum.
 deflate_decode_raw :: fn (bytes            : []u8,
                           max_output_bytes : usize) -> Result[[..]u8, CompressionError] {
     reader := deflate_reader_new(bytes)
@@ -632,6 +661,7 @@ deflate_decode_raw :: fn (bytes            : []u8,
     return compress_ok(output)
 }
 
+-- Computes the Adler-32 checksum used by zlib streams.
 compress_adler32 :: fn (bytes: []u8) -> u32 {
     a : u32 = 1
     b : u32 = 0
@@ -644,10 +674,12 @@ compress_adler32 :: fn (bytes: []u8) -> u32 {
     return (b << 16) | a
 }
 
+-- Reads a big-endian u32 from the zlib wrapper.
 compress_be_u32_at :: fn (bytes: []u8, index: usize) -> u32 {
     return (bytes[index].as(u32) << 24) | (bytes[index + 1].as(u32) << 16) | (bytes[index + 2].as(u32) << 8) | bytes[index + 3].as(u32)
 }
 
+-- Decodes a complete zlib-wrapped DEFLATE byte slice.
 deflate_zlib_bytes :: fn (bytes            : []u8,
                           max_output_bytes : usize = 0) -> Result[[..]u8, CompressionError] {
     on (bytes.count < 6) => return compress_error(UnexpectedEnd)
