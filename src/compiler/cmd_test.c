@@ -565,6 +565,95 @@ internal int source_test_run_verbose(Arena*     arena,
     return 0;
 }
 
+internal bool source_test_path_matches_platform(cstr path)
+{
+#if OS_WINDOWS
+    if (strstr(path, ".linux.") != NULL) {
+        return false;
+    }
+#else
+    if (strstr(path, ".windows.") != NULL) {
+        return false;
+    }
+#endif
+
+#if !OS_LINUX
+    if (strstr(path, ".linux.") != NULL) {
+        return false;
+    }
+#endif
+
+    return true;
+}
+
+internal bool source_test_file_has_named_tests(Arena* arena, cstr path)
+{
+    FileMap map    = {0};
+    string  source = filemap_load(path, &map);
+    if (source.data == NULL) {
+        return false;
+    }
+
+    Array(SourceTestDecl) tests = NULL;
+    bool discovered =
+        source_test_discover(arena, source, (string){0}, s(""), &tests);
+    bool found = false;
+    if (discovered) {
+        for (usize i = 0; i < array_count(tests); ++i) {
+            if (tests[i].kind == SOURCE_TEST_ITEM_NAMED) {
+                found = true;
+                break;
+            }
+        }
+    }
+
+    array_free(tests);
+    filemap_unload(&map);
+    return found;
+}
+
+internal int source_test_run_directory(Arena*                arena,
+                                       cstr                  path,
+                                       const NerdTestConfig* config,
+                                       u32*                  out_file_count)
+{
+    DirIter iter = {0};
+    if (!dir_iter_init(&iter, path)) {
+        return error_runtime("Failed to read test directory: %s", path);
+    }
+
+    int  result       = 0;
+    cstr child_path   = NULL;
+    bool is_directory = false;
+    while (dir_iter_next(&iter, arena, &child_path, &is_directory)) {
+        if (is_directory) {
+            result = source_test_run_directory(
+                arena, child_path, config, out_file_count);
+            if (result != 0) {
+                break;
+            }
+            continue;
+        }
+
+        if (!path_has_extension(s(child_path), ".n") ||
+            !source_test_path_matches_platform(child_path) ||
+            !source_test_file_has_named_tests(arena, child_path)) {
+            continue;
+        }
+
+        NerdTestConfig child_config = *config;
+        child_config.input_path     = s(child_path);
+        result                      = compiler_cmd_test(&child_config);
+        if (result != 0) {
+            break;
+        }
+        *out_file_count += 1;
+    }
+
+    dir_iter_done(&iter);
+    return result;
+}
+
 int compiler_cmd_test(const NerdTestConfig* config)
 {
     Arena arena = {0};
@@ -574,6 +663,17 @@ int compiler_cmd_test(const NerdTestConfig* config)
     if (input_path == NULL || input_path[0] == '\0') {
         arena_done(&arena);
         return error_runtime("Expected a root source file for `nerd test`");
+    }
+
+    if (path_is_directory(input_path)) {
+        u32 file_count = 0;
+        int result =
+            source_test_run_directory(&arena, input_path, config, &file_count);
+        if (result == 0 && file_count == 0) {
+            prn(ANSI_BOLD_YELLOW "0 tests passed" ANSI_RESET);
+        }
+        arena_done(&arena);
+        return result;
     }
 
     FileMap map    = {0};
