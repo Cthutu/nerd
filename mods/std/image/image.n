@@ -61,19 +61,13 @@ image_format :: fn (bytes: []u8) -> Option[ImageFormat] {
 
 impl Image {
 
-    -- Loads an image from a file path.
-    pub load :: fn (_path             : string,
-                    _desired_channels : i32 = 0) -> Result[Self, ImageError] {
-        return Err(UnsupportedFormat)
-    }
-
     -- Loads an image from bytes already available in memory.
     pub load_bytes :: fn (bytes            : []u8,
                           desired_channels : i32 = 0) -> Result[Self, ImageError] {
         return on image_format(bytes) {
             Some(PNG)   => png_decode(bytes, desired_channels)
-            Some(JPEG)  => Err(UnsupportedFormat)
-            Some(BMP)   => Err(UnsupportedFormat)
+            Some(JPEG)  => jpeg_decode(bytes, desired_channels)
+            Some(BMP)   => bmp_decode(bytes, desired_channels)
             None        => Err(UnsupportedFormat)
         }
     }
@@ -91,18 +85,6 @@ impl Image {
 test "image placeholder load_bytes reports unsupported format" {
     bytes : [4]u8 = [0, 1, 2, 3]
     result := Image.load_bytes(bytes[..])
-
-    on result {
-        Err(UnsupportedFormat) => {
-        }
-        else => {
-            assert no
-        }
-    }
-}
-
-test "image placeholder load reports unsupported format" {
-    result := Image.load("missing.png")
 
     on result {
         Err(UnsupportedFormat) => {

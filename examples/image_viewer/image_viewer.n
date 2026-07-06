@@ -1,69 +1,10 @@
+use core
 use std.frame
 use std.gfx
+use std.image
 use std.time
 
-DemoImage :: plex {
-    width  u16
-    height u16
-    data   [..]u32
-}
-
-impl DemoImage {
-
-    new :: fn (width: u16, height: u16) -> Self {
-        image := Self {
-            width
-            height
-            data: nil
-        }
-        image.data.resize_undefined_to(width.as(usize) * height.as(usize))
-
-        for y: u32 = 0; y < height.as(u32); y += 1 {
-            for x: u32 = 0; x < width.as(u32); x += 1 {
-                image.data[(y * width.as(u32) + x).as(usize)] = demo_image_pixel(x,
-                                                                 y,
-                                                                 width.as(u32),
-                                                                 height.as(u32))
-            }
-        }
-
-        return image
-    }
-
-    done :: fn (image: ^Self) {
-        image.data.free()
-        image.width = 0
-        image.height = 0
-    }
-
-    pixel :: fn (image: ^Self, x: u32, y: u32) -> u32 {
-        on image.width == 0 || image.height == 0 => return 0xff000000
-        clamped_x := on x < image.width.as(u32) => x else image.width.as(u32) - 1
-        clamped_y := on y < image.height.as(u32) => y else image.height.as(u32) - 1
-        return image.data[(clamped_y * image.width.as(u32) + clamped_x).as(usize)]
-    }
-
-}
-
-demo_image_pixel :: fn (x: u32, y: u32, width: u32, height: u32) -> u32 {
-    border := x < 2 || y < 2 || x >= width - 2 || y >= height - 2
-    on border => return 0xffffffff
-
-    tile := ((x / 16) + (y / 16)) & 1
-    red := ((x * 255) / width) << 16
-    green := ((y * 255) / height) << 8
-    blue : u32 = on tile == 0 => 0x50 else 0xd8
-
-    cx := width / 2
-    cy := height / 2
-    dx := on x > cx => x - cx else cx - x
-    dy := on y > cy => y - cy else cy - y
-    on dx * dx + dy * dy < 30 * 30 => {
-        return 0xffffcc33
-    }
-
-    return 0xff000000 | red | green | blue
-}
+IMAGE_VIEWER_FLIP_VERTICALLY :: no
 
 image_view_rect :: fn (view_width   : u32,
                        view_height  : u32,
@@ -96,7 +37,53 @@ image_view_rect :: fn (view_width   : u32,
     }
 }
 
-draw_image_viewer :: fn (layer: ^PixelLayer, image: ^DemoImage) {
+image_checkerboard :: fn (x: u32, y: u32) -> u32 {
+    tile := ((x / 8) + (y / 8)) & 1
+    return on tile == 0 => 0xff2a2a2a else 0xff3a3a3a
+}
+
+image_blend_over :: fn (red        : u32,
+                        green      : u32,
+                        blue       : u32,
+                        alpha      : u32,
+                        background : u32) -> u32 {
+    on alpha == 255 => return 0xff000000 | (red << 16) | (green << 8) | blue
+
+    background_red := (background >> 16) & 0xff
+    background_green := (background >> 8) & 0xff
+    background_blue := background & 0xff
+
+    out_red := (red * alpha + background_red * (255 - alpha)) / 255
+    out_green := (green * alpha + background_green * (255 - alpha)) / 255
+    out_blue := (blue * alpha + background_blue * (255 - alpha)) / 255
+
+    return 0xff000000 | (out_red << 16) | (out_green << 8) | out_blue
+}
+
+image_pixel :: fn (image: ^Image, x: u32, y: u32, background: u32) -> u32 {
+    on image.width == 0 || image.height == 0 => return background
+
+    clamped_x := on x < image.width.as(u32) => x else image.width.as(u32) - 1
+    clamped_y := on y < image.height.as(u32) => y else image.height.as(u32) - 1
+    index := ((clamped_y * image.width.as(u32) + clamped_x) * 4).as(usize)
+
+    return image_blend_over(image.data[index].as(u32),
+                            image.data[index + 1].as(u32),
+                            image.data[index + 2].as(u32),
+                            image.data[index + 3].as(u32),
+                            background)
+}
+
+load_demo_image :: fn () -> Image {
+    bytes := @embed("assets/demo.png")
+    result := Image.load_bytes(bytes, 4)
+    return on result {
+        Ok(image)  => image
+        else       => abort("Could not decode embedded image viewer asset.")
+    }
+}
+
+draw_image_viewer :: fn (layer: ^PixelLayer, image: ^Image) {
     layer.clear(0xff181818)
 
     view_width := layer.pixel_width().as(u32)
@@ -110,9 +97,17 @@ draw_image_viewer :: fn (layer: ^PixelLayer, image: ^DemoImage) {
 
     for y: u32 = 0; y < rect.height; y += 1 {
         source_y := (y * image.height.as(u32)) / rect.height
+        on IMAGE_VIEWER_FLIP_VERTICALLY => {
+            source_y = image.height.as(u32) - 1 - source_y
+        }
         for x: u32 = 0; x < rect.width; x += 1 {
             source_x := (x * image.width.as(u32)) / rect.width
-            layer.put(rect.x + x, rect.y + y, image.pixel(source_x, source_y))
+            target_x := rect.x + x
+            target_y := rect.y + y
+            background := image_checkerboard(target_x, target_y)
+            layer.put(target_x,
+                      target_y,
+                      image_pixel(image, source_x, source_y, background))
         }
     }
 
@@ -159,8 +154,8 @@ main :: fn () {
     gfx := GfxSystem.init()
     defer gfx.done()
 
-    image := DemoImage.new(192, 128)
-    defer image.done()
+    image := load_demo_image()
+    defer image.free()
 
     layer_handle := gfx.pixel_layer(^frame, PixelLayerMode.FixedSizeAutoScale {
         width  : 320

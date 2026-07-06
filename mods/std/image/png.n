@@ -2,8 +2,8 @@
 --
 -- Copyright (c) 2026 Matt Davies
 --
--- Parses PNG container structure and decodes non-interlaced 8-bit RGB/RGBA
--- image data.
+-- Parses PNG container structure and decodes non-interlaced 8-bit PNG image
+-- data.
 
 use std.compress
 
@@ -16,6 +16,10 @@ PNG_CHUNK_IDAT ::
                   ('I'.as(u32) << 24) | ('D'.as(u32) << 16) | ('A'.as(u32) << 8) | 'T'.as(u32)
 PNG_CHUNK_IEND ::
                   ('I'.as(u32) << 24) | ('E'.as(u32) << 16) | ('N'.as(u32) << 8) | 'D'.as(u32)
+PNG_CHUNK_PLTE ::
+                  ('P'.as(u32) << 24) | ('L'.as(u32) << 16) | ('T'.as(u32) << 8) | 'E'.as(u32)
+PNG_CHUNK_tRNS ::
+                  ('t'.as(u32) << 24) | ('R'.as(u32) << 16) | ('N'.as(u32) << 8) | 'S'.as(u32)
 
 -- A PNG chunk view borrowed from the original input bytes.
 PngChunk :: plex {
@@ -38,14 +42,30 @@ PngIhdr :: plex {
 
 -- Parsed container state. IDAT slices are borrowed from the source image.
 PngContainer :: plex {
-    ihdr        PngIhdr
-    idat_chunks [..][]u8
+    ihdr         PngIhdr
+    idat_chunks  [..][]u8
+    palette      []u8
+    transparency []u8
 }
 
 impl PngContainer {
 
     free :: fn (png: ^Self) {
         png.idat_chunks.free()
+    }
+
+}
+
+-- Decoded pixel bytes before caller-requested channel conversion.
+PngPixels :: plex {
+    channels i32
+    data     [..]u8
+}
+
+impl PngPixels {
+
+    free :: fn (pixels: ^Self) {
+        pixels.data.free()
     }
 
 }
@@ -72,6 +92,18 @@ png_image_error :: fn (error: ImageError) -> Result[Image, ImageError] {
 
 png_image_ok :: fn (image: Image) -> Result[Image, ImageError] {
     return Ok(image)
+}
+
+png_pixels_invalid :: fn (message: string) -> Result[PngPixels, ImageError] {
+    return Err(ImageError.InvalidData { message })
+}
+
+png_pixels_error :: fn (error: ImageError) -> Result[PngPixels, ImageError] {
+    return Err(error)
+}
+
+png_pixels_ok :: fn (pixels: PngPixels) -> Result[PngPixels, ImageError] {
+    return Ok(pixels)
 }
 
 png_invalid_chunk :: fn (message: string) -> Result[PngChunk, ImageError] {
@@ -126,6 +158,11 @@ png_chunk_crc :: fn (kind: u32, data: []u8) -> u32 {
 -- Reads a big-endian u32 from PNG byte data.
 png_be_u32_at :: fn (bytes: []u8, index: usize) -> u32 {
     return (bytes[index].as(u32) << 24) | (bytes[index + 1].as(u32) << 16) | (bytes[index + 2].as(u32) << 8) | bytes[index + 3].as(u32)
+}
+
+-- Reads a big-endian u16 from PNG byte data.
+png_be_u16_at :: fn (bytes: []u8, index: usize) -> u16 {
+    return (bytes[index].as(u16) << 8) | bytes[index + 1].as(u16)
 }
 
 -- Converts the raw IHDR payload into a typed header.
@@ -195,8 +232,12 @@ png_parse :: fn (bytes: []u8) -> Result[PngContainer, ImageError] {
         filter      : 0
         interlace   : 0
     }
-    idat_chunks : [..][]u8 = nil
+    idat_chunks  : [..][]u8 = nil
+    palette      : []u8     = []
+    transparency : []u8     = []
+
     seen_ihdr := no
+    seen_plte := no
     seen_idat := no
 
     for !reader.done() {
@@ -241,6 +282,43 @@ png_parse :: fn (bytes: []u8) -> Result[PngContainer, ImageError] {
                     idat_chunks.push(value.data)
                     seen_idat = yes
                 }
+                on (value.kind == PNG_CHUNK_PLTE) => {
+                    on !seen_ihdr => {
+                        idat_chunks.free()
+                        return png_invalid("PNG PLTE chunk appeared before IHDR")
+                    }
+                    on seen_idat => {
+                        idat_chunks.free()
+                        return png_invalid("PNG PLTE chunk must appear before IDAT")
+                    }
+                    on seen_plte => {
+                        idat_chunks.free()
+                        return png_invalid("PNG contains more than one PLTE chunk")
+                    }
+                    on value.length == 0 ||
+                        (value.length % 3) != 0 ||
+                        value.length > 768 => {
+                        idat_chunks.free()
+                        return png_invalid("PNG PLTE chunk has invalid length")
+                    }
+                    palette   = value.data
+                    seen_plte = yes
+                }
+                on (value.kind == PNG_CHUNK_tRNS) => {
+                    on !seen_ihdr => {
+                        idat_chunks.free()
+                        return png_invalid("PNG tRNS chunk appeared before IHDR")
+                    }
+                    on seen_idat => {
+                        idat_chunks.free()
+                        return png_invalid("PNG tRNS chunk must appear before IDAT")
+                    }
+                    on transparency.count != 0 => {
+                        idat_chunks.free()
+                        return png_invalid("PNG contains more than one tRNS chunk")
+                    }
+                    transparency = value.data
+                }
                 on (value.kind == PNG_CHUNK_IEND) => {
                     on (value.length != 0) => {
                         idat_chunks.free()
@@ -257,6 +335,8 @@ png_parse :: fn (bytes: []u8) -> Result[PngContainer, ImageError] {
                     return png_ok({
                         ihdr
                         idat_chunks
+                        palette
+                        transparency
                     })
                 }
                 again
@@ -272,10 +352,14 @@ png_parse :: fn (bytes: []u8) -> Result[PngContainer, ImageError] {
     return Err(UnexpectedEnd)
 }
 
--- Returns the byte channels represented by a supported PNG colour type.
-png_source_channels :: fn (color_type: u8) -> Result[i32, ImageError] {
+-- Returns the bytes per pixel used by PNG filtering for a supported colour
+-- type.
+png_scanline_channels :: fn (color_type: u8) -> Result[i32, ImageError] {
     return on color_type {
+        0     => Ok(1)
         2     => Ok(3)
+        3     => Ok(1)
+        4     => Ok(2)
         6     => Ok(4)
         else  => Err(UnsupportedFormat)
     }
@@ -285,7 +369,9 @@ png_source_channels :: fn (color_type: u8) -> Result[i32, ImageError] {
 png_desired_channels :: fn (source_channels  : i32,
                             desired_channels : i32) -> Result[i32, ImageError] {
     on desired_channels == 0 => return Ok(source_channels)
-    on desired_channels == 3 ||
+    on desired_channels == 1 ||
+        desired_channels == 2 ||
+        desired_channels == 3 ||
         desired_channels == 4 => return Ok(desired_channels)
     return Err(UnsupportedFormat)
 }
@@ -293,12 +379,12 @@ png_desired_channels :: fn (source_channels  : i32,
 -- Rejects PNG features that this decoder does not implement yet.
 png_validate_ihdr_for_decode :: fn (ihdr: PngIhdr) -> Result[i32, ImageError] {
     on ihdr.bit_depth != 8 => return Err(UnsupportedFormat)
+    on ihdr.interlace != 0 => return Err(UnsupportedFormat)
     on ihdr.compression != 0 ||
-        ihdr.filter != 0 ||
-        ihdr.interlace != 0 => return Err(ImageError.InvalidData {
+        ihdr.filter != 0 => return Err(ImageError.InvalidData {
         message: "Unsupported PNG encoding"
     })
-    return png_source_channels(ihdr.color_type)
+    return png_scanline_channels(ihdr.color_type)
 }
 
 -- Concatenates borrowed IDAT chunks into the compressed zlib payload.
@@ -344,11 +430,11 @@ png_unfilter_byte :: fn (filter     : u8,
 }
 
 -- Reconstructs all scanlines into contiguous pixel bytes.
-png_unfilter :: fn (bytes           : []u8,
-                    width           : u32,
-                    height          : u32,
-                    source_channels : i32) -> Result[[..]u8, ImageError] {
-    row_bytes := width.as(usize) * source_channels.as(usize)
+png_unfilter :: fn (bytes             : []u8,
+                    width             : u32,
+                    height            : u32,
+                    scanline_channels : i32) -> Result[[..]u8, ImageError] {
+    row_bytes := width.as(usize) * scanline_channels.as(usize)
     expected_bytes := height.as(usize) * (row_bytes + 1)
 
     on bytes.count != expected_bytes => return Err(ImageError.InvalidData { message: "PNG decompressed data has unexpected size" })
@@ -367,9 +453,9 @@ png_unfilter :: fn (bytes           : []u8,
             return Err(ImageError.InvalidData { message: "Invalid PNG scanline filter" })
         }
         for x in [0 .. row_bytes] {
-            left := on x >= source_channels.as(usize) => pixels[y * row_bytes + x - source_channels.as(usize)] else 0
+            left := on x >= scanline_channels.as(usize) => pixels[y * row_bytes + x - scanline_channels.as(usize)] else 0
             up := on y > 0 => pixels[(y - 1) * row_bytes + x] else 0
-            upper_left := on y > 0 && x >= source_channels.as(usize) => pixels[(y - 1) * row_bytes + x - source_channels.as(usize)] else 0
+            upper_left := on y > 0 && x >= scanline_channels.as(usize) => pixels[(y - 1) * row_bytes + x - scanline_channels.as(usize)] else 0
 
             pixels.push(png_unfilter_byte(filter, row[x], left, up, upper_left))
         }
@@ -378,7 +464,141 @@ png_unfilter :: fn (bytes           : []u8,
     return Ok(pixels)
 }
 
--- Converts decoded RGB/RGBA pixels into the requested channel count.
+-- Converts one RGB triplet to a byte greyscale value.
+png_luma :: fn (red: u8, green: u8, blue: u8) -> u8 {
+    return ((red.as(u32) * 77 + green.as(u32) * 150 + blue.as(u32) * 29) >> 8).as(u8)
+}
+
+-- Expands greyscale tRNS into greyscale-alpha pixels when present.
+png_expand_greyscale :: fn (pixels       : []u8,
+                            transparency : []u8) -> Result[PngPixels, ImageError] {
+    on transparency.count == 0 => {
+        output : [..]u8 = nil
+        output.resize_undefined_to(pixels.count)
+        for i in [0 .. pixels.count] {
+            output[i] = pixels[i]
+        }
+        return png_pixels_ok(PngPixels { channels: 1 data: output })
+    }
+    on transparency.count != 2 => return png_pixels_invalid("PNG tRNS chunk "
+        +"has invalid greyscale length")
+
+    transparent_value := png_be_u16_at(transparency, 0)
+    output : [..]u8 = nil
+    output.resize_undefined_to(pixels.count * 2)
+
+    for i in [0 .. pixels.count] {
+        target := i * 2
+        output[target] = pixels[i]
+        output[target + 1] = on pixels[i].as(u16) == transparent_value => 0 else 255
+    }
+
+    return png_pixels_ok(PngPixels { channels: 2 data: output })
+}
+
+-- Expands truecolour tRNS into RGBA pixels when present.
+png_expand_truecolour :: fn (pixels       : []u8,
+                             transparency : []u8) -> Result[PngPixels, ImageError] {
+    on transparency.count == 0 => {
+        output : [..]u8 = nil
+        output.resize_undefined_to(pixels.count)
+        for i in [0 .. pixels.count] {
+            output[i] = pixels[i]
+        }
+        return png_pixels_ok(PngPixels { channels: 3 data: output })
+    }
+    on transparency.count != 6 => return png_pixels_invalid("PNG tRNS chunk "
+        +"has invalid truecolour length")
+
+    transparent_red := png_be_u16_at(transparency, 0)
+    transparent_green := png_be_u16_at(transparency, 2)
+    transparent_blue := png_be_u16_at(transparency, 4)
+    count := pixels.count / 3
+    output : [..]u8 = nil
+    output.resize_undefined_to(count * 4)
+
+    for i in [0 .. count] {
+        source := i * 3
+        target := i * 4
+        red := pixels[source]
+        green := pixels[source + 1]
+        blue := pixels[source + 2]
+
+        output[target] = red
+        output[target + 1] = green
+        output[target + 2] = blue
+        output[target + 3] = on red.as(u16) == transparent_red && green.as(u16) == transparent_green && blue.as(u16) == transparent_blue => 0 else 255
+    }
+
+    return png_pixels_ok(PngPixels { channels: 4 data: output })
+}
+
+-- Expands palette indices into RGB or RGBA pixels.
+png_expand_indexed :: fn (indices      : []u8,
+                          palette      : []u8,
+                          transparency : []u8) -> Result[PngPixels, ImageError] {
+    on palette.count == 0 => return png_pixels_invalid("PNG indexed image is "
+        +"missing PLTE")
+    on transparency.count > palette.count / 3 => return png_pixels_invalid("PNG"
+        +" tRNS chunk has too many palette entries")
+
+    channels := on transparency.count > 0 => 4 else 3
+    output : [..]u8 = nil
+    output.resize_undefined_to(indices.count * channels.as(usize))
+
+    for i in [0 .. indices.count] {
+        index := indices[i].as(usize)
+        palette_index := index * 3
+        on palette_index + 2 >= palette.count => {
+            output.free()
+            return png_pixels_invalid("PNG palette index is out of range")
+        }
+
+        target := i * channels.as(usize)
+        output[target] = palette[palette_index]
+        output[target + 1] = palette[palette_index + 1]
+        output[target + 2] = palette[palette_index + 2]
+
+        on channels == 4 => {
+            output[target + 3] = on index < transparency.count => transparency[index] else 255
+        }
+    }
+
+    return png_pixels_ok(PngPixels { channels data: output })
+}
+
+-- Turns filtered PNG samples into ordinary byte-channel pixels.
+png_expand_pixels :: fn (pixels       : []u8,
+                         ihdr         : PngIhdr,
+                         palette      : []u8,
+                         transparency : []u8) -> Result[PngPixels, ImageError] {
+    on ihdr.color_type == 0 => return png_expand_greyscale(pixels, transparency)
+    on ihdr.color_type == 2 => return png_expand_truecolour(pixels, transparency)
+    on ihdr.color_type == 3 => return png_expand_indexed(pixels, palette, transparency)
+    on ihdr.color_type == 4 => {
+        on transparency.count != 0 => return png_pixels_invalid("PNG tRNS is "
+            +"invalid for greyscale-alpha images")
+        output : [..]u8 = nil
+        output.resize_undefined_to(pixels.count)
+        for i in [0 .. pixels.count] {
+            output[i] = pixels[i]
+        }
+        return png_pixels_ok(PngPixels { channels: 2 data: output })
+    }
+    on ihdr.color_type == 6 => {
+        on transparency.count != 0 => return png_pixels_invalid("PNG tRNS is "
+            +"invalid for RGBA images")
+        output : [..]u8 = nil
+        output.resize_undefined_to(pixels.count)
+        for i in [0 .. pixels.count] {
+            output[i] = pixels[i]
+        }
+        return png_pixels_ok(PngPixels { channels: 4 data: output })
+    }
+    return png_pixels_error(UnsupportedFormat)
+}
+
+-- Converts decoded pixels into the requested channel count.
 png_convert_channels :: fn (pixels           : []u8,
                             width            : u32,
                             height           : u32,
@@ -400,13 +620,49 @@ png_convert_channels :: fn (pixels           : []u8,
     for pixel in [0 .. count] {
         source := pixel * source_channels.as(usize)
         target := pixel * desired_channels.as(usize)
+        red := pixels[source]
+        green : u8 = 0
+        blue  : u8 = 0
+        alpha : u8 = 255
 
-        output[target] = pixels[source]
-        output[target + 1] = pixels[source + 1]
-        output[target + 2] = pixels[source + 2]
+        on source_channels == 1 => {
+            green = red
+            blue  = red
+        }
+        on source_channels == 2 => {
+            green = red
+            blue  = red
+            alpha = pixels[source + 1]
+        }
+        on source_channels == 3 => {
+            green = pixels[source + 1]
+            blue  = pixels[source + 2]
+        }
+        on source_channels == 4 => {
+            green = pixels[source + 1]
+            blue  = pixels[source + 2]
+            alpha = pixels[source + 3]
+        }
 
+        grey := png_luma(red, green, blue)
+
+        on desired_channels == 1 => {
+            output[target] = grey
+        }
+        on desired_channels == 2 => {
+            output[target] = grey
+            output[target + 1] = alpha
+        }
+        on desired_channels == 3 => {
+            output[target] = red
+            output[target + 1] = green
+            output[target + 2] = blue
+        }
         on desired_channels == 4 => {
-            output[target + 3] = on source_channels == 4 => pixels[source + 3] else 255
+            output[target] = red
+            output[target + 1] = green
+            output[target + 2] = blue
+            output[target + 3] = alpha
         }
     }
 
@@ -421,65 +677,79 @@ png_decode :: fn (bytes            : []u8,
     on parsed {
         Err(error) => return png_image_error(error)
         Ok(png) => {
-            source_channels := png_validate_ihdr_for_decode(png.ihdr)
-            on source_channels {
+            scanline_channels := png_validate_ihdr_for_decode(png.ihdr)
+            on scanline_channels {
                 Err(error) => {
                     png.free()
                     return png_image_error(error)
                 }
                 Ok(channels) => {
-                    output_channels := png_desired_channels(channels,
-                                                            desired_channels)
-                    on output_channels {
+                    compressed := png_idat_bytes(^png)
+                    defer compressed.free()
+
+                    row_bytes := png.ihdr.width.as(usize) * channels.as(usize)
+                    expected_bytes := png.ihdr.height.as(usize) * (row_bytes + 1)
+                    decompressed := compressed[..].deflate_zlib(expected_bytes)
+                    on decompressed {
                         Err(error) => {
                             png.free()
-                            return png_image_error(error)
+                            return on error {
+                                CompressionError.UnsupportedFormat        => png_image_error(UnsupportedFormat)
+                                CompressionError.UnexpectedEnd            => png_image_error(UnexpectedEnd)
+                                CompressionError.OutputLimitExceeded      => png_image_invalid("PNG decompressed data exceeded expected size")
+                                CompressionError.InvalidData { message }  => png_image_invalid(message)
+                            }
                         }
-                        Ok(final_channels) => {
-                            compressed := png_idat_bytes(^png)
-                            png.free()
-                            defer compressed.free()
-
-                            row_bytes := png.ihdr.width.as(usize) * channels.as(usize)
-                            expected_bytes := png.ihdr.height.as(usize) * (row_bytes + 1)
-                            decompressed := compressed[..].deflate_zlib(expected_bytes)
-                            on decompressed {
+                        Ok(scanlines) => {
+                            unfiltered := png_unfilter(scanlines[..],
+                                                       png.ihdr.width,
+                                                       png.ihdr.height,
+                                                       channels)
+                            scanlines.free()
+                            on unfiltered {
                                 Err(error) => {
-                                    return on error {
-                                        CompressionError.UnsupportedFormat        => png_image_error(UnsupportedFormat)
-                                        CompressionError.UnexpectedEnd            => png_image_error(UnexpectedEnd)
-                                        CompressionError.OutputLimitExceeded      => png_image_invalid("PNG decompressed data exceeded expected size")
-                                        CompressionError.InvalidData { message }  => png_image_invalid(message)
-                                    }
+                                    png.free()
+                                    return png_image_error(error)
                                 }
-                                Ok(scanlines) => {
-                                    unfiltered := png_unfilter(scanlines[..],
-                                                               png.ihdr.width,
-                                                               png.ihdr.height,
-                                                               channels)
-                                    scanlines.free()
-                                    on unfiltered {
+                                Ok(raw_samples) => {
+                                    expanded := png_expand_pixels(raw_samples[..],
+                                                                  png.ihdr,
+                                                                  png.palette,
+                                                                  png.transparency)
+                                    raw_samples.free()
+                                    png.free()
+                                    on expanded {
                                         Err(error) => {
                                             return png_image_error(error)
                                         }
-                                        Ok(raw_pixels) => {
-                                            converted := png_convert_channels(raw_pixels[..],
-                                                                              png.ihdr.width,
-                                                                              png.ihdr.height,
-                                                                              channels,
-                                                                              final_channels)
-                                            raw_pixels.free()
-                                            on converted {
+                                        Ok(pixels) => {
+                                            output_channels := png_desired_channels(pixels.channels,
+                                                                                    desired_channels)
+                                            on output_channels {
                                                 Err(error) => {
+                                                    pixels.free()
                                                     return png_image_error(error)
                                                 }
-                                                Ok(data) => {
-                                                    return png_image_ok({
-                                                        width    : png.ihdr.width.as(i32)
-                                                        height   : png.ihdr.height.as(i32)
-                                                        channels : final_channels
-                                                        data
-                                                    })
+                                                Ok(final_channels) => {
+                                                    converted := png_convert_channels(pixels.data[..],
+                                                                                      png.ihdr.width,
+                                                                                      png.ihdr.height,
+                                                                                      pixels.channels,
+                                                                                      final_channels)
+                                                    pixels.free()
+                                                    on converted {
+                                                        Err(error) => {
+                                                            return png_image_error(error)
+                                                        }
+                                                        Ok(data) => {
+                                                            return png_image_ok({
+                                                                width    : png.ihdr.width.as(i32)
+                                                                height   : png.ihdr.height.as(i32)
+                                                                channels : final_channels
+                                                                data
+                                                            })
+                                                        }
+                                                    }
                                                 }
                                             }
                                         }
@@ -1019,13 +1289,13 @@ test "png decodes embedded 1x1 RGBA fixture" {
 
     on result {
         Ok(image) => {
-            assert image.width == 1
-            assert image.height == 1
-            assert image.channels == 4
-            assert image.data[0] == 255
-            assert image.data[1] == 0
-            assert image.data[2] == 0
-            assert image.data[3] == 128
+            assert image.width == 1, "width"
+            assert image.height == 1, "height"
+            assert image.channels == 4, "channels"
+            assert image.data[0] == 255, "red"
+            assert image.data[1] == 0, "green"
+            assert image.data[2] == 0, "blue"
+            assert image.data[3] == 128, "alpha"
             image.free()
         }
         else => {
@@ -1180,6 +1450,872 @@ test "png decodes embedded 2x2 RGB fixture to RGBA" {
             assert image.data[14] == 255
             assert image.data[15] == 255
             image.free()
+        }
+        else => {
+            assert no
+        }
+    }
+}
+
+test "png decodes greyscale and greyscale alpha fixtures" {
+    grey_bytes: [67]u8 = [
+        137,
+        80,
+        78,
+        71,
+        13,
+        10,
+        26,
+        10,
+        0,
+        0,
+        0,
+        13,
+        73,
+        72,
+        68,
+        82,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        8,
+        0,
+        0,
+        0,
+        0,
+        58,
+        126,
+        155,
+        85,
+        0,
+        0,
+        0,
+        10,
+        73,
+        68,
+        65,
+        84,
+        120,
+        156,
+        99,
+        16,
+        4,
+        0,
+        0,
+        19,
+        0,
+        18,
+        166,
+        12,
+        190,
+        213,
+        0,
+        0,
+        0,
+        0,
+        73,
+        69,
+        78,
+        68,
+        174,
+        66,
+        96,
+        130,
+    ]
+    grey_alpha_bytes: [68]u8 = [
+        137,
+        80,
+        78,
+        71,
+        13,
+        10,
+        26,
+        10,
+        0,
+        0,
+        0,
+        13,
+        73,
+        72,
+        68,
+        82,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        8,
+        4,
+        0,
+        0,
+        0,
+        181,
+        28,
+        12,
+        2,
+        0,
+        0,
+        0,
+        11,
+        73,
+        68,
+        65,
+        84,
+        120,
+        156,
+        99,
+        8,
+        104,
+        0,
+        0,
+        1,
+        35,
+        0,
+        209,
+        142,
+        110,
+        60,
+        91,
+        0,
+        0,
+        0,
+        0,
+        73,
+        69,
+        78,
+        68,
+        174,
+        66,
+        96,
+        130,
+    ]
+
+    grey_result := Image.load_bytes(grey_bytes[..])
+    on grey_result {
+        Ok(image) => {
+            assert image.width == 1
+            assert image.height == 1
+            assert image.channels == 1
+            assert image.data[0] == 17
+            image.free()
+        }
+        else => {
+            assert no
+        }
+    }
+
+    grey_alpha_result := Image.load_bytes(grey_alpha_bytes[..])
+    on grey_alpha_result {
+        Ok(image) => {
+            assert image.width == 1
+            assert image.height == 1
+            assert image.channels == 2
+            assert image.data[0] == 80
+            assert image.data[1] == 128
+            image.free()
+        }
+        else => {
+            assert no
+        }
+    }
+}
+
+test "png applies tRNS transparency" {
+    grey_bytes: [82]u8 = [
+        137,
+        80,
+        78,
+        71,
+        13,
+        10,
+        26,
+        10,
+        0,
+        0,
+        0,
+        13,
+        73,
+        72,
+        68,
+        82,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        1,
+        8,
+        0,
+        0,
+        0,
+        0,
+        209,
+        73,
+        32,
+        86,
+        0,
+        0,
+        0,
+        2,
+        116,
+        82,
+        78,
+        83,
+        0,
+        17,
+        28,
+        35,
+        237,
+        202,
+        0,
+        0,
+        0,
+        11,
+        73,
+        68,
+        65,
+        84,
+        120,
+        156,
+        99,
+        16,
+        212,
+        2,
+        0,
+        0,
+        79,
+        0,
+        60,
+        172,
+        231,
+        89,
+        254,
+        0,
+        0,
+        0,
+        0,
+        73,
+        69,
+        78,
+        68,
+        174,
+        66,
+        96,
+        130,
+    ]
+    rgb_bytes: [90]u8 = [
+        137,
+        80,
+        78,
+        71,
+        13,
+        10,
+        26,
+        10,
+        0,
+        0,
+        0,
+        13,
+        73,
+        72,
+        68,
+        82,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        1,
+        8,
+        2,
+        0,
+        0,
+        0,
+        123,
+        64,
+        232,
+        221,
+        0,
+        0,
+        0,
+        6,
+        116,
+        82,
+        78,
+        83,
+        0,
+        9,
+        0,
+        8,
+        0,
+        7,
+        243,
+        193,
+        161,
+        251,
+        0,
+        0,
+        0,
+        15,
+        73,
+        68,
+        65,
+        84,
+        120,
+        156,
+        99,
+        224,
+        228,
+        96,
+        103,
+        100,
+        98,
+        6,
+        0,
+        0,
+        139,
+        0,
+        31,
+        67,
+        19,
+        5,
+        100,
+        0,
+        0,
+        0,
+        0,
+        73,
+        69,
+        78,
+        68,
+        174,
+        66,
+        96,
+        130,
+    ]
+
+    grey_result := Image.load_bytes(grey_bytes[..])
+    on grey_result {
+        Ok(image) => {
+            assert image.channels == 2
+            assert image.data[0] == 17
+            assert image.data[1] == 0
+            assert image.data[2] == 42
+            assert image.data[3] == 255
+            image.free()
+        }
+        else => {
+            assert no
+        }
+    }
+
+    rgb_result := Image.load_bytes(rgb_bytes[..])
+    on rgb_result {
+        Ok(image) => {
+            assert image.channels == 4
+            assert image.data[0] == 9
+            assert image.data[1] == 8
+            assert image.data[2] == 7
+            assert image.data[3] == 0
+            assert image.data[4] == 1
+            assert image.data[5] == 2
+            assert image.data[6] == 3
+            assert image.data[7] == 255
+            image.free()
+        }
+        else => {
+            assert no
+        }
+    }
+}
+
+test "png decodes indexed fixtures" {
+    indexed_bytes: [86]u8 = [
+        137,
+        80,
+        78,
+        71,
+        13,
+        10,
+        26,
+        10,
+        0,
+        0,
+        0,
+        13,
+        73,
+        72,
+        68,
+        82,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        1,
+        8,
+        3,
+        0,
+        0,
+        0,
+        195,
+        252,
+        143,
+        184,
+        0,
+        0,
+        0,
+        6,
+        80,
+        76,
+        84,
+        69,
+        10,
+        20,
+        30,
+        200,
+        210,
+        220,
+        130,
+        141,
+        117,
+        221,
+        0,
+        0,
+        0,
+        11,
+        73,
+        68,
+        65,
+        84,
+        120,
+        156,
+        99,
+        96,
+        96,
+        4,
+        0,
+        0,
+        4,
+        0,
+        2,
+        191,
+        122,
+        63,
+        74,
+        0,
+        0,
+        0,
+        0,
+        73,
+        69,
+        78,
+        68,
+        174,
+        66,
+        96,
+        130,
+    ]
+    transparent_bytes: [100]u8 = [
+        137,
+        80,
+        78,
+        71,
+        13,
+        10,
+        26,
+        10,
+        0,
+        0,
+        0,
+        13,
+        73,
+        72,
+        68,
+        82,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        1,
+        8,
+        3,
+        0,
+        0,
+        0,
+        195,
+        252,
+        143,
+        184,
+        0,
+        0,
+        0,
+        6,
+        80,
+        76,
+        84,
+        69,
+        10,
+        20,
+        30,
+        200,
+        210,
+        220,
+        130,
+        141,
+        117,
+        221,
+        0,
+        0,
+        0,
+        2,
+        116,
+        82,
+        78,
+        83,
+        0,
+        255,
+        91,
+        145,
+        34,
+        181,
+        0,
+        0,
+        0,
+        11,
+        73,
+        68,
+        65,
+        84,
+        120,
+        156,
+        99,
+        96,
+        96,
+        4,
+        0,
+        0,
+        4,
+        0,
+        2,
+        191,
+        122,
+        63,
+        74,
+        0,
+        0,
+        0,
+        0,
+        73,
+        69,
+        78,
+        68,
+        174,
+        66,
+        96,
+        130,
+    ]
+
+    indexed_result := Image.load_bytes(indexed_bytes[..])
+    on indexed_result {
+        Ok(image) => {
+            assert image.channels == 3
+            assert image.data[0] == 10
+            assert image.data[1] == 20
+            assert image.data[2] == 30
+            assert image.data[3] == 200
+            assert image.data[4] == 210
+            assert image.data[5] == 220
+            image.free()
+        }
+        else => {
+            assert no
+        }
+    }
+
+    transparent_result := Image.load_bytes(transparent_bytes[..])
+    on transparent_result {
+        Ok(image) => {
+            assert image.channels == 4
+            assert image.data[0] == 10
+            assert image.data[1] == 20
+            assert image.data[2] == 30
+            assert image.data[3] == 0
+            assert image.data[4] == 200
+            assert image.data[5] == 210
+            assert image.data[6] == 220
+            assert image.data[7] == 255
+            image.free()
+        }
+        else => {
+            assert no
+        }
+    }
+}
+
+test "png converts to desired greyscale channels" {
+    bytes: [77]u8 = [
+        137,
+        80,
+        78,
+        71,
+        13,
+        10,
+        26,
+        10,
+        0,
+        0,
+        0,
+        13,
+        73,
+        72,
+        68,
+        82,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        2,
+        8,
+        2,
+        0,
+        0,
+        0,
+        253,
+        212,
+        154,
+        115,
+        0,
+        0,
+        0,
+        20,
+        73,
+        68,
+        65,
+        84,
+        120,
+        156,
+        99,
+        248,
+        207,
+        192,
+        192,
+        0,
+        194,
+        12,
+        255,
+        255,
+        255,
+        255,
+        15,
+        0,
+        31,
+        238,
+        5,
+        251,
+        176,
+        184,
+        151,
+        201,
+        0,
+        0,
+        0,
+        0,
+        73,
+        69,
+        78,
+        68,
+        174,
+        66,
+        96,
+        130,
+    ]
+
+    grey_result := Image.load_bytes(bytes[..], 1)
+    on grey_result {
+        Ok(image) => {
+            assert image.channels == 1
+            assert image.data.count == 4
+            assert image.data[0] == 76
+            assert image.data[1] == 149
+            assert image.data[2] == 28
+            assert image.data[3] == 255
+            image.free()
+        }
+        else => {
+            assert no
+        }
+    }
+
+    grey_alpha_result := Image.load_bytes(bytes[..], 2)
+    on grey_alpha_result {
+        Ok(image) => {
+            assert image.channels == 2
+            assert image.data.count == 8
+            assert image.data[0] == 76
+            assert image.data[1] == 255
+            assert image.data[2] == 149
+            assert image.data[3] == 255
+            image.free()
+        }
+        else => {
+            assert no
+        }
+    }
+}
+
+test "png rejects unsupported bit depth and interlace" {
+    sixteen_bit: [57]u8 = [
+        137,
+        80,
+        78,
+        71,
+        13,
+        10,
+        26,
+        10,
+        0,
+        0,
+        0,
+        13,
+        73,
+        72,
+        68,
+        82,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        16,
+        2,
+        0,
+        0,
+        0,
+        192,
+        231,
+        143,
+        157,
+        0,
+        0,
+        0,
+        0,
+        73,
+        68,
+        65,
+        84,
+        53,
+        175,
+        6,
+        30,
+        0,
+        0,
+        0,
+        0,
+        73,
+        69,
+        78,
+        68,
+        174,
+        66,
+        96,
+        130,
+    ]
+    adam7: [57]u8 = [
+        137,
+        80,
+        78,
+        71,
+        13,
+        10,
+        26,
+        10,
+        0,
+        0,
+        0,
+        13,
+        73,
+        72,
+        68,
+        82,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        8,
+        2,
+        0,
+        0,
+        1,
+        231,
+        112,
+        99,
+        72,
+        0,
+        0,
+        0,
+        0,
+        73,
+        68,
+        65,
+        84,
+        53,
+        175,
+        6,
+        30,
+        0,
+        0,
+        0,
+        0,
+        73,
+        69,
+        78,
+        68,
+        174,
+        66,
+        96,
+        130,
+    ]
+
+    sixteen_bit_result := Image.load_bytes(sixteen_bit[..])
+    on sixteen_bit_result {
+        Err(UnsupportedFormat) => {
+        }
+        else => {
+            assert no
+        }
+    }
+
+    adam7_result := Image.load_bytes(adam7[..])
+    on adam7_result {
+        Err(UnsupportedFormat) => {
         }
         else => {
             assert no

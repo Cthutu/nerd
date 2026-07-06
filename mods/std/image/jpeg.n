@@ -1,0 +1,321 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Parses baseline JPEG headers. Entropy decoding and IDCT are still pending.
+
+JPEG_MARKER_PREFIX :: 0xff
+JPEG_SOI           :: 0xd8
+JPEG_EOI           :: 0xd9
+JPEG_SOS           :: 0xda
+JPEG_DQT           :: 0xdb
+JPEG_DHT           :: 0xc4
+JPEG_SOF0          :: 0xc0
+JPEG_SOF2          :: 0xc2
+
+JpegInfo :: plex {
+    width      i32
+    height     i32
+    components i32
+    saw_dqt    bool
+    saw_dht    bool
+    saw_sos    bool
+}
+
+jpeg_invalid :: fn (message: string) -> Result[JpegInfo, ImageError] {
+    return Err(ImageError.InvalidData { message })
+}
+
+jpeg_image_invalid :: fn (message: string) -> Result[Image, ImageError] {
+    return Err(ImageError.InvalidData { message })
+}
+
+jpeg_be_u16_at :: fn (bytes: []u8, index: usize) -> u16 {
+    return (bytes[index].as(u16) << 8) | bytes[index + 1].as(u16)
+}
+
+jpeg_is_standalone_marker :: fn (marker: u8) -> bool {
+    return marker == JPEG_SOI || marker == JPEG_EOI || (marker >= 0xd0 && marker <= 0xd7)
+}
+
+jpeg_parse_sof0 :: fn (data: []u8, info: ^JpegInfo) -> Result[bool, ImageError] {
+    on data.count < 6 => return Err(UnexpectedEnd)
+
+    precision := data[0]
+    height := jpeg_be_u16_at(data, 1)
+    width := jpeg_be_u16_at(data, 3)
+    components := data[5]
+
+    on precision != 8 => return Err(UnsupportedFormat)
+    on width == 0 ||
+        height == 0 => return Err(ImageError.InvalidData {
+        message: "JPEG dimensions must be nonzero"
+    })
+    on components != 1 && components != 3 => return Err(UnsupportedFormat)
+    on data.count < 6 + components.as(usize) * 3 => return Err(UnexpectedEnd)
+
+    info.width = width.as(i32)
+    info.height = height.as(i32)
+    info.components = components.as(i32)
+    return Ok(yes)
+}
+
+jpeg_parse_headers :: fn (bytes: []u8) -> Result[JpegInfo, ImageError] {
+    on !image_is_jpeg(bytes) => return Err(UnsupportedFormat)
+    on bytes.count < 4 => return Err(UnexpectedEnd)
+
+    info := JpegInfo {
+        width      : 0
+        height     : 0
+        components : 0
+        saw_dqt    : no
+        saw_dht    : no
+        saw_sos    : no
+    }
+
+    offset : usize = 2
+
+    for offset < bytes.count {
+        on bytes[offset] != JPEG_MARKER_PREFIX => return jpeg_invalid("JPEG "
+            +"marker prefix is missing")
+
+        for offset < bytes.count && bytes[offset] == JPEG_MARKER_PREFIX {
+            offset += 1
+        }
+        on offset >= bytes.count => return Err(UnexpectedEnd)
+
+        marker := bytes[offset]
+        offset += 1
+
+        on marker == 0 => return jpeg_invalid("JPEG unexpected stuffed byte "
+            +"outside scan data")
+        on marker == JPEG_SOF2 => return Err(UnsupportedFormat)
+        on jpeg_is_standalone_marker(marker) => {
+            on marker == JPEG_EOI => break
+            again
+        }
+        on offset + 2 > bytes.count => return Err(UnexpectedEnd)
+
+        segment_length := jpeg_be_u16_at(bytes, offset).as(usize)
+        on segment_length < 2 => return jpeg_invalid("JPEG segment length is "
+            +"invalid")
+        offset += 2
+        data_length := segment_length - 2
+        on offset + data_length > bytes.count => return Err(UnexpectedEnd)
+
+        data := bytes[offset..offset + data_length]
+        offset += data_length
+
+        on marker == JPEG_DQT => {
+            info.saw_dqt = yes
+        }
+        on marker == JPEG_DHT => {
+            info.saw_dht = yes
+        }
+        on marker == JPEG_SOF0 => {
+            parsed := jpeg_parse_sof0(data, ^info)
+            on parsed {
+                Err(error) => return Err(error)
+                Ok(_) => {
+                }
+            }
+        }
+        on marker == JPEG_SOS => {
+            info.saw_sos = yes
+            on info.width == 0 ||
+                info.height == 0 => return jpeg_invalid("JPEG SOS appeared "
+                +"before SOF0")
+            on !info.saw_dqt ||
+                !info.saw_dht => return jpeg_invalid("JPEG missing tables "
+                +"before SOS")
+            return Ok(info)
+        }
+    }
+
+    return jpeg_invalid("JPEG missing SOS")
+}
+
+jpeg_decode :: fn (bytes             : []u8,
+                   _desired_channels : i32 = 0) -> Result[Image, ImageError] {
+    headers := jpeg_parse_headers(bytes)
+
+    on headers {
+        Err(error) => return Err(error)
+        Ok(_) => {
+            return jpeg_image_invalid("JPEG entropy decoding is not implemented yet")
+        }
+    }
+}
+
+test "jpeg parses baseline header prefix" {
+    bytes: [125]u8 = [
+        255,
+        216,
+        255,
+        219,
+        0,
+        67,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        255,
+        192,
+        0,
+        17,
+        8,
+        0,
+        1,
+        0,
+        1,
+        3,
+        1,
+        17,
+        0,
+        2,
+        17,
+        0,
+        3,
+        17,
+        0,
+        255,
+        196,
+        0,
+        19,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        255,
+        218,
+        0,
+        12,
+        3,
+        1,
+        0,
+        2,
+        0,
+        3,
+        0,
+        0,
+        63,
+        0,
+    ]
+
+    result := jpeg_parse_headers(bytes[..])
+
+    on result {
+        Ok(info) => {
+            assert info.width == 1
+            assert info.height == 1
+            assert info.components == 3
+            assert info.saw_dqt
+            assert info.saw_dht
+            assert info.saw_sos
+        }
+        Err(error) => {
+            on error {
+                UnsupportedFormat => {
+                    assert no, "unsupported"
+                }
+                UnexpectedEnd => {
+                    assert no, "unexpected end"
+                }
+                InvalidData { message } => {
+                    assert no, message
+                }
+                OutOfMemory => {
+                    assert no, "out of memory"
+                }
+            }
+        }
+    }
+}
+
+test "jpeg rejects progressive SOF2" {
+    bytes : [4]u8 = [255, 216, 255, 194]
+
+    result := jpeg_parse_headers(bytes[..])
+
+    on result {
+        Err(_) => {
+        }
+        Ok(_) => {
+            assert no, "accepted progressive"
+        }
+    }
+}

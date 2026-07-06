@@ -19,6 +19,10 @@ pattern matching.
 - [ ] Make image ownership explicit before landing the first decoder.
 - [ ] Use source-level unit tests in module parts so private helpers can be
       tested directly.
+- [ ] Limit active format work to PNG, JPEG, and BMP until those decoders are
+      solid.
+- [ ] Defer file/path loading until Nerd has a stable standard filesystem
+      module.
 
 ### Target Module Shape
 
@@ -27,10 +31,9 @@ pattern matching.
   - [x] `image.n`: public `Image`, `ImageError`, loading API, and channel
         conversion.
   - [x] `reader.n`: byte reader/cursor helpers over `[]u8`.
-  - [ ] `png.n`: PNG container, zlib/deflate, filters, and colour conversion.
+  - [x] `png.n`: PNG container, zlib/deflate, filters, and colour conversion.
   - [ ] `jpeg.n`: JPEG markers, entropy decode, IDCT, and colour conversion.
-  - [ ] `bmp.n`: BMP container and pixel formats.
-  - [ ] `tga.n`: TGA uncompressed/RLE formats.
+  - [x] `bmp.n`: BMP container and pixel formats.
   - [ ] `tests.n`: source-level unit tests and tiny embedded fixtures.
 - [ ] Keep the public import as `use std.image`.
 - [ ] Keep implementation details private unless a helper type is intentionally
@@ -91,8 +94,6 @@ ImageError :: enum {
 }
 
 impl Image {
-    pub load :: fn (path: string, desired_channels := 0) -> Result[Self, ImageError]
-
     pub load_bytes :: fn (bytes: []u8,
                           desired_channels := 0) -> Result[Self, ImageError]
 
@@ -123,7 +124,6 @@ should live in module-local `test` sections rather than `.cmd` wrappers.
       caller-arena-owned.
 - [x] Add `Image.free()` only if the chosen ownership model requires it.
 - [x] Add placeholder `Image.load_bytes()` returning `UnsupportedFormat`.
-- [x] Add placeholder `Image.load()` returning `UnsupportedFormat`.
 - [x] Add an initial source test proving the stdlib source-test suite discovers
       `std.image`.
 
@@ -133,8 +133,8 @@ should live in module-local `test` sections rather than `.cmd` wrappers.
 - [x] Implement `remaining()`, `position()`, and `done()`.
 - [x] Implement `read_u8()`.
 - [x] Implement big-endian reads for PNG: `read_be_u16()` and `read_be_u32()`.
-- [x] Implement little-endian reads for BMP/TGA: `read_le_u16()` and
-      `read_le_u32()`.
+- [x] Implement little-endian reads for BMP and other binary containers:
+      `read_le_u16()` and `read_le_u32()`.
 - [x] Implement `take(count)` returning a slice or `UnexpectedEnd`.
 - [x] Add source tests for empty input, exact reads, short reads, and cursor
       advancement.
@@ -145,7 +145,6 @@ should live in module-local `test` sections rather than `.cmd` wrappers.
 - [x] Implement PNG signature detection.
 - [x] Implement JPEG SOI marker detection.
 - [x] Implement BMP signature detection.
-- [ ] Implement TGA heuristic detection only once the TGA decoder starts.
 - [x] Route `Image.load_bytes()` through format detection.
 - [x] Return `UnsupportedFormat` for unknown data.
 - [x] Add tests using embedded tiny signatures and invalid byte sequences.
@@ -195,43 +194,32 @@ should live in module-local `test` sections rather than `.cmd` wrappers.
 
 ### Milestone 7: More PNG Colour Modes
 
-- [ ] Decode greyscale 8-bit.
-- [ ] Decode greyscale with alpha.
-- [ ] Decode indexed colour with `PLTE`.
-- [ ] Apply `tRNS` transparency where supported.
-- [ ] Add channel conversion for desired channels `1` and `2`.
-- [ ] Decide whether to support 16-bit PNG now or explicitly reject it with a
+- [x] Decode greyscale 8-bit.
+- [x] Decode greyscale with alpha.
+- [x] Decode indexed colour with `PLTE`.
+- [x] Apply `tRNS` transparency where supported.
+- [x] Add channel conversion for desired channels `1` and `2`.
+- [x] Decide whether to support 16-bit PNG now or explicitly reject it with a
       stable `UnsupportedFormat` reason.
-- [ ] Decide whether to support Adam7 interlace now or explicitly reject it with
+- [x] Decide whether to support Adam7 interlace now or explicitly reject it with
       a stable `UnsupportedFormat` reason.
-- [ ] Add fixtures for greyscale, greyscale-alpha, indexed, and transparent
+- [x] Add fixtures for greyscale, greyscale-alpha, indexed, and transparent
       PNGs.
 
-### Milestone 8: File Loading
+### Milestone 8: Image Viewer Integration
 
-- [ ] Implement `Image.load(path, desired_channels := 0)` on top of `std.io`.
-- [ ] Ensure path loading reports file errors distinctly from decode errors if
-      the standard error model supports it.
-- [ ] Add source-relative fixture tests using real files.
-- [ ] Add command regression for missing files.
-- [ ] Add command regression for corrupted file contents.
+- [x] Replace the generated `DemoImage` path in
+      `examples/image_viewer/image_viewer.n` with an embedded asset decoded via
+      `std.image.Image.load_bytes(...)`.
+- [x] Keep a default asset in `examples/image_viewer/assets/`.
+- [x] Add nearest-neighbour fit-to-window presentation for loaded images.
+- [x] Add optional checkerboard background for transparent PNGs.
+- [x] Add `flip_vertically := no` as either a load option or a viewer option.
 
-### Milestone 9: Image Viewer Integration
+### Milestone 9: JPEG Baseline
 
-- [ ] Replace the generated `DemoImage` path in
-      `examples/image_viewer/image_viewer.n` with `std.image.Image.load(...)`
-      once file loading works.
-- [ ] Add a command-line argument for the image path when `main(args)` is
-      suitable for examples.
-- [ ] Keep a default asset in `examples/image_viewer/assets/`.
-- [ ] Add nearest-neighbour fit-to-window presentation for loaded images.
-- [ ] Add optional checkerboard background for transparent PNGs.
-- [ ] Add `flip_vertically := no` as either a load option or a viewer option.
-
-### Milestone 10: JPEG Baseline
-
-- [ ] Parse JPEG markers.
-- [ ] Parse SOF0 frame headers.
+- [x] Parse JPEG markers.
+- [x] Parse SOF0 frame headers.
 - [ ] Parse DQT quantisation tables.
 - [ ] Parse DHT Huffman tables.
 - [ ] Parse SOS scan headers.
@@ -240,35 +228,28 @@ should live in module-local `test` sections rather than `.cmd` wrappers.
 - [ ] Implement YCbCr to RGB conversion.
 - [ ] Add desired-channel conversion.
 - [ ] Add tests with embedded baseline JPEG fixtures.
-- [ ] Explicitly reject progressive JPEG until supported.
+- [x] Explicitly reject progressive JPEG until supported.
 
-### Milestone 11: BMP
+### Milestone 10: BMP
 
-- [ ] Parse BMP file header.
-- [ ] Parse DIB headers needed for common Windows BMPs.
-- [ ] Decode 24-bit BGR.
-- [ ] Decode 32-bit BGRA/BGRX.
-- [ ] Handle row padding.
-- [ ] Handle top-down and bottom-up images.
-- [ ] Add fixtures for 24-bit, 32-bit, and padded rows.
+- [x] Parse BMP file header.
+- [x] Parse DIB headers needed for common Windows BMPs.
+- [x] Decode 24-bit BGR.
+- [x] Decode 32-bit BGRA/BGRX.
+- [x] Handle row padding.
+- [x] Handle top-down and bottom-up images.
+- [x] Add fixtures for 24-bit, 32-bit, and padded rows.
 
-### Milestone 12: TGA
+### Deferred: File Loading And Extra Formats
 
-- [ ] Parse TGA header.
-- [ ] Decode uncompressed true-colour images.
-- [ ] Decode RLE true-colour images.
-- [ ] Handle origin flags.
-- [ ] Convert BGR/BGRA to RGB/RGBA.
-- [ ] Add fixtures for uncompressed and RLE TGA.
-
-### Milestone 13: Optional `stb_image` Formats
-
-- [ ] Decide whether to support HDR.
-- [ ] Decide whether to support GIF.
-- [ ] Decide whether to support PSD.
-- [ ] Decide whether to support PIC.
-- [ ] Decide whether to support PNM.
-- [ ] For each unsupported format, add a stable `UnsupportedFormat` test.
+- [ ] Add `Image.load(path, desired_channels := 0)` after a stable `std.fs` or
+      equivalent file API exists.
+- [ ] Add source-relative fixture tests once file loading exists.
+- [ ] Add command regressions for missing files and corrupted file contents once
+      file loading exists.
+- [ ] Revisit TGA only after PNG, JPEG, and BMP are complete.
+- [ ] Revisit other `stb_image` formats such as HDR, GIF, PSD, PIC, and PNM only
+      after the core three formats are complete.
 
 ### Demo Assets
 
@@ -284,7 +265,5 @@ should live in module-local `test` sections rather than `.cmd` wrappers.
       once ownership APIs settle?
 - [ ] Should `std.image` expose packed `[]u32` helpers for `std.gfx`, or should
       it stay byte-channel based and let callers convert?
-- [ ] Should `Image.load()` default to source-relative paths, cwd-relative
-      paths, or explicit caller paths only?
 - [ ] Should CRC checking be mandatory for PNG?
 - [ ] Should the first implementation support 16-bit PNG or reject it cleanly?

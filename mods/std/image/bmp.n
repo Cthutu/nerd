@@ -1,0 +1,379 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Decodes common uncompressed BMP files.
+
+BMP_FILE_HEADER_SIZE :: 14
+BMP_INFO_HEADER_SIZE :: 40
+BMP_COMPRESSION_RGB  :: 0
+
+bmp_invalid :: fn (message: string) -> Result[Image, ImageError] {
+    return Err(ImageError.InvalidData { message })
+}
+
+bmp_le_u16_at :: fn (bytes: []u8, index: usize) -> u16 {
+    return bytes[index].as(u16) | (bytes[index + 1].as(u16) << 8)
+}
+
+bmp_le_u32_at :: fn (bytes: []u8, index: usize) -> u32 {
+    return bytes[index].as(u32) | (bytes[index + 1].as(u32) << 8) | (bytes[index + 2].as(u32) << 16) | (bytes[index + 3].as(u32) << 24)
+}
+
+bmp_le_i32_at :: fn (bytes: []u8, index: usize) -> i32 {
+    return bmp_le_u32_at(bytes, index).as(i32)
+}
+
+bmp_abs_i32 :: fn (value: i32) -> i32 {
+    return on value < 0 => -value else value
+}
+
+bmp_luma :: fn (red: u8, green: u8, blue: u8) -> u8 {
+    return ((red.as(u32) * 77 + green.as(u32) * 150 + blue.as(u32) * 29) >> 8).as(u8)
+}
+
+bmp_desired_channels :: fn (source_channels  : i32,
+                            desired_channels : i32) -> Result[i32, ImageError] {
+    on desired_channels == 0 => return Ok(source_channels)
+    on desired_channels == 1 ||
+        desired_channels == 2 ||
+        desired_channels == 3 ||
+        desired_channels == 4 => return Ok(desired_channels)
+    return Err(UnsupportedFormat)
+}
+
+bmp_convert_channels :: fn (pixels           : []u8,
+                            width            : i32,
+                            height           : i32,
+                            source_channels  : i32,
+                            desired_channels : i32) -> [..]u8 {
+    on source_channels == desired_channels => {
+        output : [..]u8 = nil
+        output.resize_undefined_to(pixels.count)
+        for i in [0 .. pixels.count] {
+            output[i] = pixels[i]
+        }
+        return output
+    }
+
+    count := width.as(usize) * height.as(usize)
+    output : [..]u8 = nil
+    output.resize_undefined_to(count * desired_channels.as(usize))
+
+    for pixel in [0 .. count] {
+        source := pixel * source_channels.as(usize)
+        target := pixel * desired_channels.as(usize)
+        red := pixels[source]
+        green := pixels[source + 1]
+        blue := pixels[source + 2]
+        alpha : u8 = on source_channels == 4 => pixels[source + 3] else 255
+        grey := bmp_luma(red, green, blue)
+
+        on desired_channels == 1 => {
+            output[target] = grey
+        }
+        on desired_channels == 2 => {
+            output[target] = grey
+            output[target + 1] = alpha
+        }
+        on desired_channels == 3 => {
+            output[target] = red
+            output[target + 1] = green
+            output[target + 2] = blue
+        }
+        on desired_channels == 4 => {
+            output[target] = red
+            output[target + 1] = green
+            output[target + 2] = blue
+            output[target + 3] = alpha
+        }
+    }
+
+    return output
+}
+
+bmp_decode :: fn (bytes            : []u8,
+                  desired_channels : i32 = 0) -> Result[Image, ImageError] {
+    on !image_is_bmp(bytes) => return Err(UnsupportedFormat)
+    on bytes.count < BMP_FILE_HEADER_SIZE + BMP_INFO_HEADER_SIZE => return Err(UnexpectedEnd)
+
+    pixel_offset := bmp_le_u32_at(bytes, 10).as(usize)
+    dib_size := bmp_le_u32_at(bytes, 14)
+    on dib_size < BMP_INFO_HEADER_SIZE => return bmp_invalid("BMP DIB header "
+        +"is too small")
+
+    width := bmp_le_i32_at(bytes, 18)
+    signed_height := bmp_le_i32_at(bytes, 22)
+    planes := bmp_le_u16_at(bytes, 26)
+    bits_per_pixel := bmp_le_u16_at(bytes, 28)
+    compression := bmp_le_u32_at(bytes, 30)
+
+    on width <= 0 ||
+        signed_height == 0 => return bmp_invalid("BMP dimensions must be "
+        +"nonzero")
+    on planes != 1 => return bmp_invalid("BMP plane count must be one")
+    on compression != BMP_COMPRESSION_RGB => return Err(UnsupportedFormat)
+    on (bits_per_pixel != 24) &&
+        (bits_per_pixel != 32) => return Err(UnsupportedFormat)
+    on pixel_offset > bytes.count => return Err(UnexpectedEnd)
+
+    height := bmp_abs_i32(signed_height)
+    top_down := signed_height < 0
+    source_channels : i32 = on bits_per_pixel == 32 => 4 else 3
+    output_channels := bmp_desired_channels(source_channels, desired_channels)
+
+    on output_channels {
+        Err(error) => return Err(error)
+        Ok(final_channels) => {
+            row_stride := (((width.as(usize) * bits_per_pixel.as(usize)) + 31) / 32) * 4
+            needed_bytes := pixel_offset + row_stride * height.as(usize)
+            on needed_bytes > bytes.count => return Err(UnexpectedEnd)
+
+            raw : [..]u8 = nil
+            raw.resize_undefined_to(width.as(usize) * height.as(usize) * source_channels.as(usize))
+
+            for y in [0 .. height.as(usize)] {
+                source_y := on top_down => y else height.as(usize) - 1 - y
+                row_start := pixel_offset + source_y * row_stride
+
+                for x in [0 .. width.as(usize)] {
+                    source := row_start + x * (bits_per_pixel.as(usize) / 8)
+                    target := (y * width.as(usize) + x) * source_channels.as(usize)
+
+                    raw[target] = bytes[source + 2]
+                    raw[target + 1] = bytes[source + 1]
+                    raw[target + 2] = bytes[source]
+
+                    on source_channels == 4 => {
+                        raw[target + 3] = bytes[source + 3]
+                    }
+                }
+            }
+
+            data := bmp_convert_channels(raw[..],
+                                         width,
+                                         height,
+                                         source_channels,
+                                         final_channels)
+            raw.free()
+
+            return Ok(Image {
+                width
+                height
+                channels: final_channels
+                data
+            })
+        }
+    }
+}
+
+test "bmp decodes bottom-up 24-bit fixture" {
+    bytes: [70]u8 = [
+        66,
+        77,
+        70,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        54,
+        0,
+        0,
+        0,
+        40,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        1,
+        0,
+        24,
+        0,
+        0,
+        0,
+        0,
+        0,
+        16,
+        0,
+        0,
+        0,
+        19,
+        11,
+        0,
+        0,
+        19,
+        11,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        255,
+        0,
+        0,
+        255,
+        255,
+        255,
+        0,
+        0,
+        0,
+        0,
+        255,
+        0,
+        255,
+        0,
+        0,
+        0,
+    ]
+
+    result := bmp_decode(bytes[..])
+
+    on result {
+        Ok(image) => {
+            assert image.width == 2, "width"
+            assert image.height == 2, "height"
+            assert image.channels == 3, "channels"
+            assert image.data[0] == 255, "red 0"
+            assert image.data[1] == 0, "green 0"
+            assert image.data[2] == 0, "blue 0"
+            assert image.data[3] == 0, "red 1"
+            assert image.data[4] == 255, "green 1"
+            assert image.data[5] == 0, "blue 1"
+            assert image.data[6] == 0, "red 2"
+            assert image.data[7] == 0, "green 2"
+            assert image.data[8] == 255, "blue 2"
+            assert image.data[9] == 255, "red 3"
+            assert image.data[10] == 255, "green 3"
+            assert image.data[11] == 255, "blue 3"
+            image.free()
+        }
+        Err(error) => {
+            on error {
+                UnsupportedFormat => {
+                    assert no, "unsupported"
+                }
+                UnexpectedEnd => {
+                    assert no, "unexpected end"
+                }
+                InvalidData { message } => {
+                    assert no, message
+                }
+                OutOfMemory => {
+                    assert no, "out of memory"
+                }
+            }
+        }
+    }
+}
+
+test "bmp decodes top-down 32-bit fixture" {
+    bytes: [70]u8 = [
+        66,
+        77,
+        70,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        54,
+        0,
+        0,
+        0,
+        40,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        254,
+        255,
+        255,
+        255,
+        1,
+        0,
+        32,
+        0,
+        0,
+        0,
+        0,
+        0,
+        16,
+        0,
+        0,
+        0,
+        19,
+        11,
+        0,
+        0,
+        19,
+        11,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        255,
+        255,
+        0,
+        255,
+        0,
+        255,
+        255,
+        0,
+        0,
+        255,
+        255,
+        255,
+        255,
+        255,
+    ]
+
+    result := bmp_decode(bytes[..], 4)
+
+    on result {
+        Ok(image) => {
+            assert image.width == 2
+            assert image.height == 2
+            assert image.channels == 4
+            assert image.data[0] == 255
+            assert image.data[1] == 0
+            assert image.data[2] == 0
+            assert image.data[3] == 255
+            assert image.data[4] == 0
+            assert image.data[5] == 255
+            assert image.data[6] == 0
+            assert image.data[7] == 255
+            image.free()
+        }
+        else => {
+            assert no
+        }
+    }
+}
