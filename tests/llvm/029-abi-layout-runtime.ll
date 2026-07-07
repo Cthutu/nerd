@@ -59,6 +59,7 @@ main :: fn() -> i32 {
 @.str.m0.5 = private unnamed_addr constant [2 x i8] c" \00"
 @.str.m0.6 = private unnamed_addr constant [5 x i8] c"same\00"
 @.str.m0.7 = private unnamed_addr constant [5 x i8] c"same\00"
+@.slice.const.m0.41 = private unnamed_addr constant [4 x i8] [i8 97, i8 98, i8 99, i8 100]
 
 declare i1 @string_eq(ptr, ptr)
 declare void @string_builder_reset()
@@ -83,6 +84,7 @@ declare void @to_string$f64(ptr, double)
 declare ptr @nrt_mem_alloc(i64, i64, ptr, i32)
 declare ptr @nrt_mem_realloc(ptr, i64, i64, ptr, i32)
 declare void @nrt_mem_free(ptr)
+declare i64 @nrt_mem_size(ptr)
 
 declare i64 @strlen(ptr)
 
@@ -260,6 +262,7 @@ define internal i32 @fn.5() {
   %t30 = alloca { ptr, i64 }
   %t31 = alloca { ptr, i64 }
   %t39 = alloca i128
+  %local.14 = alloca { i64, i128 }
   %t0 = insertvalue [4 x i8] poison, i8 97, 0
   %t1 = insertvalue [4 x i8] %t0, i8 98, 1
   %t2 = insertvalue [4 x i8] %t1, i8 99, 2
@@ -315,15 +318,19 @@ define internal i32 @fn.5() {
   %t38 = load i128, ptr %t39
   %t40 = insertvalue { i64, i128 } poison, i64 1, 0
   %t41 = insertvalue { i64, i128 } %t40, i128 %t38, 1
-  %t42 = call i32 @fn.3({ i64, i128 } %t41)
-  %t43 = call i32 @fn.4()
-  %t44 = add i32 %t42, %t43
-  %t45 = zext i1 %t29 to i32
-  %t46 = add i32 %t44, %t45
-  ret i32 %t46
+  store { i64, i128 } %t41, ptr %local.14
+  %t42 = load { i64, i128 }, ptr %local.14
+  %t43 = call i32 @fn.3({ i64, i128 } %t42)
+  %t44 = call i32 @fn.4()
+  %t45 = add i32 %t43, %t44
+  %t46 = zext i1 %t29 to i32
+  %t47 = add i32 %t45, %t46
+  ret i32 %t47
 }
 
 @$consume = internal alias void ({ ptr, i64 }), ptr @fn.2
 @$score = internal alias i32 ({ i64, i128 }), ptr @fn.3
 @$use_dyn = internal alias i32 (), ptr @fn.4
 @$main = alias i32 (), ptr @fn.5
+
+declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

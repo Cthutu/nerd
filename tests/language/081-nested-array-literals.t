@@ -52,7 +52,7 @@ func fn.0() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [65 x i8] c"tests/language/081-nested-array-literals.t\00"
+@.macro.file.m0 = private unnamed_addr constant [43 x i8] c"tests/language/081-nested-array-literals.t\00"
 
 declare i1 @string_eq(ptr, ptr)
 declare void @string_builder_reset()
@@ -80,29 +80,29 @@ declare ptr @$input({ ptr, i64 })
 
 define internal i32 @fn.0() {
   %t0 = call i64 @string_builder_mark()
-  %t1 = insertvalue { i64, i64 } poison, i64 0, 0
-  %t2 = insertvalue { i64, i64 } %t1, i64 0, 1
-  %t3 = insertvalue { i64, i64 } poison, i64 1, 0
-  %t4 = insertvalue { i64, i64 } %t3, i64 0, 1
-  %t5 = insertvalue [2 x { i64, i64 }] poison, { i64, i64 } %t2, 0
-  %t6 = insertvalue [2 x { i64, i64 }] %t5, { i64, i64 } %t4, 1
-  %t7 = insertvalue { [2 x { i64, i64 }] } poison, [2 x { i64, i64 }] %t6, 0
-  %t8 = insertvalue { i64, i64 } poison, i64 2, 0
-  %t9 = insertvalue { i64, i64 } %t8, i64 0, 1
-  %t10 = insertvalue { i64, i64 } poison, i64 0, 0
-  %t11 = insertvalue { i64, i64 } %t10, i64 0, 1
-  %t12 = insertvalue [2 x { i64, i64 }] poison, { i64, i64 } %t9, 0
-  %t13 = insertvalue [2 x { i64, i64 }] %t12, { i64, i64 } %t11, 1
-  %t14 = insertvalue { [2 x { i64, i64 }] } poison, [2 x { i64, i64 }] %t13, 0
-  %t15 = insertvalue [2 x { [2 x { i64, i64 }] }] poison, { [2 x { i64, i64 }] } %t7, 0
-  %t16 = insertvalue [2 x { [2 x { i64, i64 }] }] %t15, { [2 x { i64, i64 }] } %t14, 1
-  %t17 = extractvalue [2 x { [2 x { i64, i64 }] }] %t16, 0
-  %t18 = extractvalue { [2 x { i64, i64 }] } %t17, 0
-  %t19 = extractvalue [2 x { i64, i64 }] %t18, 0
-  %t20 = insertvalue { i64, i64 } poison, i64 0, 0
-  %t21 = insertvalue { i64, i64 } %t20, i64 0, 1
-  %t23 = extractvalue { i64, i64 } %t19, 0
-  %t24 = extractvalue { i64, i64 } %t21, 0
+  %t1 = insertvalue { i64, i8 } poison, i64 0, 0
+  %t2 = insertvalue { i64, i8 } %t1, i8 0, 1
+  %t3 = insertvalue { i64, i8 } poison, i64 1, 0
+  %t4 = insertvalue { i64, i8 } %t3, i8 0, 1
+  %t5 = insertvalue [2 x { i64, i8 }] poison, { i64, i8 } %t2, 0
+  %t6 = insertvalue [2 x { i64, i8 }] %t5, { i64, i8 } %t4, 1
+  %t7 = insertvalue { [2 x { i64, i8 }] } poison, [2 x { i64, i8 }] %t6, 0
+  %t8 = insertvalue { i64, i8 } poison, i64 2, 0
+  %t9 = insertvalue { i64, i8 } %t8, i8 0, 1
+  %t10 = insertvalue { i64, i8 } poison, i64 0, 0
+  %t11 = insertvalue { i64, i8 } %t10, i8 0, 1
+  %t12 = insertvalue [2 x { i64, i8 }] poison, { i64, i8 } %t9, 0
+  %t13 = insertvalue [2 x { i64, i8 }] %t12, { i64, i8 } %t11, 1
+  %t14 = insertvalue { [2 x { i64, i8 }] } poison, [2 x { i64, i8 }] %t13, 0
+  %t15 = insertvalue [2 x { [2 x { i64, i8 }] }] poison, { [2 x { i64, i8 }] } %t7, 0
+  %t16 = insertvalue [2 x { [2 x { i64, i8 }] }] %t15, { [2 x { i64, i8 }] } %t14, 1
+  %t17 = extractvalue [2 x { [2 x { i64, i8 }] }] %t16, 0
+  %t18 = extractvalue { [2 x { i64, i8 }] } %t17, 0
+  %t19 = extractvalue [2 x { i64, i8 }] %t18, 0
+  %t20 = insertvalue { i64, i8 } poison, i64 0, 0
+  %t21 = insertvalue { i64, i8 } %t20, i8 0, 1
+  %t23 = extractvalue { i64, i8 } %t19, 0
+  %t24 = extractvalue { i64, i8 } %t21, 0
   %t22 = icmp eq i64 %t23, %t24
   %t25 = alloca { ptr, i64 }
   call void @to_string$bool(ptr %t25, i1 zeroext %t22)
@@ -112,29 +112,29 @@ define internal i32 @fn.0() {
   %t27 = load { ptr, i64 }, ptr %t26
   call void @$prn({ ptr, i64 } %t27)
   %t28 = call i64 @string_builder_mark()
-  %t29 = insertvalue { i64, i64 } poison, i64 0, 0
-  %t30 = insertvalue { i64, i64 } %t29, i64 0, 1
-  %t31 = insertvalue { i64, i64 } poison, i64 1, 0
-  %t32 = insertvalue { i64, i64 } %t31, i64 0, 1
-  %t33 = insertvalue [2 x { i64, i64 }] poison, { i64, i64 } %t30, 0
-  %t34 = insertvalue [2 x { i64, i64 }] %t33, { i64, i64 } %t32, 1
-  %t35 = insertvalue { [2 x { i64, i64 }] } poison, [2 x { i64, i64 }] %t34, 0
-  %t36 = insertvalue { i64, i64 } poison, i64 2, 0
-  %t37 = insertvalue { i64, i64 } %t36, i64 0, 1
-  %t38 = insertvalue { i64, i64 } poison, i64 0, 0
-  %t39 = insertvalue { i64, i64 } %t38, i64 0, 1
-  %t40 = insertvalue [2 x { i64, i64 }] poison, { i64, i64 } %t37, 0
-  %t41 = insertvalue [2 x { i64, i64 }] %t40, { i64, i64 } %t39, 1
-  %t42 = insertvalue { [2 x { i64, i64 }] } poison, [2 x { i64, i64 }] %t41, 0
-  %t43 = insertvalue [2 x { [2 x { i64, i64 }] }] poison, { [2 x { i64, i64 }] } %t35, 0
-  %t44 = insertvalue [2 x { [2 x { i64, i64 }] }] %t43, { [2 x { i64, i64 }] } %t42, 1
-  %t45 = extractvalue [2 x { [2 x { i64, i64 }] }] %t44, 0
-  %t46 = extractvalue { [2 x { i64, i64 }] } %t45, 0
-  %t47 = extractvalue [2 x { i64, i64 }] %t46, 1
-  %t48 = insertvalue { i64, i64 } poison, i64 1, 0
-  %t49 = insertvalue { i64, i64 } %t48, i64 0, 1
-  %t51 = extractvalue { i64, i64 } %t47, 0
-  %t52 = extractvalue { i64, i64 } %t49, 0
+  %t29 = insertvalue { i64, i8 } poison, i64 0, 0
+  %t30 = insertvalue { i64, i8 } %t29, i8 0, 1
+  %t31 = insertvalue { i64, i8 } poison, i64 1, 0
+  %t32 = insertvalue { i64, i8 } %t31, i8 0, 1
+  %t33 = insertvalue [2 x { i64, i8 }] poison, { i64, i8 } %t30, 0
+  %t34 = insertvalue [2 x { i64, i8 }] %t33, { i64, i8 } %t32, 1
+  %t35 = insertvalue { [2 x { i64, i8 }] } poison, [2 x { i64, i8 }] %t34, 0
+  %t36 = insertvalue { i64, i8 } poison, i64 2, 0
+  %t37 = insertvalue { i64, i8 } %t36, i8 0, 1
+  %t38 = insertvalue { i64, i8 } poison, i64 0, 0
+  %t39 = insertvalue { i64, i8 } %t38, i8 0, 1
+  %t40 = insertvalue [2 x { i64, i8 }] poison, { i64, i8 } %t37, 0
+  %t41 = insertvalue [2 x { i64, i8 }] %t40, { i64, i8 } %t39, 1
+  %t42 = insertvalue { [2 x { i64, i8 }] } poison, [2 x { i64, i8 }] %t41, 0
+  %t43 = insertvalue [2 x { [2 x { i64, i8 }] }] poison, { [2 x { i64, i8 }] } %t35, 0
+  %t44 = insertvalue [2 x { [2 x { i64, i8 }] }] %t43, { [2 x { i64, i8 }] } %t42, 1
+  %t45 = extractvalue [2 x { [2 x { i64, i8 }] }] %t44, 0
+  %t46 = extractvalue { [2 x { i64, i8 }] } %t45, 0
+  %t47 = extractvalue [2 x { i64, i8 }] %t46, 1
+  %t48 = insertvalue { i64, i8 } poison, i64 1, 0
+  %t49 = insertvalue { i64, i8 } %t48, i8 0, 1
+  %t51 = extractvalue { i64, i8 } %t47, 0
+  %t52 = extractvalue { i64, i8 } %t49, 0
   %t50 = icmp eq i64 %t51, %t52
   %t53 = alloca { ptr, i64 }
   call void @to_string$bool(ptr %t53, i1 zeroext %t50)
@@ -144,29 +144,29 @@ define internal i32 @fn.0() {
   %t55 = load { ptr, i64 }, ptr %t54
   call void @$prn({ ptr, i64 } %t55)
   %t56 = call i64 @string_builder_mark()
-  %t57 = insertvalue { i64, i64 } poison, i64 0, 0
-  %t58 = insertvalue { i64, i64 } %t57, i64 0, 1
-  %t59 = insertvalue { i64, i64 } poison, i64 1, 0
-  %t60 = insertvalue { i64, i64 } %t59, i64 0, 1
-  %t61 = insertvalue [2 x { i64, i64 }] poison, { i64, i64 } %t58, 0
-  %t62 = insertvalue [2 x { i64, i64 }] %t61, { i64, i64 } %t60, 1
-  %t63 = insertvalue { [2 x { i64, i64 }] } poison, [2 x { i64, i64 }] %t62, 0
-  %t64 = insertvalue { i64, i64 } poison, i64 2, 0
-  %t65 = insertvalue { i64, i64 } %t64, i64 0, 1
-  %t66 = insertvalue { i64, i64 } poison, i64 0, 0
-  %t67 = insertvalue { i64, i64 } %t66, i64 0, 1
-  %t68 = insertvalue [2 x { i64, i64 }] poison, { i64, i64 } %t65, 0
-  %t69 = insertvalue [2 x { i64, i64 }] %t68, { i64, i64 } %t67, 1
-  %t70 = insertvalue { [2 x { i64, i64 }] } poison, [2 x { i64, i64 }] %t69, 0
-  %t71 = insertvalue [2 x { [2 x { i64, i64 }] }] poison, { [2 x { i64, i64 }] } %t63, 0
-  %t72 = insertvalue [2 x { [2 x { i64, i64 }] }] %t71, { [2 x { i64, i64 }] } %t70, 1
-  %t73 = extractvalue [2 x { [2 x { i64, i64 }] }] %t72, 1
-  %t74 = extractvalue { [2 x { i64, i64 }] } %t73, 0
-  %t75 = extractvalue [2 x { i64, i64 }] %t74, 0
-  %t76 = insertvalue { i64, i64 } poison, i64 2, 0
-  %t77 = insertvalue { i64, i64 } %t76, i64 0, 1
-  %t79 = extractvalue { i64, i64 } %t75, 0
-  %t80 = extractvalue { i64, i64 } %t77, 0
+  %t57 = insertvalue { i64, i8 } poison, i64 0, 0
+  %t58 = insertvalue { i64, i8 } %t57, i8 0, 1
+  %t59 = insertvalue { i64, i8 } poison, i64 1, 0
+  %t60 = insertvalue { i64, i8 } %t59, i8 0, 1
+  %t61 = insertvalue [2 x { i64, i8 }] poison, { i64, i8 } %t58, 0
+  %t62 = insertvalue [2 x { i64, i8 }] %t61, { i64, i8 } %t60, 1
+  %t63 = insertvalue { [2 x { i64, i8 }] } poison, [2 x { i64, i8 }] %t62, 0
+  %t64 = insertvalue { i64, i8 } poison, i64 2, 0
+  %t65 = insertvalue { i64, i8 } %t64, i8 0, 1
+  %t66 = insertvalue { i64, i8 } poison, i64 0, 0
+  %t67 = insertvalue { i64, i8 } %t66, i8 0, 1
+  %t68 = insertvalue [2 x { i64, i8 }] poison, { i64, i8 } %t65, 0
+  %t69 = insertvalue [2 x { i64, i8 }] %t68, { i64, i8 } %t67, 1
+  %t70 = insertvalue { [2 x { i64, i8 }] } poison, [2 x { i64, i8 }] %t69, 0
+  %t71 = insertvalue [2 x { [2 x { i64, i8 }] }] poison, { [2 x { i64, i8 }] } %t63, 0
+  %t72 = insertvalue [2 x { [2 x { i64, i8 }] }] %t71, { [2 x { i64, i8 }] } %t70, 1
+  %t73 = extractvalue [2 x { [2 x { i64, i8 }] }] %t72, 1
+  %t74 = extractvalue { [2 x { i64, i8 }] } %t73, 0
+  %t75 = extractvalue [2 x { i64, i8 }] %t74, 0
+  %t76 = insertvalue { i64, i8 } poison, i64 2, 0
+  %t77 = insertvalue { i64, i8 } %t76, i8 0, 1
+  %t79 = extractvalue { i64, i8 } %t75, 0
+  %t80 = extractvalue { i64, i8 } %t77, 0
   %t78 = icmp eq i64 %t79, %t80
   %t81 = alloca { ptr, i64 }
   call void @to_string$bool(ptr %t81, i1 zeroext %t78)
@@ -176,29 +176,29 @@ define internal i32 @fn.0() {
   %t83 = load { ptr, i64 }, ptr %t82
   call void @$prn({ ptr, i64 } %t83)
   %t84 = call i64 @string_builder_mark()
-  %t85 = insertvalue { i64, i64 } poison, i64 0, 0
-  %t86 = insertvalue { i64, i64 } %t85, i64 0, 1
-  %t87 = insertvalue { i64, i64 } poison, i64 1, 0
-  %t88 = insertvalue { i64, i64 } %t87, i64 0, 1
-  %t89 = insertvalue [2 x { i64, i64 }] poison, { i64, i64 } %t86, 0
-  %t90 = insertvalue [2 x { i64, i64 }] %t89, { i64, i64 } %t88, 1
-  %t91 = insertvalue { [2 x { i64, i64 }] } poison, [2 x { i64, i64 }] %t90, 0
-  %t92 = insertvalue { i64, i64 } poison, i64 2, 0
-  %t93 = insertvalue { i64, i64 } %t92, i64 0, 1
-  %t94 = insertvalue { i64, i64 } poison, i64 0, 0
-  %t95 = insertvalue { i64, i64 } %t94, i64 0, 1
-  %t96 = insertvalue [2 x { i64, i64 }] poison, { i64, i64 } %t93, 0
-  %t97 = insertvalue [2 x { i64, i64 }] %t96, { i64, i64 } %t95, 1
-  %t98 = insertvalue { [2 x { i64, i64 }] } poison, [2 x { i64, i64 }] %t97, 0
-  %t99 = insertvalue [2 x { [2 x { i64, i64 }] }] poison, { [2 x { i64, i64 }] } %t91, 0
-  %t100 = insertvalue [2 x { [2 x { i64, i64 }] }] %t99, { [2 x { i64, i64 }] } %t98, 1
-  %t101 = extractvalue [2 x { [2 x { i64, i64 }] }] %t100, 1
-  %t102 = extractvalue { [2 x { i64, i64 }] } %t101, 0
-  %t103 = extractvalue [2 x { i64, i64 }] %t102, 1
-  %t104 = insertvalue { i64, i64 } poison, i64 0, 0
-  %t105 = insertvalue { i64, i64 } %t104, i64 0, 1
-  %t107 = extractvalue { i64, i64 } %t103, 0
-  %t108 = extractvalue { i64, i64 } %t105, 0
+  %t85 = insertvalue { i64, i8 } poison, i64 0, 0
+  %t86 = insertvalue { i64, i8 } %t85, i8 0, 1
+  %t87 = insertvalue { i64, i8 } poison, i64 1, 0
+  %t88 = insertvalue { i64, i8 } %t87, i8 0, 1
+  %t89 = insertvalue [2 x { i64, i8 }] poison, { i64, i8 } %t86, 0
+  %t90 = insertvalue [2 x { i64, i8 }] %t89, { i64, i8 } %t88, 1
+  %t91 = insertvalue { [2 x { i64, i8 }] } poison, [2 x { i64, i8 }] %t90, 0
+  %t92 = insertvalue { i64, i8 } poison, i64 2, 0
+  %t93 = insertvalue { i64, i8 } %t92, i8 0, 1
+  %t94 = insertvalue { i64, i8 } poison, i64 0, 0
+  %t95 = insertvalue { i64, i8 } %t94, i8 0, 1
+  %t96 = insertvalue [2 x { i64, i8 }] poison, { i64, i8 } %t93, 0
+  %t97 = insertvalue [2 x { i64, i8 }] %t96, { i64, i8 } %t95, 1
+  %t98 = insertvalue { [2 x { i64, i8 }] } poison, [2 x { i64, i8 }] %t97, 0
+  %t99 = insertvalue [2 x { [2 x { i64, i8 }] }] poison, { [2 x { i64, i8 }] } %t91, 0
+  %t100 = insertvalue [2 x { [2 x { i64, i8 }] }] %t99, { [2 x { i64, i8 }] } %t98, 1
+  %t101 = extractvalue [2 x { [2 x { i64, i8 }] }] %t100, 1
+  %t102 = extractvalue { [2 x { i64, i8 }] } %t101, 0
+  %t103 = extractvalue [2 x { i64, i8 }] %t102, 1
+  %t104 = insertvalue { i64, i8 } poison, i64 0, 0
+  %t105 = insertvalue { i64, i8 } %t104, i8 0, 1
+  %t107 = extractvalue { i64, i8 } %t103, 0
+  %t108 = extractvalue { i64, i8 } %t105, 0
   %t106 = icmp eq i64 %t107, %t108
   %t109 = alloca { ptr, i64 }
   call void @to_string$bool(ptr %t109, i1 zeroext %t106)
@@ -211,3 +211,5 @@ define internal i32 @fn.0() {
 }
 
 @$main = alias i32 (), ptr @fn.0
+
+declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

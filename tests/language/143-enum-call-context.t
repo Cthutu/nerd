@@ -45,21 +45,23 @@ func fn.1() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-define internal i32 @fn.0({ i64, i64 } %code) {
-  %t0 = insertvalue { i64, i64 } poison, i64 1, 0
-  %t1 = insertvalue { i64, i64 } %t0, i64 0, 1
-  %t3 = extractvalue { i64, i64 } %code, 0
-  %t4 = extractvalue { i64, i64 } %t1, 0
+@.macro.file.m0 = private unnamed_addr constant [39 x i8] c"tests/language/143-enum-call-context.t\00"
+
+define internal i32 @fn.0({ i64, i8 } %code) {
+  %t0 = insertvalue { i64, i8 } poison, i64 1, 0
+  %t1 = insertvalue { i64, i8 } %t0, i8 0, 1
+  %t3 = extractvalue { i64, i8 } %code, 0
+  %t4 = extractvalue { i64, i8 } %t1, 0
   %t2 = icmp eq i64 %t3, %t4
   %t5 = icmp eq i1 %t2, 1
   br i1 %t5, label %on.body.1, label %on.end.0
 on.body.1:
   ret i32 10
 on.end.0:
-  %t6 = insertvalue { i64, i64 } poison, i64 2, 0
-  %t7 = insertvalue { i64, i64 } %t6, i64 0, 1
-  %t9 = extractvalue { i64, i64 } %code, 0
-  %t10 = extractvalue { i64, i64 } %t7, 0
+  %t6 = insertvalue { i64, i8 } poison, i64 2, 0
+  %t7 = insertvalue { i64, i8 } %t6, i8 0, 1
+  %t9 = extractvalue { i64, i8 } %code, 0
+  %t10 = extractvalue { i64, i8 } %t7, 0
   %t8 = icmp eq i64 %t9, %t10
   %t11 = icmp eq i1 %t8, 1
   br i1 %t11, label %on.body.3, label %on.end.2
@@ -70,15 +72,20 @@ on.end.2:
 }
 
 define internal i32 @fn.1() {
-  %t0 = insertvalue { i64, i64 } poison, i64 1, 0
-  %t1 = insertvalue { i64, i64 } %t0, i64 0, 1
-  %t2 = call i32 @fn.0({ i64, i64 } %t1)
-  %t3 = insertvalue { i64, i64 } poison, i64 2, 0
-  %t4 = insertvalue { i64, i64 } %t3, i64 0, 1
-  %t5 = call i32 @fn.0({ i64, i64 } %t4)
-  %t6 = add i32 %t2, %t5
-  ret i32 %t6
+  %local.1 = alloca { i64, i8 }
+  %t0 = insertvalue { i64, i8 } poison, i64 1, 0
+  %t1 = insertvalue { i64, i8 } %t0, i8 0, 1
+  store { i64, i8 } %t1, ptr %local.1
+  %t2 = load { i64, i8 }, ptr %local.1
+  %t3 = call i32 @fn.0({ i64, i8 } %t2)
+  %t4 = insertvalue { i64, i8 } poison, i64 2, 0
+  %t5 = insertvalue { i64, i8 } %t4, i8 0, 1
+  %t6 = call i32 @fn.0({ i64, i8 } %t5)
+  %t7 = add i32 %t3, %t6
+  ret i32 %t7
 }
 
-@$score = internal alias i32 ({ i64, i64 }), ptr @fn.0
+@$score = internal alias i32 ({ i64, i8 }), ptr @fn.0
 @$main = alias i32 (), ptr @fn.1
+
+declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

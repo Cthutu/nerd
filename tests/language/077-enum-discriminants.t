@@ -174,6 +174,7 @@ func fn.2() -> i32 {
 @.str.m0.18 = private unnamed_addr constant [6 x i8] c"ident\00"
 @.str.m0.19 = private unnamed_addr constant [7 x i8] c"number\00"
 @.str.m0.20 = private unnamed_addr constant [7 x i8] c"string\00"
+@.slice.const.m0.12 = private unnamed_addr constant [12 x { ptr, i64 }] [{ ptr, i64 } { ptr @.str.m0.0, i64 1 }, { ptr, i64 } { ptr @.str.m0.1, i64 1 }, { ptr, i64 } { ptr @.str.m0.2, i64 1 }, { ptr, i64 } { ptr @.str.m0.3, i64 1 }, { ptr, i64 } { ptr @.str.m0.4, i64 1 }, { ptr, i64 } { ptr @.str.m0.5, i64 1 }, { ptr, i64 } { ptr @.str.m0.6, i64 1 }, { ptr, i64 } { ptr @.str.m0.7, i64 1 }, { ptr, i64 } { ptr @.str.m0.8, i64 1 }, { ptr, i64 } { ptr @.str.m0.9, i64 1 }, { ptr, i64 } { ptr @.str.m0.10, i64 2 }, { ptr, i64 } { ptr @.str.m0.11, i64 2 }]
 
 declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
@@ -197,11 +198,11 @@ define void @m0.init() {
   ret void
 }
 
-define internal { ptr, i64 } @fn.0({ i64, i64 } %direction) {
-  %t0 = insertvalue { i64, i64 } poison, i64 0, 0
-  %t1 = insertvalue { i64, i64 } %t0, i64 0, 1
-  %t2 = extractvalue { i64, i64 } %direction, 0
-  %t3 = extractvalue { i64, i64 } %t1, 0
+define internal { ptr, i64 } @fn.0({ i64, i8 } %direction) {
+  %t0 = insertvalue { i64, i8 } poison, i64 0, 0
+  %t1 = insertvalue { i64, i8 } %t0, i8 0, 1
+  %t2 = extractvalue { i64, i8 } %direction, 0
+  %t3 = extractvalue { i64, i8 } %t1, 0
   %t4 = icmp eq i64 %t2, %t3
   br i1 %t4, label %on.body.1, label %on.next.2
 on.body.1:
@@ -209,10 +210,10 @@ on.body.1:
 on.value.3:
   br label %on.end.0
 on.next.2:
-  %t5 = insertvalue { i64, i64 } poison, i64 1, 0
-  %t6 = insertvalue { i64, i64 } %t5, i64 0, 1
-  %t7 = extractvalue { i64, i64 } %direction, 0
-  %t8 = extractvalue { i64, i64 } %t6, 0
+  %t5 = insertvalue { i64, i8 } poison, i64 1, 0
+  %t6 = insertvalue { i64, i8 } %t5, i8 0, 1
+  %t7 = extractvalue { i64, i8 } %direction, 0
+  %t8 = extractvalue { i64, i8 } %t6, 0
   %t9 = icmp eq i64 %t7, %t8
   br i1 %t9, label %on.body.4, label %on.next.5
 on.body.4:
@@ -220,10 +221,10 @@ on.body.4:
 on.value.6:
   br label %on.end.0
 on.next.5:
-  %t10 = insertvalue { i64, i64 } poison, i64 10, 0
-  %t11 = insertvalue { i64, i64 } %t10, i64 0, 1
-  %t12 = extractvalue { i64, i64 } %direction, 0
-  %t13 = extractvalue { i64, i64 } %t11, 0
+  %t10 = insertvalue { i64, i8 } poison, i64 10, 0
+  %t11 = insertvalue { i64, i8 } %t10, i8 0, 1
+  %t12 = extractvalue { i64, i8 } %direction, 0
+  %t13 = extractvalue { i64, i8 } %t11, 0
   %t14 = icmp eq i64 %t12, %t13
   br i1 %t14, label %on.body.7, label %on.next.8
 on.body.7:
@@ -231,10 +232,10 @@ on.body.7:
 on.value.9:
   br label %on.end.0
 on.next.8:
-  %t15 = insertvalue { i64, i64 } poison, i64 11, 0
-  %t16 = insertvalue { i64, i64 } %t15, i64 0, 1
-  %t17 = extractvalue { i64, i64 } %direction, 0
-  %t18 = extractvalue { i64, i64 } %t16, 0
+  %t15 = insertvalue { i64, i8 } poison, i64 11, 0
+  %t16 = insertvalue { i64, i8 } %t15, i8 0, 1
+  %t17 = extractvalue { i64, i8 } %direction, 0
+  %t18 = extractvalue { i64, i8 } %t16, 0
   %t19 = icmp eq i64 %t17, %t18
   br i1 %t19, label %on.body.10, label %on.next.11
 on.body.10:
@@ -242,10 +243,10 @@ on.body.10:
 on.value.12:
   br label %on.end.0
 on.next.11:
-  %t20 = insertvalue { i64, i64 } poison, i64 12, 0
-  %t21 = insertvalue { i64, i64 } %t20, i64 0, 1
-  %t22 = extractvalue { i64, i64 } %direction, 0
-  %t23 = extractvalue { i64, i64 } %t21, 0
+  %t20 = insertvalue { i64, i8 } poison, i64 12, 0
+  %t21 = insertvalue { i64, i8 } %t20, i8 0, 1
+  %t22 = extractvalue { i64, i8 } %direction, 0
+  %t23 = extractvalue { i64, i8 } %t21, 0
   %t24 = icmp eq i64 %t22, %t23
   br i1 %t24, label %on.body.13, label %on.next.14
 on.body.13:
@@ -259,11 +260,11 @@ on.end.0:
   ret { ptr, i64 } %t25
 }
 
-define internal { ptr, i64 } @fn.1({ i64, i64 } %token) {
-  %t0 = insertvalue { i64, i64 } poison, i64 0, 0
-  %t1 = insertvalue { i64, i64 } %t0, i64 0, 1
-  %t2 = extractvalue { i64, i64 } %token, 0
-  %t3 = extractvalue { i64, i64 } %t1, 0
+define internal { ptr, i64 } @fn.1({ i64, i8 } %token) {
+  %t0 = insertvalue { i64, i8 } poison, i64 0, 0
+  %t1 = insertvalue { i64, i8 } %t0, i8 0, 1
+  %t2 = extractvalue { i64, i8 } %token, 0
+  %t3 = extractvalue { i64, i8 } %t1, 0
   %t4 = icmp eq i64 %t2, %t3
   br i1 %t4, label %on.body.1, label %on.next.2
 on.body.1:
@@ -271,10 +272,10 @@ on.body.1:
 on.value.3:
   br label %on.end.0
 on.next.2:
-  %t5 = insertvalue { i64, i64 } poison, i64 1, 0
-  %t6 = insertvalue { i64, i64 } %t5, i64 0, 1
-  %t7 = extractvalue { i64, i64 } %token, 0
-  %t8 = extractvalue { i64, i64 } %t6, 0
+  %t5 = insertvalue { i64, i8 } poison, i64 1, 0
+  %t6 = insertvalue { i64, i8 } %t5, i8 0, 1
+  %t7 = extractvalue { i64, i8 } %token, 0
+  %t8 = extractvalue { i64, i8 } %t6, 0
   %t9 = icmp eq i64 %t7, %t8
   br i1 %t9, label %on.body.4, label %on.next.5
 on.body.4:
@@ -282,10 +283,10 @@ on.body.4:
 on.value.6:
   br label %on.end.0
 on.next.5:
-  %t10 = insertvalue { i64, i64 } poison, i64 10, 0
-  %t11 = insertvalue { i64, i64 } %t10, i64 0, 1
-  %t12 = extractvalue { i64, i64 } %token, 0
-  %t13 = extractvalue { i64, i64 } %t11, 0
+  %t10 = insertvalue { i64, i8 } poison, i64 10, 0
+  %t11 = insertvalue { i64, i8 } %t10, i8 0, 1
+  %t12 = extractvalue { i64, i8 } %token, 0
+  %t13 = extractvalue { i64, i8 } %t11, 0
   %t14 = icmp eq i64 %t12, %t13
   br i1 %t14, label %on.body.7, label %on.next.8
 on.body.7:
@@ -293,10 +294,10 @@ on.body.7:
 on.value.9:
   br label %on.end.0
 on.next.8:
-  %t15 = insertvalue { i64, i64 } poison, i64 11, 0
-  %t16 = insertvalue { i64, i64 } %t15, i64 0, 1
-  %t17 = extractvalue { i64, i64 } %token, 0
-  %t18 = extractvalue { i64, i64 } %t16, 0
+  %t15 = insertvalue { i64, i8 } poison, i64 11, 0
+  %t16 = insertvalue { i64, i8 } %t15, i8 0, 1
+  %t17 = extractvalue { i64, i8 } %token, 0
+  %t18 = extractvalue { i64, i8 } %t16, 0
   %t19 = icmp eq i64 %t17, %t18
   br i1 %t19, label %on.body.10, label %on.next.11
 on.body.10:
@@ -311,26 +312,33 @@ on.end.0:
 }
 
 define internal i32 @fn.2() {
-  %t0 = insertvalue { i64, i64 } poison, i64 10, 0
-  %t1 = insertvalue { i64, i64 } %t0, i64 0, 1
-  %t2 = insertvalue { i64, i64 } poison, i64 11, 0
-  %t3 = insertvalue { i64, i64 } %t2, i64 0, 1
+  %local.2 = alloca { i64, i8 }
+  %local.3 = alloca { i64, i8 }
+  %t0 = insertvalue { i64, i8 } poison, i64 10, 0
+  %t1 = insertvalue { i64, i8 } %t0, i8 0, 1
+  store { i64, i8 } %t1, ptr %local.2
+  %t2 = insertvalue { i64, i8 } poison, i64 11, 0
+  %t3 = insertvalue { i64, i8 } %t2, i8 0, 1
+  store { i64, i8 } %t3, ptr %local.3
   %t4 = load [12 x { ptr, i64 }], ptr @$labels
   %t5 = extractvalue [12 x { ptr, i64 }] %t4, 0
   call void @$prn({ ptr, i64 } %t5)
   %t6 = load [12 x { ptr, i64 }], ptr @$labels
   %t7 = extractvalue [12 x { ptr, i64 }] %t6, 11
   call void @$prn({ ptr, i64 } %t7)
-  %t8 = call { ptr, i64 } @fn.0({ i64, i64 } %t1)
-  call void @$prn({ ptr, i64 } %t8)
-  %t9 = call { ptr, i64 } @fn.1({ i64, i64 } %t3)
+  %t8 = load { i64, i8 }, ptr %local.2
+  %t9 = call { ptr, i64 } @fn.0({ i64, i8 } %t8)
   call void @$prn({ ptr, i64 } %t9)
-  %t10 = insertvalue { i64, i64 } poison, i64 10, 0
-  %t11 = insertvalue { i64, i64 } %t10, i64 0, 1
-  %t12 = extractvalue { i64, i64 } %t1, 0
-  %t13 = extractvalue { i64, i64 } %t11, 0
-  %t14 = icmp eq i64 %t12, %t13
-  br i1 %t14, label %on.body.1, label %on.next.2
+  %t10 = load { i64, i8 }, ptr %local.3
+  %t11 = call { ptr, i64 } @fn.1({ i64, i8 } %t10)
+  call void @$prn({ ptr, i64 } %t11)
+  %t12 = load { i64, i8 }, ptr %local.2
+  %t13 = insertvalue { i64, i8 } poison, i64 10, 0
+  %t14 = insertvalue { i64, i8 } %t13, i8 0, 1
+  %t15 = extractvalue { i64, i8 } %t12, 0
+  %t16 = extractvalue { i64, i8 } %t14, 0
+  %t17 = icmp eq i64 %t15, %t16
+  br i1 %t17, label %on.body.1, label %on.next.2
 on.body.1:
   br label %on.value.3
 on.value.3:
@@ -342,19 +350,20 @@ on.body.4:
 on.value.6:
   br label %on.end.0
 on.end.0:
-  %t15 = phi i1 [1, %on.value.3], [0, %on.value.6]
-  %t16 = alloca i1
-  br i1 %t15, label %logical.rhs.7, label %logical.short.8
+  %t18 = phi i1 [1, %on.value.3], [0, %on.value.6]
+  %t19 = alloca i1
+  br i1 %t18, label %logical.rhs.7, label %logical.short.8
 logical.short.8:
-  store i1 0, ptr %t16
+  store i1 0, ptr %t19
   br label %logical.end.9
 logical.rhs.7:
-  %t18 = insertvalue { i64, i64 } poison, i64 11, 0
-  %t19 = insertvalue { i64, i64 } %t18, i64 0, 1
-  %t20 = extractvalue { i64, i64 } %t3, 0
-  %t21 = extractvalue { i64, i64 } %t19, 0
-  %t22 = icmp eq i64 %t20, %t21
-  br i1 %t22, label %on.body.11, label %on.next.12
+  %t21 = load { i64, i8 }, ptr %local.3
+  %t22 = insertvalue { i64, i8 } poison, i64 11, 0
+  %t23 = insertvalue { i64, i8 } %t22, i8 0, 1
+  %t24 = extractvalue { i64, i8 } %t21, 0
+  %t25 = extractvalue { i64, i8 } %t23, 0
+  %t26 = icmp eq i64 %t24, %t25
+  br i1 %t26, label %on.body.11, label %on.next.12
 on.body.11:
   br label %on.value.13
 on.value.13:
@@ -366,13 +375,13 @@ on.body.14:
 on.value.16:
   br label %on.end.10
 on.end.10:
-  %t23 = phi i1 [1, %on.value.13], [0, %on.value.16]
-  store i1 %t23, ptr %t16
+  %t27 = phi i1 [1, %on.value.13], [0, %on.value.16]
+  store i1 %t27, ptr %t19
   br label %logical.end.9
 logical.end.9:
-  %t17 = load i1, ptr %t16
-  %t24 = icmp eq i1 %t17, 1
-  br i1 %t24, label %on.body.18, label %on.next.19
+  %t20 = load i1, ptr %t19
+  %t28 = icmp eq i1 %t20, 1
+  br i1 %t28, label %on.body.18, label %on.next.19
 on.body.18:
   br label %on.value.20
 on.value.20:
@@ -384,11 +393,12 @@ on.body.21:
 on.value.23:
   br label %on.end.17
 on.end.17:
-  %t25 = phi i32 [0, %on.value.20], [1, %on.value.23]
-  ret i32 %t25
+  %t29 = phi i32 [0, %on.value.20], [1, %on.value.23]
+  ret i32 %t29
 }
 
-@$describe_direction = internal alias { ptr, i64 } ({ i64, i64 }), ptr @fn.0
-@$describe_token = internal alias { ptr, i64 } ({ i64, i64 }), ptr @fn.1
+@$describe_direction = internal alias { ptr, i64 } ({ i64, i8 }), ptr @fn.0
+@$describe_token = internal alias { ptr, i64 } ({ i64, i8 }), ptr @fn.1
 @$main = alias i32 (), ptr @fn.2
 
+declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

@@ -50,29 +50,33 @@ func fn.0() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
+@.macro.file.m0 = private unnamed_addr constant [45 x i8] c"tests/language/144-local-type-declarations.t\00"
+
 define internal i32 @fn.0() {
+  %local.2 = alloca { i64, i32 }
+  %local.5 = alloca { i64, i32 }
+  store { i64, i32 } zeroinitializer, ptr %local.2
   %t0 = insertvalue { i32, i32 } poison, i32 10, 0
   %t1 = insertvalue { i32, i32 } %t0, i32 20, 1
-  %t2 = zext i32 5 to i64
-  %t3 = insertvalue { i64, i64 } poison, i64 1, 0
-  %t4 = insertvalue { i64, i64 } %t3, i64 %t2, 1
-  %t5 = extractvalue { i64, i64 } %t4, 0
+  %t2 = insertvalue { i64, i32 } poison, i64 1, 0
+  %t3 = insertvalue { i64, i32 } %t2, i32 5, 1
+  store { i64, i32 } %t3, ptr %local.5
+  %t4 = load { i64, i32 }, ptr %local.5
+  %t5 = extractvalue { i64, i32 } %t4, 0
   %t6 = icmp eq i64 %t5, 0
-  %t7 = extractvalue { i64, i64 } %t4, 1
-  %t8 = trunc i64 %t7 to i32
-  %t9 = and i1 %t6, 1
-  br i1 %t9, label %on.body.1, label %on.next.2
+  %t7 = extractvalue { i64, i32 } %t4, 1
+  %t8 = and i1 %t6, 1
+  br i1 %t8, label %on.body.1, label %on.next.2
 on.body.1:
   br label %on.value.3
 on.value.3:
   br label %on.end.0
 on.next.2:
-  %t10 = extractvalue { i64, i64 } %t4, 0
-  %t11 = icmp eq i64 %t10, 1
-  %t12 = extractvalue { i64, i64 } %t4, 1
-  %t13 = trunc i64 %t12 to i32
-  %t14 = and i1 %t11, 1
-  br i1 %t14, label %on.body.4, label %on.next.5
+  %t9 = extractvalue { i64, i32 } %t4, 0
+  %t10 = icmp eq i64 %t9, 1
+  %t11 = extractvalue { i64, i32 } %t4, 1
+  %t12 = and i1 %t10, 1
+  br i1 %t12, label %on.body.4, label %on.next.5
 on.body.4:
   br label %on.value.6
 on.value.6:
@@ -80,13 +84,15 @@ on.value.6:
 on.next.5:
   unreachable
 on.end.0:
-  %t15 = phi i32 [%t8, %on.value.3], [%t13, %on.value.6]
-  %t16 = extractvalue { i32, i32 } %t1, 0
-  %t17 = extractvalue { i32, i32 } %t1, 1
-  %t18 = add i32 %t16, %t17
-  %t19 = add i32 %t18, 7
-  %t20 = add i32 %t19, %t15
-  ret i32 %t20
+  %t13 = phi i32 [%t7, %on.value.3], [%t11, %on.value.6]
+  %t14 = extractvalue { i32, i32 } %t1, 0
+  %t15 = extractvalue { i32, i32 } %t1, 1
+  %t16 = add i32 %t14, %t15
+  %t17 = add i32 %t16, 7
+  %t18 = add i32 %t17, %t13
+  ret i32 %t18
 }
 
 @$main = alias i32 (), ptr @fn.0
+
+declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

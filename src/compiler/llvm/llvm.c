@@ -27,7 +27,7 @@ internal const LlvmLayout* llvm_default_layout(void)
         .pointer_bits                 = 64,
         .size_bits                    = 64,
         .enum_tag_bits                = 64,
-        .aggregate_payload_align_bits = 64,
+        .aggregate_payload_align_bits = 128,
         .pointer_type                 = "ptr",
         .size_type                    = "i64",
         .enum_tag_type                = "i64",
@@ -286,6 +286,8 @@ internal u32 llvm_float_bits(const Sema* sema, u32 type_index)
 
 internal u32  llvm_union_storage_bits(const Sema* sema, u32 union_type);
 internal u32  llvm_enum_storage_payload_bits(const Sema* sema, u32 enum_type);
+internal u32  llvm_enum_storage_payload_align_bits(const Sema* sema,
+                                                   u32         enum_type);
 internal u32  llvm_type_align_bits(const Sema* sema, u32 type_index);
 internal bool llvm_root_exports_symbol(const Sema* sema, string name);
 
@@ -348,8 +350,15 @@ internal u32 llvm_type_storage_bits(const Sema* sema, u32 type_index)
         return llvm_union_storage_bits(sema, type_index);
     }
     if (llvm_type_kind(sema, type_index) == STK_Enum) {
-        return layout->enum_tag_bits +
-               llvm_enum_storage_payload_bits(sema, type_index);
+        u32 payload_bits = llvm_enum_storage_payload_bits(sema, type_index);
+        u32 payload_align_bits =
+            llvm_enum_storage_payload_align_bits(sema, type_index);
+        u32 max_align_bits = payload_align_bits > layout->enum_tag_bits
+                                 ? payload_align_bits
+                                 : layout->enum_tag_bits;
+        u32 bits = llvm_align_bits(layout->enum_tag_bits, payload_align_bits) +
+                   payload_bits;
+        return llvm_align_bits(bits, max_align_bits);
     }
     return 0;
 }
@@ -376,8 +385,15 @@ internal u32 llvm_type_align_bits(const Sema* sema, u32 type_index)
     case STK_String:
     case STK_Slice:
     case STK_Arena:
-    case STK_Enum:
         return layout->pointer_bits;
+    case STK_Enum:
+        {
+            u32 payload_align_bits =
+                llvm_enum_storage_payload_align_bits(sema, type_index);
+            return payload_align_bits > layout->enum_tag_bits
+                       ? payload_align_bits
+                       : layout->enum_tag_bits;
+        }
     case STK_Array:
         return llvm_type_align_bits(sema,
                                     sema->types[type_index].first_param_type);
@@ -665,6 +681,28 @@ internal i64 llvm_enum_variant_discriminant(const Sema* sema,
                                    variant_index];
 }
 
+internal u32 llvm_enum_storage_payload_align_bits(const Sema* sema,
+                                                  u32         enum_type)
+{
+    const LlvmLayout* layout = llvm_default_layout();
+    if (sema == NULL || enum_type == sema_no_type() ||
+        enum_type >= array_count(sema->types) ||
+        sema->types[enum_type].kind != STK_Enum) {
+        return 8;
+    }
+
+    const SemaType* type = &sema->types[enum_type];
+    u32             bits = 8;
+    for (u32 i = 0; i < type->param_count; ++i) {
+        u32 payload_type = llvm_enum_variant_payload_type(sema, enum_type, i);
+        u32 payload_bits = llvm_type_storage_bits(sema, payload_type);
+        if (payload_bits > bits) {
+            bits = payload_bits;
+        }
+    }
+    return bits > 64 ? layout->aggregate_payload_align_bits : 8;
+}
+
 internal u32 llvm_enum_storage_payload_bits(const Sema* sema, u32 enum_type)
 {
     if (sema == NULL || enum_type == sema_no_type() ||
@@ -682,8 +720,8 @@ internal u32 llvm_enum_storage_payload_bits(const Sema* sema, u32 enum_type)
             bits = payload_bits;
         }
     }
-    return llvm_align_bits(bits,
-                           llvm_default_layout()->aggregate_payload_align_bits);
+    return llvm_align_bits(
+        bits, llvm_enum_storage_payload_align_bits(sema, enum_type));
 }
 
 internal void
@@ -5501,7 +5539,7 @@ internal void llvm_bind_symbol_value(LlvmFunctionContext* ctx,
 
         LlvmValue local_value  = value;
         local_value.type_index = llvm_local_type(ctx, local_index);
-        if (ctx->debug != NULL) {
+        if (ctx->debug != NULL || llvm_local_is_assigned(ctx, local_index)) {
             LlvmLocalSlot* slot = llvm_ensure_local_slot(
                 ctx, local_index, local_value.type_index);
             llvm_store_local_slot(ctx, slot, local_value);
@@ -5522,7 +5560,7 @@ internal void llvm_bind_local_value(LlvmFunctionContext* ctx,
 
     LlvmValue local_value  = value;
     local_value.type_index = llvm_local_type(ctx, local_index);
-    if (ctx->debug != NULL) {
+    if (ctx->debug != NULL || llvm_local_is_assigned(ctx, local_index)) {
         LlvmLocalSlot* slot =
             llvm_ensure_local_slot(ctx, local_index, local_value.type_index);
         llvm_store_local_slot(ctx, slot, local_value);
@@ -10255,7 +10293,6 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                         &ctx->hir->on_branches[expr->first_branch + i];
                     string body_label = llvm_label(ctx, "on.body");
                     string next_label = llvm_label(ctx, "on.next");
-
                     if (branch->is_else) {
                         sb_format(ctx->sb,
                                   "  br label %%" STRINGP "\n",
@@ -12698,6 +12735,7 @@ internal bool llvm_emit_let(LlvmFunctionContext* ctx,
         (ctx->debug != NULL &&
          (llvm_debug_type_is_record_like(ctx->sema, stmt->type_index) ||
           llvm_debug_type_is_array(ctx->sema, stmt->type_index))) ||
+        llvm_type_kind(ctx->sema, stmt->type_index) == STK_Enum ||
         llvm_type_kind(ctx->sema, stmt->type_index) == STK_DynamicArray ||
         llvm_type_is_box(ctx->sema, stmt->type_index)) {
         LlvmLocalSlot* slot =
@@ -13422,6 +13460,14 @@ internal void llvm_collect_addressed_expr_locals(LlvmFunctionContext* ctx,
         llvm_collect_addressed_expr_locals(ctx, expr->rhs_expr_index);
         break;
     case HIR_EXPR_Call:
+        if (expr->callee_expr_index < array_count(ctx->hir->exprs)) {
+            const HirExpr* callee = &ctx->hir->exprs[expr->callee_expr_index];
+            if (callee->kind == HIR_EXPR_Field ||
+                callee->kind == HIR_EXPR_TupleField) {
+                llvm_mark_mutated_local_base(
+                    ctx, callee->operand_expr_index, false);
+            }
+        }
         llvm_collect_addressed_expr_locals(ctx, expr->callee_expr_index);
         for (u32 i = 0; i < expr->arg_count; ++i) {
             u32 arg_index = expr->first_arg + i;
