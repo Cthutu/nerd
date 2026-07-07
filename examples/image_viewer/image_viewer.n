@@ -75,7 +75,7 @@ image_pixel :: fn (image: ^Image, x: u32, y: u32, background: u32) -> u32 {
 }
 
 load_demo_image :: fn () -> Image {
-    bytes := @embed("assets/demo.png")
+    bytes := @embed("assets/demo.jpg")
     result := Image.load_bytes(bytes, 4)
     return on result {
         Ok(image)  => image

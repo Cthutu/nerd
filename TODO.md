@@ -210,11 +210,11 @@ should live in module-local `test` sections rather than `.cmd` wrappers.
 - [x] Parse DQT quantisation tables.
 - [x] Parse DHT Huffman tables.
 - [x] Parse SOS scan headers.
-- [ ] Implement entropy decoding for baseline sequential JPEG.
-- [ ] Implement dequantisation and IDCT.
-- [ ] Implement YCbCr to RGB conversion.
-- [ ] Add desired-channel conversion.
-- [ ] Add tests with embedded baseline JPEG fixtures.
+- [x] Implement entropy decoding for baseline sequential JPEG.
+- [x] Implement dequantisation and IDCT.
+- [x] Implement YCbCr to RGB conversion.
+- [x] Add desired-channel conversion.
+- [x] Add tests with embedded baseline JPEG fixtures.
 - [x] Explicitly reject progressive JPEG until supported.
 
 ### Milestone 9: Image Viewer Integration
