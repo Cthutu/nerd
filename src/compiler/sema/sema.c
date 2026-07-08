@@ -52,7 +52,13 @@ internal cstr sema_resolve_source_relative_path(Arena* arena,
         return path;
     }
 
-    cstr source = sema_cstr_from_string(arena, source_path);
+    cstr source = module_source_file_path(arena,
+                                          (NerdSource){
+                                              .source_path = source_path,
+                                          });
+    if (source == NULL) {
+        source = sema_cstr_from_string(arena, source_path);
+    }
     return path_join(arena, path_dirname(arena, source), path);
 }
 

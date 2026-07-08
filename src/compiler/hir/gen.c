@@ -7,6 +7,7 @@
 #include <compiler/build/build.h>
 #include <compiler/error/error.h>
 #include <compiler/hir/hir.h>
+#include <compiler/modules/modules.h>
 
 //------------------------------------------------------------------------------
 
@@ -69,7 +70,13 @@ internal string hir_resolve_source_relative_path(Arena* arena,
         return string_from_cstr(path);
     }
 
-    cstr source = hir_cstr_from_string(arena, source_path);
+    cstr source = module_source_file_path(arena,
+                                          (NerdSource){
+                                              .source_path = source_path,
+                                          });
+    if (source == NULL) {
+        source = hir_cstr_from_string(arena, source_path);
+    }
     return string_from_cstr(
         path_join(arena, path_dirname(arena, source), path));
 }
