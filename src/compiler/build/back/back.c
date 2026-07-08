@@ -68,6 +68,20 @@ internal void back_end_append_hir_extern_link_flags(StringBuilder* link_flags,
                 continue;
             }
 #endif
+#if OS_WINDOWS
+            // clang links the Windows C runtime (UCRT) by default. Naming it as
+            // an FFI library resolves the DLL for symbol validation, but there
+            // is no matching `ucrtbase.lib` import library, and an explicit
+            // `-lucrt` clashes with the statically linked `libucrt`. Treat the
+            // CRT like `c`: let clang's default linkage provide the symbols.
+            if (string_eq(library, s("ucrtbase")) ||
+                string_eq(library, s("ucrtbase.dll")) ||
+                string_eq(library, s("ucrt")) ||
+                string_eq(library, s("msvcrt")) ||
+                string_eq(library, s("msvcrt.dll"))) {
+                continue;
+            }
+#endif
 
             bool already_added = false;
             for (u32 previous_module = 0; previous_module <= module_index;
