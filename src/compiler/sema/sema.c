@@ -11384,6 +11384,98 @@ internal Array(bool) sema_copy_bool_array(Array(bool) source)
     return copy;
 }
 
+internal Array(i64) sema_copy_i64_array(Array(i64) source)
+{
+    Array(i64) copy = NULL;
+    for (u32 i = 0; i < array_count(source); ++i) {
+        array_push(copy, source[i]);
+    }
+    return copy;
+}
+
+typedef struct {
+    Array(u32) node_decl_indices;
+    Array(u32) node_local_indices;
+    Array(u32) node_scope_indices;
+    Array(u32) node_lowered_symbol_handles;
+    Array(u32) node_type_indices;
+    Array(u32) node_method_call_decl_indices;
+    Array(bool) node_method_call_receiver_refs;
+    Array(bool) node_method_call_receiver_derefs;
+    Array(bool) node_method_call_explicit_traits;
+    Array(u32) node_implicit_array_type_indices;
+    Array(bool) node_is_type_expr;
+    Array(bool) node_const_known;
+    Array(i64) node_const_values;
+} SemaNodeTablesSnapshot;
+
+internal SemaNodeTablesSnapshot sema_snapshot_node_tables(const Sema* sema)
+{
+    return (SemaNodeTablesSnapshot){
+        .node_decl_indices  = sema_copy_u32_array(sema->node_decl_indices),
+        .node_local_indices = sema_copy_u32_array(sema->node_local_indices),
+        .node_scope_indices = sema_copy_u32_array(sema->node_scope_indices),
+        .node_lowered_symbol_handles =
+            sema_copy_u32_array(sema->node_lowered_symbol_handles),
+        .node_type_indices = sema_copy_u32_array(sema->node_type_indices),
+        .node_method_call_decl_indices =
+            sema_copy_u32_array(sema->node_method_call_decl_indices),
+        .node_method_call_receiver_refs =
+            sema_copy_bool_array(sema->node_method_call_receiver_refs),
+        .node_method_call_receiver_derefs =
+            sema_copy_bool_array(sema->node_method_call_receiver_derefs),
+        .node_method_call_explicit_traits =
+            sema_copy_bool_array(sema->node_method_call_explicit_traits),
+        .node_implicit_array_type_indices =
+            sema_copy_u32_array(sema->node_implicit_array_type_indices),
+        .node_is_type_expr = sema_copy_bool_array(sema->node_is_type_expr),
+        .node_const_known  = sema_copy_bool_array(sema->node_const_known),
+        .node_const_values = sema_copy_i64_array(sema->node_const_values),
+    };
+}
+
+internal void sema_free_live_node_tables(Sema* sema)
+{
+    array_free(sema->node_decl_indices);
+    array_free(sema->node_local_indices);
+    array_free(sema->node_scope_indices);
+    array_free(sema->node_lowered_symbol_handles);
+    array_free(sema->node_type_indices);
+    array_free(sema->node_method_call_decl_indices);
+    array_free(sema->node_method_call_receiver_refs);
+    array_free(sema->node_method_call_receiver_derefs);
+    array_free(sema->node_method_call_explicit_traits);
+    array_free(sema->node_implicit_array_type_indices);
+    array_free(sema->node_is_type_expr);
+    array_free(sema->node_const_known);
+    array_free(sema->node_const_values);
+}
+
+internal void sema_restore_node_tables(Sema*                   sema,
+                                       SemaNodeTablesSnapshot* snapshot)
+{
+    sema_free_live_node_tables(sema);
+    sema->node_decl_indices           = snapshot->node_decl_indices;
+    sema->node_local_indices          = snapshot->node_local_indices;
+    sema->node_scope_indices          = snapshot->node_scope_indices;
+    sema->node_lowered_symbol_handles = snapshot->node_lowered_symbol_handles;
+    sema->node_type_indices           = snapshot->node_type_indices;
+    sema->node_method_call_decl_indices =
+        snapshot->node_method_call_decl_indices;
+    sema->node_method_call_receiver_refs =
+        snapshot->node_method_call_receiver_refs;
+    sema->node_method_call_receiver_derefs =
+        snapshot->node_method_call_receiver_derefs;
+    sema->node_method_call_explicit_traits =
+        snapshot->node_method_call_explicit_traits;
+    sema->node_implicit_array_type_indices =
+        snapshot->node_implicit_array_type_indices;
+    sema->node_is_type_expr = snapshot->node_is_type_expr;
+    sema->node_const_known  = snapshot->node_const_known;
+    sema->node_const_values = snapshot->node_const_values;
+    *snapshot               = (SemaNodeTablesSnapshot){0};
+}
+
 internal u64 sema_hash_u64(u64 hash, u64 value)
 {
     hash ^= value;
@@ -12318,6 +12410,7 @@ internal bool sema_emit_generic_function_instantiation(const Lexer* lexer,
         .count         = generic->symbol_count,
     };
 
+    SemaNodeTablesSnapshot node_tables = sema_snapshot_node_tables(sema);
     sema->node_lowered_symbol_handles[decl->value_node_index] = symbol;
     if (!sema_collect_function_locals(lexer,
                                       ast,
@@ -12327,6 +12420,7 @@ internal bool sema_emit_generic_function_instantiation(const Lexer* lexer,
                                       decl->value_node_index,
                                       sema)) {
         g_sema_type_subst = previous;
+        sema_restore_node_tables(sema, &node_tables);
         return false;
     }
 
@@ -12338,6 +12432,7 @@ internal bool sema_emit_generic_function_instantiation(const Lexer* lexer,
                               sema_no_type(),
                               &type_index)) {
         g_sema_type_subst = previous;
+        sema_restore_node_tables(sema, &node_tables);
         return false;
     }
     g_sema_type_subst = previous;
@@ -12368,6 +12463,7 @@ internal bool sema_emit_generic_function_instantiation(const Lexer* lexer,
             .node_method_call_explicit_traits =
                 sema_copy_bool_array(sema->node_method_call_explicit_traits),
         });
+    sema_restore_node_tables(sema, &node_tables);
 
     *out_symbol = symbol;
     *out_type   = type_index;
@@ -19918,10 +20014,13 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     sema_type_name(lexer, sema, &temp_arena, callee_type));
             }
 
-            const SemaType* fn_type = &sema->types[callee_type];
-            bool is_varargs = (fn_type->flags & STF_FunctionVarargs) != 0;
+            u32 fn_first_param_type = sema->types[callee_type].first_param_type;
+            u32 fn_param_count      = sema->types[callee_type].param_count;
+            u32 fn_return_type      = sema->types[callee_type].return_type;
+            u32 fn_flags            = sema->types[callee_type].flags;
+            bool is_varargs         = (fn_flags & STF_FunctionVarargs) != 0;
             SemaKnownCallSignature known_signature = {0};
-            u32                    required_count  = fn_type->param_count;
+            u32                    required_count  = fn_param_count;
             if (!is_varargs &&
                 sema_known_call_signature(
                     lexer, ast, sema, node->a, &known_signature)) {
@@ -19929,14 +20028,13 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     known_signature.ast, known_signature.signature);
             }
 
-            bool wrong_arity = is_varargs
-                                   ? call->arg_count < fn_type->param_count
-                                   : (call->arg_count < required_count ||
-                                      call->arg_count > fn_type->param_count);
+            bool wrong_arity = is_varargs ? call->arg_count < fn_param_count
+                                          : (call->arg_count < required_count ||
+                                             call->arg_count > fn_param_count);
             if (wrong_arity) {
                 u32 expected_count = call->arg_count < required_count
                                          ? required_count
-                                         : fn_type->param_count;
+                                         : fn_param_count;
                 return error_0313_argument_count_mismatch(
                     lexer->source,
                     sema_node_span(lexer, node),
@@ -19947,8 +20045,8 @@ internal bool sema_infer_node_type(const Lexer* lexer,
             for (u32 i = 0; i < call->arg_count; ++i) {
                 u32 arg_node = ast->call_args[call->first_arg + i];
                 u32 expected_arg =
-                    i < fn_type->param_count
-                        ? sema->type_param_types[fn_type->first_param_type + i]
+                    i < fn_param_count
+                        ? sema->type_param_types[fn_first_param_type + i]
                         : sema_no_type();
                 const AstParam* expected_param =
                     known_signature.signature != NULL &&
@@ -19972,7 +20070,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                         lexer, ast, sema, arg_node, expected_arg, &arg_type)) {
                     return false;
                 }
-                if (i >= fn_type->param_count) {
+                if (i >= fn_param_count) {
                     arg_type = sema_materialise_type(sema, arg_type);
                     if (!sema_type_is_ffi_safe(sema, arg_type)) {
                         return error_0304_type_mismatch(
@@ -19993,7 +20091,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
             }
 
             if (known_signature.signature != NULL) {
-                for (u32 i = call->arg_count; i < fn_type->param_count; ++i) {
+                for (u32 i = call->arg_count; i < fn_param_count; ++i) {
                     const AstParam* param =
                         &known_signature.ast
                              ->params[known_signature.signature->first_param +
@@ -20001,7 +20099,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     ASSERT(param->default_node_index != U32_MAX,
                            "Expected omitted parameter to have a default");
                     u32 expected_arg =
-                        sema->type_param_types[fn_type->first_param_type + i];
+                        sema->type_param_types[fn_first_param_type + i];
                     u32 arg_type = sema_no_type();
                     if (known_signature.imported) {
                         u32 expected_source =
@@ -20060,7 +20158,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 }
             }
 
-            type_index = fn_type->return_type;
+            type_index = fn_return_type;
         }
         break;
 

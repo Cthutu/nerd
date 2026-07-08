@@ -896,7 +896,8 @@ def test_command(path: pathlib.Path) -> list[Failure]:
     if actual_exit != expected_exit:
         failures.append(Failure(path, f"exit mismatch: expected {expected_exit}, got {proc.returncode}\n{proc.stderr}"))
     if expected_stdout.strip():
-        actual_stdout = strip_ansi(proc.stdout)
+        actual_stdout = normalize_repo_paths(strip_ansi(proc.stdout))
+        expected_stdout = normalize_repo_paths(expected_stdout)
         if expected_stdout.rstrip("\n") != actual_stdout.rstrip("\n"):
             stdout_failure = check_equal(path, "stdout", expected_stdout, actual_stdout)
             if stdout_failure:
