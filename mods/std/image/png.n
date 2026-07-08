@@ -450,7 +450,9 @@ png_unfilter :: fn (bytes             : []u8,
 
         on filter > 4 => {
             pixels.free()
-            return Err(ImageError.InvalidData { message: "Invalid PNG scanline filter" })
+            return Err(ImageError.InvalidData {
+                message: "Invalid PNG scanline filter"
+            })
         }
         for x in [0 .. row_bytes] {
             left := on x >= scanline_channels.as(usize) => pixels[y * row_bytes + x - scanline_channels.as(usize)] else 0

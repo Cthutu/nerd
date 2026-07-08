@@ -396,11 +396,21 @@ term_window_span :: fn (first: i16, last: i16) -> i32 {
 }
 
 term_fb_default_cell :: fn () -> TermCell {
-    return TermCell { ch: ' '.as(u32) ink: TERM_DEFAULT_INK paper: TERM_DEFAULT_PAPER flags: CELL_DIRTY }
+    return TermCell {
+        ch    : ' '.as(u32)
+        ink   : TERM_DEFAULT_INK
+        paper : TERM_DEFAULT_PAPER
+        flags : CELL_DIRTY
+    }
 }
 
 term_fb_screen_rect :: fn () -> RectI32 {
-    return RectI32 { x: 0 y: 0 w: term_fb_width.as(i32) h: term_fb_height.as(i32) }
+    return RectI32 {
+        x : 0
+        y : 0
+        w : term_fb_width.as(i32)
+        h : term_fb_height.as(i32)
+    }
 }
 
 pub term_view_reset :: fn () {
@@ -408,7 +418,12 @@ pub term_view_reset :: fn () {
 }
 
 pub term_view :: fn (x: i32, y: i32, w: u32, h: u32) {
-    requested := RectI32 { x y w: w.as(i32) h: h.as(i32) }
+    requested := RectI32 {
+        x
+        y
+        w : w.as(i32)
+        h : h.as(i32)
+    }
     term_fb_view = requested.intersection(term_fb_screen_rect())
 }
 
@@ -489,8 +504,12 @@ term_fb_resize :: fn (width: u32, height: u32) -> bool {
     copy_height := term_fb_height
     on height < term_fb_height => copy_height = height
 
-    for y: u32 = 0; y < copy_height; y += 1 {
-        for x: u32 = 0; x < copy_width; x += 1 {
+    for y: u32 = 0;
+        y < copy_height;
+        y += 1 {
+        for x: u32 = 0;
+            x < copy_width;
+            x += 1 {
             on !term_fb_index_valid(x, y) => again
             old_index := term_fb_index(x, y)
             new_index := (y * width + x).as(usize)
@@ -540,16 +559,41 @@ term_fb_ensure :: fn () {
 term_fb_prepare_rect :: fn (rect: RectI32) -> PreparedRect {
     on !term_fb_ready ||
         rect.is_empty() => {
-        empty := RectI32 { x: 0 y: 0 w: 0 h: 0 }
-        return PreparedRect { ok: no rect: empty x_offset: 0 y_offset: 0 }
+        empty := RectI32 {
+            x : 0
+            y : 0
+            w : 0
+            h : 0
+        }
+        return PreparedRect {
+            ok       : no
+            rect     : empty
+            x_offset : 0
+            y_offset : 0
+        }
     }
 
-    absolute := RectI32 { x: rect.x + term_fb_view.x y: rect.y + term_fb_view.y w: rect.w h: rect.h }
+    absolute := RectI32 {
+        x : rect.x + term_fb_view.x
+        y : rect.y + term_fb_view.y
+        w : rect.w
+        h : rect.h
+    }
     clipped := absolute.intersection(term_fb_view)
                        .intersection(term_fb_screen_rect())
-    on clipped.is_empty() => return PreparedRect { ok: no rect: clipped x_offset: 0 y_offset: 0 }
+    on clipped.is_empty() => return PreparedRect {
+        ok       : no
+        rect     : clipped
+        x_offset : 0
+        y_offset : 0
+    }
 
-    return PreparedRect { ok: yes rect: clipped x_offset: clipped.x - absolute.x y_offset: clipped.y - absolute.y }
+    return PreparedRect {
+        ok       : yes
+        rect     : clipped
+        x_offset : clipped.x - absolute.x
+        y_offset : clipped.y - absolute.y
+    }
 }
 
 term_fb_apply_colour :: fn (cell: ^TermCell, ink: Colour, paper: Colour) {
@@ -608,7 +652,12 @@ pub term_fb_put :: fn (x     : i32,
     width := term_codepoint_width(ch)
     on width <= 0 => return
 
-    clip := term_fb_prepare_rect(RectI32 { x y w: width h: 1 })
+    clip := term_fb_prepare_rect(RectI32 {
+        x
+        y
+        w : width
+        h : 1
+    })
     on !clip.ok || clip.x_offset != 0 || clip.rect.w < width => return
 
     term_fb_put_clipped(clip.rect.x.as(u32),
@@ -626,7 +675,12 @@ pub term_fb_fill_rect :: fn (x     : i32,
                              ch    : u32 = ' '.as(u32),
                              ink   : Colour = COLOUR_TRANSPARENT,
                              paper : Colour = COLOUR_TRANSPARENT) {
-    clip := term_fb_prepare_rect(RectI32 { x y w: w.as(i32) h: h.as(i32) })
+    clip := term_fb_prepare_rect(RectI32 {
+        x
+        y
+        w : w.as(i32)
+        h : h.as(i32)
+    })
     on !clip.ok => return
 
     char_width := term_codepoint_width(ch)
@@ -669,7 +723,12 @@ pub term_fb_paint_rect :: fn (x     : i32,
                               h     : u32,
                               ink   : Colour = COLOUR_TRANSPARENT,
                               paper : Colour = COLOUR_TRANSPARENT) {
-    clip := term_fb_prepare_rect(RectI32 { x y w: w.as(i32) h: h.as(i32) })
+    clip := term_fb_prepare_rect(RectI32 {
+        x
+        y
+        w : w.as(i32)
+        h : h.as(i32)
+    })
     on !clip.ok => return
 
     yy : i32 = 0
@@ -709,7 +768,12 @@ pub term_fb_text :: fn (x     : i32,
                         ink   : Colour = COLOUR_TRANSPARENT,
                         paper : Colour = COLOUR_TRANSPARENT) {
     text_width := term_text_display_width(text)
-    clip := term_fb_prepare_rect(RectI32 { x y w: text_width h: 1 })
+    clip := term_fb_prepare_rect(RectI32 {
+        x
+        y
+        w : text_width
+        h : 1
+    })
     on !clip.ok => return
 
     byte_index : usize = 0
@@ -857,7 +921,12 @@ pub term_fb_box :: fn (x     : i32,
         }
     }
 
-    clip := term_fb_prepare_rect(RectI32 { x y w: w.as(i32) h: h.as(i32) })
+    clip := term_fb_prepare_rect(RectI32 {
+        x
+        y
+        w : w.as(i32)
+        h : h.as(i32)
+    })
     on !clip.ok => return
 
     yy : i32 = 0
@@ -894,7 +963,11 @@ pub term_fb_box :: fn (x     : i32,
 }
 
 term_output_make :: fn (capacity: usize) -> TermOutput {
-    return TermOutput { bytes: term_arena.alloc_bytes(capacity) count: 0 truncated: no }
+    return TermOutput {
+        bytes     : term_arena.alloc_bytes(capacity)
+        count     : 0
+        truncated : no
+    }
 }
 
 term_output_push_byte :: fn (output: ^TermOutput, byte: u8) {
@@ -920,7 +993,9 @@ term_output_push_codepoint :: fn (output: ^TermOutput, ch: u32) {
     bytes : [4]u8
     count := utf8.encode_to(ch, bytes[..])
 
-    for i: usize = 0; i < count; i += 1 {
+    for i: usize = 0;
+        i < count;
+        i += 1 {
         term_output_push_byte(output, bytes[i])
     }
 }
