@@ -2,4 +2,16 @@
 --
 -- Copyright (c) 2026 Matt Davies
 --
--- Folder module root for std.image. Implementation lives in sibling part files.
+-- Loads PNG and baseline JPEG images from bytes already available in memory.
+-- The library does not read files directly; callers should provide bytes from
+-- `@embed`, a future filesystem module, or another byte source.
+--
+-- Typical use is to import `std.image`, get a byte slice with `@embed`, pass it
+-- to `Image.load_bytes(bytes, desired_channels)`, handle the returned
+-- `Result[Image, ImageError]`, and `defer image.free()` after a successful
+-- decode.
+--
+-- `desired_channels` can be `0` to preserve the source channel count, or `1`,
+-- `2`, `3`, or `4` to request greyscale, greyscale-alpha, RGB, or RGBA output.
+-- Decoded pixel bytes are owned by the returned `Image` and must be released
+-- with `image.free()`.

@@ -1,3 +1,16 @@
 -- Nerd Standard Library (NSL)
 --
 -- Copyright (c) 2026 Matt Davies
+--
+-- Provides byte-slice compression helpers. The first supported format is
+-- zlib-wrapped DEFLATE decoding, used by `std.image` for PNG IDAT streams and
+-- available directly from byte slices.
+--
+-- Typical use is to import `std.compress`, call
+-- `compressed.deflate_zlib(max_output = 0)` on a byte slice, handle the
+-- returned `Result[[..]u8, CompressionError]`, and `defer bytes.free()` after a
+-- successful decode.
+--
+-- `deflate_zlib` returns owned decompressed bytes. Pass `max_output` when the
+-- caller knows an upper bound and wants to reject streams that inflate beyond
+-- it.
