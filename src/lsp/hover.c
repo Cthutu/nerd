@@ -273,6 +273,9 @@ internal string lsp_field_hover_text(const LspDocument* doc,
                                      Arena*             arena,
                                      u32                field_node_index);
 
+internal u32 lsp_find_decl_index_by_symbol_handle(const Sema* sema,
+                                                  u32         symbol_handle);
+
 //------------------------------------------------------------------------------
 // Return the call node that uses one field node as its callee.
 
@@ -318,6 +321,25 @@ internal u32 lsp_selected_method_decl_for_field(const LspDocument* doc,
 
     u32 decl_index =
         doc->front_end.sema.node_method_call_decl_indices[call_node_index];
+    return decl_index == sema_no_decl() ? LSP_NO_DECL : decl_index;
+}
+
+internal u32 lsp_associated_decl_for_field(const LspDocument* doc,
+                                           u32                field_node_index)
+{
+    if (field_node_index >=
+        array_count(doc->front_end.sema.node_lowered_symbol_handles)) {
+        return LSP_NO_DECL;
+    }
+
+    u32 lowered_symbol =
+        doc->front_end.sema.node_lowered_symbol_handles[field_node_index];
+    if (lowered_symbol == U32_MAX) {
+        return LSP_NO_DECL;
+    }
+
+    u32 decl_index = lsp_find_decl_index_by_symbol_handle(&doc->front_end.sema,
+                                                          lowered_symbol);
     return decl_index == sema_no_decl() ? LSP_NO_DECL : decl_index;
 }
 
@@ -3607,6 +3629,12 @@ internal string lsp_field_hover_text(const LspDocument* doc,
             lsp_selected_method_decl_for_field(doc, field_node_index);
         if (method_decl != LSP_NO_DECL) {
             return lsp_method_hover_text(doc, arena, method_decl);
+        }
+
+        u32 associated_decl =
+            lsp_associated_decl_for_field(doc, field_node_index);
+        if (associated_decl != LSP_NO_DECL) {
+            return lsp_method_hover_text(doc, arena, associated_decl);
         }
     }
 
