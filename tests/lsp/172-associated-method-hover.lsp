@@ -89,7 +89,7 @@ main :: fn () {
         "result": {
             "contents": {
                 "kind": "markdown",
-                "value": "```nerd\nload_bytes :: fn (bytes: []u8, desired_channels: i32 = 0) -> [Self, ImageError]\n```\n\n- Kind: method\n\nLoads an image from bytes already available in memory."
+                "value": "```nerd\nload_bytes :: fn (bytes: []u8, desired_channels: i32 = 0) -> Result[Self, ImageError]\n```\n\n- Kind: method\n\nLoads an image from bytes already available in memory."
             }
         }
     },

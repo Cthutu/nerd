@@ -1801,18 +1801,39 @@ internal string lsp_trim_source(const LspDocument* doc, usize start, usize end)
     return (string){.data = source.data + start, .count = end - start};
 }
 
+internal u32 lsp_type_node_start_token(const LspDocument* doc,
+                                       u32                type_node_index)
+{
+    const Ast* ast = &doc->front_end.ast;
+    if (type_node_index >= array_count(ast->nodes)) {
+        return U32_MAX;
+    }
+
+    const AstNode* node = &ast->nodes[type_node_index];
+    if (node->kind == AK_TypeApply &&
+        node->a < array_count(ast->type_applications)) {
+        const AstTypeApplyInfo* apply = &ast->type_applications[node->a];
+        u32 target = lsp_type_node_start_token(doc, apply->target_node_index);
+        if (target != U32_MAX) {
+            return target;
+        }
+    }
+
+    return node->token_index;
+}
+
 internal string lsp_param_type_source(const LspDocument* doc,
                                       const AstParam*    param)
 {
     const Lexer* lexer = &doc->front_end.lexer;
     if (param->type_node_index < array_count(doc->front_end.ast.nodes)) {
-        const AstNode* node = &doc->front_end.ast.nodes[param->type_node_index];
-        if (node->token_index < array_count(lexer->tokens)) {
-            usize start = lexer->tokens[node->token_index].offset;
+        u32 start_token =
+            lsp_type_node_start_token(doc, param->type_node_index);
+        if (start_token < array_count(lexer->tokens)) {
+            usize start = lexer->tokens[start_token].offset;
             usize end   = start;
             u32   depth = 0;
-            for (u32 i = node->token_index; i < array_count(lexer->tokens);
-                 ++i) {
+            for (u32 i = start_token; i < array_count(lexer->tokens); ++i) {
                 TokenKind kind = lexer->tokens[i].kind;
                 if (depth == 0 && (kind == TK_Comma || kind == TK_RParen ||
                                    kind == TK_Equal)) {
@@ -1880,14 +1901,17 @@ internal string lsp_return_type_source(const LspDocument* doc,
         return s("");
     }
 
-    const Lexer*   lexer = &doc->front_end.lexer;
-    const AstNode* node  = &doc->front_end.ast.nodes[return_type_node_index];
-    usize          start = lexer->tokens[node->token_index].offset;
-    usize          end   = start;
-    u32            depth = 0;
-    for (u32 i = node->token_index; i < array_count(lexer->tokens); ++i) {
+    const Lexer* lexer = &doc->front_end.lexer;
+    u32 start_token    = lsp_type_node_start_token(doc, return_type_node_index);
+    if (start_token >= array_count(lexer->tokens)) {
+        return s("");
+    }
+    usize start = lexer->tokens[start_token].offset;
+    usize end   = start;
+    u32   depth = 0;
+    for (u32 i = start_token; i < array_count(lexer->tokens); ++i) {
         TokenKind kind = lexer->tokens[i].kind;
-        if (depth == 0 && i > node->token_index) {
+        if (depth == 0 && i > start_token) {
             usize previous_end =
                 lex_token_end_offset(lexer, &lexer->tokens[i - 1]);
             for (usize j = previous_end; j < lexer->tokens[i].offset; ++j) {
@@ -3482,7 +3506,12 @@ internal string lsp_ast_type_node_source(const LspDocument* doc,
         return s("<unknown>");
     }
 
-    usize start = doc->front_end.lexer.tokens[node->token_index].offset;
+    u32 start_token = lsp_type_node_start_token(doc, type_node_index);
+    if (start_token >= array_count(doc->front_end.lexer.tokens)) {
+        return s("<unknown>");
+    }
+
+    usize start = doc->front_end.lexer.tokens[start_token].offset;
     usize end   = lsp_ast_type_node_end_offset(doc, type_node_index);
     if (end <= start || end > doc->front_end.lexer.source.source.count) {
         return s("<unknown>");
