@@ -143,6 +143,171 @@ Completed milestone plans belong in git history, tests, and subsystem
 documentation. The active list below contains only work that is ready to guide
 the next implementation slices.
 
+### Compound Functions Milestone
+
+Add explicit compound functions: one source-level function name mapped to a
+closed list of concrete free functions and resolved from the call signature.
+Keep `fn` as the single keyword for the function concept; do not introduce an
+`overload` or `compound` keyword.
+
+```nerd
+write :: fn {
+    write_string
+    write_i64
+    write_writer
+}
+
+write_string :: fn (value: string) {
+}
+
+write_i64 :: fn (value: i64) {
+}
+
+write_writer :: fn (writer: ^Writer, bytes: []u8) {
+}
+```
+
+#### Initial Scope And Declaration Rules
+
+- [ ] Parse `fn { ... }` as an explicit compound function declaration whose
+  entries name member functions. Preserve ordinary `fn (...)` declarations.
+- [ ] Initially allow compound declarations only at top level.
+- [ ] Require at least one member and diagnose an empty compound.
+- [ ] Allow forward references and qualified imported function names in the
+  member list.
+- [ ] Require every member to resolve to a concrete free function or another
+  compound function.
+- [ ] Do not initially allow methods, associated functions, or generic
+  functions as direct or transitively nested members.
+- [ ] Flatten nested compounds during semantic analysis, preserve useful source
+  provenance for diagnostics and navigation, and reject dependency cycles.
+- [ ] Keep the member list closed and explicit. Functions do not join a
+  compound merely by sharing its name, and compounds from separate modules do
+  not merge implicitly.
+- [ ] Allow members to remain directly callable by their concrete names.
+- [ ] Permit a public compound to contain private functions. Treat the public
+  compound as exporting callable signatures without exporting the private
+  implementation names, conceptually like a public wrapper around private
+  calls.
+
+#### Effective Signatures And Declaration Validation
+
+- [ ] Define a member's effective callable signatures from its declared
+  parameters and trailing default parameters. For example,
+  `fn(i64, radix: u32 = 10)` exposes effective `fn(i64)` and `fn(i64, u32)`
+  call surfaces without generating a second function.
+- [ ] Ignore return types when comparing, resolving, and selecting compound
+  function signatures.
+- [ ] Reject duplicate or indistinguishable concrete signatures when the
+  compound is analysed, even if it is never called.
+- [ ] Reject overlaps introduced by default parameters at declaration time. A
+  compound containing both `fn(i32)` and `fn(i32, radix: u32 = 10)` is invalid
+  because both expose an effective `fn(i32)` surface.
+- [ ] Report the compound, conflicting members, and any default parameter that
+  created an effective-signature overlap.
+- [ ] Treat structurally different parameter types as different declaration
+  signatures. Do not attempt to prove every possible overlap introduced by
+  literals or implicit conversions during declaration validation.
+
+#### Call Resolution
+
+- [ ] Resolve a compound call entirely during semantic analysis.
+- [ ] Collect the members callable with the supplied arguments using Nerd's
+  existing argument-count, default-argument, and type-compatibility rules.
+- [ ] Require exactly one compatible candidate. Do not rank candidates or
+  prefer exact matches, fewer conversions, fewer defaults, declaration order,
+  public visibility, or any other hidden priority.
+- [ ] Diagnose zero candidates with the supplied argument types and list the
+  relevant available signatures.
+- [ ] Diagnose two or more candidates as ambiguous and list every compatible
+  member with useful source references.
+- [ ] Keep call-site ambiguity possible for structurally distinct signatures
+  that both accept a particular literal or implicit conversion. Require the
+  programmer to call a concrete member or otherwise disambiguate the argument.
+- [ ] Do not use expected return type to select a member. A call remains
+  ambiguous even when its result context would accept only one return type.
+- [ ] Apply default arguments only after a unique concrete member has been
+  selected; defaults never make one candidate preferable to another.
+
+#### Function Values And Addresses
+
+- [ ] Allow a compound function to become a function value or address only
+  when the expected function type selects exactly one member under the same
+  compatibility rules used for a call.
+- [ ] Diagnose a compound used as a value without a sufficient expected
+  function type.
+- [ ] Diagnose zero or multiple members compatible with the expected function
+  type; do not rank candidates.
+- [ ] Produce the selected concrete function value or address. Do not generate
+  a dispatcher, wrapper, table, or standalone compound symbol.
+
+#### Semantic, HIR, And Backend Boundaries
+
+- [ ] Represent the compound as a source declaration with visibility, member
+  dependency edges, flattened candidate facts, effective signatures, and
+  source provenance in semantic side tables.
+- [ ] Keep compound resolution out of the parser and AST beyond the syntax and
+  member-list structure needed to represent the declaration.
+- [ ] Resolve every compound call or value to a concrete function declaration
+  before HIR generation.
+- [ ] Do not add a compound-function entity, call, type, symbol, dispatcher, or
+  other representation to HIR or LLVM. From HIR onwards only the selected
+  concrete function exists.
+- [ ] Preserve concrete member names for direct calls, debugging, profiling,
+  emitted symbols, and diagnostics.
+
+#### Diagnostics And Editor Intelligence
+
+- [ ] Add focused diagnostics for empty compounds, non-function members,
+  unsupported method or generic members, nested cycles, inaccessible imported
+  members, duplicate signatures, default-expanded overlaps, no matching member,
+  ambiguous calls, and unresolved function values.
+- [ ] Make ambiguity diagnostics show all compatible signatures and their
+  declaration locations without suggesting an arbitrary preferred member.
+- [ ] Show the flattened callable signature set in compound hover and signature
+  help. On a resolved call, show the selected signature and note the compound
+  through which it was selected.
+- [ ] Make go-to-definition on a resolved call reach the selected concrete
+  function. Where the client distinguishes declaration navigation, retain a
+  route to the compound declaration.
+- [ ] Treat syntactic uses of the compound name as references to the compound.
+  Also count calls resolved through a compound as references to the selected
+  concrete member.
+- [ ] Renaming a compound changes its declaration and syntactic uses only.
+  Renaming a concrete member changes its declaration, direct uses, and member
+  entries in compounds.
+- [ ] Present public compound signatures in completion and hover without
+  pretending that private implementation names are exported.
+
+#### Formatter, Tests, And Documentation
+
+- [ ] Define and test stable formatting for empty/error-recovery cases,
+  single-member compounds, multiline member lists, qualified members, comments,
+  and nested compound references.
+- [ ] Add dense language regressions for direct members, forward references,
+  imported members, private implementations, nested flattening, defaults,
+  implicit conversions, function values, and direct concrete calls.
+- [ ] Add error regressions for every declaration and resolution failure,
+  including eager default-expanded overlap and return-context non-resolution.
+- [ ] Add HIR and LLVM regressions proving calls and function values name only
+  the selected concrete function and that no compound symbol is emitted.
+- [ ] Add formatter, LSP, and real command-path regressions for the new surface.
+- [ ] Update the learner-facing manual with declaration syntax, calls, defaults,
+  private implementations, ambiguity examples, nesting, and function-value
+  conversion.
+- [ ] Update the implementation-derived specs with normative grammar,
+  effective-signature construction, flattening, cycle handling, visibility,
+  compatibility, ambiguity, address selection, and the sema/HIR boundary.
+- [ ] Update the syntax and language-reference appendices with concise forms
+  and restrictions.
+- [ ] Update compiler internals with declaration facts, dependencies, semantic
+  resolution, source provenance, and the guarantee that HIR receives only
+  concrete functions.
+- [ ] Update LSP and formatter documentation where their compound-function
+  presentation and layout rules are described.
+- [ ] Update the diagnostic design documentation if implementation introduces
+  new compound-specific diagnostic shaping rules.
+
 ### Atomics Milestone
 
 Add first-class atomic values with sequentially consistent operator defaults
@@ -389,6 +554,11 @@ near-term tasks without a fresh design pass.
 
 - In-place AST compaction for constant folding.
 - Calling-convention annotations for FFI, including platform-specific behaviour.
+- Reassess whether generics still earn their language and implementation
+  complexity after compound functions and compile-time `::` parameters are
+  proven. Review current uses such as `Option[T]`, `Result[T, E]`, collections,
+  `box[T]`, and generic methods before considering narrowing or removal; do not
+  treat removal as the decided outcome.
 - Named arguments, including their interaction with default parameters and
   call-site argument ordering.
 - Targeted diagnostics for value arguments in generic type-argument positions
