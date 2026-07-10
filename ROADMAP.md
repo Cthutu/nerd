@@ -143,7 +143,7 @@ Completed milestone plans belong in git history, tests, and subsystem
 documentation. The active list below contains only work that is ready to guide
 the next implementation slices.
 
-### Compound Functions Milestone
+### Milestone 1: Compound Functions
 
 Add explicit compound functions: one source-level function name mapped to a
 closed list of concrete free functions and resolved from the call signature.
@@ -334,7 +334,7 @@ LLVM, diagnostics, LSP, tests, manual, specs, appendices, and compiler-internals
 surfaces. Do not let transitional compatibility become the undocumented final
 design.
 
-#### Milestone 1: Audit And Normative Design
+#### Milestone 2: Generics Audit And Normative Design
 
 - [ ] Inventory every generic declaration, instantiation, constraint,
   implementation, standard-library dependency, test, and manual example.
@@ -345,7 +345,7 @@ design.
 - [ ] Define measurable go/no-go criteria for generic removal.
 - [ ] Remove no generic facility during this milestone.
 
-#### Milestone 2: Optional Types And Non-Null Pointers
+#### Milestone 3: Optional Types And Non-Null Pointers
 
 - [ ] Add prefix `?T`, contextual presence construction, and `nil` absence.
 - [ ] Make thin `^T` pointers non-null and use `?^T` for nullable pointers.
@@ -356,7 +356,7 @@ design.
   modules, standard library, examples, and tests.
 - [ ] Retain `Option[T]` temporarily while `?T` is validated.
 
-#### Milestone 3: Result Types And Integrated Control Flow
+#### Milestone 4: Result Types And Integrated Control Flow
 
 - [ ] Add the dedicated `T\E` result type. Reserve `\` for this type syntax;
   it is not an expression operator or general type union.
@@ -375,7 +375,7 @@ design.
 - [ ] Stop for an ergonomics review before committing to removal of the old
   forms.
 
-#### Milestone 4: Type Operands And Built-In Replacements
+#### Milestone 5: Type Operands And Built-In Replacements
 
 - [ ] Replace generic arena allocation helpers with compiler-known type
   operands such as `arena.alloc(T)` and `arena.alloc_array(T, count)`.
@@ -385,7 +385,7 @@ design.
   with narrowly scoped built-ins.
 - [ ] Do not introduce general runtime type values.
 
-#### Milestone 5: Parametrised Module Prototype
+#### Milestone 6: Parametrised Module Prototype
 
 - [ ] Add first-position `module [T, ...]` headers and explicit bindings such as
   `integer_stack :: use std.stack[i32]`.
@@ -400,7 +400,7 @@ design.
 - [ ] Stop for a complexity review. Continue only if module instances are
   materially simpler than the general generic machinery they replace.
 
-#### Milestone 6: Complete Parametrised Modules
+#### Milestone 7: Complete Parametrised Modules
 
 - [ ] Support folder module parts, parameter visibility across parts,
   parametrised dependencies, platform-gated imports, exports, and re-exports.
@@ -412,7 +412,7 @@ design.
 - [ ] Migrate representative generic data structures and their methods to
   concrete module instances.
 
-#### Milestone 7: Traits, Display, And Iteration
+#### Milestone 8: Traits, Display, And Iteration
 
 - [ ] Keep concrete nominal traits while auditing and replacing their generic
   dependencies.
@@ -426,7 +426,7 @@ design.
 - [ ] Treat iteration as a required design gate before generic traits are
   removed.
 
-#### Milestone 8: Repository Migration
+#### Milestone 9: Generics Repository Migration
 
 - [ ] Convert `Option[T]` to `?T`, `Result[T, E]` to `T\E`, and nullable
   pointers to `?^T`.
@@ -441,7 +441,7 @@ design.
   through modules, compound functions, concrete functions, or justified
   built-ins.
 
-#### Milestone 9: Remove General Generics
+#### Milestone 10: Remove General Generics
 
 Begin this milestone only after the repository migration and its design review
 are complete.
@@ -458,7 +458,7 @@ are complete.
 - [ ] Delete obsolete compatibility machinery coherently rather than retaining
   a hidden second language.
 
-#### Milestone 10: Consolidation And Measurement
+#### Milestone 11: Generics Consolidation And Measurement
 
 - [ ] Remove transitional `Option`, `Result`, and old generic compatibility
   paths.
@@ -473,7 +473,7 @@ are complete.
   of the active roadmap while retaining `GENERICS.md` as historical design
   context if it remains useful.
 
-### Atomics Milestone
+### Milestone 12: Atomics
 
 Add first-class atomic values with sequentially consistent operator defaults
 and explicit memory ordering through `std.atomics`. Atomic storage protects the
