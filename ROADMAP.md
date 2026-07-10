@@ -308,6 +308,171 @@ write_writer :: fn (writer: ^Writer, bytes: []u8) {
 - [ ] Update the diagnostic design documentation if implementation introduces
   new compound-specific diagnostic shaping rules.
 
+### Generics Simplification Programme
+
+Replace general declaration-level generics with integrated optional and result
+types, built-in type-directed operations, and explicitly instantiated
+parametrised modules. Keep [GENERICS.md](GENERICS.md) as the detailed design
+discussion and decision record until the programme is complete.
+
+The intended language boundary is:
+
+- built-in parametric type constructors remain, including pointers, slices,
+  arrays, `box[T]`, `atomic[T]`, `?T`, and `T\E`
+- user-defined reuse moves to explicit module instances such as
+  `integer_stack :: use std.stack[i32]`
+- a resolved module instance is analysed and lowered as ordinary concrete code
+- non-generic nominal traits may remain
+- general generic functions, methods, compound types, traits, implementations,
+  constraints, and inference are removed only after their replacements prove
+  sufficient
+- arbitrary type unions are not part of Nerd's direction; explicit C-style
+  `union` storage remains a separate low-level feature
+
+Every milestone must cover the applicable parser/CST, formatter, sema, HIR,
+LLVM, diagnostics, LSP, tests, manual, specs, appendices, and compiler-internals
+surfaces. Do not let transitional compatibility become the undocumented final
+design.
+
+#### Milestone 1: Audit And Normative Design
+
+- [ ] Inventory every generic declaration, instantiation, constraint,
+  implementation, standard-library dependency, test, and manual example.
+- [ ] Classify each use and map it to a proposed replacement or an explicit
+  expressiveness gap.
+- [ ] Finalise grammar, precedence, construction, movement, cleanup, layout,
+  FFI, pattern, and control-flow rules for the replacement facilities.
+- [ ] Define measurable go/no-go criteria for generic removal.
+- [ ] Remove no generic facility during this milestone.
+
+#### Milestone 2: Optional Types And Non-Null Pointers
+
+- [ ] Add prefix `?T`, contextual presence construction, and `nil` absence.
+- [ ] Make thin `^T` pointers non-null and use `?^T` for nullable pointers.
+- [ ] Guarantee a one-word null-niche representation for `?^T`.
+- [ ] Define definite assignment, casts, equality, movement, cleanup, layout,
+  and FFI behaviour.
+- [ ] Migrate existing nullable pointers across compiler-facing source, OS
+  modules, standard library, examples, and tests.
+- [ ] Retain `Option[T]` temporarily while `?T` is validated.
+
+#### Milestone 3: Result Types And Integrated Control Flow
+
+- [ ] Add the dedicated `T\E` result type. Reserve `\` for this type syntax;
+  it is not an expression operator or general type union.
+- [ ] Add contextual success construction and postfix `error!` injection, with
+  no standalone error-only type.
+- [ ] Add postfix `?` propagation for optionals and results.
+- [ ] Add boolean extraction with
+  `on value => [success] { ... } else [error] { ... }`.
+- [ ] Add full payload matching with
+  `on value { success patterns } else { error patterns }`; for optionals,
+  `else` represents absence.
+- [ ] Define branch-local binding, guards, comma patterns, expression-valued
+  forms, exhaustiveness, cleanup, and propagated-error compatibility.
+- [ ] Migrate representative decoder, I/O, frame, and command code while old
+  `Option` and `Result` forms remain available for comparison.
+- [ ] Stop for an ergonomics review before committing to removal of the old
+  forms.
+
+#### Milestone 4: Type Operands And Built-In Replacements
+
+- [ ] Replace generic arena allocation helpers with compiler-known type
+  operands such as `arena.alloc(T)` and `arena.alloc_array(T, count)`.
+- [ ] Add type-context completion, substituted hover and signature help,
+  navigation, rename, semantic highlighting, and targeted diagnostics.
+- [ ] Audit other small generic helpers and replace only fundamental operations
+  with narrowly scoped built-ins.
+- [ ] Do not introduce general runtime type values.
+
+#### Milestone 5: Parametrised Module Prototype
+
+- [ ] Add first-position `module [T, ...]` headers and explicit bindings such as
+  `integer_stack :: use std.stack[i32]`.
+- [ ] Initially accept explicit type parameters only; do not infer module
+  arguments.
+- [ ] Add canonical instance identity, caching, substitution, concrete methods,
+  diagnostics, LSP navigation, and concrete symbol naming.
+- [ ] Substitute parameters before ordinary semantic analysis and emit no
+  generic HIR.
+- [ ] Prove two distinct instances, repeated aliases of one canonical instance,
+  and one real data structure such as `Stack` or `Rect`.
+- [ ] Stop for a complexity review. Continue only if module instances are
+  materially simpler than the general generic machinery they replace.
+
+#### Milestone 6: Complete Parametrised Modules
+
+- [ ] Support folder module parts, parameter visibility across parts,
+  parametrised dependencies, platform-gated imports, exports, and re-exports.
+- [ ] Diagnose recursive or runaway instantiation with template and use-site
+  references.
+- [ ] Allow one module instance to pass its parameters explicitly to another.
+- [ ] Add compile-time value module parameters through `::` only after that
+  feature has stable canonical-value identity.
+- [ ] Migrate representative generic data structures and their methods to
+  concrete module instances.
+
+#### Milestone 7: Traits, Display, And Iteration
+
+- [ ] Keep concrete nominal traits while auditing and replacing their generic
+  dependencies.
+- [ ] Change `Display` to explicit `display(Self, ^arena) -> string`
+  conformance and pass interpolation's active temporary arena.
+- [ ] Make pointers and boxes display nil/address information; require explicit
+  dereference to display pointee contents.
+- [ ] Audit `Eq`, `Order`, and `Default` for concrete non-generic use.
+- [ ] Design and prove an explicit `for in` contract with a concrete item type,
+  without retaining `Iterator[Item]` or introducing broad duck typing.
+- [ ] Treat iteration as a required design gate before generic traits are
+  removed.
+
+#### Milestone 8: Repository Migration
+
+- [ ] Convert `Option[T]` to `?T`, `Result[T, E]` to `T\E`, and nullable
+  pointers to `?^T`.
+- [ ] Convert generic arena calls to type-operand built-ins.
+- [ ] Convert reusable generic data structures and concrete methods to
+  parametrised modules.
+- [ ] Convert iteration and generic trait uses to their agreed replacements.
+- [ ] Rewrite generic manual examples and representative real programs.
+- [ ] Keep migrations in small reviewable slices with real command-path
+  regressions.
+- [ ] Record any generic algorithm that still lacks an acceptable expression
+  through modules, compound functions, concrete functions, or justified
+  built-ins.
+
+#### Milestone 9: Remove General Generics
+
+Begin this milestone only after the repository migration and its design review
+are complete.
+
+- [ ] Remove generic functions and methods.
+- [ ] Remove user-defined generic compound types and aliases.
+- [ ] Remove generic traits, implementations, `where` constraints, and
+  conditional conformance.
+- [ ] Remove generic inference, specialisation, candidate handling, semantic
+  tables, HIR paths, symbol naming, diagnostics, LSP paths, syntax, tests, and
+  documentation that module instantiation supersedes.
+- [ ] Continue supporting built-in parametric type constructors and explicit
+  parametrised modules.
+- [ ] Delete obsolete compatibility machinery coherently rather than retaining
+  a hidden second language.
+
+#### Milestone 10: Consolidation And Measurement
+
+- [ ] Remove transitional `Option`, `Result`, and old generic compatibility
+  paths.
+- [ ] Complete the manual, normative specs, references, compiler internals,
+  LSP, formatter, diagnostics, and migration documentation.
+- [ ] Run installed-compiler, editor-integration, FFI, platform, and release
+  smoke coverage.
+- [ ] Measure compiler source and table complexity removed, compile time,
+  memory use, module-instance duplication, diagnostic quality, and generated
+  code.
+- [ ] Record the final language boundary and move completed planning detail out
+  of the active roadmap while retaining `GENERICS.md` as historical design
+  context if it remains useful.
+
 ### Atomics Milestone
 
 Add first-class atomic values with sequentially consistent operator defaults
@@ -334,8 +499,8 @@ to express atomic ordering without making ordering enums special types.
   existing constant evaluator as arguments to `::` parameters.
 - [ ] Reject runtime values with a diagnostic that identifies the argument and
   the compile-time parameter declaration.
-- [ ] Treat compile-time arguments as part of function specialisation identity
-  alongside generic type arguments.
+- [ ] Treat compile-time arguments as part of canonical function
+  specialisation identity without depending on general type-generic functions.
 - [ ] Substitute the known value before or during HIR generation so the backend
   never receives an unresolved runtime ordering for an atomic instruction.
 - [ ] Require default values for `::` parameters to be compile-time-known.
@@ -345,7 +510,7 @@ to express atomic ordering without making ordering enums special types.
 - [ ] Initially limit compile-time arguments to values with stable canonical
   identity, including booleans, integers, and payload-free enums. Extend the
   set only with explicit constant-evaluation and specialisation tests.
-- [ ] Use this mechanism for later numeric generic parameters rather than
+- [ ] Reuse this mechanism for later compile-time module parameters rather than
   designing a separate value-specialisation model.
 
 #### Tuple Enum Payloads
@@ -436,7 +601,8 @@ atomic compare-exchange API depends on them.
   inspected with `on`. Atomic methods require compile-time values through `::`;
   callers with a runtime order can branch and call the method with an explicit
   constant in each branch.
-- [ ] Define the generic compare-exchange result as:
+- [ ] Define the built-in parametric compare-exchange result, exposed through
+  `std.atomics`, as:
 
   ```nerd
   AtomicCompareExchangeResult :: enum[T] {
@@ -445,9 +611,10 @@ atomic compare-exchange API depends on them.
   }
   ```
 
-- [ ] Add built-in-backed `impl atomic[T]` methods in `std.atomics` for `load`,
-  `store`, `exchange`, integer fetch operations, strong `compare_exchange`,
-  and weak `compare_exchange_weak`.
+- [ ] Expose built-in atomic methods through `std.atomics` for `load`, `store`,
+  `exchange`, integer fetch operations, strong `compare_exchange`, and weak
+  `compare_exchange_weak`. Do not depend on the general generic impl facility
+  being removed by the generics simplification programme.
 - [ ] Default all method order parameters to sequential consistency.
 - [ ] Give compare-exchange separate success and failure ordering parameters.
   Both are `::` parameters with sequentially consistent defaults. The failure
@@ -554,17 +721,8 @@ near-term tasks without a fresh design pass.
 
 - In-place AST compaction for constant folding.
 - Calling-convention annotations for FFI, including platform-specific behaviour.
-- Reassess whether generics still earn their language and implementation
-  complexity after compound functions and compile-time `::` parameters are
-  proven. Use [GENERICS.md](GENERICS.md) as the design discussion, review
-  current uses before considering narrowing or removal, and do not treat
-  removal as the decided outcome.
 - Named arguments, including their interaction with default parameters and
   call-site argument ordering.
-- Targeted diagnostics for value arguments in generic type-argument positions
-  and type arguments in value-index positions.
-- Truncating readable generic C symbol stems while keeping the hash suffix for
-  collision resistance.
 - Interpolation formatting specifiers such as `{expr; format}`.
 - Operator traits for arithmetic, bitwise, comparison, and assignment
   operators.

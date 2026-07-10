@@ -12,6 +12,8 @@ feature lands.
 - Simplify the language and compiler substantially.
 - Prefer explicit, concrete code after module resolution.
 - Keep strong data support, pattern matching, ownership, and error handling.
+- Keep Nerd a simple low-level C replacement rather than growing it into a
+  type-system-focused language.
 - Avoid hidden ranking, duck typing, and inference-heavy abstraction.
 - Retain useful reuse at an explicit module boundary.
 - Keep HIR and backend input concrete rather than carrying generic entities.
@@ -37,7 +39,7 @@ user-programming facility:
 box[T]   -- owning heap pointer
 atomic[T]
 ?T       -- optional T
-T !E     -- T or error E
+T\E      -- T or error E
 ```
 
 `box[T]` is analogous to `^T`: it is a built-in pointer-like type constructor,
@@ -199,29 +201,62 @@ For a destination of type `?T`:
 
 ## Result Types
 
-Use an error-biased result type:
+Use `\` as the dedicated result-type separator:
 
 ```nerd
-T !E
+T\E
 ```
 
-Formatting is intentional: the space precedes `!`, while `!` visually prefixes
-the error type.
+Backslash is reserved for this role in type syntax. It is not an expression
+operator and has no other language meaning. This is the selected spelling, not
+a placeholder for `!` or `|`.
 
 ```nerd
-load_image :: fn (bytes: []u8) -> Image !ImageError
+load_image :: fn (bytes: []u8) -> Image\ImageError
 ```
 
 The result remains a tagged success/error value even when `T` and `E` are the
-same type. This is not an untagged union and does not consume `|`, which remains
-available for a future union-type discussion.
+same type. It is a dedicated language result construct, not a general type
+union. Nerd does not intend to add arbitrary union types such as `A | B`.
+Explicit C-style `union` declarations remain a separate low-level storage
+feature.
+
+Postfix `!` remains exclusively an expression-level error conversion:
+
+```nerd
+load_image :: fn () -> Image\ImageError {
+    return make_error()!
+}
+```
+
+Reasons for this spelling:
+
+- It does not visually suggest an independent `!E` type.
+- Type construction and expression injection use separate symbols.
+- It is distinctive enough that `T\E` reads as a type form rather than an
+  ordinary expression whose operands happen to be types.
+- Unlike `|`, it does not reuse punctuation already associated with boolean,
+  bitwise, pattern, or potential alternation roles.
+- Its dedicated role distinguishes result types from ordinary operators and
+  C-style union declarations.
+- Compact signatures remain readable without the visually dense `T !E` form.
+
+Trade-offs to document and test:
+
+- Backslash commonly means escaping, Windows paths, or mathematical set
+  difference rather than error or alternation.
+- Nested optional/result types may be visually noisy.
+- Documentation, generated text, and shell contexts may require extra escaping.
+
+Describe `\` as a result or error-channel separator rather than a general
+operator. The formatter preserves the compact `T\E` spelling.
 
 ### Construction
 
 Do not require `Ok` or `Err` constructors:
 
 ```nerd
-parse :: fn (text: string) -> i32 !ParseError {
+parse :: fn (text: string) -> i32\ParseError {
     on invalid => {
         return InvalidDigit!
     }
@@ -231,9 +266,31 @@ parse :: fn (text: string) -> i32 !ParseError {
 ```
 
 - A value compatible with `T` contextually constructs success.
-- Postfix `!` sends a value compatible with `E` as an error.
+- Postfix `!` contextually converts a value compatible with `E` into the error
+  channel of an expected result type.
 - A bare `E` is not implicitly an error.
 - Prefix `!` remains boolean negation; postfix `!` is error construction.
+- Applying postfix `!` to a value that is already a result is invalid.
+
+For example:
+
+```nerd
+make_error :: fn () -> ImageError {
+    return InvalidData
+}
+
+load_image :: fn () -> Image\ImageError {
+    return make_error()!
+}
+```
+
+The return type supplies the success type. Without an expected result type, the
+compiler cannot infer it:
+
+```nerd
+failure := make_error()!                    -- invalid: no success type
+failure : Image\ImageError = make_error()!  -- valid
+```
 
 ## Early Propagation
 
@@ -247,11 +304,11 @@ find_manager :: fn (employee: Employee) -> ?Manager {
 ```
 
 For `?T`, absence returns `nil` from the enclosing optional-returning function.
-For `T !E`, failure returns the error from the enclosing result-returning
+For `T\E`, failure returns the error from the enclosing result-returning
 function and the expression produces `T` on success:
 
 ```nerd
-load_asset :: fn (bytes: []u8) -> Asset !AssetError {
+load_asset :: fn (bytes: []u8) -> Asset\AssetError {
     image := decode_image(bytes)?
     return Asset { image: image }
 }
@@ -304,8 +361,8 @@ the first branch. The result error binder exists only in the `else` branch.
 ### Full Pattern Form
 
 Removing named `Some`, `None`, `Ok`, and `Err` constructors also removes their
-obvious pattern syntax. One promising direction is to let `on ... else ...`
-separate the two tagged payload domains.
+obvious pattern syntax. Use `on ... else ...` to separate the tagged payload
+domains.
 
 Optional payload patterns appear in the first block; `else` handles absence:
 
@@ -330,9 +387,10 @@ on result {
 }
 ```
 
-This avoids `Some`/`Ok`/`Err`, avoids consuming square-bracket array-pattern
-syntax for full matching, and makes success versus error structurally visible.
-It needs careful grammar and exhaustiveness rules, especially when either block
+Here `else` is the preferred syntax for optional absence. This avoids `Some`,
+`None`, `Ok`, and `Err`, avoids consuming square-bracket array-pattern syntax
+for full matching, and makes success versus error structurally visible. It
+needs careful grammar and exhaustiveness rules, especially when either block
 contains multiple patterns or an expression-valued `on`.
 
 The boolean binder form and full pattern form remain distinct because `=>`
@@ -459,28 +517,165 @@ The language would lose general reusable algorithms such as `swap[T]`,
 - parametrised modules for reusable data structures and related algorithms
 
 This direction deliberately favours concrete systems programs over pervasive
-parametric abstraction. The final decision should follow experiments rather
-than aesthetics alone.
+parametric abstraction. It also explicitly rejects arbitrary type unions and
+other type-system expansion that does not serve Nerd's role as a low-level C
+replacement. The final generics decision should follow experiments rather than
+aesthetics alone.
 
-## Suggested Investigation Sequence
+## High-Level Implementation Milestones
 
-1. Inventory every generic declaration, instantiation, constraint, and generic
-   implementation in the repository.
-2. Specify `?T`, non-null `^T`, the `?^T` niche guarantee, and migration of
-   existing nullable pointers.
-3. Specify `T !E`, contextual construction, postfix error `!`, propagation
-   `?`, and both `on` forms.
-4. Prototype one parametrised data-structure module with two concrete module
-   bindings and methods.
-5. Replace generic arena helpers with type-operand built-ins and complete LSP
-   support.
-6. Decide how `for in` discovers a concrete item type without `Iterator[Item]`.
-7. Update `Display` to accept the active arena and test explicit concrete trait
-   implementations.
-8. Rewrite representative generic manual examples and standard-library uses.
-9. Measure compiler complexity removed versus module-instantiation complexity
-   added.
-10. Only then decide which general generic facilities to remove.
+Treat the whole design as a staged replacement programme rather than removing
+generics first and repairing the language afterward. Each language milestone
+must cover parser and CST, formatter, sema, HIR and LLVM, diagnostics, LSP,
+tests, the learner-facing manual, and the normative specs where applicable.
+
+### 1. Audit And Normative Design
+
+- Inventory every generic declaration, instantiation, constraint,
+  implementation, and standard-library dependency.
+- Classify each use as a built-in type constructor, optional/result use,
+  reusable data structure, generic algorithm, iterator, arena operation, or
+  trait implementation.
+- Map every current use to a proposed replacement or record it as an
+  expressiveness gap.
+- Finalise grammar, precedence, construction, movement, cleanup, layout, FFI,
+  pattern, and control-flow rules for the new facilities.
+- Define measurable go/no-go criteria for eventual generic removal.
+
+No generic facility is removed in this milestone.
+
+### 2. Optional Types And Non-Null Pointers
+
+- Add `?T`, contextual presence construction, and `nil` absence.
+- Change `^T` to a non-null thin pointer and use `?^T` for nullable pointers.
+- Guarantee the one-word null-niche representation of `?^T`.
+- Define definite assignment, casts, equality, movement, cleanup, and FFI
+  behaviour.
+- Migrate existing nullable pointers across the compiler, runtime declarations,
+  OS modules, standard library, examples, and tests.
+
+Keep the existing generic `Option[T]` temporarily while the replacement is
+validated.
+
+### 3. Result Types And Integrated Control Flow
+
+- Add the dedicated `T\E` result type.
+- Add contextual success construction and contextual postfix `error!`
+  injection, with no standalone error-only type.
+- Add postfix `?` propagation for both optionals and results.
+- Add boolean extraction with `on value => [success] ... else [error] ...`.
+- Add full present/success and error payload pattern tables with
+  `on value { ... } else { ... }`.
+- Define branch-local bindings, guards, comma patterns, expression-valued
+  forms, independent exhaustiveness, cleanup, and error compatibility.
+- Migrate representative `Option[T]` and `Result[T, E]` code while retaining
+  the old forms temporarily for comparison.
+
+This is the first major ergonomics checkpoint: integrated types must prove
+clearer in real decoder, I/O, frame, and command code before old result types
+are removed.
+
+### 4. Type Operands And Built-In Generic Replacements
+
+- Replace `arena.alloc[T]()` and `arena.alloc_array[T](count)` with
+  compiler-known type operands such as `arena.alloc(T)` and
+  `arena.alloc_array(T, count)`.
+- Add complete type-context completion, hover, signature help, navigation,
+  rename, semantic highlighting, and diagnostics.
+- Audit other tiny generic functions and replace only fundamental operations
+  with similarly narrow built-ins.
+- Do not introduce general runtime type values as a side effect.
+
+### 5. Parametrised Module Prototype
+
+- Add first-position `module [T, ...]` headers and explicit bindings such as
+  `integer_stack :: use std.stack[i32]`.
+- Initially accept explicit type parameters only.
+- Build canonical module-instance identity, caching, substitution, diagnostics,
+  concrete methods, source navigation, and concrete symbol naming.
+- Substitute parameters before ordinary semantic analysis and emit no generic
+  HIR.
+- Prove two distinct instances, repeated aliases of one instance, and one
+  small real data structure such as `Stack` or `Rect`.
+
+Stop here for a complexity review. Continue only if module instances are
+materially simpler than the general generic machinery they are intended to
+replace.
+
+### 6. Complete Parametrised Modules
+
+- Support folder module parts, parameter visibility across parts,
+  parametrised dependencies, platform-gated imports, public exports, and
+  re-exports.
+- Diagnose recursive or runaway instantiation with useful template and use-site
+  references.
+- Allow module parameters to feed explicit instantiation of another module.
+- Add compile-time value module parameters later through `::` only after that
+  feature has a stable canonical-value model.
+- Migrate representative generic compound types and their methods to module
+  instances.
+
+### 7. Traits, Display, And Iteration
+
+- Keep non-generic nominal traits and remove no trait facility until its current
+  uses have concrete replacements.
+- Change `Display` to explicit `display(Self, ^arena) -> string` conformance and
+  pass the active interpolation arena.
+- Make pointers and boxes display nil/address information; require explicit
+  dereference to display pointee contents.
+- Audit `Eq`, `Order`, and `Default` for concrete non-generic use.
+- Design and prove an explicit `for in` contract that supplies a concrete item
+  type without retaining `Iterator[Item]` or introducing broad duck typing.
+- Remove conditional generic trait implementations only after equivalent
+  deliberate behaviour exists where it is genuinely needed.
+
+Iteration is a required design gate because it is the least settled replacement
+in this document.
+
+### 8. Repository Migration
+
+- Convert `Option[T]` to `?T` and `Result[T, E]` to `T\E`.
+- Convert nullable pointers to `?^T`.
+- Convert generic arena calls to type-operand built-ins.
+- Convert reusable generic data structures and concrete methods to
+  parametrised modules.
+- Convert iteration and generic trait uses to their agreed replacements.
+- Rewrite generic manual examples and representative real programs.
+- Keep migrations in small reviewable slices with command-path regressions.
+
+Use this milestone to identify any remaining generic algorithm that cannot be
+expressed acceptably through modules, compound functions, concrete functions,
+or narrowly justified built-ins.
+
+### 9. Remove General Generics
+
+Only after the repository migration is complete and accepted:
+
+- Remove generic functions and methods.
+- Remove user-defined generic compound types and aliases.
+- Remove generic traits, generic implementations, `where` constraints, and
+  conditional conformance.
+- Remove generic inference, specialisation, candidate handling, semantic
+  tables, HIR paths, symbol naming, diagnostics, LSP paths, syntax, tests, and
+  documentation that module instantiation supersedes.
+- Continue supporting built-in parametric type constructors and explicit
+  parametrised modules.
+
+Do not retain a hidden compatibility implementation indefinitely; once the
+migration gate passes, delete obsolete machinery coherently.
+
+### 10. Consolidation And Measurement
+
+- Remove transitional `Option`, `Result`, and old generic compatibility paths.
+- Finish the manual, normative specs, language-reference appendices, compiler
+  internals, LSP, formatter, diagnostics, and migration documentation.
+- Run installed-compiler, editor-integration, FFI, platform, and release smoke
+  coverage.
+- Measure compiler source and table complexity removed, compile time, memory
+  use, module-instance duplication, diagnostic quality, and generated code.
+- Record the final language boundary: concrete low-level code, built-in
+  parametric storage types, explicit parametrised modules, nominal non-generic
+  traits, and no arbitrary type unions.
 
 ## Open Questions
 
@@ -488,8 +683,8 @@ than aesthetics alone.
   become valid after `::` compile-time parameters exist?
 - How are recursive module instances diagnosed and limited?
 - Can a parametrised module be re-exported without instantiating it?
-- What is the precise grammar and precedence of `?T`, `T !E`, postfix `?`, and
-  postfix `!`?
+- What is the precise grammar and precedence of `T\E` alongside `?T`, postfix
+  `?`, and postfix `!`?
 - Which implicit conversions may construct optional success or result success?
 - How do full optional/result `on ... else ...` forms compose with guards,
   comma patterns, expression results, and exhaustiveness?
