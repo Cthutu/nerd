@@ -556,9 +556,9 @@ near-term tasks without a fresh design pass.
 - Calling-convention annotations for FFI, including platform-specific behaviour.
 - Reassess whether generics still earn their language and implementation
   complexity after compound functions and compile-time `::` parameters are
-  proven. Review current uses such as `Option[T]`, `Result[T, E]`, collections,
-  `box[T]`, and generic methods before considering narrowing or removal; do not
-  treat removal as the decided outcome.
+  proven. Use [GENERICS.md](GENERICS.md) as the design discussion, review
+  current uses before considering narrowing or removal, and do not treat
+  removal as the decided outcome.
 - Named arguments, including their interaction with default parameters and
   call-site argument ordering.
 - Targeted diagnostics for value arguments in generic type-argument positions

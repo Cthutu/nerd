@@ -17,6 +17,9 @@ Nerd is a small compiler toolchain and language server implemented in C.
   Historical architecture review evidence and accepted decision records.
 - [ROADMAP.md](ROADMAP.md)
   Current project direction and active priorities.
+- [GENERICS.md](GENERICS.md)
+  Design exploration for simplifying generics through parametrised modules,
+  integrated optional/result types, and concrete language protocols.
 - [CODEX.md](CODEX.md)
   Repo-specific guidance for Codex sessions.
 
