@@ -139,176 +139,210 @@ the roadmap before committing the implementation.
 
 ## Active Work
 
-### Frame, Graphics, And OpenGL Refactor Plan
+Completed milestone plans belong in git history, tests, and subsystem
+documentation. The active list below contains only work that is ready to guide
+the next implementation slices.
 
-Separate window ownership, pixel presentation, and raw OpenGL binding concerns
-so the standard library has clear layering:
+### Atomics Milestone
 
-- `std.frame` owns windows, events, frame lifecycle, fullscreen/windowed state,
-  keyboard/mouse input, and the platform-specific `FrameContext` handle.
-- `Frame` keeps only public frame state plus a weak link back to its
-  `FrameSystem`; live platform resources remain owned by the corresponding
-  internal `FrameInfo`.
-- `Frame.context()` returns `Result[FrameContext, FrameError]` and should be the
-  public bridge from a frame handle to platform resources. Invalid, closed, or
-  detached frames must fail explicitly.
-- `std.gfx` owns pixel-layer orchestration and pixel presentation policy. Move
-  the current pixel-buffer OpenGL upload, shader, texture, VAO/VBO, and
-  letterbox clearing code out of `std.frame` into `std.gfx`.
-- `std.opengl` owns the public OpenGL surface:
-  - portable GL aliases, constants, and command names
-  - platform command loading through `gl_init(^Frame)` and cleanup through
-    `gl_done(^Frame)`
-  - current-context and swap helpers that operate from `Frame.context()`
-- Raw platform bindings stay under `os.<platform>` and should mirror the
-  original OS APIs as directly as practical. Convenience wrappers belong in
-  `std.frame`, `std.gfx`, or `std.opengl`, not `os.<platform>`.
-- `std.frame` may create or expose the native graphics context needed by
-  `FrameContext`, but it should not contain renderer-specific shader or draw
-  code.
-- Examples should remain small users of the public modules:
-  - `pixels` and `pixels_fit` use `std.frame` plus `std.gfx`
-  - `triangle` uses `std.frame` plus `std.opengl`
-- While this refactor is in progress, keep the existing examples working on
-  Windows and Linux. Treat compiler bugs and invalid LLVM IR as higher priority
-  than library cleanup.
+Add first-class atomic values with sequentially consistent operator defaults
+and explicit memory ordering through `std.atomics`. Atomic storage protects the
+stored scalar value only; it does not provide ownership, lifetime management,
+or implicit synchronisation for pointee data.
 
-Refactor sequence:
+#### Compile-Time Parameters
 
-- [x] Add `Frame.system`, `FrameContext`, `FrameError`, and `Frame.context()`.
-- [x] Change `std.opengl` helpers to accept `^Frame` and resolve context through
-  `Frame.context()`.
-- [x] Move raw OpenGL command-pointer storage and loading out of `os.linux.glx`
-  and `os.windows.wgl` into `std.opengl`, leaving direct platform loader
-  bindings in `os.<platform>`.
-- [x] Move pixel presentation shader/program/buffer/texture state from
-  `std.frame` into `std.gfx`.
-- [x] Keep only platform window/context creation, event processing, and
-  lifecycle management in `std.frame`.
-- [x] Add focused tests for invalid/closed `Frame.context()` results and command
-  loader reset behaviour where this can be checked without an interactive
-  desktop.
-- [x] Update `docs/stdlib.md` once the public `std.frame`, `std.gfx`, and
-  `std.opengl` boundaries settle.
+Add compile-time value parameters as the small general language feature needed
+to express atomic ordering without making ordering enums special types.
 
-### Standard Library Expansion
+- [ ] Accept `::` in function parameter declarations to require a value known
+  during semantic analysis:
 
-- Continue expanding the standard library only as the module/export model needs
-  real validation.
-- Keep the standard library surface disciplined while the core language is still
-  moving.
-- Prefer simple modules that exercise existing language features before adding
-  library-driven language changes.
-- Keep `docs/stdlib.md` as a separate standard-library document; the language
-  manual should reference the standard library only for small examples.
-- [ ] Keep parsing traits such as `Parse` at standard-library level rather than
+  ```nerd
+  load :: fn (
+      self  : ^atomic[T],
+      order :: AtomicLoadOrder = SequentiallyConsistent,
+  ) -> T
+  ```
+
+- [ ] Permit literals, constants, and constant expressions supported by the
+  existing constant evaluator as arguments to `::` parameters.
+- [ ] Reject runtime values with a diagnostic that identifies the argument and
+  the compile-time parameter declaration.
+- [ ] Treat compile-time arguments as part of function specialisation identity
+  alongside generic type arguments.
+- [ ] Substitute the known value before or during HIR generation so the backend
+  never receives an unresolved runtime ordering for an atomic instruction.
+- [ ] Require default values for `::` parameters to be compile-time-known.
+- [ ] Keep compile-time parameters immutable within the function body.
+- [ ] Preserve `::` in formatting, hover, signature help, and rendered function
+  types. Offer appropriate constants and enum variants in completion.
+- [ ] Initially limit compile-time arguments to values with stable canonical
+  identity, including booleans, integers, and payload-free enums. Extend the
+  set only with explicit constant-evaluation and specialisation tests.
+- [ ] Use this mechanism for later numeric generic parameters rather than
+  designing a separate value-specialisation model.
+
+#### Atomic Types And Operators
+
+- [ ] Add the built-in type constructor `atomic[T]`.
+- [ ] Initially permit `T` to be:
+  - `bool`
+  - `i8`, `i16`, `i32`, `i64`, and `isize`
+  - `u8`, `u16`, `u32`, `u64`, and `usize`
+  - a thin non-owning pointer `^U`
+- [ ] Reject owning, dynamically sized, or fat values, including `box[T]`,
+  strings, slices, dynamic arrays, and aggregates.
+- [ ] Represent `atomic[bool]` with suitable addressable atomic storage rather
+  than relying on language-level boolean ABI assumptions.
+- [ ] Make atomic storage non-copyable and reject passing or returning an
+  atomic by value. Functions that operate on the same storage must use
+  `^atomic[T]`.
+- [ ] Allow explicit construction of independent atomic storage from a
+  compatible compile-time or runtime `T` value.
+- [ ] Give ordinary syntax sequentially consistent semantics:
+  - reading an `atomic[T]` as `T` performs one atomic load
+  - assigning `T` with `=` performs one atomic store
+  - integer `+=`, `-=`, `&=`, `|=`, and `^=` perform indivisible atomic
+    read-modify-write operations
+  - ordinary arithmetic, bitwise, boolean, and comparison expressions first
+    perform an atomic load and then operate on the resulting non-atomic `T`
+- [ ] Document and test that `value = value + 1` is an atomic load followed by
+  an atomic store, not an indivisible increment; `value += 1` is the atomic
+  read-modify-write form.
+- [ ] Support boolean load, store, exchange, and compare-exchange. Consider
+  boolean `&=`, `|=`, and `^=` only if their semantics remain clear and useful.
+- [ ] Support pointer load, store, exchange, compare-exchange, equality, and
+  `nil`. Do not initially support atomic pointer arithmetic.
+- [ ] Treat an atomic pointer as non-owning. Loading a pointer neither keeps the
+  pointee alive nor makes its fields atomic; reclamation schemes such as hazard
+  pointers and epochs remain library responsibilities.
+
+#### `std.atomics` API
+
+- [ ] Add `std.atomics` with separate public ordering enums so invalid load and
+  store orderings are not representable:
+
+  ```nerd
+  AtomicLoadOrder :: enum {
+      Relaxed
+      Acquire
+      SequentiallyConsistent
+  }
+
+  AtomicStoreOrder :: enum {
+      Relaxed
+      Release
+      SequentiallyConsistent
+  }
+
+  AtomicOrder :: enum {
+      Relaxed
+      Acquire
+      Release
+      AcquireRelease
+      SequentiallyConsistent
+  }
+  ```
+
+- [ ] Keep these as ordinary enums that can be stored, passed, returned, and
+  inspected with `on`. Atomic methods require compile-time values through `::`;
+  callers with a runtime order can branch and call the method with an explicit
+  constant in each branch.
+- [ ] Define the generic compare-exchange result as:
+
+  ```nerd
+  AtomicCompareExchangeResult :: enum[T] {
+      Exchanged
+      NotExchanged(T)
+  }
+  ```
+
+  If positional enum payloads are not yet supported, use an equivalent named
+  `observed T` payload without changing the result semantics.
+- [ ] Add built-in-backed `impl atomic[T]` methods in `std.atomics` for `load`,
+  `store`, `exchange`, integer fetch operations, and strong
+  `compare_exchange`.
+- [ ] Default all method order parameters to sequential consistency.
+- [ ] Give compare-exchange separate success and failure ordering parameters.
+  The failure parameter uses `AtomicLoadOrder`; reject a failure ordering that
+  is stronger than the success ordering.
+- [ ] Return `Exchanged` after a successful comparison and
+  `NotExchanged(observed)` after a mismatch.
+- [ ] Consider weak compare-exchange only after the strong operation and its
+  retry patterns are established.
+- [ ] Keep public signatures, documentation, and convenience logic in Nerd
+  source. Keep representation, validation, and primitive atomic lowering in
+  the compiler.
+
+#### Compiler And LLVM Work
+
+- [ ] Add semantic type facts, compatibility rules, initialisation rules, and
+  operation validation for `atomic[T]`.
+- [ ] Lower atomic operations explicitly through HIR rather than encoding them
+  as ordinary loads, stores, or arithmetic.
+- [ ] Lower each supported operation and ordering to valid LLVM atomic
+  instructions for the host 64-bit clang target.
+- [ ] Preserve target alignment requirements and reject types or widths the
+  current target contract cannot implement correctly.
+- [ ] Do not claim portable lock-free guarantees. Document which properties
+  come from the language memory model and which remain target-dependent.
+- [ ] Keep atomic intrinsic identity internal; do not resolve compiler
+  behaviour by matching user-visible source names.
+
+#### Diagnostics, Tooling, Tests, And Documentation
+
+- [ ] Add focused diagnostics for unsupported element types, copying or
+  passing atomic storage by value, invalid operators, pointer arithmetic, and
+  invalid compare-exchange ordering combinations.
+- [ ] Diagnose non-constant arguments to `::` parameters with actionable help
+  showing how to branch on a runtime value and use constants in each branch.
+- [ ] Explain in pointer-related diagnostics that atomicity of the pointer does
+  not protect pointee lifetime or fields.
+- [ ] Add formatter coverage for `::` parameters and atomic type/method syntax.
+- [ ] Add LSP completion, hover, signature help, definition, references, and
+  semantic-token coverage for compile-time parameters, `atomic[T]`, ordering
+  enums, and substituted method signatures.
+- [ ] Add dense language and LLVM regressions covering integer, boolean, and
+  pointer operations at every supported ordering.
+- [ ] Add error regressions for every rejected type, copying case, invalid
+  operation, non-constant order, and invalid ordering pair.
+- [ ] Add command-path regressions that compile and run representative atomic
+  programs through the real `nerd` executable.
+- [ ] Add standard-library source tests for ordering types and public method
+  behaviour where deterministic single-threaded checks are meaningful.
+- [ ] Add manual and language-reference documentation for compile-time
+  parameters, atomic syntax, default ordering, explicit methods, and pointer
+  lifetime hazards. Keep implementation notes and `docs/stdlib.md` aligned.
+
+### Standard Library
+
+- Finish the public OpenGL 3 surface needed by small direct-OpenGL programs:
+  portable aliases, constants, commands, and non-interactive loader tests.
+- Keep `std.frame` responsible for window and context lifecycle, `std.gfx` for
+  pixel presentation, and `std.opengl` for raw portable OpenGL commands.
+- Keep parsing traits such as `Parse` at standard-library level rather than
   making them language-known traits.
+- Expand the standard library only where it validates the module/export model
+  or provides a clear user-facing capability. Keep `docs/stdlib.md` aligned.
+- Track the remaining `std.image` decisions and extensions in [TODO.md](TODO.md).
 
-### Graphics Pixel Buffer Milestone
+### Editor Intelligence
 
-Add `std.gfx` as the first window graphics layer system. Start with a
-frame-presented pixel buffer layer attached to `std.frame` windows, while
-keeping the public API backend-neutral enough for later OpenGL, Vulkan,
-tile-map, and ASCII layers.
+- Extend formatter and LSP behaviour alongside new syntax and semantics.
+- Improve semantic completion, signature help, hover, definitions, references,
+  rename, and code actions using the existing front-end facts.
+- Treat VS Code and Neovim/LazyVim as paired editor surfaces when file
+  detection, highlighting, LSP wiring, formatting, or packaging changes.
+- Consider Tree-sitter only after the semantic LSP experience is strong enough
+  to justify a second syntax implementation. Its eventual scope may include
+  highlighting, folding, indentation, incremental selection, and structural
+  editing.
 
-- [x] Add `mods/std/gfx/mod.n` with a small orchestrating `GfxSystem`.
-- [x] Add `PixelLayerMode`:
-  - [x] `FitToWindow { pixel_scale u16 }`
-  - [x] `FixedSizeAutoScale { width u16, height u16 }`
-- [x] Define crisp-pixel presentation rules:
-  - [x] `FitToWindow` uses the fixed integer `pixel_scale`, resizes the backing
-    pixel buffer as the frame changes, and keeps the presented frame dimensions
-    at the top-left with no intentional letterboxing.
-  - [x] `FixedSizeAutoScale` keeps a fixed virtual buffer size, uses the largest
-    integer scale that fits the frame, and letterboxes unused space.
-- [x] Add typed pixel-buffer operations:
-  - [x] create/destroy a pixel layer for a frame
-  - [x] expose width, height, and contiguous `[]u32` pixels
-  - [x] `clear`, `put`, and `fill` helpers
-  - [x] `paint(area, painter)` where the painter receives a contiguous pixel
-    slice, area width/height, and stride
-- [ ] Render through 3D graphics hardware where practical:
-  - [x] Linux X11 backend using OpenGL/GLX first
-  - [x] Windows backend using OpenGL/WGL
-  - [x] upload the pixel buffer to a texture and draw a nearest-filtered quad
-  - [x] render through a shader, vertex buffer, and vertex array rather than
-    fixed-function OpenGL calls
-  - [x] keep whole-texture upload acceptable for the first version; add dirty
-    rectangles later only after the API shape is proven
-- [x] Add `examples/pixels/pixels.n` showing a frame, pixel layer, clear/fill,
-  simple animation, resize handling, and render loop.
-- [x] Add `examples/pixels_fit/pixels_fit.n` showing `FitToWindow`.
-- [x] Add standard-library documentation for `std.gfx` and the pixel-buffer
-  sizing modes.
-- [x] Add source, command, and example tests where the behaviour can be
-  verified without relying on an interactive desktop session.
+### Testing Follow-up
 
-### OpenGL Standard Library Milestone
-
-Add `std.opengl` as a frame-compatible OpenGL 3 binding layer. This should be a
-thin, explicit API first; higher-level graphics layers can build on it later.
-
-- [x] Add initial `mods/std/opengl/mod.n` and Linux GLX/OpenGL declarations.
-- [ ] Expand `std.opengl` with portable public OpenGL type aliases, constants,
-  and command declarations for the basic OpenGL 3 workflow.
-- [x] Add platform loader support:
-  - [x] Linux GLX context creation for frame pixel presentation.
-  - [x] Linux GLX command lookup for frames through `gl_init(^Frame)`.
-  - [x] Windows WGL command lookup for frames through `gl_init(^Frame)`.
-- [x] Add `gl_init(^Frame) -> bool` to create or attach an OpenGL context for a
-  frame and load OpenGL command pointers into module-level function pointer
-  variables.
-- [x] Add `gl_done(^Frame)` to release frame-attached OpenGL context resources
-  and clear loaded command pointers when appropriate.
-- [ ] Add basic commands needed by the pixel-buffer renderer:
-  - [x] buffer, texture, shader, and vertex-array creation/destruction
-  - [x] shader compile/link/status logging
-  - [x] viewport, clear, draw, texture upload, and swap buffers
-- [x] Move `std.gfx` pixel presentation from XImage fallback to a nearest
-  filtered texture quad on OpenGL-capable frames.
-- [x] Move frame pixel presentation off fixed-function OpenGL and onto a
-  shader/VBO/VAO path.
-- [x] Keep an XImage/software fallback while OpenGL support is incomplete or
-  unavailable.
-- [ ] Add examples and tests that can check loading and symbol availability
-  without requiring an interactive desktop where possible.
-
-### Source Testing Follow-up Milestone
-
-- [x] Collect and run tests declared in imported modules.
-- [x] Add `test { ... }` blocks for test-only top-level declarations.
-- [ ] Add non-fail-fast test assertions if continuing after failure becomes
-  useful.
-
-### Editor Intelligence Milestone
-
-- [ ] Keep extending formatter support as syntax lands.
-- [ ] Keep extending LSP support as syntax and semantics land.
-- [ ] Treat VS Code and Neovim/LazyVim as paired editor surfaces. When a change
-  affects file detection, syntax highlighting, LSP launch/configuration,
-  formatting, or install packaging, update both editor integrations in the same
-  commit unless one is explicitly out of scope.
-- [ ] Prioritise semantic LSP intelligence before Tree-sitter. The compiler
-  front end already has semantic information that should drive completion,
-  signature help, definitions, references, rename, and code actions.
-- [x] Add references and rename:
-  - [x] same-file references
-  - [x] same-file rename
-  - [x] cross-module references
-  - [x] cross-module rename
-- [x] Add code actions for diagnostics where the compiler already has actionable
-  help, such as `:` versus `::` and unused local fixes.
-  - [x] `:` versus `::` function-definition fix
-  - [x] unused local fixes
-- [x] Add document links for module imports.
-- [x] Add workspace symbol search for top-level declarations.
-- [ ] Add Tree-sitter support after the LSP intelligence work is useful:
-  - [ ] grammar for Nerd source
-  - [ ] editor-native highlighting
-  - [ ] folding
-  - [ ] indentation
-  - [ ] incremental selection
-  - [ ] structural editing support, especially for Neovim
+- Add non-fail-fast source-test assertions only if real test suites demonstrate
+  that continuing after a failed assertion would be useful.
 
 ## Deferred Work
 
@@ -319,8 +353,6 @@ near-term tasks without a fresh design pass.
 - Calling-convention annotations for FFI, including platform-specific behaviour.
 - Named arguments, including their interaction with default parameters and
   call-site argument ordering.
-- Numeric generic parameters, such as `[T, N: usize]`, including canonical
-  value identity and constant-evaluation rules.
 - Targeted diagnostics for value arguments in generic type-argument positions
   and type arguments in value-index positions.
 - Truncating readable generic C symbol stems while keeping the hash suffix for
