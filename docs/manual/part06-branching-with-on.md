@@ -165,3 +165,34 @@ on command {
 ```
 
 If no branch matches, nothing happens.
+
+## Optional and result extraction
+
+Boolean extraction binds payloads directly:
+
+```nerd
+on maybe => [value] {
+    use(value)
+} else {
+    prn("missing")
+}
+
+on operation => [value] {
+    use(value)
+} else [error] {
+    report(error)
+}
+```
+
+Full matching uses the first table for present/success payload patterns.
+Optional `else` handles absence; result `else` contains error payload patterns:
+
+```nerd
+on operation {
+    0    => "zero"
+    code => $"code {code}"
+} else {
+    "timeout" => "try again"
+    else      => "failed"
+}
+```

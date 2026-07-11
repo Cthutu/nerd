@@ -5,14 +5,16 @@
 -- Provides byte cursor helpers shared by image decoders.
 
 ImageReader :: plex {
-    bytes  []u8
+    bytes []u8
     offset usize
 }
 
 impl ImageReader {
 
     new :: fn (bytes: []u8) -> Self {
-        return { bytes offset: 0 }
+        return {
+            bytes offset: 0
+        }
     }
 
     remaining :: fn (reader: Self) -> usize {
@@ -28,52 +30,52 @@ impl ImageReader {
         return reader.offset >= reader.bytes.count
     }
 
-    read_u8 :: fn (reader: ^Self) -> Result[u8, ImageError] {
-        on reader.remaining() < 1 => return Err(UnexpectedEnd)
+    read_u8 :: fn (reader: ^Self) -> u8\ImageError {
+        on reader.remaining() < 1 => return UnexpectedEnd!
 
         value := reader.bytes[reader.offset]
         reader.offset += 1
-        return Ok(value)
+        return value
     }
 
-    read_be_u16 :: fn (reader: ^Self) -> Result[u16, ImageError] {
+    read_be_u16 :: fn (reader: ^Self) -> u16\ImageError {
         bytes := reader.take(2)
         return on bytes {
-            Ok(value)   => Ok((value[0].as(u16) << 8) | value[1].as(u16))
-            Err(error)  => Err(error)
+            value => (value[0].as(u16) << 8) | value[1].as(u16)
+            error! => error!
         }
     }
 
-    read_be_u32 :: fn (reader: ^Self) -> Result[u32, ImageError] {
+    read_be_u32 :: fn (reader: ^Self) -> u32\ImageError {
         bytes := reader.take(4)
         return on bytes {
-            Ok(value)   => Ok((value[0].as(u32) << 24) | (value[1].as(u32) << 16) | (value[2].as(u32) << 8) | value[3].as(u32))
-            Err(error)  => Err(error)
+            value => (value[0].as(u32) << 24) | (value[1].as(u32) << 16) | (value[2].as(u32) << 8) | value[3].as(u32)
+            error! => error!
         }
     }
 
-    read_le_u16 :: fn (reader: ^Self) -> Result[u16, ImageError] {
+    read_le_u16 :: fn (reader: ^Self) -> u16\ImageError {
         bytes := reader.take(2)
         return on bytes {
-            Ok(value)   => Ok(value[0].as(u16) | (value[1].as(u16) << 8))
-            Err(error)  => Err(error)
+            value => value[0].as(u16) | (value[1].as(u16) << 8)
+            error! => error!
         }
     }
 
-    read_le_u32 :: fn (reader: ^Self) -> Result[u32, ImageError] {
+    read_le_u32 :: fn (reader: ^Self) -> u32\ImageError {
         bytes := reader.take(4)
         return on bytes {
-            Ok(value)   => Ok(value[0].as(u32) | (value[1].as(u32) << 8) | (value[2].as(u32) << 16) | (value[3].as(u32) << 24))
-            Err(error)  => Err(error)
+            value => value[0].as(u32) | (value[1].as(u32) << 8) | (value[2].as(u32) << 16) | (value[3].as(u32) << 24)
+            error! => error!
         }
     }
 
-    take :: fn (reader: ^Self, count: usize) -> Result[[]u8, ImageError] {
-        on reader.remaining() < count => return Err(UnexpectedEnd)
+    take :: fn (reader: ^Self, count: usize) -> []u8\ImageError {
+        on reader.remaining() < count => return UnexpectedEnd!
 
         start := reader.offset
         reader.offset += count
-        return Ok(reader.bytes[start..reader.offset])
+        return reader.bytes[start .. reader.offset]
     }
 
 }
@@ -96,7 +98,7 @@ test "image reader reads single bytes and advances" {
     third := reader.read_u8()
 
     on first {
-        Ok(value) => {
+        value => {
             assert value == 10
         }
         else => {
@@ -104,7 +106,7 @@ test "image reader reads single bytes and advances" {
         }
     }
     on second {
-        Ok(value) => {
+        value => {
             assert value == 20
         }
         else => {
@@ -112,7 +114,7 @@ test "image reader reads single bytes and advances" {
         }
     }
     on third {
-        Err(UnexpectedEnd) => {
+        UnexpectedEnd! => {
             assert yes
         }
         else => {
@@ -131,7 +133,7 @@ test "image reader reads endian integers" {
     le16 := reader.read_le_u16()
 
     on be16 {
-        Ok(value) => {
+        value => {
             assert value == 0x1234
         }
         else => {
@@ -139,7 +141,7 @@ test "image reader reads endian integers" {
         }
     }
     on le16 {
-        Ok(value) => {
+        value => {
             assert value == 0x7856
         }
         else => {
@@ -153,7 +155,7 @@ test "image reader reads endian integers" {
     le32 := reader.read_le_u32()
 
     on be32 {
-        Ok(value) => {
+        value => {
             assert value == 0x12345678
         }
         else => {
@@ -161,7 +163,7 @@ test "image reader reads endian integers" {
         }
     }
     on le32 {
-        Ok(value) => {
+        value => {
             assert value == 0x78563412
         }
         else => {
@@ -177,7 +179,7 @@ test "image reader take returns a borrowed slice and advances" {
     taken := reader.take(3)
 
     on taken {
-        Ok(value) => {
+        value => {
             assert value.count == 3
             assert value[0] == 1
             assert value[1] == 2
@@ -198,7 +200,7 @@ test "image reader short take does not advance" {
     taken := reader.take(3)
 
     on taken {
-        Err(UnexpectedEnd) => {
+        UnexpectedEnd! => {
             assert yes
         }
         else => {

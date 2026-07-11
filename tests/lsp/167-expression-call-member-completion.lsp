@@ -5,8 +5,8 @@ VAO :: plex {
 }
 
 impl VAO {
-    new :: fn () -> Option[Self] {
-        return Some(Self { id: 1 })
+    new :: fn () -> ?Self {
+        return Self { id: 1 }
     }
 
     bind :: fn (self: ^Self) {
@@ -136,13 +136,7 @@ main :: fn () {
     {
         "jsonrpc": "2.0",
         "id": 2,
-        "result": [
-            {
-                "label": "expect",
-                "kind": 2,
-                "detail": "method"
-            }
-        ]
+        "result": []
     },
     {
         "jsonrpc": "2.0",

@@ -1108,64 +1108,64 @@ term_fb_present :: fn () {
     }
 }
 
-term_csi_final_key :: fn (final: u8) -> Option[KeyCode] {
+term_csi_final_key :: fn (final: u8) -> ?KeyCode {
     return on final {
-        'A'   => Some(ArrowUp)
-        'B'   => Some(ArrowDown)
-        'C'   => Some(ArrowRight)
-        'D'   => Some(ArrowLeft)
-        'F'   => Some(End)
-        'H'   => Some(Home)
-        else  => None
+        'A'   => ArrowUp
+        'B'   => ArrowDown
+        'C'   => ArrowRight
+        'D'   => ArrowLeft
+        'F'   => End
+        'H'   => Home
+        else  => nil
     }
 }
 
-term_csi_tilde_key :: fn (number: u32) -> Option[KeyCode] {
+term_csi_tilde_key :: fn (number: u32) -> ?KeyCode {
     return on number {
-        1     => Some(Home)
-        2     => Some(Insert)
-        3     => Some(Delete)
-        4     => Some(End)
-        5     => Some(PageUp)
-        6     => Some(PageDown)
-        15    => Some(F5)
-        17    => Some(F6)
-        18    => Some(F7)
-        19    => Some(F8)
-        20    => Some(F9)
-        21    => Some(F10)
-        23    => Some(F11)
-        24    => Some(F12)
-        else  => None
+        1     => Home
+        2     => Insert
+        3     => Delete
+        4     => End
+        5     => PageUp
+        6     => PageDown
+        15    => F5
+        17    => F6
+        18    => F7
+        19    => F8
+        20    => F9
+        21    => F10
+        23    => F11
+        24    => F12
+        else  => nil
     }
 }
 
-term_csi_digit_key :: fn (first: u8, second: u8, third: u8) -> Option[KeyCode] {
+term_csi_digit_key :: fn (first: u8, second: u8, third: u8) -> ?KeyCode {
     number := first.as(u32) - 48
     two_digit_number := number * 10 + second.as(u32) - 48
-    return on second == '~' => term_csi_tilde_key(number) else on (second >= '0' && second <= '9' && third == '~') => term_csi_tilde_key(two_digit_number) else None
+    return on second == '~' => term_csi_tilde_key(number) else on (second >= '0' && second <= '9' && third == '~') => term_csi_tilde_key(two_digit_number) else nil
 }
 
-term_ss3_key :: fn (final: u8) -> Option[KeyCode] {
+term_ss3_key :: fn (final: u8) -> ?KeyCode {
     return on final {
-        'A'   => Some(ArrowUp)
-        'B'   => Some(ArrowDown)
-        'C'   => Some(ArrowRight)
-        'D'   => Some(ArrowLeft)
-        'F'   => Some(End)
-        'H'   => Some(Home)
-        'P'   => Some(F1)
-        'Q'   => Some(F2)
-        'R'   => Some(F3)
-        'S'   => Some(F4)
-        else  => None
+        'A'   => ArrowUp
+        'B'   => ArrowDown
+        'C'   => ArrowRight
+        'D'   => ArrowLeft
+        'F'   => End
+        'H'   => Home
+        'P'   => F1
+        'Q'   => F2
+        'R'   => F3
+        'S'   => F4
+        else  => nil
     }
 }
 
-term_input_event_from_key :: fn (key: Option[KeyCode]) -> TermInputEvent {
+term_input_event_from_key :: fn (key: ?KeyCode) -> TermInputEvent {
     return on key {
-        Some(code)  => TermInputEvent.KeyPress(code)
-        None        => TermInputEvent.None
+        code  => TermInputEvent.KeyPress(code)
+        else  => TermInputEvent.None
     }
 }
 
@@ -1174,15 +1174,15 @@ term_csi_modifier_flags :: fn (modifier: u32) -> u32 {
     return modifier - 1
 }
 
-term_input_event_from_modified_key :: fn (key      : Option[KeyCode],
+term_input_event_from_modified_key :: fn (key      : ?KeyCode,
                                           modifier : u32) -> TermInputEvent {
     return on key {
-        Some(code) => {
+        code => {
             flags := term_csi_modifier_flags(modifier)
             on flags == 0 => return TermInputEvent.KeyPress(code)
             return TermInputEvent.KeyPressModified(code, flags)
         }
-        None => TermInputEvent.None
+        else => TermInputEvent.None
     }
 }
 
@@ -1310,12 +1310,12 @@ term_read_sgr_mouse_sequence :: fn () -> TermInputEvent {
     return TermInputEvent.MouseDown(x, y, button_mask)
 }
 
-term_read_csi_sequence :: fn () -> Option[KeyCode] {
+term_read_csi_sequence :: fn () -> ?KeyCode {
     event := term_read_csi_input_sequence()
     return on event {
-        TermInputEvent.KeyPress(code)                 => Some(code)
-        TermInputEvent.KeyPressModified(code, _mods)  => Some(code)
-        else                                          => None
+        TermInputEvent.KeyPress(code)                 => code
+        TermInputEvent.KeyPressModified(code, _mods)  => code
+        else                                          => nil
     }
 }
 
@@ -1350,9 +1350,9 @@ term_read_csi_input_sequence :: fn () -> TermInputEvent {
     return term_input_event_from_key(key)
 }
 
-term_read_ss3_sequence :: fn () -> Option[KeyCode] {
+term_read_ss3_sequence :: fn () -> ?KeyCode {
     final := term_read_byte()
-    on final == 0 => return None
+    on final == 0 => return nil
     return term_ss3_key(final)
 }
 
@@ -1366,12 +1366,12 @@ term_read_escape_input_sequence :: fn () -> TermInputEvent {
     return on second == 0 => TermInputEvent.KeyPress(Escape) else on (second == '[') => term_read_csi_input_sequence() else on (second == 'O') => term_read_ss3_input_sequence() else TermInputEvent.KeyPress(Escape)
 }
 
-term_read_escape_sequence :: fn () -> Option[KeyCode] {
+term_read_escape_sequence :: fn () -> ?KeyCode {
     event := term_read_escape_input_sequence()
     return on event {
-        TermInputEvent.KeyPress(code)                 => Some(code)
-        TermInputEvent.KeyPressModified(code, _mods)  => Some(code)
-        else                                          => None
+        TermInputEvent.KeyPress(code)                 => code
+        TermInputEvent.KeyPressModified(code, _mods)  => code
+        else                                          => nil
     }
 }
 

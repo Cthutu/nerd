@@ -873,6 +873,8 @@ cst_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp)
     case TK_LBracket:
     case TK_LBrace:
     case TK_with:
+    case TK_Bang:
+    case TK_Question:
         *out_left_bp  = CST_BP_PREFIX + 10;
         *out_right_bp = CST_BP_PREFIX + 10;
         return true;
@@ -1021,6 +1023,7 @@ internal bool cst_parse_grouped_use_entries(CstParseState* state,
                                             u32* out_first_use_node);
 internal bool cst_parse_on_expr(CstParseState* state, u32* out_node);
 internal bool cst_parse_type(CstParseState* state, u32* out_node);
+internal bool cst_parse_type_primary(CstParseState* state, u32* out_node);
 internal bool cst_parse_fn_signature(CstParseState* state,
                                      bool           allow_named_params,
                                      bool           require_return_type,
@@ -1255,7 +1258,49 @@ internal bool cst_parse_callable_signature(CstParseState* state,
 
 internal bool cst_parse_type(CstParseState* state, u32* out_node)
 {
+    u32 left = 0;
+    if (!cst_parse_type_primary(state, &left)) {
+        return false;
+    }
+    if (cst_current_token(state).kind != TK_Backslash) {
+        *out_node = left;
+        return true;
+    }
+    u32 token_index = state->token_index;
+    cst_advance(state);
+    u32 error_type = 0;
+    if (!cst_parse_type(state, &error_type)) {
+        return false;
+    }
+    return cst_emit_node(state,
+                         (CstNode){
+                             .kind        = CK_TypeResult,
+                             .token_index = token_index,
+                             .a           = left,
+                             .b           = error_type,
+                         },
+                         out_node);
+}
+
+internal bool cst_parse_type_primary(CstParseState* state, u32* out_node)
+{
     Token token = cst_current_token(state);
+
+    if (token.kind == TK_Question) {
+        u32 token_index = state->token_index;
+        cst_advance(state);
+        u32 payload = 0;
+        if (!cst_parse_type_primary(state, &payload)) {
+            return false;
+        }
+        return cst_emit_node(state,
+                             (CstNode){
+                                 .kind        = CK_TypeOptional,
+                                 .token_index = token_index,
+                                 .a           = payload,
+                             },
+                             out_node);
+    }
 
     if (token.kind == TK_Bang) {
         u32 token_index = state->token_index;
@@ -1414,7 +1459,7 @@ internal bool cst_parse_type(CstParseState* state, u32* out_node)
                 return false;
             }
             u32 element_type = 0;
-            if (!cst_parse_type(state, &element_type)) {
+            if (!cst_parse_type_primary(state, &element_type)) {
                 return false;
             }
             return cst_emit_node(state,
@@ -1429,7 +1474,7 @@ internal bool cst_parse_type(CstParseState* state, u32* out_node)
         if (cst_current_token(state).kind == TK_RBracket) {
             cst_advance(state);
             u32 element_type = 0;
-            if (!cst_parse_type(state, &element_type)) {
+            if (!cst_parse_type_primary(state, &element_type)) {
                 return false;
             }
             return cst_emit_node(state,
@@ -1450,7 +1495,7 @@ internal bool cst_parse_type(CstParseState* state, u32* out_node)
                 return false;
             }
             u32 element_type = 0;
-            if (!cst_parse_type(state, &element_type)) {
+            if (!cst_parse_type_primary(state, &element_type)) {
                 return false;
             }
             return cst_emit_node(state,
@@ -1466,7 +1511,7 @@ internal bool cst_parse_type(CstParseState* state, u32* out_node)
             return false;
         }
         u32 element_type = 0;
-        if (!cst_parse_type(state, &element_type)) {
+        if (!cst_parse_type_primary(state, &element_type)) {
             return false;
         }
         return cst_emit_node(state,
@@ -1483,7 +1528,7 @@ internal bool cst_parse_type(CstParseState* state, u32* out_node)
         u32 token_index = state->token_index;
         cst_advance(state);
         u32 pointee_type = 0;
-        if (!cst_parse_type(state, &pointee_type)) {
+        if (!cst_parse_type_primary(state, &pointee_type)) {
             return false;
         }
         return cst_emit_node(state,
@@ -3958,6 +4003,21 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
             if (!cst_emit_node(state,
                                (CstNode){
                                    .kind        = CK_Deref,
+                                   .token_index = token_index,
+                                   .a           = left,
+                               },
+                               &left)) {
+                return false;
+            }
+            continue;
+        }
+
+        if (token.kind == TK_Bang || token.kind == TK_Question) {
+            if (!cst_emit_node(state,
+                               (CstNode){
+                                   .kind        = token.kind == TK_Bang
+                                                      ? CK_ErrorInject
+                                                      : CK_Propagate,
                                    .token_index = token_index,
                                    .a           = left,
                                },

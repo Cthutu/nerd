@@ -129,11 +129,10 @@ The trigonometric functions take radians and return `f64` values.
 - `Default`
   Requires `default :: fn () -> Self`.
 - `Iterator[Item]`
-  Requires `next :: fn (^Self) -> Option[Item]`.
-- `Option[T]`
-  Tagged enum with `None` and `Some(T)`.
-- `Result[T, E]`
-  Tagged enum with `Ok(T)` and `Err(E)`.
+  Requires `next :: fn (^Self) -> ?Item`.
+
+Optional `?T` and result `T\E` are language types rather than declarations in
+`core`.
 
 Arena sizes are rounded up to the platform page size by the runtime. Arena
 construction reserves one 4 GiB virtual address range and commits pages on
@@ -208,7 +207,7 @@ still lets `std.term` own presentation until the terminal is large enough again.
 
 `std.frame` owns native windows, input/events, frame lifecycle, fullscreen
 state, and platform context creation. `Frame.context() ->
-Result[FrameContext, FrameError]` is the public way to resolve platform handles;
+FrameContext\FrameError` is the public way to resolve platform handles;
 detached, closed, and invalid frames report explicit `FrameError` values.
 
 `std.gfx` owns frame-attached pixel layers and pixel presentation. It may use an

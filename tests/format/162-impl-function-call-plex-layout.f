@@ -5,11 +5,10 @@ pub Shader :: plex {
 impl Shader {
 
     pub new :: fn (vertex_shader : string,
-    fragment_shader : string) -> Option[Self] {
-        return Some(Self {
+    fragment_shader : string) -> ?Self {
+        return Self {
             id: 1
         }
-        )
     }
 }
 ¬
@@ -19,11 +18,10 @@ pub Shader :: plex {
 
 impl Shader {
 
-    pub new :: fn (vertex_shader   : string,
-                   fragment_shader : string) -> Option[Self] {
-        return Some(Self {
+    pub new :: fn (vertex_shader: string, fragment_shader: string) -> ?Self {
+        return Self {
             id: 1
-        })
+        }
     }
 
 }

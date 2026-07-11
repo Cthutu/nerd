@@ -102,7 +102,9 @@ on "windows" {
                                              window : ^void) -> ^FrameInfo {
         on system == nil || window == nil => return nil
 
-        for i: usize = 0; i < system.frames.count; i += 1 {
+        for i: usize = 0;
+            i < system.frames.count;
+            i += 1 {
             on system.frames[i].platform_info.window == window => return ^system.frames[i]
         }
 
@@ -337,22 +339,22 @@ on "windows" {
         info.platform_info.closed_queued = no
     }
 
-    frame_context_impl :: fn (frame: ^Frame) -> Result[FrameContext, FrameError] {
-        on frame.system == nil => return Err(FrameError.NoSystem)
-        on frame.id == CLOSED_FRAME => return Err(FrameError.Closed)
+    frame_context_impl :: fn (frame: ^Frame) -> FrameContext\FrameError {
+        on frame.system == nil => return (FrameError.NoSystem)!
+        on frame.id == CLOSED_FRAME => return (FrameError.Closed)!
 
         info := frame_system_find_info(frame.system, frame.id)
         on info == nil ||
             info.platform_info.window == nil ||
-            info.platform_info.device_context == nil => return Err(FrameError.Invalid)
+            info.platform_info.device_context == nil => return (FrameError.Invalid)!
 
-        return Ok(FrameContext {
+        return FrameContext {
             window         : info.platform_info.window
             device_context : info.platform_info.device_context
             gl_context     : info.platform_info.gl_context
             width          : info.platform_info.width
             height         : info.platform_info.height
-        })
+        }
     }
 
     frame_windows_mark_closed :: fn (system: ^FrameSystem, frame: ^Frame) {

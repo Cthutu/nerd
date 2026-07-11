@@ -8,8 +8,7 @@
 --
 -- Typical use is to import `std.image`, get a byte slice with `@embed`, pass it
 -- to `Image.load_bytes(bytes, desired_channels)`, handle the returned
--- `Result[Image, ImageError]`, and `defer image.free()` after a successful
--- decode.
+-- `Image\ImageError`, and `defer image.free()` after a successful decode.
 --
 -- `desired_channels` can be `0` to preserve the source channel count, or `1`,
 -- `2`, `3`, or `4` to request greyscale, greyscale-alpha, RGB, or RGBA output.

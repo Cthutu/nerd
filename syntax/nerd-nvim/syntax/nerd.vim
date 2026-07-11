@@ -9,7 +9,7 @@ syn keyword nerdKeyword fn return break again for on else defer assert as plex u
 syn keyword nerdType i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 bool isize usize string void
 syn match nerdComment "--.*$"
 syn match nerdNumber "\v<\d+(\.\d+)?>"
-syn match nerdOperator "::\|:=\|=>\|->\|\.\.<\|\.\.=\|==\|!=\|<=\|>=\|&&\|[|][|]\|[+*/%<>=:|&^$-]"
+syn match nerdOperator "::\|:=\|=>\|->\|\.\.<\|\.\.=\|==\|!=\|<=\|>=\|&&\|[|][|]\|[+*/%<>=:|&^$?\\-]"
 syn region nerdTripleString start=+"""+ skip=+\\\\\|\\"+ end=+"""+
 syn region nerdCString start=+c"+ skip=+\\\\\|\\"+ end=+"+
 syn region nerdString start=+"+ skip=+\\\\\|\\"+ end=+"+

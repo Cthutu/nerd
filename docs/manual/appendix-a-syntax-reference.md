@@ -1,5 +1,16 @@
 # Appendix A: Syntax Reference
 
+Optional and result forms:
+
+```bnf
+optional-type ::= '?' type-primary
+result-type   ::= type-primary '\\' type
+error-inject  ::= expression '!'
+propagate     ::= expression '?'
+extract-on    ::= 'on' expression '=>' [ '[' IDENT ']' ] branch-expression
+                  'else' [ '[' IDENT ']' ] branch-expression
+```
+
 [Manual Index](README.md) | Previous: [Diagnostics And Debugging](part13-diagnostics-and-debugging.md) | Next: [Language Reference](appendix-b-language-reference.md)
 
 This appendix is a compact source-level reference. Earlier parts explain the

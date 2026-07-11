@@ -4492,6 +4492,13 @@ internal LlvmValue llvm_coerce_value_to_type(LlvmFunctionContext* ctx,
 
     SemaTypeKind target_kind = llvm_type_kind(ctx->sema, target_type);
     SemaTypeKind source_kind = llvm_type_kind(ctx->sema, value.type_index);
+    if (target_kind == STK_Enum &&
+        (ctx->sema->types[target_type].flags & STF_Optional) &&
+        source_kind == STK_Nil) {
+        value.type_index = target_type;
+        value.value      = s("zeroinitializer");
+        return value;
+    }
     if ((target_kind == STK_Pointer || target_kind == STK_DynamicArray ||
          target_kind == STK_Box) &&
         source_kind == STK_Nil &&
@@ -7903,6 +7910,136 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
         };
     case HIR_EXPR_NilLiteral:
         return llvm_default_value(ctx, expr->type_index);
+    case HIR_EXPR_Propagate:
+        {
+            if (function == NULL) {
+                return (LlvmValue){0};
+            }
+            LlvmValue operand =
+                llvm_emit_expr(ctx, function, expr->operand_expr_index);
+            if (!operand.ok ||
+                llvm_type_kind(ctx->sema, operand.type_index) != STK_Enum) {
+                return (LlvmValue){0};
+            }
+            const SemaType* source   = &ctx->sema->types[operand.type_index];
+            bool            optional = (source->flags & STF_Optional) != 0;
+            u32             success_variant = optional ? 1 : 0;
+            string enum_type = llvm_type_string(ctx, operand.type_index);
+            string tag       = llvm_temp(ctx);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = extractvalue " STRINGP " " STRINGP
+                      ", 0\n",
+                      STRINGV(tag),
+                      STRINGV(enum_type),
+                      STRINGV(operand.value));
+            string success     = llvm_temp(ctx);
+            i64    success_tag = llvm_enum_variant_discriminant(
+                ctx->sema, operand.type_index, success_variant);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = icmp eq i64 " STRINGP ", %lld\n",
+                      STRINGV(success),
+                      STRINGV(tag),
+                      (long long)success_tag);
+            string success_label = llvm_label(ctx, "propagate.success");
+            string failure_label = llvm_label(ctx, "propagate.failure");
+            sb_format(ctx->sb,
+                      "  br i1 " STRINGP ", label %%" STRINGP
+                      ", label %%" STRINGP "\n" STRINGP ":\n",
+                      STRINGV(success),
+                      STRINGV(success_label),
+                      STRINGV(failure_label),
+                      STRINGV(failure_label));
+
+            u32 return_type =
+                llvm_function_return_type(ctx->sema, function->type_index);
+            LlvmValue failure = llvm_default_value(ctx, return_type);
+            if (!optional) {
+                u32 source_error_type = llvm_enum_variant_payload_type(
+                    ctx->sema, operand.type_index, 1);
+                u32 source_bits = llvm_enum_storage_payload_bits(
+                    ctx->sema, operand.type_index);
+                string raw_error = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = extractvalue " STRINGP " " STRINGP
+                          ", 1\n",
+                          STRINGV(raw_error),
+                          STRINGV(enum_type),
+                          STRINGV(operand.value));
+                LlvmValue error_value = llvm_cast_from_storage_bits(
+                    ctx,
+                    (LlvmValue){
+                        .ok         = true,
+                        .type_index = sema_no_type(),
+                        .value      = raw_error,
+                    },
+                    source_bits,
+                    source_error_type);
+                u32 return_bits =
+                    llvm_enum_storage_payload_bits(ctx->sema, return_type);
+                LlvmValue stored_error =
+                    llvm_cast_to_storage_bits(ctx, error_value, return_bits);
+                if (!stored_error.ok) {
+                    return (LlvmValue){0};
+                }
+                string return_enum = llvm_type_string(ctx, return_type);
+                string with_tag    = llvm_temp(ctx);
+                i64    failure_tag =
+                    llvm_enum_variant_discriminant(ctx->sema, return_type, 1);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = insertvalue " STRINGP
+                          " poison, i64 %lld, 0\n",
+                          STRINGV(with_tag),
+                          STRINGV(return_enum),
+                          (long long)failure_tag);
+                string with_payload = llvm_temp(ctx);
+                string payload_type =
+                    string_format(ctx->arena, "i%u", return_bits);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = insertvalue " STRINGP " " STRINGP
+                          ", " STRINGP " " STRINGP ", 1\n",
+                          STRINGV(with_payload),
+                          STRINGV(return_enum),
+                          STRINGV(with_tag),
+                          STRINGV(payload_type),
+                          STRINGV(stored_error.value));
+                failure = (LlvmValue){
+                    .ok         = true,
+                    .type_index = return_type,
+                    .value      = with_payload,
+                };
+            }
+            if (!failure.ok || !llvm_emit_defers_to(ctx, function, 0, false) ||
+                !llvm_emit_box_cleanup_all(ctx)) {
+                return (LlvmValue){0};
+            }
+            string return_type_string = llvm_type_string(ctx, return_type);
+            sb_format(ctx->sb,
+                      "  ret " STRINGP " " STRINGP "\n" STRINGP ":\n",
+                      STRINGV(return_type_string),
+                      STRINGV(failure.value),
+                      STRINGV(success_label));
+            ctx->block_terminated = false;
+
+            u32 payload_type      = llvm_enum_variant_payload_type(
+                ctx->sema, operand.type_index, success_variant);
+            u32 storage_bits =
+                llvm_enum_storage_payload_bits(ctx->sema, operand.type_index);
+            string raw_payload = llvm_temp(ctx);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = extractvalue " STRINGP " " STRINGP
+                      ", 1\n",
+                      STRINGV(raw_payload),
+                      STRINGV(enum_type),
+                      STRINGV(operand.value));
+            return llvm_cast_from_storage_bits(ctx,
+                                               (LlvmValue){
+                                                   .ok         = true,
+                                                   .type_index = sema_no_type(),
+                                                   .value      = raw_payload,
+                                               },
+                                               storage_bits,
+                                               payload_type);
+        }
     case HIR_EXPR_Box:
         {
             u32 item_type =
@@ -10955,29 +11092,11 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     u32 next_type = next_function->type_index;
                     u32 option_type =
                         llvm_function_return_type(ctx->sema, next_type);
-                    if (llvm_type_kind(ctx->sema, option_type) != STK_Enum) {
+                    if (llvm_type_kind(ctx->sema, option_type) != STK_Enum ||
+                        !(ctx->sema->types[option_type].flags & STF_Optional)) {
                         return (LlvmValue){0};
                     }
-
-                    u32 some_variant = U32_MAX;
-                    for (u32 i = 0;
-                         i < ctx->sema->types[option_type].param_count;
-                         ++i) {
-                        u32 symbol =
-                            ctx->sema
-                                ->type_param_symbols[ctx->sema
-                                                         ->types[option_type]
-                                                         .first_param_type +
-                                                     i];
-                        if (string_eq_cstr(lex_symbol(ctx->lexer, symbol),
-                                           "Some")) {
-                            some_variant = i;
-                            break;
-                        }
-                    }
-                    if (some_variant == U32_MAX) {
-                        return (LlvmValue){0};
-                    }
+                    u32 some_variant  = 1;
 
                     string result_ptr = {0};
                     bool   has_result =
@@ -15992,6 +16111,8 @@ internal void llvm_render_global_init(StringBuilder* sb,
         if (!init_value.ok) {
             continue;
         }
+        init_value =
+            llvm_coerce_value_to_type(&ctx, init_value, value->type_index);
 
         string type = llvm_type_string(&ctx, value->type_index);
         sb_format(&body_sb,

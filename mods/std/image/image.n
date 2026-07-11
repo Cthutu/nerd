@@ -47,21 +47,21 @@ image_is_jpeg :: fn (bytes: []u8) -> bool {
     return bytes.count >= 3 && bytes[0] == 0xff && bytes[1] == 0xd8 && bytes[2] == 0xff
 }
 
-image_format :: fn (bytes: []u8) -> Option[ImageFormat] {
-    on image_is_png(bytes) => return Some(PNG)
-    on image_is_jpeg(bytes) => return Some(JPEG)
-    return None
+image_format :: fn (bytes: []u8) -> ?ImageFormat {
+    on image_is_png(bytes) => return PNG
+    on image_is_jpeg(bytes) => return JPEG
+    return nil
 }
 
 impl Image {
 
     -- Loads an image from bytes already available in memory.
-    pub load_bytes :: fn (bytes            : []u8,
-                          desired_channels : i32 = 0) -> Result[Self, ImageError] {
+    pub load_bytes :: fn (bytes : []u8,
+    desired_channels : i32 = 0) -> Self\ImageError {
         return on image_format(bytes) {
-            Some(PNG)   => png_decode(bytes, desired_channels)
-            Some(JPEG)  => jpeg_decode(bytes, desired_channels)
-            None        => Err(UnsupportedFormat)
+            PNG => png_decode(bytes, desired_channels)
+            JPEG => jpeg_decode(bytes, desired_channels)
+            else => UnsupportedFormat!
         }
     }
 
@@ -80,7 +80,7 @@ test "image placeholder load_bytes reports unsupported format" {
     result := Image.load_bytes(bytes[..])
 
     on result {
-        Err(UnsupportedFormat) => {
+        UnsupportedFormat! => {
         }
         else => {
             assert no
@@ -94,7 +94,7 @@ test "image format detects PNG signature" {
     format := image_format(bytes[..])
 
     on format {
-        Some(PNG) => {
+        PNG => {
             assert yes
         }
         else => {
@@ -109,7 +109,7 @@ test "image format detects JPEG signature" {
     format := image_format(bytes[..])
 
     on format {
-        Some(JPEG) => {
+        JPEG => {
             assert yes
         }
         else => {
@@ -123,22 +123,20 @@ test "image format rejects unknown data" {
 
     format := image_format(bytes[..])
 
-    on format {
-        None => {
-            assert yes
-        }
-        else => {
-            assert no
-        }
+    on format => [_present] {
+        assert no
+    }
+    else {
+        assert yes
     }
 }
 
 test "image free releases storage and clears dimensions" {
     image := Image {
-        width    : 2
-        height   : 2
+        width : 2
+        height : 2
         channels : 4
-        data     : nil
+        data : nil
     }
     image.data.resize_undefined_to(16)
 

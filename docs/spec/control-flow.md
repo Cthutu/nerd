@@ -32,8 +32,7 @@ Built-in collection iteration over arrays, slices, strings, and dynamic arrays
 binds pointer items. Range iteration binds integer values. User-defined
 iterator iteration is selected when the iterable type has a concrete
 `core.Iterator[Item]` implementation whose `next` method has type
-`fn (^Iter) -> Option[Item]`; `None` ends the loop and `Some(value)` binds the
-item.
+`fn (^Iter) -> ?Item`; `nil` ends the loop and a present value binds the item.
 
 `break` exits the nearest loop or the named labelled loop. `again` resumes the
 nearest loop or the named labelled loop. `break` may carry a value when the loop
@@ -61,11 +60,19 @@ Every branch form starts with `on`. Nerd has three `on` shapes:
 bool-on      ::= 'on' expression '=>' branch-expression [ 'else' branch-expression ]
 condition-on ::= 'on' '{' { expression '=>' branch-expression | 'else' '=>' branch-expression } '}'
 value-on     ::= 'on' expression '{' { pattern-list [ 'as' IDENT ] [ 'on' expression ] '=>' branch-expression | 'else' [ 'as' IDENT ] '=>' branch-expression } '}'
+extract-on   ::= 'on' expression '=>' [ '[' IDENT ']' ] branch-expression 'else' [ '[' IDENT ']' ] branch-expression
+sum-on       ::= 'on' expression '{' success-pattern-branches '}' 'else' '{' error-pattern-branches '}'
 ```
 
 Condition branches and guards must type as `bool`. Value-producing block-form
 `on` expressions must be exhaustive. Semantic analysis recognises exhaustive
 `else`, boolean coverage (`yes`/`no` or `true`/`false`), and enum variant coverage.
+
+For `?T`, extraction binds the present `T` and the `else` branch represents
+absence. For `T\E`, extraction binds successful `T` and may bind `E` after
+`else`. Full matching applies the first pattern table to the optional payload or
+result success payload. Optional `else { ... }` handles absence; result
+`else { ... }` is a pattern table over the error payload.
 
 ## Branch Expressions
 

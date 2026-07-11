@@ -39,15 +39,14 @@ main :: fn () {
 hir 0
 module module.0(128-generic-functions.input)
 import module.1(core)
-import import.0 prn from module.1(core).decl.13: fn (string) -> void
-import import.1 __impl_arena_alloc from module.1(core).decl.16: <unknown>
-import import.2 __impl_arena_alloc_array from module.1(core).decl.17: <unknown>
-import import.3 __impl_arena_alloc_bytes from module.1(core).decl.18: fn (^arena^arena, usize) -
-import import.4 __impl_arena_reset from module.1(core).decl.19: fn (^arena^arena) -
-import import.5 __impl_arena_mark from module.1(core).decl.20: fn (^arena^arena)
-import import.6 __impl_arena_restore from module.1(core).decl.21: fn (^arena^arena, u32) -
-import import.7 __impl_arena_done from module.1(core).decl.22: fn (^arena^arena) -
-import import.8 __impl_Option_T_expect from module.1(core).decl.27: <unknown>
+import import.0 prn from module.1(core).decl.14: fn (string) -> void
+import import.1 __impl_arena_alloc from module.1(core).decl.18: <unknown>
+import import.2 __impl_arena_alloc_array from module.1(core).decl.19: <unknown>
+import import.3 __impl_arena_alloc_bytes from module.1(core).decl.20: fn (^arena^arena, usize) -
+import import.4 __impl_arena_reset from module.1(core).decl.21: fn (^arena^arena) -
+import import.5 __impl_arena_mark from module.1(core).decl.22: fn (^arena^arena) 
+import import.6 __impl_arena_restore from module.1(core).decl.23: fn (^arena^arena, u32) -
+import import.7 __impl_arena_done from module.1(core).decl.24: fn (^arena^arena) -
 bind prn = import.0
 bind __impl_arena_alloc = import.1
 bind __impl_arena_alloc_array = import.2
@@ -56,7 +55,6 @@ bind __impl_arena_reset = import.4
 bind __impl_arena_mark = import.5
 bind __impl_arena_restore = import.6
 bind __impl_arena_done = import.7
-bind __impl_Option_T_expect = import.8
 bind core = module.1
 bind Box = type.0
 bind main = fn.0
@@ -69,7 +67,7 @@ func fn.0() -> void {
   let from_value: i32 = i32 call local.3(int_id)(i32 add(i32 local.2(explicit), i32 30))
   let box: plex { string value } = plex { string value } call fn (string) -> plex { string value } index(<unknown> decl.4(wrap), string string)(string local.1(text))
   let chosen: string = string call fn (string, string, bool) -> string index(<unknown> decl.2(choose), string string)(string field(plex { string value } local.5(box), value), string "bad", bool yes)
-  expr void call fn (string) -> void field(module bind.9(core), prn)(string interpolate(i32 local.0(number), <unknown> " ", string local.1(text), <unknown> " ", i32 local.2(explicit), <unknown> " ", i32 local.4(from_value), <unknown> " ", string local.6(chosen)))
+  expr void call fn (string) -> void field(module bind.8(core), prn)(string interpolate(i32 local.0(number), <unknown> " ", string local.1(text), <unknown> " ", i32 local.2(explicit), <unknown> " ", i32 local.4(from_value), <unknown> " ", string local.6(chosen)))
 }
 inst func fn.1(value: i32) -> i32 {
   return i32 local.7(value)

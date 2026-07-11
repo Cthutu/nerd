@@ -1179,6 +1179,14 @@ internal void format_emit_expr(StringBuilder* sb,
             if (!format_node_is_single_line(cst, lexer, node_index)) {
                 format_emit_plex_literal_multiline(
                     sb, cst, lexer, node_index, g_format_expr_indent_level);
+                u32 end = format_node_end_token_index(cst, lexer, node_index);
+                if (end < array_count(lexer->tokens) &&
+                    (lexer->tokens[end].kind == TK_Bang ||
+                     lexer->tokens[end].kind == TK_Question)) {
+                    format_trim_trailing_space_after_multiline_close(sb, '}');
+                    sb_append_char(
+                        sb, lexer->tokens[end].kind == TK_Bang ? '!' : '?');
+                }
                 break;
             }
 
@@ -1215,6 +1223,13 @@ internal void format_emit_expr(StringBuilder* sb,
                 sb_append_cstr(sb, "...");
             }
             sb_append_cstr(sb, " }");
+            u32 end = format_node_end_token_index(cst, lexer, node_index);
+            if (end < array_count(lexer->tokens) &&
+                (lexer->tokens[end].kind == TK_Bang ||
+                 lexer->tokens[end].kind == TK_Question)) {
+                sb_append_char(sb,
+                               lexer->tokens[end].kind == TK_Bang ? '!' : '?');
+            }
         }
         break;
     case CK_Assign:
@@ -1248,6 +1263,20 @@ internal void format_emit_expr(StringBuilder* sb,
     case CK_Deref:
         format_emit_expr(sb, cst, lexer, node->a, node_precedence);
         sb_append_char(sb, '^');
+        break;
+    case CK_ErrorInject:
+        format_emit_expr(sb, cst, lexer, node->a, node_precedence);
+        if (format_node_end_token_index(cst, lexer, node->a) !=
+            node->token_index) {
+            sb_append_char(sb, '!');
+        }
+        break;
+    case CK_Propagate:
+        format_emit_expr(sb, cst, lexer, node->a, node_precedence);
+        if (format_node_end_token_index(cst, lexer, node->a) !=
+            node->token_index) {
+            sb_append_char(sb, '?');
+        }
         break;
     case CK_ReturnExpr:
         sb_append_cstr(sb, "return");
@@ -1657,6 +1686,15 @@ internal void format_emit_expr(StringBuilder* sb,
     case CK_TypePointer:
         sb_append_char(sb, '^');
         format_emit_expr(sb, cst, lexer, node->a, node_precedence);
+        break;
+    case CK_TypeOptional:
+        sb_append_char(sb, '?');
+        format_emit_expr(sb, cst, lexer, node->a, node_precedence);
+        break;
+    case CK_TypeResult:
+        format_emit_expr(sb, cst, lexer, node->a, node_precedence);
+        sb_append_char(sb, '\\');
+        format_emit_expr(sb, cst, lexer, node->b, node_precedence);
         break;
     case CK_TypePlex:
         {
@@ -3114,11 +3152,22 @@ internal u32 format_node_end_token_index(const Cst*   cst,
     case CK_TypePlex:
     case CK_TypeEnum:
     case CK_Trait:
-        return format_find_matching_close_after_token(
-            lexer, node->token_index, TK_LBrace, TK_RBrace);
+        {
+            u32 close = format_find_matching_close_after_token(
+                lexer, node->token_index, TK_LBrace, TK_RBrace);
+            if (close + 1 < array_count(lexer->tokens) &&
+                (lexer->tokens[close + 1].kind == TK_Bang ||
+                 lexer->tokens[close + 1].kind == TK_Question)) {
+                return close + 1;
+            }
+            return close;
+        }
     case CK_TypeApply:
         return format_find_matching_close_token_index(
             lexer, node->token_index, TK_LBracket, TK_RBracket);
+    case CK_ErrorInject:
+    case CK_Propagate:
+        return node->token_index;
     case CK_TupleField:
     case CK_Field:
         return node->token_index;

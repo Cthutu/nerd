@@ -419,6 +419,8 @@ bool ast_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp)
     case TK_LBracket:
     case TK_LBrace:
     case TK_with:
+    case TK_Bang:
+    case TK_Question:
         *out_left_bp  = AST_BP_POSTFIX;
         *out_right_bp = AST_BP_POSTFIX;
         return true;
@@ -923,6 +925,178 @@ internal bool ast_parse_on_branch_expr(AstParseState* state, u32* out_node)
     return parsed;
 }
 
+internal bool ast_parse_on_extract_binder(AstParseState* state,
+                                          u32*           out_symbol,
+                                          u32*           out_token)
+{
+    *out_symbol = U32_MAX;
+    *out_token  = U32_MAX;
+    if (state->token.kind != TK_LBracket) {
+        return true;
+    }
+    if (!ast_next_token(state) || state->token.kind != TK_Symbol) {
+        return error_0203_expected_token(state->lexer->source,
+                                         ast_token_span(state, &state->token),
+                                         TK_Symbol,
+                                         state->token.kind);
+    }
+    *out_symbol = state->token.value.symbol_handle;
+    *out_token  = state->token.token_index;
+    if (!ast_expect_token(state, TK_RBracket) || !ast_next_token(state)) {
+        return false;
+    }
+    return true;
+}
+
+internal bool ast_parse_on_error_pattern_table(AstParseState* state,
+                                               Array(AstOnBranch) * branches)
+{
+    if (!ast_next_token(state)) {
+        return error_0201_missing_value(state->token.source,
+                                        ast_token_span(state, &state->token),
+                                        TK_RBrace);
+    }
+    while (state->token.kind != TK_RBrace) {
+        AstOnBranch branch = {
+            .token_index          = state->token.token_index,
+            .pattern_index        = U32_MAX,
+            .guard_node_index     = U32_MAX,
+            .flags                = AOBF_Error,
+            .binder_symbol_handle = U32_MAX,
+            .binder_token_index   = U32_MAX,
+        };
+        Array(u32) patterns = NULL;
+        if (state->token.kind == TK_else) {
+            u32 pattern_index = (u32)array_count(state->patterns);
+            array_push(state->patterns,
+                       (AstPattern){
+                           .kind        = APK_Ignore,
+                           .token_index = state->token.token_index,
+                       });
+            array_push(patterns, pattern_index);
+            if (!ast_next_token(state)) {
+                array_free(patterns);
+                return false;
+            }
+        }
+        for (;;) {
+            if (array_count(patterns) > 0) {
+                break;
+            }
+            u32  pattern           = 0;
+            bool saved_branch_head = state->stop_before_on_branch_head;
+            bool saved_boundary    = state->allow_statement_boundary;
+            state->stop_before_on_branch_head = true;
+            state->allow_statement_boundary   = true;
+            if (ast_pattern_starts_braced_enum_variant(state)) {
+                if (!ast_parse_enum_variant_pattern(state, &pattern)) {
+                    state->stop_before_on_branch_head = saved_branch_head;
+                    state->allow_statement_boundary   = saved_boundary;
+                    array_free(patterns);
+                    return false;
+                }
+            } else if (!ast_parse_pattern(state, &pattern)) {
+                state->stop_before_on_branch_head = saved_branch_head;
+                state->allow_statement_boundary   = saved_boundary;
+                array_free(patterns);
+                return false;
+            }
+            state->stop_before_on_branch_head = saved_branch_head;
+            state->allow_statement_boundary   = saved_boundary;
+            array_push(patterns, pattern);
+            if (state->token.kind != TK_Comma &&
+                ast_peek_kind_at(state, 0) != TK_Comma) {
+                break;
+            }
+            if (state->token.kind != TK_Comma && !ast_next_token(state)) {
+                array_free(patterns);
+                return false;
+            }
+            while (state->token.kind == TK_Comma) {
+                if (!ast_next_token(state)) {
+                    array_free(patterns);
+                    return false;
+                }
+            }
+        }
+        branch.pattern_index = (u32)array_count(state->pattern_items);
+        branch.pattern_count = (u32)array_count(patterns);
+        for (u32 i = 0; i < branch.pattern_count; ++i) {
+            array_push(state->pattern_items, patterns[i]);
+        }
+        array_free(patterns);
+
+        if (state->token.kind != TK_as && state->token.kind != TK_on &&
+            state->token.kind != TK_FatArrow &&
+            (ast_peek_kind_at(state, 0) == TK_as ||
+             ast_peek_kind_at(state, 0) == TK_on ||
+             ast_peek_kind_at(state, 0) == TK_FatArrow) &&
+            !ast_next_token(state)) {
+            return false;
+        }
+
+        if (state->token.kind == TK_as) {
+            if (!ast_next_token(state) || !ast_next_token(state) ||
+                state->token.kind != TK_Symbol) {
+                return error_0203_expected_token(
+                    state->lexer->source,
+                    ast_token_span(state, &state->token),
+                    TK_Symbol,
+                    state->token.kind);
+            }
+            branch.binder_symbol_handle = state->token.value.symbol_handle;
+            branch.binder_token_index   = state->token.token_index;
+            if (!ast_next_token(state)) {
+                return false;
+            }
+        }
+        if (state->token.kind == TK_on) {
+            if (!ast_next_token(state) || !ast_next_token(state) ||
+                !ast_parse_expr_bp(state, 0, &branch.guard_node_index)) {
+                return false;
+            }
+        }
+        if (state->token.kind != TK_FatArrow) {
+            return error_0203_expected_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                TK_FatArrow,
+                state->token.kind);
+        }
+        if (state->token.token_index == state->token_index &&
+            !ast_next_token(state)) {
+            return false;
+        }
+        if (!ast_next_token(state) ||
+            !ast_parse_on_branch_expr(state, &branch.expr_node_index)) {
+            return false;
+        }
+        array_push(*branches, branch);
+    }
+    return ast_expect_token(state, TK_RBrace);
+}
+
+internal bool ast_on_else_is_pattern_table(const AstParseState* state)
+{
+    u32 depth = 0;
+    for (u32 i = state->token_index; i < array_count(state->lexer->tokens);
+         ++i) {
+        TokenKind kind = state->lexer->tokens[i].kind;
+        if (kind == TK_LBrace || kind == TK_LParen || kind == TK_LBracket) {
+            depth++;
+        } else if (kind == TK_RBrace || kind == TK_RParen ||
+                   kind == TK_RBracket) {
+            if (depth == 0) {
+                return false;
+            }
+            depth--;
+        } else if (kind == TK_FatArrow && depth == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
 internal bool
 ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
 {
@@ -1162,6 +1336,16 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
                         array_free(branch_patterns);
                         return false;
                     }
+                    if (pattern_root < array_count(state->patterns) &&
+                        state->patterns[pattern_root].kind == APK_Value &&
+                        state->patterns[pattern_root].a <
+                            array_count(state->nodes) &&
+                        state->nodes[state->patterns[pattern_root].a].kind ==
+                            AK_ErrorInject) {
+                        state->patterns[pattern_root].a =
+                            state->nodes[state->patterns[pattern_root].a].a;
+                        branch.flags |= AOBF_Error;
+                    }
                     array_push(branch_patterns, pattern_root);
                     if (state->token.kind != TK_Comma &&
                         ast_peek_kind_at(state, 0) != TK_Comma) {
@@ -1201,6 +1385,15 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
                     array_push(state->pattern_items, branch_patterns[pattern]);
                 }
                 array_free(branch_patterns);
+                if (state->token.kind == TK_Bang) {
+                    branch.flags |= AOBF_Error;
+                    if (!ast_next_token(state)) {
+                        return error_0201_missing_value(
+                            state->token.source,
+                            ast_token_span(state, &state->token),
+                            TK_FatArrow);
+                    }
+                }
                 if (state->token.kind == TK_as) {
                     if (state->token.token_index == state->token_index &&
                         !ast_next_token(state)) {
@@ -1298,6 +1491,39 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
             return false;
         }
 
+        if (ast_peek_kind_at(state, 0) == TK_else) {
+            if (!ast_expect_token(state, TK_else)) {
+                array_free(branches);
+                return false;
+            }
+            AstToken else_token = state->token;
+            if (!ast_expect_token(state, TK_LBrace)) {
+                array_free(branches);
+                return false;
+            }
+            if (ast_on_else_is_pattern_table(state)) {
+                if (!ast_parse_on_error_pattern_table(state, &branches)) {
+                    array_free(branches);
+                    return false;
+                }
+            } else {
+                AstOnBranch branch = {
+                    .token_index          = else_token.token_index,
+                    .pattern_index        = U32_MAX,
+                    .pattern_count        = 0,
+                    .guard_node_index     = U32_MAX,
+                    .flags                = AOBF_Else,
+                    .binder_symbol_handle = U32_MAX,
+                    .binder_token_index   = U32_MAX,
+                };
+                if (!ast_parse_on_branch_expr(state, &branch.expr_node_index)) {
+                    array_free(branches);
+                    return false;
+                }
+                array_push(branches, branch);
+            }
+        }
+
         u32 on_index     = (u32)array_count(state->ons);
         u32 first_branch = (u32)array_count(state->on_branches);
         u32 branch_count = (u32)array_count(branches);
@@ -1337,6 +1563,13 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
     if (!ast_next_token(state)) {
         return error_0201_missing_value(
             state->token.source, ast_token_span(state, &state->token), TK_else);
+    }
+
+    u32 success_binder       = U32_MAX;
+    u32 success_binder_token = U32_MAX;
+    if (!ast_parse_on_extract_binder(
+            state, &success_binder, &success_binder_token)) {
+        return false;
     }
 
     u32  true_expr_node             = 0;
@@ -1416,6 +1649,13 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
             state->token.source, ast_token_span(state, &state->token), TK_EOF);
     }
 
+    u32 error_binder       = U32_MAX;
+    u32 error_binder_token = U32_MAX;
+    if (!ast_parse_on_extract_binder(
+            state, &error_binder, &error_binder_token)) {
+        return false;
+    }
+
     u32 false_expr_node             = 0;
     saved_statement_boundary        = state->allow_statement_boundary;
     state->allow_statement_boundary = true;
@@ -1454,8 +1694,8 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
                    .pattern_count        = 1,
                    .guard_node_index     = U32_MAX,
                    .flags                = AOBF_None,
-                   .binder_symbol_handle = U32_MAX,
-                   .binder_token_index   = U32_MAX,
+                   .binder_symbol_handle = success_binder,
+                   .binder_token_index   = success_binder_token,
                });
     array_push(state->on_branches,
                (AstOnBranch){
@@ -1463,14 +1703,16 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
                    .expr_node_index      = false_expr_node,
                    .guard_node_index     = U32_MAX,
                    .flags                = AOBF_Else,
-                   .binder_symbol_handle = U32_MAX,
-                   .binder_token_index   = U32_MAX,
+                   .binder_symbol_handle = error_binder,
+                   .binder_token_index   = error_binder_token,
                });
 
     u32 on_index = (u32)array_count(state->ons);
     array_push(state->ons,
                (AstOnInfo){
-                   .kind         = AOK_Bool,
+                   .kind = success_binder != U32_MAX || error_binder != U32_MAX
+                               ? AOK_Extract
+                               : AOK_Bool,
                    .first_branch = first_branch,
                    .branch_count = 2,
                });
@@ -1968,6 +2210,17 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
             .a           = left_node,
         };
         return ast_emit_node(state, node, out_node);
+    }
+
+    if (op.kind == TK_Bang || op.kind == TK_Question) {
+        return ast_emit_node(
+            state,
+            (AstNode){
+                .kind = op.kind == TK_Bang ? AK_ErrorInject : AK_Propagate,
+                .token_index = op.token_index,
+                .a           = left_node,
+            },
+            out_node);
     }
 
     if (!ast_infix_binding_power(op.kind, &left_bp, &right_bp)) {

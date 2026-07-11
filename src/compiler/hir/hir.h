@@ -67,6 +67,7 @@ typedef enum : u8 {
     HIR_EXPR_BuiltinMacro,
     HIR_EXPR_BoolLiteral,
     HIR_EXPR_NilLiteral,
+    HIR_EXPR_Propagate,
     HIR_EXPR_FunctionRef,
     HIR_EXPR_LocalRef,
     HIR_EXPR_Unary,

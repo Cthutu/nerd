@@ -1,11 +1,11 @@
-first :: fn [T] (iter: T) -> Option[i32]
+first :: fn [T] (iter: T) -> ?i32
 where T: Iterator[i32] {
-    return None
+    return nil
 }
 
 main :: fn () -> i32 {
-    _value: Option[i32] = Some(21)
-    _status: Result[i32, string] = Ok(21)
+    _value: ?i32 = 21
+    _status: i32\string = 21
     return 42
 }
 ¬

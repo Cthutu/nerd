@@ -33,6 +33,6 @@ main :: fn () -> i32 {
     ],
     "notes": [],
     "help": [
-        "Change the impl function return type to `Self`, `^Self`, or a type such as `Option[Self]`, or call it through a receiver value."
+        "Change the impl function return type to `Self`, `^Self`, or a type such as `?Self`, or call it through a receiver value."
     ]
 }

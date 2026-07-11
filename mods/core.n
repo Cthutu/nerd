@@ -138,29 +138,8 @@ pub Default :: trait {
     default :: fn () -> Self
 }
 
--- Represents either no value or one value of type `T`.
-pub Option :: enum [T] {
-    None
-    Some(T)
-}
-
-impl Option[T] {
-
-    -- Returns the contained value, or aborts with `message`.
-    pub expect :: fn (self: Self, message: string) -> T {
-        return on self { Some(value) => value None => abort(message) }
-    }
-
-}
-
--- Represents either a successful value or an error value.
-pub Result :: enum [T, E] {
-    Ok(T)
-    Err(E)
-}
-
 -- Defines the canonical iterator trait used by `for in`.
 pub Iterator :: trait [Item] for Iter {
     -- Returns the next item, or `None` when iteration is complete.
-    next :: fn (^Iter) -> Option[Item]
+    next :: fn (^Iter) -> ?Item
 }

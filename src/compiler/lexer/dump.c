@@ -90,6 +90,10 @@ string token_kind_to_string(TokenKind kind)
         return string_from_cstr("Bang `!`");
     case TK_BangEqual:
         return string_from_cstr("BangEqual `!=`");
+    case TK_Question:
+        return string_from_cstr("Question `?`");
+    case TK_Backslash:
+        return string_from_cstr("Backslash `\\`");
     case TK_Amp:
         return string_from_cstr("Amp `&`");
     case TK_AmpEqual:

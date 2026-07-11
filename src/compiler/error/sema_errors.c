@@ -1312,7 +1312,7 @@ bool error_0344_invalid_associated_function_return(NerdSource source,
                         STRINGV(symbol));
     error_add_help(&error,
                    "Change the impl function return type to `Self`, `^Self`, "
-                   "or a type such as `Option[Self]`, or call it through a "
+                   "or a type such as `?Self`, or call it through a "
                    "receiver value.");
     error_render(&error);
     return false;

@@ -1,5 +1,10 @@
 # Appendix B: Language Reference
 
+`?T` is a built-in optional value and `T\E` is a built-in result value.
+Context constructs present/success values, `nil` constructs optional absence,
+postfix `!` constructs a result error, and postfix `?` propagates failure.
+Neither wrapper exposes generic enum constructors or variant names.
+
 [Manual Index](README.md) | Previous: [Syntax Reference](appendix-a-syntax-reference.md) | Next: none
 
 This appendix summarises rules that are useful to check quickly.

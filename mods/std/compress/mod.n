@@ -8,7 +8,7 @@
 --
 -- Typical use is to import `std.compress`, call
 -- `compressed.deflate_zlib(max_output = 0)` on a byte slice, handle the
--- returned `Result[[..]u8, CompressionError]`, and `defer bytes.free()` after a
+-- returned `[..]u8\CompressionError`, and `defer bytes.free()` after a
 -- successful decode.
 --
 -- `deflate_zlib` returns owned decompressed bytes. Pass `max_output` when the

@@ -4,13 +4,13 @@ Counter :: plex {
 }
 
 impl Iterator[i32] for Counter {
-    next :: fn (self: ^Self) -> Option[i32] {
-        result: Option[i32] = None
+    next :: fn (self: ^Self) -> ?i32 {
+        result: ?i32 = nil
         on self.current < self.end {
             yes => {
                 value := self.current
                 self.current += 1
-                result = Some(value)
+                result = value
             }
             else => {}
         }
@@ -24,13 +24,13 @@ PtrIter :: plex {
 }
 
 impl Iterator[^i32] for PtrIter {
-    next :: fn (self: ^Self) -> Option[^i32] {
-        result: Option[^i32] = None
+    next :: fn (self: ^Self) -> ?^i32 {
+        result: ?^i32 = nil
         on self.index < self.data.count {
             yes => {
                 ptr := ^self.data[self.index]
                 self.index += 1
-                result = Some(ptr)
+                result = ptr
             }
             else => {}
         }

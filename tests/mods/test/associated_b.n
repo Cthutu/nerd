@@ -4,8 +4,8 @@ pub B :: plex {
 
 impl B {
 
-    pub new :: fn (_left: i32, _right: i32) -> Option[Self] {
-        return Some(Self { id: 0 })
+    pub new :: fn (_left: i32, _right: i32) -> ?Self {
+        return Self { id: 0 }
     }
 
 }

@@ -70,48 +70,56 @@ impl PngPixels {
 
 }
 
-png_invalid :: fn (message: string) -> Result[PngContainer, ImageError] {
-    return Err(ImageError.InvalidData { message })
+png_invalid :: fn (message: string) -> PngContainer\ImageError {
+    return (ImageError.InvalidData {
+        message
+    })!
 }
 
-png_error :: fn (error: ImageError) -> Result[PngContainer, ImageError] {
-    return Err(error)
+png_error :: fn (error: ImageError) -> PngContainer\ImageError {
+    return error!
 }
 
-png_ok :: fn (png: PngContainer) -> Result[PngContainer, ImageError] {
-    return Ok(png)
+png_ok :: fn (png: PngContainer) -> PngContainer\ImageError {
+    return png
 }
 
-png_image_invalid :: fn (message: string) -> Result[Image, ImageError] {
-    return Err(ImageError.InvalidData { message })
+png_image_invalid :: fn (message: string) -> Image\ImageError {
+    return (ImageError.InvalidData {
+        message
+    })!
 }
 
-png_image_error :: fn (error: ImageError) -> Result[Image, ImageError] {
-    return Err(error)
+png_image_error :: fn (error: ImageError) -> Image\ImageError {
+    return error!
 }
 
-png_image_ok :: fn (image: Image) -> Result[Image, ImageError] {
-    return Ok(image)
+png_image_ok :: fn (image: Image) -> Image\ImageError {
+    return image
 }
 
-png_pixels_invalid :: fn (message: string) -> Result[PngPixels, ImageError] {
-    return Err(ImageError.InvalidData { message })
+png_pixels_invalid :: fn (message: string) -> PngPixels\ImageError {
+    return (ImageError.InvalidData {
+        message
+    })!
 }
 
-png_pixels_error :: fn (error: ImageError) -> Result[PngPixels, ImageError] {
-    return Err(error)
+png_pixels_error :: fn (error: ImageError) -> PngPixels\ImageError {
+    return error!
 }
 
-png_pixels_ok :: fn (pixels: PngPixels) -> Result[PngPixels, ImageError] {
-    return Ok(pixels)
+png_pixels_ok :: fn (pixels: PngPixels) -> PngPixels\ImageError {
+    return pixels
 }
 
-png_invalid_chunk :: fn (message: string) -> Result[PngChunk, ImageError] {
-    return Err(ImageError.InvalidData { message })
+png_invalid_chunk :: fn (message: string) -> PngChunk\ImageError {
+    return (ImageError.InvalidData {
+        message
+    })!
 }
 
-png_chunk_error :: fn (error: ImageError) -> Result[PngChunk, ImageError] {
-    return Err(error)
+png_chunk_error :: fn (error: ImageError) -> PngChunk\ImageError {
+    return error!
 }
 
 -- Checks the fixed eight-byte PNG signature.
@@ -179,7 +187,7 @@ png_parse_ihdr :: fn (chunk: PngChunk) -> PngIhdr {
 }
 
 -- Reads and validates one chunk from the input stream.
-png_read_chunk :: fn (reader: ^ImageReader) -> Result[PngChunk, ImageError] {
+png_read_chunk :: fn (reader: ^ImageReader) -> PngChunk\ImageError {
     on reader.remaining() < 8 => return png_chunk_error(UnexpectedEnd)
 
     chunk_length := png_be_u32_at(reader.bytes, reader.offset)
@@ -202,56 +210,58 @@ png_read_chunk :: fn (reader: ^ImageReader) -> Result[PngChunk, ImageError] {
         return png_invalid_chunk("PNG chunk CRC mismatch")
     }
 
-    return Ok({
+    return {
         length : chunk_length
         kind   : chunk_kind
         data   : chunk_data
         crc    : chunk_crc
-    })
+    }
 }
 
 -- Parses the PNG container and collects IDAT chunk payloads.
-png_parse :: fn (bytes: []u8) -> Result[PngContainer, ImageError] {
+png_parse :: fn (bytes: []u8) -> PngContainer\ImageError {
     on !image_is_png(bytes) => return png_error(UnsupportedFormat)
 
     reader := ImageReader.new(bytes)
     signature := reader.take(PNG_SIGNATURE_SIZE)
     on signature {
-        Err(error) => return png_error(error)
-        Ok(value) => {
+        error! => return png_error(error)
+        value => {
             on !png_signature_matches(value) => return png_error(UnsupportedFormat)
         }
     }
 
     ihdr := PngIhdr {
-        width       : 0
-        height      : 0
-        bit_depth   : 0
-        color_type  : 0
+        width : 0
+        height : 0
+        bit_depth : 0
+        color_type : 0
         compression : 0
-        filter      : 0
-        interlace   : 0
+        filter : 0
+        interlace : 0
     }
-    idat_chunks  : [..][]u8 = nil
-    palette      : []u8     = []
-    transparency : []u8     = []
+    idat_chunks : [..][]u8 = nil
+    palette : []u8 = []
+    transparency : []u8 = []
 
     seen_ihdr := no
     seen_plte := no
     seen_idat := no
 
     for !reader.done() {
-        chunk : Result[PngChunk, ImageError] = png_read_chunk(^reader)
+        chunk : PngChunk\ImageError = png_read_chunk(^reader)
         on chunk {
-            Ok(value) => {
+            value => {
                 on (value.kind == PNG_CHUNK_IHDR) => {
                     on seen_ihdr => {
                         idat_chunks.free()
-                        return png_invalid("PNG contains more than one IHDR chunk")
+                        return png_invalid("PNG contains more than one IHDR "
+                            +"chunk")
                     }
                     on seen_idat => {
                         idat_chunks.free()
-                        return png_invalid("PNG IHDR chunk must appear before IDAT")
+                        return png_invalid("PNG IHDR chunk must appear before "
+                            +"IDAT")
                     }
 
                     on (value.length != 13) => {
@@ -260,10 +270,10 @@ png_parse :: fn (bytes: []u8) -> Result[PngContainer, ImageError] {
                     }
                     header := png_parse_ihdr(value)
 
-                    on header.width == 0 ||
-                        header.height == 0 => {
+                    on header.width == 0 || header.height == 0 => {
                         idat_chunks.free()
-                        return png_invalid("PNG IHDR width and height must be nonzero")
+                        return png_invalid("PNG IHDR width and height must be "
+                            +"nonzero")
                     }
                     ihdr.width = header.width
                     ihdr.height = header.height
@@ -289,19 +299,19 @@ png_parse :: fn (bytes: []u8) -> Result[PngContainer, ImageError] {
                     }
                     on seen_idat => {
                         idat_chunks.free()
-                        return png_invalid("PNG PLTE chunk must appear before IDAT")
+                        return png_invalid("PNG PLTE chunk must appear before "
+                            +"IDAT")
                     }
                     on seen_plte => {
                         idat_chunks.free()
-                        return png_invalid("PNG contains more than one PLTE chunk")
+                        return png_invalid("PNG contains more than one PLTE "
+                            +"chunk")
                     }
-                    on value.length == 0 ||
-                        (value.length % 3) != 0 ||
-                        value.length > 768 => {
+                    on value.length == 0 ||(value.length % 3) != 0 || value.length > 768 => {
                         idat_chunks.free()
                         return png_invalid("PNG PLTE chunk has invalid length")
                     }
-                    palette   = value.data
+                    palette = value.data
                     seen_plte = yes
                 }
                 on (value.kind == PNG_CHUNK_tRNS) => {
@@ -311,11 +321,13 @@ png_parse :: fn (bytes: []u8) -> Result[PngContainer, ImageError] {
                     }
                     on seen_idat => {
                         idat_chunks.free()
-                        return png_invalid("PNG tRNS chunk must appear before IDAT")
+                        return png_invalid("PNG tRNS chunk must appear before "
+                            +"IDAT")
                     }
                     on transparency.count != 0 => {
                         idat_chunks.free()
-                        return png_invalid("PNG contains more than one tRNS chunk")
+                        return png_invalid("PNG contains more than one tRNS "
+                            +"chunk")
                     }
                     transparency = value.data
                 }
@@ -337,11 +349,12 @@ png_parse :: fn (bytes: []u8) -> Result[PngContainer, ImageError] {
                         idat_chunks
                         palette
                         transparency
-                    })
+                    }
+                    )
                 }
                 again
             }
-            Err(error) => {
+            error! => {
                 idat_chunks.free()
                 return png_error(error)
             }
@@ -349,41 +362,41 @@ png_parse :: fn (bytes: []u8) -> Result[PngContainer, ImageError] {
     }
 
     idat_chunks.free()
-    return Err(UnexpectedEnd)
+    return UnexpectedEnd!
 }
 
 -- Returns the bytes per pixel used by PNG filtering for a supported colour
 -- type.
-png_scanline_channels :: fn (color_type: u8) -> Result[i32, ImageError] {
+png_scanline_channels :: fn (color_type: u8) -> i32\ImageError {
     return on color_type {
-        0     => Ok(1)
-        2     => Ok(3)
-        3     => Ok(1)
-        4     => Ok(2)
-        6     => Ok(4)
-        else  => Err(UnsupportedFormat)
+        0     => 1
+        2     => 3
+        3     => 1
+        4     => 2
+        6     => 4
+        else  => UnsupportedFormat!
     }
 }
 
 -- Resolves the caller's desired output channels for the supported modes.
 png_desired_channels :: fn (source_channels  : i32,
-                            desired_channels : i32) -> Result[i32, ImageError] {
-    on desired_channels == 0 => return Ok(source_channels)
+                            desired_channels : i32) -> i32\ImageError {
+    on desired_channels == 0 => return source_channels
     on desired_channels == 1 ||
         desired_channels == 2 ||
         desired_channels == 3 ||
-        desired_channels == 4 => return Ok(desired_channels)
-    return Err(UnsupportedFormat)
+        desired_channels == 4 => return desired_channels
+    return UnsupportedFormat!
 }
 
 -- Rejects PNG features that this decoder does not implement yet.
-png_validate_ihdr_for_decode :: fn (ihdr: PngIhdr) -> Result[i32, ImageError] {
-    on ihdr.bit_depth != 8 => return Err(UnsupportedFormat)
-    on ihdr.interlace != 0 => return Err(UnsupportedFormat)
+png_validate_ihdr_for_decode :: fn (ihdr: PngIhdr) -> i32\ImageError {
+    on ihdr.bit_depth != 8 => return UnsupportedFormat!
+    on ihdr.interlace != 0 => return UnsupportedFormat!
     on ihdr.compression != 0 ||
-        ihdr.filter != 0 => return Err(ImageError.InvalidData {
+        ihdr.filter != 0 => return (ImageError.InvalidData {
         message: "Unsupported PNG encoding"
-    })
+    })!
     return png_scanline_channels(ihdr.color_type)
 }
 
@@ -433,12 +446,13 @@ png_unfilter_byte :: fn (filter     : u8,
 png_unfilter :: fn (bytes             : []u8,
                     width             : u32,
                     height            : u32,
-                    scanline_channels : i32) -> Result[[..]u8, ImageError] {
+                    scanline_channels : i32) -> [..]u8\ImageError {
     row_bytes := width.as(usize) * scanline_channels.as(usize)
     expected_bytes := height.as(usize) * (row_bytes + 1)
 
-    on bytes.count != expected_bytes => return Err(ImageError.InvalidData { message: "PNG decompressed data has unexpected size" })
-
+    on bytes.count != expected_bytes => return (ImageError.InvalidData {
+        message: "PNG decompressed data has unexpected size"
+    })!
     pixels : [..]u8 = nil
 
     for y in [0 .. height.as(usize)] {
@@ -450,9 +464,9 @@ png_unfilter :: fn (bytes             : []u8,
 
         on filter > 4 => {
             pixels.free()
-            return Err(ImageError.InvalidData {
+            return (ImageError.InvalidData {
                 message: "Invalid PNG scanline filter"
-            })
+            })!
         }
         for x in [0 .. row_bytes] {
             left := on x >= scanline_channels.as(usize) => pixels[y * row_bytes + x - scanline_channels.as(usize)] else 0
@@ -463,7 +477,7 @@ png_unfilter :: fn (bytes             : []u8,
         }
     }
 
-    return Ok(pixels)
+    return pixels
 }
 
 -- Converts one RGB triplet to a byte greyscale value.
@@ -473,7 +487,7 @@ png_luma :: fn (red: u8, green: u8, blue: u8) -> u8 {
 
 -- Expands greyscale tRNS into greyscale-alpha pixels when present.
 png_expand_greyscale :: fn (pixels       : []u8,
-                            transparency : []u8) -> Result[PngPixels, ImageError] {
+                            transparency : []u8) -> PngPixels\ImageError {
     on transparency.count == 0 => {
         output : [..]u8 = nil
         output.resize_undefined_to(pixels.count)
@@ -500,7 +514,7 @@ png_expand_greyscale :: fn (pixels       : []u8,
 
 -- Expands truecolour tRNS into RGBA pixels when present.
 png_expand_truecolour :: fn (pixels       : []u8,
-                             transparency : []u8) -> Result[PngPixels, ImageError] {
+                             transparency : []u8) -> PngPixels\ImageError {
     on transparency.count == 0 => {
         output : [..]u8 = nil
         output.resize_undefined_to(pixels.count)
@@ -538,7 +552,7 @@ png_expand_truecolour :: fn (pixels       : []u8,
 -- Expands palette indices into RGB or RGBA pixels.
 png_expand_indexed :: fn (indices      : []u8,
                           palette      : []u8,
-                          transparency : []u8) -> Result[PngPixels, ImageError] {
+                          transparency : []u8) -> PngPixels\ImageError {
     on palette.count == 0 => return png_pixels_invalid("PNG indexed image is "
         +"missing PLTE")
     on transparency.count > palette.count / 3 => return png_pixels_invalid("PNG"
@@ -573,7 +587,7 @@ png_expand_indexed :: fn (indices      : []u8,
 png_expand_pixels :: fn (pixels       : []u8,
                          ihdr         : PngIhdr,
                          palette      : []u8,
-                         transparency : []u8) -> Result[PngPixels, ImageError] {
+                         transparency : []u8) -> PngPixels\ImageError {
     on ihdr.color_type == 0 => return png_expand_greyscale(pixels, transparency)
     on ihdr.color_type == 2 => return png_expand_truecolour(pixels, transparency)
     on ihdr.color_type == 3 => return png_expand_indexed(pixels, palette, transparency)
@@ -605,14 +619,14 @@ png_convert_channels :: fn (pixels           : []u8,
                             width            : u32,
                             height           : u32,
                             source_channels  : i32,
-                            desired_channels : i32) -> Result[[..]u8, ImageError] {
+                            desired_channels : i32) -> [..]u8\ImageError {
     on source_channels == desired_channels => {
         output : [..]u8 = nil
         output.resize_undefined_to(pixels.count)
         for i in [0 .. pixels.count] {
             output[i] = pixels[i]
         }
-        return Ok(output)
+        return output
     }
 
     count := width.as(usize) * height.as(usize)
@@ -668,24 +682,24 @@ png_convert_channels :: fn (pixels           : []u8,
         }
     }
 
-    return Ok(output)
+    return output
 }
 
 -- Loads, decompresses, unfilters, and converts a PNG byte slice.
-png_decode :: fn (bytes            : []u8,
-                  desired_channels : i32 = 0) -> Result[Image, ImageError] {
+png_decode :: fn (bytes : []u8,
+desired_channels : i32 = 0) -> Image\ImageError {
     parsed := png_parse(bytes)
 
     on parsed {
-        Err(error) => return png_image_error(error)
-        Ok(png) => {
+        error! => return png_image_error(error)
+        png => {
             scanline_channels := png_validate_ihdr_for_decode(png.ihdr)
             on scanline_channels {
-                Err(error) => {
+                error! => {
                     png.free()
                     return png_image_error(error)
                 }
-                Ok(channels) => {
+                channels => {
                     compressed := png_idat_bytes(^png)
                     defer compressed.free()
 
@@ -693,63 +707,67 @@ png_decode :: fn (bytes            : []u8,
                     expected_bytes := png.ihdr.height.as(usize) * (row_bytes + 1)
                     decompressed := compressed[..].deflate_zlib(expected_bytes)
                     on decompressed {
-                        Err(error) => {
+                        error! => {
                             png.free()
                             return on error {
-                                CompressionError.UnsupportedFormat        => png_image_error(UnsupportedFormat)
-                                CompressionError.UnexpectedEnd            => png_image_error(UnexpectedEnd)
-                                CompressionError.OutputLimitExceeded      => png_image_invalid("PNG decompressed data exceeded expected size")
-                                CompressionError.InvalidData { message }  => png_image_invalid(message)
+                                CompressionError.UnsupportedFormat => png_image_error(UnsupportedFormat)
+                                CompressionError.UnexpectedEnd => png_image_error(UnexpectedEnd)
+                                CompressionError.OutputLimitExceeded => png_image_invalid("PNG decompressed data exceeded expected size")
+                                CompressionError.InvalidData {
+                                    message
+                                }
+                                => png_image_invalid(message)
                             }
                         }
-                        Ok(scanlines) => {
+                        scanlines => {
                             unfiltered := png_unfilter(scanlines[..],
-                                                       png.ihdr.width,
-                                                       png.ihdr.height,
-                                                       channels)
+                            png.ihdr.width,
+                            png.ihdr.height,
+                            channels)
                             scanlines.free()
                             on unfiltered {
-                                Err(error) => {
+                                error! => {
                                     png.free()
                                     return png_image_error(error)
                                 }
-                                Ok(raw_samples) => {
+                                raw_samples => {
                                     expanded := png_expand_pixels(raw_samples[..],
-                                                                  png.ihdr,
-                                                                  png.palette,
-                                                                  png.transparency)
+                                    png.ihdr,
+                                    png.palette,
+                                    png.transparency)
                                     raw_samples.free()
                                     png.free()
                                     on expanded {
-                                        Err(error) => {
+                                        error! => {
                                             return png_image_error(error)
                                         }
-                                        Ok(pixels) => {
+                                        pixels => {
                                             output_channels := png_desired_channels(pixels.channels,
-                                                                                    desired_channels)
+                                            desired_channels)
                                             on output_channels {
-                                                Err(error) => {
+                                                error! => {
                                                     pixels.free()
                                                     return png_image_error(error)
                                                 }
-                                                Ok(final_channels) => {
+                                                final_channels => {
                                                     converted := png_convert_channels(pixels.data[..],
-                                                                                      png.ihdr.width,
-                                                                                      png.ihdr.height,
-                                                                                      pixels.channels,
-                                                                                      final_channels)
+                                                    png.ihdr.width,
+                                                    png.ihdr.height,
+                                                    pixels.channels,
+                                                    final_channels)
                                                     pixels.free()
                                                     on converted {
-                                                        Err(error) => {
+                                                        error! => {
                                                             return png_image_error(error)
                                                         }
-                                                        Ok(data) => {
+                                                        data => {
                                                             return png_image_ok({
-                                                                width    : png.ihdr.width.as(i32)
-                                                                height   : png.ihdr.height.as(i32)
+                                                                width : png.ihdr.width.as(i32)
+                                                                height : png.ihdr.height.as(i32)
                                                                 channels : final_channels
                                                                 data
-                                                            })
+                                                            }
+                                                            )
                                                         }
                                                     }
                                                 }
@@ -830,7 +848,7 @@ test "png parses valid IHDR IDAT and IEND" {
     parsed := png_parse(bytes[..])
 
     on parsed {
-        Ok(png) => {
+        png => {
             assert png.ihdr.width == 2, "width"
             assert png.ihdr.height == 3, "height"
             assert png.ihdr.bit_depth == 8, "bit depth"
@@ -877,7 +895,7 @@ test "png reads IHDR chunk" {
     chunk := png_read_chunk(^reader)
 
     on chunk {
-        Ok(value) => {
+        value => {
             assert value.length == 13
             assert value.kind == PNG_CHUNK_IHDR
             assert value.data.count == 13
@@ -978,7 +996,7 @@ test "png collects IDAT chunks" {
     parsed := png_parse(bytes[..])
 
     on parsed {
-        Ok(png) => {
+        png => {
             assert png.idat_chunks.count == 1
             assert png.idat_chunks[0].count == 2
             assert png.idat_chunks[0][0] == 10
@@ -1068,10 +1086,10 @@ test "png IDAT payload can be decompressed" {
     parsed := png_parse(bytes[..])
 
     on parsed {
-        Ok(png) => {
+        png => {
             decompressed := png.idat_chunks[0].deflate_zlib()
             on decompressed {
-                Ok(scanline) => {
+                scanline => {
                     assert scanline.count == 5
                     assert scanline[0] == 0
                     assert scanline[1] == 255
@@ -1098,7 +1116,7 @@ test "png unfilters none scanline" {
     result := png_unfilter(bytes[..], 2, 1, 3)
 
     on result {
-        Ok(pixels) => {
+        pixels => {
             assert pixels.count == 6, "count"
             assert pixels[0] == 10, "red 0"
             assert pixels[1] == 20, "green 0"
@@ -1120,7 +1138,7 @@ test "png unfilters sub scanline" {
     result := png_unfilter(bytes[..], 2, 1, 3)
 
     on result {
-        Ok(pixels) => {
+        pixels => {
             assert pixels[0] == 10
             assert pixels[1] == 20
             assert pixels[2] == 30
@@ -1141,7 +1159,7 @@ test "png unfilters up scanline" {
     result := png_unfilter(bytes[..], 1, 2, 3)
 
     on result {
-        Ok(pixels) => {
+        pixels => {
             assert pixels[0] == 1
             assert pixels[1] == 2
             assert pixels[2] == 3
@@ -1162,7 +1180,7 @@ test "png unfilters average scanline" {
     result := png_unfilter(bytes[..], 2, 1, 3)
 
     on result {
-        Ok(pixels) => {
+        pixels => {
             assert pixels[0] == 10
             assert pixels[1] == 20
             assert pixels[2] == 30
@@ -1198,7 +1216,7 @@ test "png unfilters paeth scanline" {
     result := png_unfilter(bytes[..], 2, 2, 3)
 
     on result {
-        Ok(pixels) => {
+        pixels => {
             assert pixels[6] == 15
             assert pixels[7] == 25
             assert pixels[8] == 35
@@ -1290,7 +1308,7 @@ test "png decodes embedded 1x1 RGBA fixture" {
     result := Image.load_bytes(bytes[..])
 
     on result {
-        Ok(image) => {
+        image => {
             assert image.width == 1, "width"
             assert image.height == 1, "height"
             assert image.channels == 4, "channels"
@@ -1390,7 +1408,7 @@ test "png decodes embedded 2x2 RGB fixture to RGBA" {
     rgb_result := Image.load_bytes(bytes[..])
 
     on rgb_result {
-        Ok(image) => {
+        image => {
             assert image.width == 2
             assert image.height == 2
             assert image.channels == 3
@@ -1417,7 +1435,7 @@ test "png decodes embedded 2x2 RGB fixture to RGBA" {
     rgb3_result := Image.load_bytes(bytes[..], 3)
 
     on rgb3_result {
-        Ok(image) => {
+        image => {
             assert image.channels == 3
             assert image.data.count == 12
             image.free()
@@ -1430,7 +1448,7 @@ test "png decodes embedded 2x2 RGB fixture to RGBA" {
     rgba_result := Image.load_bytes(bytes[..], 4)
 
     on rgba_result {
-        Ok(image) => {
+        image => {
             assert image.width == 2
             assert image.height == 2
             assert image.channels == 4
@@ -1602,7 +1620,7 @@ test "png decodes greyscale and greyscale alpha fixtures" {
 
     grey_result := Image.load_bytes(grey_bytes[..])
     on grey_result {
-        Ok(image) => {
+        image => {
             assert image.width == 1
             assert image.height == 1
             assert image.channels == 1
@@ -1616,7 +1634,7 @@ test "png decodes greyscale and greyscale alpha fixtures" {
 
     grey_alpha_result := Image.load_bytes(grey_alpha_bytes[..])
     on grey_alpha_result {
-        Ok(image) => {
+        image => {
             assert image.width == 1
             assert image.height == 1
             assert image.channels == 2
@@ -1810,7 +1828,7 @@ test "png applies tRNS transparency" {
 
     grey_result := Image.load_bytes(grey_bytes[..])
     on grey_result {
-        Ok(image) => {
+        image => {
             assert image.channels == 2
             assert image.data[0] == 17
             assert image.data[1] == 0
@@ -1825,7 +1843,7 @@ test "png applies tRNS transparency" {
 
     rgb_result := Image.load_bytes(rgb_bytes[..])
     on rgb_result {
-        Ok(image) => {
+        image => {
             assert image.channels == 4
             assert image.data[0] == 9
             assert image.data[1] == 8
@@ -2037,7 +2055,7 @@ test "png decodes indexed fixtures" {
 
     indexed_result := Image.load_bytes(indexed_bytes[..])
     on indexed_result {
-        Ok(image) => {
+        image => {
             assert image.channels == 3
             assert image.data[0] == 10
             assert image.data[1] == 20
@@ -2054,7 +2072,7 @@ test "png decodes indexed fixtures" {
 
     transparent_result := Image.load_bytes(transparent_bytes[..])
     on transparent_result {
-        Ok(image) => {
+        image => {
             assert image.channels == 4
             assert image.data[0] == 10
             assert image.data[1] == 20
@@ -2155,7 +2173,7 @@ test "png converts to desired greyscale channels" {
 
     grey_result := Image.load_bytes(bytes[..], 1)
     on grey_result {
-        Ok(image) => {
+        image => {
             assert image.channels == 1
             assert image.data.count == 4
             assert image.data[0] == 76
@@ -2171,7 +2189,7 @@ test "png converts to desired greyscale channels" {
 
     grey_alpha_result := Image.load_bytes(bytes[..], 2)
     on grey_alpha_result {
-        Ok(image) => {
+        image => {
             assert image.channels == 2
             assert image.data.count == 8
             assert image.data[0] == 76
@@ -2308,7 +2326,7 @@ test "png rejects unsupported bit depth and interlace" {
 
     sixteen_bit_result := Image.load_bytes(sixteen_bit[..])
     on sixteen_bit_result {
-        Err(UnsupportedFormat) => {
+        UnsupportedFormat! => {
         }
         else => {
             assert no
@@ -2317,7 +2335,7 @@ test "png rejects unsupported bit depth and interlace" {
 
     adam7_result := Image.load_bytes(adam7[..])
     on adam7_result {
-        Err(UnsupportedFormat) => {
+        UnsupportedFormat! => {
         }
         else => {
             assert no
@@ -2365,7 +2383,7 @@ test "png rejects missing IEND" {
     parsed := png_parse(bytes[..])
 
     on parsed {
-        Err(UnexpectedEnd) => {
+        UnexpectedEnd! => {
         }
         else => {
             assert no
@@ -2400,7 +2418,7 @@ test "png rejects truncated chunk data" {
     parsed := png_parse(bytes[..])
 
     on parsed {
-        Err(UnexpectedEnd) => {
+        UnexpectedEnd! => {
         }
         else => {
             assert no
@@ -2447,7 +2465,7 @@ test "png rejects IDAT before IHDR" {
     parsed := png_parse(bytes[..])
 
     on parsed {
-        Err(_) => {
+        _! => {
         }
         else => {
             assert no
@@ -2519,7 +2537,7 @@ test "png rejects invalid CRC" {
     parsed := png_parse(bytes[..])
 
     on parsed {
-        Err(_) => {
+        _! => {
         }
         else => {
             assert no

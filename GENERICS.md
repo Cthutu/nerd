@@ -7,6 +7,12 @@ implementation plan or language specification. Once the design settles, turn
 the agreed work into roadmap milestones and update the manual and specs as each
 feature lands.
 
+The parametrised-module redirection is currently on hold. Nerd retains general
+generic functions, types, traits, implementations, and constraints. The active
+direction is limited to the integrated `?T` optional and `T\E` result features;
+the broader material below remains design context rather than an active removal
+plan. `ROADMAP.md` is authoritative for implementation sequencing.
+
 ## Goals
 
 - Simplify the language and compiler substantially.

@@ -61,6 +61,8 @@ typedef enum {
     TK_EqualEqual,
     TK_Bang,
     TK_BangEqual,
+    TK_Question,
+    TK_Backslash,
     TK_Amp,
     TK_AmpEqual,
     TK_AmpAmp,

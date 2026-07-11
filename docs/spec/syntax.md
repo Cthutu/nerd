@@ -337,6 +337,8 @@ postfix         ::= '(' call-arg-list? ')'
                   | 'with' plex-literal-body
                   | plex-literal-body
                   | '^'
+                  | '!'
+                  | '?'
 
 call-arg        ::= expression
                   | IDENT '=' expression
@@ -463,7 +465,14 @@ an existing runtime value.
 ## Types
 
 ```bnf
-type            ::= type-name
+type            ::= type-primary
+                  | optional-type
+                  | result-type
+
+optional-type   ::= '?' type-primary
+result-type     ::= type-primary '\\' type
+
+type-primary    ::= type-name
                   | never-type
                   | '(' type ')'
                   | tuple-type

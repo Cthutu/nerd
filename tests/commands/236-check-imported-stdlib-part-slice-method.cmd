@@ -5,7 +5,7 @@ main :: fn () -> i32 {
     result := compressed[..].deflate_zlib()
 
     on result {
-        Ok(output) => {
+        output => {
             status := output.count == 0
             output.free()
             on status => return 0

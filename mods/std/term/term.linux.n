@@ -111,9 +111,9 @@ on "linux" {
         return key
     }
 
-    term_read_key_nonblocking :: fn () -> Option[KeyCode] {
+    term_read_key_nonblocking :: fn () -> ?KeyCode {
         first := term_read_byte_timeout(0)
-        return on first == 0 => None else on (first == KeyCode.Escape.as(u8)) => term_read_escape_sequence() else Some(first.as(KeyCode))
+        return on first == 0 => nil else on (first == KeyCode.Escape.as(u8)) => term_read_escape_sequence() else first.as(KeyCode)
     }
 
     term_read_input_event_impl :: fn () -> TermInputEvent {
@@ -132,9 +132,9 @@ on "linux" {
 
     -- Reads one translated terminal key, or `None` on EOF/error or an incomplete
     -- escape sequence.
-    pub term_get_key :: fn () -> Option[KeyCode] {
+    pub term_get_key :: fn () -> ?KeyCode {
         first := term_read_byte()
-        return on first == 0 => None else on (first == KeyCode.Escape.as(u8)) => term_read_escape_sequence() else Some(first.as(KeyCode))
+        return on first == 0 => nil else on (first == KeyCode.Escape.as(u8)) => term_read_escape_sequence() else first.as(KeyCode)
     }
 
 }
@@ -760,21 +760,21 @@ test "terminal key bytes map to key codes" {
 }
 
 test "terminal escape sequences map to key codes" {
-    assert term_csi_final_key('A') == Some(ArrowUp)
-    assert term_csi_final_key('B') == Some(ArrowDown)
-    assert term_csi_final_key('C') == Some(ArrowRight)
-    assert term_csi_final_key('D') == Some(ArrowLeft)
-    assert term_csi_final_key('H') == Some(Home)
-    assert term_csi_final_key('F') == Some(End)
-    assert term_csi_tilde_key(2) == Some(Insert)
-    assert term_csi_tilde_key(3) == Some(Delete)
-    assert term_csi_tilde_key(5) == Some(PageUp)
-    assert term_csi_tilde_key(6) == Some(PageDown)
-    assert term_csi_tilde_key(24) == Some(F12)
-    assert term_ss3_key('A') == Some(ArrowUp)
-    assert term_ss3_key('D') == Some(ArrowLeft)
-    assert term_ss3_key('P') == Some(F1)
-    assert term_ss3_key('S') == Some(F4)
+    assert term_csi_final_key('A') == ArrowUp
+    assert term_csi_final_key('B') == ArrowDown
+    assert term_csi_final_key('C') == ArrowRight
+    assert term_csi_final_key('D') == ArrowLeft
+    assert term_csi_final_key('H') == Home
+    assert term_csi_final_key('F') == End
+    assert term_csi_tilde_key(2) == Insert
+    assert term_csi_tilde_key(3) == Delete
+    assert term_csi_tilde_key(5) == PageUp
+    assert term_csi_tilde_key(6) == PageDown
+    assert term_csi_tilde_key(24) == F12
+    assert term_ss3_key('A') == ArrowUp
+    assert term_ss3_key('D') == ArrowLeft
+    assert term_ss3_key('P') == F1
+    assert term_ss3_key('S') == F4
     assert term_csi_modifier_flags(1) == 0
     assert term_csi_modifier_flags(3) == TERM_MOD_ALT
     assert term_csi_modifier_flags(7) == (TERM_MOD_ALT | TERM_MOD_CONTROL)

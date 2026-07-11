@@ -4,10 +4,10 @@ Container :: plex {
     chunks [..][]u8
 }
 
-make_container :: fn (compressed: []u8) -> Result[Container, i32] {
+make_container :: fn (compressed: []u8) -> Container\i32 {
     container := Container { chunks: nil }
     container.chunks.push(compressed)
-    return Ok(container)
+    return container
 }
 
 main :: fn () -> i32 {
@@ -15,11 +15,11 @@ main :: fn () -> i32 {
     result_container := make_container(compressed[..])
 
     on result_container {
-        Ok(value) => {
+        value => {
             bytes : [..]u8 = nil
-            direct : Result[[..]u8, string] = Ok(bytes)
+            direct : [..]u8\string = bytes
             on direct {
-                Ok(output) => {
+                output => {
                     status := output.count == 0
                     output.free()
                     on status => return 0
@@ -29,7 +29,7 @@ main :: fn () -> i32 {
             }
             value.chunks.free()
         }
-        Err(_) => {
+        _! => {
         }
     }
 

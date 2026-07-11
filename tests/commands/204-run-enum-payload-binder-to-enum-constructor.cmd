@@ -1,28 +1,28 @@
 Key :: enum { A B }
 Event :: enum { None KeyPress(Key) }
 
-key_from_byte :: fn (byte: u8) -> Option[Key] {
+key_from_byte :: fn (byte: u8) -> ?Key {
     return on byte {
-        'A'   => Some(A)
-        else  => None
+        'A'   => A
+        else  => nil
     }
 }
 
 event_from_byte :: fn (byte: u8) -> Event {
     key := key_from_byte(byte)
     return on key {
-        Some(key_code) => {
+        key_code => {
             event := Event.KeyPress(key_code)
             break event
         }
-        None => Event.None
+        else => Event.None
     }
 }
 
 main :: fn () -> i32 {
     return on event_from_byte('A') {
         KeyPress(code) => code.as(i32) - Key.A.as(i32)
-        None => 1
+        else => 1
     }
 }
 ¬

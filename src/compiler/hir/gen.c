@@ -394,7 +394,8 @@ internal u32 hir_lower_on_branch_block(Hir*         hir,
                                        const Lexer* lexer,
                                        const Ast*   ast,
                                        const Sema*  sema,
-                                       u32          expr_node_index);
+                                       u32          expr_node_index,
+                                       u32          expected_type);
 
 internal u32 hir_lower_pattern(Hir*         hir,
                                const Lexer* lexer,
@@ -1132,6 +1133,68 @@ internal u32 hir_lower_expr_with_expected(Hir*         hir,
                                           u32          node_index,
                                           u32          expected_type)
 {
+    if (expected_type != sema_no_type() &&
+        expected_type < array_count(sema->types) &&
+        sema->types[expected_type].kind == STK_Enum &&
+        (sema->types[expected_type].flags & (STF_Optional | STF_Result))) {
+        const SemaType* expected  = &sema->types[expected_type];
+        u32             unwrapped = hir_unwrap_node(ast, node_index);
+        bool            is_nil    = unwrapped < array_count(ast->nodes) &&
+                                    ast->nodes[unwrapped].kind == AK_NilLiteral;
+        bool            is_error = unwrapped < array_count(ast->nodes) &&
+                                   ast->nodes[unwrapped].kind == AK_ErrorInject;
+        u32             actual_type = hir_node_type(sema, node_index);
+        if ((actual_type != expected_type || is_error) &&
+            actual_type != sema_no_type() &&
+            sema->types[actual_type].kind != STK_Never) {
+            u32 variant_index = is_error ? 1 : 0;
+            if (!is_error && (expected->flags & STF_Optional) && !is_nil) {
+                variant_index = 1;
+            }
+            u32 symbol_handle =
+                sema->type_param_symbols[expected->first_param_type +
+                                         variant_index];
+            u32 callee       = hir_add_expr(hir,
+                                            (HirExpr){
+                                                .kind          = HIR_EXPR_LocalRef,
+                                                .type_index    = expected_type,
+                                                .symbol_handle = symbol_handle,
+                                                .local_index   = sema_no_local(),
+                                                .ref_kind      = HIR_REF_None,
+                                                .ref_index     = hir_no_index(),
+                                            });
+            u32 arg_count    = is_nil ? 0 : 1;
+            u32 payload_expr = hir_no_index();
+            if (!is_nil) {
+                u32 payload_node =
+                    is_error ? ast->nodes[unwrapped].a : node_index;
+                payload_expr =
+                    hir_lower_expr(hir, lexer, ast, sema, payload_node);
+            }
+            u32 first_arg = (u32)array_count(hir->call_args);
+            if (!is_nil) {
+                array_push(hir->call_args,
+                           (HirCallArg){
+                               .expr_index    = payload_expr,
+                               .symbol_handle = U32_MAX,
+                           });
+            }
+            return hir_add_expr(
+                hir,
+                (HirExpr){
+                    .kind              = HIR_EXPR_Call,
+                    .type_index        = expected_type,
+                    .symbol_handle     = U32_MAX,
+                    .local_index       = sema_no_local(),
+                    .callee_expr_index = callee,
+                    .first_arg         = first_arg,
+                    .arg_count         = arg_count,
+                    .source_line = hir_node_source_line(lexer, ast, node_index),
+                    .source_path = lexer->source.source_path,
+                });
+        }
+    }
+
     u32 symbol_handle = U32_MAX;
     if (expected_type != sema_no_type() &&
         expected_type < array_count(sema->types) &&
@@ -1448,8 +1511,32 @@ internal u32 hir_lower_expr(Hir*         hir,
             }
         }
 
-        u32 lhs_expr_index = hir_lower_expr(hir, lexer, ast, sema, node->a);
-        u32 rhs_expr_index = hir_lower_expr(hir, lexer, ast, sema, node->b);
+        u32 lhs_type     = hir_node_type(sema, node->a);
+        u32 rhs_type     = hir_node_type(sema, node->b);
+        u32 lhs_expected = sema_no_type();
+        u32 rhs_expected = sema_no_type();
+        if (binary_op == HIR_BINARY_Equal || binary_op == HIR_BINARY_NotEqual) {
+            if (lhs_type != sema_no_type() &&
+                sema->types[lhs_type].kind == STK_Enum &&
+                (sema->types[lhs_type].flags & (STF_Optional | STF_Result))) {
+                rhs_expected = lhs_type;
+            } else if (rhs_type != sema_no_type() &&
+                       sema->types[rhs_type].kind == STK_Enum &&
+                       (sema->types[rhs_type].flags &
+                        (STF_Optional | STF_Result))) {
+                lhs_expected = rhs_type;
+            }
+        }
+        u32 lhs_expr_index =
+            lhs_expected != sema_no_type()
+                ? hir_lower_expr_with_expected(
+                      hir, lexer, ast, sema, node->a, lhs_expected)
+                : hir_lower_expr(hir, lexer, ast, sema, node->a);
+        u32 rhs_expr_index =
+            rhs_expected != sema_no_type()
+                ? hir_lower_expr_with_expected(
+                      hir, lexer, ast, sema, node->b, rhs_expected)
+                : hir_lower_expr(hir, lexer, ast, sema, node->b);
         return hir_add_expr(hir,
                             (HirExpr){
                                 .kind       = HIR_EXPR_Binary,
@@ -1685,6 +1772,16 @@ internal u32 hir_lower_expr(Hir*         hir,
                                 .local_index   = sema_no_local(),
                                 .ref_kind      = HIR_REF_None,
                                 .ref_index     = hir_no_index(),
+                            });
+    case AK_Propagate:
+        return hir_add_expr(hir,
+                            (HirExpr){
+                                .kind       = HIR_EXPR_Propagate,
+                                .type_index = hir_node_type(sema, node_index),
+                                .symbol_handle      = U32_MAX,
+                                .local_index        = sema_no_local(),
+                                .operand_expr_index = hir_lower_expr(
+                                    hir, lexer, ast, sema, node->a),
                             });
     case AK_Call:
         {
@@ -2253,23 +2350,117 @@ internal u32 hir_lower_expr(Hir*         hir,
             for (u32 i = 0; i < on->branch_count; ++i) {
                 const AstOnBranch* branch =
                     &ast->on_branches[on->first_branch + i];
-                u32 first_pattern = (u32)array_count(hir->on_branch_patterns);
-                for (u32 pattern = 0; pattern < branch->pattern_count;
-                     ++pattern) {
-                    u32 ast_pattern_index =
-                        ast->pattern_items[branch->pattern_index + pattern];
-                    array_push(hir->on_branch_patterns,
-                               hir_lower_pattern(
-                                   hir, lexer, ast, sema, ast_pattern_index));
+                u32  first_pattern = (u32)array_count(hir->on_branch_patterns);
+                u32  lowered_pattern_count = branch->pattern_count;
+                bool lowered_is_else       = (branch->flags & AOBF_Else) != 0;
+                if (on->kind == AOK_Extract) {
+                    u32 scrutinee_type        = hir_node_type(sema, node->a);
+                    const SemaType* extracted = &sema->types[scrutinee_type];
+                    bool optional = (extracted->flags & STF_Optional) != 0;
+                    u32  variant  = optional
+                                        ? ((branch->flags & AOBF_Else) ? 0 : 1)
+                                        : ((branch->flags & AOBF_Else) ? 1 : 0);
+                    if (optional && (branch->flags & AOBF_Else)) {
+                        lowered_pattern_count = 0;
+                    } else {
+                        u32 first_child =
+                            (u32)array_count(hir->pattern_children);
+                        u32 child_count = 0;
+                        if (branch->binder_symbol_handle != U32_MAX) {
+                            u32 local_index =
+                                sema->on_branch_local_indices[on->first_branch +
+                                                              i];
+                            u32 child_pattern = (u32)array_count(hir->patterns);
+                            array_push(hir->patterns,
+                                       (HirPattern){
+                                           .kind = HIR_PATTERN_Bind,
+                                           .symbol_handle =
+                                               branch->binder_symbol_handle,
+                                           .local_index = local_index,
+                                           .expr_index  = hir_no_index(),
+                                       });
+                            array_push(hir->pattern_children,
+                                       (HirPatternChild){
+                                           .symbol_handle  = U32_MAX,
+                                           .pattern_index  = child_pattern,
+                                           .has_field_name = false,
+                                       });
+                            child_count = 1;
+                        }
+                        u32 pattern_index = (u32)array_count(hir->patterns);
+                        array_push(
+                            hir->patterns,
+                            (HirPattern){
+                                .kind = HIR_PATTERN_EnumVariant,
+                                .symbol_handle =
+                                    sema->type_param_symbols
+                                        [extracted->first_param_type + variant],
+                                .first_child = first_child,
+                                .child_count = child_count,
+                            });
+                        array_push(hir->on_branch_patterns, pattern_index);
+                        lowered_pattern_count = 1;
+                        lowered_is_else       = false;
+                    }
+                } else if (on->kind == AOK_Value &&
+                           hir_node_type(sema, node->a) != sema_no_type() &&
+                           sema->types[hir_node_type(sema, node->a)].kind ==
+                               STK_Enum &&
+                           (sema->types[hir_node_type(sema, node->a)].flags &
+                            (STF_Optional | STF_Result)) &&
+                           !(branch->flags & AOBF_Else)) {
+                    const SemaType* sum_type =
+                        &sema->types[hir_node_type(sema, node->a)];
+                    u32 variant = (branch->flags & AOBF_Error) ? 1 : 0;
+                    if (sum_type->flags & STF_Optional) {
+                        variant = 1;
+                    }
+                    for (u32 pattern = 0; pattern < branch->pattern_count;
+                         ++pattern) {
+                        u32 ast_pattern_index =
+                            ast->pattern_items[branch->pattern_index + pattern];
+                        u32 payload_pattern = hir_lower_pattern(
+                            hir, lexer, ast, sema, ast_pattern_index);
+                        u32 first_child =
+                            (u32)array_count(hir->pattern_children);
+                        array_push(hir->pattern_children,
+                                   (HirPatternChild){
+                                       .symbol_handle  = U32_MAX,
+                                       .pattern_index  = payload_pattern,
+                                       .has_field_name = false,
+                                   });
+                        u32 wrapped = (u32)array_count(hir->patterns);
+                        array_push(
+                            hir->patterns,
+                            (HirPattern){
+                                .kind = HIR_PATTERN_EnumVariant,
+                                .symbol_handle =
+                                    sema->type_param_symbols
+                                        [sum_type->first_param_type + variant],
+                                .first_child = first_child,
+                                .child_count = 1,
+                            });
+                        array_push(hir->on_branch_patterns, wrapped);
+                    }
+                } else {
+                    for (u32 pattern = 0; pattern < branch->pattern_count;
+                         ++pattern) {
+                        u32 ast_pattern_index =
+                            ast->pattern_items[branch->pattern_index + pattern];
+                        array_push(
+                            hir->on_branch_patterns,
+                            hir_lower_pattern(
+                                hir, lexer, ast, sema, ast_pattern_index));
+                    }
                 }
 
                 HirOnBranch hir_branch = {
-                    .is_else = (branch->flags & AOBF_Else) != 0,
+                    .is_else = lowered_is_else,
                     .source_line =
                         hir_token_source_line(lexer, branch->token_index),
                     .source_path   = lexer->source.source_path,
                     .first_pattern = first_pattern,
-                    .pattern_count = branch->pattern_count,
+                    .pattern_count = lowered_pattern_count,
                     .guard_expr_index =
                         branch->guard_node_index != U32_MAX
                             ? hir_lower_expr(hir,
@@ -2279,8 +2470,15 @@ internal u32 hir_lower_expr(Hir*         hir,
                                              branch->guard_node_index)
                             : hir_no_index(),
                     .body_block_index = hir_lower_on_branch_block(
-                        hir, lexer, ast, sema, branch->expr_node_index),
-                    .binder_symbol_handle = branch->binder_symbol_handle,
+                        hir,
+                        lexer,
+                        ast,
+                        sema,
+                        branch->expr_node_index,
+                        hir_node_type(sema, node_index)),
+                    .binder_symbol_handle = on->kind == AOK_Extract
+                                                ? U32_MAX
+                                                : branch->binder_symbol_handle,
                 };
                 array_push(lowered_branches, hir_branch);
             }
@@ -2293,7 +2491,7 @@ internal u32 hir_lower_expr(Hir*         hir,
             HirOnKind on_kind = HIR_ON_Condition;
             if (on->kind == AOK_Bool) {
                 on_kind = HIR_ON_Bool;
-            } else if (on->kind == AOK_Value) {
+            } else if (on->kind == AOK_Value || on->kind == AOK_Extract) {
                 on_kind = HIR_ON_Value;
             }
 
@@ -2587,6 +2785,46 @@ internal bool hir_append_destructure_tuple_items(Hir*        hir,
     return true;
 }
 
+internal u32 hir_enclosing_return_type(const Ast*  ast,
+                                       const Sema* sema,
+                                       u32         node_index)
+{
+    u32 scope = hir_node_scope(sema, node_index);
+    while (scope != U32_MAX && scope < array_count(sema->scopes)) {
+        const SemaScope* current = &sema->scopes[scope];
+        if (current->owner_decl_index != sema_no_decl() &&
+            current->owner_decl_index < array_count(sema->decls)) {
+            u32 type_index = sema->decls[current->owner_decl_index].type_index;
+            if (type_index != sema_no_type() &&
+                type_index < array_count(sema->types) &&
+                sema->types[type_index].kind == STK_Function) {
+                return sema->types[type_index].return_type;
+            }
+        }
+        scope = current->parent_scope_index;
+    }
+    for (u32 i = 0; i < array_count(sema->decls); ++i) {
+        u32 type_index = sema->decls[i].type_index;
+        if (type_index == sema_no_type() ||
+            type_index >= array_count(sema->types) ||
+            sema->types[type_index].kind != STK_Function) {
+            continue;
+        }
+        u32 fn_index = sema->decls[i].value_node_index;
+        if (fn_index >= array_count(ast->nodes) ||
+            ast->nodes[fn_index].kind != AK_FnDef ||
+            ast->nodes[fn_index].a >= array_count(ast->nodes)) {
+            continue;
+        }
+        const AstNode* start = &ast->nodes[ast->nodes[fn_index].a];
+        if (start->kind == AK_FnStart && ast->nodes[fn_index].a < node_index &&
+            node_index < start->b) {
+            return sema->types[type_index].return_type;
+        }
+    }
+    return sema_no_type();
+}
+
 internal u32 hir_lower_stmt(Hir*         hir,
                             const Lexer* lexer,
                             const Ast*   ast,
@@ -2619,7 +2857,8 @@ internal u32 hir_lower_on_branch_block(Hir*         hir,
                                        const Lexer* lexer,
                                        const Ast*   ast,
                                        const Sema*  sema,
-                                       u32          expr_node_index)
+                                       u32          expr_node_index,
+                                       u32          expected_type)
 {
     u32 root_index = hir_unwrap_node(ast, expr_node_index);
     if (root_index < array_count(ast->nodes)) {
@@ -2628,6 +2867,44 @@ internal u32 hir_lower_on_branch_block(Hir*         hir,
             root->token_index < array_count(lexer->tokens) &&
             lexer->tokens[root->token_index].kind == TK_LBrace) {
             return hir_lower_block_node(hir, lexer, ast, sema, root->a);
+        }
+        bool control_statement =
+            root->kind == AK_Return || root->kind == AK_ReturnExpr ||
+            root->kind == AK_Break || root->kind == AK_BreakExpr ||
+            root->kind == AK_Continue || root->kind == AK_ContinueExpr ||
+            root->kind == AK_Defer || root->kind == AK_Assert;
+        bool contextual_sum =
+            expected_type != sema_no_type() &&
+            expected_type < array_count(sema->types) &&
+            sema->types[expected_type].kind == STK_Enum &&
+            (sema->types[expected_type].flags & (STF_Optional | STF_Result));
+        if (contextual_sum && !control_statement &&
+            !ast_node_is_block_statement(root)) {
+            u32 block_index = (u32)array_count(hir->blocks);
+            array_push(hir->blocks,
+                       (HirBlock){
+                           .first_stmt  = 0,
+                           .stmt_count  = 0,
+                           .scope_index = hir_node_scope(sema, root_index),
+                       });
+            u32 expr_index = hir_lower_expr_with_expected(
+                hir, lexer, ast, sema, expr_node_index, expected_type);
+            u32 stmt_index =
+                hir_add_stmt(hir,
+                             (HirStmt){
+                                 .kind             = HIR_STMT_Expr,
+                                 .expr_index       = expr_index,
+                                 .symbol_handle    = U32_MAX,
+                                 .local_index      = sema_no_local(),
+                                 .type_index       = expected_type,
+                                 .body_block_index = hir_no_index(),
+                                 .source_line      = hir_token_source_line(
+                                     lexer, ast->nodes[root_index].token_index),
+                                 .source_path = lexer->source.source_path,
+                             });
+            array_push(hir->blocks[block_index].stmt_indices, stmt_index);
+            hir->blocks[block_index].stmt_count = 1;
+            return block_index;
         }
     }
     return hir_lower_single_stmt_block(hir, lexer, ast, sema, expr_node_index);
@@ -2660,7 +2937,13 @@ internal u32 hir_lower_stmt(Hir*         hir,
                 .kind = HIR_STMT_Return,
                 .expr_index =
                     node->a != U32_MAX
-                        ? hir_lower_expr(hir, lexer, ast, sema, node->a)
+                        ? hir_lower_expr_with_expected(
+                              hir,
+                              lexer,
+                              ast,
+                              sema,
+                              node->a,
+                              hir_enclosing_return_type(ast, sema, node_index))
                         : hir_no_index(),
                 .symbol_handle    = U32_MAX,
                 .local_index      = sema_no_local(),
@@ -2677,12 +2960,13 @@ internal u32 hir_lower_stmt(Hir*         hir,
                 ast->nodes[value_node_index].kind == AK_AnnotatedValue) {
                 value_node_index = ast->nodes[value_node_index].b;
             }
-            u32 expr_index =
-                value_node_index < array_count(ast->nodes)
-                    ? hir_lower_expr(hir, lexer, ast, sema, value_node_index)
-                    : hir_no_index();
             u32 local_index = hir_node_local(sema, node_index);
             u32 local_type  = hir_local_type(sema, local_index);
+            u32 expr_index =
+                value_node_index < array_count(ast->nodes)
+                    ? hir_lower_expr_with_expected(
+                          hir, lexer, ast, sema, value_node_index, local_type)
+                    : hir_no_index();
             if (expr_index == hir_no_index() && local_type != sema_no_type()) {
                 expr_index =
                     hir_lower_default_trait_expr(hir, sema, node_index);
@@ -2760,20 +3044,30 @@ internal u32 hir_lower_stmt(Hir*         hir,
                                 });
         }
     case AK_Assign:
-        return hir_add_stmt(
-            hir,
-            (HirStmt){
-                .kind       = HIR_STMT_Assign,
-                .expr_index = hir_lower_expr(hir, lexer, ast, sema, node->b),
-                .target_expr_index =
-                    hir_lower_expr(hir, lexer, ast, sema, node->a),
-                .symbol_handle    = U32_MAX,
-                .local_index      = hir_node_local(sema, node_index),
-                .type_index       = hir_node_type(sema, node_index),
-                .body_block_index = hir_no_index(),
-                .source_line      = stmt_source_line,
-                .source_path      = stmt_source_path,
-            });
+        {
+            u32 target_expr  = hir_lower_expr(hir, lexer, ast, sema, node->a);
+            u32 target_type  = hir_node_type(sema, node->a);
+            u32 target_local = hir_node_local(sema, node->a);
+            if (target_local != sema_no_local() &&
+                target_local < array_count(sema->locals)) {
+                target_type = sema->locals[target_local].type_index;
+            }
+            u32 value_expr = hir_lower_expr_with_expected(
+                hir, lexer, ast, sema, node->b, target_type);
+            return hir_add_stmt(
+                hir,
+                (HirStmt){
+                    .kind              = HIR_STMT_Assign,
+                    .expr_index        = value_expr,
+                    .target_expr_index = target_expr,
+                    .symbol_handle     = U32_MAX,
+                    .local_index       = hir_node_local(sema, node_index),
+                    .type_index        = hir_node_type(sema, node_index),
+                    .body_block_index  = hir_no_index(),
+                    .source_line       = stmt_source_line,
+                    .source_path       = stmt_source_path,
+                });
+        }
     case AK_DestructureBind:
     case AK_DestructureVariable:
     case AK_DestructureAssign:
@@ -2856,21 +3150,25 @@ internal u32 hir_lower_stmt(Hir*         hir,
                             });
     case AK_Break:
     case AK_BreakExpr:
-        return hir_add_stmt(
-            hir,
-            (HirStmt){
-                .kind = HIR_STMT_Break,
-                .expr_index =
-                    node->a != U32_MAX
-                        ? hir_lower_expr(hir, lexer, ast, sema, node->a)
-                        : hir_no_index(),
-                .symbol_handle    = node->b,
-                .local_index      = sema_no_local(),
-                .type_index       = hir_node_type(sema, node_index),
-                .body_block_index = hir_no_index(),
-                .source_line      = stmt_source_line,
-                .source_path      = stmt_source_path,
-            });
+        {
+            u32 break_type = hir_node_type(sema, node_index);
+            return hir_add_stmt(
+                hir,
+                (HirStmt){
+                    .kind = HIR_STMT_Break,
+                    .expr_index =
+                        node->a != U32_MAX
+                            ? hir_lower_expr_with_expected(
+                                  hir, lexer, ast, sema, node->a, break_type)
+                            : hir_no_index(),
+                    .symbol_handle    = node->b,
+                    .local_index      = sema_no_local(),
+                    .type_index       = hir_node_type(sema, node_index),
+                    .body_block_index = hir_no_index(),
+                    .source_line      = stmt_source_line,
+                    .source_path      = stmt_source_path,
+                });
+        }
     case AK_Continue:
     case AK_ContinueExpr:
         return hir_add_stmt(hir,

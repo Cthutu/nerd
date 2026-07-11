@@ -85,23 +85,23 @@ on "linux" {
         info.platform_info.gl_context = nil
     }
 
-    frame_context_impl :: fn (frame: ^Frame) -> Result[FrameContext, FrameError] {
-        on frame.system == nil => return Err(FrameError.NoSystem)
-        on frame.id == CLOSED_FRAME => return Err(FrameError.Closed)
+    frame_context_impl :: fn (frame: ^Frame) -> FrameContext\FrameError {
+        on frame.system == nil => return (FrameError.NoSystem)!
+        on frame.id == CLOSED_FRAME => return (FrameError.Closed)!
 
         info := frame_system_find_info(frame.system, frame.id)
         on info == nil ||
             info.platform_info.display == nil ||
-            info.platform_info.window == 0 => return Err(FrameError.Invalid)
+            info.platform_info.window == 0 => return (FrameError.Invalid)!
 
-        return Ok(FrameContext {
+        return FrameContext {
             display    : info.platform_info.display
             window     : info.platform_info.window
             drawable   : info.platform_info.window.as(GLXDrawable)
             gl_context : info.platform_info.gl_context
             width      : info.platform_info.width
             height     : info.platform_info.height
-        })
+        }
     }
 
     -- Marks a public frame and its platform record as closed.
@@ -837,20 +837,30 @@ on "linux" {
         frame_width := frame.width.as(u32)
         frame_height := frame.height.as(u32)
         pixels := temp_arena.alloc_array[u32]((frame_width * frame_height).as(usize))
-        for i: usize = 0; i < pixels.count; i += 1 {
+        for i: usize = 0;
+            i < pixels.count;
+            i += 1 {
             pixels[i] = 0x00000000
         }
 
-        for y: u32 = 0; y < buffer.height.as(u32); y += 1 {
-            for x: u32 = 0; x < buffer.width.as(u32); x += 1 {
+        for y: u32 = 0;
+            y < buffer.height.as(u32);
+            y += 1 {
+            for x: u32 = 0;
+                x < buffer.width.as(u32);
+                x += 1 {
                 colour := buffer.pixels[(y * buffer.stride.as(u32) + x).as(usize)] & 0x00ffffff
                 dest_x := buffer.x.as(u32) + (x * buffer.draw_width.as(u32)) / buffer.width.as(u32)
                 dest_y := buffer.y.as(u32) + (y * buffer.draw_height.as(u32)) / buffer.height.as(u32)
                 next_x := buffer.x.as(u32) + ((x + 1) * buffer.draw_width.as(u32)) / buffer.width.as(u32)
                 next_y := buffer.y.as(u32) + ((y + 1) * buffer.draw_height.as(u32)) / buffer.height.as(u32)
-                for py := dest_y; py < next_y && py < frame_height; py += 1 {
+                for py := dest_y;
+                    py < next_y && py < frame_height;
+                    py += 1 {
                     row := (py * frame_width).as(usize)
-                    for px := dest_x; px < next_x && px < frame_width; px += 1 {
+                    for px := dest_x;
+                        px < next_x && px < frame_width;
+                        px += 1 {
                         pixels[row + px.as(usize)] = colour
                     }
                 }

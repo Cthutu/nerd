@@ -3,6 +3,12 @@
 This document is the high-level map of the current codebase. It points at the
 main subsystems and tells you where to read next.
 
+Optional `?T` and result `T\E` types are semantic built-ins. Sema interns them
+as flagged tagged-sum types with private variants; HIR contextualises
+presence/success/error construction and has a dedicated propagation node. The
+LLVM backend uses the ordinary enum tag-plus-payload layout and emits the early
+return path for propagation, including deferred cleanup.
+
 For deeper implementation notes, use these companion documents:
 
 - [../compiler-pipeline.md](/home/matt/nerd/docs/compiler-pipeline.md)

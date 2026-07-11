@@ -1,18 +1,19 @@
-make :: fn (ok: bool) -> Option[i32] {
-    return on ok => ${
+make :: fn (ok: bool) -> ?i32 {
+    on ok => {
         value := 42
-        break Some(value)
-    } else None
+        return value
+    }
+    return nil
 }
 
 main :: fn () -> i32 {
     result := make(yes)
     on result {
-        Some(value) => {
+        value => {
             on (value != 42) => return 1
             return 0
         }
-        None => return 2
+        else => return 2
     }
 }
 ¬

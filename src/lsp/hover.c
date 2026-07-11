@@ -1818,6 +1818,12 @@ internal u32 lsp_type_node_start_token(const LspDocument* doc,
             return target;
         }
     }
+    if (node->kind == AK_TypeResult) {
+        u32 success = lsp_type_node_start_token(doc, node->a);
+        if (success != U32_MAX) {
+            return success;
+        }
+    }
 
     return node->token_index;
 }

@@ -1,8 +1,12 @@
 use core
 
 main :: fn () -> i32 {
-    maybe : Option[i32] = Some(42)
-    value := maybe.expect("missing value")
+    maybe : ?i32 = 42
+    value := on maybe => [present] {
+        break present
+    } else {
+        abort("missing value")
+    }
     prn($"{value}")
     return value
 }

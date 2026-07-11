@@ -19,16 +19,15 @@ same line
 hir 0
 module module.0(068-std-print-module.input)
 import module.1(core)
-import import.0 pr from module.1(core).decl.11: fn (string) -> void
-import import.1 prn from module.1(core).decl.13: fn (string) -> void
-import import.2 __impl_arena_alloc from module.1(core).decl.16: <unknown>
-import import.3 __impl_arena_alloc_array from module.1(core).decl.17: <unknown>
-import import.4 __impl_arena_alloc_bytes from module.1(core).decl.18: fn (^arena^arena, usize) -
-import import.5 __impl_arena_reset from module.1(core).decl.19: fn (^arena^arena) -
-import import.6 __impl_arena_mark from module.1(core).decl.20: fn (^arena^arena)
-import import.7 __impl_arena_restore from module.1(core).decl.21: fn (^arena^arena, u32) -
-import import.8 __impl_arena_done from module.1(core).decl.22: fn (^arena^arena) -
-import import.9 __impl_Option_T_expect from module.1(core).decl.27: <unknown>
+import import.0 pr from module.1(core).decl.12: fn (string) -> void
+import import.1 prn from module.1(core).decl.14: fn (string) -> void
+import import.2 __impl_arena_alloc from module.1(core).decl.18: <unknown>
+import import.3 __impl_arena_alloc_array from module.1(core).decl.19: <unknown>
+import import.4 __impl_arena_alloc_bytes from module.1(core).decl.20: fn (^arena^arena, usize) -
+import import.5 __impl_arena_reset from module.1(core).decl.21: fn (^arena^arena) -
+import import.6 __impl_arena_mark from module.1(core).decl.22: fn (^arena^arena) 
+import import.7 __impl_arena_restore from module.1(core).decl.23: fn (^arena^arena, u32) -
+import import.8 __impl_arena_done from module.1(core).decl.24: fn (^arena^arena) -
 bind pr = import.0
 bind prn = import.1
 bind __impl_arena_alloc = import.2
@@ -38,16 +37,15 @@ bind __impl_arena_reset = import.5
 bind __impl_arena_mark = import.6
 bind __impl_arena_restore = import.7
 bind __impl_arena_done = import.8
-bind __impl_Option_T_expect = import.9
 bind print = module.1
 bind main = fn.0
 func fn.0() -> void {
   expr module <unsupported>
   let local_print: module = module <unsupported>
   expr void call fn (string) -> void field(module local.0(local_print), prn)(string "Local")
-  expr void call fn (string) -> void field(module bind.10(print), prn)(string "Hello")
-  expr void call fn (string) -> void field(module bind.10(print), pr)(string "same")
-  expr void call fn (string) -> void field(module bind.10(print), prn)(string " line")
+  expr void call fn (string) -> void field(module bind.9(print), prn)(string "Hello")
+  expr void call fn (string) -> void field(module bind.9(print), pr)(string "same")
+  expr void call fn (string) -> void field(module bind.9(print), prn)(string " line")
 }
 ¬
 ; nerd llvm-ir 0

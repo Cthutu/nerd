@@ -5,7 +5,7 @@ main :: fn () -> i32 {
     result := Image.load_bytes(bytes, 4)
 
     on result {
-        Ok(image) => {
+        image => {
             on image.width != 320 => return 1
             on image.height != 200 => return 2
             on image.channels != 4 => return 3

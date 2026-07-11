@@ -55,6 +55,10 @@ the dotted path resolves semantically.
 Unit enum variants can be written bare when the scrutinee type provides the
 enum context, such as `None => 0`.
 
+Built-in optional and result types do not have enum variant patterns. Match
+their payload domains with the `on value { ... } else { ... }` forms described
+in `control-flow.md`, or use boolean extraction with payload binders.
+
 ## Ranges And Comparisons
 
 Range patterns support exclusive `..` and inclusive `..=` bounds. Empty integer

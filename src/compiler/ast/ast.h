@@ -27,6 +27,8 @@
 // | AK_SymbolRef           | Symbol handle                     | 0                               |
 // | AK_EnumVariant         | Symbol handle                     | 0                               |
 // | AK_LogicalNot          | Ast index of rhs                  | 0                               |
+// | AK_ErrorInject         | Ast index of error value          | 0                               |
+// | AK_Propagate           | Ast index of optional/result      | 0                               |
 // | AK_IntegerNegate       | Ast index of rhs                  | 0                               |
 // | AK_BitwiseNot          | Ast index of rhs                  | 0                               |
 // | AK_AddressOf           | Ast index of value                | 0                               |
@@ -73,6 +75,8 @@
 // | AK_TypeSlice           | Ast index element type            | 0                               |
 // | AK_TypeDynamicArray    | Ast index min capacity or U32_MAX | Ast index element type          |
 // | AK_TypePointer         | Ast index pointee type            | 0                               |
+// | AK_TypeOptional        | Ast index payload type            | 0                               |
+// | AK_TypeResult          | Ast index success type            | Ast index error type            |
 // | AK_TypePlex            | Ast plex-type index               | 0                               |
 // | AK_TypeEnum            | Ast enum-type index               | 0                               |
 // | AK_Expression          | Ast index of root                 | 0                               |
@@ -120,6 +124,8 @@ typedef enum {
     AK_SymbolRef,
     AK_EnumVariant,
     AK_LogicalNot,
+    AK_ErrorInject,
+    AK_Propagate,
     AK_IntegerNegate,
     AK_BitwiseNot,
     AK_AddressOf,
@@ -166,6 +172,8 @@ typedef enum {
     AK_TypeSlice,
     AK_TypeDynamicArray,
     AK_TypePointer,
+    AK_TypeOptional,
+    AK_TypeResult,
     AK_TypePlex,
     AK_TypeEnum,
     AK_Expression,
@@ -395,13 +403,15 @@ typedef struct {
 
 typedef enum : u32 {
     AOK_Bool,
+    AOK_Extract,
     AOK_Value,
     AOK_Condition,
 } AstOnKind;
 
 typedef enum : u32 {
-    AOBF_None = 0,
-    AOBF_Else = 1 << 0,
+    AOBF_None  = 0,
+    AOBF_Else  = 1 << 0,
+    AOBF_Error = 1 << 1,
 } AstOnBranchFlag;
 
 typedef struct {

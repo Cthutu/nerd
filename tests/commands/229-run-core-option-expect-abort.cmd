@@ -1,8 +1,11 @@
 use core
 
 main :: fn () {
-    maybe : Option[i32] = None
-    _ := maybe.expect("missing value")
+    maybe : ?i32 = nil
+    on maybe => [_present] {
+    } else {
+        abort("missing value")
+    }
 }
 ¬
 127

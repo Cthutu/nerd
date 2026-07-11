@@ -1,5 +1,5 @@
 main :: fn () {
-compress_error :: fn (error: CompressionError) -> Result[[..]u8, CompressionError] {
+compress_error :: fn (error: CompressionError) -> [..]u8\CompressionError {
 }
 
 result:=Err(Error.InvalidData{
@@ -23,12 +23,12 @@ deflate_decode_compressed_block :: fn (reader : ^DeflateReader,
 output : ^[..]u8,
 literals : ^Huffman,
 distances : ^Huffman,
-max_output_bytes : usize) -> Result[bool, CompressionError] {
+max_output_bytes : usize) -> bool\CompressionError {
 }
 }
 ¬
 main :: fn () {
-    compress_error :: fn (error: CompressionError) -> Result[[..]u8, CompressionError] {
+    compress_error :: fn (error: CompressionError) -> [..]u8\CompressionError {
     }
 
     result := Err(Error.InvalidData {
@@ -54,6 +54,6 @@ main :: fn () {
                                            output           : ^[..]u8,
                                            literals         : ^Huffman,
                                            distances        : ^Huffman,
-                                           max_output_bytes : usize) -> Result[bool, CompressionError] {
+                                           max_output_bytes : usize) -> bool\CompressionError {
     }
 }

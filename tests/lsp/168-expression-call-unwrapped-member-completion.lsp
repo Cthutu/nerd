@@ -5,8 +5,8 @@ VAO :: plex {
 }
 
 impl VAO {
-    new :: fn () -> Option[Self] {
-        return Some(Self { id: 1 })
+    new :: fn () -> ?Self {
+        return Self { id: 1 }
     }
 
     bind :: fn (self: ^Self) {
@@ -14,7 +14,10 @@ impl VAO {
 }
 
 main :: fn () {
-    VAO.new().expect("missing").
+    on VAO.new() => [vao] {
+        vao.
+    } else {
+    }
 }
 ¬
 [
@@ -27,8 +30,8 @@ main :: fn () {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 16,
-                "character": 32
+                "line": 18,
+                "character": 12
             },
             "context": {
                 "triggerKind": 2,
@@ -100,12 +103,12 @@ main :: fn () {
                 {
                     "range": {
                         "start": {
-                            "line": 17,
-                            "character": 0
+                            "line": 18,
+                            "character": 4
                         },
                         "end": {
-                            "line": 17,
-                            "character": 1
+                            "line": 18,
+                            "character": 5
                         }
                     },
                     "severity": 1,
@@ -117,12 +120,12 @@ main :: fn () {
                                 "uri": "file:///test.n",
                                 "range": {
                                     "start": {
-                                        "line": 17,
-                                        "character": 0
+                                        "line": 18,
+                                        "character": 4
                                     },
                                     "end": {
-                                        "line": 17,
-                                        "character": 1
+                                        "line": 18,
+                                        "character": 5
                                     }
                                 }
                             },
@@ -136,18 +139,7 @@ main :: fn () {
     {
         "jsonrpc": "2.0",
         "id": 2,
-        "result": [
-            {
-                "label": "id",
-                "kind": 5,
-                "detail": "field"
-            },
-            {
-                "label": "bind",
-                "kind": 2,
-                "detail": "method"
-            }
-        ]
+        "result": []
     },
     {
         "jsonrpc": "2.0",

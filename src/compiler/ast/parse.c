@@ -1149,9 +1149,62 @@ internal bool ast_error_ffi_block_expected_signature(AstParseState* state,
         "Move constants and Nerd bindings outside the `ffi` block.");
 }
 
+internal bool ast_parse_type_primary(AstParseState* state, u32* out_node);
+
 bool ast_parse_type(AstParseState* state, u32* out_node)
 {
     ASSERT(out_node != NULL, "Type parser requires an output node");
+
+    u32 left = 0;
+    if (!ast_parse_type_primary(state, &left)) {
+        return false;
+    }
+    if (ast_peek_kind_at(state, 0) != TK_Backslash) {
+        *out_node = left;
+        return true;
+    }
+
+    u32 separator_token_index = state->token.token_index + 1;
+    if (!ast_expect_token(state, TK_Backslash) || !ast_next_token(state)) {
+        return false;
+    }
+    u32 error_type = 0;
+    if (!ast_parse_type(state, &error_type)) {
+        return false;
+    }
+    return ast_emit_node(state,
+                         (AstNode){
+                             .kind        = AK_TypeResult,
+                             .token_index = separator_token_index,
+                             .a           = left,
+                             .b           = error_type,
+                         },
+                         out_node);
+}
+
+internal bool ast_parse_type_primary(AstParseState* state, u32* out_node)
+{
+    ASSERT(out_node != NULL, "Type parser requires an output node");
+
+    if (state->token.kind == TK_Question) {
+        AstToken question = state->token;
+        if (!ast_next_token(state)) {
+            return error_0201_missing_value(state->token.source,
+                                            ast_token_span(state, &question),
+                                            TK_Symbol);
+        }
+        u32 payload = 0;
+        if (!ast_parse_type_primary(state, &payload)) {
+            return false;
+        }
+        return ast_emit_node(state,
+                             (AstNode){
+                                 .kind        = AK_TypeOptional,
+                                 .token_index = question.token_index,
+                                 .a           = payload,
+                             },
+                             out_node);
+    }
 
     if (state->token.kind == TK_Bang) {
         return ast_emit_node(state,
@@ -1309,7 +1362,7 @@ bool ast_parse_type(AstParseState* state, u32* out_node)
                 return false;
             }
             u32 element_type = 0;
-            if (!ast_parse_type(state, &element_type)) {
+            if (!ast_parse_type_primary(state, &element_type)) {
                 return false;
             }
             return ast_emit_node(state,
@@ -1326,7 +1379,7 @@ bool ast_parse_type(AstParseState* state, u32* out_node)
                 return false;
             }
             u32 element_type = 0;
-            if (!ast_parse_type(state, &element_type)) {
+            if (!ast_parse_type_primary(state, &element_type)) {
                 return false;
             }
             return ast_emit_node(state,
@@ -1348,7 +1401,7 @@ bool ast_parse_type(AstParseState* state, u32* out_node)
                 return false;
             }
             u32 element_type = 0;
-            if (!ast_parse_type(state, &element_type)) {
+            if (!ast_parse_type_primary(state, &element_type)) {
                 return false;
             }
             return ast_emit_node(state,
@@ -1364,7 +1417,7 @@ bool ast_parse_type(AstParseState* state, u32* out_node)
             return false;
         }
         u32 element_type = 0;
-        if (!ast_parse_type(state, &element_type)) {
+        if (!ast_parse_type_primary(state, &element_type)) {
             return false;
         }
         return ast_emit_node(state,
@@ -1383,7 +1436,7 @@ bool ast_parse_type(AstParseState* state, u32* out_node)
             return false;
         }
         u32 pointee_type = 0;
-        if (!ast_parse_type(state, &pointee_type)) {
+        if (!ast_parse_type_primary(state, &pointee_type)) {
             return false;
         }
         return ast_emit_node(state,

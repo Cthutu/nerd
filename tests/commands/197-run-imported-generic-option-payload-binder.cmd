@@ -5,10 +5,10 @@ accept :: fn (key: Key) -> i32 {
 }
 
 main :: fn () -> i32 {
-    maybe: Option[Key] = Some(Key.A)
+    maybe: ?Key = Key.A
     return on maybe {
-        Some(code) => accept(code) - Key.A.as(i32)
-        None => 1
+        code => accept(code) - Key.A.as(i32)
+        else => 1
     }
 }
 ¬

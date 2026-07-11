@@ -78,8 +78,8 @@ load_demo_image :: fn () -> Image {
     bytes := @embed("assets/demo.jpg")
     result := Image.load_bytes(bytes, 4)
     return on result {
-        Ok(image)  => image
-        else       => abort("Could not decode embedded image viewer asset.")
+        image  => image
+        else   => abort("Could not decode embedded image viewer asset.")
     }
 }
 

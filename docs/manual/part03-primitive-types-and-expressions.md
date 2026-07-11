@@ -41,6 +41,27 @@ false  -- alias for no
 Use `bool` for answers to yes/no questions: comparisons, loop conditions,
 branch conditions, and flags.
 
+## Optional and result types
+
+Write `?T` for a value that may contain `T`. Assign or return `nil` for
+absence; where `?T` is expected, a compatible `T` value constructs presence.
+
+Write `T\E` for a successful `T` or an error `E`. Success is contextual like
+optional presence. Postfix `!` constructs the error channel, and postfix `?`
+extracts success or returns the absence/error from the enclosing function.
+
+```nerd
+parse :: fn (text: string) -> i32\string {
+    on text.count == 0 => return "empty"!
+    return 42
+}
+
+load :: fn (text: string) -> i32\string {
+    value := parse(text)?
+    return value + 1
+}
+```
+
 ## Numeric Expressions
 
 ```nerd

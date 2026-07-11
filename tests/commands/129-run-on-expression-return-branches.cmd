@@ -1,19 +1,19 @@
 use std.io
 
-read :: fn (value: Option[u8]) -> u8 {
+read :: fn (value: ?u8) -> u8 {
     return on value {
-        Some(byte) => {
+        byte => {
             copied : u8 = byte
             return copied
         }
-        None => {
+        else => {
             return 0
         }
     }
 }
 
 main :: fn () -> i32 {
-    result := read(Some('x'))
+    result := read('x')
     prn($"{result}")
     return result.as(i32)
 }

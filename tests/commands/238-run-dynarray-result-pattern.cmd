@@ -1,9 +1,9 @@
 main :: fn () -> i32 {
     bytes : [..]u8 = nil
-    result : Result[[..]u8, string] = Ok(bytes)
+    result : [..]u8\string = bytes
 
     on result {
-        Ok(output) => {
+        output => {
             status := output.count == 0
             output.free()
             on status => return 0

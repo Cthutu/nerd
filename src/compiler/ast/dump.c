@@ -112,6 +112,14 @@ string ast_kind_to_string(AstKind kind)
         return s("TypeDynamicArray");
     case AK_TypePointer:
         return s("TypePointer");
+    case AK_TypeOptional:
+        return s("TypeOptional");
+    case AK_TypeResult:
+        return s("TypeResult");
+    case AK_ErrorInject:
+        return s("ErrorInject");
+    case AK_Propagate:
+        return s("Propagate");
     case AK_Expression:
         return s("Expression");
     case AK_Statement:
@@ -300,8 +308,15 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
             break;
         case AK_AddressOf:
         case AK_TypePointer:
+        case AK_TypeOptional:
+        case AK_ErrorInject:
+        case AK_Propagate:
             row[3] = table_cell_string(
                 string_format(&temp_arena, "value=%u", node->a));
+            break;
+        case AK_TypeResult:
+            row[3] = table_cell_string(string_format(
+                &temp_arena, "success=%u error=%u", node->a, node->b));
             break;
         case AK_Tuple:
         case AK_TypeTuple:

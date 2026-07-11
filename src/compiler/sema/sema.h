@@ -74,6 +74,8 @@ typedef enum : u16 {
     STF_PlexC           = 1 << 0,
     STF_PlexPacked      = 1 << 1,
     STF_FunctionVarargs = 1 << 2,
+    STF_Optional        = 1 << 3,
+    STF_Result          = 1 << 4,
 } SemaTypeFlag;
 
 typedef struct {

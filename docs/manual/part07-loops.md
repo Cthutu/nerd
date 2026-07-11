@@ -128,21 +128,21 @@ for index, value in [3..6] {
 }
 ```
 
-User-defined iterators implement `Iterator[Item]` and return `Option[Item]`
-from `next`. `None` ends the loop, while `Some(value)` binds `value` to the
+User-defined iterators implement `Iterator[Item]` and return `?Item`
+from `next`. `nil` ends the loop, while a present value binds to the
 loop item:
 
 ```nerd
 Counter :: plex { current i32 end i32 }
 
 impl Iterator[i32] for Counter {
-    next :: fn (self: ^Self) -> Option[i32] {
-        result: Option[i32] = None
+    next :: fn (self: ^Self) -> ?i32 {
+        result: ?i32 = nil
         on self.current < self.end {
             yes => {
                 value := self.current
                 self.current += 1
-                result = Some(value)
+                result = value
             }
             else => {}
         }

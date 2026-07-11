@@ -49,28 +49,28 @@ impl Huffman {
 
 }
 
-compress_invalid :: fn (message: string) -> Result[[..]u8, CompressionError] {
-    return Err(CompressionError.InvalidData {
+compress_invalid :: fn (message: string) -> [..]u8\CompressionError {
+    return (CompressionError.InvalidData {
         message
-    })
+    })!
 }
 
-compress_error :: fn (error: CompressionError) -> Result[[..]u8, CompressionError] {
-    return Err(error)
+compress_error :: fn (error: CompressionError) -> [..]u8\CompressionError {
+    return error!
 }
 
-compress_ok :: fn (bytes: [..]u8) -> Result[[..]u8, CompressionError] {
-    return Ok(bytes)
+compress_ok :: fn (bytes: [..]u8) -> [..]u8\CompressionError {
+    return bytes
 }
 
-compress_huffman_invalid :: fn (message: string) -> Result[Huffman, CompressionError] {
-    return Err(CompressionError.InvalidData {
+compress_huffman_invalid :: fn (message: string) -> Huffman\CompressionError {
+    return (CompressionError.InvalidData {
         message
-    })
+    })!
 }
 
-compress_huffman_ok :: fn (huffman: Huffman) -> Result[Huffman, CompressionError] {
-    return Ok(huffman)
+compress_huffman_ok :: fn (huffman: Huffman) -> Huffman\CompressionError {
+    return huffman
 }
 
 -- Creates a reader over raw DEFLATE block bytes.
@@ -124,7 +124,7 @@ deflate_reverse_bits :: fn (code: u16, length: u8) -> u16 {
 }
 
 -- Builds canonical Huffman entries from a code-length table.
-deflate_build_huffman :: fn (lengths: []u8) -> Result[Huffman, CompressionError] {
+deflate_build_huffman :: fn (lengths: []u8) -> Huffman\CompressionError {
     counts     : [16]u16
     next_codes : [16]u16
 
@@ -274,11 +274,10 @@ deflate_distance_extra_bits :: fn (symbol: i32) -> u8 {
 -- Appends one decoded byte while enforcing an optional output limit.
 deflate_output_push :: fn (output           : ^[..]u8,
                            byte             : u8,
-                           max_output_bytes : usize) -> Result[bool, CompressionError] {
-    on (max_output_bytes != 0 && output.count >= max_output_bytes) => return Err(OutputLimitExceeded)
-
+                           max_output_bytes : usize) -> bool\CompressionError {
+    on (max_output_bytes != 0 && output.count >= max_output_bytes) => return OutputLimitExceeded!
     (output^).push(byte)
-    return Ok(yes)
+    return yes
 }
 
 -- Decodes literal bytes and length/distance copies from Huffman tables.
@@ -286,7 +285,7 @@ deflate_decode_compressed_block :: fn (reader           : ^DeflateReader,
                                        output           : ^[..]u8,
                                        literals         : ^Huffman,
                                        distances        : ^Huffman,
-                                       max_output_bytes : usize) -> Result[bool, CompressionError] {
+                                       max_output_bytes : usize) -> bool\CompressionError {
     for {
         symbol := deflate_decode_symbol(reader, literals)
         on reader.failed => return compress_bool_error(UnexpectedEnd)
@@ -297,7 +296,7 @@ deflate_decode_compressed_block :: fn (reader           : ^DeflateReader,
                                           symbol.as(u8),
                                           max_output_bytes)
             on pushed {
-                Err(OutputLimitExceeded) => return compress_bool_error(OutputLimitExceeded)
+                OutputLimitExceeded! => return compress_bool_error(OutputLimitExceeded)
                 else => {
                 }
             }
@@ -330,7 +329,7 @@ deflate_decode_compressed_block :: fn (reader           : ^DeflateReader,
             byte := (output^)[output.count - distance]
             pushed := deflate_output_push(output, byte, max_output_bytes)
             on pushed {
-                Err(OutputLimitExceeded) => return compress_bool_error(OutputLimitExceeded)
+                OutputLimitExceeded! => return compress_bool_error(OutputLimitExceeded)
                 else => {
                 }
             }
@@ -341,24 +340,24 @@ deflate_decode_compressed_block :: fn (reader           : ^DeflateReader,
 }
 
 -- Result helpers for block decoders that only need success or failure.
-compress_bool_ok :: fn () -> Result[bool, CompressionError] {
-    return Ok(yes)
+compress_bool_ok :: fn () -> bool\CompressionError {
+    return yes
 }
 
-compress_bool_error :: fn (error: CompressionError) -> Result[bool, CompressionError] {
-    return Err(error)
+compress_bool_error :: fn (error: CompressionError) -> bool\CompressionError {
+    return error!
 }
 
-compress_bool_invalid :: fn (message: string) -> Result[bool, CompressionError] {
-    return Err(CompressionError.InvalidData {
+compress_bool_invalid :: fn (message: string) -> bool\CompressionError {
+    return (CompressionError.InvalidData {
         message
-    })
+    })!
 }
 
 -- Decodes an uncompressed stored block.
 deflate_decode_stored_block :: fn (reader           : ^DeflateReader,
                                    output           : ^[..]u8,
-                                   max_output_bytes : usize) -> Result[bool, CompressionError] {
+                                   max_output_bytes : usize) -> bool\CompressionError {
     deflate_align_byte(reader)
 
     on (reader.byte_index + 4 > reader.bytes.count) => return compress_bool_error(UnexpectedEnd)
@@ -377,7 +376,7 @@ deflate_decode_stored_block :: fn (reader           : ^DeflateReader,
                                       reader.bytes[reader.byte_index],
                                       max_output_bytes)
         on pushed {
-            Err(OutputLimitExceeded) => return compress_bool_error(OutputLimitExceeded)
+            OutputLimitExceeded! => return compress_bool_error(OutputLimitExceeded)
             else => {
             }
         }
@@ -421,9 +420,9 @@ deflate_fixed_distance_lengths :: fn () -> [..]u8 {
 }
 
 -- Decodes a fixed-Huffman compressed block.
-deflate_decode_fixed_block :: fn (reader           : ^DeflateReader,
-                                  output           : ^[..]u8,
-                                  max_output_bytes : usize) -> Result[bool, CompressionError] {
+deflate_decode_fixed_block :: fn (reader : ^DeflateReader,
+output : ^[..]u8,
+max_output_bytes : usize) -> bool\CompressionError {
     literal_lengths := deflate_fixed_literal_lengths()
     defer literal_lengths.free()
     distance_lengths := deflate_fixed_distance_lengths()
@@ -431,23 +430,23 @@ deflate_decode_fixed_block :: fn (reader           : ^DeflateReader,
 
     literals_result := deflate_build_huffman(literal_lengths[..])
     literals := on literals_result {
-        Ok(value)   => value
-        Err(error)  => return compress_bool_error(error)
+        value => value
+        error! => return compress_bool_error(error)
     }
     defer literals.free()
 
     distances_result := deflate_build_huffman(distance_lengths[..])
     distances := on distances_result {
-        Ok(value)   => value
-        Err(error)  => return compress_bool_error(error)
+        value => value
+        error! => return compress_bool_error(error)
     }
     defer distances.free()
 
     return deflate_decode_compressed_block(reader,
-                                           output,
-                                           ^literals,
-                                           ^distances,
-                                           max_output_bytes)
+    output,
+    ^literals,
+    ^distances,
+    max_output_bytes)
 }
 
 -- Permutation used by dynamic block code-length headers.
@@ -478,7 +477,7 @@ deflate_code_length_order :: fn (index: usize) -> usize {
 -- Decodes the literal/length and distance code lengths for a dynamic block.
 deflate_decode_dynamic_lengths :: fn (reader        : ^DeflateReader,
                                       total_lengths : usize,
-                                      code_lengths  : ^Huffman) -> Result[[..]u8, CompressionError] {
+                                      code_lengths  : ^Huffman) -> [..]u8\CompressionError {
     lengths : [..]u8
     lengths.resize_undefined_to(total_lengths)
 
@@ -545,9 +544,9 @@ deflate_decode_dynamic_lengths :: fn (reader        : ^DeflateReader,
 }
 
 -- Decodes a dynamic-Huffman compressed block.
-deflate_decode_dynamic_block :: fn (reader           : ^DeflateReader,
-                                    output           : ^[..]u8,
-                                    max_output_bytes : usize) -> Result[bool, CompressionError] {
+deflate_decode_dynamic_block :: fn (reader : ^DeflateReader,
+output : ^[..]u8,
+max_output_bytes : usize) -> bool\CompressionError {
     hlit := deflate_read_bits(reader, 5).as(usize) + 257
     hdist := deflate_read_bits(reader, 5).as(usize) + 1
     hclen := deflate_read_bits(reader, 4).as(usize) + 4
@@ -556,57 +555,61 @@ deflate_decode_dynamic_block :: fn (reader           : ^DeflateReader,
     code_length_lengths : [..]u8
     code_length_lengths.resize_undefined_to(19)
     defer code_length_lengths.free()
-    for i: usize = 0; i < 19; i += 1 {
+    for i: usize = 0;
+    i < 19;
+    i += 1 {
         code_length_lengths[i] = 0
     }
-    for i: usize = 0; i < hclen; i += 1 {
+    for i: usize = 0;
+    i < hclen;
+    i += 1 {
         code_length_lengths[deflate_code_length_order(i)] = deflate_read_bits(reader, 3).as(u8)
     }
     on reader.failed => return compress_bool_error(UnexpectedEnd)
 
     code_lengths_result := deflate_build_huffman(code_length_lengths[..])
     code_lengths := on code_lengths_result {
-        Ok(value)   => value
-        Err(error)  => return compress_bool_error(error)
+        value => value
+        error! => return compress_bool_error(error)
     }
     defer code_lengths.free()
 
     all_lengths_result := deflate_decode_dynamic_lengths(reader,
-                                                         hlit + hdist,
-                                                         ^code_lengths)
+    hlit + hdist,
+    ^code_lengths)
     all_lengths := on all_lengths_result {
-        Ok(value)   => value
-        Err(error)  => return compress_bool_error(error)
+        value => value
+        error! => return compress_bool_error(error)
     }
     defer all_lengths.free()
 
-    literal_lengths := all_lengths[..hlit]
-    distance_lengths := all_lengths[hlit..]
+    literal_lengths := all_lengths[.. hlit]
+    distance_lengths := all_lengths[hlit ..]
 
     literals_result := deflate_build_huffman(literal_lengths)
     literals := on literals_result {
-        Ok(value)   => value
-        Err(error)  => return compress_bool_error(error)
+        value => value
+        error! => return compress_bool_error(error)
     }
     defer literals.free()
 
     distances_result := deflate_build_huffman(distance_lengths)
     distances := on distances_result {
-        Ok(value)   => value
-        Err(error)  => return compress_bool_error(error)
+        value => value
+        error! => return compress_bool_error(error)
     }
     defer distances.free()
 
     return deflate_decode_compressed_block(reader,
-                                           output,
-                                           ^literals,
-                                           ^distances,
-                                           max_output_bytes)
+    output,
+    ^literals,
+    ^distances,
+    max_output_bytes)
 }
 
 -- Decodes a raw DEFLATE stream without the surrounding zlib header/checksum.
-deflate_decode_raw :: fn (bytes            : []u8,
-                          max_output_bytes : usize) -> Result[[..]u8, CompressionError] {
+deflate_decode_raw :: fn (bytes : []u8,
+max_output_bytes : usize) -> [..]u8\CompressionError {
     reader := deflate_reader_new(bytes)
     output : [..]u8 = nil
     final := no
@@ -620,14 +623,14 @@ deflate_decode_raw :: fn (bytes            : []u8,
         }
 
         block := on block_type {
-            0     => deflate_decode_stored_block(^reader, ^output, max_output_bytes)
-            1     => deflate_decode_fixed_block(^reader, ^output, max_output_bytes)
-            2     => deflate_decode_dynamic_block(^reader, ^output, max_output_bytes)
-            else  => compress_bool_invalid("Reserved deflate block type")
+            0 => deflate_decode_stored_block(^reader, ^output, max_output_bytes)
+            1 => deflate_decode_fixed_block(^reader, ^output, max_output_bytes)
+            2 => deflate_decode_dynamic_block(^reader, ^output, max_output_bytes)
+            else => compress_bool_invalid("Reserved deflate block type")
         }
 
         on block {
-            Err(error) => {
+            error! => {
                 output.free()
                 return compress_error(error)
             }
@@ -658,8 +661,8 @@ compress_be_u32_at :: fn (bytes: []u8, index: usize) -> u32 {
 }
 
 -- Decodes a complete zlib-wrapped DEFLATE byte slice.
-deflate_zlib_bytes :: fn (bytes            : []u8,
-                          max_output_bytes : usize = 0) -> Result[[..]u8, CompressionError] {
+deflate_zlib_bytes :: fn (bytes : []u8,
+max_output_bytes : usize = 0) -> [..]u8\CompressionError {
     on (bytes.count < 6) => return compress_error(UnexpectedEnd)
 
     cmf := bytes[0]
@@ -670,12 +673,12 @@ deflate_zlib_bytes :: fn (bytes            : []u8,
     on (flg & 0x20) != 0 => return compress_error(UnsupportedFormat)
 
     expected_adler := compress_be_u32_at(bytes, bytes.count - 4)
-    deflate_bytes := bytes[2..bytes.count - 4]
+    deflate_bytes := bytes[2 .. bytes.count - 4]
     output_result := deflate_decode_raw(deflate_bytes, max_output_bytes)
 
     output := on output_result {
-        Ok(value)   => value
-        Err(error)  => return compress_error(error)
+        value => value
+        error! => return compress_error(error)
     }
 
     actual_adler := compress_adler32(output[..])
@@ -689,8 +692,8 @@ deflate_zlib_bytes :: fn (bytes            : []u8,
 
 pub impl []u8 {
 
-    pub deflate_zlib :: fn (bytes            : Self,
-                            max_output_bytes : usize = 0) -> Result[[..]u8, CompressionError] {
+    pub deflate_zlib :: fn (bytes : Self,
+    max_output_bytes : usize = 0) -> [..]u8\CompressionError {
         return deflate_zlib_bytes(bytes, max_output_bytes)
     }
 
@@ -702,7 +705,7 @@ test "zlib decompresses empty stream" {
     result := compressed[..].deflate_zlib()
 
     on result {
-        Ok(output) => {
+        output => {
             assert output.count == 0
             output.free()
         }
@@ -714,12 +717,12 @@ test "zlib decompresses empty stream" {
 
 test "zlib decompresses stored block" {
     compressed : [14]u8 =
-                          [120, 1, 1, 3, 0, 252, 255, 'a', 'b', 'c', 2, 77, 1, 39]
+    [120, 1, 1, 3, 0, 252, 255, 'a', 'b', 'c', 2, 77, 1, 39]
 
     result := compressed[..].deflate_zlib()
 
     on result {
-        Ok(output) => {
+        output => {
             assert output.count == 3
             assert output[0] == 'a'
             assert output[1] == 'b'
@@ -734,12 +737,12 @@ test "zlib decompresses stored block" {
 
 test "zlib decompresses fixed Huffman stream" {
     compressed : [16]u8 =
-                          [120, 1, 203, 72, 205, 201, 201, 87, 200, 64, 144, 0, 58, 46, 6, 125]
+    [120, 1, 203, 72, 205, 201, 201, 87, 200, 64, 144, 0, 58, 46, 6, 125]
 
     result := compressed[..].deflate_zlib()
 
     on result {
-        Ok(output) => {
+        output => {
             assert output.count == 17
             assert output.as(string) == "hello hello hello"
             output.free()
@@ -752,12 +755,12 @@ test "zlib decompresses fixed Huffman stream" {
 
 test "zlib decompresses dynamic Huffman stream" {
     compressed : [17]u8 =
-                          [120, 218, 203, 72, 205, 201, 201, 87, 200, 32, 150, 4, 0, 163, 150, 17, 129]
+    [120, 218, 203, 72, 205, 201, 201, 87, 200, 32, 150, 4, 0, 163, 150, 17, 129]
 
     result := compressed[..].deflate_zlib()
 
     on result {
-        Ok(output) => {
+        output => {
             assert output.count == 47
             assert output.as(string) == "hello hello hello hello hello hello "
                 +"hello hello"
@@ -776,7 +779,7 @@ test "zlib rejects invalid checksum" {
     result := compressed[..].deflate_zlib()
 
     on result {
-        Err(_) => {
+        _! => {
         }
         else => {
             assert no
@@ -786,12 +789,12 @@ test "zlib rejects invalid checksum" {
 
 test "zlib enforces output limit" {
     compressed : [14]u8 =
-                          [120, 1, 1, 3, 0, 252, 255, 'a', 'b', 'c', 2, 77, 1, 39]
+    [120, 1, 1, 3, 0, 252, 255, 'a', 'b', 'c', 2, 77, 1, 39]
 
     result := compressed[..].deflate_zlib(2)
 
     on result {
-        Err(OutputLimitExceeded) => {
+        OutputLimitExceeded! => {
         }
         else => {
             assert no
@@ -805,7 +808,7 @@ test "zlib rejects truncated stream" {
     result := compressed[..].deflate_zlib()
 
     on result {
-        Err(UnexpectedEnd) => {
+        UnexpectedEnd! => {
         }
         else => {
             assert no

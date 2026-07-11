@@ -480,14 +480,16 @@ language-known traits and result types:
 - `Default` supplies `default :: fn () -> Self`. Local typed variables without
   an initializer use this trait when the variable type has a concrete
   implementation.
-- `Option[T]` is an enum with `None` and `Some(T)`.
-- `Result[T, E]` is an enum with `Ok(T)` and `Err(E)`.
-- `Iterator[Item]` supplies `next :: fn (^Self) -> Option[Item]`. `for item in
-  iter` calls `next` until it returns `None`; `Some(value)` becomes the loop
+- `?T` is the built-in optional type; `nil` is absence and a contextual `T`
+  expression is presence.
+- `T\E` is the built-in result type; a contextual `T` is success and `error!`
+  constructs failure.
+- `Iterator[Item]` supplies `next :: fn (^Self) -> ?Item`. `for item in
+  iter` calls `next` until it returns `nil`; a present value becomes the loop
   item. If `Item` is a pointer type, dereference explicitly with `item^` when
   you need the pointed-to value.
 
-These names can be used without `use core`. A local declaration with the same
+The trait names can be used without `use core`. A local declaration with the same
 name takes precedence over the implicit core declaration, and an explicit
 `use core` remains valid when a module wants to make that dependency visible.
 

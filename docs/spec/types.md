@@ -83,7 +83,8 @@ Trait implementations attach those required functions to a concrete type:
 `impl Display for Point { show :: fn (self: Self) -> string { ... } }`.
 Language-required traits such as `Display` are canonical declarations from
 `core`. The core declarations currently include `Display`, `Eq`, `Order`,
-`Default`, `Iterator[Item]`, `Option[T]`, and `Result[T, E]`. These names are
+`Default`, and `Iterator[Item]`. Optional and result values are built-in types,
+written `?T` and `T\E`; there are no core `Option` or `Result` enums. Core names are
 available through the implicit `core` import unless shadowed by a local
 declaration.
 `Display.show(value)` supplies interpolation for non-built-in values. `Eq.eq`
@@ -93,8 +94,8 @@ supplies equality for non-built-in values used with `==` and `!=`.
 `Default.default()` supplies local typed-variable initialisation when the
 variable has no initializer and a concrete implementation exists.
 `Iterator[Item].next(^iter)` supplies user-defined `for in` iteration by
-returning `Option[Item]`; `None` stops iteration and `Some(value)` supplies the
-loop item.
+returning `?Item`; `nil` stops iteration and a contextually converted value
+supplies the loop item.
 The implementation member is callable through the normal receiver method
 syntax, for example `point.show()`. Inherent impl methods take precedence over
 trait impl methods during receiver lookup. A receiver call is ambiguous when
@@ -137,6 +138,19 @@ language form is a non-empty type list.
 | `plex #packed { ... }` | Packed plex with C-compatible layout and packed storage.                         |
 | `union { ... }`        | Raw union with named alternatives sharing storage.                               |
 | `enum { ... }`         | Tagged enum, optionally with payload variants.                                   |
+
+### Optional and result types
+
+`?T` contains either no value or one value of `T`. `nil` constructs absence;
+an expression compatible with `T` constructs presence when `?T` is expected.
+
+`T\E` contains either a successful `T` or an error `E`. An expression
+compatible with `T` constructs success when `T\E` is expected. Postfix `!`
+injects its operand into the error channel and therefore requires an expected
+result type.
+
+Optional and result wrappers are tagged values with ordinary value semantics.
+They are not aliases for generic enums and do not expose variant names.
 
 Array-like values use these member meanings where semantically valid: `.data`
 is a pointer to the payload, `.count` is the number of live elements, `.bytes`

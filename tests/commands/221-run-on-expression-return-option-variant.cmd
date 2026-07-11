@@ -1,33 +1,33 @@
-direct :: fn (value: Option[u8]) -> Option[u8] {
+direct :: fn (value: ?u8) -> ?u8 {
     byte := on value {
-        Some(found) => found
-        None => return None
+        found => found
+        else => return nil
     }
-    return Some(byte)
+    return byte
 }
 
-block :: fn (value: Option[u8]) -> Option[u8] {
+block :: fn (value: ?u8) -> ?u8 {
     byte := on value {
-        Some(found) => found
-        None => {
-            return None
+        found => found
+        else => {
+            return nil
         }
     }
-    return Some(byte)
+    return byte
 }
 
 main :: fn () -> i32 {
-    direct_result := direct(None)
-    block_result := block(None)
+    direct_result := direct(nil)
+    block_result := block(nil)
 
-    on direct_result {
-        Some(_) => return 1
-        None => {}
+    on direct_result => [_present] {
+        return 1
+    } else {
     }
 
-    on block_result {
-        Some(_) => return 2
-        None => {}
+    on block_result => [_present] {
+        return 2
+    } else {
     }
 
     return 0

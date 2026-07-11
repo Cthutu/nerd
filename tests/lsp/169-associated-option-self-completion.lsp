@@ -5,7 +5,7 @@ VAO :: plex {
 }
 
 impl VAO {
-    pub new :: fn () -> Option[Self] {
+    pub new :: fn () -> ?Self {
         return Some(Self { id: 1 })
     }
 

@@ -138,7 +138,7 @@
                 },
                 {
                     "name": "keyword.operator.logical.nerd",
-                    "match": "&&|\\|\\||!"
+                    "match": "&&|\\|\\||!|\\?|\\\\"
                 },
                 {
                     "name": "keyword.operator.bitwise.nerd",

@@ -340,14 +340,14 @@ impl FrameSystem {
     -- Creates an empty frame system ready to allocate frame IDs.
     pub init :: fn () -> Self {
         return {
-            frames             : nil
-            next_id_hint       : 1
-            left_shift_down    : no
-            right_shift_down   : no
-            left_control_down  : no
+            frames : nil
+            next_id_hint : 1
+            left_shift_down : no
+            right_shift_down : no
+            left_control_down : no
             right_control_down : no
-            left_alt_down      : no
-            right_alt_down     : no
+            left_alt_down : no
+            right_alt_down : no
         }
     }
 
@@ -374,20 +374,20 @@ impl FrameSystem {
     }
 
     pub present_rects :: fn (system : ^Self,
-                             frame  : ^Frame,
-                             rects  : []FramePixelRect) {
+    frame : ^Frame,
+    rects : []FramePixelRect) {
         frame_present_rects_impl(system, frame, rects)
     }
 
     pub present_pixels :: fn (system : ^Self,
-                              frame  : ^Frame,
-                              buffer : FramePixelBuffer) {
+    frame : ^Frame,
+    buffer : FramePixelBuffer) {
         frame_present_pixels_impl(system, frame, buffer)
     }
 
     pub present_scaled_pixels :: fn (system : ^Self,
-                                     frame  : ^Frame,
-                                     buffer : FrameScaledPixelBuffer) {
+    frame : ^Frame,
+    buffer : FrameScaledPixelBuffer) {
         frame_present_scaled_pixels_impl(system, frame, buffer)
     }
 
@@ -463,7 +463,7 @@ impl FrameSystem {
 
 impl Frame {
 
-    pub context :: fn (frame: ^Self) -> Result[FrameContext, FrameError] {
+    pub context :: fn (frame: ^Self) -> FrameContext\FrameError {
         return frame_context_impl(frame)
     }
 
@@ -501,18 +501,19 @@ test "FrameSystem loop returns no after destroying final frame" {
     system := FrameSystem.init()
     platform_info : PlatformFrameInfo
     system.frames.push(FrameInfo {
-        id     : 1
+        id : 1
         events : nil
         platform_info
-    })
+    }
+    )
 
     frame := Frame {
-        id          : 1
-        width       : 32
-        height      : 24
-        title       : "test"
+        id : 1
+        width : 32
+        height : 24
+        title : "test"
         full_screen : no
-        resizable   : yes
+        resizable : yes
         ...
     }
 
@@ -524,17 +525,17 @@ test "FrameSystem loop returns no after destroying final frame" {
 
 test "Frame context reports missing system" {
     frame := Frame {
-        id          : 1
-        width       : 32
-        height      : 24
-        title       : "test"
+        id : 1
+        width : 32
+        height : 24
+        title : "test"
         full_screen : no
-        resizable   : yes
+        resizable : yes
         ...
     }
 
     on frame.context() {
-        Err(error) => {
+        error! => {
             assert error == FrameError.NoSystem
         }
         else => {
@@ -546,17 +547,17 @@ test "Frame context reports missing system" {
 test "Frame context reports closed frame" {
     system := FrameSystem.init()
     frame := Frame {
-        system      : ^system
-        id          : CLOSED_FRAME
-        width       : 32
-        height      : 24
-        title       : "test"
+        system : ^system
+        id : CLOSED_FRAME
+        width : 32
+        height : 24
+        title : "test"
         full_screen : no
-        resizable   : yes
+        resizable : yes
     }
 
     on frame.context() {
-        Err(error) => {
+        error! => {
             assert error == FrameError.Closed
         }
         else => {
@@ -569,23 +570,24 @@ test "Frame context reports invalid platform record" {
     system := FrameSystem.init()
     platform_info : PlatformFrameInfo
     system.frames.push(FrameInfo {
-        id     : 1
+        id : 1
         events : nil
         platform_info
-    })
+    }
+    )
 
     frame := Frame {
-        system      : ^system
-        id          : 1
-        width       : 32
-        height      : 24
-        title       : "test"
+        system : ^system
+        id : 1
+        width : 32
+        height : 24
+        title : "test"
         full_screen : no
-        resizable   : yes
+        resizable : yes
     }
 
     on frame.context() {
-        Err(error) => {
+        error! => {
             assert error == FrameError.Invalid
         }
         else => {
