@@ -19126,14 +19126,22 @@ internal bool sema_infer_node_type(const Lexer* lexer,
             if (on->kind == AOK_Condition) {
                 scrutinee_type = bool_type;
             } else if (on->kind == AOK_Bool) {
-                if (!sema_type_matches(sema, bool_type, scrutinee_type)) {
+                bool extract_form =
+                    scrutinee_type != sema_no_type() &&
+                    sema->types[scrutinee_type].kind == STK_Enum &&
+                    (sema->types[scrutinee_type].flags &
+                     (STF_Optional | STF_Result));
+                if (!extract_form &&
+                    !sema_type_matches(sema, bool_type, scrutinee_type)) {
                     return error_0319_invalid_on_condition(
                         lexer->source,
                         sema_node_span(lexer, &ast->nodes[node->a]),
                         sema_type_name(
                             lexer, sema, &temp_arena, scrutinee_type));
                 }
-                scrutinee_type = bool_type;
+                if (!extract_form) {
+                    scrutinee_type = bool_type;
+                }
             } else if (on->kind == AOK_Extract) {
                 if (scrutinee_type == sema_no_type() ||
                     sema->types[scrutinee_type].kind != STK_Enum ||
@@ -19166,8 +19174,14 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 }
             }
 
-            u32 branch_type      = sema_no_type();
-            u32 branch_type_node = sema_no_decl();
+            u32  branch_type      = sema_no_type();
+            u32  branch_type_node = sema_no_decl();
+            bool extract_form =
+                on->kind == AOK_Extract ||
+                (on->kind == AOK_Bool && scrutinee_type != sema_no_type() &&
+                 sema->types[scrutinee_type].kind == STK_Enum &&
+                 (sema->types[scrutinee_type].flags &
+                  (STF_Optional | STF_Result)));
             for (u32 i = 0; i < on->branch_count; ++i) {
                 const AstOnBranch* branch =
                     &ast->on_branches[on->first_branch + i];
@@ -19181,7 +19195,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     sema->on_branch_local_indices[on->first_branch + i];
                 if (branch_local_index != sema_no_local()) {
                     u32 binder_type = scrutinee_type;
-                    if (on->kind == AOK_Extract) {
+                    if (extract_form) {
                         const SemaType* extracted =
                             &sema->types[scrutinee_type];
                         if ((branch->flags & AOBF_Else) &&
@@ -19221,8 +19235,7 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                             sema_type_name(
                                 lexer, sema, &temp_arena, condition_type));
                     }
-                } else if (on->kind != AOK_Extract &&
-                           !(branch->flags & AOBF_Else)) {
+                } else if (!extract_form && !(branch->flags & AOBF_Else)) {
                     u32 pattern_type = scrutinee_type;
                     if (on->kind == AOK_Value &&
                         sema->types[scrutinee_type].kind == STK_Enum &&

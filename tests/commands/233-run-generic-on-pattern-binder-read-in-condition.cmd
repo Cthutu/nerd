@@ -9,7 +9,7 @@ main :: fn () -> i32 {
     on value => [header] {
         on header.width == 0 || header.height == 0 => return 1
         return 0
-    } else [_error] {
+    } else {
         return 2
     }
 }

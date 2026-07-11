@@ -2345,7 +2345,16 @@ internal u32 hir_lower_expr(Hir*         hir,
                 return hir_add_unsupported_expr(hir, sema, node_index);
             }
 
-            const AstOnInfo* on                 = &ast->ons[node->b];
+            const AstOnInfo* on             = &ast->ons[node->b];
+            u32              scrutinee_type = node->a != U32_MAX
+                                                  ? hir_node_type(sema, node->a)
+                                                  : sema_no_type();
+            bool             extract_form =
+                on->kind == AOK_Extract ||
+                (on->kind == AOK_Bool && scrutinee_type != sema_no_type() &&
+                 sema->types[scrutinee_type].kind == STK_Enum &&
+                 (sema->types[scrutinee_type].flags &
+                  (STF_Optional | STF_Result)));
             Array(HirOnBranch) lowered_branches = NULL;
             for (u32 i = 0; i < on->branch_count; ++i) {
                 const AstOnBranch* branch =
@@ -2353,8 +2362,7 @@ internal u32 hir_lower_expr(Hir*         hir,
                 u32  first_pattern = (u32)array_count(hir->on_branch_patterns);
                 u32  lowered_pattern_count = branch->pattern_count;
                 bool lowered_is_else       = (branch->flags & AOBF_Else) != 0;
-                if (on->kind == AOK_Extract) {
-                    u32 scrutinee_type        = hir_node_type(sema, node->a);
+                if (extract_form) {
                     const SemaType* extracted = &sema->types[scrutinee_type];
                     bool optional = (extracted->flags & STF_Optional) != 0;
                     u32  variant  = optional
@@ -2476,9 +2484,8 @@ internal u32 hir_lower_expr(Hir*         hir,
                         sema,
                         branch->expr_node_index,
                         hir_node_type(sema, node_index)),
-                    .binder_symbol_handle = on->kind == AOK_Extract
-                                                ? U32_MAX
-                                                : branch->binder_symbol_handle,
+                    .binder_symbol_handle =
+                        extract_form ? U32_MAX : branch->binder_symbol_handle,
                 };
                 array_push(lowered_branches, hir_branch);
             }
@@ -2489,9 +2496,9 @@ internal u32 hir_lower_expr(Hir*         hir,
             array_free(lowered_branches);
 
             HirOnKind on_kind = HIR_ON_Condition;
-            if (on->kind == AOK_Bool) {
+            if (on->kind == AOK_Bool && !extract_form) {
                 on_kind = HIR_ON_Bool;
-            } else if (on->kind == AOK_Value || on->kind == AOK_Extract) {
+            } else if (on->kind == AOK_Value || extract_form) {
                 on_kind = HIR_ON_Value;
             }
 

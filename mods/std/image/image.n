@@ -56,12 +56,12 @@ image_format :: fn (bytes: []u8) -> ?ImageFormat {
 impl Image {
 
     -- Loads an image from bytes already available in memory.
-    pub load_bytes :: fn (bytes : []u8,
-    desired_channels : i32 = 0) -> Self\ImageError {
+    pub load_bytes :: fn (bytes            : []u8,
+                          desired_channels : i32 = 0) -> Self\ImageError {
         return on image_format(bytes) {
-            PNG => png_decode(bytes, desired_channels)
-            JPEG => jpeg_decode(bytes, desired_channels)
-            else => UnsupportedFormat!
+            PNG   => png_decode(bytes, desired_channels)
+            JPEG  => jpeg_decode(bytes, desired_channels)
+            else  => UnsupportedFormat!
         }
     }
 
@@ -123,20 +123,19 @@ test "image format rejects unknown data" {
 
     format := image_format(bytes[..])
 
-    on format => [_present] {
+    on format => {
         assert no
-    }
-    else {
+    } else {
         assert yes
     }
 }
 
 test "image free releases storage and clears dimensions" {
     image := Image {
-        width : 2
-        height : 2
+        width    : 2
+        height   : 2
         channels : 4
-        data : nil
+        data     : nil
     }
     image.data.resize_undefined_to(16)
 

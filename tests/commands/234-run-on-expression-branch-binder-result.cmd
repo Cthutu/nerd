@@ -8,7 +8,7 @@ main :: fn () -> i32 {
 
     header := on value => [parsed_header] {
         break parsed_header
-    } else [_error] {
+    } else {
         return 1
     }
 

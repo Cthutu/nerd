@@ -11,7 +11,7 @@ main :: fn () -> i32 {
         on image.data.count != (320 * 200 * 4) => return 4
         image.free()
         return 0
-    } else [_error] {
+    } else {
         return 5
     }
 

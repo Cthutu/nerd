@@ -2,7 +2,7 @@ use core
 
 main :: fn () {
     maybe : ?i32 = nil
-    on maybe => [_present] {
+    on maybe => {
     } else {
         abort("missing value")
     }

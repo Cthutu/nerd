@@ -20,12 +20,12 @@ main :: fn () -> i32 {
     direct_result := direct(nil)
     block_result := block(nil)
 
-    on direct_result => [_present] {
+    on direct_result => {
         return 1
     } else {
     }
 
-    on block_result => [_present] {
+    on block_result => {
         return 2
     } else {
     }
