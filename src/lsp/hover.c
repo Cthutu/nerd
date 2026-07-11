@@ -2029,7 +2029,7 @@ internal bool lsp_decl_ast_signature(const LspDocument* doc,
         if (param->symbol_handle != U32_MAX) {
             sb_append_string(
                 &sb, lex_symbol(&doc->front_end.lexer, param->symbol_handle));
-            sb_append_cstr(&sb, ": ");
+            sb_append_cstr(&sb, param->compile_time ? " :: " : ": ");
         }
         string source_type = lsp_param_type_source(doc, param);
         if (!string_eq(source_type, s("<unknown>"))) {

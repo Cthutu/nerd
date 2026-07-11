@@ -133,3 +133,12 @@ The back end currently runs:
 - [../manual/appendix-a-syntax-reference.md](/home/matt/nerd/docs/manual/appendix-a-syntax-reference.md)
   for the source-level syntax reference
 - [build-directives.md](/home/matt/nerd/docs/overviews/build-directives.md) for build-system metadata
+# Atomics
+
+Semantic types represent `atomic[T]` with `STK_Atomic` and retain the element
+type in `first_param_type`. Semantic analysis validates scalar/thin-pointer
+elements and treats ordinary reads and assignments as element transfers. HIR
+retains atomic storage types so LLVM lowering emits `load atomic`, `store
+atomic`, and `atomicrmw` with sequentially consistent defaults. Function
+parameters marked `::` are recorded in the AST/CST and checked against the
+constant-expression model before HIR generation.

@@ -273,3 +273,11 @@ The tracked `mods/std/random.n` file is not part of the stable standard-library
 inventory yet. Before documenting it as supported, make sure the module builds
 through the normal module pipeline and that its required language features,
 supporting modules, tests, and manual notes have landed together.
+# `std.atomics`
+
+`std.atomics` exports `AtomicLoadOrder`, `AtomicStoreOrder`, `AtomicOrder`, and
+`AtomicCompareExchangeResult[T]`, plus explicit atomic operations and inherent
+methods on `atomic[T]`. Ordinary syntax and omitted order arguments are
+sequentially consistent. Weak compare-exchange is intended for retry loops and
+may report `NotExchanged(observed)` spuriously. Atomic pointer operations do not
+manage pointee reclamation.

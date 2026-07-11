@@ -5661,7 +5661,7 @@ internal void format_emit_fn_param(StringBuilder*  sb,
 {
     if (param->symbol_handle != U32_MAX) {
         sb_append_string(sb, lex_symbol(lexer, param->symbol_handle));
-        sb_append_cstr(sb, ": ");
+        sb_append_cstr(sb, param->compile_time ? " :: " : ": ");
     }
     format_emit_expr(sb, cst, lexer, param->type_node_index, 0);
     if (param->default_node_index != U32_MAX) {
@@ -5707,7 +5707,7 @@ internal void format_emit_fn_param_aligned(StringBuilder*  sb,
     for (usize pad = name.count; pad <= name_width; ++pad) {
         sb_append_char(sb, ' ');
     }
-    sb_append_cstr(sb, ": ");
+    sb_append_cstr(sb, param->compile_time ? ":: " : ": ");
     format_emit_expr(sb, cst, lexer, param->type_node_index, 0);
     if (param->default_node_index != U32_MAX) {
         sb_append_cstr(sb, " = ");

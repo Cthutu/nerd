@@ -225,3 +225,11 @@ Point :: plex { x i32 y i32 }
 
 Public plex and union fields are part of the public API. Semantic diagnostics
 reject public field types that name private declarations.
+# Atomic types
+
+`atomic[T]` is a built-in parametric storage type. Its element is restricted to
+`bool`, `i8`/`i16`/`i32`/`i64`/`isize`,
+`u8`/`u16`/`u32`/`u64`/`usize`, or a thin `^U` pointer. Atomic values use the
+element's LLVM storage representation and alignment, but atomic accesses are
+lowered with LLVM atomic instructions. Aggregates, strings, slices, dynamic
+arrays, boxes, and function values are rejected as elements.

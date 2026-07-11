@@ -439,7 +439,7 @@ or implicit synchronisation for pointee data.
 Add compile-time value parameters as the small general language feature needed
 to express atomic ordering without making ordering enums special types.
 
-- [ ] Accept `::` in function parameter declarations to require a value known
+- [x] Accept `::` in function parameter declarations to require a value known
   during semantic analysis:
 
   ```nerd
@@ -449,19 +449,19 @@ to express atomic ordering without making ordering enums special types.
   ) -> T
   ```
 
-- [ ] Permit literals, constants, and constant expressions supported by the
+- [x] Permit literals, constants, and constant expressions supported by the
   existing constant evaluator as arguments to `::` parameters.
-- [ ] Reject runtime values with a diagnostic that identifies the argument and
+- [x] Reject runtime values with a diagnostic that identifies the argument and
   the compile-time parameter declaration.
 - [ ] Treat compile-time arguments as part of canonical function
   specialisation identity without depending on general type-generic functions.
 - [ ] Substitute the known value before or during HIR generation so the backend
   never receives an unresolved runtime ordering for an atomic instruction.
-- [ ] Require default values for `::` parameters to be compile-time-known.
-- [ ] Keep compile-time parameters immutable within the function body.
-- [ ] Preserve `::` in formatting, hover, signature help, and rendered function
+- [x] Require default values for `::` parameters to be compile-time-known.
+- [x] Keep compile-time parameters immutable within the function body.
+- [x] Preserve `::` in formatting, hover, signature help, and rendered function
   types. Offer appropriate constants and enum variants in completion.
-- [ ] Initially limit compile-time arguments to values with stable canonical
+- [x] Initially limit compile-time arguments to values with stable canonical
   identity, including booleans, integers, and payload-free enums. Extend the
   set only with explicit constant-evaluation and specialisation tests.
 - [ ] Reuse this mechanism for later compile-time module parameters rather than
@@ -472,45 +472,45 @@ to express atomic ordering without making ordering enums special types.
 Add tuple-style enum payloads as a small general language feature before the
 atomic compare-exchange API depends on them.
 
-- [ ] Accept variants such as `NotExchanged(T)` alongside unit and named-field
+- [x] Accept variants such as `NotExchanged(T)` alongside unit and named-field
   variants.
-- [ ] Support construction, type checking, destructuring patterns, generic
+- [x] Support construction, type checking, destructuring patterns, generic
   substitution, HIR generation, and LLVM layout for tuple payloads.
-- [ ] Add formatter, diagnostics, hover, completion, signature help, manual,
+- [x] Add formatter, diagnostics, hover, completion, signature help, manual,
   syntax-reference, and positive and negative regression coverage.
 
 #### Atomic Types And Operators
 
-- [ ] Add the built-in type constructor `atomic[T]`.
-- [ ] Initially permit `T` to be:
+- [x] Add the built-in type constructor `atomic[T]`.
+- [x] Initially permit `T` to be:
   - `bool`
   - `i8`, `i16`, `i32`, `i64`, and `isize`
   - `u8`, `u16`, `u32`, `u64`, and `usize`
   - a thin non-owning pointer `^U`, including object, `void`, opaque FFI, and
     atomic pointee types
-- [ ] Reject owning, dynamically sized, or fat values, including `box[T]`,
+- [x] Reject owning, dynamically sized, or fat values, including `box[T]`,
   strings, slices, dynamic arrays, aggregates, and pointer-like values carrying
   metadata. Defer function pointers until their representation is explicitly
   included in the thin-pointer contract.
-- [ ] Represent `atomic[bool]` with suitable addressable atomic storage rather
+- [x] Represent `atomic[bool]` with suitable addressable atomic storage rather
   than relying on language-level boolean ABI assumptions.
 - [ ] Make atomic storage non-copyable and reject passing or returning an
   atomic by value. Functions that operate on the same storage must use
   `^atomic[T]`.
-- [ ] Allow construction of independent atomic storage from a compatible
+- [x] Allow construction of independent atomic storage from a compatible
   compile-time or runtime `T` value.
 - [ ] Allow assignment and initialisation from another compatible atomic by
   performing a sequentially consistent load of the source followed by a store
   to, or construction of, the destination. This transfers `T`, not atomic
   storage identity, and is not one indivisible operation across both objects.
-- [ ] Give ordinary syntax sequentially consistent semantics:
+- [x] Give ordinary syntax sequentially consistent semantics:
   - reading an `atomic[T]` as `T` performs one atomic load
   - assigning `T` with `=` performs one atomic store
   - integer `+=`, `-=`, `&=`, `|=`, and `^=` perform indivisible atomic
     read-modify-write operations
   - ordinary arithmetic, bitwise, boolean, and comparison expressions first
     perform an atomic load and then operate on the resulting non-atomic `T`
-- [ ] Document and test that `value = value + 1` is an atomic load followed by
+- [x] Document and test that `value = value + 1` is an atomic load followed by
   an atomic store, not an indivisible increment; `value += 1` is the atomic
   read-modify-write form.
 - [ ] Support boolean load, store, exchange, compare-exchange, `&=`, `|=`, and
@@ -526,7 +526,7 @@ atomic compare-exchange API depends on them.
 
 #### `std.atomics` API
 
-- [ ] Add `std.atomics` with separate public ordering enums so invalid load and
+- [x] Add `std.atomics` with separate public ordering enums so invalid load and
   store orderings are not representable:
 
   ```nerd
@@ -551,11 +551,11 @@ atomic compare-exchange API depends on them.
   }
   ```
 
-- [ ] Keep these as ordinary enums that can be stored, passed, returned, and
+- [x] Keep these as ordinary enums that can be stored, passed, returned, and
   inspected with `on`. Atomic methods require compile-time values through `::`;
   callers with a runtime order can branch and call the method with an explicit
   constant in each branch.
-- [ ] Define the built-in parametric compare-exchange result, exposed through
+- [x] Define the built-in parametric compare-exchange result, exposed through
   `std.atomics`, as:
 
   ```nerd
@@ -569,7 +569,7 @@ atomic compare-exchange API depends on them.
   `exchange`, integer fetch operations, strong `compare_exchange`, and weak
   `compare_exchange_weak`. Do not depend on the general generic impl facility
   being removed by the generics simplification programme.
-- [ ] Default all method order parameters to sequential consistency.
+- [x] Default all method order parameters to sequential consistency.
 - [ ] Give compare-exchange separate success and failure ordering parameters.
   Both are `::` parameters with sequentially consistent defaults. The failure
   parameter uses `AtomicLoadOrder`; reject a failure ordering that is stronger
@@ -584,13 +584,13 @@ atomic compare-exchange API depends on them.
 
 #### Compiler And LLVM Work
 
-- [ ] Add semantic type facts, compatibility rules, initialisation rules, and
+- [x] Add semantic type facts, compatibility rules, initialisation rules, and
   operation validation for `atomic[T]`.
 - [ ] Lower atomic operations explicitly through HIR rather than encoding them
   as ordinary loads, stores, or arithmetic.
 - [ ] Lower each supported operation and ordering to valid LLVM atomic
   instructions for the host 64-bit clang target.
-- [ ] Preserve target alignment requirements and reject types or widths the
+- [x] Preserve target alignment requirements and reject types or widths the
   current target contract cannot implement correctly.
 - [ ] Apply the existing Nerd integer overflow rules to signed and unsigned
   atomic read-modify-write operations.
@@ -598,7 +598,7 @@ atomic compare-exchange API depends on them.
   implementation. Document which properties come from the language memory
   model and which remain target-dependent; add a lock-free query later only if
   a concrete caller needs one.
-- [ ] Do not initially promise C ABI layout compatibility for `atomic[T]`.
+- [x] Do not initially promise C ABI layout compatibility for `atomic[T]`.
   Reject direct atomic FFI values until interoperability is deliberately
   designed and tested.
 - [ ] Keep atomic intrinsic identity internal; do not resolve compiler
@@ -622,7 +622,7 @@ atomic compare-exchange API depends on them.
   showing how to branch on a runtime value and use constants in each branch.
 - [ ] Explain in pointer-related diagnostics that atomicity of the pointer does
   not protect pointee lifetime or fields.
-- [ ] Add formatter coverage for `::` parameters and atomic type/method syntax.
+- [x] Add formatter coverage for `::` parameters and atomic type/method syntax.
 - [ ] Add LSP completion, hover, signature help, definition, references, and
   semantic-token coverage for compile-time parameters, `atomic[T]`, ordering
   enums, and substituted method signatures.
@@ -631,11 +631,11 @@ atomic compare-exchange API depends on them.
   load/store assignment and strong and weak compare-exchange.
 - [ ] Add error regressions for every rejected type, copying case, invalid
   operation, non-constant order, and invalid ordering pair.
-- [ ] Add command-path regressions that compile and run representative atomic
+- [x] Add command-path regressions that compile and run representative atomic
   programs through the real `nerd` executable.
-- [ ] Add standard-library source tests for ordering types and public method
+- [x] Add standard-library source tests for ordering types and public method
   behaviour where deterministic single-threaded checks are meaningful.
-- [ ] Add manual and language-reference documentation for compile-time
+- [x] Add manual and language-reference documentation for compile-time
   parameters, atomic syntax, default ordering, explicit methods, and pointer
   lifetime hazards. Keep implementation notes and `docs/stdlib.md` aligned.
 

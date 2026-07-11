@@ -226,9 +226,10 @@ typedef struct {
 } CstWhereConstraint;
 
 typedef struct {
-    u32 symbol_handle;
-    u32 type_node_index;
-    u32 default_node_index;
+    u32  symbol_handle;
+    u32  type_node_index;
+    u32  default_node_index;
+    bool compile_time;
 } CstParam;
 
 typedef struct {

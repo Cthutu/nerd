@@ -1167,6 +1167,11 @@ internal bool cst_parse_callable_signature(CstParseState* state,
                         return false;
                     }
                 }
+                bool compile_time = false;
+                if (cst_current_token(state).kind == TK_Colon) {
+                    compile_time = true;
+                    cst_advance(state);
+                }
                 u32 type_node = 0;
                 if (!cst_parse_type(state, &type_node)) {
                     return false;
@@ -1183,6 +1188,7 @@ internal bool cst_parse_callable_signature(CstParseState* state,
                                .symbol_handle      = symbol_handle,
                                .type_node_index    = type_node,
                                .default_node_index = default_node,
+                               .compile_time       = compile_time,
                            });
             } else {
                 u32 symbol_handle = CST_NO_VALUE;
@@ -1203,6 +1209,7 @@ internal bool cst_parse_callable_signature(CstParseState* state,
                                .symbol_handle      = symbol_handle,
                                .type_node_index    = type_node,
                                .default_node_index = CST_NO_VALUE,
+                               .compile_time       = false,
                            });
             }
             ++param_count;

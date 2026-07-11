@@ -54,6 +54,21 @@ move :: fn (state: ^State) {
 
 ## Default Parameters
 
+### Compile-time parameters
+
+Write `::` after a parameter name when every call must supply a value known
+during semantic analysis:
+
+```nerd
+choose :: fn (enabled :: bool = yes) -> i32 {
+    return on enabled => 1 else 0
+}
+```
+
+Boolean, integer, and payload-free enum constants are supported. Defaults must
+also be compile-time constants. This facility is used by `std.atomics` so an
+ordering never reaches the backend as an unresolved runtime value.
+
 Trailing parameters can have default values:
 
 ```nerd

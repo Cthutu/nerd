@@ -420,7 +420,7 @@ internal bool lsp_signature_decl_label(const LspTypeFactView* view,
         if (param->symbol_handle != U32_MAX) {
             string param_name = lex_symbol(view->lexer, param->symbol_handle);
             sb_append_string(&param_label, param_name);
-            sb_append_cstr(&param_label, ": ");
+            sb_append_cstr(&param_label, param->compile_time ? " :: " : ": ");
         }
         string source_type = lsp_signature_type_source(view, param);
         if (!string_eq(source_type, s("<unknown>"))) {

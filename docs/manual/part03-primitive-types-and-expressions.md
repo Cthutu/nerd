@@ -448,3 +448,21 @@ callback :: fn () -> Result {
     return result
 }
 ```
+# Atomic values
+
+`atomic[T]` declares independently addressable atomic storage. `T` may be
+`bool`, a fixed-width or pointer-width integer, or a thin pointer. Ordinary
+reads, assignments, and `+=`, `-=`, `&=`, `|=`, and `^=` use sequentially
+consistent ordering; compound assignments are indivisible read-modify-write
+operations.
+
+```nerd
+counter : atomic[u64] = 0
+counter += 1
+snapshot : u64 = counter
+```
+
+`counter = counter + 1` performs a load followed by a store and is not an
+indivisible increment. Import `std.atomics` for explicit `load`, `store`,
+`exchange`, fetch, and compare-exchange methods. Atomic pointer storage is
+non-owning: it does not extend pointee lifetime or make pointee fields atomic.

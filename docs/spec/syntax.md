@@ -542,3 +542,12 @@ A plex literal body is attached as a postfix expression to a type or expression
 target, for example `Point { x: 1, y: 2 }`. A `...` field marker requests
 default initialisation for omitted fields. The `with` postfix applies a plex
 update body to an existing expression.
+# Compile-time parameters and atomic types
+
+```text
+parameter   ::= symbol (":" | "::") type ("=" expression)?
+atomic-type ::= "atomic" "[" type "]"
+```
+
+`::` requires a compile-time-known argument and default. `atomic` is resolved
+as a built-in type constructor rather than a user declaration.

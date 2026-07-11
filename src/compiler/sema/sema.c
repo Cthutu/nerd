@@ -338,6 +338,17 @@ internal u32 sema_add_box_type(Sema* sema, u32 item_type)
                          });
 }
 
+internal u32 sema_add_atomic_type(Sema* sema, u32 item_type)
+{
+    return sema_add_type(sema,
+                         (SemaType){
+                             .kind             = STK_Atomic,
+                             .param_count      = 0,
+                             .first_param_type = item_type,
+                             .return_type      = sema_no_type(),
+                         });
+}
+
 internal u32 sema_add_pointer_type(Sema* sema, u32 pointee_type)
 {
     return sema_add_type(sema,
@@ -686,6 +697,15 @@ u32 sema_import_type(Lexer*       dst_lexer,
                                                   src_sema,
                                                   src_type->first_param_type));
 
+    case STK_Atomic:
+        return sema_add_atomic_type(
+            dst_sema,
+            sema_import_type(dst_lexer,
+                             dst_sema,
+                             src_lexer,
+                             src_sema,
+                             src_type->first_param_type));
+
     case STK_Pointer:
         return sema_add_pointer_type(
             dst_sema,
@@ -936,6 +956,12 @@ u32 sema_materialise_type(const Sema* sema, u32 type_index)
             (Sema*)sema, sema_materialise_type(sema, box->first_param_type));
     }
 
+    if (sema->types[type_index].kind == STK_Atomic) {
+        const SemaType* atomic = &sema->types[type_index];
+        return sema_add_atomic_type(
+            (Sema*)sema, sema_materialise_type(sema, atomic->first_param_type));
+    }
+
     if (sema->types[type_index].kind == STK_Pointer) {
         return type_index;
     }
@@ -1030,6 +1056,7 @@ internal bool sema_type_has_dot_members(const Sema* sema, u32 type_index)
     case STK_String:
     case STK_DynamicArray:
     case STK_Box:
+    case STK_Atomic:
     case STK_Plex:
     case STK_Union:
         return true;
@@ -1163,6 +1190,17 @@ string sema_type_name(const Lexer* lexer,
             sb_append_cstr(&sb, ") -> ");
             sb_append_string(
                 &sb, sema_type_name(lexer, sema, arena, type->return_type));
+            return sb_to_string(&sb);
+        }
+    case STK_Atomic:
+        {
+            StringBuilder sb = {0};
+            sb_init(&sb, arena);
+            sb_append_cstr(&sb, "atomic[");
+            sb_append_string(
+                &sb,
+                sema_type_name(lexer, sema, arena, type->first_param_type));
+            sb_append_char(&sb, ']');
             return sb_to_string(&sb);
         }
     case STK_Module:
@@ -3347,7 +3385,9 @@ internal bool sema_resolve_generic_type_application(const Lexer* lexer,
             lexer->source, sema_node_span(lexer, target), s("<generic>"));
     }
 
-    if (string_eq(lex_symbol(lexer, target->a), s("box"))) {
+    string builtin_name = lex_symbol(lexer, target->a);
+    if (string_eq(builtin_name, s("box")) ||
+        string_eq(builtin_name, s("atomic"))) {
         if (apply->arg_count != 1) {
             return error_0313_argument_count_mismatch(
                 lexer->source,
@@ -3364,7 +3404,29 @@ internal bool sema_resolve_generic_type_application(const Lexer* lexer,
                                        &item_type)) {
             return false;
         }
-        *out_type_index = sema_add_box_type(sema, item_type);
+        if (string_eq(builtin_name, s("atomic"))) {
+            if (item_type == sema_no_type()) {
+                *out_type_index = sema_add_atomic_type(sema, item_type);
+                sema->node_type_indices[node_index] = *out_type_index;
+                return true;
+            }
+            SemaTypeKind item_kind = sema->types[item_type].kind;
+            if (!(item_kind == STK_Bool || item_kind == STK_I8 ||
+                  item_kind == STK_I16 || item_kind == STK_I32 ||
+                  item_kind == STK_I64 || item_kind == STK_U8 ||
+                  item_kind == STK_U16 || item_kind == STK_U32 ||
+                  item_kind == STK_U64 || item_kind == STK_Isize ||
+                  item_kind == STK_Usize || item_kind == STK_Pointer)) {
+                return error_0304_type_mismatch(
+                    lexer->source,
+                    sema_node_span(lexer, node),
+                    s("atomic bool, integer, or thin pointer element"),
+                    sema_type_name(lexer, sema, &temp_arena, item_type));
+            }
+            *out_type_index = sema_add_atomic_type(sema, item_type);
+        } else {
+            *out_type_index = sema_add_box_type(sema, item_type);
+        }
         sema->node_type_indices[node_index] = *out_type_index;
         return true;
     }
@@ -3461,7 +3523,7 @@ internal bool sema_is_builtin_type_name(string name)
            string_eq(name, s("u64")) || string_eq(name, s("f32")) ||
            string_eq(name, s("f64")) || string_eq(name, s("isize")) ||
            string_eq(name, s("usize")) || string_eq(name, s("arena")) ||
-           string_eq(name, s("box"));
+           string_eq(name, s("box")) || string_eq(name, s("atomic"));
 }
 
 internal bool sema_find_unknown_type_ref_in_type_syntax(const Lexer* lexer,
@@ -7281,6 +7343,16 @@ internal bool sema_collect_function_locals(const Lexer* lexer,
                     sema_type_name(lexer, sema, &temp_arena, param_type),
                     sema_type_name(lexer, sema, &temp_arena, default_type));
             }
+            if (param->compile_time &&
+                !sema_expr_is_constantish(
+                    ast, sema, param->default_node_index)) {
+                return error_0304_type_mismatch(
+                    lexer->source,
+                    sema_node_span(lexer,
+                                   &ast->nodes[param->default_node_index]),
+                    s("compile-time constant"),
+                    s("runtime value"));
+            }
         }
     }
 
@@ -7893,7 +7965,9 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
         {
             const AstNode* target = &ast->nodes[node->a];
             if (target->kind == AK_SymbolRef) {
-                if (string_eq(lex_symbol(lexer, target->a), s("box"))) {
+                string builtin_name = lex_symbol(lexer, target->a);
+                if (string_eq(builtin_name, s("box")) ||
+                    string_eq(builtin_name, s("atomic"))) {
                     sema_mark_type_expr_nodes(ast, sema, node->b);
                     return sema_resolve_node_refs(lexer,
                                                   ast,
@@ -10366,6 +10440,18 @@ sema_type_matches(const Sema* sema, u32 expected_type, u32 actual_type)
     }
 
     const SemaType* expected = &sema->types[expected_type];
+    const SemaType* actual   = &sema->types[actual_type];
+    if (expected->kind == STK_Atomic) {
+        return actual->kind == STK_Atomic
+                   ? sema_type_matches(sema,
+                                       expected->first_param_type,
+                                       actual->first_param_type)
+                   : sema_type_matches(
+                         sema, expected->first_param_type, actual_type);
+    }
+    if (actual->kind == STK_Atomic) {
+        return sema_type_matches(sema, expected_type, actual->first_param_type);
+    }
     if (expected->kind == STK_Enum && (expected->flags & STF_Optional)) {
         if (sema->types[actual_type].kind == STK_Nil) {
             return true;
@@ -10917,6 +11003,7 @@ internal bool sema_type_is_variable_storage(const Sema* sema, u32 type_index)
     case STK_Slice:
     case STK_DynamicArray:
     case STK_Box:
+    case STK_Atomic:
     case STK_Pointer:
     case STK_Enum:
     case STK_Arena:
@@ -12049,6 +12136,23 @@ bool sema_bind_generic_type_node(const Lexer*            lexer,
             }
         }
         return true;
+    }
+
+    if (type_node->kind == AK_TypeApply &&
+        sema->types[actual_type].kind == STK_Atomic) {
+        const AstTypeApplyInfo* apply  = &ast->type_applications[type_node->a];
+        const AstNode*          target = &ast->nodes[apply->target_node_index];
+        if (target->kind == AK_SymbolRef && apply->arg_count == 1 &&
+            string_eq(lex_symbol(lexer, target->a), s("atomic"))) {
+            return sema_bind_generic_type_node(
+                lexer,
+                ast,
+                sema,
+                generic,
+                ast->tuple_items[apply->first_arg],
+                sema->types[actual_type].first_param_type,
+                arg_types);
+        }
     }
 
     u32                  expected = sema_no_type();
@@ -19518,6 +19622,15 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 }
             }
 
+            if (lhs_type != sema_no_type() &&
+                sema->types[lhs_type].kind == STK_Atomic) {
+                lhs_type = sema->types[lhs_type].first_param_type;
+            }
+            if (rhs_type != sema_no_type() &&
+                sema->types[rhs_type].kind == STK_Atomic) {
+                rhs_type = sema->types[rhs_type].first_param_type;
+            }
+
             if (sema_type_is_concrete_integer(sema, lhs_type) &&
                 rhs_type != sema_no_type() &&
                 sema->types[rhs_type].kind == STK_UntypedInteger) {
@@ -19602,7 +19715,11 @@ internal bool sema_infer_node_type(const Lexer* lexer,
             case AK_BitwiseOr:
             case AK_ShiftLeft:
             case AK_ShiftRight:
-                if (!sema_type_is_integer(sema, lhs_type)) {
+                if (!sema_type_is_integer(sema, lhs_type) &&
+                    !((node->kind == AK_BitwiseAnd ||
+                       node->kind == AK_BitwiseXor ||
+                       node->kind == AK_BitwiseOr) &&
+                      lhs_type == sema_builtin_type(sema, STK_Bool))) {
                     string op = s("|");
                     switch (node->kind) {
                     case AK_IntegerModulo:
@@ -20483,6 +20600,14 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                         sema_node_span(lexer, &ast->nodes[arg_node]),
                         sema_type_name(lexer, sema, &temp_arena, expected_arg),
                         sema_type_name(lexer, sema, &temp_arena, arg_type));
+                }
+                if (expected_param != NULL && expected_param->compile_time &&
+                    !sema_expr_is_constantish(ast, sema, arg_node)) {
+                    return error_0304_type_mismatch(
+                        lexer->source,
+                        sema_node_span(lexer, &ast->nodes[arg_node]),
+                        s("compile-time constant"),
+                        s("runtime value"));
                 }
             }
 

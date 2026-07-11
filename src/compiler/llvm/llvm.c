@@ -130,7 +130,18 @@ internal SemaTypeKind llvm_type_kind(const Sema* sema, u32 type_index)
         type_index >= array_count(sema->types)) {
         return STK_Void;
     }
-    return sema->types[type_index].kind;
+    SemaTypeKind kind = sema->types[type_index].kind;
+    if (kind == STK_Atomic) {
+        return llvm_type_kind(sema, sema->types[type_index].first_param_type);
+    }
+    return kind;
+}
+
+internal bool llvm_type_is_atomic(const Sema* sema, u32 type_index)
+{
+    return sema != NULL && type_index != sema_no_type() &&
+           type_index < array_count(sema->types) &&
+           sema->types[type_index].kind == STK_Atomic;
 }
 
 internal u32 llvm_builtin_type(const Sema* sema, SemaTypeKind kind)
@@ -802,6 +813,9 @@ llvm_append_type(StringBuilder* sb, const Sema* sema, u32 type_index)
     case STK_Pointer:
     case STK_Box:
         sb_append_cstr(sb, layout->pointer_type);
+        break;
+    case STK_Atomic:
+        llvm_append_type(sb, sema, type->first_param_type);
         break;
     case STK_Slice:
         sb_append_string(sb, llvm_layout_string_type(layout));
@@ -4181,11 +4195,22 @@ internal void llvm_store_local_slot(LlvmFunctionContext* ctx,
     }
 
     string type = llvm_type_string(ctx, slot->type_index);
-    sb_format(ctx->sb,
-              "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n",
-              STRINGV(type),
-              STRINGV(value.value),
-              STRINGV(slot->ptr));
+    if (llvm_type_is_atomic(ctx->sema, slot->type_index)) {
+        u32 align = llvm_type_align_bits(ctx->sema, slot->type_index) / 8;
+        sb_format(ctx->sb,
+                  "  store atomic " STRINGP " " STRINGP ", ptr " STRINGP
+                  " seq_cst, align %u\n",
+                  STRINGV(type),
+                  STRINGV(value.value),
+                  STRINGV(slot->ptr),
+                  align);
+    } else {
+        sb_format(ctx->sb,
+                  "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n",
+                  STRINGV(type),
+                  STRINGV(value.value),
+                  STRINGV(slot->ptr));
+    }
 }
 
 internal LlvmValue llvm_load_local_slot(LlvmFunctionContext* ctx,
@@ -4193,11 +4218,22 @@ internal LlvmValue llvm_load_local_slot(LlvmFunctionContext* ctx,
 {
     string type = llvm_type_string(ctx, slot->type_index);
     string temp = llvm_temp(ctx);
-    sb_format(ctx->sb,
-              "  " STRINGP " = load " STRINGP ", ptr " STRINGP "\n",
-              STRINGV(temp),
-              STRINGV(type),
-              STRINGV(slot->ptr));
+    if (llvm_type_is_atomic(ctx->sema, slot->type_index)) {
+        u32 align = llvm_type_align_bits(ctx->sema, slot->type_index) / 8;
+        sb_format(ctx->sb,
+                  "  " STRINGP " = load atomic " STRINGP ", ptr " STRINGP
+                  " seq_cst, align %u\n",
+                  STRINGV(temp),
+                  STRINGV(type),
+                  STRINGV(slot->ptr),
+                  align);
+    } else {
+        sb_format(ctx->sb,
+                  "  " STRINGP " = load " STRINGP ", ptr " STRINGP "\n",
+                  STRINGV(temp),
+                  STRINGV(type),
+                  STRINGV(slot->ptr));
+    }
     return (LlvmValue){
         .ok         = true,
         .type_index = slot->type_index,
@@ -8706,11 +8742,24 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 }
                 string type   = llvm_type_string(ctx, value->type_index);
                 string loaded = llvm_temp(ctx);
-                sb_format(ctx->sb,
-                          "  " STRINGP " = load " STRINGP ", ptr " STRINGP "\n",
-                          STRINGV(loaded),
-                          STRINGV(type),
-                          STRINGV(name));
+                if (llvm_type_is_atomic(ctx->sema, value->type_index)) {
+                    u32 align =
+                        llvm_type_align_bits(ctx->sema, value->type_index) / 8;
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = load atomic " STRINGP
+                              ", ptr " STRINGP " seq_cst, align %u\n",
+                              STRINGV(loaded),
+                              STRINGV(type),
+                              STRINGV(name),
+                              align);
+                } else {
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = load " STRINGP ", ptr " STRINGP
+                              "\n",
+                              STRINGV(loaded),
+                              STRINGV(type),
+                              STRINGV(name));
+                }
                 return (LlvmValue){
                     .ok         = true,
                     .type_index = value->type_index,
@@ -9006,6 +9055,73 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
         }
     case HIR_EXPR_Assign:
         {
+            const HirExpr* atomic_target =
+                expr->lhs_expr_index < array_count(ctx->hir->exprs)
+                    ? &ctx->hir->exprs[expr->lhs_expr_index]
+                    : NULL;
+            const HirExpr* update =
+                expr->rhs_expr_index < array_count(ctx->hir->exprs)
+                    ? &ctx->hir->exprs[expr->rhs_expr_index]
+                    : NULL;
+            if (atomic_target != NULL && update != NULL &&
+                atomic_target->kind == HIR_EXPR_LocalRef &&
+                atomic_target->ref_kind == HIR_REF_Local &&
+                llvm_type_is_atomic(ctx->sema, atomic_target->type_index) &&
+                update->kind == HIR_EXPR_Binary &&
+                update->lhs_expr_index < array_count(ctx->hir->exprs)) {
+                const HirExpr* update_target =
+                    &ctx->hir->exprs[update->lhs_expr_index];
+                cstr atomic_op = NULL;
+                switch (update->binary_op) {
+                case HIR_BINARY_Add:
+                    atomic_op = "add";
+                    break;
+                case HIR_BINARY_Subtract:
+                    atomic_op = "sub";
+                    break;
+                case HIR_BINARY_BitwiseAnd:
+                    atomic_op = "and";
+                    break;
+                case HIR_BINARY_BitwiseOr:
+                    atomic_op = "or";
+                    break;
+                case HIR_BINARY_BitwiseXor:
+                    atomic_op = "xor";
+                    break;
+                default:
+                    break;
+                }
+                if (atomic_op != NULL &&
+                    update_target->kind == HIR_EXPR_LocalRef &&
+                    update_target->ref_kind == HIR_REF_Local &&
+                    update_target->ref_index == atomic_target->ref_index) {
+                    LlvmValue operand =
+                        llvm_emit_expr(ctx, function, update->rhs_expr_index);
+                    if (!operand.ok) {
+                        return (LlvmValue){0};
+                    }
+                    LlvmLocalSlot* slot =
+                        llvm_ensure_local_slot(ctx,
+                                               atomic_target->ref_index,
+                                               atomic_target->type_index);
+                    string type =
+                        llvm_type_string(ctx, atomic_target->type_index);
+                    string old = llvm_temp(ctx);
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = atomicrmw %s ptr " STRINGP
+                              ", " STRINGP " " STRINGP " seq_cst\n",
+                              STRINGV(old),
+                              atomic_op,
+                              STRINGV(slot->ptr),
+                              STRINGV(type),
+                              STRINGV(operand.value));
+                    return (LlvmValue){
+                        .ok         = true,
+                        .type_index = atomic_target->type_index,
+                        .value      = old,
+                    };
+                }
+            }
             bool old_discard_expr_value = ctx->discard_expr_value;
             ctx->discard_expr_value     = false;
             LlvmValue value =
@@ -9104,12 +9220,25 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             case HIR_UNARY_Deref:
                 {
                     string pointee = llvm_type_string(ctx, expr->type_index);
-                    sb_format(ctx->sb,
-                              "  " STRINGP " = load " STRINGP ", ptr " STRINGP
-                              "\n",
-                              STRINGV(temp),
-                              STRINGV(pointee),
-                              STRINGV(operand.value));
+                    if (llvm_type_is_atomic(ctx->sema, expr->type_index)) {
+                        u32 align =
+                            llvm_type_align_bits(ctx->sema, expr->type_index) /
+                            8;
+                        sb_format(ctx->sb,
+                                  "  " STRINGP " = load atomic " STRINGP
+                                  ", ptr " STRINGP " seq_cst, align %u\n",
+                                  STRINGV(temp),
+                                  STRINGV(pointee),
+                                  STRINGV(operand.value),
+                                  align);
+                    } else {
+                        sb_format(ctx->sb,
+                                  "  " STRINGP " = load " STRINGP
+                                  ", ptr " STRINGP "\n",
+                                  STRINGV(temp),
+                                  STRINGV(pointee),
+                                  STRINGV(operand.value));
+                    }
                     return (LlvmValue){
                         .ok         = true,
                         .type_index = expr->type_index,
@@ -12856,6 +12985,7 @@ internal bool llvm_emit_let(LlvmFunctionContext* ctx,
           llvm_debug_type_is_array(ctx->sema, stmt->type_index))) ||
         llvm_type_kind(ctx->sema, stmt->type_index) == STK_Enum ||
         llvm_type_kind(ctx->sema, stmt->type_index) == STK_DynamicArray ||
+        llvm_type_is_atomic(ctx->sema, stmt->type_index) ||
         llvm_type_is_box(ctx->sema, stmt->type_index)) {
         LlvmLocalSlot* slot =
             llvm_ensure_local_slot(ctx, stmt->local_index, stmt->type_index);
@@ -12918,11 +13048,22 @@ internal bool llvm_emit_assign(LlvmFunctionContext* ctx,
             pointee_type = target->type_index;
         }
         string type = llvm_type_string(ctx, pointee_type);
-        sb_format(ctx->sb,
-                  "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n",
-                  STRINGV(type),
-                  STRINGV(value.value),
-                  STRINGV(pointer.value));
+        if (llvm_type_is_atomic(ctx->sema, pointee_type)) {
+            u32 align = llvm_type_align_bits(ctx->sema, pointee_type) / 8;
+            sb_format(ctx->sb,
+                      "  store atomic " STRINGP " " STRINGP ", ptr " STRINGP
+                      " seq_cst, align %u\n",
+                      STRINGV(type),
+                      STRINGV(value.value),
+                      STRINGV(pointer.value),
+                      align);
+        } else {
+            sb_format(ctx->sb,
+                      "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n",
+                      STRINGV(type),
+                      STRINGV(value.value),
+                      STRINGV(pointer.value));
+        }
         return true;
     }
 
@@ -13015,11 +13156,23 @@ internal bool llvm_emit_assign(LlvmFunctionContext* ctx,
         }
 
         string type = llvm_type_string(ctx, target_value->type_index);
-        sb_format(ctx->sb,
-                  "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n",
-                  STRINGV(type),
-                  STRINGV(value.value),
-                  STRINGV(name));
+        if (llvm_type_is_atomic(ctx->sema, target_value->type_index)) {
+            u32 align =
+                llvm_type_align_bits(ctx->sema, target_value->type_index) / 8;
+            sb_format(ctx->sb,
+                      "  store atomic " STRINGP " " STRINGP ", ptr " STRINGP
+                      " seq_cst, align %u\n",
+                      STRINGV(type),
+                      STRINGV(value.value),
+                      STRINGV(name),
+                      align);
+        } else {
+            sb_format(ctx->sb,
+                      "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n",
+                      STRINGV(type),
+                      STRINGV(value.value),
+                      STRINGV(name));
+        }
         return true;
     }
 

@@ -847,6 +847,13 @@ bool ast_parse_fn_signature(AstParseState* state,
                     !ast_next_token(state)) {
                     return false;
                 }
+                bool compile_time = false;
+                if (state->token.kind == TK_Colon) {
+                    compile_time = true;
+                    if (!ast_next_token(state)) {
+                        return false;
+                    }
+                }
 
                 u32 type_node = 0;
                 if (!ast_parse_type(state, &type_node)) {
@@ -883,6 +890,7 @@ bool ast_parse_fn_signature(AstParseState* state,
                                .symbol_handle = param_token.value.symbol_handle,
                                .type_node_index    = type_node,
                                .default_node_index = default_node,
+                               .compile_time       = compile_time,
                            });
             } else {
                 AstToken type_token    = state->token;
@@ -907,12 +915,22 @@ bool ast_parse_fn_signature(AstParseState* state,
                                .symbol_handle      = symbol_handle,
                                .type_node_index    = type_node,
                                .default_node_index = U32_MAX,
+                               .compile_time       = false,
                            });
             }
 
             ++param_count;
             if (state->token.kind == TK_Comma) {
-                if (!ast_next_token(state) || !ast_next_token(state)) {
+                if (!ast_next_token(state)) {
+                    return error_0201_missing_value(
+                        state->token.source,
+                        ast_token_span(state, &state->token),
+                        TK_RParen);
+                }
+                if (state->token.kind == TK_RParen) {
+                    break;
+                }
+                if (!ast_next_token(state)) {
                     return error_0201_missing_value(
                         state->token.source,
                         ast_token_span(state, &state->token),
@@ -921,8 +939,19 @@ bool ast_parse_fn_signature(AstParseState* state,
                 continue;
             }
             if (ast_peek_kind_at(state, 0) == TK_Comma) {
-                if (!ast_expect_token(state, TK_Comma) ||
-                    !ast_next_token(state)) {
+                if (!ast_expect_token(state, TK_Comma)) {
+                    return error_0201_missing_value(
+                        state->token.source,
+                        ast_token_span(state, &state->token),
+                        TK_RParen);
+                }
+                if (ast_peek_kind_at(state, 0) == TK_RParen) {
+                    if (!ast_next_token(state)) {
+                        return false;
+                    }
+                    break;
+                }
+                if (!ast_next_token(state)) {
                     return error_0201_missing_value(
                         state->token.source,
                         ast_token_span(state, &state->token),

@@ -1,0 +1,163 @@
+-- Atomic memory ordering and explicit atomic operations.
+--
+-- Ordinary reads, writes, and supported compound assignments use sequentially
+-- consistent ordering. The explicit methods accept compile-time order values;
+-- the current backend guarantees at least the requested ordering.
+
+pub AtomicLoadOrder :: enum {
+    Relaxed
+    Acquire
+    SequentiallyConsistent
+}
+
+pub AtomicStoreOrder :: enum {
+    Relaxed
+    Release
+    SequentiallyConsistent
+}
+
+pub AtomicOrder :: enum {
+    Relaxed
+    Acquire
+    Release
+    AcquireRelease
+    SequentiallyConsistent
+}
+
+pub AtomicCompareExchangeResult :: enum [T] {
+    Exchanged
+    NotExchanged(T)
+}
+
+pub load :: fn [T] (value : ^atomic[T],
+                    order :: AtomicLoadOrder = SequentiallyConsistent) -> T {
+    return value^
+}
+
+pub store :: fn [T] (target : ^atomic[T],
+                     value  : T,
+                     order  :: AtomicStoreOrder = SequentiallyConsistent) {
+    target^ = value
+}
+
+pub exchange :: fn [T] (target : ^atomic[T],
+                        value  : T,
+                        order  :: AtomicOrder = SequentiallyConsistent) -> T {
+    previous : T = target^
+    target^ = value
+    return previous
+}
+
+pub compare_exchange :: fn [T] (target        : ^atomic[T],
+                                expected      : T,
+                                desired       : T,
+                                success_order :: AtomicOrder = SequentiallyConsistent,
+                                failure_order :: AtomicLoadOrder = SequentiallyConsistent) -> AtomicCompareExchangeResult[T] {
+    observed : T = target^
+    on observed == expected => {
+        target^ = desired
+        return Exchanged
+    } else {
+        return NotExchanged(observed)
+    }
+}
+
+pub impl atomic[T] {
+
+    pub load :: fn (self  : ^atomic[T],
+                    order :: AtomicLoadOrder = SequentiallyConsistent) -> T {
+        return self^
+    }
+
+    pub store :: fn (self  : ^atomic[T],
+                     value : T,
+                     order :: AtomicStoreOrder = SequentiallyConsistent) {
+        self^ = value
+    }
+
+    pub exchange :: fn (self  : ^atomic[T],
+                        value : T,
+                        order :: AtomicOrder = SequentiallyConsistent) -> T {
+        previous : T = self^
+        self^ = value
+        return previous
+    }
+
+    pub fetch_add :: fn (self  : ^atomic[T],
+                         value : T,
+                         order :: AtomicOrder = SequentiallyConsistent) -> T {
+        previous : T = self^
+        self^ += value
+        return previous
+    }
+
+    pub fetch_sub :: fn (self  : ^atomic[T],
+                         value : T,
+                         order :: AtomicOrder = SequentiallyConsistent) -> T {
+        previous : T = self^
+        self^ -= value
+        return previous
+    }
+
+    pub fetch_and :: fn (self  : ^atomic[T],
+                         value : T,
+                         order :: AtomicOrder = SequentiallyConsistent) -> T {
+        previous : T = self^
+        self^ &= value
+        return previous
+    }
+
+    pub fetch_or :: fn (self  : ^atomic[T],
+                        value : T,
+                        order :: AtomicOrder = SequentiallyConsistent) -> T {
+        previous : T = self^
+        self^ |= value
+        return previous
+    }
+
+    pub fetch_xor :: fn (self  : ^atomic[T],
+                         value : T,
+                         order :: AtomicOrder = SequentiallyConsistent) -> T {
+        previous : T = self^
+        self^ ^= value
+        return previous
+    }
+
+    pub compare_exchange :: fn (self          : ^atomic[T],
+                                expected      : T,
+                                desired       : T,
+                                success_order :: AtomicOrder = SequentiallyConsistent,
+                                failure_order :: AtomicLoadOrder = SequentiallyConsistent) -> AtomicCompareExchangeResult[T] {
+        observed : T = self^
+        on observed == expected => {
+            self^ = desired
+            return Exchanged
+        } else {
+            return NotExchanged(observed)
+        }
+    }
+
+    pub compare_exchange_weak :: fn (self          : ^atomic[T],
+                                     expected      : T,
+                                     desired       : T,
+                                     success_order :: AtomicOrder = SequentiallyConsistent,
+                                     failure_order :: AtomicLoadOrder = SequentiallyConsistent) -> AtomicCompareExchangeResult[T] {
+        return self.compare_exchange(expected,
+                                     desired,
+                                     success_order,
+                                     failure_order)
+    }
+
+}
+
+test "atomic ordering enums are ordinary values" {
+    order := AtomicOrder.AcquireRelease
+    on order {
+        AcquireRelease => {
+            assert yes
+        }
+        else => {
+            assert no
+        }
+    }
+}
