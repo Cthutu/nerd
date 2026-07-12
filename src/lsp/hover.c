@@ -1970,6 +1970,7 @@ internal bool lsp_decl_ast_signature(const LspDocument* doc,
     }
 
     if (decl->value_node_index == sema_no_decl() ||
+        decl->value_node_index >= array_count(doc->front_end.ast.nodes) ||
         (decl->kind != SK_GenericFunction &&
          decl->type_index >= array_count(doc->front_end.sema.types))) {
         return false;
@@ -1980,11 +1981,23 @@ internal bool lsp_decl_ast_signature(const LspDocument* doc,
     const AstFnSignature* signature  = NULL;
 
     if (value_node->kind == AK_FnDef) {
+        if (value_node->a >= array_count(ast->nodes)) {
+            return false;
+        }
         const AstNode* fn_start = &ast->nodes[value_node->a];
-        signature               = &ast->fn_signatures[fn_start->a];
+        if (fn_start->a >= array_count(ast->fn_signatures)) {
+            return false;
+        }
+        signature = &ast->fn_signatures[fn_start->a];
     } else if (value_node->kind == AK_FfiDef) {
+        if (value_node->a >= array_count(ast->ffi_infos)) {
+            return false;
+        }
         const AstFfiInfo* ffi = &ast->ffi_infos[value_node->a];
-        signature             = &ast->fn_signatures[ffi->signature_index];
+        if (ffi->signature_index >= array_count(ast->fn_signatures)) {
+            return false;
+        }
+        signature = &ast->fn_signatures[ffi->signature_index];
     } else {
         return false;
     }
@@ -2063,7 +2076,8 @@ internal bool lsp_decl_ast_signature(const LspDocument* doc,
         sb_append_string(
             &sb,
             lsp_return_type_source(doc, signature->return_type_node_index));
-    } else if (!has_generic && type->return_type != sema_no_type()) {
+    } else if (!has_generic && type != NULL &&
+               type->return_type != sema_no_type()) {
         sb_append_cstr(&sb, " -> ");
         sb_append_string(&sb,
                          sema_type_name(&doc->front_end.lexer,

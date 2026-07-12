@@ -1641,4 +1641,65 @@ bool error_0355_trait_generic_argument_count(NerdSource source,
     return false;
 }
 
+bool error_0356_atomic_pointer_operation(NerdSource source,
+                                         ErrorSpan  span,
+                                         string     operation)
+{
+    ErrorInfo error = error_init(source,
+                                 span,
+                                 "Cannot " STRINGP " an atomic pointer",
+                                 STRINGV(operation));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "`atomic[^T]` stores a pointer atomically; it is not "
+                        "itself an ordinary pointer");
+    error_add_help(&error,
+                   "Load the value into an ordinary pointer first, for example "
+                   "`pointer := atomic_pointer.load()`.");
+    error_add_note(&error,
+                   "Atomicity of the pointer does not protect the pointee's "
+                   "lifetime or fields.");
+    error_render(&error);
+    return false;
+}
+
+bool error_0357_runtime_compile_time_argument(NerdSource source,
+                                              ErrorSpan  span,
+                                              string     parameter)
+{
+    ErrorInfo error = error_init(source,
+                                 span,
+                                 "Argument for compile-time parameter `" STRINGP
+                                 "` is not constant",
+                                 STRINGV(parameter));
+    error_add_reference(
+        &error, ERROR_REF_PRIMARY, span, "This value is only known at runtime");
+    error_add_help(&error,
+                   "Branch on the runtime value and call the function with an "
+                   "explicit constant in each branch.");
+    error_render(&error);
+    return false;
+}
+
+bool error_0358_atomic_ffi_type(NerdSource source,
+                                ErrorSpan  span,
+                                string     position)
+{
+    ErrorInfo error =
+        error_init(source,
+                   span,
+                   "Atomic storage cannot be used as an FFI " STRINGP,
+                   STRINGV(position));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "`atomic[T]` has no promised C ABI representation");
+    error_add_help(&error,
+                   "Pass an ordinary `T` value, or pass explicitly designed "
+                   "opaque storage through a pointer.");
+    error_render(&error);
+    return false;
+}
+
 //------------------------------------------------------------------------------

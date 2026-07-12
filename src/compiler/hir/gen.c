@@ -429,6 +429,8 @@ internal u8 hir_atomic_order_value(const Lexer* lexer,
                                    const Ast*   ast,
                                    const Sema*  sema,
                                    u32          node_index,
+                                   SemaAtomicOp operation,
+                                   bool         failure,
                                    u8           fallback)
 {
     if (node_index < array_count(sema->node_const_known) &&
@@ -449,13 +451,15 @@ internal u8 hir_atomic_order_value(const Lexer* lexer,
             return 1;
         }
         if (string_eq(name, s("Release"))) {
-            return 2;
+            return operation == SAO_Store ? 1 : 2;
         }
         if (string_eq(name, s("AcquireRelease"))) {
             return 3;
         }
         if (string_eq(name, s("SequentiallyConsistent"))) {
-            return 4;
+            return operation == SAO_Load || operation == SAO_Store || failure
+                       ? 2
+                       : 4;
         }
     }
     return fallback;
@@ -483,6 +487,75 @@ internal u32 hir_add_expr(Hir* hir, HirExpr expr)
 {
     array_push(hir->exprs, expr);
     return (u32)array_count(hir->exprs) - 1;
+}
+
+internal const SemaCompileTimeFnInstantiation* g_hir_compile_time_instantiation;
+
+internal const SemaCompileTimeValue* hir_compile_time_value(const Sema* sema,
+                                                            u32         symbol)
+{
+    if (g_hir_compile_time_instantiation == NULL) {
+        return NULL;
+    }
+    for (u32 i = 0; i < g_hir_compile_time_instantiation->value_count; ++i) {
+        const SemaCompileTimeValue* value =
+            &sema->compile_time_values
+                 [g_hir_compile_time_instantiation->first_value + i];
+        if (value->symbol_handle == symbol) {
+            return value;
+        }
+    }
+    return NULL;
+}
+
+internal u32 hir_binding_by_symbol(const Hir* hir, u32 symbol)
+{
+    for (u32 i = 0; i < array_count(hir->bindings); ++i) {
+        if (hir->bindings[i].symbol_handle == symbol) {
+            return i;
+        }
+    }
+    return hir_no_index();
+}
+
+internal bool hir_specialized_param_is_compile_time(const Sema* sema,
+                                                    const Ast*  ast,
+                                                    u32         symbol,
+                                                    u32         param_index)
+{
+    for (u32 i = 0; i < array_count(sema->compile_time_fn_instantiations);
+         ++i) {
+        const SemaCompileTimeFnInstantiation* inst =
+            &sema->compile_time_fn_instantiations[i];
+        if (inst->symbol_handle != symbol ||
+            inst->template_decl_index >= array_count(sema->decls)) {
+            continue;
+        }
+        u32 fn = sema->decls[inst->template_decl_index].value_node_index;
+        while (fn < array_count(ast->nodes) &&
+               ast->nodes[fn].kind == AK_Expression) {
+            fn = ast->nodes[fn].a;
+        }
+        if (fn >= array_count(ast->nodes) || ast->nodes[fn].kind != AK_FnDef) {
+            return false;
+        }
+        const AstNode*        start     = &ast->nodes[ast->nodes[fn].a];
+        const AstFnSignature* signature = &ast->fn_signatures[start->a];
+        return param_index < signature->param_count &&
+               ast->params[signature->first_param + param_index].compile_time;
+    }
+    return false;
+}
+
+internal bool hir_is_compile_time_specialization(const Sema* sema, u32 symbol)
+{
+    for (u32 i = 0; i < array_count(sema->compile_time_fn_instantiations);
+         ++i) {
+        if (sema->compile_time_fn_instantiations[i].symbol_handle == symbol) {
+            return true;
+        }
+    }
+    return false;
 }
 
 internal u32 hir_node_source_line(const Lexer* lexer,
@@ -1770,6 +1843,25 @@ internal u32 hir_lower_expr(Hir*         hir,
         }
     case AK_SymbolRef:
         {
+            const SemaCompileTimeValue* compile_time =
+                hir_compile_time_value(sema, node->a);
+            if (compile_time != NULL) {
+                SemaTypeKind kind =
+                    compile_time->type_index < array_count(sema->types)
+                        ? sema->types[compile_time->type_index].kind
+                        : STK_I64;
+                return hir_add_expr(hir,
+                                    (HirExpr){
+                                        .kind = kind == STK_Bool
+                                                    ? HIR_EXPR_BoolLiteral
+                                                    : HIR_EXPR_IntegerLiteral,
+                                        .type_index = compile_time->type_index,
+                                        .symbol_handle = U32_MAX,
+                                        .local_index   = sema_no_local(),
+                                        .integer       = compile_time->value,
+                                        .boolean = compile_time->value != 0,
+                                    });
+            }
             u32 local_index = hir_node_local(sema, node_index);
             u32 decl_index  = hir_node_decl(sema, node_index);
             u32 type_index  = hir_node_type(sema, node_index);
@@ -1790,13 +1882,24 @@ internal u32 hir_lower_expr(Hir*         hir,
                                         .ref_index     = hir_no_index(),
                                     });
             }
+            u32 lowered_symbol =
+                node_index < array_count(sema->node_lowered_symbol_handles) &&
+                        sema->node_lowered_symbol_handles[node_index] != U32_MAX
+                    ? sema->node_lowered_symbol_handles[node_index]
+                    : node->a;
+            if (!hir_is_compile_time_specialization(sema, lowered_symbol)) {
+                lowered_symbol = node->a;
+            }
             HirRefKind ref_kind  = HIR_REF_None;
             u32        ref_index = hir_no_index();
             if (local_index != sema_no_local()) {
                 ref_kind  = HIR_REF_Local;
                 ref_index = local_index;
             } else if (decl_index != sema_no_decl()) {
-                u32 binding_index = hir_decl_binding(hir, decl_index);
+                u32 binding_index =
+                    hir_is_compile_time_specialization(sema, lowered_symbol)
+                        ? hir_binding_by_symbol(hir, lowered_symbol)
+                        : hir_decl_binding(hir, decl_index);
                 if (binding_index != hir_no_index()) {
                     ref_kind  = HIR_REF_Binding;
                     ref_index = binding_index;
@@ -1809,7 +1912,7 @@ internal u32 hir_lower_expr(Hir*         hir,
                                 (HirExpr){
                                     .kind          = HIR_EXPR_LocalRef,
                                     .type_index    = type_index,
-                                    .symbol_handle = node->a,
+                                    .symbol_handle = lowered_symbol,
                                     .local_index   = local_index,
                                     .ref_kind      = ref_kind,
                                     .ref_index     = ref_index,
@@ -1946,19 +2049,33 @@ internal u32 hir_lower_expr(Hir*         hir,
                         desired_expr =
                             hir_lower_expr(hir, lexer, ast, sema, arg);
                     }
-                    u8 order = atomic_method->atomic_op == SAO_Load ? 2 : 4;
+                    u8 order = atomic_method->atomic_op == SAO_Load ||
+                                       atomic_method->atomic_op == SAO_Store
+                                   ? 2
+                                   : 4;
                     u8 failure_order = 2;
                     if (call->arg_count > explicit_values) {
                         u32 arg =
                             ast->call_args[call->first_arg + explicit_values];
-                        order = hir_atomic_order_value(
-                            lexer, ast, sema, arg, order);
+                        order = hir_atomic_order_value(lexer,
+                                                       ast,
+                                                       sema,
+                                                       arg,
+                                                       atomic_method->atomic_op,
+                                                       false,
+                                                       order);
                     }
                     if (call->arg_count > explicit_values + 1) {
-                        u32 arg       = ast->call_args[call->first_arg +
-                                                       explicit_values + 1];
-                        failure_order = hir_atomic_order_value(
-                            lexer, ast, sema, arg, failure_order);
+                        u32 arg = ast->call_args[call->first_arg +
+                                                 explicit_values + 1];
+                        failure_order =
+                            hir_atomic_order_value(lexer,
+                                                   ast,
+                                                   sema,
+                                                   arg,
+                                                   atomic_method->atomic_op,
+                                                   true,
+                                                   failure_order);
                     }
                     return hir_add_expr(
                         hir,
@@ -2138,6 +2255,14 @@ internal u32 hir_lower_expr(Hir*         hir,
             }
             Array(HirCallArg) lowered_args = NULL;
             for (u32 i = 0; i < call->arg_count; ++i) {
+                u32 specialized_symbol =
+                    callee_expr_index < array_count(hir->exprs)
+                        ? hir->exprs[callee_expr_index].symbol_handle
+                        : U32_MAX;
+                if (hir_specialized_param_is_compile_time(
+                        sema, ast, specialized_symbol, i)) {
+                    continue;
+                }
                 u32 arg_node_index = ast->call_args[call->first_arg + i];
                 u32 arg_symbol     = U32_MAX;
                 arg_node_index =
@@ -2160,6 +2285,7 @@ internal u32 hir_lower_expr(Hir*         hir,
             for (u32 i = 0; i < array_count(lowered_args); ++i) {
                 array_push(hir->call_args, lowered_args[i]);
             }
+            u32 arg_count = (u32)array_count(lowered_args);
             array_free(lowered_args);
 
             return hir_add_expr(
@@ -2171,7 +2297,7 @@ internal u32 hir_lower_expr(Hir*         hir,
                     .local_index       = sema_no_local(),
                     .callee_expr_index = callee_expr_index,
                     .first_arg         = first_arg,
-                    .arg_count         = call->arg_count,
+                    .arg_count         = arg_count,
                     .source_line = hir_node_source_line(lexer, ast, node_index),
                     .source_path = lexer->source.source_path,
                 });
@@ -3983,6 +4109,10 @@ internal void hir_add_function_params(Hir*         hir,
                         : function_type->param_count;
         for (u32 i = 0; i < count; ++i) {
             const AstParam* param = &ast->params[signature->first_param + i];
+            if (g_hir_compile_time_instantiation != NULL &&
+                param->compile_time) {
+                continue;
+            }
             array_push(
                 hir->params,
                 (HirParam){
@@ -4030,16 +4160,25 @@ internal void hir_add_function_params(Hir*         hir,
         if (local->kind != SLK_Param) {
             continue;
         }
-        u32 default_node_index = U32_MAX;
+        u32  default_node_index = U32_MAX;
+        bool skip_param         = false;
         if (signature != NULL) {
             for (u32 j = 0; j < signature->param_count; ++j) {
                 const AstParam* param =
                     &ast->params[signature->first_param + j];
                 if (param->symbol_handle == local->symbol_handle) {
+                    if (g_hir_compile_time_instantiation != NULL &&
+                        param->compile_time) {
+                        skip_param = true;
+                    }
                     default_node_index = param->default_node_index;
                     break;
                 }
             }
+        }
+
+        if (skip_param) {
+            continue;
         }
 
         array_push(hir->params,
@@ -4293,6 +4432,37 @@ Hir hir_generate(const Lexer* lexer, const Ast* ast, const Sema* sema)
     }
 
     hir_add_import_bindings(&hir, lexer, ast, sema);
+
+    for (u32 i = 0; i < array_count(sema->compile_time_fn_instantiations);
+         ++i) {
+        const SemaCompileTimeFnInstantiation* inst =
+            &sema->compile_time_fn_instantiations[i];
+        if (inst->template_decl_index >= array_count(sema->decls)) {
+            continue;
+        }
+        const SemaDecl* decl          = &sema->decls[inst->template_decl_index];
+        u32             fn_node_index = hir_decl_fn_node(ast, decl);
+        if (fn_node_index == sema_no_decl()) {
+            continue;
+        }
+        u32 root_scope_index =
+            fn_node_index < array_count(sema->node_scope_indices)
+                ? sema->node_scope_indices[fn_node_index]
+                : U32_MAX;
+        g_hir_compile_time_instantiation = inst;
+        hir_add_function(&hir,
+                         lexer,
+                         ast,
+                         sema,
+                         HIR_FUNCTION_GenericInstantiation,
+                         inst->symbol_handle,
+                         sema_no_decl(),
+                         fn_node_index,
+                         root_scope_index,
+                         inst->type_index,
+                         NULL);
+        g_hir_compile_time_instantiation = NULL;
+    }
 
     for (u32 i = 0; i < array_count(sema->ordered_decl_indices); ++i) {
         u32 decl_index = sema->ordered_decl_indices[i];

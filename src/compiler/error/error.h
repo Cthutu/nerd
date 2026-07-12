@@ -402,6 +402,15 @@ bool error_0355_trait_generic_argument_count(NerdSource source,
                                              u32        expected_count,
                                              u32        actual_count,
                                              string     missing_params);
+bool error_0356_atomic_pointer_operation(NerdSource source,
+                                         ErrorSpan  span,
+                                         string     operation);
+bool error_0357_runtime_compile_time_argument(NerdSource source,
+                                              ErrorSpan  span,
+                                              string     parameter);
+bool error_0358_atomic_ffi_type(NerdSource source,
+                                ErrorSpan  span,
+                                string     position);
 
 //------------------------------------------------------------------------------
 // Low-level error system

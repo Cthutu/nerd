@@ -453,7 +453,7 @@ to express atomic ordering without making ordering enums special types.
   existing constant evaluator as arguments to `::` parameters.
 - [x] Reject runtime values with a diagnostic that identifies the argument and
   the compile-time parameter declaration.
-- [ ] Treat compile-time arguments as part of canonical function
+- [x] Treat compile-time arguments as part of canonical function
   specialisation identity without depending on general type-generic functions.
 - [x] Substitute the known value before or during HIR generation so the backend
   never receives an unresolved runtime ordering for an atomic instruction.
@@ -464,7 +464,7 @@ to express atomic ordering without making ordering enums special types.
 - [x] Initially limit compile-time arguments to values with stable canonical
   identity, including booleans, integers, and payload-free enums. Extend the
   set only with explicit constant-evaluation and specialisation tests.
-- [ ] Reuse this mechanism for later compile-time module parameters rather than
+- [x] Reuse this mechanism for later compile-time module parameters rather than
   designing a separate value-specialisation model.
 
 #### Tuple Enum Payloads
@@ -517,7 +517,7 @@ atomic compare-exchange API depends on them.
   `^=`.
 - [x] Support pointer load, store, exchange, compare-exchange, equality, and
   `nil`. Do not initially support atomic pointer arithmetic.
-- [ ] Require an atomic pointer to be loaded into an ordinary thin pointer
+- [x] Require an atomic pointer to be loaded into an ordinary thin pointer
   before dereference; do not make direct atomic-pointer dereference perform an
   invisible load.
 - [x] Treat an atomic pointer as non-owning. Loading a pointer neither keeps the
@@ -601,35 +601,35 @@ atomic compare-exchange API depends on them.
 - [x] Do not initially promise C ABI layout compatibility for `atomic[T]`.
   Reject direct atomic FFI values until interoperability is deliberately
   designed and tested.
-- [ ] Keep atomic intrinsic identity internal; do not resolve compiler
+- [x] Keep atomic intrinsic identity internal; do not resolve compiler
   behaviour by matching user-visible source names.
 - [x] Specify conflicting unsynchronised access, mixed atomic and non-atomic
   access to the same storage, and invalid pointee lifetime as invalid program
   behaviour rather than presenting them as supported operations with undefined
   results.
-- [ ] Prevent invalid behaviour structurally or diagnose it wherever static
+- [x] Prevent invalid behaviour structurally or diagnose it wherever static
   analysis can do so. Do not build extra optimisation assumptions around
   undetected races in Nerd middle layers; document cases that necessarily
   remain the programmer's responsibility and consider future checked tooling.
 
 #### Diagnostics, Tooling, Tests, And Documentation
 
-- [ ] Add focused diagnostics for unsupported element types, copying or
+- [x] Add focused diagnostics for unsupported element types, copying or
   passing atomic storage identity by value, invalid operators, direct atomic
   pointer dereference, pointer arithmetic, invalid FFI use, and invalid
   compare-exchange ordering combinations.
-- [ ] Diagnose non-constant arguments to `::` parameters with actionable help
+- [x] Diagnose non-constant arguments to `::` parameters with actionable help
   showing how to branch on a runtime value and use constants in each branch.
-- [ ] Explain in pointer-related diagnostics that atomicity of the pointer does
+- [x] Explain in pointer-related diagnostics that atomicity of the pointer does
   not protect pointee lifetime or fields.
 - [x] Add formatter coverage for `::` parameters and atomic type/method syntax.
-- [ ] Add LSP completion, hover, signature help, definition, references, and
+- [x] Add LSP completion, hover, signature help, definition, references, and
   semantic-token coverage for compile-time parameters, `atomic[T]`, ordering
   enums, and substituted method signatures.
-- [ ] Add dense language and LLVM regressions covering integer, boolean, and
+- [x] Add dense language and LLVM regressions covering integer, boolean, and
   pointer operations at every supported ordering, including atomic-to-atomic
   load/store assignment and strong and weak compare-exchange.
-- [ ] Add error regressions for every rejected type, copying case, invalid
+- [x] Add error regressions for every rejected type, copying case, invalid
   operation, non-constant order, and invalid ordering pair.
 - [x] Add command-path regressions that compile and run representative atomic
   programs through the real `nerd` executable.

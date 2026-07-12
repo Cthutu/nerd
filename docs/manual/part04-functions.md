@@ -69,6 +69,12 @@ Boolean, integer, and payload-free enum constants are supported. Defaults must
 also be compile-time constants. This facility is used by `std.atomics` so an
 ordering never reaches the backend as an unresolved runtime value.
 
+Each distinct set of compile-time arguments identifies a canonical specialised
+function. The compiler substitutes those values while producing HIR and removes
+them from the specialised function's runtime parameter list. Runtime parameters
+remain shared normally. The same value-identity model is reserved for future
+compile-time module parameters.
+
 Trailing parameters can have default values:
 
 ```nerd

@@ -141,7 +141,11 @@ elements and treats ordinary reads and assignments as element transfers. Sema
 attaches an internal operation identity to the inherent methods supplied by
 `std.atomics`; HIR therefore contains explicit atomic load, store, exchange,
 fetch, and compare-exchange expressions rather than rediscovering operations
-from source names. LLVM lowering emits the corresponding `load atomic`, `store
+from method names. The standard-library declarations carry explicit
+`compiler_intrinsic("atomic.*")` identities which Sema validates against an
+`atomic[T]` target. LLVM lowering emits the corresponding `load atomic`, `store
 atomic`, `atomicrmw`, and `cmpxchg` instruction with the order already resolved
 to a compile-time value. Function parameters marked `::` are recorded in the
 AST/CST and checked against the constant-expression model before HIR generation.
+Their canonical value tuples form specialisation identities; specialised HIR
+substitutes the constants and omits them from the runtime ABI.

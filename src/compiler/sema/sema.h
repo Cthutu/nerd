@@ -186,6 +186,21 @@ typedef struct {
     Array(bool) node_method_call_explicit_traits;
 } SemaGenericFnInstantiation;
 
+typedef struct {
+    u32 symbol_handle;
+    u32 type_index;
+    i64 value;
+} SemaCompileTimeValue;
+
+typedef struct {
+    u32 symbol_handle;
+    u32 template_decl_index;
+    u32 fn_node_index;
+    u32 type_index;
+    u32 first_value;
+    u32 value_count;
+} SemaCompileTimeFnInstantiation;
+
 //------------------------------------------------------------------------------
 // Compact semantic side tables keyed by declaration and AST node index.
 
@@ -198,6 +213,8 @@ typedef struct {
     Array(i64) type_param_values;
     Array(SemaDecl) decls;
     Array(SemaGenericFnInstantiation) generic_fn_instantiations;
+    Array(SemaCompileTimeFnInstantiation) compile_time_fn_instantiations;
+    Array(SemaCompileTimeValue) compile_time_values;
     Array(SemaMethod) methods;
     Array(SemaLocal) locals;
     Array(SemaScope) scopes;

@@ -31,16 +31,22 @@ pub AtomicCompareExchangeResult :: enum [T] {
 
 pub impl atomic[T] {
 
+    pragma compiler_intrinsic("atomic.load")
+
     pub load :: fn (self  : ^atomic[T],
                     order :: AtomicLoadOrder = SequentiallyConsistent) -> T {
         return self^
     }
+
+    pragma compiler_intrinsic("atomic.store")
 
     pub store :: fn (self  : ^atomic[T],
                      value : T,
                      order :: AtomicStoreOrder = SequentiallyConsistent) {
         self^ = value
     }
+
+    pragma compiler_intrinsic("atomic.exchange")
 
     pub exchange :: fn (self  : ^atomic[T],
                         value : T,
@@ -50,6 +56,8 @@ pub impl atomic[T] {
         return previous
     }
 
+    pragma compiler_intrinsic("atomic.fetch_add")
+
     pub fetch_add :: fn (self  : ^atomic[T],
                          value : T,
                          order :: AtomicOrder = SequentiallyConsistent) -> T {
@@ -57,6 +65,8 @@ pub impl atomic[T] {
         self^ += value
         return previous
     }
+
+    pragma compiler_intrinsic("atomic.fetch_sub")
 
     pub fetch_sub :: fn (self  : ^atomic[T],
                          value : T,
@@ -66,6 +76,8 @@ pub impl atomic[T] {
         return previous
     }
 
+    pragma compiler_intrinsic("atomic.fetch_and")
+
     pub fetch_and :: fn (self  : ^atomic[T],
                          value : T,
                          order :: AtomicOrder = SequentiallyConsistent) -> T {
@@ -73,6 +85,8 @@ pub impl atomic[T] {
         self^ &= value
         return previous
     }
+
+    pragma compiler_intrinsic("atomic.fetch_or")
 
     pub fetch_or :: fn (self  : ^atomic[T],
                         value : T,
@@ -82,6 +96,8 @@ pub impl atomic[T] {
         return previous
     }
 
+    pragma compiler_intrinsic("atomic.fetch_xor")
+
     pub fetch_xor :: fn (self  : ^atomic[T],
                          value : T,
                          order :: AtomicOrder = SequentiallyConsistent) -> T {
@@ -89,6 +105,8 @@ pub impl atomic[T] {
         self^ ^= value
         return previous
     }
+
+    pragma compiler_intrinsic("atomic.compare_exchange")
 
     pub compare_exchange :: fn (self          : ^atomic[T],
                                 expected      : T,
@@ -103,6 +121,8 @@ pub impl atomic[T] {
             return NotExchanged(observed)
         }
     }
+
+    pragma compiler_intrinsic("atomic.compare_exchange_weak")
 
     pub compare_exchange_weak :: fn (self          : ^atomic[T],
                                      expected      : T,
