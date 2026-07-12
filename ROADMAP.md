@@ -455,7 +455,7 @@ to express atomic ordering without making ordering enums special types.
   the compile-time parameter declaration.
 - [ ] Treat compile-time arguments as part of canonical function
   specialisation identity without depending on general type-generic functions.
-- [ ] Substitute the known value before or during HIR generation so the backend
+- [x] Substitute the known value before or during HIR generation so the backend
   never receives an unresolved runtime ordering for an atomic instruction.
 - [x] Require default values for `::` parameters to be compile-time-known.
 - [x] Keep compile-time parameters immutable within the function body.
@@ -494,12 +494,12 @@ atomic compare-exchange API depends on them.
   included in the thin-pointer contract.
 - [x] Represent `atomic[bool]` with suitable addressable atomic storage rather
   than relying on language-level boolean ABI assumptions.
-- [ ] Make atomic storage non-copyable and reject passing or returning an
+- [x] Make atomic storage non-copyable and reject passing or returning an
   atomic by value. Functions that operate on the same storage must use
   `^atomic[T]`.
 - [x] Allow construction of independent atomic storage from a compatible
   compile-time or runtime `T` value.
-- [ ] Allow assignment and initialisation from another compatible atomic by
+- [x] Allow assignment and initialisation from another compatible atomic by
   performing a sequentially consistent load of the source followed by a store
   to, or construction of, the destination. This transfers `T`, not atomic
   storage identity, and is not one indivisible operation across both objects.
@@ -513,14 +513,14 @@ atomic compare-exchange API depends on them.
 - [x] Document and test that `value = value + 1` is an atomic load followed by
   an atomic store, not an indivisible increment; `value += 1` is the atomic
   read-modify-write form.
-- [ ] Support boolean load, store, exchange, compare-exchange, `&=`, `|=`, and
+- [x] Support boolean load, store, exchange, compare-exchange, `&=`, `|=`, and
   `^=`.
-- [ ] Support pointer load, store, exchange, compare-exchange, equality, and
+- [x] Support pointer load, store, exchange, compare-exchange, equality, and
   `nil`. Do not initially support atomic pointer arithmetic.
 - [ ] Require an atomic pointer to be loaded into an ordinary thin pointer
   before dereference; do not make direct atomic-pointer dereference perform an
   invisible load.
-- [ ] Treat an atomic pointer as non-owning. Loading a pointer neither keeps the
+- [x] Treat an atomic pointer as non-owning. Loading a pointer neither keeps the
   pointee alive nor makes its fields atomic; reclamation schemes such as hazard
   pointers and epochs remain library responsibilities.
 
@@ -565,20 +565,20 @@ atomic compare-exchange API depends on them.
   }
   ```
 
-- [ ] Expose built-in atomic methods through `std.atomics` for `load`, `store`,
+- [x] Expose built-in atomic methods through `std.atomics` for `load`, `store`,
   `exchange`, integer fetch operations, strong `compare_exchange`, and weak
   `compare_exchange_weak`. Do not depend on the general generic impl facility
   being removed by the generics simplification programme.
 - [x] Default all method order parameters to sequential consistency.
-- [ ] Give compare-exchange separate success and failure ordering parameters.
+- [x] Give compare-exchange separate success and failure ordering parameters.
   Both are `::` parameters with sequentially consistent defaults. The failure
   parameter uses `AtomicLoadOrder`; reject a failure ordering that is stronger
   than the success ordering using the LLVM/C++ ordering constraints.
-- [ ] Return `Exchanged` after a successful comparison and
+- [x] Return `Exchanged` after a successful comparison and
   `NotExchanged(observed)` after a mismatch.
-- [ ] Document that weak compare-exchange may return
+- [x] Document that weak compare-exchange may return
   `NotExchanged(observed)` spuriously and is intended for retry loops.
-- [ ] Keep public signatures, documentation, and convenience logic in Nerd
+- [x] Keep public signatures, documentation, and convenience logic in Nerd
   source. Keep representation, validation, and primitive atomic lowering in
   the compiler.
 
@@ -586,15 +586,15 @@ atomic compare-exchange API depends on them.
 
 - [x] Add semantic type facts, compatibility rules, initialisation rules, and
   operation validation for `atomic[T]`.
-- [ ] Lower atomic operations explicitly through HIR rather than encoding them
+- [x] Lower atomic operations explicitly through HIR rather than encoding them
   as ordinary loads, stores, or arithmetic.
-- [ ] Lower each supported operation and ordering to valid LLVM atomic
+- [x] Lower each supported operation and ordering to valid LLVM atomic
   instructions for the host 64-bit clang target.
 - [x] Preserve target alignment requirements and reject types or widths the
   current target contract cannot implement correctly.
-- [ ] Apply the existing Nerd integer overflow rules to signed and unsigned
+- [x] Apply the existing Nerd integer overflow rules to signed and unsigned
   atomic read-modify-write operations.
-- [ ] Guarantee atomic semantics but do not claim portable lock-free
+- [x] Guarantee atomic semantics but do not claim portable lock-free
   implementation. Document which properties come from the language memory
   model and which remain target-dependent; add a lock-free query later only if
   a concrete caller needs one.
@@ -603,7 +603,7 @@ atomic compare-exchange API depends on them.
   designed and tested.
 - [ ] Keep atomic intrinsic identity internal; do not resolve compiler
   behaviour by matching user-visible source names.
-- [ ] Specify conflicting unsynchronised access, mixed atomic and non-atomic
+- [x] Specify conflicting unsynchronised access, mixed atomic and non-atomic
   access to the same storage, and invalid pointee lifetime as invalid program
   behaviour rather than presenting them as supported operations with undefined
   results.

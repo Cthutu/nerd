@@ -464,5 +464,15 @@ snapshot : u64 = counter
 
 `counter = counter + 1` performs a load followed by a store and is not an
 indivisible increment. Import `std.atomics` for explicit `load`, `store`,
-`exchange`, fetch, and compare-exchange methods. Atomic pointer storage is
-non-owning: it does not extend pointee lifetime or make pointee fields atomic.
+`exchange`, fetch, and compare-exchange methods. Atomic storage cannot be
+passed or returned by value; pass `^atomic[T]` when a function must operate on
+the same storage. Initialising or assigning one atomic from another transfers
+the stored `T` with a sequentially consistent load and store.
+
+Atomic pointer storage is non-owning: it does not extend pointee lifetime or
+make pointee fields atomic. Load the pointer into an ordinary `^T` before
+dereferencing it. Conflicting unsynchronised accesses, mixing atomic and
+non-atomic access to the same storage, and accessing a pointer after its
+pointee's lifetime ends are invalid program behaviour. Atomic operations are
+guaranteed to be atomic, but whether a particular width is lock-free remains
+target-dependent.

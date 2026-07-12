@@ -73,6 +73,7 @@ typedef enum : u8 {
     HIR_EXPR_Unary,
     HIR_EXPR_Binary,
     HIR_EXPR_Assign,
+    HIR_EXPR_Atomic,
     HIR_EXPR_Call,
     HIR_EXPR_Box,
     HIR_EXPR_Cast,
@@ -148,6 +149,19 @@ typedef enum : u8 {
     HIR_BINARY_LogicalAnd,
     HIR_BINARY_LogicalOr,
 } HirBinaryOp;
+
+typedef enum : u8 {
+    HIR_ATOMIC_Load,
+    HIR_ATOMIC_Store,
+    HIR_ATOMIC_Exchange,
+    HIR_ATOMIC_FetchAdd,
+    HIR_ATOMIC_FetchSub,
+    HIR_ATOMIC_FetchAnd,
+    HIR_ATOMIC_FetchOr,
+    HIR_ATOMIC_FetchXor,
+    HIR_ATOMIC_CompareExchange,
+    HIR_ATOMIC_CompareExchangeWeak,
+} HirAtomicOp;
 
 typedef struct {
     HirFunctionKind kind;
@@ -265,6 +279,9 @@ typedef struct {
     HirOnKind   on_kind;
     HirUnaryOp  unary_op;
     HirBinaryOp binary_op;
+    HirAtomicOp atomic_op;
+    u8          atomic_order;
+    u8          atomic_failure_order;
     bool        default_missing;
 } HirExpr;
 

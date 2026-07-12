@@ -1524,6 +1524,61 @@ internal u32 sema_find_program_module_by_path(const ProgramInfo* program,
     return U32_MAX;
 }
 
+internal SemaAtomicOp sema_atomic_method_op(const Lexer* lexer,
+                                            const Ast*   ast,
+                                            u32          target_type_node,
+                                            u32          method_symbol)
+{
+    while (target_type_node < array_count(ast->nodes) &&
+           (ast->nodes[target_type_node].kind == AK_Expression ||
+            ast->nodes[target_type_node].kind == AK_Statement)) {
+        target_type_node = ast->nodes[target_type_node].a;
+    }
+    if (target_type_node >= array_count(ast->nodes) ||
+        ast->nodes[target_type_node].kind != AK_TypeApply) {
+        return SAO_None;
+    }
+    const AstTypeApplyInfo* apply =
+        &ast->type_applications[ast->nodes[target_type_node].a];
+    const AstNode* target = &ast->nodes[apply->target_node_index];
+    if (target->kind != AK_SymbolRef ||
+        !string_eq(lex_symbol(lexer, target->a), s("atomic"))) {
+        return SAO_None;
+    }
+    string name = lex_symbol(lexer, method_symbol);
+    if (string_eq(name, s("load"))) {
+        return SAO_Load;
+    }
+    if (string_eq(name, s("store"))) {
+        return SAO_Store;
+    }
+    if (string_eq(name, s("exchange"))) {
+        return SAO_Exchange;
+    }
+    if (string_eq(name, s("fetch_add"))) {
+        return SAO_FetchAdd;
+    }
+    if (string_eq(name, s("fetch_sub"))) {
+        return SAO_FetchSub;
+    }
+    if (string_eq(name, s("fetch_and"))) {
+        return SAO_FetchAnd;
+    }
+    if (string_eq(name, s("fetch_or"))) {
+        return SAO_FetchOr;
+    }
+    if (string_eq(name, s("fetch_xor"))) {
+        return SAO_FetchXor;
+    }
+    if (string_eq(name, s("compare_exchange"))) {
+        return SAO_CompareExchange;
+    }
+    if (string_eq(name, s("compare_exchange_weak"))) {
+        return SAO_CompareExchangeWeak;
+    }
+    return SAO_None;
+}
+
 internal bool sema_resolve_loaded_module(const Lexer* lexer,
                                          const Ast*   ast,
                                          Sema*        sema,
@@ -2198,6 +2253,12 @@ internal bool sema_try_eval_integer_constant(const Lexer* lexer,
                                              u32          node_index,
                                              i64*         out_value)
 {
+    if (node_index < array_count(sema->node_const_known) &&
+        sema->node_const_known[node_index]) {
+        *out_value = sema->node_const_values[node_index];
+        return true;
+    }
+
     const AstNode* node = &ast->nodes[node_index];
 
     switch (node->kind) {
@@ -3216,6 +3277,59 @@ internal bool sema_known_call_signature(const Lexer* lexer,
         lexer, ast, sema, callee_node_index, 0, out_signature);
 }
 
+internal bool sema_atomic_failure_order_valid(i64 success, i64 failure)
+{
+    if (success == 0) {
+        return failure == 0;
+    }
+    if (success == 1) {
+        return failure <= 1;
+    }
+    if (success == 2) {
+        return failure == 0;
+    }
+    if (success == 3) {
+        return failure <= 1;
+    }
+    return failure <= 2;
+}
+
+internal bool sema_try_eval_atomic_order(const Lexer* lexer,
+                                         const Ast*   ast,
+                                         const Sema*  sema,
+                                         u32          node_index,
+                                         i64*         out_value)
+{
+    if (sema_try_eval_integer_constant(
+            lexer, ast, sema, node_index, out_value)) {
+        return true;
+    }
+
+    const AstNode* node = &ast->nodes[node_index];
+    while (node->kind == AK_Expression || node->kind == AK_Statement) {
+        node = &ast->nodes[node->a];
+    }
+    if (node->kind != AK_SymbolRef) {
+        return false;
+    }
+
+    string name = lex_symbol(lexer, node->a);
+    if (string_eq(name, s("Relaxed"))) {
+        *out_value = 0;
+    } else if (string_eq(name, s("Acquire"))) {
+        *out_value = 1;
+    } else if (string_eq(name, s("Release"))) {
+        *out_value = 2;
+    } else if (string_eq(name, s("AcquireRelease"))) {
+        *out_value = 3;
+    } else if (string_eq(name, s("SequentiallyConsistent"))) {
+        *out_value = 4;
+    } else {
+        return false;
+    }
+    return true;
+}
+
 internal const SemaMethod* sema_find_method_for_decl(const Sema* sema,
                                                      u32         decl_index)
 {
@@ -3258,6 +3372,7 @@ internal void sema_import_method_for_decl(Lexer*       dst_lexer,
             .first_param_is_receiver = source_method->first_param_is_receiver,
             .returns_self            = source_method->returns_self,
             .is_trait_impl           = source_method->is_trait_impl,
+            .atomic_op               = source_method->atomic_op,
         });
 }
 
@@ -5599,6 +5714,11 @@ internal bool sema_collect_decls_in_range(const Lexer*           lexer,
                         .first_param_is_receiver = first_param_is_receiver,
                         .returns_self            = returns_self,
                         .is_trait_impl = impl->trait_type_node_index != U32_MAX,
+                        .atomic_op =
+                            sema_atomic_method_op(lexer,
+                                                  ast,
+                                                  impl->target_type_node_index,
+                                                  method_symbol),
                     });
             }
             continue;
@@ -7280,6 +7400,14 @@ internal bool sema_collect_function_locals(const Lexer* lexer,
         if (!sema_resolve_type_node(
                 lexer, ast, sema, param->type_node_index, &param_type)) {
             return false;
+        }
+        if (param_type != sema_no_type() &&
+            sema->types[param_type].kind == STK_Atomic) {
+            return error_0304_type_mismatch(
+                lexer->source,
+                sema_token_span(lexer, param->token_index),
+                s("pointer to atomic storage (`^atomic[T]`)"),
+                sema_type_name(lexer, sema, &temp_arena, param_type));
         }
         array_push(
             sema->locals,
@@ -19630,6 +19758,16 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 sema->types[rhs_type].kind == STK_Atomic) {
                 rhs_type = sema->types[rhs_type].first_param_type;
             }
+            if ((node->kind == AK_Equal || node->kind == AK_NotEqual) &&
+                lhs_type != sema_no_type() && rhs_type != sema_no_type()) {
+                if (sema->types[lhs_type].kind == STK_Pointer &&
+                    sema->types[rhs_type].kind == STK_Nil) {
+                    rhs_type = lhs_type;
+                } else if (sema->types[rhs_type].kind == STK_Pointer &&
+                           sema->types[lhs_type].kind == STK_Nil) {
+                    lhs_type = rhs_type;
+                }
+            }
 
             if (sema_type_is_concrete_integer(sema, lhs_type) &&
                 rhs_type != sema_no_type() &&
@@ -20305,6 +20443,56 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     return false;
                 }
                 if (found_method) {
+                    const SemaMethod* resolved_method =
+                        sema_find_method_for_decl(sema, method_call.decl_index);
+                    if (resolved_method != NULL &&
+                        (resolved_method->atomic_op == SAO_CompareExchange ||
+                         resolved_method->atomic_op ==
+                             SAO_CompareExchangeWeak)) {
+                        i64 success = 4;
+                        i64 failure = 2;
+                        if (call->arg_count > 2 &&
+                            !sema_try_eval_atomic_order(
+                                lexer,
+                                ast,
+                                sema,
+                                ast->call_args[call->first_arg + 2],
+                                &success)) {
+                            return error_0304_type_mismatch(
+                                lexer->source,
+                                sema_node_span(
+                                    lexer,
+                                    &ast->nodes[ast->call_args[call->first_arg +
+                                                               2]]),
+                                s("compile-time atomic success ordering"),
+                                s("runtime value"));
+                        }
+                        if (call->arg_count > 3 &&
+                            !sema_try_eval_atomic_order(
+                                lexer,
+                                ast,
+                                sema,
+                                ast->call_args[call->first_arg + 3],
+                                &failure)) {
+                            return error_0304_type_mismatch(
+                                lexer->source,
+                                sema_node_span(
+                                    lexer,
+                                    &ast->nodes[ast->call_args[call->first_arg +
+                                                               3]]),
+                                s("compile-time atomic failure ordering"),
+                                s("runtime value"));
+                        }
+                        if (!sema_atomic_failure_order_valid(success,
+                                                             failure)) {
+                            return error_0304_type_mismatch(
+                                lexer->source,
+                                sema_node_span(lexer, node),
+                                s("failure ordering no stronger than success "
+                                  "ordering"),
+                                s("invalid compare-exchange ordering pair"));
+                        }
+                    }
                     sema->node_type_indices[node->a] =
                         method_call.fn_type_index;
                     sema->node_lowered_symbol_handles[node->a] =
@@ -20679,6 +20867,92 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 }
             }
 
+            u32 method_decl =
+                node_index < array_count(sema->node_method_call_decl_indices)
+                    ? sema->node_method_call_decl_indices[node_index]
+                    : sema_no_decl();
+            const SemaMethod* atomic_method =
+                method_decl != sema_no_decl()
+                    ? sema_find_method_for_decl(sema, method_decl)
+                    : NULL;
+            bool atomic_compare =
+                atomic_method != NULL &&
+                (atomic_method->atomic_op == SAO_CompareExchange ||
+                 atomic_method->atomic_op == SAO_CompareExchangeWeak);
+            if (!atomic_compare && method_decl != sema_no_decl() &&
+                node->a < array_count(ast->nodes)) {
+                const AstNode* callee = &ast->nodes[node->a];
+                if (callee->kind == AK_Index &&
+                    callee->a < array_count(ast->nodes)) {
+                    callee = &ast->nodes[callee->a];
+                }
+                if (callee->kind == AK_Field) {
+                    string method_name = lex_symbol(lexer, callee->b);
+                    atomic_compare =
+                        string_eq(method_name, s("compare_exchange")) ||
+                        string_eq(method_name, s("compare_exchange_weak"));
+                }
+            }
+            if (!atomic_compare && known_signature.signature != NULL &&
+                known_signature.signature->param_count >= 5) {
+                const AstParam* success_param =
+                    &known_signature.ast
+                         ->params[known_signature.signature->first_param + 3];
+                const AstParam* failure_param =
+                    &known_signature.ast
+                         ->params[known_signature.signature->first_param + 4];
+                atomic_compare =
+                    success_param->compile_time &&
+                    failure_param->compile_time &&
+                    string_eq(lex_symbol(known_signature.lexer,
+                                         success_param->symbol_handle),
+                              s("success_order")) &&
+                    string_eq(lex_symbol(known_signature.lexer,
+                                         failure_param->symbol_handle),
+                              s("failure_order"));
+            }
+            if (atomic_compare) {
+                i64 success = 4;
+                i64 failure = 2;
+                if (call->arg_count > 2 &&
+                    !sema_try_eval_atomic_order(
+                        lexer,
+                        ast,
+                        sema,
+                        ast->call_args[call->first_arg + 2],
+                        &success)) {
+                    return error_0304_type_mismatch(
+                        lexer->source,
+                        sema_node_span(
+                            lexer,
+                            &ast->nodes[ast->call_args[call->first_arg + 2]]),
+                        s("compile-time atomic success ordering"),
+                        s("runtime value"));
+                }
+                if (call->arg_count > 3 &&
+                    !sema_try_eval_atomic_order(
+                        lexer,
+                        ast,
+                        sema,
+                        ast->call_args[call->first_arg + 3],
+                        &failure)) {
+                    return error_0304_type_mismatch(
+                        lexer->source,
+                        sema_node_span(
+                            lexer,
+                            &ast->nodes[ast->call_args[call->first_arg + 3]]),
+                        s("compile-time atomic failure ordering"),
+                        s("runtime value"));
+                }
+                if (!sema_atomic_failure_order_valid(success, failure)) {
+                    return error_0304_type_mismatch(
+                        lexer->source,
+                        sema_node_span(lexer, node),
+                        s("failure ordering no stronger than success ordering"),
+                        s("invalid compare-exchange ordering pair"));
+                }
+            }
+
             type_index = fn_return_type;
         }
         break;
@@ -20878,6 +21152,15 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                                         signature->return_type_node_index,
                                         &return_type)) {
                 return false;
+            }
+            if (has_explicit_return_type &&
+                sema->types[return_type].kind == STK_Atomic) {
+                return error_0304_type_mismatch(
+                    lexer->source,
+                    sema_node_span(
+                        lexer, &ast->nodes[signature->return_type_node_index]),
+                    s("non-atomic return value or pointer to atomic storage"),
+                    sema_type_name(lexer, sema, &temp_arena, return_type));
             }
             u32 declared_return_type = return_type;
 

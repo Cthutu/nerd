@@ -29,39 +29,6 @@ pub AtomicCompareExchangeResult :: enum [T] {
     NotExchanged(T)
 }
 
-pub load :: fn [T] (value : ^atomic[T],
-                    order :: AtomicLoadOrder = SequentiallyConsistent) -> T {
-    return value^
-}
-
-pub store :: fn [T] (target : ^atomic[T],
-                     value  : T,
-                     order  :: AtomicStoreOrder = SequentiallyConsistent) {
-    target^ = value
-}
-
-pub exchange :: fn [T] (target : ^atomic[T],
-                        value  : T,
-                        order  :: AtomicOrder = SequentiallyConsistent) -> T {
-    previous : T = target^
-    target^ = value
-    return previous
-}
-
-pub compare_exchange :: fn [T] (target        : ^atomic[T],
-                                expected      : T,
-                                desired       : T,
-                                success_order :: AtomicOrder = SequentiallyConsistent,
-                                failure_order :: AtomicLoadOrder = SequentiallyConsistent) -> AtomicCompareExchangeResult[T] {
-    observed : T = target^
-    on observed == expected => {
-        target^ = desired
-        return Exchanged
-    } else {
-        return NotExchanged(observed)
-    }
-}
-
 pub impl atomic[T] {
 
     pub load :: fn (self  : ^atomic[T],
@@ -142,10 +109,13 @@ pub impl atomic[T] {
                                      desired       : T,
                                      success_order :: AtomicOrder = SequentiallyConsistent,
                                      failure_order :: AtomicLoadOrder = SequentiallyConsistent) -> AtomicCompareExchangeResult[T] {
-        return self.compare_exchange(expected,
-                                     desired,
-                                     success_order,
-                                     failure_order)
+        observed : T = self^
+        on observed == expected => {
+            self^ = desired
+            return Exchanged
+        } else {
+            return NotExchanged(observed)
+        }
     }
 
 }

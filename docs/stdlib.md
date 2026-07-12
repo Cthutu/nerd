@@ -280,4 +280,7 @@ supporting modules, tests, and manual notes have landed together.
 methods on `atomic[T]`. Ordinary syntax and omitted order arguments are
 sequentially consistent. Weak compare-exchange is intended for retry loops and
 may report `NotExchanged(observed)` spuriously. Atomic pointer operations do not
-manage pointee reclamation.
+manage pointee reclamation. Compare-exchange takes separate compile-time
+success and failure orders; the failure order may not be stronger than the
+success order. The compiler lowers these methods to dedicated atomic HIR and
+LLVM operations, while the public types and signatures remain Nerd source.

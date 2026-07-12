@@ -233,3 +233,9 @@ reject public field types that name private declarations.
 element's LLVM storage representation and alignment, but atomic accesses are
 lowered with LLVM atomic instructions. Aggregates, strings, slices, dynamic
 arrays, boxes, and function values are rejected as elements.
+
+Atomic storage has identity and is not a copyable value. Passing or returning
+it by value is rejected. An atomic-to-atomic initialisation or assignment is a
+sequentially consistent load of the source followed by a store to the distinct
+destination; the pair is not one indivisible operation. The language guarantees
+atomic semantics, not a portable lock-free implementation.

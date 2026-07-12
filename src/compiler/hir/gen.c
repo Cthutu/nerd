@@ -409,6 +409,58 @@ internal u32 hir_lower_for(Hir*         hir,
                            const Sema*  sema,
                            u32          node_index);
 
+internal const SemaMethod* hir_atomic_method(const Sema* sema, u32 decl_index)
+{
+    for (u32 i = 0; i < array_count(sema->methods); ++i) {
+        if (sema->methods[i].decl_index == decl_index &&
+            sema->methods[i].atomic_op != SAO_None) {
+            return &sema->methods[i];
+        }
+    }
+    return NULL;
+}
+
+internal HirAtomicOp hir_atomic_op(SemaAtomicOp op)
+{
+    return (HirAtomicOp)(op - SAO_Load + HIR_ATOMIC_Load);
+}
+
+internal u8 hir_atomic_order_value(const Lexer* lexer,
+                                   const Ast*   ast,
+                                   const Sema*  sema,
+                                   u32          node_index,
+                                   u8           fallback)
+{
+    if (node_index < array_count(sema->node_const_known) &&
+        sema->node_const_known[node_index]) {
+        return (u8)sema->node_const_values[node_index];
+    }
+
+    const AstNode* node = &ast->nodes[node_index];
+    while (node->kind == AK_Expression || node->kind == AK_Statement) {
+        node = &ast->nodes[node->a];
+    }
+    if (node->kind == AK_SymbolRef) {
+        string name = lex_symbol(lexer, node->a);
+        if (string_eq(name, s("Relaxed"))) {
+            return 0;
+        }
+        if (string_eq(name, s("Acquire"))) {
+            return 1;
+        }
+        if (string_eq(name, s("Release"))) {
+            return 2;
+        }
+        if (string_eq(name, s("AcquireRelease"))) {
+            return 3;
+        }
+        if (string_eq(name, s("SequentiallyConsistent"))) {
+            return 4;
+        }
+    }
+    return fallback;
+}
+
 internal u32 hir_lower_expr(Hir*         hir,
                             const Lexer* lexer,
                             const Ast*   ast,
@@ -1867,6 +1919,62 @@ internal u32 hir_lower_expr(Hir*         hir,
                             .local_index        = sema_no_local(),
                             .operand_expr_index = receiver_expr_index,
                             .unary_op           = HIR_UNARY_Deref,
+                        });
+                }
+                const SemaMethod* atomic_method =
+                    hir_atomic_method(sema, decl_index);
+                if (atomic_method != NULL) {
+                    u32 value_expr    = hir_no_index();
+                    u32 expected_expr = hir_no_index();
+                    u32 desired_expr  = hir_no_index();
+                    u32 explicit_values =
+                        atomic_method->atomic_op == SAO_Load
+                            ? 0
+                            : (atomic_method->atomic_op ==
+                                           SAO_CompareExchange ||
+                                       atomic_method->atomic_op ==
+                                           SAO_CompareExchangeWeak
+                                   ? 2
+                                   : 1);
+                    if (explicit_values > 0 && call->arg_count > 0) {
+                        u32 arg    = ast->call_args[call->first_arg];
+                        value_expr = hir_lower_expr(hir, lexer, ast, sema, arg);
+                        expected_expr = value_expr;
+                    }
+                    if (explicit_values > 1 && call->arg_count > 1) {
+                        u32 arg = ast->call_args[call->first_arg + 1];
+                        desired_expr =
+                            hir_lower_expr(hir, lexer, ast, sema, arg);
+                    }
+                    u8 order = atomic_method->atomic_op == SAO_Load ? 2 : 4;
+                    u8 failure_order = 2;
+                    if (call->arg_count > explicit_values) {
+                        u32 arg =
+                            ast->call_args[call->first_arg + explicit_values];
+                        order = hir_atomic_order_value(
+                            lexer, ast, sema, arg, order);
+                    }
+                    if (call->arg_count > explicit_values + 1) {
+                        u32 arg       = ast->call_args[call->first_arg +
+                                                       explicit_values + 1];
+                        failure_order = hir_atomic_order_value(
+                            lexer, ast, sema, arg, failure_order);
+                    }
+                    return hir_add_expr(
+                        hir,
+                        (HirExpr){
+                            .kind          = HIR_EXPR_Atomic,
+                            .type_index    = hir_node_type(sema, node_index),
+                            .symbol_handle = U32_MAX,
+                            .local_index   = sema_no_local(),
+                            .operand_expr_index = receiver_expr_index,
+                            .extra_expr_index   = value_expr,
+                            .lhs_expr_index     = expected_expr,
+                            .rhs_expr_index     = desired_expr,
+                            .atomic_op =
+                                hir_atomic_op(atomic_method->atomic_op),
+                            .atomic_order         = order,
+                            .atomic_failure_order = failure_order,
                         });
                 }
                 array_push(lowered_args,

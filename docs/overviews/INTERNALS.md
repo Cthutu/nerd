@@ -137,8 +137,11 @@ The back end currently runs:
 
 Semantic types represent `atomic[T]` with `STK_Atomic` and retain the element
 type in `first_param_type`. Semantic analysis validates scalar/thin-pointer
-elements and treats ordinary reads and assignments as element transfers. HIR
-retains atomic storage types so LLVM lowering emits `load atomic`, `store
-atomic`, and `atomicrmw` with sequentially consistent defaults. Function
-parameters marked `::` are recorded in the AST/CST and checked against the
-constant-expression model before HIR generation.
+elements and treats ordinary reads and assignments as element transfers. Sema
+attaches an internal operation identity to the inherent methods supplied by
+`std.atomics`; HIR therefore contains explicit atomic load, store, exchange,
+fetch, and compare-exchange expressions rather than rediscovering operations
+from source names. LLVM lowering emits the corresponding `load atomic`, `store
+atomic`, `atomicrmw`, and `cmpxchg` instruction with the order already resolved
+to a compile-time value. Function parameters marked `::` are recorded in the
+AST/CST and checked against the constant-expression model before HIR generation.

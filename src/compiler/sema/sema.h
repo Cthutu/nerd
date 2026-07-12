@@ -131,17 +131,32 @@ typedef struct {
     bool locals_collected;
 } SemaScope;
 
+typedef enum : u8 {
+    SAO_None,
+    SAO_Load,
+    SAO_Store,
+    SAO_Exchange,
+    SAO_FetchAdd,
+    SAO_FetchSub,
+    SAO_FetchAnd,
+    SAO_FetchOr,
+    SAO_FetchXor,
+    SAO_CompareExchange,
+    SAO_CompareExchangeWeak,
+} SemaAtomicOp;
+
 typedef struct {
-    u32  symbol_handle;
-    u32  decl_index;
-    u32  impl_node_index;
-    u32  target_type_node_index;
-    u32  generic_params_index;
-    bool is_public;
-    bool is_associated;
-    bool first_param_is_receiver;
-    bool returns_self;
-    bool is_trait_impl;
+    u32          symbol_handle;
+    u32          decl_index;
+    u32          impl_node_index;
+    u32          target_type_node_index;
+    u32          generic_params_index;
+    bool         is_public;
+    bool         is_associated;
+    bool         first_param_is_receiver;
+    bool         returns_self;
+    bool         is_trait_impl;
+    SemaAtomicOp atomic_op;
 } SemaMethod;
 
 //------------------------------------------------------------------------------

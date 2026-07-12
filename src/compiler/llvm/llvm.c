@@ -815,7 +815,11 @@ llvm_append_type(StringBuilder* sb, const Sema* sema, u32 type_index)
         sb_append_cstr(sb, layout->pointer_type);
         break;
     case STK_Atomic:
-        llvm_append_type(sb, sema, type->first_param_type);
+        if (sema->types[type->first_param_type].kind == STK_Bool) {
+            sb_append_cstr(sb, "i8");
+        } else {
+            llvm_append_type(sb, sema, type->first_param_type);
+        }
         break;
     case STK_Slice:
         sb_append_string(sb, llvm_layout_string_type(layout));
@@ -2972,8 +2976,11 @@ internal u32 llvm_debug_lexical_scope(LlvmDebugModule* debug,
     return id;
 }
 
-internal string llvm_type_string(LlvmFunctionContext* ctx, u32 type_index);
-internal u32    llvm_local_type(LlvmFunctionContext* ctx, u32 local_index);
+internal string    llvm_type_string(LlvmFunctionContext* ctx, u32 type_index);
+internal LlvmValue llvm_coerce_value_to_type(LlvmFunctionContext* ctx,
+                                             LlvmValue            value,
+                                             u32                  target_type);
+internal u32       llvm_local_type(LlvmFunctionContext* ctx, u32 local_index);
 
 internal bool llvm_debug_type_info(const Sema* sema,
                                    u32         type_index,
@@ -4194,6 +4201,15 @@ internal void llvm_store_local_slot(LlvmFunctionContext* ctx,
         return;
     }
 
+    bool atomic_bool =
+        llvm_type_is_atomic(ctx->sema, slot->type_index) &&
+        ctx->sema->types[ctx->sema->types[slot->type_index].first_param_type]
+                .kind == STK_Bool;
+    if (atomic_bool) {
+        value = llvm_coerce_value_to_type(
+            ctx, value, llvm_builtin_type(ctx->sema, STK_U8));
+    }
+
     string type = llvm_type_string(ctx, slot->type_index);
     if (llvm_type_is_atomic(ctx->sema, slot->type_index)) {
         u32 align = llvm_type_align_bits(ctx->sema, slot->type_index) / 8;
@@ -4227,6 +4243,15 @@ internal LlvmValue llvm_load_local_slot(LlvmFunctionContext* ctx,
                   STRINGV(type),
                   STRINGV(slot->ptr),
                   align);
+        u32 value_type = ctx->sema->types[slot->type_index].first_param_type;
+        if (ctx->sema->types[value_type].kind == STK_Bool) {
+            string narrowed = llvm_temp(ctx);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = trunc i8 " STRINGP " to i1\n",
+                      STRINGV(narrowed),
+                      STRINGV(temp));
+            temp = narrowed;
+        }
     } else {
         sb_format(ctx->sb,
                   "  " STRINGP " = load " STRINGP ", ptr " STRINGP "\n",
@@ -4236,7 +4261,9 @@ internal LlvmValue llvm_load_local_slot(LlvmFunctionContext* ctx,
     }
     return (LlvmValue){
         .ok         = true,
-        .type_index = slot->type_index,
+        .type_index = llvm_type_is_atomic(ctx->sema, slot->type_index)
+                          ? ctx->sema->types[slot->type_index].first_param_type
+                          : slot->type_index,
         .value      = temp,
     };
 }
@@ -4523,6 +4550,14 @@ internal LlvmValue llvm_coerce_value_to_type(LlvmFunctionContext* ctx,
     }
 
     if (value.type_index == target_type) {
+        return value;
+    }
+
+    if (llvm_type_is_atomic(ctx->sema, value.type_index) &&
+        ctx->sema->types[ctx->sema->types[value.type_index].first_param_type]
+                .kind == STK_Bool &&
+        llvm_type_kind(ctx->sema, target_type) == STK_U8) {
+        value.type_index = target_type;
         return value;
     }
 
@@ -4998,6 +5033,229 @@ internal LlvmValue llvm_build_aggregate_value(LlvmFunctionContext* ctx,
         .type_index = type_index,
         .value      = current,
     };
+}
+
+internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
+                                  const HirFunction*   function,
+                                  u32                  expr_index);
+
+internal cstr llvm_atomic_order_name(HirAtomicOp op, u8 order)
+{
+    if (op == HIR_ATOMIC_Load) {
+        return order == 0 ? "monotonic" : (order == 1 ? "acquire" : "seq_cst");
+    }
+    if (op == HIR_ATOMIC_Store) {
+        return order == 0 ? "monotonic" : (order == 1 ? "release" : "seq_cst");
+    }
+    switch (order) {
+    case 0:
+        return "monotonic";
+    case 1:
+        return "acquire";
+    case 2:
+        return "release";
+    case 3:
+        return "acq_rel";
+    default:
+        return "seq_cst";
+    }
+}
+
+internal cstr llvm_atomic_failure_order_name(u8 order)
+{
+    return order == 0 ? "monotonic" : (order == 1 ? "acquire" : "seq_cst");
+}
+
+internal LlvmValue llvm_atomic_compare_result(LlvmFunctionContext* ctx,
+                                              u32                  result_type,
+                                              LlvmValue            observed,
+                                              string               success)
+{
+    u32       bits    = llvm_enum_storage_payload_bits(ctx->sema, result_type);
+    LlvmValue payload = llvm_cast_to_storage_bits(ctx, observed, bits);
+    if (!payload.ok) {
+        return (LlvmValue){0};
+    }
+    string type = llvm_type_string(ctx, result_type);
+    string tag  = llvm_temp(ctx);
+    sb_format(ctx->sb,
+              "  " STRINGP " = select i1 " STRINGP ", i64 0, i64 1\n",
+              STRINGV(tag),
+              STRINGV(success));
+    string tagged = llvm_temp(ctx);
+    sb_format(ctx->sb,
+              "  " STRINGP " = insertvalue " STRINGP " poison, i64 " STRINGP
+              ", 0\n",
+              STRINGV(tagged),
+              STRINGV(type),
+              STRINGV(tag));
+    string result = llvm_temp(ctx);
+    sb_format(ctx->sb,
+              "  " STRINGP " = insertvalue " STRINGP " " STRINGP
+              ", i%u " STRINGP ", 1\n",
+              STRINGV(result),
+              STRINGV(type),
+              STRINGV(tagged),
+              bits,
+              STRINGV(payload.value));
+    return (LlvmValue){.ok = true, .type_index = result_type, .value = result};
+}
+
+internal LlvmValue llvm_emit_atomic_expr(LlvmFunctionContext* ctx,
+                                         const HirFunction*   function,
+                                         const HirExpr*       expr)
+{
+    LlvmValue pointer = llvm_emit_expr(ctx, function, expr->operand_expr_index);
+    if (!pointer.ok) {
+        return (LlvmValue){0};
+    }
+    u32 atomic_type = llvm_pointee_type(ctx->sema, pointer.type_index);
+    if (!llvm_type_is_atomic(ctx->sema, atomic_type)) {
+        return (LlvmValue){0};
+    }
+    u32  value_type  = ctx->sema->types[atomic_type].first_param_type;
+    bool atomic_bool = ctx->sema->types[value_type].kind == STK_Bool;
+    u32  storage_value_type =
+        atomic_bool ? llvm_builtin_type(ctx->sema, STK_U8) : value_type;
+    string type  = llvm_type_string(ctx, atomic_type);
+    cstr   order = llvm_atomic_order_name(expr->atomic_op, expr->atomic_order);
+    u32    align = llvm_type_align_bits(ctx->sema, atomic_type) / 8;
+    if (expr->atomic_op == HIR_ATOMIC_Load) {
+        string result = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = load atomic " STRINGP ", ptr " STRINGP
+                  " %s, align %u\n",
+                  STRINGV(result),
+                  STRINGV(type),
+                  STRINGV(pointer.value),
+                  order,
+                  align);
+        if (atomic_bool) {
+            string narrowed = llvm_temp(ctx);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = trunc i8 " STRINGP " to i1\n",
+                      STRINGV(narrowed),
+                      STRINGV(result));
+            result = narrowed;
+        }
+        return (LlvmValue){
+            .ok = true, .type_index = value_type, .value = result};
+    }
+    LlvmValue value = llvm_emit_expr(ctx, function, expr->extra_expr_index);
+    if (atomic_bool) {
+        string widened = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = zext i1 " STRINGP " to i8\n",
+                  STRINGV(widened),
+                  STRINGV(value.value));
+        value.type_index = storage_value_type;
+        value.value      = widened;
+    } else {
+        value = llvm_coerce_value_to_type(ctx, value, storage_value_type);
+    }
+    if (!value.ok) {
+        return (LlvmValue){0};
+    }
+    if (expr->atomic_op == HIR_ATOMIC_Store) {
+        sb_format(ctx->sb,
+                  "  store atomic " STRINGP " " STRINGP ", ptr " STRINGP
+                  " %s, align %u\n",
+                  STRINGV(type),
+                  STRINGV(value.value),
+                  STRINGV(pointer.value),
+                  order,
+                  align);
+        return (LlvmValue){.ok         = true,
+                           .type_index = expr->type_index,
+                           .value      = s("zeroinitializer")};
+    }
+    if (expr->atomic_op == HIR_ATOMIC_CompareExchange ||
+        expr->atomic_op == HIR_ATOMIC_CompareExchangeWeak) {
+        LlvmValue desired = llvm_emit_expr(ctx, function, expr->rhs_expr_index);
+        if (atomic_bool) {
+            string widened = llvm_temp(ctx);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = zext i1 " STRINGP " to i8\n",
+                      STRINGV(widened),
+                      STRINGV(desired.value));
+            desired.type_index = storage_value_type;
+            desired.value      = widened;
+        } else {
+            desired =
+                llvm_coerce_value_to_type(ctx, desired, storage_value_type);
+        }
+        if (!desired.ok) {
+            return (LlvmValue){0};
+        }
+        string pair = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = cmpxchg%s ptr " STRINGP ", " STRINGP
+                  " " STRINGP ", " STRINGP " " STRINGP " %s %s, align %u\n",
+                  STRINGV(pair),
+                  expr->atomic_op == HIR_ATOMIC_CompareExchangeWeak ? " weak"
+                                                                    : "",
+                  STRINGV(pointer.value),
+                  STRINGV(type),
+                  STRINGV(value.value),
+                  STRINGV(type),
+                  STRINGV(desired.value),
+                  order,
+                  llvm_atomic_failure_order_name(expr->atomic_failure_order),
+                  align);
+        string observed = llvm_temp(ctx);
+        string success  = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = extractvalue { " STRINGP ", i1 } " STRINGP
+                  ", 0\n",
+                  STRINGV(observed),
+                  STRINGV(type),
+                  STRINGV(pair));
+        sb_format(ctx->sb,
+                  "  " STRINGP " = extractvalue { " STRINGP ", i1 } " STRINGP
+                  ", 1\n",
+                  STRINGV(success),
+                  STRINGV(type),
+                  STRINGV(pair));
+        LlvmValue observed_value = {
+            .ok = true, .type_index = storage_value_type, .value = observed};
+        if (atomic_bool) {
+            string narrowed = llvm_temp(ctx);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = trunc i8 " STRINGP " to i1\n",
+                      STRINGV(narrowed),
+                      STRINGV(observed));
+            observed_value.type_index = value_type;
+            observed_value.value      = narrowed;
+        }
+        return llvm_atomic_compare_result(
+            ctx, expr->type_index, observed_value, success);
+    }
+    cstr   op     = expr->atomic_op == HIR_ATOMIC_Exchange   ? "xchg"
+                    : expr->atomic_op == HIR_ATOMIC_FetchAdd ? "add"
+                    : expr->atomic_op == HIR_ATOMIC_FetchSub ? "sub"
+                    : expr->atomic_op == HIR_ATOMIC_FetchAnd ? "and"
+                    : expr->atomic_op == HIR_ATOMIC_FetchOr  ? "or"
+                                                             : "xor";
+    string result = llvm_temp(ctx);
+    sb_format(ctx->sb,
+              "  " STRINGP " = atomicrmw %s ptr " STRINGP ", " STRINGP
+              " " STRINGP " %s, align %u\n",
+              STRINGV(result),
+              op,
+              STRINGV(pointer.value),
+              STRINGV(type),
+              STRINGV(value.value),
+              order,
+              align);
+    if (atomic_bool) {
+        string narrowed = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = trunc i8 " STRINGP " to i1\n",
+                  STRINGV(narrowed),
+                  STRINGV(result));
+        result = narrowed;
+    }
+    return (LlvmValue){.ok = true, .type_index = value_type, .value = result};
 }
 
 internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
@@ -9053,6 +9311,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 .value      = temp,
             };
         }
+    case HIR_EXPR_Atomic:
+        return llvm_emit_atomic_expr(ctx, function, expr);
     case HIR_EXPR_Assign:
         {
             const HirExpr* atomic_target =
@@ -9104,6 +9364,15 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                         llvm_ensure_local_slot(ctx,
                                                atomic_target->ref_index,
                                                atomic_target->type_index);
+                    u32 atomic_value_type =
+                        ctx->sema->types[atomic_target->type_index]
+                            .first_param_type;
+                    bool atomic_bool =
+                        ctx->sema->types[atomic_value_type].kind == STK_Bool;
+                    if (atomic_bool) {
+                        operand = llvm_coerce_value_to_type(
+                            ctx, operand, llvm_builtin_type(ctx->sema, STK_U8));
+                    }
                     string type =
                         llvm_type_string(ctx, atomic_target->type_index);
                     string old = llvm_temp(ctx);
@@ -9115,9 +9384,18 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                               STRINGV(slot->ptr),
                               STRINGV(type),
                               STRINGV(operand.value));
+                    if (atomic_bool) {
+                        string narrowed = llvm_temp(ctx);
+                        sb_format(ctx->sb,
+                                  "  " STRINGP " = trunc i8 " STRINGP
+                                  " to i1\n",
+                                  STRINGV(narrowed),
+                                  STRINGV(old));
+                        old = narrowed;
+                    }
                     return (LlvmValue){
                         .ok         = true,
-                        .type_index = atomic_target->type_index,
+                        .type_index = atomic_value_type,
                         .value      = old,
                     };
                 }
@@ -9231,6 +9509,17 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                                   STRINGV(pointee),
                                   STRINGV(operand.value),
                                   align);
+                        u32 value_type =
+                            ctx->sema->types[expr->type_index].first_param_type;
+                        if (ctx->sema->types[value_type].kind == STK_Bool) {
+                            string narrowed = llvm_temp(ctx);
+                            sb_format(ctx->sb,
+                                      "  " STRINGP " = trunc i8 " STRINGP
+                                      " to i1\n",
+                                      STRINGV(narrowed),
+                                      STRINGV(temp));
+                            temp = narrowed;
+                        }
                     } else {
                         sb_format(ctx->sb,
                                   "  " STRINGP " = load " STRINGP
@@ -9240,9 +9529,13 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                                   STRINGV(operand.value));
                     }
                     return (LlvmValue){
-                        .ok         = true,
-                        .type_index = expr->type_index,
-                        .value      = temp,
+                        .ok = true,
+                        .type_index =
+                            llvm_type_is_atomic(ctx->sema, expr->type_index)
+                                ? ctx->sema->types[expr->type_index]
+                                      .first_param_type
+                                : expr->type_index,
+                        .value = temp,
                     };
                 }
             default:
@@ -13049,6 +13342,17 @@ internal bool llvm_emit_assign(LlvmFunctionContext* ctx,
         }
         string type = llvm_type_string(ctx, pointee_type);
         if (llvm_type_is_atomic(ctx->sema, pointee_type)) {
+            u32 atomic_value_type =
+                ctx->sema->types[pointee_type].first_param_type;
+            if (ctx->sema->types[atomic_value_type].kind == STK_Bool) {
+                string widened = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = zext i1 " STRINGP " to i8\n",
+                          STRINGV(widened),
+                          STRINGV(value.value));
+                value.type_index = llvm_builtin_type(ctx->sema, STK_U8);
+                value.value      = widened;
+            }
             u32 align = llvm_type_align_bits(ctx->sema, pointee_type) / 8;
             sb_format(ctx->sb,
                       "  store atomic " STRINGP " " STRINGP ", ptr " STRINGP
@@ -13729,6 +14033,11 @@ internal void llvm_collect_addressed_expr_locals(LlvmFunctionContext* ctx,
         llvm_collect_addressed_expr_locals(ctx, expr->rhs_expr_index);
         break;
     case HIR_EXPR_Assign:
+        llvm_collect_addressed_expr_locals(ctx, expr->rhs_expr_index);
+        break;
+    case HIR_EXPR_Atomic:
+        llvm_collect_addressed_expr_locals(ctx, expr->operand_expr_index);
+        llvm_collect_addressed_expr_locals(ctx, expr->extra_expr_index);
         llvm_collect_addressed_expr_locals(ctx, expr->rhs_expr_index);
         break;
     case HIR_EXPR_Call:
