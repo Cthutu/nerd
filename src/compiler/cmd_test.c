@@ -901,11 +901,9 @@ int compiler_cmd_test(const NerdTestConfig* config)
             continue;
         }
 
-        ModuleInfo*         module    = &program.modules[module_index];
-        SourceTestGenerated generated = source_test_generated_source(
-            &arena, module->front_end.lexer.source, tests);
-        cstr generated_dir = path_dirname(&arena, module->resolved_path);
-        cstr generated_path =
+        ModuleInfo* module        = &program.modules[module_index];
+        cstr        generated_dir = path_dirname(&arena, module->resolved_path);
+        cstr        generated_path =
             path_join(&arena, generated_dir, "__nerd_source_test");
         if (config->list_results) {
             result = source_test_run_verbose(&arena,
@@ -920,6 +918,8 @@ int compiler_cmd_test(const NerdTestConfig* config)
             continue;
         }
 
+        SourceTestGenerated generated = source_test_generated_source(
+            &arena, module->front_end.lexer.source, tests);
         NerdRunConfig run_config = {
             .source =
                 (NerdSource){

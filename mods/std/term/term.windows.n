@@ -207,12 +207,8 @@ on "windows" {
             on ok == 0 || records_read == 0 => return nil
 
             key := term_windows_input_record_key(record)
-            on key {
-                _ => {
-                    on record.bKeyDown != 0 => return key
-                }
-                else => {
-                }
+            on key => {
+                on record.bKeyDown != 0 => return key
             }
         }
         return nil
@@ -221,13 +217,12 @@ on "windows" {
     -- Reads one translated terminal key.
     pub term_get_key :: fn () -> ?KeyCode {
         key := term_windows_console_key()
-        on key {
-            _ => return key
-            else => {
-                byte := term_read_byte()
-                on byte == 0 => return nil
-                return byte.as(KeyCode)
-            }
+        on key => {
+            return key
+        } else {
+            byte := term_read_byte()
+            on byte == 0 => return nil
+            return byte.as(KeyCode)
         }
     }
 
