@@ -77,6 +77,7 @@ result success payload. Optional `else { ... }` handles absence; result
 ## Branch Expressions
 
 An `on` branch can be an expression, block, `return`, `break`, or `again`.
-Statement-only branches type as `void`; value-producing branches must agree on a
+Statement-only branches type as `void`, including a partial nested `on` used as
+the final statement of an outer statement-form branch. Value-producing branches must agree on a
 common expected type. A branch with type `!` exits instead of producing a value,
 so it does not force the common branch value type.

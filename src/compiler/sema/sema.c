@@ -19695,6 +19695,13 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                 if (statement_form) {
                     u32 ignored         = sema_no_type();
                     u32 branch_expected = sema_no_type();
+                    u32 branch_root     = branch->expr_node_index;
+                    if (ast->nodes[branch_root].kind == AK_Expression) {
+                        branch_root = ast->nodes[branch_root].a;
+                    }
+                    if (ast->nodes[branch_root].kind == AK_On) {
+                        branch_expected = void_type;
+                    }
                     if (sema_node_definitely_returns(
                             ast, sema, branch->expr_node_index)) {
                         branch_expected = sema_enclosing_function_return_type(
