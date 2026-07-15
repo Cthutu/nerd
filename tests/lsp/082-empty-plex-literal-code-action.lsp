@@ -1,8 +1,7 @@
 use std.frame
 
 main :: fn () {
-    main_frame: Frame = {
-    }
+    main_frame: Frame = { }
 }
 ¬
 [
@@ -16,12 +15,12 @@ main :: fn () {
             },
             "range": {
                 "start": {
-                    "line": 4,
-                    "character": 4
+                    "line": 3,
+                    "character": 25
                 },
                 "end": {
-                    "line": 4,
-                    "character": 4
+                    "line": 3,
+                    "character": 25
                 }
             },
             "context": {
@@ -155,15 +154,15 @@ main :: fn () {
                             {
                                 "range": {
                                     "start": {
-                                        "line": 4,
-                                        "character": 4
+                                        "line": 3,
+                                        "character": 25
                                     },
                                     "end": {
-                                        "line": 4,
-                                        "character": 4
+                                        "line": 3,
+                                        "character": 26
                                     }
                                 },
-                                "newText": "        system     : nil\n        id         : 0\n        width      : 0\n        height     : 0\n        title      : \"\"\n        full_screen: no\n        resizable  : no\n    "
+                                "newText": "\n        system     : nil\n        id         : 0\n        width      : 0\n        height     : 0\n        title      : \"\"\n        full_screen: no\n        resizable  : no\n    "
                             }
                         ]
                     }

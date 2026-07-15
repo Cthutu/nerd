@@ -192,8 +192,8 @@ The server offers a quick fix for incomplete plex literals. When a literal is
 missing fields, `Fill missing plex fields` inserts the remaining fields with
 the same default values that `...` would use, such as `0`, `no`, `""`, and
 `nil`, with field colons aligned to the plex field group. Empty literals insert
-the first generated field directly after the opening brace line, without an
-extra blank row. The action first uses semantic type information and then falls
+a newline after the opening brace and put the first generated field on that new
+line, without an extra blank row. The action first uses semantic type information and then falls
 back to the AST for local plex aliases, or imported module ASTs, so it remains
 available for contextual literals such as `value: ImportedType = {}` while the
 missing-field diagnostic is present and while the cursor is on either the

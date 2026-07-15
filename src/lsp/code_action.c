@@ -3173,10 +3173,23 @@ lsp_code_action_add_missing_plex_fields_action(Arena*             arena,
         return;
     }
 
-    const Lexer* lexer         = &doc->front_end.lexer;
-    usize        insert_offset = lexer->tokens[close_token].offset;
-    JsonValue*   range         = lsp_code_action_range(
-        arena, lexer->source, insert_offset, insert_offset);
+    const Ast*                ast         = &doc->front_end.ast;
+    const AstNode*            node        = &ast->nodes[node_index];
+    const AstPlexLiteralInfo* literal     = &ast->plex_literals[node->a];
+    const Lexer*              lexer       = &doc->front_end.lexer;
+    usize                     range_start = lexer->tokens[close_token].offset;
+    usize                     range_end   = range_start;
+    if (literal->field_count == 0) {
+        range_start =
+            lex_token_end_offset(lexer, &lexer->tokens[node->token_index]);
+        StringBuilder replacement = {0};
+        sb_init(&replacement, arena);
+        sb_append_char(&replacement, '\n');
+        sb_append_string(&replacement, insert_text);
+        insert_text = sb_to_string(&replacement);
+    }
+    JsonValue* range =
+        lsp_code_action_range(arena, lexer->source, range_start, range_end);
     if (range == NULL) {
         return;
     }
