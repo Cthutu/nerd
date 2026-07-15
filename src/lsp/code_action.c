@@ -348,6 +348,23 @@ internal bool lsp_code_action_resolve_plex_literal_type(const Ast*  ast,
         return true;
     }
 
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* annotated = &ast->nodes[i];
+        if (annotated->kind != AK_AnnotatedValue) {
+            continue;
+        }
+        u32 value_index = annotated->b;
+        while (value_index < array_count(ast->nodes) &&
+               (ast->nodes[value_index].kind == AK_Expression ||
+                ast->nodes[value_index].kind == AK_Statement)) {
+            value_index = ast->nodes[value_index].a;
+        }
+        if (value_index == node_index) {
+            return lsp_code_action_resolve_type_node(
+                ast, sema, annotated->a, out_type);
+        }
+    }
+
     return false;
 }
 
@@ -1201,7 +1218,13 @@ internal string lsp_code_action_module_path_from_file(Arena* arena,
     } else if (end >= 6 && strcmp(path + end - 6, "\\mod.n") == 0) {
         end -= 6;
     } else if (end >= 2 && strcmp(path + end - 2, ".n") == 0) {
-        end -= 2;
+        cstr module_dir = path_dirname(arena, path);
+        cstr mod_path   = path_join(arena, module_dir, "mod.n");
+        if (path_exists(mod_path) && !path_is_directory(mod_path)) {
+            end = strlen(module_dir);
+        } else {
+            end -= 2;
+        }
     } else {
         return (string){0};
     }
@@ -2357,11 +2380,62 @@ lsp_code_action_missing_imported_ast_plex_fields(Arena*             arena,
     const AstNode*            node    = &ast->nodes[node_index];
     const AstPlexLiteralInfo* literal = &ast->plex_literals[node->a];
 
-    if (literal->target_node_index >= array_count(ast->nodes)) {
+    u32 target_node_index             = literal->target_node_index;
+    if (target_node_index >= array_count(ast->nodes)) {
+        for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+            const AstNode* annotated = &ast->nodes[i];
+            if (annotated->kind != AK_AnnotatedValue) {
+                continue;
+            }
+            u32 value_index =
+                lsp_code_action_unwrap_expr_node(ast, annotated->b);
+            if (value_index == node_index) {
+                target_node_index = annotated->a;
+                break;
+            }
+        }
+    }
+    if (target_node_index >= array_count(ast->nodes)) {
         return false;
     }
 
-    const AstNode* target = &ast->nodes[literal->target_node_index];
+    const AstNode* target = &ast->nodes[target_node_index];
+    if (target->kind == AK_SymbolRef) {
+        string target_name = lex_symbol(lexer, target->a);
+        for (u32 i = 0; i < array_count(doc->program.modules); ++i) {
+            LspModuleView module = {0};
+            if (!lsp_program_module_view(&doc->program, i, &module)) {
+                continue;
+            }
+            for (u32 j = 0; j < lsp_module_export_count(&module); ++j) {
+                const SemaDecl* decl = NULL;
+                if (!lsp_module_export_decl(&module, j, &decl, NULL) ||
+                    decl->kind != SK_TypeAlias ||
+                    !string_eq(lex_symbol(module.lexer, decl->symbol_handle),
+                               target_name) ||
+                    decl->value_node_index >= array_count(module.ast->nodes)) {
+                    continue;
+                }
+                u32 value_node_index = lsp_code_action_unwrap_type_value_node(
+                    module.ast, decl->value_node_index);
+                if (value_node_index >= array_count(module.ast->nodes) ||
+                    module.ast->nodes[value_node_index].kind != AK_TypePlex) {
+                    continue;
+                }
+                if (lsp_code_action_missing_ast_plex_fields_from_type(
+                        arena,
+                        doc,
+                        node_index,
+                        module.ast,
+                        module.lexer,
+                        module.ast->nodes[value_node_index].a,
+                        out_insert_text)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
     if (target->kind != AK_Field || target->a >= array_count(ast->nodes)) {
         return false;
     }
@@ -3073,6 +3147,61 @@ lsp_code_action_add_missing_enum_variants_action(Arena*             arena,
     json_array_push(actions, action);
 }
 
+internal void
+lsp_code_action_add_missing_plex_fields_action(Arena*             arena,
+                                               JsonValue*         actions,
+                                               string             uri,
+                                               const LspDocument* doc,
+                                               usize              offset)
+{
+    u32 close_token = U32_MAX;
+    u32 node_index =
+        lsp_code_action_find_plex_literal_at_offset(doc, offset, &close_token);
+    if (node_index == U32_MAX || close_token == U32_MAX) {
+        lsp_log("code action: no plex literal");
+        return;
+    }
+
+    string insert_text = {0};
+    if (!lsp_code_action_missing_plex_fields(
+            arena, doc, node_index, &insert_text) &&
+        !lsp_code_action_missing_ast_plex_fields(
+            arena, doc, node_index, &insert_text) &&
+        !lsp_code_action_missing_imported_ast_plex_fields(
+            arena, doc, node_index, &insert_text)) {
+        lsp_log("code action: no missing fields");
+        return;
+    }
+
+    const Lexer* lexer         = &doc->front_end.lexer;
+    usize        insert_offset = lexer->tokens[close_token].offset;
+    JsonValue*   range         = lsp_code_action_range(
+        arena, lexer->source, insert_offset, insert_offset);
+    if (range == NULL) {
+        return;
+    }
+
+    JsonValue* edit = json_new_object(arena);
+    json_object_set_object(edit, "range", range);
+    json_object_set_string(edit, arena, "newText", insert_text);
+
+    JsonValue* edits = json_new_array(arena);
+    json_array_push(edits, edit);
+
+    JsonValue* changes = json_new_object(arena);
+    json_object_set_array(changes, lsp_code_action_cstr(arena, uri), edits);
+
+    JsonValue* workspace_edit = json_new_object(arena);
+    json_object_set_object(workspace_edit, "changes", changes);
+
+    JsonValue* action = json_new_object(arena);
+    json_object_set_string(
+        action, arena, "title", s("Fill missing plex fields"));
+    json_object_set_string(action, arena, "kind", s("quickfix"));
+    json_object_set_object(action, "edit", workspace_edit);
+    json_array_push(actions, action);
+}
+
 void lsp_handle_code_action(LspState* state, const LspMessage* message)
 {
     JsonValue* response = lsp_prepare_response(message);
@@ -3147,6 +3276,9 @@ void lsp_handle_code_action(LspState* state, const LspMessage* message)
         }
     }
 
+    lsp_code_action_add_missing_plex_fields_action(
+        message->arena, actions, uri, doc, offset);
+
     LspTypeFactView view = {0};
     if (!lsp_type_fact_view(state, uri, &view)) {
         json_object_set_array(response, "result", actions);
@@ -3158,60 +3290,6 @@ void lsp_handle_code_action(LspState* state, const LspMessage* message)
         message->arena, actions, uri, doc, offset);
     lsp_code_action_add_missing_enum_variants_action(
         message->arena, actions, uri, doc, offset);
-
-    u32 close_token = U32_MAX;
-    u32 node_index =
-        lsp_code_action_find_plex_literal_at_offset(doc, offset, &close_token);
-    if (node_index == U32_MAX || close_token == U32_MAX) {
-        lsp_log("code action: no plex literal");
-        json_object_set_array(response, "result", actions);
-        lsp_send_response(message->arena, response);
-        return;
-    }
-
-    string insert_text = {0};
-    if (!lsp_code_action_missing_plex_fields(
-            message->arena, doc, node_index, &insert_text) &&
-        !lsp_code_action_missing_ast_plex_fields(
-            message->arena, doc, node_index, &insert_text) &&
-        !lsp_code_action_missing_imported_ast_plex_fields(
-            message->arena, doc, node_index, &insert_text)) {
-        lsp_log("code action: no missing fields");
-        json_object_set_array(response, "result", actions);
-        lsp_send_response(message->arena, response);
-        return;
-    }
-
-    const Lexer* lexer         = &doc->front_end.lexer;
-    usize        insert_offset = lexer->tokens[close_token].offset;
-    JsonValue*   range         = lsp_code_action_range(
-        message->arena, lexer->source, insert_offset, insert_offset);
-    if (range == NULL) {
-        json_object_set_array(response, "result", actions);
-        lsp_send_response(message->arena, response);
-        return;
-    }
-
-    JsonValue* edit = json_new_object(message->arena);
-    json_object_set_object(edit, "range", range);
-    json_object_set_string(edit, message->arena, "newText", insert_text);
-
-    JsonValue* edits = json_new_array(message->arena);
-    json_array_push(edits, edit);
-
-    JsonValue* changes = json_new_object(message->arena);
-    json_object_set_array(
-        changes, lsp_code_action_cstr(message->arena, uri), edits);
-
-    JsonValue* workspace_edit = json_new_object(message->arena);
-    json_object_set_object(workspace_edit, "changes", changes);
-
-    JsonValue* action = json_new_object(message->arena);
-    json_object_set_string(
-        action, message->arena, "title", s("Fill missing plex fields"));
-    json_object_set_string(action, message->arena, "kind", s("quickfix"));
-    json_object_set_object(action, "edit", workspace_edit);
-    json_array_push(actions, action);
 
     json_object_set_array(response, "result", actions);
     lsp_send_response(message->arena, response);

@@ -195,9 +195,9 @@ the same default values that `...` would use, such as `0`, `no`, `""`, and
 the first generated field directly after the opening brace line, without an
 extra blank row. The action first uses semantic type information and then falls
 back to the AST for local plex aliases, or imported module ASTs, so it remains
-available while the
-missing-field diagnostic is present and while the cursor is on either the literal
-target or the literal body.
+available for contextual literals such as `value: ImportedType = {}` while the
+missing-field diagnostic is present and while the cursor is on either the
+literal target or the literal body.
 
 For unused locals, the server offers both a rename quick fix that toggles the
 leading underscore convention and a removal quick fix for simple local
@@ -211,7 +211,9 @@ loaded modules, sibling modules beside the active/root document, roots from
 missing name, then inserts `use module.path` either at the top of the file or
 after the first leading group of `use` statements. Existing imports are filtered
 out before actions are returned, so a stale unresolved-symbol diagnostic cannot
-offer a duplicate `use`.
+offer a duplicate `use`. Declarations found in an implicit sibling part of a
+folder module are attributed to the folder module path, so a declaration in
+`std/frame/frame.n` produces `use std.frame`, not `use std.frame.frame`.
 
 ## CST Usage
 

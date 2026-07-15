@@ -1,10 +1,7 @@
-Point :: plex {
-    x i32
-    y i32
-}
+use std.frame
 
 main :: fn () {
-    point := Point {
+    main_frame: Frame = {
     }
 }
 ¬
@@ -19,11 +16,11 @@ main :: fn () {
             },
             "range": {
                 "start": {
-                    "line": 7,
+                    "line": 4,
                     "character": 4
                 },
                 "end": {
-                    "line": 7,
+                    "line": 4,
                     "character": 4
                 }
             },
@@ -96,12 +93,12 @@ main :: fn () {
                 {
                     "range": {
                         "start": {
-                            "line": 6,
-                            "character": 19
+                            "line": 3,
+                            "character": 24
                         },
                         "end": {
-                            "line": 6,
-                            "character": 20
+                            "line": 3,
+                            "character": 25
                         }
                     },
                     "severity": 1,
@@ -113,28 +110,28 @@ main :: fn () {
                                 "uri": "file:///test.n",
                                 "range": {
                                     "start": {
-                                        "line": 6,
-                                        "character": 19
+                                        "line": 3,
+                                        "character": 24
                                     },
                                     "end": {
-                                        "line": 6,
-                                        "character": 20
+                                        "line": 3,
+                                        "character": 25
                                     }
                                 }
                             },
-                            "message": "note: Missing fields: `x`, `y`"
+                            "message": "note: Missing fields: `system`, `id`, `width`, `height`, `title`, `full_screen`, `resizable`"
                         },
                         {
                             "location": {
                                 "uri": "file:///test.n",
                                 "range": {
                                     "start": {
-                                        "line": 6,
-                                        "character": 19
+                                        "line": 3,
+                                        "character": 24
                                     },
                                     "end": {
-                                        "line": 6,
-                                        "character": 20
+                                        "line": 3,
+                                        "character": 25
                                     }
                                 }
                             },
@@ -158,15 +155,15 @@ main :: fn () {
                             {
                                 "range": {
                                     "start": {
-                                        "line": 7,
+                                        "line": 4,
                                         "character": 4
                                     },
                                     "end": {
-                                        "line": 7,
+                                        "line": 4,
                                         "character": 4
                                     }
                                 },
-                                "newText": "        x: 0\n        y: 0\n    "
+                                "newText": "        system     : nil\n        id         : 0\n        width      : 0\n        height     : 0\n        title      : \"\"\n        full_screen: no\n        resizable  : no\n    "
                             }
                         ]
                     }

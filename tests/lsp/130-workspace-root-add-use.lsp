@@ -130,7 +130,7 @@ Graphics :: plex {
         "id": 2,
         "result": [
             {
-                "title": "Add use os.windows.user",
+                "title": "Add use os.windows",
                 "kind": "quickfix",
                 "edit": {
                     "changes": {
@@ -146,7 +146,7 @@ Graphics :: plex {
                                         "character": 0
                                     }
                                 },
-                                "newText": "use os.windows.user\n\n"
+                                "newText": "use os.windows\n\n"
                             }
                         ]
                     }
