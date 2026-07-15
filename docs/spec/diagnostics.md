@@ -30,6 +30,10 @@ Diagnostics should identify the source construct that caused the failure and
 include enough context for terminal rendering, JSON error tests, and LSP
 diagnostic publishing to agree.
 
+Unknown aggregate-literal fields are name-resolution errors, not type
+mismatches. Their primary span identifies the field name, and diagnostics may
+suggest a sufficiently close field declared by the target plex or union type.
+
 ## Phase Responsibilities
 
 | Phase | Diagnostic responsibility |

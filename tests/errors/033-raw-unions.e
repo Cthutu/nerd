@@ -81,24 +81,24 @@ main :: fn () {
     v: Value = Value { text: "bad" }
 }¬
 {
-    "message": "Type mismatch: expected `known union field`, found `text`",
+    "message": "Unknown field `text` in union literal",
     "source_file": "tests/errors/033-raw-unions.e",
     "primary_location": {
         "line": 3,
-        "column": 30
+        "column": 24
     },
     "references": [
         {
             "kind": "primary",
             "line": 3,
-            "column": 30,
-            "length": 5,
-            "message": "This expression has type `text`"
+            "column": 24,
+            "length": 4,
+            "message": "The target union type has no field named `text`"
         }
     ],
     "notes": [],
     "help": [
-        "Change the expression or annotation so both sides use the same type."
+        "Use a field declared by the target union type."
     ]
 }
 ¬Value :: union { i i32 f f32 }

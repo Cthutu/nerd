@@ -18141,13 +18141,24 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                     }
                 }
                 if (field_index == U32_MAX) {
-                    return error_0304_type_mismatch(
+                    string field_name = lex_symbol(lexer, field->symbol_handle);
+                    string suggested_field_name = {0};
+                    u32    best_distance        = U32_MAX;
+                    for (u32 j = 0; j < record->param_count; ++j) {
+                        sema_consider_member_suggestion(
+                            field_name,
+                            lex_symbol(lexer,
+                                       sema->type_param_symbols
+                                           [record->first_param_type + j]),
+                            &suggested_field_name,
+                            &best_distance);
+                    }
+                    return error_0304_unknown_record_literal_field(
                         lexer->source,
-                        sema_node_span(lexer,
-                                       &ast->nodes[field->value_node_index]),
-                        target_is_union ? s("known union field")
-                                        : s("known plex field"),
-                        lex_symbol(lexer, field->symbol_handle));
+                        sema_token_span(lexer, field->token_index),
+                        target_is_union ? s("union") : s("plex"),
+                        field_name,
+                        suggested_field_name);
                 }
                 if (seen[field_index]) {
                     return error_0304_type_mismatch(

@@ -19,12 +19,12 @@ main :: fn () {
             },
             "range": {
                 "start": {
-                    "line": 6,
-                    "character": 13
+                    "line": 7,
+                    "character": 4
                 },
                 "end": {
-                    "line": 6,
-                    "character": 13
+                    "line": 7,
+                    "character": 4
                 }
             },
             "context": {

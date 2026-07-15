@@ -12,24 +12,24 @@ main :: fn () {
 }
 ¬
 {
-    "message": "Type mismatch: expected `known plex field`, found `z`",
+    "message": "Unknown field `z` in plex literal",
     "source_file": "tests/errors/029-plex-ergonomics.e",
     "primary_location": {
         "line": 10,
-        "column": 22
+        "column": 19
     },
     "references": [
         {
             "kind": "primary",
             "line": 10,
-            "column": 22,
+            "column": 19,
             "length": 1,
-            "message": "This expression has type `z`"
+            "message": "The target plex type has no field named `z`"
         }
     ],
     "notes": [],
     "help": [
-        "Change the expression or annotation so both sides use the same type."
+        "Did you mean `x`?"
     ]
 }
 ¬

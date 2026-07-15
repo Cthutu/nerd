@@ -229,6 +229,41 @@ bool error_0304_missing_plex_fields(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
+// Report a field in a plex or union literal that the target type does not own.
+
+bool error_0304_unknown_record_literal_field(NerdSource source,
+                                             ErrorSpan  span,
+                                             string     record_kind,
+                                             string     field_name,
+                                             string     suggested_field_name)
+{
+    ErrorInfo error =
+        error_init(source,
+                   span,
+                   "Unknown field `" STRINGP "` in " STRINGP " literal",
+                   STRINGV(field_name),
+                   STRINGV(record_kind));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "The target " STRINGP
+                        " type has no field named `" STRINGP "`",
+                        STRINGV(record_kind),
+                        STRINGV(field_name));
+    if (suggested_field_name.count > 0) {
+        error_add_help(&error,
+                       "Did you mean `" STRINGP "`?",
+                       STRINGV(suggested_field_name));
+    } else {
+        error_add_help(&error,
+                       "Use a field declared by the target " STRINGP " type.",
+                       STRINGV(record_kind));
+    }
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------
 // Report tuple-style enum pattern syntax used for a braced enum payload.
 
 bool error_0304_enum_payload_pattern_field_names(NerdSource source,

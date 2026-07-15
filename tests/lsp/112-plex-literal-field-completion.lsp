@@ -203,7 +203,7 @@ main :: fn () {
                     },
                     "severity": 1,
                     "source": "nerd",
-                    "message": "Type mismatch: expected `known plex field`, found `v`",
+                    "message": "Unknown field `v` in plex literal",
                     "relatedInformation": [
                         {
                             "location": {
@@ -219,7 +219,7 @@ main :: fn () {
                                     }
                                 }
                             },
-                            "message": "help: Change the expression or annotation so both sides use the same type."
+                            "message": "help: Did you mean `x`?"
                         }
                     ]
                 }
