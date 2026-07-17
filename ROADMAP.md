@@ -143,36 +143,6 @@ Completed milestone plans belong in git history, tests, and subsystem
 documentation. The active list below contains only work that is ready to guide
 the next implementation slices.
 
-### Milestone 13: Complete the Portable `std.opengl` OpenGL 3 Surface
-
-`std.opengl` already owns the cross-platform OpenGL API and includes a useful
-base of aliases, constants, loaded commands, and tests. Complete and audit the
-public subset needed by small programs that use OpenGL directly.
-
-“Portable” describes the Nerd-facing API, not a promise that every command is
-available on every driver:
-
-- [ ] Audit the public scalar aliases against the OpenGL ABI. Types such as
-  `GLenum`, `GLuint`, `GLsizei`, `GLintptr`, and `GLsizeiptr` must have
-  the same width and signedness on Windows and Linux.
-- [ ] Audit constants against the Khronos numeric values and add the missing
-  OpenGL 3 constants required by representative shader, buffer, vertex-array,
-  texture, framebuffer, blending, depth/stencil, and drawing code.
-- [ ] Complete the corresponding command wrappers with stable Nerd signatures.
-  Keep platform calling conventions and raw address resolution behind the
-  module boundary.
-- [ ] Keep command availability explicit: Windows resolves commands through
-  WGL and Linux through GLX. Loading must fail cleanly when a required command
-  is unavailable; a public wrapper must never silently call a missing address.
-- [ ] Add non-interactive loader/reset tests that do not require opening a
-  window, plus command-path compilation tests for representative direct-OpenGL
-  programs.
-- [ ] Keep `std.frame` responsible for windows and context lifecycle,
-  `std.gfx` responsible for pixel presentation, and `std.opengl` responsible
-  for the raw portable OpenGL API.
-- [ ] Update `docs/stdlib.md` with the supported OpenGL version/subset,
-  initialisation requirements, availability behaviour, and ownership boundary.
-
 Keep parsing traits such as `Parse` at standard-library level rather than
 making them language-known traits. Expand the standard library only where it
 validates the module/export model or provides a clear user-facing capability.

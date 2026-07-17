@@ -47,6 +47,9 @@ pub GLshort :: i16
 -- OpenGL unsigned short value.
 pub GLushort :: u16
 
+-- OpenGL half-precision floating-point storage value.
+pub GLhalf :: u16
+
 -- OpenGL signed integer value.
 pub GLint :: i32
 
@@ -108,6 +111,7 @@ pub GL_MODELVIEW  :: 0x1700
 
 pub GL_CULL_FACE    :: 0x0b44
 pub GL_DEPTH_TEST   :: 0x0b71
+pub GL_STENCIL_TEST :: 0x0b90
 pub GL_SCISSOR_TEST :: 0x0c11
 pub GL_BLEND        :: 0x0be2
 
@@ -120,17 +124,29 @@ pub GL_NOTEQUAL :: 0x0205
 pub GL_GEQUAL   :: 0x0206
 pub GL_ALWAYS   :: 0x0207
 
-pub GL_ZERO                :: 0
-pub GL_ONE                 :: 1
-pub GL_SRC_COLOR           :: 0x0300
-pub GL_ONE_MINUS_SRC_COLOR :: 0x0301
-pub GL_SRC_ALPHA           :: 0x0302
-pub GL_ONE_MINUS_SRC_ALPHA :: 0x0303
-pub GL_DST_ALPHA           :: 0x0304
-pub GL_ONE_MINUS_DST_ALPHA :: 0x0305
-pub GL_DST_COLOR           :: 0x0306
-pub GL_ONE_MINUS_DST_COLOR :: 0x0307
-pub GL_SRC_ALPHA_SATURATE  :: 0x0308
+pub GL_ZERO                     :: 0
+pub GL_ONE                      :: 1
+pub GL_SRC_COLOR                :: 0x0300
+pub GL_ONE_MINUS_SRC_COLOR      :: 0x0301
+pub GL_SRC_ALPHA                :: 0x0302
+pub GL_ONE_MINUS_SRC_ALPHA      :: 0x0303
+pub GL_DST_ALPHA                :: 0x0304
+pub GL_ONE_MINUS_DST_ALPHA      :: 0x0305
+pub GL_DST_COLOR                :: 0x0306
+pub GL_ONE_MINUS_DST_COLOR      :: 0x0307
+pub GL_SRC_ALPHA_SATURATE       :: 0x0308
+pub GL_CONSTANT_COLOR           :: 0x8001
+pub GL_ONE_MINUS_CONSTANT_COLOR :: 0x8002
+pub GL_CONSTANT_ALPHA           :: 0x8003
+pub GL_ONE_MINUS_CONSTANT_ALPHA :: 0x8004
+
+pub GL_KEEP      :: 0x1e00
+pub GL_REPLACE   :: 0x1e01
+pub GL_INCR      :: 0x1e02
+pub GL_DECR      :: 0x1e03
+pub GL_INVERT    :: 0x150a
+pub GL_INCR_WRAP :: 0x8507
+pub GL_DECR_WRAP :: 0x8508
 
 pub GL_TEXTURE_MIN_FILTER :: 0x2801
 pub GL_TEXTURE_MAG_FILTER :: 0x2800
@@ -157,6 +173,7 @@ pub GL_INT            :: 0x1404
 pub GL_UNSIGNED_INT   :: 0x1405
 pub GL_FLOAT          :: 0x1406
 pub GL_DOUBLE         :: 0x140a
+pub GL_HALF_FLOAT     :: 0x140b
 
 pub GL_STENCIL_INDEX   :: 0x1901
 pub GL_DEPTH_COMPONENT :: 0x1902
@@ -164,7 +181,20 @@ pub GL_RED             :: 0x1903
 pub GL_RGB             :: 0x1907
 pub GL_RGBA            :: 0x1908
 pub GL_BGRA            :: 0x80e1
+pub GL_RG              :: 0x8227
 pub GL_DEPTH_STENCIL   :: 0x84f9
+
+pub GL_R8                 :: 0x8229
+pub GL_RG8                :: 0x822b
+pub GL_RGB8               :: 0x8051
+pub GL_RGBA8              :: 0x8058
+pub GL_SRGB8              :: 0x8c41
+pub GL_SRGB8_ALPHA8       :: 0x8c43
+pub GL_DEPTH_COMPONENT16  :: 0x81a5
+pub GL_DEPTH_COMPONENT24  :: 0x81a6
+pub GL_DEPTH_COMPONENT32F :: 0x8cac
+pub GL_DEPTH24_STENCIL8   :: 0x88f0
+pub GL_UNSIGNED_INT_24_8  :: 0x84fa
 
 pub GL_POINT_SIZE      :: 0x0b11
 pub GL_LINE_WIDTH      :: 0x0b21
@@ -190,18 +220,32 @@ pub GL_INVALID_VALUE     :: 0x0501
 pub GL_INVALID_OPERATION :: 0x0502
 pub GL_OUT_OF_MEMORY     :: 0x0505
 
-pub GL_FUNC_ADD              :: 0x8006
-pub GL_BLEND_EQUATION        :: 0x8009
-pub GL_BLEND_EQUATION_RGB    :: 0x8009
-pub GL_FUNC_SUBTRACT         :: 0x800a
-pub GL_FUNC_REVERSE_SUBTRACT :: 0x800b
-pub GL_BLEND_DST_RGB         :: 0x80c8
-pub GL_BLEND_SRC_RGB         :: 0x80c9
-pub GL_BLEND_DST_ALPHA       :: 0x80ca
-pub GL_BLEND_SRC_ALPHA       :: 0x80cb
-pub GL_TEXTURE_BINDING_2D    :: 0x8069
-pub GL_TEXTURE_BASE_LEVEL    :: 0x813c
-pub GL_TEXTURE_MAX_LEVEL     :: 0x813d
+pub GL_BLEND_COLOR                 :: 0x8005
+pub GL_FUNC_ADD                    :: 0x8006
+pub GL_BLEND_EQUATION              :: 0x8009
+pub GL_BLEND_EQUATION_RGB          :: 0x8009
+pub GL_BLEND_EQUATION_ALPHA        :: 0x883d
+pub GL_FUNC_SUBTRACT               :: 0x800a
+pub GL_FUNC_REVERSE_SUBTRACT       :: 0x800b
+pub GL_MIN                         :: 0x8007
+pub GL_MAX                         :: 0x8008
+pub GL_BLEND_DST_RGB               :: 0x80c8
+pub GL_BLEND_SRC_RGB               :: 0x80c9
+pub GL_BLEND_DST_ALPHA             :: 0x80ca
+pub GL_BLEND_SRC_ALPHA             :: 0x80cb
+pub GL_TEXTURE_BINDING_2D          :: 0x8069
+pub GL_TEXTURE_BINDING_3D          :: 0x806a
+pub GL_TEXTURE_3D                  :: 0x806f
+pub GL_TEXTURE_CUBE_MAP            :: 0x8513
+pub GL_TEXTURE_CUBE_MAP_POSITIVE_X :: 0x8515
+pub GL_TEXTURE_CUBE_MAP_NEGATIVE_X :: 0x8516
+pub GL_TEXTURE_CUBE_MAP_POSITIVE_Y :: 0x8517
+pub GL_TEXTURE_CUBE_MAP_NEGATIVE_Y :: 0x8518
+pub GL_TEXTURE_CUBE_MAP_POSITIVE_Z :: 0x8519
+pub GL_TEXTURE_CUBE_MAP_NEGATIVE_Z :: 0x851a
+pub GL_TEXTURE_BINDING_CUBE_MAP    :: 0x8514
+pub GL_TEXTURE_BASE_LEVEL          :: 0x813c
+pub GL_TEXTURE_MAX_LEVEL           :: 0x813d
 
 pub GL_TEXTURE0  :: 0x84c0
 pub GL_TEXTURE1  :: 0x84c1
@@ -287,6 +331,41 @@ pub GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS :: 0x8b4d
 pub GL_MAJOR_VERSION                    :: 0x821b
 pub GL_MINOR_VERSION                    :: 0x821c
 pub GL_NUM_EXTENSIONS                   :: 0x821d
+
+pub GL_INVALID_FRAMEBUFFER_OPERATION             :: 0x0506
+pub GL_FRAMEBUFFER                               :: 0x8d40
+pub GL_READ_FRAMEBUFFER                          :: 0x8ca8
+pub GL_DRAW_FRAMEBUFFER                          :: 0x8ca9
+pub GL_RENDERBUFFER                              :: 0x8d41
+pub GL_FRAMEBUFFER_BINDING                       :: 0x8ca6
+pub GL_READ_FRAMEBUFFER_BINDING                  :: 0x8caa
+pub GL_DRAW_FRAMEBUFFER_BINDING                  :: 0x8ca6
+pub GL_RENDERBUFFER_BINDING                      :: 0x8ca7
+pub GL_FRAMEBUFFER_COMPLETE                      :: 0x8cd5
+pub GL_FRAMEBUFFER_UNDEFINED                     :: 0x8219
+pub GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT         :: 0x8cd6
+pub GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT :: 0x8cd7
+pub GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER        :: 0x8cdb
+pub GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER        :: 0x8cdc
+pub GL_FRAMEBUFFER_UNSUPPORTED                   :: 0x8cdd
+pub GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE        :: 0x8d56
+pub GL_COLOR_ATTACHMENT0                         :: 0x8ce0
+pub GL_COLOR_ATTACHMENT1                         :: 0x8ce1
+pub GL_COLOR_ATTACHMENT2                         :: 0x8ce2
+pub GL_COLOR_ATTACHMENT3                         :: 0x8ce3
+pub GL_DEPTH_ATTACHMENT                          :: 0x8d00
+pub GL_STENCIL_ATTACHMENT                        :: 0x8d20
+pub GL_DEPTH_STENCIL_ATTACHMENT                  :: 0x821a
+pub GL_MAX_COLOR_ATTACHMENTS                     :: 0x8cdf
+pub GL_MAX_RENDERBUFFER_SIZE                     :: 0x84e8
+pub GL_MAX_SAMPLES                               :: 0x8d57
+
+pub GL_MAP_READ_BIT              :: 0x0001
+pub GL_MAP_WRITE_BIT             :: 0x0002
+pub GL_MAP_INVALIDATE_RANGE_BIT  :: 0x0004
+pub GL_MAP_INVALIDATE_BUFFER_BIT :: 0x0008
+pub GL_MAP_FLUSH_EXPLICIT_BIT    :: 0x0010
+pub GL_MAP_UNSYNCHRONIZED_BIT    :: 0x0020
 
 GLActiveTextureFn      :: fn (texture: GLenum)
 GLCreateShaderFn       :: fn (type: GLenum) -> GLuint
@@ -411,6 +490,123 @@ GLVertexAttribPointerFn :: fn (index      : GLuint,
                                normalized : GLboolean,
                                stride     : GLsizei,
                                pointer    : ^void)
+
+GLBlendEquationSeparateFn :: fn (rgb: GLenum, alpha: GLenum)
+GLBlendColorFn            :: fn (red   : GLfloat,
+                                 green : GLfloat,
+                                 blue  : GLfloat,
+                                 alpha : GLfloat)
+
+GLBlendFuncSeparateFn :: fn (source_rgb        : GLenum,
+                             destination_rgb   : GLenum,
+                             source_alpha      : GLenum,
+                             destination_alpha : GLenum)
+
+GLStencilFuncSeparateFn :: fn (face      : GLenum,
+                               func      : GLenum,
+                               reference : GLint,
+                               mask      : GLuint)
+GLStencilOpSeparateFn   :: fn (face         : GLenum,
+                               stencil_fail : GLenum,
+                               depth_fail   : GLenum,
+                               depth_pass   : GLenum)
+GLStencilMaskSeparateFn :: fn (face: GLenum, mask: GLuint)
+GLDrawBuffersFn         :: fn (count: GLsizei, buffers: ^GLenum)
+GLGetStringiFn          :: fn (name: GLenum, index: GLuint) -> ^GLubyte
+
+GLTexImage3DFn :: fn (target          : GLenum,
+                      level           : GLint,
+                      internal_format : GLint,
+                      width           : GLsizei,
+                      height          : GLsizei,
+                      depth           : GLsizei,
+                      border          : GLint,
+                      format          : GLenum,
+                      type            : GLenum,
+                      pixels          : ^void)
+
+GLTexSubImage3DFn :: fn (target  : GLenum,
+                         level   : GLint,
+                         xoffset : GLint,
+                         yoffset : GLint,
+                         zoffset : GLint,
+                         width   : GLsizei,
+                         height  : GLsizei,
+                         depth   : GLsizei,
+                         format  : GLenum,
+                         type    : GLenum,
+                         pixels  : ^void)
+
+GLGenerateMipmapFn             :: fn (target: GLenum)
+GLIsRenderbufferFn             :: fn (renderbuffer: GLuint) -> GLboolean
+GLBindRenderbufferFn           :: fn (target: GLenum, renderbuffer: GLuint)
+GLDeleteRenderbuffersFn        :: fn (count: GLsizei, renderbuffers: ^GLuint)
+GLGenRenderbuffersFn           :: fn (count: GLsizei, renderbuffers: ^GLuint)
+GLRenderbufferStorageFn        :: fn (target          : GLenum,
+                                      internal_format : GLenum,
+                                      width           : GLsizei,
+                                      height          : GLsizei)
+GLGetRenderbufferParameterivFn ::
+                                  fn (target : GLenum,
+                                      name   : GLenum,
+                                      values : ^GLint)
+GLIsFramebufferFn              :: fn (framebuffer: GLuint) -> GLboolean
+GLBindFramebufferFn            :: fn (target: GLenum, framebuffer: GLuint)
+GLDeleteFramebuffersFn         :: fn (count: GLsizei, framebuffers: ^GLuint)
+GLGenFramebuffersFn            :: fn (count: GLsizei, framebuffers: ^GLuint)
+GLCheckFramebufferStatusFn     :: fn (target: GLenum) -> GLenum
+
+GLFramebufferTexture2DFn :: fn (target     : GLenum,
+                                attachment : GLenum,
+                                textarget  : GLenum,
+                                texture    : GLuint,
+                                level      : GLint)
+
+GLFramebufferRenderbufferFn :: fn (target              : GLenum,
+                                   attachment          : GLenum,
+                                   renderbuffer_target : GLenum,
+                                   renderbuffer        : GLuint)
+
+GLGetFramebufferAttachmentParameterivFn :: fn (target     : GLenum,
+                                               attachment : GLenum,
+                                               name       : GLenum,
+                                               values     : ^GLint)
+
+GLBlitFramebufferFn :: fn (source_x0      : GLint,
+                           source_y0      : GLint,
+                           source_x1      : GLint,
+                           source_y1      : GLint,
+                           destination_x0 : GLint,
+                           destination_y0 : GLint,
+                           destination_x1 : GLint,
+                           destination_y1 : GLint,
+                           mask           : GLbitfield,
+                           filter         : GLenum)
+
+GLRenderbufferStorageMultisampleFn :: fn (target          : GLenum,
+                                          samples         : GLsizei,
+                                          internal_format : GLenum,
+                                          width           : GLsizei,
+                                          height          : GLsizei)
+
+GLFramebufferTextureLayerFn :: fn (target     : GLenum,
+                                   attachment : GLenum,
+                                   texture    : GLuint,
+                                   level      : GLint,
+                                   layer      : GLint)
+
+GLMapBufferRangeFn :: fn (target : GLenum,
+                          offset : GLintptr,
+                          length : GLsizeiptr,
+                          access : GLbitfield) -> ^void
+
+GLFlushMappedBufferRangeFn   ::
+                                fn (target : GLenum,
+                                    offset : GLintptr,
+                                    length : GLsizeiptr)
+GLDisableVertexAttribArrayFn :: fn (index: GLuint)
+GLIsVertexArrayFn            :: fn (array: GLuint) -> GLboolean
+GLGetProcAddressFn           :: fn (name: ^i8) -> ^void
 
 gl_abort_unloaded_command :: fn () {
     abort("OpenGL command called before address loading completed.")
@@ -655,100 +851,366 @@ gl_stub_vertex_attrib_pointer :: fn (_index      : GLuint,
     gl_abort_unloaded_command()
 }
 
-gl_active_texture_proc             : GLActiveTextureFn           =
-                                                                   gl_stub_active_texture
-gl_create_shader_proc              : GLCreateShaderFn            =
-                                                                   gl_stub_create_shader
-gl_shader_source_proc              : GLShaderSourceFn            =
-                                                                   gl_stub_shader_source
-gl_compile_shader_proc             : GLCompileShaderFn           =
-                                                                   gl_stub_compile_shader
-gl_get_shader_iv_proc              : GLGetShaderivFn             =
-                                                                   gl_stub_get_shader_iv
-gl_get_shader_info_log_proc        : GLGetShaderInfoLogFn        =
-                                                                   gl_stub_get_shader_info_log
-gl_delete_shader_proc              : GLDeleteShaderFn            =
-                                                                   gl_stub_delete_shader
-gl_create_program_proc             : GLCreateProgramFn           =
-                                                                   gl_stub_create_program
-gl_attach_shader_proc              : GLAttachShaderFn            =
-                                                                   gl_stub_attach_shader
-gl_bind_attrib_location_proc       : GLBindAttribLocationFn      =
-                                                                   gl_stub_bind_attrib_location
-gl_link_program_proc               : GLLinkProgramFn             =
-                                                                   gl_stub_link_program
-gl_get_program_iv_proc             : GLGetProgramivFn            =
-                                                                   gl_stub_get_program_iv
-gl_get_program_info_log_proc       : GLGetProgramInfoLogFn       =
-                                                                   gl_stub_get_program_info_log
-gl_delete_program_proc             : GLDeleteProgramFn           =
-                                                                   gl_stub_delete_program
-gl_use_program_proc                : GLUseProgramFn              =
-                                                                   gl_stub_use_program
-gl_get_uniform_location_proc       : GLGetUniformLocationFn      =
-                                                                   gl_stub_get_uniform_location
-gl_uniform_1f_proc                 : GLUniform1fFn               =
-                                                                   gl_stub_uniform_1f
-gl_uniform_2f_proc                 : GLUniform2fFn               =
-                                                                   gl_stub_uniform_2f
-gl_uniform_3f_proc                 : GLUniform3fFn               =
-                                                                   gl_stub_uniform_3f
-gl_uniform_4f_proc                 : GLUniform4fFn               =
-                                                                   gl_stub_uniform_4f
-gl_uniform_1i_proc                 : GLUniform1iFn               =
-                                                                   gl_stub_uniform_1i
-gl_uniform_2i_proc                 : GLUniform2iFn               =
-                                                                   gl_stub_uniform_2i
-gl_uniform_3i_proc                 : GLUniform3iFn               =
-                                                                   gl_stub_uniform_3i
-gl_uniform_4i_proc                 : GLUniform4iFn               =
-                                                                   gl_stub_uniform_4i
-gl_uniform_1fv_proc                : GLUniform1fvFn              =
-                                                                   gl_stub_uniform_1fv
-gl_uniform_2fv_proc                : GLUniform2fvFn              =
-                                                                   gl_stub_uniform_2fv
-gl_uniform_3fv_proc                : GLUniform3fvFn              =
-                                                                   gl_stub_uniform_3fv
-gl_uniform_4fv_proc                : GLUniform4fvFn              =
-                                                                   gl_stub_uniform_4fv
-gl_uniform_1iv_proc                : GLUniform1ivFn              =
-                                                                   gl_stub_uniform_1iv
-gl_uniform_2iv_proc                : GLUniform2ivFn              =
-                                                                   gl_stub_uniform_2iv
-gl_uniform_3iv_proc                : GLUniform3ivFn              =
-                                                                   gl_stub_uniform_3iv
-gl_uniform_4iv_proc                : GLUniform4ivFn              =
-                                                                   gl_stub_uniform_4iv
-gl_uniform_matrix_2fv_proc         : GLUniformMatrix2fvFn        =
-                                                                   gl_stub_uniform_matrix_2fv
-gl_uniform_matrix_3fv_proc         : GLUniformMatrix3fvFn        =
-                                                                   gl_stub_uniform_matrix_3fv
-gl_uniform_matrix_4fv_proc         : GLUniformMatrix4fvFn        =
-                                                                   gl_stub_uniform_matrix_4fv
-gl_gen_buffers_proc                : GLGenBuffersFn              =
-                                                                   gl_stub_gen_buffers
-gl_delete_buffers_proc             : GLDeleteBuffersFn           =
-                                                                   gl_stub_delete_buffers
-gl_bind_buffer_proc                : GLBindBufferFn              =
-                                                                   gl_stub_bind_buffer
-gl_buffer_data_proc                : GLBufferDataFn              =
-                                                                   gl_stub_buffer_data
-gl_buffer_sub_data_proc            : GLBufferSubDataFn           =
-                                                                   gl_stub_buffer_sub_data
-gl_gen_vertex_arrays_proc          : GLGenVertexArraysFn         =
-                                                                   gl_stub_gen_vertex_arrays
-gl_delete_vertex_arrays_proc       : GLDeleteVertexArraysFn      =
-                                                                   gl_stub_delete_vertex_arrays
-gl_bind_vertex_array_proc          : GLBindVertexArrayFn         =
-                                                                   gl_stub_bind_vertex_array
-gl_enable_vertex_attrib_array_proc : GLEnableVertexAttribArrayFn =
-                                                                   gl_stub_enable_vertex_attrib_array
-gl_draw_elements_proc              : GLDrawElementsFn            =
-                                                                   gl_stub_draw_elements
-gl_polygon_mode_proc               : GLPolygonModeFn             =
-                                                                   gl_stub_polygon_mode
-gl_vertex_attrib_pointer_proc      : GLVertexAttribPointerFn     =
-                                                                   gl_stub_vertex_attrib_pointer
+gl_stub_blend_equation_separate :: fn (_rgb: GLenum, _alpha: GLenum) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_blend_color :: fn (_red   : GLfloat,
+                           _green : GLfloat,
+                           _blue  : GLfloat,
+                           _alpha : GLfloat) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_blend_func_separate :: fn (_source_rgb        : GLenum,
+                                   _destination_rgb   : GLenum,
+                                   _source_alpha      : GLenum,
+                                   _destination_alpha : GLenum) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_stencil_func_separate :: fn (_face      : GLenum,
+                                     _func      : GLenum,
+                                     _reference : GLint,
+                                     _mask      : GLuint) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_stencil_op_separate :: fn (_face         : GLenum,
+                                   _stencil_fail : GLenum,
+                                   _depth_fail   : GLenum,
+                                   _depth_pass   : GLenum) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_stencil_mask_separate :: fn (_face: GLenum, _mask: GLuint) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_draw_buffers :: fn (_count: GLsizei, _buffers: ^GLenum) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_get_string_i :: fn (_name: GLenum, _index: GLuint) -> ^GLubyte {
+    gl_abort_unloaded_command()
+    return nil
+}
+
+gl_stub_tex_image_3d :: fn (_target          : GLenum,
+                            _level           : GLint,
+                            _internal_format : GLint,
+                            _width           : GLsizei,
+                            _height          : GLsizei,
+                            _depth           : GLsizei,
+                            _border          : GLint,
+                            _format          : GLenum,
+                            _type            : GLenum,
+                            _pixels          : ^void) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_tex_sub_image_3d :: fn (_target  : GLenum,
+                                _level   : GLint,
+                                _xoffset : GLint,
+                                _yoffset : GLint,
+                                _zoffset : GLint,
+                                _width   : GLsizei,
+                                _height  : GLsizei,
+                                _depth   : GLsizei,
+                                _format  : GLenum,
+                                _type    : GLenum,
+                                _pixels  : ^void) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_generate_mipmap :: fn (_target: GLenum) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_is_renderbuffer :: fn (_renderbuffer: GLuint) -> GLboolean {
+    gl_abort_unloaded_command()
+    return GL_FALSE
+}
+
+gl_stub_bind_renderbuffer :: fn (_target: GLenum, _renderbuffer: GLuint) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_delete_renderbuffers :: fn (_count: GLsizei, _renderbuffers: ^GLuint) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_gen_renderbuffers :: fn (_count: GLsizei, _renderbuffers: ^GLuint) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_renderbuffer_storage :: fn (_target          : GLenum,
+                                    _internal_format : GLenum,
+                                    _width           : GLsizei,
+                                    _height          : GLsizei) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_get_renderbuffer_parameter_iv :: fn (_target : GLenum,
+                                             _name   : GLenum,
+                                             _values : ^GLint) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_is_framebuffer :: fn (_framebuffer: GLuint) -> GLboolean {
+    gl_abort_unloaded_command()
+    return GL_FALSE
+}
+
+gl_stub_bind_framebuffer :: fn (_target: GLenum, _framebuffer: GLuint) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_delete_framebuffers :: fn (_count: GLsizei, _framebuffers: ^GLuint) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_gen_framebuffers :: fn (_count: GLsizei, _framebuffers: ^GLuint) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_check_framebuffer_status :: fn (_target: GLenum) -> GLenum {
+    gl_abort_unloaded_command()
+    return 0
+}
+
+gl_stub_framebuffer_texture_2d :: fn (_target     : GLenum,
+                                      _attachment : GLenum,
+                                      _textarget  : GLenum,
+                                      _texture    : GLuint,
+                                      _level      : GLint) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_framebuffer_renderbuffer :: fn (_target              : GLenum,
+                                        _attachment          : GLenum,
+                                        _renderbuffer_target : GLenum,
+                                        _renderbuffer        : GLuint) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_get_framebuffer_attachment_parameter_iv :: fn (_target     : GLenum,
+                                                       _attachment : GLenum,
+                                                       _name       : GLenum,
+                                                       _values     : ^GLint) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_blit_framebuffer :: fn (_source_x0      : GLint,
+                                _source_y0      : GLint,
+                                _source_x1      : GLint,
+                                _source_y1      : GLint,
+                                _destination_x0 : GLint,
+                                _destination_y0 : GLint,
+                                _destination_x1 : GLint,
+                                _destination_y1 : GLint,
+                                _mask           : GLbitfield,
+                                _filter         : GLenum) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_renderbuffer_storage_multisample :: fn (_target          : GLenum,
+                                                _samples         : GLsizei,
+                                                _internal_format : GLenum,
+                                                _width           : GLsizei,
+                                                _height          : GLsizei) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_framebuffer_texture_layer :: fn (_target     : GLenum,
+                                         _attachment : GLenum,
+                                         _texture    : GLuint,
+                                         _level      : GLint,
+                                         _layer      : GLint) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_map_buffer_range :: fn (_target : GLenum,
+                                _offset : GLintptr,
+                                _length : GLsizeiptr,
+                                _access : GLbitfield) -> ^void {
+    gl_abort_unloaded_command()
+    return nil
+}
+
+gl_stub_flush_mapped_buffer_range :: fn (_target : GLenum,
+                                         _offset : GLintptr,
+                                         _length : GLsizeiptr) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_disable_vertex_attrib_array :: fn (_index: GLuint) {
+    gl_abort_unloaded_command()
+}
+
+gl_stub_is_vertex_array :: fn (_array: GLuint) -> GLboolean {
+    gl_abort_unloaded_command()
+    return GL_FALSE
+}
+
+gl_active_texture_proc                          : GLActiveTextureFn                       =
+                                                                                            gl_stub_active_texture
+gl_create_shader_proc                           : GLCreateShaderFn                        =
+                                                                                            gl_stub_create_shader
+gl_shader_source_proc                           : GLShaderSourceFn                        =
+                                                                                            gl_stub_shader_source
+gl_compile_shader_proc                          : GLCompileShaderFn                       =
+                                                                                            gl_stub_compile_shader
+gl_get_shader_iv_proc                           : GLGetShaderivFn                         =
+                                                                                            gl_stub_get_shader_iv
+gl_get_shader_info_log_proc                     : GLGetShaderInfoLogFn                    =
+                                                                                            gl_stub_get_shader_info_log
+gl_delete_shader_proc                           : GLDeleteShaderFn                        =
+                                                                                            gl_stub_delete_shader
+gl_create_program_proc                          : GLCreateProgramFn                       =
+                                                                                            gl_stub_create_program
+gl_attach_shader_proc                           : GLAttachShaderFn                        =
+                                                                                            gl_stub_attach_shader
+gl_bind_attrib_location_proc                    : GLBindAttribLocationFn                  =
+                                                                                            gl_stub_bind_attrib_location
+gl_link_program_proc                            : GLLinkProgramFn                         =
+                                                                                            gl_stub_link_program
+gl_get_program_iv_proc                          : GLGetProgramivFn                        =
+                                                                                            gl_stub_get_program_iv
+gl_get_program_info_log_proc                    : GLGetProgramInfoLogFn                   =
+                                                                                            gl_stub_get_program_info_log
+gl_delete_program_proc                          : GLDeleteProgramFn                       =
+                                                                                            gl_stub_delete_program
+gl_use_program_proc                             : GLUseProgramFn                          =
+                                                                                            gl_stub_use_program
+gl_get_uniform_location_proc                    : GLGetUniformLocationFn                  =
+                                                                                            gl_stub_get_uniform_location
+gl_uniform_1f_proc                              : GLUniform1fFn                           =
+                                                                                            gl_stub_uniform_1f
+gl_uniform_2f_proc                              : GLUniform2fFn                           =
+                                                                                            gl_stub_uniform_2f
+gl_uniform_3f_proc                              : GLUniform3fFn                           =
+                                                                                            gl_stub_uniform_3f
+gl_uniform_4f_proc                              : GLUniform4fFn                           =
+                                                                                            gl_stub_uniform_4f
+gl_uniform_1i_proc                              : GLUniform1iFn                           =
+                                                                                            gl_stub_uniform_1i
+gl_uniform_2i_proc                              : GLUniform2iFn                           =
+                                                                                            gl_stub_uniform_2i
+gl_uniform_3i_proc                              : GLUniform3iFn                           =
+                                                                                            gl_stub_uniform_3i
+gl_uniform_4i_proc                              : GLUniform4iFn                           =
+                                                                                            gl_stub_uniform_4i
+gl_uniform_1fv_proc                             : GLUniform1fvFn                          =
+                                                                                            gl_stub_uniform_1fv
+gl_uniform_2fv_proc                             : GLUniform2fvFn                          =
+                                                                                            gl_stub_uniform_2fv
+gl_uniform_3fv_proc                             : GLUniform3fvFn                          =
+                                                                                            gl_stub_uniform_3fv
+gl_uniform_4fv_proc                             : GLUniform4fvFn                          =
+                                                                                            gl_stub_uniform_4fv
+gl_uniform_1iv_proc                             : GLUniform1ivFn                          =
+                                                                                            gl_stub_uniform_1iv
+gl_uniform_2iv_proc                             : GLUniform2ivFn                          =
+                                                                                            gl_stub_uniform_2iv
+gl_uniform_3iv_proc                             : GLUniform3ivFn                          =
+                                                                                            gl_stub_uniform_3iv
+gl_uniform_4iv_proc                             : GLUniform4ivFn                          =
+                                                                                            gl_stub_uniform_4iv
+gl_uniform_matrix_2fv_proc                      : GLUniformMatrix2fvFn                    =
+                                                                                            gl_stub_uniform_matrix_2fv
+gl_uniform_matrix_3fv_proc                      : GLUniformMatrix3fvFn                    =
+                                                                                            gl_stub_uniform_matrix_3fv
+gl_uniform_matrix_4fv_proc                      : GLUniformMatrix4fvFn                    =
+                                                                                            gl_stub_uniform_matrix_4fv
+gl_gen_buffers_proc                             : GLGenBuffersFn                          =
+                                                                                            gl_stub_gen_buffers
+gl_delete_buffers_proc                          : GLDeleteBuffersFn                       =
+                                                                                            gl_stub_delete_buffers
+gl_bind_buffer_proc                             : GLBindBufferFn                          =
+                                                                                            gl_stub_bind_buffer
+gl_buffer_data_proc                             : GLBufferDataFn                          =
+                                                                                            gl_stub_buffer_data
+gl_buffer_sub_data_proc                         : GLBufferSubDataFn                       =
+                                                                                            gl_stub_buffer_sub_data
+gl_gen_vertex_arrays_proc                       : GLGenVertexArraysFn                     =
+                                                                                            gl_stub_gen_vertex_arrays
+gl_delete_vertex_arrays_proc                    : GLDeleteVertexArraysFn                  =
+                                                                                            gl_stub_delete_vertex_arrays
+gl_bind_vertex_array_proc                       : GLBindVertexArrayFn                     =
+                                                                                            gl_stub_bind_vertex_array
+gl_enable_vertex_attrib_array_proc              : GLEnableVertexAttribArrayFn             =
+                                                                                            gl_stub_enable_vertex_attrib_array
+gl_draw_elements_proc                           : GLDrawElementsFn                        =
+                                                                                            gl_stub_draw_elements
+gl_polygon_mode_proc                            : GLPolygonModeFn                         =
+                                                                                            gl_stub_polygon_mode
+gl_vertex_attrib_pointer_proc                   : GLVertexAttribPointerFn                 =
+                                                                                            gl_stub_vertex_attrib_pointer
+gl_blend_equation_separate_proc                 : GLBlendEquationSeparateFn               =
+                                                                                            gl_stub_blend_equation_separate
+gl_blend_color_proc                             : GLBlendColorFn                          =
+                                                                                            gl_stub_blend_color
+gl_blend_func_separate_proc                     : GLBlendFuncSeparateFn                   =
+                                                                                            gl_stub_blend_func_separate
+gl_stencil_func_separate_proc                   : GLStencilFuncSeparateFn                 =
+                                                                                            gl_stub_stencil_func_separate
+gl_stencil_op_separate_proc                     : GLStencilOpSeparateFn                   =
+                                                                                            gl_stub_stencil_op_separate
+gl_stencil_mask_separate_proc                   : GLStencilMaskSeparateFn                 =
+                                                                                            gl_stub_stencil_mask_separate
+gl_draw_buffers_proc                            : GLDrawBuffersFn                         =
+                                                                                            gl_stub_draw_buffers
+gl_get_string_i_proc                            : GLGetStringiFn                          =
+                                                                                            gl_stub_get_string_i
+gl_tex_image_3d_proc                            : GLTexImage3DFn                          =
+                                                                                            gl_stub_tex_image_3d
+gl_tex_sub_image_3d_proc                        : GLTexSubImage3DFn                       =
+                                                                                            gl_stub_tex_sub_image_3d
+gl_generate_mipmap_proc                         : GLGenerateMipmapFn                      =
+                                                                                            gl_stub_generate_mipmap
+gl_is_renderbuffer_proc                         : GLIsRenderbufferFn                      =
+                                                                                            gl_stub_is_renderbuffer
+gl_bind_renderbuffer_proc                       : GLBindRenderbufferFn                    =
+                                                                                            gl_stub_bind_renderbuffer
+gl_delete_renderbuffers_proc                    : GLDeleteRenderbuffersFn                 =
+                                                                                            gl_stub_delete_renderbuffers
+gl_gen_renderbuffers_proc                       : GLGenRenderbuffersFn                    =
+                                                                                            gl_stub_gen_renderbuffers
+gl_renderbuffer_storage_proc                    : GLRenderbufferStorageFn                 =
+                                                                                            gl_stub_renderbuffer_storage
+gl_get_renderbuffer_parameter_iv_proc           : GLGetRenderbufferParameterivFn          =
+                                                                                            gl_stub_get_renderbuffer_parameter_iv
+gl_is_framebuffer_proc                          : GLIsFramebufferFn                       =
+                                                                                            gl_stub_is_framebuffer
+gl_bind_framebuffer_proc                        : GLBindFramebufferFn                     =
+                                                                                            gl_stub_bind_framebuffer
+gl_delete_framebuffers_proc                     : GLDeleteFramebuffersFn                  =
+                                                                                            gl_stub_delete_framebuffers
+gl_gen_framebuffers_proc                        : GLGenFramebuffersFn                     =
+                                                                                            gl_stub_gen_framebuffers
+gl_check_framebuffer_status_proc                : GLCheckFramebufferStatusFn              =
+                                                                                            gl_stub_check_framebuffer_status
+gl_framebuffer_texture_2d_proc                  : GLFramebufferTexture2DFn                =
+                                                                                            gl_stub_framebuffer_texture_2d
+gl_framebuffer_renderbuffer_proc                : GLFramebufferRenderbufferFn             =
+                                                                                            gl_stub_framebuffer_renderbuffer
+gl_get_framebuffer_attachment_parameter_iv_proc : GLGetFramebufferAttachmentParameterivFn =
+                                                                                            gl_stub_get_framebuffer_attachment_parameter_iv
+gl_blit_framebuffer_proc                        : GLBlitFramebufferFn                     =
+                                                                                            gl_stub_blit_framebuffer
+gl_renderbuffer_storage_multisample_proc        : GLRenderbufferStorageMultisampleFn      =
+                                                                                            gl_stub_renderbuffer_storage_multisample
+gl_framebuffer_texture_layer_proc               : GLFramebufferTextureLayerFn             =
+                                                                                            gl_stub_framebuffer_texture_layer
+gl_map_buffer_range_proc                        : GLMapBufferRangeFn                      =
+                                                                                            gl_stub_map_buffer_range
+gl_flush_mapped_buffer_range_proc               : GLFlushMappedBufferRangeFn              =
+                                                                                            gl_stub_flush_mapped_buffer_range
+gl_disable_vertex_attrib_array_proc             : GLDisableVertexAttribArrayFn            =
+                                                                                            gl_stub_disable_vertex_attrib_array
+gl_is_vertex_array_proc                         : GLIsVertexArrayFn                       =
+                                                                                            gl_stub_is_vertex_array
 
 gl_commands_loaded := no
 
@@ -766,6 +1228,9 @@ on "linux" {
                                                alpha : GLfloat)
         pub                  glClear          (mask: GLbitfield)
         pub                  glClearDepth     (depth: GLdouble)
+        pub                  glClearStencil   (value: GLint)
+        pub                  glDrawBuffer     (buffer: GLenum)
+        pub                  glReadBuffer     (buffer: GLenum)
         pub                  glMatrixMode     (mode: GLenum)
         pub                  glLoadIdentity   ()
         pub                  glOrtho          (left   : GLdouble,
@@ -862,6 +1327,9 @@ on "windows" {
                                                alpha : GLfloat)
         pub                  glClear          (mask: GLbitfield)
         pub                  glClearDepth     (depth: GLdouble)
+        pub                  glClearStencil   (value: GLint)
+        pub                  glDrawBuffer     (buffer: GLenum)
+        pub                  glReadBuffer     (buffer: GLenum)
         pub                  glMatrixMode     (mode: GLenum)
         pub                  glLoadIdentity   ()
         pub                  glOrtho          (left   : GLdouble,
@@ -944,56 +1412,88 @@ on "windows" {
 
 }
 
-gl_load_commands :: fn () -> bool {
+gl_load_commands :: fn (resolve: GLGetProcAddressFn = gl_get_proc_address) -> bool {
     on gl_commands_loaded => return yes
 
-    active_texture := gl_get_proc_address(c"glActiveTexture")
-    create_shader := gl_get_proc_address(c"glCreateShader")
-    shader_source := gl_get_proc_address(c"glShaderSource")
-    compile_shader := gl_get_proc_address(c"glCompileShader")
-    get_shader_iv := gl_get_proc_address(c"glGetShaderiv")
-    get_shader_info_log := gl_get_proc_address(c"glGetShaderInfoLog")
-    delete_shader := gl_get_proc_address(c"glDeleteShader")
-    create_program := gl_get_proc_address(c"glCreateProgram")
-    attach_shader := gl_get_proc_address(c"glAttachShader")
-    bind_attrib_location := gl_get_proc_address(c"glBindAttribLocation")
-    link_program := gl_get_proc_address(c"glLinkProgram")
-    get_program_iv := gl_get_proc_address(c"glGetProgramiv")
-    get_program_info_log := gl_get_proc_address(c"glGetProgramInfoLog")
-    delete_program := gl_get_proc_address(c"glDeleteProgram")
-    use_program := gl_get_proc_address(c"glUseProgram")
-    get_uniform_location := gl_get_proc_address(c"glGetUniformLocation")
-    uniform_1f := gl_get_proc_address(c"glUniform1f")
-    uniform_2f := gl_get_proc_address(c"glUniform2f")
-    uniform_3f := gl_get_proc_address(c"glUniform3f")
-    uniform_4f := gl_get_proc_address(c"glUniform4f")
-    uniform_1i := gl_get_proc_address(c"glUniform1i")
-    uniform_2i := gl_get_proc_address(c"glUniform2i")
-    uniform_3i := gl_get_proc_address(c"glUniform3i")
-    uniform_4i := gl_get_proc_address(c"glUniform4i")
-    uniform_1fv := gl_get_proc_address(c"glUniform1fv")
-    uniform_2fv := gl_get_proc_address(c"glUniform2fv")
-    uniform_3fv := gl_get_proc_address(c"glUniform3fv")
-    uniform_4fv := gl_get_proc_address(c"glUniform4fv")
-    uniform_1iv := gl_get_proc_address(c"glUniform1iv")
-    uniform_2iv := gl_get_proc_address(c"glUniform2iv")
-    uniform_3iv := gl_get_proc_address(c"glUniform3iv")
-    uniform_4iv := gl_get_proc_address(c"glUniform4iv")
-    uniform_matrix_2fv := gl_get_proc_address(c"glUniformMatrix2fv")
-    uniform_matrix_3fv := gl_get_proc_address(c"glUniformMatrix3fv")
-    uniform_matrix_4fv := gl_get_proc_address(c"glUniformMatrix4fv")
-    gen_buffers := gl_get_proc_address(c"glGenBuffers")
-    delete_buffers := gl_get_proc_address(c"glDeleteBuffers")
-    bind_buffer := gl_get_proc_address(c"glBindBuffer")
-    buffer_data := gl_get_proc_address(c"glBufferData")
-    buffer_sub_data := gl_get_proc_address(c"glBufferSubData")
-    gen_vertex_arrays := gl_get_proc_address(c"glGenVertexArrays")
-    delete_vertex_arrays := gl_get_proc_address(c"glDeleteVertexArrays")
-    bind_vertex_array := gl_get_proc_address(c"glBindVertexArray")
-    enable_vertex_attrib_array := gl_get_proc_address(c"glEnableVertexAttribArray")
-    draw_elements := gl_get_proc_address(c"glDrawElements")
-    polygon_mode := gl_get_proc_address(c"glPolygonMode")
-    vertex_attrib_pointer := gl_get_proc_address(c"glVertexAttribPointer")
+    active_texture := resolve(c"glActiveTexture")
+    create_shader := resolve(c"glCreateShader")
+    shader_source := resolve(c"glShaderSource")
+    compile_shader := resolve(c"glCompileShader")
+    get_shader_iv := resolve(c"glGetShaderiv")
+    get_shader_info_log := resolve(c"glGetShaderInfoLog")
+    delete_shader := resolve(c"glDeleteShader")
+    create_program := resolve(c"glCreateProgram")
+    attach_shader := resolve(c"glAttachShader")
+    bind_attrib_location := resolve(c"glBindAttribLocation")
+    link_program := resolve(c"glLinkProgram")
+    get_program_iv := resolve(c"glGetProgramiv")
+    get_program_info_log := resolve(c"glGetProgramInfoLog")
+    delete_program := resolve(c"glDeleteProgram")
+    use_program := resolve(c"glUseProgram")
+    get_uniform_location := resolve(c"glGetUniformLocation")
+    uniform_1f := resolve(c"glUniform1f")
+    uniform_2f := resolve(c"glUniform2f")
+    uniform_3f := resolve(c"glUniform3f")
+    uniform_4f := resolve(c"glUniform4f")
+    uniform_1i := resolve(c"glUniform1i")
+    uniform_2i := resolve(c"glUniform2i")
+    uniform_3i := resolve(c"glUniform3i")
+    uniform_4i := resolve(c"glUniform4i")
+    uniform_1fv := resolve(c"glUniform1fv")
+    uniform_2fv := resolve(c"glUniform2fv")
+    uniform_3fv := resolve(c"glUniform3fv")
+    uniform_4fv := resolve(c"glUniform4fv")
+    uniform_1iv := resolve(c"glUniform1iv")
+    uniform_2iv := resolve(c"glUniform2iv")
+    uniform_3iv := resolve(c"glUniform3iv")
+    uniform_4iv := resolve(c"glUniform4iv")
+    uniform_matrix_2fv := resolve(c"glUniformMatrix2fv")
+    uniform_matrix_3fv := resolve(c"glUniformMatrix3fv")
+    uniform_matrix_4fv := resolve(c"glUniformMatrix4fv")
+    gen_buffers := resolve(c"glGenBuffers")
+    delete_buffers := resolve(c"glDeleteBuffers")
+    bind_buffer := resolve(c"glBindBuffer")
+    buffer_data := resolve(c"glBufferData")
+    buffer_sub_data := resolve(c"glBufferSubData")
+    gen_vertex_arrays := resolve(c"glGenVertexArrays")
+    delete_vertex_arrays := resolve(c"glDeleteVertexArrays")
+    bind_vertex_array := resolve(c"glBindVertexArray")
+    enable_vertex_attrib_array := resolve(c"glEnableVertexAttribArray")
+    draw_elements := resolve(c"glDrawElements")
+    polygon_mode := resolve(c"glPolygonMode")
+    vertex_attrib_pointer := resolve(c"glVertexAttribPointer")
+    blend_equation_separate := resolve(c"glBlendEquationSeparate")
+    blend_color := resolve(c"glBlendColor")
+    blend_func_separate := resolve(c"glBlendFuncSeparate")
+    stencil_func_separate := resolve(c"glStencilFuncSeparate")
+    stencil_op_separate := resolve(c"glStencilOpSeparate")
+    stencil_mask_separate := resolve(c"glStencilMaskSeparate")
+    draw_buffers := resolve(c"glDrawBuffers")
+    get_string_i := resolve(c"glGetStringi")
+    tex_image_3d := resolve(c"glTexImage3D")
+    tex_sub_image_3d := resolve(c"glTexSubImage3D")
+    generate_mipmap := resolve(c"glGenerateMipmap")
+    is_renderbuffer := resolve(c"glIsRenderbuffer")
+    bind_renderbuffer := resolve(c"glBindRenderbuffer")
+    delete_renderbuffers := resolve(c"glDeleteRenderbuffers")
+    gen_renderbuffers := resolve(c"glGenRenderbuffers")
+    renderbuffer_storage := resolve(c"glRenderbufferStorage")
+    get_renderbuffer_parameter_iv := resolve(c"glGetRenderbufferParameteriv")
+    is_framebuffer := resolve(c"glIsFramebuffer")
+    bind_framebuffer := resolve(c"glBindFramebuffer")
+    delete_framebuffers := resolve(c"glDeleteFramebuffers")
+    gen_framebuffers := resolve(c"glGenFramebuffers")
+    check_framebuffer_status := resolve(c"glCheckFramebufferStatus")
+    framebuffer_texture_2d := resolve(c"glFramebufferTexture2D")
+    framebuffer_renderbuffer := resolve(c"glFramebufferRenderbuffer")
+    get_framebuffer_attachment_parameter_iv := resolve(c"glGetFramebufferAttachmentParameteriv")
+    blit_framebuffer := resolve(c"glBlitFramebuffer")
+    renderbuffer_storage_multisample := resolve(c"glRenderbufferStorageMultisample")
+    framebuffer_texture_layer := resolve(c"glFramebufferTextureLayer")
+    map_buffer_range := resolve(c"glMapBufferRange")
+    flush_mapped_buffer_range := resolve(c"glFlushMappedBufferRange")
+    disable_vertex_attrib_array := resolve(c"glDisableVertexAttribArray")
+    is_vertex_array := resolve(c"glIsVertexArray")
 
     on active_texture == nil ||
         create_shader == nil ||
@@ -1041,115 +1541,216 @@ gl_load_commands :: fn () -> bool {
         enable_vertex_attrib_array == nil ||
         draw_elements == nil ||
         polygon_mode == nil ||
-        vertex_attrib_pointer == nil => return no
+        vertex_attrib_pointer == nil ||
+        blend_equation_separate == nil ||
+        blend_color == nil ||
+        blend_func_separate == nil ||
+        stencil_func_separate == nil ||
+        stencil_op_separate == nil ||
+        stencil_mask_separate == nil ||
+        draw_buffers == nil ||
+        get_string_i == nil ||
+        tex_image_3d == nil ||
+        tex_sub_image_3d == nil ||
+        generate_mipmap == nil ||
+        is_renderbuffer == nil ||
+        bind_renderbuffer == nil ||
+        delete_renderbuffers == nil ||
+        gen_renderbuffers == nil ||
+        renderbuffer_storage == nil ||
+        get_renderbuffer_parameter_iv == nil ||
+        is_framebuffer == nil ||
+        bind_framebuffer == nil ||
+        delete_framebuffers == nil ||
+        gen_framebuffers == nil ||
+        check_framebuffer_status == nil ||
+        framebuffer_texture_2d == nil ||
+        framebuffer_renderbuffer == nil ||
+        get_framebuffer_attachment_parameter_iv == nil ||
+        blit_framebuffer == nil ||
+        renderbuffer_storage_multisample == nil ||
+        framebuffer_texture_layer == nil ||
+        map_buffer_range == nil ||
+        flush_mapped_buffer_range == nil ||
+        disable_vertex_attrib_array == nil ||
+        is_vertex_array == nil => return no
 
-    gl_active_texture_proc             = active_texture.as(GLActiveTextureFn)
-    gl_create_shader_proc              = create_shader.as(GLCreateShaderFn)
-    gl_shader_source_proc              = shader_source.as(GLShaderSourceFn)
-    gl_compile_shader_proc             = compile_shader.as(GLCompileShaderFn)
-    gl_get_shader_iv_proc              = get_shader_iv.as(GLGetShaderivFn)
-    gl_get_shader_info_log_proc        = get_shader_info_log.as(GLGetShaderInfoLogFn)
-    gl_delete_shader_proc              = delete_shader.as(GLDeleteShaderFn)
-    gl_create_program_proc             = create_program.as(GLCreateProgramFn)
-    gl_attach_shader_proc              = attach_shader.as(GLAttachShaderFn)
-    gl_bind_attrib_location_proc       = bind_attrib_location.as(GLBindAttribLocationFn)
-    gl_link_program_proc               = link_program.as(GLLinkProgramFn)
-    gl_get_program_iv_proc             = get_program_iv.as(GLGetProgramivFn)
-    gl_get_program_info_log_proc       = get_program_info_log.as(GLGetProgramInfoLogFn)
-    gl_delete_program_proc             = delete_program.as(GLDeleteProgramFn)
-    gl_use_program_proc                = use_program.as(GLUseProgramFn)
-    gl_get_uniform_location_proc       = get_uniform_location.as(GLGetUniformLocationFn)
-    gl_uniform_1f_proc                 = uniform_1f.as(GLUniform1fFn)
-    gl_uniform_2f_proc                 = uniform_2f.as(GLUniform2fFn)
-    gl_uniform_3f_proc                 = uniform_3f.as(GLUniform3fFn)
-    gl_uniform_4f_proc                 = uniform_4f.as(GLUniform4fFn)
-    gl_uniform_1i_proc                 = uniform_1i.as(GLUniform1iFn)
-    gl_uniform_2i_proc                 = uniform_2i.as(GLUniform2iFn)
-    gl_uniform_3i_proc                 = uniform_3i.as(GLUniform3iFn)
-    gl_uniform_4i_proc                 = uniform_4i.as(GLUniform4iFn)
-    gl_uniform_1fv_proc                = uniform_1fv.as(GLUniform1fvFn)
-    gl_uniform_2fv_proc                = uniform_2fv.as(GLUniform2fvFn)
-    gl_uniform_3fv_proc                = uniform_3fv.as(GLUniform3fvFn)
-    gl_uniform_4fv_proc                = uniform_4fv.as(GLUniform4fvFn)
-    gl_uniform_1iv_proc                = uniform_1iv.as(GLUniform1ivFn)
-    gl_uniform_2iv_proc                = uniform_2iv.as(GLUniform2ivFn)
-    gl_uniform_3iv_proc                = uniform_3iv.as(GLUniform3ivFn)
-    gl_uniform_4iv_proc                = uniform_4iv.as(GLUniform4ivFn)
-    gl_uniform_matrix_2fv_proc         = uniform_matrix_2fv.as(GLUniformMatrix2fvFn)
-    gl_uniform_matrix_3fv_proc         = uniform_matrix_3fv.as(GLUniformMatrix3fvFn)
-    gl_uniform_matrix_4fv_proc         = uniform_matrix_4fv.as(GLUniformMatrix4fvFn)
-    gl_gen_buffers_proc                = gen_buffers.as(GLGenBuffersFn)
-    gl_delete_buffers_proc             = delete_buffers.as(GLDeleteBuffersFn)
-    gl_bind_buffer_proc                = bind_buffer.as(GLBindBufferFn)
-    gl_buffer_data_proc                = buffer_data.as(GLBufferDataFn)
-    gl_buffer_sub_data_proc            = buffer_sub_data.as(GLBufferSubDataFn)
-    gl_gen_vertex_arrays_proc          = gen_vertex_arrays.as(GLGenVertexArraysFn)
-    gl_delete_vertex_arrays_proc       = delete_vertex_arrays.as(GLDeleteVertexArraysFn)
-    gl_bind_vertex_array_proc          = bind_vertex_array.as(GLBindVertexArrayFn)
-    gl_enable_vertex_attrib_array_proc = enable_vertex_attrib_array.as(GLEnableVertexAttribArrayFn)
-    gl_draw_elements_proc              = draw_elements.as(GLDrawElementsFn)
-    gl_polygon_mode_proc               = polygon_mode.as(GLPolygonModeFn)
-    gl_vertex_attrib_pointer_proc      = vertex_attrib_pointer.as(GLVertexAttribPointerFn)
+    gl_active_texture_proc                          = active_texture.as(GLActiveTextureFn)
+    gl_create_shader_proc                           = create_shader.as(GLCreateShaderFn)
+    gl_shader_source_proc                           = shader_source.as(GLShaderSourceFn)
+    gl_compile_shader_proc                          = compile_shader.as(GLCompileShaderFn)
+    gl_get_shader_iv_proc                           = get_shader_iv.as(GLGetShaderivFn)
+    gl_get_shader_info_log_proc                     = get_shader_info_log.as(GLGetShaderInfoLogFn)
+    gl_delete_shader_proc                           = delete_shader.as(GLDeleteShaderFn)
+    gl_create_program_proc                          = create_program.as(GLCreateProgramFn)
+    gl_attach_shader_proc                           = attach_shader.as(GLAttachShaderFn)
+    gl_bind_attrib_location_proc                    = bind_attrib_location.as(GLBindAttribLocationFn)
+    gl_link_program_proc                            = link_program.as(GLLinkProgramFn)
+    gl_get_program_iv_proc                          = get_program_iv.as(GLGetProgramivFn)
+    gl_get_program_info_log_proc                    = get_program_info_log.as(GLGetProgramInfoLogFn)
+    gl_delete_program_proc                          = delete_program.as(GLDeleteProgramFn)
+    gl_use_program_proc                             = use_program.as(GLUseProgramFn)
+    gl_get_uniform_location_proc                    = get_uniform_location.as(GLGetUniformLocationFn)
+    gl_uniform_1f_proc                              = uniform_1f.as(GLUniform1fFn)
+    gl_uniform_2f_proc                              = uniform_2f.as(GLUniform2fFn)
+    gl_uniform_3f_proc                              = uniform_3f.as(GLUniform3fFn)
+    gl_uniform_4f_proc                              = uniform_4f.as(GLUniform4fFn)
+    gl_uniform_1i_proc                              = uniform_1i.as(GLUniform1iFn)
+    gl_uniform_2i_proc                              = uniform_2i.as(GLUniform2iFn)
+    gl_uniform_3i_proc                              = uniform_3i.as(GLUniform3iFn)
+    gl_uniform_4i_proc                              = uniform_4i.as(GLUniform4iFn)
+    gl_uniform_1fv_proc                             = uniform_1fv.as(GLUniform1fvFn)
+    gl_uniform_2fv_proc                             = uniform_2fv.as(GLUniform2fvFn)
+    gl_uniform_3fv_proc                             = uniform_3fv.as(GLUniform3fvFn)
+    gl_uniform_4fv_proc                             = uniform_4fv.as(GLUniform4fvFn)
+    gl_uniform_1iv_proc                             = uniform_1iv.as(GLUniform1ivFn)
+    gl_uniform_2iv_proc                             = uniform_2iv.as(GLUniform2ivFn)
+    gl_uniform_3iv_proc                             = uniform_3iv.as(GLUniform3ivFn)
+    gl_uniform_4iv_proc                             = uniform_4iv.as(GLUniform4ivFn)
+    gl_uniform_matrix_2fv_proc                      = uniform_matrix_2fv.as(GLUniformMatrix2fvFn)
+    gl_uniform_matrix_3fv_proc                      = uniform_matrix_3fv.as(GLUniformMatrix3fvFn)
+    gl_uniform_matrix_4fv_proc                      = uniform_matrix_4fv.as(GLUniformMatrix4fvFn)
+    gl_gen_buffers_proc                             = gen_buffers.as(GLGenBuffersFn)
+    gl_delete_buffers_proc                          = delete_buffers.as(GLDeleteBuffersFn)
+    gl_bind_buffer_proc                             = bind_buffer.as(GLBindBufferFn)
+    gl_buffer_data_proc                             = buffer_data.as(GLBufferDataFn)
+    gl_buffer_sub_data_proc                         = buffer_sub_data.as(GLBufferSubDataFn)
+    gl_gen_vertex_arrays_proc                       = gen_vertex_arrays.as(GLGenVertexArraysFn)
+    gl_delete_vertex_arrays_proc                    = delete_vertex_arrays.as(GLDeleteVertexArraysFn)
+    gl_bind_vertex_array_proc                       = bind_vertex_array.as(GLBindVertexArrayFn)
+    gl_enable_vertex_attrib_array_proc              = enable_vertex_attrib_array.as(GLEnableVertexAttribArrayFn)
+    gl_draw_elements_proc                           = draw_elements.as(GLDrawElementsFn)
+    gl_polygon_mode_proc                            = polygon_mode.as(GLPolygonModeFn)
+    gl_vertex_attrib_pointer_proc                   = vertex_attrib_pointer.as(GLVertexAttribPointerFn)
+    gl_blend_equation_separate_proc                 = blend_equation_separate.as(GLBlendEquationSeparateFn)
+    gl_blend_color_proc                             = blend_color.as(GLBlendColorFn)
+    gl_blend_func_separate_proc                     = blend_func_separate.as(GLBlendFuncSeparateFn)
+    gl_stencil_func_separate_proc                   = stencil_func_separate.as(GLStencilFuncSeparateFn)
+    gl_stencil_op_separate_proc                     = stencil_op_separate.as(GLStencilOpSeparateFn)
+    gl_stencil_mask_separate_proc                   = stencil_mask_separate.as(GLStencilMaskSeparateFn)
+    gl_draw_buffers_proc                            = draw_buffers.as(GLDrawBuffersFn)
+    gl_get_string_i_proc                            = get_string_i.as(GLGetStringiFn)
+    gl_tex_image_3d_proc                            = tex_image_3d.as(GLTexImage3DFn)
+    gl_tex_sub_image_3d_proc                        = tex_sub_image_3d.as(GLTexSubImage3DFn)
+    gl_generate_mipmap_proc                         = generate_mipmap.as(GLGenerateMipmapFn)
+    gl_is_renderbuffer_proc                         = is_renderbuffer.as(GLIsRenderbufferFn)
+    gl_bind_renderbuffer_proc                       = bind_renderbuffer.as(GLBindRenderbufferFn)
+    gl_delete_renderbuffers_proc                    = delete_renderbuffers.as(GLDeleteRenderbuffersFn)
+    gl_gen_renderbuffers_proc                       = gen_renderbuffers.as(GLGenRenderbuffersFn)
+    gl_renderbuffer_storage_proc                    = renderbuffer_storage.as(GLRenderbufferStorageFn)
+    gl_get_renderbuffer_parameter_iv_proc           = get_renderbuffer_parameter_iv.as(GLGetRenderbufferParameterivFn)
+    gl_is_framebuffer_proc                          = is_framebuffer.as(GLIsFramebufferFn)
+    gl_bind_framebuffer_proc                        = bind_framebuffer.as(GLBindFramebufferFn)
+    gl_delete_framebuffers_proc                     = delete_framebuffers.as(GLDeleteFramebuffersFn)
+    gl_gen_framebuffers_proc                        = gen_framebuffers.as(GLGenFramebuffersFn)
+    gl_check_framebuffer_status_proc                = check_framebuffer_status.as(GLCheckFramebufferStatusFn)
+    gl_framebuffer_texture_2d_proc                  = framebuffer_texture_2d.as(GLFramebufferTexture2DFn)
+    gl_framebuffer_renderbuffer_proc                = framebuffer_renderbuffer.as(GLFramebufferRenderbufferFn)
+    gl_get_framebuffer_attachment_parameter_iv_proc = get_framebuffer_attachment_parameter_iv.as(GLGetFramebufferAttachmentParameterivFn)
+    gl_blit_framebuffer_proc                        = blit_framebuffer.as(GLBlitFramebufferFn)
+    gl_renderbuffer_storage_multisample_proc        = renderbuffer_storage_multisample.as(GLRenderbufferStorageMultisampleFn)
+    gl_framebuffer_texture_layer_proc               = framebuffer_texture_layer.as(GLFramebufferTextureLayerFn)
+    gl_map_buffer_range_proc                        = map_buffer_range.as(GLMapBufferRangeFn)
+    gl_flush_mapped_buffer_range_proc               = flush_mapped_buffer_range.as(GLFlushMappedBufferRangeFn)
+    gl_disable_vertex_attrib_array_proc             = disable_vertex_attrib_array.as(GLDisableVertexAttribArrayFn)
+    gl_is_vertex_array_proc                         = is_vertex_array.as(GLIsVertexArrayFn)
 
     gl_commands_loaded = yes
     return yes
 }
 
 pub gl_reset_commands :: fn () {
-    gl_active_texture_proc             = gl_stub_active_texture
-    gl_create_shader_proc              = gl_stub_create_shader
-    gl_shader_source_proc              = gl_stub_shader_source
-    gl_compile_shader_proc             = gl_stub_compile_shader
-    gl_get_shader_iv_proc              = gl_stub_get_shader_iv
-    gl_get_shader_info_log_proc        = gl_stub_get_shader_info_log
-    gl_delete_shader_proc              = gl_stub_delete_shader
-    gl_create_program_proc             = gl_stub_create_program
-    gl_attach_shader_proc              = gl_stub_attach_shader
-    gl_bind_attrib_location_proc       = gl_stub_bind_attrib_location
-    gl_link_program_proc               = gl_stub_link_program
-    gl_get_program_iv_proc             = gl_stub_get_program_iv
-    gl_get_program_info_log_proc       = gl_stub_get_program_info_log
-    gl_delete_program_proc             = gl_stub_delete_program
-    gl_use_program_proc                = gl_stub_use_program
-    gl_get_uniform_location_proc       = gl_stub_get_uniform_location
-    gl_uniform_1f_proc                 = gl_stub_uniform_1f
-    gl_uniform_2f_proc                 = gl_stub_uniform_2f
-    gl_uniform_3f_proc                 = gl_stub_uniform_3f
-    gl_uniform_4f_proc                 = gl_stub_uniform_4f
-    gl_uniform_1i_proc                 = gl_stub_uniform_1i
-    gl_uniform_2i_proc                 = gl_stub_uniform_2i
-    gl_uniform_3i_proc                 = gl_stub_uniform_3i
-    gl_uniform_4i_proc                 = gl_stub_uniform_4i
-    gl_uniform_1fv_proc                = gl_stub_uniform_1fv
-    gl_uniform_2fv_proc                = gl_stub_uniform_2fv
-    gl_uniform_3fv_proc                = gl_stub_uniform_3fv
-    gl_uniform_4fv_proc                = gl_stub_uniform_4fv
-    gl_uniform_1iv_proc                = gl_stub_uniform_1iv
-    gl_uniform_2iv_proc                = gl_stub_uniform_2iv
-    gl_uniform_3iv_proc                = gl_stub_uniform_3iv
-    gl_uniform_4iv_proc                = gl_stub_uniform_4iv
-    gl_uniform_matrix_2fv_proc         = gl_stub_uniform_matrix_2fv
-    gl_uniform_matrix_3fv_proc         = gl_stub_uniform_matrix_3fv
-    gl_uniform_matrix_4fv_proc         = gl_stub_uniform_matrix_4fv
-    gl_gen_buffers_proc                = gl_stub_gen_buffers
-    gl_delete_buffers_proc             = gl_stub_delete_buffers
-    gl_bind_buffer_proc                = gl_stub_bind_buffer
-    gl_buffer_data_proc                = gl_stub_buffer_data
-    gl_buffer_sub_data_proc            = gl_stub_buffer_sub_data
-    gl_gen_vertex_arrays_proc          = gl_stub_gen_vertex_arrays
-    gl_delete_vertex_arrays_proc       = gl_stub_delete_vertex_arrays
-    gl_bind_vertex_array_proc          = gl_stub_bind_vertex_array
-    gl_enable_vertex_attrib_array_proc = gl_stub_enable_vertex_attrib_array
-    gl_draw_elements_proc              = gl_stub_draw_elements
-    gl_polygon_mode_proc               = gl_stub_polygon_mode
-    gl_vertex_attrib_pointer_proc      = gl_stub_vertex_attrib_pointer
-    gl_commands_loaded                 = no
+    gl_active_texture_proc                          = gl_stub_active_texture
+    gl_create_shader_proc                           = gl_stub_create_shader
+    gl_shader_source_proc                           = gl_stub_shader_source
+    gl_compile_shader_proc                          = gl_stub_compile_shader
+    gl_get_shader_iv_proc                           = gl_stub_get_shader_iv
+    gl_get_shader_info_log_proc                     = gl_stub_get_shader_info_log
+    gl_delete_shader_proc                           = gl_stub_delete_shader
+    gl_create_program_proc                          = gl_stub_create_program
+    gl_attach_shader_proc                           = gl_stub_attach_shader
+    gl_bind_attrib_location_proc                    = gl_stub_bind_attrib_location
+    gl_link_program_proc                            = gl_stub_link_program
+    gl_get_program_iv_proc                          = gl_stub_get_program_iv
+    gl_get_program_info_log_proc                    = gl_stub_get_program_info_log
+    gl_delete_program_proc                          = gl_stub_delete_program
+    gl_use_program_proc                             = gl_stub_use_program
+    gl_get_uniform_location_proc                    = gl_stub_get_uniform_location
+    gl_uniform_1f_proc                              = gl_stub_uniform_1f
+    gl_uniform_2f_proc                              = gl_stub_uniform_2f
+    gl_uniform_3f_proc                              = gl_stub_uniform_3f
+    gl_uniform_4f_proc                              = gl_stub_uniform_4f
+    gl_uniform_1i_proc                              = gl_stub_uniform_1i
+    gl_uniform_2i_proc                              = gl_stub_uniform_2i
+    gl_uniform_3i_proc                              = gl_stub_uniform_3i
+    gl_uniform_4i_proc                              = gl_stub_uniform_4i
+    gl_uniform_1fv_proc                             = gl_stub_uniform_1fv
+    gl_uniform_2fv_proc                             = gl_stub_uniform_2fv
+    gl_uniform_3fv_proc                             = gl_stub_uniform_3fv
+    gl_uniform_4fv_proc                             = gl_stub_uniform_4fv
+    gl_uniform_1iv_proc                             = gl_stub_uniform_1iv
+    gl_uniform_2iv_proc                             = gl_stub_uniform_2iv
+    gl_uniform_3iv_proc                             = gl_stub_uniform_3iv
+    gl_uniform_4iv_proc                             = gl_stub_uniform_4iv
+    gl_uniform_matrix_2fv_proc                      = gl_stub_uniform_matrix_2fv
+    gl_uniform_matrix_3fv_proc                      = gl_stub_uniform_matrix_3fv
+    gl_uniform_matrix_4fv_proc                      = gl_stub_uniform_matrix_4fv
+    gl_gen_buffers_proc                             = gl_stub_gen_buffers
+    gl_delete_buffers_proc                          = gl_stub_delete_buffers
+    gl_bind_buffer_proc                             = gl_stub_bind_buffer
+    gl_buffer_data_proc                             = gl_stub_buffer_data
+    gl_buffer_sub_data_proc                         = gl_stub_buffer_sub_data
+    gl_gen_vertex_arrays_proc                       = gl_stub_gen_vertex_arrays
+    gl_delete_vertex_arrays_proc                    = gl_stub_delete_vertex_arrays
+    gl_bind_vertex_array_proc                       = gl_stub_bind_vertex_array
+    gl_enable_vertex_attrib_array_proc              = gl_stub_enable_vertex_attrib_array
+    gl_draw_elements_proc                           = gl_stub_draw_elements
+    gl_polygon_mode_proc                            = gl_stub_polygon_mode
+    gl_vertex_attrib_pointer_proc                   = gl_stub_vertex_attrib_pointer
+    gl_blend_equation_separate_proc                 = gl_stub_blend_equation_separate
+    gl_blend_color_proc                             = gl_stub_blend_color
+    gl_blend_func_separate_proc                     = gl_stub_blend_func_separate
+    gl_stencil_func_separate_proc                   = gl_stub_stencil_func_separate
+    gl_stencil_op_separate_proc                     = gl_stub_stencil_op_separate
+    gl_stencil_mask_separate_proc                   = gl_stub_stencil_mask_separate
+    gl_draw_buffers_proc                            = gl_stub_draw_buffers
+    gl_get_string_i_proc                            = gl_stub_get_string_i
+    gl_tex_image_3d_proc                            = gl_stub_tex_image_3d
+    gl_tex_sub_image_3d_proc                        = gl_stub_tex_sub_image_3d
+    gl_generate_mipmap_proc                         = gl_stub_generate_mipmap
+    gl_is_renderbuffer_proc                         = gl_stub_is_renderbuffer
+    gl_bind_renderbuffer_proc                       = gl_stub_bind_renderbuffer
+    gl_delete_renderbuffers_proc                    = gl_stub_delete_renderbuffers
+    gl_gen_renderbuffers_proc                       = gl_stub_gen_renderbuffers
+    gl_renderbuffer_storage_proc                    = gl_stub_renderbuffer_storage
+    gl_get_renderbuffer_parameter_iv_proc           = gl_stub_get_renderbuffer_parameter_iv
+    gl_is_framebuffer_proc                          = gl_stub_is_framebuffer
+    gl_bind_framebuffer_proc                        = gl_stub_bind_framebuffer
+    gl_delete_framebuffers_proc                     = gl_stub_delete_framebuffers
+    gl_gen_framebuffers_proc                        = gl_stub_gen_framebuffers
+    gl_check_framebuffer_status_proc                = gl_stub_check_framebuffer_status
+    gl_framebuffer_texture_2d_proc                  = gl_stub_framebuffer_texture_2d
+    gl_framebuffer_renderbuffer_proc                = gl_stub_framebuffer_renderbuffer
+    gl_get_framebuffer_attachment_parameter_iv_proc = gl_stub_get_framebuffer_attachment_parameter_iv
+    gl_blit_framebuffer_proc                        = gl_stub_blit_framebuffer
+    gl_renderbuffer_storage_multisample_proc        = gl_stub_renderbuffer_storage_multisample
+    gl_framebuffer_texture_layer_proc               = gl_stub_framebuffer_texture_layer
+    gl_map_buffer_range_proc                        = gl_stub_map_buffer_range
+    gl_flush_mapped_buffer_range_proc               = gl_stub_flush_mapped_buffer_range
+    gl_disable_vertex_attrib_array_proc             = gl_stub_disable_vertex_attrib_array
+    gl_is_vertex_array_proc                         = gl_stub_is_vertex_array
+    gl_commands_loaded                              = no
 }
 
 pub gl_init :: fn (frame: ^Frame) -> bool {
     return on frame.context() => {
         on !frame.system.opengl_init(frame) => return no
-        break gl_load_commands()
+        on !gl_load_commands() => {
+            frame.system.opengl_done(frame)
+            gl_reset_commands()
+            return no
+        }
+        break yes
     } else {
         break no
     }
@@ -1425,8 +2026,301 @@ pub glVertexAttribPointer :: fn (index      : GLuint,
                                   pointer)
 }
 
+pub glBlendEquationSeparate :: fn (rgb: GLenum, alpha: GLenum) {
+    gl_blend_equation_separate_proc(rgb, alpha)
+}
+
+pub glBlendColor :: fn (red   : GLfloat,
+                        green : GLfloat,
+                        blue  : GLfloat,
+                        alpha : GLfloat) {
+    gl_blend_color_proc(red, green, blue, alpha)
+}
+
+pub glBlendFuncSeparate :: fn (source_rgb        : GLenum,
+                               destination_rgb   : GLenum,
+                               source_alpha      : GLenum,
+                               destination_alpha : GLenum) {
+    gl_blend_func_separate_proc(source_rgb,
+                                destination_rgb,
+                                source_alpha,
+                                destination_alpha)
+}
+
+pub glStencilFuncSeparate :: fn (face      : GLenum,
+                                 func      : GLenum,
+                                 reference : GLint,
+                                 mask      : GLuint) {
+    gl_stencil_func_separate_proc(face, func, reference, mask)
+}
+
+pub glStencilOpSeparate :: fn (face         : GLenum,
+                               stencil_fail : GLenum,
+                               depth_fail   : GLenum,
+                               depth_pass   : GLenum) {
+    gl_stencil_op_separate_proc(face, stencil_fail, depth_fail, depth_pass)
+}
+
+pub glStencilMaskSeparate :: fn (face: GLenum, mask: GLuint) {
+    gl_stencil_mask_separate_proc(face, mask)
+}
+
+pub glDrawBuffers :: fn (count: GLsizei, buffers: ^GLenum) {
+    gl_draw_buffers_proc(count, buffers)
+}
+
+pub glGetStringi :: fn (name: GLenum, index: GLuint) -> []u8 {
+    data := gl_get_string_i_proc(name, index)
+    on data == nil => return nil
+
+    count : usize = 0
+    for data[count] != 0 {
+        count += 1
+    }
+    return data.as([]u8, count)
+}
+
+pub glTexImage3D :: fn (target          : GLenum,
+                        level           : GLint,
+                        internal_format : GLint,
+                        width           : GLsizei,
+                        height          : GLsizei,
+                        depth           : GLsizei,
+                        border          : GLint,
+                        format          : GLenum,
+                        type            : GLenum,
+                        pixels          : ^void) {
+    gl_tex_image_3d_proc(target,
+                         level,
+                         internal_format,
+                         width,
+                         height,
+                         depth,
+                         border,
+                         format,
+                         type,
+                         pixels)
+}
+
+pub glTexSubImage3D :: fn (target  : GLenum,
+                           level   : GLint,
+                           xoffset : GLint,
+                           yoffset : GLint,
+                           zoffset : GLint,
+                           width   : GLsizei,
+                           height  : GLsizei,
+                           depth   : GLsizei,
+                           format  : GLenum,
+                           type    : GLenum,
+                           pixels  : ^void) {
+    gl_tex_sub_image_3d_proc(target,
+                             level,
+                             xoffset,
+                             yoffset,
+                             zoffset,
+                             width,
+                             height,
+                             depth,
+                             format,
+                             type,
+                             pixels)
+}
+
+pub glGenerateMipmap :: fn (target: GLenum) {
+    gl_generate_mipmap_proc(target)
+}
+
+pub glIsRenderbuffer :: fn (renderbuffer: GLuint) -> GLboolean {
+    return gl_is_renderbuffer_proc(renderbuffer)
+}
+
+pub glBindRenderbuffer :: fn (target: GLenum, renderbuffer: GLuint) {
+    gl_bind_renderbuffer_proc(target, renderbuffer)
+}
+
+pub glDeleteRenderbuffers :: fn (count: GLsizei, renderbuffers: ^GLuint) {
+    gl_delete_renderbuffers_proc(count, renderbuffers)
+}
+
+pub glGenRenderbuffers :: fn (count: GLsizei, renderbuffers: ^GLuint) {
+    gl_gen_renderbuffers_proc(count, renderbuffers)
+}
+
+pub glRenderbufferStorage :: fn (target          : GLenum,
+                                 internal_format : GLenum,
+                                 width           : GLsizei,
+                                 height          : GLsizei) {
+    gl_renderbuffer_storage_proc(target, internal_format, width, height)
+}
+
+pub glGetRenderbufferParameteriv :: fn (target : GLenum,
+                                        name   : GLenum,
+                                        values : ^GLint) {
+    gl_get_renderbuffer_parameter_iv_proc(target, name, values)
+}
+
+pub glIsFramebuffer :: fn (framebuffer: GLuint) -> GLboolean {
+    return gl_is_framebuffer_proc(framebuffer)
+}
+
+pub glBindFramebuffer :: fn (target: GLenum, framebuffer: GLuint) {
+    gl_bind_framebuffer_proc(target, framebuffer)
+}
+
+pub glDeleteFramebuffers :: fn (count: GLsizei, framebuffers: ^GLuint) {
+    gl_delete_framebuffers_proc(count, framebuffers)
+}
+
+pub glGenFramebuffers :: fn (count: GLsizei, framebuffers: ^GLuint) {
+    gl_gen_framebuffers_proc(count, framebuffers)
+}
+
+pub glCheckFramebufferStatus :: fn (target: GLenum) -> GLenum {
+    return gl_check_framebuffer_status_proc(target)
+}
+
+pub glFramebufferTexture2D :: fn (target     : GLenum,
+                                  attachment : GLenum,
+                                  textarget  : GLenum,
+                                  texture    : GLuint,
+                                  level      : GLint) {
+    gl_framebuffer_texture_2d_proc(target,
+                                   attachment,
+                                   textarget,
+                                   texture,
+                                   level)
+}
+
+pub glFramebufferRenderbuffer :: fn (target              : GLenum,
+                                     attachment          : GLenum,
+                                     renderbuffer_target : GLenum,
+                                     renderbuffer        : GLuint) {
+    gl_framebuffer_renderbuffer_proc(target,
+                                     attachment,
+                                     renderbuffer_target,
+                                     renderbuffer)
+}
+
+pub glGetFramebufferAttachmentParameteriv :: fn (target     : GLenum,
+                                                 attachment : GLenum,
+                                                 name       : GLenum,
+                                                 values     : ^GLint) {
+    gl_get_framebuffer_attachment_parameter_iv_proc(target,
+                                                    attachment,
+                                                    name,
+                                                    values)
+}
+
+pub glBlitFramebuffer :: fn (source_x0      : GLint,
+                             source_y0      : GLint,
+                             source_x1      : GLint,
+                             source_y1      : GLint,
+                             destination_x0 : GLint,
+                             destination_y0 : GLint,
+                             destination_x1 : GLint,
+                             destination_y1 : GLint,
+                             mask           : GLbitfield,
+                             filter         : GLenum) {
+    gl_blit_framebuffer_proc(source_x0,
+                             source_y0,
+                             source_x1,
+                             source_y1,
+                             destination_x0,
+                             destination_y0,
+                             destination_x1,
+                             destination_y1,
+                             mask,
+                             filter)
+}
+
+pub glRenderbufferStorageMultisample :: fn (target          : GLenum,
+                                            samples         : GLsizei,
+                                            internal_format : GLenum,
+                                            width           : GLsizei,
+                                            height          : GLsizei) {
+    gl_renderbuffer_storage_multisample_proc(target,
+                                             samples,
+                                             internal_format,
+                                             width,
+                                             height)
+}
+
+pub glFramebufferTextureLayer :: fn (target     : GLenum,
+                                     attachment : GLenum,
+                                     texture    : GLuint,
+                                     level      : GLint,
+                                     layer      : GLint) {
+    gl_framebuffer_texture_layer_proc(target, attachment, texture, level, layer)
+}
+
+pub glMapBufferRange :: fn (target : GLenum,
+                            offset : GLintptr,
+                            length : GLsizeiptr,
+                            access : GLbitfield) -> ^void {
+    return gl_map_buffer_range_proc(target, offset, length, access)
+}
+
+pub glFlushMappedBufferRange :: fn (target : GLenum,
+                                    offset : GLintptr,
+                                    length : GLsizeiptr) {
+    gl_flush_mapped_buffer_range_proc(target, offset, length)
+}
+
+pub glDisableVertexAttribArray :: fn (index: GLuint) {
+    gl_disable_vertex_attrib_array_proc(index)
+}
+
+pub glIsVertexArray :: fn (array: GLuint) -> GLboolean {
+    return gl_is_vertex_array_proc(array)
+}
+
+test {
+
+    gl_test_missing_proc :: fn (_name: ^i8) -> ^void {
+        return nil
+    }
+
+    gl_test_present_proc :: fn (_name: ^i8) -> ^void {
+        return gl_stub_active_texture.as(^void)
+    }
+
+}
+
+test "OpenGL command loading fails atomically when an address is missing" {
+    gl_reset_commands()
+    assert !gl_load_commands(gl_test_missing_proc)
+    assert !gl_commands_loaded
+}
+
+test "OpenGL command loading and reset need no window with an injected resolver" {
+    gl_reset_commands()
+    assert gl_load_commands(gl_test_present_proc)
+    assert gl_commands_loaded
+    gl_reset_commands()
+    assert !gl_commands_loaded
+}
+
 test "OpenGL command reset is idempotent" {
     gl_reset_commands()
     gl_reset_commands()
     assert yes
+}
+
+test "OpenGL scalar aliases preserve ABI widths" {
+    assert GLenum.size == 4
+    assert GLboolean.size == 1
+    assert GLbyte.size == 1
+    assert GLubyte.size == 1
+    assert GLshort.size == 2
+    assert GLushort.size == 2
+    assert GLhalf.size == 2
+    assert GLint.size == 4
+    assert GLuint.size == 4
+    assert GLchar.size == 1
+    assert GLsizei.size == 4
+    assert GLfloat.size == 4
+    assert GLdouble.size == 8
+    assert GLbitfield.size == 4
+    assert GLintptr.size == usize.size
+    assert GLsizeiptr.size == usize.size
 }

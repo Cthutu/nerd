@@ -245,10 +245,20 @@ and the optional opaque user pointer.
 the layers for that frame. Multiple pixel layers are composited in layer order
 into a temporary frame-sized buffer before presentation.
 
-`std.opengl` owns portable OpenGL aliases, constants, command wrappers, command
-address loading, and current/swap helpers. Call `gl_init(^Frame)` before using
-loaded OpenGL commands and `gl_done(^Frame)` when finished with that frame's GL
-surface. Uniform uploads cover scalar/vector `glUniform*f` and `glUniform*i`,
+`std.opengl` owns portable OpenGL aliases, constants, raw command wrappers,
+command address loading, and current/swap helpers. Call `gl_init(^Frame)` after
+the frame has an OpenGL context and before using any loaded command. Call
+`gl_done(^Frame)` when finished with that frame's GL surface.
+
+The supported surface is a deliberately practical OpenGL 3.0 subset rather
+than a generated binding for every core command. It includes shader creation,
+compilation, linking, logs, and uniforms; buffer objects and mapped ranges;
+vertex-array objects and attributes; 2D and 3D textures and mipmap generation;
+framebuffers, renderbuffers, multisample storage, blitting, texture layers, and
+multiple draw buffers; separate colour/alpha blending; separate front/back
+stencil state; indexed extension strings; and indexed and non-indexed drawing.
+The module retains its small OpenGL 1.1 compatibility surface for existing
+programs. Uniform uploads cover scalar/vector `glUniform*f` and `glUniform*i`,
 pointer-array `glUniform*fv` and `glUniform*iv`, and float matrix
 `glUniformMatrix*fv` wrappers.
 
@@ -259,11 +269,18 @@ constants such as `GL_ARRAY_BUFFER` use the Khronos-defined numeric values.
 They do not represent Nerd-specific types or translated platform constants.
 
 Command loading remains platform-specific: Windows obtains addresses through
-WGL and Linux through GLX after a context exists. A constant being present in
-the module does not guarantee that the current driver provides the associated
-command or feature. The supported OpenGL 3 subset must therefore be documented
-and command loading must report an unavailable required address rather than
-calling it.
+WGL and Linux through GLX after a context exists. Loading is all-or-nothing for
+the documented subset: `gl_init` returns `no` if any required address is
+unavailable, and no partially loaded command table is published. Before a
+successful load, and again after `gl_done` or `gl_reset_commands`, wrappers use
+fail-fast stubs instead of calling a missing or stale address. A constant being
+present in the module still does not guarantee that the current driver provides
+the associated feature.
+
+`std.frame` owns windows and OpenGL context lifecycle. `std.opengl` owns the raw
+portable command API and current/swap conveniences over that context.
+`std.gfx` owns higher-level packed-pixel presentation; it is not an alternate
+home for raw OpenGL commands.
 
 ### `std.traits`
 
