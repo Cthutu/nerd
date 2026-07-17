@@ -252,6 +252,19 @@ surface. Uniform uploads cover scalar/vector `glUniform*f` and `glUniform*i`,
 pointer-array `glUniform*fv` and `glUniform*iv`, and float matrix
 `glUniformMatrix*fv` wrappers.
 
+Here, portable means that user code sees the same OpenGL names and ABI shapes
+on Windows and Linux. Aliases such as `GLenum`, `GLuint`, `GLsizei`,
+`GLintptr`, and `GLsizeiptr` fix the width and signedness expected by OpenGL;
+constants such as `GL_ARRAY_BUFFER` use the Khronos-defined numeric values.
+They do not represent Nerd-specific types or translated platform constants.
+
+Command loading remains platform-specific: Windows obtains addresses through
+WGL and Linux through GLX after a context exists. A constant being present in
+the module does not guarantee that the current driver provides the associated
+command or feature. The supported OpenGL 3 subset must therefore be documented
+and command loading must report an unavailable required address rather than
+calling it.
+
 ### `std.traits`
 
 - `Display`
