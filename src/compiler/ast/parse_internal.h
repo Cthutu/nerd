@@ -65,6 +65,8 @@ typedef struct {
     Array(AstWhereConstraint) where_constraints;
     Array(AstParam) params;
     Array(AstFnSignature) fn_signatures;
+    Array(AstCompoundFnInfo) compound_fns;
+    Array(u32) compound_fn_members;
     Array(AstFfiInfo) ffi_infos;
     Array(AstModulePath) module_paths;
     Array(u32) module_path_symbols;

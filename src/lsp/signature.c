@@ -253,7 +253,8 @@ internal bool lsp_signature_decl_is_callable(const LspTypeFactView* view,
                                              const SemaDecl*        decl)
 {
     if (decl->kind == SK_Function || decl->kind == SK_GenericFunction ||
-        decl->kind == SK_FfiFunction || decl->kind == SK_BuiltinFunction) {
+        decl->kind == SK_FfiFunction || decl->kind == SK_BuiltinFunction ||
+        decl->kind == SK_CompoundFunction) {
         return true;
     }
 
@@ -1373,6 +1374,62 @@ void lsp_handle_signature_help(LspState* state, const LspMessage* message)
         json_object_set_number(
             result, message->arena, "activeParameter", active_param);
         json_object_set_object(response, "result", result);
+        lsp_send_response(message->arena, response);
+        if (using_repaired) {
+            program_info_done(&repaired_program);
+        }
+        return;
+    }
+
+    if (decl->kind == SK_CompoundFunction) {
+        u32                         decl_index = (u32)(decl - view.sema->decls);
+        const SemaCompoundFunction* compound   = NULL;
+        for (u32 i = 0; i < array_count(view.sema->compound_functions); ++i) {
+            if (view.sema->compound_functions[i].decl_index == decl_index) {
+                compound = &view.sema->compound_functions[i];
+                break;
+            }
+        }
+        JsonValue* signatures = json_new_array(message->arena);
+        if (compound != NULL && compound->state == SCS_Resolved) {
+            for (u32 i = 0; i < compound->candidate_count; ++i) {
+                u32 candidate =
+                    view.sema
+                        ->compound_candidates[compound->first_candidate + i];
+                const SemaDecl* candidate_decl = NULL;
+                string          label          = {0};
+                JsonValue*      parameters     = NULL;
+                if (!lsp_sema_decl(view.sema, candidate, &candidate_decl) ||
+                    !lsp_signature_decl_label(&view,
+                                              message->arena,
+                                              candidate_decl,
+                                              &label,
+                                              &parameters)) {
+                    continue;
+                }
+                JsonValue* signature = json_new_object(message->arena);
+                json_object_set_string(
+                    signature, message->arena, "label", label);
+                json_object_set_string(
+                    signature,
+                    message->arena,
+                    "documentation",
+                    s("Callable through this compound function."));
+                json_object_set_array(signature, "parameters", parameters);
+                json_array_push(signatures, signature);
+            }
+        }
+        if (array_count(signatures->array.values) == 0) {
+            json_object_set_null(response, message->arena, "result");
+        } else {
+            JsonValue* result = json_new_object(message->arena);
+            json_object_set_array(result, "signatures", signatures);
+            json_object_set_number(
+                result, message->arena, "activeSignature", 0);
+            json_object_set_number(
+                result, message->arena, "activeParameter", active_param);
+            json_object_set_object(response, "result", result);
+        }
         lsp_send_response(message->arena, response);
         if (using_repaired) {
             program_info_done(&repaired_program);

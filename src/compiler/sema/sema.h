@@ -21,6 +21,7 @@ typedef enum : u8 {
     SK_BuiltinFunction,
     SK_GenericTypeAlias,
     SK_GenericFunction,
+    SK_CompoundFunction,
     SK_Trait,
 } SemaDeclKind;
 
@@ -179,6 +180,7 @@ typedef struct {
     Array(u32) node_local_indices;
     Array(u32) node_scope_indices;
     Array(u32) node_lowered_symbol_handles;
+    Array(u32) node_compound_selected_decl_indices;
     Array(u32) node_type_indices;
     Array(u32) node_method_call_decl_indices;
     Array(bool) node_method_call_receiver_refs;
@@ -201,6 +203,22 @@ typedef struct {
     u32 value_count;
 } SemaCompileTimeFnInstantiation;
 
+typedef enum : u8 {
+    SCS_Unresolved,
+    SCS_Resolving,
+    SCS_Resolved,
+} SemaCompoundState;
+
+// One flattened compound declaration. Candidate rows are concrete function
+// declaration indices in the owning semantic table.
+typedef struct {
+    u32               decl_index;
+    u32               node_index;
+    u32               first_candidate;
+    u32               candidate_count;
+    SemaCompoundState state;
+} SemaCompoundFunction;
+
 //------------------------------------------------------------------------------
 // Compact semantic side tables keyed by declaration and AST node index.
 
@@ -215,6 +233,8 @@ typedef struct {
     Array(SemaGenericFnInstantiation) generic_fn_instantiations;
     Array(SemaCompileTimeFnInstantiation) compile_time_fn_instantiations;
     Array(SemaCompileTimeValue) compile_time_values;
+    Array(SemaCompoundFunction) compound_functions;
+    Array(u32) compound_candidates;
     Array(SemaMethod) methods;
     Array(SemaLocal) locals;
     Array(SemaScope) scopes;
@@ -226,6 +246,7 @@ typedef struct {
     Array(u32) node_lowered_symbol_handles;
     Array(u32) node_type_indices;
     Array(u32) node_method_call_decl_indices;
+    Array(u32) node_compound_selected_decl_indices;
     Array(bool) node_method_call_receiver_refs;
     Array(bool) node_method_call_receiver_derefs;
     Array(bool) node_method_call_explicit_traits;

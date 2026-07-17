@@ -138,3 +138,15 @@ Postfix `!` injects a value into the error channel of an expected `T\E` type.
 Postfix `?` extracts success from an optional or result value. On failure it
 returns `nil` from an optional-returning function or forwards the error from a
 result-returning function. The enclosing return channel must be compatible.
+## Compound Function Selection
+
+Calling a compound function filters its flattened concrete members using the
+ordinary argument-count, named-argument, default-argument, and type
+compatibility rules. Exactly one candidate is required. Candidates are not
+ranked and expected return type is ignored. Defaults are inserted only after
+selection.
+
+In a function-value or address context, the expected function type performs
+the same parameter-only selection. A missing, zero-match, or multiple-match
+context is ill-formed. The resulting expression is the selected concrete
+function, never a compound runtime value.

@@ -149,3 +149,18 @@ to a compile-time value. Function parameters marked `::` are recorded in the
 AST/CST and checked against the constant-expression model before HIR generation.
 Their canonical value tuples form specialisation identities; specialised HIR
 substitutes the constants and omits them from the runtime ABI.
+### Compound functions
+
+The AST records `fn { ... }` member syntax only. Semantic analysis registers
+compound declarations, resolves dependency edges, rejects cycles and unsupported
+members, and stores a flattened array of concrete declaration indices. It
+constructs parameter-only effective signatures, including trailing-default
+surfaces, and rejects declaration-time overlaps.
+
+Call and expected-function contexts select exactly one concrete declaration.
+Semantic node tables record both that declaration and its lowered symbol; these
+tables are also snapshotted for generic caller instantiations. Imported public
+compounds materialise local proxies for their signature set while retaining
+source-module provenance and private implementation visibility. HIR generation
+therefore receives only concrete function types and symbols. There is no HIR or
+LLVM compound entity, symbol, wrapper, or dispatcher.

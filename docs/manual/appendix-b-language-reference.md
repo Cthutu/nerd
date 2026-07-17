@@ -87,6 +87,17 @@ intended exit code.
 
 ## Functions
 
+- `fn { member ... }` declares a compound function at top level.
+- Member sets are explicit, closed, non-empty, flattened, and acyclic.
+- Members are concrete non-generic free functions; methods and associated
+  functions are not supported.
+- Calls select exactly one compatible parameter signature. Return types and
+  candidate ordering do not participate in selection.
+- Trailing defaults create additional effective signatures; overlaps are
+  declaration errors.
+- An expected function type may select a concrete function value or address.
+- Compound functions have no runtime symbol or dispatcher.
+
 - Function parameters are written as `name: Type`.
 - Function parameter bindings are immutable. Assigning to a parameter, or to
   storage directly contained in a by-value parameter, is rejected.

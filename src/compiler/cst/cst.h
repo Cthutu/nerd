@@ -74,6 +74,7 @@
 // | CK_TypePlex        | Plex-type index       | 0                     |
 // | CK_FnExpr          | Fn-signature index    | Body node index       |
 // | CK_FnBlock         | Fn-signature index    | Block node index      |
+// | CK_CompoundFn      | Block node index       | 0                     |
 // | CK_FfiDef          | FFI-info index        | 0                     |
 // | CK_FfiBlock        | FFI-block info index  | 0                     |
 // | CK_ModRef          | Module path index     | 0                     |
@@ -171,6 +172,7 @@ typedef enum {
     CK_TypeEnum,
     CK_FnExpr,
     CK_FnBlock,
+    CK_CompoundFn,
     CK_FfiDef,
     CK_FfiBlock,
     CK_ModRef,

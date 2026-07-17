@@ -1748,6 +1748,13 @@ internal void format_emit_expr(StringBuilder* sb,
         format_emit_indent(sb, g_format_expr_indent_level);
         sb_append_cstr(sb, "}");
         break;
+    case CK_CompoundFn:
+        sb_append_cstr(sb, "fn {\n");
+        format_emit_block_contents(
+            sb, cst, lexer, node->a, g_format_expr_indent_level + 1);
+        format_emit_indent(sb, g_format_expr_indent_level);
+        sb_append_cstr(sb, "}");
+        break;
     case CK_FfiDef:
         format_emit_ffi_def(sb, cst, lexer, node->a, node->flags);
         break;

@@ -82,3 +82,8 @@ The current formatter is intentionally narrow:
 The formatter implementation lives in
 [src/compiler/format/format.c](/home/matt/nerd/src/compiler/format/format.c)
 and uses the CST when structure-sensitive formatting is required.
+## Compound Functions
+
+The formatter writes `fn {` and `}` on their own declaration lines and places
+each member on one indented line. Qualified names and comments remain attached
+to their member.

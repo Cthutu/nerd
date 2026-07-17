@@ -158,6 +158,44 @@ triple :: fn (value: i32) => value * 3  -- expression body
 Expression-bodied functions infer their return type from the expression. They
 are useful for small helpers.
 
+## Compound Functions
+
+A compound function gives one name to a closed, explicit set of ordinary
+functions. It is useful when an operation has several distinct parameter
+signatures:
+
+```nerd
+write :: fn {
+    write_string
+    write_i64
+}
+
+write_string :: fn (value: string) { }
+write_i64 :: fn (value: i64) { }
+```
+
+At each call, the compiler selects the only member compatible with the
+arguments. There is no preference order: no match is an error and two matches
+are ambiguous. Return types never influence selection. Trailing defaults add
+callable forms, so members whose parameter lists overlap after defaults are
+rejected when the compound is declared.
+
+Compound functions are top-level declarations. Members may be forward
+references, qualified imported names, or other compounds; nesting is flattened
+and cycles are rejected. Members must currently be non-generic free functions,
+not methods or associated functions. A public compound may use private members
+without exporting their implementation names.
+
+An expected function type can select a compound member:
+
+```nerd
+write_number: fn(i64) = write
+```
+
+Without a selecting function type, a compound cannot be stored as a value or
+taken by address. Selection produces the concrete function directly; Nerd does
+not generate a runtime dispatcher. Concrete members remain directly callable.
+
 ## Function Types
 
 Function types are written with parameter types and an optional return type:

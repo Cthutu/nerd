@@ -1887,7 +1887,15 @@ internal u32 hir_lower_expr(Hir*         hir,
                         sema->node_lowered_symbol_handles[node_index] != U32_MAX
                     ? sema->node_lowered_symbol_handles[node_index]
                     : node->a;
-            if (!hir_is_compile_time_specialization(sema, lowered_symbol)) {
+            u32 selected_compound_decl =
+                node_index <
+                        array_count(sema->node_compound_selected_decl_indices)
+                    ? sema->node_compound_selected_decl_indices[node_index]
+                    : sema_no_decl();
+            if (selected_compound_decl != sema_no_decl()) {
+                decl_index = selected_compound_decl;
+            } else if (!hir_is_compile_time_specialization(sema,
+                                                           lowered_symbol)) {
                 lowered_symbol = node->a;
             }
             HirRefKind ref_kind  = HIR_REF_None;
@@ -1897,7 +1905,9 @@ internal u32 hir_lower_expr(Hir*         hir,
                 ref_index = local_index;
             } else if (decl_index != sema_no_decl()) {
                 u32 binding_index =
-                    hir_is_compile_time_specialization(sema, lowered_symbol)
+                    selected_compound_decl != sema_no_decl()
+                        ? hir_decl_binding(hir, decl_index)
+                    : hir_is_compile_time_specialization(sema, lowered_symbol)
                         ? hir_binding_by_symbol(hir, lowered_symbol)
                         : hir_decl_binding(hir, decl_index);
                 if (binding_index != hir_no_index()) {
@@ -4373,7 +4383,7 @@ internal void hir_add_import_bindings(Hir*         hir,
     }
 }
 
-internal void hir_add_module_records(Hir* hir, const Sema* sema)
+internal void hir_add_module_records(Hir* hir, const Ast* ast, const Sema* sema)
 {
     if (hir->current_module_index == hir_no_index() || sema == NULL ||
         sema->program == NULL ||
@@ -4401,6 +4411,43 @@ internal void hir_add_module_records(Hir* hir, const Sema* sema)
                        .decl_index    = decl_index,
                        .binding_index = binding_index,
                    });
+    }
+
+    // A public compound exposes private implementations only as callable
+    // signatures. Export their symbols for linking without adding their names
+    // to the source module's public export table.
+    for (u32 i = 0; i < array_count(sema->compound_functions); ++i) {
+        const SemaCompoundFunction* compound = &sema->compound_functions[i];
+        const SemaDecl*             compound_decl =
+            compound->decl_index < array_count(sema->decls)
+                ? &sema->decls[compound->decl_index]
+                : NULL;
+        if (compound->state != SCS_Resolved || compound_decl == NULL ||
+            compound_decl->bind_node_index >= array_count(ast->nodes) ||
+            !ast_has_flag(&ast->nodes[compound_decl->bind_node_index],
+                          ANF_Public)) {
+            continue;
+        }
+        for (u32 j = 0; j < compound->candidate_count; ++j) {
+            u32 decl_index =
+                sema->compound_candidates[compound->first_candidate + j];
+            u32 binding_index = hir_decl_binding(hir, decl_index);
+            if (binding_index == hir_no_index()) {
+                continue;
+            }
+            bool already_exported = false;
+            for (u32 k = 0; k < array_count(hir->exports); ++k) {
+                if (hir->exports[k].decl_index == decl_index) {
+                    already_exported = true;
+                    break;
+                }
+            }
+            if (!already_exported) {
+                array_push(hir->exports,
+                           (HirExport){.decl_index    = decl_index,
+                                       .binding_index = binding_index});
+            }
+        }
     }
 }
 
@@ -4556,7 +4603,7 @@ Hir hir_generate(const Lexer* lexer, const Ast* ast, const Sema* sema)
         }
     }
 
-    hir_add_module_records(&hir, sema);
+    hir_add_module_records(&hir, ast, sema);
 
     for (u32 i = 0; i < array_count(sema->generic_fn_instantiations); ++i) {
         const SemaGenericFnInstantiation* inst =
@@ -4567,6 +4614,8 @@ Hir hir_generate(const Lexer* lexer, const Ast* ast, const Sema* sema)
         inst_sema.node_scope_indices = inst->node_scope_indices;
         inst_sema.node_lowered_symbol_handles =
             inst->node_lowered_symbol_handles;
+        inst_sema.node_compound_selected_decl_indices =
+            inst->node_compound_selected_decl_indices;
         inst_sema.node_type_indices = inst->node_type_indices;
         inst_sema.node_method_call_decl_indices =
             inst->node_method_call_decl_indices;

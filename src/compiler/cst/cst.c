@@ -4756,6 +4756,20 @@ internal bool cst_parse_fn_expr(CstParseState* state, u32* out_node)
     u32 body            = 0;
     u32 signature_index = 0;
 
+    if (cst_peek_kind_at(state, 1) == TK_LBrace) {
+        cst_advance(state);
+        if (!cst_parse_nested_block(state, &body)) {
+            return false;
+        }
+        return cst_emit_node(state,
+                             (CstNode){
+                                 .kind        = CK_CompoundFn,
+                                 .token_index = token_index,
+                                 .a           = body,
+                             },
+                             out_node);
+    }
+
     if (!cst_parse_fn_signature(state, true, false, &signature_index)) {
         return false;
     }

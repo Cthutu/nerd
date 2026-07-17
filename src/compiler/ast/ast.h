@@ -99,6 +99,7 @@
 // | AK_ZeroInit            | Ast index of type                 | 0                               |
 // | AK_Undefined           | Ast index of type                 | 0                               |
 // | AK_FnDef               | Body start index                  | Fn syntax kind                  |
+// | AK_CompoundFn          | Ast compound-fn info index        | 0                               |
 // | AK_FnStart             | Ast fn-signature index            | AK_FnEnd index                  |
 // | AK_FnEnd               | AK_FnDef index                    | AK_FnStart index                |
 // | AK_FfiDef              | Ast ffi-info index                | 0                               |
@@ -196,6 +197,7 @@ typedef enum {
     AK_ZeroInit,
     AK_Undefined,
     AK_FnDef,
+    AK_CompoundFn,
     AK_FnStart,
     AK_FnEnd,
     AK_FfiDef,
@@ -255,6 +257,11 @@ typedef struct {
     u32  constraint_count;
     bool is_varargs;
 } AstFnSignature;
+
+typedef struct {
+    u32 first_member;
+    u32 member_count;
+} AstCompoundFnInfo;
 
 typedef struct {
     u32 first_arg;
@@ -486,6 +493,8 @@ typedef struct {
     Array(AstWhereConstraint) where_constraints;
     Array(AstParam) params;
     Array(AstFnSignature) fn_signatures;
+    Array(AstCompoundFnInfo) compound_fns;
+    Array(u32) compound_fn_members;
     Array(AstFfiInfo) ffi_infos;
     Array(AstModulePath) module_paths;
     Array(u32) module_path_symbols;

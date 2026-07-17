@@ -86,3 +86,9 @@ Unlike a block `on`, `assert on` does not introduce a nested declaration region.
 Only `pub` top-level declarations are exported. `program_collect_module_exports`
 also expands public `use` re-exports so downstream modules can import the
 re-exported symbols.
+## Compound Function Visibility
+
+A public compound exports its callable signature set. Its concrete private
+members remain private names, but may be selected through the public compound,
+as with a public wrapper. Qualified exported compounds do not merge with local
+or other-module compounds.

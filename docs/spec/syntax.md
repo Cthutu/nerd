@@ -551,3 +551,13 @@ atomic-type ::= "atomic" "[" type "]"
 
 `::` requires a compile-time-known argument and default. `atomic` is resolved
 as a built-in type constructor rather than a user declaration.
+## Compound Function Declarations
+
+```text
+compound-function := "fn" "{" compound-member+ "}"
+compound-member   := qualified-symbol
+```
+
+A compound function may appear only as the value of a top-level declaration.
+The ordinary `fn (` form remains a function definition. Newlines separate
+members; formatter output places one member on each line.

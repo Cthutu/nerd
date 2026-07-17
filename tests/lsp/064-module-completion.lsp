@@ -124,6 +124,10 @@ main :: fn () {}
                 "kind": 9
             },
             {
+                "label": "compound",
+                "kind": 9
+            },
+            {
                 "label": "embed_forms",
                 "kind": 9
             },

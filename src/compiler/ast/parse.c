@@ -4948,6 +4948,57 @@ bool ast_parse_declaration(AstParseState* state,
                              out_node);
     }
 
+    // A compound function is a closed list of function-name expressions.
+    // Member expressions are emitted normally and their root indices are kept
+    // in a compact side table; semantic analysis validates their meaning.
+    if (state->token.kind == TK_fn && ast_peek_kind_at(state, 0) == TK_LBrace) {
+        AstToken fn_token     = state->token;
+        u32      first_member = (u32)array_count(state->compound_fn_members);
+        u32      member_count = 0;
+        if (!ast_next_token(state) || state->token.kind != TK_LBrace) {
+            return false;
+        }
+        AstToken block_open = state->token;
+        if (!ast_next_token(state)) {
+            return error_0203_expected_closing_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                TK_RBrace,
+                TK_EOF,
+                ast_token_span(state, &block_open));
+        }
+        while (state->token.kind != TK_RBrace) {
+            u32  member_node                  = U32_MAX;
+            bool old_allow_statement_boundary = state->allow_statement_boundary;
+            state->allow_statement_boundary   = true;
+            bool parsed_member = ast_parse_expr(state, &member_node);
+            state->allow_statement_boundary = old_allow_statement_boundary;
+            if (!parsed_member) {
+                return false;
+            }
+            array_push(state->compound_fn_members, member_node);
+            member_count++;
+            if (!ast_next_token(state)) {
+                return error_0203_expected_closing_token(
+                    state->lexer->source,
+                    ast_token_span(state, &state->token),
+                    TK_RBrace,
+                    TK_EOF,
+                    ast_token_span(state, &block_open));
+            }
+        }
+        u32 info_index = (u32)array_count(state->compound_fns);
+        array_push(state->compound_fns,
+                   (AstCompoundFnInfo){.first_member = first_member,
+                                       .member_count = member_count});
+        return ast_emit_node(state,
+                             (AstNode){.kind        = AK_CompoundFn,
+                                       .flags       = flags,
+                                       .token_index = fn_token.token_index,
+                                       .a           = info_index},
+                             out_node);
+    }
+
     // Assume current token is `fn`
     ASSERT(state->token.kind == TK_fn, "Expected 'fn' token for declaration");
     AstToken fn_token        = state->token;
@@ -5594,6 +5645,8 @@ Ast ast_parse(Lexer* lexer)
         .where_constraints     = state.where_constraints,
         .params                = state.params,
         .fn_signatures         = state.fn_signatures,
+        .compound_fns          = state.compound_fns,
+        .compound_fn_members   = state.compound_fn_members,
         .ffi_infos             = state.ffi_infos,
         .module_paths          = state.module_paths,
         .module_path_symbols   = state.module_path_symbols,
@@ -5631,6 +5684,8 @@ error:
                     .where_constraints     = state.where_constraints,
                     .params                = state.params,
                     .fn_signatures         = state.fn_signatures,
+                    .compound_fns          = state.compound_fns,
+                    .compound_fn_members   = state.compound_fn_members,
                     .ffi_infos             = state.ffi_infos,
                     .module_paths          = state.module_paths,
                     .module_path_symbols   = state.module_path_symbols,
@@ -5673,6 +5728,8 @@ void ast_done(Ast* ast)
     array_free(ast->where_constraints);
     array_free(ast->params);
     array_free(ast->fn_signatures);
+    array_free(ast->compound_fns);
+    array_free(ast->compound_fn_members);
     array_free(ast->ffi_infos);
     array_free(ast->module_paths);
     array_free(ast->module_path_symbols);

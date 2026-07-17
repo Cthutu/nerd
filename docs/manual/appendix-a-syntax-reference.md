@@ -131,6 +131,14 @@ target ||= expr
 ## Functions
 
 ```nerd
+name :: fn { member qualified.member nested_compound }
+```
+
+Compound functions are non-empty top-level declarations containing concrete,
+non-generic free functions or other acyclic compounds. Exactly one member must
+match a call or an expected function type.
+
+```nerd
 fn (a: Type, b: Type) -> ReturnType { ... }
 fn [T, U] (a: T, b: U) -> T { ... }
 fn (a: Type, b: Type = expr) -> ReturnType { ... }

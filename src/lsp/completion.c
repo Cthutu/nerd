@@ -558,6 +558,7 @@ internal u32 lsp_completion_decl_kind(SemaDeclKind kind)
     case SK_FfiFunction:
     case SK_BuiltinFunction:
     case SK_GenericFunction:
+    case SK_CompoundFunction:
         return 3; // Function
     case SK_Module:
         return 9; // Module

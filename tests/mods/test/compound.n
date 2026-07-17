@@ -1,0 +1,9 @@
+pub convert :: fn {
+    private_i32
+    private_string
+}
+
+private_i32 :: fn (value: i32) -> i32 { return value * 10 }
+private_string :: fn (value: string) -> i32 {
+    return value.count.as(i32) * 10
+}

@@ -143,7 +143,11 @@ Completed milestone plans belong in git history, tests, and subsystem
 documentation. The active list below contains only work that is ready to guide
 the next implementation slices.
 
-### Milestone 1: Compound Functions
+### Milestone 1: Compound Functions (Complete)
+
+Implemented across the compiler, formatter, LSP, tests, manual, specifications,
+and internals in commit `5111e4de`. The detailed checklist remains below as the
+design record until the next roadmap consolidation.
 
 Add explicit compound functions: one source-level function name mapped to a
 closed list of concrete free functions and resolved from the call signature.

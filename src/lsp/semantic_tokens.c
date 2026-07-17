@@ -188,7 +188,8 @@ internal bool lsp_semantic_decl_is_function(const Sema* sema, u32 decl_index)
     }
 
     return decl->kind == SK_Function || decl->kind == SK_GenericFunction ||
-           decl->kind == SK_FfiFunction || decl->kind == SK_BuiltinFunction;
+           decl->kind == SK_FfiFunction || decl->kind == SK_BuiltinFunction ||
+           decl->kind == SK_CompoundFunction;
 }
 
 //------------------------------------------------------------------------------

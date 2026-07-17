@@ -232,3 +232,10 @@ horizontally:
 - semantic tokens or document symbols where relevant
 
 The LSP should not drift behind the compiler for implemented language features.
+## Compound Functions
+
+Compound declarations are presented as function symbols. Hover and signature
+help expose the flattened callable signature set without exposing private
+implementation names through an imported public compound. Once a call or
+function-value use resolves, definition navigation follows the selected
+concrete member and semantic highlighting remains function-like.

@@ -174,6 +174,8 @@ string ast_kind_to_string(AstKind kind)
         return s("Pragma");
     case AK_FnDef:
         return s("FnDef");
+    case AK_CompoundFn:
+        return s("CompoundFn");
     case AK_FnStart:
         return s("FnStart");
     case AK_FnEnd:

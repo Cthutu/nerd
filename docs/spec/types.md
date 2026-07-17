@@ -239,3 +239,11 @@ it by value is rejected. An atomic-to-atomic initialisation or assignment is a
 sequentially consistent load of the source followed by a store to the distinct
 destination; the pair is not one indivisible operation. The language guarantees
 atomic semantics, not a portable lock-free implementation.
+## Compound Function Signature Sets
+
+A compound declaration owns a set of callable signatures rather than a new
+runtime type. Each member contributes its full parameter signature and one
+shorter signature for each omitted trailing default. Return types are excluded.
+Two structurally equal effective signatures make the declaration invalid.
+Structurally different signatures may remain ambiguous for a particular
+literal or implicit conversion at a call site.

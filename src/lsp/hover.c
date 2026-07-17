@@ -2097,6 +2097,45 @@ internal string lsp_decl_signature(const LspDocument* doc,
                                    Arena*             arena,
                                    const SemaDecl*    decl)
 {
+    if (decl->kind == SK_CompoundFunction) {
+        u32 decl_index = (u32)(decl - doc->front_end.sema.decls);
+        for (u32 i = 0; i < array_count(doc->front_end.sema.compound_functions);
+             ++i) {
+            const SemaCompoundFunction* compound =
+                &doc->front_end.sema.compound_functions[i];
+            if (compound->decl_index != decl_index ||
+                compound->state != SCS_Resolved) {
+                continue;
+            }
+            Arena build_arena = {0};
+            arena_init(&build_arena);
+            StringBuilder sb = {0};
+            sb_init(&sb, &build_arena);
+            sb_append_cstr(&sb, "fn {");
+            for (u32 j = 0; j < compound->candidate_count; ++j) {
+                u32 candidate =
+                    doc->front_end.sema
+                        .compound_candidates[compound->first_candidate + j];
+                if (candidate >= array_count(doc->front_end.sema.decls)) {
+                    continue;
+                }
+                sb_append_cstr(&sb, j == 0 ? " " : ", ");
+                sb_append_string(
+                    &sb,
+                    sema_type_name(
+                        &doc->front_end.lexer,
+                        &doc->front_end.sema,
+                        arena,
+                        doc->front_end.sema.decls[candidate].type_index));
+            }
+            sb_append_cstr(&sb, " }");
+            string result =
+                string_format(arena, STRINGP, STRINGV(sb_to_string(&sb)));
+            arena_done(&build_arena);
+            return result;
+        }
+        return s("fn { <unresolved> }");
+    }
     if (decl->kind != SK_Function && decl->kind != SK_GenericFunction &&
         decl->kind != SK_FfiFunction && decl->kind != SK_BuiltinFunction) {
         return s("<unknown>");
@@ -2362,6 +2401,17 @@ internal string lsp_decl_hover_text(const LspDocument* doc,
                                                STRINGV(inferred_type)))),
                              STRINGV(kind),
                              STRINGV(suffix));
+    }
+
+    if (decl->kind == SK_CompoundFunction) {
+        return string_format(arena,
+                             STRINGP "\n\n- Kind: compound function",
+                             STRINGV(lsp_markdown_code_block(
+                                 arena,
+                                 string_format(arena,
+                                               STRINGP " :: " STRINGP,
+                                               STRINGV(name),
+                                               STRINGV(inferred_type)))));
     }
 
     if (decl->kind == SK_TypeAlias) {
@@ -4942,6 +4992,23 @@ void lsp_handle_definition(LspState* state, const LspMessage* message)
     u32 field_node_index =
         lsp_find_field_node_at_token(&doc->front_end.ast, token_index);
     if (field_node_index != U32_MAX) {
+        if (field_node_index <
+            array_count(
+                doc->front_end.sema.node_compound_selected_decl_indices)) {
+            u32 selected =
+                doc->front_end.sema
+                    .node_compound_selected_decl_indices[field_node_index];
+            if (selected != sema_no_decl()) {
+                JsonValue* selected_location =
+                    lsp_decl_location(doc, message->arena, uri, selected);
+                if (selected_location != NULL) {
+                    json_object_set_object(
+                        response, "result", selected_location);
+                    lsp_send_response(message->arena, response);
+                    return;
+                }
+            }
+        }
         u32 method_decl =
             lsp_selected_method_decl_for_field(doc, field_node_index);
         if (method_decl != LSP_NO_DECL) {
@@ -4968,6 +5035,26 @@ void lsp_handle_definition(LspState* state, const LspMessage* message)
             json_object_set_object(response, "result", enum_variant_location);
             lsp_send_response(message->arena, response);
             return;
+        }
+    }
+
+    u32 compound_ref_node =
+        lsp_find_symbol_ref_node_at_token(&doc->front_end.ast, token_index);
+    if (compound_ref_node != U32_MAX &&
+        compound_ref_node <
+            array_count(
+                doc->front_end.sema.node_compound_selected_decl_indices)) {
+        u32 selected =
+            doc->front_end.sema
+                .node_compound_selected_decl_indices[compound_ref_node];
+        if (selected != sema_no_decl()) {
+            JsonValue* selected_location =
+                lsp_decl_location(doc, message->arena, uri, selected);
+            if (selected_location != NULL) {
+                json_object_set_object(response, "result", selected_location);
+                lsp_send_response(message->arena, response);
+                return;
+            }
         }
     }
 
