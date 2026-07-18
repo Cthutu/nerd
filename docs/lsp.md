@@ -151,6 +151,9 @@ Completion is semantic where possible:
   so payload fields remain available from public plex types in imported files.
   The fallback repairs only the transient completion analysis buffer; it does
   not mutate the open document.
+- nested `on` payload patterns use their own expected type for completion. For
+  example, `KeyPress { scan_code: E }` offers `FrameScanCode` variants matching
+  `E`, rather than variants of the outer `FrameEvent` scrutinee.
 - `use ...` offers module path segments from the active module search roots
 
 The dynamic-array member list is shared conceptually with semantic analysis and

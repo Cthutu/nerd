@@ -108,6 +108,11 @@ The back end currently runs:
 - `Cst`
   Concrete syntax tree used mainly for formatter and LSP tooling.
 
+Sema records the expected type of each checked `on` pattern in an
+AST-pattern-indexed side table. Nested payload patterns therefore retain their
+own contextual type independently of the outer scrutinee, which editor features
+can use for enum completion while a branch pattern is being edited.
+
 ## File Families
 
 - `src/compiler/lexer`

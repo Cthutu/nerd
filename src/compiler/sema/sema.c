@@ -14747,6 +14747,9 @@ internal bool sema_check_on_pattern_type(const Lexer* lexer,
                                          u32          value_type,
                                          bool         top_level)
 {
+    if (pattern_index < array_count(sema->pattern_type_indices)) {
+        sema->pattern_type_indices[pattern_index] = value_type;
+    }
     const AstPattern* pattern = &ast->patterns[pattern_index];
     switch (pattern->kind) {
     case APK_Value:
@@ -24622,6 +24625,7 @@ bool sema_analyse(const Lexer*           lexer,
     }
     for (u32 i = 0; i < array_count(ast->patterns); ++i) {
         array_push(sema.pattern_local_indices, sema_no_local());
+        array_push(sema.pattern_type_indices, sema_no_type());
     }
 
     if (!sema_collect_decls(lexer, ast, &effective_options, &sema)) {
@@ -24786,6 +24790,7 @@ void sema_done(Sema* sema)
     array_free(sema->node_implicit_array_type_indices);
     array_free(sema->on_branch_local_indices);
     array_free(sema->pattern_local_indices);
+    array_free(sema->pattern_type_indices);
     array_free(sema->node_is_type_expr);
     array_free(sema->node_const_known);
     array_free(sema->node_const_values);

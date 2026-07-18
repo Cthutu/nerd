@@ -5433,8 +5433,41 @@ internal bool lsp_completion_expected_enum_on_pattern_at_offset(
     const Ast*   ast   = &doc->front_end.ast;
     const Sema*  sema  = &doc->front_end.sema;
 
-    u32   best_type    = sema_no_type();
-    usize best_span    = SIZE_MAX;
+    usize nested_span  = SIZE_MAX;
+    for (u32 pattern_index = 0;
+         pattern_index < array_count(ast->patterns) &&
+         pattern_index < array_count(sema->pattern_type_indices);
+         ++pattern_index) {
+        const AstPattern* pattern = &ast->patterns[pattern_index];
+        if (pattern->token_index >= array_count(lexer->tokens)) {
+            continue;
+        }
+        const Token* token = &lexer->tokens[pattern->token_index];
+        usize        start = token->offset;
+        usize        end   = lex_token_end_offset(lexer, token);
+        if (offset < start || offset > end) {
+            continue;
+        }
+
+        u32 pattern_type = sema_materialise_type(
+            sema, sema->pattern_type_indices[pattern_index]);
+        const SemaType* type = NULL;
+        if (!lsp_sema_type(sema, pattern_type, &type) ||
+            type->kind != STK_Enum) {
+            continue;
+        }
+        usize span = end - start;
+        if (span < nested_span) {
+            *out_enum_type = pattern_type;
+            nested_span    = span;
+        }
+    }
+    if (nested_span != SIZE_MAX) {
+        return true;
+    }
+
+    u32   best_type = sema_no_type();
+    usize best_span = SIZE_MAX;
     for (u32 node_index = 0; node_index < array_count(ast->nodes);
          ++node_index) {
         const AstNode* node = &ast->nodes[node_index];
