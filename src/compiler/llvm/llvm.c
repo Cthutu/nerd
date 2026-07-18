@@ -5788,7 +5788,8 @@ internal LlvmValue llvm_emit_block_value(LlvmFunctionContext* ctx,
         }
 
         const HirStmt* stmt = &ctx->hir->stmts[stmt_index];
-        if (stmt->kind == HIR_STMT_Expr || stmt->kind == HIR_STMT_Break) {
+        if (stmt->kind == HIR_STMT_Break ||
+            (stmt->kind == HIR_STMT_Expr && i + 1 == block->stmt_count)) {
             LlvmValue value = llvm_emit_expr(ctx, function, stmt->expr_index);
             if (value.ok &&
                 llvm_type_kind(ctx->sema, value.type_index) == STK_Never &&
