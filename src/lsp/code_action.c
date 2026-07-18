@@ -2863,28 +2863,43 @@ internal bool lsp_code_action_find_on_block_range(const Lexer* lexer,
     if (on_token_index >= array_count(lexer->tokens)) {
         return false;
     }
-    bool  found     = false;
-    usize best_span = SIZE_MAX;
-    for (u32 i = 0; i < array_count(lexer->tokens); ++i) {
-        const Token* token = &lexer->tokens[i];
-        if (token->kind != TK_LBrace) {
-            continue;
-        }
-        u32 close_token = U32_MAX;
-        if (!lsp_code_action_matching_close(lexer, i, &close_token)) {
-            return false;
-        }
-        usize start = token->offset;
-        usize end   = lex_token_end_offset(lexer, &lexer->tokens[close_token]);
-        if (offset >= start && offset <= end && close_token > on_token_index &&
-            end - start < best_span) {
-            *out_open_token  = i;
-            *out_close_token = close_token;
-            best_span        = end - start;
-            found            = true;
+
+    u32 paren_depth   = 0;
+    u32 bracket_depth = 0;
+    u32 open_token    = U32_MAX;
+    for (u32 i = on_token_index + 1; i < array_count(lexer->tokens); ++i) {
+        TokenKind kind = lexer->tokens[i].kind;
+        if (kind == TK_LParen) {
+            paren_depth++;
+        } else if (kind == TK_RParen && paren_depth > 0) {
+            paren_depth--;
+        } else if (kind == TK_LBracket) {
+            bracket_depth++;
+        } else if (kind == TK_RBracket && bracket_depth > 0) {
+            bracket_depth--;
+        } else if (kind == TK_LBrace && paren_depth == 0 &&
+                   bracket_depth == 0) {
+            open_token = i;
+            break;
         }
     }
-    return found;
+    if (open_token == U32_MAX) {
+        return false;
+    }
+
+    u32 close_token = U32_MAX;
+    if (!lsp_code_action_matching_close(lexer, open_token, &close_token)) {
+        return false;
+    }
+    usize start = lexer->tokens[on_token_index].offset;
+    usize end   = lex_token_end_offset(lexer, &lexer->tokens[close_token]);
+    if (offset < start || offset > end) {
+        return false;
+    }
+
+    *out_open_token  = open_token;
+    *out_close_token = close_token;
+    return true;
 }
 
 internal u32 lsp_code_action_find_on_at_offset(const LspDocument* doc,

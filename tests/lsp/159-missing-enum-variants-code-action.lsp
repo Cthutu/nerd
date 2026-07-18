@@ -1,8 +1,9 @@
 use std.frame
 
 main :: fn () {
-    event: FrameEvent = None
-    on event {
+    system := FrameSystem.init()
+    frame: Frame
+    on system.poll(^frame) {
         None => {
         }
     }
@@ -20,11 +21,11 @@ main :: fn () {
             "range": {
                 "start": {
                     "line": 5,
-                    "character": 8
+                    "character": 10
                 },
                 "end": {
                     "line": 5,
-                    "character": 8
+                    "character": 10
                 }
             },
             "context": {
@@ -92,26 +93,7 @@ main :: fn () {
         "method": "textDocument/publishDiagnostics",
         "params": {
             "uri": "file:///test.n",
-            "diagnostics": [
-                {
-                    "range": {
-                        "start": {
-                            "line": 0,
-                            "character": 4
-                        },
-                        "end": {
-                            "line": 0,
-                            "character": 13
-                        }
-                    },
-                    "severity": 4,
-                    "source": "nerd",
-                    "message": "Unused use `std.frame`",
-                    "tags": [
-                        1
-                    ]
-                }
-            ]
+            "diagnostics": []
         }
     },
     {
@@ -127,11 +109,11 @@ main :: fn () {
                             {
                                 "range": {
                                     "start": {
-                                        "line": 7,
+                                        "line": 8,
                                         "character": 4
                                     },
                                     "end": {
-                                        "line": 7,
+                                        "line": 8,
                                         "character": 4
                                     }
                                 },

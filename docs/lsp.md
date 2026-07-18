@@ -202,6 +202,11 @@ available for contextual literals such as `value: ImportedType = {}` while the
 missing-field diagnostic is present and while the cursor is on either the
 literal target or the literal body.
 
+For an `on` scrutinee with an enum type, `Add missing enum variants` inserts
+branches for uncovered variants and payload shapes. The action is available
+with the cursor anywhere from the `on` keyword through the closing brace,
+including on an imported method call such as `on system.poll(^frame) { ... }`.
+
 For unused locals, the server offers both a rename quick fix that toggles the
 leading underscore convention and a removal quick fix for simple local
 declaration lines. For mistaken function definitions written as `name : fn`,
