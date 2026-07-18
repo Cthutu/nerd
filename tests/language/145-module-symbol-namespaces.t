@@ -18,7 +18,7 @@ import import.1 test from module.2(test.namespaced_b).decl.0: fn () -> i32
 bind test = import.0
 bind test = import.1
 bind a = module.1
-bind b = module.2
+bind b = module.3
 bind main = fn.0
 func fn.0() -> i32 {
   return i32 add(i32 call fn () -> i32 field(module bind.2(a), test)(), i32 call fn () -> i32 field(module bind.3(b), test)())

@@ -86,7 +86,7 @@ Language-required traits such as `Display` are canonical declarations from
 `Default`, and `Iterator[Item]`. Optional and result values are built-in types,
 written `?T` and `T\E`; there are no core `Option` or `Result` enums. Core names are
 available through the implicit `core` import unless shadowed by a local
-declaration.
+declaration. All other public core bindings use the same implicit import.
 `Display.show(value)` supplies interpolation for non-built-in values. `Eq.eq`
 supplies equality for non-built-in values used with `==` and `!=`.
 `Order.compare(lhs, rhs)` supplies ordering for non-built-in values used with

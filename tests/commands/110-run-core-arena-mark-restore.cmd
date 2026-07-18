@@ -1,5 +1,5 @@
 use std.io
-use core
+
 
 main :: fn () -> i32 {
     a := arena(16, 8)

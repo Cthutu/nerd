@@ -1,4 +1,4 @@
-use core
+-- Core bindings are implicit.
 
 VAO :: plex {
     id i32

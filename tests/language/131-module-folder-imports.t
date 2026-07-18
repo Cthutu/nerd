@@ -19,7 +19,7 @@ import import.2 priority_answer from module.2(test.folder_priority).decl.0: fn (
 bind answer = import.0
 bind label = import.1
 bind priority_answer = import.2
-bind priority = module.2
+bind priority = module.3
 bind main = fn.0
 bind label = value.0
 const value.0: string

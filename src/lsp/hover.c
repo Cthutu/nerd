@@ -709,7 +709,8 @@ internal u32 lsp_find_decl_index_for_token(const LspDocument* doc,
             lsp_find_decl_index_by_symbol_handle(&doc->front_end.sema, ref->a);
         const SemaDecl* decl = NULL;
         if (lsp_sema_decl(&doc->front_end.sema, decl_index, &decl) &&
-            (decl->kind == SK_TypeAlias || decl->kind == SK_GenericTypeAlias)) {
+            (decl->kind == SK_TypeAlias || decl->kind == SK_GenericTypeAlias ||
+             decl->import_module_index != sema_no_decl())) {
             return decl_index;
         }
     }

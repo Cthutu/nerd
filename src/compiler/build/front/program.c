@@ -780,9 +780,8 @@ internal bool program_load_module_by_path(ProgramInfo*           program,
 internal bool program_load_implicit_core(ProgramInfo*           program,
                                          const FrontEndOptions* options,
                                          Timing*                timing,
-                                         u32          owner_module_index,
-                                         const Lexer* lexer,
-                                         NerdSource   current_source);
+                                         u32        owner_module_index,
+                                         NerdSource current_source);
 
 internal bool program_load_module_by_path(ProgramInfo*           program,
                                           const FrontEndOptions* options,
@@ -865,12 +864,8 @@ internal bool program_load_module_by_path(ProgramInfo*           program,
         program->modules[module_index].state = MODULE_Failed;
         return false;
     }
-    if (!program_load_implicit_core(program,
-                                    options,
-                                    timing,
-                                    module_index,
-                                    &module_lexer,
-                                    module_source)) {
+    if (!program_load_implicit_core(
+            program, options, timing, module_index, module_source)) {
         program->modules[module_index].state = MODULE_Failed;
         return false;
     }
@@ -910,35 +905,12 @@ internal bool program_record_module_import(ProgramInfo* program,
 internal bool program_load_implicit_core(ProgramInfo*           program,
                                          const FrontEndOptions* options,
                                          Timing*                timing,
-                                         u32          owner_module_index,
-                                         const Lexer* lexer,
-                                         NerdSource   current_source)
+                                         u32        owner_module_index,
+                                         NerdSource current_source)
 {
     if (owner_module_index >= array_count(program->modules) ||
         string_eq_cstr(program->modules[owner_module_index].qualified_name,
                        "core")) {
-        return true;
-    }
-
-    bool needs_core = false;
-    for (u32 i = 0; lexer != NULL && i < array_count(lexer->symbol_handles);
-         ++i) {
-        string symbol = lex_symbol(lexer, lexer->symbol_handles[i]);
-        if (string_eq_cstr(symbol, "Display") || string_eq_cstr(symbol, "Eq") ||
-            string_eq_cstr(symbol, "Order") ||
-            string_eq_cstr(symbol, "Default") ||
-            string_eq_cstr(symbol, "Option") ||
-            string_eq_cstr(symbol, "Result") ||
-            string_eq_cstr(symbol, "Iterator") ||
-            string_eq_cstr(symbol, "arena") ||
-            string_eq_cstr(symbol, "temp_arena") ||
-            string_eq_cstr(symbol, "pr") || string_eq_cstr(symbol, "prn") ||
-            string_eq_cstr(symbol, "epr") || string_eq_cstr(symbol, "eprn")) {
-            needs_core = true;
-            break;
-        }
-    }
-    if (!needs_core) {
         return true;
     }
 
@@ -1120,7 +1092,6 @@ bool front_end_program(NerdSource             source,
                                     &effective_options,
                                     timing,
                                     program.root_module_index,
-                                    &root_lexer,
                                     source)) {
         program.modules[program.root_module_index].state = MODULE_Failed;
         program_info_done(&program);

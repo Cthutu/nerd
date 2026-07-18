@@ -85,6 +85,14 @@ The back end currently runs:
 3. optional save of generated LLVM IR
 4. native compilation through clang, linking the embedded Nerd runtime object
 
+Every non-core module receives semantic proxy declarations for every public
+export from `mods/core.n`; there is no symbol-name whitelist and no explicit
+source import. The executable backend locates core's private lifecycle functions
+by their owning module and generated function indices. Its host entry wrapper
+runs module global initialisers, `core_init`, user `main`, then `core_done` on a
+normal return. Debug runtime shutdown releases core-owned storage before walking
+the live heap and arena lists and reporting leaks to standard error.
+
 ## Important Architectural Rules
 
 - Keep the AST syntax-only.

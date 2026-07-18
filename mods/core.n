@@ -29,10 +29,26 @@ ffi "nrt" {
     nrt_arena_alloc (arena: ^arena, size: usize, alignment: usize) -> ^void
 
     nrt_temp_arena () -> ^arena
+
+    nrt_core_init ()
+
+    nrt_core_done ()
 }
 
 -- Provides the process-wide temporary arena.
 pub temp_arena :: nrt_temp_arena()
+
+-- Initialises process-wide storage owned by core before the program entry point
+-- runs. The executable backend calls this function automatically.
+core_init :: fn () {
+    nrt_core_init()
+}
+
+-- Releases process-wide storage owned by core and reports any remaining runtime
+-- allocations after the program entry point returns.
+core_done :: fn () {
+    nrt_core_done()
+}
 
 -- Prints text to standard output without appending a newline.
 pub pr :: fn (text: string = "") -> void {

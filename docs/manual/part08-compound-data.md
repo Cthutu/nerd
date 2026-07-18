@@ -489,9 +489,9 @@ language-known traits and result types:
   item. If `Item` is a pointer type, dereference explicitly with `item^` when
   you need the pointed-to value.
 
-The trait names can be used without `use core`. A local declaration with the same
-name takes precedence over the implicit core declaration, and an explicit
-`use core` remains valid when a module wants to make that dependency visible.
+The trait names and all other public core bindings are available implicitly. A
+local declaration with the same name takes precedence over the implicit core
+declaration.
 
 ## Destructuring
 

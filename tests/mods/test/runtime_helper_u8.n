@@ -1,4 +1,4 @@
-use core
+
 
 pub print_rgb_bytes :: fn (colour: u32) {
     r := ((colour >> 16) & 0xff).as(u8)

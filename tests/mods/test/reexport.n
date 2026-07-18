@@ -1,4 +1,4 @@
-pub printer :: use core
+pub memory :: use std.mem
 
 pub forty_two :: fn() -> i32 {
     return 42

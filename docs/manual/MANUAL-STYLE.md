@@ -110,7 +110,7 @@ table as a compact reference.
 
 ## Standard Library
 
-The manual may use core printing helpers for simple examples, especially `pr`
+The manual may use implicit core printing helpers for simple examples, especially `pr`
 and `prn`.
 
 When first used, explain only what the example needs:

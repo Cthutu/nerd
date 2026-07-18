@@ -178,10 +178,24 @@ code outside the runtime. Arena debug nodes store the source file and line
 supplied to `nrt_arena_init`.
 
 `std.mem` is the public standard-library facade over this runtime foundation.
-It owns the source-level API, statistics presentation, and leak-reporting
-commands, while compiler-generated dynamic-array and arena operations use the
-same low-level allocation substrate. The runtime exposes its debug allocation
-list to `std.mem`; it does not format or print leak reports itself.
+It owns the source-level allocation API and an explicit leak-reporting command,
+while compiler-generated dynamic-array and arena operations use the same
+low-level allocation substrate.
+
+## Core Lifecycle
+
+Executable startup first initialises module globals, then automatically calls
+the private `core_init` hook before calling the program's `main`. After every
+normal return from `main`, the generated entry wrapper calls `core_done` before
+returning the exit status to the host. Non-returning termination such as
+`abort` does not run normal shutdown.
+
+`core_done` releases process-wide storage owned by core, including the runtime
+temporary arena and interpolation buffer. Debug builds then walk the runtime's
+remaining heap and arena tracking lists. If either list is non-empty, every
+live allocation is written to standard error with its allocation index, source
+location, and size, followed by aggregate heap and arena totals. Release builds
+omit tracking metadata and therefore do not emit a leak report.
 
 ## Defer
 

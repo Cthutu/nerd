@@ -1,12 +1,14 @@
-print :: use core
+memory :: use std.mem
 
 main :: fn() {
-    local_print :: use core
+    local_memory :: use std.mem
 
-    local_print.prn("Local")
-    print.prn("Hello")
-    print.pr("same")
-    print.prn(" line")
+    _ := local_memory.kb(1)
+    _ := memory.mb(1)
+    prn("Local")
+    prn("Hello")
+    pr("same")
+    prn(" line")
 }
 ¬
 0

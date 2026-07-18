@@ -1441,6 +1441,8 @@ internal void lsp_completion_add_repaired_members(Arena*             arena,
             lsp_completion_add_source_on_payload_members(
                 arena, items, &repaired_doc, uri, offset, receiver);
         }
+        program.modules[program.root_module_index].front_end =
+            repaired_doc.front_end;
     }
 
     program_info_done(&program);

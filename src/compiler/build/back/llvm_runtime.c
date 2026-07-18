@@ -79,6 +79,96 @@ back_end_llvm_runtime_root_main_info(const FrontEndState* root)
     return info;
 }
 
+BackEndCoreLifecycleInfo
+back_end_llvm_runtime_core_lifecycle_info(const ProgramInfo* program)
+{
+    BackEndCoreLifecycleInfo info = {
+        .module_index        = U32_MAX,
+        .init_function_index = U32_MAX,
+        .done_function_index = U32_MAX,
+    };
+    if (program == NULL) {
+        return info;
+    }
+
+    for (u32 module_index = 0; module_index < array_count(program->modules);
+         ++module_index) {
+        const ModuleInfo* module = &program->modules[module_index];
+        if (!string_eq_cstr(module->qualified_name, "core")) {
+            continue;
+        }
+
+        const Hir*   hir   = &module->front_end.hir;
+        const Lexer* lexer = &module->front_end.lexer;
+        info.module_index  = module_index;
+        for (u32 i = 0; i < array_count(hir->bindings); ++i) {
+            const HirBinding* binding = &hir->bindings[i];
+            if (binding->kind != HIR_BINDING_Function ||
+                binding->target_index >= array_count(hir->functions)) {
+                continue;
+            }
+            string name = lex_symbol(lexer, binding->symbol_handle);
+            if (string_eq_cstr(name, "core_init")) {
+                info.init_function_index = binding->target_index;
+            } else if (string_eq_cstr(name, "core_done")) {
+                info.done_function_index = binding->target_index;
+            }
+        }
+        break;
+    }
+    return info;
+}
+
+internal bool
+back_end_core_lifecycle_is_available(BackEndCoreLifecycleInfo info)
+{
+    return info.module_index != U32_MAX &&
+           info.init_function_index != U32_MAX &&
+           info.done_function_index != U32_MAX;
+}
+
+internal void back_end_append_core_function_name(StringBuilder* sb,
+                                                 u32            module_index,
+                                                 u32            function_index)
+{
+    if (module_index == 0) {
+        sb_format(sb, "@fn.%u", function_index);
+    } else {
+        sb_format(sb, "@m%u.fn.%u", module_index, function_index);
+    }
+}
+
+internal void
+back_end_append_core_lifecycle_declarations(StringBuilder*           sb,
+                                            BackEndCoreLifecycleInfo info)
+{
+    if (!back_end_core_lifecycle_is_available(info)) {
+        return;
+    }
+    sb_append_cstr(sb, "declare void ");
+    back_end_append_core_function_name(
+        sb, info.module_index, info.init_function_index);
+    sb_append_cstr(sb, "()\ndeclare void ");
+    back_end_append_core_function_name(
+        sb, info.module_index, info.done_function_index);
+    sb_append_cstr(sb, "()\n");
+}
+
+internal void back_end_append_core_lifecycle_call(StringBuilder*           sb,
+                                                  BackEndCoreLifecycleInfo info,
+                                                  bool initialise)
+{
+    if (!back_end_core_lifecycle_is_available(info)) {
+        return;
+    }
+    sb_append_cstr(sb, "  call void ");
+    back_end_append_core_function_name(sb,
+                                       info.module_index,
+                                       initialise ? info.init_function_index
+                                                  : info.done_function_index);
+    sb_append_cstr(sb, "()\n");
+}
+
 internal void back_end_append_main_call(StringBuilder*      sb,
                                         BackEndRootMainInfo main_info)
 {
@@ -130,12 +220,15 @@ internal void back_end_append_main_call(StringBuilder*      sb,
     }
 }
 
-internal string back_end_llvm_runtime_console_epilogue(
-    Arena* arena, BackEndRootMainInfo main_info)
+internal string
+back_end_llvm_runtime_console_epilogue(Arena*                   arena,
+                                       BackEndRootMainInfo      main_info,
+                                       BackEndCoreLifecycleInfo core_lifecycle)
 {
     StringBuilder sb = {0};
     sb_init(&sb, arena);
     sb_append_cstr(&sb, "declare void @init()\n");
+    back_end_append_core_lifecycle_declarations(&sb, core_lifecycle);
     if (main_info.takes_args) {
         sb_append_cstr(&sb, "declare i64 @strlen(ptr)\n");
     }
@@ -152,7 +245,9 @@ internal string back_end_llvm_runtime_console_epilogue(
                    "entry:\n"
                    "  %argc64 = sext i32 %argc to i64\n"
                    "  call void @init()\n");
+    back_end_append_core_lifecycle_call(&sb, core_lifecycle, true);
     back_end_append_main_call(&sb, main_info);
+    back_end_append_core_lifecycle_call(&sb, core_lifecycle, false);
     if (main_info.returns_void) {
         sb_append_cstr(&sb, "  ret i32 0\n}\n");
     } else {
@@ -161,12 +256,15 @@ internal string back_end_llvm_runtime_console_epilogue(
     return sb_to_string(&sb);
 }
 
-internal string back_end_llvm_runtime_windowed_epilogue(
-    Arena* arena, BackEndRootMainInfo main_info)
+internal string
+back_end_llvm_runtime_windowed_epilogue(Arena*                   arena,
+                                        BackEndRootMainInfo      main_info,
+                                        BackEndCoreLifecycleInfo core_lifecycle)
 {
     StringBuilder sb = {0};
     sb_init(&sb, arena);
     sb_append_cstr(&sb, "declare void @init()\n");
+    back_end_append_core_lifecycle_declarations(&sb, core_lifecycle);
     if (main_info.takes_args) {
         sb_append_cstr(&sb, "declare i64 @strlen(ptr)\n");
     }
@@ -185,8 +283,10 @@ internal string back_end_llvm_runtime_windowed_epilogue(
                    "  %argc64 = add i64 0, 0\n"
                    "  %argv = inttoptr i64 0 to ptr\n"
                    "  call void @init()\n");
+    back_end_append_core_lifecycle_call(&sb, core_lifecycle, true);
     if (main_info.takes_args) {
         back_end_append_main_call(&sb, main_info);
+        back_end_append_core_lifecycle_call(&sb, core_lifecycle, false);
         if (main_info.returns_void) {
             sb_append_cstr(&sb, "  ret i32 0\n}\n");
         } else {
@@ -195,25 +295,28 @@ internal string back_end_llvm_runtime_windowed_epilogue(
         return sb_to_string(&sb);
     }
     if (main_info.returns_void) {
-        sb_append_cstr(&sb,
-                       "  call void @$main()\n"
-                       "  ret i32 0\n}\n");
+        sb_append_cstr(&sb, "  call void @$main()\n");
+        back_end_append_core_lifecycle_call(&sb, core_lifecycle, false);
+        sb_append_cstr(&sb, "  ret i32 0\n}\n");
     } else {
-        sb_append_cstr(&sb,
-                       "  %result = call i32 @$main()\n"
-                       "  ret i32 %result\n}\n");
+        sb_append_cstr(&sb, "  %result = call i32 @$main()\n");
+        back_end_append_core_lifecycle_call(&sb, core_lifecycle, false);
+        sb_append_cstr(&sb, "  ret i32 %result\n}\n");
     }
     return sb_to_string(&sb);
 }
 
-string back_end_llvm_runtime_epilogue(Arena*              arena,
-                                      BackEndRootMainInfo main_info,
-                                      bool                windowed)
+string back_end_llvm_runtime_epilogue(Arena*                   arena,
+                                      BackEndRootMainInfo      main_info,
+                                      BackEndCoreLifecycleInfo core_lifecycle,
+                                      bool                     windowed)
 {
     if (windowed) {
-        return back_end_llvm_runtime_windowed_epilogue(arena, main_info);
+        return back_end_llvm_runtime_windowed_epilogue(
+            arena, main_info, core_lifecycle);
     }
-    return back_end_llvm_runtime_console_epilogue(arena, main_info);
+    return back_end_llvm_runtime_console_epilogue(
+        arena, main_info, core_lifecycle);
 }
 
 string back_end_llvm_runtime_render_init(Arena* arena,

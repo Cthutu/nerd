@@ -1,4 +1,4 @@
-use core
+-- Core bindings are implicit.
 
 main :: fn () {
     a := arena(16, 8)
@@ -88,6 +88,11 @@ main :: fn () {
         "id": 2,
         "result": [
             {
+                "label": "mark",
+                "kind": 2,
+                "detail": "method"
+            },
+            {
                 "label": "alloc",
                 "kind": 2,
                 "detail": "method"
@@ -104,11 +109,6 @@ main :: fn () {
             },
             {
                 "label": "reset",
-                "kind": 2,
-                "detail": "method"
-            },
-            {
-                "label": "mark",
                 "kind": 2,
                 "detail": "method"
             },

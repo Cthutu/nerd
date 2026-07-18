@@ -895,8 +895,10 @@ internal bool back_end_emit_llvm_artifacts(const ProgramInfo*        program,
             &program->modules[program->root_module_index].front_end;
         BackEndRootMainInfo main_info =
             back_end_llvm_runtime_root_main_info(root);
+        BackEndCoreLifecycleInfo core_lifecycle =
+            back_end_llvm_runtime_core_lifecycle_info(program);
         runtime_epilogue = back_end_llvm_runtime_epilogue(
-            &arena, main_info, program->windowed && OS_WINDOWS);
+            &arena, main_info, core_lifecycle, program->windowed && OS_WINDOWS);
         init_ll = back_end_llvm_runtime_render_init(
             &arena, modules.init_module_indices);
     }

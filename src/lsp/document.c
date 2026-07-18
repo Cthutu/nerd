@@ -488,6 +488,10 @@ internal void lsp_document_reset_runtime(LspDocument* doc)
 {
     cst_done(&doc->cst);
     doc->cst = (Cst){0};
+    if (doc->program.root_module_index < array_count(doc->program.modules)) {
+        doc->program.modules[doc->program.root_module_index].front_end =
+            doc->front_end;
+    }
     program_info_done(&doc->program);
     arena_done(&doc->arena);
     doc->program             = (ProgramInfo){0};

@@ -50,7 +50,7 @@ main :: fn () {
     ]
 }
 ¬
-use core
+
 
 main :: fn () {
     a := arena(16)
@@ -79,7 +79,7 @@ main :: fn () {
     ]
 }
 ¬
-use core
+
 
 main :: fn () {
     a := arena(16)

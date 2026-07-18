@@ -1,4 +1,4 @@
-use core
+
 
 main :: fn () -> i32 {
     scratch := arena(4096)

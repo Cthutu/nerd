@@ -24,9 +24,9 @@ as fields, for example `str.split`.
 
 `pub use module.path` re-exports the imported module's public declarations.
 
-Every module implicitly imports `core`. Local declarations with the same name
-as a core export take precedence over the implicit import. An explicit
-`use core` is still allowed and follows normal duplicate-binding checks.
+Every module implicitly imports all public `core` bindings. Local declarations
+with the same name as a core export take precedence over the implicit import;
+an explicit import of `core` is neither required nor used.
 
 ## Resolution Order
 

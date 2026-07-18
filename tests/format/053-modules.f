@@ -1,17 +1,15 @@
-pub print:: use core
+pub memory:: use std.mem
 
 main::fn(){
-local_print:: use core
-local_print.prn("Local")
-print.prn("Hello")
-print.pr("same")
+local_memory:: use std.mem
+local_memory.kb(1)
+memory.mb(1)
 }
 ¬
-pub print :: use core
+pub memory :: use std.mem
 
 main :: fn () {
-    local_print :: use core
-    local_print.prn("Local")
-    print.prn("Hello")
-    print.pr("same")
+    local_memory :: use std.mem
+    local_memory.kb(1)
+    memory.mb(1)
 }

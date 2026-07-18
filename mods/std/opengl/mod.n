@@ -6,7 +6,6 @@
 -- frame backends create and bind contexts; this module owns command loading and
 -- the cross-platform command API.
 
-use core
 use std.frame
 
 on "linux" {

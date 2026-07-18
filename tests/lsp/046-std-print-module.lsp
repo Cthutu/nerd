@@ -1,7 +1,7 @@
-print :: use core
+memory :: use std.mem
 
 main :: fn () {
-    print.prn("Hello")
+    _ := memory.kb(2)
 }
 ¬
 [
@@ -29,7 +29,7 @@ main :: fn () {
             },
             "position": {
                 "line": 3,
-                "character": 11
+                "character": 16
             }
         }
     },
@@ -43,7 +43,7 @@ main :: fn () {
             },
             "position": {
                 "line": 3,
-                "character": 11
+                "character": 16
             }
         }
     },
@@ -57,7 +57,7 @@ main :: fn () {
             },
             "position": {
                 "line": 0,
-                "character": 13
+                "character": 15
             }
         }
     }
@@ -130,7 +130,7 @@ main :: fn () {
         "result": {
             "contents": {
                 "kind": "markdown",
-                "value": "```nerd\nprint\n```\n\n- Kind: module\n- Type: `module`"
+                "value": "```nerd\nmemory\n```\n\n- Kind: module\n- Type: `module`"
             }
         }
     },
@@ -140,7 +140,7 @@ main :: fn () {
         "result": {
             "contents": {
                 "kind": "markdown",
-                "value": "```nerd\nprn :: fn (string) -> void\n```\n\n- Kind: function\n\nPrints text to standard output and appends a newline."
+                "value": "```nerd\nkb :: fn (n: usize) -> usize\n```\n\n- Kind: function\n\nConverts kibibytes to bytes."
             }
         }
     },
@@ -148,15 +148,15 @@ main :: fn () {
         "jsonrpc": "2.0",
         "id": 4,
         "result": {
-            "uri": "file:///home/matt/nerd/mods/core.n",
+            "uri": "file:///home/matt/nerd/mods/std/mem.n",
             "range": {
                 "start": {
-                    "line": 49,
+                    "line": 30,
                     "character": 4
                 },
                 "end": {
-                    "line": 49,
-                    "character": 7
+                    "line": 30,
+                    "character": 6
                 }
             }
         }
@@ -165,7 +165,7 @@ main :: fn () {
         "jsonrpc": "2.0",
         "id": 5,
         "result": {
-            "uri": "file:///home/matt/nerd/mods/core.n",
+            "uri": "file:///home/matt/nerd/mods/std/mem.n",
             "range": {
                 "start": {
                     "line": 0,

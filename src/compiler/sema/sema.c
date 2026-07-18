@@ -930,36 +930,36 @@ u32 sema_materialise_type(const Sema* sema, u32 type_index)
     }
 
     if (sema->types[type_index].kind == STK_Array) {
-        const SemaType* array = &sema->types[type_index];
+        SemaType array = sema->types[type_index];
         return sema_add_array_type(
             (Sema*)sema,
-            sema_materialise_type(sema, array->first_param_type),
-            array->return_type);
+            sema_materialise_type(sema, array.first_param_type),
+            array.return_type);
     }
 
     if (sema->types[type_index].kind == STK_Slice) {
-        const SemaType* slice = &sema->types[type_index];
+        SemaType slice = sema->types[type_index];
         return sema_add_slice_type(
-            (Sema*)sema, sema_materialise_type(sema, slice->first_param_type));
+            (Sema*)sema, sema_materialise_type(sema, slice.first_param_type));
     }
 
     if (sema->types[type_index].kind == STK_DynamicArray) {
-        const SemaType* dynarray = &sema->types[type_index];
+        SemaType dynarray = sema->types[type_index];
         return sema_add_dynamic_array_type(
             (Sema*)sema,
-            sema_materialise_type(sema, dynarray->first_param_type));
+            sema_materialise_type(sema, dynarray.first_param_type));
     }
 
     if (sema->types[type_index].kind == STK_Box) {
-        const SemaType* box = &sema->types[type_index];
+        SemaType box = sema->types[type_index];
         return sema_add_box_type(
-            (Sema*)sema, sema_materialise_type(sema, box->first_param_type));
+            (Sema*)sema, sema_materialise_type(sema, box.first_param_type));
     }
 
     if (sema->types[type_index].kind == STK_Atomic) {
-        const SemaType* atomic = &sema->types[type_index];
+        SemaType atomic = sema->types[type_index];
         return sema_add_atomic_type(
-            (Sema*)sema, sema_materialise_type(sema, atomic->first_param_type));
+            (Sema*)sema, sema_materialise_type(sema, atomic.first_param_type));
     }
 
     if (sema->types[type_index].kind == STK_Pointer) {
@@ -970,55 +970,53 @@ u32 sema_materialise_type(const Sema* sema, u32 type_index)
         sema->types[type_index].kind == STK_Union) {
         Array(u32) field_types   = NULL;
         Array(u32) field_symbols = NULL;
-        const SemaType* record   = &sema->types[type_index];
-        for (u32 i = 0; i < record->param_count; ++i) {
+        SemaType record          = sema->types[type_index];
+        for (u32 i = 0; i < record.param_count; ++i) {
             array_push(
                 field_types,
                 sema_materialise_type(
-                    sema,
-                    sema->type_param_types[record->first_param_type + i]));
+                    sema, sema->type_param_types[record.first_param_type + i]));
             array_push(field_symbols,
-                       sema->type_param_symbols[record->first_param_type + i]);
+                       sema->type_param_symbols[record.first_param_type + i]);
         }
-        u32 materialised = record->kind == STK_Plex
+        u32 materialised = record.kind == STK_Plex
                                ? sema_add_plex_type_raw((Sema*)sema,
                                                         field_symbols,
                                                         field_types,
-                                                        record->param_count,
-                                                        record->flags)
+                                                        record.param_count,
+                                                        record.flags)
                                : sema_add_union_type_raw((Sema*)sema,
                                                          field_symbols,
                                                          field_types,
-                                                         record->param_count);
+                                                         record.param_count);
         array_free(field_types);
         array_free(field_symbols);
         return materialised;
     }
 
     if (sema->types[type_index].kind == STK_Enum) {
-        const SemaType* enum_type = &sema->types[type_index];
-        Array(u32) variants       = NULL;
-        Array(u32) payload_types  = NULL;
-        Array(i64) discriminants  = NULL;
-        for (u32 i = 0; i < enum_type->param_count; ++i) {
+        SemaType enum_type       = sema->types[type_index];
+        Array(u32) variants      = NULL;
+        Array(u32) payload_types = NULL;
+        Array(i64) discriminants = NULL;
+        for (u32 i = 0; i < enum_type.param_count; ++i) {
             array_push(
                 variants,
-                sema->type_param_symbols[enum_type->first_param_type + i]);
+                sema->type_param_symbols[enum_type.first_param_type + i]);
             u32 payload_type =
-                sema->type_param_types[enum_type->first_param_type + i];
+                sema->type_param_types[enum_type.first_param_type + i];
             array_push(payload_types,
                        payload_type == sema_no_type()
                            ? sema_no_type()
                            : sema_materialise_type(sema, payload_type));
-            array_push(
-                discriminants,
-                sema->type_param_values[enum_type->first_param_type + i]);
+            array_push(discriminants,
+                       sema->type_param_values[enum_type.first_param_type + i]);
         }
         u32 materialised = sema_add_enum_type_raw((Sema*)sema,
                                                   variants,
                                                   payload_types,
                                                   discriminants,
-                                                  enum_type->param_count);
+                                                  enum_type.param_count);
         array_free(variants);
         array_free(payload_types);
         array_free(discriminants);
@@ -1029,13 +1027,13 @@ u32 sema_materialise_type(const Sema* sema, u32 type_index)
         return type_index;
     }
 
-    Array(u32) items      = NULL;
-    const SemaType* tuple = &sema->types[type_index];
-    for (u32 i = 0; i < tuple->param_count; ++i) {
+    Array(u32) items = NULL;
+    SemaType tuple   = sema->types[type_index];
+    for (u32 i = 0; i < tuple.param_count; ++i) {
         array_push(
             items,
             sema_materialise_type(
-                sema, sema->type_param_types[tuple->first_param_type + i]));
+                sema, sema->type_param_types[tuple.first_param_type + i]));
     }
     u32 materialised = sema_add_tuple_type((Sema*)sema, items);
     array_free(items);
@@ -2018,18 +2016,6 @@ internal bool sema_import_implicit_core_decls(const Lexer* lexer, Sema* sema)
             sema_find_symbol_handle_by_name(
                 lexer, lex_symbol(core_lexer, export_decl->symbol_handle)) ==
                 sema_no_decl()) {
-            continue;
-        }
-
-        string name = lex_symbol(core_lexer, export_decl->symbol_handle);
-        if (!string_eq_cstr(name, "Display") && !string_eq_cstr(name, "Eq") &&
-            !string_eq_cstr(name, "Order") &&
-            !string_eq_cstr(name, "Default") &&
-            !string_eq_cstr(name, "Iterator") &&
-            !string_eq_cstr(name, "arena") &&
-            !string_eq_cstr(name, "temp_arena") &&
-            !string_eq_cstr(name, "pr") && !string_eq_cstr(name, "prn") &&
-            !string_eq_cstr(name, "epr") && !string_eq_cstr(name, "eprn")) {
             continue;
         }
 

@@ -1,4 +1,4 @@
-print :: use core
+memory :: use std.mem
 
 main :: fn () {
     value := input()

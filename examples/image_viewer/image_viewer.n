@@ -1,4 +1,3 @@
-use core
 use std.frame
 use std.gfx
 use std.image
