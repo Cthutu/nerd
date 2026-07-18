@@ -1,3 +1,5 @@
+use std.mem
+
 pub part_value :: fn () -> i32 {
     counter += 1
     return counter

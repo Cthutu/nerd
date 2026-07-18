@@ -671,6 +671,28 @@ static _Thread_local size_t   g_string_builder_cursor   = 0;
 NrtArena* nrt_temp_arena(void) { return &g_temp_arena; }
 
 #ifndef NDEBUG
+static bool nrt_stderr_supports_colour(void)
+{
+#if defined(_WIN32)
+    HANDLE handle = GetStdHandle(STD_ERROR_HANDLE);
+    DWORD  mode   = 0;
+    return handle != INVALID_HANDLE_VALUE && GetConsoleMode(handle, &mode) &&
+           SetConsoleMode(handle, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+#else
+    return isatty(STDERR_FILENO) != 0;
+#endif
+}
+
+static size_t nrt_decimal_width(uint64_t value)
+{
+    size_t width = 1;
+    while (value >= 10) {
+        value /= 10;
+        width++;
+    }
+    return width;
+}
+
 static void nrt_print_source_location(NerdString source_path, uint32_t line)
 {
     if (source_path.count > 0) {
@@ -691,35 +713,94 @@ static void nrt_print_memory_leaks(void)
     size_t heap_bytes      = 0;
     size_t arena_count     = 0;
     size_t arena_committed = 0;
-    nrt_eprintfn("nrt: memory leaks detected");
+    size_t index_width     = strlen("index");
+    size_t bytes_width     = strlen("bytes");
     for (NrtHeapDebugHeader* allocation = g_nrt_heap_head;
          allocation != NULL;
          allocation = allocation->next) {
-        nrt_eprintf("  heap #%llu ",
-                    (unsigned long long)allocation->index);
-        nrt_print_source_location(allocation->source_path, allocation->line);
-        nrt_eprintfn(" %zu bytes", allocation->requested_size);
+        size_t allocation_index_width = nrt_decimal_width(allocation->index);
+        size_t allocation_bytes_width =
+            nrt_decimal_width(allocation->requested_size);
+        if (allocation_index_width > index_width) {
+            index_width = allocation_index_width;
+        }
+        if (allocation_bytes_width > bytes_width) {
+            bytes_width = allocation_bytes_width;
+        }
         heap_count++;
         heap_bytes += allocation->requested_size;
     }
     for (NrtArenaDebugNode* allocation = g_nrt_arena_head;
          allocation != NULL;
          allocation = allocation->next) {
-        nrt_eprintf("  arena #%llu ",
-                    (unsigned long long)allocation->index);
-        nrt_print_source_location(allocation->source_path, allocation->line);
-        nrt_eprintfn(" %zu bytes used, %zu bytes committed",
-                     allocation->used_size,
-                     allocation->committed_size);
+        size_t allocation_index_width = nrt_decimal_width(allocation->index);
+        size_t allocation_bytes_width =
+            nrt_decimal_width(allocation->used_size);
+        if (allocation_index_width > index_width) {
+            index_width = allocation_index_width;
+        }
+        if (allocation_bytes_width > bytes_width) {
+            bytes_width = allocation_bytes_width;
+        }
         arena_count++;
         arena_committed += allocation->committed_size;
     }
-    nrt_eprintfn("nrt: total %zu heap leaks, %zu bytes; "
-                 "%zu arena leaks, %zu bytes committed",
+
+    bool        colour = nrt_stderr_supports_colour();
+    const char* reset  = colour ? "\x1b[0m" : "";
+    const char* bold   = colour ? "\x1b[1m" : "";
+    const char* red    = colour ? "\x1b[31m" : "";
+    const char* yellow = colour ? "\x1b[33m" : "";
+    const char* cyan   = colour ? "\x1b[36m" : "";
+
+    nrt_eprintfn("%s%snrt: memory leaks detected%s", bold, red, reset);
+    nrt_eprintfn("  %-5s %*s %*s  %s",
+                 "type",
+                 (int)index_width,
+                 "index",
+                 (int)bytes_width,
+                 "bytes",
+                 "location");
+    for (NrtHeapDebugHeader* allocation = g_nrt_heap_head;
+         allocation != NULL;
+         allocation = allocation->next) {
+        nrt_eprintf("  %s%-5s%s %*llu %*zu  %s",
+                    yellow,
+                    "heap",
+                    reset,
+                    (int)index_width,
+                    (unsigned long long)allocation->index,
+                    (int)bytes_width,
+                    allocation->requested_size,
+                    cyan);
+        nrt_print_source_location(allocation->source_path, allocation->line);
+        nrt_eprintfn("%s", reset);
+    }
+    for (NrtArenaDebugNode* allocation = g_nrt_arena_head;
+         allocation != NULL;
+         allocation = allocation->next) {
+        nrt_eprintf("  %s%-5s%s %*llu %*zu  %s",
+                    yellow,
+                    "arena",
+                    reset,
+                    (int)index_width,
+                    (unsigned long long)allocation->index,
+                    (int)bytes_width,
+                    allocation->used_size,
+                    cyan);
+        nrt_print_source_location(allocation->source_path, allocation->line);
+        nrt_eprintfn("%s (%zu bytes committed)",
+                     reset,
+                     allocation->committed_size);
+    }
+    nrt_eprintfn("%snrt: total %zu heap leaks, %zu bytes; "
+                 "%zu arena leaks, %zu bytes committed%s",
+                 bold,
                  heap_count,
                  heap_bytes,
                  arena_count,
-                 arena_committed);
+                 arena_committed,
+                 reset);
 }
 #endif
 

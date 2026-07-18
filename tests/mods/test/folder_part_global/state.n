@@ -1,1 +1,5 @@
 pub counter : i32 = 41
+
+pub part_alloc_leak :: fn () {
+    _ := alloc(13)
+}

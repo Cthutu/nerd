@@ -143,6 +143,10 @@ internal void hir_node_source_location(const Lexer* lexer,
     }
     *out_line        = line + 1;
     *out_source_path = mapped.source_path;
+    while (out_source_path->count > 0 &&
+           out_source_path->data[out_source_path->count - 1] == '\0') {
+        out_source_path->count--;
+    }
 }
 
 internal void hir_token_source_location(const Lexer* lexer,
@@ -562,23 +566,20 @@ internal u32 hir_node_source_line(const Lexer* lexer,
                                   const Ast*   ast,
                                   u32          node_index)
 {
-    if (node_index >= array_count(ast->nodes)) {
-        return 0;
-    }
-    const AstNode* node = &ast->nodes[node_index];
-    if (node->token_index >= array_count(lexer->tokens)) {
-        return 0;
-    }
-    u32 line = 0;
-    u32 col  = 0;
-    if (!lex_offset_to_line_col(lexer->source,
-                                lexer->tokens[node->token_index].offset,
-                                &line,
-                                &col)) {
-        return 0;
-    }
-    UNUSED(col);
-    return line + 1;
+    string source_path = {0};
+    u32    line        = 0;
+    hir_node_source_location(lexer, ast, node_index, &source_path, &line);
+    return line;
+}
+
+internal string hir_node_source_path(const Lexer* lexer,
+                                     const Ast*   ast,
+                                     u32          node_index)
+{
+    string source_path = {0};
+    u32    line        = 0;
+    hir_node_source_location(lexer, ast, node_index, &source_path, &line);
+    return source_path;
 }
 
 internal u32 hir_token_source_line(const Lexer* lexer, u32 token_index)
@@ -1315,7 +1316,7 @@ internal u32 hir_lower_expr_with_expected(Hir*         hir,
                     .first_arg         = first_arg,
                     .arg_count         = arg_count,
                     .source_line = hir_node_source_line(lexer, ast, node_index),
-                    .source_path = lexer->source.source_path,
+                    .source_path = hir_node_source_path(lexer, ast, node_index),
                 });
         }
     }
@@ -1362,7 +1363,7 @@ internal u32 hir_lower_expr_with_expected(Hir*         hir,
                 .first_arg         = first_arg,
                 .arg_count         = call->arg_count,
                 .source_line = hir_node_source_line(lexer, ast, node_index),
-                .source_path = lexer->source.source_path,
+                .source_path = hir_node_source_path(lexer, ast, node_index),
             });
     }
 
@@ -1712,23 +1713,17 @@ internal u32 hir_lower_expr(Hir*         hir,
         }
     case AK_BuiltinMacro:
         {
-            string source_path = lexer->source.source_path;
+            string source_path = {0};
+            u32    line        = 0;
+            hir_node_source_location(
+                lexer, ast, node_index, &source_path, &line);
             if (node->b != U32_MAX &&
                 ast->nodes[node->b].kind == AK_StringLiteral) {
                 source_path = hir_resolve_source_relative_path(
                     &hir->arena,
-                    lexer->source.source_path,
+                    source_path,
                     lexer->strings[ast->nodes[node->b].a]);
             }
-
-            u32 line = 0;
-            u32 col  = 0;
-            if (node->token_index < array_count(lexer->tokens)) {
-                const Token* token = &lexer->tokens[node->token_index];
-                (void)lex_offset_to_line_col(
-                    lexer->source, token->offset, &line, &col);
-            }
-            UNUSED(col);
             return hir_add_expr(
                 hir,
                 (HirExpr){
@@ -1736,7 +1731,7 @@ internal u32 hir_lower_expr(Hir*         hir,
                     .type_index    = hir_node_type(sema, node_index),
                     .symbol_handle = node->a,
                     .local_index   = sema_no_local(),
-                    .source_line   = line + 1,
+                    .source_line   = line,
                     .source_path   = source_path,
                 });
         }
@@ -2150,7 +2145,8 @@ internal u32 hir_lower_expr(Hir*         hir,
                         .arg_count         = arg_count,
                         .source_line =
                             hir_node_source_line(lexer, ast, node_index),
-                        .source_path = lexer->source.source_path,
+                        .source_path =
+                            hir_node_source_path(lexer, ast, node_index),
                     });
             }
 
@@ -2219,7 +2215,8 @@ internal u32 hir_lower_expr(Hir*         hir,
                         .arg_count         = arg_count,
                         .source_line =
                             hir_node_source_line(lexer, ast, node_index),
-                        .source_path = lexer->source.source_path,
+                        .source_path =
+                            hir_node_source_path(lexer, ast, node_index),
                     });
             }
 
@@ -2253,7 +2250,8 @@ internal u32 hir_lower_expr(Hir*         hir,
                         .arg_count  = arg_count,
                         .source_line =
                             hir_node_source_line(lexer, ast, node_index),
-                        .source_path = lexer->source.source_path,
+                        .source_path =
+                            hir_node_source_path(lexer, ast, node_index),
                     });
             }
             u32 callee_expr_index =
@@ -2309,7 +2307,7 @@ internal u32 hir_lower_expr(Hir*         hir,
                     .first_arg         = first_arg,
                     .arg_count         = arg_count,
                     .source_line = hir_node_source_line(lexer, ast, node_index),
-                    .source_path = lexer->source.source_path,
+                    .source_path = hir_node_source_path(lexer, ast, node_index),
                 });
         }
     case AK_Cast:
@@ -2480,7 +2478,8 @@ internal u32 hir_lower_expr(Hir*         hir,
                                     .arg_count   = payload->param_count,
                                     .source_line = hir_node_source_line(
                                         lexer, ast, node_index),
-                                    .source_path = lexer->source.source_path,
+                                    .source_path = hir_node_source_path(
+                                        lexer, ast, node_index),
                                 });
                         }
                     }

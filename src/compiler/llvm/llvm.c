@@ -1050,6 +1050,17 @@ internal void llvm_append_assert_source_path_global_name(StringBuilder* sb,
     sb_format(sb, "@.assert.source_path.m%u.%u", module_index, stmt_index);
 }
 
+internal void llvm_append_expr_source_path_global_name(StringBuilder* sb,
+                                                       const Hir*     hir,
+                                                       u32 expr_index)
+{
+    u32 module_index = hir != NULL ? hir->current_module_index : 0;
+    if (module_index == U32_MAX) {
+        module_index = 0;
+    }
+    sb_format(sb, "@.expr.source_path.m%u.%u", module_index, expr_index);
+}
+
 internal void llvm_append_builtin_module_file_global_name(StringBuilder* sb,
                                                           const Hir*     hir)
 {
@@ -1138,6 +1149,44 @@ internal string llvm_assert_source_path_global_name_string(const Hir* hir,
     sb_init(&sb, arena);
     llvm_append_assert_source_path_global_name(&sb, hir, stmt_index);
     return sb_to_string(&sb);
+}
+
+internal string llvm_expr_source_path_global_name_string(const Hir* hir,
+                                                         Arena*     arena,
+                                                         u32        expr_index)
+{
+    StringBuilder sb = {0};
+    sb_init(&sb, arena);
+    llvm_append_expr_source_path_global_name(&sb, hir, expr_index);
+    return sb_to_string(&sb);
+}
+
+internal string llvm_source_path_global_name(const Hir*   hir,
+                                             const Lexer* lexer,
+                                             Arena*       arena,
+                                             string       source_path)
+{
+    if (hir != NULL && source_path.count > 0) {
+        if (lexer != NULL &&
+            string_eq(source_path, lexer->source.source_path)) {
+            return llvm_builtin_module_file_global_name_string(hir, arena);
+        }
+        for (u32 i = 0; i < array_count(hir->exprs); ++i) {
+            if (string_eq(hir->exprs[i].source_path, source_path)) {
+                return llvm_expr_source_path_global_name_string(hir, arena, i);
+            }
+        }
+    }
+    return llvm_builtin_module_file_global_name_string(hir, arena);
+}
+
+internal string llvm_allocation_source_path_global_name(const Hir*     hir,
+                                                        const Lexer*   lexer,
+                                                        Arena*         arena,
+                                                        const HirExpr* expr)
+{
+    return llvm_source_path_global_name(
+        hir, lexer, arena, expr != NULL ? expr->source_path : (string){0});
 }
 
 internal string llvm_assert_default_message_global_name_string(const Hir* hir,
@@ -2529,6 +2578,7 @@ typedef struct {
     string            macro_source_path;
     u32               macro_source_line;
     const Hir*        macro_source_hir;
+    const Lexer*      macro_source_lexer;
     bool              discard_expr_value;
     LlvmDebugModule*  debug;
     u32               debug_scope_id;
@@ -8146,16 +8196,17 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                               ? lex_symbol(ctx->lexer, expr->symbol_handle)
                               : (string){0};
             if (string_eq_cstr(name, "file")) {
-                string        path      = ctx->macro_source_path.count > 0
-                                              ? ctx->macro_source_path
-                                              : expr->source_path;
-                const Hir*    macro_hir = ctx->macro_source_hir != NULL
-                                              ? ctx->macro_source_hir
-                                              : ctx->hir;
-                StringBuilder sb        = {0};
-                sb_init(&sb, ctx->arena);
-                llvm_append_builtin_module_file_global_name(&sb, macro_hir);
-                string global = sb_to_string(&sb);
+                string       path        = ctx->macro_source_path.count > 0
+                                               ? ctx->macro_source_path
+                                               : expr->source_path;
+                const Hir*   macro_hir   = ctx->macro_source_hir != NULL
+                                               ? ctx->macro_source_hir
+                                               : ctx->hir;
+                const Lexer* macro_lexer = ctx->macro_source_lexer != NULL
+                                               ? ctx->macro_source_lexer
+                                               : ctx->lexer;
+                string       global      = llvm_source_path_global_name(
+                    macro_hir, macro_lexer, ctx->arena, path);
                 return (LlvmValue){
                     .ok         = true,
                     .type_index = expr->type_index,
@@ -8373,8 +8424,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                               (unsigned long long)item_size);
 
                     string source_path =
-                        llvm_builtin_module_file_global_name_string(ctx->hir,
-                                                                    ctx->arena);
+                        llvm_allocation_source_path_global_name(
+                            ctx->hir, ctx->lexer, ctx->arena, expr);
                     string pointer = llvm_temp(ctx);
                     sb_format(ctx->sb,
                               "  " STRINGP
@@ -8405,8 +8456,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             }
 
             u64    size        = llvm_type_storage_bytes(ctx->sema, item_type);
-            string source_path = llvm_builtin_module_file_global_name_string(
-                ctx->hir, ctx->arena);
+            string source_path = llvm_allocation_source_path_global_name(
+                ctx->hir, ctx->lexer, ctx->arena, expr);
             string pointer = llvm_temp(ctx);
             sb_format(
                 ctx->sb,
@@ -8621,9 +8672,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
 
                 u64 item_size = llvm_type_storage_bytes(ctx->sema, item_type);
                 string header = llvm_temp(ctx);
-                string source_path =
-                    llvm_builtin_module_file_global_name_string(ctx->hir,
-                                                                ctx->arena);
+                string source_path = llvm_allocation_source_path_global_name(
+                    ctx->hir, ctx->lexer, ctx->arena, expr);
                 u64 header_bytes = llvm_dynamic_array_header_bytes(ctx->layout);
                 string alloc_bytes = string_format(
                     ctx->arena, "%llu", (unsigned long long)header_bytes);
@@ -12897,9 +12947,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
 
                 string usize_type = llvm_type_string(
                     ctx, llvm_builtin_type(ctx->sema, STK_Usize));
-                string source_path =
-                    llvm_builtin_module_file_global_name_string(ctx->hir,
-                                                                ctx->arena);
+                string source_path = llvm_allocation_source_path_global_name(
+                    ctx->hir, ctx->lexer, ctx->arena, expr);
                 sb_format(ctx->sb,
                           "  call void @nrt_arena_init(ptr " STRINGP
                           ", " STRINGP " " STRINGP ", " STRINGP " " STRINGP
@@ -13098,13 +13147,15 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                         default_emit_ctx->macro_source_path = expr->source_path;
                         default_emit_ctx->macro_source_line = expr->source_line;
                         default_emit_ctx->macro_source_hir  = ctx->hir;
+                        default_emit_ctx->macro_source_lexer = ctx->lexer;
                         context_value =
                             llvm_emit_expr(default_emit_ctx,
                                            function,
                                            param->default_expr_index);
-                        default_emit_ctx->macro_source_path = (string){0};
-                        default_emit_ctx->macro_source_line = 0;
-                        default_emit_ctx->macro_source_hir  = NULL;
+                        default_emit_ctx->macro_source_path  = (string){0};
+                        default_emit_ctx->macro_source_line  = 0;
+                        default_emit_ctx->macro_source_hir   = NULL;
+                        default_emit_ctx->macro_source_lexer = NULL;
                         if (!context_value.ok) {
                             array_free(default_values);
                             array_free(args);
@@ -14559,9 +14610,9 @@ internal bool llvm_dynamic_array_ensure_header(LlvmFunctionContext* ctx,
               STRINGV(done_label));
 
     sb_format(ctx->sb, STRINGP ":\n", STRINGV(alloc_label));
-    string allocated = llvm_temp(ctx);
-    string source_path =
-        llvm_builtin_module_file_global_name_string(ctx->hir, ctx->arena);
+    string allocated   = llvm_temp(ctx);
+    string source_path = llvm_allocation_source_path_global_name(
+        ctx->hir, ctx->lexer, ctx->arena, source_expr);
     u32 source_line  = source_expr != NULL ? source_expr->source_line : 0;
     u64 header_bytes = llvm_dynamic_array_header_bytes(ctx->layout);
     sb_format(ctx->sb,
@@ -14872,8 +14923,8 @@ internal LlvmValue llvm_emit_dynamic_array_push(LlvmFunctionContext* ctx,
     string byte_count   = llvm_temp(ctx);
     string total_bytes  = llvm_temp(ctx);
     string grown_header = llvm_temp(ctx);
-    string source_path =
-        llvm_builtin_module_file_global_name_string(ctx->hir, ctx->arena);
+    string source_path  = llvm_allocation_source_path_global_name(
+        ctx->hir, ctx->lexer, ctx->arena, call);
     sb_format(ctx->sb,
               "  " STRINGP " = mul i64 " STRINGP ", %llu\n"
               "  " STRINGP " = add i64 %llu, " STRINGP "\n"
@@ -15030,8 +15081,8 @@ internal LlvmValue llvm_emit_dynamic_array_reserve(LlvmFunctionContext* ctx,
     string bytes       = llvm_temp(ctx);
     string total_bytes = llvm_temp(ctx);
     string new_header  = llvm_temp(ctx);
-    string source_path =
-        llvm_builtin_module_file_global_name_string(ctx->hir, ctx->arena);
+    string source_path = llvm_allocation_source_path_global_name(
+        ctx->hir, ctx->lexer, ctx->arena, call);
     sb_format(ctx->sb,
               "  " STRINGP " = mul i64 " STRINGP ", %llu\n"
               "  " STRINGP " = add i64 %llu, " STRINGP "\n"
@@ -15477,8 +15528,8 @@ internal LlvmValue llvm_emit_dynamic_array_append(LlvmFunctionContext* ctx,
     string bytes       = llvm_temp(ctx);
     string total_bytes = llvm_temp(ctx);
     string new_header  = llvm_temp(ctx);
-    string source_path =
-        llvm_builtin_module_file_global_name_string(ctx->hir, ctx->arena);
+    string source_path = llvm_allocation_source_path_global_name(
+        ctx->hir, ctx->lexer, ctx->arena, call);
     sb_format(ctx->sb,
               "  " STRINGP " = mul i64 " STRINGP ", %llu\n"
               "  " STRINGP " = add i64 %llu, " STRINGP "\n"
@@ -15697,8 +15748,8 @@ internal LlvmValue llvm_emit_dynamic_array_resize(LlvmFunctionContext* ctx,
     string bytes       = llvm_temp(ctx);
     string total_bytes = llvm_temp(ctx);
     string new_header  = llvm_temp(ctx);
-    string source_path =
-        llvm_builtin_module_file_global_name_string(ctx->hir, ctx->arena);
+    string source_path = llvm_allocation_source_path_global_name(
+        ctx->hir, ctx->lexer, ctx->arena, call);
     sb_format(ctx->sb,
               "  " STRINGP " = mul i64 " STRINGP ", %llu\n"
               "  " STRINGP " = add i64 %llu, " STRINGP "\n"
@@ -15925,6 +15976,36 @@ internal void llvm_render_builtin_macro_globals(StringBuilder* sb,
               lexer->source.source_path.count + 1);
     llvm_append_escaped_string_bytes(sb, lexer->source.source_path);
     sb_append_cstr(sb, "\\00\"\n");
+}
+
+internal void llvm_render_expr_source_path_globals(StringBuilder* sb,
+                                                   const Hir*     hir,
+                                                   const Lexer*   lexer)
+{
+    for (u32 i = 0; i < array_count(hir->exprs); ++i) {
+        string source_path = hir->exprs[i].source_path;
+        if (source_path.count == 0 ||
+            (lexer != NULL &&
+             string_eq(source_path, lexer->source.source_path))) {
+            continue;
+        }
+        bool duplicate = false;
+        for (u32 j = 0; j < i; ++j) {
+            if (string_eq(hir->exprs[j].source_path, source_path)) {
+                duplicate = true;
+                break;
+            }
+        }
+        if (duplicate) {
+            continue;
+        }
+        llvm_append_expr_source_path_global_name(sb, hir, i);
+        sb_format(sb,
+                  " = private unnamed_addr constant [%zu x i8] c\"",
+                  source_path.count + 1);
+        llvm_append_escaped_string_bytes(sb, source_path);
+        sb_append_cstr(sb, "\\00\"\n");
+    }
 }
 
 internal bool llvm_hir_uses_assert(const Hir* hir)
@@ -16850,6 +16931,7 @@ string llvm_render_hir(const Hir*   hir,
     sb_append_cstr(&sb, "; generated from HIR\n\n");
 
     llvm_render_builtin_macro_globals(&sb, hir, lexer);
+    llvm_render_expr_source_path_globals(&sb, hir, lexer);
     if (array_count(lexer->strings) > 0) {
         llvm_render_string_literals(&sb, hir, lexer);
         llvm_render_concat_string_literals(&sb, hir, lexer, arena);
