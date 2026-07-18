@@ -134,6 +134,9 @@ Completion is semantic where possible:
   `return for ...`. For a parameter whose type came from an unqualified `use`,
   the fallback reads the imported module source so `param.` can still complete
   public plex fields from standard modules while the edited file is incomplete.
+  Member completion also recognises the receiver after a control-flow keyword,
+  so an incomplete condition such as `for system.` completes `system` rather
+  than treating `for system` as the receiver expression.
 - `module_binding.` offers public exports for `module_binding :: use ...`
   imports, including while the edited document or imported module has parse or
   semantic errors. Folder-module fallback includes public declarations from

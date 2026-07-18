@@ -2,7 +2,7 @@ use test.associated_parts
 
 main :: fn () {
     factory := PartFactory.init()
-    factory.
+    for factory.
 }
 ¬
 [
@@ -16,7 +16,7 @@ main :: fn () {
             },
             "position": {
                 "line": 4,
-                "character": 12
+                "character": 16
             },
             "context": {
                 "triggerKind": 2,

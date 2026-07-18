@@ -175,6 +175,13 @@ lsp_completion_member_context(string source, usize offset, string* out_receiver)
             continue;
         }
         if (c == ' ' || c == '\t') {
+            // Whitespace can belong to the receiver immediately before the
+            // member dot (`value .member`), but whitespace between two bare
+            // identifiers marks a boundary, as in `for value.member`.
+            if (receiver_start >= receiver_end ||
+                source.data[receiver_start] != '.') {
+                break;
+            }
             usize cursor = receiver_start;
             while (cursor > 0 && (source.data[cursor - 1] == ' ' ||
                                   source.data[cursor - 1] == '\t')) {
