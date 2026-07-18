@@ -528,6 +528,16 @@ on "windows" {
         frame_windows_update_existing(system, frame)
     }
 
+    frame_done_impl :: fn (system: ^FrameSystem) {
+        for i: usize = 0; i < system.frames.count; i += 1 {
+            frame_windows_destroy_info(^system.frames[i])
+        }
+        system.frames.free()
+        on frame_windows_current_system == system => {
+            frame_windows_current_system = nil
+        }
+    }
+
     frame_loop_impl :: fn (system: ^FrameSystem) -> bool {
         frame_windows_prune_closed(system)
         frame_windows_pump_messages(system)

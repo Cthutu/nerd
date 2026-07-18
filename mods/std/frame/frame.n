@@ -22,11 +22,14 @@
 -- `FrameSystem.update(^frame)` copies current platform reality back into a
 -- user's `Frame`, for example after the OS or user moves, resizes, closes, or
 -- changes fullscreen state. When the user is finished with a window, they can
--- call `FrameSystem.destroy(^frame)`.
+-- call `FrameSystem.destroy(^frame)`. Call `FrameSystem.done()` when the whole
+-- system is no longer needed to destroy any remaining windows and release its
+-- frame and event storage.
 --
 -- Typical usage:
 --|
 --| system := FrameSystem.init()
+--| defer system.done()
 --| frame := Frame {
 --|     id: NEW_FRAME width: 800 height: 600 title: "Frame"
 --|     full_screen: no resizable: yes
@@ -351,6 +354,19 @@ impl FrameSystem {
         }
     }
 
+    -- Destroys any remaining frames and releases all storage owned by the
+    -- system. Calling `done` more than once is safe.
+    pub done :: fn (system: ^Self) {
+        frame_done_impl(system)
+        system.next_id_hint = 1
+        system.left_shift_down = no
+        system.right_shift_down = no
+        system.left_control_down = no
+        system.right_control_down = no
+        system.left_alt_down = no
+        system.right_alt_down = no
+    }
+
     pub apply :: fn (system: ^Self, frame: ^Frame) {
         frame.system = system
         frame_apply_impl(system, frame)
@@ -499,6 +515,7 @@ test "FrameSystem modifier helpers report combined and sided state" {
 
 test "FrameSystem loop returns no after destroying final frame" {
     system := FrameSystem.init()
+    defer system.done()
     platform_info : PlatformFrameInfo
     system.frames.push(FrameInfo {
         id : 1
@@ -568,6 +585,7 @@ test "Frame context reports closed frame" {
 
 test "Frame context reports invalid platform record" {
     system := FrameSystem.init()
+    defer system.done()
     platform_info : PlatformFrameInfo
     system.frames.push(FrameInfo {
         id : 1
@@ -594,4 +612,28 @@ test "Frame context reports invalid platform record" {
             assert no
         }
     }
+}
+
+test "FrameSystem done releases owned frame and event arrays" {
+    system := FrameSystem.init()
+    platform_info : PlatformFrameInfo
+    events : [..]FrameEvent
+    events.push(FrameEvent.None)
+    system.frames.push(FrameInfo {
+        id : 1
+        events
+        platform_info
+    }
+    )
+    system.left_alt_down = yes
+
+    system.done()
+
+    assert system.frames.count == 0
+    assert system.next_id_hint == 1
+    assert !system.is_alt_down()
+
+    -- Lifecycle cleanup is deliberately idempotent for deferred use.
+    system.done()
+    assert system.frames.count == 0
 }
