@@ -2,10 +2,7 @@ use std.frame
 
 main :: fn () {
     system := FrameSystem.init()
-    frame: Frame
-    on system.poll(^frame) {
-        None => {
-        }
+    on system.poll() {
     }
 }
 ¬
@@ -20,11 +17,11 @@ main :: fn () {
             },
             "range": {
                 "start": {
-                    "line": 5,
+                    "line": 4,
                     "character": 10
                 },
                 "end": {
-                    "line": 5,
+                    "line": 4,
                     "character": 10
                 }
             },
@@ -93,7 +90,41 @@ main :: fn () {
         "method": "textDocument/publishDiagnostics",
         "params": {
             "uri": "file:///test.n",
-            "diagnostics": []
+            "diagnostics": [
+                {
+                    "range": {
+                        "start": {
+                            "line": 4,
+                            "character": 18
+                        },
+                        "end": {
+                            "line": 4,
+                            "character": 19
+                        }
+                    },
+                    "severity": 1,
+                    "source": "nerd",
+                    "message": "Argument count mismatch: expected 1, found 0",
+                    "relatedInformation": [
+                        {
+                            "location": {
+                                "uri": "file:///test.n",
+                                "range": {
+                                    "start": {
+                                        "line": 4,
+                                        "character": 18
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "character": 19
+                                    }
+                                }
+                            },
+                            "message": "help: Pass exactly 1 argument to match the function signature."
+                        }
+                    ]
+                }
+            ]
         }
     },
     {
@@ -109,15 +140,15 @@ main :: fn () {
                             {
                                 "range": {
                                     "start": {
-                                        "line": 8,
+                                        "line": 5,
                                         "character": 4
                                     },
                                     "end": {
-                                        "line": 8,
+                                        "line": 5,
                                         "character": 4
                                     }
                                 },
-                                "newText": "\n        Closed => {\n        }\n\n        Resized { width: _, height: _ } => {\n        }\n\n        KeyPress { scan_code: _ } => {\n        }\n\n        KeyRelease { scan_code: _ } => {\n        }\n\n        Character { codepoint: _ } => {\n        }\n    "
+                                "newText": "\n        None => {\n        }\n\n        Closed => {\n        }\n\n        Resized { width: _, height: _ } => {\n        }\n\n        KeyPress { scan_code: _ } => {\n        }\n\n        KeyRelease { scan_code: _ } => {\n        }\n\n        Character { codepoint: _ } => {\n        }\n    "
                             }
                         ]
                     }

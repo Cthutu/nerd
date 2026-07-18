@@ -3052,6 +3052,78 @@ internal void lsp_code_action_append_enum_variant_pattern(Arena*         arena,
     }
 }
 
+internal bool lsp_code_action_on_enum_type(const Ast*  ast,
+                                           const Sema* sema,
+                                           u32         expression_node,
+                                           u32*        out_enum_type)
+{
+    if (expression_node >= array_count(ast->nodes)) {
+        return false;
+    }
+
+    u32 type_index = sema_no_type();
+    if (lsp_sema_node_type(sema, expression_node, &type_index)) {
+        type_index           = sema_materialise_type(sema, type_index);
+        const SemaType* type = NULL;
+        if (lsp_sema_type(sema, type_index, &type) && type->kind == STK_Enum) {
+            *out_enum_type = type_index;
+            return true;
+        }
+    }
+
+    const AstNode* expression = &ast->nodes[expression_node];
+    while ((expression->kind == AK_Expression ||
+            expression->kind == AK_Statement) &&
+           expression->a < array_count(ast->nodes)) {
+        expression_node = expression->a;
+        expression      = &ast->nodes[expression_node];
+    }
+    if (lsp_sema_node_type(sema, expression_node, &type_index)) {
+        type_index           = sema_materialise_type(sema, type_index);
+        const SemaType* type = NULL;
+        if (lsp_sema_type(sema, type_index, &type) && type->kind == STK_Enum) {
+            *out_enum_type = type_index;
+            return true;
+        }
+    }
+    if (expression->kind != AK_Call ||
+        expression->a >= array_count(ast->nodes)) {
+        return false;
+    }
+
+    bool found_callable_type =
+        lsp_sema_node_type(sema, expression->a, &type_index);
+    if (!found_callable_type &&
+        expression_node < array_count(sema->node_method_call_decl_indices)) {
+        u32 decl_index = sema->node_method_call_decl_indices[expression_node];
+        const SemaDecl* decl = NULL;
+        if (lsp_sema_decl(sema, decl_index, &decl)) {
+            type_index          = decl->type_index;
+            found_callable_type = type_index != sema_no_type();
+        }
+    }
+    if (!found_callable_type) {
+        return false;
+    }
+
+    type_index               = sema_materialise_type(sema, type_index);
+    const SemaType* callable = NULL;
+    if (!lsp_sema_type(sema, type_index, &callable) ||
+        callable->kind != STK_Function ||
+        callable->return_type == sema_no_type()) {
+        return false;
+    }
+
+    type_index           = sema_materialise_type(sema, callable->return_type);
+    const SemaType* type = NULL;
+    if (!lsp_sema_type(sema, type_index, &type) || type->kind != STK_Enum) {
+        return false;
+    }
+
+    *out_enum_type = type_index;
+    return true;
+}
+
 internal bool lsp_code_action_missing_enum_variants(Arena*             arena,
                                                     const LspDocument* doc,
                                                     u32     on_node_index,
@@ -3071,12 +3143,7 @@ internal bool lsp_code_action_missing_enum_variants(Arena*             arena,
     }
 
     u32 enum_type = sema_no_type();
-    if (!lsp_sema_node_type(sema, on_node->a, &enum_type)) {
-        return false;
-    }
-    enum_type = sema_materialise_type(sema, enum_type);
-    if (enum_type == sema_no_type() || enum_type >= array_count(sema->types) ||
-        sema->types[enum_type].kind != STK_Enum) {
+    if (!lsp_code_action_on_enum_type(ast, sema, on_node->a, &enum_type)) {
         return false;
     }
 
@@ -3306,6 +3373,8 @@ void lsp_handle_code_action(LspState* state, const LspMessage* message)
 
     lsp_code_action_add_missing_plex_fields_action(
         message->arena, actions, uri, doc, offset);
+    lsp_code_action_add_missing_enum_variants_action(
+        message->arena, actions, uri, doc, offset);
 
     LspTypeFactView view = {0};
     if (!lsp_type_fact_view(state, uri, &view)) {
@@ -3315,8 +3384,6 @@ void lsp_handle_code_action(LspState* state, const LspMessage* message)
     }
 
     lsp_code_action_add_trait_impl_stub_action(
-        message->arena, actions, uri, doc, offset);
-    lsp_code_action_add_missing_enum_variants_action(
         message->arena, actions, uri, doc, offset);
 
     json_object_set_array(response, "result", actions);

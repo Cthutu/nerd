@@ -13510,6 +13510,54 @@ internal bool sema_method_matches_trait_symbol(const Lexer*      lexer,
                      lex_symbol(lexer, trait_symbol));
 }
 
+internal void
+sema_preserve_concrete_method_call_type(const Lexer*    lexer,
+                                        Sema*           sema,
+                                        u32             call_node_index,
+                                        u32             callee_node_index,
+                                        const Lexer*    source_lexer,
+                                        const Ast*      source_ast,
+                                        Sema*           source_sema,
+                                        const SemaDecl* source_decl,
+                                        u32             method_decl_index,
+                                        bool            imported,
+                                        bool            receiver_ref,
+                                        bool            receiver_deref)
+{
+    if (source_decl->kind == SK_GenericFunction) {
+        return;
+    }
+
+    u32 source_fn_type = source_decl->type_index;
+    if (source_fn_type == sema_no_type() &&
+        !sema_infer_node_type(source_lexer,
+                              source_ast,
+                              source_sema,
+                              source_decl->value_node_index,
+                              sema_no_type(),
+                              &source_fn_type)) {
+        return;
+    }
+
+    u32 fn_type = imported ? sema_import_type((Lexer*)lexer,
+                                              sema,
+                                              source_lexer,
+                                              source_sema,
+                                              source_fn_type)
+                           : source_fn_type;
+    if (fn_type == sema_no_type() || fn_type >= array_count(sema->types) ||
+        sema->types[fn_type].kind != STK_Function) {
+        return;
+    }
+
+    sema->node_type_indices[callee_node_index] = fn_type;
+    sema->node_type_indices[call_node_index] = sema->types[fn_type].return_type;
+    sema->node_method_call_decl_indices[call_node_index]    = method_decl_index;
+    sema->node_method_call_receiver_refs[call_node_index]   = receiver_ref;
+    sema->node_method_call_receiver_derefs[call_node_index] = receiver_deref;
+    sema->recoverable_method_call_error                     = true;
+}
+
 internal bool sema_try_resolve_method_call(const Lexer* lexer,
                                            const Ast*   ast,
                                            Sema*        sema,
@@ -13796,6 +13844,18 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
             }
             u32 max_count = source_signature->param_count - 1;
             if (call->arg_count < call_arg_offset) {
+                sema_preserve_concrete_method_call_type(lexer,
+                                                        sema,
+                                                        call_node_index,
+                                                        call_node->a,
+                                                        source_lexer,
+                                                        source_ast,
+                                                        source_sema,
+                                                        source_decl,
+                                                        method->decl_index,
+                                                        imported,
+                                                        receiver_ref,
+                                                        receiver_deref);
                 array_free(source_arg_types);
                 return error_0313_argument_count_mismatch(
                     lexer->source,
@@ -13806,6 +13866,18 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
             u32 visible_arg_count = call->arg_count - call_arg_offset;
             if (visible_arg_count < required_count ||
                 visible_arg_count > max_count) {
+                sema_preserve_concrete_method_call_type(lexer,
+                                                        sema,
+                                                        call_node_index,
+                                                        call_node->a,
+                                                        source_lexer,
+                                                        source_ast,
+                                                        source_sema,
+                                                        source_decl,
+                                                        method->decl_index,
+                                                        imported,
+                                                        receiver_ref,
+                                                        receiver_deref);
                 array_free(source_arg_types);
                 u32 expected_count = visible_arg_count < required_count
                                          ? required_count
@@ -21107,6 +21179,10 @@ validate_type:
                 u32 expected_count = call->arg_count < required_count
                                          ? required_count
                                          : fn_param_count;
+                // The callee fixes the result type independently of arity.
+                // Preserve that fact for diagnostics and editor features even
+                // though this call cannot complete semantic analysis.
+                sema->node_type_indices[node_index] = fn_return_type;
                 return error_0313_argument_count_mismatch(
                     lexer->source,
                     sema_node_span(lexer, node),
@@ -24628,6 +24704,11 @@ bool sema_analyse(const Lexer*           lexer,
         return false;
     }
     if (!sema_assign_decl_types(lexer, ast, &sema)) {
+        if (effective_options.keep_partial_results &&
+            sema.recoverable_method_call_error) {
+            *out_sema = sema;
+            return false;
+        }
         sema_done(&sema);
         return false;
     }

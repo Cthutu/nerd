@@ -256,6 +256,7 @@ typedef struct {
     Array(bool) node_is_type_expr;
     Array(bool) node_const_known;
     Array(i64) node_const_values;
+    bool recoverable_method_call_error;
 } Sema;
 
 //------------------------------------------------------------------------------

@@ -206,6 +206,8 @@ For an `on` scrutinee with an enum type, `Add missing enum variants` inserts
 branches for uncovered variants and payload shapes. The action is available
 with the cursor anywhere from the `on` keyword through the closing brace,
 including on an imported method call such as `on system.poll(^frame) { ... }`.
+For a concrete method, the action can use the known enum return type even when
+the call has an argument-count error.
 
 For unused locals, the server offers both a rename quick fix that toggles the
 leading underscore convention and a removal quick fix for simple local

@@ -1240,7 +1240,14 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
 
     if (state->token.kind == TK_LBrace) {
         Array(AstOnBranch) branches = NULL;
-        if (!ast_next_token(state) || !ast_next_token(state)) {
+        if (state->token.token_index == state->token_index &&
+            !ast_next_token(state)) {
+            return error_0201_missing_value(
+                state->token.source,
+                ast_token_span(state, &state->token),
+                TK_else);
+        }
+        if (!ast_peek_token(state)) {
             return error_0201_missing_value(
                 state->token.source,
                 ast_token_span(state, &state->token),
