@@ -121,6 +121,26 @@ internal void lsp_completion_filter_items(JsonValue* items, string prefix)
     __array_count(items->array.values) = write_index;
 }
 
+internal void lsp_completion_filter_type_items(JsonValue* items)
+{
+    if (items->kind != JSON_ARRAY) {
+        return;
+    }
+
+    usize write_index = 0;
+    for (usize read_index = 0; read_index < array_count(items->array.values);
+         ++read_index) {
+        JsonValue* item = items->array.values[read_index];
+        JsonValue* kind = json_object_get_cstr(item, "kind");
+        if (kind == NULL || kind->kind != JSON_NUMBER ||
+            kind->number != 22) { // Struct/type alias
+            continue;
+        }
+        items->array.values[write_index++] = item;
+    }
+    __array_count(items->array.values) = write_index;
+}
+
 internal bool
 lsp_completion_member_context(string source, usize offset, string* out_receiver)
 {
@@ -3891,6 +3911,65 @@ internal void lsp_completion_add_source_top_level_symbols(Arena*     arena,
     }
 }
 
+internal void lsp_completion_add_source_top_level_types(Arena*     arena,
+                                                        JsonValue* items,
+                                                        string     source)
+{
+    i32   depth      = 0;
+    usize line_start = 0;
+    while (line_start < source.count) {
+        usize line_end = line_start;
+        while (line_end < source.count && source.data[line_end] != '\n') {
+            line_end++;
+        }
+        string line = {.data  = source.data + line_start,
+                       .count = line_end - line_start};
+
+        if (depth == 0) {
+            string trimmed =
+                lsp_completion_trim(lsp_completion_strip_comment(line));
+            usize i = 0;
+            if (lsp_completion_match_ident_at(trimmed, &i, s("pub"))) {
+                while (i < trimmed.count &&
+                       (trimmed.data[i] == ' ' || trimmed.data[i] == '\t')) {
+                    i++;
+                }
+            }
+
+            usize name_start = i;
+            while (i < trimmed.count &&
+                   lsp_completion_is_ident_char(trimmed.data[i])) {
+                i++;
+            }
+            string name = {.data  = trimmed.data + name_start,
+                           .count = i - name_start};
+            while (i < trimmed.count &&
+                   (trimmed.data[i] == ' ' || trimmed.data[i] == '\t')) {
+                i++;
+            }
+            if (name.count > 0 && i + 1 < trimmed.count &&
+                trimmed.data[i] == ':' && trimmed.data[i + 1] == ':') {
+                i += 2;
+                while (i < trimmed.count &&
+                       (trimmed.data[i] == ' ' || trimmed.data[i] == '\t')) {
+                    i++;
+                }
+                if (lsp_completion_match_ident_at(trimmed, &i, s("plex")) ||
+                    lsp_completion_match_ident_at(trimmed, &i, s("union")) ||
+                    lsp_completion_match_ident_at(trimmed, &i, s("enum"))) {
+                    lsp_completion_add_unique(arena, items, name, 22);
+                }
+            }
+        }
+
+        lsp_completion_update_impl_depth(line, &depth);
+        if (depth < 0) {
+            depth = 0;
+        }
+        line_start = line_end + (line_end < source.count ? 1 : 0);
+    }
+}
+
 internal bool lsp_completion_line_starts_string_literal(string line)
 {
     line = lsp_completion_trim(lsp_completion_strip_comment(line));
@@ -5339,6 +5418,124 @@ internal bool lsp_completion_enclosing_brace(const Lexer* lexer,
     return found;
 }
 
+typedef enum {
+    LSP_COMPLETION_RECORD_NONE,
+    LSP_COMPLETION_RECORD_FIELD_NAME,
+    LSP_COMPLETION_RECORD_FIELD_TYPE,
+} LspCompletionRecordContext;
+
+internal LspCompletionRecordContext lsp_completion_record_declaration_context(
+    string source, usize offset, string* out_prefix)
+{
+    Array(usize) open_braces = NULL;
+    bool  in_string          = false;
+    bool  in_comment         = false;
+    bool  escaped            = false;
+    usize limit              = MIN(offset, source.count);
+    for (usize i = 0; i < limit; ++i) {
+        u8 ch = source.data[i];
+        if (in_comment) {
+            if (ch == '\n') {
+                in_comment = false;
+            }
+            continue;
+        }
+        if (in_string) {
+            if (escaped) {
+                escaped = false;
+            } else if (ch == '\\') {
+                escaped = true;
+            } else if (ch == '"') {
+                in_string = false;
+            }
+            continue;
+        }
+        if (ch == '-' && i + 1 < limit && source.data[i + 1] == '-') {
+            in_comment = true;
+            i++;
+        } else if (ch == '"') {
+            in_string = true;
+        } else if (ch == '{') {
+            array_push(open_braces, i);
+        } else if (ch == '}' && array_count(open_braces) > 0) {
+            (void)array_pop(open_braces);
+        }
+    }
+
+    if (array_count(open_braces) == 0) {
+        array_free(open_braces);
+        return LSP_COMPLETION_RECORD_NONE;
+    }
+    usize open_offset = open_braces[array_count(open_braces) - 1];
+    array_free(open_braces);
+
+    usize keyword_end = open_offset;
+    while (keyword_end > 0 && (source.data[keyword_end - 1] == ' ' ||
+                               source.data[keyword_end - 1] == '\t' ||
+                               source.data[keyword_end - 1] == '\n' ||
+                               source.data[keyword_end - 1] == '\r')) {
+        keyword_end--;
+    }
+    usize keyword_start = keyword_end;
+    while (keyword_start > 0 &&
+           lsp_completion_is_ident_char(source.data[keyword_start - 1])) {
+        keyword_start--;
+    }
+    string keyword = {.data  = source.data + keyword_start,
+                      .count = keyword_end - keyword_start};
+    if (!string_eq(keyword, s("plex"))) {
+        return LSP_COMPLETION_RECORD_NONE;
+    }
+
+    usize line_start = offset;
+    while (line_start > 0 && source.data[line_start - 1] != '\n') {
+        line_start--;
+    }
+    usize open_end = open_offset + 1;
+    usize cursor   = MAX(line_start, open_end);
+    while (cursor < offset &&
+           (source.data[cursor] == ' ' || source.data[cursor] == '\t')) {
+        cursor++;
+    }
+
+    if (cursor >= offset ||
+        (cursor + 1 < offset && source.data[cursor] == '-' &&
+         source.data[cursor + 1] == '-')) {
+        return LSP_COMPLETION_RECORD_FIELD_NAME;
+    }
+
+    if (cursor + 3 <= offset && memcmp(source.data + cursor, "pub", 3) == 0 &&
+        (cursor + 3 == offset ||
+         !lsp_completion_is_ident_char(source.data[cursor + 3]))) {
+        cursor += 3;
+        while (cursor < offset &&
+               (source.data[cursor] == ' ' || source.data[cursor] == '\t')) {
+            cursor++;
+        }
+    }
+
+    usize field_start = cursor;
+    while (cursor < offset &&
+           lsp_completion_is_ident_char(source.data[cursor])) {
+        cursor++;
+    }
+    if (cursor == field_start || cursor == offset) {
+        return LSP_COMPLETION_RECORD_FIELD_NAME;
+    }
+    if (source.data[cursor] != ' ' && source.data[cursor] != '\t') {
+        return LSP_COMPLETION_RECORD_FIELD_NAME;
+    }
+
+    usize prefix_start = offset;
+    while (prefix_start > cursor &&
+           lsp_completion_is_ident_char(source.data[prefix_start - 1])) {
+        prefix_start--;
+    }
+    *out_prefix = (string){.data  = source.data + prefix_start,
+                           .count = offset - prefix_start};
+    return LSP_COMPLETION_RECORD_FIELD_TYPE;
+}
+
 internal bool lsp_completion_matching_close(const Lexer* lexer,
                                             u32          open_token_index,
                                             u32*         out_close_token_index)
@@ -6086,6 +6283,25 @@ internal void lsp_completion_add_symbols(Arena*             arena,
     }
 }
 
+internal void lsp_completion_add_type_symbols(Arena*             arena,
+                                              JsonValue*         items,
+                                              const LspDocument* doc,
+                                              string             uri,
+                                              string             source,
+                                              usize              offset)
+{
+    lsp_completion_add_symbols(arena, items, doc);
+    lsp_completion_add_source_top_level_types(arena, items, source);
+    lsp_completion_add_source_symbols(arena, items, source, offset);
+    if (!doc->sema_complete) {
+        lsp_completion_add_source_top_level_symbols(arena, items, source);
+    }
+    if (!doc->bindings_ready || !doc->sema_complete) {
+        lsp_completion_add_source_use_exports(arena, items, doc, uri);
+    }
+    lsp_completion_filter_type_items(items);
+}
+
 void lsp_handle_completion(LspState* state, const LspMessage* message)
 {
     JsonValue* response = lsp_prepare_response(message);
@@ -6115,6 +6331,24 @@ void lsp_handle_completion(LspState* state, const LspMessage* message)
     if (lsp_completion_use_context(view.source, offset, &use_path)) {
         lsp_completion_add_modules(message->arena, items, doc, use_path);
         lsp_completion_filter_items(items, prefix);
+        json_object_set_array(response, "result", items);
+        lsp_send_response(message->arena, response);
+        return;
+    }
+
+    string                     record_prefix = {0};
+    LspCompletionRecordContext record_context =
+        lsp_completion_record_declaration_context(
+            view.source, offset, &record_prefix);
+    if (record_context == LSP_COMPLETION_RECORD_FIELD_NAME) {
+        json_object_set_array(response, "result", items);
+        lsp_send_response(message->arena, response);
+        return;
+    }
+    if (record_context == LSP_COMPLETION_RECORD_FIELD_TYPE) {
+        lsp_completion_add_type_symbols(
+            message->arena, items, doc, uri, view.source, offset);
+        lsp_completion_filter_items(items, record_prefix);
         json_object_set_array(response, "result", items);
         lsp_send_response(message->arena, response);
         return;

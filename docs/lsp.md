@@ -154,6 +154,9 @@ Completion is semantic where possible:
 - nested `on` payload patterns use their own expected type for completion. For
   example, `KeyPress { scan_code: E }` offers `FrameScanCode` variants matching
   `E`, rather than variants of the outer `FrameEvent` scrutinee.
+- plex declaration bodies suppress completion while a field name is being
+  entered. Once whitespace separates the field name from its type, completion
+  offers type declarations only.
 - `use ...` offers module path segments from the active module search roots
 
 The dynamic-array member list is shared conceptually with semantic analysis and
