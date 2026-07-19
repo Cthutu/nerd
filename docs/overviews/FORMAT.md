@@ -44,6 +44,10 @@ The formatter should be deterministic and idempotent.
 - Core syntax spacing is normalised rather than preserving arbitrary user spacing.
 - Binding and function tokens such as `::`, `:`, `=`, and `=>` use normalised spacing.
 - Binary operators use surrounding spaces.
+- String continuation fragments that start on separate source lines remain on
+  separate lines, indented one level beyond the first string. This preserves
+  intentional row and diagram boundaries while same-line fragments may still
+  be folded together.
 - Long single-branch boolean `on condition => action` statements whose
   condition is a `&&` or `||` chain wrap each chained condition term onto a
   continuation line.

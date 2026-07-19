@@ -867,6 +867,13 @@ internal bool format_collect_plain_string_concat(StringBuilder* sb,
                                                  const Cst*     cst,
                                                  const Lexer*   lexer,
                                                  u32            node_index);
+internal bool format_string_concat_has_source_line_break(const Cst*   cst,
+                                                         const Lexer* lexer,
+                                                         u32 node_index);
+internal void format_emit_source_multiline_string_concat(StringBuilder* sb,
+                                                         const Cst*     cst,
+                                                         const Lexer*   lexer,
+                                                         u32 node_index);
 internal bool format_node_is_string_continuation_operand(const Cst*   cst,
                                                          const Lexer* lexer,
                                                          u32 node_index);
@@ -1081,15 +1088,22 @@ internal void format_emit_expr(StringBuilder* sb,
         break;
     case CK_StringConcat:
         {
-            StringBuilder concat = {0};
-            sb_init(&concat, &temp_arena);
-            if (format_collect_plain_string_concat(
-                    &concat, cst, lexer, node_index)) {
-                format_emit_string_literal(sb, sb_to_string(&concat), false);
+            if (format_string_concat_has_source_line_break(
+                    cst, lexer, node_index)) {
+                format_emit_source_multiline_string_concat(
+                    sb, cst, lexer, node_index);
             } else {
-                format_emit_expr(sb, cst, lexer, node->a, node_precedence);
-                sb_append_char(sb, ' ');
-                format_emit_expr(sb, cst, lexer, node->b, node_precedence);
+                StringBuilder concat = {0};
+                sb_init(&concat, &temp_arena);
+                if (format_collect_plain_string_concat(
+                        &concat, cst, lexer, node_index)) {
+                    format_emit_string_literal(
+                        sb, sb_to_string(&concat), false);
+                } else {
+                    format_emit_expr(sb, cst, lexer, node->a, node_precedence);
+                    sb_append_char(sb, ' ');
+                    format_emit_expr(sb, cst, lexer, node->b, node_precedence);
+                }
             }
         }
         break;
@@ -2851,6 +2865,57 @@ internal bool format_collect_plain_string_concat(StringBuilder* sb,
     }
     return format_collect_plain_string_concat(sb, cst, lexer, node->a) &&
            format_collect_plain_string_concat(sb, cst, lexer, node->b);
+}
+
+internal bool format_string_concat_token_starts_on_new_line(const Lexer* lexer,
+                                                            u32 token_index)
+{
+    if (lexer == NULL || token_index == 0 ||
+        token_index >= array_count(lexer->tokens)) {
+        return false;
+    }
+    usize previous_end =
+        lex_token_end_offset(lexer, &lexer->tokens[token_index - 1]);
+    usize current_start = lexer->tokens[token_index].offset;
+    return format_count_newlines_between(
+               lexer->source.source, previous_end, current_start) > 0;
+}
+
+internal bool format_string_concat_has_source_line_break(const Cst*   cst,
+                                                         const Lexer* lexer,
+                                                         u32 node_index)
+{
+    const CstNode* node = &cst->nodes[node_index];
+    if (node->kind != CK_StringConcat) {
+        return false;
+    }
+    return format_string_concat_token_starts_on_new_line(lexer,
+                                                         node->token_index) ||
+           format_string_concat_has_source_line_break(cst, lexer, node->a) ||
+           format_string_concat_has_source_line_break(cst, lexer, node->b);
+}
+
+internal void format_emit_source_multiline_string_concat(StringBuilder* sb,
+                                                         const Cst*     cst,
+                                                         const Lexer*   lexer,
+                                                         u32 node_index)
+{
+    const CstNode* node = &cst->nodes[node_index];
+    if (node->kind != CK_StringConcat) {
+        format_emit_expr(
+            sb, cst, lexer, node_index, format_expr_precedence(node));
+        return;
+    }
+
+    format_emit_source_multiline_string_concat(sb, cst, lexer, node->a);
+    if (format_string_concat_token_starts_on_new_line(lexer,
+                                                      node->token_index)) {
+        sb_append_char(sb, '\n');
+        format_emit_indent(sb, g_format_expr_indent_level + 1);
+    } else {
+        sb_append_char(sb, ' ');
+    }
+    format_emit_source_multiline_string_concat(sb, cst, lexer, node->b);
 }
 
 internal bool format_node_is_string_continuation_operand(const Cst*   cst,
