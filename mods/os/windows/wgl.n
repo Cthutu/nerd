@@ -26,6 +26,11 @@ ffi "opengl32" {
     pub wglGetProcAddress (name: ^i8) -> ^void
 }
 
+ffi "kernel32" {
+    GetModuleHandle :: GetModuleHandleA (name: ^i8) -> HMODULE
+                       GetProcAddress   (module: HMODULE, name: ^i8) -> ^void
+}
+
 pub wglGetValidProcAddress :: fn (name: ^i8) -> ^void {
     address := wglGetProcAddress(name)
     value := address.as(usize)
@@ -35,4 +40,19 @@ pub wglGetValidProcAddress :: fn (name: ^i8) -> ^void {
         value == 3 ||
         value == 0xffffffffffffffff => return nil
     return address
+}
+
+-- Resolves an OpenGL command through WGL, falling back to the OpenGL DLL for
+-- commands from the Windows OpenGL 1.1 export surface.
+pub wglGetOpenGLProcAddress :: fn (name: ^i8) -> ^void {
+    address := wglGetValidProcAddress(name)
+    on address != nil => return address
+
+    module := GetModuleHandle(c"opengl32.dll")
+    on module == nil => return nil
+    return GetProcAddress(module, name)
+}
+
+test "Windows OpenGL resolver finds DLL-exported commands" {
+    assert wglGetOpenGLProcAddress(c"glPolygonMode") != nil
 }
