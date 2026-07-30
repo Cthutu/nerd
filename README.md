@@ -97,8 +97,9 @@ LLVM backend status:
 - `nerd run source.n` and `nerd build source.n` compile executables with the
   LLVM backend. `nerd build --obj`, `--lib`, and `--dll` produce host object,
   static-library, and shared-library outputs.
-- `nerd init <project>` creates a new Nerd project with `main.n`, a `Justfile`,
-  VS Code task/launch files, `.gitignore`, and an initial git commit.
+- `nerd init [project]` creates a new Nerd project with `main.n`, a `Justfile`,
+  VS Code task/launch files, `.gitignore`, and an initial git commit. When the
+  project argument is omitted, it initialises the current directory.
 - The previous IR/C backend has been removed; HIR is the compiler middle layer
   and LLVM IR is the executable backend output.
 - The executable backend targets the host 64-bit clang toolchain. Cross-target

@@ -832,7 +832,8 @@ def test_command(path: pathlib.Path) -> list[Failure]:
         input_path = cwd / "main.n"
     elif run_mode == "default-folder":
         input_path = cwd / f"{cwd.name}.n"
-    input_path.write_text(source, encoding="utf-8", newline="\n")
+    if command != "init":
+        input_path.write_text(source, encoding="utf-8", newline="\n")
     executable = input_path.with_suffix("")
     if command in {"build", "b"} and current_platform() == "windows":
         executable = pathlib.Path(f"{executable}.exe")
@@ -841,10 +842,13 @@ def test_command(path: pathlib.Path) -> list[Failure]:
 
     init_project: pathlib.Path | None = None
     if run_mode == "init-project":
-        if len(cli_args) != 1:
-            return [Failure(path, "init-project run mode expects one project argument")]
-        init_project = cwd / cli_args[0]
-        remove_generated_path(init_project)
+        if len(cli_args) > 1:
+            return [Failure(path, "init-project run mode expects at most one project argument")]
+        if cli_args:
+            init_project = cwd / cli_args[0]
+            remove_generated_path(init_project)
+        else:
+            init_project = cwd
 
     if run_mode == "clean-llvm" and command in {"run", "r"}:
         for stale in (

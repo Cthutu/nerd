@@ -133,6 +133,25 @@ internal bool nerd_init_create_dir(cstr path)
         "Failed to create directory `%s`: %s", path, strerror(errno));
 }
 
+internal bool nerd_init_ensure_dir(cstr path)
+{
+    if (!path_exists(path)) {
+        return nerd_init_create_dir(path);
+    }
+    if (path_is_directory(path)) {
+        return true;
+    }
+    return error_runtime("Expected a directory at `%s`", path);
+}
+
+internal bool nerd_init_require_absent(cstr path)
+{
+    if (!path_exists(path)) {
+        return true;
+    }
+    return error_runtime("Refusing to overwrite existing path: %s", path);
+}
+
 internal bool nerd_init_write_file(cstr path, cstr text)
 {
     if (nerd_write_test_file(path, text)) {
@@ -165,12 +184,10 @@ internal int nerd_cmd_init(const JsonValue* cli_result)
 
     cstr project =
         nerd_cli_param_cstr(&arena, cli_result, "command.params.project");
-    if (!project || project[0] == '\0') {
-        error_runtime("Expected a project name for `nerd init`");
-        arena_done(&arena);
-        return 1;
-    }
-    if (path_exists(project)) {
+    bool use_current_directory = !project || project[0] == '\0';
+    if (use_current_directory) {
+        project = ".";
+    } else if (path_exists(project)) {
         error_runtime("Project path already exists: %s", project);
         arena_done(&arena);
         return 1;
@@ -269,8 +286,14 @@ internal int nerd_cmd_init(const JsonValue* cli_result)
         "    ]\n"
         "}\n";
 
-    bool ok  = nerd_init_create_dir(project) &&
-               nerd_init_create_dir(vscode_dir) &&
+    bool ok  = nerd_init_require_absent(justfile) &&
+               nerd_init_require_absent(gitignore) &&
+               nerd_init_require_absent(main_file) &&
+               nerd_init_require_absent(tasks_file) &&
+               nerd_init_require_absent(launch_file) &&
+               (use_current_directory ? nerd_init_ensure_dir(project)
+                                      : nerd_init_create_dir(project)) &&
+               nerd_init_ensure_dir(vscode_dir) &&
                nerd_init_write_file(justfile, justfile_text) &&
                nerd_init_write_file(gitignore, gitignore_text) &&
                nerd_init_write_file(main_file, main_text) &&
@@ -635,8 +658,9 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
                                             "positional",
                                             NULL,
                                             NULL,
-                                            "Project directory to create",
-                                            true));
+                                            "Project directory to create "
+                                            "(defaults to current directory)",
+                                            false));
         json_array_push(
             commands,
             nerd_cli_make_command(
