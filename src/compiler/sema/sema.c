@@ -21466,8 +21466,20 @@ validate_type:
                             .type_index;
                 } else {
                     u32 decl_index = sema->node_decl_indices[node->a];
-                    ASSERT(decl_index != sema_no_decl(),
-                           "Expected resolved target");
+                    if (decl_index == sema_no_decl()) {
+                        u32 type_target = sema_no_type();
+                        if (sema_try_resolve_type_symbol(
+                                lexer, ast, sema, node->a, &type_target)) {
+                            return error_0359_typed_binding_uses_const_operator(
+                                lexer->source,
+                                sema_node_span(lexer, target),
+                                lex_symbol(lexer, target->a));
+                        }
+                        return error_0300_unknown_symbol(
+                            lexer->source,
+                            sema_node_span(lexer, target),
+                            lex_symbol(lexer, target->a));
+                    }
                     if (sema->decls[decl_index].kind != SK_Variable) {
                         return error_0305_invalid_assignment_target(
                             lexer->source,

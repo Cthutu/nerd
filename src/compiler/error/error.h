@@ -416,6 +416,9 @@ bool error_0357_runtime_compile_time_argument(NerdSource source,
 bool error_0358_atomic_ffi_type(NerdSource source,
                                 ErrorSpan  span,
                                 string     position);
+bool error_0359_typed_binding_uses_const_operator(NerdSource source,
+                                                  ErrorSpan  span,
+                                                  string     type_name);
 
 //------------------------------------------------------------------------------
 // Low-level error system

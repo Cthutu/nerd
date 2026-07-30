@@ -1738,3 +1738,28 @@ bool error_0358_atomic_ffi_type(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
+
+bool error_0359_typed_binding_uses_const_operator(NerdSource source,
+                                                  ErrorSpan  span,
+                                                  string     type_name)
+{
+    ErrorInfo error =
+        error_init(source, span, "Invalid typed variable declaration");
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "`" STRINGP "` is a type, not an assignment target",
+                        STRINGV(type_name));
+    error_add_note(
+        &error,
+        "`::` starts a constant binding, so the following `=` is parsed as an "
+        "assignment");
+    error_add_help(&error,
+                   "Use `name : " STRINGP
+                   " = value` for a typed variable declaration",
+                   STRINGV(type_name));
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------
