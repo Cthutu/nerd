@@ -51,6 +51,8 @@ The formatter should be deterministic and idempotent.
 - Long single-branch boolean `on condition => action` statements whose
   condition is a `&&` or `||` chain wrap each chained condition term onto a
   continuation line.
+- A `while !condition {` header stays on one line, with one space before the
+  prefix `!` and no space between `!` and its boolean operand.
 - Explicit grouping parentheses are preserved.
 - Vertical spacing remains conservative apart from collapsing repeated blank lines.
 
