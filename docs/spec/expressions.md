@@ -134,7 +134,9 @@ at the call site where that default argument is inserted.
 
 ## Optional and result postfix expressions
 
-Postfix `!` injects a value into the error channel of an expected `T\E` type.
+Postfix `!` injects a value into the error channel of an expected `T\E` type
+and must be adjacent to that value. A separated `!operand` starts a logical-not
+expression instead.
 Postfix `?` extracts success from an optional or result value. On failure it
 returns `nil` from an optional-returning function or forwards the error from a
 result-returning function. The enclosing return channel must be compatible.

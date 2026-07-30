@@ -7031,6 +7031,7 @@ internal bool format_match_while_not_header(const Cst*   cst,
                                             u32          block_end,
                                             u32          current_block,
                                             u32* out_condition_statement,
+                                            u32* out_condition_expression,
                                             u32* out_body_block)
 {
     const CstNode* statement = &cst->nodes[statement_index];
@@ -7038,12 +7039,12 @@ internal bool format_match_while_not_header(const Cst*   cst,
         return false;
     }
 
-    const CstNode* error_inject = &cst->nodes[statement->a];
-    if (error_inject->kind != CK_ErrorInject) {
-        return false;
+    const CstNode* header_expr         = &cst->nodes[statement->a];
+    const CstNode* while_symbol        = header_expr;
+    bool           legacy_error_inject = header_expr->kind == CK_ErrorInject;
+    if (legacy_error_inject) {
+        while_symbol = &cst->nodes[header_expr->a];
     }
-
-    const CstNode* while_symbol = &cst->nodes[error_inject->a];
     if (while_symbol->kind != CK_SymbolRef ||
         !string_eq_cstr(lex_symbol(lexer, cst_get_symbol(while_symbol)),
                         "while")) {
@@ -7057,14 +7058,24 @@ internal bool format_match_while_not_header(const Cst*   cst,
         return false;
     }
 
+    u32 condition_expression = cst->nodes[condition_statement].a;
+    if (!legacy_error_inject) {
+        const CstNode* logical_not = &cst->nodes[condition_expression];
+        if (logical_not->kind != CK_LogicalNot) {
+            return false;
+        }
+        condition_expression = logical_not->a;
+    }
+
     u32 body_block = format_next_block_statement(
         cst, condition_statement + 1, block_end, current_block);
     if (body_block == U32_MAX || cst->nodes[body_block].kind != CK_Block) {
         return false;
     }
 
-    *out_condition_statement = condition_statement;
-    *out_body_block          = body_block;
+    *out_condition_statement  = condition_statement;
+    *out_condition_expression = condition_expression;
+    *out_body_block           = body_block;
     return true;
 }
 
@@ -7141,14 +7152,16 @@ internal void format_emit_block_contents(StringBuilder* sb,
             sb_append_char(sb, '\n');
         }
 
-        u32 while_condition = U32_MAX;
-        u32 while_body      = U32_MAX;
+        u32 while_condition  = U32_MAX;
+        u32 while_expression = U32_MAX;
+        u32 while_body       = U32_MAX;
         if (format_match_while_not_header(cst,
                                           lexer,
                                           i,
                                           block->b,
                                           block_node_index,
                                           &while_condition,
+                                          &while_expression,
                                           &while_body) &&
             !format_syntax_has_comment_between_nodes(
                 &syntax, i, while_condition) &&
@@ -7159,7 +7172,7 @@ internal void format_emit_block_contents(StringBuilder* sb,
             format_emit_wrapped_call_expr_if_long(sb,
                                                   cst,
                                                   lexer,
-                                                  cst->nodes[while_condition].a,
+                                                  while_expression,
                                                   (usize)indent_level * 4 + 7,
                                                   indent_level);
             sb_append_cstr(sb, " {\n");

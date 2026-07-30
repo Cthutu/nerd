@@ -957,6 +957,17 @@ internal bool cst_token_has_newline_before(const CstParseState* state,
     return false;
 }
 
+internal bool cst_token_is_adjacent_to_previous(const CstParseState* state,
+                                                u32 token_index)
+{
+    if (token_index == 0 || token_index >= array_count(state->lexer->tokens)) {
+        return false;
+    }
+    usize previous_end = lex_token_end_offset(
+        state->lexer, &state->lexer->tokens[token_index - 1]);
+    return previous_end == state->lexer->tokens[token_index].offset;
+}
+
 internal bool cst_postfix_token_can_cross_statement_boundary(TokenKind kind)
 {
     return kind == TK_with || kind == TK_Dot;
@@ -3604,6 +3615,12 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
 
         bool caret_is_postfix =
             token.kind == TK_Caret && cst_caret_is_postfix_deref(state);
+        bool detached_postfix =
+            token.kind == TK_Bang &&
+            !cst_token_is_adjacent_to_previous(state, state->token_index);
+        if (detached_postfix) {
+            break;
+        }
         if (!caret_is_postfix &&
             !cst_infix_binding_power(token.kind, &left_bp, &right_bp)) {
             if (token.kind == TK_StringContinuationStart &&

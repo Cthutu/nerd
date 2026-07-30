@@ -247,6 +247,17 @@ internal bool ast_token_has_newline_before(const AstParseState* state,
     return false;
 }
 
+internal bool ast_token_is_adjacent_to_previous(const AstParseState* state,
+                                                u32 token_index)
+{
+    if (token_index == 0 || token_index >= array_count(state->lexer->tokens)) {
+        return false;
+    }
+    usize previous_end = lex_token_end_offset(
+        state->lexer, &state->lexer->tokens[token_index - 1]);
+    return previous_end == state->lexer->tokens[token_index].offset;
+}
+
 internal bool ast_postfix_token_can_cross_statement_boundary(TokenKind kind)
 {
     return kind == TK_with || kind == TK_Dot;
@@ -2864,6 +2875,17 @@ bool ast_parse_expr_bp(AstParseState* state, u8 min_bp, u32* out_node)
 
         bool caret_is_postfix =
             next.kind == TK_Caret && ast_caret_is_postfix_deref(state, next);
+        bool detached_postfix =
+            next.kind == TK_Bang &&
+            !ast_token_is_adjacent_to_previous(state, next.token_index);
+        if (!caret_is_postfix && detached_postfix) {
+            if (state->allow_statement_boundary &&
+                ast_token_starts_expression(next.kind)) {
+                break;
+            }
+            return error_0202_missing_operator(
+                next.source, ast_token_span(state, &next), next.kind);
+        }
         if (!caret_is_postfix &&
             !ast_infix_binding_power(next.kind, &left_bp, &right_bp)) {
             if (ast_next_tokens_start_binding(state)) {
