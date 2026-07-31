@@ -216,11 +216,23 @@ platform presentation as the fallback.
 
 Create a graphics system with `GfxSystem.init()` and release it with
 `GfxSystem.done()`. A `PixelLayer` belongs to the graphics system that created
-it; callers should keep the returned `PixelLayerHandle` and use
-`GfxSystem.pixel(handle)` to borrow the layer. `GfxSystem.destroy(handle)`
-removes the layer and releases its pixel storage. Layer pointers are borrowed
-from the graphics system and can be invalidated by layer creation or
-destruction.
+it. `GfxSystem.create_pixel_layer(^frame, mode)` returns a stable
+`GfxLayerHandle` whose ID increases from one and is never reused.
+`GfxSystem.get_pixel_layer(handle) -> ^PixelLayer\GfxError` borrows the typed
+layer; it reports `LayerNotFound` for an unknown or deleted ID and
+`WrongLayerType` when the handle names another kind of layer.
+`GfxSystem.destroy_layer(handle) -> bool\GfxError` removes the layer and
+releases its storage.
+
+Internally, `GfxSystem` keeps one ordered metadata array for every layer. Each
+entry stores the stable ID, `GfxLayerType`, and an index into that type's side
+array. Pixel data therefore remains in a homogeneous pixel-layer array while
+the metadata array defines render order. Destruction shifts the relevant side
+array and decrements later indexes; stable IDs and handles do not change. This
+layout leaves room for OpenGL, Vulkan, and other layer side arrays without
+making their APIs part of `PixelLayer`. Borrowed layer pointers can be
+invalidated by later layer creation or destruction, so retain the handle and
+resolve it again when needed.
 
 Pixel layers use two sizing modes:
 

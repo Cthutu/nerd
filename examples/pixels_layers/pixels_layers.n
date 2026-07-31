@@ -100,6 +100,19 @@ draw_foreground :: fn (layer: ^PixelLayer, tick: u32) {
     }, 0xffffcc40)
 }
 
+render_layers :: fn (gfx        : ^GfxSystem,
+                     background : GfxLayerHandle,
+                     foreground : GfxLayerHandle,
+                     frame      : ^Frame,
+                     tick       : u32) -> bool\GfxError {
+    background_layer := (gfx.get_pixel_layer(background))?
+    foreground_layer := (gfx.get_pixel_layer(foreground))?
+    draw_background(background_layer, tick)
+    draw_foreground(foreground_layer, tick)
+    gfx.render(frame)
+    return yes
+}
+
 main :: fn () {
     frame_system := FrameSystem.init()
     frame := Frame {
@@ -117,9 +130,9 @@ main :: fn () {
     gfx := GfxSystem.init()
     defer gfx.done()
 
-    background := gfx.pixel_layer(^frame,
-                                  PixelLayerMode.FitToWindow { pixel_scale: 4 })
-    foreground := gfx.pixel_layer(^frame, PixelLayerMode.FixedSizeAutoScale {
+    background := gfx.create_pixel_layer(^frame,
+                                         PixelLayerMode.FitToWindow { pixel_scale: 4 })
+    foreground := gfx.create_pixel_layer(^frame, PixelLayerMode.FixedSizeAutoScale {
         width  : 96
         height : 72
     })
@@ -160,14 +173,7 @@ main :: fn () {
             }
         }
 
-        background_layer := gfx.pixel(background)
-        foreground_layer := gfx.pixel(foreground)
-        on background_layer != nil &&
-            foreground_layer != nil => {
-            draw_background(background_layer, tick)
-            draw_foreground(foreground_layer, tick)
-            gfx.render(^frame)
-        }
+        _ := render_layers(^gfx, background, foreground, ^frame, tick)
 
         tick += 1
         sleep_ms(16)

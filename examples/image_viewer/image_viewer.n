@@ -136,6 +136,16 @@ draw_image_viewer :: fn (layer: ^PixelLayer, image: ^Image) {
     }, 0xffffffff)
 }
 
+render_image_viewer :: fn (gfx    : ^GfxSystem,
+                           handle : GfxLayerHandle,
+                           frame  : ^Frame,
+                           image  : ^Image) -> bool\GfxError {
+    layer := (gfx.get_pixel_layer(handle))?
+    draw_image_viewer(layer, image)
+    gfx.render(frame)
+    return yes
+}
+
 main :: fn () {
     frame_system := FrameSystem.init()
     frame := Frame {
@@ -156,7 +166,7 @@ main :: fn () {
     image := load_demo_image()
     defer image.free()
 
-    layer_handle := gfx.pixel_layer(^frame, PixelLayerMode.FixedSizeAutoScale {
+    layer_handle := gfx.create_pixel_layer(^frame, PixelLayerMode.FixedSizeAutoScale {
         width  : 320
         height : 200
     })
@@ -190,11 +200,7 @@ main :: fn () {
             }
         }
 
-        layer := gfx.pixel(layer_handle)
-        on layer != nil => {
-            draw_image_viewer(layer, ^image)
-            gfx.render(^frame)
-        }
+        _ := render_image_viewer(^gfx, layer_handle, ^frame, ^image)
 
         sleep_ms(16)
     }

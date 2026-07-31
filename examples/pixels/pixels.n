@@ -35,6 +35,16 @@ pixels_draw :: fn (layer: ^PixelLayer, frame: u32) {
     }, 0xffffffff)
 }
 
+pixels_render :: fn (gfx    : ^GfxSystem,
+                     handle : GfxLayerHandle,
+                     frame  : ^Frame,
+                     tick   : u32) -> bool\GfxError {
+    layer := (gfx.get_pixel_layer(handle))?
+    pixels_draw(layer, tick)
+    gfx.render(frame)
+    return yes
+}
+
 main :: fn () {
     frame_system := FrameSystem.init()
     frame := Frame {
@@ -52,7 +62,7 @@ main :: fn () {
     gfx := GfxSystem.init()
     defer gfx.done()
 
-    handle := gfx.pixel_layer(^frame, PixelLayerMode.FixedSizeAutoScale {
+    handle := gfx.create_pixel_layer(^frame, PixelLayerMode.FixedSizeAutoScale {
         width  : 160
         height : 120
     })
@@ -92,11 +102,7 @@ main :: fn () {
             }
         }
 
-        layer := gfx.pixel(handle)
-        on layer != nil => {
-            pixels_draw(layer, tick)
-            gfx.render(^frame)
-        }
+        _ := pixels_render(^gfx, handle, ^frame, tick)
 
         tick += 1
         sleep_ms(16)

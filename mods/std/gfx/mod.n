@@ -9,9 +9,27 @@
 use std.frame
 use std.opengl
 
--- A handle for a pixel layer owned by a `GfxSystem`.
-pub PixelLayerHandle :: plex {
-    index usize  -- Index into the owning graphics system's pixel layer array.
+-- Stable identity for any layer owned by a `GfxSystem`.
+pub GfxLayerHandle :: plex {
+    id u64
+}
+
+-- Runtime kind used to select a type-specific layer side array.
+pub GfxLayerType :: enum {
+    Pixel
+}
+
+-- Errors produced when a stable layer handle cannot satisfy an operation.
+pub GfxError :: enum {
+    LayerNotFound
+    WrongLayerType
+}
+
+-- Ordered metadata for one entry in a type-specific side array.
+GfxLayer :: plex {
+    id    u64
+    kind  GfxLayerType
+    index usize
 }
 
 -- Pixel-buffer sizing mode.
@@ -60,8 +78,10 @@ pub PixelLayer :: plex {
 
 -- A graphics system that owns ordered layers for one or more frames.
 pub GfxSystem :: plex {
-    pixel_layers [..]PixelLayer  -- Pixel layers in render order.
-    renderers    [..]GfxFrameRenderer
+    next_layer_id u64
+    layers        [..]GfxLayer
+    pixel_layers  [..]PixelLayer
+    renderers     [..]GfxFrameRenderer
 }
 
 -- OpenGL presentation state owned by `std.gfx` for one frame.
@@ -606,8 +626,10 @@ impl GfxSystem {
     -- Creates an empty graphics system.
     pub init :: fn () -> Self {
         return {
-            pixel_layers : nil
-            renderers    : nil
+            next_layer_id : 1
+            layers        : nil
+            pixel_layers  : nil
+            renderers     : nil
         }
     }
 
@@ -616,14 +638,15 @@ impl GfxSystem {
         for layer in system.pixel_layers {
             layer.done()
         }
+        system.layers.free()
         system.pixel_layers.free()
         system.renderers.free()
     }
 
     -- Creates a pixel layer for `frame` and returns its handle.
-    pub pixel_layer :: fn (system : ^Self,
-                           frame  : ^Frame,
-                           mode   : PixelLayerMode) -> PixelLayerHandle {
+    pub create_pixel_layer :: fn (system : ^Self,
+                                  frame  : ^Frame,
+                                  mode   : PixelLayerMode) -> GfxLayerHandle {
         dimensions := gfx_pixel_layer_dimensions(frame, mode)
         layer := PixelLayer {
             frame_id: frame.id
@@ -634,20 +657,49 @@ impl GfxSystem {
         }
         gfx_pixel_layer_resize(^layer, dimensions.width, dimensions.height)
         system.pixel_layers.push(layer)
-        return PixelLayerHandle { index: system.pixel_layers.count - 1 }
+        handle := GfxLayerHandle { id: system.next_layer_id }
+        system.next_layer_id += 1
+        system.layers.push(GfxLayer {
+            id    : handle.id
+            kind  : GfxLayerType.Pixel
+            index : system.pixel_layers.count - 1
+        })
+        return handle
     }
 
-    -- Returns the layer referenced by `handle`, or `nil` when it is invalid.
-    pub pixel :: fn (system: ^Self, handle: PixelLayerHandle) -> ^PixelLayer {
-        on handle.index >= system.pixel_layers.count => return nil
-        return ^system.pixel_layers[handle.index]
+    -- Borrows the pixel layer referenced by `handle` or returns a typed error.
+    pub get_pixel_layer :: fn (system : ^Self,
+                               handle : GfxLayerHandle) -> ^PixelLayer\GfxError {
+        for layer in system.layers {
+            on layer.id != handle.id => again
+            on layer.kind != GfxLayerType.Pixel => return (GfxError.WrongLayerType)!
+            on layer.index >= system.pixel_layers.count => return (GfxError.LayerNotFound)!
+            return ^system.pixel_layers[layer.index]
+        }
+        return (GfxError.LayerNotFound)!
     }
 
-    -- Removes a pixel layer and releases its storage.
-    pub destroy :: fn (system: ^Self, handle: PixelLayerHandle) {
-        on handle.index >= system.pixel_layers.count => return
-        system.pixel_layers[handle.index].done()
-        system.pixel_layers.delete(handle.index)
+    -- Removes a layer, shifts its side array, and repairs later indexes.
+    pub destroy_layer :: fn (system : ^Self,
+                             handle : GfxLayerHandle) -> bool\GfxError {
+        for layer_index: usize = 0;
+            layer_index < system.layers.count;
+            layer_index += 1 {
+            layer := ^system.layers[layer_index]
+            on layer.id != handle.id => again
+            on layer.kind != GfxLayerType.Pixel => return (GfxError.WrongLayerType)!
+            on layer.index >= system.pixel_layers.count => return (GfxError.LayerNotFound)!
+            pixel_index := layer.index
+            system.pixel_layers[pixel_index].done()
+            system.pixel_layers.delete(pixel_index)
+            system.layers.delete(layer_index)
+            for later in system.layers {
+                on later.kind == GfxLayerType.Pixel &&
+                    later.index > pixel_index => later.index -= 1
+            }
+            return yes
+        }
+        return (GfxError.LayerNotFound)!
     }
 
     -- Updates frame-sized layers and presents all layers for `frame`.
@@ -760,6 +812,18 @@ gfx_render_impl :: fn (system: ^GfxSystem, frame: ^Frame) {
 
 test {
 
+    gfx_test_pixel_layer :: fn (system : ^GfxSystem,
+                                handle : GfxLayerHandle) -> ^PixelLayer {
+        for info in system.layers {
+            on info.id == handle.id &&
+                info.kind == GfxLayerType.Pixel &&
+                info.index < system.pixel_layers.count => {
+                return ^system.pixel_layers[info.index]
+            }
+        }
+        return nil
+    }
+
     gfx_paint_checker :: fn (pixels : []u32,
                              width  : u32,
                              height : u32,
@@ -813,11 +877,11 @@ test "fixed-size pixel layer initialises storage" {
     assert dimensions.width == 4
     assert dimensions.height == 3
 
-    handle := gfx.pixel_layer(^frame, PixelLayerMode.FixedSizeAutoScale {
+    handle := gfx.create_pixel_layer(^frame, PixelLayerMode.FixedSizeAutoScale {
         width  : 4
         height : 3
     })
-    layer := gfx.pixel(handle)
+    layer := gfx_test_pixel_layer(^gfx, handle)
 
     assert layer != nil
     assert layer.pixel_width() == 4
@@ -845,6 +909,32 @@ test "pixel layer resize mutates the layer" {
     assert layer.data.count == 12
 }
 
+test "layer handles survive shifting deletion and are never reused" {
+    frame := Frame {
+        id          : 1
+        width       : 8
+        height      : 8
+        title       : "gfx-test"
+        full_screen : no
+        resizable   : yes
+        system      : nil
+    }
+    gfx := GfxSystem.init()
+    defer gfx.done()
+    mode := PixelLayerMode.FixedSizeAutoScale { width: 2 height: 2 }
+    first := gfx.create_pixel_layer(^frame, mode)
+    second := gfx.create_pixel_layer(^frame, mode)
+    assert first.id == 1
+    assert second.id == 2
+    _ := gfx.destroy_layer(first)
+    assert gfx.layers.count == 1
+    assert gfx.layers[0].id == second.id
+    assert gfx_test_pixel_layer(^gfx, second) != nil
+    assert gfx_test_pixel_layer(^gfx, first) == nil
+    third := gfx.create_pixel_layer(^frame, mode)
+    assert third.id == 3
+}
+
 test "fit-to-window pixel layer follows frame size" {
     frame := Frame {
         id          : 1
@@ -858,10 +948,10 @@ test "fit-to-window pixel layer follows frame size" {
     gfx := GfxSystem.init()
     defer gfx.done()
 
-    handle := gfx.pixel_layer(^frame, PixelLayerMode.FitToWindow {
+    handle := gfx.create_pixel_layer(^frame, PixelLayerMode.FitToWindow {
         pixel_scale: 4
     })
-    layer := gfx.pixel(handle)
+    layer := gfx_test_pixel_layer(^gfx, handle)
     assert layer.pixel_width() == 4
     assert layer.pixel_height() == 3
 
@@ -969,11 +1059,11 @@ test "pixel layer clear put fill and paint update pixels" {
     gfx := GfxSystem.init()
     defer gfx.done()
 
-    handle := gfx.pixel_layer(^frame, PixelLayerMode.FixedSizeAutoScale {
+    handle := gfx.create_pixel_layer(^frame, PixelLayerMode.FixedSizeAutoScale {
         width  : 4
         height : 4
     })
-    layer := gfx.pixel(handle)
+    layer := gfx_test_pixel_layer(^gfx, handle)
 
     layer.clear(0xff000000)
     layer.put(2, 1, 0xffffffff)
@@ -1014,11 +1104,11 @@ test "pixel layer paint forwards user data and full stride" {
     gfx := GfxSystem.init()
     defer gfx.done()
 
-    handle := gfx.pixel_layer(^frame, PixelLayerMode.FixedSizeAutoScale {
+    handle := gfx.create_pixel_layer(^frame, PixelLayerMode.FixedSizeAutoScale {
         width  : 4
         height : 3
     })
-    layer := gfx.pixel(handle)
+    layer := gfx_test_pixel_layer(^gfx, handle)
     state := gfx_paint_user { frame: 100 }
 
     layer.clear(0)
