@@ -1,7 +1,9 @@
 use std.gfx
 
 main :: fn () {
-    mode := PixelLayerMode.
+    mode := PixelLayerMode.FixedSizeAutoScale {
+        w
+    }
 }
 ¬
 [
@@ -16,6 +18,20 @@ main :: fn () {
             "position": {
                 "line": 3,
                 "character": 27
+            }
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "method": "textDocument/completion",
+        "params": {
+            "textDocument": {
+                "uri": "file:///test.n"
+            },
+            "position": {
+                "line": 4,
+                "character": 9
             }
         }
     }
@@ -84,16 +100,16 @@ main :: fn () {
                     "range": {
                         "start": {
                             "line": 4,
-                            "character": 0
+                            "character": 8
                         },
                         "end": {
                             "line": 4,
-                            "character": 1
+                            "character": 9
                         }
                     },
                     "severity": 1,
                     "source": "nerd",
-                    "message": "Expected Symbol but found RightBrace `}`",
+                    "message": "Unknown field `w` in plex literal",
                     "relatedInformation": [
                         {
                             "location": {
@@ -101,15 +117,15 @@ main :: fn () {
                                 "range": {
                                     "start": {
                                         "line": 4,
-                                        "character": 0
+                                        "character": 8
                                     },
                                     "end": {
                                         "line": 4,
-                                        "character": 1
+                                        "character": 9
                                     }
                                 }
                             },
-                            "message": "help: Check for a missing closing delimiter or misplaced operator"
+                            "message": "help: Use a field declared by the target plex type."
                         }
                     ]
                 }
@@ -127,6 +143,17 @@ main :: fn () {
             {
                 "label": "FixedSizeAutoScale",
                 "kind": 20
+            }
+        ]
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "result": [
+            {
+                "label": "width",
+                "kind": 5,
+                "insertText": "width: "
             }
         ]
     },
