@@ -27,6 +27,7 @@ main :: fn () =>
     on event {
         KeyDown(gfx.FrameKeyEvent { keycode: Escape }) => {
         }
+
         KeyDown(KeyEvent { keycode: Other }) => {
         }
     }

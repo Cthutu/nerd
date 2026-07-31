@@ -109,6 +109,7 @@ pub wrap :: fn (s: string, width: i32) -> [..]string {
                     found_newline = yes
                     break
                 }
+
                 ' ', '\t' => {
                     last_space  = end
                     found_space = yes

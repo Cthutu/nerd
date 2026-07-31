@@ -82,6 +82,7 @@ test "image placeholder load_bytes reports unsupported format" {
     on result {
         UnsupportedFormat! => {
         }
+
         else => {
             assert no
         }
@@ -97,6 +98,7 @@ test "image format detects PNG signature" {
         PNG => {
             assert yes
         }
+
         else => {
             assert no
         }
@@ -112,6 +114,7 @@ test "image format detects JPEG signature" {
         JPEG => {
             assert yes
         }
+
         else => {
             assert no
         }

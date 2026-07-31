@@ -512,6 +512,31 @@ bool error_0313_argument_count_mismatch(NerdSource source,
     return false;
 }
 
+bool error_0313_argument_count_mismatch_with_params(
+    NerdSource    source,
+    ErrorSpan     span,
+    u32           expected_count,
+    u32           actual_count,
+    const string* missing_params,
+    u32           missing_param_count)
+{
+    ErrorInfo error =
+        error_init(source,
+                   span,
+                   "Argument count mismatch: expected %u, found %u",
+                   expected_count,
+                   actual_count);
+    error_add_reference(
+        &error, ERROR_REF_PRIMARY, span, "This call uses the wrong arity");
+    for (u32 i = 0; i < missing_param_count; ++i) {
+        error_add_help(&error,
+                       "Pass an argument for parameter `" STRINGP "`.",
+                       STRINGV(missing_params[i]));
+    }
+    error_render(&error);
+    return false;
+}
+
 //------------------------------------------------------------------------------
 // Report a block-bodied function with an explicit return type that falls
 // through without returning a value.

@@ -20,8 +20,10 @@ main :: fn () {
         on system.poll(^frame) {
             None => {
             }
+
             Closed => {
             }
+
             KeyPress { scan_code } => {
                 on scan_code {
                     Escape  => system.destroy(^frame)

@@ -890,12 +890,14 @@ pub term_fb_box :: fn (x     : i32,
             bottom       = 0x2550
             bottom_right = 0x255d
         }
+
         Rounded => {
             top_left     = 0x256d
             top_right    = 0x256e
             bottom_left  = 0x2570
             bottom_right = 0x256f
         }
+
         Heavy => {
             top_left     = 0x250f
             top          = 0x2501
@@ -906,6 +908,7 @@ pub term_fb_box :: fn (x     : i32,
             bottom       = 0x2501
             bottom_right = 0x251b
         }
+
         Custom(chars) => {
             top_left     = term_box_string_char(chars, 0)
             top          = term_box_string_char(chars, 1)
@@ -917,6 +920,7 @@ pub term_fb_box :: fn (x     : i32,
             bottom       = term_box_string_char(chars, 7)
             bottom_right = term_box_string_char(chars, 8)
         }
+
         else => {
         }
     }
@@ -1384,6 +1388,7 @@ test "SGR mouse wheel decodes direct horizontal wheel codes" {
             assert dx == -1
             assert dy == 0
         }
+
         else => {
             assert no
         }
@@ -1397,6 +1402,7 @@ test "SGR mouse wheel decodes direct horizontal wheel codes" {
             assert dx == 1
             assert dy == 0
         }
+
         else => {
             assert no
         }
@@ -1412,6 +1418,7 @@ test "SGR mouse wheel decodes shifted vertical wheel as horizontal" {
             assert dx == -1
             assert dy == 0
         }
+
         else => {
             assert no
         }
@@ -1425,6 +1432,7 @@ test "SGR mouse wheel decodes shifted vertical wheel as horizontal" {
             assert dx == 1
             assert dy == 0
         }
+
         else => {
             assert no
         }

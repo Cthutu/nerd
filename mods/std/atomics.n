@@ -146,6 +146,7 @@ test "atomic ordering enums are ordinary values" {
         AcquireRelease => {
             assert yes
         }
+
         else => {
             assert no
         }

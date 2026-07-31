@@ -170,8 +170,10 @@ main :: fn () {
             on event {
                 None => {
                 }
+
                 Closed => {
                 }
+
                 KeyPress { scan_code } => {
                     on scan_code {
                         Escape  => frame_system.destroy(^frame)

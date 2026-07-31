@@ -226,10 +226,12 @@ on "windows" {
                 frame_windows_push_closed(info)
                 return 0
             }
+
             WM_DESTROY => {
                 frame_windows_push_closed(info)
                 return 0
             }
+
             WM_SIZE => {
                 on info != nil => {
                     value := lparam.as(usize)
@@ -239,6 +241,7 @@ on "windows" {
                 }
                 return 0
             }
+
             WM_KEYDOWN => {
                 on info != nil &&
                     frame_windows_current_system != nil => {
@@ -252,6 +255,7 @@ on "windows" {
                 }
                 return 0
             }
+
             WM_SYSKEYDOWN => {
                 on info != nil &&
                     frame_windows_current_system != nil => {
@@ -265,6 +269,7 @@ on "windows" {
                 }
                 return 0
             }
+
             WM_KEYUP => {
                 on info != nil &&
                     frame_windows_current_system != nil => {
@@ -278,6 +283,7 @@ on "windows" {
                 }
                 return 0
             }
+
             WM_SYSKEYUP => {
                 on info != nil &&
                     frame_windows_current_system != nil => {
@@ -291,6 +297,7 @@ on "windows" {
                 }
                 return 0
             }
+
             WM_CHAR => {
                 on info != nil => {
                     codepoint := wparam.as(u32)
@@ -302,6 +309,7 @@ on "windows" {
                 }
                 return 0
             }
+
             WM_SYSCHAR => {
                 return 0
             }

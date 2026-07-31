@@ -401,11 +401,13 @@ dungeon_draw_cell :: fn (x: u32, y: u32) {
                 term_fb_put(x.as(i32), y.as(i32), ' ', stone_void, rgb(0, 0, 0))
             }
         }
+
         Tile.Floor => {
             paper := dungeon_colour_step(floor_dark, noise / 3)
             ink := dungeon_colour_step(floor_mid, noise)
             term_fb_put(x.as(i32), y.as(i32), '.', ink, paper)
         }
+
         Tile.Door => {
             term_fb_put(x.as(i32), y.as(i32), '+', door_ink, door_paper)
         }

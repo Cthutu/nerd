@@ -40,12 +40,15 @@ debugger_branch_value :: fn (event: DebugEvent) -> i32 {
         DebugEvent.None => {
             result = 1
         }
+
         DebugEvent.Move(point) => {
             result = point.x + point.y
         }
+
         DebugEvent.Message(text) => {
             result = text.count.as(i32)
         }
+
         DebugEvent.Count(value) => {
             result = value
         }

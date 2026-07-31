@@ -248,6 +248,7 @@ on "windows" {
                     on record.bKeyDown != 0 => return TermInputEvent.KeyDown(code)
                         else return TermInputEvent.KeyUp(code)
                 }
+
                 else => {
                 }
             }

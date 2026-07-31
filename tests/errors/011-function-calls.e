@@ -19,7 +19,7 @@ main :: fn () => add(20)
     ],
     "notes": [],
     "help": [
-        "Pass exactly 2 arguments to match the function signature."
+        "Pass an argument for parameter `b`."
     ]
 }
 ¬

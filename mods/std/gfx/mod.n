@@ -102,6 +102,7 @@ gfx_pixel_layer_dimensions :: fn (frame : ^Frame,
             real_height := gfx_u32_to_u16_size(frame_height)
             return PixelSize { width: real_width height: real_height }
         }
+
         FixedSizeAutoScale { width, height } => {
             real_width := width
             real_height := height
@@ -179,6 +180,7 @@ gfx_pixel_layer_present_scale :: fn (frame: ^Frame, layer: ^PixelLayer) -> u16 {
             on scale == 0 => scale = 1
             return scale
         }
+
         FixedSizeAutoScale { width, height } => {
             virtual_width := width
             virtual_height := height

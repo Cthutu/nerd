@@ -120,7 +120,7 @@ main :: fn () {
                                     }
                                 }
                             },
-                            "message": "help: Pass exactly 1 argument to match the function signature."
+                            "message": "help: Pass an argument for parameter `frame`."
                         }
                     ]
                 }

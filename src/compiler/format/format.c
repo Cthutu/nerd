@@ -2395,6 +2395,10 @@ internal void format_emit_on_block_multiline(StringBuilder* sb,
     }
     sb_append_cstr(sb, " {\n");
     for (u32 i = 0; i < on->branch_count; ++i) {
+        if (i > 0 && on->kind == COK_Value && !branch_alignable[i - 1] &&
+            !branch_alignable[i]) {
+            sb_append_char(sb, '\n');
+        }
         const CstOnBranch* branch = &cst->on_branches[on->first_branch + i];
         format_emit_indent(sb, indent_level + 1);
         sb_append_string(sb, heads[i]);

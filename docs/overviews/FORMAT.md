@@ -55,6 +55,8 @@ The formatter should be deterministic and idempotent.
   prefix `!` and no space between `!` and its boolean operand.
 - Consecutive public variable declarations participate in the same name, type,
   and value-column alignment as non-public declarations.
+- Multiline value-pattern `on` branches are separated by blank lines, matching
+  the layout used when the LSP inserts missing enum variants.
 - Explicit grouping parentheses are preserved.
 - Vertical spacing remains conservative apart from collapsing repeated blank lines.
 

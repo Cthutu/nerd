@@ -22,9 +22,11 @@ main :: fn () {
                 prn("Please enter a command.")
                 again
             }
+
             1 => {
                 verb = input_parts[0]
             }
+
             else => {
                 verb   = input_parts[0]
                 _nouns = input_parts[1..]

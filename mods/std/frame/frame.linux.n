@@ -275,6 +275,7 @@ on "linux" {
                 frame_linux_send_fullscreen(info, yes)
                 info.platform_info.full_screen = yes
             }
+
             no => {
                 frame_linux_send_fullscreen(info, no)
                 info.platform_info.full_screen = no
@@ -366,6 +367,7 @@ on "linux" {
             yes => info.events.push(FrameEvent.KeyPress {
                 scan_code
             })
+
             no => info.events.push(FrameEvent.KeyRelease {
                 scan_code
             })
@@ -553,10 +555,12 @@ on "linux" {
                 key := event.as(usize).as(^XKeyEvent)
                 frame_linux_push_key_event(system, info, key, yes)
             }
+
             X_EVENT_KEY_RELEASE => {
                 key := event.as(usize).as(^XKeyEvent)
                 frame_linux_push_key_event(system, info, key, no)
             }
+
             X_EVENT_CONFIGURE_NOTIFY => {
                 configure := event.as(usize).as(^XConfigureEvent)
                 width := configure.width.as(u16)
@@ -569,12 +573,14 @@ on "linux" {
                                              height)
                 frame_linux_push_resize(info, width, height)
             }
+
             X_EVENT_CLIENT_MESSAGE => {
                 client := event.as(usize).as(^XClientMessageEvent)
                 on client.data0.as(XAtom) == info.platform_info.wm_delete_window => {
                     info.events.push(FrameEvent.Closed)
                 }
             }
+
             X_EVENT_DESTROY_NOTIFY => {
                 info.events.push(FrameEvent.Closed)
                 info.platform_info.window = 0

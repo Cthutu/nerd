@@ -314,12 +314,14 @@ term_keyboard_record_event :: fn (event: TermInputEvent) {
         KeyPress(key) => {
             term_keyboard_record_press(key)
         }
+
         KeyPressModified(key, modifiers) => {
             on (modifiers & TERM_MOD_SHIFT) != 0 => term_keyboard_record_press(KeyCode.Shift)
             on (modifiers & TERM_MOD_ALT) != 0 => term_keyboard_record_press(KeyCode.Alt)
             on (modifiers & TERM_MOD_CONTROL) != 0 => term_keyboard_record_press(KeyCode.Control)
             term_keyboard_record_press(key)
         }
+
         KeyDown(key) => {
             index := term_key_index(key)
             on term_key_index_valid(index) => {
@@ -328,6 +330,7 @@ term_keyboard_record_event :: fn (event: TermInputEvent) {
                 term_keyboard_pulse[index] = no
             }
         }
+
         KeyUp(key) => {
             index := term_key_index(key)
             on term_key_index_valid(index) => {
@@ -336,6 +339,7 @@ term_keyboard_record_event :: fn (event: TermInputEvent) {
                 term_keyboard_pulse[index] = no
             }
         }
+
         else => {
         }
     }

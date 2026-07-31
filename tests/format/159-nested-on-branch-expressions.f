@@ -7,6 +7,7 @@ main :: fn () {
             1     => b()
             else  => c()
         }
+
         1 => {
             on z {
                 0 => return on q {

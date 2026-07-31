@@ -3321,6 +3321,59 @@ sema_known_call_signature_ex(const Lexer*            lexer,
     return false;
 }
 
+internal bool
+sema_known_decl_call_signature(const Lexer*            lexer,
+                               const Ast*              ast,
+                               Sema*                   sema,
+                               u32                     decl_index,
+                               SemaKnownCallSignature* out_signature,
+                               u32*                    out_first_explicit_param)
+{
+    if (decl_index == sema_no_decl() ||
+        decl_index >= array_count(sema->decls)) {
+        return false;
+    }
+
+    const Lexer*    source_lexer      = lexer;
+    const Ast*      source_ast        = ast;
+    Sema*           source_sema       = sema;
+    u32             source_decl_index = decl_index;
+    const SemaDecl* decl              = &sema->decls[decl_index];
+    if (sema_imported_decl_source(sema,
+                                  decl,
+                                  &source_lexer,
+                                  &source_ast,
+                                  &source_sema,
+                                  &source_decl_index)) {
+        decl = &source_sema->decls[source_decl_index];
+    }
+    if (decl->value_node_index == sema_no_decl() ||
+        decl->value_node_index >= array_count(source_ast->nodes) ||
+        source_ast->nodes[decl->value_node_index].kind != AK_FnDef) {
+        return false;
+    }
+
+    const AstNode* fn_start =
+        &source_ast->nodes[source_ast->nodes[decl->value_node_index].a];
+    if (fn_start->kind != AK_FnStart ||
+        fn_start->a >= array_count(source_ast->fn_signatures)) {
+        return false;
+    }
+
+    const SemaMethod* method =
+        sema_find_method_for_decl(source_sema, source_decl_index);
+    *out_signature = (SemaKnownCallSignature){
+        .lexer     = source_lexer,
+        .ast       = source_ast,
+        .sema      = source_sema,
+        .signature = &source_ast->fn_signatures[fn_start->a],
+        .imported  = source_sema != sema,
+    };
+    *out_first_explicit_param =
+        method != NULL && method->first_param_is_receiver ? 1 : 0;
+    return true;
+}
+
 internal bool sema_known_call_signature(const Lexer* lexer,
                                         const Ast*   ast,
                                         Sema*        sema,
@@ -13864,10 +13917,32 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
                                                         imported,
                                                         receiver_ref,
                                                         receiver_deref);
-                array_free(source_arg_types);
                 u32 expected_count = visible_arg_count < required_count
                                          ? required_count
                                          : max_count;
+                if (visible_arg_count < required_count) {
+                    Array(string) missing_params = NULL;
+                    for (u32 j = visible_arg_count; j < required_count; ++j) {
+                        const AstParam* source_param =
+                            &source_ast->params[source_signature->first_param +
+                                                1 + j];
+                        array_push(missing_params,
+                                   lex_symbol(source_lexer,
+                                              source_param->symbol_handle));
+                    }
+                    bool result =
+                        error_0313_argument_count_mismatch_with_params(
+                            lexer->source,
+                            sema_node_span(lexer, call_node),
+                            expected_count + call_arg_offset,
+                            call->arg_count,
+                            missing_params,
+                            (u32)array_count(missing_params));
+                    array_free(missing_params);
+                    array_free(source_arg_types);
+                    return result;
+                }
+                array_free(source_arg_types);
                 return error_0313_argument_count_mismatch(
                     lexer->source,
                     sema_node_span(lexer, call_node),
@@ -21172,6 +21247,50 @@ validate_type:
                 // Preserve that fact for diagnostics and editor features even
                 // though this call cannot complete semantic analysis.
                 sema->node_type_indices[node_index] = fn_return_type;
+                if (call->arg_count < required_count) {
+                    SemaKnownCallSignature arity_signature = known_signature;
+                    u32                    first_explicit_param = 0;
+                    if (arity_signature.signature == NULL &&
+                        node_index <
+                            array_count(sema->node_method_call_decl_indices)) {
+                        sema_known_decl_call_signature(
+                            lexer,
+                            ast,
+                            sema,
+                            sema->node_method_call_decl_indices[node_index],
+                            &arity_signature,
+                            &first_explicit_param);
+                    }
+                    if (arity_signature.signature != NULL) {
+                        Array(string) missing_params = NULL;
+                        for (u32 i = call->arg_count; i < required_count; ++i) {
+                            u32 param_index = first_explicit_param + i;
+                            if (param_index >=
+                                arity_signature.signature->param_count) {
+                                break;
+                            }
+                            const AstParam* param =
+                                &arity_signature.ast->params
+                                     [arity_signature.signature->first_param +
+                                      param_index];
+                            array_push(missing_params,
+                                       lex_symbol(arity_signature.lexer,
+                                                  param->symbol_handle));
+                        }
+                        if (array_count(missing_params) > 0) {
+                            bool result =
+                                error_0313_argument_count_mismatch_with_params(
+                                    lexer->source,
+                                    sema_node_span(lexer, node),
+                                    expected_count,
+                                    call->arg_count,
+                                    missing_params,
+                                    (u32)array_count(missing_params));
+                            array_free(missing_params);
+                            return result;
+                        }
+                    }
+                }
                 return error_0313_argument_count_mismatch(
                     lexer->source,
                     sema_node_span(lexer, node),
