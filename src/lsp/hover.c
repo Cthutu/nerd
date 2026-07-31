@@ -3131,6 +3131,14 @@ internal string lsp_source_test_hover_text(const LspDocument* doc,
                                 &generated_doc, arena, local_index);
                         }
                         if (hover.count == 0) {
+                            u32 field_node_index = lsp_find_field_node_at_token(
+                                &generated_doc.front_end.ast, token_index);
+                            if (field_node_index != U32_MAX) {
+                                hover = lsp_field_hover_text(
+                                    &generated_doc, arena, field_node_index);
+                            }
+                        }
+                        if (hover.count == 0) {
                             u32 ref_node_index =
                                 lsp_find_symbol_ref_node_at_token(
                                     &generated_doc.front_end.ast, token_index);

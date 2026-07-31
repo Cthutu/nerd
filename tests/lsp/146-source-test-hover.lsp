@@ -1,3 +1,14 @@
+Counter :: plex {
+    value i32
+}
+
+impl Counter {
+    -- Increases the counter by `amount`.
+    inc :: fn (self: ^Self, amount: i32) {
+        self.value += amount
+    }
+}
+
 get_size :: fn () -> (i32, i32) {
     return (80, 25)
 }
@@ -6,6 +17,8 @@ test "tuple hover inside source test" {
     size := get_size()
 
     assert size.0 >= 0
+    counter := Counter { value: 0 }
+    counter.inc(1)
 }
 ¬
 [
@@ -18,7 +31,7 @@ test "tuple hover inside source test" {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 5,
+                "line": 16,
                 "character": 4
             }
         }
@@ -32,7 +45,7 @@ test "tuple hover inside source test" {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 7,
+                "line": 18,
                 "character": 11
             }
         }
@@ -46,8 +59,22 @@ test "tuple hover inside source test" {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 7,
+                "line": 18,
                 "character": 16
+            }
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 5,
+        "method": "textDocument/hover",
+        "params": {
+            "textDocument": {
+                "uri": "file:///test.n"
+            },
+            "position": {
+                "line": 20,
+                "character": 13
             }
         }
     }
@@ -141,6 +168,16 @@ test "tuple hover inside source test" {
             "contents": {
                 "kind": "markdown",
                 "value": "```nerd\n0\n```\n\n- Kind: tuple field\n- Type: `i32`\n- Owner: `(i32, i32)`"
+            }
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 5,
+        "result": {
+            "contents": {
+                "kind": "markdown",
+                "value": "```nerd\ninc :: fn (self: ^Self, amount: i32) -> void\n```\n\n- Kind: method\n\nIncreases the counter by `amount`."
             }
         }
     },
