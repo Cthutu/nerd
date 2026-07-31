@@ -311,6 +311,41 @@ internal u32 llvm_align_bits(u32 bits, u32 align_bits)
     return remainder == 0 ? bits : bits + align_bits - remainder;
 }
 
+internal const SemaPlexUse* llvm_plex_use_containing_field(const Sema* sema,
+                                                           u32 type_index,
+                                                           u32 field_index)
+{
+    if (type_index >= array_count(sema->types) ||
+        sema->types[type_index].kind != STK_Plex) {
+        return NULL;
+    }
+    const SemaType* type = &sema->types[type_index];
+    for (u32 i = 0; i < type->plex_use_count; ++i) {
+        const SemaPlexUse* use = &sema->plex_uses[type->first_plex_use + i];
+        if (field_index >= use->first_field &&
+            field_index < use->first_field + use->field_count) {
+            return use;
+        }
+    }
+    return NULL;
+}
+
+internal u32 llvm_plex_physical_field_index(const Sema* sema,
+                                            u32         type_index,
+                                            u32         field_index)
+{
+    const SemaType* type     = &sema->types[type_index];
+    u32             physical = field_index;
+    for (u32 i = 0; i < type->plex_use_count; ++i) {
+        const SemaPlexUse* use = &sema->plex_uses[type->first_plex_use + i];
+        if (use->first_field >= field_index) {
+            break;
+        }
+        physical -= use->field_count - 1;
+    }
+    return physical;
+}
+
 internal u32 llvm_type_storage_bits(const Sema* sema, u32 type_index)
 {
     const LlvmLayout* layout   = llvm_default_layout();
@@ -341,7 +376,18 @@ internal u32 llvm_type_storage_bits(const Sema* sema, u32 type_index)
         u32             bits           = 0;
         u32             max_align_bits = 8;
         for (u32 i = 0; i < type->param_count; ++i) {
-            u32 field_type = sema->type_param_types[type->first_param_type + i];
+            const SemaPlexUse* use =
+                llvm_plex_use_containing_field(sema, type_index, i);
+            u32 field_type =
+                use != NULL && use->first_field == i
+                    ? use->type_index
+                    : sema->type_param_types[type->first_param_type + i];
+            if (use != NULL) {
+                if (use->first_field != i) {
+                    continue;
+                }
+                i += use->field_count - 1;
+            }
             u32 field_align_bits = llvm_type_align_bits(sema, field_type);
             u32 field_bits       = llvm_type_storage_bits(sema, field_type);
             bits                 = llvm_align_bits(bits, field_align_bits);
@@ -414,8 +460,18 @@ internal u32 llvm_type_align_bits(const Sema* sema, u32 type_index)
             const SemaType* type           = &sema->types[type_index];
             u32             max_align_bits = 8;
             for (u32 i = 0; i < type->param_count; ++i) {
+                const SemaPlexUse* use =
+                    llvm_plex_use_containing_field(sema, type_index, i);
                 u32 field_type =
-                    sema->type_param_types[type->first_param_type + i];
+                    use != NULL && use->first_field == i
+                        ? use->type_index
+                        : sema->type_param_types[type->first_param_type + i];
+                if (use != NULL) {
+                    if (use->first_field != i) {
+                        continue;
+                    }
+                    i += use->field_count - 1;
+                }
                 u32 field_align_bits = llvm_type_align_bits(sema, field_type);
                 if (field_align_bits > max_align_bits) {
                     max_align_bits = field_align_bits;
@@ -642,6 +698,29 @@ internal u32 llvm_record_field_index(const Sema* sema,
     return U32_MAX;
 }
 
+internal const SemaPlexUse*
+llvm_plex_embedded_next(const Sema* sema, u32 outer_type, u32 target_type)
+{
+    outer_type  = sema_materialise_type(sema, outer_type);
+    target_type = sema_materialise_type(sema, target_type);
+    if (outer_type >= array_count(sema->types) ||
+        sema->types[outer_type].kind != STK_Plex) {
+        return NULL;
+    }
+    const SemaType* outer = &sema->types[outer_type];
+    for (u32 i = 0; i < outer->plex_use_count; ++i) {
+        const SemaPlexUse* use = &sema->plex_uses[outer->first_plex_use + i];
+        u32 embedded           = sema_materialise_type(sema, use->type_index);
+        if (embedded == target_type) {
+            return use;
+        }
+        if (llvm_plex_embedded_next(sema, embedded, target_type) != NULL) {
+            return use;
+        }
+    }
+    return NULL;
+}
+
 internal u32 llvm_enum_variant_index(const Sema* sema,
                                      u32         enum_type,
                                      u32         symbol_handle)
@@ -797,12 +876,21 @@ llvm_append_type(StringBuilder* sb, const Sema* sema, u32 type_index)
     case STK_Tuple:
     case STK_Plex:
         sb_append_cstr(sb, "{ ");
-        for (u32 i = 0; i < type->param_count; ++i) {
-            if (i > 0) {
+        for (u32 i = 0, physical = 0; i < type->param_count; ++i, ++physical) {
+            if (physical > 0) {
                 sb_append_cstr(sb, ", ");
             }
-            llvm_append_type(
-                sb, sema, sema->type_param_types[type->first_param_type + i]);
+            const SemaPlexUse* use =
+                llvm_plex_use_containing_field(sema, type_index, i);
+            if (use != NULL && use->first_field == i) {
+                llvm_append_type(sb, sema, use->type_index);
+                i += use->field_count - 1;
+            } else {
+                llvm_append_type(
+                    sb,
+                    sema,
+                    sema->type_param_types[type->first_param_type + i]);
+            }
         }
         sb_append_cstr(sb, " }");
         break;
@@ -2079,9 +2167,21 @@ internal bool llvm_append_constant_record_value(StringBuilder* sb,
     const HirExpr* expr        = &hir->exprs[expr_index];
     u32            field_count = llvm_record_field_count(sema, record_type);
     sb_append_cstr(sb, "{ ");
-    for (u32 i = 0; i < field_count; ++i) {
-        if (i > 0) {
+    for (u32 i = 0, physical = 0; i < field_count; ++i, ++physical) {
+        if (physical > 0) {
             sb_append_cstr(sb, ", ");
+        }
+        const SemaPlexUse* use =
+            llvm_plex_use_containing_field(sema, record_type, i);
+        if (use != NULL && use->first_field == i) {
+            llvm_append_type(sb, sema, use->type_index);
+            sb_append_char(sb, ' ');
+            if (!llvm_append_constant_record_value(
+                    sb, hir, lexer, sema, arena, expr_index, use->type_index)) {
+                return false;
+            }
+            i += use->field_count - 1;
+            continue;
         }
         u32 field_type = llvm_record_field_type(sema, record_type, i);
         llvm_append_type(sb, sema, field_type);
@@ -5063,9 +5163,20 @@ internal LlvmValue llvm_build_aggregate_value(LlvmFunctionContext* ctx,
 {
     string aggregate_type = llvm_type_string(ctx, type_index);
     string current = value_count == 0 ? s("zeroinitializer") : s("poison");
-    for (u32 i = 0; i < value_count; ++i) {
+    for (u32 i = 0, physical = 0; i < value_count; ++i, ++physical) {
+        LlvmValue          value = values[i];
+        const SemaPlexUse* use =
+            llvm_plex_use_containing_field(ctx->sema, type_index, i);
+        if (use != NULL && use->first_field == i) {
+            value = llvm_build_aggregate_value(
+                ctx, use->type_index, &values[i], use->field_count);
+            if (!value.ok) {
+                return (LlvmValue){0};
+            }
+            i += use->field_count - 1;
+        }
         string temp       = llvm_temp(ctx);
-        string value_type = llvm_type_string(ctx, values[i].type_index);
+        string value_type = llvm_type_string(ctx, value.type_index);
         sb_format(ctx->sb,
                   "  " STRINGP " = insertvalue " STRINGP " " STRINGP
                   ", " STRINGP " " STRINGP ", %u\n",
@@ -5073,8 +5184,8 @@ internal LlvmValue llvm_build_aggregate_value(LlvmFunctionContext* ctx,
                   STRINGV(aggregate_type),
                   STRINGV(current),
                   STRINGV(value_type),
-                  STRINGV(values[i].value),
-                  i);
+                  STRINGV(value.value),
+                  physical);
         current = temp;
     }
 
@@ -5083,6 +5194,90 @@ internal LlvmValue llvm_build_aggregate_value(LlvmFunctionContext* ctx,
         .type_index = type_index,
         .value      = current,
     };
+}
+
+internal LlvmValue llvm_extract_record_field(LlvmFunctionContext* ctx,
+                                             LlvmValue            record,
+                                             u32                  field_index)
+{
+    u32 current_type = record.type_index;
+    while (llvm_type_kind(ctx->sema, current_type) == STK_Plex) {
+        const SemaPlexUse* use = llvm_plex_use_containing_field(
+            ctx->sema, current_type, field_index);
+        if (use == NULL) {
+            break;
+        }
+        string temp = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = extractvalue " STRINGP " " STRINGP ", %u\n",
+                  STRINGV(temp),
+                  STRINGV(llvm_type_string(ctx, current_type)),
+                  STRINGV(record.value),
+                  llvm_plex_physical_field_index(
+                      ctx->sema, current_type, use->first_field));
+        record = (LlvmValue){
+            .ok = true, .type_index = use->type_index, .value = temp};
+        current_type = use->type_index;
+        field_index -= use->first_field;
+    }
+    u32 field_type =
+        llvm_record_field_type(ctx->sema, current_type, field_index);
+    u32    physical = llvm_type_kind(ctx->sema, current_type) == STK_Plex
+                          ? llvm_plex_physical_field_index(
+                                ctx->sema, current_type, field_index)
+                          : field_index;
+    string temp     = llvm_temp(ctx);
+    sb_format(ctx->sb,
+              "  " STRINGP " = extractvalue " STRINGP " " STRINGP ", %u\n",
+              STRINGV(temp),
+              STRINGV(llvm_type_string(ctx, current_type)),
+              STRINGV(record.value),
+              physical);
+    return (LlvmValue){.ok = true, .type_index = field_type, .value = temp};
+}
+
+internal LlvmValue llvm_insert_record_field(LlvmFunctionContext* ctx,
+                                            LlvmValue            record,
+                                            u32                  field_index,
+                                            LlvmValue            value)
+{
+    const SemaPlexUse* use = llvm_plex_use_containing_field(
+        ctx->sema, record.type_index, field_index);
+    u32 physical = llvm_type_kind(ctx->sema, record.type_index) == STK_Plex
+                       ? llvm_plex_physical_field_index(
+                             ctx->sema,
+                             record.type_index,
+                             use == NULL ? field_index : use->first_field)
+                       : field_index;
+    if (use != NULL) {
+        string embedded_value = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = extractvalue " STRINGP " " STRINGP ", %u\n",
+                  STRINGV(embedded_value),
+                  STRINGV(llvm_type_string(ctx, record.type_index)),
+                  STRINGV(record.value),
+                  physical);
+        LlvmValue embedded = {
+            .ok = true, .type_index = use->type_index, .value = embedded_value};
+        embedded = llvm_insert_record_field(
+            ctx, embedded, field_index - use->first_field, value);
+        if (!embedded.ok) {
+            return (LlvmValue){0};
+        }
+        value = embedded;
+    }
+    string temp = llvm_temp(ctx);
+    sb_format(ctx->sb,
+              "  " STRINGP " = insertvalue " STRINGP " " STRINGP ", " STRINGP
+              " " STRINGP ", %u\n",
+              STRINGV(temp),
+              STRINGV(llvm_type_string(ctx, record.type_index)),
+              STRINGV(record.value),
+              STRINGV(llvm_type_string(ctx, value.type_index)),
+              STRINGV(value.value),
+              physical);
+    record.value = temp;
+    return record;
 }
 
 internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
@@ -6103,23 +6298,8 @@ internal LlvmValue llvm_emit_pattern_condition(LlvmFunctionContext* ctx,
                     return (LlvmValue){0};
                 }
 
-                string temp = llvm_temp(ctx);
-                string record_type =
-                    llvm_type_string(ctx, scrutinee.type_index);
-                sb_format(ctx->sb,
-                          "  " STRINGP " = extractvalue " STRINGP " " STRINGP
-                          ", %u\n",
-                          STRINGV(temp),
-                          STRINGV(record_type),
-                          STRINGV(scrutinee.value),
-                          field_index);
-
-                LlvmValue field = {
-                    .ok         = true,
-                    .type_index = llvm_record_field_type(
-                        ctx->sema, scrutinee.type_index, field_index),
-                    .value = temp,
-                };
+                LlvmValue field =
+                    llvm_extract_record_field(ctx, scrutinee, field_index);
                 LlvmValue condition = llvm_emit_pattern_condition(
                     ctx, function, field, child->pattern_index, bind_values);
                 if (!condition.ok) {
@@ -6455,15 +6635,41 @@ internal LlvmValue llvm_address_of_expr(LlvmFunctionContext* ctx,
             return (LlvmValue){0};
         }
 
-        string record_type_string = llvm_type_string(ctx, record_type);
-        string ptr                = llvm_temp(ctx);
+        string ptr           = target_address.value;
+        u32    current_type  = record_type;
+        u32    current_field = field_index;
+        while (llvm_type_kind(ctx->sema, current_type) == STK_Plex) {
+            const SemaPlexUse* use = llvm_plex_use_containing_field(
+                ctx->sema, current_type, current_field);
+            if (use == NULL) {
+                break;
+            }
+            string next = llvm_temp(ctx);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = getelementptr inbounds " STRINGP
+                      ", ptr " STRINGP ", i64 0, i32 %u\n",
+                      STRINGV(next),
+                      STRINGV(llvm_type_string(ctx, current_type)),
+                      STRINGV(ptr),
+                      llvm_plex_physical_field_index(
+                          ctx->sema, current_type, use->first_field));
+            ptr          = next;
+            current_type = use->type_index;
+            current_field -= use->first_field;
+        }
+        string next        = llvm_temp(ctx);
+        u32 physical_field = llvm_type_kind(ctx->sema, current_type) == STK_Plex
+                                 ? llvm_plex_physical_field_index(
+                                       ctx->sema, current_type, current_field)
+                                 : current_field;
         sb_format(ctx->sb,
                   "  " STRINGP " = getelementptr inbounds " STRINGP
                   ", ptr " STRINGP ", i64 0, i32 %u\n",
+                  STRINGV(next),
+                  STRINGV(llvm_type_string(ctx, current_type)),
                   STRINGV(ptr),
-                  STRINGV(record_type_string),
-                  STRINGV(target_address.value),
-                  field_index);
+                  physical_field);
+        ptr = next;
         return (LlvmValue){
             .ok         = true,
             .type_index = field_type,
@@ -8843,8 +9049,6 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             if (!base.ok) {
                 return (LlvmValue){0};
             }
-            string rendered = base.value;
-
             if (expr->kind == HIR_EXPR_PlexUpdate) {
                 for (u32 i = 0; i < expr->arg_count; ++i) {
                     const HirCallArg* arg =
@@ -8859,28 +9063,18 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     if (!field_value.ok) {
                         return (LlvmValue){0};
                     }
-                    string temp = llvm_temp(ctx);
-                    string record_type =
-                        llvm_type_string(ctx, expr->type_index);
-                    string field_type =
-                        llvm_type_string(ctx, field_value.type_index);
-                    sb_format(ctx->sb,
-                              "  " STRINGP " = insertvalue " STRINGP " " STRINGP
-                              ", " STRINGP " " STRINGP ", %u\n",
-                              STRINGV(temp),
-                              STRINGV(record_type),
-                              STRINGV(rendered),
-                              STRINGV(field_type),
-                              STRINGV(field_value.value),
-                              field_index);
-                    rendered = temp;
+                    base = llvm_insert_record_field(
+                        ctx, base, field_index, field_value);
+                    if (!base.ok) {
+                        return (LlvmValue){0};
+                    }
                 }
             }
 
             return (LlvmValue){
                 .ok         = true,
                 .type_index = expr->type_index,
-                .value      = rendered,
+                .value      = base.value,
             };
         }
     case HIR_EXPR_LocalRef:
@@ -10659,20 +10853,10 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 return llvm_cast_from_union_storage(ctx, target, field_type);
             }
 
-            string temp        = llvm_temp(ctx);
-            string record_type = llvm_type_string(ctx, target.type_index);
-            sb_format(ctx->sb,
-                      "  " STRINGP " = extractvalue " STRINGP " " STRINGP
-                      ", %u\n",
-                      STRINGV(temp),
-                      STRINGV(record_type),
-                      STRINGV(target.value),
-                      field_index);
-            return (LlvmValue){
-                .ok         = true,
-                .type_index = result_type,
-                .value      = temp,
-            };
+            LlvmValue result =
+                llvm_extract_record_field(ctx, target, field_index);
+            result.type_index = result_type;
+            return result;
         }
     case HIR_EXPR_Block:
         {
@@ -12875,6 +13059,45 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     .type_index = expr->type_index,
                     .value      = with_payload,
                 };
+            }
+
+            if (llvm_type_kind(ctx->sema, operand.type_index) == STK_Pointer &&
+                llvm_type_kind(ctx->sema, expr->type_index) == STK_Pointer) {
+                u32 source_pointee =
+                    llvm_pointee_type(ctx->sema, operand.type_index);
+                u32 target_pointee =
+                    llvm_pointee_type(ctx->sema, expr->type_index);
+                const SemaPlexUse* next = llvm_plex_embedded_next(
+                    ctx->sema, source_pointee, target_pointee);
+                if (next != NULL) {
+                    string adjusted = operand.value;
+                    u32    current  = source_pointee;
+                    while (current != target_pointee) {
+                        next = llvm_plex_embedded_next(
+                            ctx->sema, current, target_pointee);
+                        if (next == NULL) {
+                            return (LlvmValue){0};
+                        }
+                        string temp = llvm_temp(ctx);
+                        sb_format(ctx->sb,
+                                  "  " STRINGP
+                                  " = getelementptr inbounds " STRINGP
+                                  ", ptr " STRINGP ", i64 0, i32 %u\n",
+                                  STRINGV(temp),
+                                  STRINGV(llvm_type_string(ctx, current)),
+                                  STRINGV(adjusted),
+                                  llvm_plex_physical_field_index(
+                                      ctx->sema, current, next->first_field));
+                        adjusted = temp;
+                        current =
+                            sema_materialise_type(ctx->sema, next->type_index);
+                    }
+                    return (LlvmValue){
+                        .ok         = true,
+                        .type_index = expr->type_index,
+                        .value      = adjusted,
+                    };
+                }
             }
 
             string instr = llvm_cast_instruction(

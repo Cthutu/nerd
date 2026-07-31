@@ -215,6 +215,25 @@ p.x = 10  -- assign a field
 p.y += 5  -- compound-assign a field
 ```
 
+A plex can bring another plex's fields into scope with `use`:
+
+```nerd
+Rect :: plex {
+    use Point
+    width  i32
+    height i32
+}
+
+rect := Rect { x: 10 y: 20 width: 30 height: 40 }
+```
+
+The embedded fields remain one aligned, contiguous `Point` subobject, so an
+explicit pointer cast such as `(^rect).as(^Point)` adjusts to that subobject.
+This also works through transitive uses. Field names may not conflict, and the
+same type declaration may be used only once in a plex. That duplicate rule also
+applies to different applications of one generic declaration, such as
+`Pair[i32]` and `Pair[f32]`.
+
 Plexes may refer to themselves through pointers. This is useful for linked
 structures and object graphs because the field has pointer size:
 

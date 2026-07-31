@@ -69,6 +69,8 @@ typedef struct {
     u16          flags;
     u32          first_param_type;
     u32          return_type;
+    u32          first_plex_use;
+    u16          plex_use_count;
 } SemaType;
 
 typedef enum : u16 {
@@ -78,7 +80,14 @@ typedef enum : u16 {
     STF_FunctionVarargs = 1 << 2,
     STF_Optional        = 1 << 3,
     STF_Result          = 1 << 4,
+    STF_PlexEmbedded    = 1 << 5,
 } SemaTypeFlag;
+
+typedef struct {
+    u32 type_index;
+    u32 first_field;
+    u32 field_count;
+} SemaPlexUse;
 
 typedef struct {
     const u32* param_symbols;
@@ -230,6 +239,7 @@ typedef struct {
     Array(u32) type_param_symbols;
     Array(i64) type_param_values;
     Array(bool) type_param_braced_payloads;
+    Array(SemaPlexUse) plex_uses;
     Array(SemaDecl) decls;
     Array(SemaGenericFnInstantiation) generic_fn_instantiations;
     Array(SemaCompileTimeFnInstantiation) compile_time_fn_instantiations;

@@ -502,9 +502,10 @@ dynamic-array-type
 
 pointer-type    ::= '^' type
 
-plex-type       ::= 'plex' generic-params? plex-annotation* '{' plex-field* '}'
+plex-type       ::= 'plex' generic-params? plex-annotation* '{' plex-member* '}'
 union-type      ::= 'union' generic-params? '{' plex-field* '}'
 plex-annotation ::= '#c' | '#packed'
+plex-member     ::= plex-field | 'use' type
 plex-field      ::= IDENT type
 
 enum-type       ::= 'enum' generic-params? '{' enum-variant-list? '}'
@@ -521,6 +522,10 @@ function-type-param-list
 
 Plex field definitions use `field Type` with no colon. Colons are used in plex
 literals and plex patterns.
+
+Within a plex body, `use Type` embeds the fields of another plex at that point.
+Generic applications use the ordinary square-bracket syntax, for example
+`use Pair[i32]`.
 
 ## Literals And Aggregate Expressions
 

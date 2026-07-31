@@ -168,9 +168,10 @@ itself.
 ## Aggregate Definitions
 
 ```bnf
-plex-type       ::= 'plex' generic-params? plex-annotation* '{' plex-field* '}'
+plex-type       ::= 'plex' generic-params? plex-annotation* '{' plex-member* '}'
 union-type      ::= 'union' generic-params? '{' plex-field* '}'
 plex-annotation ::= '#c' | '#packed'
+plex-member     ::= plex-field | 'use' type
 plex-field      ::= IDENT type
 
 enum-type       ::= 'enum' generic-params? '{' enum-variant-list? '}'
@@ -182,6 +183,13 @@ Plex and union fields are written as `field Type`, not `field: Type`.
 Plex annotations are written after `plex` and before the field body. The parser
 recognises `#c` and `#packed`; `#packed` also implies the C-layout flag. These
 annotations are not accepted on `union` or `enum`.
+
+`use P` requires `P` to resolve to a plex. It exposes the embedded plex's fields
+as fields of the containing plex, including through transitive uses. Conflicting
+field names are rejected. The same source type declaration cannot be used twice
+in one plex, even through distinct generic applications. Backend layout treats
+each direct use as an aligned, contiguous subobject; explicit pointer casts to
+directly or transitively embedded plex types adjust to the relevant subobject.
 
 Enums support unit variants, payload variants, and explicit discriminant
 expressions.

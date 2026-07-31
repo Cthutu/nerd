@@ -402,6 +402,14 @@ internal bool ast_skip_type_tokens(const AstParseState* state, u32* io_index)
         }
         (*io_index)++;
         while (ast_kind_at_stream_index(state, *io_index) != TK_RBrace) {
+            if (kind == TK_plex &&
+                ast_kind_at_stream_index(state, *io_index) == TK_use) {
+                (*io_index)++;
+                if (!ast_skip_type_tokens(state, io_index)) {
+                    return false;
+                }
+                continue;
+            }
             if (ast_kind_at_stream_index(state, *io_index) == TK_EOF ||
                 ast_kind_at_stream_index(state, *io_index) != TK_Symbol) {
                 return false;
@@ -1532,6 +1540,28 @@ internal bool ast_parse_type_primary(AstParseState* state, u32* out_node)
         u32 first_field = (u32)array_count(state->plex_fields);
         u32 field_count = 0;
         while (state->token.kind != TK_RBrace) {
+            if (!is_union && state->token.kind == TK_use) {
+                AstToken use_token = state->token;
+                if (!ast_next_token(state)) {
+                    return false;
+                }
+                u32 type_node = 0;
+                if (!ast_parse_type(state, &type_node)) {
+                    return false;
+                }
+                array_push(state->plex_fields,
+                           (AstPlexField){
+                               .token_index     = use_token.token_index,
+                               .symbol_handle   = U32_MAX,
+                               .type_node_index = type_node,
+                               .embedded        = true,
+                           });
+                field_count++;
+                if (!ast_next_token(state)) {
+                    return false;
+                }
+                continue;
+            }
             if (state->token.kind != TK_Symbol) {
                 return error_0203_expected_token(
                     state->lexer->source,
@@ -1561,6 +1591,7 @@ internal bool ast_parse_type_primary(AstParseState* state, u32* out_node)
                            .token_index     = field.token_index,
                            .symbol_handle   = field.value.symbol_handle,
                            .type_node_index = type_node,
+                           .embedded        = false,
                        });
             field_count++;
             if (!ast_next_token(state)) {

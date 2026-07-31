@@ -551,6 +551,14 @@ internal bool cst_skip_type_tokens(const CstParseState* state, u32* io_index)
         }
         (*io_index)++;
         while (cst_kind_at_stream_index(state, *io_index) != TK_RBrace) {
+            if (kind == TK_plex &&
+                cst_kind_at_stream_index(state, *io_index) == TK_use) {
+                (*io_index)++;
+                if (!cst_skip_type_tokens(state, io_index)) {
+                    return false;
+                }
+                continue;
+            }
             if (cst_kind_at_stream_index(state, *io_index) == TK_EOF ||
                 cst_kind_at_stream_index(state, *io_index) != TK_Symbol) {
                 return false;
@@ -1616,6 +1624,23 @@ internal bool cst_parse_type_primary(CstParseState* state, u32* out_node)
         u32 first_field = (u32)array_count(state->cst.plex_fields);
         u32 field_count = 0;
         while (cst_current_token(state).kind != TK_RBrace) {
+            if (!is_union && cst_current_token(state).kind == TK_use) {
+                u32 use_token = state->token_index;
+                cst_advance(state);
+                u32 type_node = 0;
+                if (!cst_parse_type(state, &type_node)) {
+                    return false;
+                }
+                array_push(state->cst.plex_fields,
+                           (CstPlexField){
+                               .token_index     = use_token,
+                               .symbol_handle   = U32_MAX,
+                               .type_node_index = type_node,
+                               .embedded        = true,
+                           });
+                field_count++;
+                continue;
+            }
             if (cst_current_token(state).kind != TK_Symbol) {
                 return false;
             }
@@ -1631,6 +1656,7 @@ internal bool cst_parse_type_primary(CstParseState* state, u32* out_node)
                            .token_index     = field_token,
                            .symbol_handle   = field_symbol,
                            .type_node_index = type_node,
+                           .embedded        = false,
                        });
             field_count++;
         }

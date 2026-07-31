@@ -429,6 +429,15 @@ bool error_0358_atomic_ffi_type(NerdSource source,
 bool error_0359_typed_binding_uses_const_operator(NerdSource source,
                                                   ErrorSpan  span,
                                                   string     type_name);
+bool error_0360_plex_use_requires_plex(NerdSource source,
+                                       ErrorSpan  span,
+                                       string     actual_type);
+bool error_0361_duplicate_plex_use(NerdSource source,
+                                   ErrorSpan  span,
+                                   string     type_name);
+bool error_0362_conflicting_plex_field(NerdSource source,
+                                       ErrorSpan  span,
+                                       string     field_name);
 
 //------------------------------------------------------------------------------
 // Low-level error system

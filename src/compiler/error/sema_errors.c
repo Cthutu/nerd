@@ -1808,4 +1808,49 @@ bool error_0359_typed_binding_uses_const_operator(NerdSource source,
     return false;
 }
 
+bool error_0360_plex_use_requires_plex(NerdSource source,
+                                       ErrorSpan  span,
+                                       string     actual_type)
+{
+    ErrorInfo error =
+        error_init(source,
+                   span,
+                   "Embedded plex use requires a plex type, not `" STRINGP "`",
+                   STRINGV(actual_type));
+    error_add_help(&error,
+                   "Use `use T` only when `T` resolves to a plex type.");
+    error_render(&error);
+    return false;
+}
+
+bool error_0361_duplicate_plex_use(NerdSource source,
+                                   ErrorSpan  span,
+                                   string     type_name)
+{
+    ErrorInfo error =
+        error_init(source,
+                   span,
+                   "Plex type `" STRINGP "` is embedded more than once",
+                   STRINGV(type_name));
+    error_add_help(&error,
+                   "Each plex may use a generic type declaration only once.");
+    error_render(&error);
+    return false;
+}
+
+bool error_0362_conflicting_plex_field(NerdSource source,
+                                       ErrorSpan  span,
+                                       string     field_name)
+{
+    ErrorInfo error = error_init(source,
+                                 span,
+                                 "Embedded plex field `" STRINGP
+                                 "` conflicts with another field",
+                                 STRINGV(field_name));
+    error_add_help(
+        &error, "Rename the field or remove one of the conflicting plex uses.");
+    error_render(&error);
+    return false;
+}
+
 //------------------------------------------------------------------------------

@@ -433,13 +433,51 @@ internal u32 sema_add_plex_type(Sema*               sema,
                                 u32 field_count,
                                 u32 flags)
 {
-    Array(u32) field_symbols = NULL;
+    Array(u32) field_symbols   = NULL;
+    Array(u32) flattened_types = NULL;
+    Array(SemaPlexUse) uses    = NULL;
     for (u32 i = 0; i < field_count; ++i) {
-        array_push(field_symbols, fields[i].symbol_handle);
+        if (fields[i].embedded && field_types[i] < array_count(sema->types) &&
+            sema->types[field_types[i]].kind == STK_Plex) {
+            const SemaType* embedded = &sema->types[field_types[i]];
+            array_push(uses,
+                       (SemaPlexUse){
+                           .type_index  = field_types[i],
+                           .first_field = (u32)array_count(field_symbols),
+                           .field_count = embedded->param_count,
+                       });
+            for (u32 j = 0; j < embedded->param_count; ++j) {
+                array_push(
+                    field_symbols,
+                    sema->type_param_symbols[embedded->first_param_type + j]);
+                array_push(
+                    flattened_types,
+                    sema->type_param_types[embedded->first_param_type + j]);
+            }
+        } else {
+            array_push(field_symbols, fields[i].symbol_handle);
+            array_push(flattened_types, field_types[i]);
+        }
     }
-    u32 type_index = sema_add_plex_type_raw(
-        sema, field_symbols, field_types, field_count, (u16)flags);
+    if (array_count(uses) > 0) {
+        flags |= STF_PlexEmbedded;
+    }
+    u32 type_index = sema_add_plex_type_raw(sema,
+                                            field_symbols,
+                                            flattened_types,
+                                            (u32)array_count(field_symbols),
+                                            (u16)flags);
+    if (array_count(uses) > 0 && sema->types[type_index].plex_use_count == 0) {
+        sema->types[type_index].first_plex_use =
+            (u32)array_count(sema->plex_uses);
+        sema->types[type_index].plex_use_count = (u16)array_count(uses);
+        for (u32 i = 0; i < array_count(uses); ++i) {
+            array_push(sema->plex_uses, uses[i]);
+        }
+    }
     array_free(field_symbols);
+    array_free(flattened_types);
+    array_free(uses);
     return type_index;
 }
 
@@ -766,6 +804,23 @@ u32 sema_import_type(Lexer*       dst_lexer,
                                               field_symbols,
                                               field_types,
                                               (u32)array_count(field_symbols));
+            if (src_type->kind == STK_Plex && src_type->plex_use_count > 0 &&
+                dst_sema->types[imported].plex_use_count == 0) {
+                dst_sema->types[imported].first_plex_use =
+                    (u32)array_count(dst_sema->plex_uses);
+                dst_sema->types[imported].plex_use_count =
+                    src_type->plex_use_count;
+                for (u32 i = 0; i < src_type->plex_use_count; ++i) {
+                    SemaPlexUse use =
+                        src_sema->plex_uses[src_type->first_plex_use + i];
+                    use.type_index = sema_import_type(dst_lexer,
+                                                      dst_sema,
+                                                      src_lexer,
+                                                      src_sema,
+                                                      use.type_index);
+                    array_push(dst_sema->plex_uses, use);
+                }
+            }
             array_free(field_symbols);
             array_free(field_types);
             return imported;
@@ -1013,6 +1068,18 @@ u32 sema_materialise_type(const Sema* sema, u32 type_index)
                                                          field_symbols,
                                                          field_types,
                                                          record.param_count);
+        if (record.kind == STK_Plex && record.plex_use_count > 0 &&
+            sema->types[materialised].plex_use_count == 0) {
+            ((Sema*)sema)->types[materialised].first_plex_use =
+                (u32)array_count(sema->plex_uses);
+            ((Sema*)sema)->types[materialised].plex_use_count =
+                record.plex_use_count;
+            for (u32 i = 0; i < record.plex_use_count; ++i) {
+                SemaPlexUse use = sema->plex_uses[record.first_plex_use + i];
+                use.type_index  = sema_materialise_type(sema, use.type_index);
+                array_push(((Sema*)sema)->plex_uses, use);
+            }
+        }
         array_free(field_types);
         array_free(field_symbols);
         return materialised;
@@ -4325,6 +4392,99 @@ internal bool sema_check_public_field_type_visibility(const Lexer* lexer,
         lex_symbol(lexer, private_decl->symbol_handle));
 }
 
+internal u32 sema_plex_use_base_symbol(const Ast* ast, u32 node_index)
+{
+    if (node_index >= array_count(ast->nodes)) {
+        return U32_MAX;
+    }
+    const AstNode* node = &ast->nodes[node_index];
+    if (node->kind == AK_SymbolRef) {
+        return node->a;
+    }
+    if (node->kind == AK_TypeApply &&
+        node->a < array_count(ast->type_applications)) {
+        return sema_plex_use_base_symbol(
+            ast, ast->type_applications[node->a].target_node_index);
+    }
+    return U32_MAX;
+}
+
+internal bool sema_validate_plex_uses(const Lexer*           lexer,
+                                      const Ast*             ast,
+                                      const Sema*            sema,
+                                      const AstPlexTypeInfo* plex,
+                                      Array(u32) field_types)
+{
+    Array(u32) seen_symbols = NULL;
+    Array(u32) used_bases   = NULL;
+    for (u32 i = 0; i < plex->field_count; ++i) {
+        const AstPlexField* field = &ast->plex_fields[plex->first_field + i];
+        if (!field->embedded) {
+            for (u32 j = 0; j < array_count(seen_symbols); ++j) {
+                if (seen_symbols[j] == field->symbol_handle) {
+                    array_free(seen_symbols);
+                    array_free(used_bases);
+                    return error_0362_conflicting_plex_field(
+                        lexer->source,
+                        sema_token_span(lexer, field->token_index),
+                        lex_symbol(lexer, field->symbol_handle));
+                }
+            }
+            array_push(seen_symbols, field->symbol_handle);
+            continue;
+        }
+
+        u32 embedded_type = field_types[i];
+        if (embedded_type >= array_count(sema->types) ||
+            sema->types[embedded_type].kind != STK_Plex) {
+            Arena temp = {0};
+            arena_init(&temp);
+            string actual = sema_type_name(lexer, sema, &temp, embedded_type);
+            bool   result = error_0360_plex_use_requires_plex(
+                lexer->source,
+                sema_token_span(lexer, field->token_index),
+                actual);
+            arena_done(&temp);
+            array_free(seen_symbols);
+            array_free(used_bases);
+            return result;
+        }
+
+        u32 base = sema_plex_use_base_symbol(ast, field->type_node_index);
+        for (u32 j = 0; j < array_count(used_bases); ++j) {
+            if (base != U32_MAX && used_bases[j] == base) {
+                array_free(seen_symbols);
+                array_free(used_bases);
+                return error_0361_duplicate_plex_use(
+                    lexer->source,
+                    sema_token_span(lexer, field->token_index),
+                    lex_symbol(lexer, base));
+            }
+        }
+        array_push(used_bases, base);
+
+        const SemaType* embedded = &sema->types[embedded_type];
+        for (u32 j = 0; j < embedded->param_count; ++j) {
+            u32 symbol =
+                sema->type_param_symbols[embedded->first_param_type + j];
+            for (u32 k = 0; k < array_count(seen_symbols); ++k) {
+                if (seen_symbols[k] == symbol) {
+                    array_free(seen_symbols);
+                    array_free(used_bases);
+                    return error_0362_conflicting_plex_field(
+                        lexer->source,
+                        sema_token_span(lexer, field->token_index),
+                        lex_symbol(lexer, symbol));
+                }
+            }
+            array_push(seen_symbols, symbol);
+        }
+    }
+    array_free(seen_symbols);
+    array_free(used_bases);
+    return true;
+}
+
 internal bool sema_try_classify_type_node(const Lexer* lexer,
                                           const Ast*   ast,
                                           Sema*        sema,
@@ -4765,6 +4925,10 @@ internal bool sema_try_classify_type_node(const Lexer* lexer,
                     return false;
                 }
                 array_push(field_types, field_type);
+            }
+            if (!sema_validate_plex_uses(lexer, ast, sema, plex, field_types)) {
+                array_free(field_types);
+                return false;
             }
             *out_is_type = true;
             *out_type_index =
@@ -10701,6 +10865,10 @@ internal bool sema_resolve_type_node_ex(const Lexer*         lexer,
                     return false;
                 }
                 array_push(field_types, field_type);
+            }
+            if (!sema_validate_plex_uses(lexer, ast, sema, plex, field_types)) {
+                array_free(field_types);
+                return false;
             }
             u32 type_index =
                 (plex->flags & APTF_Union)
@@ -24924,6 +25092,7 @@ void sema_done(Sema* sema)
     array_free(sema->type_param_symbols);
     array_free(sema->type_param_values);
     array_free(sema->type_param_braced_payloads);
+    array_free(sema->plex_uses);
     array_free(sema->decls);
     array_free(sema->generic_fn_instantiations);
     array_free(sema->compile_time_fn_instantiations);

@@ -214,6 +214,12 @@ intended exit code.
 - Plexes, raw unions, and enums may be declared locally inside blocks and are
   scoped like local bindings.
 - Generic plexes are written as `plex [T] { ... }` and used as `Name[T]`.
+- `use P` inside a plex embeds the fields of plex type `P`; the fields are
+  directly accessible on the containing value and participate in literals.
+- Embedded field-name conflicts are invalid. A plex cannot use the same type
+  declaration twice, including different applications of one generic plex.
+- Explicit pointer casts from a containing plex to a directly or transitively
+  embedded plex adjust to the aligned, contiguous embedded subobject.
 - Plexes may refer to themselves through pointer fields, such as `next ^Node`;
   direct by-value self-recursion is invalid.
 - `...` at the end of a plex literal initialises omitted fields with their

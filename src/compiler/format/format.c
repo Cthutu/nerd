@@ -1742,8 +1742,13 @@ internal void format_emit_expr(StringBuilder* sb,
                 const CstPlexField* field =
                     &cst->plex_fields[plex->first_field + i];
                 sb_append_char(sb, ' ');
-                sb_append_string(sb, lex_symbol(lexer, field->symbol_handle));
-                sb_append_char(sb, ' ');
+                if (field->embedded) {
+                    sb_append_cstr(sb, "use ");
+                } else {
+                    sb_append_string(sb,
+                                     lex_symbol(lexer, field->symbol_handle));
+                    sb_append_char(sb, ' ');
+                }
                 format_emit_expr(sb, cst, lexer, field->type_node_index, 0);
             }
             sb_append_cstr(sb, " }");
@@ -4645,6 +4650,9 @@ internal void format_emit_type_plex_multiline(StringBuilder* sb,
     usize                  max_field_width = 0;
     for (u32 i = 0; i < plex->field_count; ++i) {
         const CstPlexField* field = &cst->plex_fields[plex->first_field + i];
+        if (field->embedded) {
+            continue;
+        }
         usize field_width = lex_symbol(lexer, field->symbol_handle).count;
         if (field_width > max_field_width) {
             max_field_width = field_width;
@@ -4662,7 +4670,9 @@ internal void format_emit_type_plex_multiline(StringBuilder* sb,
         usize               type_width =
             format_rendered_expr_width(cst, lexer, field->type_node_index, 0);
         usize code_width =
-            field_indent_width + max_field_width + 1 + type_width;
+            field->embedded
+                ? field_indent_width + 4 + type_width
+                : field_indent_width + max_field_width + 1 + type_width;
         u32 type_end_token =
             format_node_end_token_index(cst, lexer, field->type_node_index);
         usize type_end_offset =
@@ -4742,9 +4752,10 @@ internal void format_emit_type_plex_multiline(StringBuilder* sb,
 
     for (u32 i = 0; i < plex->field_count; ++i) {
         const CstPlexField* field = &cst->plex_fields[plex->first_field + i];
-        string field_name         = lex_symbol(lexer, field->symbol_handle);
-        usize  field_start_offset = lexer->tokens[field->token_index].offset;
-        usize  group_start_offset = field_start_offset;
+        string              field_name =
+            field->embedded ? s("") : lex_symbol(lexer, field->symbol_handle);
+        usize field_start_offset = lexer->tokens[field->token_index].offset;
+        usize group_start_offset = field_start_offset;
         if (comment_index < array_count(lexer->comments) &&
             lexer->comments[comment_index].offset < field_start_offset) {
             group_start_offset = lexer->comments[comment_index].offset;
@@ -4761,9 +4772,13 @@ internal void format_emit_type_plex_multiline(StringBuilder* sb,
                                                 indent_level + 1,
                                                 NULL);
         format_emit_indent(sb, indent_level + 1);
-        sb_append_string(sb, field_name);
-        for (usize pad = field_name.count; pad <= max_field_width; ++pad) {
-            sb_append_char(sb, ' ');
+        if (field->embedded) {
+            sb_append_cstr(sb, "use ");
+        } else {
+            sb_append_string(sb, field_name);
+            for (usize pad = field_name.count; pad <= max_field_width; ++pad) {
+                sb_append_char(sb, ' ');
+            }
         }
         format_emit_expr(sb, cst, lexer, field->type_node_index, 0);
         usize field_end_offset = field_end_offsets[i];
