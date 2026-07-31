@@ -58,6 +58,7 @@ main :: fn () {
     }
 
     frame_system.apply(^frame)
+    defer frame_system.done()
 
     gfx := GfxSystem.init()
     defer gfx.done()

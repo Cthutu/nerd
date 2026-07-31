@@ -2,6 +2,8 @@ use std.frame
 
 main :: fn () {
     system := FrameSystem.init()
+    defer system.done()
+
     frame := Frame {
         id          : NEW_FRAME
         width       : 800

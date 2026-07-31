@@ -148,6 +148,8 @@ render_image_viewer :: fn (gfx    : ^GfxSystem,
 
 main :: fn () {
     frame_system := FrameSystem.init()
+    defer frame_system.done()
+
     frame := Frame {
         id          : NEW_FRAME
         width       : 960

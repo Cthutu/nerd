@@ -83,6 +83,7 @@ create_program :: fn () -> GLuint {
 
 main :: fn () {
     frame_system := FrameSystem.init()
+    defer frame_system.done()
     frame := Frame {
         id          : NEW_FRAME
         width       : 800
