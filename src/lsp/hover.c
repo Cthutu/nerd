@@ -2512,6 +2512,72 @@ internal string lsp_method_hover_text(const LspDocument* doc,
                          STRINGV(suffix));
 }
 
+// Imported method-call selections retain the declaration index from the
+// defining module. Find that declaration in the program so member hover and
+// definition can use the source module rather than treating the index as local.
+internal bool lsp_imported_method_for_field(const LspDocument* doc,
+                                            u32                field_node_index,
+                                            LspModuleView*     out_module,
+                                            u32*               out_decl_index)
+{
+    u32 selected = lsp_selected_method_decl_for_field(doc, field_node_index);
+    if (selected == LSP_NO_DECL ||
+        field_node_index >= array_count(doc->front_end.ast.nodes)) {
+        return false;
+    }
+
+    const AstNode* field = &doc->front_end.ast.nodes[field_node_index];
+    if (field->token_index >= array_count(doc->front_end.lexer.tokens)) {
+        return false;
+    }
+    u32 field_symbol =
+        lsp_symbol_handle_at_token(&doc->front_end.lexer, field->token_index);
+    if (field_symbol == U32_MAX) {
+        return false;
+    }
+    string field_name = lex_symbol(&doc->front_end.lexer, field_symbol);
+
+    for (u32 module_index = 0; module_index < array_count(doc->program.modules);
+         ++module_index) {
+        LspModuleView module = {0};
+        if (!lsp_program_module_view(&doc->program, module_index, &module) ||
+            module.sema == &doc->front_end.sema) {
+            continue;
+        }
+        for (u32 i = 0; i < array_count(module.sema->methods); ++i) {
+            const SemaMethod* method = &module.sema->methods[i];
+            if (method->decl_index == selected && method->is_public &&
+                method->symbol_handle != U32_MAX &&
+                string_eq(lex_symbol(module.lexer, method->symbol_handle),
+                          field_name)) {
+                *out_module     = module;
+                *out_decl_index = selected;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+internal string lsp_imported_method_hover_text(const LspDocument* doc,
+                                               Arena*             arena,
+                                               u32 field_node_index)
+{
+    LspModuleView module     = {0};
+    u32           decl_index = sema_no_decl();
+    if (!lsp_imported_method_for_field(
+            doc, field_node_index, &module, &decl_index)) {
+        return s("");
+    }
+
+    LspDocument module_doc     = *doc;
+    module_doc.source          = module.lexer->source.source;
+    module_doc.front_end.lexer = *module.lexer;
+    module_doc.front_end.ast   = *module.ast;
+    module_doc.front_end.sema  = *module.sema;
+    return lsp_method_hover_text(&module_doc, arena, decl_index);
+}
+
 internal string lsp_local_hover_text(const LspDocument* doc,
                                      Arena*             arena,
                                      u32                local_index)
@@ -3859,7 +3925,15 @@ internal string lsp_field_hover_text(const LspDocument* doc,
         u32 method_decl =
             lsp_selected_method_decl_for_field(doc, field_node_index);
         if (method_decl != LSP_NO_DECL) {
-            return lsp_method_hover_text(doc, arena, method_decl);
+            string hover = lsp_method_hover_text(doc, arena, method_decl);
+            if (hover.count != 0) {
+                return hover;
+            }
+            hover =
+                lsp_imported_method_hover_text(doc, arena, field_node_index);
+            if (hover.count != 0) {
+                return hover;
+            }
         }
 
         u32 associated_decl =
@@ -5154,6 +5228,15 @@ void lsp_handle_definition(LspState* state, const LspMessage* message)
         if (method_decl != LSP_NO_DECL) {
             JsonValue* method_location =
                 lsp_decl_location(doc, message->arena, uri, method_decl);
+            if (method_location == NULL) {
+                LspModuleView module        = {0};
+                u32           imported_decl = sema_no_decl();
+                if (lsp_imported_method_for_field(
+                        doc, field_node_index, &module, &imported_decl)) {
+                    method_location = lsp_module_decl_location(
+                        module, message->arena, imported_decl);
+                }
+            }
             if (method_location != NULL) {
                 json_object_set_object(response, "result", method_location);
                 lsp_send_response(message->arena, response);
