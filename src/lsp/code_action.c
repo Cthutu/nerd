@@ -2369,6 +2369,111 @@ internal u32 lsp_code_action_ast_module_path_for_binding(const LspDocument* doc,
     return U32_MAX;
 }
 
+internal bool lsp_code_action_missing_ast_enum_payload_fields_from_type(
+    Arena*             arena,
+    const LspDocument* doc,
+    u32                node_index,
+    const Ast*         type_ast,
+    const Lexer*       type_lexer,
+    string             enum_name,
+    string             variant_name,
+    string*            out_insert_text)
+{
+    for (u32 i = 0; i < array_count(type_ast->nodes); ++i) {
+        const AstNode* bind = &type_ast->nodes[i];
+        if (bind->kind != AK_Bind || bind->a == U32_MAX ||
+            !string_eq(lex_symbol(type_lexer, bind->a), enum_name) ||
+            bind->b >= array_count(type_ast->nodes)) {
+            continue;
+        }
+
+        const AstNode* value = &type_ast->nodes[bind->b];
+        if (value->kind != AK_TypeEnum ||
+            value->a >= array_count(type_ast->enum_types)) {
+            continue;
+        }
+        const AstEnumTypeInfo* enum_type = &type_ast->enum_types[value->a];
+        for (u32 variant_index = 0; variant_index < enum_type->variant_count;
+             ++variant_index) {
+            const AstEnumVariant* variant =
+                &type_ast
+                     ->enum_variants[enum_type->first_variant + variant_index];
+            if (!variant->braced_payload || variant->symbol_handle == U32_MAX ||
+                !string_eq(lex_symbol(type_lexer, variant->symbol_handle),
+                           variant_name) ||
+                variant->type_node_index >= array_count(type_ast->nodes)) {
+                continue;
+            }
+            const AstNode* payload = &type_ast->nodes[variant->type_node_index];
+            if (payload->kind != AK_TypePlex) {
+                return false;
+            }
+            return lsp_code_action_missing_ast_plex_fields_from_type(
+                arena,
+                doc,
+                node_index,
+                type_ast,
+                type_lexer,
+                payload->a,
+                out_insert_text);
+        }
+    }
+    return false;
+}
+
+internal bool
+lsp_code_action_missing_ast_enum_payload_fields(Arena*             arena,
+                                                const LspDocument* doc,
+                                                u32                node_index,
+                                                string* out_insert_text)
+{
+    const Ast*                ast     = &doc->front_end.ast;
+    const Lexer*              lexer   = &doc->front_end.lexer;
+    const AstNode*            node    = &ast->nodes[node_index];
+    const AstPlexLiteralInfo* literal = &ast->plex_literals[node->a];
+    if (literal->target_node_index >= array_count(ast->nodes)) {
+        return false;
+    }
+    const AstNode* target = &ast->nodes[literal->target_node_index];
+    if (target->kind != AK_Field || target->a >= array_count(ast->nodes)) {
+        return false;
+    }
+    const AstNode* receiver = &ast->nodes[target->a];
+    if (receiver->kind != AK_SymbolRef) {
+        return false;
+    }
+    string enum_name    = lex_symbol(lexer, receiver->a);
+    string variant_name = lex_symbol(lexer, target->b);
+
+    if (lsp_code_action_missing_ast_enum_payload_fields_from_type(
+            arena,
+            doc,
+            node_index,
+            ast,
+            lexer,
+            enum_name,
+            variant_name,
+            out_insert_text)) {
+        return true;
+    }
+    for (u32 i = 0; i < array_count(doc->program.modules); ++i) {
+        LspModuleView module = {0};
+        if (lsp_program_module_view(&doc->program, i, &module) &&
+            lsp_code_action_missing_ast_enum_payload_fields_from_type(
+                arena,
+                doc,
+                node_index,
+                module.ast,
+                module.lexer,
+                enum_name,
+                variant_name,
+                out_insert_text)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 internal bool
 lsp_code_action_missing_imported_ast_plex_fields(Arena*             arena,
                                                  const LspDocument* doc,
@@ -3248,6 +3353,8 @@ lsp_code_action_add_missing_plex_fields_action(Arena*             arena,
     if (!lsp_code_action_missing_plex_fields(
             arena, doc, node_index, &insert_text) &&
         !lsp_code_action_missing_ast_plex_fields(
+            arena, doc, node_index, &insert_text) &&
+        !lsp_code_action_missing_ast_enum_payload_fields(
             arena, doc, node_index, &insert_text) &&
         !lsp_code_action_missing_imported_ast_plex_fields(
             arena, doc, node_index, &insert_text)) {
