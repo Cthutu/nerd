@@ -4182,6 +4182,14 @@ internal bool cst_parse_nested_block(CstParseState* state, u32* out_node)
             return false;
         }
 
+        // Keep tooling on the structured CST path when a statement has an
+        // accidental C-style terminator. The compiler parser still diagnoses
+        // the semicolon; the formatter drops it while formatting the rest of
+        // the block normally.
+        if (cst_current_token(state).kind == TK_Semicolon) {
+            cst_advance(state);
+        }
+
         if (cst_current_token(state).kind == TK_EOF) {
             return false;
         }

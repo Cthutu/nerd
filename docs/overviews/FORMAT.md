@@ -10,6 +10,8 @@ The formatter should be deterministic and idempotent.
 - Formatted output should end with one trailing newline.
 - Runs of blank lines should collapse to a single empty line.
 - Existing indentation should be preserved unless a specific rule changes it.
+- An accidental C-style `;` after a block statement is removed without sending
+  the surrounding block through the token-stream fallback formatter.
 
 ## Comment Rules
 

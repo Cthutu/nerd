@@ -116,6 +116,11 @@ the live heap and arena lists and reporting leaks to standard error.
 - `Cst`
   Concrete syntax tree used mainly for formatter and LSP tooling.
 
+The tooling CST accepts an accidental C-style statement terminator inside a
+block so the formatter can remove it while retaining structured layout for the
+rest of the block. The compiler AST remains authoritative for rejecting that
+semicolon as invalid Nerd syntax.
+
 Sema records the expected type of each checked `on` pattern in an
 AST-pattern-indexed side table. Nested payload patterns therefore retain their
 own contextual type independently of the outer scrutinee, which editor features
