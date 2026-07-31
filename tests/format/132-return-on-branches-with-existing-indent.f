@@ -43,7 +43,9 @@ main :: fn () {
             prn("Goodbye!")
             break
         }
+
         "n", "s", "e", "w", "u", "d" => move(state, verb)
+
         else => {
             prn("I don't understand that command.")
         }

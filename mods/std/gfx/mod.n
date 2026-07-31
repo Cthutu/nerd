@@ -204,6 +204,7 @@ gfx_pixel_layer_present_offset :: fn (frame : ^Frame,
                                       scale : u16) -> (u16, u16) {
     on layer.mode {
         FitToWindow { pixel_scale: _ } => return (0, 0)
+
         FixedSizeAutoScale { width: _, height: _ } => {
             draw_width := layer.width.as(u32) * scale.as(u32)
             draw_height := layer.height.as(u32) * scale.as(u32)

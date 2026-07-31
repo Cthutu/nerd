@@ -352,6 +352,7 @@ term_event_record :: fn (event: TermInputEvent) {
         MouseDown(x, y, buttons)  => term_mouse_press(x, y, buttons)
         MouseUp(x, y, buttons)    => term_mouse_release(x, y, buttons)
         MouseWheel(x, y, dx, dy)  => term_mouse_wheel(x, y, dx, dy)
+
         else => {
         }
     }
@@ -565,6 +566,7 @@ term_run_presentation_hook :: fn (current: Instant) {
 term_handle_too_small :: fn (current: Instant, redraw: bool) {
     on term_too_small_policy {
         PauseSimulation => term_hooks_reset_timing(current)
+
         ContinueSimulation => {
             term_run_simulation_hook(current)
             term_present_last = current
@@ -657,6 +659,7 @@ term_run_step :: fn () -> bool {
     on event {
         TermInputEvent.None => {
         }
+
         else => term_event_record(event)
     }
 

@@ -56,7 +56,9 @@ The formatter should be deterministic and idempotent.
 - Consecutive public variable declarations participate in the same name, type,
   and value-column alignment as non-public declarations.
 - Multiline value-pattern `on` branches are separated by blank lines, matching
-  the layout used when the LSP inserts missing enum variants.
+  the layout used when the LSP inserts missing enum variants. Consecutive
+  single-line branches remain grouped, with a blank line separating the group
+  from adjacent multiline branches.
 - Explicit grouping parentheses are preserved.
 - Vertical spacing remains conservative apart from collapsing repeated blank lines.
 

@@ -10,9 +10,11 @@ main :: fn () {
     }
     b := on value {
         One => 1
+
         Two => {
             work()
         }
+
         Three     => 3
         FourLong  => 4
     }

@@ -328,6 +328,7 @@ on "linux" {
             X_KEYSYM_F10            => FrameScanCode.F10
             X_KEYSYM_F11            => FrameScanCode.F11
             X_KEYSYM_F12            => FrameScanCode.F12
+
             else => on (keysym >= '0'.as(XKeySym) && keysym <= '9'.as(XKeySym)) => keysym.as(u32).as(FrameScanCode)
                 else on (keysym >= 'A'.as(XKeySym) && keysym <= 'Z'.as(XKeySym)) => keysym.as(u32).as(FrameScanCode)
                 else on (keysym >= 'a'.as(XKeySym) && keysym <= 'z'.as(XKeySym)) => (keysym.as(u32) - 32).as(FrameScanCode)

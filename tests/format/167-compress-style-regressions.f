@@ -46,6 +46,7 @@ main :: fn () {
 
     state := on pushed {
         Err(OutputLimitExceeded) => return compress_bool_error(OutputLimitExceeded)
+
         else => {
         }
     }

@@ -178,6 +178,7 @@ main :: fn () {
                     on scan_code {
                         Escape  => frame_system.destroy(^frame)
                         Q       => frame_system.destroy(^frame)
+
                         Enter => {
                             on frame_system.is_alt_down() => {
                                 frame.full_screen = !frame.full_screen

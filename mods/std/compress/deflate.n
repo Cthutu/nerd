@@ -297,6 +297,7 @@ deflate_decode_compressed_block :: fn (reader           : ^DeflateReader,
                                           max_output_bytes)
             on pushed {
                 OutputLimitExceeded! => return compress_bool_error(OutputLimitExceeded)
+
                 else => {
                 }
             }
@@ -330,6 +331,7 @@ deflate_decode_compressed_block :: fn (reader           : ^DeflateReader,
             pushed := deflate_output_push(output, byte, max_output_bytes)
             on pushed {
                 OutputLimitExceeded! => return compress_bool_error(OutputLimitExceeded)
+
                 else => {
                 }
             }
@@ -377,6 +379,7 @@ deflate_decode_stored_block :: fn (reader           : ^DeflateReader,
                                       max_output_bytes)
         on pushed {
             OutputLimitExceeded! => return compress_bool_error(OutputLimitExceeded)
+
             else => {
             }
         }

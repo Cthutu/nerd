@@ -257,6 +257,7 @@ on "windows" {
             on mouse {
                 TermInputEvent.None => {
                 }
+
                 else => return mouse
             }
         }
@@ -272,6 +273,7 @@ on "windows" {
                 byte := term_read_byte_timeout(0)
                 return on byte == 0 => TermInputEvent.None else TermInputEvent.KeyPress(byte.as(KeyCode))
             }
+
             else => return event
         }
     }

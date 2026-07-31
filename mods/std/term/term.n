@@ -1186,6 +1186,7 @@ term_input_event_from_modified_key :: fn (key      : ?KeyCode,
             on flags == 0 => return TermInputEvent.KeyPress(code)
             return TermInputEvent.KeyPressModified(code, flags)
         }
+
         else => TermInputEvent.None
     }
 }
