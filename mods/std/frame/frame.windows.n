@@ -242,6 +242,15 @@ on "windows" {
                 return 0
             }
 
+            WM_NCHITTEST => {
+                hit := DefWindowProc(window, message, wparam, lparam)
+                on info != nil &&
+                    !info.platform_info.resizable &&
+                    hit >= HTLEFT &&
+                    hit <= HTBOTTOMRIGHT => return HTBORDER
+                return hit
+            }
+
             WM_KEYDOWN => {
                 on info != nil &&
                     frame_windows_current_system != nil => {

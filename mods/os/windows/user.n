@@ -72,12 +72,23 @@ pub PM_REMOVE :: 0x0001
 pub WM_DESTROY    :: 0x0002
 pub WM_CLOSE      :: 0x0010
 pub WM_SIZE       :: 0x0005
+pub WM_NCHITTEST  :: 0x0084
 pub WM_KEYDOWN    :: 0x0100
 pub WM_KEYUP      :: 0x0101
 pub WM_CHAR       :: 0x0102
 pub WM_SYSKEYDOWN :: 0x0104
 pub WM_SYSKEYUP   :: 0x0105
 pub WM_SYSCHAR    :: 0x0106
+
+pub HTLEFT        :: 10
+pub HTRIGHT       :: 11
+pub HTTOP         :: 12
+pub HTTOPLEFT     :: 13
+pub HTTOPRIGHT    :: 14
+pub HTBOTTOM      :: 15
+pub HTBOTTOMLEFT  :: 16
+pub HTBOTTOMRIGHT :: 17
+pub HTBORDER      :: 18
 
 pub SM_CXSCREEN :: 0
 pub SM_CYSCREEN :: 1
