@@ -3181,6 +3181,7 @@ internal bool lsp_completion_add_text_enum_variants(Arena*     arena,
 {
     usize line_start = 0;
     bool  in_enum    = false;
+    i32   enum_depth = 0;
     usize before     = array_count(items->array.values);
     while (line_start < source.count) {
         usize line_end = line_start;
@@ -3194,13 +3195,19 @@ internal bool lsp_completion_add_text_enum_variants(Arena*     arena,
         if (!in_enum) {
             if (lsp_completion_line_starts_decl(line, type_name, s("enum"))) {
                 in_enum = true;
+                lsp_completion_update_impl_depth(line, &enum_depth);
             }
             line_start = line_end + (line_end < source.count ? 1 : 0);
             continue;
         }
 
-        if (line.count > 0 && line.data[0] == '}') {
+        if (enum_depth == 1 && line.count > 0 && line.data[0] == '}') {
             break;
+        }
+        if (enum_depth != 1) {
+            lsp_completion_update_impl_depth(line, &enum_depth);
+            line_start = line_end + (line_end < source.count ? 1 : 0);
+            continue;
         }
         usize i = 0;
         if (lsp_completion_match_ident_at(line, &i, s("pub"))) {
@@ -3220,6 +3227,7 @@ internal bool lsp_completion_add_text_enum_variants(Arena*     arena,
                 (string){.data = line.data + start, .count = i - start},
                 20);
         }
+        lsp_completion_update_impl_depth(line, &enum_depth);
         line_start = line_end + (line_end < source.count ? 1 : 0);
     }
     return array_count(items->array.values) > before;

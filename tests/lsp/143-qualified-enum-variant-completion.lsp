@@ -1,7 +1,7 @@
-use std.term
+use std.gfx
 
 main :: fn () {
-    term_fb_box(0, 0, 10, 4, BoxStyle.)
+    mode := PixelLayerMode.
 }
 ¬
 [
@@ -15,7 +15,7 @@ main :: fn () {
             },
             "position": {
                 "line": 3,
-                "character": 38
+                "character": 27
             }
         }
     }
@@ -83,29 +83,29 @@ main :: fn () {
                 {
                     "range": {
                         "start": {
-                            "line": 3,
-                            "character": 38
+                            "line": 4,
+                            "character": 0
                         },
                         "end": {
-                            "line": 3,
-                            "character": 39
+                            "line": 4,
+                            "character": 1
                         }
                     },
                     "severity": 1,
                     "source": "nerd",
-                    "message": "Expected Symbol but found RightParen `)`",
+                    "message": "Expected Symbol but found RightBrace `}`",
                     "relatedInformation": [
                         {
                             "location": {
                                 "uri": "file:///test.n",
                                 "range": {
                                     "start": {
-                                        "line": 3,
-                                        "character": 38
+                                        "line": 4,
+                                        "character": 0
                                     },
                                     "end": {
-                                        "line": 3,
-                                        "character": 39
+                                        "line": 4,
+                                        "character": 1
                                     }
                                 }
                             },
@@ -121,23 +121,11 @@ main :: fn () {
         "id": 2,
         "result": [
             {
-                "label": "Single",
+                "label": "FitToWindow",
                 "kind": 20
             },
             {
-                "label": "Double",
-                "kind": 20
-            },
-            {
-                "label": "Rounded",
-                "kind": 20
-            },
-            {
-                "label": "Heavy",
-                "kind": 20
-            },
-            {
-                "label": "Custom",
+                "label": "FixedSizeAutoScale",
                 "kind": 20
             }
         ]
