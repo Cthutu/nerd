@@ -5972,10 +5972,17 @@ internal bool cst_parse_top_level_item(CstParseState* state, u32* out_node)
     }
 
     if (cst_starts_variable(state) && !cst_starts_annotated_bind(state)) {
-        if (is_public) {
+        u32 variable_node = 0;
+        if (!cst_parse_variable(state, &variable_node)) {
             return false;
         }
-        return cst_parse_variable(state, out_node);
+        if (is_public) {
+            state->cst.nodes[variable_node].flags |= CNF_Public;
+        }
+        if (out_node != NULL) {
+            *out_node = variable_node;
+        }
+        return true;
     }
 
     u32 bind_node = 0;

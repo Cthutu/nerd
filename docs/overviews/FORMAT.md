@@ -53,6 +53,8 @@ The formatter should be deterministic and idempotent.
   continuation line.
 - A `while !condition {` header stays on one line, with one space before the
   prefix `!` and no space between `!` and its boolean operand.
+- Consecutive public variable declarations participate in the same name, type,
+  and value-column alignment as non-public declarations.
 - Explicit grouping parentheses are preserved.
 - Vertical spacing remains conservative apart from collapsing repeated blank lines.
 
