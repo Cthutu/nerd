@@ -77,6 +77,34 @@ test "tuple hover inside source test" {
                 "character": 13
             }
         }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 6,
+        "method": "textDocument/definition",
+        "params": {
+            "textDocument": {
+                "uri": "file:///test.n"
+            },
+            "position": {
+                "line": 16,
+                "character": 14
+            }
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 7,
+        "method": "textDocument/definition",
+        "params": {
+            "textDocument": {
+                "uri": "file:///test.n"
+            },
+            "position": {
+                "line": 20,
+                "character": 13
+            }
+        }
     }
 ]
 ¬
@@ -178,6 +206,40 @@ test "tuple hover inside source test" {
             "contents": {
                 "kind": "markdown",
                 "value": "```nerd\ninc :: fn (self: ^Self, amount: i32) -> void\n```\n\n- Kind: method\n\nIncreases the counter by `amount`."
+            }
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 6,
+        "result": {
+            "uri": "file:///test.n",
+            "range": {
+                "start": {
+                    "line": 11,
+                    "character": 0
+                },
+                "end": {
+                    "line": 11,
+                    "character": 8
+                }
+            }
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 7,
+        "result": {
+            "uri": "file:///test.n",
+            "range": {
+                "start": {
+                    "line": 6,
+                    "character": 4
+                },
+                "end": {
+                    "line": 6,
+                    "character": 7
+                }
             }
         }
     },

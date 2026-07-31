@@ -814,15 +814,27 @@ internal JsonValue* lsp_ast_definition_location(const LspDocument* doc,
     return NULL;
 }
 
-internal string lsp_decl_hover_text(const LspDocument* doc,
-                                    Arena*             arena,
-                                    u32                decl_index);
-internal string lsp_decl_doc_comment(const LspDocument* doc,
-                                     Arena*             arena,
-                                     const SemaDecl*    decl);
-internal string lsp_method_hover_text(const LspDocument* doc,
+internal string     lsp_decl_hover_text(const LspDocument* doc,
+                                        Arena*             arena,
+                                        u32                decl_index);
+internal string     lsp_decl_doc_comment(const LspDocument* doc,
+                                         Arena*             arena,
+                                         const SemaDecl*    decl);
+internal string     lsp_method_hover_text(const LspDocument* doc,
+                                          Arena*             arena,
+                                          u32                decl_index);
+internal JsonValue* lsp_decl_location(const LspDocument* doc,
                                       Arena*             arena,
+                                      string             uri,
                                       u32                decl_index);
+internal JsonValue* lsp_local_location(const LspDocument* doc,
+                                       Arena*             arena,
+                                       string             uri,
+                                       u32                local_index);
+internal JsonValue* lsp_field_location(const LspDocument* doc,
+                                       Arena*             arena,
+                                       string             uri,
+                                       u32                field_node_index);
 
 internal bool lsp_path_is_module_part_file(cstr path)
 {
@@ -3165,6 +3177,117 @@ internal string lsp_source_test_hover_text(const LspDocument* doc,
     return hover;
 }
 
+internal JsonValue* lsp_source_test_definition_location(const LspDocument* doc,
+                                                        Arena* arena,
+                                                        string uri,
+                                                        usize  offset)
+{
+    if (!lsp_offset_is_in_source_test(&doc->front_end.lexer, offset)) {
+        return NULL;
+    }
+
+    u32 line = 0;
+    u32 col  = 0;
+    if (!lex_offset_to_line_col(
+            doc->front_end.lexer.source, offset, &line, &col)) {
+        return NULL;
+    }
+
+    Arena temp = {0};
+    arena_init(&temp);
+    string generated =
+        lsp_source_test_hover_source(&temp, &doc->front_end.lexer);
+    if (string_eq(generated, doc->front_end.lexer.source.source)) {
+        arena_done(&temp);
+        return NULL;
+    }
+
+    ErrorRenderMode previous_mode = error_system_mode();
+    bool            previous_emit = error_system_should_emit_output();
+    error_system_set_mode(ERROR_RENDER_DIAGNOSTICS);
+    error_system_set_emit_output(false);
+    ProgramInfo     program = {0};
+    FrontEndOptions options = {
+        .verbose              = false,
+        .release              = false,
+        .require_entry_point  = false,
+        .skip_hir_generation  = true,
+        .keep_partial_results = true,
+    };
+    bool ok = front_end_program(
+        (NerdSource){
+            .source      = generated,
+            .source_path = doc->front_end.lexer.source.source_path,
+        },
+        &options,
+        NULL,
+        &program);
+    error_system_set_mode(previous_mode);
+    error_system_set_emit_output(previous_emit);
+
+    JsonValue* location = NULL;
+    if (ok || array_count(program.modules) > 0) {
+        for (u32 i = 0; i < array_count(program.modules); ++i) {
+            program.modules[i].front_end.sema.program = &program;
+        }
+        LspModuleView module = {0};
+        if (lsp_program_module_view(
+                &program, program.root_module_index, &module)) {
+            usize generated_offset = 0;
+            if (lex_line_col_to_offset(
+                    module.lexer->source, line, col, &generated_offset)) {
+                u32    token_end = 0;
+                Token* token     = lex_find(
+                    (Lexer*)module.lexer, generated_offset, &token_end);
+                if (token != NULL && token->kind == TK_Symbol) {
+                    u32 token_index =
+                        lsp_token_index_from_pointer(module.lexer, token);
+                    LspDocument generated_doc = {
+                        .source    = generated,
+                        .program   = program,
+                        .front_end = program.modules[program.root_module_index]
+                                         .front_end,
+                    };
+                    u32 field_node_index = lsp_find_field_node_at_token(
+                        &generated_doc.front_end.ast, token_index);
+                    if (field_node_index != U32_MAX) {
+                        u32 decl_index = lsp_selected_method_decl_for_field(
+                            &generated_doc, field_node_index);
+                        if (decl_index != LSP_NO_DECL) {
+                            location = lsp_decl_location(
+                                &generated_doc, arena, uri, decl_index);
+                        }
+                        if (location == NULL) {
+                            location = lsp_field_location(
+                                &generated_doc, arena, uri, field_node_index);
+                        }
+                    }
+                    if (location == NULL) {
+                        u32 local_index = lsp_find_local_index_for_token(
+                            &generated_doc, token_index);
+                        if (local_index != sema_no_local()) {
+                            location = lsp_local_location(
+                                &generated_doc, arena, uri, local_index);
+                        }
+                    }
+                    if (location == NULL) {
+                        u32 decl_index = lsp_find_decl_index_for_token(
+                            &generated_doc, token_index);
+                        if (decl_index != LSP_NO_DECL) {
+                            location = lsp_decl_location(
+                                &generated_doc, arena, uri, decl_index);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    program_info_done(&program);
+    arena_done(&temp);
+    return location;
+}
+
 internal bool
 lsp_block_contains_node(const Ast* ast, u32 block_node_index, u32 node_index)
 {
@@ -4995,6 +5118,14 @@ void lsp_handle_definition(LspState* state, const LspMessage* message)
 
     if (token->kind != TK_Symbol) {
         lsp_cancel(response, message->arena);
+        return;
+    }
+
+    JsonValue* source_test_location =
+        lsp_source_test_definition_location(doc, message->arena, uri, offset);
+    if (source_test_location != NULL) {
+        json_object_set_object(response, "result", source_test_location);
+        lsp_send_response(message->arena, response);
         return;
     }
 
