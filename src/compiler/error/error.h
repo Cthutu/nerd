@@ -234,6 +234,9 @@ bool error_0304_unknown_record_literal_field(NerdSource source,
 bool error_0304_enum_payload_pattern_field_names(NerdSource source,
                                                  ErrorSpan  span,
                                                  string     variant_name);
+bool error_0304_enum_payload_constructor_field_names(NerdSource source,
+                                                     ErrorSpan  span,
+                                                     string     variant_name);
 bool error_0304_unknown_plex_pattern_field(NerdSource source,
                                            ErrorSpan  span,
                                            string     field_name,

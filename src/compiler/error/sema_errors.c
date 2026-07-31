@@ -287,6 +287,27 @@ bool error_0304_enum_payload_pattern_field_names(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
+// Report call syntax used to construct an enum variant with a braced payload.
+
+bool error_0304_enum_payload_constructor_field_names(NerdSource source,
+                                                     ErrorSpan  span,
+                                                     string     variant_name)
+{
+    ErrorInfo error = error_init(
+        source, span, "Enum variant with named fields requires braced syntax");
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This variant has a braced payload with named fields");
+    error_add_help(&error,
+                   "Construct it as `" STRINGP
+                   " { field: value }` instead of calling it with `(...)`.",
+                   STRINGV(variant_name));
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------
 // Report a named field pattern that does not match the plex payload fields.
 
 bool error_0304_unknown_plex_pattern_field(NerdSource source,
