@@ -8915,7 +8915,8 @@ internal bool format_token_needs_space_between(TokenKind previous,
 internal bool format_emit_token_comments_before(FormatTokenState*   state,
                                                 const FormatTrivia* trivia,
                                                 u32* io_comment_index,
-                                                u32  token_index)
+                                                u32  token_index,
+                                                u32  extra_indent_level)
 {
     u32 first_comment_index = U32_MAX;
     u32 comment_count       = 0;
@@ -8938,7 +8939,8 @@ internal bool format_emit_token_comments_before(FormatTokenState*   state,
                            state->lexer->source, previous_comment, comment)) {
             format_token_state_blank_line(state);
         }
-        format_emit_line_comment(state->sb, state->indent_level, comment.text);
+        format_emit_line_comment(
+            state->sb, state->indent_level + extra_indent_level, comment.text);
         state->at_line_start = true;
         previous_comment     = comment;
         emitted              = true;
@@ -8993,6 +8995,11 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
         u32  comment_count_before = 0;
         bool has_comments_before  = format_trivia_comments_before_token(
             &trivia, i, &first_comment_before, &comment_count_before);
+        u32 comment_continuation_indent =
+            has_comments_before &&
+                    (previous_kind == TK_AmpAmp || previous_kind == TK_PipePipe)
+                ? 1
+                : 0;
         bool current_starts_binding =
             kind == TK_Symbol &&
             (next_kind == TK_Colon || next_kind == TK_Equal);
@@ -9023,7 +9030,8 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
             format_token_state_newline(&state);
         }
 
-        format_emit_token_comments_before(&state, &trivia, &comment_index, i);
+        format_emit_token_comments_before(
+            &state, &trivia, &comment_index, i, comment_continuation_indent);
 
         if (in_interpolated_string && kind == TK_RBrace &&
             interp_multiline_depth > 0 && newlines_before > 0) {
@@ -9047,8 +9055,11 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
 
         if (state.at_line_start) {
             format_emit_indent(state.sb, state.indent_level);
-            if (paren_depth > 0 && (kind == TK_String || kind == TK_CString ||
-                                    kind == TK_StringContinuationStart)) {
+            if (comment_continuation_indent > 0) {
+                format_emit_indent(state.sb, comment_continuation_indent);
+            } else if (paren_depth > 0 &&
+                       (kind == TK_String || kind == TK_CString ||
+                        kind == TK_StringContinuationStart)) {
                 format_emit_indent(state.sb, 1);
             } else if ((kind == TK_String || kind == TK_CString ||
                         kind == TK_StringContinuationStart) &&
