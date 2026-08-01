@@ -111,14 +111,28 @@ on "linux" {
         return key
     }
 
-    term_read_key_nonblocking :: fn () -> ?KeyCode {
+    term_read_key_nonblocking :: fn () -> ?TermScanCode {
         first := term_read_byte_timeout(0)
-        return on first == 0 => nil else on (first == KeyCode.Escape.as(u8)) => term_read_escape_sequence() else first.as(KeyCode)
+        return on first == 0 => nil else on (first == TermScanCode.Escape.as(u8)) => term_read_escape_sequence() else term_scan_code_from_codepoint(first.as(u32))
     }
 
     term_read_input_event_impl :: fn () -> TermInputEvent {
         first := term_read_byte_timeout(0)
-        return on first == 0 => TermInputEvent.None else on (first == KeyCode.Escape.as(u8)) => term_read_escape_input_sequence() else TermInputEvent.KeyPress(first.as(KeyCode))
+        return on first == 0 => TermInputEvent.None else on (first == TermScanCode.Escape.as(u8)) => term_read_escape_input_sequence() else term_input_event_from_codepoint(term_read_utf8_codepoint(first))
+    }
+
+    term_keyboard_protocol_enable_impl :: fn () {
+        term_keyboard_caps = TermKeyboardCapabilities {
+            physical_keys   : no
+            key_releases    : no
+            modifiers       : no
+            associated_text : no
+        }
+        term_print("\x1b[>31u\x1b[?u")
+    }
+
+    term_keyboard_protocol_disable_impl :: fn () {
+        term_print("\x1b[<u")
     }
 
     term_wait_for_input_impl :: fn (timeout_ms: i32) {
@@ -132,9 +146,9 @@ on "linux" {
 
     -- Reads one translated terminal key, or `None` on EOF/error or an incomplete
     -- escape sequence.
-    pub term_get_key :: fn () -> ?KeyCode {
+    pub term_get_key :: fn () -> ?TermScanCode {
         first := term_read_byte()
-        return on first == 0 => nil else on (first == KeyCode.Escape.as(u8)) => term_read_escape_sequence() else first.as(KeyCode)
+        return on first == 0 => nil else on (first == TermScanCode.Escape.as(u8)) => term_read_escape_sequence() else term_scan_code_from_codepoint(first.as(u32))
     }
 
 }
@@ -181,28 +195,32 @@ pub term_scroll :: fn () {
     term_print("\x1bD")
 }
 
-term_key_index :: fn (key: KeyCode) -> usize {
+term_key_index :: fn (key: TermScanCode) -> usize {
     return key.as(u32).as(usize)
 }
 
 term_key_index_valid :: fn (index: usize) -> bool {
-    return index < TERM_KEY_CODE_COUNT.as(usize)
+    return index < TERM_SCAN_CODE_COUNT.as(usize)
 }
 
 term_keyboard_clear :: fn () {
     i : usize = 0
-    for i < TERM_KEY_CODE_COUNT.as(usize) {
+    for i < TERM_SCAN_CODE_COUNT.as(usize) {
         term_keyboard_down[i] = no
         term_keyboard_pressed[i] = no
         term_keyboard_released[i] = no
         term_keyboard_pulse[i] = no
+        term_keyboard_labels[i] = 0
         i += 1
     }
+    term_keyboard_modifiers = 0
+    term_input_events.free()
+    term_pending_events.free()
 }
 
 term_keyboard_clear_edges :: fn () {
     i : usize = 0
-    for i < TERM_KEY_CODE_COUNT.as(usize) {
+    for i < TERM_SCAN_CODE_COUNT.as(usize) {
         on term_keyboard_pulse[i] => {
             term_keyboard_down[i] = no
             term_keyboard_pulse[i] = no
@@ -216,51 +234,96 @@ term_keyboard_clear_edges :: fn () {
     term_mouse.released = 0
     term_mouse.wheel_x = 0
     term_mouse.wheel_y = 0
+    on !term_keyboard_caps.key_releases => term_keyboard_modifiers = 0
 }
 
 term_keyboard_snapshot :: fn () -> TermKeyboard {
     keyboard : TermKeyboard
 
     i : usize = 0
-    for i < TERM_KEY_CODE_COUNT.as(usize) {
+    for i < TERM_SCAN_CODE_COUNT.as(usize) {
         keyboard.down[i] = term_keyboard_down[i]
         keyboard.pressed[i] = term_keyboard_pressed[i]
         keyboard.released[i] = term_keyboard_released[i]
+        keyboard.labels[i] = term_keyboard_labels[i]
         i += 1
     }
+
+    keyboard.modifiers = term_keyboard_modifiers
+    keyboard.capabilities = term_keyboard_caps
 
     return keyboard
 }
 
-pub term_key_down :: fn (keyboard: TermKeyboard, key: KeyCode) -> bool {
+pub term_key_down :: fn (keyboard: TermKeyboard, key: TermScanCode) -> bool {
     index := term_key_index(key)
     return term_key_index_valid(index) && keyboard.down[index]
 }
 
-pub term_key_pressed :: fn (keyboard: TermKeyboard, key: KeyCode) -> bool {
+pub term_key_pressed :: fn (keyboard: TermKeyboard, key: TermScanCode) -> bool {
     index := term_key_index(key)
     return term_key_index_valid(index) && keyboard.pressed[index]
 }
 
-pub term_key_released :: fn (keyboard: TermKeyboard, key: KeyCode) -> bool {
+pub term_key_released :: fn (keyboard: TermKeyboard, key: TermScanCode) -> bool {
     index := term_key_index(key)
     return term_key_index_valid(index) && keyboard.released[index]
 }
 
 pub term_alt_down :: fn (keyboard: TermKeyboard) -> bool {
-    return term_key_down(keyboard, KeyCode.Alt) || term_key_down(keyboard, KeyCode.Meta)
+    return (keyboard.modifiers & TERM_MOD_ALT) != 0
 }
 
 pub term_left_alt_down :: fn (keyboard: TermKeyboard) -> bool {
-    return term_key_down(keyboard, KeyCode.Alt)
+    return term_key_down(keyboard, TermScanCode.LeftAlt)
 }
 
 pub term_right_alt_down :: fn (keyboard: TermKeyboard) -> bool {
-    return term_key_down(keyboard, KeyCode.Meta)
+    return term_key_down(keyboard, TermScanCode.RightAlt)
 }
 
 pub term_mod_down :: fn (keyboard: TermKeyboard) -> bool {
     return term_alt_down(keyboard)
+}
+
+impl TermInput {
+
+    pub key_down :: fn (input: Self, key: TermScanCode) -> bool {
+        return term_key_down(input.keyboard, key)
+    }
+
+    pub key_pressed :: fn (input: Self, key: TermScanCode) -> bool {
+        return term_key_pressed(input.keyboard, key)
+    }
+
+    pub key_released :: fn (input: Self, key: TermScanCode) -> bool {
+        return term_key_released(input.keyboard, key)
+    }
+
+    pub key_name :: fn (input: Self, key: TermScanCode) -> string {
+        return term_key_name(input.keyboard, key)
+    }
+
+}
+
+impl TermSimulate {
+
+    pub key_down :: fn (sim: Self, key: TermScanCode) -> bool {
+        return term_key_down(sim.keyboard, key)
+    }
+
+    pub key_pressed :: fn (sim: Self, key: TermScanCode) -> bool {
+        return term_key_pressed(sim.keyboard, key)
+    }
+
+    pub key_released :: fn (sim: Self, key: TermScanCode) -> bool {
+        return term_key_released(sim.keyboard, key)
+    }
+
+    pub key_name :: fn (sim: Self, key: TermScanCode) -> string {
+        return term_key_name(sim.keyboard, key)
+    }
+
 }
 
 term_mouse_move :: fn (x: i32, y: i32) {
@@ -288,12 +351,13 @@ term_mouse_wheel :: fn (x: i32, y: i32, dx: i32, dy: i32) {
     term_mouse.wheel_y += dy
 }
 
-term_keyboard_record_press :: fn (key: KeyCode) {
+term_keyboard_record_press :: fn (key: TermScanCode, pulse: bool) {
     index := term_key_index(key)
-    on term_key_index_valid(index) => {
+    on key != TermScanCode.Unknown &&
+        term_key_index_valid(index) => {
         term_keyboard_pressed[index] = yes
         term_keyboard_down[index] = yes
-        term_keyboard_pulse[index] = yes
+        term_keyboard_pulse[index] = pulse
     }
 }
 
@@ -311,32 +375,41 @@ pub term_mouse_released :: fn (mouse: TermMouse, button: u32) -> bool {
 
 term_keyboard_record_event :: fn (event: TermInputEvent) {
     on event {
-        KeyPress(key) => {
-            term_keyboard_record_press(key)
-        }
-
-        KeyPressModified(key, modifiers) => {
-            on (modifiers & TERM_MOD_SHIFT) != 0 => term_keyboard_record_press(KeyCode.Shift)
-            on (modifiers & TERM_MOD_ALT) != 0 => term_keyboard_record_press(KeyCode.Alt)
-            on (modifiers & TERM_MOD_CONTROL) != 0 => term_keyboard_record_press(KeyCode.Control)
-            term_keyboard_record_press(key)
-        }
-
-        KeyDown(key) => {
-            index := term_key_index(key)
-            on term_key_index_valid(index) => {
-                term_keyboard_pressed[index] = yes
-                term_keyboard_down[index] = yes
-                term_keyboard_pulse[index] = no
+        Key(key_event) => {
+            term_keyboard_modifiers = key_event.modifiers
+            on key_event.action != TermKeyAction.Release => {
+                on key_event.scan_code == TermScanCode.LeftShift ||
+                    key_event.scan_code == TermScanCode.RightShift => term_keyboard_modifiers |= TERM_MOD_SHIFT
+                on key_event.scan_code == TermScanCode.LeftControl ||
+                    key_event.scan_code == TermScanCode.RightControl => term_keyboard_modifiers |= TERM_MOD_CONTROL
+                on key_event.scan_code == TermScanCode.LeftAlt ||
+                    key_event.scan_code == TermScanCode.RightAlt => term_keyboard_modifiers |= TERM_MOD_ALT
+                on key_event.scan_code == TermScanCode.LeftSuper ||
+                    key_event.scan_code == TermScanCode.RightSuper => term_keyboard_modifiers |= TERM_MOD_SUPER
             }
-        }
+            index := term_key_index(key_event.scan_code)
+            on key_event.label {
+                codepoint => {
+                    on term_key_index_valid(index) => {
+                        term_keyboard_labels[index] = codepoint
+                    }
+                }
 
-        KeyUp(key) => {
-            index := term_key_index(key)
-            on term_key_index_valid(index) => {
-                on term_keyboard_down[index] => term_keyboard_released[index] = yes
-                term_keyboard_down[index] = no
-                term_keyboard_pulse[index] = no
+                else => {
+                }
+            }
+
+            on key_event.action {
+                Press   => term_keyboard_record_press(key_event.scan_code, !term_keyboard_caps.key_releases)
+                Repeat  => term_keyboard_record_press(key_event.scan_code, !term_keyboard_caps.key_releases)
+
+                Release => on term_key_index_valid(index) => {
+                    on term_keyboard_down[index] => {
+                        term_keyboard_released[index] = yes
+                    }
+                    term_keyboard_down[index] = no
+                    term_keyboard_pulse[index] = no
+                }
             }
         }
 
@@ -346,8 +419,16 @@ term_keyboard_record_event :: fn (event: TermInputEvent) {
 }
 
 term_event_record :: fn (event: TermInputEvent) {
+    term_input_events.push(event)
     term_keyboard_record_event(event)
     on event {
+        Key(key_event) => on key_event.character {
+            codepoint => term_input_events.push(TermInputEvent.Character(codepoint))
+
+            else => {
+            }
+        }
+
         MouseMove(x, y)           => term_mouse_move(x, y)
         MouseDown(x, y, buttons)  => term_mouse_press(x, y, buttons)
         MouseUp(x, y, buttons)    => term_mouse_release(x, y, buttons)
@@ -516,6 +597,7 @@ term_run_input_hook :: fn () {
         width     : term_last_columns
         height    : term_last_rows
         keyboard  : term_keyboard_snapshot()
+        events    : term_input_events[..]
         mouse     : term_mouse
         user_data : term_input_user_data
     }
@@ -537,6 +619,7 @@ term_run_simulation_hook :: fn (current: Instant) {
         width     : term_last_columns
         height    : term_last_rows
         keyboard  : term_keyboard_snapshot()
+        events    : term_input_events[..]
         mouse     : term_mouse
         user_data : term_simulate_user_data
     }
@@ -591,6 +674,7 @@ pub term_init :: fn (min_width        : u32 = TERM_DEFAULT_MIN_WIDTH,
     term_keyboard_clear()
     term_raw_mode_enable(yes)
     term_alternate_screen_enable(yes)
+    term_keyboard_protocol_enable_impl()
     term_mouse_input_enable(yes)
 
     size := term_get_size()
@@ -638,6 +722,7 @@ term_run_step :: fn () -> bool {
         term_fb_release()
         term_cursor_enable(yes)
         term_mouse_input_enable(no)
+        term_keyboard_protocol_disable_impl()
         term_alternate_screen_enable(no)
         term_raw_mode_enable(no)
         term_arena_done()
@@ -653,6 +738,8 @@ term_run_step :: fn () -> bool {
     }
 
     term_arena_reset()
+    term_input_events.clear()
+    term_pending_events.clear()
     term_fb_ensure()
 
     event := term_read_input_event_impl()
@@ -661,6 +748,9 @@ term_run_step :: fn () -> bool {
         }
 
         else => term_event_record(event)
+    }
+    for pending in term_pending_events {
+        term_event_record(pending^)
     }
 
     resized := term_resize_if_needed()
@@ -741,7 +831,7 @@ test {
     }
 
     term_quit_input :: fn (input: TermInput) {
-        on term_key_pressed(input.keyboard, KeyCode.LowerQ) => term_done()
+        on input.key_pressed(TermScanCode.Q) => term_done()
     }
 
 }
@@ -753,17 +843,13 @@ test "term_get_size returns a column and row tuple" {
     assert size.1 >= 0
 }
 
-test "terminal key bytes map to key codes" {
-    nul := 0.as(KeyCode)
-    enter := 13.as(KeyCode)
-    escape := 27.as(KeyCode)
-    lower_x := 'x'.as(KeyCode)
-
-    assert nul == Nul
-    assert enter == Enter
-    assert escape == Escape
-    assert lower_x == LowerX
-    assert KeyCode.LowerX.as(u8) == 'x'
+test "terminal characters map to physical scan codes" {
+    assert term_scan_code_from_codepoint(0) == Unknown
+    assert term_scan_code_from_codepoint(13) == Enter
+    assert term_scan_code_from_codepoint(27) == Escape
+    assert term_scan_code_from_codepoint('x'.as(u32)) == X
+    assert term_scan_code_from_codepoint('X'.as(u32)) == X
+    assert term_scan_code_from_codepoint('?'.as(u32)) == Slash
 }
 
 test "terminal escape sequences map to key codes" {
@@ -785,6 +871,64 @@ test "terminal escape sequences map to key codes" {
     assert term_csi_modifier_flags(1) == 0
     assert term_csi_modifier_flags(3) == TERM_MOD_ALT
     assert term_csi_modifier_flags(7) == (TERM_MOD_ALT | TERM_MOD_CONTROL)
+}
+
+test "kitty keyboard reports physical key modifiers and text" {
+    encoded := "113::113;6:1;81:769"
+    parameters : TermCsiParameters
+    for i: usize = 0; i < encoded.count; i += 1 {
+        parameters.bytes[i] = encoded.data[i]
+    }
+    parameters.count = encoded.count
+    parameters.final = 'u'
+
+    event := term_input_event_from_kitty(parameters)
+    on event {
+        Key(key_event) => {
+            assert key_event.scan_code == TermScanCode.Q
+            assert key_event.action == TermKeyAction.Press
+            assert key_event.modifiers == (TERM_MOD_SHIFT | TERM_MOD_CONTROL)
+            assert key_event.character == 'Q'.as(u32)
+            assert key_event.label == 'q'.as(u32)
+            assert term_pending_events.count == 1
+        }
+
+        else => {
+            assert no
+        }
+    }
+}
+
+test "terminal input records ordered key and character events" {
+    term_keyboard_clear()
+    term_event_record(term_key_event(TermScanCode.Q, TermKeyAction.Press, TERM_MOD_SHIFT, 'Q'.as(u32), 'q'.as(u32)))
+
+    assert term_input_events.count == 2
+    on term_input_events[0] {
+        Key(key_event) => {
+            assert key_event.scan_code == TermScanCode.Q
+        }
+
+        else => {
+            assert no
+        }
+    }
+    on term_input_events[1] {
+        Character(codepoint) => {
+            assert codepoint == 'Q'.as(u32)
+        }
+
+        else => {
+            assert no
+        }
+    }
+
+    input := TermInput { keyboard: term_keyboard_snapshot() ... }
+    assert input.key_pressed(TermScanCode.Q)
+    assert input.keyboard.labels[TermScanCode.Q.as(u32).as(usize)] == 'q'.as(u32)
+    assert term_scan_code_name(TermScanCode.Escape) == "Escape"
+
+    term_keyboard_clear()
 }
 
 test "rgb packs 24-bit colour channels" {
@@ -1171,11 +1315,11 @@ test "terminal events record keyboard state directly" {
     term_keyboard_clear()
     term_hook_simulation(50.as(Duration), term_noop_simulate)
 
-    term_event_record(TermInputEvent.KeyDown(KeyCode.LowerQ))
+    term_event_record(term_key_event(TermScanCode.Q))
     keyboard := term_keyboard_snapshot()
 
-    assert keyboard.down[KeyCode.LowerQ.as(u32).as(usize)]
-    assert keyboard.pressed[KeyCode.LowerQ.as(u32).as(usize)]
+    assert keyboard.down[TermScanCode.Q.as(u32).as(usize)]
+    assert keyboard.pressed[TermScanCode.Q.as(u32).as(usize)]
 
     term_hooks_clear()
     term_keyboard_clear()
@@ -1183,16 +1327,17 @@ test "terminal events record keyboard state directly" {
 
 test "terminal keyboard state records edges" {
     term_keyboard_clear()
+    term_keyboard_caps.key_releases = yes
 
-    term_event_record(TermInputEvent.KeyDown(KeyCode.LowerQ))
-    index := KeyCode.LowerQ.as(u32).as(usize)
+    term_event_record(term_key_event(TermScanCode.Q))
+    index := TermScanCode.Q.as(u32).as(usize)
     keyboard := term_keyboard_snapshot()
     assert keyboard.down[index]
     assert keyboard.pressed[index]
     assert !keyboard.released[index]
-    assert term_key_down(keyboard, KeyCode.LowerQ)
-    assert term_key_pressed(keyboard, KeyCode.LowerQ)
-    assert !term_key_released(keyboard, KeyCode.LowerQ)
+    assert term_key_down(keyboard, TermScanCode.Q)
+    assert term_key_pressed(keyboard, TermScanCode.Q)
+    assert !term_key_released(keyboard, TermScanCode.Q)
 
     term_keyboard_clear_edges()
     keyboard = term_keyboard_snapshot()
@@ -1200,31 +1345,34 @@ test "terminal keyboard state records edges" {
     assert !keyboard.pressed[index]
     assert !keyboard.released[index]
 
-    term_event_record(TermInputEvent.KeyUp(KeyCode.LowerQ))
+    term_event_record(term_key_event(TermScanCode.Q, TermKeyAction.Release))
     keyboard = term_keyboard_snapshot()
     assert !keyboard.down[index]
     assert !keyboard.pressed[index]
     assert keyboard.released[index]
-    assert !term_key_down(keyboard, KeyCode.LowerQ)
-    assert !term_key_pressed(keyboard, KeyCode.LowerQ)
-    assert term_key_released(keyboard, KeyCode.LowerQ)
+    assert !term_key_down(keyboard, TermScanCode.Q)
+    assert !term_key_pressed(keyboard, TermScanCode.Q)
+    assert term_key_released(keyboard, TermScanCode.Q)
 
     term_keyboard_clear()
+    term_keyboard_caps.key_releases = no
 }
 
 test "terminal repeated key down records another press edge" {
     term_keyboard_clear()
+    term_keyboard_caps.key_releases = yes
 
-    term_event_record(TermInputEvent.KeyDown(KeyCode.LowerQ))
+    term_event_record(term_key_event(TermScanCode.Q))
     term_keyboard_clear_edges()
-    term_event_record(TermInputEvent.KeyDown(KeyCode.LowerQ))
+    term_event_record(term_key_event(TermScanCode.Q))
 
     keyboard := term_keyboard_snapshot()
-    assert term_key_down(keyboard, KeyCode.LowerQ)
-    assert term_key_pressed(keyboard, KeyCode.LowerQ)
-    assert !term_key_released(keyboard, KeyCode.LowerQ)
+    assert term_key_down(keyboard, TermScanCode.Q)
+    assert term_key_pressed(keyboard, TermScanCode.Q)
+    assert !term_key_released(keyboard, TermScanCode.Q)
 
     term_keyboard_clear()
+    term_keyboard_caps.key_releases = no
 }
 
 test "terminal modifier helpers report alt state" {
@@ -1236,7 +1384,7 @@ test "terminal modifier helpers report alt state" {
     assert !term_right_alt_down(keyboard)
     assert !term_mod_down(keyboard)
 
-    term_event_record(TermInputEvent.KeyDown(KeyCode.Alt))
+    term_event_record(term_key_event(TermScanCode.LeftAlt))
     keyboard = term_keyboard_snapshot()
     assert term_alt_down(keyboard)
     assert term_left_alt_down(keyboard)
@@ -1244,7 +1392,7 @@ test "terminal modifier helpers report alt state" {
     assert term_mod_down(keyboard)
 
     term_keyboard_clear()
-    term_event_record(TermInputEvent.KeyDown(KeyCode.Meta))
+    term_event_record(term_key_event(TermScanCode.RightAlt))
     keyboard = term_keyboard_snapshot()
     assert term_alt_down(keyboard)
     assert !term_left_alt_down(keyboard)
@@ -1257,18 +1405,18 @@ test "terminal modifier helpers report alt state" {
 test "terminal modified key presses report key and modifiers together" {
     term_keyboard_clear()
 
-    term_event_record(TermInputEvent.KeyPressModified(KeyCode.ArrowLeft, TERM_MOD_ALT))
+    term_event_record(term_key_event(TermScanCode.ArrowLeft, TermKeyAction.Press, TERM_MOD_ALT))
     keyboard := term_keyboard_snapshot()
     assert term_alt_down(keyboard)
     assert term_mod_down(keyboard)
-    assert term_key_down(keyboard, KeyCode.ArrowLeft)
-    assert term_key_pressed(keyboard, KeyCode.ArrowLeft)
+    assert term_key_down(keyboard, TermScanCode.ArrowLeft)
+    assert term_key_pressed(keyboard, TermScanCode.ArrowLeft)
 
     term_keyboard_clear_edges()
     keyboard = term_keyboard_snapshot()
     assert !term_alt_down(keyboard)
     assert !term_mod_down(keyboard)
-    assert !term_key_down(keyboard, KeyCode.ArrowLeft)
+    assert !term_key_down(keyboard, TermScanCode.ArrowLeft)
 
     term_keyboard_clear()
 }
@@ -1276,16 +1424,16 @@ test "terminal modified key presses report key and modifiers together" {
 test "terminal key press pulses down state for one simulation" {
     term_keyboard_clear()
 
-    term_event_record(TermInputEvent.KeyPress(KeyCode.LowerQ))
+    term_event_record(term_key_event(TermScanCode.Q))
     keyboard := term_keyboard_snapshot()
-    assert term_key_down(keyboard, KeyCode.LowerQ)
-    assert term_key_pressed(keyboard, KeyCode.LowerQ)
+    assert term_key_down(keyboard, TermScanCode.Q)
+    assert term_key_pressed(keyboard, TermScanCode.Q)
 
     term_keyboard_clear_edges()
     keyboard = term_keyboard_snapshot()
-    assert !term_key_down(keyboard, KeyCode.LowerQ)
-    assert !term_key_pressed(keyboard, KeyCode.LowerQ)
-    assert !term_key_released(keyboard, KeyCode.LowerQ)
+    assert !term_key_down(keyboard, TermScanCode.Q)
+    assert !term_key_pressed(keyboard, TermScanCode.Q)
+    assert !term_key_released(keyboard, TermScanCode.Q)
 
     term_keyboard_clear()
 }
@@ -1339,13 +1487,13 @@ test "too-small pause policy clears key edges but keeps down state" {
     term_simulate_ran     = yes
     term_present_ran      = yes
 
-    term_event_record(TermInputEvent.KeyPress(KeyCode.LowerQ))
+    term_event_record(term_key_event(TermScanCode.Q))
     term_handle_too_small(100.as(Instant), yes)
 
     keyboard := term_keyboard_snapshot()
-    assert !term_key_down(keyboard, KeyCode.LowerQ)
-    assert !term_key_pressed(keyboard, KeyCode.LowerQ)
-    assert !term_key_released(keyboard, KeyCode.LowerQ)
+    assert !term_key_down(keyboard, TermScanCode.Q)
+    assert !term_key_pressed(keyboard, TermScanCode.Q)
+    assert !term_key_released(keyboard, TermScanCode.Q)
     assert !term_simulate_ran
     assert !term_present_ran
 
@@ -1368,20 +1516,20 @@ test "too-small pause policy still runs input hook" {
     term_hook_input(term_count_input)
     term_hook_simulation(50.as(Duration), term_count_simulate)
 
-    term_event_record(TermInputEvent.KeyPress(KeyCode.LowerQ))
+    term_event_record(term_key_event(TermScanCode.Q))
     term_run_input_hook()
     term_handle_too_small(100.as(Instant), yes)
 
     assert term_test_input_count == 1
-    assert term_key_down(term_test_input_keyboard, KeyCode.LowerQ)
-    assert term_key_pressed(term_test_input_keyboard, KeyCode.LowerQ)
+    assert term_key_down(term_test_input_keyboard, TermScanCode.Q)
+    assert term_key_pressed(term_test_input_keyboard, TermScanCode.Q)
     assert !term_simulate_ran
     assert !term_present_ran
 
     keyboard := term_keyboard_snapshot()
-    assert !term_key_down(keyboard, KeyCode.LowerQ)
-    assert !term_key_pressed(keyboard, KeyCode.LowerQ)
-    assert !term_key_released(keyboard, KeyCode.LowerQ)
+    assert !term_key_down(keyboard, TermScanCode.Q)
+    assert !term_key_pressed(keyboard, TermScanCode.Q)
+    assert !term_key_released(keyboard, TermScanCode.Q)
 
     term_hooks_clear()
     term_keyboard_clear()
@@ -1401,7 +1549,7 @@ test "too-small input hook can request shutdown" {
     term_last_rows        = 25
     term_hook_input(term_quit_input)
 
-    term_event_record(TermInputEvent.KeyPress(KeyCode.LowerQ))
+    term_event_record(term_key_event(TermScanCode.Q))
     term_run_input_hook()
     assert term_done_requested
 
@@ -1426,20 +1574,20 @@ test "too-small continue policy runs simulation without presentation timing" {
     term_present_ran         = yes
     term_hook_simulation(50.as(Duration), term_count_simulate)
 
-    term_event_record(TermInputEvent.KeyPress(KeyCode.LowerQ))
+    term_event_record(term_key_event(TermScanCode.Q))
     term_handle_too_small(100.as(Instant), yes)
 
     assert term_test_simulate_count == 1
-    assert term_key_down(term_test_keyboard, KeyCode.LowerQ)
-    assert term_key_pressed(term_test_keyboard, KeyCode.LowerQ)
-    assert !term_key_released(term_test_keyboard, KeyCode.LowerQ)
+    assert term_key_down(term_test_keyboard, TermScanCode.Q)
+    assert term_key_pressed(term_test_keyboard, TermScanCode.Q)
+    assert !term_key_released(term_test_keyboard, TermScanCode.Q)
     assert term_simulate_ran
     assert !term_present_ran
 
     keyboard := term_keyboard_snapshot()
-    assert !term_key_down(keyboard, KeyCode.LowerQ)
-    assert !term_key_pressed(keyboard, KeyCode.LowerQ)
-    assert !term_key_released(keyboard, KeyCode.LowerQ)
+    assert !term_key_down(keyboard, TermScanCode.Q)
+    assert !term_key_pressed(keyboard, TermScanCode.Q)
+    assert !term_key_released(keyboard, TermScanCode.Q)
 
     term_hooks_clear()
     term_keyboard_clear()
@@ -1565,4 +1713,5 @@ test "too-small renderer marks warning background" {
     assert term_fb_cells[term_fb_index(9, 2)].paper == rgb(72, 18, 28)
 
     term_fb_release()
+    term_arena_done()
 }

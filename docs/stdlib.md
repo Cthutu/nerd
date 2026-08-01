@@ -180,6 +180,9 @@ slice is too small.
 
 ### `std.term`
 
+See the learner-facing [`std.term` manual](manual/std-term.md) for lifecycle,
+input, framebuffer, and capability examples.
+
 Framebuffer rectangle APIs keep positions signed so callers can draw partially
 off-screen, but use unsigned dimensions for sizes:
 

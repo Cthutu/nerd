@@ -1,15 +1,15 @@
 use std.term
 
 quit :: fn (input: TermInput) {
-    on term_key_pressed(input.keyboard, Escape) ||
-        -- term_key_pressed(input.keyboard, LowerQ) ||
-        term_key_pressed(input.keyboard, Q) => term_done()
+    on input.key_pressed(Escape) ||
+        -- input.key_pressed(Enter) ||
+        input.key_pressed(Q) => term_done()
 }
 ¬
 use std.term
 
 quit :: fn (input: TermInput) {
-    on term_key_pressed(input.keyboard, Escape) ||
-        -- term_key_pressed(input.keyboard, LowerQ) ||
-        term_key_pressed(input.keyboard, Q) => term_done()
+    on input.key_pressed(Escape) ||
+        -- input.key_pressed(Enter) ||
+        input.key_pressed(Q) => term_done()
 }

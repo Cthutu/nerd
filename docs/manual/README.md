@@ -35,3 +35,7 @@ Nerd uses a small set of core control-flow keywords: all loops start with
 
 - [Syntax Reference](appendix-a-syntax-reference.md)
 - [Language Reference](appendix-b-language-reference.md)
+
+## Standard Library Manuals
+
+- [`std.term`](std-term.md)

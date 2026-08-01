@@ -453,14 +453,13 @@ dungeon_draw :: fn (width: u32, height: u32) {
 }
 
 dungeon_simulate :: fn (sim: TermSimulate) {
-    on term_key_pressed(sim.keyboard, LowerQ) ||
-        term_key_pressed(sim.keyboard, Q) ||
-        term_key_pressed(sim.keyboard, Escape) => {
+    on sim.key_pressed(Q) ||
+        sim.key_pressed(Escape) => {
         term_done()
         return
     }
 
-    for i: usize = 0; i < TERM_KEY_CODE_COUNT.as(usize); i += 1 {
+    for i: usize = 0; i < TERM_SCAN_CODE_COUNT.as(usize); i += 1 {
         on sim.keyboard.pressed[i] => {
             seed = now()
             random_seed(seed)

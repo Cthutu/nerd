@@ -1,7 +1,7 @@
 use std.term
 
 simulate :: fn (s: TermSimulate) {
-    _ := term_key_down(s.keyboard, LowerQ)
+    _ := term_key_down(s.keyboard, Q)
 }
 ¬
 [
@@ -15,7 +15,7 @@ simulate :: fn (s: TermSimulate) {
             },
             "position": {
                 "line": 3,
-                "character": 41
+                "character": 36
             }
         }
     },
@@ -29,7 +29,7 @@ simulate :: fn (s: TermSimulate) {
             },
             "position": {
                 "line": 3,
-                "character": 37
+                "character": 35
             }
         }
     }
@@ -101,7 +101,11 @@ simulate :: fn (s: TermSimulate) {
         "id": 2,
         "result": [
             {
-                "label": "LowerQ",
+                "label": "Quote",
+                "kind": 20
+            },
+            {
+                "label": "Q",
                 "kind": 20
             }
         ]
@@ -113,12 +117,12 @@ simulate :: fn (s: TermSimulate) {
             "uri": "file:///home/matt/nerd/mods/std/term/term.n",
             "range": {
                 "start": {
-                    "line": 129,
+                    "line": 83,
                     "character": 4
                 },
                 "end": {
-                    "line": 129,
-                    "character": 10
+                    "line": 83,
+                    "character": 5
                 }
             }
         }

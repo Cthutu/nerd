@@ -149,6 +149,11 @@ simulate :: fn (s: TermSimulate) {
                 "detail": "field"
             },
             {
+                "label": "events",
+                "kind": 5,
+                "detail": "field"
+            },
+            {
                 "label": "mouse",
                 "kind": 5,
                 "detail": "field"
@@ -157,6 +162,26 @@ simulate :: fn (s: TermSimulate) {
                 "label": "user_data",
                 "kind": 5,
                 "detail": "field"
+            },
+            {
+                "label": "key_down",
+                "kind": 2,
+                "detail": "method"
+            },
+            {
+                "label": "key_pressed",
+                "kind": 2,
+                "detail": "method"
+            },
+            {
+                "label": "key_released",
+                "kind": 2,
+                "detail": "method"
+            },
+            {
+                "label": "key_name",
+                "kind": 2,
+                "detail": "method"
             }
         ]
     },

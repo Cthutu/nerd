@@ -21,9 +21,8 @@ mouse_button_count :: fn (buttons: u32) -> u32 {
 }
 
 mouse_simulate :: fn (sim: TermSimulate) {
-    on term_key_pressed(sim.keyboard, LowerQ) ||
-        term_key_pressed(sim.keyboard, Q) ||
-        term_key_pressed(sim.keyboard, Escape) => {
+    on sim.key_pressed(Q) ||
+        sim.key_pressed(Escape) => {
         term_done()
         return
     }
