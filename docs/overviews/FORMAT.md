@@ -15,6 +15,9 @@ The formatter should be deterministic and idempotent.
 
 ## Comment Rules
 
+- Source comments must never be removed. If a structured formatting path cannot
+  account for every comment in its input, the formatter falls back to the
+  comment-preserving token stream for that code block.
 - A comment with text formats as `-- ` followed by exactly one space.
 - An empty comment line formats as `--`.
 - Consecutive comment-only lines are treated as comment paragraphs.

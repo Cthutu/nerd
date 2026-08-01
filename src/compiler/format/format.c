@@ -28,6 +28,7 @@ typedef struct {
 
 global_variable const FormatTrivia* g_format_trivia         = NULL;
 global_variable      Array(bool) g_format_consumed_comments = NULL;
+global_variable      Array(bool) g_format_emitted_comments  = NULL;
 global_variable bool g_format_suppress_string_wrap          = false;
 
 internal void  format_emit_for_header_items(StringBuilder* sb,
@@ -138,6 +139,9 @@ internal void format_skip_block_comments_before_offset(const Lexer* lexer,
                                                        u32*  io_comment_index,
                                                        usize end_offset);
 internal bool format_comment_index_is_consumed(u32 comment_index);
+internal void format_mark_comment_index_emitted(u32 comment_index);
+internal void format_mark_comment_range_emitted(u32 first_comment_index,
+                                                u32 end_comment_index);
 internal void format_mark_comment_index_consumed(u32 comment_index);
 internal void format_mark_comment_range_consumed(u32 first_comment_index,
                                                  u32 end_comment_index);
@@ -3461,6 +3465,12 @@ internal bool format_emit_original_node_source(StringBuilder* sb,
 
     sb_append_string(
         sb, string_from(lexer->source.source.data + start, end - start));
+    for (u32 i = 0; i < array_count(lexer->comments); ++i) {
+        LexerComment comment = lexer->comments[i];
+        if (comment.offset >= start && comment.end_offset <= end) {
+            format_mark_comment_index_emitted(i);
+        }
+    }
     return true;
 }
 
@@ -4008,6 +4018,8 @@ internal void format_emit_plex_literal_multiline(StringBuilder* sb,
                                                       comment_text,
                                                       field_comment_columns[i],
                                                       field_code_widths[i]);
+            format_mark_comment_range_emitted(first_comment_index,
+                                              comment_index);
             if (comment_index > first_comment_index &&
                 comment_index <= array_count(lexer->comments)) {
                 field_end_offset =
@@ -4610,6 +4622,8 @@ internal void format_emit_type_enum_multiline(StringBuilder* sb,
                 comment_text,
                 variant_comment_columns[i],
                 variant_code_widths[i]);
+            format_mark_comment_range_emitted(first_comment_index,
+                                              comment_index);
             if (comment_index > first_comment_index &&
                 comment_index <= array_count(lexer->comments)) {
                 variant_end_offset =
@@ -4800,6 +4814,8 @@ internal void format_emit_type_plex_multiline(StringBuilder* sb,
                                                       comment_text,
                                                       field_comment_columns[i],
                                                       field_code_widths[i]);
+            format_mark_comment_range_emitted(first_comment_index,
+                                              comment_index);
             if (comment_index > first_comment_index &&
                 comment_index <= array_count(lexer->comments)) {
                 field_end_offset =
@@ -5656,6 +5672,7 @@ format_emit_aligned_statement_group(StringBuilder*                sb,
             LexerComment comment = lexer->comments[trailing_comment_index];
             format_emit_trailing_comment_text_aligned(
                 sb, comment.text, current_column + 2, current_column);
+            format_mark_comment_index_emitted(trailing_comment_index);
             *comment_index = trailing_comment_index + 1;
         } else {
             sb_append_char(sb, '\n');
@@ -6454,6 +6471,7 @@ internal bool format_emit_block_comments_before_offset(StringBuilder* sb,
             sb_append_char(sb, '\n');
         }
         format_emit_line_comment(sb, indent_level, comment.text);
+        format_mark_comment_index_emitted(*io_comment_index);
         emitted          = true;
         previous_comment = comment;
         if (out_last_end) {
@@ -6526,6 +6544,7 @@ internal bool format_emit_block_comments_before_token(StringBuilder* sb,
             sb_append_char(sb, '\n');
         }
         format_emit_line_comment(sb, indent_level, comment.text);
+        format_mark_comment_index_emitted(*io_comment_index);
         emitted          = true;
         previous_comment = comment;
         if (out_last_end) {
@@ -6600,6 +6619,25 @@ internal bool format_comment_index_is_consumed(u32 comment_index)
            g_format_consumed_comments[comment_index];
 }
 
+internal void format_mark_comment_index_emitted(u32 comment_index)
+{
+    if (g_format_emitted_comments == NULL ||
+        comment_index >= array_count(g_format_emitted_comments)) {
+        return;
+    }
+    g_format_emitted_comments[comment_index] = true;
+}
+
+internal void format_mark_comment_range_emitted(u32 first_comment_index,
+                                                u32 end_comment_index)
+{
+    for (u32 comment_index = first_comment_index;
+         comment_index < end_comment_index;
+         ++comment_index) {
+        format_mark_comment_index_emitted(comment_index);
+    }
+}
+
 internal void format_mark_comment_index_consumed(u32 comment_index)
 {
     if (g_format_consumed_comments == NULL ||
@@ -6607,6 +6645,7 @@ internal void format_mark_comment_index_consumed(u32 comment_index)
         return;
     }
     g_format_consumed_comments[comment_index] = true;
+    format_mark_comment_index_emitted(comment_index);
 }
 
 internal void format_mark_comment_range_consumed(u32 first_comment_index,
@@ -6663,6 +6702,7 @@ internal bool format_emit_trailing_comment_by_index(StringBuilder* sb,
     sb_append_cstr(sb, "--");
     sb_append_string(sb, comment.text);
     sb_append_char(sb, '\n');
+    format_mark_comment_index_emitted(comment_index);
     *io_comment_index = comment_index + 1;
     return true;
 }
@@ -8221,7 +8261,10 @@ internal void format_emit_variable_payload(StringBuilder* sb,
 
 internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
 {
-    Lexer lexer = {0};
+    void* output_mark = arena_store(sb->arena);
+    usize output_size = sb->size;
+
+    Lexer lexer       = {0};
     if (!lex_with_config(
             source, &(LexerConfig){.mode = LEXER_MODE_FORMAT}, &lexer)) {
         return false;
@@ -8232,19 +8275,26 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
     format_trivia_validate(&lexer, &trivia);
     const FormatTrivia* previous_trivia    = g_format_trivia;
     Array(bool) previous_consumed_comments = g_format_consumed_comments;
+    Array(bool) previous_emitted_comments  = g_format_emitted_comments;
     Array(bool) consumed_comments          = NULL;
+    Array(bool) emitted_comments           = NULL;
     array_requires_size(consumed_comments, array_count(lexer.comments));
+    array_requires_size(emitted_comments, array_count(lexer.comments));
     for (u32 i = 0; i < array_count(consumed_comments); ++i) {
         consumed_comments[i] = false;
+        emitted_comments[i]  = false;
     }
     g_format_trivia            = &trivia;
     g_format_consumed_comments = consumed_comments;
+    g_format_emitted_comments  = emitted_comments;
 
     Cst cst                    = {0};
     if (!cst_parse(&lexer, &cst) || array_count(cst.bindings) == 0) {
         g_format_trivia            = previous_trivia;
         g_format_consumed_comments = previous_consumed_comments;
+        g_format_emitted_comments  = previous_emitted_comments;
         array_free(consumed_comments);
+        array_free(emitted_comments);
         format_trivia_done(&trivia);
         cst_done(&cst);
         lex_done(&lexer);
@@ -8507,13 +8557,29 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
         previous_binding_index = node_index;
     }
 
+    bool all_comments_emitted = true;
+    for (u32 i = 0; i < array_count(emitted_comments); ++i) {
+        if (!emitted_comments[i]) {
+            all_comments_emitted = false;
+            break;
+        }
+    }
+
     arena_done(&align_arena);
     g_format_trivia            = previous_trivia;
     g_format_consumed_comments = previous_consumed_comments;
+    g_format_emitted_comments  = previous_emitted_comments;
     array_free(consumed_comments);
+    array_free(emitted_comments);
     format_trivia_done(&trivia);
     cst_done(&cst);
     lex_done(&lexer);
+
+    if (!all_comments_emitted) {
+        arena_restore(sb->arena, output_mark);
+        sb->size = output_size;
+        return false;
+    }
     return true;
 }
 
