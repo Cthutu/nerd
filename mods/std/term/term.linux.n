@@ -255,51 +255,63 @@ term_keyboard_snapshot :: fn () -> TermKeyboard {
     return keyboard
 }
 
+-- Returns whether a physical key is currently held in this snapshot. Backends
+-- without release reporting expose key state as a one-step pulse.
 pub term_key_down :: fn (keyboard: TermKeyboard, key: TermScanCode) -> bool {
     index := term_key_index(key)
     return term_key_index_valid(index) && keyboard.down[index]
 }
 
+-- Returns whether a physical key changed from up to down in this snapshot.
 pub term_key_pressed :: fn (keyboard: TermKeyboard, key: TermScanCode) -> bool {
     index := term_key_index(key)
     return term_key_index_valid(index) && keyboard.pressed[index]
 }
 
+-- Returns whether a physical key changed from down to up in this snapshot.
 pub term_key_released :: fn (keyboard: TermKeyboard, key: TermScanCode) -> bool {
     index := term_key_index(key)
     return term_key_index_valid(index) && keyboard.released[index]
 }
 
+-- Returns whether either Alt modifier is active in this keyboard snapshot.
 pub term_alt_down :: fn (keyboard: TermKeyboard) -> bool {
     return (keyboard.modifiers & TERM_MOD_ALT) != 0
 }
 
+-- Returns whether the physical left Alt key is held in this snapshot.
 pub term_left_alt_down :: fn (keyboard: TermKeyboard) -> bool {
     return term_key_down(keyboard, TermScanCode.LeftAlt)
 }
 
+-- Returns whether the physical right Alt key is held in this snapshot.
 pub term_right_alt_down :: fn (keyboard: TermKeyboard) -> bool {
     return term_key_down(keyboard, TermScanCode.RightAlt)
 }
 
+-- Legacy alias for `term_alt_down`.
 pub term_mod_down :: fn (keyboard: TermKeyboard) -> bool {
     return term_alt_down(keyboard)
 }
 
 impl TermInput {
 
+    -- Returns whether a physical key is currently held in this input snapshot.
     pub key_down :: fn (input: Self, key: TermScanCode) -> bool {
         return term_key_down(input.keyboard, key)
     }
 
+    -- Returns whether a physical key was newly pressed in this input snapshot.
     pub key_pressed :: fn (input: Self, key: TermScanCode) -> bool {
         return term_key_pressed(input.keyboard, key)
     }
 
+    -- Returns whether a physical key was released in this input snapshot.
     pub key_released :: fn (input: Self, key: TermScanCode) -> bool {
         return term_key_released(input.keyboard, key)
     }
 
+    -- Returns the current-layout label for a physical key in this snapshot.
     pub key_name :: fn (input: Self, key: TermScanCode) -> string {
         return term_key_name(input.keyboard, key)
     }
@@ -308,18 +320,24 @@ impl TermInput {
 
 impl TermSimulate {
 
+    -- Returns whether a physical key is currently held in this simulation
+    -- snapshot.
     pub key_down :: fn (sim: Self, key: TermScanCode) -> bool {
         return term_key_down(sim.keyboard, key)
     }
 
+    -- Returns whether a physical key was newly pressed in this simulation
+    -- snapshot.
     pub key_pressed :: fn (sim: Self, key: TermScanCode) -> bool {
         return term_key_pressed(sim.keyboard, key)
     }
 
+    -- Returns whether a physical key was released in this simulation snapshot.
     pub key_released :: fn (sim: Self, key: TermScanCode) -> bool {
         return term_key_released(sim.keyboard, key)
     }
 
+    -- Returns the current-layout label for a physical key in this snapshot.
     pub key_name :: fn (sim: Self, key: TermScanCode) -> string {
         return term_key_name(sim.keyboard, key)
     }
@@ -361,14 +379,19 @@ term_keyboard_record_press :: fn (key: TermScanCode, pulse: bool) {
     }
 }
 
+-- Returns whether any requested mouse-button flag is currently held.
 pub term_mouse_down :: fn (mouse: TermMouse, button: u32) -> bool {
     return (mouse.buttons & button) != 0
 }
 
+-- Returns whether any requested mouse-button flag was newly pressed in this
+-- snapshot.
 pub term_mouse_pressed :: fn (mouse: TermMouse, button: u32) -> bool {
     return (mouse.pressed & button) != 0
 }
 
+-- Returns whether any requested mouse-button flag was released in this
+-- snapshot.
 pub term_mouse_released :: fn (mouse: TermMouse, button: u32) -> bool {
     return (mouse.released & button) != 0
 }

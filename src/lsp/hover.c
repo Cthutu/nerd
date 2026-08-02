@@ -3922,6 +3922,20 @@ internal string lsp_field_hover_text(const LspDocument* doc,
     }
 
     if (!lsp_field_receiver_is_arena(doc, field_node_index)) {
+        if (field_node_index <
+            array_count(
+                doc->front_end.sema.node_compound_selected_decl_indices)) {
+            u32 selected =
+                doc->front_end.sema
+                    .node_compound_selected_decl_indices[field_node_index];
+            if (selected != sema_no_decl()) {
+                string hover = lsp_method_hover_text(doc, arena, selected);
+                if (hover.count != 0) {
+                    return hover;
+                }
+            }
+        }
+
         u32 method_decl =
             lsp_selected_method_decl_for_field(doc, field_node_index);
         if (method_decl != LSP_NO_DECL) {
@@ -5076,6 +5090,26 @@ void lsp_handle_hover(LspState* state, const LspMessage* message)
                 lsp_set_markdown_hover(
                     response, message->arena, enum_variant_hover);
                 break;
+            }
+
+            u32 compound_ref_node = lsp_find_symbol_ref_node_at_token(
+                &doc->front_end.ast, token_index);
+            if (compound_ref_node != U32_MAX &&
+                compound_ref_node <
+                    array_count(doc->front_end.sema
+                                    .node_compound_selected_decl_indices)) {
+                u32 selected =
+                    doc->front_end.sema
+                        .node_compound_selected_decl_indices[compound_ref_node];
+                if (selected != sema_no_decl()) {
+                    string compound_hover =
+                        lsp_method_hover_text(doc, message->arena, selected);
+                    if (compound_hover.count != 0) {
+                        lsp_set_markdown_hover(
+                            response, message->arena, compound_hover);
+                        break;
+                    }
+                }
             }
 
             u32 decl_index = lsp_find_decl_index_for_token(doc, token_index);
