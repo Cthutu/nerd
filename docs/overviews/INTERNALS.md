@@ -192,6 +192,12 @@ signatures with the implicit method receiver removed. The same catalogue models
 the built-in `arena(...)` construction syntax, since it has no source-level
 function declaration from which the LSP could recover parameters.
 
+Arena allocation methods carry call-site `@file` and `@line` defaults into
+`nrt_arena_alloc`. When a zero-initialised arena is first used, the runtime uses
+that metadata while lazily initialising its storage, so leak reports identify
+the allocation method call. An arena created explicitly with `arena(...)`
+retains the constructor's source location instead.
+
 ### Compound functions
 
 The AST records `fn { ... }` member syntax only. Semantic analysis registers

@@ -144,6 +144,7 @@ wrappers:
 - `nrt_mem_break_on_alloc(index)`
 - `nrt_mem_live_head()`
 - `nrt_arena_live_head()`
+- `nrt_arena_alloc(arena, size, alignment, file, line)`
 
 Every heap allocation stores a release header immediately before the returned
 pointer. The final word before the returned pointer is the requested size, so
@@ -175,7 +176,8 @@ arena ownership is represented by separate runtime tracking nodes keyed by the
 arena reservation base address rather than by hidden headers before arena
 results. `nrt_arena_live_head()` exposes the debug list head to leak reporting
 code outside the runtime. Arena debug nodes store the source file and line
-supplied to `nrt_arena_init`.
+supplied to `nrt_arena_init`. When `nrt_arena_alloc` lazily initialises a
+zero-valued arena, it forwards its file and line arguments to that initialiser.
 
 `std.mem` is the public standard-library facade over this runtime foundation.
 It owns the source-level allocation API and an explicit leak-reporting command,

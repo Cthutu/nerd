@@ -14,7 +14,11 @@ ffi "nrt" {
 
     nrt_arena_restore (arena: ^arena, mark: u32)
 
-    nrt_arena_alloc (arena: ^arena, size: usize, alignment: usize) -> ^void
+    nrt_arena_alloc (arena     : ^arena,
+                     size      : usize,
+                     alignment : usize,
+                     file      : ^u8,
+                     line      : u32) -> ^void
 
     nrt_temp_arena () -> ^arena
 }
@@ -48,7 +52,7 @@ on "linux" {
         defer nrt_arena_restore(temp_arena, mark)
 
         line : [..]u8
-        buffer_data := nrt_arena_alloc(temp_arena, INPUT_CHUNK_SIZE, 1).as(^u8)
+        buffer_data := nrt_arena_alloc(temp_arena, INPUT_CHUNK_SIZE, 1, nil, 0).as(^u8)
         buffer := buffer_data.as([]u8, INPUT_CHUNK_SIZE)
 
         for {
@@ -87,7 +91,7 @@ on "windows" {
         defer nrt_arena_restore(temp_arena, mark)
 
         line : [..]u8
-        buffer_data := nrt_arena_alloc(temp_arena, INPUT_CHUNK_SIZE, 1).as(^u8)
+        buffer_data := nrt_arena_alloc(temp_arena, INPUT_CHUNK_SIZE, 1, nil, 0).as(^u8)
         buffer := buffer_data.as([]u8, INPUT_CHUNK_SIZE)
 
         for {

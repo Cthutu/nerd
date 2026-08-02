@@ -9,14 +9,18 @@ ffi "nrt" {
 
     nrt_arena_restore (arena: ^arena, mark: u32)
 
-    nrt_arena_alloc (arena: ^arena, size: usize, alignment: usize) -> ^void
+    nrt_arena_alloc (arena     : ^arena,
+                     size      : usize,
+                     alignment : usize,
+                     file      : ^u8,
+                     line      : u32) -> ^void
 
     nrt_temp_arena () -> ^arena
 }
 
 c_string_temp :: fn (text: string) -> ^i8 {
     temp_arena := nrt_temp_arena()
-    data := nrt_arena_alloc(temp_arena, text.count + 1, 1).as(^u8)
+    data := nrt_arena_alloc(temp_arena, text.count + 1, 1, nil, 0).as(^u8)
     for i: usize = 0; i < text.count; i += 1 {
         data[i] = text.data[i]
     }

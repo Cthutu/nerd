@@ -592,13 +592,17 @@ void nrt_arena_restore(NrtArena* arena, uint32_t mark)
 #endif
 }
 
-void* nrt_arena_alloc(NrtArena* arena, size_t size, size_t alignment)
+void* nrt_arena_alloc(NrtArena*   arena,
+                      size_t      size,
+                      size_t      alignment,
+                      const char* source_path,
+                      uint32_t    line)
 {
     if (arena == NULL) {
         return NULL;
     }
     if (arena->base == NULL) {
-        nrt_arena_init(arena, 0, 0, NULL, 0);
+        nrt_arena_init(arena, 0, 0, source_path, line);
     }
     if (alignment == 0) {
         alignment = sizeof(void*);
@@ -887,7 +891,7 @@ void string_builder_finish(NerdString* out, size_t start)
     size_t count = g_string_builder_cursor - start;
     u8*    data  = NULL;
     if (count > 0) {
-        data = (u8*)nrt_arena_alloc(&g_temp_arena, count, 1);
+        data = (u8*)nrt_arena_alloc(&g_temp_arena, count, 1, NULL, 0);
         memcpy(data, g_string_builder_data + start, count);
     }
     *out = (NerdString){.data = data, .count = count};
