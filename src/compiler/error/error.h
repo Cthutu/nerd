@@ -185,6 +185,9 @@ bool error_0208_expected_type(NerdSource source,
 bool error_0209_reserved_keyword_binding_name(NerdSource source,
                                               ErrorSpan  span,
                                               string     keyword);
+bool error_0210_type_used_as_initializer(NerdSource source,
+                                         ErrorSpan  span,
+                                         string     binding);
 
 //------------------------------------------------------------------------------
 // Semantic analysis errors

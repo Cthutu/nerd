@@ -665,6 +665,28 @@ ast_remaining_bind_value_is_type_syntax(const AstParseState* state)
     return ast_tokens_cross_line_break(state, token_index - 1, token_index);
 }
 
+internal bool
+ast_variable_initializer_is_array_type_syntax(const AstParseState* state)
+{
+    if (state->token.kind != TK_LBracket) {
+        return false;
+    }
+
+    u32 close_bracket = state->token.token_index + 1;
+    if (!ast_skip_until_matching_rbracket(state, &close_bracket) ||
+        ast_kind_at_stream_index(state, close_bracket) != TK_RBracket) {
+        return false;
+    }
+
+    u32 element_type = close_bracket + 1;
+    if (ast_tokens_cross_line_break(state, close_bracket, element_type)) {
+        return false;
+    }
+
+    u32 token_index = state->token.token_index;
+    return ast_skip_type_tokens(state, &token_index);
+}
+
 internal bool ast_symbol_starts_bind(const AstParseState* state)
 {
     if (state->token.kind != TK_Symbol ||
@@ -5336,6 +5358,12 @@ internal bool ast_parse_variable_payload(AstParseState* state,
         }
         if (ast_bind_value_looks_like_missing_fn(state)) {
             return ast_error_missing_fn_in_binding_value(state, false);
+        }
+        if (ast_variable_initializer_is_array_type_syntax(state)) {
+            return error_0210_type_used_as_initializer(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                lex_symbol(state->lexer, symbol_token.value.symbol_handle));
         }
         bool previous_boundary          = state->allow_statement_boundary;
         state->allow_statement_boundary = true;

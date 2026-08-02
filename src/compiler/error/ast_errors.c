@@ -412,4 +412,26 @@ bool error_0209_reserved_keyword_binding_name(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
+// Report unambiguous type syntax after a value-inferred binding operator.
+
+bool error_0210_type_used_as_initializer(NerdSource source,
+                                         ErrorSpan  span,
+                                         string     binding)
+{
+    ErrorInfo error =
+        error_init(source, span, "Type used where a value was expected");
+    error_add_reference(
+        &error, ERROR_REF_PRIMARY, span, "This begins type syntax");
+    error_add_note(&error,
+                   "Bindings declared with `:=` require a runtime initializer");
+    error_add_help(&error,
+                   "Use `" STRINGP
+                   ": Type` to declare a default-initialized variable, or "
+                   "provide a runtime value after `:=`.",
+                   STRINGV(binding));
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
