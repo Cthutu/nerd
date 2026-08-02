@@ -157,6 +157,11 @@ array expression used to allocate a capacity-bearing dynamic-array local uses
 the local declaration location, which LLVM passes to the runtime allocator for
 leak diagnostics.
 
+The parser recognises a same-line `arena name` sequence as a reversed built-in
+type declaration and reports Nerd's name-first declaration forms. The formatter
+preserves that malformed sequence on one line so formatting cannot obscure the
+source relationship used by the diagnostic.
+
 ## Related Documents
 
 - [FORMAT.md](/home/matt/nerd/docs/overviews/FORMAT.md) for formatter rules

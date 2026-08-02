@@ -3572,6 +3572,22 @@ internal bool ast_parse_pragma(AstParseState* state, u32* out_node)
 
 internal bool ast_parse_block_statement(AstParseState* state)
 {
+    if (state->token.kind == TK_Symbol &&
+        string_eq_cstr(
+            lex_symbol(state->lexer, state->token.value.symbol_handle),
+            "arena") &&
+        ast_peek_kind_at(state, 0) == TK_Symbol &&
+        !ast_tokens_cross_line_break(
+            state, state->token.token_index, state->token.token_index + 1)) {
+        u32 binding_token = state->token.token_index + 1;
+        return error_0211_arena_type_before_binding(
+            state->lexer->source,
+            ast_token_span(state, &state->token),
+            ast_span_for_token_index(state, binding_token),
+            lex_symbol(state->lexer,
+                       ast_symbol_handle_at(state, binding_token)));
+    }
+
     if (state->token.kind == TK_pragma) {
         return ast_parse_pragma(state, NULL);
     }

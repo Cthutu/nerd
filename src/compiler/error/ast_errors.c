@@ -434,4 +434,32 @@ bool error_0210_type_used_as_initializer(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
+// Report a C-style arena declaration with the type before the binding name.
+
+bool error_0211_arena_type_before_binding(NerdSource source,
+                                          ErrorSpan  type_span,
+                                          ErrorSpan  binding_span,
+                                          string     binding)
+{
+    ErrorInfo error = error_init(
+        source, type_span, "`arena` is a type, not a declaration keyword");
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        type_span,
+                        "`arena` names the built-in arena type");
+    error_add_reference(&error,
+                        ERROR_REF_SECONDARY,
+                        binding_span,
+                        "The variable name appears after the type");
+    error_add_help(&error,
+                   "Write `" STRINGP
+                   ": arena` to declare an arena, or `" STRINGP
+                   " := arena(...)` to construct one.",
+                   STRINGV(binding),
+                   STRINGV(binding));
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------
 //------------------------------------------------------------------------------

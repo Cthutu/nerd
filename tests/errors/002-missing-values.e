@@ -22,6 +22,39 @@
     ]
 }
 ¬
+main :: fn () {
+    arena ar
+}
+¬
+{
+    "message": "`arena` is a type, not a declaration keyword",
+    "source_file": "tests/errors/002-missing-values.e",
+    "primary_location": {
+        "line": 2,
+        "column": 5
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 2,
+            "column": 5,
+            "length": 5,
+            "message": "`arena` names the built-in arena type"
+        },
+        {
+            "kind": "secondary",
+            "line": 2,
+            "column": 11,
+            "length": 2,
+            "message": "The variable name appears after the type"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Write `ar: arena` to declare an arena, or `ar := arena(...)` to construct one."
+    ]
+}
+¬
 63+
 ¬
 {

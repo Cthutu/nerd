@@ -7138,6 +7138,47 @@ internal bool format_match_while_not_header(const Cst*   cst,
     return true;
 }
 
+internal bool
+format_match_reversed_arena_declaration(const Cst*   cst,
+                                        const Lexer* lexer,
+                                        u32          statement_index,
+                                        u32          block_end,
+                                        u32          current_block,
+                                        u32*         out_binding_statement)
+{
+    const CstNode* statement = &cst->nodes[statement_index];
+    if (statement->kind != CK_Statement ||
+        cst->nodes[statement->a].kind != CK_SymbolRef ||
+        !string_eq_cstr(
+            lex_symbol(lexer, cst_get_symbol(&cst->nodes[statement->a])),
+            "arena")) {
+        return false;
+    }
+
+    u32 binding_statement = format_next_block_statement(
+        cst, statement_index + 1, block_end, current_block);
+    if (binding_statement == U32_MAX ||
+        cst->nodes[binding_statement].kind != CK_Statement ||
+        cst->nodes[cst->nodes[binding_statement].a].kind != CK_SymbolRef) {
+        return false;
+    }
+
+    usize arena_end = format_syntax_node_end_offset(
+        &(FormatSyntaxContext){.cst = cst, .lexer = lexer}, statement_index);
+    usize binding_start = format_syntax_node_start_offset(
+        &(FormatSyntaxContext){.cst = cst, .lexer = lexer}, binding_statement);
+    if (arena_end > binding_start ||
+        binding_start > lexer->source.source.count ||
+        format_string_has_newline(
+            string_from(lexer->source.source.data + arena_end,
+                        binding_start - arena_end))) {
+        return false;
+    }
+
+    *out_binding_statement = binding_statement;
+    return true;
+}
+
 internal void format_emit_block_contents(StringBuilder* sb,
                                          const Cst*     cst,
                                          const Lexer*   lexer,
@@ -7209,6 +7250,27 @@ internal void format_emit_block_contents(StringBuilder* sb,
             !format_syntax_has_blank_line_between_nodes(
                 &syntax, previous_statement_index, i)) {
             sb_append_char(sb, '\n');
+        }
+
+        u32 reversed_arena_binding = U32_MAX;
+        if (format_match_reversed_arena_declaration(cst,
+                                                    lexer,
+                                                    i,
+                                                    block->b,
+                                                    block_node_index,
+                                                    &reversed_arena_binding)) {
+            format_emit_indent(sb, indent_level);
+            sb_append_cstr(sb, "arena ");
+            const CstNode* binding =
+                &cst->nodes[cst->nodes[reversed_arena_binding].a];
+            sb_append_string(sb, lex_symbol(lexer, cst_get_symbol(binding)));
+            sb_append_char(sb, '\n');
+            format_emit_trailing_comment_for_node(
+                sb, cst, lexer, reversed_arena_binding, &comment_index);
+            previous_statement_index = reversed_arena_binding;
+            i = cst_block_statement_end_exclusive(cst, reversed_arena_binding) -
+                1;
+            continue;
         }
 
         u32 while_condition  = U32_MAX;

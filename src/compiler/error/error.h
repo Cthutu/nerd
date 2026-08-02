@@ -188,6 +188,10 @@ bool error_0209_reserved_keyword_binding_name(NerdSource source,
 bool error_0210_type_used_as_initializer(NerdSource source,
                                          ErrorSpan  span,
                                          string     binding);
+bool error_0211_arena_type_before_binding(NerdSource source,
+                                          ErrorSpan  type_span,
+                                          ErrorSpan  binding_span,
+                                          string     binding);
 
 //------------------------------------------------------------------------------
 // Semantic analysis errors
