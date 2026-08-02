@@ -151,6 +151,12 @@ brace has been entered and semantic analysis can finish.
 - `src/lsp`
   LSP message handling and editor-facing features.
 
+HIR expressions that represent implicit runtime work retain the source path and
+line of the source construct that caused them. In particular, the synthetic
+array expression used to allocate a capacity-bearing dynamic-array local uses
+the local declaration location, which LLVM passes to the runtime allocator for
+leak diagnostics.
+
 ## Related Documents
 
 - [FORMAT.md](/home/matt/nerd/docs/overviews/FORMAT.md) for formatter rules

@@ -3266,6 +3266,8 @@ internal u32 hir_lower_stmt(Hir*         hir,
                             .symbol_handle    = U32_MAX,
                             .local_index      = sema_no_local(),
                             .extra_expr_index = min_capacity_expr_index,
+                            .source_line      = stmt_source_line,
+                            .source_path      = stmt_source_path,
                         });
                 }
                 if (expr_index < array_count(hir->exprs) &&

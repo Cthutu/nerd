@@ -193,7 +193,7 @@ block.end.0:
 on.body.4:
   ret i32 1
 on.end.3:
-  %t6 = call ptr @nrt_mem_alloc(i64 40, i64 16, ptr @.macro.file.m0, i32 0)
+  %t6 = call ptr @nrt_mem_alloc(i64 40, i64 16, ptr @.macro.file.m0, i32 24)
   %t7 = getelementptr inbounds { ptr, i64, i64 }, ptr %t6, i64 0, i32 0
   %t8 = getelementptr inbounds { ptr, i64, i64 }, ptr %t6, i64 0, i32 1
   %t9 = getelementptr inbounds { ptr, i64, i64 }, ptr %t6, i64 0, i32 2

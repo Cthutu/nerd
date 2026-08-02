@@ -155,7 +155,7 @@ for.in.end.7:
 define internal i32 @fn.1() {
   %local.3 = alloca ptr
   %local.4 = alloca { ptr }
-  %t0 = call ptr @nrt_mem_alloc(i64 40, i64 16, ptr @.macro.file.m0, i32 0)
+  %t0 = call ptr @nrt_mem_alloc(i64 40, i64 16, ptr @.macro.file.m0, i32 18)
   %t1 = getelementptr inbounds { ptr, i64, i64 }, ptr %t0, i64 0, i32 0
   %t2 = getelementptr inbounds { ptr, i64, i64 }, ptr %t0, i64 0, i32 1
   %t3 = getelementptr inbounds { ptr, i64, i64 }, ptr %t0, i64 0, i32 2

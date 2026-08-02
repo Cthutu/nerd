@@ -83,7 +83,7 @@ define internal i32 @fn.0(i64 %initial_size) {
   %local.1 = alloca ptr
   %t1 = mul i64 %initial_size, 4
   %t2 = add i64 24, %t1
-  %t0 = call ptr @nrt_mem_alloc(i64 %t2, i64 16, ptr @.macro.file.m0, i32 0)
+  %t0 = call ptr @nrt_mem_alloc(i64 %t2, i64 16, ptr @.macro.file.m0, i32 2)
   %t3 = getelementptr inbounds { ptr, i64, i64 }, ptr %t0, i64 0, i32 0
   %t4 = getelementptr inbounds { ptr, i64, i64 }, ptr %t0, i64 0, i32 1
   %t5 = getelementptr inbounds { ptr, i64, i64 }, ptr %t0, i64 0, i32 2
