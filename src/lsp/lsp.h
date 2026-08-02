@@ -105,10 +105,30 @@ typedef struct {
     const Sema*       sema;
 } LspModuleView;
 
+typedef enum {
+    LSP_BUILTIN_CALLABLE_DYNAMIC_ARRAY,
+    LSP_BUILTIN_CALLABLE_ARENA,
+    LSP_BUILTIN_CALLABLE_ATOMIC,
+    LSP_BUILTIN_CALLABLE_ARENA_CONSTRUCTOR,
+} LspBuiltinCallableOwner;
+
+typedef struct {
+    LspBuiltinCallableOwner owner;
+    cstr                    name;
+    cstr                    hover_signature;
+    cstr                    call_signature;
+    cstr                    documentation;
+    u32                     param_count;
+    cstr                    params[4];
+} LspBuiltinCallable;
+
 //------------------------------------------------------------------------------
 
 void lsp_logv(cstr format, va_list args);
 void lsp_log(cstr format, ...);
+
+const LspBuiltinCallable* lsp_builtin_callable(LspBuiltinCallableOwner owner,
+                                               string                  name);
 
 // Sends a null response and logs a message.
 void lsp_fail(JsonValue* response, Arena* arena, cstr format, ...);

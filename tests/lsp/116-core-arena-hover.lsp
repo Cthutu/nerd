@@ -133,7 +133,7 @@ main :: fn () {
         "result": {
             "contents": {
                 "kind": "markdown",
-                "value": "```nerd\narena\n```\n\n- Kind: built-in type\n- Type: `arena`\n- Notes: opaque, pointer-stable allocation arena"
+                "value": "```nerd\narena\n```\n\n```nerd\narena :: fn (num_bytes: usize, increment: usize = num_bytes) -> arena\n```\n\n- Kind: built-in type\n- Type: `arena`\n- Notes: opaque, pointer-stable allocation arena\n\nCreates a pointer-stable arena with the requested initial capacity. The optional increment controls how much storage is committed when more space is needed."
             }
         }
     },
@@ -143,7 +143,7 @@ main :: fn () {
         "result": {
             "contents": {
                 "kind": "markdown",
-                "value": "```nerd\nmark :: fn (self: ^arena) -> u32\n```\n\n- Kind: arena method\n- Owner: `arena`"
+                "value": "```nerd\nmark :: fn () -> u32\n```\n\n- Kind: arena method\n- Owner: `arena`\n\nReturns the current arena cursor for a later restore operation."
             }
         }
     },
@@ -163,7 +163,7 @@ main :: fn () {
         "result": {
             "contents": {
                 "kind": "markdown",
-                "value": "```nerd\nreset :: fn (self: ^arena) -> void\n```\n\n- Kind: arena method\n- Owner: `arena`"
+                "value": "```nerd\nreset :: fn () -> void\n```\n\n- Kind: arena method\n- Owner: `arena`\n\nInvalidates all allocations from the arena while retaining its storage for reuse."
             }
         }
     },

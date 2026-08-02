@@ -177,6 +177,12 @@ cached, case-insensitive client filtering from showing stale mismatched items.
 Signature help is triggered by `(` and `,`. It resolves the callable name through
 the semantic declaration table, reports the active argument, includes default
 parameter expressions, and reminds the editor user of named-argument syntax.
+Compiler-provided dynamic-array methods, arena methods, atomic methods, and the
+`arena(...)` constructor use a shared callable metadata table for hover text and
+signature help. Their signatures show only arguments supplied at the call site,
+so an inherent method's implicit `self` parameter is not exposed. Generic arena
+calls such as `scratch.alloc_array[u8](` retain signature help after the explicit
+type argument.
 When the active document cannot provide semantic facts, signature help uses the
 parsed `use` list to resolve imported modules and analyses those modules
 independently. This keeps argument help available for public standard-library

@@ -184,6 +184,14 @@ to a compile-time value. Function parameters marked `::` are recorded in the
 AST/CST and checked against the constant-expression model before HIR generation.
 Their canonical value tuples form specialisation identities; specialised HIR
 substitutes the constants and omits them from the runtime ABI.
+
+The LSP keeps editor-facing metadata for compiler-provided dynamic-array,
+arena, and atomic methods in `src/lsp/builtin.c`. Hover and signature help share
+that catalogue, which supplies call-site parameter names, documentation, and
+signatures with the implicit method receiver removed. The same catalogue models
+the built-in `arena(...)` construction syntax, since it has no source-level
+function declaration from which the LSP could recover parameters.
+
 ### Compound functions
 
 The AST records `fn { ... }` member syntax only. Semantic analysis registers

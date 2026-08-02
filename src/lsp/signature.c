@@ -597,7 +597,8 @@ internal bool lsp_signature_repaired_type_fact_view(Arena*       arena,
 internal bool lsp_signature_call_context(string  source,
                                          usize   offset,
                                          string* out_name,
-                                         u32*    out_active_param)
+                                         u32*    out_active_param,
+                                         usize*  out_name_offset)
 {
     u32   depth       = 0;
     usize open_offset = U32_MAX;
@@ -638,6 +639,26 @@ internal bool lsp_signature_call_context(string  source,
             source.data[end - 1] == '\n' || source.data[end - 1] == '\r')) {
         end--;
     }
+    if (end > 0 && source.data[end - 1] == ']') {
+        u32   generic_depth = 1;
+        usize cursor        = end - 1;
+        while (cursor > 0) {
+            cursor--;
+            if (source.data[cursor] == ']') {
+                generic_depth++;
+            } else if (source.data[cursor] == '[') {
+                generic_depth--;
+                if (generic_depth == 0) {
+                    end = cursor;
+                    while (end > 0 && (source.data[end - 1] == ' ' ||
+                                       source.data[end - 1] == '\t')) {
+                        end--;
+                    }
+                    break;
+                }
+            }
+        }
+    }
     usize start = end;
     while (start > 0 && lsp_signature_is_ident_char(source.data[start - 1])) {
         start--;
@@ -648,6 +669,7 @@ internal bool lsp_signature_call_context(string  source,
 
     *out_name = (string){.data = source.data + start, .count = end - start};
     *out_active_param = active;
+    *out_name_offset  = start;
     return true;
 }
 
@@ -1219,6 +1241,108 @@ internal bool lsp_signature_source_use_decl_label(Arena*             arena,
     return found;
 }
 
+internal bool lsp_signature_builtin_owner(const LspTypeFactView*   view,
+                                          usize                    name_offset,
+                                          LspBuiltinCallableOwner* out_owner)
+{
+    if (view == NULL || view->lexer == NULL || view->ast == NULL ||
+        view->sema == NULL) {
+        return false;
+    }
+
+    u32    token_end = 0;
+    Token* token     = lex_find((Lexer*)view->lexer, name_offset, &token_end);
+    UNUSED(token_end);
+    if (token == NULL || token->kind != TK_Symbol) {
+        return false;
+    }
+    u32 token_index = (u32)(token - view->lexer->tokens);
+    u32 field_index = U32_MAX;
+    for (u32 i = 0; i < array_count(view->ast->nodes); ++i) {
+        if (view->ast->nodes[i].kind == AK_Field &&
+            view->ast->nodes[i].token_index == token_index) {
+            field_index = i;
+            break;
+        }
+    }
+    if (field_index == U32_MAX) {
+        return false;
+    }
+
+    u32            receiver_type = sema_no_type();
+    const AstNode* field         = &view->ast->nodes[field_index];
+    if (!lsp_sema_node_type(view->sema, field->a, &receiver_type)) {
+        return false;
+    }
+    const SemaType* receiver = NULL;
+    if (!lsp_sema_type(view->sema, receiver_type, &receiver)) {
+        return false;
+    }
+    if (receiver->kind == STK_Pointer) {
+        u32 pointee_type = receiver->first_param_type;
+        if (lsp_sema_type(view->sema, pointee_type, &receiver)) {
+            receiver_type = pointee_type;
+        }
+    }
+    UNUSED(receiver_type);
+
+    if (receiver->kind == STK_DynamicArray) {
+        *out_owner = LSP_BUILTIN_CALLABLE_DYNAMIC_ARRAY;
+        return true;
+    }
+    if (receiver->kind == STK_Arena) {
+        *out_owner = LSP_BUILTIN_CALLABLE_ARENA;
+        return true;
+    }
+    if (receiver->kind == STK_Atomic) {
+        *out_owner = LSP_BUILTIN_CALLABLE_ATOMIC;
+        return true;
+    }
+    return false;
+}
+
+internal void lsp_signature_send_builtin(JsonValue*                response,
+                                         Arena*                    arena,
+                                         const LspBuiltinCallable* callable,
+                                         u32                       active_param)
+{
+    string     label        = s(callable->call_signature);
+    JsonValue* parameters   = json_new_array(arena);
+    usize      search_start = 0;
+    for (u32 i = 0; i < callable->param_count; ++i) {
+        string param = s(callable->params[i]);
+        usize  start = U32_MAX;
+        for (usize cursor = search_start; cursor + param.count <= label.count;
+             ++cursor) {
+            if (memcmp(label.data + cursor, param.data, param.count) == 0) {
+                start = cursor;
+                break;
+            }
+        }
+        if (start == U32_MAX) {
+            continue;
+        }
+        lsp_signature_add_param_range(
+            arena, parameters, start, start + param.count);
+        search_start = start + param.count;
+    }
+
+    JsonValue* signature = json_new_object(arena);
+    json_object_set_string(signature, arena, "label", label);
+    json_object_set_string(
+        signature, arena, "documentation", s(callable->documentation));
+    json_object_set_array(signature, "parameters", parameters);
+
+    JsonValue* signatures = json_new_array(arena);
+    json_array_push(signatures, signature);
+    JsonValue* result = json_new_object(arena);
+    json_object_set_array(result, "signatures", signatures);
+    json_object_set_number(result, arena, "activeSignature", 0);
+    json_object_set_number(result, arena, "activeParameter", active_param);
+    json_object_set_object(response, "result", result);
+    lsp_send_response(arena, response);
+}
+
 void lsp_handle_signature_help(LspState* state, const LspMessage* message)
 {
     JsonValue* response = lsp_prepare_response(message);
@@ -1243,8 +1367,9 @@ void lsp_handle_signature_help(LspState* state, const LspMessage* message)
 
     string name         = {0};
     u32    active_param = 0;
+    usize  name_offset  = 0;
     if (!lsp_signature_call_context(
-            source_view.source, offset, &name, &active_param)) {
+            source_view.source, offset, &name, &active_param, &name_offset)) {
         json_object_set_null(response, message->arena, "result");
         lsp_send_response(message->arena, response);
         return;
@@ -1265,6 +1390,18 @@ void lsp_handle_signature_help(LspState* state, const LspMessage* message)
                                                   &view);
     }
     if (!view.sema) {
+        if (string_eq(name, s("arena"))) {
+            const LspBuiltinCallable* constructor = lsp_builtin_callable(
+                LSP_BUILTIN_CALLABLE_ARENA_CONSTRUCTOR, name);
+            if (constructor != NULL) {
+                lsp_signature_send_builtin(
+                    response, message->arena, constructor, active_param);
+                if (using_repaired) {
+                    program_info_done(&repaired_program);
+                }
+                return;
+            }
+        }
         string     source_label      = {0};
         JsonValue* source_parameters = NULL;
         if (lsp_signature_source_decl_label(message->arena,
@@ -1306,6 +1443,24 @@ void lsp_handle_signature_help(LspState* state, const LspMessage* message)
         }
         json_object_set_null(response, message->arena, "result");
         lsp_send_response(message->arena, response);
+        if (using_repaired) {
+            program_info_done(&repaired_program);
+        }
+        return;
+    }
+
+    LspBuiltinCallableOwner builtin_owner = LSP_BUILTIN_CALLABLE_DYNAMIC_ARRAY;
+    const LspBuiltinCallable* builtin     = NULL;
+    if (lsp_signature_builtin_owner(&view, name_offset, &builtin_owner)) {
+        builtin = lsp_builtin_callable(builtin_owner, name);
+    } else if (string_eq(name, s("arena")) &&
+               lsp_signature_find_decl(&view, name) == NULL) {
+        builtin =
+            lsp_builtin_callable(LSP_BUILTIN_CALLABLE_ARENA_CONSTRUCTOR, name);
+    }
+    if (builtin != NULL) {
+        lsp_signature_send_builtin(
+            response, message->arena, builtin, active_param);
         if (using_repaired) {
             program_info_done(&repaired_program);
         }

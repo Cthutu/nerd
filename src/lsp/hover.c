@@ -3447,12 +3447,21 @@ internal string lsp_builtin_type_hover_text(Arena* arena, string name)
         return s("");
     }
 
+    const LspBuiltinCallable* constructor =
+        lsp_builtin_callable(LSP_BUILTIN_CALLABLE_ARENA_CONSTRUCTOR, name);
+    if (constructor == NULL) {
+        return s("");
+    }
     return string_format(arena,
                          STRINGP
-                         "\n\n- Kind: built-in type"
+                         "\n\n" STRINGP "\n\n- Kind: built-in type"
                          "\n- Type: `arena`"
-                         "\n- Notes: opaque, pointer-stable allocation arena",
-                         STRINGV(lsp_markdown_code_block(arena, s("arena"))));
+                         "\n- Notes: opaque, pointer-stable allocation arena"
+                         "\n\n%s",
+                         STRINGV(lsp_markdown_code_block(arena, s("arena"))),
+                         STRINGV(lsp_markdown_code_block(
+                             arena, s(constructor->hover_signature))),
+                         constructor->documentation);
 }
 
 //------------------------------------------------------------------------------
@@ -3919,6 +3928,57 @@ internal string lsp_field_hover_text(const LspDocument* doc,
 
     if (field->kind != AK_Field) {
         return lsp_ast_field_hover_text(doc, arena, field_node_index);
+    }
+
+    u32 builtin_target_type = sema_no_type();
+    if (lsp_sema_node_type(
+            &doc->front_end.sema, field->a, &builtin_target_type)) {
+        const SemaType* builtin_target = NULL;
+        if (lsp_sema_type(
+                &doc->front_end.sema, builtin_target_type, &builtin_target) &&
+            builtin_target->kind == STK_Pointer) {
+            u32 pointee_type = builtin_target->first_param_type;
+            if (lsp_sema_type(
+                    &doc->front_end.sema, pointee_type, &builtin_target)) {
+                builtin_target_type = pointee_type;
+            }
+        }
+
+        LspBuiltinCallableOwner owner = LSP_BUILTIN_CALLABLE_DYNAMIC_ARRAY;
+        string                  kind  = s("");
+        if (builtin_target != NULL &&
+            builtin_target->kind == STK_DynamicArray) {
+            owner = LSP_BUILTIN_CALLABLE_DYNAMIC_ARRAY;
+            kind  = s("dynamic array method");
+        } else if (builtin_target != NULL &&
+                   builtin_target->kind == STK_Arena) {
+            owner = LSP_BUILTIN_CALLABLE_ARENA;
+            kind  = s("arena method");
+        } else if (builtin_target != NULL &&
+                   builtin_target->kind == STK_Atomic) {
+            owner = LSP_BUILTIN_CALLABLE_ATOMIC;
+            kind  = s("atomic method");
+        }
+
+        if (kind.count != 0) {
+            string name = lex_symbol(&doc->front_end.lexer, field->b);
+            const LspBuiltinCallable* callable =
+                lsp_builtin_callable(owner, name);
+            if (callable != NULL) {
+                string owner_type = sema_type_name(&doc->front_end.lexer,
+                                                   &doc->front_end.sema,
+                                                   arena,
+                                                   builtin_target_type);
+                return string_format(arena,
+                                     STRINGP "\n\n- Kind: " STRINGP
+                                             "\n- Owner: `" STRINGP "`\n\n%s",
+                                     STRINGV(lsp_markdown_code_block(
+                                         arena, s(callable->hover_signature))),
+                                     STRINGV(kind),
+                                     STRINGV(owner_type),
+                                     callable->documentation);
+            }
+        }
     }
 
     if (!lsp_field_receiver_is_arena(doc, field_node_index)) {

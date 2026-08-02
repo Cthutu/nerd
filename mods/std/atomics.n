@@ -33,6 +33,7 @@ pub impl atomic[T] {
 
     pragma compiler_intrinsic("atomic.load")
 
+    -- Loads and returns the current value with the selected memory order.
     pub load :: fn (self  : ^atomic[T],
                     order :: AtomicLoadOrder = SequentiallyConsistent) -> T {
         return self^
@@ -40,6 +41,7 @@ pub impl atomic[T] {
 
     pragma compiler_intrinsic("atomic.store")
 
+    -- Stores a value with the selected memory order.
     pub store :: fn (self  : ^atomic[T],
                      value : T,
                      order :: AtomicStoreOrder = SequentiallyConsistent) {
@@ -48,6 +50,7 @@ pub impl atomic[T] {
 
     pragma compiler_intrinsic("atomic.exchange")
 
+    -- Atomically replaces the value and returns the previous value.
     pub exchange :: fn (self  : ^atomic[T],
                         value : T,
                         order :: AtomicOrder = SequentiallyConsistent) -> T {
@@ -58,6 +61,7 @@ pub impl atomic[T] {
 
     pragma compiler_intrinsic("atomic.fetch_add")
 
+    -- Atomically adds a value and returns the previous value.
     pub fetch_add :: fn (self  : ^atomic[T],
                          value : T,
                          order :: AtomicOrder = SequentiallyConsistent) -> T {
@@ -68,6 +72,7 @@ pub impl atomic[T] {
 
     pragma compiler_intrinsic("atomic.fetch_sub")
 
+    -- Atomically subtracts a value and returns the previous value.
     pub fetch_sub :: fn (self  : ^atomic[T],
                          value : T,
                          order :: AtomicOrder = SequentiallyConsistent) -> T {
@@ -78,6 +83,7 @@ pub impl atomic[T] {
 
     pragma compiler_intrinsic("atomic.fetch_and")
 
+    -- Atomically applies bitwise AND and returns the previous value.
     pub fetch_and :: fn (self  : ^atomic[T],
                          value : T,
                          order :: AtomicOrder = SequentiallyConsistent) -> T {
@@ -88,6 +94,7 @@ pub impl atomic[T] {
 
     pragma compiler_intrinsic("atomic.fetch_or")
 
+    -- Atomically applies bitwise OR and returns the previous value.
     pub fetch_or :: fn (self  : ^atomic[T],
                         value : T,
                         order :: AtomicOrder = SequentiallyConsistent) -> T {
@@ -98,6 +105,7 @@ pub impl atomic[T] {
 
     pragma compiler_intrinsic("atomic.fetch_xor")
 
+    -- Atomically applies bitwise XOR and returns the previous value.
     pub fetch_xor :: fn (self  : ^atomic[T],
                          value : T,
                          order :: AtomicOrder = SequentiallyConsistent) -> T {
@@ -108,6 +116,7 @@ pub impl atomic[T] {
 
     pragma compiler_intrinsic("atomic.compare_exchange")
 
+    -- Exchanges expected for desired and reports the observed result.
     pub compare_exchange :: fn (self          : ^atomic[T],
                                 expected      : T,
                                 desired       : T,
@@ -124,6 +133,7 @@ pub impl atomic[T] {
 
     pragma compiler_intrinsic("atomic.compare_exchange_weak")
 
+    -- Performs a weak compare-exchange that may fail spuriously.
     pub compare_exchange_weak :: fn (self          : ^atomic[T],
                                      expected      : T,
                                      desired       : T,
