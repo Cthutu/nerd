@@ -1199,6 +1199,17 @@ internal u32 sema_member_target_type(const Sema* sema, u32 type_index)
 //------------------------------------------------------------------------------
 // Render one semantic type as source-facing text.
 
+internal void sema_append_type_name(StringBuilder* sb,
+                                    const Lexer*   lexer,
+                                    const Sema*    sema,
+                                    u32            type_index)
+{
+    Arena nested = {0};
+    arena_init(&nested);
+    sb_append_string(sb, sema_type_name(lexer, sema, &nested, type_index));
+    arena_done(&nested);
+}
+
 string sema_type_name(const Lexer* lexer,
                       const Sema*  sema,
                       Arena*       arena,
@@ -1210,7 +1221,8 @@ string sema_type_name(const Lexer* lexer,
 
     const SemaType* type = &sema->types[type_index];
     if (type->kind == STK_Plex || type->kind == STK_Union ||
-        type->kind == STK_Enum) {
+        (type->kind == STK_Enum &&
+         !(type->flags & (STF_Optional | STF_Result)))) {
         for (u32 i = 0; i < array_count(sema->decls); ++i) {
             const SemaDecl* decl = &sema->decls[i];
             if (decl->kind == SK_TypeAlias && decl->type_index == type_index) {
@@ -1269,13 +1281,11 @@ string sema_type_name(const Lexer* lexer,
                 if (i > 0) {
                     sb_append_cstr(&sb, ", ");
                 }
-                sb_append_string(
+                sema_append_type_name(
                     &sb,
-                    sema_type_name(
-                        lexer,
-                        sema,
-                        arena,
-                        sema->type_param_types[type->first_param_type + i]));
+                    lexer,
+                    sema,
+                    sema->type_param_types[type->first_param_type + i]);
             }
             if (type->flags & STF_FunctionVarargs) {
                 if (type->param_count > 0) {
@@ -1284,8 +1294,7 @@ string sema_type_name(const Lexer* lexer,
                 sb_append_cstr(&sb, "...");
             }
             sb_append_cstr(&sb, ") -> ");
-            sb_append_string(
-                &sb, sema_type_name(lexer, sema, arena, type->return_type));
+            sema_append_type_name(&sb, lexer, sema, type->return_type);
             return sb_to_string(&sb);
         }
     case STK_Atomic:
@@ -1293,9 +1302,7 @@ string sema_type_name(const Lexer* lexer,
             StringBuilder sb = {0};
             sb_init(&sb, arena);
             sb_append_cstr(&sb, "atomic[");
-            sb_append_string(
-                &sb,
-                sema_type_name(lexer, sema, arena, type->first_param_type));
+            sema_append_type_name(&sb, lexer, sema, type->first_param_type);
             sb_append_char(&sb, ']');
             return sb_to_string(&sb);
         }
@@ -1310,13 +1317,11 @@ string sema_type_name(const Lexer* lexer,
                 if (i > 0) {
                     sb_append_cstr(&sb, ", ");
                 }
-                sb_append_string(
+                sema_append_type_name(
                     &sb,
-                    sema_type_name(
-                        lexer,
-                        sema,
-                        arena,
-                        sema->type_param_types[type->first_param_type + i]));
+                    lexer,
+                    sema,
+                    sema->type_param_types[type->first_param_type + i]);
             }
             if (type->param_count == 1) {
                 sb_append_cstr(&sb, ",");
@@ -1329,9 +1334,7 @@ string sema_type_name(const Lexer* lexer,
             StringBuilder sb = {0};
             sb_init(&sb, arena);
             sb_format(&sb, "[%u]", type->return_type);
-            sb_append_string(
-                &sb,
-                sema_type_name(lexer, sema, arena, type->first_param_type));
+            sema_append_type_name(&sb, lexer, sema, type->first_param_type);
             return sb_to_string(&sb);
         }
     case STK_Slice:
@@ -1339,9 +1342,7 @@ string sema_type_name(const Lexer* lexer,
             StringBuilder sb = {0};
             sb_init(&sb, arena);
             sb_append_cstr(&sb, "[]");
-            sb_append_string(
-                &sb,
-                sema_type_name(lexer, sema, arena, type->first_param_type));
+            sema_append_type_name(&sb, lexer, sema, type->first_param_type);
             return sb_to_string(&sb);
         }
     case STK_DynamicArray:
@@ -1349,9 +1350,7 @@ string sema_type_name(const Lexer* lexer,
             StringBuilder sb = {0};
             sb_init(&sb, arena);
             sb_append_cstr(&sb, "[..]");
-            sb_append_string(
-                &sb,
-                sema_type_name(lexer, sema, arena, type->first_param_type));
+            sema_append_type_name(&sb, lexer, sema, type->first_param_type);
             return sb_to_string(&sb);
         }
     case STK_Box:
@@ -1359,9 +1358,7 @@ string sema_type_name(const Lexer* lexer,
             StringBuilder sb = {0};
             sb_init(&sb, arena);
             sb_append_cstr(&sb, "box[");
-            sb_append_string(
-                &sb,
-                sema_type_name(lexer, sema, arena, type->first_param_type));
+            sema_append_type_name(&sb, lexer, sema, type->first_param_type);
             sb_append_char(&sb, ']');
             return sb_to_string(&sb);
         }
@@ -1370,9 +1367,7 @@ string sema_type_name(const Lexer* lexer,
             StringBuilder sb = {0};
             sb_init(&sb, arena);
             sb_append_char(&sb, '^');
-            sb_append_string(
-                &sb,
-                sema_type_name(lexer, sema, arena, type->first_param_type));
+            sema_append_type_name(&sb, lexer, sema, type->first_param_type);
             return sb_to_string(&sb);
         }
     case STK_Plex:
@@ -1386,13 +1381,11 @@ string sema_type_name(const Lexer* lexer,
                 if (i > 0) {
                     sb_append_cstr(&sb, ", ");
                 }
-                sb_append_string(
+                sema_append_type_name(
                     &sb,
-                    sema_type_name(
-                        lexer,
-                        sema,
-                        arena,
-                        sema->type_param_types[type->first_param_type + i]));
+                    lexer,
+                    sema,
+                    sema->type_param_types[type->first_param_type + i]);
                 sb_append_char(&sb, ' ');
                 sb_append_string(
                     &sb,
@@ -1409,31 +1402,25 @@ string sema_type_name(const Lexer* lexer,
             sb_init(&sb, arena);
             if (type->flags & STF_Optional) {
                 sb_append_char(&sb, '?');
-                sb_append_string(
+                sema_append_type_name(
                     &sb,
-                    sema_type_name(
-                        lexer,
-                        sema,
-                        arena,
-                        sema->type_param_types[type->first_param_type + 1]));
+                    lexer,
+                    sema,
+                    sema->type_param_types[type->first_param_type + 1]);
                 return sb_to_string(&sb);
             }
             if (type->flags & STF_Result) {
-                sb_append_string(
+                sema_append_type_name(
                     &sb,
-                    sema_type_name(
-                        lexer,
-                        sema,
-                        arena,
-                        sema->type_param_types[type->first_param_type]));
+                    lexer,
+                    sema,
+                    sema->type_param_types[type->first_param_type]);
                 sb_append_char(&sb, '\\');
-                sb_append_string(
+                sema_append_type_name(
                     &sb,
-                    sema_type_name(
-                        lexer,
-                        sema,
-                        arena,
-                        sema->type_param_types[type->first_param_type + 1]));
+                    lexer,
+                    sema,
+                    sema->type_param_types[type->first_param_type + 1]);
                 return sb_to_string(&sb);
             }
             sb_append_cstr(&sb, "enum { ");
@@ -1450,8 +1437,7 @@ string sema_type_name(const Lexer* lexer,
                     sema->type_param_types[type->first_param_type + i];
                 if (payload_type != sema_no_type()) {
                     sb_append_char(&sb, '(');
-                    sb_append_string(
-                        &sb, sema_type_name(lexer, sema, arena, payload_type));
+                    sema_append_type_name(&sb, lexer, sema, payload_type);
                     sb_append_char(&sb, ')');
                 }
                 i64 discriminant =
@@ -19096,6 +19082,31 @@ validate_type:
                  sema->types[array_type].kind != STK_DynamicArray &&
                  sema->types[array_type].kind != STK_String &&
                  sema->types[array_type].kind != STK_Pointer)) {
+                bool is_on_condition = false;
+                for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+                    if (ast->nodes[i].kind == AK_On &&
+                        ast->nodes[i].a == node_index) {
+                        is_on_condition = true;
+                        break;
+                    }
+                }
+                if (is_on_condition && array_type != sema_no_type() &&
+                    sema->types[array_type].kind == STK_Enum &&
+                    (sema->types[array_type].flags &
+                     (STF_Optional | STF_Result)) &&
+                    node->b < array_count(ast->nodes) &&
+                    ast->nodes[node->b].kind == AK_SymbolRef &&
+                    node->token_index < array_count(lexer->tokens)) {
+                    const Token* open = &lexer->tokens[node->token_index];
+                    const Token* binder =
+                        &lexer->tokens[ast->nodes[node->b].token_index];
+                    ErrorSpan binder_span = {
+                        .start = open->offset,
+                        .end   = lex_token_end_offset(lexer, binder),
+                    };
+                    return error_0212_missing_on_extract_arrow(
+                        lexer->source, binder_span, binder_span);
+                }
                 return error_0304_type_mismatch(
                     lexer->source,
                     sema_node_span(lexer, node),

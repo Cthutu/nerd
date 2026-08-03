@@ -126,7 +126,7 @@ func fn.1() -> i32 {
     }
   }
   let extra: [2]string = [2]string array(string "west", string "up")
-  expr void call fn ([]string[]string) field([..]string local.3(names), append)([]string slice([2]string local.1(extra), <none>, <none>))
+  expr void call fn ([]string) -> void field([..]string local.3(names), append)([]string slice([2]string local.1(extra), <none>, <none>))
   expr void on bool not_equal(usize field([..]string local.3(names), count), usize 5) {
     value(bool yes) => {
       return i32 7

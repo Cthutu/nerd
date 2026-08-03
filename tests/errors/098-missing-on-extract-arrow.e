@@ -36,3 +36,36 @@ main :: fn () {
         "Write `on value => [payload] { ... } else [error] { ... }`"
     ]
 }
+¬
+get_result :: fn () -> i32\string {
+    return 1
+}
+
+main :: fn () {
+    on get_result()[value] {
+    }
+}
+¬
+{
+    "message": "Missing `=>` before `on` extraction binder",
+    "source_file": "tests/errors/098-missing-on-extract-arrow.e",
+    "primary_location": {
+        "line": 6,
+        "column": 20
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 6,
+            "column": 20,
+            "length": 6,
+            "message": "This looks like a success payload binder"
+        }
+    ],
+    "notes": [
+        "Without `=>`, `[payload]` is parsed as indexing"
+    ],
+    "help": [
+        "Write `on value => [payload] { ... } else [error] { ... }`"
+    ]
+}

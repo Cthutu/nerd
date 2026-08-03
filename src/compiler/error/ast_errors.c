@@ -471,10 +471,16 @@ bool error_0212_missing_on_extract_arrow(NerdSource source,
                         ERROR_REF_PRIMARY,
                         binder_span,
                         "This looks like a success payload binder");
-    error_add_reference(&error,
-                        ERROR_REF_SECONDARY,
-                        detected_span,
-                        "The missing arrow made this parse as indexing");
+    if (detected_span.start != binder_span.start ||
+        detected_span.end != binder_span.end) {
+        error_add_reference(&error,
+                            ERROR_REF_SECONDARY,
+                            detected_span,
+                            "The missing arrow made this parse as indexing");
+    } else {
+        error_add_note(&error,
+                       "Without `=>`, `[payload]` is parsed as indexing");
+    }
     error_add_help(
         &error, "Write `on value => [payload] { ... } else [error] { ... }`");
     error_render(&error);

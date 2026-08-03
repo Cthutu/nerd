@@ -21,7 +21,7 @@ hir 0
 module module.0(147-qualified-module-types.input)
 import module.1(test.imported_plex)
 import import.0 Box from module.1(test.imported_plex).decl.0: Box
-import import.1 __impl_Box_bump from module.1(test.imported_plex).decl.1: fn (^Box^Box, usize) ->
+import import.1 __impl_Box_bump from module.1(test.imported_plex).decl.1: fn (^Box, usize) -> void
 import import.2 make_box from module.1(test.imported_plex).decl.2: fn (usize) -> Box
 bind Box = import.0
 bind __impl_Box_bump = import.1

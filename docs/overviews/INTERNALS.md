@@ -11,9 +11,13 @@ return path for propagation, including deferred cleanup.
 Sema also diagnoses propagation at the postfix `?`: when the enclosing function
 has no matching optional or result channel, the diagnostic names the propagated
 failure type and suggests a compatible enclosing return type.
-Parser recovery also recognises the extraction-shaped `on value [payload]`
-mistake after a failed branch parse, so it can point back to the binder and
-suggest the required `=> [payload]` syntax instead of blaming the closing brace.
+Recursive semantic type rendering isolates nested names in temporary arenas
+before appending them, keeping composite diagnostics such as
+`^PixelLayer\GfxError` contiguous and source-accurate.
+Parser recovery and semantic index checking recognise the extraction-shaped
+`on value[payload]` mistake, including an empty branch body, so diagnostics can
+point to the binder and suggest the required `=> [payload]` syntax instead of
+blaming the closing brace or reporting that a result is not indexable.
 
 For deeper implementation notes, use these companion documents:
 

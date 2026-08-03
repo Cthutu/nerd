@@ -71,16 +71,16 @@ func fn.2() -> void {
   expr void call bind.4(__impl_Counter_inc)(^Counter address_of(Counter local.3(counter)), i32 7)
   expr void call bind.4(__impl_Counter_inc)(^Counter address_of(Counter local.3(counter)), i32 5)
   expr <unknown> default
-  let stack: plex { [..]i32[..]i32 = <unknown> default
-  expr void call decl.1(__impl_Stack_T_push_g_2ffac2fa)(^plex { [..]i32[..]i32 address_of(plex { [..]i32[..]i32 local.4(stack)), i32 call bind.5(__impl_Counter_get)(Counter local.3(counter)))
-  expr void call decl.1(__impl_Stack_T_push_g_2ffac2fa)(^plex { [..]i32[..]i32 address_of(plex { [..]i32[..]i32 local.4(stack)), i32 30)
-  expr void call bind.0(prn)(string interpolate(i32 call decl.2(__impl_Stack_T_pop_g_2c164aaa)(^plex { [..]i32[..]i32 address_of(plex { [..]i32[..]i32 local.4(stack))), <unknown> " ", i32 call decl.2(__impl_Stack_T_pop_g_2c164aaa)(^plex { [..]i32[..]i32 address_of(plex { [..]i32[..]i32 local.4(stack))), <unknown> " ", i32 call bind.5(__impl_Counter_get)(Counter local.3(counter))))
+  let stack: plex { [..]i32 data } = <unknown> default
+  expr void call decl.1(__impl_Stack_T_push_g_2ffac2fa)(^plex { [..]i32 data } address_of(plex { [..]i32 data } local.4(stack)), i32 call bind.5(__impl_Counter_get)(Counter local.3(counter)))
+  expr void call decl.1(__impl_Stack_T_push_g_2ffac2fa)(^plex { [..]i32 data } address_of(plex { [..]i32 data } local.4(stack)), i32 30)
+  expr void call bind.0(prn)(string interpolate(i32 call decl.2(__impl_Stack_T_pop_g_2c164aaa)(^plex { [..]i32 data } address_of(plex { [..]i32 data } local.4(stack))), <unknown> " ", i32 call decl.2(__impl_Stack_T_pop_g_2c164aaa)(^plex { [..]i32 data } address_of(plex { [..]i32 data } local.4(stack))), <unknown> " ", i32 call bind.5(__impl_Counter_get)(Counter local.3(counter))))
 }
-inst func fn.3(self: ^plex { [..]i32[..]i32, elem: i32) -> void {
-  expr void call fn (i32) -> void field([..]i32 field(^plex { [..]i32[..]i32 local.5(self), data), push)(i32 local.6(elem))
+inst func fn.3(self: ^plex { [..]i32 data }, elem: i32) -> void {
+  expr void call fn (i32) -> void field([..]i32 field(^plex { [..]i32 data } local.5(self), data), push)(i32 local.6(elem))
 }
-inst func fn.4(self: ^plex { [..]i32[..]i32) -> i32 {
-  return i32 call fn () -> i32 field([..]i32 field(^plex { [..]i32[..]i32 local.7(self), data), pop)()
+inst func fn.4(self: ^plex { [..]i32 data }) -> i32 {
+  return i32 call fn () -> i32 field([..]i32 field(^plex { [..]i32 data } local.7(self), data), pop)()
 }
 ¬
 ; nerd llvm-ir 0

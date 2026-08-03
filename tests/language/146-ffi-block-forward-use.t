@@ -25,7 +25,7 @@ main :: fn () -> i32 {
 hir 0
 module module.0(146-ffi-block-forward-use.input)
 extern extern.0 malloc from "c": fn (usize) -> ^void
-extern extern.1 free from "c": fn (^void^void) ->
+extern extern.1 free from "c": fn (^void) -> void
 bind wrap = fn.0
 bind c_malloc = fn.1
 bind c_free = fn.2

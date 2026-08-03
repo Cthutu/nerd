@@ -46,13 +46,13 @@ func fn.1() -> i32 {
   let pair: (i32, string) = (i32, string) tuple(untyped integer 7, string "seven")
   let single: (i32,) = (i32,) tuple(i32 add(i32 tuple_field((i32, string) local.2(pair), 0), i32 1))
   let from_fn: (i32, string) = (i32, string) call bind.2(make_pair)(i32 3, string "three")
-  let nested: ((i32, string)(i32, string),  = ((i32, string)(i32, string),  tuple((i32, string) local.2(pair), (i32,) local.3(single), bool yes)
+  let nested: ((i32, string), (i32,), bool) = ((i32, string), (i32,), bool) tuple((i32, string) local.2(pair), (i32,) local.3(single), bool yes)
   expr void call bind.0(prn)(string interpolate(<unknown> "pair = ", i32 tuple_field((i32, string) local.2(pair), 0), <unknown> ", ", string tuple_field((i32, string) local.2(pair), 1)))
   expr void call bind.0(prn)(string interpolate(<unknown> "pair tuple = ", (i32, string) local.2(pair)))
   expr void call bind.0(prn)(string interpolate(<unknown> "single = ", i32 tuple_field((i32,) local.3(single), 0)))
   expr void call bind.0(prn)(string interpolate(<unknown> "single tuple = ", (i32,) local.3(single)))
   expr void call bind.0(prn)(string interpolate(<unknown> "from_fn = ", i32 tuple_field((i32, string) local.4(from_fn), 0), <unknown> ", ", string tuple_field((i32, string) local.4(from_fn), 1)))
-  expr void call bind.0(prn)(string interpolate(<unknown> "nested tuple = ", ((i32, string)(i32, string),  local.5(nested)))
+  expr void call bind.0(prn)(string interpolate(<unknown> "nested tuple = ", ((i32, string), (i32,), bool) local.5(nested)))
   return i32 add(i32 add(i32 tuple_field((i32, string) local.2(pair), 0), i32 tuple_field((i32,) local.3(single), 0)), i32 tuple_field((i32, string) local.4(from_fn), 0))
 }
 ¬

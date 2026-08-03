@@ -39,7 +39,7 @@ module module.0(088-ffi-consolidation.input)
 import module.1(std.io)
 import import.0 input from module.1(std.io).decl.7: fn (string) -> [..]u8
 extern extern.0 srand from "c": fn (u32) -> void
-extern extern.1 puts from "c": fn (^i8^i8) ->
+extern extern.1 puts from "c": fn (^i8) -> i32
 extern extern.2 accept_point from "c": fn (Point) -> void
 extern extern.3 accept_packed from "c": fn (Packed) -> void
 extern extern.4 flip_blob from "c": fn (Blob) -> Blob

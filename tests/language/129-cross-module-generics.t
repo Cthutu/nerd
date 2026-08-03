@@ -43,11 +43,11 @@ generic type type.0 = <unknown>
 generic type type.1 = <unknown>
 func fn.0() -> void {
   expr <unknown> default
-  let stack: plex { [..]i32[..]i32 = <unknown> default
-  expr void call bind.3(stack_push)(^plex { [..]i32[..]i32 address_of(plex { [..]i32[..]i32 local.0(stack)), untyped integer 42)
-  expr void call bind.3(stack_push)(^plex { [..]i32[..]i32 address_of(plex { [..]i32[..]i32 local.0(stack)), untyped integer 13)
-  let last: i32 = i32 call bind.4(stack_pop)(^plex { [..]i32[..]i32 address_of(plex { [..]i32[..]i32 local.0(stack)))
-  let first: i32 = i32 call bind.4(stack_pop)(^plex { [..]i32[..]i32 address_of(plex { [..]i32[..]i32 local.0(stack)))
+  let stack: plex { [..]i32 data } = <unknown> default
+  expr void call bind.3(stack_push)(^plex { [..]i32 data } address_of(plex { [..]i32 data } local.0(stack)), untyped integer 42)
+  expr void call bind.3(stack_push)(^plex { [..]i32 data } address_of(plex { [..]i32 data } local.0(stack)), untyped integer 13)
+  let last: i32 = i32 call bind.4(stack_pop)(^plex { [..]i32 data } address_of(plex { [..]i32 data } local.0(stack)))
+  let first: i32 = i32 call bind.4(stack_pop)(^plex { [..]i32 data } address_of(plex { [..]i32 data } local.0(stack)))
   let box: plex { string value } = plex { string value } call bind.6(make_box)(string "ok")
   expr void call bind.0(prn)(string interpolate(i32 local.1(last), <unknown> " ", i32 local.2(first), <unknown> " ", string field(plex { string value } local.3(box), value)))
 }
