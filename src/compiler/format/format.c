@@ -583,9 +583,10 @@ internal int format_expr_precedence(const CstNode* node)
     case CK_AddressOf:
         return 70;
     case CK_Call:
-        return 80;
     case CK_Cast:
-        return 80;
+    case CK_Deref:
+    case CK_ErrorInject:
+    case CK_Propagate:
     case CK_TupleField:
     case CK_Index:
     case CK_Slice:

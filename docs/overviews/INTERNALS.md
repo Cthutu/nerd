@@ -8,6 +8,9 @@ as flagged tagged-sum types with private variants; HIR contextualises
 presence/success/error construction and has a dedicated propagation node. The
 LLVM backend uses the ordinary enum tag-plus-payload layout and emits the early
 return path for propagation, including deferred cleanup.
+Sema also diagnoses propagation at the postfix `?`: when the enclosing function
+has no matching optional or result channel, the diagnostic names the propagated
+failure type and suggests a compatible enclosing return type.
 
 For deeper implementation notes, use these companion documents:
 

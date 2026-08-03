@@ -19754,11 +19754,30 @@ validate_type:
                  !(sema->types[enclosing].flags & STF_Optional)) ||
                 ((operand->flags & STF_Result) &&
                  !(sema->types[enclosing].flags & STF_Result))) {
-                return error_0304_type_mismatch(
+                string return_type =
+                    enclosing == sema_no_type()
+                        ? s("void")
+                        : sema_type_name(lexer, sema, &temp_arena, enclosing);
+                string failure_type          = s("absence");
+                string suggested_return_type = string_format(
+                    &temp_arena, "?" STRINGP, STRINGV(return_type));
+                if (operand->flags & STF_Result) {
+                    u32 error_type =
+                        sema->type_param_types[operand->first_param_type + 1];
+                    failure_type =
+                        sema_type_name(lexer, sema, &temp_arena, error_type);
+                    suggested_return_type =
+                        string_format(&temp_arena,
+                                      STRINGP "\\" STRINGP,
+                                      STRINGV(return_type),
+                                      STRINGV(failure_type));
+                }
+                return error_0363_incompatible_propagation(
                     lexer->source,
                     sema_node_span(lexer, node),
-                    sema_type_name(lexer, sema, &temp_arena, operand_type),
-                    s("incompatible enclosing return type"));
+                    failure_type,
+                    return_type,
+                    suggested_return_type);
             }
             if ((operand->flags & STF_Result) &&
                 (sema->types[enclosing].flags & STF_Result)) {

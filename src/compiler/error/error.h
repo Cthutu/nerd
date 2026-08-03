@@ -445,6 +445,11 @@ bool error_0361_duplicate_plex_use(NerdSource source,
 bool error_0362_conflicting_plex_field(NerdSource source,
                                        ErrorSpan  span,
                                        string     field_name);
+bool error_0363_incompatible_propagation(NerdSource source,
+                                         ErrorSpan  span,
+                                         string     failure_type,
+                                         string     return_type,
+                                         string     suggested_return_type);
 
 //------------------------------------------------------------------------------
 // Low-level error system

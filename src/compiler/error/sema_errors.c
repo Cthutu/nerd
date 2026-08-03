@@ -1853,4 +1853,31 @@ bool error_0362_conflicting_plex_field(NerdSource source,
     return false;
 }
 
+bool error_0363_incompatible_propagation(NerdSource source,
+                                         ErrorSpan  span,
+                                         string     failure_type,
+                                         string     return_type,
+                                         string     suggested_return_type)
+{
+    ErrorInfo error = error_init(source,
+                                 span,
+                                 "Cannot propagate `" STRINGP
+                                 "` from a function returning `" STRINGP "`",
+                                 STRINGV(failure_type),
+                                 STRINGV(return_type));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This `?` can return `" STRINGP "` to the caller",
+                        STRINGV(failure_type));
+    error_add_note(&error,
+                   "The enclosing function has no compatible failure channel");
+    error_add_help(&error,
+                   "Handle the failure here, or change the function return "
+                   "type to `" STRINGP "`",
+                   STRINGV(suggested_return_type));
+    error_render(&error);
+    return false;
+}
+
 //------------------------------------------------------------------------------
