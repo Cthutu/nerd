@@ -16,7 +16,6 @@ impl VAO {
 main :: fn () {
     on VAO.new() => [vao] {
         vao.
-    } else {
     }
 }
 ¬

@@ -1659,17 +1659,18 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
                            .pattern_count        = 1,
                            .guard_node_index     = U32_MAX,
                            .flags                = AOBF_None,
-                           .binder_symbol_handle = U32_MAX,
-                           .binder_token_index   = U32_MAX,
+                           .binder_symbol_handle = success_binder,
+                           .binder_token_index   = success_binder_token,
                        });
 
             u32 on_index = (u32)array_count(state->ons);
-            array_push(state->ons,
-                       (AstOnInfo){
-                           .kind         = AOK_Bool,
-                           .first_branch = first_branch,
-                           .branch_count = 1,
-                       });
+            array_push(
+                state->ons,
+                (AstOnInfo){
+                    .kind = success_binder != U32_MAX ? AOK_Extract : AOK_Bool,
+                    .first_branch = first_branch,
+                    .branch_count = 1,
+                });
 
             return ast_emit_node(state,
                                  (AstNode){
