@@ -232,6 +232,9 @@ bool  lsp_sema_node_scope(const Sema* sema,
                           u32         node_index,
                           u32*        out_scope_index);
 bool  lsp_sema_node_type(const Sema* sema, u32 node_index, u32* out_type_index);
+bool  lsp_on_branch_local_type(const LspDocument* doc,
+                               u32                local_index,
+                               u32*               out_type_index);
 bool  lsp_sema_type_param(const Sema* sema,
                           u32         param_index,
                           u32*        out_symbol,

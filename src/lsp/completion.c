@@ -250,10 +250,6 @@ internal u32 lsp_completion_type_for_symbol(const LspDocument* doc,
                                             string             symbol,
                                             usize              offset)
 {
-    if (!doc->type_facts_partial) {
-        return sema_no_type();
-    }
-
     const Lexer* lexer             = &doc->front_end.lexer;
     const Sema*  sema              = &doc->front_end.sema;
     u32          best_local_type   = sema_no_type();
@@ -264,7 +260,10 @@ internal u32 lsp_completion_type_for_symbol(const LspDocument* doc,
             string_eq(lex_symbol(lexer, local->symbol_handle), symbol)) {
             usize local_offset = lsp_completion_local_decl_offset(doc, local);
             if (local_offset <= offset && local_offset >= best_local_offset) {
-                best_local_type   = local->type_index;
+                best_local_type = local->type_index;
+                if (best_local_type == sema_no_type()) {
+                    lsp_on_branch_local_type(doc, i, &best_local_type);
+                }
                 best_local_offset = local_offset;
             }
         }

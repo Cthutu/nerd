@@ -494,3 +494,57 @@ u32 lsp_module_export_count(const LspModuleView* view)
     }
     return (u32)array_count(view->info->export_decl_indices);
 }
+
+bool lsp_on_branch_local_type(const LspDocument* doc,
+                              u32                local_index,
+                              u32*               out_type_index)
+{
+    const Ast*  ast  = &doc->front_end.ast;
+    const Sema* sema = &doc->front_end.sema;
+
+    for (u32 node_index = 0; node_index < array_count(ast->nodes);
+         ++node_index) {
+        const AstNode* node = &ast->nodes[node_index];
+        if (node->kind != AK_On || node->a >= array_count(ast->nodes) ||
+            node->b >= array_count(ast->ons)) {
+            continue;
+        }
+
+        u32 scrutinee_type = sema_no_type();
+        if (!lsp_sema_node_type(sema, node->a, &scrutinee_type)) {
+            continue;
+        }
+        scrutinee_type = sema_materialise_type(sema, scrutinee_type);
+        if (scrutinee_type >= array_count(sema->types)) {
+            continue;
+        }
+        const SemaType* result = &sema->types[scrutinee_type];
+        if (result->kind != STK_Enum ||
+            !(result->flags & (STF_Optional | STF_Result))) {
+            continue;
+        }
+
+        const AstOnInfo* on = &ast->ons[node->b];
+        for (u32 i = 0; i < on->branch_count; ++i) {
+            u32 branch_index = on->first_branch + i;
+            if (branch_index >= array_count(ast->on_branches) ||
+                branch_index >= array_count(sema->on_branch_local_indices) ||
+                sema->on_branch_local_indices[branch_index] != local_index) {
+                continue;
+            }
+
+            const AstOnBranch* branch  = &ast->on_branches[branch_index];
+            u32                variant = (branch->flags & AOBF_Else) ? 1 : 0;
+            if (result->flags & STF_Optional) {
+                variant = 1;
+            }
+            if (variant >= result->param_count) {
+                return false;
+            }
+            *out_type_index =
+                sema->type_param_types[result->first_param_type + variant];
+            return *out_type_index != sema_no_type();
+        }
+    }
+    return false;
+}

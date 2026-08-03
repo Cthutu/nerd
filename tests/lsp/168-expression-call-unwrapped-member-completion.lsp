@@ -30,7 +30,7 @@ main :: fn () {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 18,
+                "line": 17,
                 "character": 12
             },
             "context": {
@@ -139,7 +139,18 @@ main :: fn () {
     {
         "jsonrpc": "2.0",
         "id": 2,
-        "result": []
+        "result": [
+            {
+                "label": "id",
+                "kind": 5,
+                "detail": "field"
+            },
+            {
+                "label": "bind",
+                "kind": 2,
+                "detail": "method"
+            }
+        ]
     },
     {
         "jsonrpc": "2.0",

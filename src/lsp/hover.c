@@ -2586,9 +2586,13 @@ internal string lsp_local_hover_text(const LspDocument* doc,
     if (!lsp_sema_local(&doc->front_end.sema, local_index, &local)) {
         return s("<unknown>");
     }
+    u32 type_index = local->type_index;
+    if (type_index == sema_no_type()) {
+        lsp_on_branch_local_type(doc, local_index, &type_index);
+    }
     string name = lex_symbol(&doc->front_end.lexer, local->symbol_handle);
     string type = sema_type_name(
-        &doc->front_end.lexer, &doc->front_end.sema, arena, local->type_index);
+        &doc->front_end.lexer, &doc->front_end.sema, arena, type_index);
     string kind =
         local->kind == SLK_Binder ? s("pattern binder") : s("local variable");
 
@@ -2967,6 +2971,114 @@ internal string lsp_expression_hover_text(const LspDocument* doc,
                          STRINGP "\n\n- Type: `" STRINGP "`",
                          STRINGV(lsp_markdown_code_block(arena, text)),
                          STRINGV(type));
+}
+
+internal string lsp_incomplete_member_hover_text(const LspDocument* doc,
+                                                 Arena*             arena,
+                                                 string             uri,
+                                                 const Token*       token)
+{
+    usize token_end = lex_token_end_offset(&doc->front_end.lexer, token);
+    usize dot       = token_end;
+    while (dot < doc->source.count &&
+           (doc->source.data[dot] == ' ' || doc->source.data[dot] == '\t')) {
+        dot++;
+    }
+    if (dot >= doc->source.count || doc->source.data[dot] != '.') {
+        return s("");
+    }
+
+    usize line_start = token->offset;
+    while (line_start > 0 && doc->source.data[line_start - 1] != '\n') {
+        line_start--;
+    }
+    usize line_end = dot + 1;
+    while (line_end < doc->source.count && doc->source.data[line_end] != '\n') {
+        line_end++;
+    }
+    usize indent_end = line_start;
+    while (indent_end < token->offset &&
+           (doc->source.data[indent_end] == ' ' ||
+            doc->source.data[indent_end] == '\t')) {
+        indent_end++;
+    }
+
+    Arena temp = {0};
+    arena_init(&temp);
+    StringBuilder source = {0};
+    sb_init(&source, &temp);
+    sb_append_string(&source,
+                     (string){.data = doc->source.data, .count = indent_end});
+    sb_append_cstr(&source, "__nerd_hover_probe := ");
+    sb_append_string(&source,
+                     string_from(doc->source.data + token->offset,
+                                 token_end - token->offset));
+    sb_append_string(&source,
+                     (string){.data  = doc->source.data + line_end,
+                              .count = doc->source.count - line_end});
+    string repaired               = sb_to_string(&source);
+
+    ErrorRenderMode previous_mode = error_system_mode();
+    bool            previous_emit = error_system_should_emit_output();
+    error_system_set_mode(ERROR_RENDER_DIAGNOSTICS);
+    error_system_set_emit_output(false);
+    FrontEndOptions options = {
+        .verbose              = false,
+        .release              = false,
+        .require_entry_point  = false,
+        .skip_hir_generation  = true,
+        .keep_partial_results = true,
+    };
+    ProgramInfo program = {0};
+    bool        analysis_ok =
+        front_end_program((NerdSource){.source = repaired, .source_path = uri},
+                          &options,
+                          NULL,
+                          &program);
+    error_system_set_mode(previous_mode);
+    error_system_set_emit_output(previous_emit);
+
+    string hover = s("");
+    if (array_count(program.modules) > 0 &&
+        program.root_module_index < array_count(program.modules)) {
+        LspDocument repaired_doc = {
+            .source      = repaired,
+            .front_end   = program.modules[program.root_module_index].front_end,
+            .program     = program,
+            .analysis_ok = analysis_ok,
+        };
+        for (u32 i = 0; i < array_count(program.modules); ++i) {
+            program.modules[i].front_end.sema.program = &program;
+        }
+        repaired_doc.front_end.sema.program = &program;
+
+        string name = string_from(doc->source.data + token->offset,
+                                  token_end - token->offset);
+        for (u32 i = 0; i < array_count(repaired_doc.front_end.sema.locals);
+             ++i) {
+            const SemaLocal* local = &repaired_doc.front_end.sema.locals[i];
+            if (local->symbol_handle != U32_MAX &&
+                string_eq(lex_symbol(&repaired_doc.front_end.lexer,
+                                     local->symbol_handle),
+                          s("__nerd_hover_probe")) &&
+                local->type_index != sema_no_type()) {
+                string type = sema_type_name(&repaired_doc.front_end.lexer,
+                                             &repaired_doc.front_end.sema,
+                                             arena,
+                                             local->type_index);
+                hover       = string_format(
+                    arena,
+                    STRINGP "\n\n- Kind: pattern binder\n- Type: `" STRINGP "`",
+                    STRINGV(lsp_markdown_code_block(arena, name)),
+                    STRINGV(type));
+            }
+        }
+        program.modules[program.root_module_index].front_end =
+            repaired_doc.front_end;
+    }
+    program_info_done(&program);
+    arena_done(&temp);
+    return hover;
 }
 
 internal void lsp_append_space_preserving_newlines(StringBuilder* sb,
@@ -5223,6 +5335,14 @@ void lsp_handle_hover(LspState* state, const LspMessage* message)
             if (source_test_hover.count != 0) {
                 lsp_set_markdown_hover(
                     response, message->arena, source_test_hover);
+                break;
+            }
+
+            string incomplete_member_hover = lsp_incomplete_member_hover_text(
+                doc, message->arena, uri, token);
+            if (incomplete_member_hover.count != 0) {
+                lsp_set_markdown_hover(
+                    response, message->arena, incomplete_member_hover);
                 break;
             }
 
