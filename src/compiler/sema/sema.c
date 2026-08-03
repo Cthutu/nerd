@@ -14666,6 +14666,7 @@ internal bool sema_try_resolve_associated_call(const Lexer* lexer,
     const AstNode*     call_node     = &ast->nodes[call_node_index];
     const AstCallInfo* call          = &ast->calls[call_node->b];
     *out_found                       = false;
+    bool receiver_method_found       = false;
 
     u32 associated_target_node_index = U32_MAX;
     if (call_node->a < array_count(ast->nodes)) {
@@ -14801,6 +14802,10 @@ internal bool sema_try_resolve_associated_call(const Lexer* lexer,
 
         if (!method->is_associated) {
             array_free(source_arg_types);
+            if (method->first_param_is_receiver) {
+                receiver_method_found = true;
+                continue;
+            }
             if (!method->first_param_is_receiver && !method->returns_self) {
                 return error_0344_invalid_associated_function_return(
                     lexer->source,
@@ -14966,6 +14971,12 @@ internal bool sema_try_resolve_associated_call(const Lexer* lexer,
         return true;
     }
 
+    if (receiver_method_found) {
+        return error_0364_receiver_method_called_through_type(
+            lexer->source,
+            sema_node_span(lexer, call_node),
+            lex_symbol(lexer, method_symbol));
+    }
     return true;
 }
 internal bool sema_validate_interpolated_strings(const Lexer* lexer,

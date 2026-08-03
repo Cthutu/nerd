@@ -14902,10 +14902,7 @@ internal LlvmValue llvm_emit_dynamic_array_field(LlvmFunctionContext* ctx,
     }
 
     string result = llvm_temp(ctx);
-    sb_format(ctx->sb,
-              "  " STRINGP " = alloca " STRINGP "\n",
-              STRINGV(result),
-              STRINGV(field_type));
+    llvm_emit_alloca(ctx, result, field_type);
 
     string is_null = llvm_temp(ctx);
     sb_format(ctx->sb,

@@ -73,14 +73,18 @@ func fn.1() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [58 x i8] c"tests/language/143-dynarray-runtime-capacity-and-resize.t\00"
+@.macro.file.m0 = private unnamed_addr constant [83 x i8] c"C:\5CUsers\5Cmatt\5Cnerd\5Ctests\5Clanguage\5C\31\34\33-dynarray-runtime-capacity-and-resize.input.n\00"
 
 declare ptr @nrt_mem_alloc(i64, i64, ptr, i32)
 declare ptr @nrt_mem_realloc(ptr, i64, i64, ptr, i32)
 declare void @nrt_mem_free(ptr)
+declare i64 @nrt_mem_size(ptr)
 
 define internal i32 @fn.0(i64 %initial_size) {
   %local.1 = alloca ptr
+  %t8 = alloca i64
+  %t17 = alloca i64
+  %t101 = alloca i64
   %t1 = mul i64 %initial_size, 4
   %t2 = add i64 24, %t1
   %t0 = call ptr @nrt_mem_alloc(i64 %t2, i64 16, ptr @.macro.file.m0, i32 2)
@@ -93,7 +97,6 @@ define internal i32 @fn.0(i64 %initial_size) {
   store i64 %initial_size, ptr %t5
   store ptr %t6, ptr %local.1
   %t7 = load ptr, ptr %local.1
-  %t8 = alloca i64
   %t9 = icmp eq ptr %t7, null
   br i1 %t9, label %dynarray.field.empty.0, label %dynarray.field.load.1
 dynarray.field.empty.0:
@@ -114,7 +117,6 @@ on.body.4:
   ret i32 1
 on.end.3:
   %t16 = load ptr, ptr %local.1
-  %t17 = alloca i64
   %t18 = icmp eq ptr %t16, null
   br i1 %t18, label %dynarray.field.empty.5, label %dynarray.field.load.6
 dynarray.field.empty.5:
@@ -256,7 +258,6 @@ dynarray.resize.count.19:
   %t99 = getelementptr inbounds { ptr, i64, i64 }, ptr %t98, i64 0, i32 1
   store i64 5, ptr %t99
   %t100 = load ptr, ptr %local.1
-  %t101 = alloca i64
   %t102 = icmp eq ptr %t100, null
   br i1 %t102, label %dynarray.field.empty.23, label %dynarray.field.load.24
 dynarray.field.empty.23:
@@ -339,3 +340,5 @@ define internal i32 @fn.1() {
 
 @$make = internal alias i32 (i64), ptr @fn.0
 @$main = alias i32 (), ptr @fn.1
+
+declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

@@ -238,7 +238,7 @@ func fn.1() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [36 x i8] c"tests/language/099-dynamic-arrays.t\00"
+@.macro.file.m0 = private unnamed_addr constant [61 x i8] c"C:\5CUsers\5Cmatt\5Cnerd\5Ctests\5Clanguage\5C\30\39\39-dynamic-arrays.input.n\00"
 @.str.m0.0 = private unnamed_addr constant [5 x i8] c"look\00"
 @.str.m0.1 = private unnamed_addr constant [6 x i8] c"north\00"
 @.str.m0.2 = private unnamed_addr constant [6 x i8] c"north\00"
@@ -252,6 +252,7 @@ func fn.1() -> i32 {
 @.str.m0.10 = private unnamed_addr constant [2 x i8] c" \00"
 @.str.m0.11 = private unnamed_addr constant [2 x i8] c" \00"
 @.str.m0.12 = private unnamed_addr constant [2 x i8] c" \00"
+@.slice.const.m0.63 = private unnamed_addr constant [2 x { ptr, i64 }] [{ ptr, i64 } { ptr @.str.m0.5, i64 4 }, { ptr, i64 } { ptr @.str.m0.6, i64 2 }]
 
 declare i1 @string_eq(ptr, ptr)
 declare void @string_builder_reset()
@@ -276,6 +277,7 @@ declare void @to_string$f64(ptr, double)
 declare ptr @nrt_mem_alloc(i64, i64, ptr, i32)
 declare ptr @nrt_mem_realloc(ptr, i64, i64, ptr, i32)
 declare void @nrt_mem_free(ptr)
+declare i64 @nrt_mem_size(ptr)
 
 declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
@@ -387,10 +389,17 @@ dynarray.store.7:
 
 define internal i32 @fn.1() {
   %local.2 = alloca ptr
+  %t4 = alloca i64
+  %t13 = alloca i64
   %local.3 = alloca ptr
+  %t29 = alloca i64
+  %t38 = alloca i64
+  %t79 = alloca i64
   %local.1 = alloca [2 x { ptr, i64 }]
+  %t131 = alloca i64
   %t147 = alloca { ptr, i64 }
   %t148 = alloca { ptr, i64 }
+  %t152 = alloca i64
   %t217 = alloca { ptr, i64 }
   %t219 = alloca { ptr, i64 }
   %t224 = alloca { ptr, i64 }
@@ -400,11 +409,16 @@ define internal i32 @fn.1() {
   %t238 = alloca { ptr, i64 }
   %t240 = alloca { ptr, i64 }
   %t245 = alloca { ptr, i64 }
+  %t268 = alloca i64
   %local.6 = alloca ptr
+  %t278 = alloca i64
   %t294 = alloca { ptr, i64 }
   %t296 = alloca { ptr, i64 }
   %t304 = alloca { ptr, i64 }
   %local.7 = alloca ptr
+  %t483 = alloca i64
+  %t532 = alloca i64
+  %t572 = alloca i64
   store ptr null, ptr %local.2
   %t0 = load ptr, ptr %local.2
   %t1 = icmp ne ptr %t0, null
@@ -414,7 +428,6 @@ on.body.1:
   ret i32 1
 on.end.0:
   %t3 = load ptr, ptr %local.2
-  %t4 = alloca i64
   %t5 = icmp eq ptr %t3, null
   br i1 %t5, label %dynarray.field.empty.2, label %dynarray.field.load.3
 dynarray.field.empty.2:
@@ -435,7 +448,6 @@ on.body.6:
   ret i32 2
 on.end.5:
   %t12 = load ptr, ptr %local.2
-  %t13 = alloca i64
   %t14 = icmp eq ptr %t12, null
   br i1 %t14, label %dynarray.field.empty.7, label %dynarray.field.load.8
 dynarray.field.empty.7:
@@ -469,7 +481,6 @@ on.end.10:
   store i64 4, ptr %t24
   store ptr %t25, ptr %local.3
   %t28 = load ptr, ptr %local.3
-  %t29 = alloca i64
   %t30 = icmp eq ptr %t28, null
   br i1 %t30, label %dynarray.field.empty.12, label %dynarray.field.load.13
 dynarray.field.empty.12:
@@ -490,7 +501,6 @@ on.body.16:
   ret i32 4
 on.end.15:
   %t37 = load ptr, ptr %local.3
-  %t38 = alloca i64
   %t39 = icmp eq ptr %t37, null
   br i1 %t39, label %dynarray.field.empty.17, label %dynarray.field.load.18
 dynarray.field.empty.17:
@@ -560,7 +570,6 @@ dynarray.store.25:
   store { ptr, i64 } { ptr @.str.m0.4, i64 4 }, ptr %t77
   store i64 %t61, ptr %t75
   %t78 = load ptr, ptr %local.3
-  %t79 = alloca i64
   %t80 = icmp eq ptr %t78, null
   br i1 %t80, label %dynarray.field.empty.26, label %dynarray.field.load.27
 dynarray.field.empty.26:
@@ -650,7 +659,6 @@ dynarray.append.body.36:
 dynarray.append.done.37:
   store i64 %t109, ptr %t120
   %t130 = load ptr, ptr %local.3
-  %t131 = alloca i64
   %t132 = icmp eq ptr %t130, null
   br i1 %t132, label %dynarray.field.empty.38, label %dynarray.field.load.39
 dynarray.field.empty.38:
@@ -688,7 +696,6 @@ on.body.44:
   ret i32 8
 on.end.43:
   %t151 = load ptr, ptr %local.3
-  %t152 = alloca i64
   %t153 = icmp eq ptr %t151, null
   br i1 %t153, label %dynarray.field.empty.45, label %dynarray.field.load.46
 dynarray.field.empty.45:
@@ -880,7 +887,6 @@ dynarray.reserve.grow.61:
   br label %dynarray.reserve.done.62
 dynarray.reserve.done.62:
   %t267 = load ptr, ptr %local.3
-  %t268 = alloca i64
   %t269 = icmp eq ptr %t267, null
   br i1 %t269, label %dynarray.field.empty.63, label %dynarray.field.load.64
 dynarray.field.empty.63:
@@ -903,7 +909,6 @@ on.end.66:
   %t276 = call ptr @fn.0()
   store ptr %t276, ptr %local.6
   %t277 = load ptr, ptr %local.6
-  %t278 = alloca i64
   %t279 = icmp eq ptr %t277, null
   br i1 %t279, label %dynarray.field.empty.68, label %dynarray.field.load.69
 dynarray.field.empty.68:
@@ -1230,7 +1235,6 @@ dynarray.delete.body.96:
 dynarray.delete.done.97:
   store i64 %t474, ptr %t472
   %t482 = load ptr, ptr %local.7
-  %t483 = alloca i64
   %t484 = icmp eq ptr %t482, null
   br i1 %t484, label %dynarray.field.empty.98, label %dynarray.field.load.99
 dynarray.field.empty.98:
@@ -1309,7 +1313,6 @@ on.end.109:
   store i32 %t530, ptr %t529
   store i64 %t527, ptr %t525
   %t531 = load ptr, ptr %local.7
-  %t532 = alloca i64
   %t533 = icmp eq ptr %t531, null
   br i1 %t533, label %dynarray.field.empty.111, label %dynarray.field.load.112
 dynarray.field.empty.111:
@@ -1384,7 +1387,6 @@ dynarray.clear.124:
   br label %dynarray.clear.done.125
 dynarray.clear.done.125:
   %t571 = load ptr, ptr %local.3
-  %t572 = alloca i64
   %t573 = icmp eq ptr %t571, null
   br i1 %t573, label %dynarray.field.empty.126, label %dynarray.field.load.127
 dynarray.field.empty.126:
@@ -1425,3 +1427,5 @@ on.end.133:
 
 @$make_words = internal alias ptr (), ptr @fn.0
 @$main = alias i32 (), ptr @fn.1
+
+declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

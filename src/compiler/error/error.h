@@ -453,6 +453,9 @@ bool error_0363_incompatible_propagation(NerdSource source,
                                          string     failure_type,
                                          string     return_type,
                                          string     suggested_return_type);
+bool error_0364_receiver_method_called_through_type(NerdSource source,
+                                                    ErrorSpan  span,
+                                                    string     symbol);
 
 //------------------------------------------------------------------------------
 // Low-level error system

@@ -1881,3 +1881,28 @@ bool error_0363_incompatible_propagation(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
+// Report a receiver method called through its impl type.
+
+bool error_0364_receiver_method_called_through_type(NerdSource source,
+                                                    ErrorSpan  span,
+                                                    string     symbol)
+{
+    ErrorInfo error = error_init(source,
+                                 span,
+                                 "Receiver method `" STRINGP
+                                 "` cannot be called through a type",
+                                 STRINGV(symbol));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "`" STRINGP "` requires a receiver value",
+                        STRINGV(symbol));
+    error_add_help(&error,
+                   "Call the method through a value, for example "
+                   "`value." STRINGP "()`.",
+                   STRINGV(symbol));
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------

@@ -110,6 +110,9 @@ the live heap and arena lists and reporting leaks to standard error.
 - Keep compiler stages explicit rather than smearing semantic logic into the parser.
 - Keep renderers stable for tests and keep dumpers human-oriented.
 - Treat `ErrorInfo` as the source of truth for diagnostics rather than terminal text.
+- Emit fixed-size LLVM local and scratch `alloca` instructions through the
+  entry-block allocation helper. An `alloca` emitted in a repeated basic block
+  consumes more stack each time that block executes.
 
 ## Key Data Products
 
