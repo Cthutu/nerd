@@ -8327,7 +8327,10 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
                     branch_scope =
                         sema_add_scope(sema, owner_decl_index, scope_index);
                 }
-                if (branch->binder_symbol_handle != U32_MAX) {
+                u32 branch_slot = on->first_branch + i;
+                if (branch->binder_symbol_handle != U32_MAX &&
+                    sema->on_branch_local_indices[branch_slot] ==
+                        sema_no_local()) {
                     array_push(
                         sema->locals,
                         (SemaLocal){
@@ -8343,7 +8346,7 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
                             .lowered_symbol_handle =
                                 branch->binder_symbol_handle,
                         });
-                    sema->on_branch_local_indices[on->first_branch + i] =
+                    sema->on_branch_local_indices[branch_slot] =
                         (u32)array_count(sema->locals) - 1;
                     sema->scopes[branch_scope].local_count++;
                 }
