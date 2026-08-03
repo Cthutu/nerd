@@ -1516,7 +1516,7 @@ internal void format_emit_expr(StringBuilder* sb,
                 format_emit_expr(
                     sb, cst, lexer, cst->call_args[call->first_arg + i], 0);
             }
-            if (call->arg_count == 1) {
+            if (call->arg_count > 0) {
                 format_trim_trailing_space_after_multiline_close(sb, '}');
             }
         }

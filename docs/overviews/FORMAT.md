@@ -65,6 +65,8 @@ The formatter should be deterministic and idempotent.
   single-line branches remain grouped, with a blank line separating the group
   from adjacent multiline branches.
 - Explicit grouping parentheses are preserved.
+- When a multiline plex literal is the final call argument, the call's closing
+  parenthesis remains attached to the literal's closing brace as `})`.
 - Vertical spacing remains conservative apart from collapsing repeated blank lines.
 
 ## Alignment Rules
