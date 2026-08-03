@@ -73,7 +73,7 @@ pub PixelLayer :: plex {
     mode     PixelLayerMode  -- Sizing mode used to maintain the buffer.
     width    u16             -- Current buffer width in virtual pixels.
     height   u16             -- Current buffer height in virtual pixels.
-    data     [..]u32         -- Contiguous ARGB/RGBA-style 32-bit pixel storage.
+    data     [..]u32         -- Contiguous ARGB (`0xAARRGGBB`) pixel storage.
 }
 
 -- A graphics system that owns ordered layers for one or more frames.
@@ -564,25 +564,28 @@ impl PixelLayer {
         return layer.height
     }
 
-    -- Returns the contiguous pixel storage borrowed from this layer.
+    -- Returns the contiguous pixel storage borrowed from this layer. Each
+    -- `u32` colour uses ARGB format (`0xAARRGGBB`).
     pub pixels :: fn (layer: ^Self) -> []u32 {
         return layer.data[..]
     }
 
-    -- Clears every pixel to `colour`.
+    -- Clears every pixel to `colour`, which uses ARGB format (`0xAARRGGBB`).
     pub clear :: fn (layer: ^Self, colour: u32) {
         for i: usize = 0; i < layer.data.count; i += 1 {
             layer.data[i] = colour
         }
     }
 
-    -- Writes one pixel when the coordinate is inside the layer.
+    -- Writes one pixel when the coordinate is inside the layer. `colour` uses
+    -- ARGB format (`0xAARRGGBB`).
     pub put :: fn (layer: ^Self, x: u32, y: u32, colour: u32) {
         on x >= layer.width.as(u32) || y >= layer.height.as(u32) => return
         layer.data[gfx_pixel_layer_index(layer, x, y)] = colour
     }
 
-    -- Fills the clipped area with `colour`.
+    -- Fills the clipped area with `colour`, which uses ARGB format
+    -- (`0xAARRGGBB`).
     pub fill :: fn (layer: ^Self, rect: PixelRect, colour: u32) {
         area := gfx_pixel_layer_clip(layer, rect)
         on area.width == 0 || area.height == 0 => return
@@ -596,6 +599,8 @@ impl PixelLayer {
     }
 
     -- Calls `painter` with the first pixel of the clipped area and full stride.
+    -- Each `u32` colour in the borrowed pixel storage uses ARGB format
+    -- (`0xAARRGGBB`).
     pub paint :: fn (layer   : ^Self,
                      rect    : PixelRect,
                      painter : PixelPaintFn,
