@@ -461,5 +461,25 @@ bool error_0211_arena_type_before_binding(NerdSource source,
     return false;
 }
 
+bool error_0212_missing_on_extract_arrow(NerdSource source,
+                                         ErrorSpan  binder_span,
+                                         ErrorSpan  detected_span)
+{
+    ErrorInfo error = error_init(
+        source, binder_span, "Missing `=>` before `on` extraction binder");
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        binder_span,
+                        "This looks like a success payload binder");
+    error_add_reference(&error,
+                        ERROR_REF_SECONDARY,
+                        detected_span,
+                        "The missing arrow made this parse as indexing");
+    error_add_help(
+        &error, "Write `on value => [payload] { ... } else [error] { ... }`");
+    error_render(&error);
+    return false;
+}
+
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------

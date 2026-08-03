@@ -192,6 +192,9 @@ bool error_0211_arena_type_before_binding(NerdSource source,
                                           ErrorSpan  type_span,
                                           ErrorSpan  binding_span,
                                           string     binding);
+bool error_0212_missing_on_extract_arrow(NerdSource source,
+                                         ErrorSpan  binder_span,
+                                         ErrorSpan  detected_span);
 
 //------------------------------------------------------------------------------
 // Semantic analysis errors

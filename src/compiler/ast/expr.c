@@ -1249,6 +1249,28 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
         return false;
     }
 
+    ErrorSpan possible_extract_binder        = {0};
+    bool      possible_missing_extract_arrow = false;
+    if (condition_node < array_count(state->nodes)) {
+        const AstNode* condition = &state->nodes[condition_node];
+        if (condition->kind == AK_Index &&
+            condition->a < array_count(state->nodes) &&
+            condition->b < array_count(state->nodes) &&
+            state->nodes[condition->a].kind == AK_Call &&
+            state->nodes[condition->b].kind == AK_SymbolRef &&
+            condition->token_index < array_count(state->lexer->tokens)) {
+            const Token*   open = &state->lexer->tokens[condition->token_index];
+            const AstNode* binder = &state->nodes[condition->b];
+            const Token*   binder_token =
+                &state->lexer->tokens[binder->token_index];
+            possible_extract_binder = (ErrorSpan){
+                .start = open->offset,
+                .end   = lex_token_end_offset(state->lexer, binder_token),
+            };
+            possible_missing_extract_arrow = true;
+        }
+    }
+
     if (state->token.kind == TK_LBrace) {
         Array(AstOnBranch) branches = NULL;
         if (state->token.token_index == state->token_index &&
@@ -1460,6 +1482,13 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
                     branch.guard_node_index = guard_node;
                 }
                 if (state->token.kind != TK_FatArrow) {
+                    if (possible_missing_extract_arrow &&
+                        state->token.kind == TK_RBrace) {
+                        return error_0212_missing_on_extract_arrow(
+                            state->lexer->source,
+                            possible_extract_binder,
+                            ast_token_span(state, &state->token));
+                    }
                     return error_0203_expected_token(
                         state->lexer->source,
                         ast_token_span(state, &state->token),
