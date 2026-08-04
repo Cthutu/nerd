@@ -1591,6 +1591,12 @@ internal u32 lsp_find_local_index_for_token(const LspDocument* doc,
         }
     }
 
+    for (u32 i = 0; i < array_count(sema->locals); ++i) {
+        if (sema->locals[i].decl_token_index == token_index) {
+            return i;
+        }
+    }
+
     u32 bind_node_index =
         lsp_find_bind_node_at_token(&doc->front_end.ast, token_index);
     u32 local_index = sema_no_local();

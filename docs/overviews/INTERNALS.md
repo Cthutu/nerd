@@ -151,6 +151,11 @@ use the receiver facts established at the cursor, so an unrelated error later
 in the same function does not hide members whose receiver type was already
 known. Other LSP analyses retain their normal partial-result policy.
 
+Local hover resolves declaration tokens directly through each `SemaLocal` as
+well as through AST binding and reference nodes. This covers locals such as
+`for in` item and index bindings whose declaration tokens belong to the loop
+metadata rather than standalone binding nodes.
+
 ## File Families
 
 - `src/compiler/lexer`
