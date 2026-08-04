@@ -25078,7 +25078,8 @@ bool sema_analyse(const Lexer*           lexer,
     }
     if (!sema_assign_decl_types(lexer, ast, &sema)) {
         if (effective_options.keep_partial_results &&
-            sema.recoverable_method_call_error) {
+            (effective_options.keep_decl_error_results ||
+             sema.recoverable_method_call_error)) {
             *out_sema = sema;
             return false;
         }

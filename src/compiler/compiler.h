@@ -37,6 +37,7 @@ typedef struct {
     bool                   require_entry_point;
     bool                   skip_hir_generation;
     bool                   keep_partial_results;
+    bool                   keep_decl_error_results;
     string                 module_root_source_path;
     NerdModuleSourceLoader module_source_loader;
     void*                  module_source_loader_data;

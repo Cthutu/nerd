@@ -145,6 +145,12 @@ general symbol fallback, while field-type positions retain only type
 declarations; source scanning keeps this distinction available before a closing
 brace has been entered and semantic analysis can finish.
 
+For repaired member completion, Sema retains the declarations, locals, and type
+facts established before a later declaration-type error. Completion can then
+use the receiver facts established at the cursor, so an unrelated error later
+in the same function does not hide members whose receiver type was already
+known. Other LSP analyses retain their normal partial-result policy.
+
 ## File Families
 
 - `src/compiler/lexer`

@@ -1379,11 +1379,12 @@ internal void lsp_completion_add_repaired_members(Arena*             arena,
     error_system_set_mode(ERROR_RENDER_DIAGNOSTICS);
     error_system_set_emit_output(false);
     FrontEndOptions options = {
-        .verbose              = false,
-        .release              = false,
-        .require_entry_point  = false,
-        .skip_hir_generation  = true,
-        .keep_partial_results = true,
+        .verbose                 = false,
+        .release                 = false,
+        .require_entry_point     = false,
+        .skip_hir_generation     = true,
+        .keep_partial_results    = true,
+        .keep_decl_error_results = true,
     };
 
     ProgramInfo program = {0};
