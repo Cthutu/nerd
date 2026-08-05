@@ -5129,6 +5129,75 @@ internal void lsp_append_document_symbol_node(Arena*             arena,
 // Respond to hover requests with semantic information about the token under the
 // cursor.
 
+internal string lsp_partial_symbol_hover_text(const LspDocument* doc,
+                                              Arena*             arena,
+                                              string             uri,
+                                              usize              offset)
+{
+    ErrorRenderMode previous_mode = error_system_mode();
+    bool            previous_emit = error_system_should_emit_output();
+    error_system_set_mode(ERROR_RENDER_DIAGNOSTICS);
+    error_system_set_emit_output(false);
+
+    FrontEndOptions options = {
+        .verbose                 = false,
+        .release                 = false,
+        .require_entry_point     = false,
+        .skip_hir_generation     = true,
+        .keep_partial_results    = true,
+        .keep_decl_error_results = true,
+    };
+    ProgramInfo program = {0};
+    (void)front_end_program(
+        (NerdSource){.source = doc->source, .source_path = uri},
+        &options,
+        NULL,
+        &program);
+    error_system_set_mode(previous_mode);
+    error_system_set_emit_output(previous_emit);
+
+    string hover = s("");
+    if (array_count(program.modules) > 0 &&
+        program.root_module_index < array_count(program.modules)) {
+        for (u32 i = 0; i < array_count(program.modules); ++i) {
+            program.modules[i].front_end.sema.program = &program;
+        }
+
+        LspDocument partial_doc = {
+            .source    = doc->source,
+            .front_end = program.modules[program.root_module_index].front_end,
+            .program   = program,
+        };
+        partial_doc.front_end.sema.program = &program;
+
+        u32    token_end                   = 0;
+        Token* token =
+            lex_find(&partial_doc.front_end.lexer, offset, &token_end);
+        if (token != NULL && token->kind == TK_Symbol) {
+            u32 token_index = lsp_token_index_from_pointer(
+                &partial_doc.front_end.lexer, token);
+            u32 local_index =
+                lsp_find_local_index_for_token(&partial_doc, token_index);
+            if (local_index != sema_no_local()) {
+                hover = lsp_local_hover_text(&partial_doc, arena, local_index);
+            }
+            if (hover.count == 0) {
+                u32 field_node_index = lsp_find_field_node_at_token(
+                    &partial_doc.front_end.ast, token_index);
+                if (field_node_index != U32_MAX) {
+                    hover = lsp_field_hover_text(
+                        &partial_doc, arena, field_node_index);
+                }
+            }
+        }
+        program.modules[program.root_module_index].front_end =
+            partial_doc.front_end;
+    }
+
+    program_info_done(&program);
+    return hover;
+}
+
 void lsp_handle_hover(LspState* state, const LspMessage* message)
 {
     JsonValue*         response    = lsp_prepare_response(message);
@@ -5349,6 +5418,13 @@ void lsp_handle_hover(LspState* state, const LspMessage* message)
             if (incomplete_member_hover.count != 0) {
                 lsp_set_markdown_hover(
                     response, message->arena, incomplete_member_hover);
+                break;
+            }
+
+            string partial_hover =
+                lsp_partial_symbol_hover_text(doc, message->arena, uri, offset);
+            if (partial_hover.count != 0) {
+                lsp_set_markdown_hover(response, message->arena, partial_hover);
                 break;
             }
 
