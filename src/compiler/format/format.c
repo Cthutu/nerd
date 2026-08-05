@@ -4142,12 +4142,52 @@ format_emit_plex_literal_single_line_aligned(StringBuilder* sb,
     sb_append_char(sb, '}');
 }
 
+internal u32 format_array_item_line_end_token(const Cst*     cst,
+                                              const Lexer*   lexer,
+                                              const CstNode* array,
+                                              u32            item_offset)
+{
+    u32 item_index = cst->tuple_items[array->a + item_offset];
+    u32 item_end   = format_node_end_token_index(cst, lexer, item_index);
+    u32 before_token;
+    if (item_offset + 1 < array->b) {
+        u32 next_index = cst->tuple_items[array->a + item_offset + 1];
+        before_token   = cst->nodes[next_index].token_index;
+    } else {
+        before_token = format_find_matching_close_token_index(
+            lexer, array->token_index, TK_LBracket, TK_RBracket);
+    }
+
+    for (u32 token = item_end + 1;
+         token < before_token && token < array_count(lexer->tokens);
+         ++token) {
+        if (lexer->tokens[token].kind == TK_Comma) {
+            return token;
+        }
+    }
+    return item_end;
+}
+
+internal void format_emit_array_item_trailing_comment(StringBuilder* sb,
+                                                      const Cst*     cst,
+                                                      const Lexer*   lexer,
+                                                      const CstNode* array,
+                                                      u32  item_offset,
+                                                      u32* comment_index)
+{
+    u32 line_end_token =
+        format_array_item_line_end_token(cst, lexer, array, item_offset);
+    (void)format_emit_trailing_comment_after_token(
+        sb, lexer, comment_index, line_end_token);
+}
+
 internal void format_emit_array_multiline(StringBuilder* sb,
                                           const Cst*     cst,
                                           const Lexer*   lexer,
                                           const CstNode* node,
                                           u32            indent_level)
 {
+    u32 comment_index = 0;
     sb_append_cstr(sb, "[\n");
     for (u32 i = 0; i < node->b; ++i) {
         u32            item_index = cst->tuple_items[node->a + i];
@@ -4217,6 +4257,8 @@ internal void format_emit_array_multiline(StringBuilder* sb,
                         field_name_widths,
                         field_value_widths);
                     sb_append_cstr(sb, ",\n");
+                    format_emit_array_item_trailing_comment(
+                        sb, cst, lexer, node, cursor, &comment_index);
                 }
 
                 array_free(field_name_widths);
@@ -4229,6 +4271,8 @@ internal void format_emit_array_multiline(StringBuilder* sb,
         format_emit_expr_with_indent(
             sb, cst, lexer, item_index, 0, indent_level + 1);
         sb_append_cstr(sb, ",\n");
+        format_emit_array_item_trailing_comment(
+            sb, cst, lexer, node, i, &comment_index);
     }
     format_emit_indent(sb, indent_level);
     sb_append_char(sb, ']');

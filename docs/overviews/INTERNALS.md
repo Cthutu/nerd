@@ -191,6 +191,11 @@ type declaration and reports Nerd's name-first declaration forms. The formatter
 preserves that malformed sequence on one line so formatting cannot obscure the
 source relationship used by the diagnostic.
 
+The multiline-array formatter associates an element's trailing comment with
+the separating comma when one is present, or with the element's final token
+otherwise. It emits and consumes that comment alongside the reconstructed
+element so formatting cannot discard comments between array values.
+
 ## Related Documents
 
 - [FORMAT.md](/home/matt/nerd/docs/overviews/FORMAT.md) for formatter rules
