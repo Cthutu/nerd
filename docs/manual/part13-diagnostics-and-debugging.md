@@ -131,9 +131,9 @@ value is deliberately ignored.
 Deferred statements follow the same rules: a `break` or `again` inside a
 deferred statement still needs a valid target where it appears.
 
-A braced branch of a value-producing `on` is a statement block. Use
-`break <value>` to supply its result, or remove the braces and write the result
-expression directly. Otherwise the branch has type `void`.
+An ordinary `{ ... }` branch of a value-producing `on` is a statement block and
+has type `void`. Write the result expression directly, or use an expression
+block `${ ... }` and supply its result with `break <value>`.
 
 ## Source Tests
 

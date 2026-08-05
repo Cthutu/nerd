@@ -1923,8 +1923,9 @@ bool error_0365_on_branch_block_has_no_value(NerdSource source,
                         branch_span,
                         "This braced branch is a statement block");
     error_add_help(&error,
-                   "Use `break <value>` in each braced branch, or remove the "
-                   "braces and write each result expression directly.");
+                   "Write each result expression directly, or use an "
+                   "expression block `${ ... }` with `break <value>` in each "
+                   "branch.");
     error_render(&error);
     return false;
 }

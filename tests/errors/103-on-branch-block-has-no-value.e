@@ -35,6 +35,6 @@ main :: fn () {
     ],
     "notes": [],
     "help": [
-        "Use `break <value>` in each braced branch, or remove the braces and write each result expression directly."
+        "Write each result expression directly, or use an expression block `${ ... }` with `break <value>` in each branch."
     ]
 }
