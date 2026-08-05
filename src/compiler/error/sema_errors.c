@@ -1906,3 +1906,27 @@ bool error_0364_receiver_method_called_through_type(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
+// Report a braced `on` branch used where the `on` must produce a value.
+
+bool error_0365_on_branch_block_has_no_value(NerdSource source,
+                                             ErrorSpan  on_span,
+                                             ErrorSpan  branch_span)
+{
+    ErrorInfo error =
+        error_init(source, on_span, "`on` expression does not produce a value");
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        on_span,
+                        "This `on` expression has type `void`");
+    error_add_reference(&error,
+                        ERROR_REF_SECONDARY,
+                        branch_span,
+                        "This braced branch is a statement block");
+    error_add_help(&error,
+                   "Use `break <value>` in each braced branch, or remove the "
+                   "braces and write each result expression directly.");
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------

@@ -18148,6 +18148,40 @@ sema_destructure_pattern_type_from_existing_locals(const Ast* ast,
 //------------------------------------------------------------------------------
 // Infer one AST node type, optionally using an expected context type.
 
+internal bool sema_find_on_branch_block(const Ast* ast,
+                                        u32        value_node_index,
+                                        u32*       out_on_node_index,
+                                        u32*       out_block_node_index)
+{
+    u32 root = value_node_index;
+    while ((ast->nodes[root].kind == AK_Expression ||
+            ast->nodes[root].kind == AK_Statement) &&
+           ast->nodes[root].a < array_count(ast->nodes)) {
+        root = ast->nodes[root].a;
+    }
+    if (ast->nodes[root].kind != AK_On) {
+        return false;
+    }
+
+    const AstOnInfo* on = &ast->ons[ast->nodes[root].b];
+    for (u32 i = 0; i < on->branch_count; ++i) {
+        u32 branch_root =
+            ast->on_branches[on->first_branch + i].expr_node_index;
+        while ((ast->nodes[branch_root].kind == AK_Expression ||
+                ast->nodes[branch_root].kind == AK_Statement) &&
+               ast->nodes[branch_root].a < array_count(ast->nodes)) {
+            branch_root = ast->nodes[branch_root].a;
+        }
+        if (ast->nodes[branch_root].kind == AK_Block ||
+            ast->nodes[branch_root].kind == AK_ExprBlock) {
+            *out_on_node_index    = root;
+            *out_block_node_index = branch_root;
+            return true;
+        }
+    }
+    return false;
+}
+
 internal bool sema_infer_node_type(const Lexer* lexer,
                                    const Ast*   ast,
                                    Sema*        sema,
@@ -20334,6 +20368,27 @@ validate_type:
             if (statement_form) {
                 type_index = void_type;
             } else {
+                if (branch_type == void_type) {
+                    for (u32 i = 0; i < on->branch_count; ++i) {
+                        const AstOnBranch* branch =
+                            &ast->on_branches[on->first_branch + i];
+                        u32 branch_root = branch->expr_node_index;
+                        while ((ast->nodes[branch_root].kind == AK_Expression ||
+                                ast->nodes[branch_root].kind == AK_Statement) &&
+                               ast->nodes[branch_root].a <
+                                   array_count(ast->nodes)) {
+                            branch_root = ast->nodes[branch_root].a;
+                        }
+                        if (ast->nodes[branch_root].kind == AK_Block ||
+                            ast->nodes[branch_root].kind == AK_ExprBlock) {
+                            return error_0365_on_branch_block_has_no_value(
+                                lexer->source,
+                                sema_node_span(lexer, node),
+                                sema_node_span(lexer,
+                                               &ast->nodes[branch_root]));
+                        }
+                    }
+                }
                 if (!has_else && (on->kind == AOK_Condition ||
                                   !sema_on_covers_all_enum_variants(
                                       ast, sema, node->b, scrutinee_type))) {
@@ -21817,6 +21872,18 @@ validate_type:
                              ? annotated
                              : sema_materialise_type(sema, type_index);
             if (!sema_type_is_variable_storage(sema, type_index)) {
+                u32 on_node_index    = U32_MAX;
+                u32 block_node_index = U32_MAX;
+                if (sema->types[type_index].kind == STK_Void &&
+                    sema_find_on_branch_block(ast,
+                                              local->value_node_index,
+                                              &on_node_index,
+                                              &block_node_index)) {
+                    return error_0365_on_branch_block_has_no_value(
+                        lexer->source,
+                        sema_node_span(lexer, &ast->nodes[on_node_index]),
+                        sema_node_span(lexer, &ast->nodes[block_node_index]));
+                }
                 return error_0306_invalid_variable_type(
                     lexer->source,
                     sema_local_span(lexer, ast, local),

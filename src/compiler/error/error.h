@@ -456,6 +456,9 @@ bool error_0363_incompatible_propagation(NerdSource source,
 bool error_0364_receiver_method_called_through_type(NerdSource source,
                                                     ErrorSpan  span,
                                                     string     symbol);
+bool error_0365_on_branch_block_has_no_value(NerdSource source,
+                                             ErrorSpan  on_span,
+                                             ErrorSpan  branch_span);
 
 //------------------------------------------------------------------------------
 // Low-level error system

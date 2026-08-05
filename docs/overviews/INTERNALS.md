@@ -139,6 +139,10 @@ AST-pattern-indexed side table. Nested payload patterns therefore retain their
 own contextual type independently of the outer scrutinee, which editor features
 can use for enum completion while a branch pattern is being edited.
 
+When a value-producing `on` consists of braced statement branches with no
+value-bearing `break`, Sema diagnoses the void branch at the `on` expression
+instead of allowing the later variable-storage check to report a void local.
+
 Completion also classifies cursor positions in incomplete `plex` declaration
 bodies directly from the open source buffer. Field-name positions suppress the
 general symbol fallback, while field-type positions retain only type
