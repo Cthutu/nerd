@@ -195,6 +195,8 @@ The multiline-array formatter associates an element's trailing comment with
 the separating comma when one is present, or with the element's final token
 otherwise. It emits and consumes that comment alongside the reconstructed
 element so formatting cannot discard comments between array values.
+The token-stream recovery formatter applies the same rule when a later syntax
+error prevents CST formatting of the file.
 
 ## Related Documents
 

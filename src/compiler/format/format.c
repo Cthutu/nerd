@@ -9237,6 +9237,10 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
             sb_append_string(sb, format_token_text(&lexer, i));
         }
 
+        u32  trailing_comment     = U32_MAX;
+        bool has_trailing_comment = format_trivia_trailing_comment_after_token(
+            &trivia, i, &trailing_comment);
+
         if (kind == TK_on) {
             in_on_header = true;
         } else if (in_on_header &&
@@ -9265,30 +9269,21 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
             format_token_state_newline(&state);
         } else if (!in_interpolated_string &&
                    (kind == TK_RBrace || kind == TK_Semicolon)) {
-            u32 trailing_comment = U32_MAX;
-            if (format_trivia_trailing_comment_after_token(
-                    &trivia, i, &trailing_comment)) {
-                format_emit_trailing_comment_by_index(
-                    sb, &lexer, &comment_index, trailing_comment);
-                state.at_line_start = true;
-            } else {
-                format_token_state_newline(&state);
-            }
+            format_token_state_newline(&state);
         } else if (kind == TK_RBracket && multiline_bracket_depth == 0 &&
                    next_newlines > 0) {
             format_token_state_newline(&state);
         } else if (kind == TK_Comma) {
-            if (next_newlines == 0 && !next_has_comments) {
+            if (!has_trailing_comment && next_newlines == 0 &&
+                !next_has_comments) {
                 sb_append_char(sb, ' ');
             }
-        } else {
-            u32 trailing_comment = U32_MAX;
-            if (format_trivia_trailing_comment_after_token(
-                    &trivia, i, &trailing_comment)) {
-                format_emit_trailing_comment_by_index(
-                    sb, &lexer, &comment_index, trailing_comment);
-                state.at_line_start = true;
-            }
+        }
+
+        if (has_trailing_comment) {
+            format_emit_trailing_comment_by_index(
+                sb, &lexer, &comment_index, trailing_comment);
+            state.at_line_start = true;
         }
 
         previous_kind                  = kind;
