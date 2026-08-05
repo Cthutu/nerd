@@ -555,13 +555,13 @@ gfx_present_pixels_gl :: fn (system : ^GfxSystem,
 impl PixelLayer {
 
     -- Returns the current virtual pixel width.
-    pub pixel_width :: fn (layer: ^Self) -> u16 {
-        return layer.width
+    pub pixel_width :: fn (layer: ^Self) -> u32 {
+        return layer.width.as(u32)
     }
 
     -- Returns the current virtual pixel height.
-    pub pixel_height :: fn (layer: ^Self) -> u16 {
-        return layer.height
+    pub pixel_height :: fn (layer: ^Self) -> u32 {
+        return layer.height.as(u32)
     }
 
     -- Returns the contiguous pixel storage borrowed from this layer. Each
@@ -889,8 +889,11 @@ test "fixed-size pixel layer initialises storage" {
     layer := gfx_test_pixel_layer(^gfx, handle)
 
     assert layer != nil
-    assert layer.pixel_width() == 4
-    assert layer.pixel_height() == 3
+    width  : u32 = layer.pixel_width()
+    height : u32 = layer.pixel_height()
+
+    assert width == 4
+    assert height == 3
     assert layer.pixels().count == 12
 }
 

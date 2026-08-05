@@ -256,6 +256,9 @@ user = nil)` clips `area`, then calls `painter` with a borrowed slice starting
 at the first clipped pixel, the clipped width and height, the full layer stride,
 and the optional opaque user pointer.
 
+`PixelLayer.pixel_width()` and `PixelLayer.pixel_height()` return the current
+virtual dimensions as `u32` values.
+
 `GfxSystem.render(^frame)` resizes `FitToWindow` layers as needed and presents
 the layers for that frame. Multiple pixel layers are composited in layer order
 into a temporary frame-sized buffer before presentation.

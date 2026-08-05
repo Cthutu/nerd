@@ -1,7 +1,7 @@
 use std.frame
 use std.gfx
 
-consume :: fn (_value: u32) {
+consume :: fn (_value: u16) {
 }
 
 main :: fn () {
@@ -118,7 +118,7 @@ main :: fn () {
                     },
                     "severity": 1,
                     "source": "nerd",
-                    "message": "Type mismatch: expected `u32`, found `u16`",
+                    "message": "Type mismatch: expected `u16`, found `u32`",
                     "relatedInformation": [
                         {
                             "location": {

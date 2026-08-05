@@ -85,8 +85,8 @@ load_demo_image :: fn () -> Image {
 draw_image_viewer :: fn (layer: ^PixelLayer, image: ^Image) {
     layer.clear(0xff181818)
 
-    view_width := layer.pixel_width().as(u32)
-    view_height := layer.pixel_height().as(u32)
+    view_width := layer.pixel_width()
+    view_height := layer.pixel_height()
     rect := image_view_rect(view_width,
                             view_height,
                             image.width.as(u32),

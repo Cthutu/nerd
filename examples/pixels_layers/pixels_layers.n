@@ -29,8 +29,8 @@ draw_background :: fn (layer: ^PixelLayer, tick: u32) {
     layer.paint({
         x      : 0
         y      : 0
-        width  : layer.pixel_width().as(u32)
-        height : layer.pixel_height().as(u32)
+        width  : layer.pixel_width()
+        height : layer.pixel_height()
     }, fn (pixels: []u32, width: u32, height: u32, stride: u32, user: ^void) {
         tick := (user.as(^u32))^
         for y in [0 .. height] {
@@ -44,8 +44,8 @@ draw_background :: fn (layer: ^PixelLayer, tick: u32) {
 draw_foreground :: fn (layer: ^PixelLayer, tick: u32) {
     layer.clear(0x00000000)
 
-    width := layer.pixel_width().as(u32)
-    height := layer.pixel_height().as(u32)
+    width := layer.pixel_width()
+    height := layer.pixel_height()
     layer.paint({
         x : 0
         y : 0

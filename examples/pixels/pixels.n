@@ -14,8 +14,8 @@ pixels_draw :: fn (layer: ^PixelLayer, frame: u32) {
     layer.paint({
         x      : 0
         y      : 0
-        width  : layer.pixel_width().as(u32)
-        height : layer.pixel_height().as(u32)
+        width  : layer.pixel_width()
+        height : layer.pixel_height()
     }, fn (pixels: []u32, width: u32, height: u32, stride: u32, user: ^void) {
         frame := (user.as(^u32))^
         for y in [0 .. height] {
@@ -26,7 +26,7 @@ pixels_draw :: fn (layer: ^PixelLayer, frame: u32) {
         }
     }, ^frame)
 
-    bar_width := (frame % layer.pixel_width().as(u32)) + 1
+    bar_width := (frame % layer.pixel_width()) + 1
     layer.fill(PixelRect {
         x      : 0
         y      : 0

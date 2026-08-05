@@ -11,8 +11,8 @@ fit_colour :: fn (x: u32, y: u32, tick: u32) -> u32 {
 }
 
 fit_draw :: fn (layer: ^PixelLayer, tick: u32) {
-    for y: u32 = 0; y < layer.pixel_height().as(u32); y += 1 {
-        for x: u32 = 0; x < layer.pixel_width().as(u32); x += 1 {
+    for y: u32 = 0; y < layer.pixel_height(); y += 1 {
+        for x: u32 = 0; x < layer.pixel_width(); x += 1 {
             layer.put(x, y, fit_colour(x, y, tick))
         }
     }
@@ -20,7 +20,7 @@ fit_draw :: fn (layer: ^PixelLayer, tick: u32) {
     layer.fill(PixelRect {
         x      : 0
         y      : 0
-        width  : layer.pixel_width().as(u32)
+        width  : layer.pixel_width()
         height : 2
     }, 0xffffffff)
 }
