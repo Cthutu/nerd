@@ -1441,9 +1441,9 @@ term_csi_digit_key :: fn (first: u8, second: u8, third: u8) -> ?TermScanCode {
     number := first.as(u32) - 48
     two_digit_number := number * 10 + second.as(u32) - 48
     return on second == '~'
-        => term_csi_tilde_key(number)
+        =>   term_csi_tilde_key(number)
         else on (second >= '0' && second <= '9' && third == '~')
-        => term_csi_tilde_key(two_digit_number)
+        =>   term_csi_tilde_key(two_digit_number)
         else nil
 }
 
@@ -1630,9 +1630,9 @@ term_input_event_from_kitty :: fn (parameters: TermCsiParameters) -> TermInputEv
     modifiers := on modifier_parameter > 0 => modifier_parameter - 1 else 0
     event_type := term_csi_parameter(parameters, 1, 1, 1)
     action := on event_type == 2
-        => TermKeyAction.Repeat
+        =>   TermKeyAction.Repeat
         else on (event_type == 3)
-        => TermKeyAction.Release
+        =>   TermKeyAction.Release
         else TermKeyAction.Press
     text := term_csi_parameter(parameters, 2, 0)
     character : ?u32 = nil
@@ -1662,7 +1662,7 @@ term_input_event_from_csi_parameters :: fn (parameters: TermCsiParameters) -> Te
     number := term_csi_parameter(parameters, 0, 0)
     modifier := term_csi_parameter(parameters, 1, 0, 1)
     key := on parameters.final == '~'
-        => term_csi_tilde_key(number)
+        =>   term_csi_tilde_key(number)
         else term_csi_final_key(parameters.final)
     return term_input_event_from_modified_key(key, modifier)
 }
@@ -1797,11 +1797,11 @@ term_read_ss3_input_sequence :: fn () -> TermInputEvent {
 term_read_escape_input_sequence :: fn () -> TermInputEvent {
     second := term_read_byte_timeout(25)
     return on second == 0
-        => term_key_event(Escape)
+        =>   term_key_event(Escape)
         else on (second == '[')
-        => term_read_csi_input_sequence()
+        =>   term_read_csi_input_sequence()
         else on (second == 'O')
-        => term_read_ss3_input_sequence()
+        =>   term_read_ss3_input_sequence()
         else term_input_event_from_codepoint(term_read_utf8_codepoint(second), TERM_MOD_ALT)
 }
 

@@ -198,9 +198,9 @@ on "windows" {
             VK_F12       => FrameScanCode.F12
 
             else => on (vk >= '0'.as(u32) && vk <= '9'.as(u32))
-                => vk.as(FrameScanCode)
+                =>   vk.as(FrameScanCode)
                 else on (vk >= 'A'.as(u32) && vk <= 'Z'.as(u32))
-                => vk.as(FrameScanCode)
+                =>   vk.as(FrameScanCode)
                 else FrameScanCode.Unknown
         }
     }

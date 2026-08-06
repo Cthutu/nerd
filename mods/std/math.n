@@ -91,10 +91,10 @@ impl Rect[U] {
         left := on self.x > other.x => self.x else other.x
         top := on self.y > other.y => self.y else other.y
         right := on self.right() < other.right()
-            => self.right()
+            =>   self.right()
             else other.right()
         bottom := on self.bottom() < other.bottom()
-            => self.bottom()
+            =>   self.bottom()
             else other.bottom()
 
         on right <= left ||

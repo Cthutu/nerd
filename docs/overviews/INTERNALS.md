@@ -146,7 +146,8 @@ branches must use the `${ ... }` expression-block form with `break <value>`.
 
 The formatter keeps short boolean `on` expressions on one line. When the full
 expression exceeds the wrap width, it places the `=>` and `else` branches on
-separate lines, indented once from the line containing `on`.
+separate lines, indented once from the line containing `on`, and aligns their
+result expressions after the branch markers.
 
 Completion also classifies cursor positions in incomplete `plex` declaration
 bodies directly from the open source buffer. Field-name positions suppress the

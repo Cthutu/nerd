@@ -55,7 +55,7 @@ on "windows" {
     -- Enables or disables raw terminal input mode.
     pub term_raw_mode_enable :: fn (enabled: bool) {
         on enabled
-            => term_raw_mode_enable_impl()
+            =>   term_raw_mode_enable_impl()
             else term_raw_mode_disable_impl()
     }
 
@@ -340,18 +340,18 @@ on "windows" {
         on (mouse^.dwEventFlags & MOUSE_WHEELED.as(DWORD)) != 0 => {
             delta := term_windows_mouse_wheel_delta(mouse^.dwButtonState)
             return on delta > 0
-                => TermInputEvent.MouseWheel(x, y, 0, 1)
+                =>   TermInputEvent.MouseWheel(x, y, 0, 1)
                 else on (delta < 0)
-                => TermInputEvent.MouseWheel(x, y, 0, -1)
+                =>   TermInputEvent.MouseWheel(x, y, 0, -1)
                 else TermInputEvent.None
         }
 
         on (mouse^.dwEventFlags & MOUSE_HWHEELED.as(DWORD)) != 0 => {
             delta := term_windows_mouse_wheel_delta(mouse^.dwButtonState)
             return on delta > 0
-                => TermInputEvent.MouseWheel(x, y, 1, 0)
+                =>   TermInputEvent.MouseWheel(x, y, 1, 0)
                 else on (delta < 0)
-                => TermInputEvent.MouseWheel(x, y, -1, 0)
+                =>   TermInputEvent.MouseWheel(x, y, -1, 0)
                 else TermInputEvent.None
         }
 
@@ -419,9 +419,9 @@ on "windows" {
             on key {
                 code => {
                     action := on record.bKeyDown == 0
-                        => TermKeyAction.Release
+                        =>   TermKeyAction.Release
                         else on (term_key_down(term_keyboard_snapshot(), code))
-                        => TermKeyAction.Repeat
+                        =>   TermKeyAction.Repeat
                         else TermKeyAction.Press
                     character : ?u32 = nil
                     on record.UnicodeChar > 0 => {
@@ -456,7 +456,7 @@ on "windows" {
             TermInputEvent.None => {
                 byte := term_read_byte_timeout(0)
                 return on byte == 0
-                    => TermInputEvent.None
+                    =>   TermInputEvent.None
                     else term_input_event_from_codepoint(term_read_utf8_codepoint(byte))
             }
 
@@ -490,7 +490,7 @@ on "windows" {
     term_wait_for_input_impl :: fn (timeout_ms: i32) {
         input := GetStdHandle(STD_INPUT_HANDLE)
         wait_ms := on timeout_ms < 0
-            => 0xffffffff.as(DWORD)
+            =>   0xffffffff.as(DWORD)
             else timeout_ms.as(DWORD)
         _ := WaitForSingleObject(input, wait_ms)
     }

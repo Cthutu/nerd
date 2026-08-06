@@ -2525,7 +2525,7 @@ internal void format_emit_bool_on_multiline_prefixed(StringBuilder* sb,
     if (split_branches) {
         sb_append_char(sb, '\n');
         format_emit_indent(sb, indent_level + 1);
-        sb_append_cstr(sb, "=> ");
+        sb_append_cstr(sb, "=>   ");
     } else {
         sb_append_cstr(sb, " => ");
     }
