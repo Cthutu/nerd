@@ -208,6 +208,11 @@ element so formatting cannot discard comments between array values.
 The token-stream recovery formatter applies the same rule when a later syntax
 error prevents CST formatting of the file.
 
+The missing-plex-fields code action resolves an empty literal from either its
+inline type annotation or the type of an assignment target. This allows the
+action at the cursor in both `value: Type = { }` and a later `value = { }`
+assignment.
+
 ## Related Documents
 
 - [FORMAT.md](/home/matt/nerd/docs/overviews/FORMAT.md) for formatter rules

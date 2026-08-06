@@ -324,6 +324,55 @@ internal bool lsp_code_action_resolve_type_node(const Ast*  ast,
     }
 }
 
+internal u32 lsp_code_action_assigned_plex_type_node(const Ast* ast,
+                                                     u32        node_index)
+{
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* assignment = &ast->nodes[i];
+        if (assignment->kind != AK_Assign) {
+            continue;
+        }
+        u32 value_index = assignment->b;
+        while (value_index < array_count(ast->nodes) &&
+               (ast->nodes[value_index].kind == AK_Expression ||
+                ast->nodes[value_index].kind == AK_Statement)) {
+            value_index = ast->nodes[value_index].a;
+        }
+        if (value_index != node_index) {
+            continue;
+        }
+
+        u32 target_index = assignment->a;
+        while (target_index < array_count(ast->nodes) &&
+               (ast->nodes[target_index].kind == AK_Expression ||
+                ast->nodes[target_index].kind == AK_Statement)) {
+            target_index = ast->nodes[target_index].a;
+        }
+        if (target_index >= array_count(ast->nodes) ||
+            ast->nodes[target_index].kind != AK_SymbolRef) {
+            return U32_MAX;
+        }
+
+        u32 symbol = ast->nodes[target_index].a;
+        for (u32 j = 0; j < array_count(ast->nodes); ++j) {
+            const AstNode* declaration = &ast->nodes[j];
+            if ((declaration->kind != AK_Variable &&
+                 declaration->kind != AK_Bind) ||
+                declaration->a != symbol ||
+                declaration->b >= array_count(ast->nodes)) {
+                continue;
+            }
+            const AstNode* value = &ast->nodes[declaration->b];
+            if (value->kind == AK_AnnotatedValue ||
+                value->kind == AK_ZeroInit || value->kind == AK_Undefined) {
+                return value->a;
+            }
+        }
+        return U32_MAX;
+    }
+    return U32_MAX;
+}
+
 internal bool lsp_code_action_resolve_plex_literal_type(const Ast*  ast,
                                                         const Sema* sema,
                                                         u32         node_index,
@@ -363,6 +412,13 @@ internal bool lsp_code_action_resolve_plex_literal_type(const Ast*  ast,
             return lsp_code_action_resolve_type_node(
                 ast, sema, annotated->a, out_type);
         }
+    }
+
+    u32 assigned_type_node =
+        lsp_code_action_assigned_plex_type_node(ast, node_index);
+    if (assigned_type_node < array_count(ast->nodes)) {
+        return lsp_code_action_resolve_type_node(
+            ast, sema, assigned_type_node, out_type);
     }
 
     return false;
@@ -2499,6 +2555,10 @@ lsp_code_action_missing_imported_ast_plex_fields(Arena*             arena,
                 break;
             }
         }
+    }
+    if (target_node_index >= array_count(ast->nodes)) {
+        target_node_index =
+            lsp_code_action_assigned_plex_type_node(ast, node_index);
     }
     if (target_node_index >= array_count(ast->nodes)) {
         return false;
