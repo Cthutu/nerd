@@ -2214,6 +2214,10 @@ internal bool format_emit_wrapped_call_expr_if_long(StringBuilder* sb,
             sb, cst, lexer, node_index, indent_level);
         return false;
     }
+    if (format_emit_bool_on_multiline_if_long_with_prefix(
+            sb, cst, lexer, node_index, prefix_width, indent_level)) {
+        return true;
+    }
 
     Arena arena = {0};
     arena_init(&arena);
@@ -2502,7 +2506,8 @@ internal void format_emit_bool_on_multiline_prefixed(StringBuilder* sb,
                                                      const Lexer*   lexer,
                                                      u32            node_index,
                                                      u32  indent_level,
-                                                     bool is_else)
+                                                     bool is_else,
+                                                     bool split_branches)
 {
     const CstNode*   node = &cst->nodes[node_index];
     const CstOnInfo* on   = &cst->ons[node->b];
@@ -2517,40 +2522,58 @@ internal void format_emit_bool_on_multiline_prefixed(StringBuilder* sb,
         sb, cst, lexer, node->a, indent_level);
 
     const CstOnBranch* true_branch = &cst->on_branches[on->first_branch];
-    sb_append_cstr(sb, " => ");
+    if (split_branches) {
+        sb_append_char(sb, '\n');
+        format_emit_indent(sb, indent_level + 1);
+        sb_append_cstr(sb, "=> ");
+    } else {
+        sb_append_cstr(sb, " => ");
+    }
     if (cst->nodes[true_branch->expr_node_index].kind == CK_Block) {
         sb_append_cstr(sb, "{\n");
-        format_emit_block_contents(
-            sb, cst, lexer, true_branch->expr_node_index, indent_level + 1);
-        format_emit_indent(sb, indent_level);
+        format_emit_block_contents(sb,
+                                   cst,
+                                   lexer,
+                                   true_branch->expr_node_index,
+                                   indent_level + (split_branches ? 2 : 1));
+        format_emit_indent(sb, indent_level + (split_branches ? 1 : 0));
         sb_append_char(sb, '}');
     } else {
-        format_emit_expr_with_indent(
-            sb, cst, lexer, true_branch->expr_node_index, 0, indent_level);
+        format_emit_expr_with_indent(sb,
+                                     cst,
+                                     lexer,
+                                     true_branch->expr_node_index,
+                                     0,
+                                     indent_level + (split_branches ? 1 : 0));
     }
 
     if (on->branch_count > 1) {
         const CstOnBranch* else_branch =
             &cst->on_branches[on->first_branch + 1];
-        if (cst->nodes[else_branch->expr_node_index].kind == CK_On &&
+        bool else_is_bool_on =
+            cst->nodes[else_branch->expr_node_index].kind == CK_On &&
             cst->ons[cst->nodes[else_branch->expr_node_index].b].kind ==
-                COK_Bool) {
+                COK_Bool;
+        if (split_branches || else_is_bool_on) {
             sb_append_char(sb, '\n');
             format_emit_indent(sb, indent_level + 1);
+        } else if (cst->nodes[true_branch->expr_node_index].kind == CK_Block ||
+                   cst->nodes[true_branch->expr_node_index].kind ==
+                       CK_ExprBlock) {
+            sb_append_char(sb, ' ');
+        } else {
+            sb_append_char(sb, '\n');
+            format_emit_indent(sb, indent_level + 1);
+        }
+        if (else_is_bool_on) {
             format_emit_bool_on_multiline_prefixed(sb,
                                                    cst,
                                                    lexer,
                                                    else_branch->expr_node_index,
                                                    indent_level,
-                                                   true);
+                                                   true,
+                                                   split_branches);
         } else {
-            if (cst->nodes[true_branch->expr_node_index].kind == CK_Block ||
-                cst->nodes[true_branch->expr_node_index].kind == CK_ExprBlock) {
-                sb_append_char(sb, ' ');
-            } else {
-                sb_append_char(sb, '\n');
-                format_emit_indent(sb, indent_level + 1);
-            }
             sb_append_cstr(sb, "else ");
             if (cst->nodes[else_branch->expr_node_index].kind == CK_Block) {
                 sb_append_cstr(sb, "{\n");
@@ -2558,8 +2581,9 @@ internal void format_emit_bool_on_multiline_prefixed(StringBuilder* sb,
                                            cst,
                                            lexer,
                                            else_branch->expr_node_index,
-                                           indent_level + 1);
-                format_emit_indent(sb, indent_level);
+                                           indent_level +
+                                               (split_branches ? 2 : 1));
+                format_emit_indent(sb, indent_level + (split_branches ? 1 : 0));
                 sb_append_char(sb, '}');
             } else {
                 format_emit_expr_with_indent(sb,
@@ -2567,7 +2591,8 @@ internal void format_emit_bool_on_multiline_prefixed(StringBuilder* sb,
                                              lexer,
                                              else_branch->expr_node_index,
                                              0,
-                                             indent_level);
+                                             indent_level +
+                                                 (split_branches ? 1 : 0));
             }
         }
     }
@@ -2580,7 +2605,7 @@ internal void format_emit_bool_on_multiline(StringBuilder* sb,
                                             u32            indent_level)
 {
     format_emit_bool_on_multiline_prefixed(
-        sb, cst, lexer, node_index, indent_level, false);
+        sb, cst, lexer, node_index, indent_level, false, false);
 }
 
 internal bool
@@ -2608,7 +2633,13 @@ format_emit_bool_on_multiline_if_long_with_prefix(StringBuilder* sb,
         return false;
     }
 
-    format_emit_bool_on_multiline(sb, cst, lexer, node_index, indent_level);
+    const CstOnInfo* on = &cst->ons[node->b];
+    if (has_newline || on->branch_count < 2) {
+        format_emit_bool_on_multiline(sb, cst, lexer, node_index, indent_level);
+    } else {
+        format_emit_bool_on_multiline_prefixed(
+            sb, cst, lexer, node_index, indent_level, false, true);
+    }
     return true;
 }
 

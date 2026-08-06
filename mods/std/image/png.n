@@ -142,7 +142,9 @@ png_crc32_update :: fn (crc: u32, byte: u8) -> u32 {
     next := crc ^ byte.as(u32)
 
     for _ in [0 .. 8] {
-        next = on (next & 1) == 1 => ((next >> 1) ^ 0xedb88320.as(u32)) else next >> 1
+        next = on (next & 1) == 1
+            => ((next >> 1) ^ 0xedb88320.as(u32))
+            else next >> 1
     }
 
     return next
@@ -469,9 +471,14 @@ png_unfilter :: fn (bytes             : []u8,
             })!
         }
         for x in [0 .. row_bytes] {
-            left := on x >= scanline_channels.as(usize) => pixels[y * row_bytes + x - scanline_channels.as(usize)] else 0
+            left := on x >= scanline_channels.as(usize)
+                => pixels[y * row_bytes + x - scanline_channels.as(usize)]
+                else 0
             up := on y > 0 => pixels[(y - 1) * row_bytes + x] else 0
-            upper_left := on y > 0 && x >= scanline_channels.as(usize) => pixels[(y - 1) * row_bytes + x - scanline_channels.as(usize)] else 0
+            upper_left := on y > 0 &&
+                x >= scanline_channels.as(usize)
+                => pixels[(y - 1) * row_bytes + x - scanline_channels.as(usize)]
+                else 0
 
             pixels.push(png_unfilter_byte(filter, row[x], left, up, upper_left))
         }
@@ -543,7 +550,11 @@ png_expand_truecolour :: fn (pixels       : []u8,
         output[target] = red
         output[target + 1] = green
         output[target + 2] = blue
-        output[target + 3] = on red.as(u16) == transparent_red && green.as(u16) == transparent_green && blue.as(u16) == transparent_blue => 0 else 255
+        output[target + 3] = on red.as(u16) == transparent_red &&
+            green.as(u16) == transparent_green &&
+            blue.as(u16) == transparent_blue
+            => 0
+            else 255
     }
 
     return png_pixels_ok(PngPixels { channels: 4 data: output })
@@ -576,7 +587,9 @@ png_expand_indexed :: fn (indices      : []u8,
         output[target + 2] = palette[palette_index + 2]
 
         on channels == 4 => {
-            output[target + 3] = on index < transparency.count => transparency[index] else 255
+            output[target + 3] = on index < transparency.count
+                => transparency[index]
+                else 255
         }
     }
 

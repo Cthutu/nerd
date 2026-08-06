@@ -40,7 +40,8 @@ on "linux" {
 
     -- Enables or disables raw terminal input mode.
     pub term_raw_mode_enable :: fn (enabled: bool) {
-        on enabled => term_raw_mode_enable_impl()
+        on enabled
+            => term_raw_mode_enable_impl()
             else term_raw_mode_disable_impl()
     }
 
@@ -113,12 +114,20 @@ on "linux" {
 
     term_read_key_nonblocking :: fn () -> ?TermScanCode {
         first := term_read_byte_timeout(0)
-        return on first == 0 => nil else on (first == TermScanCode.Escape.as(u8)) => term_read_escape_sequence() else term_scan_code_from_codepoint(first.as(u32))
+        return on first == 0
+            => nil
+            else on (first == TermScanCode.Escape.as(u8))
+            => term_read_escape_sequence()
+            else term_scan_code_from_codepoint(first.as(u32))
     }
 
     term_read_input_event_impl :: fn () -> TermInputEvent {
         first := term_read_byte_timeout(0)
-        return on first == 0 => TermInputEvent.None else on (first == TermScanCode.Escape.as(u8)) => term_read_escape_input_sequence() else term_input_event_from_codepoint(term_read_utf8_codepoint(first))
+        return on first == 0
+            => TermInputEvent.None
+            else on (first == TermScanCode.Escape.as(u8))
+            => term_read_escape_input_sequence()
+            else term_input_event_from_codepoint(term_read_utf8_codepoint(first))
     }
 
     term_keyboard_protocol_enable_impl :: fn () {
@@ -148,7 +157,11 @@ on "linux" {
     -- escape sequence.
     pub term_get_key :: fn () -> ?TermScanCode {
         first := term_read_byte()
-        return on first == 0 => nil else on (first == TermScanCode.Escape.as(u8)) => term_read_escape_sequence() else term_scan_code_from_codepoint(first.as(u32))
+        return on first == 0
+            => nil
+            else on (first == TermScanCode.Escape.as(u8))
+            => term_read_escape_sequence()
+            else term_scan_code_from_codepoint(first.as(u32))
     }
 
 }

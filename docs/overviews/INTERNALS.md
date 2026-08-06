@@ -144,6 +144,10 @@ Sema diagnoses the void branch at the `on` expression instead of allowing the
 later variable-storage check to report a void local. Value-bearing braced
 branches must use the `${ ... }` expression-block form with `break <value>`.
 
+The formatter keeps short boolean `on` expressions on one line. When the full
+expression exceeds the wrap width, it places the `=>` and `else` branches on
+separate lines, indented once from the line containing `on`.
+
 Completion also classifies cursor positions in incomplete `plex` declaration
 bodies directly from the open source buffer. Field-name positions suppress the
 general symbol fallback, while field-type positions retain only type

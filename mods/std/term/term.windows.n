@@ -54,7 +54,8 @@ on "windows" {
 
     -- Enables or disables raw terminal input mode.
     pub term_raw_mode_enable :: fn (enabled: bool) {
-        on enabled => term_raw_mode_enable_impl()
+        on enabled
+            => term_raw_mode_enable_impl()
             else term_raw_mode_disable_impl()
     }
 
@@ -338,12 +339,20 @@ on "windows" {
 
         on (mouse^.dwEventFlags & MOUSE_WHEELED.as(DWORD)) != 0 => {
             delta := term_windows_mouse_wheel_delta(mouse^.dwButtonState)
-            return on delta > 0 => TermInputEvent.MouseWheel(x, y, 0, 1) else on (delta < 0) => TermInputEvent.MouseWheel(x, y, 0, -1) else TermInputEvent.None
+            return on delta > 0
+                => TermInputEvent.MouseWheel(x, y, 0, 1)
+                else on (delta < 0)
+                => TermInputEvent.MouseWheel(x, y, 0, -1)
+                else TermInputEvent.None
         }
 
         on (mouse^.dwEventFlags & MOUSE_HWHEELED.as(DWORD)) != 0 => {
             delta := term_windows_mouse_wheel_delta(mouse^.dwButtonState)
-            return on delta > 0 => TermInputEvent.MouseWheel(x, y, 1, 0) else on (delta < 0) => TermInputEvent.MouseWheel(x, y, -1, 0) else TermInputEvent.None
+            return on delta > 0
+                => TermInputEvent.MouseWheel(x, y, 1, 0)
+                else on (delta < 0)
+                => TermInputEvent.MouseWheel(x, y, -1, 0)
+                else TermInputEvent.None
         }
 
         buttons := term_windows_mouse_buttons(mouse^.dwButtonState)
@@ -409,7 +418,11 @@ on "windows" {
             key := term_windows_input_record_key(record)
             on key {
                 code => {
-                    action := on record.bKeyDown == 0 => TermKeyAction.Release else on (term_key_down(term_keyboard_snapshot(), code)) => TermKeyAction.Repeat else TermKeyAction.Press
+                    action := on record.bKeyDown == 0
+                        => TermKeyAction.Release
+                        else on (term_key_down(term_keyboard_snapshot(), code))
+                        => TermKeyAction.Repeat
+                        else TermKeyAction.Press
                     character : ?u32 = nil
                     on record.UnicodeChar > 0 => {
                         character = record.UnicodeChar.as(u32)
@@ -442,7 +455,9 @@ on "windows" {
         on event {
             TermInputEvent.None => {
                 byte := term_read_byte_timeout(0)
-                return on byte == 0 => TermInputEvent.None else term_input_event_from_codepoint(term_read_utf8_codepoint(byte))
+                return on byte == 0
+                    => TermInputEvent.None
+                    else term_input_event_from_codepoint(term_read_utf8_codepoint(byte))
             }
 
             else => return event
@@ -474,7 +489,9 @@ on "windows" {
 
     term_wait_for_input_impl :: fn (timeout_ms: i32) {
         input := GetStdHandle(STD_INPUT_HANDLE)
-        wait_ms := on timeout_ms < 0 => 0xffffffff.as(DWORD) else timeout_ms.as(DWORD)
+        wait_ms := on timeout_ms < 0
+            => 0xffffffff.as(DWORD)
+            else timeout_ms.as(DWORD)
         _ := WaitForSingleObject(input, wait_ms)
     }
 

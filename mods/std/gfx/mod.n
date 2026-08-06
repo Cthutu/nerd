@@ -228,8 +228,12 @@ gfx_pixel_layer_present_offset :: fn (frame : ^Frame,
         FixedSizeAutoScale { width: _, height: _ } => {
             draw_width := layer.width.as(u32) * scale.as(u32)
             draw_height := layer.height.as(u32) * scale.as(u32)
-            x := on frame.width.as(u32) > draw_width => (frame.width.as(u32) - draw_width) / 2 else 0
-            y := on frame.height.as(u32) > draw_height => (frame.height.as(u32) - draw_height) / 2 else 0
+            x := on frame.width.as(u32) > draw_width
+                => (frame.width.as(u32) - draw_width) / 2
+                else 0
+            y := on frame.height.as(u32) > draw_height
+                => (frame.height.as(u32) - draw_height) / 2
+                else 0
             return (gfx_u32_to_u16_coord(x), gfx_u32_to_u16_coord(y))
         }
     }

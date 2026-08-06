@@ -112,8 +112,8 @@ main :: fn () {
         "result": {
             "uri": "file:///home/matt/nerd/mods/std/gfx/mod.n",
             "range": {
-                "start": { "line": 651, "character": 8 },
-                "end": { "line": 651, "character": 26 }
+                "start": { "line": 655, "character": 8 },
+                "end": { "line": 655, "character": 26 }
             }
         }
     },
@@ -133,8 +133,8 @@ main :: fn () {
         "result": {
             "uri": "file:///home/matt/nerd/mods/std/gfx/mod.n",
             "range": {
-                "start": { "line": 675, "character": 8 },
-                "end": { "line": 675, "character": 23 }
+                "start": { "line": 679, "character": 8 },
+                "end": { "line": 679, "character": 23 }
             }
         }
     },
