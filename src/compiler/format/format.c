@@ -7865,7 +7865,10 @@ internal void format_emit_block_statement(StringBuilder* sb,
             sb_append_cstr(sb, "}\n");
         } else {
             sb_append_char(sb, ' ');
-            if (deferred->kind == CK_Statement) {
+            if (deferred->kind == CK_Variable || deferred->kind == CK_Bind) {
+                format_emit_for_header_item(sb, cst, lexer, stmt->a);
+                sb_append_char(sb, '\n');
+            } else if (deferred->kind == CK_Statement) {
                 format_emit_expr_with_indent(
                     sb, cst, lexer, deferred->a, 0, indent_level);
                 sb_append_char(sb, '\n');

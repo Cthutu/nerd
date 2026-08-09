@@ -9104,6 +9104,13 @@ internal void sema_collect_node_deps(const Ast*  ast,
             if (decl_index == sema_no_decl()) {
                 return;
             }
+            // A function declaration already establishes its own callable
+            // symbol before its body is ordered. Its self-calls therefore do
+            // not form declaration-initialisation dependencies.
+            if (decl_index == owner_decl_index &&
+                sema->decls[decl_index].kind == SK_Function) {
+                return;
+            }
             if (sema->decls[decl_index].kind == SK_BuiltinFunction ||
                 sema->decls[decl_index].kind == SK_FfiFunction ||
                 sema->decls[decl_index].kind == SK_Module) {
@@ -22058,6 +22065,48 @@ validate_type:
                     sema_type_name(lexer, sema, &temp_arena, return_type));
             }
             u32 declared_return_type = return_type;
+
+            // Block function signatures are complete before their bodies are
+            // inferred: an omitted return annotation means void. Publish that
+            // callable type now so a direct self-call does not recursively
+            // re-enter inference for the whole function body.
+            if (node->b == AFK_Block) {
+                Array(u32) declared_param_types = NULL;
+                for (u32 i = 0; i < signature->param_count; ++i) {
+                    u32 param_type = sema_no_type();
+                    if (!sema_resolve_type_node(
+                            lexer,
+                            ast,
+                            sema,
+                            ast->params[signature->first_param + i]
+                                .type_node_index,
+                            &param_type)) {
+                        array_free(declared_param_types);
+                        return false;
+                    }
+                    array_push(declared_param_types, param_type);
+                }
+                u32 declared_function_type = sema_add_function_type_ex(
+                    sema,
+                    declared_param_types,
+                    declared_return_type,
+                    signature->is_varargs ? STF_FunctionVarargs : STF_None);
+                array_free(declared_param_types);
+
+                for (u32 i = 0; i < array_count(sema->decls); ++i) {
+                    SemaDecl* decl = &sema->decls[i];
+                    if (decl->kind != SK_Function ||
+                        decl->value_node_index != node_index) {
+                        continue;
+                    }
+                    decl->type_index = declared_function_type;
+                    if (decl->bind_node_index != sema_no_decl()) {
+                        sema->node_type_indices[decl->bind_node_index] =
+                            declared_function_type;
+                    }
+                    break;
+                }
+            }
 
             if (node->b == AFK_Expr) {
                 u32 expected_return =

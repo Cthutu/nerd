@@ -213,6 +213,18 @@ inline type annotation or the type of an assignment target. This allows the
 action at the cursor in both `value: Type = { }` and a later `value = { }`
 assignment.
 
+Deferred variable and constant declarations reuse the formatter's compact
+header-item rendering. This preserves declaration syntax after `defer` without
+routing statement-only CST nodes through expression rendering.
+
+Typed plex-literal lookahead recognises a shorthand field followed by `...`,
+matching the prefix-literal parser and the formatter's shorthand field output.
+
+Semantic dependency ordering excludes a function's references to its own
+callable symbol. Function declarations establish that symbol before their
+bodies are ordered, so direct recursion is not a declaration-initialisation
+cycle. Other self-references continue through the normal cycle checks.
+
 ## Related Documents
 
 - [FORMAT.md](/home/matt/nerd/docs/overviews/FORMAT.md) for formatter rules

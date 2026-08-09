@@ -2893,6 +2893,7 @@ bool ast_parse_expr_bp(AstParseState* state, u8 min_bp, u32* out_node)
                               ast_peek_kind_at(state, 2) != TK_Equal) ||
                              ast_peek_kind_at(state, 1) == TK_Comma ||
                              ast_peek_kind_at(state, 1) == TK_RBrace ||
+                             ast_peek_kind_at(state, 1) == TK_Ellipsis ||
                              ast_peek_kind_at(state, 1) == TK_Symbol)));
             if (!starts_plex) {
                 break;
