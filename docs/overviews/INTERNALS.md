@@ -113,6 +113,9 @@ the live heap and arena lists and reporting leaks to standard error.
 - Emit fixed-size LLVM local and scratch `alloca` instructions through the
   entry-block allocation helper. An `alloca` emitted in a repeated basic block
   consumes more stack each time that block executes.
+- The LLVM addressed-local prepass must traverse control-flow scrutinees as well
+  as their branches and guards, so locals whose addresses are conditionally
+  used are materialised and initialised on every path.
 
 ## Key Data Products
 

@@ -14346,6 +14346,7 @@ internal void llvm_collect_addressed_expr_locals(LlvmFunctionContext* ctx,
         llvm_collect_addressed_locals(ctx, expr->body_block_index);
         break;
     case HIR_EXPR_On:
+        llvm_collect_addressed_expr_locals(ctx, expr->operand_expr_index);
         for (u32 i = 0; i < expr->branch_count; ++i) {
             u32 branch_index = expr->first_branch + i;
             if (branch_index < array_count(ctx->hir->on_branches)) {
