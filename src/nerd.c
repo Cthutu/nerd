@@ -23,12 +23,14 @@
 #    include <direct.h>
 #    define nerd_chdir _chdir
 #    define nerd_mkdir(path) _mkdir(path)
+#    define nerd_setenv(name, value) _putenv_s((name), (value))
 #else
 #    include <sys/stat.h>
 #    include <sys/types.h>
 #    include <unistd.h>
 #    define nerd_chdir chdir
 #    define nerd_mkdir(path) mkdir(path, 0775)
+#    define nerd_setenv(name, value) setenv((name), (value), 1)
 #endif
 
 //------------------------------------------------------------------------------
@@ -470,6 +472,7 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
     JsonValue* schema   = json_new_object(arena);
     JsonValue* commands = json_new_array(arena);
     JsonValue* flags    = json_new_array(arena);
+    JsonValue* params   = json_new_array(arena);
 
     // Schema used by the `nerd` executable:
     // {
@@ -514,6 +517,7 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
     json_object_set_cstr(schema, arena, "program", "nerd");
     json_object_set_cstr(schema, arena, "summary", "Nerd compiler playground");
     json_object_set_array(schema, "flags", flags);
+    json_object_set_array(schema, "params", params);
     json_object_set_array(schema, "commands", commands);
 
     json_array_push(
@@ -524,6 +528,15 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
         flags,
         nerd_cli_make_flag(
             arena, "timing", NULL, "Print compiler timing information"));
+    json_array_push(
+        params,
+        nerd_cli_make_param(arena,
+                            "config",
+                            "named",
+                            "config",
+                            NULL,
+                            "Path to a Nerd JSON configuration file",
+                            false));
 
     {
         JsonValue* build_params = json_new_array(arena);
@@ -1095,6 +1108,120 @@ internal void nerd_cli_split_program_args(Arena*  arena,
     *out_argv = filtered;
 }
 
+internal cstr nerd_string_cstr(Arena* arena, string value)
+{
+    char* copy = arena_alloc(arena, value.count + 1);
+    memcpy(copy, value.data, value.count);
+    copy[value.count] = '\0';
+    return copy;
+}
+
+internal bool nerd_apply_json_config(Arena*           arena,
+                                     const JsonValue* cli_result,
+                                     Array(string) * keywords)
+{
+    string configured_path =
+        nerd_cli_param_string(cli_result, "global_params.config", (string){0});
+    bool   explicit_path = configured_path.count > 0;
+    string config_path =
+        explicit_path ? configured_path : string_format(arena, "nerd.json");
+    cstr config_cstr = nerd_string_cstr(arena, config_path);
+
+    if (!path_exists(config_cstr)) {
+        if (explicit_path) {
+            eprn("Nerd config file does not exist: %s", config_cstr);
+            return false;
+        }
+        return true;
+    }
+    if (path_is_directory(config_cstr)) {
+        eprn("Nerd config path is a directory: %s", config_cstr);
+        return false;
+    }
+
+    FileMap map  = {0};
+    string  text = filemap_load(config_cstr, &map);
+    if (text.data == NULL) {
+        eprn("Failed to read Nerd config file: %s", config_cstr);
+        return false;
+    }
+
+    JsonParseResult parse_result = {0};
+    JsonValue*      root         = json_parse(arena, text, &parse_result);
+    if (!root) {
+        eprn("Failed to parse Nerd config file %s at byte %zu: %s",
+             config_cstr,
+             parse_result.error_offset,
+             parse_result.error_message ? parse_result.error_message
+                                        : "invalid JSON");
+        filemap_unload(&map);
+        return false;
+    }
+    if (root->kind != JSON_OBJECT) {
+        eprn("Nerd config root must be a JSON object: %s", config_cstr);
+        json_done(root);
+        filemap_unload(&map);
+        return false;
+    }
+
+    JsonValue* env = json_object_get_cstr(root, "env");
+    if (env && env->kind != JSON_OBJECT) {
+        eprn("Nerd config field `env` must be a JSON object");
+        json_done(root);
+        filemap_unload(&map);
+        return false;
+    }
+    if (env) {
+        for (usize i = 0; i < array_count(env->object.entries); ++i) {
+            JsonObjectEntry* entry = &env->object.entries[i];
+            if (!entry->value || entry->value->kind != JSON_STRING) {
+                eprn("Nerd config environment variable `" STRINGP
+                     "` must have a string value",
+                     STRINGV(entry->key));
+                json_done(root);
+                filemap_unload(&map);
+                return false;
+            }
+            cstr name  = nerd_string_cstr(arena, entry->key);
+            cstr value = nerd_string_cstr(arena, json_string(entry->value));
+            if (nerd_setenv(name, value) != 0) {
+                eprn("Failed to set environment variable %s", name);
+                json_done(root);
+                filemap_unload(&map);
+                return false;
+            }
+        }
+    }
+
+    JsonValue* defines = json_object_get_cstr(root, "define");
+    if (defines && defines->kind != JSON_ARRAY) {
+        eprn("Nerd config field `define` must be a JSON array");
+        json_done(root);
+        filemap_unload(&map);
+        return false;
+    }
+    if (defines) {
+        for (usize i = 0; i < array_count(defines->array.values); ++i) {
+            JsonValue* value = defines->array.values[i];
+            if (!value || value->kind != JSON_STRING ||
+                json_string(value).count == 0) {
+                eprn("Nerd config field `define` must contain non-empty "
+                     "strings");
+                json_done(root);
+                filemap_unload(&map);
+                return false;
+            }
+            array_push(
+                *keywords,
+                string_format(arena, STRINGP, STRINGV(json_string(value))));
+        }
+    }
+
+    json_done(root);
+    filemap_unload(&map);
+    return true;
+}
+
 internal int nerd_run_with_cli(int argc, char** argv)
 {
     Arena arena = {0};
@@ -1192,6 +1319,17 @@ internal int nerd_run_with_cli(int argc, char** argv)
         return 1;
     }
 
+    if (!nerd_apply_json_config(&arena, cli_result, &cli_keywords)) {
+        json_done(cli_result);
+        cli_done(&parser);
+        json_done(schema);
+        array_free(cli_keywords);
+        array_free(program_args);
+        arena_done(&arena);
+        error_system_done();
+        return 1;
+    }
+
     ASSERT(command && command->kind == JSON_OBJECT,
            "CLI parse result must contain a command object");
 
@@ -1240,7 +1378,7 @@ internal int nerd_run_with_cli(int argc, char** argv)
         result = nerd_internal_test(cli_result);
     } else if (string_eq_cstr(name, "lsp")) {
         lsp_log("Launching nerd lsp");
-        result = lsp_run();
+        result = lsp_run(cli_keywords);
     } else {
         json_done(cli_result);
         cli_done(&parser);

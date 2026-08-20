@@ -1,0 +1,8 @@
+{
+    "env": {
+        "NERD_LIB_PATH": "config/mods"
+    },
+    "define": [
+        "config_feature"
+    ]
+}

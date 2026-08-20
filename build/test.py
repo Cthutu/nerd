@@ -741,6 +741,12 @@ def test_lsp(path: pathlib.Path) -> list[Failure]:
     source, requests_text, expected_text = parts
     requests = json.loads(normalize_repo_uris(requests_text))
 
+    lsp_args = [str(NERD), "lsp"]
+    match = re.match(r"\s*--\s*lsp-config:\s*(\S+)\s*\n", source)
+    if match:
+        lsp_args.extend(["--config", normalize_repo_uris(match.group(1))])
+        source = source[match.end():]
+
     uri = "file:///test.n"
     match = re.match(r"\s*--\s*lsp-uri:\s*(\S+)\s*\n", source)
     if match:
@@ -786,7 +792,7 @@ def test_lsp(path: pathlib.Path) -> list[Failure]:
     ]
     input_bytes = b"".join(lsp_frame(message) for message in messages)
     proc = subprocess.run(
-        [str(NERD), "lsp"],
+        lsp_args,
         cwd=ROOT,
         env=lsp_env,
         input=input_bytes,

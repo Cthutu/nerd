@@ -45,6 +45,7 @@ DEF_MAP(LspDocumentMap,
 typedef struct {
     Arena          arena;
     LspDocumentMap documents;
+    Array(string) keywords;
 } LspState;
 
 typedef struct {
@@ -137,7 +138,7 @@ void lsp_fail(JsonValue* response, Arena* arena, cstr format, ...);
 void lsp_cancel(JsonValue* response, Arena* arena);
 
 // The main loop for the LSP server
-int lsp_run(void);
+int lsp_run(Array(string) keywords);
 
 //------------------------------------------------------------------------------
 // LSP lifecycle

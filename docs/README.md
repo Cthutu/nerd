@@ -29,7 +29,8 @@ If you are new to the codebase, read these first:
 6. [stdlib.md](/home/matt/nerd/docs/stdlib.md)
 7. [lsp.md](/home/matt/nerd/docs/lsp.md)
 8. [editor-support.md](/home/matt/nerd/docs/editor-support.md)
-9. [testing.md](/home/matt/nerd/docs/testing.md)
+9. [configuration.md](/home/matt/nerd/docs/configuration.md)
+10. [testing.md](/home/matt/nerd/docs/testing.md)
 
 If you are learning the Nerd language rather than the compiler implementation,
 start with [manual/README.md](/home/matt/nerd/docs/manual/README.md). If you are
@@ -61,6 +62,8 @@ validating the language against the implementation, use
   Document lifecycle, analysis flow, and editor-facing features.
 - [editor-support.md](/home/matt/nerd/docs/editor-support.md)
   VS Code and Neovim/LazyVim integration ownership and verification checklist.
+- [configuration.md](/home/matt/nerd/docs/configuration.md)
+  Project-level environment and compile-time define configuration.
 - [testing.md](/home/matt/nerd/docs/testing.md)
   Test file formats, runner behaviour, and practical workflow.
 

@@ -113,7 +113,7 @@ struct {
 
 //------------------------------------------------------------------------------
 
-int lsp_run(void)
+int lsp_run(Array(string) keywords)
 {
 #if OS_WINDOWS
     _setmode(_fileno(stdin), _O_BINARY);
@@ -139,6 +139,7 @@ int lsp_run(void)
 
     LspState lsp_state = {0};
     lsp_init(&lsp_state);
+    lsp_state.keywords = keywords;
 
     while (!state.should_exit) {
         JsonValue* message = lsp_read_message(&message_arena);

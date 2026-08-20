@@ -1,4 +1,5 @@
-on "debug" {
+-- lsp-config: tests/lsp/config/nerd.json
+on "lsp_config_feature" {
     answer :: 7
 }
 
