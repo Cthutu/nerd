@@ -2680,6 +2680,7 @@ typedef struct {
     const Hir*        macro_source_hir;
     const Lexer*      macro_source_lexer;
     bool              discard_expr_value;
+    bool              writable_slice_literal;
     LlvmDebugModule*  debug;
     u32               debug_scope_id;
     u32               debug_decl_index;
@@ -8760,7 +8761,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     return (LlvmValue){0};
                 }
 
-                if (llvm_expr_is_constant_value(
+                if (!ctx->writable_slice_literal &&
+                    llvm_expr_is_constant_value(
                         ctx->hir, ctx->lexer, ctx->sema, expr_index)) {
                     string slice = string_format(
                         ctx->arena,
@@ -13622,10 +13624,15 @@ internal bool llvm_emit_let(LlvmFunctionContext* ctx,
                          expr->kind == HIR_EXPR_DefaultValue)) {
         value = llvm_default_value(ctx, stmt->type_index);
     } else {
-        bool old_discard_expr_value = ctx->discard_expr_value;
-        ctx->discard_expr_value     = false;
+        bool old_discard_expr_value     = ctx->discard_expr_value;
+        bool old_writable_slice_literal = ctx->writable_slice_literal;
+        ctx->discard_expr_value         = false;
+        ctx->writable_slice_literal =
+            expr != NULL && expr->kind == HIR_EXPR_Array &&
+            llvm_type_kind(ctx->sema, stmt->type_index) == STK_Slice;
         value = llvm_emit_expr(ctx, function, stmt->expr_index);
-        ctx->discard_expr_value = old_discard_expr_value;
+        ctx->discard_expr_value     = old_discard_expr_value;
+        ctx->writable_slice_literal = old_writable_slice_literal;
     }
     if (!value.ok) {
         return false;
