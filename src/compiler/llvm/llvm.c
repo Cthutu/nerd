@@ -9462,25 +9462,55 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                         }
                     }
                 } else if (lhs_kind == STK_Array && rhs_kind == STK_Array) {
-                    string lhs_slot = llvm_temp(ctx);
-                    string rhs_slot = llvm_temp(ctx);
+                    const HirExpr* lhs_expr =
+                        &ctx->hir->exprs[expr->lhs_expr_index];
+                    const HirExpr* rhs_expr =
+                        &ctx->hir->exprs[expr->rhs_expr_index];
+                    bool lhs_is_constant_literal =
+                        lhs_expr->kind == HIR_EXPR_Array &&
+                        llvm_expr_is_constant_value(ctx->hir,
+                                                    ctx->lexer,
+                                                    ctx->sema,
+                                                    expr->lhs_expr_index);
+                    bool rhs_is_constant_literal =
+                        rhs_expr->kind == HIR_EXPR_Array &&
+                        llvm_expr_is_constant_value(ctx->hir,
+                                                    ctx->lexer,
+                                                    ctx->sema,
+                                                    expr->rhs_expr_index);
+                    string lhs_data = {0};
+                    string rhs_data = {0};
                     string rhs_type = llvm_type_string(ctx, rhs.type_index);
-                    sb_format(
-                        ctx->sb,
-                        "  " STRINGP " = alloca " STRINGP "\n"
-                        "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n"
-                        "  " STRINGP " = alloca " STRINGP "\n"
-                        "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n",
-                        STRINGV(lhs_slot),
-                        STRINGV(type),
-                        STRINGV(type),
-                        STRINGV(lhs.value),
-                        STRINGV(lhs_slot),
-                        STRINGV(rhs_slot),
-                        STRINGV(rhs_type),
-                        STRINGV(rhs_type),
-                        STRINGV(rhs.value),
-                        STRINGV(rhs_slot));
+                    if (lhs_is_constant_literal) {
+                        lhs_data = llvm_const_slice_backing_name_string(
+                            ctx->hir, ctx->arena, expr->lhs_expr_index);
+                    } else {
+                        lhs_data = llvm_temp(ctx);
+                        sb_format(ctx->sb,
+                                  "  " STRINGP " = alloca " STRINGP "\n"
+                                  "  store " STRINGP " " STRINGP
+                                  ", ptr " STRINGP "\n",
+                                  STRINGV(lhs_data),
+                                  STRINGV(type),
+                                  STRINGV(type),
+                                  STRINGV(lhs.value),
+                                  STRINGV(lhs_data));
+                    }
+                    if (rhs_is_constant_literal) {
+                        rhs_data = llvm_const_slice_backing_name_string(
+                            ctx->hir, ctx->arena, expr->rhs_expr_index);
+                    } else {
+                        rhs_data = llvm_temp(ctx);
+                        sb_format(ctx->sb,
+                                  "  " STRINGP " = alloca " STRINGP "\n"
+                                  "  store " STRINGP " " STRINGP
+                                  ", ptr " STRINGP "\n",
+                                  STRINGV(rhs_data),
+                                  STRINGV(rhs_type),
+                                  STRINGV(rhs_type),
+                                  STRINGV(rhs.value),
+                                  STRINGV(rhs_data));
+                    }
                     u32 element_type =
                         ctx->sema->types[lhs.type_index].first_param_type;
                     u64 element_size =
@@ -9492,9 +9522,9 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                               "  " STRINGP " = call i1 @slice_eq(ptr " STRINGP
                               ", i64 %u, ptr " STRINGP ", i64 %u, i64 %llu)\n",
                               STRINGV(both_eq),
-                              STRINGV(lhs_slot),
+                              STRINGV(lhs_data),
                               element_count,
-                              STRINGV(rhs_slot),
+                              STRINGV(rhs_data),
                               element_count,
                               (unsigned long long)element_size);
                     if (expr->binary_op == HIR_BINARY_Equal) {
