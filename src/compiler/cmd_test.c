@@ -708,7 +708,12 @@ int compiler_cmd_test(const NerdTestConfig* config)
         .source      = source,
         .source_path = s(input_path),
     };
-    if (!front_end_program(root_source, &options, NULL, &program)) {
+    bool previous_error_output = error_system_should_emit_output();
+    error_system_set_emit_output(false);
+    bool front_end_ok =
+        front_end_program(root_source, &options, NULL, &program);
+    error_system_set_emit_output(previous_error_output);
+    if (!front_end_ok) {
         Array(SourceTestDecl) tests = NULL;
         bool root_discovered        = source_test_discover(
             &arena, source, (string){0}, config->filter, &tests);
@@ -739,11 +744,14 @@ int compiler_cmd_test(const NerdTestConfig* config)
         }
 
         if (root_selected_count == 0) {
-            prn(ANSI_BOLD_YELLOW "0 tests passed" ANSI_RESET);
+            ProgramInfo diagnostic_program = {0};
+            (void)front_end_program(
+                root_source, &options, NULL, &diagnostic_program);
+            program_info_done(&diagnostic_program);
             array_free(tests);
             filemap_unload(&map);
             arena_done(&arena);
-            return 0;
+            return 1;
         }
 
         if (config->list_results) {
