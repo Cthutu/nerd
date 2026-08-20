@@ -25,6 +25,6 @@ main :: fn () -> bool {
     ],
     "notes": [],
     "help": [
-        "Add `=>` before the block: `on condition => { ... }`"
+        "If you intended an if-like conditional, add `=>` before the block: `on condition => { ... }`"
     ]
 }

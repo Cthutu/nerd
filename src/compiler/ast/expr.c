@@ -1316,7 +1316,8 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
                 ast_token_span(state, &state->token),
                 state->token.kind,
                 NULL,
-                "Add `=>` before the block: `on condition => { ... }`");
+                "If you intended an if-like conditional, add `=>` before the "
+                "block: `on condition => { ... }`");
         }
 
         while (state->token.kind != TK_RBrace) {
