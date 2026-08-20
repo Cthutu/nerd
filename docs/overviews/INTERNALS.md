@@ -199,6 +199,10 @@ array expression used to allocate a capacity-bearing dynamic-array local uses
 the local declaration location, which LLVM passes to the runtime allocator for
 leak diagnostics.
 
+Implicit fixed-array-to-slice call arguments are lowered from the address of the
+original HIR array expression. This preserves the language's borrowed-view
+semantics and avoids directing mutations through a copied LLVM temporary.
+
 The parser recognises a same-line `arena name` sequence as a reversed built-in
 type declaration and reports Nerd's name-first declaration forms. The formatter
 preserves that malformed sequence on one line so formatting cannot obscure the

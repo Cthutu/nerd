@@ -80,6 +80,11 @@ main :: fn () {
 }
 ```
 
+When a `[]T` slice is expected, a `[N]T` fixed array is also accepted directly.
+The resulting slice borrows the array's storage; it does not copy the elements.
+For example, a function taking `[]i32` can receive a `[3]i32` argument, and
+mutations through that parameter remain visible in the original array.
+
 Slices have `.data`, `.count`, and `.bytes`. `.data` is the borrowed pointer to
 the first element, `.count` is the number of live elements, and `.bytes` is
 `.count * T.size`. `.size` is the size of the slice header value itself. Slices

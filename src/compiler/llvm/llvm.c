@@ -6939,6 +6939,57 @@ internal LlvmValue llvm_address_of_expr(LlvmFunctionContext* ctx,
     };
 }
 
+// Borrow a fixed array expression as a slice without copying its storage.
+internal LlvmValue llvm_coerce_expr_to_type(LlvmFunctionContext* ctx,
+                                            const HirFunction*   function,
+                                            u32                  expr_index,
+                                            LlvmValue            value,
+                                            u32                  target_type)
+{
+    if (!value.ok || target_type == sema_no_type() ||
+        llvm_type_kind(ctx->sema, target_type) != STK_Slice ||
+        llvm_type_kind(ctx->sema, value.type_index) != STK_Array ||
+        ctx->sema->types[target_type].first_param_type !=
+            ctx->sema->types[value.type_index].first_param_type) {
+        return llvm_coerce_value_to_type(ctx, value, target_type);
+    }
+
+    LlvmValue address = llvm_address_of_expr(ctx, function, expr_index);
+    if (!address.ok) {
+        return (LlvmValue){0};
+    }
+
+    string array_type = llvm_type_string(ctx, value.type_index);
+    string data_ptr   = llvm_temp(ctx);
+    sb_format(ctx->sb,
+              "  " STRINGP " = getelementptr inbounds " STRINGP ", ptr " STRINGP
+              ", i64 0, i64 0\n",
+              STRINGV(data_ptr),
+              STRINGV(array_type),
+              STRINGV(address.value));
+
+    string slice0 = llvm_temp(ctx);
+    sb_format(ctx->sb,
+              "  " STRINGP " = insertvalue { ptr, i64 } poison, ptr " STRINGP
+              ", 0\n",
+              STRINGV(slice0),
+              STRINGV(data_ptr));
+
+    string slice1 = llvm_temp(ctx);
+    sb_format(ctx->sb,
+              "  " STRINGP " = insertvalue { ptr, i64 } " STRINGP
+              ", i64 %u, 1\n",
+              STRINGV(slice1),
+              STRINGV(slice0),
+              ctx->sema->types[value.type_index].return_type);
+
+    return (LlvmValue){
+        .ok         = true,
+        .type_index = target_type,
+        .value      = slice1,
+    };
+}
+
 internal string llvm_binary_instruction(const Sema* sema,
                                         u32         type_index,
                                         HirBinaryOp op)
@@ -13437,7 +13488,15 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 if (param_type == sema_no_type()) {
                     continue;
                 }
-                args[i] = llvm_coerce_value_to_type(ctx, args[i], param_type);
+                if (i < expr->arg_count) {
+                    const HirCallArg* arg =
+                        &ctx->hir->call_args[expr->first_arg + i];
+                    args[i] = llvm_coerce_expr_to_type(
+                        ctx, function, arg->expr_index, args[i], param_type);
+                } else {
+                    args[i] =
+                        llvm_coerce_value_to_type(ctx, args[i], param_type);
+                }
                 if (!args[i].ok) {
                     array_free(args);
                     return (LlvmValue){0};
@@ -14328,8 +14387,22 @@ internal void llvm_collect_addressed_expr_locals(LlvmFunctionContext* ctx,
         for (u32 i = 0; i < expr->arg_count; ++i) {
             u32 arg_index = expr->first_arg + i;
             if (arg_index < array_count(ctx->hir->call_args)) {
-                llvm_collect_addressed_expr_locals(
-                    ctx, ctx->hir->call_args[arg_index].expr_index);
+                u32 arg_expr_index = ctx->hir->call_args[arg_index].expr_index;
+                u32 callee_type =
+                    expr->callee_expr_index < array_count(ctx->hir->exprs)
+                        ? ctx->hir->exprs[expr->callee_expr_index].type_index
+                        : sema_no_type();
+                u32 param_type =
+                    llvm_function_param_type(ctx->sema, callee_type, i);
+                if (arg_expr_index < array_count(ctx->hir->exprs) &&
+                    llvm_type_kind(
+                        ctx->sema,
+                        ctx->hir->exprs[arg_expr_index].type_index) ==
+                        STK_Array &&
+                    llvm_type_kind(ctx->sema, param_type) == STK_Slice) {
+                    llvm_mark_addressed_local_base(ctx, arg_expr_index);
+                }
+                llvm_collect_addressed_expr_locals(ctx, arg_expr_index);
             }
         }
         break;

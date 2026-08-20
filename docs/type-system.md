@@ -390,8 +390,13 @@ The index expression must be an integer type. In debug builds, the backend emits
 a bounds check before each fixed-array index and aborts with a fatal message if
 the index is outside the fixed length. Release builds may omit those checks.
 
-Fixed arrays do not implicitly coerce to slices. Use slicing syntax when a slice
-view is required:
+Fixed arrays implicitly coerce to same-element slices when a slice is expected.
+The slice borrows the array's original storage, so mutations through the slice
+remain visible through the array:
+
+- `consume(values)` where `consume` takes `[]i32` and `values` is `[3]i32`
+
+Slicing syntax remains available when an explicit view or subrange is useful:
 
 - `all: []i32 = values[..]`
 - `literal: []i32 = [1, 2, 3][..]`
