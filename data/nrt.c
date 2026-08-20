@@ -151,6 +151,21 @@ bool string_eq(const NerdString* lhs, const NerdString* rhs)
     return memcmp(lhs->data, rhs->data, lhs->count) == 0;
 }
 
+bool slice_eq(const void* lhs,
+              size_t      lhs_count,
+              const void* rhs,
+              size_t      rhs_count,
+              size_t      element_size)
+{
+    if (lhs_count != rhs_count) {
+        return false;
+    }
+    if (lhs_count == 0) {
+        return true;
+    }
+    return memcmp(lhs, rhs, lhs_count * element_size) == 0;
+}
+
 static const size_t NRT_ARENA_RESERVE_SIZE = (size_t)1 << 32;
 static const size_t NRT_ARENA_MAX_CURSOR   = UINT32_MAX;
 

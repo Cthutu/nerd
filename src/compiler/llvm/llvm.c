@@ -9400,30 +9400,64 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                               STRINGV(rhs_count),
                               STRINGV(rhs_type),
                               STRINGV(rhs.value));
-                    string data_eq  = llvm_temp(ctx);
-                    string count_eq = llvm_temp(ctx);
-                    string both_eq  = llvm_temp(ctx);
-                    sb_format(
-                        ctx->sb,
-                        "  " STRINGP " = icmp eq ptr " STRINGP ", " STRINGP "\n"
-                        "  " STRINGP " = icmp eq i64 " STRINGP ", " STRINGP "\n"
-                        "  " STRINGP " = and i1 " STRINGP ", " STRINGP "\n",
-                        STRINGV(data_eq),
-                        STRINGV(lhs_data),
-                        STRINGV(rhs_data),
-                        STRINGV(count_eq),
-                        STRINGV(lhs_count),
-                        STRINGV(rhs_count),
-                        STRINGV(both_eq),
-                        STRINGV(data_eq),
-                        STRINGV(count_eq));
-                    if (expr->binary_op == HIR_BINARY_Equal) {
-                        temp = both_eq;
-                    } else {
+                    bool nil_comparison =
+                        ctx->hir->exprs[expr->lhs_expr_index].kind ==
+                            HIR_EXPR_NilLiteral ||
+                        ctx->hir->exprs[expr->rhs_expr_index].kind ==
+                            HIR_EXPR_NilLiteral;
+                    if (nil_comparison) {
+                        string data_eq  = llvm_temp(ctx);
+                        string count_eq = llvm_temp(ctx);
+                        string both_eq  = llvm_temp(ctx);
                         sb_format(ctx->sb,
-                                  "  " STRINGP " = xor i1 " STRINGP ", 1\n",
-                                  STRINGV(temp),
-                                  STRINGV(both_eq));
+                                  "  " STRINGP " = icmp eq ptr " STRINGP
+                                  ", " STRINGP "\n"
+                                  "  " STRINGP " = icmp eq i64 " STRINGP
+                                  ", " STRINGP "\n"
+                                  "  " STRINGP " = and i1 " STRINGP ", " STRINGP
+                                  "\n",
+                                  STRINGV(data_eq),
+                                  STRINGV(lhs_data),
+                                  STRINGV(rhs_data),
+                                  STRINGV(count_eq),
+                                  STRINGV(lhs_count),
+                                  STRINGV(rhs_count),
+                                  STRINGV(both_eq),
+                                  STRINGV(data_eq),
+                                  STRINGV(count_eq));
+                        if (expr->binary_op == HIR_BINARY_Equal) {
+                            temp = both_eq;
+                        } else {
+                            sb_format(ctx->sb,
+                                      "  " STRINGP " = xor i1 " STRINGP ", 1\n",
+                                      STRINGV(temp),
+                                      STRINGV(both_eq));
+                        }
+                    } else {
+                        u32 element_type =
+                            ctx->sema->types[lhs.type_index].first_param_type;
+                        u64 element_size =
+                            llvm_type_sizeof_bytes(ctx->sema, element_type);
+                        string both_eq = llvm_temp(ctx);
+                        sb_format(ctx->sb,
+                                  "  " STRINGP
+                                  " = call i1 @slice_eq(ptr " STRINGP
+                                  ", i64 " STRINGP ", ptr " STRINGP
+                                  ", i64 " STRINGP ", i64 %llu)\n",
+                                  STRINGV(both_eq),
+                                  STRINGV(lhs_data),
+                                  STRINGV(lhs_count),
+                                  STRINGV(rhs_data),
+                                  STRINGV(rhs_count),
+                                  (unsigned long long)element_size);
+                        if (expr->binary_op == HIR_BINARY_Equal) {
+                            temp = both_eq;
+                        } else {
+                            sb_format(ctx->sb,
+                                      "  " STRINGP " = xor i1 " STRINGP ", 1\n",
+                                      STRINGV(temp),
+                                      STRINGV(both_eq));
+                        }
                     }
                 } else if (lhs_kind == STK_Enum &&
                            llvm_type_kind(ctx->sema, rhs.type_index) ==
@@ -16518,6 +16552,38 @@ internal void llvm_render_string_runtime_declarations(StringBuilder* sb)
         sb, decls, (u32)(sizeof(decls) / sizeof(decls[0])));
 }
 
+internal void llvm_render_slice_runtime_declarations(StringBuilder* sb)
+{
+    static const LlvmRuntimeDecl decls[] = {
+        {"i1", "slice_eq", "ptr, i64, ptr, i64, i64"},
+    };
+    llvm_render_runtime_declarations(
+        sb, decls, (u32)(sizeof(decls) / sizeof(decls[0])));
+}
+
+internal bool llvm_hir_uses_slice_runtime(const Hir* hir, const Sema* sema)
+{
+    for (u32 i = 0; i < array_count(hir->exprs); ++i) {
+        const HirExpr* expr = &hir->exprs[i];
+        if (expr->kind != HIR_EXPR_Binary ||
+            (expr->binary_op != HIR_BINARY_Equal &&
+             expr->binary_op != HIR_BINARY_NotEqual) ||
+            expr->lhs_expr_index >= array_count(hir->exprs) ||
+            expr->rhs_expr_index >= array_count(hir->exprs)) {
+            continue;
+        }
+        if (hir->exprs[expr->lhs_expr_index].kind != HIR_EXPR_NilLiteral &&
+            hir->exprs[expr->rhs_expr_index].kind != HIR_EXPR_NilLiteral &&
+            llvm_type_kind(sema, hir->exprs[expr->lhs_expr_index].type_index) ==
+                STK_Slice &&
+            llvm_type_kind(sema, hir->exprs[expr->rhs_expr_index].type_index) ==
+                STK_Slice) {
+            return true;
+        }
+    }
+    return false;
+}
+
 internal void llvm_render_assert_runtime_declarations(StringBuilder* sb)
 {
     static const LlvmRuntimeDecl decls[] = {
@@ -17240,6 +17306,7 @@ string llvm_render_hir(const Hir*   hir,
 
     bool uses_string_runtime = llvm_hir_uses_string_runtime(hir, render_sema);
     bool uses_assert_runtime = llvm_hir_uses_assert(hir);
+    bool uses_slice_runtime  = llvm_hir_uses_slice_runtime(hir, render_sema);
     bool uses_dynamic_array_runtime =
         llvm_hir_uses_dynamic_array_runtime(hir, render_sema);
     bool uses_arena_runtime =
@@ -17251,13 +17318,16 @@ string llvm_render_hir(const Hir*   hir,
     if (uses_assert_runtime) {
         llvm_render_assert_runtime_declarations(&sb);
     }
+    if (uses_slice_runtime) {
+        llvm_render_slice_runtime_declarations(&sb);
+    }
     if (uses_dynamic_array_runtime) {
         llvm_render_dynamic_array_runtime_declarations(&sb);
     }
     if (uses_arena_runtime) {
         llvm_render_arena_runtime_declarations(&sb);
     }
-    if (uses_string_runtime || uses_assert_runtime ||
+    if (uses_string_runtime || uses_assert_runtime || uses_slice_runtime ||
         uses_dynamic_array_runtime || uses_arena_runtime) {
         sb_append_char(&sb, '\n');
     }

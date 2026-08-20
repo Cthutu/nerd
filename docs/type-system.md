@@ -534,7 +534,10 @@ within their operator family:
 
 - `+`, `-`, `*`, `/` require matching numeric operands
 - `%`, `&`, `^`, `|` require matching integer operands
-- `==` and `!=` require matching numeric or `bool` operands
+- `==` and `!=` require matching numeric or `bool` operands, matching slices
+  of integer or `bool` elements, or a type implementing `Eq`. Slice equality
+  compares lengths and element contents; comparisons with `nil` retain nil
+  identity semantics.
 - `<`, `<=`, `>`, `>=` require matching numeric operands
 - `!`, `&&`, `||` require `bool` operands
 
