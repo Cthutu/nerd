@@ -17,6 +17,6 @@ delete
 ¬
 test
 ¬
-assertion failed at 019-source-test-verbose-failure.input.n:7: boom
+assertion failed at 019-source-test-verbose-failure.input.n:6: boom
 [FAIL] second fails
 source test run failed

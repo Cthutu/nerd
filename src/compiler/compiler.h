@@ -18,6 +18,7 @@ typedef struct {
     usize  start;
     usize  end;
     usize  source_start;
+    string source;
     string source_path;
 } NerdSourceFragment;
 

@@ -299,8 +299,6 @@ internal bool error_source_for_span(NerdSource  source,
             continue;
         }
 
-        usize source_prefix_start = fragment.start - fragment.source_start;
-        usize source_count        = fragment.end - source_prefix_start;
         usize mapped_start =
             span.start - fragment.start + fragment.source_start;
         usize mapped_end =
@@ -308,8 +306,7 @@ internal bool error_source_for_span(NerdSource  source,
                 ? fragment.end - fragment.start + fragment.source_start
                 : span.end - fragment.start + fragment.source_start;
         *out_source = (NerdSource){
-            .source      = string_from(source.source.data + source_prefix_start,
-                                       source_count),
+            .source      = fragment.source,
             .source_path = fragment.source_path,
         };
         *out_span = (ErrorSpan){.start = mapped_start, .end = mapped_end};

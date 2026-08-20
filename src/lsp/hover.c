@@ -514,12 +514,9 @@ internal bool lsp_source_fragment_for_range(NerdSource          source,
             continue;
         }
 
-        usize source_prefix_start = fragment.start - fragment.source_start;
-        usize source_count        = fragment.end - source_prefix_start;
-        *out_fragment             = fragment;
-        *out_source               = (NerdSource){
-            .source      = string_from(source.source.data + source_prefix_start,
-                                       source_count),
+        *out_fragment = fragment;
+        *out_source   = (NerdSource){
+            .source      = fragment.source,
             .source_path = fragment.source_path,
         };
         *out_start = start_offset - fragment.start + fragment.source_start;

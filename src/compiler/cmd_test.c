@@ -382,6 +382,7 @@ internal NerdSourceFragment source_test_fragment_for_range(
     NerdSource source, usize start, usize end, usize generated_start)
 {
     string source_path  = source.source_path;
+    string source_text  = source.source;
     usize  source_start = start;
 
     for (u32 i = 0; i < array_count(source.fragments); ++i) {
@@ -391,6 +392,7 @@ internal NerdSourceFragment source_test_fragment_for_range(
         }
 
         source_path  = fragment.source_path;
+        source_text  = fragment.source;
         source_start = start - fragment.start + fragment.source_start;
         break;
     }
@@ -399,6 +401,7 @@ internal NerdSourceFragment source_test_fragment_for_range(
         .start        = generated_start,
         .end          = generated_start + (end - start),
         .source_start = source_start,
+        .source       = source_text,
         .source_path  = source_path,
     };
 }

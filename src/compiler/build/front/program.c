@@ -609,7 +609,12 @@ internal bool program_expand_part_root(ProgramInfo* program,
     }
 
     string expanded = sb_to_string(&sb);
-    *out_source     = (NerdSource){
+    for (u32 i = 0; i < array_count(fragments); ++i) {
+        fragments[i].source =
+            string_from(expanded.data + fragments[i].start,
+                        fragments[i].end - fragments[i].start);
+    }
+    *out_source = (NerdSource){
         .source      = expanded,
         .source_path = source.source_path,
         .fragments   = fragments,
@@ -690,6 +695,11 @@ internal bool program_expand_module_parts(ProgramInfo* program,
     }
 
     string expanded = sb_to_string(&sb);
+    for (u32 i = 0; i < array_count(fragments); ++i) {
+        fragments[i].source =
+            string_from(expanded.data + fragments[i].start,
+                        fragments[i].end - fragments[i].start);
+    }
     array_free(part_source_paths);
     array_free(part_paths);
     arena_done(&temp);

@@ -125,11 +125,8 @@ internal void hir_node_source_location(const Lexer* lexer,
             continue;
         }
 
-        usize source_prefix_start = fragment.start - fragment.source_start;
-        usize source_count        = fragment.end - source_prefix_start;
-        mapped                    = (NerdSource){
-            .source = string_from(
-                lexer->source.source.data + source_prefix_start, source_count),
+        mapped = (NerdSource){
+            .source      = fragment.source,
             .source_path = fragment.source_path,
         };
         mapped_offset = offset - fragment.start + fragment.source_start;
@@ -169,11 +166,8 @@ internal void hir_token_source_location(const Lexer* lexer,
             continue;
         }
 
-        usize source_prefix_start = fragment.start - fragment.source_start;
-        usize source_count        = fragment.end - source_prefix_start;
-        mapped                    = (NerdSource){
-            .source = string_from(
-                lexer->source.source.data + source_prefix_start, source_count),
+        mapped = (NerdSource){
+            .source      = fragment.source,
             .source_path = fragment.source_path,
         };
         mapped_offset = offset - fragment.start + fragment.source_start;
