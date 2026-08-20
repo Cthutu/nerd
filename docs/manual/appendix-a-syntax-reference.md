@@ -83,6 +83,9 @@ pub use module.path
 on "platform-key" { declarations }
 on !"platform-key" { declarations }
 assert on "platform-key"
+
+FFI and intrinsic fixed parameters use the compulsory `name: Type` form.
+The variadic `...` marker remains unnamed.
 assert on !"platform-key"
 pragma symbol
 pragma symbol(123, 1.5, "text", yes, no)

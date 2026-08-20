@@ -291,6 +291,8 @@ intended exit code.
 - `ffi "lib" { local :: foreign (...) }` renames one grouped declaration.
 - `local :: ffi "lib" foreign (...)` uses `local` in Nerd and `foreign` for
   linking.
+- Every fixed FFI parameter is written `name: Type`; names are compulsory and
+  appear in hover and signature help.
 - C strings use `c"..."`.
 - Multi-line strings use `"""..."""`; a leading newline is dropped and closing
   delimiter indentation is trimmed from body lines.

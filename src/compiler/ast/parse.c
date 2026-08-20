@@ -1089,15 +1089,23 @@ internal bool ast_parse_ffi_signature(AstParseState* state,
                 break;
             }
 
+            if (state->token.kind != TK_Symbol) {
+                return error_0203_expected_token_ex(
+                    state->lexer->source,
+                    ast_token_span(state, &state->token),
+                    TK_Symbol,
+                    state->token.kind,
+                    "FFI parameters require a name before their type.",
+                    "Write the parameter as `name: Type`.");
+            }
+
             AstToken param_token = state->token;
-            u32      symbol      = U32_MAX;
-            if (state->token.kind == TK_Symbol &&
-                ast_peek_kind_at(state, 0) == TK_Colon) {
-                symbol = state->token.value.symbol_handle;
-                if (!ast_expect_token(state, TK_Colon) ||
-                    !ast_next_token(state)) {
-                    return false;
-                }
+            u32      symbol      = state->token.value.symbol_handle;
+            if (!ast_expect_token(state, TK_Colon)) {
+                return false;
+            }
+            if (!ast_next_token(state)) {
+                return false;
             }
 
             u32 type_node = 0;

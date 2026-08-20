@@ -1,6 +1,6 @@
 use std.io
 
-fcntl_local :: ffi "c" fcntl (i32, i32, ...) -> i32
+fcntl_local :: ffi "c" fcntl (fd: i32, command: i32, ...) -> i32
 
 main :: fn () {
     result := fcntl_local(0, 1, 0)
@@ -124,7 +124,7 @@ main :: fn () {
         "result": {
             "contents": {
                 "kind": "markdown",
-                "value": "```nerd\nfcntl_local :: fn (i32, i32, ...) -> i32\n```\n\n- Kind: function"
+                "value": "```nerd\nfcntl_local :: fn (fd: i32, command: i32, ...) -> i32\n```\n\n- Kind: function"
             }
         }
     },

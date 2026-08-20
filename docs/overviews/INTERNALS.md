@@ -208,6 +208,10 @@ type declaration and reports Nerd's name-first declaration forms. The formatter
 preserves that malformed sequence on one line so formatting cannot obscure the
 source relationship used by the diagnostic.
 
+FFI and intrinsic signatures retain compulsory parameter names in their normal
+`AstParam` rows. The ABI-facing semantic function type remains name-independent,
+while hover and signature help read the AST names for editor-visible labels.
+
 The multiline-array formatter associates an element's trailing comment with
 the separating comma when one is present, or with the element's final token
 otherwise. It emits and consumes that comment alongside the reconstructed

@@ -8,7 +8,7 @@ Use `ffi` with an explicit library operand, foreign symbol name, and
 signature:
 
 ```nerd
-ffi "c" abs (i32) -> i32
+ffi "c" abs (value: i32) -> i32
 ```
 
 This declares `abs` as both:
@@ -16,14 +16,18 @@ This declares `abs` as both:
 - the Nerd-visible name used in source
 - the foreign symbol name emitted for the C linker
 
+Every fixed parameter uses `name: Type`. The name is compulsory so diagnostics,
+hover, and signature help can describe call arguments clearly; it does not
+change the foreign ABI.
+
 Several declarations that use the same library can be grouped in an FFI block:
 
 ```nerd
 ffi "c" {
-    abs (i32) -> i32
-    strlen (^i8) -> usize
-    length :: strlen (^i8) -> usize
-    pub seed_rng :: srand (u32)
+    abs (value: i32) -> i32
+    strlen (text: ^i8) -> usize
+    length :: strlen (text: ^i8) -> usize
+    pub seed_rng :: srand (seed: u32)
 }
 ```
 
@@ -34,12 +38,12 @@ entry without making the whole block public.
 You can also bind the foreign symbol to a different Nerd-visible name:
 
 ```nerd
-seed_rng :: ffi "c" srand (u32)
+seed_rng :: ffi "c" srand (seed: u32)
 ```
 
 The local binding name is `seed_rng`; the foreign symbol name is `srand`. Source
 code calls `seed_rng(...)`, while generated code links against `srand`. The same
-rename can be written inside an FFI block as `seed_rng :: srand (u32)`.
+rename can be written inside an FFI block as `seed_rng :: srand (seed: u32)`.
 
 Use the bound form when:
 
@@ -54,12 +58,12 @@ The library operand is any compile-time expression whose value is a `string`.
 These are valid:
 
 ```nerd
-ffi "c" abs (i32) -> i32
+ffi "c" abs (value: i32) -> i32
 
 libc :: "c"
-puts_line :: ffi libc puts (^i8) -> i32
+puts_line :: ffi libc puts (text: ^i8) -> i32
 
-sqrt_fn :: ffi ("m") sqrt (f64) -> f64
+sqrt_fn :: ffi ("m") sqrt (value: f64) -> f64
 ```
 
 Runtime string values are not valid library operands.
@@ -69,7 +73,7 @@ Runtime string values are not valid library operands.
 Omitting `-> <type>` means the foreign function returns `void`:
 
 ```nerd
-seed_rng :: ffi "c" srand (u32)
+seed_rng :: ffi "c" srand (seed: u32)
 ```
 
 ## Varargs
@@ -77,7 +81,7 @@ seed_rng :: ffi "c" srand (u32)
 `...` is only valid in FFI signatures:
 
 ```nerd
-ffi "c" fcntl (i32, i32, ...) -> i32
+ffi "c" fcntl (fd: i32, command: i32, ...) -> i32
 ```
 
 ## ABI

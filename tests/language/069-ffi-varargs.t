@@ -2,7 +2,7 @@
 
 use std.io
 
-ffi "c" fcntl (i32, i32, ...) -> i32
+ffi "c" fcntl (fd: i32, command: i32, ...) -> i32
 
 main :: fn() {
     result := fcntl(0, 1, 0)

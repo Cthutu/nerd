@@ -8,15 +8,15 @@
 
 -- Imports runtime support functions supplied by the Nerd runtime.
 ffi "nrt" {
-    nrt_pr (^u8, usize)
+    nrt_pr (data: ^u8, count: usize)
 
-    nrt_prn (^u8, usize)
+    nrt_prn (data: ^u8, count: usize)
 
-    nrt_epr (^u8, usize)
+    nrt_epr (data: ^u8, count: usize)
 
-    nrt_eprn (^u8, usize)
+    nrt_eprn (data: ^u8, count: usize)
 
-    nrt_abort (^u8, usize) -> !
+    nrt_abort (data: ^u8, count: usize) -> !
 
     nrt_arena_done (arena: ^arena)
 

@@ -157,7 +157,7 @@ ffi-declaration ::= 'ffi' expression ffi-entry
 
 ffi-entry       ::= IDENT [ '::' IDENT ] '(' ffi-param-list? ')' [ '->' type ]
 
-ffi-param       ::= [ IDENT ':' ] type
+ffi-param       ::= IDENT ':' type
 ffi-param-list  ::= ffi-param { ',' ffi-param } [ ',' '...' ]
                   | '...'
 

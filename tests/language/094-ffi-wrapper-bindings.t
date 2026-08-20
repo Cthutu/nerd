@@ -1,4 +1,4 @@
-c_realloc :: ffi "c" realloc (^void, usize) -> ^void
+c_realloc :: ffi "c" realloc (memory: ^void, size: usize) -> ^void
 
 realloc :: fn (ptr: ^void, size: usize) -> ^void {
     return c_realloc(ptr, size)

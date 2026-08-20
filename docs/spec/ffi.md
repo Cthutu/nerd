@@ -13,7 +13,7 @@ ffi-declaration ::= 'ffi' expression ffi-entry
                   | intrinsic-declaration
 
 ffi-entry       ::= IDENT [ '::' IDENT ] '(' ffi-param-list? ')' [ '->' type ]
-ffi-param       ::= [ IDENT ':' ] type
+ffi-param       ::= IDENT ':' type
 ffi-param-list  ::= ffi-param { ',' ffi-param } [ ',' '...' ]
                   | '...'
 
@@ -44,8 +44,10 @@ The string also becomes the foreign symbol name used by lowering.
 
 ## Parameters
 
-FFI parameters may be named or unnamed. Varargs are written with `...` at the
-end of the parameter list.
+Every fixed FFI parameter requires an identifier and colon before its type.
+These names are source metadata for diagnostics, hover, and signature help;
+they do not affect the C ABI. Varargs are written with `...` at the end of the
+parameter list and do not have a name.
 
 The parser has a slot for default arguments in FFI signatures, but semantic
 analysis rejects defaults on FFI parameters.
@@ -59,5 +61,5 @@ arrays, tuples, and enums are not documented here as FFI-safe values.
 
 ## Code/Manual Notes
 
-No current contradiction was found between `docs/ffi.md` and the implementation
-while adding this spec. Both agree that FFI defaults are rejected semantically.
+The user-facing FFI documentation and this spec both require parameter names
+and agree that FFI defaults are rejected semantically.

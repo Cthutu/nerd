@@ -1,4 +1,4 @@
-bad_param :: ffi "c" bad (string)
+bad_param :: ffi "c" bad (value: string)
 
 main :: fn() {}
 ¬
@@ -7,13 +7,13 @@ main :: fn() {}
     "source_file": "tests/errors/037-ffi-functions.e",
     "primary_location": {
         "line": 1,
-        "column": 27
+        "column": 34
     },
     "references": [
         {
             "kind": "primary",
             "line": 1,
-            "column": 27,
+            "column": 34,
             "length": 6,
             "message": "This expression has type `string`"
         }
@@ -50,7 +50,7 @@ main :: fn() {}
     ]
 }
 ¬
-ffi "c" fcntl (i32, i32, ...) -> i32
+ffi "c" fcntl (fd: i32, command: i32, ...) -> i32
 
 main :: fn() {
     fcntl(0, 1, "bad")

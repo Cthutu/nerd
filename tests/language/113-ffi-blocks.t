@@ -1,7 +1,7 @@
 -- Declares multiple foreign functions in one FFI block.
 ffi "c" {
-    absolute :: abs (i32) -> i32
-    pub c_strlen :: strlen (^i8) -> usize
+    absolute :: abs (value: i32) -> i32
+    pub c_strlen :: strlen (text: ^i8) -> usize
 }
 
 main :: fn () -> i32 {

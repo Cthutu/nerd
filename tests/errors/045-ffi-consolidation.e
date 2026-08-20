@@ -2,7 +2,7 @@ Point :: plex {
     x i32
 }
 
-bad_point_local :: ffi "c" bad_point (Point)
+bad_point_local :: ffi "c" bad_point (point: Point)
 
 main :: fn() {}¬
 {
@@ -10,13 +10,13 @@ main :: fn() {}¬
     "source_file": "tests/errors/045-ffi-consolidation.e",
     "primary_location": {
         "line": 5,
-        "column": 39
+        "column": 46
     },
     "references": [
         {
             "kind": "primary",
             "line": 5,
-            "column": 39,
+            "column": 46,
             "length": 5,
             "message": "This expression has type `Point`"
         }
@@ -55,7 +55,7 @@ main :: fn() {}¬
         "Change the expression or annotation so both sides use the same type."
     ]
 }
-¬bad_tuple_local :: ffi "c" bad_tuple ((i32, i32))
+¬bad_tuple_local :: ffi "c" bad_tuple (value: (i32, i32))
 
 main :: fn() {}¬
 {
@@ -63,13 +63,13 @@ main :: fn() {}¬
     "source_file": "tests/errors/045-ffi-consolidation.e",
     "primary_location": {
         "line": 1,
-        "column": 39
+        "column": 46
     },
     "references": [
         {
             "kind": "primary",
             "line": 1,
-            "column": 39,
+            "column": 46,
             "length": 1,
             "message": "This expression has type `(i32, i32)`"
         }

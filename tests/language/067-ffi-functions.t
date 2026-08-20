@@ -1,6 +1,6 @@
 use std.io
 
-ffi "c" abs (i32) -> i32
+ffi "c" abs (value: i32) -> i32
 
 main :: fn() {
     value := abs(-7)

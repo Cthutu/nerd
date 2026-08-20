@@ -2,8 +2,8 @@ use std.io
 
 libc :: "c"
 
-seed_rng :: ffi libc srand (u32)
-write_line :: ffi ("c") puts (^i8) -> i32
+seed_rng :: ffi libc srand (seed: u32)
+write_line :: ffi ("c") puts (text: ^i8) -> i32
 
 Point :: plex #c {
     x i32
@@ -20,9 +20,9 @@ Blob :: union {
     f f32
 }
 
-accept_point_ffi :: ffi libc accept_point (Point)
-accept_packed_ffi :: ffi libc accept_packed (Packed)
-flip_blob_ffi :: ffi libc flip_blob (Blob) -> Blob
+accept_point_ffi :: ffi libc accept_point (point: Point)
+accept_packed_ffi :: ffi libc accept_packed (value: Packed)
+flip_blob_ffi :: ffi libc flip_blob (value: Blob) -> Blob
 
 main :: fn () {
     seed_rng(1)

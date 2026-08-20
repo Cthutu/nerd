@@ -12,7 +12,7 @@ The simplest form declares a foreign function with the same Nerd-visible name
 as the C symbol:
 
 ```nerd
-ffi "c" abs (i32) -> i32  -- declare the C function abs
+ffi "c" abs (value: i32) -> i32  -- declare the C function abs
 
 main :: fn () -> i32 {
     return abs(-7)  -- run the foreign function
@@ -20,14 +20,16 @@ main :: fn () -> i32 {
 ```
 
 Here `abs` is both the Nerd name and the foreign symbol name.
+FFI parameters must be named with `name: Type`. The names appear in editor hover
+and signature help but do not affect linking or the C ABI.
 
 When several functions come from the same library, group them in an FFI block:
 
 ```nerd
 ffi "c" {
-    abs (i32) -> i32      -- declares the C function abs
-    strlen (^i8) -> usize -- declares the C function strlen
-    length :: strlen (^i8) -> usize -- Nerd name differs from C symbol
+    abs (value: i32) -> i32      -- declares the C function abs
+    strlen (text: ^i8) -> usize  -- declares the C function strlen
+    length :: strlen (text: ^i8) -> usize -- Nerd name differs from C symbol
 }
 ```
 
@@ -42,7 +44,7 @@ Use `pub ffi` when a module should export the declared foreign functions:
 
 ```nerd
 pub ffi "c" {
-    ioctl (i32, i32, ...) -> i32  -- exported from this module
+    ioctl (fd: i32, request: i32, ...) -> i32  -- exported from this module
 }
 ```
 
@@ -55,7 +57,7 @@ pub ffi "c" {
 Use a binding when the Nerd name should differ from the foreign symbol:
 
 ```nerd
-seed_rng :: ffi "c" srand (u32)  -- Nerd name differs from C symbol
+seed_rng :: ffi "c" srand (seed: u32)  -- Nerd name differs from C symbol
 ```
 
 Source code runs `seed_rng(...)`. Generated code links to `srand`.
@@ -64,7 +66,7 @@ Inside an FFI block, omit the repeated library operand:
 
 ```nerd
 ffi "c" {
-    seed_rng :: srand (u32)
+    seed_rng :: srand (seed: u32)
 }
 ```
 
@@ -94,20 +96,20 @@ The library operand is a compile-time string. A compile-time string is a string
 value the compiler can know while building the program:
 
 ```nerd
-ffi "c" puts (^i8) -> i32  -- "c" names the C library
+ffi "c" puts (text: ^i8) -> i32  -- "c" names the C library
 ```
 
 It can also come from a compile-time binding:
 
 ```nerd
 libc :: "c"
-write_line :: ffi libc puts (^i8) -> i32  -- use a compile-time binding
+write_line :: ffi libc puts (text: ^i8) -> i32  -- use a compile-time binding
 ```
 
 Parenthesised compile-time expressions are allowed:
 
 ```nerd
-sqrt_fn :: ffi ("m") sqrt (f64) -> f64  -- parenthesised library expression
+sqrt_fn :: ffi ("m") sqrt (value: f64) -> f64  -- parenthesised library expression
 ```
 
 ## Return Types
@@ -115,7 +117,7 @@ sqrt_fn :: ffi ("m") sqrt (f64) -> f64  -- parenthesised library expression
 If the return type is omitted, the foreign function returns `void`:
 
 ```nerd
-seed_rng :: ffi "c" srand (u32)  -- no -> Type means void
+seed_rng :: ffi "c" srand (seed: u32)  -- no -> Type means void
 ```
 
 Write `-> Type` when the function returns a value.
@@ -125,7 +127,7 @@ Write `-> Type` when the function returns a value.
 Use `...` for C variadic functions:
 
 ```nerd
-ffi "c" printf (^i8, ...) -> i32  -- ... accepts C variadic arguments
+ffi "c" printf (format: ^i8, ...) -> i32  -- accepts C variadic arguments
 ```
 
 Variadic syntax is only for FFI signatures.
@@ -135,7 +137,7 @@ Variadic syntax is only for FFI signatures.
 C string literals use `c"..."`:
 
 ```nerd
-ffi "c" puts (^i8) -> i32
+ffi "c" puts (text: ^i8) -> i32
 
 main :: fn () {
     puts(c"hello")  -- pass a null-terminated C string
@@ -186,7 +188,7 @@ The slice borrows memory. It does not free or own the pointer.
 Prefer wrapping raw FFI in Nerd functions:
 
 ```nerd
-c_realloc :: ffi "c" realloc (^void, usize) -> ^void  -- raw C binding
+c_realloc :: ffi "c" realloc (ptr: ^void, size: usize) -> ^void
 
 realloc :: fn (ptr: ^void, size: usize) -> ^void {
     return c_realloc(ptr, size)  -- wrapper controls the public name

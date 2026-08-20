@@ -1,6 +1,6 @@
 use std.io
 
-abs_local :: ffi "c" abs (i32) -> i32
+abs_local :: ffi "c" abs (value: i32) -> i32
 
 main :: fn () {
     value := abs_local(-7)
@@ -124,7 +124,7 @@ main :: fn () {
         "result": {
             "contents": {
                 "kind": "markdown",
-                "value": "```nerd\nabs_local :: fn (i32) -> i32\n```\n\n- Kind: function"
+                "value": "```nerd\nabs_local :: fn (value: i32) -> i32\n```\n\n- Kind: function"
             }
         }
     },

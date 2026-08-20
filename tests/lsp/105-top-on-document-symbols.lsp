@@ -2,7 +2,7 @@ on "debug" {
     answer :: 7
 
     ffi "c" {
-        pub abs (i32) -> i32
+        pub abs (value: i32) -> i32
     }
 }
 
