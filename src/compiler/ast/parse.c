@@ -3578,6 +3578,8 @@ internal bool ast_parse_pragma(AstParseState* state, u32* out_node)
 //------------------------------------------------------------------------------
 // Parse one statement inside a function or nested block.
 
+internal bool ast_parse_block_on(AstParseState* state, u32* out_node);
+
 internal bool ast_parse_block_statement(AstParseState* state)
 {
     if (state->token.kind == TK_Symbol &&
@@ -3606,6 +3608,15 @@ internal bool ast_parse_block_statement(AstParseState* state)
 
     if (state->token.kind == TK_use) {
         return ast_parse_use(state, NULL, 0, false);
+    }
+
+    if (state->token.kind == TK_on &&
+        ((ast_peek_kind_at(state, 0) == TK_String &&
+          ast_peek_kind_at(state, 1) == TK_LBrace) ||
+         (ast_peek_kind_at(state, 0) == TK_Bang &&
+          ast_peek_kind_at(state, 1) == TK_String &&
+          ast_peek_kind_at(state, 2) == TK_LBrace))) {
+        return ast_parse_block_on(state, NULL);
     }
 
     if (state->token.kind == TK_defer) {
@@ -4157,6 +4168,61 @@ internal bool ast_parse_top_level_on_condition(AstParseState* state,
     }
     *out_string_index = state->token.value.string_index;
     *out_is_negated   = is_negated;
+    return true;
+}
+
+internal bool ast_parse_block_on(AstParseState* state, u32* out_node)
+{
+    ASSERT(state->token.kind == TK_on, "Expected 'on' token");
+    AstToken on_token     = state->token;
+    u32      string_index = U32_MAX;
+    bool     is_negated   = false;
+    if (!ast_parse_top_level_on_condition(
+            state, on_token, &string_index, &is_negated)) {
+        return false;
+    }
+
+    if (!ast_next_token(state)) {
+        return error_0203_expected_token(state->lexer->source,
+                                         ast_token_span(state, &state->token),
+                                         TK_LBrace,
+                                         TK_EOF);
+    }
+    if (state->token.kind != TK_LBrace) {
+        return error_0203_expected_token(state->lexer->source,
+                                         ast_token_span(state, &state->token),
+                                         TK_LBrace,
+                                         state->token.kind);
+    }
+
+    u32 on_node = 0;
+    if (!ast_emit_node(state,
+                       (AstNode){
+                           .kind        = AK_TopOn,
+                           .token_index = on_token.token_index,
+                       },
+                       &on_node)) {
+        return false;
+    }
+
+    u32 body_node = 0;
+    if (!ast_parse_nested_block(state, &body_node)) {
+        return false;
+    }
+
+    u32 info_index = (u32)array_count(state->top_ons);
+    array_push(state->top_ons,
+               (AstTopOnInfo){
+                   .string_index    = string_index,
+                   .body_node_index = body_node,
+                   .is_negated      = is_negated,
+                   .is_assert       = false,
+                   .is_statement    = true,
+               });
+    state->nodes[on_node].a = info_index;
+    if (out_node) {
+        *out_node = on_node;
+    }
     return true;
 }
 

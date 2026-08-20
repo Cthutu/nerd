@@ -6383,10 +6383,12 @@ internal void format_emit_top_on(StringBuilder* sb,
     if (top_on->is_assert) {
         return;
     }
-    sb_append_cstr(sb, " {\n\n");
+    sb_append_cstr(sb, top_on->is_statement ? " {\n" : " {\n\n");
     format_emit_block_contents(
         sb, cst, lexer, top_on->body_node_index, indent_level + 1);
-    sb_append_char(sb, '\n');
+    if (!top_on->is_statement) {
+        sb_append_char(sb, '\n');
+    }
     format_emit_indent(sb, indent_level);
     sb_append_char(sb, '}');
 }

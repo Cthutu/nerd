@@ -174,6 +174,9 @@ defer { statements }
 ## Branching
 
 ```nerd
+on "define" { statements }
+on !"define" { statements }
+
 on condition => expr else expr
 
 on value {

@@ -87,7 +87,8 @@ Use imports sparingly in larger files so readers can tell where names come from.
 
 ## Platform-Gated Imports
 
-Top-level `on` blocks can contain declarations and `use` statements. The
+Compile-time `on` blocks work at module scope and inside function or nested
+blocks. Top-level blocks can contain declarations and `use` statements. The
 condition is a string feature symbol. Built-in symbols include the host platform
 names such as `"windows"` and `"linux"`, `"posix"` on POSIX-like systems,
 `"debug"` or `"release"` for the current build mode, and architecture symbols
@@ -103,6 +104,15 @@ on "linux" {
 Names imported inside an enabled top-level `on` block become visible to the rest
 of the module, just like other top-level imports. Imports inside a disabled
 branch are ignored.
+
+Inside a function, only the selected body is name-resolved, type-checked, and
+generated:
+
+```nerd
+on "windows" {
+    CopyMemory(destination, source, length)
+}
+```
 
 Use `assert on` when the whole file is platform-specific:
 

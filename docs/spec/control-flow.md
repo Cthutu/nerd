@@ -54,7 +54,16 @@ result := for item in items {
 
 ## `on`
 
-Every branch form starts with `on`. Nerd has three `on` shapes:
+Every branch form starts with `on`. Nerd also gives a string-literal condition
+priority as a compile-time define block:
+
+```bnf
+define-on    ::= 'on' [ '!' ] STRING block
+```
+
+The body of an inactive define block is removed before name resolution and type
+checking. This form is valid both at module scope and inside function or nested
+blocks. Ordinary runtime branching has these shapes:
 
 ```bnf
 bool-on      ::= 'on' expression '=>' branch-expression [ 'else' branch-expression ]

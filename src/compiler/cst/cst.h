@@ -419,6 +419,7 @@ typedef struct {
     u32  body_node_index;
     bool is_negated;
     bool is_assert;
+    bool is_statement;
 } CstTopOnInfo;
 
 typedef enum : u32 {

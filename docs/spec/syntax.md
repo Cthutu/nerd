@@ -181,6 +181,7 @@ block           ::= '{' { statement } '}'
 statement       ::= pragma
                   | ffi-declaration
                   | use-declaration
+                  | local-on
                   | 'defer' statement
                   | 'assert' expression [ ',' expression ]
                   | break-statement
@@ -201,10 +202,16 @@ again-statement ::= 'again' [ label ]
 return-statement
                 ::= 'return' [ expression ]
 
+local-on        ::= 'on' [ '!' ] STRING block
+
 label           ::= '$' IDENT
 ```
 
 `again` resumes loop execution at the next iteration.
+
+`local-on` is a compile-time define conditional. Its body participates in name
+resolution, type checking, and code generation only when the named build key is
+enabled (or disabled for the negated form).
 
 ## Built-In Macros
 

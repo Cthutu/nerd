@@ -219,6 +219,7 @@ typedef enum : u8 {
     ANF_ConstKnown = 1 << 0,
     ANF_ConstBusy  = 1 << 1,
     ANF_Public     = 1 << 2,
+    ANF_Disabled   = 1 << 3,
 } AstNodeFlag;
 
 typedef struct {
@@ -434,6 +435,7 @@ typedef struct {
     u32  body_node_index;
     bool is_negated;
     bool is_assert;
+    bool is_statement;
 } AstTopOnInfo;
 
 typedef enum : u32 {

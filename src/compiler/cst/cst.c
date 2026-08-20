@@ -4158,6 +4158,7 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
 }
 
 internal bool cst_parse_block_statement(CstParseState* state);
+internal bool cst_parse_block_on(CstParseState* state, u32* out_node);
 
 internal bool cst_parse_nested_block(CstParseState* state, u32* out_node)
 {
@@ -4553,6 +4554,15 @@ internal bool cst_parse_block_statement(CstParseState* state)
 
     if (cst_current_token(state).kind == TK_use) {
         return cst_parse_use(state, NULL, 0);
+    }
+
+    if (cst_current_token(state).kind == TK_on &&
+        ((cst_peek_kind_at(state, 1) == TK_String &&
+          cst_peek_kind_at(state, 2) == TK_LBrace) ||
+         (cst_peek_kind_at(state, 1) == TK_Bang &&
+          cst_peek_kind_at(state, 2) == TK_String &&
+          cst_peek_kind_at(state, 3) == TK_LBrace))) {
+        return cst_parse_block_on(state, NULL);
     }
 
     if (cst_current_token(state).kind == TK_defer) {
@@ -5536,6 +5546,57 @@ internal bool cst_parse_top_level_on(CstParseState* state, u32* out_node)
     state->cst.nodes[block_node].b  = (u32)array_count(state->cst.nodes);
     if (out_node) {
         *out_node = top_on_node;
+    }
+    return true;
+}
+
+internal bool cst_parse_block_on(CstParseState* state, u32* out_node)
+{
+    u32 token_index = state->token_index;
+    cst_advance(state);
+
+    bool is_negated = false;
+    if (cst_current_token(state).kind == TK_Bang) {
+        is_negated = true;
+        cst_advance(state);
+    }
+
+    if (cst_current_token(state).kind != TK_String) {
+        return false;
+    }
+    u32 string_index = cst_current_string_index(state);
+    if (string_index == CST_NO_VALUE) {
+        return false;
+    }
+    cst_advance(state);
+
+    u32 on_node = 0;
+    if (!cst_emit_node(state,
+                       (CstNode){
+                           .kind        = CK_TopOn,
+                           .token_index = token_index,
+                       },
+                       &on_node)) {
+        return false;
+    }
+
+    u32 body_node = 0;
+    if (!cst_parse_nested_block(state, &body_node)) {
+        return false;
+    }
+
+    u32 info_index = (u32)array_count(state->cst.top_ons);
+    array_push(state->cst.top_ons,
+               (CstTopOnInfo){
+                   .string_index    = string_index,
+                   .body_node_index = body_node,
+                   .is_negated      = is_negated,
+                   .is_assert       = false,
+                   .is_statement    = true,
+               });
+    state->cst.nodes[on_node].a = info_index;
+    if (out_node) {
+        *out_node = on_node;
     }
     return true;
 }

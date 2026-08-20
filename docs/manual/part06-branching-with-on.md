@@ -6,6 +6,26 @@
 statement to run based on a condition or value. All branch forms use `on`: simple
 boolean branches, condition chains, and pattern matching.
 
+## Compile-Time Define Blocks
+
+A string literal directly after `on` selects a block at compile time. This works
+inside functions and nested blocks as well as at module scope:
+
+```nerd
+on "windows" {
+    CopyMemory(destination, source, length)
+}
+
+on !"windows" {
+    portable_copy(destination, source, length)
+}
+```
+
+Inactive bodies are removed before names are resolved or types are checked, so
+they may safely refer to APIs available only on their selected platform. The
+string may name a platform, build mode, architecture, or a key supplied with
+`-Dname`.
+
 ## Short Boolean Form
 
 Use `on condition => expr else expr` for a compact conditional expression:

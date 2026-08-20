@@ -5307,6 +5307,10 @@ sema_node_is_inside_disabled_top_on_body(const FrontEndOptions* options,
                                          const Ast*             ast,
                                          u32                    node_index)
 {
+    if (node_index < array_count(ast->nodes) &&
+        ast_has_flag(&ast->nodes[node_index], ANF_Disabled)) {
+        return true;
+    }
     for (u32 i = 0; i < array_count(ast->nodes); ++i) {
         const AstNode* owner = &ast->nodes[i];
         if (owner->kind != AK_TopOn) {

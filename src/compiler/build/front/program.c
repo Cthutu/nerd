@@ -90,6 +90,10 @@ typedef struct {
     FrontEndState*  front_end;
 } ProgramFrontEndContext;
 
+internal void program_select_local_on_blocks(const FrontEndOptions* options,
+                                             const Lexer*           lexer,
+                                             Ast*                   ast);
+
 internal bool program_front_end_lex(void* data)
 {
     ProgramFrontEndContext* ctx = data;
@@ -110,6 +114,8 @@ internal bool program_front_end_parse(void* data)
         ctx->front_end->readiness.ast = FRONT_END_PRODUCT_Missing;
         return false;
     }
+    program_select_local_on_blocks(
+        &ctx->options, &ctx->front_end->lexer, &ctx->front_end->ast);
     ctx->front_end->readiness.ast = FRONT_END_PRODUCT_Complete;
     return true;
 }
@@ -289,6 +295,38 @@ internal bool program_top_on_is_enabled(const FrontEndOptions* options,
     bool                enabled =
         program_keyword_is_defined(options, lexer->strings[info->string_index]);
     return info->is_negated ? !enabled : enabled;
+}
+
+// Keep conditional source structure in the parsed AST for tooling, then expose
+// only the selected local body to semantic analysis and lowering.
+internal void program_select_local_on_blocks(const FrontEndOptions* options,
+                                             const Lexer*           lexer,
+                                             Ast*                   ast)
+{
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        AstNode* node = &ast->nodes[i];
+        if (node->kind != AK_TopOn || !ast->top_ons[node->a].is_statement) {
+            continue;
+        }
+
+        const AstTopOnInfo* info = &ast->top_ons[node->a];
+        AstNode*            body = &ast->nodes[info->body_node_index];
+        ASSERT(body->kind == AK_Block, "Expected local on body block");
+        bool enabled    = program_top_on_is_enabled(options, lexer, ast, node);
+        u32  body_first = body->a;
+        u32  body_end   = body->b;
+        if (!enabled) {
+            for (u32 child = body_first; child < body_end; ++child) {
+                ast->nodes[child].flags |= ANF_Disabled;
+            }
+            body->a = body_end;
+            body->b = body_end;
+        }
+
+        node->kind = AK_Block;
+        node->a    = info->body_node_index;
+        node->b    = body_end;
+    }
 }
 
 internal ErrorSpan program_node_span(const Lexer* lexer, const AstNode* node)
