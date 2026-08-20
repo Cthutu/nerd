@@ -9461,6 +9461,50 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                                       STRINGV(both_eq));
                         }
                     }
+                } else if (lhs_kind == STK_Array && rhs_kind == STK_Array) {
+                    string lhs_slot = llvm_temp(ctx);
+                    string rhs_slot = llvm_temp(ctx);
+                    string rhs_type = llvm_type_string(ctx, rhs.type_index);
+                    sb_format(
+                        ctx->sb,
+                        "  " STRINGP " = alloca " STRINGP "\n"
+                        "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n"
+                        "  " STRINGP " = alloca " STRINGP "\n"
+                        "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n",
+                        STRINGV(lhs_slot),
+                        STRINGV(type),
+                        STRINGV(type),
+                        STRINGV(lhs.value),
+                        STRINGV(lhs_slot),
+                        STRINGV(rhs_slot),
+                        STRINGV(rhs_type),
+                        STRINGV(rhs_type),
+                        STRINGV(rhs.value),
+                        STRINGV(rhs_slot));
+                    u32 element_type =
+                        ctx->sema->types[lhs.type_index].first_param_type;
+                    u64 element_size =
+                        llvm_type_sizeof_bytes(ctx->sema, element_type);
+                    u32 element_count =
+                        llvm_array_count(ctx->sema, lhs.type_index);
+                    string both_eq = llvm_temp(ctx);
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = call i1 @slice_eq(ptr " STRINGP
+                              ", i64 %u, ptr " STRINGP ", i64 %u, i64 %llu)\n",
+                              STRINGV(both_eq),
+                              STRINGV(lhs_slot),
+                              element_count,
+                              STRINGV(rhs_slot),
+                              element_count,
+                              (unsigned long long)element_size);
+                    if (expr->binary_op == HIR_BINARY_Equal) {
+                        temp = both_eq;
+                    } else {
+                        sb_format(ctx->sb,
+                                  "  " STRINGP " = xor i1 " STRINGP ", 1\n",
+                                  STRINGV(temp),
+                                  STRINGV(both_eq));
+                    }
                 } else if (lhs_kind == STK_Enum &&
                            llvm_type_kind(ctx->sema, rhs.type_index) ==
                                STK_Enum) {
@@ -16579,12 +16623,14 @@ internal bool llvm_hir_uses_slice_runtime(const Hir* hir, const Sema* sema)
             expr->rhs_expr_index >= array_count(hir->exprs)) {
             continue;
         }
-        if (hir->exprs[expr->lhs_expr_index].kind != HIR_EXPR_NilLiteral &&
-            hir->exprs[expr->rhs_expr_index].kind != HIR_EXPR_NilLiteral &&
-            llvm_type_kind(sema, hir->exprs[expr->lhs_expr_index].type_index) ==
-                STK_Slice &&
-            llvm_type_kind(sema, hir->exprs[expr->rhs_expr_index].type_index) ==
-                STK_Slice) {
+        SemaTypeKind lhs_kind =
+            llvm_type_kind(sema, hir->exprs[expr->lhs_expr_index].type_index);
+        SemaTypeKind rhs_kind =
+            llvm_type_kind(sema, hir->exprs[expr->rhs_expr_index].type_index);
+        if ((lhs_kind == STK_Array && rhs_kind == STK_Array) ||
+            (hir->exprs[expr->lhs_expr_index].kind != HIR_EXPR_NilLiteral &&
+             hir->exprs[expr->rhs_expr_index].kind != HIR_EXPR_NilLiteral &&
+             lhs_kind == STK_Slice && rhs_kind == STK_Slice)) {
             return true;
         }
     }

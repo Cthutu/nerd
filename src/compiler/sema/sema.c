@@ -20697,17 +20697,18 @@ validate_type:
                     type_index = sema_builtin_type(sema, STK_Bool);
                     break;
                 }
-                bool slice_value_equality = false;
+                bool collection_value_equality = false;
                 if (lhs_type != sema_no_type() &&
-                    sema->types[lhs_type].kind == STK_Slice) {
+                    (sema->types[lhs_type].kind == STK_Array ||
+                     sema->types[lhs_type].kind == STK_Slice)) {
                     u32 element_type = sema->types[lhs_type].first_param_type;
-                    slice_value_equality =
+                    collection_value_equality =
                         sema_type_is_concrete_integer(sema, element_type) ||
                         (element_type != sema_no_type() &&
                          sema->types[element_type].kind == STK_Bool);
                 }
                 if (!sema_type_is_equality_comparable(sema, lhs_type) &&
-                    !slice_value_equality) {
+                    !collection_value_equality) {
                     if ((ast->nodes[node->a].kind == AK_NilLiteral ||
                          ast->nodes[node->b].kind == AK_NilLiteral) &&
                         lhs_type != sema_no_type() &&
