@@ -1108,6 +1108,29 @@ internal bool ast_on_else_is_pattern_table(const AstParseState* state)
     return false;
 }
 
+internal bool ast_on_expr_is_condition_shaped(const AstParseState* state,
+                                              u32                  node_index)
+{
+    if (node_index >= array_count(state->nodes)) {
+        return false;
+    }
+    switch (state->nodes[node_index].kind) {
+    case AK_BoolLiteral:
+    case AK_LogicalNot:
+    case AK_Equal:
+    case AK_NotEqual:
+    case AK_Less:
+    case AK_LessEqual:
+    case AK_Greater:
+    case AK_GreaterEqual:
+    case AK_LogicalAnd:
+    case AK_LogicalOr:
+        return true;
+    default:
+        return false;
+    }
+}
+
 internal bool
 ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
 {
@@ -1285,6 +1308,15 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
                 state->token.source,
                 ast_token_span(state, &state->token),
                 TK_else);
+        }
+        if (ast_on_expr_is_condition_shaped(state, condition_node) &&
+            !ast_on_else_is_pattern_table(state)) {
+            return error_0201_missing_value_ex(
+                state->token.source,
+                ast_token_span(state, &state->token),
+                state->token.kind,
+                NULL,
+                "Add `=>` before the block: `on condition => { ... }`");
         }
 
         while (state->token.kind != TK_RBrace) {
