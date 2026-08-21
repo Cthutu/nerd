@@ -151,7 +151,7 @@ simulate :: fn (s: TermSimulate) {
         "result": {
             "contents": {
                 "kind": "markdown",
-                "value": "```nerd\nTermSimulate :: TermSimulate\n```\n\n- Kind: type alias\n- Type: `TermSimulate`"
+                "value": "```nerd\nTermSimulate :: TermSimulate\n```\n\n- Kind: type alias\n- Type: `TermSimulate`\n\nState supplied to a simulation callback for one timed update."
             }
         }
     },

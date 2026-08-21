@@ -2439,9 +2439,14 @@ internal string lsp_decl_hover_text(const LspDocument* doc,
     }
 
     if (decl->kind == SK_TypeAlias) {
+        string comment = lsp_decl_doc_comment(doc, arena, decl);
+        string suffix =
+            comment.count == 0
+                ? s("")
+                : string_format(arena, "\n\n" STRINGP, STRINGV(comment));
         return string_format(arena,
                              STRINGP "\n\n- Kind: " STRINGP
-                                     "\n- Type: `" STRINGP "`",
+                                     "\n- Type: `" STRINGP "`" STRINGP,
                              STRINGV(lsp_markdown_code_block(
                                  arena,
                                  string_format(arena,
@@ -2449,7 +2454,8 @@ internal string lsp_decl_hover_text(const LspDocument* doc,
                                                STRINGV(name),
                                                STRINGV(inferred_type)))),
                              STRINGV(kind),
-                             STRINGV(inferred_type));
+                             STRINGV(inferred_type),
+                             STRINGV(suffix));
     }
 
     if (decl->kind == SK_Trait) {

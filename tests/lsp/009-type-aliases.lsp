@@ -1,3 +1,4 @@
+-- Price stored in minor currency units.
 Price :: u16
 main :: fn () => 1
 ¬
@@ -11,7 +12,7 @@ main :: fn () => 1
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 0,
+                "line": 1,
                 "character": 0
             }
         }
@@ -85,7 +86,7 @@ main :: fn () => 1
         "result": {
             "contents": {
                 "kind": "markdown",
-                "value": "```nerd\nPrice :: u16\n```\n\n- Kind: type alias\n- Type: `u16`"
+                "value": "```nerd\nPrice :: u16\n```\n\n- Kind: type alias\n- Type: `u16`\n\nPrice stored in minor currency units."
             }
         }
     },
