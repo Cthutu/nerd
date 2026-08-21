@@ -704,12 +704,17 @@ bool ast_parse_break_on_expr(AstParseState* state,
 
     u32  condition_node                    = 0;
     bool previous_allow_statement_boundary = state->allow_statement_boundary;
-    state->allow_statement_boundary        = true;
+    bool previous_stop_before_on_branch_head =
+        state->stop_before_on_branch_head;
+    state->allow_statement_boundary   = true;
+    state->stop_before_on_branch_head = false;
     if (!ast_parse_expr_bp(state, 0, &condition_node)) {
-        state->allow_statement_boundary = previous_allow_statement_boundary;
+        state->allow_statement_boundary   = previous_allow_statement_boundary;
+        state->stop_before_on_branch_head = previous_stop_before_on_branch_head;
         return false;
     }
-    state->allow_statement_boundary = previous_allow_statement_boundary;
+    state->allow_statement_boundary   = previous_allow_statement_boundary;
+    state->stop_before_on_branch_head = previous_stop_before_on_branch_head;
 
     if (state->token.kind != TK_FatArrow) {
         return error_0203_expected_token(state->lexer->source,
@@ -727,12 +732,11 @@ bool ast_parse_break_on_expr(AstParseState* state,
             state->token.source, ast_token_span(state, &state->token), TK_EOF);
     }
 
-    u32 payload                       = 0;
-    previous_allow_statement_boundary = state->allow_statement_boundary;
-    bool previous_stop_before_on_branch_head =
-        state->stop_before_on_branch_head;
-    state->allow_statement_boundary   = true;
-    state->stop_before_on_branch_head = true;
+    u32 payload                         = 0;
+    previous_allow_statement_boundary   = state->allow_statement_boundary;
+    previous_stop_before_on_branch_head = state->stop_before_on_branch_head;
+    state->allow_statement_boundary     = true;
+    state->stop_before_on_branch_head   = true;
     if (!ast_parse_expr_bp(state, 0, &payload)) {
         state->allow_statement_boundary   = previous_allow_statement_boundary;
         state->stop_before_on_branch_head = previous_stop_before_on_branch_head;
@@ -1265,9 +1269,13 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
 
     u32  condition_node                    = 0;
     bool previous_stop_before_block_lbrace = state->stop_before_block_lbrace;
-    state->stop_before_block_lbrace        = true;
+    bool previous_stop_before_on_branch_head =
+        state->stop_before_on_branch_head;
+    state->stop_before_block_lbrace   = true;
+    state->stop_before_on_branch_head = false;
     bool parsed_condition = ast_parse_expr_bp(state, 0, &condition_node);
-    state->stop_before_block_lbrace = previous_stop_before_block_lbrace;
+    state->stop_before_block_lbrace   = previous_stop_before_block_lbrace;
+    state->stop_before_on_branch_head = previous_stop_before_on_branch_head;
     if (!parsed_condition) {
         return false;
     }

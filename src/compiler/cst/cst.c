@@ -2497,9 +2497,13 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
 
     u32  scrutinee                         = 0;
     bool previous_stop_before_block_lbrace = state->stop_before_block_lbrace;
-    state->stop_before_block_lbrace        = true;
-    bool parsed_scrutinee           = cst_parse_expr_bp(state, 0, &scrutinee);
-    state->stop_before_block_lbrace = previous_stop_before_block_lbrace;
+    bool previous_stop_before_on_branch_head =
+        state->stop_before_on_branch_head;
+    state->stop_before_block_lbrace   = true;
+    state->stop_before_on_branch_head = false;
+    bool parsed_scrutinee             = cst_parse_expr_bp(state, 0, &scrutinee);
+    state->stop_before_block_lbrace   = previous_stop_before_block_lbrace;
+    state->stop_before_on_branch_head = previous_stop_before_on_branch_head;
     if (!parsed_scrutinee) {
         return false;
     }
@@ -2771,9 +2775,13 @@ internal bool cst_parse_break_on_expr(CstParseState* state,
     {
         bool previous_allow_statement_boundary =
             state->allow_statement_boundary;
-        state->allow_statement_boundary = true;
+        bool previous_stop_before_on_branch_head =
+            state->stop_before_on_branch_head;
+        state->allow_statement_boundary   = true;
+        state->stop_before_on_branch_head = false;
         bool parsed = cst_parse_expr_bp(state, 0, &condition);
-        state->allow_statement_boundary = previous_allow_statement_boundary;
+        state->allow_statement_boundary   = previous_allow_statement_boundary;
+        state->stop_before_on_branch_head = previous_stop_before_on_branch_head;
         if (!parsed) {
             return false;
         }
