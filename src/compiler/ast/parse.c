@@ -3436,6 +3436,18 @@ bool ast_parse_for(AstParseState* state, u32* out_node)
         !ast_next_token(state)) {
         return false;
     }
+    if (for_info.mode == AFM_In && (state->token.kind == TK_Range ||
+                                    state->token.kind == TK_RangeInclusive)) {
+        return error_0203_expected_token_ex(
+            state->lexer->source,
+            ast_token_span(state, &state->token),
+            TK_LBrace,
+            state->token.kind,
+            "Range expressions in `for` loops must be enclosed in square "
+            "brackets",
+            "Add square brackets around the range: `for item in [start .. end] "
+            "{ ... }`");
+    }
     if (!ast_parse_for_body(state, &for_info, &body_node)) {
         return false;
     }
