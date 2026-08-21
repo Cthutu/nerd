@@ -2217,40 +2217,16 @@ internal string lsp_trim_comment_text(string text)
     return (string){.data = text.data + start, .count = end - start};
 }
 
-internal string lsp_decl_doc_comment(const LspDocument* doc,
-                                     Arena*             arena,
-                                     const SemaDecl*    decl)
+internal string lsp_doc_comment_at_token(const Lexer* lexer,
+                                         Arena*       arena,
+                                         u32          token_index)
 {
-    if (decl->import_module_index != sema_no_decl() &&
-        decl->import_decl_index != sema_no_decl()) {
-        LspModuleView module = {0};
-        if (lsp_program_module_view(
-                &doc->program, decl->import_module_index, &module)) {
-            const SemaDecl* imported_decl = NULL;
-            if (lsp_sema_decl(
-                    module.sema, decl->import_decl_index, &imported_decl)) {
-                LspDocument module_doc     = *doc;
-                module_doc.source          = module.lexer->source.source;
-                module_doc.front_end.lexer = *module.lexer;
-                module_doc.front_end.ast   = *module.ast;
-                module_doc.front_end.sema  = *module.sema;
-                return lsp_decl_doc_comment(&module_doc, arena, imported_decl);
-            }
-        }
-    }
-
-    if (decl->bind_node_index == sema_no_decl() ||
-        decl->bind_node_index >= array_count(doc->front_end.ast.nodes)) {
+    if (token_index >= array_count(lexer->tokens)) {
         return s("");
     }
 
-    const AstNode* bind = &doc->front_end.ast.nodes[decl->bind_node_index];
-    if (bind->token_index >= array_count(doc->front_end.lexer.tokens)) {
-        return s("");
-    }
-
-    string source     = doc->front_end.lexer.source.source;
-    usize  decl_start = doc->front_end.lexer.tokens[bind->token_index].offset;
+    string source     = lexer->source.source;
+    usize  decl_start = lexer->tokens[token_index].offset;
     if (decl_start > source.count) {
         return s("");
     }
@@ -2304,6 +2280,38 @@ internal string lsp_decl_doc_comment(const LspDocument* doc,
     }
     array_free(lines);
     return sb_to_string(&sb);
+}
+
+internal string lsp_decl_doc_comment(const LspDocument* doc,
+                                     Arena*             arena,
+                                     const SemaDecl*    decl)
+{
+    if (decl->import_module_index != sema_no_decl() &&
+        decl->import_decl_index != sema_no_decl()) {
+        LspModuleView module = {0};
+        if (lsp_program_module_view(
+                &doc->program, decl->import_module_index, &module)) {
+            const SemaDecl* imported_decl = NULL;
+            if (lsp_sema_decl(
+                    module.sema, decl->import_decl_index, &imported_decl)) {
+                LspDocument module_doc     = *doc;
+                module_doc.source          = module.lexer->source.source;
+                module_doc.front_end.lexer = *module.lexer;
+                module_doc.front_end.ast   = *module.ast;
+                module_doc.front_end.sema  = *module.sema;
+                return lsp_decl_doc_comment(&module_doc, arena, imported_decl);
+            }
+        }
+    }
+
+    if (decl->bind_node_index == sema_no_decl() ||
+        decl->bind_node_index >= array_count(doc->front_end.ast.nodes)) {
+        return s("");
+    }
+
+    const AstNode* bind = &doc->front_end.ast.nodes[decl->bind_node_index];
+    return lsp_doc_comment_at_token(
+        &doc->front_end.lexer, arena, bind->token_index);
 }
 
 //------------------------------------------------------------------------------
@@ -2852,6 +2860,120 @@ internal string lsp_plex_pattern_field_hover_text(const LspDocument* doc,
         s("plex field"));
 }
 
+internal string lsp_enum_variant_doc_comment(const LspDocument* doc,
+                                             Arena*             arena,
+                                             u32                enum_type,
+                                             u32                variant_index,
+                                             string             variant_name,
+                                             string             owner_name)
+{
+    enum_type = sema_materialise_type(&doc->front_end.sema, enum_type);
+    for (u32 decl_index = 0;
+         decl_index < array_count(doc->front_end.sema.decls);
+         ++decl_index) {
+        const SemaDecl* decl = &doc->front_end.sema.decls[decl_index];
+        bool            matches_type =
+            decl->type_index != sema_no_type() &&
+            sema_materialise_type(&doc->front_end.sema, decl->type_index) ==
+                enum_type;
+        bool matches_name = string_eq(
+            lex_symbol(&doc->front_end.lexer, decl->symbol_handle), owner_name);
+        if (!matches_type && !matches_name) {
+            continue;
+        }
+
+        if (decl->import_module_index == sema_no_decl() ||
+            decl->import_decl_index == sema_no_decl()) {
+            if (decl->value_node_index >=
+                array_count(doc->front_end.ast.nodes)) {
+                continue;
+            }
+            const AstNode* value =
+                &doc->front_end.ast.nodes[decl->value_node_index];
+            if (value->kind != AK_TypeEnum ||
+                value->a >= array_count(doc->front_end.ast.enum_types)) {
+                continue;
+            }
+            const AstEnumTypeInfo* enum_info =
+                &doc->front_end.ast.enum_types[value->a];
+            if (variant_index >= enum_info->variant_count) {
+                return s("");
+            }
+            const AstEnumVariant* variant =
+                &doc->front_end.ast
+                     .enum_variants[enum_info->first_variant + variant_index];
+            if (!string_eq(
+                    lex_symbol(&doc->front_end.lexer, variant->symbol_handle),
+                    variant_name)) {
+                continue;
+            }
+            return lsp_doc_comment_at_token(
+                &doc->front_end.lexer, arena, variant->token_index);
+        }
+
+        LspModuleView module = {0};
+        if (!lsp_program_module_view(
+                &doc->program, decl->import_module_index, &module)) {
+            continue;
+        }
+        const SemaDecl* imported_decl = NULL;
+        if (!lsp_sema_decl(
+                module.sema, decl->import_decl_index, &imported_decl)) {
+            continue;
+        }
+
+        LspDocument module_doc     = *doc;
+        module_doc.source          = module.lexer->source.source;
+        module_doc.front_end.lexer = *module.lexer;
+        module_doc.front_end.ast   = *module.ast;
+        module_doc.front_end.sema  = *module.sema;
+        return lsp_enum_variant_doc_comment(&module_doc,
+                                            arena,
+                                            imported_decl->type_index,
+                                            variant_index,
+                                            variant_name,
+                                            owner_name);
+    }
+
+    for (u32 module_index = 0; module_index < array_count(doc->program.modules);
+         ++module_index) {
+        LspModuleView module = {0};
+        if (!lsp_program_module_view(&doc->program, module_index, &module)) {
+            continue;
+        }
+        for (u32 node_index = 0; node_index < array_count(module.ast->nodes);
+             ++node_index) {
+            const AstNode* bind = &module.ast->nodes[node_index];
+            if (bind->kind != AK_Bind ||
+                !string_eq(lex_symbol(module.lexer, bind->a), owner_name) ||
+                bind->b >= array_count(module.ast->nodes)) {
+                continue;
+            }
+            const AstNode* value = &module.ast->nodes[bind->b];
+            if (value->kind != AK_TypeEnum ||
+                value->a >= array_count(module.ast->enum_types)) {
+                continue;
+            }
+            const AstEnumTypeInfo* enum_info =
+                &module.ast->enum_types[value->a];
+            if (variant_index >= enum_info->variant_count) {
+                continue;
+            }
+            const AstEnumVariant* variant =
+                &module.ast
+                     ->enum_variants[enum_info->first_variant + variant_index];
+            if (!string_eq(lex_symbol(module.lexer, variant->symbol_handle),
+                           variant_name)) {
+                continue;
+            }
+            return lsp_doc_comment_at_token(
+                module.lexer, arena, variant->token_index);
+        }
+    }
+
+    return s("");
+}
+
 internal string lsp_enum_variant_hover_text_for_type(const LspDocument* doc,
                                                      Arena*             arena,
                                                      u32 enum_type,
@@ -2877,14 +2999,22 @@ internal string lsp_enum_variant_hover_text_for_type(const LspDocument* doc,
                                                    &doc->front_end.sema,
                                                    arena,
                                                    payload_type)));
+    string comment = lsp_enum_variant_doc_comment(
+        doc, arena, enum_type, variant, name, owner);
+    string suffix =
+        comment.count == 0
+            ? s("")
+            : string_format(arena, "\n\n" STRINGP, STRINGV(comment));
 
     return string_format(
         arena,
-        STRINGP "\n\n- Kind: enum variant\n- Owner: `" STRINGP "`" STRINGP,
+        STRINGP "\n\n- Kind: enum variant\n- Owner: `" STRINGP
+                "`" STRINGP STRINGP,
         STRINGV(lsp_markdown_code_block(
             arena, string_format(arena, STRINGP, STRINGV(name)))),
         STRINGV(owner),
-        STRINGV(payload));
+        STRINGV(payload),
+        STRINGV(suffix));
 }
 
 internal string lsp_enum_variant_hover_text(const LspDocument* doc,
