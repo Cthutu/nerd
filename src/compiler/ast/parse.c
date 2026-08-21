@@ -3809,9 +3809,23 @@ internal bool ast_parse_block_statement(AstParseState* state)
             if (!ast_next_token(state)) {
                 return false;
             }
-            u32 on_node = 0;
-            if (!ast_parse_break_on_expr(state, token_index, label, &on_node)) {
+            u32  on_node       = 0;
+            bool unconditional = false;
+            if (!ast_parse_break_on_expr(
+                    state, token_index, label, &unconditional, &on_node)) {
                 return false;
+            }
+            if (unconditional) {
+                ASSERT(state->nodes[on_node].kind == AK_BreakExpr,
+                       "Expected unconditional break expression");
+                return ast_emit_node(state,
+                                     (AstNode){
+                                         .kind        = AK_Break,
+                                         .token_index = token_index,
+                                         .a           = state->nodes[on_node].a,
+                                         .b           = label,
+                                     },
+                                     NULL);
             }
             return ast_emit_node(state,
                                  (AstNode){

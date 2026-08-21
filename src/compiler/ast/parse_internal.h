@@ -133,6 +133,7 @@ bool ast_parse_expr_bp(AstParseState* state, u8 min_bp, u32* out_node);
 bool ast_parse_break_on_expr(AstParseState* state,
                              u32            break_token_index,
                              u32            label,
+                             bool*          out_unconditional,
                              u32*           out_node);
 bool ast_parse_type(AstParseState* state, u32* out_node);
 bool ast_parse_pattern(AstParseState* state, u32* out_pattern);

@@ -2807,6 +2807,80 @@ internal bool cst_parse_break_on_expr(CstParseState* state,
         }
     }
 
+    if (cst_current_token(state).kind == TK_else) {
+        cst_advance(state);
+        u32 false_payload = 0;
+        if (!cst_parse_on_branch_expr(state, &false_payload)) {
+            return false;
+        }
+
+        u32 true_node = 0;
+        if (!cst_emit_node(state,
+                           (CstNode){
+                               .kind        = CK_BoolLiteral,
+                               .token_index = break_token_index,
+                               .a           = 1,
+                           },
+                           &true_node)) {
+            return false;
+        }
+        u32 true_pattern = (u32)array_count(state->cst.patterns);
+        array_push(state->cst.patterns,
+                   (CstPattern){
+                       .kind        = CPK_Value,
+                       .token_index = break_token_index,
+                       .a           = true_node,
+                   });
+        u32 first_pattern = (u32)array_count(state->cst.pattern_items);
+        array_push(state->cst.pattern_items, true_pattern);
+        u32 first_branch = (u32)array_count(state->cst.on_branches);
+        array_push(state->cst.on_branches,
+                   (CstOnBranch){
+                       .pattern_index        = first_pattern,
+                       .pattern_count        = 1,
+                       .expr_node_index      = payload,
+                       .guard_node_index     = U32_MAX,
+                       .binder_symbol_handle = U32_MAX,
+                       .binder_token_index   = U32_MAX,
+                   });
+        array_push(state->cst.on_branches,
+                   (CstOnBranch){
+                       .pattern_index        = U32_MAX,
+                       .pattern_count        = 0,
+                       .expr_node_index      = false_payload,
+                       .guard_node_index     = U32_MAX,
+                       .flags                = COBF_Else,
+                       .binder_symbol_handle = U32_MAX,
+                       .binder_token_index   = U32_MAX,
+                   });
+        u32 on_index = (u32)array_count(state->cst.ons);
+        array_push(state->cst.ons,
+                   (CstOnInfo){
+                       .kind         = COK_Bool,
+                       .first_branch = first_branch,
+                       .branch_count = 2,
+                   });
+        u32 on_expr = 0;
+        if (!cst_emit_node(state,
+                           (CstNode){
+                               .kind        = CK_On,
+                               .token_index = break_token_index,
+                               .a           = condition,
+                               .b           = on_index,
+                           },
+                           &on_expr)) {
+            return false;
+        }
+        return cst_emit_node(state,
+                             (CstNode){
+                                 .kind        = CK_BreakExpr,
+                                 .token_index = break_token_index,
+                                 .a           = on_expr,
+                                 .b           = label,
+                             },
+                             out_node);
+    }
+
     u32 break_expr = 0;
     if (!cst_emit_node(state,
                        (CstNode){
