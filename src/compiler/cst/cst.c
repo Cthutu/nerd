@@ -2873,7 +2873,7 @@ internal bool cst_parse_break_on_expr(CstParseState* state,
         }
         return cst_emit_node(state,
                              (CstNode){
-                                 .kind        = CK_BreakExpr,
+                                 .kind = out_node ? CK_BreakExpr : CK_Break,
                                  .token_index = break_token_index,
                                  .a           = on_expr,
                                  .b           = label,
