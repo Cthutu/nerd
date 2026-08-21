@@ -3592,8 +3592,75 @@ internal bool ast_parse_pragma(AstParseState* state, u32* out_node)
 
 internal bool ast_parse_block_on(AstParseState* state, u32* out_node);
 
+internal bool ast_symbol_looks_like_misspelled_on(const AstParseState* state,
+                                                  ErrorSpan* value_span)
+{
+    if (state->token.kind != TK_Symbol ||
+        !string_eq_cstr(
+            lex_symbol(state->lexer, state->token.value.symbol_handle), "n") ||
+        ast_peek_kind_at(state, 0) == TK_EOF ||
+        ast_tokens_cross_line_break(
+            state, state->token.token_index, state->token.token_index + 1)) {
+        return false;
+    }
+
+    u32 cursor        = state->token.token_index + 1;
+    u32 value_token   = cursor;
+    u32 paren_depth   = 0;
+    u32 bracket_depth = 0;
+    for (;; cursor++) {
+        TokenKind kind = ast_kind_at_stream_index(state, cursor);
+        if (kind == TK_EOF || kind == TK_RBrace || kind == TK_FatArrow) {
+            return false;
+        }
+        if (kind == TK_LParen) {
+            paren_depth++;
+        } else if (kind == TK_RParen) {
+            if (paren_depth == 0) {
+                return false;
+            }
+            paren_depth--;
+        } else if (kind == TK_LBracket) {
+            bracket_depth++;
+        } else if (kind == TK_RBracket) {
+            if (bracket_depth == 0) {
+                return false;
+            }
+            bracket_depth--;
+        } else if (kind == TK_LBrace && paren_depth == 0 &&
+                   bracket_depth == 0) {
+            break;
+        }
+    }
+
+    u32 brace_depth = 1;
+    for (cursor++; cursor < array_count(state->lexer->tokens); cursor++) {
+        TokenKind kind = ast_kind_at_stream_index(state, cursor);
+        if (kind == TK_LBrace) {
+            brace_depth++;
+        } else if (kind == TK_RBrace) {
+            if (--brace_depth == 0) {
+                return false;
+            }
+        } else if (kind == TK_FatArrow && brace_depth == 1) {
+            *value_span = ast_span_for_token_index(state, value_token);
+            return true;
+        } else if (kind == TK_EOF) {
+            return false;
+        }
+    }
+    return false;
+}
+
 internal bool ast_parse_block_statement(AstParseState* state)
 {
+    ErrorSpan misspelled_on_value = {0};
+    if (ast_symbol_looks_like_misspelled_on(state, &misspelled_on_value)) {
+        return error_0213_misspelled_on(state->lexer->source,
+                                        ast_token_span(state, &state->token),
+                                        misspelled_on_value);
+    }
+
     if (state->token.kind == TK_Symbol &&
         string_eq_cstr(
             lex_symbol(state->lexer, state->token.value.symbol_handle),

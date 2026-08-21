@@ -249,6 +249,31 @@ internal bool lsp_code_action_matching_close(const Lexer* lexer,
     return false;
 }
 
+internal bool lsp_code_action_matching_open(const Lexer* lexer,
+                                            u32          close_token_index,
+                                            u32*         out_open_token_index)
+{
+    if (close_token_index >= array_count(lexer->tokens) ||
+        lexer->tokens[close_token_index].kind != TK_RBrace) {
+        return false;
+    }
+
+    u32 depth = 0;
+    for (u32 i = close_token_index + 1; i > 0;) {
+        i--;
+        TokenKind kind = lexer->tokens[i].kind;
+        if (kind == TK_RBrace) {
+            depth++;
+        } else if (kind == TK_LBrace) {
+            if (--depth == 0) {
+                *out_open_token_index = i;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 internal u32 lsp_code_action_find_decl(const Sema* sema, u32 symbol)
 {
     u32 decl_index = sema_no_decl();
@@ -3410,13 +3435,13 @@ lsp_code_action_add_missing_plex_fields_action(Arena*             arena,
     }
 
     string insert_text = {0};
-    if (!lsp_code_action_missing_plex_fields(
-            arena, doc, node_index, &insert_text) &&
-        !lsp_code_action_missing_ast_plex_fields(
+    if (!lsp_code_action_missing_ast_plex_fields(
             arena, doc, node_index, &insert_text) &&
         !lsp_code_action_missing_ast_enum_payload_fields(
             arena, doc, node_index, &insert_text) &&
         !lsp_code_action_missing_imported_ast_plex_fields(
+            arena, doc, node_index, &insert_text) &&
+        !lsp_code_action_missing_plex_fields(
             arena, doc, node_index, &insert_text)) {
         lsp_log("code action: no missing fields");
         return;
@@ -3429,8 +3454,11 @@ lsp_code_action_add_missing_plex_fields_action(Arena*             arena,
     usize                     range_start = lexer->tokens[close_token].offset;
     usize                     range_end   = range_start;
     if (literal->field_count == 0) {
-        range_start =
-            lex_token_end_offset(lexer, &lexer->tokens[node->token_index]);
+        u32 open_token = U32_MAX;
+        if (!lsp_code_action_matching_open(lexer, close_token, &open_token)) {
+            return;
+        }
+        range_start = lex_token_end_offset(lexer, &lexer->tokens[open_token]);
         StringBuilder replacement = {0};
         sb_init(&replacement, arena);
         sb_append_char(&replacement, '\n');

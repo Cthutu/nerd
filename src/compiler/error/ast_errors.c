@@ -487,5 +487,24 @@ bool error_0212_missing_on_extract_arrow(NerdSource source,
     return false;
 }
 
+bool error_0213_misspelled_on(NerdSource source,
+                              ErrorSpan  symbol_span,
+                              ErrorSpan  value_span)
+{
+    ErrorInfo error = error_init(
+        source, symbol_span, "Unexpected `n` before match expression");
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        symbol_span,
+                        "`n` is parsed as a separate expression statement");
+    error_add_reference(&error,
+                        ERROR_REF_SECONDARY,
+                        value_span,
+                        "This looks like the value to match");
+    error_add_help(&error, "Replace `n` with `on`");
+    error_render(&error);
+    return false;
+}
+
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------

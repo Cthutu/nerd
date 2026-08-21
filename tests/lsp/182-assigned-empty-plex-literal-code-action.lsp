@@ -1,8 +1,7 @@
 use std.frame
 
 main :: fn () {
-    main_window: Frame
-    main_window = { }
+    second_frame := Frame {}
 }
 ¬
 [
@@ -16,12 +15,12 @@ main :: fn () {
             },
             "range": {
                 "start": {
-                    "line": 4,
-                    "character": 19
+                    "line": 3,
+                    "character": 27
                 },
                 "end": {
-                    "line": 4,
-                    "character": 19
+                    "line": 3,
+                    "character": 27
                 }
             },
             "context": {
@@ -93,12 +92,12 @@ main :: fn () {
                 {
                     "range": {
                         "start": {
-                            "line": 4,
-                            "character": 18
+                            "line": 3,
+                            "character": 26
                         },
                         "end": {
-                            "line": 4,
-                            "character": 19
+                            "line": 3,
+                            "character": 27
                         }
                     },
                     "severity": 1,
@@ -110,12 +109,12 @@ main :: fn () {
                                 "uri": "file:///test.n",
                                 "range": {
                                     "start": {
-                                        "line": 4,
-                                        "character": 18
+                                        "line": 3,
+                                        "character": 26
                                     },
                                     "end": {
-                                        "line": 4,
-                                        "character": 19
+                                        "line": 3,
+                                        "character": 27
                                     }
                                 }
                             },
@@ -126,12 +125,12 @@ main :: fn () {
                                 "uri": "file:///test.n",
                                 "range": {
                                     "start": {
-                                        "line": 4,
-                                        "character": 18
+                                        "line": 3,
+                                        "character": 26
                                     },
                                     "end": {
-                                        "line": 4,
-                                        "character": 19
+                                        "line": 3,
+                                        "character": 27
                                     }
                                 }
                             },
@@ -155,12 +154,12 @@ main :: fn () {
                             {
                                 "range": {
                                     "start": {
-                                        "line": 4,
-                                        "character": 19
+                                        "line": 3,
+                                        "character": 27
                                     },
                                     "end": {
-                                        "line": 4,
-                                        "character": 20
+                                        "line": 3,
+                                        "character": 27
                                     }
                                 },
                                 "newText": "\n        system     : nil\n        id         : 0\n        width      : 0\n        height     : 0\n        title      : \"\"\n        full_screen: no\n        resizable  : no\n    "
