@@ -753,6 +753,7 @@ internal bool hir_ast_kind_is_expression_child(AstKind kind)
     case AK_Slice:
     case AK_RangeExclusive:
     case AK_RangeInclusive:
+    case AK_Propagate:
     case AK_ExprBlock:
     case AK_On:
     case AK_FnDef:
