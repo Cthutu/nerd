@@ -83,6 +83,22 @@ internal bool llvm_type_is_void(const Sema* sema, u32 type_index)
             sema->types[type_index].kind == STK_Never);
 }
 
+internal bool llvm_type_is_void_result(const Sema* sema, u32 type_index)
+{
+    if (sema == NULL || type_index >= array_count(sema->types)) {
+        return false;
+    }
+    const SemaType* type = &sema->types[type_index];
+    if (type->kind != STK_Enum || !(type->flags & STF_Result) ||
+        type->param_count < 2 ||
+        type->first_param_type >= array_count(sema->type_param_types)) {
+        return false;
+    }
+    u32 success_type = sema->type_param_types[type->first_param_type];
+    return success_type < array_count(sema->types) &&
+           sema->types[success_type].kind == STK_Void;
+}
+
 internal u32 llvm_function_return_type(const Sema* sema, u32 type_index)
 {
     if (sema == NULL || type_index >= array_count(sema->types)) {
@@ -14316,8 +14332,22 @@ internal bool llvm_emit_return(LlvmFunctionContext* ctx,
 {
     u32 return_type =
         llvm_function_return_type(ctx->sema, function->type_index);
-    if (stmt->expr_index == U32_MAX ||
-        llvm_type_is_void(ctx->sema, return_type)) {
+    if (stmt->expr_index == U32_MAX) {
+        if (!llvm_emit_defers_to(ctx, function, 0, false)) {
+            return false;
+        }
+        if (!llvm_emit_box_cleanup_all(ctx)) {
+            return false;
+        }
+        if (llvm_type_is_void_result(ctx->sema, return_type)) {
+            llvm_append_default_return(ctx->sb, ctx->sema, return_type);
+        } else {
+            sb_append_cstr(ctx->sb, "  ret void\n");
+        }
+        ctx->block_terminated = true;
+        return true;
+    }
+    if (llvm_type_is_void(ctx->sema, return_type)) {
         if (!llvm_emit_defers_to(ctx, function, 0, false)) {
             return false;
         }
