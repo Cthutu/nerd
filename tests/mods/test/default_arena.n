@@ -1,0 +1,5 @@
+-- Copies text into an optionally selected arena.
+pub copy_to :: fn (text: string,
+                   output_arena: ^arena = temp_arena) -> string {
+    return output_arena.pr(text)
+}

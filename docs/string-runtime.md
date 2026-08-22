@@ -45,6 +45,8 @@ The runtime provides:
 - `string_builder_append_string(...)`
 - `string_builder_finish(...)`
 - `to_string$<type>(...)` helpers for built-in primitive types
+- `nrt_arena_pr(...)` and `nrt_arena_prn(...)` for placing finished strings in
+  a selected arena
 
 The `to_string$<type>` helpers currently use straightforward C formatting and a
 shared scratch buffer, then `string_builder_append_string(...)` copies the
@@ -65,6 +67,13 @@ arena. They may be returned, assigned to variables, and passed through ordinary
 Nested interpolations are supported: finishing an interpolated string copies the
 result into the temporary arena and restores the builder cursor to the mark that
 started that interpolation.
+
+The `arena.pr` and `arena.prn` methods place a string into a selected arena and
+return a view of it. `prn` includes a trailing newline in the returned string.
+The compiler passes the receiving arena into interpolation lowering, so an
+interpolated argument is finished directly into that arena rather than first
+being allocated in `temp_arena`. An ordinary string from other storage is
+copied; a string already stored in the receiving arena can be returned directly.
 
 The `core.temp_arena.reset()` method resets this storage explicitly. Programs
 with request or frame loops should call it at a clear boundary after temporary

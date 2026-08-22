@@ -1,0 +1,568 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Provides portable file handles, whole-file helpers, filesystem queries, and
+-- lexical path processing. Allocating helpers use the temporary arena unless
+-- the caller supplies another arena.
+
+-- File operation failure.
+pub FileError :: enum {
+    -- The requested path does not exist.
+    NotFound
+
+    -- The operation was rejected by filesystem permissions.
+    PermissionDenied
+
+    -- A create-only operation found an existing path.
+    AlreadyExists
+
+    -- The path or open mode is invalid.
+    Invalid
+
+    -- A directory was supplied where a regular file was required.
+    IsDirectory
+
+    -- A non-directory component was used as a directory.
+    NotDirectory
+
+    -- An unmapped operating-system error code.
+    System {
+        code u32
+    }
+}
+
+-- Selects how a file is opened.
+pub FileMode :: enum {
+    Read
+    Write
+    Append
+}
+
+-- Classifies a filesystem path without following its final symbolic link.
+pub FileKind :: enum {
+    File
+    Directory
+    Symlink
+    Other
+}
+
+-- Owns an operating-system file handle until `close` succeeds.
+pub File :: plex {
+    raw   usize  -- Platform handle; callers should treat this field as opaque.
+    valid bool   -- True while the platform handle is owned and usable.
+}
+
+-- Returns true when text contains an embedded null byte.
+files_contains_zero :: fn (text: string) -> bool {
+    for i: usize = 0; i < text.count; i += 1 {
+        on text.data[i] == 0 => return yes
+    }
+    return no
+}
+
+-- Constructs an error containing an unmapped platform error code.
+files_system_error :: fn (code: u32) -> FileError {
+    return FileError.System { code }
+}
+
+on "linux" {
+
+    use os.linux
+    use std.string
+
+    -- Converts a Linux error code to the portable file error set.
+    files_linux_error :: fn (code: u32) -> FileError {
+        return on code {
+            ENOENT.as(u32)   => FileError.NotFound
+            EACCES.as(u32)   => FileError.PermissionDenied
+            EEXIST.as(u32)   => FileError.AlreadyExists
+            EINVAL.as(u32)   => FileError.Invalid
+            EISDIR.as(u32)   => FileError.IsDirectory
+            ENOTDIR.as(u32)  => FileError.NotDirectory
+            else             => files_system_error(code)
+        }
+    }
+
+    -- Opens a Linux file descriptor for a portable file mode.
+    files_native_open :: fn (path: string, mode: FileMode) -> File\FileError {
+        on path.count == 0 ||
+            files_contains_zero(path) => return FileError.Invalid!
+
+        flags := on mode {
+            FileMode.Read    => O_RDONLY
+            FileMode.Write   => O_WRONLY | O_CREAT | O_TRUNC
+            FileMode.Append  => O_WRONLY | O_CREAT | O_APPEND
+        }
+        descriptor := sys_open(path.c_string(), flags, 0x01b6)
+        on descriptor < 0 => return files_linux_error(last_error().as(u32))!
+        return File { raw: descriptor.as(usize) valid: yes }
+    }
+
+    -- Reads bytes from a Linux file descriptor, retrying interruptions.
+    files_native_read :: fn (file: ^File, output: []u8) -> usize\FileError {
+        on !file.valid => return FileError.Invalid!
+        result := sys_read(file.raw.as(i32), output.data, output.count)
+        for result < 0 && last_error() == EINTR {
+            result = sys_read(file.raw.as(i32), output.data, output.count)
+        }
+        on result < 0 => return files_linux_error(last_error().as(u32))!
+        return result.as(usize)
+    }
+
+    -- Writes bytes to a Linux file descriptor, retrying interruptions.
+    files_native_write :: fn (file: ^File, input: []u8) -> usize\FileError {
+        on !file.valid => return FileError.Invalid!
+        result := sys_write(file.raw.as(i32), input.data, input.count)
+        for result < 0 && last_error() == EINTR {
+            result = sys_write(file.raw.as(i32), input.data, input.count)
+        }
+        on result < 0 => return files_linux_error(last_error().as(u32))!
+        return result.as(usize)
+    }
+
+    -- Flushes a Linux file descriptor to stable storage.
+    files_native_flush :: fn (file: ^File) -> void\FileError {
+        on !file.valid => return FileError.Invalid!
+        result := sys_fsync(file.raw.as(i32))
+        on result < 0 => return files_linux_error(last_error().as(u32))!
+    }
+
+    -- Closes a Linux file descriptor and invalidates the portable handle.
+    files_native_close :: fn (file: ^File) -> void\FileError {
+        on !file.valid => return FileError.Invalid!
+        result := sys_close(file.raw.as(i32))
+        on result < 0 => return files_linux_error(last_error().as(u32))!
+        file.raw = 0
+        file.valid = no
+    }
+
+    -- Classifies a Linux path without following its final symbolic link.
+    files_native_kind :: fn (path: string) -> FileKind\FileError {
+        on path.count == 0 ||
+            files_contains_zero(path) => return FileError.Invalid!
+
+        stat : Stat
+        result := sys_newfstatat(AT_FDCWD,
+                                 path.c_string(),
+                                 ^stat,
+                                 AT_SYMLINK_NOFOLLOW)
+        on result < 0 => return files_linux_error(last_error().as(u32))!
+        return on stat.mode & S_IFMT {
+            S_IFREG  => FileKind.File
+            S_IFDIR  => FileKind.Directory
+            S_IFLNK  => FileKind.Symlink
+            else     => FileKind.Other
+        }
+    }
+
+    -- Removes a regular file or symbolic link on Linux.
+    files_native_remove :: fn (path: string) -> void\FileError {
+        on path.count == 0 ||
+            files_contains_zero(path) => return FileError.Invalid!
+
+        result := sys_unlink(path.c_string())
+        on result < 0 => return files_linux_error(last_error().as(u32))!
+    }
+
+    -- Returns true when a byte is a Linux path separator.
+    files_is_separator :: fn (byte: u8) -> bool {
+        return byte == '/'
+    }
+
+    -- Returns true when a Linux path begins at the filesystem root.
+    files_native_is_absolute :: fn (path: string) -> bool {
+        return path.count > 0 && path.data[0] == '/'
+    }
+
+}
+
+on "windows" {
+
+    use os.windows
+
+    -- Converts a Windows error code to the portable file error set.
+    files_windows_error :: fn (code: u32) -> FileError {
+        return on code {
+            ERROR_FILE_NOT_FOUND  => FileError.NotFound
+            ERROR_PATH_NOT_FOUND  => FileError.NotFound
+            ERROR_ACCESS_DENIED   => FileError.PermissionDenied
+            ERROR_ALREADY_EXISTS  => FileError.AlreadyExists
+            ERROR_INVALID_NAME    => FileError.Invalid
+            else                  => files_system_error(code)
+        }
+    }
+
+    -- Converts a validated UTF-8 path into temporary UTF-16 storage.
+    files_windows_path :: fn (path: string) -> ^u16\FileError {
+        on path.count == 0 ||
+            path.count > 0x7fffffff ||
+            files_contains_zero(path) => return FileError.Invalid!
+
+        required := MultiByteToWideChar(CP_UTF8,
+                                        0,
+                                        path.data,
+                                        path.count.as(i32),
+                                        nil,
+                                        0)
+        on required <= 0 => return files_windows_error(GetLastError())!
+        output := temp_arena.alloc_array[u16](required.as(usize) + 1)
+        converted := MultiByteToWideChar(CP_UTF8,
+                                         0,
+                                         path.data,
+                                         path.count.as(i32),
+                                         output.data,
+                                         required)
+        on converted != required => return files_windows_error(GetLastError())!
+        output[required.as(usize)] = 0
+        return output.data
+    }
+
+    -- Opens a Windows handle for a portable file mode.
+    files_native_open :: fn (path: string, mode: FileMode) -> File\FileError {
+        native_path := files_windows_path(path)?
+        access := on mode {
+            FileMode.Read    => GENERIC_READ
+            FileMode.Write   => GENERIC_WRITE
+            FileMode.Append  => FILE_APPEND_DATA
+        }
+        creation := on mode {
+            FileMode.Read    => OPEN_EXISTING
+            FileMode.Write   => CREATE_ALWAYS
+            FileMode.Append  => OPEN_ALWAYS
+        }
+        handle := CreateFileW(native_path,
+                              access,
+                              FILE_SHARE_READ | FILE_SHARE_WRITE,
+                              nil,
+                              creation,
+                              FILE_ATTRIBUTE_NORMAL,
+                              nil)
+        on handle.as(usize) == INVALID_HANDLE_VALUE => return files_windows_error(GetLastError())!
+        return File { raw: handle.as(usize) valid: yes }
+    }
+
+    -- Reads bytes from a Windows file handle.
+    files_native_read :: fn (file: ^File, output: []u8) -> usize\FileError {
+        on !file.valid => return FileError.Invalid!
+        requested := on output.count > 0xffffffff {
+            yes   => 0xffffffff
+            else  => output.count.as(u32)
+        }
+        actual : u32
+        on ReadFile(file.raw.as(HANDLE), output.data, requested, ^actual, nil) == 0 => return files_windows_error(GetLastError())!
+        return actual.as(usize)
+    }
+
+    -- Writes bytes to a Windows file handle.
+    files_native_write :: fn (file: ^File, input: []u8) -> usize\FileError {
+        on !file.valid => return FileError.Invalid!
+        requested := on input.count > 0xffffffff {
+            yes   => 0xffffffff
+            else  => input.count.as(u32)
+        }
+        actual : u32
+        on WriteFile(file.raw.as(HANDLE), input.data, requested, ^actual, nil) == 0 => return files_windows_error(GetLastError())!
+        return actual.as(usize)
+    }
+
+    -- Flushes a Windows file handle to stable storage.
+    files_native_flush :: fn (file: ^File) -> void\FileError {
+        on !file.valid => return FileError.Invalid!
+        on FlushFileBuffers(file.raw.as(HANDLE)) == 0 => return files_windows_error(GetLastError())!
+    }
+
+    -- Closes a Windows file handle and invalidates the portable handle.
+    files_native_close :: fn (file: ^File) -> void\FileError {
+        on !file.valid => return FileError.Invalid!
+        on CloseHandle(file.raw.as(HANDLE)) == 0 => return files_windows_error(GetLastError())!
+        file.raw = 0
+        file.valid = no
+    }
+
+    -- Classifies a Windows path, treating reparse points as symbolic links.
+    files_native_kind :: fn (path: string) -> FileKind\FileError {
+        native_path := files_windows_path(path)?
+        attributes := GetFileAttributesW(native_path)
+        on attributes == INVALID_FILE_ATTRIBUTES => return files_windows_error(GetLastError())!
+        on (attributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0 => return FileKind.Symlink
+        on (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0 => return FileKind.Directory
+        return FileKind.File
+    }
+
+    -- Removes a regular file or symbolic link on Windows.
+    files_native_remove :: fn (path: string) -> void\FileError {
+        native_path := files_windows_path(path)?
+        on DeleteFileW(native_path) == 0 => return files_windows_error(GetLastError())!
+    }
+
+    -- Returns true when a byte is a Windows path separator.
+    files_is_separator :: fn (byte: u8) -> bool {
+        return byte == '/' || byte == '\\'
+    }
+
+    -- Returns true for rooted and drive-absolute Windows paths.
+    files_native_is_absolute :: fn (path: string) -> bool {
+        on path.count == 0 => return no
+        on files_is_separator(path.data[0]) => return yes
+        return path.count >= 3 && path.data[1] == ':' && files_is_separator(path.data[2])
+    }
+
+}
+
+-- Opens a file in the requested mode and transfers handle ownership to the
+-- caller.
+pub open :: fn (path: string, mode: FileMode = FileMode.Read) -> File\FileError {
+    return files_native_open(path, mode)
+}
+
+impl File {
+
+    -- Reads up to the output slice length and returns the number of bytes read.
+    pub read :: fn (file: ^Self, output: []u8) -> usize\FileError {
+        return files_native_read(file, output)
+    }
+
+    -- Writes up to the input slice length and returns the number of bytes
+    -- written.
+    pub write :: fn (file: ^Self, input: []u8) -> usize\FileError {
+        return files_native_write(file, input)
+    }
+
+    -- Writes every input byte unless an operating-system error occurs.
+    pub write_all :: fn (file: ^Self, input: []u8) -> void\FileError {
+        offset : usize = 0
+        for offset < input.count {
+            written := file.write(input[offset..])?
+            on written == 0 => return files_system_error(0)!
+            offset += written
+        }
+    }
+
+    -- Flushes buffered file contents and metadata to stable storage.
+    pub flush :: fn (file: ^Self) -> void\FileError {
+        return files_native_flush(file)
+    }
+
+    -- Closes the owned handle and invalidates it after success.
+    pub close :: fn (file: ^Self) -> void\FileError {
+        return files_native_close(file)
+    }
+
+}
+
+-- Reads an entire file into the selected arena. The returned bytes remain valid
+-- until that arena is restored, reset, or released.
+pub read_bytes :: fn (path         : string,
+                      output_arena : ^arena = temp_arena) -> []u8\FileError {
+    file := open(path)?
+    defer _ := file.close()
+    collected : [..]u8
+    defer collected.free()
+    chunk : [4096]u8
+
+    for {
+        count := file.read(chunk[..])?
+        on count == 0 => break
+        for i: usize = 0; i < count; i += 1 {
+            collected.push(chunk[i])
+        }
+    }
+
+    output := output_arena.alloc_bytes(collected.count)
+    for i: usize = 0; i < collected.count; i += 1 {
+        output[i] = collected[i]
+    }
+    return output
+}
+
+-- Reads an entire file as bytes and returns an arena-backed string view.
+pub read_text :: fn (path         : string,
+                     output_arena : ^arena = temp_arena) -> string\FileError {
+    return read_bytes(path, output_arena)?.as(string)
+}
+
+-- Replaces a file's contents with the supplied bytes.
+pub write_bytes :: fn (path: string, input: []u8) -> void\FileError {
+    file := open(path, FileMode.Write)?
+    defer _ := file.close()
+    file.write_all(input)?
+}
+
+-- Replaces a file's contents with the supplied string bytes.
+pub write_text :: fn (path: string, text: string) -> void\FileError {
+    return write_bytes(path, text.as([]u8))
+}
+
+-- Removes a regular file or symbolic link.
+pub remove :: fn (path: string) -> void\FileError {
+    return files_native_remove(path)
+}
+
+-- Returns the filesystem kind at a path without following a final symbolic
+-- link.
+pub kind :: fn (path: string) -> FileKind\FileError {
+    return files_native_kind(path)
+}
+
+-- Returns true when a path exists. Missing paths are not errors.
+pub exists :: fn (path: string) -> bool\FileError {
+    return on kind(path) {
+        FileError.NotFound! => no
+        error! => error!
+        else => yes
+    }
+}
+
+-- Returns true when a path names a regular file.
+pub is_file :: fn (path: string) -> bool\FileError {
+    value := kind(path)?
+    return value == FileKind.File
+}
+
+-- Returns true when a path names a directory.
+pub is_directory :: fn (path: string) -> bool\FileError {
+    value := kind(path)?
+    return value == FileKind.Directory
+}
+
+-- Returns true when a path names a symbolic link or Windows reparse point.
+pub is_symlink :: fn (path: string) -> bool\FileError {
+    value := kind(path)?
+    return value == FileKind.Symlink
+}
+
+-- Returns the byte offset at which the final path component begins.
+files_component_start :: fn (path: string) -> usize {
+    start : usize = 0
+    for i: usize = 0; i < path.count; i += 1 {
+        on files_is_separator(path.data[i]) => start = i + 1
+    }
+    return start
+}
+
+-- Returns the byte offset of the final component's extension.
+files_extension_start :: fn (path: string) -> usize {
+    component := files_component_start(path)
+    on path.count - component == 2 &&
+        path.data[component] == '.' &&
+        path.data[component + 1] == '.' => return path.count
+    dot := path.count
+    for i := component; i < path.count; i += 1 {
+        on path.data[i] == '.' => dot = i
+    }
+    return on dot == component { yes => path.count else => dot }
+}
+
+-- Returns a borrowed view of the final path component.
+pub file_name :: fn (path: string) -> string {
+    return path[files_component_start(path)..]
+}
+
+-- Returns a borrowed view of the parent path.
+pub parent :: fn (path: string) -> string {
+    end := path.count
+    for end > 1 && files_is_separator(path.data[end - 1]) {
+        end -= 1
+    }
+    for end > 0 && !files_is_separator(path.data[end - 1]) {
+        end -= 1
+    }
+    on end == 0 => return ""
+    for end > 1 && files_is_separator(path.data[end - 1]) {
+        end -= 1
+    }
+    return path[..end]
+}
+
+-- Returns a borrowed extension including its leading dot, or an empty view.
+pub extension :: fn (path: string) -> string {
+    return path[files_extension_start(path)..]
+}
+
+-- Returns a borrowed final component without its extension.
+pub stem :: fn (path: string) -> string {
+    start := files_component_start(path)
+    return path[start..files_extension_start(path)]
+}
+
+-- Replaces or removes the final component's extension in the selected arena. A
+-- non-empty extension may be supplied with or without its leading dot.
+pub replace_extension :: fn (path          : string,
+                             new_extension : string,
+                             output_arena  : ^arena = temp_arena) -> string {
+    base_end := files_extension_start(path)
+    add_dot := new_extension.count > 0 && new_extension.data[0] != '.'
+    bytes := output_arena.alloc_bytes(base_end + new_extension.count + add_dot.as(usize))
+    for i: usize = 0; i < base_end; i += 1 {
+        bytes[i] = path.data[i]
+    }
+    offset := base_end
+    on add_dot => {
+        bytes[offset] = '.'
+        offset += 1
+    }
+    for i: usize = 0; i < new_extension.count; i += 1 {
+        bytes[offset + i] = new_extension.data[i]
+    }
+    return bytes.as(string)
+}
+
+-- Returns true when a path is absolute on the active platform.
+pub is_absolute :: fn (path: string) -> bool {
+    return files_native_is_absolute(path)
+}
+
+-- Joins two path fragments in the selected arena.
+pub join :: fn (left         : string,
+                right        : string,
+                output_arena : ^arena = temp_arena) -> string {
+    on left.count == 0 => return output_arena.pr(right)
+    on right.count == 0 => return output_arena.pr(left)
+    left_has_separator := files_is_separator(left.data[left.count - 1])
+    right_has_separator := files_is_separator(right.data[0])
+    right_start : usize = on left_has_separator && right_has_separator { yes
+                              => 1 else => 0 }
+    needs_separator := !left_has_separator && !right_has_separator
+    bytes := output_arena.alloc_bytes(left.count + right.count - right_start + needs_separator.as(usize))
+    for i: usize = 0; i < left.count; i += 1 {
+        bytes[i] = left.data[i]
+    }
+    offset := left.count
+    on needs_separator => {
+        bytes[offset] = '/'
+        offset += 1
+    }
+    for i := right_start; i < right.count; i += 1 {
+        bytes[offset + i - right_start] = right.data[i]
+    }
+    return bytes.as(string)
+}
+
+test "path components are borrowed views" {
+    assert file_name("one/two.txt") == "two.txt"
+    assert parent("one/two.txt") == "one"
+    assert extension("one/two.txt") == ".txt"
+    assert stem("one/two.txt") == "two"
+    assert extension(".profile") == ""
+    assert stem(".profile") == ".profile"
+    assert extension("..") == ""
+    assert stem("..") == ".."
+    assert parent("/") == "/"
+}
+
+test "replace_extension adds replaces and removes extensions" {
+    mark := temp_arena.mark()
+    defer temp_arena.restore(mark)
+    assert replace_extension("one/two.txt", "n") == "one/two.n"
+    assert replace_extension("one/two", ".log") == "one/two.log"
+    assert replace_extension("one/two.txt", "") == "one/two"
+}
+
+test "join inserts only a required separator" {
+    mark := temp_arena.mark()
+    defer temp_arena.restore(mark)
+    assert join("one", "two") == "one/two"
+    assert join("one/", "two") == "one/two"
+    assert join("one/", "/two") == "one/two"
+}

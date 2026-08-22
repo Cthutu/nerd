@@ -14,14 +14,25 @@ pub STD_INPUT_HANDLE  : DWORD : 0xfffffff6
 pub STD_OUTPUT_HANDLE : DWORD : 0xfffffff5
 pub STD_ERROR_HANDLE  : DWORD : 0xfffffff4
 
-pub INVALID_HANDLE_VALUE  :: 0xffffffffffffffff
-pub FILE_APPEND_DATA      :: 0x00000004
-pub FILE_SHARE_READ       :: 0x00000001
-pub FILE_SHARE_WRITE      :: 0x00000002
-pub CREATE_ALWAYS         :: 2
-pub OPEN_EXISTING         :: 3
-pub OPEN_ALWAYS           :: 4
-pub FILE_ATTRIBUTE_NORMAL :: 0x00000080
+pub INVALID_HANDLE_VALUE         :: 0xffffffffffffffff
+pub FILE_APPEND_DATA             :: 0x00000004
+pub GENERIC_READ                 :: 0x80000000
+pub GENERIC_WRITE                :: 0x40000000
+pub FILE_SHARE_READ              :: 0x00000001
+pub FILE_SHARE_WRITE             :: 0x00000002
+pub CREATE_ALWAYS                :: 2
+pub OPEN_EXISTING                :: 3
+pub OPEN_ALWAYS                  :: 4
+pub FILE_ATTRIBUTE_NORMAL        :: 0x00000080
+pub FILE_ATTRIBUTE_DIRECTORY     :: 0x00000010
+pub FILE_ATTRIBUTE_REPARSE_POINT :: 0x00000400
+pub INVALID_FILE_ATTRIBUTES      :: 0xffffffff
+
+pub ERROR_FILE_NOT_FOUND :: 2
+pub ERROR_PATH_NOT_FOUND :: 3
+pub ERROR_ACCESS_DENIED  :: 5
+pub ERROR_INVALID_NAME   :: 123
+pub ERROR_ALREADY_EXISTS :: 183
 
 pub ENABLE_PROCESSED_INPUT             :: 0x0001
 pub ENABLE_LINE_INPUT                  :: 0x0002
@@ -192,6 +203,25 @@ ffi "kernel32" {
                                  dwFlagsAndAttributes  : DWORD,
                                  hTemplateFile         : HANDLE) -> HANDLE
 
+    c_CreateFileW :: CreateFileW (lpFileName            : ^u16,
+                                  dwDesiredAccess       : DWORD,
+                                  dwShareMode           : DWORD,
+                                  lpSecurityAttributes  : ^void,
+                                  dwCreationDisposition : DWORD,
+                                  dwFlagsAndAttributes  : DWORD,
+                                  hTemplateFile         : HANDLE) -> HANDLE
+
+    c_GetFileAttributesW :: GetFileAttributesW (lpFileName: ^u16) -> DWORD
+
+    c_DeleteFileW :: DeleteFileW (lpFileName: ^u16) -> BOOL
+
+    c_MultiByteToWideChar :: MultiByteToWideChar (CodePage       : u32,
+                                                  dwFlags        : DWORD,
+                                                  lpMultiByteStr : ^u8,
+                                                  cbMultiByte    : i32,
+                                                  lpWideCharStr  : ^u16,
+                                                  cchWideChar    : i32) -> i32
+
     c_CloseHandle :: CloseHandle (hObject: HANDLE) -> BOOL
 
     c_FlushFileBuffers :: FlushFileBuffers (hFile: HANDLE) -> BOOL
@@ -282,6 +312,48 @@ pub CreateFile :: fn (lpFileName            : ^i8,
                         dwCreationDisposition,
                         dwFlagsAndAttributes,
                         hTemplateFile)
+}
+
+-- Opens a file using a UTF-16 Windows path.
+pub CreateFileW :: fn (lpFileName            : ^u16,
+                       dwDesiredAccess       : DWORD,
+                       dwShareMode           : DWORD,
+                       lpSecurityAttributes  : ^void,
+                       dwCreationDisposition : DWORD,
+                       dwFlagsAndAttributes  : DWORD,
+                       hTemplateFile         : HANDLE) -> HANDLE {
+    return c_CreateFileW(lpFileName,
+                         dwDesiredAccess,
+                         dwShareMode,
+                         lpSecurityAttributes,
+                         dwCreationDisposition,
+                         dwFlagsAndAttributes,
+                         hTemplateFile)
+}
+
+-- Returns attributes for a UTF-16 Windows path.
+pub GetFileAttributesW :: fn (lpFileName: ^u16) -> DWORD {
+    return c_GetFileAttributesW(lpFileName)
+}
+
+-- Removes a file using a UTF-16 Windows path.
+pub DeleteFileW :: fn (lpFileName: ^u16) -> BOOL {
+    return c_DeleteFileW(lpFileName)
+}
+
+-- Converts bytes in a selected code page to UTF-16 code units.
+pub MultiByteToWideChar :: fn (CodePage       : u32,
+                               dwFlags        : DWORD,
+                               lpMultiByteStr : ^u8,
+                               cbMultiByte    : i32,
+                               lpWideCharStr  : ^u16,
+                               cchWideChar    : i32) -> i32 {
+    return c_MultiByteToWideChar(CodePage,
+                                 dwFlags,
+                                 lpMultiByteStr,
+                                 cbMultiByte,
+                                 lpWideCharStr,
+                                 cchWideChar)
 }
 
 pub CloseHandle :: fn (hObject: HANDLE) -> BOOL {

@@ -20,7 +20,7 @@ main :: fn () {
 0
 ¬
 one 44
-two 27
+two 10
 three 9
 call 31
 inner 28
@@ -78,6 +78,7 @@ declare i64 @string_builder_mark()
 declare void @string_builder_append_string(ptr)
 declare void @string_builder_append_byte(i8)
 declare void @string_builder_finish(ptr, i64)
+declare void @string_builder_finish_in(ptr, i64, ptr)
 declare void @to_string$string(ptr, ptr)
 declare void @to_string$bool(ptr, i1)
 declare void @to_string$i8(ptr, i8)
@@ -140,7 +141,7 @@ define internal void @fn.5() {
   %t2 = alloca { ptr, i64 }
   %t10 = alloca { ptr, i64 }
   %t18 = alloca { ptr, i64 }
-  %t26 = alloca { ptr, i64 }
+  %t25 = alloca { ptr, i64 }
   %t0 = call i64 @string_builder_mark()
   %t1 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.1, i64 4 }, ptr %t2
@@ -160,7 +161,7 @@ define internal void @fn.5() {
   store { ptr, i64 } { ptr @.str.m0.2, i64 4 }, ptr %t10
   call void @to_string$string(ptr %t9, ptr %t10)
   call void @string_builder_append_string(ptr %t9)
-  %t11 = add i32 2, 20
+  %t11 = add i32 2, 3
   %t12 = call i32 @fn.0(i32 2, i32 3, i32 %t11)
   %t13 = alloca { ptr, i64 }
   call void @to_string$i32(ptr %t13, i32 %t12)
@@ -174,29 +175,28 @@ define internal void @fn.5() {
   store { ptr, i64 } { ptr @.str.m0.3, i64 6 }, ptr %t18
   call void @to_string$string(ptr %t17, ptr %t18)
   call void @string_builder_append_string(ptr %t17)
-  %t19 = add i32 2, 20
-  %t20 = call i32 @fn.0(i32 2, i32 3, i32 4)
+  %t19 = call i32 @fn.0(i32 2, i32 3, i32 4)
+  %t20 = alloca { ptr, i64 }
+  call void @to_string$i32(ptr %t20, i32 %t19)
+  call void @string_builder_append_string(ptr %t20)
   %t21 = alloca { ptr, i64 }
-  call void @to_string$i32(ptr %t21, i32 %t20)
-  call void @string_builder_append_string(ptr %t21)
-  %t22 = alloca { ptr, i64 }
-  call void @string_builder_finish(ptr %t22, i64 %t16)
-  %t23 = load { ptr, i64 }, ptr %t22
-  call void @$prn({ ptr, i64 } %t23)
-  %t24 = call i64 @string_builder_mark()
-  %t25 = alloca { ptr, i64 }
-  store { ptr, i64 } { ptr @.str.m0.4, i64 5 }, ptr %t26
-  call void @to_string$string(ptr %t25, ptr %t26)
-  call void @string_builder_append_string(ptr %t25)
-  %t27 = call i32 @fn.1(i32 3)
-  %t28 = call i32 @fn.2(i32 %t27)
+  call void @string_builder_finish(ptr %t21, i64 %t16)
+  %t22 = load { ptr, i64 }, ptr %t21
+  call void @$prn({ ptr, i64 } %t22)
+  %t23 = call i64 @string_builder_mark()
+  %t24 = alloca { ptr, i64 }
+  store { ptr, i64 } { ptr @.str.m0.4, i64 5 }, ptr %t25
+  call void @to_string$string(ptr %t24, ptr %t25)
+  call void @string_builder_append_string(ptr %t24)
+  %t26 = call i32 @fn.1(i32 3)
+  %t27 = call i32 @fn.2(i32 %t26)
+  %t28 = alloca { ptr, i64 }
+  call void @to_string$i32(ptr %t28, i32 %t27)
+  call void @string_builder_append_string(ptr %t28)
   %t29 = alloca { ptr, i64 }
-  call void @to_string$i32(ptr %t29, i32 %t28)
-  call void @string_builder_append_string(ptr %t29)
-  %t30 = alloca { ptr, i64 }
-  call void @string_builder_finish(ptr %t30, i64 %t24)
-  %t31 = load { ptr, i64 }, ptr %t30
-  call void @$prn({ ptr, i64 } %t31)
+  call void @string_builder_finish(ptr %t29, i64 %t23)
+  %t30 = load { ptr, i64 }, ptr %t29
+  call void @$prn({ ptr, i64 } %t30)
   call void @fn.3(i32 4)
   ret void
 }
@@ -206,3 +206,5 @@ define internal void @fn.5() {
 @$with_call_default = internal alias i32 (i32), ptr @fn.2
 @$local_call = internal alias void (i32), ptr @fn.3
 @$main = alias void (), ptr @fn.5
+
+declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

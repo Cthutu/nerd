@@ -93,6 +93,16 @@ main :: fn () {
                 "detail": "method"
             },
             {
+                "label": "pr",
+                "kind": 2,
+                "detail": "method"
+            },
+            {
+                "label": "prn",
+                "kind": 2,
+                "detail": "method"
+            },
+            {
                 "label": "alloc",
                 "kind": 2,
                 "detail": "method"

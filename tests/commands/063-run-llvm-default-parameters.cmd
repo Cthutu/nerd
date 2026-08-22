@@ -26,7 +26,7 @@ main :: fn () {
 0
 ¬
 one 44
-two 27
+two 10
 three 9
 call 31
 inner 28

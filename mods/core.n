@@ -32,6 +32,10 @@ ffi "nrt" {
                      file      : ^u8,
                      line      : u32) -> ^void
 
+    nrt_arena_pr (output: ^string, arena: ^arena, text: ^string)
+
+    nrt_arena_prn (output: ^string, arena: ^arena, text: ^string)
+
     nrt_temp_arena () -> ^arena
 
     nrt_core_init ()
@@ -94,6 +98,21 @@ arena_alignment :: fn [T] () -> usize {
 }
 
 impl arena {
+
+    -- Places text in the arena and returns the arena-backed string.
+    pub pr :: fn (self: ^Self, text: string = "") -> string {
+        output : string
+        nrt_arena_pr(^output, self, ^text)
+        return output
+    }
+
+    -- Places text followed by a newline in the arena and returns the
+    -- arena-backed string.
+    pub prn :: fn (self: ^Self, text: string = "") -> string {
+        output : string
+        nrt_arena_prn(^output, self, ^text)
+        return output
+    }
 
     -- Allocates one value of type `T` from the arena.
     pub alloc :: fn [T] (self        : ^Self,

@@ -60,6 +60,8 @@ func fn.4() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
+@.macro.file.m0 = private unnamed_addr constant [42 x i8] c"tests/language/138-named-call-arguments.t\00"
+
 define internal void @fn.0(ptr %self, i32 %amount, i32 %scale) {
   %t0 = mul i32 %amount, %scale
   %t1 = getelementptr inbounds { i32 }, ptr %self, i64 0, i32 0
@@ -92,12 +94,11 @@ define internal i32 @fn.4() {
   store { i32 } zeroinitializer, ptr %local.9
   call void @fn.0(ptr %local.9, i32 7, i32 3)
   call void @fn.1(ptr %local.9, i32 5)
-  %t0 = add i32 1, 10
-  %t1 = call i32 @fn.3(i32 1, i32 2, i32 3)
-  %t2 = load { i32 }, ptr %local.9
-  %t3 = call i32 @fn.2({ i32 } %t2)
-  %t4 = add i32 %t1, %t3
-  ret i32 %t4
+  %t0 = call i32 @fn.3(i32 1, i32 2, i32 3)
+  %t1 = load { i32 }, ptr %local.9
+  %t2 = call i32 @fn.2({ i32 } %t1)
+  %t3 = add i32 %t0, %t2
+  ret i32 %t3
 }
 
 @$__impl_Counter_set = internal alias void (ptr, i32, i32), ptr @fn.0
@@ -105,3 +106,5 @@ define internal i32 @fn.4() {
 @$__impl_Counter_get = internal alias i32 ({ i32 }), ptr @fn.2
 @$add = internal alias i32 (i32, i32, i32), ptr @fn.3
 @$main = alias i32 (), ptr @fn.4
+
+declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

@@ -30,6 +30,9 @@ library is organised into three layers:
   Pointer-stable arena construction, allocation, reset, and release helpers.
 - `std.io`
   Basic input helpers.
+- `std.files`
+  Portable file handles, whole-file operations, filesystem queries, and lexical
+  path processing.
 - `std.math`
   Mathematical constants, scalar functions, and small geometry helper types.
 - `std.mem`
@@ -83,6 +86,43 @@ This inventory is intentionally brief until the standard library settles.
 
 - `input(prompt: string) -> string`
 
+### `std.files`
+
+- `FileError`
+- `FileMode`
+- `FileKind`
+- `File`
+- `open(path: string, mode: FileMode = FileMode.Read) -> File\FileError`
+- `File.read(output: []u8) -> usize\FileError`
+- `File.write(input: []u8) -> usize\FileError`
+- `File.write_all(input: []u8) -> void\FileError`
+- `File.flush() -> void\FileError`
+- `File.close() -> void\FileError`
+- `read_bytes(path, output_arena = temp_arena) -> []u8\FileError`
+- `read_text(path, output_arena = temp_arena) -> string\FileError`
+- `write_bytes(path, input) -> void\FileError`
+- `write_text(path, text) -> void\FileError`
+- `remove(path) -> void\FileError`
+- `kind(path) -> FileKind\FileError`
+- `exists(path) -> bool\FileError`
+- `is_file(path) -> bool\FileError`
+- `is_directory(path) -> bool\FileError`
+- `is_symlink(path) -> bool\FileError`
+- `file_name(path) -> string`
+- `parent(path) -> string`
+- `extension(path) -> string`
+- `stem(path) -> string`
+- `replace_extension(path, extension, output_arena = temp_arena) -> string`
+- `is_absolute(path) -> bool`
+- `join(left, right, output_arena = temp_arena) -> string`
+
+`File` owns its platform handle and should be closed once. Whole-file reads and
+constructive path functions allocate into the supplied arena, which defaults to
+`temp_arena`; their returned views are invalidated when that arena is restored,
+reset, or released. Path component functions return borrowed views. Filesystem
+failures use `FileError`; recognised conditions have portable enum variants and
+`System { code }` preserves an otherwise unmapped native error code.
+
 ### `std.mem`
 
 Low-level allocation helpers backed by C allocation functions. These APIs should
@@ -129,6 +169,8 @@ The trigonometric functions take radians and return `f64` values.
 - `arena.alloc[T]() -> ^T`
 - `arena.alloc_array[T](count: usize) -> []T`
 - `arena.alloc_bytes(count: usize) -> []u8`
+- `arena.pr(text: string = "") -> string`
+- `arena.prn(text: string = "") -> string`
 - `arena.reset()`
 - `arena.mark() -> u32`
 - `arena.restore(mark: u32)`
@@ -158,6 +200,10 @@ demand, so earlier allocation pointers do not move when the arena grows. Marks
 and offsets are 32-bit values within that range. `restore(mark)` invalidates
 allocations made after the mark, `reset()` invalidates all previous allocations
 and reuses storage, and `done()` releases the reserved arena range.
+
+`pr` places text in the receiving arena and returns that arena-backed string.
+`prn` does the same while appending a newline. Their results remain valid until
+the receiving arena is restored past the allocation, reset, or released.
 
 ### `std.string`
 

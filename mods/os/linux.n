@@ -3,10 +3,15 @@
 -- Copyright (c) 2026 Matt Davies
 --
 -- Provides Linux operating-system bindings used by higher-level NSL modules.
--- This module exposes direct Linux syscall APIs without C-library wrappers.
+-- The syscall intrinsic follows the C library `syscall` convention: failures
+-- return -1 and place the operating-system error code in `last_error`.
 
 -- Invokes a Linux syscall by number with up to six integer arguments.
 pub syscall :: intrinsic "syscall" (number: u64, a0: u64, a1: u64, a2: u64, a3: u64, a4: u64, a5: u64) -> i64
+
+ffi "c" {
+    c_errno_location :: __errno_location () -> ^i32
+}
 
 pub STDIN_FILENO  :: 0  -- File descriptor for standard input.
 pub STDOUT_FILENO :: 1  -- File descriptor for standard output.
@@ -16,6 +21,7 @@ pub SYS_WRITE         :: 1  -- Linux syscall number for `write`.
 pub SYS_OPEN          :: 2  -- Linux syscall number for `open`.
 pub SYS_CLOSE         :: 3  -- Linux syscall number for `close`.
 pub SYS_POLL          :: 7  -- Linux syscall number for `poll`.
+pub SYS_LSEEK         :: 8  -- Linux syscall number for `lseek`.
 pub SYS_IOCTL         :: 16  -- Linux syscall number for `ioctl`.
 pub SYS_NANOSLEEP     :: 35  -- Linux syscall number for `nanosleep`.
 pub SYS_FORK          :: 57  -- Linux syscall number for `fork`.
@@ -23,11 +29,37 @@ pub SYS_EXECVE        :: 59  -- Linux syscall number for `execve`.
 pub SYS_EXIT          :: 60  -- Linux syscall number for `exit`.
 pub SYS_WAIT4         :: 61  -- Linux syscall number for `wait4`.
 pub SYS_FSYNC         :: 74  -- Linux syscall number for `fsync`.
+pub SYS_UNLINK        :: 87  -- Linux syscall number for `unlink`.
 pub SYS_CLOCK_GETTIME :: 228  -- Linux syscall number for `clock_gettime`.
+pub SYS_NEWFSTATAT    :: 262  -- Linux syscall number for `newfstatat`.
 
+pub O_RDONLY :: 0x0000
 pub O_WRONLY :: 0x0001
+pub O_RDWR   :: 0x0002
 pub O_CREAT  :: 0x0040
+pub O_TRUNC  :: 0x0200
 pub O_APPEND :: 0x0400
+
+pub AT_FDCWD            :: -100
+pub AT_SYMLINK_NOFOLLOW :: 0x0100
+
+pub S_IFMT  :: 0xf000
+pub S_IFDIR :: 0x4000
+pub S_IFREG :: 0x8000
+pub S_IFLNK :: 0xa000
+
+pub ENOENT  :: 2
+pub EINTR   :: 4
+pub EACCES  :: 13
+pub EEXIST  :: 17
+pub ENOTDIR :: 20
+pub EISDIR  :: 21
+pub EINVAL  :: 22
+
+-- Returns the calling thread's current C library error code.
+pub last_error :: fn () -> i32 {
+    return c_errno_location()^
+}
 
 pub CLOCK_MONOTONIC :: 1  -- Linux clock identifier for monotonic time.
 
@@ -103,6 +135,28 @@ pub PollFd :: plex #c {
     revents i16
 }
 
+-- Represents file metadata returned by `newfstatat` on 64-bit Linux.
+pub Stat :: plex #c {
+    dev         u64     -- Identifier of the containing device.
+    ino         u64     -- File serial number.
+    nlink       u64     -- Number of hard links.
+    mode        u32     -- File kind and permission bits.
+    uid         u32     -- Owning user identifier.
+    gid         u32     -- Owning group identifier.
+    _padding    u32     -- Native structure padding.
+    rdev        u64     -- Device identifier for special files.
+    size        i64     -- File size in bytes.
+    block_size  i64     -- Preferred block size for I/O.
+    blocks      i64     -- Allocated 512-byte blocks.
+    access_sec  i64     -- Last access time in seconds.
+    access_nsec i64     -- Last access subsecond component.
+    modify_sec  i64     -- Last modification time in seconds.
+    modify_nsec i64     -- Last modification subsecond component.
+    change_sec  i64     -- Last metadata-change time in seconds.
+    change_nsec i64     -- Last metadata-change subsecond component.
+    _reserved   [3]i64  -- Reserved native fields.
+}
+
 -- Reads bytes from a file descriptor using the Linux `read` syscall.
 pub sys_read :: fn (fd: i32, buf: ^void, count: usize) -> isize {
     return syscall(SYS_READ, fd.as(u64), buf.as(usize).as(u64), count.as(u64), 0, 0, 0).as(isize)
@@ -123,6 +177,14 @@ pub sys_close :: fn (fd: i32) -> i32 {
     return syscall(SYS_CLOSE, fd.as(u64), 0, 0, 0, 0, 0).as(i32)
 }
 
+-- Reads metadata for a path relative to a directory descriptor.
+pub sys_newfstatat :: fn (directory : i32,
+                          path      : ^i8,
+                          stat      : ^Stat,
+                          flags     : i32) -> i32 {
+    return syscall(SYS_NEWFSTATAT, directory.as(u64), path.as(usize).as(u64), stat.as(usize).as(u64), flags.as(u64), 0, 0).as(i32)
+}
+
 -- Waits for events on file descriptors using the Linux `poll` syscall.
 pub sys_poll :: fn (fds: ^PollFd, nfds: usize, timeout_ms: i32) -> i32 {
     return syscall(SYS_POLL, fds.as(usize).as(u64), nfds.as(u64), timeout_ms.as(u64), 0, 0, 0).as(i32)
@@ -131,6 +193,11 @@ pub sys_poll :: fn (fds: ^PollFd, nfds: usize, timeout_ms: i32) -> i32 {
 -- Flushes file contents and metadata using the Linux `fsync` syscall.
 pub sys_fsync :: fn (fd: i32) -> i32 {
     return syscall(SYS_FSYNC, fd.as(u64), 0, 0, 0, 0, 0).as(i32)
+}
+
+-- Removes a filesystem name using the Linux `unlink` syscall.
+pub sys_unlink :: fn (path: ^i8) -> i32 {
+    return syscall(SYS_UNLINK, path.as(usize).as(u64), 0, 0, 0, 0, 0).as(i32)
 }
 
 -- Applies a Linux `ioctl` request with a pointer argument.

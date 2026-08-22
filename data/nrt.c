@@ -66,6 +66,11 @@ void nrt_mem_free(void* memory);
 size_t nrt_mem_size(void* memory);
 void nrt_mem_leak(void* memory);
 NrtArena* nrt_temp_arena(void);
+void* nrt_arena_alloc(NrtArena*   arena,
+                      size_t      size,
+                      size_t      alignment,
+                      const char* source_path,
+                      uint32_t    line);
 void nrt_core_init(void);
 void nrt_core_done(void);
 
@@ -652,6 +657,60 @@ void* nrt_arena_alloc(NrtArena*   arena,
     return (void*)(arena->base + start);
 }
 
+void nrt_arena_pr(NerdString*       out,
+                  NrtArena*         arena,
+                  const NerdString* text)
+{
+    if (out == NULL) {
+        return;
+    }
+
+    size_t count = text != NULL ? text->count : 0;
+    uintptr_t begin = arena != NULL ? (uintptr_t)arena->base : 0;
+    uintptr_t end = arena != NULL ? (uintptr_t)arena->current : 0;
+    uintptr_t source = text != NULL ? (uintptr_t)text->data : 0;
+    if (arena != NULL && arena->base != NULL && source >= begin &&
+        source <= end && count <= end - source) {
+        *out = *text;
+        return;
+    }
+    u8* data = (u8*)nrt_arena_alloc(arena, count, 1, NULL, 0);
+    if (count > 0) {
+        memcpy(data, text->data, count);
+    }
+    *out = (NerdString){.data = data, .count = count};
+}
+
+void nrt_arena_prn(NerdString*       out,
+                   NrtArena*         arena,
+                   const NerdString* text)
+{
+    if (out == NULL) {
+        return;
+    }
+
+    size_t count = text != NULL ? text->count : 0;
+    if (count == SIZE_MAX) {
+        nrt_arena_abort("arena string size overflow");
+    }
+    uintptr_t begin = arena != NULL ? (uintptr_t)arena->base : 0;
+    uintptr_t end = arena != NULL ? (uintptr_t)arena->current : 0;
+    uintptr_t source = text != NULL ? (uintptr_t)text->data : 0;
+    if (arena != NULL && arena->base != NULL && source >= begin &&
+        source <= end && count == end - source) {
+        u8* newline = (u8*)nrt_arena_alloc(arena, 1, 1, NULL, 0);
+        newline[0] = '\n';
+        *out = (NerdString){.data = text->data, .count = count + 1};
+        return;
+    }
+    u8* data = (u8*)nrt_arena_alloc(arena, count + 1, 1, NULL, 0);
+    if (count > 0) {
+        memcpy(data, text->data, count);
+    }
+    data[count] = '\n';
+    *out = (NerdString){.data = data, .count = count + 1};
+}
+
 void nrt_temp_arena_reset(void) { string_builder_reset(); }
 
 static bool string_is_utf8_boundary(const NerdString* value, size_t index)
@@ -893,7 +952,7 @@ void string_builder_append_byte(u8 byte)
     g_string_builder_data[g_string_builder_cursor++] = byte;
 }
 
-void string_builder_finish(NerdString* out, size_t start)
+void string_builder_finish_in(NerdString* out, size_t start, NrtArena* arena)
 {
     if (out == NULL) {
         return;
@@ -906,11 +965,16 @@ void string_builder_finish(NerdString* out, size_t start)
     size_t count = g_string_builder_cursor - start;
     u8*    data  = NULL;
     if (count > 0) {
-        data = (u8*)nrt_arena_alloc(&g_temp_arena, count, 1, NULL, 0);
+        data = (u8*)nrt_arena_alloc(arena, count, 1, NULL, 0);
         memcpy(data, g_string_builder_data + start, count);
     }
     *out = (NerdString){.data = data, .count = count};
     g_string_builder_cursor = start;
+}
+
+void string_builder_finish(NerdString* out, size_t start)
+{
+    string_builder_finish_in(out, start, &g_temp_arena);
 }
 
 void to_string$string(NerdString* out, const NerdString* value)

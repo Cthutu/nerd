@@ -2697,6 +2697,7 @@ typedef struct {
     const Lexer*      macro_source_lexer;
     bool              discard_expr_value;
     bool              writable_slice_literal;
+    string            interpolation_arena;
     LlvmDebugModule*  debug;
     u32               debug_scope_id;
     u32               debug_decl_index;
@@ -8449,11 +8450,20 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             sb_format(ctx->sb,
                       "  " STRINGP " = alloca { ptr, i64 }\n",
                       STRINGV(result_ptr));
-            sb_format(ctx->sb,
-                      "  call void @string_builder_finish(ptr " STRINGP
-                      ", i64 " STRINGP ")\n",
-                      STRINGV(result_ptr),
-                      STRINGV(mark));
+            if (ctx->interpolation_arena.count > 0) {
+                sb_format(ctx->sb,
+                          "  call void @string_builder_finish_in(ptr " STRINGP
+                          ", i64 " STRINGP ", ptr " STRINGP ")\n",
+                          STRINGV(result_ptr),
+                          STRINGV(mark),
+                          STRINGV(ctx->interpolation_arena));
+            } else {
+                sb_format(ctx->sb,
+                          "  call void @string_builder_finish(ptr " STRINGP
+                          ", i64 " STRINGP ")\n",
+                          STRINGV(result_ptr),
+                          STRINGV(mark));
+            }
             sb_format(ctx->sb,
                       "  " STRINGP " = load { ptr, i64 }, ptr " STRINGP "\n",
                       STRINGV(result),
@@ -13512,14 +13522,37 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     }
                 }
             }
+            bool arena_format_method = false;
+            if (callee_function != NULL && callee_function->param_count == 2) {
+                u32 method_symbol = llvm_function_method_symbol_handle(
+                    callee_sema, callee_function);
+                u32 receiver_type = llvm_function_param_type(
+                    callee_sema, callee_function->type_index, 0);
+                if (method_symbol != U32_MAX &&
+                    llvm_type_kind(callee_sema, receiver_type) == STK_Pointer) {
+                    u32 target_type =
+                        callee_sema->types[receiver_type].first_param_type;
+                    string method_name =
+                        lex_symbol(callee_lexer, method_symbol);
+                    arena_format_method =
+                        llvm_type_kind(callee_sema, target_type) == STK_Arena &&
+                        (string_eq_cstr(method_name, "pr") ||
+                         string_eq_cstr(method_name, "prn"));
+                }
+            }
             for (u32 i = 0; i < expr->arg_count; ++i) {
                 const HirCallArg* arg =
                     &ctx->hir->call_args[expr->first_arg + i];
-                bool old_discard_expr_value = ctx->discard_expr_value;
-                ctx->discard_expr_value     = false;
+                bool old_discard_expr_value    = ctx->discard_expr_value;
+                ctx->discard_expr_value        = false;
+                string old_interpolation_arena = ctx->interpolation_arena;
+                if (arena_format_method && i == 1 && array_count(args) > 0) {
+                    ctx->interpolation_arena = args[0].value;
+                }
                 LlvmValue value =
                     llvm_emit_expr(ctx, function, arg->expr_index);
-                ctx->discard_expr_value = old_discard_expr_value;
+                ctx->discard_expr_value  = old_discard_expr_value;
+                ctx->interpolation_arena = old_interpolation_arena;
                 if (!value.ok) {
                     array_free(args);
                     return (LlvmValue){0};
@@ -13543,7 +13576,9 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     const HirParam* param =
                         &callee_hir->params[callee_function->first_param + i];
                     LlvmValue context_value = {0};
-                    if (param->default_expr_index != U32_MAX) {
+                    if (i < array_count(args)) {
+                        context_value = args[i];
+                    } else if (param->default_expr_index != U32_MAX) {
                         default_emit_ctx->macro_source_path = expr->source_path;
                         default_emit_ctx->macro_source_line = expr->source_line;
                         default_emit_ctx->macro_source_hir  = ctx->hir;
@@ -13566,8 +13601,18 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                             }
                             return (LlvmValue){0};
                         }
-                    } else if (i < array_count(args)) {
-                        context_value = args[i];
+                        if (callee_hir != ctx->hir &&
+                            expr->callee_expr_index <
+                                array_count(ctx->hir->exprs)) {
+                            u32 caller_callee_type =
+                                ctx->hir->exprs[expr->callee_expr_index]
+                                    .type_index;
+                            u32 caller_param_type = llvm_function_param_type(
+                                ctx->sema, caller_callee_type, i);
+                            if (caller_param_type != sema_no_type()) {
+                                context_value.type_index = caller_param_type;
+                            }
+                        }
                     }
                     array_push(default_values, context_value);
                     if (context_value.ok && param->local_index != U32_MAX) {
@@ -16644,6 +16689,7 @@ internal void llvm_render_string_runtime_declarations(StringBuilder* sb)
         {"void", "string_builder_append_string", "ptr"},
         {"void", "string_builder_append_byte", "i8"},
         {"void", "string_builder_finish", "ptr, i64"},
+        {"void", "string_builder_finish_in", "ptr, i64, ptr"},
         {"void", "to_string$string", "ptr, ptr"},
         {"void", "to_string$bool", "ptr, i1"},
         {"void", "to_string$i8", "ptr, i8"},
