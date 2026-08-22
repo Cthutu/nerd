@@ -283,7 +283,8 @@ on "windows" {
     -- Classifies a Windows path, treating reparse points as symbolic links.
     files_native_kind :: fn (path: string) -> FileKind\FileError {
         native_path := files_windows_path(path)?
-        attributes := GetFileAttributesW(native_path)
+        attributes  := GetFileAttributesW(native_path)
+
         on attributes == INVALID_FILE_ATTRIBUTES => return files_windows_error(GetLastError())!
         on (attributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0 => return FileKind.Symlink
         on (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0 => return FileKind.Directory
@@ -492,8 +493,9 @@ pub replace_extension :: fn (path          : string,
                              new_extension : string,
                              output_arena  : ^arena = temp_arena) -> string {
     base_end := files_extension_start(path)
-    add_dot := new_extension.count > 0 && new_extension.data[0] != '.'
-    bytes := output_arena.alloc_bytes(base_end + new_extension.count + add_dot.as(usize))
+    add_dot  := new_extension.count > 0 && new_extension.data[0] != '.'
+    bytes    := output_arena.alloc_bytes(base_end + new_extension.count + add_dot.as(usize))
+
     for i: usize = 0; i < base_end; i += 1 {
         bytes[i] = path.data[i]
     }
@@ -519,12 +521,14 @@ pub join :: fn (left         : string,
                 output_arena : ^arena = temp_arena) -> string {
     on left.count == 0 => return output_arena.pr(right)
     on right.count == 0 => return output_arena.pr(left)
-    left_has_separator := files_is_separator(left.data[left.count - 1])
-    right_has_separator := files_is_separator(right.data[0])
-    right_start : usize = on left_has_separator && right_has_separator { yes
-                              => 1 else => 0 }
-    needs_separator := !left_has_separator && !right_has_separator
-    bytes := output_arena.alloc_bytes(left.count + right.count - right_start + needs_separator.as(usize))
+    left_has_separator          := files_is_separator(left.data[left.count - 1])
+    right_has_separator         := files_is_separator(right.data[0])
+    right_start         : usize = on left_has_separator
+                                      && right_has_separator { yes => 1 else
+                                      => 0 }
+    needs_separator             := !left_has_separator && !right_has_separator
+    bytes                       := output_arena.alloc_bytes(left.count + right.count - right_start + needs_separator.as(usize))
+
     for i: usize = 0; i < left.count; i += 1 {
         bytes[i] = left.data[i]
     }

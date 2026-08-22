@@ -97,8 +97,9 @@ deflate_read_bits :: fn (reader: ^DeflateReader, count: u8) -> u32 {
         reader.bit_count += 8
     }
 
-    mask := (1.as(u32) << count.as(u32)) - 1
+    mask  := (1.as(u32) << count.as(u32)) - 1
     value := reader.bit_buffer & mask
+
     reader.bit_buffer >>= count.as(u32)
     reader.bit_count -= count
     return value
@@ -112,8 +113,8 @@ deflate_align_byte :: fn (reader: ^DeflateReader) {
 
 -- Reverses canonical Huffman codes into the on-wire bit order.
 deflate_reverse_bits :: fn (code: u16, length: u8) -> u16 {
-    remaining := code
-    reversed : u16 = 0
+    remaining       := code
+    reversed  : u16 = 0
 
     for _ in [0 .. length.as(i32)] {
         reversed  = (reversed << 1) | (remaining & 1)
@@ -151,8 +152,9 @@ deflate_build_huffman :: fn (lengths: []u8) -> Huffman\CompressionError {
         length := lengths[symbol]
         on (length == 0) => again
 
-        next := next_codes[length.as(usize)]
+        next         := next_codes[length.as(usize)]
         length_index := length.as(usize)
+
         next_codes[length_index] = next_codes[length_index] + 1
         huffman.entries.push({
             symbol : symbol.as(u16)
@@ -307,8 +309,9 @@ deflate_decode_compressed_block :: fn (reader           : ^DeflateReader,
         on (symbol > 285) => return compress_bool_invalid("Invalid deflate "
             +"length code")
 
-        length := deflate_length_base(symbol)
+        length            := deflate_length_base(symbol)
         extra_length_bits := deflate_length_extra_bits(symbol)
+
         on (extra_length_bits != 0) => {
             length += deflate_read_bits(reader, extra_length_bits).as(usize)
         }
@@ -318,8 +321,9 @@ deflate_decode_compressed_block :: fn (reader           : ^DeflateReader,
         on reader.failed => return compress_bool_error(UnexpectedEnd)
         on (distance_symbol < 0 || distance_symbol > 29) => return compress_bool_invalid("Invalid deflate distance code")
 
-        distance := deflate_distance_base(distance_symbol)
+        distance            := deflate_distance_base(distance_symbol)
         extra_distance_bits := deflate_distance_extra_bits(distance_symbol)
+
         on (extra_distance_bits != 0) => {
             distance += deflate_read_bits(reader, extra_distance_bits).as(usize)
         }
@@ -327,8 +331,9 @@ deflate_decode_compressed_block :: fn (reader           : ^DeflateReader,
         on (distance == 0 || distance > output.count) => return compress_bool_invalid("Invalid deflate copy distance")
 
         for _ in [0 .. length] {
-            byte := (output^)[output.count - distance]
+            byte   := (output^)[output.count - distance]
             pushed := deflate_output_push(output, byte, max_output_bytes)
+
             on pushed {
                 OutputLimitExceeded! => return compress_bool_error(OutputLimitExceeded)
 

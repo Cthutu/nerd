@@ -19,6 +19,7 @@ matrix_green_faint  :: rgb(0, 55, 24)
 
 matrix_glyph :: fn (x: u32, y: u32, frame_number: u64) -> u32 {
     value := x.as(u64) * 131 + y.as(u64) * 977 + frame_number * 17
+
     value ^= value >> 7
     value ^= value << 11
     return on (value % 6) {
@@ -32,8 +33,9 @@ matrix_glyph :: fn (x: u32, y: u32, frame_number: u64) -> u32 {
 }
 
 matrix_column_reset :: fn (_index: u32, height: u32) -> RainColumn {
-    span := height + 8
+    span       := height + 8
     max_length := height / 2 + 5
+
     on max_length < 5 => max_length = 5
 
     return RainColumn {
@@ -98,7 +100,8 @@ matrix_draw :: fn (width: u32, height: u32) {
             on y >= 0 &&
                 y < height.as(i32) => {
                 colour := matrix_trail_colour(distance, column.length)
-                glyph := matrix_glyph(x, y.as(u32), frame + distance.as(u64))
+                glyph  := matrix_glyph(x, y.as(u32), frame + distance.as(u64))
+
                 term_fb_put(x.as(i32), y, glyph, colour, rgb(0, 0, 0))
             }
         }

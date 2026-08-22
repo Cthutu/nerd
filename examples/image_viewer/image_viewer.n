@@ -17,8 +17,8 @@ image_view_rect :: fn (view_width   : u32,
     }
 
     width_from_height := (view_height * image_width) / image_height
-    draw_width := view_width
-    draw_height := (view_width * image_height) / image_width
+    draw_width        := view_width
+    draw_height       := (view_width * image_height) / image_width
 
     on draw_height > view_height => {
         draw_width  = width_from_height
@@ -48,13 +48,13 @@ image_blend_over :: fn (red        : u32,
                         background : u32) -> u32 {
     on alpha == 255 => return 0xff000000 | (red << 16) | (green << 8) | blue
 
-    background_red := (background >> 16) & 0xff
+    background_red   := (background >> 16) & 0xff
     background_green := (background >> 8) & 0xff
-    background_blue := background & 0xff
+    background_blue  := background & 0xff
 
-    out_red := (red * alpha + background_red * (255 - alpha)) / 255
+    out_red   := (red * alpha + background_red * (255 - alpha)) / 255
     out_green := (green * alpha + background_green * (255 - alpha)) / 255
-    out_blue := (blue * alpha + background_blue * (255 - alpha)) / 255
+    out_blue  := (blue * alpha + background_blue * (255 - alpha)) / 255
 
     return 0xff000000 | (out_red << 16) | (out_green << 8) | out_blue
 }
@@ -64,7 +64,7 @@ image_pixel :: fn (image: ^Image, x: u32, y: u32, background: u32) -> u32 {
 
     clamped_x := on x < image.width.as(u32) => x else image.width.as(u32) - 1
     clamped_y := on y < image.height.as(u32) => y else image.height.as(u32) - 1
-    index := ((clamped_y * image.width.as(u32) + clamped_x) * 4).as(usize)
+    index     := ((clamped_y * image.width.as(u32) + clamped_x) * 4).as(usize)
 
     return image_blend_over(image.data[index].as(u32),
                             image.data[index + 1].as(u32),
@@ -74,8 +74,9 @@ image_pixel :: fn (image: ^Image, x: u32, y: u32, background: u32) -> u32 {
 }
 
 load_demo_image :: fn () -> Image {
-    bytes := @embed("assets/demo.jpg")
+    bytes  := @embed("assets/demo.jpg")
     result := Image.load_bytes(bytes, 4)
+
     return on result {
         image  => image
         else   => abort("Could not decode embedded image viewer asset.")
@@ -85,8 +86,9 @@ load_demo_image :: fn () -> Image {
 draw_image_viewer :: fn (layer: ^PixelLayer, image: ^Image) {
     layer.clear(0xff181818)
 
-    view_width := layer.pixel_width()
+    view_width  := layer.pixel_width()
     view_height := layer.pixel_height()
+
     rect := image_view_rect(view_width,
                             view_height,
                             image.width.as(u32),
@@ -100,10 +102,11 @@ draw_image_viewer :: fn (layer: ^PixelLayer, image: ^Image) {
             source_y = image.height.as(u32) - 1 - source_y
         }
         for x: u32 = 0; x < rect.width; x += 1 {
-            source_x := (x * image.width.as(u32)) / rect.width
-            target_x := rect.x + x
-            target_y := rect.y + y
+            source_x   := (x * image.width.as(u32)) / rect.width
+            target_x   := rect.x + x
+            target_y   := rect.y + y
             background := image_checkerboard(target_x, target_y)
+
             layer.put(target_x,
                       target_y,
                       image_pixel(image, source_x, source_y, background))

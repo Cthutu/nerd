@@ -3,10 +3,11 @@ use std.gfx
 use std.time
 
 fit_colour :: fn (x: u32, y: u32, tick: u32) -> u32 {
-    checker := ((x / 4) + (y / 4) + (tick / 12)) & 1
-    red := ((x * 5 + tick * 2) & 255) << 16
-    green := ((y * 7 + tick) & 255) << 8
-    blue : u32 = on checker == 0 => 0x40 else 0xd0
+    checker       := ((x / 4) + (y / 4) + (tick / 12)) & 1
+    red           := ((x * 5 + tick * 2) & 255) << 16
+    green         := ((y * 7 + tick) & 255) << 8
+    blue    : u32 = on checker == 0 => 0x40 else 0xd0
+
     return 0xff000000 | red | green | blue
 }
 

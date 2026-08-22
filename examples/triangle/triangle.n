@@ -6,8 +6,9 @@ compile_shader :: fn (type: GLenum, source: string) -> GLuint {
     shader := glCreateShader(type)
     on shader == 0 => return 0
 
-    source_data := source.data.as(^i8)
+    source_data   := source.data.as(^i8)
     source_length := source.count.as(GLint)
+
     glShaderSource(shader, 1, ^source_data, ^source_length)
     glCompileShader(shader)
 

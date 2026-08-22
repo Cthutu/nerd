@@ -127,6 +127,7 @@ dungeon_add_rooms :: fn (region: ^i32) {
     for attempt: i32 = 0; attempt < attempts; attempt += 1 {
         max_w := map_width.as(i32) / 5
         max_h := map_height.as(i32) / 4
+
         on max_w < 5 => max_w = 5
         on max_h < 5 => max_h = 5
         on max_w > 13 => max_w = 13
@@ -138,8 +139,8 @@ dungeon_add_rooms :: fn (region: ^i32) {
         on map_width.as(i32) - w - 2 <= 1 ||
             map_height.as(i32) - h - 2 <= 1 => again
 
-        x := rand_odd(1, map_width.as(i32) - w - 2)
-        y := rand_odd(1, map_height.as(i32) - h - 2)
+        x    := rand_odd(1, map_width.as(i32) - w - 2)
+        y    := rand_odd(1, map_height.as(i32) - h - 2)
         room := Room { x y w h }
 
         on !dungeon_room_overlaps(room) => {
@@ -168,10 +169,11 @@ dungeon_direction_dy :: fn (direction: i32) -> i32 {
 }
 
 dungeon_can_carve :: fn (x: i32, y: i32, direction: i32) -> bool {
-    dx := dungeon_direction_dx(direction)
-    dy := dungeon_direction_dy(direction)
+    dx       := dungeon_direction_dx(direction)
+    dy       := dungeon_direction_dy(direction)
     target_x := x + dx * 2
     target_y := y + dy * 2
+
     return dungeon_inner(target_x, target_y) && dungeon_cell(target_x, target_y).tile == Tile.Wall
 }
 
@@ -181,7 +183,7 @@ dungeon_carve_maze :: fn (start_x: i32, start_y: i32, region: i32) {
     dungeon_set(start_x, start_y, Tile.Floor, region)
 
     for stack.count > 0 {
-        current := stack[stack.count - 1]
+        current              := stack[stack.count - 1]
         candidates : [..]i32
 
         for direction: i32 = 0; direction < 4; direction += 1 {
@@ -199,6 +201,7 @@ dungeon_carve_maze :: fn (start_x: i32, start_y: i32, region: i32) {
 
         dx := dungeon_direction_dx(direction)
         dy := dungeon_direction_dy(direction)
+
         dungeon_set(current.x + dx, current.y + dy, Tile.Floor, region)
         dungeon_set(current.x + dx * 2, current.y + dy * 2, Tile.Floor, region)
         stack.push(Pos { x: current.x + dx * 2 y: current.y + dy * 2 })
@@ -229,9 +232,10 @@ dungeon_find_connectors :: fn () {
             b : i32 = -1
 
             for direction: i32 = 0; direction < 4; direction += 1 {
-                dx := dungeon_direction_dx(direction)
-                dy := dungeon_direction_dy(direction)
+                dx     := dungeon_direction_dx(direction)
+                dy     := dungeon_direction_dy(direction)
                 region := dungeon_cell(x + dx, y + dy).region
+
                 on region < 0 => again
                 on a < 0 => {
                     a = region
@@ -256,6 +260,7 @@ region_find :: fn (parents: [..]i32, value: i32) -> i32 {
 region_union :: fn (parents: [..]i32, a: i32, b: i32) {
     root_a := region_find(parents, a)
     root_b := region_find(parents, b)
+
     on root_a != root_b => parents[root_b.as(usize)] = root_a
 }
 
@@ -268,8 +273,8 @@ dungeon_remove_nearby_connectors :: fn (connector: Connector) {
     i : usize = 0
     for i < connectors.count {
         other := connectors[i]
-        dx := dungeon_abs_i32(other.x - connector.x)
-        dy := dungeon_abs_i32(other.y - connector.y)
+        dx    := dungeon_abs_i32(other.x - connector.x)
+        dy    := dungeon_abs_i32(other.y - connector.y)
 
         on dx <= 1 &&
             dy <= 1 => {
@@ -291,12 +296,13 @@ dungeon_connect_regions :: fn (region_count: i32) {
     }
 
     for connectors.count > 0 {
-        index := random_range_u64(0, connectors.count.as(u64) - 1).as(usize)
+        index     := random_range_u64(0, connectors.count.as(u64) - 1).as(usize)
         connector := connectors[index]
+
         connectors.swap_delete(index)
 
-        root_a := region_find(parents, connector.a)
-        root_b := region_find(parents, connector.b)
+        root_a     := region_find(parents, connector.a)
+        root_b     := region_find(parents, connector.b)
         extra_loop := random_range_u64(0, 18) == 0
 
         on root_a != root_b ||
@@ -324,6 +330,7 @@ dungeon_remove_dead_ends :: fn () {
                 for direction: i32 = 0; direction < 4; direction += 1 {
                     dx := dungeon_direction_dx(direction)
                     dy := dungeon_direction_dy(direction)
+
                     on dungeon_passable(x + dx, y + dy) => exits += 1
                 }
 
@@ -372,6 +379,7 @@ dungeon_generate :: fn (terminal_width: u32, terminal_height: u32) {
 
 dungeon_hash :: fn (x: u32, y: u32) -> u32 {
     value := x.as(u64) * 1103515245 + y.as(u64) * 12345 + seed
+
     value ^= value >> 11
     value ^= value << 7
     return (value & 0xffff).as(u32)
@@ -381,6 +389,7 @@ dungeon_colour_step :: fn (base: Colour, amount: u32) -> Colour {
     r := ((base >> 16) & 0xff) + amount
     g := ((base >> 8) & 0xff) + amount
     b := (base & 0xff) + amount
+
     on r > 255 => r = 255
     on g > 255 => g = 255
     on b > 255 => b = 255
@@ -388,14 +397,15 @@ dungeon_colour_step :: fn (base: Colour, amount: u32) -> Colour {
 }
 
 dungeon_draw_cell :: fn (x: u32, y: u32) {
-    cell := dungeon_cell(x.as(i32), y.as(i32))
+    cell  := dungeon_cell(x.as(i32), y.as(i32))
     noise := dungeon_hash(x, y) % 28
 
     on cell.tile {
         Tile.Wall => {
             on dungeon_wall_visible(x.as(i32), y.as(i32)) => {
                 paper := dungeon_colour_step(wall_paper, noise / 2)
-                ink := dungeon_colour_step(wall_ink, noise / 4)
+                ink   := dungeon_colour_step(wall_ink, noise / 4)
+
                 term_fb_put(x.as(i32), y.as(i32), '#', ink, paper)
             } else {
                 term_fb_put(x.as(i32), y.as(i32), ' ', stone_void, rgb(0, 0, 0))
@@ -404,7 +414,8 @@ dungeon_draw_cell :: fn (x: u32, y: u32) {
 
         Tile.Floor => {
             paper := dungeon_colour_step(floor_dark, noise / 3)
-            ink := dungeon_colour_step(floor_mid, noise)
+            ink   := dungeon_colour_step(floor_mid, noise)
+
             term_fb_put(x.as(i32), y.as(i32), '.', ink, paper)
         }
 

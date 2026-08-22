@@ -106,8 +106,9 @@ on "linux" {
 
     -- Marks a public frame and its platform record as closed.
     frame_linux_mark_closed :: fn (system: ^FrameSystem, frame: ^Frame) {
-        id := frame.id
+        id    := frame.id
         index := frame_system_find_info_index(system, id)
+
         frame.id = CLOSED_FRAME
         on index < system.frames.count => {
             frame_linux_destroy_info(^system.frames[index])
@@ -211,9 +212,10 @@ on "linux" {
 
         root := XRootWindow(info.platform_info.display,
                             XDefaultScreen(info.platform_info.display))
-        client_x := fallback_x
-        client_y := fallback_y
-        child : XWindow
+        client_x           := fallback_x
+        client_y           := fallback_y
+        child    : XWindow
+
         translated := XTranslateCoordinates(info.platform_info.display,
                                             info.platform_info.window,
                                             root,
@@ -236,8 +238,9 @@ on "linux" {
 
     -- Sends an EWMH fullscreen-state request to the window manager.
     frame_linux_send_fullscreen :: fn (info: ^FrameInfo, full_screen: bool) {
-        event : XEvent
-        client := (^event).as(^XClientMessageEvent)
+        event  : XEvent
+        client          := (^event).as(^XClientMessageEvent)
+
         client.type = X_EVENT_CLIENT_MESSAGE
         client.display = info.platform_info.display
         client.window = info.platform_info.window
@@ -253,8 +256,8 @@ on "linux" {
         root := XRootWindow(info.platform_info.display,
                             XDefaultScreen(info.platform_info.display))
         mask := (X_SUBSTRUCTURE_REDIRECT_MASK | X_SUBSTRUCTURE_NOTIFY_MASK).as(XLong)
-        _ := XSendEvent(info.platform_info.display, root, 0, mask, ^event)
-        _ := XFlush(info.platform_info.display)
+        _    := XSendEvent(info.platform_info.display, root, 0, mask, ^event)
+        _    := XFlush(info.platform_info.display)
     }
 
     -- Applies `Frame.full_screen`, preserving and restoring normal geometry.
@@ -363,8 +366,9 @@ on "linux" {
                                       info    : ^FrameInfo,
                                       event   : ^XKeyEvent,
                                       is_down : bool) {
-        keysym := XLookupKeysym(event, 0)
+        keysym    := XLookupKeysym(event, 0)
         scan_code := frame_linux_scan_code_from_keysym(keysym)
+
         frame_linux_update_modifier_state(system, scan_code, is_down)
 
         on is_down {
@@ -418,8 +422,8 @@ on "linux" {
         }
 
         screen := XDefaultScreen(display)
-        root := XRootWindow(display, screen)
-        black := XBlackPixel(display, screen)
+        root   := XRootWindow(display, screen)
+        black  := XBlackPixel(display, screen)
 
         window := XCreateSimpleWindow(display,
                                       root,
@@ -439,9 +443,10 @@ on "linux" {
         mark := temp_arena.mark()
         defer temp_arena.restore(mark)
 
-        _ := XStoreName(display, window, frame_c_string_temp(frame.title))
+        _          := XStoreName(display, window, frame_c_string_temp(frame.title))
         event_mask := (X_STRUCTURE_NOTIFY_MASK | X_EXPOSURE_MASK | X_KEY_PRESS_MASK | X_KEY_RELEASE_MASK).as(XLong)
-        _ := XSelectInput(display, window, event_mask)
+        _          := XSelectInput(display, window, event_mask)
+
         wm_delete := XInternAtom(display,
                                  frame_c_string_temp("WM_DELETE_WINDOW"),
                                  0)
@@ -567,8 +572,9 @@ on "linux" {
 
             X_EVENT_CONFIGURE_NOTIFY => {
                 configure := event.as(usize).as(^XConfigureEvent)
-                width := configure.width.as(u16)
-                height := configure.height.as(u16)
+                width     := configure.width.as(u16)
+                height    := configure.height.as(u16)
+
                 on width == 0 || height == 0 => return
                 frame_linux_capture_geometry(info,
                                              configure.x,
@@ -616,7 +622,8 @@ on "linux" {
             info := ^system.frames[i]
             for info.platform_info.display != nil && XPending(info.platform_info.display) > 0 {
                 event : XEvent
-                _ := XNextEvent(info.platform_info.display, ^event)
+                _              := XNextEvent(info.platform_info.display, ^event)
+
                 frame_linux_handle_event(system, info, ^event)
             }
 
@@ -692,7 +699,8 @@ on "linux" {
             on rect.width == 0 || rect.height == 0 => again
 
             colour := (rect.colour & 0x00ffffff).as(XULong)
-            _ := XSetForeground(info.platform_info.display, gc, colour)
+            _      := XSetForeground(info.platform_info.display, gc, colour)
+
             _ := XFillRectangle(info.platform_info.display,
                                 info.platform_info.window,
                                 gc,
@@ -711,9 +719,10 @@ on "linux" {
         on info.platform_info.display == nil ||
             info.platform_info.window == 0 => return no
 
-        screen := XDefaultScreen(info.platform_info.display)
-        depth := XDefaultDepth(info.platform_info.display, screen)
+        screen                    := XDefaultScreen(info.platform_info.display)
+        depth                     := XDefaultDepth(info.platform_info.display, screen)
         visual_info : XVisualInfo
+
         matched := XMatchVisualInfo(info.platform_info.display,
                                     screen,
                                     depth,
@@ -784,7 +793,8 @@ on "linux" {
 
         screen := XDefaultScreen(info.platform_info.display)
         visual := XDefaultVisual(info.platform_info.display, screen)
-        depth := XDefaultDepth(info.platform_info.display, screen)
+        depth  := XDefaultDepth(info.platform_info.display, screen)
+
         image := XCreateImage(info.platform_info.display,
                               visual,
                               depth.as(u32),
@@ -851,9 +861,10 @@ on "linux" {
         required_pixels := buffer.stride.as(usize) * buffer.height.as(usize)
         on buffer.pixels.count < required_pixels => return
 
-        frame_width := frame.width.as(u32)
+        frame_width  := frame.width.as(u32)
         frame_height := frame.height.as(u32)
-        pixels := temp_arena.alloc_array[u32]((frame_width * frame_height).as(usize))
+        pixels       := temp_arena.alloc_array[u32]((frame_width * frame_height).as(usize))
+
         for i: usize = 0;
             i < pixels.count;
             i += 1 {
@@ -871,6 +882,7 @@ on "linux" {
                 dest_y := buffer.y.as(u32) + (y * buffer.draw_height.as(u32)) / buffer.height.as(u32)
                 next_x := buffer.x.as(u32) + ((x + 1) * buffer.draw_width.as(u32)) / buffer.width.as(u32)
                 next_y := buffer.y.as(u32) + ((y + 1) * buffer.draw_height.as(u32)) / buffer.height.as(u32)
+
                 for py := dest_y;
                     py < next_y && py < frame_height;
                     py += 1 {

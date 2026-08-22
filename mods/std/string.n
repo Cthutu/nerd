@@ -231,7 +231,7 @@ test "trim_null_terminated leaves strings without zero bytes unchanged" {
 }
 
 test "c_string copies text to null-terminated temp storage" {
-    text := "OpenGL"
+    text   := "OpenGL"
     c_text := text.c_string()
 
     assert c_text[0] == 'O'

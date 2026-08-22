@@ -3,10 +3,11 @@ use std.gfx
 use std.time
 
 background_colour :: fn (x: u32, y: u32, tick: u32) -> u32 {
-    band := ((x / 6) + (y / 6) + (tick / 10)) & 1
-    red := ((x * 3 + tick * 2) & 255) << 16
-    green := ((y * 5 + tick) & 255) << 8
-    blue : u32 = on band == 0 => 0x38 else 0xa8
+    band        := ((x / 6) + (y / 6) + (tick / 10)) & 1
+    red         := ((x * 3 + tick * 2) & 255) << 16
+    green       := ((y * 5 + tick) & 255) << 8
+    blue  : u32 = on band == 0 => 0x38 else 0xa8
+
     return 0xff000000 | red | green | blue
 }
 
@@ -14,14 +15,15 @@ foreground_colour :: fn (x: u32, y: u32, tick: u32) -> u32 {
     cx : u32 = 48
     cy : u32 = 36
 
-    dx := on x > cx => x - cx else cx - x
-    dy := on y > cy => y - cy else cy - y
-    pulse := (tick / 4) & 31
-    ring := (dx + dy + pulse) & 31
-    red := (220 - ring * 4) << 16
-    green := ((x * 2 + tick * 3) & 255) << 8
-    blue := (80 + ring * 5) & 255
+    dx          := on x > cx => x - cx else cx - x
+    dy          := on y > cy => y - cy else cy - y
+    pulse       := (tick / 4) & 31
+    ring        := (dx + dy + pulse) & 31
+    red         := (220 - ring * 4) << 16
+    green       := ((x * 2 + tick * 3) & 255) << 8
+    blue        := (80 + ring * 5) & 255
     alpha : u32 = on ring < 8 => 0xe0 else 0x90
+
     return (alpha << 24) | red | green | blue
 }
 
@@ -44,8 +46,9 @@ draw_background :: fn (layer: ^PixelLayer, tick: u32) {
 draw_foreground :: fn (layer: ^PixelLayer, tick: u32) {
     layer.clear(0x00000000)
 
-    width := layer.pixel_width()
+    width  := layer.pixel_width()
     height := layer.pixel_height()
+
     layer.paint({
         x : 0
         y : 0
@@ -56,10 +59,11 @@ draw_foreground :: fn (layer: ^PixelLayer, tick: u32) {
         for y in [0 .. height] {
             for x in [0 .. width] {
                 index := y * stride + x
-                cx := width / 2
-                cy := height / 2
-                dx := on x > cx => x - cx else cx - x
-                dy := on y > cy => y - cy else cy - y
+                cx    := width / 2
+                cy    := height / 2
+                dx    := on x > cx => x - cx else cx - x
+                dy    := on y > cy => y - cy else cy - y
+
                 on dx * dx + dy * dy > 32 * 32 => again
                 pixels[index] = foreground_colour(x, y, tick)
             }
@@ -107,6 +111,7 @@ render_layers :: fn (gfx        : ^GfxSystem,
                      tick       : u32) -> bool\GfxError {
     background_layer := (gfx.get_pixel_layer(background))?
     foreground_layer := (gfx.get_pixel_layer(foreground))?
+
     draw_background(background_layer, tick)
     draw_foreground(foreground_layer, tick)
     gfx.render(frame)

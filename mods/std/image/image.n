@@ -76,8 +76,8 @@ impl Image {
 }
 
 test "image placeholder load_bytes reports unsupported format" {
-    bytes : [4]u8 = [0, 1, 2, 3]
-    result := Image.load_bytes(bytes[..])
+    bytes  : [4]u8 = [0, 1, 2, 3]
+    result         := Image.load_bytes(bytes[..])
 
     on result {
         UnsupportedFormat! => {

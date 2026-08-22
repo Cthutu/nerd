@@ -25,8 +25,9 @@ ffi "nrt" {
 
 -- Appends bytes from one read chunk until an enter key terminator appears.
 append_chunk_until_enter :: fn (line: ^[..]u8, chunk: []u8) -> bool {
-    i : usize = 0
-    done := no
+    i    : usize = 0
+    done         := no
+
     for i < chunk.count && !done {
         byte := chunk[i]
         on byte == 10 ||
@@ -46,14 +47,15 @@ on "linux" {
 
     -- Prints a prompt, reads standard input, and returns owned bytes before enter.
     pub input :: fn (prompt: string) -> [..]u8 {
-        _ := sys_write(STDOUT_FILENO, prompt.data.as(^void), prompt.count)
+        _          := sys_write(STDOUT_FILENO, prompt.data.as(^void), prompt.count)
         temp_arena := nrt_temp_arena()
-        mark := nrt_arena_mark(temp_arena)
+        mark       := nrt_arena_mark(temp_arena)
+
         defer nrt_arena_restore(temp_arena, mark)
 
-        line : [..]u8
-        buffer_data := nrt_arena_alloc(temp_arena, INPUT_CHUNK_SIZE, 1, nil, 0).as(^u8)
-        buffer := buffer_data.as([]u8, INPUT_CHUNK_SIZE)
+        line        : [..]u8
+        buffer_data          := nrt_arena_alloc(temp_arena, INPUT_CHUNK_SIZE, 1, nil, 0).as(^u8)
+        buffer               := buffer_data.as([]u8, INPUT_CHUNK_SIZE)
 
         for {
             bytes_read := sys_read(STDIN_FILENO,
@@ -76,7 +78,7 @@ on "windows" {
 
     -- Prints a prompt, reads standard input, and returns owned bytes before enter.
     pub input :: fn (prompt: string) -> [..]u8 {
-        output := GetStdHandle(STD_OUTPUT_HANDLE)
+        output       := GetStdHandle(STD_OUTPUT_HANDLE)
         input_handle := GetStdHandle(STD_INPUT_HANDLE)
 
         bytes_written : DWORD
@@ -87,12 +89,13 @@ on "windows" {
                        nil)
 
         temp_arena := nrt_temp_arena()
-        mark := nrt_arena_mark(temp_arena)
+        mark       := nrt_arena_mark(temp_arena)
+
         defer nrt_arena_restore(temp_arena, mark)
 
-        line : [..]u8
-        buffer_data := nrt_arena_alloc(temp_arena, INPUT_CHUNK_SIZE, 1, nil, 0).as(^u8)
-        buffer := buffer_data.as([]u8, INPUT_CHUNK_SIZE)
+        line        : [..]u8
+        buffer_data          := nrt_arena_alloc(temp_arena, INPUT_CHUNK_SIZE, 1, nil, 0).as(^u8)
+        buffer               := buffer_data.as([]u8, INPUT_CHUNK_SIZE)
 
         for {
             bytes_read : DWORD

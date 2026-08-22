@@ -33,7 +33,8 @@ ffi "kernel32" {
 
 pub wglGetValidProcAddress :: fn (name: ^i8) -> ^void {
     address := wglGetProcAddress(name)
-    value := address.as(usize)
+    value   := address.as(usize)
+
     on value == 0 ||
         value == 1 ||
         value == 2 ||

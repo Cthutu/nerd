@@ -12,7 +12,7 @@ on "windows" {
     term_raw_mode_enable_impl :: fn () {
         on term_original_mode_saved => return
 
-        input := GetStdHandle(STD_INPUT_HANDLE)
+        input  := GetStdHandle(STD_INPUT_HANDLE)
         output := GetStdHandle(STD_OUTPUT_HANDLE)
 
         input_mode  : DWORD
@@ -20,6 +20,7 @@ on "windows" {
 
         _ := GetConsoleMode(input, ^input_mode)
         _ := GetConsoleMode(output, ^output_mode)
+
         term_original_input_mode  = input_mode
         term_original_output_mode = output_mode
         term_original_input_cp    = GetConsoleCP()
@@ -42,13 +43,14 @@ on "windows" {
     term_raw_mode_disable_impl :: fn () {
         on !term_original_mode_saved => return
 
-        input := GetStdHandle(STD_INPUT_HANDLE)
+        input  := GetStdHandle(STD_INPUT_HANDLE)
         output := GetStdHandle(STD_OUTPUT_HANDLE)
 
         _ := SetConsoleMode(input, term_original_input_mode)
         _ := SetConsoleMode(output, term_original_output_mode)
         _ := SetConsoleCP(term_original_input_cp)
         _ := SetConsoleOutputCP(term_original_output_cp)
+
         term_original_mode_saved = no
     }
 
@@ -62,13 +64,15 @@ on "windows" {
     -- Returns the terminal size as `(columns, rows)`, or `(0, 0)` when the terminal
     -- size cannot be read.
     pub term_get_size :: fn () -> (u32, u32) {
-        output := GetStdHandle(STD_OUTPUT_HANDLE)
-        info : CONSOLE_SCREEN_BUFFER_INFO
-        result := GetConsoleScreenBufferInfo(output, ^info)
+        output                              := GetStdHandle(STD_OUTPUT_HANDLE)
+        info   : CONSOLE_SCREEN_BUFFER_INFO
+        result                              := GetConsoleScreenBufferInfo(output, ^info)
+
         on result == 0 => return (0, 0)
 
         columns := term_window_span(info.srWindow.Left, info.srWindow.Right)
-        rows := term_window_span(info.srWindow.Top, info.srWindow.Bottom)
+        rows    := term_window_span(info.srWindow.Top, info.srWindow.Bottom)
+
         return term_normalise_size(columns, rows)
     }
 
@@ -86,7 +90,7 @@ on "windows" {
 
     -- Reads one byte from terminal input, returning `0` on EOF or error.
     term_read_byte :: fn () -> u8 {
-        input := GetStdHandle(STD_INPUT_HANDLE)
+        input              := GetStdHandle(STD_INPUT_HANDLE)
         key        : [1]u8
         bytes_read : DWORD
 
@@ -97,15 +101,17 @@ on "windows" {
 
     -- Reads one byte from terminal input, returning `0` when the timeout elapses.
     term_read_byte_timeout :: fn (timeout_ms: u32) -> u8 {
-        input := GetStdHandle(STD_INPUT_HANDLE)
+        input       := GetStdHandle(STD_INPUT_HANDLE)
         wait_result := WaitForSingleObject(input, timeout_ms.as(DWORD))
+
         on wait_result != WAIT_OBJECT_0 => return 0
         return term_read_byte()
     }
 
     term_input_is_console :: fn () -> bool {
-        input := GetStdHandle(STD_INPUT_HANDLE)
-        mode : DWORD
+        input         := GetStdHandle(STD_INPUT_HANDLE)
+        mode  : DWORD
+
         return GetConsoleMode(input, ^mode) != 0
     }
 
@@ -334,8 +340,8 @@ on "windows" {
         on record.EventType != MOUSE_EVENT => return TermInputEvent.None
 
         mouse := (^record).as(^MOUSE_INPUT_RECORD)
-        x := mouse^.dwMousePosition.X.as(i32)
-        y := mouse^.dwMousePosition.Y.as(i32)
+        x     := mouse^.dwMousePosition.X.as(i32)
+        y     := mouse^.dwMousePosition.Y.as(i32)
 
         on (mouse^.dwEventFlags & MOUSE_WHEELED.as(DWORD)) != 0 => {
             delta := term_windows_mouse_wheel_delta(mouse^.dwButtonState)
@@ -355,8 +361,8 @@ on "windows" {
                 else TermInputEvent.None
         }
 
-        buttons := term_windows_mouse_buttons(mouse^.dwButtonState)
-        pressed := buttons & ~term_mouse.buttons
+        buttons  := term_windows_mouse_buttons(mouse^.dwButtonState)
+        pressed  := buttons & ~term_mouse.buttons
         released := term_mouse.buttons & ~buttons
 
         on pressed != 0 => return TermInputEvent.MouseDown(x, y, pressed)
@@ -367,9 +373,10 @@ on "windows" {
     }
 
     term_windows_console_key :: fn () -> ?TermScanCode {
-        input := GetStdHandle(STD_INPUT_HANDLE)
-        mode : DWORD
-        is_console := GetConsoleMode(input, ^mode)
+        input              := GetStdHandle(STD_INPUT_HANDLE)
+        mode       : DWORD
+        is_console         := GetConsoleMode(input, ^mode)
+
         on is_console == 0 => return nil
 
         for {
@@ -400,9 +407,10 @@ on "windows" {
     }
 
     term_windows_console_event :: fn () -> TermInputEvent {
-        input := GetStdHandle(STD_INPUT_HANDLE)
-        mode : DWORD
-        is_console := GetConsoleMode(input, ^mode)
+        input              := GetStdHandle(STD_INPUT_HANDLE)
+        mode       : DWORD
+        is_console         := GetConsoleMode(input, ^mode)
+
         on is_console == 0 => return TermInputEvent.None
 
         for {

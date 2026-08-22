@@ -26,23 +26,26 @@ utf8_decode_storage_at :: fn (data  : ^u8,
     on first < 0x80 => return (first, 1)
     on (first & 0xe0) == 0xc0 &&
         index + 1 < count => {
-        second := data[index + 1].as(u32)
+        second    := data[index + 1].as(u32)
         codepoint := ((first & 0x1f) << 6) | (second & 0x3f)
+
         return (codepoint, 2)
     }
     on (first & 0xf0) == 0xe0 &&
         index + 2 < count => {
-        second := data[index + 1].as(u32)
-        third := data[index + 2].as(u32)
+        second    := data[index + 1].as(u32)
+        third     := data[index + 2].as(u32)
         codepoint := ((first & 0x0f) << 12) | ((second & 0x3f) << 6) | (third & 0x3f)
+
         return (codepoint, 3)
     }
     on (first & 0xf8) == 0xf0 &&
         index + 3 < count => {
-        second := data[index + 1].as(u32)
-        third := data[index + 2].as(u32)
-        fourth := data[index + 3].as(u32)
+        second    := data[index + 1].as(u32)
+        third     := data[index + 2].as(u32)
+        fourth    := data[index + 3].as(u32)
         codepoint := ((first & 0x07) << 18) | ((second & 0x3f) << 12) | ((third & 0x3f) << 6) | (fourth & 0x3f)
+
         return (codepoint, 4)
     }
     return (REPLACEMENT_CODEPOINT, 1)
@@ -78,8 +81,9 @@ pub encoded_count :: fn (codepoint: u32) -> usize {
 -- Encodes `codepoint` into `output` and returns the number of bytes written.
 -- Returns zero without writing when `output` is too small.
 pub encode_to :: fn (codepoint: u32, output: []u8) -> usize {
-    value := utf8_normalise_codepoint(codepoint)
+    value  := utf8_normalise_codepoint(codepoint)
     needed := encoded_count(value)
+
     on output.count < needed => return 0
 
     on value < 0x80 => {

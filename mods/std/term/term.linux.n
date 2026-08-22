@@ -10,13 +10,14 @@ on "linux" {
         on term_original_mode_saved => return
 
         current : Termios
-        _ := sys_ioctl(STDIN_FILENO, TCGETS.as(u64), (^current).as(^void))
+        _                 := sys_ioctl(STDIN_FILENO, TCGETS.as(u64), (^current).as(^void))
+
         term_original_mode       = current
         term_original_mode_saved = yes
 
-        input_mask := (BRKINT | ICRNL | INPCK | ISTRIP | IXON).as(u32)
+        input_mask  := (BRKINT | ICRNL | INPCK | ISTRIP | IXON).as(u32)
         output_mask := OPOST.as(u32)
-        local_mask := (ECHO | ICANON | IEXTEN | ISIG).as(u32)
+        local_mask  := (ECHO | ICANON | IEXTEN | ISIG).as(u32)
 
         current.iflag &= ~input_mask
         current.oflag &= ~output_mask
@@ -35,6 +36,7 @@ on "linux" {
         restored := term_original_mode
         restored.oflag |= (OPOST | ONLCR).as(u32)
         _ := sys_ioctl(STDIN_FILENO, TCSETS.as(u64), (^restored).as(^void))
+
         term_original_mode_saved = no
     }
 
@@ -63,7 +65,7 @@ on "linux" {
 
     term_write_byte :: fn (byte: u8) {
         data := [byte]
-        _ := sys_write(STDOUT_FILENO, data[..].data.as(^void), 1)
+        _    := sys_write(STDOUT_FILENO, data[..].data.as(^void), 1)
     }
 
     -- Writes text directly to the terminal output stream. Linux raw mode
@@ -91,8 +93,9 @@ on "linux" {
 
     -- Reads one byte from terminal input, returning `0` on EOF or error.
     term_read_byte :: fn () -> u8 {
-        key : [1]u8
-        bytes_read := sys_read(STDIN_FILENO, key[..].data.as(^void), 1)
+        key        : [1]u8
+        bytes_read         := sys_read(STDIN_FILENO, key[..].data.as(^void), 1)
+
         on bytes_read <= 0 => return 0
         return key[0]
     }
@@ -100,7 +103,7 @@ on "linux" {
     -- Reads one byte from terminal input, returning `0` when the timeout elapses.
     term_read_byte_timeout :: fn (timeout_ms: u32) -> u8 {
         current : Termios
-        _ := sys_ioctl(STDIN_FILENO, TCGETS.as(u64), (^current).as(^void))
+        _                 := sys_ioctl(STDIN_FILENO, TCGETS.as(u64), (^current).as(^void))
 
         timeout_mode := current
         timeout_mode.cc[VMIN] = 0
@@ -108,7 +111,8 @@ on "linux" {
         _ := sys_ioctl(STDIN_FILENO, TCSETS.as(u64), (^timeout_mode).as(^void))
 
         key := term_read_byte()
-        _ := sys_ioctl(STDIN_FILENO, TCSETS.as(u64), (^current).as(^void))
+        _   := sys_ioctl(STDIN_FILENO, TCSETS.as(u64), (^current).as(^void))
+
         return key
     }
 
@@ -146,7 +150,7 @@ on "linux" {
 
     term_wait_for_input_impl :: fn (timeout_ms: i32) {
         pollfd := PollFd { fd: STDIN_FILENO events: POLLIN.as(i16) revents: 0 }
-        _ := sys_poll(^pollfd, 1, timeout_ms)
+        _      := sys_poll(^pollfd, 1, timeout_ms)
     }
 
 }
@@ -480,7 +484,7 @@ term_too_small :: fn () -> bool {
 }
 
 term_draw_too_small :: fn () {
-    ink := rgb(255, 235, 180)
+    ink   := rgb(255, 235, 180)
     paper := rgb(72, 18, 28)
 
     term_fb_fill_rect(0,
@@ -492,7 +496,7 @@ term_draw_too_small :: fn () {
                       paper)
 
     message := "Terminal too small"
-    detail := $"Need at least {term_min_width}x{term_min_height}"
+    detail  := $"Need at least {term_min_width}x{term_min_height}"
 
     -- If even the status text cannot fit, the warning background still gives a
     -- visible signal that the app is intentionally withholding its normal view.
@@ -714,6 +718,7 @@ pub term_init :: fn (min_width        : u32 = TERM_DEFAULT_MIN_WIDTH,
     term_mouse_input_enable(yes)
 
     size := term_get_size()
+
     term_last_columns = size.0
     term_last_rows    = size.1
     on term_last_columns == 0 => term_last_columns = 1
@@ -733,9 +738,10 @@ pub term_done :: fn () {
 }
 
 term_resize_if_needed :: fn () -> bool {
-    size := term_get_size()
+    size    := term_get_size()
     columns := size.0
-    rows := size.1
+    rows    := size.1
+
     on columns == 0 => columns = 1
     on rows == 0 => rows = 1
 
@@ -910,8 +916,9 @@ test "terminal escape sequences map to key codes" {
 }
 
 test "kitty keyboard reports physical key modifiers and text" {
-    encoded := "113::113;6:1;81:769"
+    encoded                        := "113::113;6:1;81:769"
     parameters : TermCsiParameters
+
     for i: usize = 0; i < encoded.count; i += 1 {
         parameters.bytes[i] = encoded.data[i]
     }
@@ -1195,8 +1202,9 @@ test "framebuffer resize and clipped drawing stay within bounds" {
     term_fb_release()
 
     for i: u32 = 0; i < 200; i += 1 {
-        width := (i % 9) + 1
+        width  := (i % 9) + 1
         height := ((i * 3) % 7) + 1
+
         assert term_fb_resize(width, height)
         assert term_fb_width == width
         assert term_fb_height == height
@@ -1366,8 +1374,9 @@ test "terminal keyboard state records edges" {
     term_keyboard_caps.key_releases = yes
 
     term_event_record(term_key_event(TermScanCode.Q))
-    index := TermScanCode.Q.as(u32).as(usize)
+    index    := TermScanCode.Q.as(u32).as(usize)
     keyboard := term_keyboard_snapshot()
+
     assert keyboard.down[index]
     assert keyboard.pressed[index]
     assert !keyboard.released[index]

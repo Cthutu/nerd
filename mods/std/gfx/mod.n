@@ -116,16 +116,18 @@ gfx_pixel_layer_dimensions :: fn (frame : ^Frame,
         FitToWindow { pixel_scale } => {
             scale := pixel_scale
             on scale == 0 => scale = 1
-            frame_width := frame.width.as(u32) / scale.as(u32)
+            frame_width  := frame.width.as(u32) / scale.as(u32)
             frame_height := frame.height.as(u32) / scale.as(u32)
-            real_width := gfx_u32_to_u16_size(frame_width)
-            real_height := gfx_u32_to_u16_size(frame_height)
+            real_width   := gfx_u32_to_u16_size(frame_width)
+            real_height  := gfx_u32_to_u16_size(frame_height)
+
             return PixelSize { width: real_width height: real_height }
         }
 
         FixedSizeAutoScale { width, height } => {
-            real_width := width
+            real_width  := width
             real_height := height
+
             on real_width == 0 => real_width = 1
             on real_height == 0 => real_height = 1
             return PixelSize { width: real_width height: real_height }
@@ -150,10 +152,11 @@ gfx_pixel_layer_clip :: fn (layer: ^PixelLayer, rect: PixelRect) -> PixelRect {
         return PixelRect { x: rect.x y: rect.y width: 0 height: 0 }
     }
 
-    max_width := layer.width.as(u32) - rect.x
+    max_width  := layer.width.as(u32) - rect.x
     max_height := layer.height.as(u32) - rect.y
-    width := on rect.width < max_width => rect.width else max_width
-    height := on rect.height < max_height => rect.height else max_height
+    width      := on rect.width < max_width => rect.width else max_width
+    height     := on rect.height < max_height => rect.height else max_height
+
     return PixelRect { x: rect.x y: rect.y width height }
 }
 
@@ -182,6 +185,7 @@ gfx_blend_pixel :: fn (dest: u32, source: u32) -> u32 {
     r := gfx_blend_channel(sr, dr, alpha)
     g := gfx_blend_channel(sg, dg, alpha)
     b := gfx_blend_channel(sb, db, alpha)
+
     return 0xff000000 | (r << 16) | (g << 8) | b
 }
 
@@ -202,14 +206,16 @@ gfx_pixel_layer_present_scale :: fn (frame: ^Frame, layer: ^PixelLayer) -> u16 {
         }
 
         FixedSizeAutoScale { width, height } => {
-            virtual_width := width
+            virtual_width  := width
             virtual_height := height
+
             on virtual_width == 0 => virtual_width = 1
             on virtual_height == 0 => virtual_height = 1
 
             scale_x := frame.width.as(u32) / virtual_width.as(u32)
             scale_y := frame.height.as(u32) / virtual_height.as(u32)
-            scale := on scale_x < scale_y => scale_x else scale_y
+            scale   := on scale_x < scale_y => scale_x else scale_y
+
             on scale == 0 => scale = 1
             return gfx_u32_to_u16_size(scale)
         }
@@ -226,8 +232,9 @@ gfx_pixel_layer_present_offset :: fn (frame : ^Frame,
         FitToWindow { pixel_scale: _ } => return (0, 0)
 
         FixedSizeAutoScale { width: _, height: _ } => {
-            draw_width := layer.width.as(u32) * scale.as(u32)
+            draw_width  := layer.width.as(u32) * scale.as(u32)
             draw_height := layer.height.as(u32) * scale.as(u32)
+
             x := on frame.width.as(u32) > draw_width
                 =>   (frame.width.as(u32) - draw_width) / 2
                 else 0
@@ -307,6 +314,7 @@ gfx_gl_compile_shader :: fn (type: GLenum, source: string) -> GLuint {
 
     source_ptr := source.data.as(^i8)
     source_len := source.count.as(GLint)
+
     glShaderSource(shader, 1, ^source_ptr, ^source_len)
     glCompileShader(shader)
 
@@ -505,12 +513,12 @@ gfx_present_scaled_pixels_gl :: fn (system : ^GfxSystem,
 
     glPixelStorei(GL_UNPACK_ROW_LENGTH, 0)
 
-    frame_width := frame.width.as(GLfloat)
+    frame_width  := frame.width.as(GLfloat)
     frame_height := frame.height.as(GLfloat)
-    x0 := (buffer.x.as(GLfloat) / frame_width) * 2.0 - 1.0
-    y0 := 1.0 - (buffer.y.as(GLfloat) / frame_height) * 2.0
-    x1 := ((buffer.x.as(u32) + buffer.draw_width.as(u32)).as(GLfloat) / frame_width) * 2.0 - 1.0
-    y1 := 1.0 - (((buffer.y.as(u32) + buffer.draw_height.as(u32)).as(GLfloat) / frame_height) * 2.0)
+    x0           := (buffer.x.as(GLfloat) / frame_width) * 2.0 - 1.0
+    y0           := 1.0 - (buffer.y.as(GLfloat) / frame_height) * 2.0
+    x1           := ((buffer.x.as(u32) + buffer.draw_width.as(u32)).as(GLfloat) / frame_width) * 2.0 - 1.0
+    y1           := 1.0 - (((buffer.y.as(u32) + buffer.draw_height.as(u32)).as(GLfloat) / frame_height) * 2.0)
 
     vertices : [16]GLfloat
     vertices[0] = x0
@@ -736,12 +744,14 @@ gfx_render_impl :: fn (system: ^GfxSystem, frame: ^Frame) {
     frame_system := frame.system
     on frame_system == nil => return
 
-    frame_width := frame.width.as(u32)
+    frame_width  := frame.width.as(u32)
     frame_height := frame.height.as(u32)
+
     on frame_width == 0 || frame_height == 0 => return
 
-    layer_count := 0
+    layer_count                := 0
     single_layer : ^PixelLayer = nil
+
     for layer in system.pixel_layers {
         on layer.frame_id != frame.id => again
         on layer.data.count == 0 => again
@@ -752,10 +762,11 @@ gfx_render_impl :: fn (system: ^GfxSystem, frame: ^Frame) {
     on layer_count == 1 &&
         single_layer != nil &&
         gfx_pixel_layer_is_opaque(single_layer) => {
-        scale := gfx_pixel_layer_present_scale(frame, single_layer)
-        offset := gfx_pixel_layer_present_offset(frame, single_layer, scale)
-        draw_width := single_layer.width.as(u32) * scale.as(u32)
+        scale       := gfx_pixel_layer_present_scale(frame, single_layer)
+        offset      := gfx_pixel_layer_present_offset(frame, single_layer, scale)
+        draw_width  := single_layer.width.as(u32) * scale.as(u32)
         draw_height := single_layer.height.as(u32) * scale.as(u32)
+
         buffer := FrameScaledPixelBuffer {
             x           : offset.0
             y           : offset.1
@@ -780,10 +791,11 @@ gfx_render_impl :: fn (system: ^GfxSystem, frame: ^Frame) {
         on layer.frame_id != frame.id => again
         on layer.data.count == 0 => again
 
-        scale := gfx_pixel_layer_present_scale(frame, layer)
-        offset := gfx_pixel_layer_present_offset(frame, layer, scale)
-        draw_width := layer.width.as(u32) * scale.as(u32)
+        scale       := gfx_pixel_layer_present_scale(frame, layer)
+        offset      := gfx_pixel_layer_present_offset(frame, layer, scale)
+        draw_width  := layer.width.as(u32) * scale.as(u32)
         draw_height := layer.height.as(u32) * scale.as(u32)
+
         on draw_width == 0 || draw_height == 0 => again
 
         for y: u32 = 0; y < layer.height.as(u32); y += 1 {
@@ -791,6 +803,7 @@ gfx_render_impl :: fn (system: ^GfxSystem, frame: ^Frame) {
                 colour := layer.data[gfx_pixel_layer_index(layer, x, y)]
                 dest_x := offset.0.as(u32) + x * scale.as(u32)
                 dest_y := offset.1.as(u32) + y * scale.as(u32)
+
                 for sy: u32 = 0; sy < scale.as(u32); sy += 1 {
                     py := dest_y + sy
                     on py >= frame_height => again
@@ -933,9 +946,10 @@ test "layer handles survive shifting deletion and are never reused" {
     }
     gfx := GfxSystem.init()
     defer gfx.done()
-    mode := PixelLayerMode.FixedSizeAutoScale { width: 2 height: 2 }
-    first := gfx.create_pixel_layer(^frame, mode)
+    mode   := PixelLayerMode.FixedSizeAutoScale { width: 2 height: 2 }
+    first  := gfx.create_pixel_layer(^frame, mode)
     second := gfx.create_pixel_layer(^frame, mode)
+
     assert first.id == 1
     assert second.id == 2
     _ := gfx.destroy_layer(first)
@@ -1021,7 +1035,7 @@ test "fixed-size pixel layer presentation scale letterboxes" {
         data   : nil
     }
 
-    scale := gfx_pixel_layer_present_scale(^frame, ^layer)
+    scale  := gfx_pixel_layer_present_scale(^frame, ^layer)
     offset := gfx_pixel_layer_present_offset(^frame, ^layer, scale)
 
     assert scale == 3

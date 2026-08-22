@@ -644,6 +644,7 @@ pub term_key_name :: fn (keyboard  : TermKeyboard,
         term_arena_ensure()
         bytes := term_arena.alloc_bytes(4)
         count := utf8.encode_to(keyboard.labels[index], bytes)
+
         return bytes[..count].as(string)
     }
     return term_scan_code_name(scan_code)
@@ -668,8 +669,9 @@ term_fb_index_valid :: fn (x: u32, y: u32) -> bool {
 
 term_normalise_size :: fn (width: i32, height: i32) -> (u32, u32) {
     on width <= 0 || height <= 0 => return (0, 0)
-    normalised_width := width.as(u32)
+    normalised_width  := width.as(u32)
     normalised_height := height.as(u32)
+
     on !term_size_supported(normalised_width, normalised_height) => return (0, 0)
     return (normalised_width, normalised_height)
 }
@@ -775,8 +777,9 @@ term_fb_cell_flags :: fn (x: u32, y: u32) -> u32 {
 term_fb_resize :: fn (width: u32, height: u32) -> bool {
     on !term_size_supported(width, height) => return no
 
-    new_count := width.as(usize) * height.as(usize)
+    new_count                := width.as(usize) * height.as(usize)
     new_cells : [..]TermCell
+
     new_cells.resize_undefined_to(new_count)
 
     i : usize = 0
@@ -799,6 +802,7 @@ term_fb_resize :: fn (width: u32, height: u32) -> bool {
             on !term_fb_index_valid(x, y) => again
             old_index := term_fb_index(x, y)
             new_index := (y * width + x).as(usize)
+
             new_cells[new_index] = term_fb_cells[old_index]
             new_cells[new_index].flags |= CELL_DIRTY
         }
@@ -827,9 +831,10 @@ term_fb_release :: fn () {
 }
 
 term_fb_ensure :: fn () {
-    size := term_get_size()
-    width := size.0
+    size   := term_get_size()
+    width  := size.0
     height := size.1
+
     on width == 0 => width = 1
     on height == 0 => height = 1
 
@@ -971,9 +976,9 @@ pub term_fb_fill_rect :: fn (x     : i32,
     })
     on !clip.ok => return
 
-    char_width := term_codepoint_width(ch)
-    yy : i32 = 0
-    xx : i32 = 0
+    char_width       := term_codepoint_width(ch)
+    yy         : i32 = 0
+    xx         : i32 = 0
 
     for yy < clip.rect.h {
         xx = 0
@@ -981,6 +986,7 @@ pub term_fb_fill_rect :: fn (x     : i32,
             on char_width == 1 => {
                 dx := (clip.rect.x + xx).as(u32)
                 dy := (clip.rect.y + yy).as(u32)
+
                 on !term_fb_index_valid(dx, dy) => {
                     xx += 1
                     again
@@ -1029,6 +1035,7 @@ pub term_fb_paint_rect :: fn (x     : i32,
         for xx < clip.rect.w {
             dx := (clip.rect.x + xx).as(u32)
             dy := (clip.rect.y + yy).as(u32)
+
             on !term_fb_index_valid(dx, dy) => {
                 xx += 1
                 again
@@ -1096,7 +1103,8 @@ pub term_fb_text :: fn (x     : i32,
 
 term_fb_text_centered :: fn (y: i32, text: string, ink: Colour, paper: Colour) {
     width := term_text_display_width(text)
-    x := (term_fb_width.as(i32) - width) / 2
+    x     := (term_fb_width.as(i32) - width) / 2
+
     term_fb_text(x, y, text, ink, paper)
 }
 
@@ -1234,6 +1242,7 @@ pub term_fb_box :: fn (x     : i32,
         for xx < clip.rect.w {
             source_x := clip.x_offset + xx
             source_y := clip.y_offset + yy
+
             ch := term_box_cell(source_x,
                                 source_y,
                                 w.as(i32),
@@ -1288,7 +1297,7 @@ term_output_push :: fn (output: ^TermOutput, text: string) {
 
 term_output_push_codepoint :: fn (output: ^TermOutput, ch: u32) {
     bytes : [4]u8
-    count := utf8.encode_to(ch, bytes[..])
+    count         := utf8.encode_to(ch, bytes[..])
 
     for i: usize = 0;
         i < count;
@@ -1301,6 +1310,7 @@ term_output_colour :: fn (output: ^TermOutput, prefix: string, colour: Colour) {
     r := ((colour >> 16) & 0xff).as(u8)
     g := ((colour >> 8) & 0xff).as(u8)
     b := (colour & 0xff).as(u8)
+
     term_output_push(output, $"\x1b[{prefix};2;{r};{g};{b}m")
 }
 
@@ -1340,10 +1350,10 @@ term_fb_present :: fn () {
     on !term_fb_ready => return
 
     term_arena_ensure()
-    output_capacity := term_fb_width.as(usize) * term_fb_height.as(usize) * 64 + 1024
-    output := term_output_make(output_capacity)
-    current_ink   : Colour = COLOUR_TRANSPARENT
-    current_paper : Colour = COLOUR_TRANSPARENT
+    output_capacity          := term_fb_width.as(usize) * term_fb_height.as(usize) * 64 + 1024
+    output                   := term_output_make(output_capacity)
+    current_ink     : Colour = COLOUR_TRANSPARENT
+    current_paper   : Colour = COLOUR_TRANSPARENT
 
     x : u32 = 0
     y : u32 = 0
@@ -1363,7 +1373,7 @@ term_fb_present :: fn () {
 
                 for x < term_fb_width && term_fb_index_valid(x, y) && (term_fb_cells[term_fb_index(x, y)].flags & CELL_DIRTY) != 0 {
                     cell_index := term_fb_index(x, y)
-                    cell := term_fb_cells[cell_index]
+                    cell       := term_fb_cells[cell_index]
 
                     on (cell.flags & CELL_WIDE_TAIL) != 0 => {
                         term_fb_cells[cell_index].flags &= ~CELL_DIRTY
@@ -1438,8 +1448,9 @@ term_csi_tilde_key :: fn (number: u32) -> ?TermScanCode {
 }
 
 term_csi_digit_key :: fn (first: u8, second: u8, third: u8) -> ?TermScanCode {
-    number := first.as(u32) - 48
+    number           := first.as(u32) - 48
     two_digit_number := number * 10 + second.as(u32) - 48
+
     return on second == '~'
         =>   term_csi_tilde_key(number)
         else on (second >= '0' && second <= '9' && third == '~')
@@ -1622,20 +1633,23 @@ term_scan_code_from_kitty_key :: fn (key: u32) -> TermScanCode {
 }
 
 term_input_event_from_kitty :: fn (parameters: TermCsiParameters) -> TermInputEvent {
-    key := term_csi_parameter(parameters, 0, 0)
+    key             := term_csi_parameter(parameters, 0, 0)
     base_layout_key := term_csi_parameter(parameters, 0, 2)
+
     on base_layout_key == 0 => base_layout_key = key
 
     modifier_parameter := term_csi_parameter(parameters, 1, 0, 1)
-    modifiers := on modifier_parameter > 0 => modifier_parameter - 1 else 0
-    event_type := term_csi_parameter(parameters, 1, 1, 1)
+    modifiers          := on modifier_parameter > 0 => modifier_parameter - 1 else 0
+    event_type         := term_csi_parameter(parameters, 1, 1, 1)
+
     action := on event_type == 2
         =>   TermKeyAction.Repeat
         else on (event_type == 3)
         =>   TermKeyAction.Release
         else TermKeyAction.Press
-    text := term_csi_parameter(parameters, 2, 0)
+    text             := term_csi_parameter(parameters, 2, 0)
     character : ?u32 = nil
+
     on text > 0 => character = text
     subfield : u32 = 1
     for {
@@ -1659,8 +1673,9 @@ term_input_event_from_kitty :: fn (parameters: TermCsiParameters) -> TermInputEv
 term_input_event_from_csi_parameters :: fn (parameters: TermCsiParameters) -> TermInputEvent {
     on parameters.final == 'u' => return term_input_event_from_kitty(parameters)
 
-    number := term_csi_parameter(parameters, 0, 0)
+    number   := term_csi_parameter(parameters, 0, 0)
     modifier := term_csi_parameter(parameters, 1, 0, 1)
+
     key := on parameters.final == '~'
         =>   term_csi_tilde_key(number)
         else term_csi_final_key(parameters.final)

@@ -13,7 +13,8 @@ on "linux" {
     -- Waits for a Linux child and converts its wait status to an exit status.
     process_wait :: fn (process_id: i32) -> i32 {
         status : i32
-        waited := sys_waitpid(process_id, ^status, 0)
+        waited       := sys_waitpid(process_id, ^status, 0)
+
         for waited < 0 && last_error() == EINTR {
             waited = sys_waitpid(process_id, ^status, 0)
         }
@@ -123,12 +124,14 @@ on "windows" {
         on wait_status != WAIT_OBJECT_0 => {
             _ := CloseHandle(process_info.hThread)
             _ := CloseHandle(process_info.hProcess)
+
             return -1
         }
-        exit_code : DWORD
-        exit_code_read := GetExitCodeProcess(process_info.hProcess, ^exit_code)
-        _ := CloseHandle(process_info.hThread)
-        _ := CloseHandle(process_info.hProcess)
+        exit_code      : DWORD
+        exit_code_read         := GetExitCodeProcess(process_info.hProcess, ^exit_code)
+        _                      := CloseHandle(process_info.hThread)
+        _                      := CloseHandle(process_info.hProcess)
+
         on exit_code_read == 0 => return -1
         return exit_code.as(i32)
     }

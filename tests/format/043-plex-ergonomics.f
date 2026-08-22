@@ -29,8 +29,9 @@ Packed :: plex #packed {
 }
 
 main :: fn () {
-    p := Point { x y name }
+    p     := Point { x y name }
     short := Point { x y name }
+
     q := p with {
         y
         name: "second"

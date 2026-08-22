@@ -3,10 +3,11 @@ use std.gfx
 use std.time
 
 pixel_colour :: fn (x: u32, y: u32, frame: u32) -> u32 {
-    wave := ((x + frame) ^ (y * 3 + frame * 2)) & 31
-    red := ((x * 4 + frame * 3) & 255) << 16
+    wave  := ((x + frame) ^ (y * 3 + frame * 2)) & 31
+    red   := ((x * 4 + frame * 3) & 255) << 16
     green := ((y * 5 + wave * 8) & 255) << 8
-    blue := ((x * y + frame * 7) & 255)
+    blue  := ((x * y + frame * 7) & 255)
+
     return 0xff000000 | red | green | blue
 }
 

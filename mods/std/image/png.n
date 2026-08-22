@@ -201,8 +201,9 @@ png_read_chunk :: fn (reader: ^ImageReader) -> PngChunk\ImageError {
     on reader.remaining() < chunk_length.as(usize) + 4 => return png_chunk_error(UnexpectedEnd)
 
     data_start := reader.offset
-    data_end := data_start + chunk_length.as(usize)
+    data_end   := data_start + chunk_length.as(usize)
     chunk_data := reader.bytes[data_start..data_end]
+
     reader.offset = data_end
 
     chunk_crc := png_be_u32_at(reader.bytes, reader.offset)
@@ -417,7 +418,7 @@ png_idat_bytes :: fn (png: ^PngContainer) -> [..]u8 {
 
 -- Paeth predictor used by PNG filter type 4.
 png_paeth :: fn (left: u8, up: u8, upper_left: u8) -> u8 {
-    p := left.as(i32) + up.as(i32) - upper_left.as(i32)
+    p  := left.as(i32) + up.as(i32) - upper_left.as(i32)
     pa := p - left.as(i32)
     pb := p - up.as(i32)
     pc := p - upper_left.as(i32)
@@ -449,7 +450,7 @@ png_unfilter :: fn (bytes             : []u8,
                     width             : u32,
                     height            : u32,
                     scanline_channels : i32) -> [..]u8\ImageError {
-    row_bytes := width.as(usize) * scanline_channels.as(usize)
+    row_bytes      := width.as(usize) * scanline_channels.as(usize)
     expected_bytes := height.as(usize) * (row_bytes + 1)
 
     on bytes.count != expected_bytes => return (ImageError.InvalidData {
@@ -459,10 +460,10 @@ png_unfilter :: fn (bytes             : []u8,
 
     for y in [0 .. height.as(usize)] {
         scanline_start := y * (row_bytes + 1)
-        row_start := scanline_start + 1
-        row_end := row_start + row_bytes
-        filter := bytes[scanline_start]
-        row := bytes[row_start..row_end]
+        row_start      := scanline_start + 1
+        row_end        := row_start + row_bytes
+        filter         := bytes[scanline_start]
+        row            := bytes[row_start..row_end]
 
         on filter > 4 => {
             pixels.free()
@@ -506,8 +507,9 @@ png_expand_greyscale :: fn (pixels       : []u8,
     on transparency.count != 2 => return png_pixels_invalid("PNG tRNS chunk "
         +"has invalid greyscale length")
 
-    transparent_value := png_be_u16_at(transparency, 0)
-    output : [..]u8 = nil
+    transparent_value          := png_be_u16_at(transparency, 0)
+    output            : [..]u8 = nil
+
     output.resize_undefined_to(pixels.count * 2)
 
     for i in [0 .. pixels.count] {
@@ -533,19 +535,20 @@ png_expand_truecolour :: fn (pixels       : []u8,
     on transparency.count != 6 => return png_pixels_invalid("PNG tRNS chunk "
         +"has invalid truecolour length")
 
-    transparent_red := png_be_u16_at(transparency, 0)
-    transparent_green := png_be_u16_at(transparency, 2)
-    transparent_blue := png_be_u16_at(transparency, 4)
-    count := pixels.count / 3
-    output : [..]u8 = nil
+    transparent_red            := png_be_u16_at(transparency, 0)
+    transparent_green          := png_be_u16_at(transparency, 2)
+    transparent_blue           := png_be_u16_at(transparency, 4)
+    count                      := pixels.count / 3
+    output            : [..]u8 = nil
+
     output.resize_undefined_to(count * 4)
 
     for i in [0 .. count] {
         source := i * 3
         target := i * 4
-        red := pixels[source]
-        green := pixels[source + 1]
-        blue := pixels[source + 2]
+        red    := pixels[source]
+        green  := pixels[source + 1]
+        blue   := pixels[source + 2]
 
         output[target] = red
         output[target + 1] = green
@@ -569,13 +572,15 @@ png_expand_indexed :: fn (indices      : []u8,
     on transparency.count > palette.count / 3 => return png_pixels_invalid("PNG"
         +" tRNS chunk has too many palette entries")
 
-    channels := on transparency.count > 0 => 4 else 3
-    output : [..]u8 = nil
+    channels          := on transparency.count > 0 => 4 else 3
+    output   : [..]u8 = nil
+
     output.resize_undefined_to(indices.count * channels.as(usize))
 
     for i in [0 .. indices.count] {
-        index := indices[i].as(usize)
+        index         := indices[i].as(usize)
         palette_index := index * 3
+
         on palette_index + 2 >= palette.count => {
             output.free()
             return png_pixels_invalid("PNG palette index is out of range")
@@ -642,17 +647,18 @@ png_convert_channels :: fn (pixels           : []u8,
         return output
     }
 
-    count := width.as(usize) * height.as(usize)
+    count           := width.as(usize) * height.as(usize)
     output : [..]u8 = nil
+
     output.resize_undefined_to(count * desired_channels.as(usize))
 
     for pixel in [0 .. count] {
-        source := pixel * source_channels.as(usize)
-        target := pixel * desired_channels.as(usize)
-        red := pixels[source]
-        green : u8 = 0
-        blue  : u8 = 0
-        alpha : u8 = 255
+        source      := pixel * source_channels.as(usize)
+        target      := pixel * desired_channels.as(usize)
+        red         := pixels[source]
+        green  : u8 = 0
+        blue   : u8 = 0
+        alpha  : u8 = 255
 
         on source_channels == 1 => {
             green = red

@@ -37,13 +37,14 @@ on "windows" {
     FRAME_WINDOWS_CLASS_NAME        :: c"NerdFrameWindow"
     FRAME_WINDOWS_SYSTEM_CLASS_NAME :: c"STATIC"
 
-    frame_windows_current_system : ^FrameSystem
-    frame_windows_class_registered := no
+    frame_windows_current_system   : ^FrameSystem
+    frame_windows_class_registered                := no
 
     frame_windows_colour_ref :: fn (colour: u32) -> u32 {
         r := (colour >> 16) & 0xff
         g := (colour >> 8) & 0xff
         b := colour & 0xff
+
         return (b << 16) | (g << 8) | r
     }
 
@@ -237,9 +238,10 @@ on "windows" {
 
             WM_SIZE => {
                 on info != nil => {
-                    value := lparam.as(usize)
-                    width := (value & 0xffff).as(u16)
+                    value  := lparam.as(usize)
+                    width  := (value & 0xffff).as(u16)
                     height := ((value >> 16) & 0xffff).as(u16)
+
                     frame_windows_push_resize(info, width, height)
                 }
                 return 0
@@ -335,6 +337,7 @@ on "windows" {
 
         _ := wglMakeCurrent(nil, nil)
         _ := wglDeleteContext(info.platform_info.gl_context)
+
         info.platform_info.gl_context = nil
     }
 
@@ -378,8 +381,9 @@ on "windows" {
     }
 
     frame_windows_mark_closed :: fn (system: ^FrameSystem, frame: ^Frame) {
-        id := frame.id
+        id    := frame.id
         index := frame_system_find_info_index(system, id)
+
         on index < system.frames.count => {
             on system.frames[index].platform_info.gl_context != nil => {
                 system.frames[index].platform_info.closed_queued = yes
@@ -737,8 +741,9 @@ on "windows" {
 
         rect : RECT
         on GetClientRect(info.platform_info.window, ^rect) != 0 => {
-            client_width := rect.right - rect.left
+            client_width  := rect.right - rect.left
             client_height := rect.bottom - rect.top
+
             on buffer.x != 0 ||
                 buffer.y != 0 ||
                 buffer.draw_width.as(i32) < client_width ||
@@ -812,6 +817,7 @@ on "windows" {
 
         _ := wglMakeCurrent(nil, nil)
         _ := wglDeleteContext(legacy_context)
+
         on wglMakeCurrent(dc, context) == 0 => {
             _ := wglDeleteContext(context)
             return nil

@@ -20,6 +20,7 @@ random_step :: fn () -> u64 {
     }
 
     value := random_state
+
     value        ^= value >> 12
     value        ^= value << 25
     value        ^= value >> 27
@@ -61,7 +62,7 @@ pub random_range_i64 :: fn (min: i64, max: i64) -> i64 {
 
 test "random_seed makes random_u64 deterministic" {
     random_seed(123)
-    first := random_u64()
+    first  := random_u64()
     second := random_u64()
 
     random_seed(123)

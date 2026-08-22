@@ -47,6 +47,11 @@ single_mixed :: fn () {
     three:u32=3
 }
 
+inferred_variables :: fn () {
+    short:=1
+    much_longer_name:=2
+}
+
 long_values :: fn () {
     long_const: string: "this const string is deliberately long enough to wrap after the second colon"
     short_const: string: "ok"
@@ -86,8 +91,8 @@ main :: fn () {
     ratio  : f64    = 3.14 + 2.0 * 3.0
     s      : string = "hello"
     flags  : u32    = 7 | 2 ^ 1 & 3
+    same            := ratio >= 7.5 && flags != 0
 
-    same := ratio >= 7.5 && flags != 0
     return on same => "ok" else "bad"
 }
 
@@ -100,9 +105,14 @@ bind_values :: fn () {
 }
 
 single_mixed :: fn () {
-    one :: 1
-    two := 2
+    one         :: 1
+    two         := 2
     three : u32 = 3
+}
+
+inferred_variables :: fn () {
+    short            := 1
+    much_longer_name := 2
 }
 
 long_values :: fn () {

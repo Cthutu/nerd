@@ -20,7 +20,8 @@ ffi "nrt" {
 
 c_string_temp :: fn (text: string) -> ^i8 {
     temp_arena := nrt_temp_arena()
-    data := nrt_arena_alloc(temp_arena, text.count + 1, 1, nil, 0).as(^u8)
+    data       := nrt_arena_alloc(temp_arena, text.count + 1, 1, nil, 0).as(^u8)
+
     for i: usize = 0; i < text.count; i += 1 {
         data[i] = text.data[i]
     }
@@ -38,13 +39,15 @@ on "linux" {
 
     pub log_create :: fn (path: string) -> LogFile {
         temp_arena := nrt_temp_arena()
-        mark := nrt_arena_mark(temp_arena)
+        mark       := nrt_arena_mark(temp_arena)
+
         defer nrt_arena_restore(temp_arena, mark)
 
-        flags := O_WRONLY | O_CREAT | O_APPEND
-        c_path := c_string_temp(path)
-        fd := sys_open(c_path, flags, 438)
-        log : LogFile
+        flags            := O_WRONLY | O_CREAT | O_APPEND
+        c_path           := c_string_temp(path)
+        fd               := sys_open(c_path, flags, 438)
+        log    : LogFile
+
         log.fd = fd
         return log
     }
@@ -85,7 +88,8 @@ on "windows" {
 
     pub log_create :: fn (path: string) -> LogFile {
         temp_arena := nrt_temp_arena()
-        mark := nrt_arena_mark(temp_arena)
+        mark       := nrt_arena_mark(temp_arena)
+
         defer nrt_arena_restore(temp_arena, mark)
 
         c_path := c_string_temp(path)
