@@ -415,6 +415,12 @@ pub exists :: fn (path: string) -> bool\FileError {
     }
 }
 
+-- Returns true when a path exists. This is the explicit-name form of `exists`;
+-- directories and symbolic links also count as existing paths.
+pub file_exists :: fn (path: string) -> bool\FileError {
+    return exists(path)
+}
+
 -- Returns true when a path names a regular file.
 pub is_file :: fn (path: string) -> bool\FileError {
     value := kind(path)?

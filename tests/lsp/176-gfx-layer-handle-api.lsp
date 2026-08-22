@@ -53,24 +53,48 @@ main :: fn () {
         "jsonrpc": "2.0",
         "id": 1,
         "result": {
-            "serverInfo": { "name": "Nerd LSP", "version": "0.1.0" },
+            "serverInfo": {
+                "name": "Nerd LSP",
+                "version": "0.1.0"
+            },
             "capabilities": {
-                "textDocumentSync": { "openClose": true, "change": 2 },
+                "textDocumentSync": {
+                    "openClose": true,
+                    "change": 2
+                },
                 "hoverProvider": true,
                 "definitionProvider": true,
                 "documentSymbolProvider": true,
                 "completionProvider": {
-                    "triggerCharacters": [".", "{"],
+                    "triggerCharacters": [
+                        ".",
+                        "{"
+                    ],
                     "resolveProvider": false
                 },
                 "signatureHelpProvider": {
-                    "triggerCharacters": ["(", ","],
-                    "retriggerCharacters": [",", "\n"]
+                    "triggerCharacters": [
+                        "(",
+                        ","
+                    ],
+                    "retriggerCharacters": [
+                        ",",
+                        "\n"
+                    ]
                 },
                 "semanticTokensProvider": {
                     "legend": {
-                        "tokenTypes": ["variable", "function", "keyword", "number", "operator", "string"],
-                        "tokenModifiers": ["unnecessary"]
+                        "tokenTypes": [
+                            "variable",
+                            "function",
+                            "keyword",
+                            "number",
+                            "operator",
+                            "string"
+                        ],
+                        "tokenModifiers": [
+                            "unnecessary"
+                        ]
                     },
                     "full": true
                 }
@@ -85,13 +109,21 @@ main :: fn () {
             "diagnostics": [
                 {
                     "range": {
-                        "start": { "line": 0, "character": 4 },
-                        "end": { "line": 0, "character": 13 }
+                        "start": {
+                            "line": 0,
+                            "character": 4
+                        },
+                        "end": {
+                            "line": 0,
+                            "character": 13
+                        }
                     },
                     "severity": 4,
                     "source": "nerd",
                     "message": "Unused use `std.frame`",
-                    "tags": [1]
+                    "tags": [
+                        1
+                    ]
                 }
             ]
         }
@@ -112,8 +144,14 @@ main :: fn () {
         "result": {
             "uri": "file:///home/matt/nerd/mods/std/gfx/mod.n",
             "range": {
-                "start": { "line": 655, "character": 8 },
-                "end": { "line": 655, "character": 26 }
+                "start": {
+                    "line": 663,
+                    "character": 8
+                },
+                "end": {
+                    "line": 663,
+                    "character": 26
+                }
             }
         }
     },
@@ -133,10 +171,20 @@ main :: fn () {
         "result": {
             "uri": "file:///home/matt/nerd/mods/std/gfx/mod.n",
             "range": {
-                "start": { "line": 679, "character": 8 },
-                "end": { "line": 679, "character": 23 }
+                "start": {
+                    "line": 687,
+                    "character": 8
+                },
+                "end": {
+                    "line": 687,
+                    "character": 23
+                }
             }
         }
     },
-    { "jsonrpc": "2.0", "id": 999, "result": null }
+    {
+        "jsonrpc": "2.0",
+        "id": 999,
+        "result": null
+    }
 ]

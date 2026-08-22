@@ -7,6 +7,9 @@ run_checks :: fn () -> i32\FileError {
     on !is_directory(".")? => return 3
     on is_symlink("../../README.md")? => return 4
     on exists("_missing_std_files_test_")? => return 5
+    on !file_exists("../../README.md")? => return 12
+    on !file_exists(".")? => return 13
+    on file_exists("_missing_std_files_test_")? => return 14
 
     text := read_text("../../README.md")?
     on text.count < 6 || text[..6] != "# Nerd" => return 6
