@@ -5,12 +5,12 @@ main :: fn () {
     defer system.done()
 
     frame := {
-        id : NEW_FRAME
-        width : 800
-        height : 600
-        title : "Simple Window"
+        id          : NEW_FRAME
+        width       : 800
+        height      : 600
+        title       : "Simple Window"
         full_screen : no
-        resizable : yes
+        resizable   : yes
         ...
     }
 
@@ -19,20 +19,17 @@ main :: fn () {
     for system.loop() {
         system.update(^frame)
 
-        n system.poll(^frame) {
+        on system.poll(^frame) {
             None => {
             }
 
             Closed => {
             }
 
-            KeyPress {
-                scan_code
-            }
-            => {
+            KeyPress { scan_code } => {
                 on scan_code {
-                    Escape => system.destroy(^frame)
-                    Q => system.destroy(^frame)
+                    Escape  => system.destroy(^frame)
+                    Q       => system.destroy(^frame)
 
                     Enter => {
                         on system.is_alt_down() => {
