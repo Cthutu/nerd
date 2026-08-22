@@ -462,6 +462,10 @@ bool error_0364_receiver_method_called_through_type(NerdSource source,
 bool error_0365_on_branch_block_has_no_value(NerdSource source,
                                              ErrorSpan  on_span,
                                              ErrorSpan  branch_span);
+bool error_0366_invalid_on_extraction_type(NerdSource source,
+                                           ErrorSpan  value_span,
+                                           ErrorSpan  binder_span,
+                                           string     actual_type);
 
 //------------------------------------------------------------------------------
 // Low-level error system

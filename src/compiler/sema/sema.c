@@ -20135,9 +20135,24 @@ validate_type:
                     sema->types[scrutinee_type].kind != STK_Enum ||
                     !(sema->types[scrutinee_type].flags &
                       (STF_Optional | STF_Result))) {
-                    return error_0321_invalid_on_match_type(
+                    u32 binder_token_index = U32_MAX;
+                    for (u32 i = 0; i < on->branch_count; ++i) {
+                        const AstOnBranch* branch =
+                            &ast->on_branches[on->first_branch + i];
+                        if (branch->binder_token_index != U32_MAX &&
+                            !(branch->flags & AOBF_ImplicitBinder)) {
+                            binder_token_index = branch->binder_token_index;
+                            break;
+                        }
+                    }
+                    ErrorSpan binder_span =
+                        binder_token_index == U32_MAX
+                            ? sema_node_span(lexer, node)
+                            : sema_token_span(lexer, binder_token_index);
+                    return error_0366_invalid_on_extraction_type(
                         lexer->source,
                         sema_node_span(lexer, &ast->nodes[node->a]),
+                        binder_span,
                         sema_type_name(
                             lexer, sema, &temp_arena, scrutinee_type));
                 }

@@ -1931,3 +1931,32 @@ bool error_0365_on_branch_block_has_no_value(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
+// Report a payload binder applied to a value without extractable variants.
+
+bool error_0366_invalid_on_extraction_type(NerdSource source,
+                                           ErrorSpan  value_span,
+                                           ErrorSpan  binder_span,
+                                           string     actual_type)
+{
+    ErrorInfo error =
+        error_init(source,
+                   binder_span,
+                   "Cannot extract an `on` payload from `" STRINGP "`",
+                   STRINGV(actual_type));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        binder_span,
+                        "This binder requires a success or error payload");
+    error_add_reference(&error,
+                        ERROR_REF_SECONDARY,
+                        value_span,
+                        "This expression has type `" STRINGP "`",
+                        STRINGV(actual_type));
+    error_add_help(&error,
+                   "Remove the extraction binder to branch on this value, or "
+                   "match an optional or result value that carries a payload.");
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------
