@@ -10,24 +10,8 @@ on "linux" {
     use os.linux
     use std.string
 
-    -- Runs a shell command, waits for it to finish, and returns its exit status.
-    -- Returns -1 if the child cannot be created or waited for. A child stopped
-    -- by a signal returns 128 plus the signal number.
-    pub run :: fn (command: string) -> i32 {
-        process_id := sys_fork()
-        on process_id < 0 => return -1
-
-        on process_id == 0 => {
-            shell := "/bin/sh".c_string()
-            shell_name := "sh".c_string()
-            option := "-c".c_string()
-            command_text := command.c_string()
-            arguments : [4]^i8 = [shell_name, option, command_text, nil]
-            _ := sys_execve(shell, arguments.data, nil)
-            sys_exit(127)
-            return 127
-        }
-
+    -- Waits for a Linux child and converts its wait status to an exit status.
+    process_wait :: fn (process_id: i32) -> i32 {
         status : i32
         waited := sys_waitpid(process_id, ^status, 0)
         for waited == -4 {
@@ -40,6 +24,35 @@ on "linux" {
         return (status >> 8) & 0xff
     }
 
+    -- Runs an executable with separate arguments and waits for it to finish.
+    process_run_array :: fn (arguments: []string) -> i32 {
+        on arguments.count == 0 => return -1
+
+        native_arguments : [..]^i8
+        defer native_arguments.free()
+        for argument in arguments {
+            native_arguments.push(argument.c_string())
+        }
+        native_arguments.push(nil)
+
+        process_id := sys_fork()
+        on process_id < 0 => return -1
+
+        on process_id == 0 => {
+            _ := sys_execve(native_arguments[0], native_arguments.data, nil)
+            sys_exit(127)
+            return 127
+        }
+
+        return process_wait(process_id)
+    }
+
+    -- Runs a Linux shell command and waits for it to finish.
+    process_run_string :: fn (command: string) -> i32 {
+        arguments : [3]string = ["/bin/sh", "-c", command]
+        return process_run_array(arguments[..])
+    }
+
 }
 
 on "windows" {
@@ -47,18 +60,55 @@ on "windows" {
     use os.windows
     use std.string
 
-    -- Runs a shell command, waits for it to finish, and returns its exit status.
-    -- Returns -1 if the child cannot be created, waited for, or inspected.
-    pub run :: fn (command: string) -> i32 {
-        command_line := $"cmd.exe /C {command}"
-        mutable_command_line := command_line.c_string()
+    WINDOWS_BACKSLASH    :: 92  -- Backslash byte used in command-line quoting.
+    WINDOWS_QUOTE        :: 34  -- Double-quote byte used for quoting.
+    WINDOWS_ARGUMENT_GAP :: 32  -- Space byte separating process arguments.
 
+    -- Appends one byte to a Windows command line a requested number of times.
+    process_append_bytes :: fn (command_line: ^[..]u8, byte: u8, count: usize) {
+        for i: usize = 0; i < count; i += 1 {
+            command_line^.push(byte)
+        }
+    }
+
+    -- Appends one argument using the quoting rules consumed by Windows programs.
+    process_append_windows_argument :: fn (command_line : ^[..]u8,
+                                           argument     : string) {
+        on command_line^.count != 0 => command_line^.push(WINDOWS_ARGUMENT_GAP)
+        command_line^.push(WINDOWS_QUOTE)
+
+        backslashes : usize = 0
+        for byte in argument {
+            on byte == WINDOWS_BACKSLASH => {
+                backslashes += 1
+            }
+                else on byte == WINDOWS_QUOTE => {
+                process_append_bytes(command_line,
+                                     WINDOWS_BACKSLASH,
+                                     (backslashes * 2) + 1)
+                command_line^.push(byte)
+                backslashes = 0
+            } else {
+                process_append_bytes(command_line,
+                                     WINDOWS_BACKSLASH,
+                                     backslashes)
+                command_line^.push(byte)
+                backslashes = 0
+            }
+        }
+
+        process_append_bytes(command_line, WINDOWS_BACKSLASH, backslashes * 2)
+        command_line^.push(WINDOWS_QUOTE)
+    }
+
+    -- Runs a mutable Windows command line and waits for its process to finish.
+    process_run_command_line :: fn (command_line: ^i8) -> i32 {
         startup_info : STARTUPINFOA
         startup_info.cb = STARTUPINFOA.size.as(DWORD)
         process_info : PROCESS_INFORMATION
 
         created := CreateProcess(nil,
-                                 mutable_command_line,
+                                 command_line,
                                  nil,
                                  nil,
                                  1,
@@ -83,4 +133,44 @@ on "windows" {
         return exit_code.as(i32)
     }
 
+    -- Runs an executable with separate arguments and waits for it to finish.
+    process_run_array :: fn (arguments: []string) -> i32 {
+        on arguments.count == 0 => return -1
+
+        command_line : [..]u8
+        defer command_line.free()
+        for argument in arguments {
+            process_append_windows_argument(^command_line, argument)
+        }
+        command_line.push(0)
+        return process_run_command_line(command_line.data.as(^i8))
+    }
+
+    -- Runs a Windows shell command and waits for it to finish.
+    process_run_string :: fn (command: string) -> i32 {
+        command_line := $"cmd.exe /C {command}"
+        return process_run_command_line(command_line.c_string())
+    }
+
+}
+
+-- Runs a shell command, waits for it to finish, and returns its exit status.
+-- Returns -1 if the child cannot be created or waited for. On Linux, a child
+-- terminated by a signal returns 128 plus the signal number.
+pub run_string :: fn (command: string) -> i32 {
+    return process_run_string(command)
+}
+
+-- Runs an executable, passes each later slice element as one argument, waits
+-- for it to finish, and returns its exit status. Element zero names the
+-- executable. Returns -1 when the slice is empty or the child cannot be created
+-- or waited for.
+pub run_array :: fn (arguments: []string) -> i32 {
+    return process_run_array(arguments)
+}
+
+-- Selects process execution by either a shell-command string or argument slice.
+pub run :: fn {
+    run_string
+    run_array
 }

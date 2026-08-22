@@ -91,13 +91,17 @@ stable user-facing library functions.
 
 ### `std.process`
 
-- `run(command: string) -> i32`
+- `run_string(command: string) -> i32`
+- `run_array(arguments: []string) -> i32`
+- `run :: fn { run_string run_array }`
 
-`run` starts a platform shell, waits for the command to finish, and returns its
-exit status. Linux commands run through `/bin/sh -c`; Windows commands run
-through `cmd.exe /C`. A negative return value reports that the process could not
-be created or waited for. On Linux, termination by a signal returns `128` plus
-the signal number.
+`run_string` starts a platform shell, waits for the command to finish, and
+returns its exit status. Linux commands run through `/bin/sh -c`; Windows
+commands run through `cmd.exe /C`. `run_array` starts the executable named by
+element zero and passes every later slice element as one process argument. The
+`run` compound function selects either operation from the argument type. A
+negative return value reports that the process could not be created or waited
+for. On Linux, termination by a signal returns `128` plus the signal number.
 
 ### `std.math`
 
