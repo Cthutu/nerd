@@ -2,13 +2,16 @@
 use std.files
 
 run_checks :: fn () -> i32\FileError {
-    on !exists("../../README.md")? => return 1
-    on !is_file("../../README.md")? => return 2
-    on !is_directory(".")? => return 3
-    on exists("_missing_std_files_test_")? => return 4
-    on !file_exists("../../README.md")? => return 11
-    on !file_exists(".")? => return 12
-    on file_exists("_missing_std_files_test_")? => return 13
+    on !exists("../../README.md") => return 1
+    on !is_file("../../README.md") => return 2
+    on !is_directory(".") => return 3
+    on exists("_missing_std_files_test_") => return 4
+    on is_file("_missing_std_files_test_") => return 11
+
+    info := file_info("../../README.md")?
+    on info.file_name != "../../README.md" => return 12
+    on info.kind != FileKind.File => return 13
+    on info.size < 6 => return 14
 
     text := read_text("../../README.md")?
     on text.count < 6 || text[..6] != "# Nerd" => return 5
@@ -27,7 +30,7 @@ run_checks :: fn () -> i32\FileError {
     on round_trip != "first-second" => return 7
     remove(output_path)?
 
-    result := is_file("_missing_std_files_test_")
+    result := file_info("_missing_std_files_test_")
     on result {
         FileError.NotFound! => return 0
         else                => return 9

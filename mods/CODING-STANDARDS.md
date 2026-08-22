@@ -82,10 +82,11 @@ STDERR_FILENO :: 2 -- File descriptor for standard error.
 ```
 
 Format each changed Nerd source file with `nerd format` before checking it.
-After formatting, run:
+After formatting, run a focused check against an affected source root while
+iterating:
 
 ```sh
-just check
+nerd check <root-file>
 ```
 
 Run `just test` when source-level tests exist or when the change affects

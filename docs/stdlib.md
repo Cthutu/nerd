@@ -91,6 +91,7 @@ This inventory is intentionally brief until the standard library settles.
 - `FileError`
 - `FileMode`
 - `FileKind`
+- `FileInfo`
 - `File`
 - `open(path: string, mode: FileMode = FileMode.Read) -> File\FileError`
 - `File.read(output: []u8) -> usize\FileError`
@@ -103,11 +104,11 @@ This inventory is intentionally brief until the standard library settles.
 - `write_bytes(path, input) -> void\FileError`
 - `write_text(path, text) -> void\FileError`
 - `remove(path) -> void\FileError`
-- `kind(path) -> FileKind\FileError`
-- `exists(path) -> bool\FileError`
-- `is_file(path) -> bool\FileError`
-- `is_directory(path) -> bool\FileError`
-- `is_symlink(path) -> bool\FileError`
+- `file_info(path) -> FileInfo\FileError`
+- `exists(path) -> bool`
+- `is_file(path) -> bool`
+- `is_directory(path) -> bool`
+- `is_symlink(path) -> bool`
 - `file_name(path) -> string`
 - `parent(path) -> string`
 - `extension(path) -> string`

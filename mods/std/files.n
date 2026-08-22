@@ -47,6 +47,15 @@ pub FileKind :: enum {
     Other
 }
 
+-- Describes a filesystem path. The file name borrows the string supplied to
+-- `file_info` and remains valid for the same lifetime.
+pub FileInfo :: plex {
+    file_name string    -- Full file name supplied by the caller.
+    kind      FileKind  -- Filesystem object kind.
+    size      u64       -- Object size in bytes, or zero when unavailable.
+    read_only bool      -- True when the object has no writable permission.
+}
+
 -- Owns an operating-system file handle until `close` succeeds.
 pub File :: plex {
     raw   usize  -- Platform handle; callers should treat this field as opaque.
@@ -137,8 +146,8 @@ on "linux" {
         file.valid = no
     }
 
-    -- Classifies a Linux path without following its final symbolic link.
-    files_native_kind :: fn (path: string) -> FileKind\FileError {
+    -- Reads Linux metadata without following the final symbolic link.
+    files_native_file_info :: fn (path: string) -> FileInfo\FileError {
         on path.count == 0 ||
             files_contains_zero(path) => return FileError.Invalid!
 
@@ -148,11 +157,21 @@ on "linux" {
                                  ^stat,
                                  AT_SYMLINK_NOFOLLOW)
         on result < 0 => return files_linux_error(last_error().as(u32))!
-        return on stat.mode & S_IFMT {
+        kind := on stat.mode & S_IFMT {
             S_IFREG  => FileKind.File
             S_IFDIR  => FileKind.Directory
             S_IFLNK  => FileKind.Symlink
             else     => FileKind.Other
+        }
+        size := on stat.size < 0 {
+            yes   => 0
+            else  => stat.size.as(u64)
+        }
+        return FileInfo {
+            file_name: path
+            kind
+            size
+            read_only: (stat.mode & 0x92) == 0
         }
     }
 
@@ -280,15 +299,25 @@ on "windows" {
         file.valid = no
     }
 
-    -- Classifies a Windows path, treating reparse points as symbolic links.
-    files_native_kind :: fn (path: string) -> FileKind\FileError {
+    -- Reads Windows metadata, treating reparse points as symbolic links.
+    files_native_file_info :: fn (path: string) -> FileInfo\FileError {
         native_path := files_windows_path(path)?
-        attributes  := GetFileAttributesW(native_path)
 
-        on attributes == INVALID_FILE_ATTRIBUTES => return files_windows_error(GetLastError())!
-        on (attributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0 => return FileKind.Symlink
-        on (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0 => return FileKind.Directory
-        return FileKind.File
+        data : WIN32_FILE_ATTRIBUTE_DATA
+
+        on GetFileAttributesExW(native_path, ^data) == 0 => return files_windows_error(GetLastError())!
+        attributes := data.dwFileAttributes
+        size       := (data.nFileSizeHigh.as(u64) << 32) | data.nFileSizeLow.as(u64)
+        kind       := FileKind.File
+
+        on (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0 => kind = FileKind.Directory
+        on (attributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0 => kind = FileKind.Symlink
+        return FileInfo {
+            file_name: path
+            kind
+            size
+            read_only: (attributes & FILE_ATTRIBUTE_READONLY) != 0
+        }
     }
 
     -- Removes a regular file or symbolic link on Windows.
@@ -400,43 +429,40 @@ pub remove :: fn (path: string) -> void\FileError {
     return files_native_remove(path)
 }
 
--- Returns the filesystem kind at a path without following a final symbolic
--- link.
-pub kind :: fn (path: string) -> FileKind\FileError {
-    return files_native_kind(path)
+-- Returns all available portable metadata for a path without following a final
+-- symbolic link.
+pub file_info :: fn (path: string) -> FileInfo\FileError {
+    return files_native_file_info(path)
 }
 
--- Returns true when a path exists. Missing paths are not errors.
-pub exists :: fn (path: string) -> bool\FileError {
-    return on kind(path) {
-        FileError.NotFound! => no
-        error! => error!
+-- Returns true when metadata can be read for a path.
+pub exists :: fn (path: string) -> bool {
+    return on file_info(path) {
+        _! => no
         else => yes
     }
 }
 
--- Returns true when a path exists. This is the explicit-name form of `exists`;
--- directories and symbolic links also count as existing paths.
-pub file_exists :: fn (path: string) -> bool\FileError {
-    return exists(path)
+-- Returns true when a path names a regular file and false when lookup fails.
+pub is_file :: fn (path: string) -> bool {
+    return on file_info(path) { info => info.kind == FileKind.File else => no }
 }
 
--- Returns true when a path names a regular file.
-pub is_file :: fn (path: string) -> bool\FileError {
-    value := kind(path)?
-    return value == FileKind.File
+-- Returns true when a path names a directory and false when lookup fails.
+pub is_directory :: fn (path: string) -> bool {
+    return on file_info(path) {
+        info  => info.kind == FileKind.Directory
+        else  => no
+    }
 }
 
--- Returns true when a path names a directory.
-pub is_directory :: fn (path: string) -> bool\FileError {
-    value := kind(path)?
-    return value == FileKind.Directory
-}
-
--- Returns true when a path names a symbolic link or Windows reparse point.
-pub is_symlink :: fn (path: string) -> bool\FileError {
-    value := kind(path)?
-    return value == FileKind.Symlink
+-- Returns true when a path names a symbolic link or Windows reparse point and
+-- false when lookup fails.
+pub is_symlink :: fn (path: string) -> bool {
+    return on file_info(path) {
+        info  => info.kind == FileKind.Symlink
+        else  => no
+    }
 }
 
 -- Returns the byte offset at which the final path component begins.

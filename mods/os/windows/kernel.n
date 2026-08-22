@@ -24,6 +24,7 @@ pub CREATE_ALWAYS                :: 2
 pub OPEN_EXISTING                :: 3
 pub OPEN_ALWAYS                  :: 4
 pub FILE_ATTRIBUTE_NORMAL        :: 0x00000080
+pub FILE_ATTRIBUTE_READONLY      :: 0x00000001
 pub FILE_ATTRIBUTE_DIRECTORY     :: 0x00000010
 pub FILE_ATTRIBUTE_REPARSE_POINT :: 0x00000400
 pub INVALID_FILE_ATTRIBUTES      :: 0xffffffff
@@ -192,6 +193,22 @@ pub PROCESS_INFORMATION :: plex #c {
     dwThreadId  DWORD   -- Identifier of the new process's primary thread.
 }
 
+-- Represents a Windows file timestamp as two 32-bit words.
+pub FILETIME :: plex #c {
+    dwLowDateTime  DWORD  -- Low-order timestamp word.
+    dwHighDateTime DWORD  -- High-order timestamp word.
+}
+
+-- Receives filesystem metadata from `GetFileAttributesExW`.
+pub WIN32_FILE_ATTRIBUTE_DATA :: plex #c {
+    dwFileAttributes DWORD     -- File attribute flags.
+    ftCreationTime   FILETIME  -- Creation timestamp.
+    ftLastAccessTime FILETIME  -- Last-access timestamp.
+    ftLastWriteTime  FILETIME  -- Last-write timestamp.
+    nFileSizeHigh    DWORD     -- High-order file-size word.
+    nFileSizeLow     DWORD     -- Low-order file-size word.
+}
+
 ffi "kernel32" {
     c_GetStdHandle :: GetStdHandle (nStdHandle: DWORD) -> HANDLE
 
@@ -212,6 +229,10 @@ ffi "kernel32" {
                                   hTemplateFile         : HANDLE) -> HANDLE
 
     c_GetFileAttributesW :: GetFileAttributesW (lpFileName: ^u16) -> DWORD
+
+    c_GetFileAttributesExW :: GetFileAttributesExW (lpFileName        : ^u16,
+                                                    fInfoLevelId      : i32,
+                                                    lpFileInformation : ^WIN32_FILE_ATTRIBUTE_DATA) -> BOOL
 
     c_DeleteFileW :: DeleteFileW (lpFileName: ^u16) -> BOOL
 
@@ -334,6 +355,12 @@ pub CreateFileW :: fn (lpFileName            : ^u16,
 -- Returns attributes for a UTF-16 Windows path.
 pub GetFileAttributesW :: fn (lpFileName: ^u16) -> DWORD {
     return c_GetFileAttributesW(lpFileName)
+}
+
+-- Reads metadata for a UTF-16 Windows path.
+pub GetFileAttributesExW :: fn (lpFileName       : ^u16,
+                                file_information : ^WIN32_FILE_ATTRIBUTE_DATA) -> BOOL {
+    return c_GetFileAttributesExW(lpFileName, 0, file_information)
 }
 
 -- Removes a file using a UTF-16 Windows path.
