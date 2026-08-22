@@ -310,6 +310,32 @@ internal bool lsp_use_is_used(const LspDocument* doc, u32 use_index)
         }
     }
 
+    // Type references resolve through the type checker without always
+    // recording a node declaration. Count an otherwise-unbound symbol that
+    // names a declaration from this module as a use.
+    for (u32 i = 0; i < array_count(doc->front_end.ast.nodes); ++i) {
+        const AstNode* node = &doc->front_end.ast.nodes[i];
+        if (node->kind != AK_SymbolRef) {
+            continue;
+        }
+        if (i < array_count(sema->node_local_indices) &&
+            sema->node_local_indices[i] != sema_no_local()) {
+            continue;
+        }
+        if (i < array_count(sema->node_decl_indices) &&
+            sema->node_decl_indices[i] != sema_no_decl()) {
+            continue;
+        }
+        for (u32 decl_index = 0; decl_index < array_count(sema->decls);
+             ++decl_index) {
+            const SemaDecl* decl = &sema->decls[decl_index];
+            if (decl->import_module_index == module_index &&
+                decl->symbol_handle == node->a) {
+                return true;
+            }
+        }
+    }
+
     for (u32 i = 0; i < array_count(sema->node_method_call_decl_indices); ++i) {
         u32 decl_index = sema->node_method_call_decl_indices[i];
         if (decl_index == sema_no_decl() ||

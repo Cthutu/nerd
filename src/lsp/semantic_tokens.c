@@ -343,6 +343,31 @@ internal bool lsp_semantic_use_is_used(const LspDeclarationView* view,
         }
     }
 
+    // Type references do not always carry a node declaration. Count an
+    // otherwise-unbound symbol imported from this module as a use.
+    for (u32 i = 0; i < array_count(view->ast->nodes); ++i) {
+        const AstNode* node = &view->ast->nodes[i];
+        if (node->kind != AK_SymbolRef) {
+            continue;
+        }
+        if (i < array_count(view->sema->node_local_indices) &&
+            view->sema->node_local_indices[i] != sema_no_local()) {
+            continue;
+        }
+        if (i < array_count(view->sema->node_decl_indices) &&
+            view->sema->node_decl_indices[i] != sema_no_decl()) {
+            continue;
+        }
+        for (u32 decl_index = 0; decl_index < array_count(view->sema->decls);
+             ++decl_index) {
+            const SemaDecl* decl = &view->sema->decls[decl_index];
+            if (decl->import_module_index == module_index &&
+                decl->symbol_handle == node->a) {
+                return true;
+            }
+        }
+    }
+
     for (u32 i = 0; i < array_count(view->sema->node_method_call_decl_indices);
          ++i) {
         u32 decl_index = view->sema->node_method_call_decl_indices[i];

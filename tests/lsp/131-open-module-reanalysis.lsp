@@ -150,26 +150,7 @@ value :: fn (_arg: Foo) {}
         "method": "textDocument/publishDiagnostics",
         "params": {
             "uri": "__REPO_URI__/tests/lsp/131-open-module-reanalysis/bar.n",
-            "diagnostics": [
-                {
-                    "range": {
-                        "start": {
-                            "line": 0,
-                            "character": 4
-                        },
-                        "end": {
-                            "line": 0,
-                            "character": 7
-                        }
-                    },
-                    "severity": 4,
-                    "source": "nerd",
-                    "message": "Unused use `foo`",
-                    "tags": [
-                        1
-                    ]
-                }
-            ]
+            "diagnostics": []
         }
     },
     {

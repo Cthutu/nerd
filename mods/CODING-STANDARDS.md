@@ -54,8 +54,9 @@ is_empty :: fn (items: []i32) -> bool {
 }
 ```
 
-Every field in a `plex` must have a comment after it on the same line. Plex
-field definitions use `field Type` with no colon.
+Every field in a `plex` must have a comment after it on the same line. This is
+especially important for public plexes because the LSP exposes these comments
+as field documentation. Plex field definitions use `field Type` with no colon.
 
 Example:
 

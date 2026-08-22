@@ -2282,6 +2282,31 @@ internal string lsp_doc_comment_at_token(const Lexer* lexer,
     return sb_to_string(&sb);
 }
 
+internal string lsp_trailing_doc_comment_at_token(const Lexer* lexer,
+                                                  u32          token_index)
+{
+    if (token_index >= array_count(lexer->tokens)) {
+        return s("");
+    }
+
+    string source = lexer->source.source;
+    usize  cursor = lex_token_end_offset(lexer, &lexer->tokens[token_index]);
+    while (cursor + 1 < source.count && source.data[cursor] != '\n' &&
+           source.data[cursor] != '\r') {
+        if (source.data[cursor] == '-' && source.data[cursor + 1] == '-') {
+            usize end = cursor + 2;
+            while (end < source.count && source.data[end] != '\n' &&
+                   source.data[end] != '\r') {
+                end++;
+            }
+            return lsp_trim_comment_text(
+                string_from(source.data + cursor + 2, end - cursor - 2));
+        }
+        cursor++;
+    }
+    return s("");
+}
+
 internal string lsp_decl_doc_comment(const LspDocument* doc,
                                      Arena*             arena,
                                      const SemaDecl*    decl)
@@ -2622,6 +2647,120 @@ internal string lsp_local_hover_text(const LspDocument* doc,
         STRINGV(type));
 }
 
+internal string lsp_record_field_doc_comment_in_ast(const LspDocument* doc,
+                                                    string owner_name,
+                                                    string field_name)
+{
+    const Ast* ast = &doc->front_end.ast;
+    for (u32 node_index = 0; node_index < array_count(ast->nodes);
+         ++node_index) {
+        const AstNode* bind = &ast->nodes[node_index];
+        if (bind->kind != AK_Bind ||
+            !string_eq(lex_symbol(&doc->front_end.lexer, bind->a),
+                       owner_name) ||
+            bind->b >= array_count(ast->nodes)) {
+            continue;
+        }
+
+        const AstNode* value = &ast->nodes[bind->b];
+        if (value->kind != AK_TypePlex ||
+            value->a >= array_count(ast->plex_types)) {
+            continue;
+        }
+        const AstPlexTypeInfo* plex = &ast->plex_types[value->a];
+        for (u32 field_index = 0; field_index < plex->field_count;
+             ++field_index) {
+            u32 ast_field_index = plex->first_field + field_index;
+            if (ast_field_index >= array_count(ast->plex_fields)) {
+                break;
+            }
+            const AstPlexField* field = &ast->plex_fields[ast_field_index];
+            if (string_eq(
+                    lex_symbol(&doc->front_end.lexer, field->symbol_handle),
+                    field_name)) {
+                return lsp_trailing_doc_comment_at_token(&doc->front_end.lexer,
+                                                         field->token_index);
+            }
+        }
+    }
+    return s("");
+}
+
+internal string lsp_record_field_doc_comment(const LspDocument* doc,
+                                             Arena*             arena,
+                                             u32                owner_type,
+                                             string             owner_name,
+                                             string             field_name)
+{
+    owner_type = sema_materialise_type(&doc->front_end.sema, owner_type);
+    for (u32 decl_index = 0;
+         decl_index < array_count(doc->front_end.sema.decls);
+         ++decl_index) {
+        const SemaDecl* decl = &doc->front_end.sema.decls[decl_index];
+        bool            matches_type =
+            decl->type_index != sema_no_type() &&
+            sema_materialise_type(&doc->front_end.sema, decl->type_index) ==
+                owner_type;
+        bool matches_name = string_eq(
+            lex_symbol(&doc->front_end.lexer, decl->symbol_handle), owner_name);
+        if (!matches_type && !matches_name) {
+            continue;
+        }
+
+        if (decl->import_module_index == sema_no_decl() ||
+            decl->import_decl_index == sema_no_decl()) {
+            string comment = lsp_record_field_doc_comment_in_ast(
+                doc, owner_name, field_name);
+            if (comment.count != 0) {
+                return comment;
+            }
+            continue;
+        }
+
+        LspModuleView module = {0};
+        if (!lsp_program_module_view(
+                &doc->program, decl->import_module_index, &module)) {
+            continue;
+        }
+        const SemaDecl* imported_decl = NULL;
+        if (!lsp_sema_decl(
+                module.sema, decl->import_decl_index, &imported_decl)) {
+            continue;
+        }
+
+        LspDocument module_doc     = *doc;
+        module_doc.source          = module.lexer->source.source;
+        module_doc.front_end.lexer = *module.lexer;
+        module_doc.front_end.ast   = *module.ast;
+        module_doc.front_end.sema  = *module.sema;
+        return lsp_record_field_doc_comment(&module_doc,
+                                            arena,
+                                            imported_decl->type_index,
+                                            owner_name,
+                                            field_name);
+    }
+
+    for (u32 module_index = 0; module_index < array_count(doc->program.modules);
+         ++module_index) {
+        LspModuleView module = {0};
+        if (!lsp_program_module_view(&doc->program, module_index, &module)) {
+            continue;
+        }
+        LspDocument module_doc     = *doc;
+        module_doc.source          = module.lexer->source.source;
+        module_doc.front_end.lexer = *module.lexer;
+        module_doc.front_end.ast   = *module.ast;
+        module_doc.front_end.sema  = *module.sema;
+        string comment             = lsp_record_field_doc_comment_in_ast(
+            &module_doc, owner_name, field_name);
+        if (comment.count != 0) {
+            return comment;
+        }
+    }
+
+    return s("");
+}
+
 internal string lsp_record_field_hover_text(const LspDocument* doc,
                                             Arena*             arena,
                                             u32                owner_type,
@@ -2639,16 +2778,23 @@ internal string lsp_record_field_hover_text(const LspDocument* doc,
         &doc->front_end.lexer, &doc->front_end.sema, arena, field_type);
     string owner = sema_type_name(
         &doc->front_end.lexer, &doc->front_end.sema, arena, owner_type);
+    string comment =
+        lsp_record_field_doc_comment(doc, arena, owner_type, owner, name);
+    string suffix =
+        comment.count == 0
+            ? s("")
+            : string_format(arena, "\n\n" STRINGP, STRINGV(comment));
 
     return string_format(
         arena,
         STRINGP "\n\n- Kind: " STRINGP "\n- Type: `" STRINGP "`"
-                "\n- Owner: `" STRINGP "`",
+                "\n- Owner: `" STRINGP "`" STRINGP,
         STRINGV(lsp_markdown_code_block(
             arena, string_format(arena, STRINGP, STRINGV(name)))),
         STRINGV(kind),
         STRINGV(type),
-        STRINGV(owner));
+        STRINGV(owner),
+        STRINGV(suffix));
 }
 
 internal string lsp_plex_literal_field_hover_text(const LspDocument* doc,
@@ -4083,16 +4229,23 @@ internal string lsp_ast_field_hover_text(const LspDocument* doc,
         type = lsp_ast_type_node_source(doc, plex_field->type_node_index);
     }
 
-    string name  = lex_symbol(&doc->front_end.lexer, field->b);
-    string owner = lex_symbol(&doc->front_end.lexer, type_symbol);
+    string name    = lex_symbol(&doc->front_end.lexer, field->b);
+    string owner   = lex_symbol(&doc->front_end.lexer, type_symbol);
+    string comment = lsp_trailing_doc_comment_at_token(&doc->front_end.lexer,
+                                                       plex_field->token_index);
+    string suffix =
+        comment.count == 0
+            ? s("")
+            : string_format(arena, "\n\n" STRINGP, STRINGV(comment));
     return string_format(
         arena,
         STRINGP "\n\n- Kind: plex field\n- Type: `" STRINGP "`"
-                "\n- Owner: `" STRINGP "`",
+                "\n- Owner: `" STRINGP "`" STRINGP,
         STRINGV(lsp_markdown_code_block(
             arena, string_format(arena, STRINGP, STRINGV(name)))),
         STRINGV(type),
-        STRINGV(owner));
+        STRINGV(owner),
+        STRINGV(suffix));
 }
 
 internal bool lsp_field_receiver_is_arena(const LspDocument* doc,
@@ -4418,26 +4571,10 @@ internal string lsp_field_hover_text(const LspDocument* doc,
             continue;
         }
 
-        string name = lex_symbol(&doc->front_end.lexer, field->b);
-        string type = sema_type_name(
-            &doc->front_end.lexer,
-            &doc->front_end.sema,
-            arena,
-            doc->front_end.sema.type_param_types[target->first_param_type + i]);
-        string owner = sema_type_name(
-            &doc->front_end.lexer, &doc->front_end.sema, arena, target_type);
         string kind =
             target->kind == STK_Union ? s("union field") : s("plex field");
-
-        return string_format(
-            arena,
-            STRINGP "\n\n- Kind: " STRINGP "\n- Type: `" STRINGP "`"
-                    "\n- Owner: `" STRINGP "`",
-            STRINGV(lsp_markdown_code_block(
-                arena, string_format(arena, STRINGP, STRINGV(name)))),
-            STRINGV(kind),
-            STRINGV(type),
-            STRINGV(owner));
+        return lsp_record_field_hover_text(
+            doc, arena, target_type, field->b, kind);
     }
 
     return s("");

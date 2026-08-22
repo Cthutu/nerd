@@ -106,26 +106,7 @@ main :: fn () {
         "method": "textDocument/publishDiagnostics",
         "params": {
             "uri": "file:///test.n",
-            "diagnostics": [
-                {
-                    "range": {
-                        "start": {
-                            "line": 0,
-                            "character": 4
-                        },
-                        "end": {
-                            "line": 0,
-                            "character": 13
-                        }
-                    },
-                    "severity": 4,
-                    "source": "nerd",
-                    "message": "Unused use `std.frame`",
-                    "tags": [
-                        1
-                    ]
-                }
-            ]
+            "diagnostics": []
         }
     },
     {

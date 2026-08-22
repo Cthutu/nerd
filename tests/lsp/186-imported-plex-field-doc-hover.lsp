@@ -1,27 +1,24 @@
-use std.frame
+use std.files
+
+inspect :: fn (info: ^FileInfo) {
+    _ := info.size
+}
 
 main :: fn () {
-    event: FrameEvent = None
-    on event {
-        None => {
-        }
-        Closed => {
-        }
-    }
 }
 ¬
 [
     {
         "jsonrpc": "2.0",
         "id": 2,
-        "method": "textDocument/completion",
+        "method": "textDocument/hover",
         "params": {
             "textDocument": {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 7,
-                "character": 10
+                "line": 3,
+                "character": 14
             }
         }
     }
@@ -91,12 +88,12 @@ main :: fn () {
     {
         "jsonrpc": "2.0",
         "id": 2,
-        "result": [
-            {
-                "label": "Closed",
-                "kind": 20
+        "result": {
+            "contents": {
+                "kind": "markdown",
+                "value": "```nerd\nsize\n```\n\n- Kind: plex field\n- Type: `u64`\n- Owner: `FileInfo`\n\nObject size in bytes, or zero when unavailable."
             }
-        ]
+        }
     },
     {
         "jsonrpc": "2.0",
