@@ -8844,6 +8844,23 @@ internal bool format_token_had_space_between(const Lexer* lexer,
     return false;
 }
 
+// Return whether an opening brace follows a short-form `on` extraction binder
+// such as `=> [value]` or `else [error]`.
+internal bool format_token_starts_extract_binder_block(const Lexer* lexer,
+                                                       u32          token_index)
+{
+    if (token_index < 4 || token_index >= array_count(lexer->tokens) ||
+        lexer->tokens[token_index].kind != TK_LBrace ||
+        lexer->tokens[token_index - 1].kind != TK_RBracket ||
+        lexer->tokens[token_index - 2].kind != TK_Symbol ||
+        lexer->tokens[token_index - 3].kind != TK_LBracket) {
+        return false;
+    }
+
+    TokenKind introducer = lexer->tokens[token_index - 4].kind;
+    return introducer == TK_FatArrow || introducer == TK_else;
+}
+
 internal void format_token_state_newline(FormatTokenState* state)
 {
     if (state->sb->size > 0 && state->sb->data[state->sb->size - 1] != '\n') {
@@ -9150,7 +9167,9 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
             in_on_header = false;
         }
         bool suppress_newline_before =
-            in_on_header && !has_comments_before && newlines_before > 0;
+            !has_comments_before && newlines_before > 0 &&
+            (in_on_header ||
+             format_token_starts_extract_binder_block(&lexer, i));
         if (has_comments_before) {
             if (i > 0 && first_comment_before < array_count(lexer.comments)) {
                 usize previous_end =
@@ -9304,10 +9323,12 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
             multiline_bracket_depth++;
             format_token_state_newline(&state);
         } else if (!in_interpolated_string &&
-                   (kind == TK_RBrace || kind == TK_Semicolon)) {
+                   ((kind == TK_RBrace && next_kind != TK_else) ||
+                    kind == TK_Semicolon)) {
             format_token_state_newline(&state);
         } else if (kind == TK_RBracket && multiline_bracket_depth == 0 &&
-                   next_newlines > 0) {
+                   next_newlines > 0 &&
+                   !format_token_starts_extract_binder_block(&lexer, i + 1)) {
             format_token_state_newline(&state);
         } else if (kind == TK_Comma) {
             if (!has_trailing_comment && next_newlines == 0 &&
