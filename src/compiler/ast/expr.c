@@ -1064,6 +1064,19 @@ internal bool ast_parse_on_extract_binder(AstParseState* state,
     return true;
 }
 
+internal bool ast_on_branch_references_symbol(const AstParseState* state,
+                                              u32                  first_node,
+                                              u32 symbol_handle)
+{
+    for (u32 i = first_node; i < array_count(state->nodes); ++i) {
+        if (state->nodes[i].kind == AK_SymbolRef &&
+            state->nodes[i].a == symbol_handle) {
+            return true;
+        }
+    }
+    return false;
+}
+
 internal bool ast_parse_on_error_pattern_table(AstParseState* state,
                                                Array(AstOnBranch) * branches)
 {
@@ -1760,14 +1773,24 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
             state, &success_binder, &success_binder_token)) {
         return false;
     }
+    bool success_binder_is_implicit = false;
 
     u32  true_expr_node             = 0;
+    u32  true_expr_first_node       = (u32)array_count(state->nodes);
     bool saved_statement_boundary   = state->allow_statement_boundary;
     state->allow_statement_boundary = true;
     bool parsed_true_expr = ast_parse_on_branch_expr(state, &true_expr_node);
     state->allow_statement_boundary = saved_statement_boundary;
     if (!parsed_true_expr) {
         return false;
+    }
+    if (success_binder == U32_MAX &&
+        state->nodes[condition_node].kind == AK_SymbolRef &&
+        ast_on_branch_references_symbol(
+            state, true_expr_first_node, state->nodes[condition_node].a)) {
+        success_binder             = state->nodes[condition_node].a;
+        success_binder_token       = state->nodes[condition_node].token_index;
+        success_binder_is_implicit = true;
     }
 
     if (state->token.kind != TK_else) {
@@ -1800,19 +1823,23 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
                            .expr_node_index      = true_expr_node,
                            .pattern_count        = 1,
                            .guard_node_index     = U32_MAX,
-                           .flags                = AOBF_None,
+                           .flags                = success_binder_is_implicit
+                                                       ? AOBF_ImplicitBinder
+                                                       : AOBF_None,
                            .binder_symbol_handle = success_binder,
                            .binder_token_index   = success_binder_token,
                        });
 
             u32 on_index = (u32)array_count(state->ons);
-            array_push(
-                state->ons,
-                (AstOnInfo){
-                    .kind = success_binder != U32_MAX ? AOK_Extract : AOK_Bool,
-                    .first_branch = first_branch,
-                    .branch_count = 1,
-                });
+            array_push(state->ons,
+                       (AstOnInfo){
+                           .kind         = success_binder != U32_MAX &&
+                                                   !success_binder_is_implicit
+                                               ? AOK_Extract
+                                               : AOK_Bool,
+                           .first_branch = first_branch,
+                           .branch_count = 1,
+                       });
 
             return ast_emit_node(state,
                                  (AstNode){
@@ -1845,14 +1872,24 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
             state, &error_binder, &error_binder_token)) {
         return false;
     }
+    bool error_binder_is_implicit   = false;
 
     u32 false_expr_node             = 0;
+    u32 false_expr_first_node       = (u32)array_count(state->nodes);
     saved_statement_boundary        = state->allow_statement_boundary;
     state->allow_statement_boundary = true;
     bool parsed_false_expr = ast_parse_on_branch_expr(state, &false_expr_node);
     state->allow_statement_boundary = saved_statement_boundary;
     if (!parsed_false_expr) {
         return false;
+    }
+    if (error_binder == U32_MAX &&
+        state->nodes[condition_node].kind == AK_SymbolRef &&
+        ast_on_branch_references_symbol(
+            state, false_expr_first_node, state->nodes[condition_node].a)) {
+        error_binder             = state->nodes[condition_node].a;
+        error_binder_token       = state->nodes[condition_node].token_index;
+        error_binder_is_implicit = true;
     }
 
     u32 true_node    = 0;
@@ -1878,34 +1915,40 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
     u32 first_branch = (u32)array_count(state->on_branches);
     array_push(state->on_branches,
                (AstOnBranch){
-                   .token_index          = on_token.token_index,
-                   .pattern_index        = first_pattern,
-                   .expr_node_index      = true_expr_node,
-                   .pattern_count        = 1,
-                   .guard_node_index     = U32_MAX,
-                   .flags                = AOBF_None,
+                   .token_index      = on_token.token_index,
+                   .pattern_index    = first_pattern,
+                   .expr_node_index  = true_expr_node,
+                   .pattern_count    = 1,
+                   .guard_node_index = U32_MAX,
+                   .flags = success_binder_is_implicit ? AOBF_ImplicitBinder
+                                                       : AOBF_None,
                    .binder_symbol_handle = success_binder,
                    .binder_token_index   = success_binder_token,
                });
-    array_push(state->on_branches,
-               (AstOnBranch){
-                   .token_index          = on_token.token_index,
-                   .expr_node_index      = false_expr_node,
-                   .guard_node_index     = U32_MAX,
-                   .flags                = AOBF_Else,
-                   .binder_symbol_handle = error_binder,
-                   .binder_token_index   = error_binder_token,
-               });
+    array_push(
+        state->on_branches,
+        (AstOnBranch){
+            .token_index      = on_token.token_index,
+            .expr_node_index  = false_expr_node,
+            .guard_node_index = U32_MAX,
+            .flags = AOBF_Else | (error_binder_is_implicit ? AOBF_ImplicitBinder
+                                                           : AOBF_None),
+            .binder_symbol_handle = error_binder,
+            .binder_token_index   = error_binder_token,
+        });
 
     u32 on_index = (u32)array_count(state->ons);
-    array_push(state->ons,
-               (AstOnInfo){
-                   .kind = success_binder != U32_MAX || error_binder != U32_MAX
-                               ? AOK_Extract
-                               : AOK_Bool,
-                   .first_branch = first_branch,
-                   .branch_count = 2,
-               });
+    array_push(
+        state->ons,
+        (AstOnInfo){
+            .kind =
+                (success_binder != U32_MAX && !success_binder_is_implicit) ||
+                        (error_binder != U32_MAX && !error_binder_is_implicit)
+                    ? AOK_Extract
+                    : AOK_Bool,
+            .first_branch = first_branch,
+            .branch_count = 2,
+        });
 
     return ast_emit_node(state,
                          (AstNode){

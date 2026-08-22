@@ -11,6 +11,9 @@ extract-on    ::= 'on' expression '=>' [ '[' IDENT ']' ] branch-expression
                   'else' [ '[' IDENT ']' ] branch-expression
 ```
 
+For a bare-identifier scrutinee, an omitted extraction binder implicitly reuses
+that identifier inside payload-bearing branches.
+
 [Manual Index](README.md) | Previous: [Diagnostics And Debugging](part13-diagnostics-and-debugging.md) | Next: [Language Reference](appendix-b-language-reference.md)
 
 This appendix is a compact source-level reference. Earlier parts explain the

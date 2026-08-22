@@ -419,9 +419,10 @@ typedef enum : u32 {
 } AstOnKind;
 
 typedef enum : u32 {
-    AOBF_None  = 0,
-    AOBF_Else  = 1 << 0,
-    AOBF_Error = 1 << 1,
+    AOBF_None           = 0,
+    AOBF_Else           = 1 << 0,
+    AOBF_Error          = 1 << 1,
+    AOBF_ImplicitBinder = 1 << 2,
 } AstOnBranchFlag;
 
 typedef struct {

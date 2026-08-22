@@ -120,7 +120,7 @@ typedef enum : u8 {
 
 typedef struct {
     SemaLocalKind kind;
-    u8            _pad0;
+    bool          implicit;
     u16           _pad1;
     u32           symbol_handle;
     u32           owner_decl_index;

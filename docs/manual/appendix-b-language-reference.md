@@ -185,6 +185,8 @@ intended exit code.
 - Short form: `on condition => expr else expr`.
 - Scrutinee form: `on value { pattern => expr }`.
 - Condition-chain form: `on { condition => expr }`.
+- In optional/result extraction, omitting `[binder]` for a bare identifier
+  reuses that identifier as the branch-local payload name.
 - Value-producing forms must be exhaustive.
 - Statement forms may be partial.
 - Bare identifiers in patterns bind by default. Use `for name` to compare with

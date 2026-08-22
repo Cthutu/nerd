@@ -1627,7 +1627,8 @@ internal void format_emit_expr(StringBuilder* sb,
                             true);
                     }
                 }
-                if (branch->binder_symbol_handle != U32_MAX) {
+                if (branch->binder_symbol_handle != U32_MAX &&
+                    !(branch->flags & AOBF_ImplicitBinder)) {
                     sb_append_cstr(sb, " as ");
                     sb_append_string(
                         sb, lex_symbol(lexer, branch->binder_symbol_handle));
@@ -2311,7 +2312,8 @@ internal string format_render_on_branch_head(Arena*             arena,
                 true);
         }
     }
-    if (branch->binder_symbol_handle != U32_MAX) {
+    if (branch->binder_symbol_handle != U32_MAX &&
+        !(branch->flags & AOBF_ImplicitBinder)) {
         sb_append_cstr(&sb, " as ");
         sb_append_string(&sb, lex_symbol(lexer, branch->binder_symbol_handle));
     }

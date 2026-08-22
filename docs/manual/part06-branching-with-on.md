@@ -204,6 +204,22 @@ on operation => [value] {
 }
 ```
 
+When the value after `on` is a bare identifier, omitted binders reuse that name
+inside each branch:
+
+```nerd
+on operation => {
+    use(operation)       -- the successful value
+} else {
+    report(operation)    -- the error value
+}
+```
+
+The implicit bindings are branch-local. After the `on`, `operation` again means
+the original result. Use `[value]` or `[error]` when a different name is clearer.
+For an optional value, the success branch receives the present payload; the
+absence branch has no payload and retains the original optional value.
+
 Full matching uses the first table for present/success payload patterns.
 Optional `else` handles absence; result `else` contains error payload patterns:
 

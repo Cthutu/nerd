@@ -2600,6 +2600,7 @@ internal u32 hir_lower_expr(Hir*         hir,
                 u32  first_pattern = (u32)array_count(hir->on_branch_patterns);
                 u32  lowered_pattern_count = branch->pattern_count;
                 bool lowered_is_else       = (branch->flags & AOBF_Else) != 0;
+                bool bind_optional_else    = false;
                 if (extract_form) {
                     const SemaType* extracted = &sema->types[scrutinee_type];
                     bool optional = (extracted->flags & STF_Optional) != 0;
@@ -2608,6 +2609,8 @@ internal u32 hir_lower_expr(Hir*         hir,
                                         : ((branch->flags & AOBF_Else) ? 1 : 0);
                     if (optional && (branch->flags & AOBF_Else)) {
                         lowered_pattern_count = 0;
+                        bind_optional_else =
+                            (branch->flags & AOBF_ImplicitBinder) != 0;
                     } else {
                         u32 first_child =
                             (u32)array_count(hir->pattern_children);
@@ -2723,7 +2726,15 @@ internal u32 hir_lower_expr(Hir*         hir,
                         branch->expr_node_index,
                         hir_node_type(sema, node_index)),
                     .binder_symbol_handle =
-                        extract_form ? U32_MAX : branch->binder_symbol_handle,
+                        (branch->flags & AOBF_ImplicitBinder) ||
+                                (extract_form && !bind_optional_else)
+                            ? U32_MAX
+                            : branch->binder_symbol_handle,
+                    .binder_local_index =
+                        extract_form && !bind_optional_else
+                            ? sema_no_local()
+                            : sema->on_branch_local_indices[on->first_branch +
+                                                            i],
                 };
                 array_push(lowered_branches, hir_branch);
             }

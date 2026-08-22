@@ -8354,7 +8354,9 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
                     array_push(
                         sema->locals,
                         (SemaLocal){
-                            .kind             = SLK_Binder,
+                            .kind = SLK_Binder,
+                            .implicit =
+                                (branch->flags & AOBF_ImplicitBinder) != 0,
                             .symbol_handle    = branch->binder_symbol_handle,
                             .owner_decl_index = owner_decl_index,
                             .scope_index      = branch_scope,
@@ -20186,20 +20188,23 @@ validate_type:
                             &sema->types[scrutinee_type];
                         if ((branch->flags & AOBF_Else) &&
                             (extracted->flags & STF_Optional)) {
-                            return error_0304_type_mismatch(
-                                lexer->source,
-                                sema_node_span(lexer, node),
-                                s("optional else branch without a payload "
-                                  "binder"),
-                                s("payload binder"));
+                            if (!(branch->flags & AOBF_ImplicitBinder)) {
+                                return error_0304_type_mismatch(
+                                    lexer->source,
+                                    sema_node_span(lexer, node),
+                                    s("optional else branch without a payload "
+                                      "binder"),
+                                    s("payload binder"));
+                            }
+                        } else {
+                            u32 variant = (branch->flags & AOBF_Else) ? 1 : 0;
+                            if (extracted->flags & STF_Optional) {
+                                variant = 1;
+                            }
+                            binder_type =
+                                sema->type_param_types
+                                    [extracted->first_param_type + variant];
                         }
-                        u32 variant = (branch->flags & AOBF_Else) ? 1 : 0;
-                        if (extracted->flags & STF_Optional) {
-                            variant = 1;
-                        }
-                        binder_type =
-                            sema->type_param_types[extracted->first_param_type +
-                                                   variant];
                     }
                     sema->locals[branch_local_index].type_index = binder_type;
                 }
@@ -23879,7 +23884,8 @@ internal bool sema_validate_unused_locals(const Lexer* lexer,
             sema->decls[local->owner_decl_index].kind == SK_GenericFunction;
         string symbol = lex_symbol(lexer, local->symbol_handle);
 
-        if (sema_local_is_runtime_value(local) && !generic_function_local &&
+        if (sema_local_is_runtime_value(local) && !local->implicit &&
+            !generic_function_local &&
             sema_symbol_is_deliberately_unused(symbol) && read_counts[i] > 0) {
             u32  use_node = sema_first_local_read_node(ast, sema, i);
             bool ok       = error_0347_used_underscore_local(
@@ -23894,8 +23900,8 @@ internal bool sema_validate_unused_locals(const Lexer* lexer,
             return ok;
         }
 
-        if (!sema_local_is_runtime_value(local) || generic_function_local ||
-            sema_local_is_method_receiver(sema, i) ||
+        if (!sema_local_is_runtime_value(local) || local->implicit ||
+            generic_function_local || sema_local_is_method_receiver(sema, i) ||
             sema_symbol_is_deliberately_unused(symbol) || read_counts[i] > 0) {
             continue;
         }

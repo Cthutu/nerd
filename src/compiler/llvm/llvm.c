@@ -6079,41 +6079,6 @@ internal LlvmValue llvm_emit_block_value(LlvmFunctionContext* ctx,
     return (LlvmValue){0};
 }
 
-internal void llvm_bind_symbol_value(LlvmFunctionContext* ctx,
-                                     const HirFunction*   function,
-                                     u32                  symbol_handle,
-                                     LlvmValue            value)
-{
-    if (ctx->sema == NULL || symbol_handle == U32_MAX) {
-        return;
-    }
-
-    for (u32 local_index = 0; local_index < array_count(ctx->sema->locals);
-         ++local_index) {
-        if (ctx->sema->locals[local_index].symbol_handle != symbol_handle) {
-            continue;
-        }
-        if (ctx->sema->locals[local_index].kind != SLK_Binder) {
-            continue;
-        }
-        if (function != NULL && function->decl_index != U32_MAX &&
-            ctx->sema->locals[local_index].owner_decl_index !=
-                function->decl_index) {
-            continue;
-        }
-
-        LlvmValue local_value  = value;
-        local_value.type_index = llvm_local_type(ctx, local_index);
-        if (ctx->debug != NULL || llvm_local_is_assigned(ctx, local_index)) {
-            LlvmLocalSlot* slot = llvm_ensure_local_slot(
-                ctx, local_index, local_value.type_index);
-            llvm_store_local_slot(ctx, slot, local_value);
-        } else {
-            llvm_set_local_value(ctx, local_index, local_value);
-        }
-    }
-}
-
 internal void llvm_bind_local_value(LlvmFunctionContext* ctx,
                                     u32                  local_index,
                                     LlvmValue            value)
@@ -11226,10 +11191,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                         sb_format(ctx->sb, STRINGP ":\n", STRINGV(body_label));
                         llvm_debug_emit_step_anchor(
                             ctx, branch->source_line, branch->source_path);
-                        llvm_bind_symbol_value(ctx,
-                                               function,
-                                               branch->binder_symbol_handle,
-                                               scrutinee);
+                        llvm_bind_local_value(
+                            ctx, branch->binder_local_index, scrutinee);
                         ctx->block_terminated = false;
                         if (!llvm_emit_block(
                                 ctx, function, branch->body_block_index)) {
@@ -11298,10 +11261,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                                       STRINGV(next_label));
                             sb_format(
                                 ctx->sb, STRINGP ":\n", STRINGV(guard_label));
-                            llvm_bind_symbol_value(ctx,
-                                                   function,
-                                                   branch->binder_symbol_handle,
-                                                   scrutinee);
+                            llvm_bind_local_value(
+                                ctx, branch->binder_local_index, scrutinee);
                             LlvmValue guard = llvm_emit_expr(
                                 ctx, function, branch->guard_expr_index);
                             if (!guard.ok) {
@@ -11338,8 +11299,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     ctx->block_terminated = false;
                     llvm_debug_emit_step_anchor(
                         ctx, branch->source_line, branch->source_path);
-                    llvm_bind_symbol_value(
-                        ctx, function, branch->binder_symbol_handle, scrutinee);
+                    llvm_bind_local_value(
+                        ctx, branch->binder_local_index, scrutinee);
                     if (emit_effect_branch) {
                         if (!llvm_emit_block(
                                 ctx, function, branch->body_block_index)) {

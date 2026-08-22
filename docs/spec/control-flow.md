@@ -79,9 +79,14 @@ Condition branches and guards must type as `bool`. Value-producing block-form
 
 For `?T`, extraction binds the present `T` and the `else` branch represents
 absence. For `T\E`, extraction binds successful `T` and may bind `E` after
-`else`. Full matching applies the first pattern table to the optional payload or
-result success payload. Optional `else { ... }` handles absence; result
-`else { ... }` is a pattern table over the error payload.
+`else`. When the extraction scrutinee is a bare identifier and a bracketed
+binder is omitted, that identifier is an implicit branch-local binder. It names
+`T` in the success branch and `E` in a result `else` branch. An optional `else`
+branch has no payload, so the identifier retains its `?T` value there. Explicit
+bracketed binders remain available for renaming. Full matching applies the first
+pattern table to the optional payload or result success payload. Optional
+`else { ... }` handles absence; result `else { ... }` is a pattern table over
+the error payload.
 
 ## Branch Expressions
 

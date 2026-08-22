@@ -299,6 +299,7 @@ typedef struct {
     u32    guard_expr_index;
     u32    body_block_index;
     u32    binder_symbol_handle;
+    u32    binder_local_index;
 } HirOnBranch;
 
 typedef struct {
