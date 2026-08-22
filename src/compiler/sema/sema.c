@@ -16143,6 +16143,88 @@ internal bool sema_seed_for_condition_local_types(const Lexer* lexer,
                lexer, ast, sema, condition->b, condition->a);
 }
 
+internal bool sema_for_condition_expected_type_is_ready(const Ast*  ast,
+                                                        const Sema* sema,
+                                                        u32         node_index)
+{
+    if (node_index >= array_count(ast->nodes)) {
+        return false;
+    }
+
+    const AstNode* node = &ast->nodes[node_index];
+    while (node->kind == AK_Expression && node->a < array_count(ast->nodes)) {
+        node_index = node->a;
+        node       = &ast->nodes[node_index];
+    }
+    if (node->kind == AK_Field) {
+        return sema_for_condition_expected_type_is_ready(ast, sema, node->a);
+    }
+    if (node->kind != AK_SymbolRef) {
+        return false;
+    }
+
+    u32 local_index = sema->node_local_indices[node_index];
+    return local_index != sema_no_local() &&
+           sema->locals[local_index].type_index != sema_no_type();
+}
+
+internal bool sema_seed_early_for_condition_local_types(
+    const Lexer* lexer, const Ast* ast, Sema* sema, u32 condition_node_index)
+{
+    if (condition_node_index >= array_count(ast->nodes)) {
+        return true;
+    }
+
+    const AstNode* condition = &ast->nodes[condition_node_index];
+    while (condition->kind == AK_Expression &&
+           condition->a < array_count(ast->nodes)) {
+        condition_node_index = condition->a;
+        condition            = &ast->nodes[condition_node_index];
+    }
+    if (condition->kind == AK_LogicalAnd || condition->kind == AK_LogicalOr) {
+        return sema_seed_early_for_condition_local_types(
+                   lexer, ast, sema, condition->a) &&
+               sema_seed_early_for_condition_local_types(
+                   lexer, ast, sema, condition->b);
+    }
+    if (!sema_node_is_order_comparison(condition)) {
+        return true;
+    }
+
+    if (sema_for_condition_expected_type_is_ready(ast, sema, condition->b) &&
+        !sema_seed_for_condition_side(
+            lexer, ast, sema, condition->a, condition->b)) {
+        return false;
+    }
+    return !sema_for_condition_expected_type_is_ready(
+               ast, sema, condition->a) ||
+           sema_seed_for_condition_side(
+               lexer, ast, sema, condition->b, condition->a);
+}
+
+internal bool
+sema_seed_for_condition_context_local_types(const Lexer*           lexer,
+                                            const Ast*             ast,
+                                            const FrontEndOptions* options,
+                                            Sema*                  sema)
+{
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (node->kind != AK_For ||
+            sema_node_is_inside_disabled_top_on_body(options, lexer, ast, i)) {
+            continue;
+        }
+
+        const AstForInfo* for_info = &ast->fors[node->a];
+        if (for_info->condition_node_index != U32_MAX &&
+            !sema_seed_early_for_condition_local_types(
+                lexer, ast, sema, for_info->condition_node_index)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 internal bool sema_seed_return_expr_context(const Lexer* lexer,
                                             const Ast*   ast,
                                             Sema*        sema,
@@ -25242,6 +25324,11 @@ bool sema_analyse(const Lexer*           lexer,
         return false;
     }
     if (!sema_seed_call_arg_context_local_types(lexer, ast, options, &sema)) {
+        sema_done(&sema);
+        return false;
+    }
+    if (!sema_seed_for_condition_context_local_types(
+            lexer, ast, options, &sema)) {
         sema_done(&sema);
         return false;
     }
