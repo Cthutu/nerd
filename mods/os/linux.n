@@ -18,6 +18,10 @@ pub SYS_CLOSE         :: 3  -- Linux syscall number for `close`.
 pub SYS_POLL          :: 7  -- Linux syscall number for `poll`.
 pub SYS_IOCTL         :: 16  -- Linux syscall number for `ioctl`.
 pub SYS_NANOSLEEP     :: 35  -- Linux syscall number for `nanosleep`.
+pub SYS_FORK          :: 57  -- Linux syscall number for `fork`.
+pub SYS_EXECVE        :: 59  -- Linux syscall number for `execve`.
+pub SYS_EXIT          :: 60  -- Linux syscall number for `exit`.
+pub SYS_WAIT4         :: 61  -- Linux syscall number for `wait4`.
 pub SYS_FSYNC         :: 74  -- Linux syscall number for `fsync`.
 pub SYS_CLOCK_GETTIME :: 228  -- Linux syscall number for `clock_gettime`.
 
@@ -142,4 +146,24 @@ pub sys_clock_gettime :: fn (clock_id: i32, time: ^TimeSpec) -> i32 {
 -- Suspends execution for a requested duration.
 pub sys_nanosleep :: fn (request: ^TimeSpec, remaining: ^TimeSpec) -> i32 {
     return syscall(SYS_NANOSLEEP, request.as(usize).as(u64), remaining.as(usize).as(u64), 0, 0, 0, 0).as(i32)
+}
+
+-- Creates a child process by duplicating the calling process.
+pub sys_fork :: fn () -> i32 {
+    return syscall(SYS_FORK, 0, 0, 0, 0, 0, 0).as(i32)
+}
+
+-- Replaces the calling process with an executable and argument vector.
+pub sys_execve :: fn (path: ^i8, arguments: ^^i8, environment: ^^i8) -> i32 {
+    return syscall(SYS_EXECVE, path.as(usize).as(u64), arguments.as(usize).as(u64), environment.as(usize).as(u64), 0, 0, 0).as(i32)
+}
+
+-- Terminates the calling process with the supplied status.
+pub sys_exit :: fn (status: i32) {
+    _ := syscall(SYS_EXIT, status.as(u64), 0, 0, 0, 0, 0)
+}
+
+-- Waits for a child process to change state and writes its wait status.
+pub sys_waitpid :: fn (process_id: i32, status: ^i32, options: i32) -> i32 {
+    return syscall(SYS_WAIT4, process_id.as(u64), status.as(usize).as(u64), options.as(u64), 0, 0, 0).as(i32)
 }

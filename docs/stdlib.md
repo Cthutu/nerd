@@ -34,6 +34,8 @@ library is organised into three layers:
   Mathematical constants, scalar functions, and small geometry helper types.
 - `std.mem`
   Low-level allocation wrappers.
+- `std.process`
+  Portable child-process execution and waiting.
 - `std.string`
   String utilities.
 - `std.utf8`
@@ -42,10 +44,12 @@ library is organised into three layers:
   Compatibility module for common trait declarations. Language-required traits
   are canonical in `core`.
 - `os.linux`
-  Low-level Linux syscall-adjacent bindings.
+  Low-level Linux syscall-adjacent bindings, including process creation,
+  executable replacement, child waiting, and process exit.
 - `os.windows`
   Windows operating-system bindings re-exported from narrower modules such as
-  `os.windows.kernel`.
+  `os.windows.kernel`, including Win32 process creation, waiting, exit-code
+  inspection, and handle management.
 
 The repository also contains early `std.random` source work. Treat it as
 experimental until its dependencies and syntax surface are covered by the
@@ -84,6 +88,16 @@ This inventory is intentionally brief until the standard library settles.
 Low-level allocation helpers backed by C allocation functions. These APIs should
 be documented with exact ownership and lifetime rules before being presented as
 stable user-facing library functions.
+
+### `std.process`
+
+- `run(command: string) -> i32`
+
+`run` starts a platform shell, waits for the command to finish, and returns its
+exit status. Linux commands run through `/bin/sh -c`; Windows commands run
+through `cmd.exe /C`. A negative return value reports that the process could not
+be created or waited for. On Linux, termination by a signal returns `128` plus
+the signal number.
 
 ### `std.math`
 

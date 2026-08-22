@@ -33,6 +33,7 @@ pub ENABLE_VIRTUAL_TERMINAL_PROCESSING :: 0x0004
 
 pub WAIT_OBJECT_0 :: 0x00000000
 pub WAIT_TIMEOUT  :: 0x00000102
+pub INFINITE      :: 0xffffffff  -- Wait duration with no timeout.
 pub CP_UTF8       :: 65001
 
 pub KEY_EVENT   :: 0x0001
@@ -150,6 +151,36 @@ pub MOUSE_INPUT_RECORD :: plex #c {
     dwEventFlags      DWORD
 }
 
+-- Describes the window and standard handles used to start a process.
+pub STARTUPINFOA :: plex #c {
+    cb              DWORD   -- Size of this structure in bytes.
+    lpReserved      ^i8     -- Reserved pointer that must be nil.
+    lpDesktop       ^i8     -- Optional desktop name.
+    lpTitle         ^i8     -- Optional console-window title.
+    dwX             DWORD   -- Initial horizontal window position.
+    dwY             DWORD   -- Initial vertical window position.
+    dwXSize         DWORD   -- Initial window width.
+    dwYSize         DWORD   -- Initial window height.
+    dwXCountChars   DWORD   -- Initial console-buffer width.
+    dwYCountChars   DWORD   -- Initial console-buffer height.
+    dwFillAttribute DWORD   -- Initial console text and background colours.
+    dwFlags         DWORD   -- Flags selecting fields used by process creation.
+    wShowWindow     u16     -- Initial window display state.
+    cbReserved2     u16     -- Size of the reserved byte block.
+    lpReserved2     ^u8     -- Reserved byte block that must be nil.
+    hStdInput       HANDLE  -- Standard-input handle when requested by flags.
+    hStdOutput      HANDLE  -- Standard-output handle when requested by flags.
+    hStdError       HANDLE  -- Standard-error handle when requested by flags.
+}
+
+-- Receives handles and identifiers for a newly created process and thread.
+pub PROCESS_INFORMATION :: plex #c {
+    hProcess    HANDLE  -- Handle to the new process.
+    hThread     HANDLE  -- Handle to the new process's primary thread.
+    dwProcessId DWORD   -- Identifier of the new process.
+    dwThreadId  DWORD   -- Identifier of the new process's primary thread.
+}
+
 ffi "kernel32" {
     c_GetStdHandle :: GetStdHandle (nStdHandle: DWORD) -> HANDLE
 
@@ -211,6 +242,20 @@ ffi "kernel32" {
 
     c_WaitForSingleObject :: WaitForSingleObject (hHandle        : HANDLE,
                                                   dwMilliseconds : DWORD) -> DWORD
+
+    c_CreateProcess :: CreateProcessA (lpApplicationName    : ^i8,
+                                       lpCommandLine        : ^i8,
+                                       lpProcessAttributes  : ^void,
+                                       lpThreadAttributes   : ^void,
+                                       bInheritHandles      : BOOL,
+                                       dwCreationFlags      : DWORD,
+                                       lpEnvironment        : ^void,
+                                       lpCurrentDirectory   : ^i8,
+                                       lpStartupInfo        : ^STARTUPINFOA,
+                                       lpProcessInformation : ^PROCESS_INFORMATION) -> BOOL
+
+    c_GetExitCodeProcess :: GetExitCodeProcess (hProcess   : HANDLE,
+                                                lpExitCode : ^DWORD) -> BOOL
 
     c_QueryPerformanceCounter :: QueryPerformanceCounter (lpPerformanceCount: ^LARGE_INTEGER) -> BOOL
 
@@ -333,6 +378,34 @@ pub GetLastError :: fn () -> DWORD {
 
 pub WaitForSingleObject :: fn (hHandle: HANDLE, dwMilliseconds: DWORD) -> DWORD {
     return c_WaitForSingleObject(hHandle, dwMilliseconds)
+}
+
+-- Creates a process from a mutable command line and returns its handles.
+pub CreateProcess :: fn (lpApplicationName    : ^i8,
+                         lpCommandLine        : ^i8,
+                         lpProcessAttributes  : ^void,
+                         lpThreadAttributes   : ^void,
+                         bInheritHandles      : BOOL,
+                         dwCreationFlags      : DWORD,
+                         lpEnvironment        : ^void,
+                         lpCurrentDirectory   : ^i8,
+                         lpStartupInfo        : ^STARTUPINFOA,
+                         lpProcessInformation : ^PROCESS_INFORMATION) -> BOOL {
+    return c_CreateProcess(lpApplicationName,
+                           lpCommandLine,
+                           lpProcessAttributes,
+                           lpThreadAttributes,
+                           bInheritHandles,
+                           dwCreationFlags,
+                           lpEnvironment,
+                           lpCurrentDirectory,
+                           lpStartupInfo,
+                           lpProcessInformation)
+}
+
+-- Reads the termination status of a process that has finished.
+pub GetExitCodeProcess :: fn (hProcess: HANDLE, lpExitCode: ^DWORD) -> BOOL {
+    return c_GetExitCodeProcess(hProcess, lpExitCode)
 }
 
 pub QueryPerformanceCounter :: fn (lpPerformanceCount: ^LARGE_INTEGER) -> BOOL {

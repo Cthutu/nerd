@@ -1,0 +1,86 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Provides portable helpers for starting child processes, waiting for them to
+-- finish, and reading their exit status.
+
+on "linux" {
+
+    use os.linux
+    use std.string
+
+    -- Runs a shell command, waits for it to finish, and returns its exit status.
+    -- Returns -1 if the child cannot be created or waited for. A child stopped
+    -- by a signal returns 128 plus the signal number.
+    pub run :: fn (command: string) -> i32 {
+        process_id := sys_fork()
+        on process_id < 0 => return -1
+
+        on process_id == 0 => {
+            shell := "/bin/sh".c_string()
+            shell_name := "sh".c_string()
+            option := "-c".c_string()
+            command_text := command.c_string()
+            arguments : [4]^i8 = [shell_name, option, command_text, nil]
+            _ := sys_execve(shell, arguments.data, nil)
+            sys_exit(127)
+            return 127
+        }
+
+        status : i32
+        waited := sys_waitpid(process_id, ^status, 0)
+        for waited == -4 {
+            waited = sys_waitpid(process_id, ^status, 0)
+        }
+        on waited < 0 => return -1
+
+        signal := status & 0x7f
+        on signal != 0 => return 128 + signal
+        return (status >> 8) & 0xff
+    }
+
+}
+
+on "windows" {
+
+    use os.windows
+    use std.string
+
+    -- Runs a shell command, waits for it to finish, and returns its exit status.
+    -- Returns -1 if the child cannot be created, waited for, or inspected.
+    pub run :: fn (command: string) -> i32 {
+        command_line := $"cmd.exe /C {command}"
+        mutable_command_line := command_line.c_string()
+
+        startup_info : STARTUPINFOA
+        startup_info.cb = STARTUPINFOA.size.as(DWORD)
+        process_info : PROCESS_INFORMATION
+
+        created := CreateProcess(nil,
+                                 mutable_command_line,
+                                 nil,
+                                 nil,
+                                 1,
+                                 0,
+                                 nil,
+                                 nil,
+                                 ^startup_info,
+                                 ^process_info)
+        on created == 0 => return -1
+
+        wait_status := WaitForSingleObject(process_info.hProcess, INFINITE)
+        on wait_status != WAIT_OBJECT_0 => {
+            _ := CloseHandle(process_info.hThread)
+            _ := CloseHandle(process_info.hProcess)
+            return -1
+        }
+        exit_code : DWORD
+        exit_code_read := GetExitCodeProcess(process_info.hProcess, ^exit_code)
+        _ := CloseHandle(process_info.hThread)
+        _ := CloseHandle(process_info.hProcess)
+        on exit_code_read == 0 => return -1
+        return exit_code.as(i32)
+    }
+
+}
