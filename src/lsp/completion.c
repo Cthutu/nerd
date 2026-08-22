@@ -1277,6 +1277,42 @@ internal string lsp_completion_repair_member_line(Arena* arena,
         indent_end++;
     }
 
+    i32  brace_balance = 0;
+    bool in_string     = false;
+    bool in_character  = false;
+    bool escaped       = false;
+    for (usize i = line_start; i < line_end; ++i) {
+        u8 c = source.data[i];
+        if (!in_string && !in_character && c == '-' && i + 1 < line_end &&
+            source.data[i + 1] == '-') {
+            break;
+        }
+        if (escaped) {
+            escaped = false;
+            continue;
+        }
+        if ((in_string || in_character) && c == '\\') {
+            escaped = true;
+            continue;
+        }
+        if (!in_character && c == '"') {
+            in_string = !in_string;
+            continue;
+        }
+        if (!in_string && c == '\'') {
+            in_character = !in_character;
+            continue;
+        }
+        if (in_string || in_character) {
+            continue;
+        }
+        if (c == '{') {
+            brace_balance++;
+        } else if (c == '}') {
+            brace_balance--;
+        }
+    }
+
     StringBuilder sb = {0};
     sb_init(&sb, arena);
     sb_append_string(&sb, (string){.data = source.data, .count = line_start});
@@ -1285,6 +1321,13 @@ internal string lsp_completion_repair_member_line(Arena* arena,
                               .count = indent_end - line_start});
     sb_append_cstr(&sb, "__nerd_completion_probe := ");
     sb_append_string(&sb, receiver);
+    for (i32 i = 0; i < brace_balance; ++i) {
+        sb_append_cstr(&sb, "\n");
+        sb_append_string(&sb,
+                         (string){.data  = source.data + line_start,
+                                  .count = indent_end - line_start});
+        sb_append_cstr(&sb, "for {");
+    }
     sb_append_string(&sb,
                      (string){.data  = source.data + line_end,
                               .count = source.count - line_end});
