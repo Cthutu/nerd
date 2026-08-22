@@ -41,6 +41,10 @@ internal bool cst_parse_variable(CstParseState* state, u32* out_node);
 internal bool cst_parse_destructure(CstParseState* state, u32* out_node);
 internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node);
 internal bool cst_parse_on_branch_expr(CstParseState* state, u32* out_node);
+
+internal bool cst_parse_on_extract_binder(CstParseState* state,
+                                          u32*           out_symbol,
+                                          u32*           out_token);
 internal bool cst_parse_pattern(CstParseState* state, u32* out_pattern);
 internal bool
 cst_pattern_starts_braced_enum_variant(const CstParseState* state);
@@ -2422,6 +2426,26 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
     }
 }
 
+internal bool cst_parse_on_extract_binder(CstParseState* state,
+                                          u32*           out_symbol,
+                                          u32*           out_token)
+{
+    *out_symbol = U32_MAX;
+    *out_token  = U32_MAX;
+    if (cst_current_token(state).kind != TK_LBracket) {
+        return true;
+    }
+
+    cst_advance(state);
+    if (cst_current_token(state).kind != TK_Symbol) {
+        return false;
+    }
+    *out_symbol = cst_current_symbol_handle(state);
+    *out_token  = state->token_index;
+    cst_advance(state);
+    return cst_consume(state, TK_RBracket);
+}
+
 internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
 {
     u32 token_index = state->token_index;
@@ -2646,6 +2670,13 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
         return false;
     }
 
+    u32 success_binder       = U32_MAX;
+    u32 success_binder_token = U32_MAX;
+    if (!cst_parse_on_extract_binder(
+            state, &success_binder, &success_binder_token)) {
+        return false;
+    }
+
     u32 true_expr = 0;
     if (!cst_parse_on_branch_expr(state, &true_expr)) {
         return false;
@@ -2678,8 +2709,8 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
                        .expr_node_index      = true_expr,
                        .pattern_count        = 1,
                        .guard_node_index     = U32_MAX,
-                       .binder_symbol_handle = U32_MAX,
-                       .binder_token_index   = U32_MAX,
+                       .binder_symbol_handle = success_binder,
+                       .binder_token_index   = success_binder_token,
                    });
 
         u32 on_index = (u32)array_count(state->cst.ons);
@@ -2699,6 +2730,13 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
                              out_node);
     }
     if (!cst_consume(state, TK_else)) {
+        return false;
+    }
+
+    u32 error_binder       = U32_MAX;
+    u32 error_binder_token = U32_MAX;
+    if (!cst_parse_on_extract_binder(
+            state, &error_binder, &error_binder_token)) {
         return false;
     }
 
@@ -2734,16 +2772,16 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
                    .expr_node_index      = true_expr,
                    .pattern_count        = 1,
                    .guard_node_index     = U32_MAX,
-                   .binder_symbol_handle = U32_MAX,
-                   .binder_token_index   = U32_MAX,
+                   .binder_symbol_handle = success_binder,
+                   .binder_token_index   = success_binder_token,
                });
     array_push(state->cst.on_branches,
                (CstOnBranch){
                    .expr_node_index      = false_expr,
                    .flags                = COBF_Else,
                    .guard_node_index     = U32_MAX,
-                   .binder_symbol_handle = U32_MAX,
-                   .binder_token_index   = U32_MAX,
+                   .binder_symbol_handle = error_binder,
+                   .binder_token_index   = error_binder_token,
                });
 
     u32 on_index = (u32)array_count(state->cst.ons);

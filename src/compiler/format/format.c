@@ -1588,6 +1588,13 @@ internal void format_emit_expr(StringBuilder* sb,
                 const CstOnBranch* true_branch =
                     &cst->on_branches[on->first_branch];
                 sb_append_cstr(sb, " => ");
+                if (true_branch->binder_symbol_handle != U32_MAX) {
+                    sb_append_char(sb, '[');
+                    sb_append_string(
+                        sb,
+                        lex_symbol(lexer, true_branch->binder_symbol_handle));
+                    sb_append_cstr(sb, "] ");
+                }
                 format_emit_expr(
                     sb, cst, lexer, true_branch->expr_node_index, 0);
                 if (on->branch_count == 1) {
@@ -1596,6 +1603,13 @@ internal void format_emit_expr(StringBuilder* sb,
                 const CstOnBranch* else_branch =
                     &cst->on_branches[on->first_branch + 1];
                 sb_append_cstr(sb, " else ");
+                if (else_branch->binder_symbol_handle != U32_MAX) {
+                    sb_append_char(sb, '[');
+                    sb_append_string(
+                        sb,
+                        lex_symbol(lexer, else_branch->binder_symbol_handle));
+                    sb_append_cstr(sb, "] ");
+                }
                 format_emit_expr(
                     sb, cst, lexer, else_branch->expr_node_index, 0);
                 break;
@@ -2531,6 +2545,12 @@ internal void format_emit_bool_on_multiline_prefixed(StringBuilder* sb,
     } else {
         sb_append_cstr(sb, " => ");
     }
+    if (true_branch->binder_symbol_handle != U32_MAX) {
+        sb_append_char(sb, '[');
+        sb_append_string(sb,
+                         lex_symbol(lexer, true_branch->binder_symbol_handle));
+        sb_append_cstr(sb, "] ");
+    }
     if (cst->nodes[true_branch->expr_node_index].kind == CK_Block) {
         sb_append_cstr(sb, "{\n");
         format_emit_block_contents(sb,
@@ -2577,6 +2597,12 @@ internal void format_emit_bool_on_multiline_prefixed(StringBuilder* sb,
                                                    split_branches);
         } else {
             sb_append_cstr(sb, "else ");
+            if (else_branch->binder_symbol_handle != U32_MAX) {
+                sb_append_char(sb, '[');
+                sb_append_string(
+                    sb, lex_symbol(lexer, else_branch->binder_symbol_handle));
+                sb_append_cstr(sb, "] ");
+            }
             if (cst->nodes[else_branch->expr_node_index].kind == CK_Block) {
                 sb_append_cstr(sb, "{\n");
                 format_emit_block_contents(sb,
