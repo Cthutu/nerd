@@ -10060,7 +10060,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 };
             }
 
-            if (llvm_type_kind(ctx->sema, target.type_index) == STK_Slice) {
+            if (llvm_type_kind(ctx->sema, target.type_index) == STK_Slice ||
+                llvm_type_kind(ctx->sema, target.type_index) == STK_String) {
                 string slice_type = llvm_type_string(ctx, target.type_index);
                 string data_ptr   = llvm_temp(ctx);
                 sb_format(ctx->sb,
