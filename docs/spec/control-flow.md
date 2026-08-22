@@ -19,9 +19,7 @@ for-statement ::= 'for' for-form [ '$' IDENT ] block [ 'else' block ]
 for-form      ::= /* empty */
                 | expression
                 | IDENT 'in' expression
-                | '^' IDENT 'in' expression
                 | IDENT ',' IDENT 'in' expression
-                | IDENT ',' '^' IDENT 'in' expression
                 | [ for-item-list ] ';' [ expression ] ';' [ for-item-list ]
 ```
 
@@ -29,7 +27,8 @@ Every loop starts with `for`. Supported loop forms are infinite loops, condition
 loops, `for-in` loops, and C-style loops. `for-in` binders are identifiers.
 
 Built-in collection iteration over arrays, slices, strings, and dynamic arrays
-binds pointer items. Range iteration binds integer values. User-defined
+always binds pointer items; there is no separate pointer-binder spelling. Range
+iteration binds integer values. User-defined
 iterator iteration is selected when the iterable type has a concrete
 `core.Iterator[Item]` implementation whose `next` method has type
 `fn (^Iter) -> ?Item`; `nil` ends the loop and a present value binds the item.
