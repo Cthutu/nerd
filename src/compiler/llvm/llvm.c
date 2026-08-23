@@ -7570,7 +7570,6 @@ internal bool llvm_display_show_function_index(LlvmFunctionContext* ctx,
     for (u32 i = 0; i < array_count(ctx->sema->methods); ++i) {
         const SemaMethod* method = &ctx->sema->methods[i];
         if (!method->is_trait_impl || method->generic_params_index != U32_MAX ||
-            !method->first_param_is_receiver ||
             method->symbol_handle == U32_MAX ||
             !string_eq_cstr(lex_symbol(ctx->lexer, method->symbol_handle),
                             "show") ||

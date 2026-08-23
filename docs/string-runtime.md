@@ -99,6 +99,12 @@ Inside interpolation braces, sema currently accepts:
 Unsupported values, such as function-typed expressions, produce a dedicated
 semantic error.
 
+LLVM selects `Display.show` implementations from their resolved function type:
+the implementation must take exactly the interpolated type and return `string`.
+This remains valid when the implementation spells the substituted receiver as
+the concrete target type instead of the trait's `Self` alias; backend lookup
+must not depend on that source-level spelling.
+
 Top-level runtime interpolated bindings still produce a dedicated error because
 there is no runtime statement context in which to build them during module
 initialisation.
