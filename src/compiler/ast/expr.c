@@ -44,6 +44,8 @@ internal AstKind ast_binary_kind_from_token(TokenKind kind)
         return AK_Greater;
     case TK_GreaterEqual:
         return AK_GreaterEqual;
+    case TK_in:
+        return AK_InRange;
     case TK_AmpAmp:
         return AK_LogicalAnd;
     case TK_PipePipe:
@@ -226,6 +228,98 @@ internal bool ast_parse_plex_literal_field_value(AstParseState* state,
                          out_value_node);
 }
 
+internal bool ast_parse_plex_literal_fields(AstParseState* state,
+                                            u32*           out_flags,
+                                            u32*           out_first_field,
+                                            u32*           out_field_count)
+{
+    Array(AstPlexLiteralField) fields = NULL;
+    u32 flags                         = APLF_None;
+    while (state->token.kind != TK_RBrace) {
+        if (state->token.kind == TK_Ellipsis) {
+            flags |= APLF_DefaultMissing;
+            if (!ast_next_token(state) ||
+                (state->token.kind == TK_Comma &&
+                 !ast_expect_token(state, TK_Comma))) {
+                array_free(fields);
+                return false;
+            }
+            break;
+        }
+        if (state->token.kind != TK_Symbol) {
+            bool result =
+                error_0203_expected_token(state->lexer->source,
+                                          ast_token_span(state, &state->token),
+                                          TK_Symbol,
+                                          state->token.kind);
+            array_free(fields);
+            return result;
+        }
+        AstToken field      = state->token;
+        u32      value_node = 0;
+        if (!ast_parse_plex_literal_field_value(state, field, &value_node)) {
+            array_free(fields);
+            return false;
+        }
+        array_push(fields,
+                   (AstPlexLiteralField){
+                       .token_index      = field.token_index,
+                       .symbol_handle    = field.value.symbol_handle,
+                       .value_node_index = value_node,
+                   });
+        if (state->token.kind == TK_Comma) {
+            if (!ast_next_token(state) || !ast_next_token(state)) {
+                array_free(fields);
+                return false;
+            }
+            if (state->token.kind == TK_RBrace) {
+                break;
+            }
+            continue;
+        }
+        if (ast_expr_cursor_kind(state) == TK_Comma) {
+            if (!ast_expect_token(state, TK_Comma) || !ast_next_token(state)) {
+                array_free(fields);
+                return false;
+            }
+            if (state->token.kind == TK_RBrace) {
+                break;
+            }
+            continue;
+        }
+        if (state->token.kind == TK_Ellipsis) {
+            continue;
+        }
+        if (state->token.kind == TK_Symbol) {
+            if (!ast_next_token(state)) {
+                array_free(fields);
+                return false;
+            }
+            continue;
+        }
+    }
+    if (state->token.kind == TK_RBrace &&
+        state->token_index == state->token.token_index) {
+        if (!ast_next_token(state)) {
+            array_free(fields);
+            return false;
+        }
+    } else if (state->token.kind != TK_RBrace &&
+               !ast_expect_token(state, TK_RBrace)) {
+        array_free(fields);
+        return false;
+    }
+
+    *out_first_field = (u32)array_count(state->plex_literal_fields);
+    for (u32 i = 0; i < array_count(fields); ++i) {
+        array_push(state->plex_literal_fields, fields[i]);
+    }
+    *out_field_count = (u32)array_count(fields);
+    *out_flags       = flags;
+    array_free(fields);
+    return true;
+}
+
 internal bool ast_token_has_newline_before(const AstParseState* state,
                                            u32                  token_index)
 {
@@ -341,9 +435,10 @@ internal bool ast_next_token_starts_on_branch_head(const AstParseState* state,
         return true;
     }
 
-    if (next.kind == TK_EqualEqual || next.kind == TK_BangEqual ||
-        next.kind == TK_Less || next.kind == TK_LessEqual ||
-        next.kind == TK_Greater || next.kind == TK_GreaterEqual) {
+    if (next.kind == TK_in || next.kind == TK_EqualEqual ||
+        next.kind == TK_BangEqual || next.kind == TK_Less ||
+        next.kind == TK_LessEqual || next.kind == TK_Greater ||
+        next.kind == TK_GreaterEqual) {
         if (ast_token_has_newline_before(state, next.token_index)) {
             return true;
         }
@@ -391,7 +486,7 @@ internal bool
 ast_lbrace_starts_on_value_branch_block(const AstParseState* state)
 {
     TokenKind first = ast_peek_kind_at(state, 0);
-    if (first == TK_else || first == TK_RBrace) {
+    if (first == TK_else || first == TK_in || first == TK_RBrace) {
         return true;
     }
 
@@ -453,6 +548,7 @@ bool ast_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp)
     case TK_LessEqual:
     case TK_Greater:
     case TK_GreaterEqual:
+    case TK_in:
         *out_left_bp  = AST_BP_COMPARISON;
         *out_right_bp = AST_BP_COMPARISON + 1;
         return true;
@@ -1241,6 +1337,7 @@ internal bool ast_on_expr_is_condition_shaped(const AstParseState* state,
     case AK_LessEqual:
     case AK_Greater:
     case AK_GreaterEqual:
+    case AK_InRange:
     case AK_LogicalAnd:
     case AK_LogicalOr:
         return true;
@@ -2268,90 +2365,18 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
         }
     case TK_LBrace:
         {
-            Array(AstPlexLiteralField) fields = NULL;
-            u32 flags                         = APLF_None;
+            u32 flags       = APLF_None;
+            u32 first_field = 0;
+            u32 field_count = 0;
             if (!ast_next_token(state)) {
                 return error_0201_missing_value(state->token.source,
                                                 ast_token_span(state, &token),
                                                 TK_RBrace);
             }
-            while (state->token.kind != TK_RBrace) {
-                if (state->token.kind == TK_Ellipsis) {
-                    flags |= APLF_DefaultMissing;
-                    if (!ast_next_token(state)) {
-                        return false;
-                    }
-                    if (state->token.kind == TK_Comma &&
-                        !ast_expect_token(state, TK_Comma)) {
-                        return false;
-                    }
-                    break;
-                }
-                if (state->token.kind != TK_Symbol) {
-                    return error_0203_expected_token(
-                        state->lexer->source,
-                        ast_token_span(state, &state->token),
-                        TK_Symbol,
-                        state->token.kind);
-                }
-                AstToken field      = state->token;
-                u32      value_node = 0;
-                if (!ast_parse_plex_literal_field_value(
-                        state, field, &value_node)) {
-                    return false;
-                }
-                array_push(fields,
-                           (AstPlexLiteralField){
-                               .token_index      = field.token_index,
-                               .symbol_handle    = field.value.symbol_handle,
-                               .value_node_index = value_node,
-                           });
-                if (state->token.kind == TK_Comma) {
-                    if (!ast_next_token(state) || !ast_next_token(state)) {
-                        return false;
-                    }
-                    if (state->token.kind == TK_RBrace) {
-                        break;
-                    }
-                    continue;
-                }
-                if (ast_expr_cursor_kind(state) == TK_Comma) {
-                    if (!ast_expect_token(state, TK_Comma)) {
-                        return false;
-                    }
-                    if (!ast_next_token(state)) {
-                        return false;
-                    }
-                    if (state->token.kind == TK_RBrace) {
-                        break;
-                    }
-                    continue;
-                }
-                if (state->token.kind == TK_Ellipsis) {
-                    continue;
-                }
-                if (state->token.kind == TK_Symbol) {
-                    if (!ast_next_token(state)) {
-                        return false;
-                    }
-                    continue;
-                }
-            }
-            if (state->token.kind == TK_RBrace &&
-                state->token_index == state->token.token_index) {
-                if (!ast_next_token(state)) {
-                    return false;
-                }
-            } else if (state->token.kind != TK_RBrace &&
-                       !ast_expect_token(state, TK_RBrace)) {
+            if (!ast_parse_plex_literal_fields(
+                    state, &flags, &first_field, &field_count)) {
                 return false;
             }
-            u32 first_field = (u32)array_count(state->plex_literal_fields);
-            for (u32 i = 0; i < array_count(fields); ++i) {
-                array_push(state->plex_literal_fields, fields[i]);
-            }
-            u32 field_count = (u32)array_count(fields);
-            array_free(fields);
 
             u32 literal_index = (u32)array_count(state->plex_literals);
             array_push(state->plex_literals,
@@ -2691,85 +2716,13 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
                                              TK_RBrace,
                                              TK_EOF);
         }
-        Array(AstPlexLiteralField) fields = NULL;
-        u32 flags                         = APLF_None;
-        while (state->token.kind != TK_RBrace) {
-            if (state->token.kind == TK_Ellipsis) {
-                flags |= APLF_DefaultMissing;
-                if (!ast_next_token(state)) {
-                    return false;
-                }
-                if (state->token.kind == TK_Comma &&
-                    !ast_expect_token(state, TK_Comma)) {
-                    return false;
-                }
-                break;
-            }
-            if (state->token.kind != TK_Symbol) {
-                return error_0203_expected_token(
-                    state->lexer->source,
-                    ast_token_span(state, &state->token),
-                    TK_Symbol,
-                    state->token.kind);
-            }
-            AstToken field      = state->token;
-            u32      value_node = 0;
-            if (!ast_parse_plex_literal_field_value(
-                    state, field, &value_node)) {
-                return false;
-            }
-            array_push(fields,
-                       (AstPlexLiteralField){
-                           .token_index      = field.token_index,
-                           .symbol_handle    = field.value.symbol_handle,
-                           .value_node_index = value_node,
-                       });
-            if (state->token.kind == TK_Comma) {
-                if (!ast_next_token(state) || !ast_next_token(state)) {
-                    return false;
-                }
-                if (state->token.kind == TK_RBrace) {
-                    break;
-                }
-                continue;
-            }
-            if (ast_expr_cursor_kind(state) == TK_Comma) {
-                if (!ast_expect_token(state, TK_Comma)) {
-                    return false;
-                }
-                if (!ast_next_token(state)) {
-                    return false;
-                }
-                if (state->token.kind == TK_RBrace) {
-                    break;
-                }
-                continue;
-            }
-            if (state->token.kind == TK_Ellipsis) {
-                continue;
-            }
-            if (state->token.kind == TK_Symbol) {
-                if (!ast_next_token(state)) {
-                    return false;
-                }
-                continue;
-            }
-        }
-        if (state->token.kind == TK_RBrace &&
-            state->token_index == state->token.token_index) {
-            if (!ast_next_token(state)) {
-                return false;
-            }
-        } else if (state->token.kind != TK_RBrace &&
-                   !ast_expect_token(state, TK_RBrace)) {
+        u32 flags       = APLF_None;
+        u32 first_field = 0;
+        u32 field_count = 0;
+        if (!ast_parse_plex_literal_fields(
+                state, &flags, &first_field, &field_count)) {
             return false;
         }
-        u32 first_field = (u32)array_count(state->plex_literal_fields);
-        for (u32 i = 0; i < array_count(fields); ++i) {
-            array_push(state->plex_literal_fields, fields[i]);
-        }
-        u32 field_count = (u32)array_count(fields);
-        array_free(fields);
 
         u32 literal_index = (u32)array_count(state->plex_literals);
         array_push(state->plex_literals,
@@ -2801,83 +2754,13 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
                                              TK_RBrace,
                                              TK_EOF);
         }
-        Array(AstPlexLiteralField) fields = NULL;
-        u32 flags                         = APLF_None;
-        while (state->token.kind != TK_RBrace) {
-            if (state->token.kind == TK_Ellipsis) {
-                flags |= APLF_DefaultMissing;
-                if (!ast_next_token(state)) {
-                    return false;
-                }
-                if (state->token.kind == TK_Comma &&
-                    !ast_expect_token(state, TK_Comma)) {
-                    return false;
-                }
-                break;
-            }
-            if (state->token.kind != TK_Symbol) {
-                return error_0203_expected_token(
-                    state->lexer->source,
-                    ast_token_span(state, &state->token),
-                    TK_Symbol,
-                    state->token.kind);
-            }
-            AstToken field      = state->token;
-            u32      value_node = 0;
-            if (!ast_parse_plex_literal_field_value(
-                    state, field, &value_node)) {
-                return false;
-            }
-            array_push(fields,
-                       (AstPlexLiteralField){
-                           .token_index      = field.token_index,
-                           .symbol_handle    = field.value.symbol_handle,
-                           .value_node_index = value_node,
-                       });
-            if (state->token.kind == TK_Comma) {
-                if (!ast_next_token(state) || !ast_next_token(state)) {
-                    return false;
-                }
-                if (state->token.kind == TK_RBrace) {
-                    break;
-                }
-                continue;
-            }
-            if (ast_expr_cursor_kind(state) == TK_Comma) {
-                if (!ast_expect_token(state, TK_Comma) ||
-                    !ast_next_token(state)) {
-                    return false;
-                }
-                if (state->token.kind == TK_RBrace) {
-                    break;
-                }
-                continue;
-            }
-            if (state->token.kind == TK_Ellipsis) {
-                continue;
-            }
-            if (state->token.kind == TK_Symbol) {
-                if (!ast_next_token(state)) {
-                    return false;
-                }
-                continue;
-            }
-        }
-        if (state->token.kind == TK_RBrace &&
-            state->token_index == state->token.token_index) {
-            if (!ast_next_token(state)) {
-                return false;
-            }
-        } else if (state->token.kind != TK_RBrace &&
-                   !ast_expect_token(state, TK_RBrace)) {
+        u32 flags       = APLF_None;
+        u32 first_field = 0;
+        u32 field_count = 0;
+        if (!ast_parse_plex_literal_fields(
+                state, &flags, &first_field, &field_count)) {
             return false;
         }
-        u32 first_field = (u32)array_count(state->plex_literal_fields);
-        for (u32 i = 0; i < array_count(fields); ++i) {
-            array_push(state->plex_literal_fields, fields[i]);
-        }
-        u32 field_count = (u32)array_count(fields);
-        array_free(fields);
 
         u32 literal_index = (u32)array_count(state->plex_literals);
         array_push(state->plex_literals,

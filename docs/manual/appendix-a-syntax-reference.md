@@ -205,6 +205,7 @@ for index, item in collection { ... }
 for item in [start..end] { ... }
 for item in [start..=end] { ... }
 for index, item in [start..end] { ... }
+for (value in [start..end]) { ... }
 ```
 
 ## Types
@@ -268,7 +269,9 @@ value.data
 | `@line` | `untyped integer`; current 1-based source line |
 | `@embed("path")` | `[]u8`; static file bytes resolved relative to source |
 | `[1, 2, 3]` | `[3]i32` |
-| `[start..end]`, `[start..=end]` | integer range usable by `for in` |
+| `[start..end]`, `[start..=end]` | integer range usable by `for in` or the `in` operator |
+| `value in [start..end]` | exclusive-end integer range membership |
+| `value in [start..=end]` | inclusive-end integer range membership |
 | `(1, "two")` | `(i32, string)` |
 | `Point { x: 1 y: 2 }` | `Point` |
 | `geometry.Point { x: 1 y: 2 }` | `geometry.Point` |
@@ -289,6 +292,8 @@ Type { field: pattern }
 left, right
 start..end
 start..=end
+in [start..end]
+in [start..=end]
 <conditional-op> value
 pattern as name
 pattern on condition

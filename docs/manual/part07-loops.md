@@ -128,6 +128,15 @@ for index, value in [3..6] {
 }
 ```
 
+A bare `for name in expression` always means iteration. Parenthesise a boolean
+membership condition to distinguish it from that form:
+
+```nerd
+for (value in [0..10]) {
+    value += 1
+}
+```
+
 User-defined iterators implement `Iterator[Item]` and return `?Item`
 from `next`. `nil` ends the loop, while a present value binds to the
 loop item:

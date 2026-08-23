@@ -696,6 +696,9 @@ internal bool hir_binary_op_from_ast_kind(AstKind kind, HirBinaryOp* out)
     case AK_GreaterEqual:
         *out = HIR_BINARY_GreaterEqual;
         return true;
+    case AK_InRange:
+        *out = HIR_BINARY_InRange;
+        return true;
     case AK_LogicalAnd:
         *out = HIR_BINARY_LogicalAnd;
         return true;

@@ -32,10 +32,11 @@ From lowest binding power to highest:
 | `&&`                                                                            | Boolean AND.                        |
 | `|`, `^`, `&`                                                                   | Bitwise operators.                  |
 | `==`, `!=`                                                                      | Equality.                           |
-| `<`, `<=`, `>`, `>=`                                                            | Ordering comparisons.               |
+| `<`, `<=`, `>`, `>=`, `in`                                                      | Ordering and range membership.       |
 | `<<`, `>>`                                                                      | Shifts.                             |
 | `+`, `-`                                                                        | Additive operators.                 |
 | `*`, `/`, `%`                                                                   | Multiplicative operators.           |
+| prefix `-`, `!`, `^`                                                            | Negation, logical not, address-of.  |
 | calls, indexing, slicing, fields, casts, plex literals, `with`, postfix `^`     | Postfix operators.                  |
 
 The `==` and `!=` operators are built in for primitive equality, strings,
@@ -47,7 +48,17 @@ The `<`, `<=`, `>`, and `>=` operators are built in for numeric values. For
 other values, the analyser accepts ordering when the type implements the
 canonical `core.Order` trait. Lowering calls `Order.compare(lhs, rhs)` and
 compares the returned `i32` with zero.
-| prefix `-`, `!`, `^`                                                            | Negation, logical not, address-of.  |
+
+The `in` operator tests an integer against a bracketed integer range:
+
+```nerd
+digit := value in ['0'..='9']
+index_valid := index in [0..count]
+```
+
+`value in [start..end]` means `value >= start && value < end`, while `..=`
+includes the end. The value and lower bound are evaluated once. The upper bound
+is evaluated only when the lower comparison succeeds.
 
 Assignments require assignable targets. Compound assignments lower through the
 corresponding binary operation before assigning.

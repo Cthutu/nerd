@@ -244,6 +244,8 @@ internal cstr hir_binary_op_name(HirBinaryOp op)
         return "greater";
     case HIR_BINARY_GreaterEqual:
         return "greater_equal";
+    case HIR_BINARY_InRange:
+        return "in_range";
     case HIR_BINARY_LogicalAnd:
         return "logical_and";
     case HIR_BINARY_LogicalOr:

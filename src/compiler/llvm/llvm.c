@@ -9578,6 +9578,99 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
         return (LlvmValue){0};
     case HIR_EXPR_Binary:
         {
+            if (expr->binary_op == HIR_BINARY_InRange) {
+                if (expr->rhs_expr_index >= array_count(ctx->hir->exprs)) {
+                    return (LlvmValue){0};
+                }
+                const HirExpr* range = &ctx->hir->exprs[expr->rhs_expr_index];
+                if (range->kind != HIR_EXPR_RangeExclusive &&
+                    range->kind != HIR_EXPR_RangeInclusive) {
+                    return (LlvmValue){0};
+                }
+
+                u32       comparison_type = range->type_index;
+                LlvmValue value =
+                    llvm_emit_expr(ctx, function, expr->lhs_expr_index);
+                LlvmValue start =
+                    llvm_emit_expr(ctx, function, range->lhs_expr_index);
+                value = llvm_coerce_value_to_type(ctx, value, comparison_type);
+                start = llvm_coerce_value_to_type(ctx, start, comparison_type);
+                if (!value.ok || !start.ok) {
+                    return (LlvmValue){0};
+                }
+
+                bool is_unsigned =
+                    llvm_type_is_unsigned_integer(ctx->sema, comparison_type);
+                string type     = llvm_type_string(ctx, comparison_type);
+                string lower_ok = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = icmp " STRINGP " " STRINGP
+                          " " STRINGP ", " STRINGP "\n",
+                          STRINGV(lower_ok),
+                          STRINGV(is_unsigned ? s("uge") : s("sge")),
+                          STRINGV(type),
+                          STRINGV(value.value),
+                          STRINGV(start.value));
+
+                string result_ptr  = llvm_temp(ctx);
+                string upper_label = llvm_label(ctx, "in.upper");
+                string short_label = llvm_label(ctx, "in.short");
+                string end_label   = llvm_label(ctx, "in.end");
+                string result      = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = alloca i1\n"
+                          "  br i1 " STRINGP ", label %%" STRINGP
+                          ", label %%" STRINGP "\n",
+                          STRINGV(result_ptr),
+                          STRINGV(lower_ok),
+                          STRINGV(upper_label),
+                          STRINGV(short_label));
+                sb_format(ctx->sb,
+                          STRINGP ":\n"
+                                  "  store i1 0, ptr " STRINGP "\n"
+                                  "  br label %%" STRINGP "\n",
+                          STRINGV(short_label),
+                          STRINGV(result_ptr),
+                          STRINGV(end_label));
+
+                sb_format(ctx->sb, STRINGP ":\n", STRINGV(upper_label));
+                LlvmValue end =
+                    llvm_emit_expr(ctx, function, range->rhs_expr_index);
+                end = llvm_coerce_value_to_type(ctx, end, comparison_type);
+                if (!end.ok) {
+                    return (LlvmValue){0};
+                }
+                string upper_ok = llvm_temp(ctx);
+                string upper_predicate =
+                    range->kind == HIR_EXPR_RangeInclusive
+                        ? (is_unsigned ? s("ule") : s("sle"))
+                        : (is_unsigned ? s("ult") : s("slt"));
+                sb_format(ctx->sb,
+                          "  " STRINGP " = icmp " STRINGP " " STRINGP
+                          " " STRINGP ", " STRINGP "\n"
+                          "  store i1 " STRINGP ", ptr " STRINGP "\n"
+                          "  br label %%" STRINGP "\n",
+                          STRINGV(upper_ok),
+                          STRINGV(upper_predicate),
+                          STRINGV(type),
+                          STRINGV(value.value),
+                          STRINGV(end.value),
+                          STRINGV(upper_ok),
+                          STRINGV(result_ptr),
+                          STRINGV(end_label));
+                sb_format(ctx->sb,
+                          STRINGP ":\n"
+                                  "  " STRINGP " = load i1, ptr " STRINGP "\n",
+                          STRINGV(end_label),
+                          STRINGV(result),
+                          STRINGV(result_ptr));
+                return (LlvmValue){
+                    .ok         = true,
+                    .type_index = llvm_builtin_type(ctx->sema, STK_Bool),
+                    .value      = result,
+                };
+            }
+
             string cmp = llvm_compare_instruction(
                 ctx->sema, expr->type_index, expr->binary_op);
             if (cmp.count > 0) {

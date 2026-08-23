@@ -566,6 +566,7 @@ internal int format_expr_precedence(const CstNode* node)
     case CK_LessEqual:
     case CK_Greater:
     case CK_GreaterEqual:
+    case CK_InRange:
         return 40;
     case CK_ShiftLeft:
     case CK_ShiftRight:
@@ -972,6 +973,15 @@ internal void format_emit_pattern(StringBuilder* sb,
         format_emit_expr(sb, cst, lexer, pattern->a, 0);
         sb_append_cstr(sb, pattern->kind == CPK_RangeInclusive ? "..=" : "..");
         format_emit_expr(sb, cst, lexer, pattern->b, 0);
+        break;
+    case CPK_InRangeExclusive:
+    case CPK_InRangeInclusive:
+        sb_append_cstr(sb, "in [");
+        format_emit_expr(sb, cst, lexer, pattern->a, 0);
+        sb_append_cstr(
+            sb, pattern->kind == CPK_InRangeInclusive ? " ..= " : " .. ");
+        format_emit_expr(sb, cst, lexer, pattern->b, 0);
+        sb_append_char(sb, ']');
         break;
     case CPK_Tuple:
         sb_append_char(sb, '(');
@@ -1493,6 +1503,12 @@ internal void format_emit_expr(StringBuilder* sb,
         format_emit_expr(sb, cst, lexer, node->a, node_precedence);
         sb_append_cstr(sb, " >= ");
         format_emit_expr(sb, cst, lexer, node->b, node_precedence + 1);
+        break;
+    case CK_InRange:
+        format_emit_expr(sb, cst, lexer, node->a, node_precedence);
+        sb_append_cstr(sb, " in [");
+        format_emit_expr(sb, cst, lexer, node->b, 0);
+        sb_append_char(sb, ']');
         break;
     case CK_LogicalAnd:
         format_emit_expr(sb, cst, lexer, node->a, node_precedence);
@@ -3390,6 +3406,7 @@ internal u32 format_node_end_token_index(const Cst*   cst,
     case CK_StringConcat:
     case CK_RangeExclusive:
     case CK_RangeInclusive:
+    case CK_InRange:
     case CK_AnnotatedValue:
     case CK_Bind:
     case CK_Variable:

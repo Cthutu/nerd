@@ -90,6 +90,8 @@ Patterns can include:
 | `1, 2` | alternatives |
 | `0..10` | range, excluding the end |
 | `0..=10` | range, including the end |
+| `in [0..10]` | explicit range membership, excluding the end |
+| `in [0..=10]` | explicit range membership, including the end |
 | `< 10` | explicit comparison |
 | enum variants | covered in Part 8 |
 | structural patterns | covered in Part 8 |
@@ -124,6 +126,17 @@ bucket :: fn (value: i32) -> string {
 ```
 
 `..` excludes the end. `..=` includes the end.
+
+The bracketed `in` spelling is also available when it reads more clearly:
+
+```nerd
+on character {
+    in ['0'..='9'] => "digit"
+    else => "other"
+}
+```
+
+Bare range patterns remain supported.
 
 Use `for` when a pattern should compare against a variable that is already in
 scope:

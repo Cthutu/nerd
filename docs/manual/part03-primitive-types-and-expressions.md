@@ -125,6 +125,18 @@ Comparison operators produce `bool`:
 | `<=`     | less than or equal    |
 | `>`      | greater than          |
 | `>=`     | greater than or equal |
+| `in`     | inside an integer range |
+
+Use a bracketed range with `in`. The `..` form excludes its upper bound and
+`..=` includes it:
+
+```nerd
+is_digit := ch in ['0'..='9']
+is_index := index in [0..count]
+```
+
+The first form is equivalent to `ch >= '0' && ch <= '9'`. The tested expression
+is evaluated once.
 
 For non-built-in values, `==` and `!=` use the canonical `core.Eq`
 implementation when one exists for the value type.

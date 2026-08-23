@@ -174,6 +174,13 @@ well as through AST binding and reference nodes. This covers locals such as
 `for in` item and index bindings whose declaration tokens belong to the loop
 metadata rather than standalone binding nodes.
 
+Integer range membership has dedicated CST, AST, and HIR binary nodes. Sema
+contextualises the bracketed range bounds from the tested integer type. LLVM
+lowering evaluates the tested value once and short-circuits the upper-bound
+comparison when the lower-bound comparison fails. In loop headers, the parser
+reserves bare `for name in expression` for iteration; a membership condition is
+therefore written in parentheses.
+
 ## File Families
 
 - `src/compiler/lexer`

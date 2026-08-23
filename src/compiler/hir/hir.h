@@ -146,6 +146,7 @@ typedef enum : u8 {
     HIR_BINARY_LessEqual,
     HIR_BINARY_Greater,
     HIR_BINARY_GreaterEqual,
+    HIR_BINARY_InRange,
     HIR_BINARY_LogicalAnd,
     HIR_BINARY_LogicalOr,
 } HirBinaryOp;

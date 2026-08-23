@@ -72,6 +72,8 @@ string ast_kind_to_string(AstKind kind)
         return s("Greater");
     case AK_GreaterEqual:
         return s("GreaterEqual");
+    case AK_InRange:
+        return s("InRange");
     case AK_LogicalAnd:
         return s("LogicalAnd");
     case AK_LogicalOr:
@@ -281,6 +283,7 @@ void ast_dump(const Ast* ast, const Lexer* lexer)
         case AK_LessEqual:
         case AK_Greater:
         case AK_GreaterEqual:
+        case AK_InRange:
         case AK_LogicalAnd:
         case AK_LogicalOr:
             row[3] = table_cell_string(

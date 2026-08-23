@@ -2684,6 +2684,7 @@ sema_expr_is_constantish(const Ast* ast, const Sema* sema, u32 node_index)
     case AK_Expression:
     case AK_Statement:
         return sema_expr_is_constantish(ast, sema, node->a);
+    case AK_InRange:
     case AK_IntegerPlus:
     case AK_IntegerMinus:
     case AK_IntegerMultiply:
@@ -8216,6 +8217,7 @@ internal u32 sema_node_find_symbol_ref(const Ast* ast,
     case AK_Index:
     case AK_RangeExclusive:
     case AK_RangeInclusive:
+    case AK_InRange:
     case AK_IntegerPlus:
     case AK_IntegerMinus:
     case AK_IntegerMultiply:
@@ -8778,6 +8780,7 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
     case AK_GreaterEqual:
     case AK_LogicalAnd:
     case AK_LogicalOr:
+    case AK_InRange:
     case AK_RangeExclusive:
     case AK_RangeInclusive:
         if (node->kind == AK_On) {
@@ -9725,6 +9728,7 @@ internal void sema_collect_node_deps(const Ast*  ast,
     case AK_GreaterEqual:
     case AK_LogicalAnd:
     case AK_LogicalOr:
+    case AK_InRange:
     case AK_RangeExclusive:
     case AK_RangeInclusive:
         sema_collect_node_deps(ast, sema, owner_decl_index, node->a, out_sema);
@@ -10490,6 +10494,7 @@ internal bool sema_validate_generic_body_refs_node(const Lexer* lexer,
         }
         return sema_validate_generic_body_binary_trait_constraint(
             lexer, ast, sema, generic_params, node_index);
+    case AK_InRange:
     case AK_RangeExclusive:
     case AK_RangeInclusive:
     case AK_Index:
@@ -17046,6 +17051,7 @@ internal bool sema_infer_range_iterable_type(const Lexer* lexer,
                                              const Ast*   ast,
                                              Sema*        sema,
                                              u32          node_index,
+                                             u32          expected_item_type,
                                              u32*         out_item_type)
 {
     const AstNode* node = &ast->nodes[node_index];
@@ -17053,15 +17059,18 @@ internal bool sema_infer_range_iterable_type(const Lexer* lexer,
         return false;
     }
 
-    u32 start_type = sema_no_type();
+    u32 start_expected = sema_type_is_concrete_integer(sema, expected_item_type)
+                             ? expected_item_type
+                             : sema_no_type();
+    u32 start_type     = sema_no_type();
     if (!sema_infer_node_type(
-            lexer, ast, sema, node->a, sema_no_type(), &start_type)) {
+            lexer, ast, sema, node->a, start_expected, &start_type)) {
         return false;
     }
 
     u32 end_expected = sema_type_is_concrete_integer(sema, start_type)
                            ? start_type
-                           : sema_no_type();
+                           : start_expected;
     u32 end_type     = sema_no_type();
     if (!sema_infer_node_type(
             lexer, ast, sema, node->b, end_expected, &end_type)) {
@@ -17092,7 +17101,9 @@ internal bool sema_infer_range_iterable_type(const Lexer* lexer,
     }
 
     u32 item_type = sema_no_type();
-    if (sema_type_is_concrete_integer(sema, start_type)) {
+    if (sema_type_is_concrete_integer(sema, expected_item_type)) {
+        item_type = expected_item_type;
+    } else if (sema_type_is_concrete_integer(sema, start_type)) {
         item_type = start_type;
     } else if (sema_type_is_concrete_integer(sema, end_type)) {
         item_type = end_type;
@@ -17118,6 +17129,59 @@ internal bool sema_infer_range_iterable_type(const Lexer* lexer,
     return true;
 }
 
+internal bool sema_infer_range_membership_type(const Lexer* lexer,
+                                               const Ast*   ast,
+                                               Sema*        sema,
+                                               u32          node_index,
+                                               u32*         out_type)
+{
+    const AstNode* node  = &ast->nodes[node_index];
+    const AstNode* range = &ast->nodes[node->b];
+    if (range->kind != AK_RangeExclusive && range->kind != AK_RangeInclusive) {
+        return error_0304_type_mismatch(lexer->source,
+                                        sema_node_span(lexer, range),
+                                        s("integer range"),
+                                        s("value"));
+    }
+
+    u32 value_type = sema_no_type();
+    if (!sema_infer_node_type(
+            lexer, ast, sema, node->a, sema_no_type(), &value_type)) {
+        return false;
+    }
+    if (!sema_type_is_integer(sema, value_type)) {
+        Arena temp_arena = {0};
+        arena_init(&temp_arena);
+        bool ok = error_0304_type_mismatch(
+            lexer->source,
+            sema_node_span(lexer, &ast->nodes[node->a]),
+            s("integer"),
+            sema_type_name(lexer, sema, &temp_arena, value_type));
+        arena_done(&temp_arena);
+        return ok;
+    }
+
+    u32 range_type = sema_no_type();
+    if (!sema_infer_range_iterable_type(
+            lexer, ast, sema, node->b, value_type, &range_type)) {
+        return false;
+    }
+    if (!sema_type_matches(sema, range_type, value_type)) {
+        Arena temp_arena = {0};
+        arena_init(&temp_arena);
+        bool ok = error_0304_type_mismatch(
+            lexer->source,
+            sema_node_span(lexer, node),
+            sema_type_name(lexer, sema, &temp_arena, range_type),
+            sema_type_name(lexer, sema, &temp_arena, value_type));
+        arena_done(&temp_arena);
+        return ok;
+    }
+
+    *out_type = sema_builtin_type(sema, STK_Bool);
+    return true;
+}
+
 internal bool sema_infer_for_iterable_type(const Lexer*      lexer,
                                            const Ast*        ast,
                                            Sema*             sema,
@@ -17138,8 +17202,12 @@ internal bool sema_infer_for_iterable_type(const Lexer*      lexer,
     u32            item_type = sema_no_type();
     if (iterable->kind == AK_RangeExclusive ||
         iterable->kind == AK_RangeInclusive) {
-        if (!sema_infer_range_iterable_type(
-                lexer, ast, sema, iterable_node_index, &item_type)) {
+        if (!sema_infer_range_iterable_type(lexer,
+                                            ast,
+                                            sema,
+                                            iterable_node_index,
+                                            sema_no_type(),
+                                            &item_type)) {
             return false;
         }
         iterable_type = item_type;
@@ -17714,6 +17782,7 @@ internal bool sema_node_contains_interpolation(const Ast* ast, u32 node_index)
     case AK_GreaterEqual:
     case AK_LogicalAnd:
     case AK_LogicalOr:
+    case AK_InRange:
     case AK_RangeExclusive:
     case AK_RangeInclusive:
         if (node->kind == AK_On) {
@@ -17938,6 +18007,7 @@ internal u32 sema_find_interpolated_string_node(const Ast* ast, u32 node_index)
     case AK_GreaterEqual:
     case AK_LogicalAnd:
     case AK_LogicalOr:
+    case AK_InRange:
     case AK_RangeExclusive:
     case AK_RangeInclusive:
         if (node->kind == AK_On) {
@@ -18271,6 +18341,7 @@ internal bool sema_validate_interpolated_strings(const Lexer* lexer,
     case AK_GreaterEqual:
     case AK_LogicalAnd:
     case AK_LogicalOr:
+    case AK_InRange:
     case AK_RangeExclusive:
     case AK_RangeInclusive:
         if (node->kind == AK_On) {
@@ -21053,6 +21124,13 @@ validate_type:
         }
         break;
 
+    case AK_InRange:
+        if (!sema_infer_range_membership_type(
+                lexer, ast, sema, node_index, &type_index)) {
+            return false;
+        }
+        break;
+
     case AK_IntegerPlus:
     case AK_IntegerMinus:
     case AK_IntegerMultiply:
@@ -23231,6 +23309,25 @@ internal bool sema_reduce_folded_node(const Lexer* lex,
         ok = false;
         break;
 
+    case AK_InRange:
+        {
+            const AstNode* range = &ast->nodes[node->b];
+            i64            value = 0;
+            i64            start = 0;
+            i64            end   = 0;
+            ok = sema_try_get_constant(ast, out_sema, node->a, &value) &&
+                 sema_try_get_constant(ast, out_sema, range->a, &start) &&
+                 sema_try_get_constant(ast, out_sema, range->b, &end);
+            if (ok) {
+                value = value >= start &&
+                                (range->kind == AK_RangeInclusive ? value <= end
+                                                                  : value < end)
+                            ? 1
+                            : 0;
+            }
+        }
+        break;
+
     case AK_SymbolRef:
         {
             if (out_sema->node_local_indices[node_index] != sema_no_local()) {
@@ -23502,6 +23599,7 @@ internal bool sema_fold_node(const Lexer* lex,
             case AK_BitwiseOr:
             case AK_ShiftLeft:
             case AK_ShiftRight:
+            case AK_InRange:
             case AK_RangeExclusive:
             case AK_RangeInclusive:
                 sema_push_fold_frame(&stack, node->b);
@@ -23879,6 +23977,7 @@ internal bool sema_validate_assignment_node(const Lexer*     lexer,
     case AK_GreaterEqual:
     case AK_LogicalAnd:
     case AK_LogicalOr:
+    case AK_InRange:
     case AK_RangeExclusive:
     case AK_RangeInclusive:
         return sema_validate_assignment_node(
@@ -25053,6 +25152,7 @@ internal bool sema_validate_loop_control(const Lexer* lexer,
     case AK_GreaterEqual:
     case AK_LogicalAnd:
     case AK_LogicalOr:
+    case AK_InRange:
     case AK_RangeExclusive:
     case AK_RangeInclusive:
     case AK_AnnotatedValue:

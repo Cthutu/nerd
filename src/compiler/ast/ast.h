@@ -49,6 +49,7 @@
 // | AK_LessEqual           | Ast index of left                 | Ast index of right              |
 // | AK_Greater             | Ast index of left                 | Ast index of right              |
 // | AK_GreaterEqual        | Ast index of left                 | Ast index of right              |
+// | AK_InRange             | Ast index of value                | Ast index of range              |
 // | AK_LogicalAnd          | Ast index of left                 | Ast index of right              |
 // | AK_LogicalOr           | Ast index of left                 | Ast index of right              |
 // | AK_Call                | Ast index callee                  | Ast call-info index             |
@@ -147,6 +148,7 @@ typedef enum {
     AK_LessEqual,
     AK_Greater,
     AK_GreaterEqual,
+    AK_InRange,
     AK_LogicalAnd,
     AK_LogicalOr,
     AK_Call,

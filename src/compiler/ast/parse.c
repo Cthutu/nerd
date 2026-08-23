@@ -2624,6 +2624,45 @@ internal AstPatternKind ast_parse_comparison_pattern_kind(TokenKind kind)
 
 bool ast_parse_pattern(AstParseState* state, u32* out_pattern)
 {
+    if (state->token.kind == TK_in) {
+        AstToken in_token = state->token;
+        if (!ast_next_token(state)) {
+            return error_0201_missing_value(state->token.source,
+                                            ast_token_span(state, &in_token),
+                                            TK_LBracket);
+        }
+        if (state->token.kind != TK_LBracket) {
+            return error_0203_expected_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                TK_LBracket,
+                state->token.kind);
+        }
+
+        u32 range_node = 0;
+        if (!ast_parse_expr_bp(state, 0, &range_node)) {
+            return false;
+        }
+        const AstNode* range = &state->nodes[range_node];
+        if (range->kind != AK_RangeExclusive &&
+            range->kind != AK_RangeInclusive) {
+            return error_0203_expected_token(state->lexer->source,
+                                             ast_token_span(state, &in_token),
+                                             TK_Range,
+                                             in_token.kind);
+        }
+        return ast_emit_pattern(state,
+                                (AstPattern){
+                                    .kind = range->kind == AK_RangeExclusive
+                                                ? APK_RangeExclusive
+                                                : APK_RangeInclusive,
+                                    .token_index = in_token.token_index,
+                                    .a           = range->a,
+                                    .b           = range->b,
+                                },
+                                out_pattern);
+    }
+
     if (state->token.kind == TK_for) {
         AstToken for_token = state->token;
         if (!ast_next_token(state)) {
@@ -3239,6 +3278,32 @@ internal bool ast_token_starts_for_in(const AstParseState* state)
     return false;
 }
 
+internal u32 ast_find_unparenthesized_for_membership(const AstParseState* state)
+{
+    u32 depth = 0;
+    for (u32 i = state->token.token_index;
+         i < array_count(state->lexer->tokens);
+         ++i) {
+        TokenKind kind = state->lexer->tokens[i].kind;
+        if (depth == 0 && kind == TK_in) {
+            return i;
+        }
+        if (depth == 0 && (kind == TK_LBrace || kind == TK_Dollar ||
+                           kind == TK_Semicolon || kind == TK_EOF)) {
+            break;
+        }
+        if (kind == TK_LParen || kind == TK_LBracket) {
+            depth++;
+        } else if (kind == TK_RParen || kind == TK_RBracket) {
+            if (depth == 0) {
+                break;
+            }
+            depth--;
+        }
+    }
+    return U32_MAX;
+}
+
 internal bool ast_parse_for_body(AstParseState* state,
                                  AstForInfo*    for_info,
                                  u32*           out_body_node)
@@ -3355,6 +3420,18 @@ bool ast_parse_for(AstParseState* state, u32* out_node)
             return false;
         }
     } else if (!ast_for_token_is_body_start(state->token.kind)) {
+        u32 membership_token = ast_find_unparenthesized_for_membership(state);
+        if (membership_token != U32_MAX) {
+            return error_0203_expected_token_ex(
+                state->lexer->source,
+                ast_span_for_token_index(state, membership_token),
+                TK_LParen,
+                TK_in,
+                "A top-level `in` in a condition loop would be ambiguous with "
+                "`for item in iterable`.",
+                "Parenthesise the membership condition: `for (value in "
+                "[start .. end]) { ... }`");
+        }
         if (state->token.kind == TK_Semicolon) {
             for_info.mode = AFM_CStyle;
             if (ast_cursor_kind(state) != TK_Semicolon) {

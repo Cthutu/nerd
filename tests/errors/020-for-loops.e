@@ -151,7 +151,7 @@ main :: fn () {
 }
 ¬
 {
-    "message": "Expected LeftBrace `{` but found Keyword `in`",
+    "message": "Expected LeftParen `(` but found Keyword `in`",
     "source_file": "tests/errors/020-for-loops.e",
     "primary_location": {
         "line": 3,
@@ -166,9 +166,11 @@ main :: fn () {
             "message": "Found Keyword `in` here"
         }
     ],
-    "notes": [],
+    "notes": [
+        "A top-level `in` in a condition loop would be ambiguous with `for item in iterable`."
+    ],
     "help": [
-        "Check for a missing closing delimiter or misplaced operator"
+        "Parenthesise the membership condition: `for (value in [start .. end]) { ... }`"
     ]
 }
 ¬

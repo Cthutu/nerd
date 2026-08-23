@@ -9,6 +9,8 @@ coverage, guards, and binders are checked in `src/compiler/sema/sema.c`.
 pattern ::= IDENT
           | 'for' expression
           | ('==' | '!=' | '<' | '<=' | '>' | '>=') expression
+          | 'in' '[' expression '..' expression ']'
+          | 'in' '[' expression '..=' expression ']'
           | '_'
           | '(' pattern-list? ')'
           | '{' plex-pattern-field-list? '}'
@@ -64,6 +66,11 @@ in `control-flow.md`, or use boolean extraction with payload binders.
 Range patterns support exclusive `..` and inclusive `..=` bounds. Empty integer
 range patterns are reported as semantic errors. Comparison patterns apply the
 comparison operator to the scrutinee and the expression value.
+
+The explicit bracketed forms `in [start..end]` and `in [start..=end]` have the
+same exclusive and inclusive bound rules. They make the membership operation
+visible at the start of a branch while retaining support for the existing bare
+range patterns.
 
 ## Restrictions
 

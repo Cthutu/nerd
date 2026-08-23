@@ -270,9 +270,10 @@ cst_current_token_starts_on_branch_head(const CstParseState* state)
         return true;
     }
 
-    if (token.kind == TK_EqualEqual || token.kind == TK_BangEqual ||
-        token.kind == TK_Less || token.kind == TK_LessEqual ||
-        token.kind == TK_Greater || token.kind == TK_GreaterEqual) {
+    if (token.kind == TK_in || token.kind == TK_EqualEqual ||
+        token.kind == TK_BangEqual || token.kind == TK_Less ||
+        token.kind == TK_LessEqual || token.kind == TK_Greater ||
+        token.kind == TK_GreaterEqual) {
         if (cst_token_has_newline_before(state, state->token_index)) {
             return true;
         }
@@ -320,7 +321,7 @@ internal bool
 cst_lbrace_starts_on_value_branch_block(const CstParseState* state)
 {
     TokenKind first = cst_peek_kind_at(state, 1);
-    if (first == TK_else || first == TK_RBrace) {
+    if (first == TK_else || first == TK_in || first == TK_RBrace) {
         return true;
     }
 
@@ -913,6 +914,7 @@ cst_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp)
     case TK_LessEqual:
     case TK_Greater:
     case TK_GreaterEqual:
+    case TK_in:
         *out_left_bp  = CST_BP_COMPARISON;
         *out_right_bp = CST_BP_COMPARISON + 1;
         return true;
@@ -3599,6 +3601,33 @@ internal CstPatternKind cst_comparison_pattern_kind(TokenKind kind)
 
 internal bool cst_parse_pattern(CstParseState* state, u32* out_pattern)
 {
+    if (cst_current_token(state).kind == TK_in) {
+        u32 token_index = state->token_index;
+        cst_advance(state);
+        if (cst_current_token(state).kind != TK_LBracket) {
+            return false;
+        }
+        u32 range_node = 0;
+        if (!cst_parse_expr_bp(state, 0, &range_node)) {
+            return false;
+        }
+        const CstNode* range = &state->cst.nodes[range_node];
+        if (range->kind != CK_RangeExclusive &&
+            range->kind != CK_RangeInclusive) {
+            return false;
+        }
+        return cst_emit_pattern(state,
+                                (CstPattern){
+                                    .kind = range->kind == CK_RangeExclusive
+                                                ? CPK_InRangeExclusive
+                                                : CPK_InRangeInclusive,
+                                    .token_index = token_index,
+                                    .a           = range->a,
+                                    .b           = range->b,
+                                },
+                                out_pattern);
+    }
+
     if (cst_current_token(state).kind == TK_for) {
         u32 token_index = state->token_index;
         cst_advance(state);
@@ -4319,6 +4348,9 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
             break;
         case TK_GreaterEqual:
             kind = CK_GreaterEqual;
+            break;
+        case TK_in:
+            kind = CK_InRange;
             break;
         case TK_AmpAmp:
             kind = CK_LogicalAnd;

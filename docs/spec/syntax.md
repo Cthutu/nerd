@@ -304,7 +304,7 @@ assignment-operator
                   | '&&=' | '||='
 
 binary-operator ::= '||' | '&&' | '|' | '^' | '&'
-                  | '==' | '!=' | '<' | '<=' | '>' | '>='
+                  | '==' | '!=' | '<' | '<=' | '>' | '>=' | 'in'
                   | '<<' | '>>' | '+' | '-' | '*' | '/' | '%'
 
 primary         ::= INT
@@ -384,7 +384,7 @@ From lowest binding power to highest:
 | `^`                                                                                                                       | Left          |
 | `&`                                                                                                                       | Left          |
 | `==`, `!=`                                                                                                                | Left          |
-| `<`, `<=`, `>`, `>=`                                                                                                      | Left          |
+| `<`, `<=`, `>`, `>=`, `in`                                                                                                | Left          |
 | `<<`, `>>`                                                                                                                | Left          |
 | `+`, `-`                                                                                                                  | Left          |
 | `*`, `/`, `%`                                                                                                             | Left          |
@@ -434,6 +434,7 @@ the previous branch expression.
 pattern         ::= IDENT
                   | 'for' expression
                   | comparison-pattern
+                  | in-range-pattern
                   | '_'
                   | tuple-pattern
                   | plex-pattern
@@ -444,6 +445,10 @@ pattern         ::= IDENT
 
 comparison-pattern
                 ::= ('==' | '!=' | '<' | '<=' | '>' | '>=') expression
+
+in-range-pattern
+                ::= 'in' '[' expression '..' expression ']'
+                  | 'in' '[' expression '..=' expression ']'
 
 tuple-pattern   ::= '(' pattern-list? ')'
 
@@ -466,7 +471,8 @@ range-pattern   ::= expression '..' expression
 
 A bare identifier in a pattern binds the matched value unless it is resolved as
 an enum variant by the expected enum type. Use `for expression` to compare with
-an existing runtime value.
+an existing runtime value. An `in` pattern tests the scrutinee against the
+following bracketed integer range.
 ```
 
 ## Types
