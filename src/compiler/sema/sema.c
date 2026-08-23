@@ -5988,6 +5988,26 @@ internal bool sema_impl_has_member(const Ast*     ast,
     return false;
 }
 
+internal bool sema_impl_has_named_member(const Lexer*   impl_lexer,
+                                         const Ast*     impl_ast,
+                                         const AstNode* body,
+                                         const Lexer*   member_lexer,
+                                         u32            member_symbol,
+                                         u32*           out_member_node_index)
+{
+    string member_name = lex_symbol(member_lexer, member_symbol);
+    for (u32 i = body->a; i < body->b; ++i) {
+        const AstNode* member = &impl_ast->nodes[i];
+        if (member->kind == AK_Bind &&
+            string_eq(lex_symbol(impl_lexer, ast_get_symbol(member)),
+                      member_name)) {
+            *out_member_node_index = i;
+            return true;
+        }
+    }
+    return false;
+}
+
 internal u32 sema_find_impl_method_decl(const Sema* sema,
                                         u32         impl_node_index,
                                         u32         symbol)
@@ -6038,29 +6058,46 @@ internal bool sema_validate_trait_impl(const Lexer* lexer,
         }
     }
 
-    if (sema->decls[trait_decl_index].value_node_index >=
-        array_count(ast->nodes)) {
+    const Lexer* trait_lexer       = lexer;
+    const Ast*   trait_ast         = ast;
+    Sema*        trait_sema        = sema;
+    u32          source_decl_index = trait_decl_index;
+    bool         trait_imported =
+        sema->decls[trait_decl_index].import_module_index != sema_no_decl();
+    if (trait_imported &&
+        !sema_imported_decl_source(sema,
+                                   &sema->decls[trait_decl_index],
+                                   &trait_lexer,
+                                   &trait_ast,
+                                   &trait_sema,
+                                   &source_decl_index)) {
+        return true;
+    }
+    if (source_decl_index >= array_count(trait_sema->decls) ||
+        trait_sema->decls[source_decl_index].value_node_index >=
+            array_count(trait_ast->nodes)) {
         return true;
     }
 
     const AstNode* trait_node =
-        &ast->nodes[sema->decls[trait_decl_index].value_node_index];
+        &trait_ast
+             ->nodes[trait_sema->decls[source_decl_index].value_node_index];
     if (trait_node->kind != AK_Trait ||
-        trait_node->a >= array_count(ast->trait_infos)) {
+        trait_node->a >= array_count(trait_ast->trait_infos)) {
         return true;
     }
 
-    const AstTraitInfo* trait = &ast->trait_infos[trait_node->a];
-    if (trait->generic_params_index != U32_MAX) {
+    const AstTraitInfo* trait = &trait_ast->trait_infos[trait_node->a];
+    if (!trait_imported && trait->generic_params_index != U32_MAX) {
         return error_0339_generics_not_implemented(
             lexer->source,
             sema_node_span(lexer, &ast->nodes[impl->trait_type_node_index]),
             s("generic trait implementation"));
     }
-    if (trait->body_node_index >= array_count(ast->nodes)) {
+    if (trait->body_node_index >= array_count(trait_ast->nodes)) {
         return true;
     }
-    const AstNode* trait_body = &ast->nodes[trait->body_node_index];
+    const AstNode* trait_body = &trait_ast->nodes[trait->body_node_index];
     const AstNode* impl_body  = &ast->nodes[impl->body_node_index];
 
     Arena temp_arena          = {0};
@@ -6069,19 +6106,24 @@ internal bool sema_validate_trait_impl(const Lexer* lexer,
     sb_init(&missing, &temp_arena);
     u32 missing_count = 0;
     for (u32 i = trait_body->a; i < trait_body->b; ++i) {
-        const AstNode* required = &ast->nodes[i];
+        const AstNode* required = &trait_ast->nodes[i];
         if (required->kind != AK_Bind) {
             continue;
         }
         u32 required_symbol = ast_get_symbol(required);
         u32 member_index    = U32_MAX;
-        if (!sema_impl_has_member(
-                ast, impl_body, required_symbol, &member_index)) {
+        if (!sema_impl_has_named_member(lexer,
+                                        ast,
+                                        impl_body,
+                                        trait_lexer,
+                                        required_symbol,
+                                        &member_index)) {
             if (missing_count > 0) {
                 sb_append_cstr(&missing, ", ");
             }
             sb_append_char(&missing, '`');
-            sb_append_string(&missing, lex_symbol(lexer, required_symbol));
+            sb_append_string(&missing,
+                             lex_symbol(trait_lexer, required_symbol));
             sb_append_char(&missing, '`');
             missing_count++;
         }
@@ -6101,14 +6143,18 @@ internal bool sema_validate_trait_impl(const Lexer* lexer,
     arena_done(&temp_arena);
 
     for (u32 i = trait_body->a; i < trait_body->b; ++i) {
-        const AstNode* required = &ast->nodes[i];
+        const AstNode* required = &trait_ast->nodes[i];
         if (required->kind != AK_Bind) {
             continue;
         }
         u32 required_symbol = ast_get_symbol(required);
         u32 member_index    = U32_MAX;
-        if (!sema_impl_has_member(
-                ast, impl_body, required_symbol, &member_index)) {
+        if (!sema_impl_has_named_member(lexer,
+                                        ast,
+                                        impl_body,
+                                        trait_lexer,
+                                        required_symbol,
+                                        &member_index)) {
             continue;
         }
 
