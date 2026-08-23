@@ -220,6 +220,11 @@ type declaration and reports Nerd's name-first declaration forms. The formatter
 preserves that malformed sequence on one line so formatting cannot obscure the
 source relationship used by the diagnostic.
 
+While Sema checks a plex bitfield value, it records the root value node, field
+symbol, and expected value type as temporary mismatch context. The generic type
+mismatch path uses that context only for the root expression, adding the
+bitfield note without annotating unrelated errors inside nested expressions.
+
 FFI and intrinsic signatures retain compulsory parameter names in their normal
 `AstParam` rows. The ABI-facing semantic function type remains name-independent,
 while hover and signature help read the AST names for editor-visible labels.

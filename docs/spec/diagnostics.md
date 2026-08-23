@@ -34,6 +34,11 @@ Unknown aggregate-literal fields are name-resolution errors, not type
 mismatches. Their primary span identifies the field name, and diagnostics may
 suggest a sufficiently close field declared by the target plex or union type.
 
+Type mismatches for values written to plex bitfields include a note naming the
+bitfield and its value type. This applies both to plex literals and to later
+field assignments, so the packed destination constraint is visible alongside
+the actual expression type.
+
 ## Phase Responsibilities
 
 | Phase | Diagnostic responsibility |

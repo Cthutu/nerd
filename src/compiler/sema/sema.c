@@ -14905,6 +14905,40 @@ internal u8 sema_record_member_bit_width(const Sema* sema,
     return 0;
 }
 
+internal bool sema_infer_bitfield_value_type(const Lexer* lexer,
+                                             const Ast*   ast,
+                                             Sema*        sema,
+                                             u32          value_node_index,
+                                             u32          expected_type,
+                                             u32          field_symbol,
+                                             u8           bit_width,
+                                             u32*         out_type_index)
+{
+    if (bit_width == 0) {
+        return sema_infer_node_type(
+            lexer, ast, sema, value_node_index, expected_type, out_type_index);
+    }
+
+    bool previous_active = sema->bitfield_mismatch_context_active;
+    u32  previous_node   = sema->bitfield_mismatch_value_node_index;
+    u32  previous_symbol = sema->bitfield_mismatch_symbol;
+    u32  previous_type   = sema->bitfield_mismatch_type;
+    sema->bitfield_mismatch_context_active = true;
+    sema->bitfield_mismatch_value_node_index =
+        sema_unwrap_expr_node(ast, value_node_index);
+    sema->bitfield_mismatch_symbol = field_symbol;
+    sema->bitfield_mismatch_type   = expected_type;
+
+    bool result                    = sema_infer_node_type(
+        lexer, ast, sema, value_node_index, expected_type, out_type_index);
+
+    sema->bitfield_mismatch_context_active   = previous_active;
+    sema->bitfield_mismatch_value_node_index = previous_node;
+    sema->bitfield_mismatch_symbol           = previous_symbol;
+    sema->bitfield_mismatch_type             = previous_type;
+    return result;
+}
+
 internal bool
 sema_method_target_matches_receiver(const Lexer*      lexer,
                                     Sema*             sema,
@@ -19505,17 +19539,19 @@ validate_type:
                     sema->type_param_types[record->first_param_type +
                                            field_index];
                 u32 actual_field = sema_no_type();
-                if (!sema_infer_node_type(lexer,
-                                          ast,
-                                          sema,
-                                          field->value_node_index,
-                                          expected_field,
-                                          &actual_field)) {
-                    return false;
-                }
-                u8 width =
+                u8  width =
                     sema->type_param_bit_widths[record->first_param_type +
                                                 field_index];
+                if (!sema_infer_bitfield_value_type(lexer,
+                                                    ast,
+                                                    sema,
+                                                    field->value_node_index,
+                                                    expected_field,
+                                                    field->symbol_handle,
+                                                    width,
+                                                    &actual_field)) {
+                    return false;
+                }
                 i64 constant = 0;
                 if (width > 0 &&
                     sema_try_eval_integer_constant(
@@ -22869,21 +22905,34 @@ validate_type:
                     lex_symbol(lexer, local->symbol_handle));
             }
 
-            if (!sema_infer_node_type(
-                    lexer, ast, sema, node->b, target_type, &type_index)) {
+            u8 target_bit_width = target->kind == AK_Field
+                                      ? sema_record_member_bit_width(
+                                            sema, target_record_type, target->b)
+                                      : 0;
+            if (!sema_infer_bitfield_value_type(
+                    lexer,
+                    ast,
+                    sema,
+                    node->b,
+                    target_type,
+                    target->kind == AK_Field ? target->b : U32_MAX,
+                    target_bit_width,
+                    &type_index)) {
                 return false;
             }
             if (target->kind == AK_Field) {
-                u8 width = sema_record_member_bit_width(
-                    sema, target_record_type, target->b);
                 i64 constant = 0;
-                if (width > 0 && sema_try_eval_integer_constant(
-                                     lexer, ast, sema, node->b, &constant)) {
-                    u64 maximum =
-                        width == 64 ? UINT64_MAX : (1ull << width) - 1;
+                if (target_bit_width > 0 &&
+                    sema_try_eval_integer_constant(
+                        lexer, ast, sema, node->b, &constant)) {
+                    u64 maximum = target_bit_width == 64
+                                      ? UINT64_MAX
+                                      : (1ull << target_bit_width) - 1;
                     if (constant < 0 || (u64)constant > maximum) {
-                        string expected = string_format(
-                            &temp_arena, "value fitting %u-bit field", width);
+                        string expected =
+                            string_format(&temp_arena,
+                                          "value fitting %u-bit field",
+                                          target_bit_width);
                         return error_0304_type_mismatch(
                             lexer->source,
                             sema_node_span(lexer, target),
@@ -23216,11 +23265,26 @@ validate_type:
                 sema_type_name(lexer, sema, &temp_arena, expected_type),
                 sema_type_name(lexer, sema, &temp_arena, type_index));
         }
-        return error_0304_type_mismatch(
-            lexer->source,
-            sema_node_span(lexer, node),
-            sema_type_name(lexer, sema, &temp_arena, expected_type),
-            sema_type_name(lexer, sema, &temp_arena, type_index));
+        string expected_name =
+            sema_type_name(lexer, sema, &temp_arena, expected_type);
+        string actual_name =
+            sema_type_name(lexer, sema, &temp_arena, type_index);
+        if (sema->bitfield_mismatch_context_active &&
+            node_index == sema->bitfield_mismatch_value_node_index) {
+            return error_0304_type_mismatch_with_note(
+                lexer->source,
+                sema_node_span(lexer, node),
+                expected_name,
+                actual_name,
+                "`" STRINGP "` is a bitfield of type `" STRINGP "`.",
+                STRINGV(lex_symbol(lexer, sema->bitfield_mismatch_symbol)),
+                STRINGV(sema_type_name(
+                    lexer, sema, &temp_arena, sema->bitfield_mismatch_type)));
+        }
+        return error_0304_type_mismatch(lexer->source,
+                                        sema_node_span(lexer, node),
+                                        expected_name,
+                                        actual_name);
     }
 
     sema->node_type_indices[node_index] = type_index;

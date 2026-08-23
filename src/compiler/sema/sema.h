@@ -272,6 +272,10 @@ typedef struct {
     Array(bool) node_is_type_expr;
     Array(bool) node_const_known;
     Array(i64) node_const_values;
+    bool bitfield_mismatch_context_active;
+    u32  bitfield_mismatch_value_node_index;
+    u32  bitfield_mismatch_symbol;
+    u32  bitfield_mismatch_type;
     bool recoverable_method_call_error;
 } Sema;
 

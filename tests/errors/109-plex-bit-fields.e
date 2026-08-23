@@ -264,7 +264,9 @@ main :: fn () {
             "message": "This expression has type `untyped integer`"
         }
     ],
-    "notes": [],
+    "notes": [
+        "`kind` is a bitfield of type `TokenType`."
+    ],
     "help": [
         "Change the expression or annotation so both sides use the same type."
     ]
