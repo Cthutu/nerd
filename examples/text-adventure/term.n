@@ -132,7 +132,9 @@ pub wrap :: fn (s: string, width: i32) -> [..]string {
                 on found_space => {
                     result.push(s[start..last_space])
                     start = last_space + 1
-                    for start < s.count && (s.data[start] == ' ' || s.data[start] == '\t') {
+                    for start < s.count &&
+                        (s.data[start] == ' ' ||
+                            s.data[start] == '\t') {
                         start += 1
                     }
                 } else {

@@ -620,7 +620,8 @@ on "linux" {
         i : usize = 0
         for i < system.frames.count {
             info := ^system.frames[i]
-            for info.platform_info.display != nil && XPending(info.platform_info.display) > 0 {
+            for info.platform_info.display != nil &&
+                XPending(info.platform_info.display) > 0 {
                 event : XEvent
                 _              := XNextEvent(info.platform_info.display, ^event)
 

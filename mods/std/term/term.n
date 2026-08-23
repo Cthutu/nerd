@@ -1371,7 +1371,9 @@ term_fb_present :: fn () {
             } else {
                 term_output_push(^output, $"\x1b[{y + 1};{x + 1}H")
 
-                for x < term_fb_width && term_fb_index_valid(x, y) && (term_fb_cells[term_fb_index(x, y)].flags & CELL_DIRTY) != 0 {
+                for x < term_fb_width &&
+                    term_fb_index_valid(x, y) &&
+                    (term_fb_cells[term_fb_index(x, y)].flags & CELL_DIRTY) != 0 {
                     cell_index := term_fb_index(x, y)
                     cell       := term_fb_cells[cell_index]
 

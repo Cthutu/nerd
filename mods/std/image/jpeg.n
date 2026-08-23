@@ -485,7 +485,8 @@ jpeg_parse_headers :: fn (bytes: []u8) -> JpegDecoder\ImageError {
             return jpeg_invalid("JPEG marker prefix is missing")
         }
 
-        for offset < bytes.count && bytes[offset] == JPEG_MARKER_PREFIX {
+        for offset < bytes.count &&
+            bytes[offset] == JPEG_MARKER_PREFIX {
             offset += 1
         }
         on offset >= bytes.count => {
@@ -611,7 +612,8 @@ jpeg_bits_read_byte :: fn (bits: ^JpegBits) -> u8\ImageError {
 
     on value != JPEG_MARKER_PREFIX => return value
 
-    for bits.offset < bits.bytes.count && bits.bytes[bits.offset] == JPEG_MARKER_PREFIX {
+    for bits.offset < bits.bytes.count &&
+        bits.bytes[bits.offset] == JPEG_MARKER_PREFIX {
         bits.offset += 1
     }
     on bits.offset >= bits.bytes.count => return UnexpectedEnd!
@@ -647,7 +649,8 @@ expected : u8) -> bool\ImageError {
     on bits.offset >= bits.bytes.count => return UnexpectedEnd!
     on bits.bytes[bits.offset] != JPEG_MARKER_PREFIX => return jpeg_bool_invalid("JPEG restart marker is missing")
 
-    for bits.offset < bits.bytes.count && bits.bytes[bits.offset] == JPEG_MARKER_PREFIX {
+    for bits.offset < bits.bytes.count &&
+        bits.bytes[bits.offset] == JPEG_MARKER_PREFIX {
         bits.offset += 1
     }
     on bits.offset >= bits.bytes.count => return UnexpectedEnd!

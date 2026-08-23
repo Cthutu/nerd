@@ -13,6 +13,7 @@
 #include <stdio.h>
 
 #define FORMAT_WRAP_WIDTH 80
+#define FORMAT_CONTROL_HEADER_WRAP_WIDTH 72
 
 // Expensive parity check for trivia-table development. Keep off for normal
 // debug formatting; it recomputes the old trailing-comment scan for every
@@ -42,6 +43,13 @@ internal void  format_emit_c_style_for_header(StringBuilder*    sb,
                                               const CstForInfo* for_info,
                                               u32               for_token_index,
                                               u32               indent_level);
+internal void  format_emit_for_condition_header(StringBuilder* sb,
+                                                const Cst*     cst,
+                                                const Lexer*   lexer,
+                                                u32 condition_node_index,
+                                                u32 for_token_index,
+                                                u32 body_token_index,
+                                                u32 indent_level);
 internal void  format_emit_spaces(StringBuilder* sb, usize count);
 internal void  format_emit_indent(StringBuilder* sb, u32 indent_level);
 internal usize format_sb_current_column(const StringBuilder* sb);
@@ -1390,9 +1398,14 @@ internal void format_emit_expr(StringBuilder* sb,
                                                node->token_index,
                                                g_format_expr_indent_level);
             } else if (for_info->condition_node_index != U32_MAX) {
-                sb_append_char(sb, ' ');
-                format_emit_expr(
-                    sb, cst, lexer, for_info->condition_node_index, 0);
+                format_emit_for_condition_header(
+                    sb,
+                    cst,
+                    lexer,
+                    for_info->condition_node_index,
+                    node->token_index,
+                    cst->nodes[node->b].token_index,
+                    g_format_expr_indent_level);
             }
             if (for_info->label_symbol != U32_MAX) {
                 sb_append_cstr(sb, " $");
@@ -2519,6 +2532,108 @@ internal void format_collect_logical_chain(const Cst* cst,
     array_push(*out_parts, node_index);
 }
 
+internal bool format_logical_expr_can_wrap(const Cst* cst, u32 node_index)
+{
+    const CstNode* node = &cst->nodes[node_index];
+    if (format_logical_chain_kind(node->kind)) {
+        return true;
+    }
+    return node->kind == CK_Group && format_logical_expr_can_wrap(cst, node->a);
+}
+
+internal void format_emit_logical_expr_multiline(StringBuilder* sb,
+                                                 const Cst*     cst,
+                                                 const Lexer*   lexer,
+                                                 u32            node_index,
+                                                 u32 continuation_indent)
+{
+    const CstNode* node = &cst->nodes[node_index];
+    if (node->kind == CK_Group && format_logical_expr_can_wrap(cst, node->a)) {
+        sb_append_char(sb, '(');
+        format_emit_logical_expr_multiline(
+            sb, cst, lexer, node->a, continuation_indent + 1);
+        sb_append_char(sb, ')');
+        return;
+    }
+    if (!format_logical_chain_kind(node->kind)) {
+        format_emit_expr(sb, cst, lexer, node_index, 0);
+        return;
+    }
+
+    CstKind chain_kind = node->kind;
+    Array(u32) parts   = NULL;
+    format_collect_logical_chain(cst, node_index, chain_kind, &parts);
+
+    string op = format_logical_chain_operator(chain_kind);
+    for (u32 i = 0; i < array_count(parts); ++i) {
+        if (i > 0) {
+            format_emit_indent(sb, continuation_indent);
+        }
+        u32            part_index = parts[i];
+        const CstNode* part       = &cst->nodes[part_index];
+        if (format_logical_expr_can_wrap(cst, part_index)) {
+            u32 nested_indent = continuation_indent;
+            if (part->kind != CK_Group && part->kind != chain_kind) {
+                nested_indent++;
+            }
+            format_emit_logical_expr_multiline(
+                sb, cst, lexer, part_index, nested_indent);
+        } else {
+            format_emit_expr(sb, cst, lexer, part_index, 0);
+        }
+        if (i + 1 < array_count(parts)) {
+            sb_append_char(sb, ' ');
+            sb_append_string(sb, op);
+            sb_append_char(sb, '\n');
+        }
+    }
+
+    array_free(parts);
+}
+
+internal bool format_for_condition_header_has_newline(const Lexer* lexer,
+                                                      u32 for_token_index,
+                                                      u32 body_token_index)
+{
+    if (for_token_index >= array_count(lexer->tokens) ||
+        body_token_index >= array_count(lexer->tokens)) {
+        return false;
+    }
+    return format_count_newlines_between(
+               lexer->source.source,
+               lexer->tokens[for_token_index].offset,
+               lexer->tokens[body_token_index].offset) > 0;
+}
+
+internal void format_emit_for_condition_header(StringBuilder* sb,
+                                               const Cst*     cst,
+                                               const Lexer*   lexer,
+                                               u32 condition_node_index,
+                                               u32 for_token_index,
+                                               u32 body_token_index,
+                                               u32 indent_level)
+{
+    Arena arena = {0};
+    arena_init(&arena);
+    StringBuilder flat = {0};
+    sb_init(&flat, &arena);
+    format_emit_expr(&flat, cst, lexer, condition_node_index, 0);
+
+    bool wrap = format_logical_expr_can_wrap(cst, condition_node_index) &&
+                (format_for_condition_header_has_newline(
+                     lexer, for_token_index, body_token_index) ||
+                 format_sb_current_column(sb) + 1 + flat.size + 2 >
+                     FORMAT_CONTROL_HEADER_WRAP_WIDTH);
+    sb_append_char(sb, ' ');
+    if (wrap) {
+        format_emit_logical_expr_multiline(
+            sb, cst, lexer, condition_node_index, indent_level + 1);
+    } else {
+        sb_append_string(sb, sb_to_string(&flat));
+    }
+    arena_done(&arena);
+}
+
 internal void format_emit_bool_on_condition_multiline(StringBuilder* sb,
                                                       const Cst*     cst,
                                                       const Lexer*   lexer,
@@ -2532,7 +2647,6 @@ internal void format_emit_bool_on_condition_multiline(StringBuilder* sb,
     }
 
     CstKind chain_kind = condition->kind;
-
     Array(u32) parts   = NULL;
     format_collect_logical_chain(cst, condition_node_index, chain_kind, &parts);
 
@@ -2548,7 +2662,6 @@ internal void format_emit_bool_on_condition_multiline(StringBuilder* sb,
             sb_append_char(sb, '\n');
         }
     }
-
     array_free(parts);
 }
 
@@ -7950,8 +8063,13 @@ internal void format_emit_block_statement(StringBuilder* sb,
             format_emit_c_style_for_header(
                 sb, cst, lexer, for_info, stmt->token_index, indent_level);
         } else if (for_info->condition_node_index != U32_MAX) {
-            sb_append_char(sb, ' ');
-            format_emit_expr(sb, cst, lexer, for_info->condition_node_index, 0);
+            format_emit_for_condition_header(sb,
+                                             cst,
+                                             lexer,
+                                             for_info->condition_node_index,
+                                             stmt->token_index,
+                                             cst->nodes[stmt->b].token_index,
+                                             indent_level);
         }
         if (for_info->label_symbol != U32_MAX) {
             sb_append_cstr(sb, " $");
@@ -9255,6 +9373,90 @@ internal bool format_emit_token_comments_before(FormatTokenState*   state,
     return true;
 }
 
+typedef struct FormatTokenForHeader {
+    u32   body_token_index;
+    usize flat_width;
+    bool  is_condition;
+    bool  has_logical_operator;
+    bool  has_source_newline;
+} FormatTokenForHeader;
+
+internal bool format_token_for_header(const Lexer*          lexer,
+                                      const FormatTrivia*   trivia,
+                                      u32                   for_token_index,
+                                      FormatTokenForHeader* out_header)
+{
+    u32  paren_depth             = 0;
+    u32  bracket_depth           = 0;
+    bool has_top_level_in        = false;
+    bool has_top_level_semicolon = false;
+    bool has_logical_operator    = false;
+    bool has_source_newline      = false;
+    u32  body_token_index        = U32_MAX;
+
+    for (u32 i = for_token_index + 1; i < array_count(lexer->tokens); ++i) {
+        TokenKind kind = lexer->tokens[i].kind;
+        if (trivia->newlines_before_token[i] > 0) {
+            has_source_newline = true;
+        }
+
+        if (kind == TK_LBrace && paren_depth == 0 && bracket_depth == 0) {
+            body_token_index = i;
+            break;
+        }
+
+        if (paren_depth == 0 && bracket_depth == 0) {
+            if (kind == TK_in) {
+                has_top_level_in = true;
+            } else if (kind == TK_Semicolon) {
+                has_top_level_semicolon = true;
+            }
+        }
+        if (kind == TK_AmpAmp || kind == TK_PipePipe) {
+            has_logical_operator = true;
+        }
+
+        if (kind == TK_LParen) {
+            paren_depth++;
+        } else if (kind == TK_RParen && paren_depth > 0) {
+            paren_depth--;
+        } else if (kind == TK_LBracket) {
+            bracket_depth++;
+        } else if (kind == TK_RBracket && bracket_depth > 0) {
+            bracket_depth--;
+        }
+    }
+
+    if (body_token_index == U32_MAX) {
+        return false;
+    }
+
+    usize flat_width = 0;
+    for (u32 i = for_token_index; i <= body_token_index; ++i) {
+        TokenKind kind = lexer->tokens[i].kind;
+        TokenKind previous_kind =
+            i == for_token_index ? TK_EOF : lexer->tokens[i - 1].kind;
+        TokenKind next_kind = i + 1 < array_count(lexer->tokens)
+                                  ? lexer->tokens[i + 1].kind
+                                  : TK_EOF;
+        if (i > for_token_index &&
+            (format_token_needs_space_between(previous_kind, kind, next_kind) ||
+             format_token_had_space_between(lexer, i - 1, i))) {
+            flat_width++;
+        }
+        flat_width += format_token_text(lexer, i).count;
+    }
+
+    *out_header = (FormatTokenForHeader){
+        .body_token_index     = body_token_index,
+        .flat_width           = flat_width,
+        .is_condition         = !has_top_level_in && !has_top_level_semicolon,
+        .has_logical_operator = has_logical_operator,
+        .has_source_newline   = has_source_newline,
+    };
+    return true;
+}
+
 internal bool format_emit_token_stream_block(StringBuilder* sb,
                                              NerdSource     source)
 {
@@ -9283,6 +9485,9 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
     TokenKind previous_kind                  = TK_EOF;
     bool      previous_plus_continues_string = false;
     bool      in_on_header                   = false;
+    u32       wrapped_for_token              = U32_MAX;
+    u32       wrapped_for_body_token         = U32_MAX;
+    u32       for_continuation_indent        = 0;
     for (u32 i = 0; i < array_count(lexer.tokens); ++i) {
         TokenKind kind      = lexer.tokens[i].kind;
         TokenKind next_kind = i + 1 < array_count(lexer.tokens)
@@ -9309,12 +9514,29 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
         bool current_starts_binding =
             kind == TK_Symbol &&
             (next_kind == TK_Colon || next_kind == TK_Equal);
+        if (kind == TK_for && wrapped_for_body_token == U32_MAX) {
+            FormatTokenForHeader header = {0};
+            if (format_token_for_header(&lexer, &trivia, i, &header) &&
+                header.is_condition && header.has_logical_operator) {
+                usize start_column = state.at_line_start
+                                         ? state.indent_level * 4
+                                         : format_sb_current_column(sb);
+                if (header.has_source_newline ||
+                    start_column + header.flat_width >
+                        FORMAT_CONTROL_HEADER_WRAP_WIDTH) {
+                    wrapped_for_token      = i;
+                    wrapped_for_body_token = header.body_token_index;
+                }
+            }
+        }
         if (in_on_header && newlines_before > 0 && current_starts_binding) {
             in_on_header = false;
         }
         bool suppress_newline_before =
             !has_comments_before && newlines_before > 0 &&
             (in_on_header ||
+             (wrapped_for_token != U32_MAX && i > wrapped_for_token &&
+              i <= wrapped_for_body_token) ||
              format_token_starts_extract_binder_block(&lexer, i) ||
              (kind == TK_RParen && previous_kind == TK_RBrace));
         if (has_comments_before) {
@@ -9364,7 +9586,10 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
 
         if (state.at_line_start) {
             format_emit_indent(state.sb, state.indent_level);
-            if (comment_continuation_indent > 0) {
+            if (for_continuation_indent > 0) {
+                format_emit_indent(state.sb, for_continuation_indent);
+                for_continuation_indent = 0;
+            } else if (comment_continuation_indent > 0) {
                 format_emit_indent(state.sb, comment_continuation_indent);
             } else if (paren_depth > 0 &&
                        (kind == TK_String || kind == TK_CString ||
@@ -9483,6 +9708,12 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
                 !next_has_comments) {
                 sb_append_char(sb, ' ');
             }
+        } else if (wrapped_for_body_token != U32_MAX &&
+                   i < wrapped_for_body_token &&
+                   (kind == TK_AmpAmp || kind == TK_PipePipe) &&
+                   !has_trailing_comment) {
+            for_continuation_indent = 1 + paren_depth;
+            format_token_state_newline(&state);
         }
 
         if (has_trailing_comment) {
@@ -9493,6 +9724,10 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
 
         previous_kind                  = kind;
         previous_plus_continues_string = current_plus_continues_string;
+        if (i == wrapped_for_body_token) {
+            wrapped_for_token      = U32_MAX;
+            wrapped_for_body_token = U32_MAX;
+        }
     }
 
     while (comment_index < array_count(lexer.comments)) {
