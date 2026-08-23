@@ -28,6 +28,10 @@ platform-sized signed integer values.
 literals. They materialise to concrete types from context, or to `i32` and
 `f64` respectively when no stronger destination type is available.
 
+Context can come from an explicit numeric cast in a later compound assignment.
+For example, `total := 0` followed by `total += value.as(u64)` infers `total`
+as `u64`; an untyped compound operand does not override the default by itself.
+
 `nil` is a temporary semantic type that materialises as a nil pointer, nil
 slice, or nil dynamic array when the destination type is known.
 

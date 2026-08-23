@@ -460,6 +460,19 @@ callback :: fn () -> Result {
     return result
 }
 ```
+
+An explicit numeric cast in a later compound assignment can provide the same
+kind of context:
+
+```nerd
+total := 0
+total *= 10
+total += byte.as(u64) - '0'  -- total is inferred as u64
+```
+
+The untyped `0`, `10`, and character literal adopt `u64`; the explicit cast is
+the concrete constraint.
+
 # Atomic values
 
 `atomic[T]` declares independently addressable atomic storage. `T` may be

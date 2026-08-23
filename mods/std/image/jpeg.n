@@ -169,29 +169,25 @@ jpeg_be_u16_at :: fn (bytes: []u8, index: usize) -> u16 {
 jpeg_invalid :: fn (message: string) -> JpegDecoder\ImageError {
     return (ImageError.InvalidData {
         message: message
-    }
-    )!
+    })!
 }
 
 jpeg_bool_invalid :: fn (message: string) -> bool\ImageError {
     return (ImageError.InvalidData {
         message
-    }
-    )!
+    })!
 }
 
 jpeg_image_invalid :: fn (message: string) -> Image\ImageError {
     return (ImageError.InvalidData {
         message
-    }
-    )!
+    })!
 }
 
 jpeg_byte_invalid :: fn (message: string) -> u8\ImageError {
     return (ImageError.InvalidData {
         message
-    }
-    )!
+    })!
 }
 
 jpeg_decoder_error :: fn (error: ImageError) -> JpegDecoder\ImageError {
@@ -276,8 +272,7 @@ decoder : ^JpegDecoder) -> bool\ImageError {
     on precision != 8 => return UnsupportedFormat!
     on width == 0 || height == 0 => return (ImageError.InvalidData {
         message: "JPEG dimensions must be nonzero"
-    }
-    )!
+    })!
     on components != 1 && components != 3 => return UnsupportedFormat!
     on data.count < 6 + components.as(usize) * 3 => return UnexpectedEnd!
 
@@ -315,8 +310,7 @@ decoder : ^JpegDecoder) -> bool\ImageError {
             width : 0
             height : 0
             pixels : nil
-        }
-        )
+        })
         offset += 3
     }
 
@@ -738,8 +732,7 @@ table_id : i32) -> u8\ImageError {
 
     return (ImageError.InvalidData {
         message: "JPEG invalid Huffman code"
-    }
-    )!
+    })!
 }
 
 jpeg_clear_block :: fn (block: []i32) {
@@ -1041,8 +1034,7 @@ desired_channels : i32) -> Image\ImageError {
         height : decoder.info.height
         channels
         data: output
-    }
-    )
+    })
 }
 
 jpeg_decode :: fn (bytes : []u8,

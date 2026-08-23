@@ -521,8 +521,7 @@ test "FrameSystem loop returns no after destroying final frame" {
         id : 1
         events : nil
         platform_info
-    }
-    )
+    })
 
     frame := Frame {
         id : 1
@@ -591,8 +590,7 @@ test "Frame context reports invalid platform record" {
         id : 1
         events : nil
         platform_info
-    }
-    )
+    })
 
     frame := Frame {
         system : ^system
@@ -623,8 +621,7 @@ test "FrameSystem done releases owned frame and event arrays" {
         id : 1
         events
         platform_info
-    }
-    )
+    })
     system.left_alt_down = yes
 
     system.done()

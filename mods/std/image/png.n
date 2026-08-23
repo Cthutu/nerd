@@ -352,8 +352,7 @@ png_parse :: fn (bytes: []u8) -> PngContainer\ImageError {
                         idat_chunks
                         palette
                         transparency
-                    }
-                    )
+                    })
                 }
                 again
             }
@@ -785,8 +784,7 @@ desired_channels : i32 = 0) -> Image\ImageError {
                                                                 height : png.ihdr.height.as(i32)
                                                                 channels : final_channels
                                                                 data
-                                                            }
-                                                            )
+                                                            })
                                                         }
                                                     }
                                                 }

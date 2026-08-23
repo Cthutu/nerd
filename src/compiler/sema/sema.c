@@ -16729,6 +16729,132 @@ sema_seed_for_condition_context_local_types(const Lexer*           lexer,
     return true;
 }
 
+internal bool sema_binary_kind_can_be_compound_assignment(AstKind kind)
+{
+    switch (kind) {
+    case AK_IntegerPlus:
+    case AK_IntegerMinus:
+    case AK_IntegerMultiply:
+    case AK_IntegerDivide:
+    case AK_IntegerModulo:
+    case AK_BitwiseAnd:
+    case AK_BitwiseXor:
+    case AK_BitwiseOr:
+    case AK_ShiftLeft:
+    case AK_ShiftRight:
+    case AK_LogicalAnd:
+    case AK_LogicalOr:
+        return true;
+    default:
+        return false;
+    }
+}
+
+internal bool sema_collect_explicit_numeric_cast_type(const Lexer* lexer,
+                                                      const Ast*   ast,
+                                                      Sema*        sema,
+                                                      u32          node_index,
+                                                      u32*  candidate_type,
+                                                      bool* conflict)
+{
+    if (node_index >= array_count(ast->nodes)) {
+        return true;
+    }
+
+    const AstNode* node = &ast->nodes[node_index];
+    if (node->kind == AK_Cast) {
+        const AstCastInfo* cast = sema_cast_info(ast, node);
+        u32                cast_type;
+        if (!sema_resolve_type_node(
+                lexer, ast, sema, cast->type_node_index, &cast_type)) {
+            return false;
+        }
+        if (!sema_type_is_concrete_integer(sema, cast_type) &&
+            !sema_type_is_concrete_float(sema, cast_type)) {
+            return true;
+        }
+        if (*candidate_type == sema_no_type()) {
+            *candidate_type = cast_type;
+        } else if (*candidate_type != cast_type) {
+            *conflict = true;
+        }
+        return true;
+    }
+
+    switch (node->kind) {
+    case AK_Expression:
+    case AK_IntegerNegate:
+    case AK_BitwiseNot:
+        return sema_collect_explicit_numeric_cast_type(
+            lexer, ast, sema, node->a, candidate_type, conflict);
+    case AK_IntegerPlus:
+    case AK_IntegerMinus:
+    case AK_IntegerMultiply:
+    case AK_IntegerDivide:
+    case AK_IntegerModulo:
+    case AK_BitwiseAnd:
+    case AK_BitwiseXor:
+    case AK_BitwiseOr:
+    case AK_ShiftLeft:
+    case AK_ShiftRight:
+        return sema_collect_explicit_numeric_cast_type(
+                   lexer, ast, sema, node->a, candidate_type, conflict) &&
+               sema_collect_explicit_numeric_cast_type(
+                   lexer, ast, sema, node->b, candidate_type, conflict);
+    default:
+        return true;
+    }
+}
+
+internal bool
+sema_seed_compound_assignment_local_types(const Lexer*           lexer,
+                                          const Ast*             ast,
+                                          const FrontEndOptions* options,
+                                          Sema*                  sema)
+{
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* assign = &ast->nodes[i];
+        if (assign->kind != AK_Assign ||
+            sema_node_is_inside_disabled_top_on_body(options, lexer, ast, i) ||
+            assign->a >= array_count(ast->nodes) ||
+            assign->b >= array_count(ast->nodes)) {
+            continue;
+        }
+
+        const AstNode* target = &ast->nodes[assign->a];
+        const AstNode* value  = &ast->nodes[assign->b];
+        if (target->kind != AK_SymbolRef || value->a != assign->a ||
+            !sema_binary_kind_can_be_compound_assignment(value->kind)) {
+            continue;
+        }
+
+        u32 local_index = sema->node_local_indices[assign->a];
+        if (local_index == sema_no_local() ||
+            sema->locals[local_index].type_index != sema_no_type() ||
+            sema->locals[local_index].type_node_index != sema_no_type() ||
+            sema_node_find_symbol_ref(
+                ast, value->b, sema->locals[local_index].symbol_handle) !=
+                U32_MAX) {
+            continue;
+        }
+
+        u32  operand_type = sema_no_type();
+        bool conflict     = false;
+        if (!sema_collect_explicit_numeric_cast_type(
+                lexer, ast, sema, value->b, &operand_type, &conflict)) {
+            return false;
+        }
+        if (conflict || operand_type == sema_no_type()) {
+            continue;
+        }
+        if (!sema_seed_local_type_from_expected(
+                lexer, ast, sema, local_index, operand_type)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 internal bool sema_seed_return_expr_context(const Lexer* lexer,
                                             const Ast*   ast,
                                             Sema*        sema,
@@ -25968,6 +26094,11 @@ bool sema_analyse(const Lexer*           lexer,
         return false;
     }
     if (!sema_seed_for_condition_context_local_types(
+            lexer, ast, options, &sema)) {
+        sema_done(&sema);
+        return false;
+    }
+    if (!sema_seed_compound_assignment_local_types(
             lexer, ast, options, &sema)) {
         sema_done(&sema);
         return false;

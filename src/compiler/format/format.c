@@ -9315,7 +9315,8 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
         bool suppress_newline_before =
             !has_comments_before && newlines_before > 0 &&
             (in_on_header ||
-             format_token_starts_extract_binder_block(&lexer, i));
+             format_token_starts_extract_binder_block(&lexer, i) ||
+             (kind == TK_RParen && previous_kind == TK_RBrace));
         if (has_comments_before) {
             if (i > 0 && first_comment_before < array_count(lexer.comments)) {
                 usize previous_end =
@@ -9469,7 +9470,8 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
             multiline_bracket_depth++;
             format_token_state_newline(&state);
         } else if (!in_interpolated_string &&
-                   ((kind == TK_RBrace && next_kind != TK_else) ||
+                   ((kind == TK_RBrace && next_kind != TK_else &&
+                     next_kind != TK_RParen) ||
                     kind == TK_Semicolon)) {
             format_token_state_newline(&state);
         } else if (kind == TK_RBracket && multiline_bracket_depth == 0 &&

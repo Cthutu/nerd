@@ -181,6 +181,11 @@ comparison when the lower-bound comparison fails. In loop headers, the parser
 reserves bare `for name in expression` for iteration; a membership condition is
 therefore written in parentheses.
 
+Before unannotated locals are materialised, Sema also collects explicit numeric
+cast targets from compound-assignment operands. An untyped literal initializer
+can therefore adopt a later explicit numeric type without requiring the rest of
+the operand to be inferred before loop bindings and other locals are ready.
+
 ## File Families
 
 - `src/compiler/lexer`
