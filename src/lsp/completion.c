@@ -2063,6 +2063,16 @@ internal bool lsp_completion_source_receiver_type_name(string  source,
             cursor++;
         }
 
+        if (inferred && cursor < limit && source.data[cursor] == '"') {
+            *out_type_name = s("string");
+            return true;
+        }
+        if (inferred && cursor + 1 < limit && source.data[cursor] == '$' &&
+            source.data[cursor + 1] == '"') {
+            *out_type_name = s("string");
+            return true;
+        }
+
         usize start = cursor;
         while (cursor < limit &&
                lsp_completion_is_ident_char(source.data[cursor])) {
@@ -6567,6 +6577,9 @@ void lsp_handle_completion(LspState* state, const LspMessage* message)
         string source_receiver_type = {0};
         if (lsp_completion_source_receiver_type_name(
                 view.source, receiver, offset, &source_receiver_type)) {
+            if (string_eq(source_receiver_type, s("string"))) {
+                lsp_completion_add_string_members(message->arena, items);
+            }
             lsp_completion_add_text_impl_methods_from_uses(
                 message->arena, items, doc, uri, source_receiver_type, false);
         }

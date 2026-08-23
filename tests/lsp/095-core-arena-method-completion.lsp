@@ -8,6 +8,9 @@ Owner :: plex {
 main :: fn () {
     arena_var := arena(16, 8)
     _ := arena_var.
+
+    text := "hello"
+    _ := text.
 }
 ¬
 [
@@ -22,6 +25,20 @@ main :: fn () {
             "position": {
                 "line": 9,
                 "character": 19
+            }
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "method": "textDocument/completion",
+        "params": {
+            "textDocument": {
+                "uri": "file:///test.n"
+            },
+            "position": {
+                "line": 12,
+                "character": 14
             }
         }
     }
@@ -186,6 +203,32 @@ main :: fn () {
                 "label": "done",
                 "kind": 2,
                 "detail": "method"
+            }
+        ]
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "result": [
+            {
+                "label": "data",
+                "kind": 5,
+                "detail": "field"
+            },
+            {
+                "label": "count",
+                "kind": 5,
+                "detail": "field"
+            },
+            {
+                "label": "size",
+                "kind": 5,
+                "detail": "field"
+            },
+            {
+                "label": "bytes",
+                "kind": 5,
+                "detail": "field"
             }
         ]
     },
