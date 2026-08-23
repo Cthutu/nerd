@@ -1651,6 +1651,11 @@ internal bool cst_parse_type_primary(CstParseState* state, u32* out_node)
                     u32 bit_token  = state->token_index;
                     u32 bit_symbol = cst_current_symbol_handle(state);
                     cst_advance(state);
+                    u32 type_node = U32_MAX;
+                    if (cst_current_token(state).kind != TK_Colon &&
+                        !cst_parse_type(state, &type_node)) {
+                        return false;
+                    }
                     if (!cst_consume(state, TK_Colon)) {
                         return false;
                     }
@@ -1666,6 +1671,7 @@ internal bool cst_parse_type_primary(CstParseState* state, u32* out_node)
                                (CstPlexBitField){
                                    .token_index      = bit_token,
                                    .symbol_handle    = bit_symbol,
+                                   .type_node_index  = type_node,
                                    .width_node_index = width_node,
                                });
                     bit_field_count++;

@@ -235,8 +235,10 @@ Plex bit-field blocks remain grouped in the CST and AST so the formatter can
 reconstruct the storage block and align its `:` separators. Semantic analysis
 flattens named bits into the record's ordinary member arrays and records
 parallel width, offset, and group-start metadata; `_` padding advances the
-offset without creating a member. The LSP uses the grouped AST for declaration
-locations and documentation, while semantic member completion sees the
+offset without creating a member. Enum-typed bits store the enum as their
+logical member type and keep the block's unsigned integer in parallel physical
+storage metadata. The LSP uses the grouped AST for declaration locations,
+logical types, and documentation, while semantic member completion sees the
 flattened fields.
 
 Semantic dependency ordering excludes a function's references to its own

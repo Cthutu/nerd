@@ -1,8 +1,10 @@
+TokenType :: enum { Eof Request Response }
+
 Header :: plex {
     u8 {
         version : 4
         _       : 2
-        kind    : 2
+        kind TokenType : 2
     }
     length u16
 }
@@ -24,11 +26,11 @@ main :: fn () {
             },
             "range": {
                 "start": {
-                    "line": 11,
+                    "line": 13,
                     "character": 8
                 },
                 "end": {
-                    "line": 11,
+                    "line": 13,
                     "character": 8
                 }
             },
@@ -101,11 +103,11 @@ main :: fn () {
                 {
                     "range": {
                         "start": {
-                            "line": 10,
+                            "line": 12,
                             "character": 16
                         },
                         "end": {
-                            "line": 10,
+                            "line": 12,
                             "character": 17
                         }
                     },
@@ -118,11 +120,11 @@ main :: fn () {
                                 "uri": "file:///test.n",
                                 "range": {
                                     "start": {
-                                        "line": 10,
+                                        "line": 12,
                                         "character": 16
                                     },
                                     "end": {
-                                        "line": 10,
+                                        "line": 12,
                                         "character": 17
                                     }
                                 }
@@ -134,11 +136,11 @@ main :: fn () {
                                 "uri": "file:///test.n",
                                 "range": {
                                     "start": {
-                                        "line": 10,
+                                        "line": 12,
                                         "character": 16
                                     },
                                     "end": {
-                                        "line": 10,
+                                        "line": 12,
                                         "character": 17
                                     }
                                 }
@@ -163,15 +165,15 @@ main :: fn () {
                             {
                                 "range": {
                                     "start": {
-                                        "line": 12,
+                                        "line": 14,
                                         "character": 4
                                     },
                                     "end": {
-                                        "line": 12,
+                                        "line": 14,
                                         "character": 4
                                     }
                                 },
-                                "newText": "\n        kind   : 0\n        length : 0\n    "
+                                "newText": "\n        kind   : Eof\n        length : 0\n    "
                             }
                         ]
                     }

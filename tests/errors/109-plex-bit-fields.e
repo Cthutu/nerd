@@ -26,6 +26,97 @@ Header :: plex {
     ]
 }
 ¬
+TokenType :: enum { Eof Data(u8) }
+
+Header :: plex {
+    u8 {
+        kind TokenType : 4
+    }
+}
+¬
+{
+    "message": "Type mismatch: expected `payload-free enum whose discriminants fit the bit width`, found `TokenType`",
+    "source_file": "tests/errors/109-plex-bit-fields.e",
+    "primary_location": {
+        "line": 5,
+        "column": 9
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 5,
+            "column": 9,
+            "length": 4,
+            "message": "This expression has type `TokenType`"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Change the expression or annotation so both sides use the same type."
+    ]
+}
+¬
+TokenType :: enum { Eof Last = 16 }
+
+Header :: plex {
+    u8 {
+        kind TokenType : 4
+    }
+}
+¬
+{
+    "message": "Type mismatch: expected `payload-free enum whose discriminants fit the bit width`, found `TokenType`",
+    "source_file": "tests/errors/109-plex-bit-fields.e",
+    "primary_location": {
+        "line": 5,
+        "column": 9
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 5,
+            "column": 9,
+            "length": 4,
+            "message": "This expression has type `TokenType`"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Change the expression or annotation so both sides use the same type."
+    ]
+}
+¬
+TokenType :: enum { Eof }
+
+Header :: plex {
+    u8 {
+        _ TokenType : 4
+        kind        : 4
+    }
+}
+¬
+{
+    "message": "Type mismatch: expected `untyped bit-field padding`, found `typed padding`",
+    "source_file": "tests/errors/109-plex-bit-fields.e",
+    "primary_location": {
+        "line": 5,
+        "column": 9
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 5,
+            "column": 9,
+            "length": 1,
+            "message": "This expression has type `typed padding`"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Change the expression or annotation so both sides use the same type."
+    ]
+}
+¬
 Header :: plex {
     u8 {
         version : 0
@@ -136,6 +227,41 @@ main :: fn () {
             "column": 28,
             "length": 2,
             "message": "This expression has type `out-of-range integer constant`"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Change the expression or annotation so both sides use the same type."
+    ]
+}
+¬
+TokenType :: enum { Eof Data }
+
+Header :: plex {
+    u8 {
+        kind TokenType : 4
+    }
+}
+
+main :: fn () {
+    header := Header { kind: TokenType.Eof }
+    header.kind = 1
+}
+¬
+{
+    "message": "Type mismatch: expected `TokenType`, found `untyped integer`",
+    "source_file": "tests/errors/109-plex-bit-fields.e",
+    "primary_location": {
+        "line": 11,
+        "column": 19
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 11,
+            "column": 19,
+            "length": 1,
+            "message": "This expression has type `untyped integer`"
         }
     ],
     "notes": [],

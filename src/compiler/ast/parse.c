@@ -1590,8 +1590,17 @@ internal bool ast_parse_type_primary(AstParseState* state, u32* out_node)
                             state->token.kind);
                     }
                     AstToken bit_field = state->token;
-                    if (!ast_next_token(state) ||
-                        state->token.kind != TK_Colon ||
+                    if (!ast_next_token(state)) {
+                        return false;
+                    }
+                    u32 type_node = U32_MAX;
+                    if (state->token.kind != TK_Colon) {
+                        if (!ast_parse_type(state, &type_node) ||
+                            !ast_next_token(state)) {
+                            return false;
+                        }
+                    }
+                    if (state->token.kind != TK_Colon ||
                         !ast_next_token(state)) {
                         return error_0203_expected_token(
                             state->lexer->source,
@@ -1612,6 +1621,7 @@ internal bool ast_parse_type_primary(AstParseState* state, u32* out_node)
                         (AstPlexBitField){
                             .token_index      = bit_field.token_index,
                             .symbol_handle    = bit_field.value.symbol_handle,
+                            .type_node_index  = type_node,
                             .width_node_index = width_node,
                         });
                     bit_field_count++;

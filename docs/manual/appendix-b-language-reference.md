@@ -222,6 +222,10 @@ intended exit code.
 - Named bits are flattened plex fields with the backing integer type. Constant
   writes must fit, runtime writes are masked, and bit fields are not
   addressable.
+- `u8 { kind TokenType : 4 }` gives a named bit field the logical type of a
+  payload-free enum while retaining the block's integer storage. The enum has
+  no fixed width; its non-negative discriminants must fit each declared field
+  width.
 - `use P` inside a plex embeds the fields of plex type `P`; the fields are
   directly accessible on the containing value and participate in literals.
 - Embedded field-name conflicts are invalid. A plex cannot use the same type

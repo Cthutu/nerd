@@ -239,7 +239,9 @@ Plex bit-field groups lower to one unsigned LLVM integer per source storage
 block. Logical field extraction shifts and masks that integer; insertion uses a
 masked read-modify-write so neighbouring fields and padding survive. Debug
 metadata continues to expose the logical field names, widths, and bit offsets
-even though the LLVM aggregate has fewer physical members.
+even though the LLVM aggregate has fewer physical members. Enum-typed fields
+retain the backing integer in the aggregate but wrap extracted tags as the
+logical enum type and unwrap enum tags before insertion.
 
 `for in` lowering keeps the HIR collection semantics but chooses the appropriate
 LLVM address shape for each built-in iterable. Slices, strings, and dynamic

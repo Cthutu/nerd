@@ -175,7 +175,7 @@ plex-member     ::= plex-field | plex-bit-field-block | 'use' type
 plex-field      ::= IDENT type
 plex-bit-field-block
                 ::= IDENT '{' plex-bit-field* '}'
-plex-bit-field  ::= (IDENT | '_') ':' expression
+plex-bit-field  ::= IDENT [ type ] ':' expression | '_' ':' expression
 
 enum-type       ::= 'enum' generic-params? '{' enum-variant-list? '}'
 enum-variant    ::= IDENT [ '(' type-list? ')' | plex-field-body ] [ '=' expression ]
@@ -189,11 +189,15 @@ those types are accepted. Widths are positive compile-time integers and their
 sum must not exceed the storage width. Fields are allocated from the least
 significant bit in declaration order. `_ : N` reserves padding bits.
 
-Named bits are flattened into the plex namespace and use the storage integer
-type when read or written. Constant writes must fit their declared width;
-runtime writes retain the low-width bits. Bit fields are not addressable. Each
-storage block occupies exactly one ordinary storage integer in the plex
-layout.
+Named bits are flattened into the plex namespace. Without an annotation they
+use the storage integer type when read or written. A named bit may instead be
+annotated with a payload-free enum, as in `kind TokenType : 4`; its reads and
+writes then use that enum while its physical storage remains part of the block's
+integer. The enum does not declare a representation width: every discriminant
+must be non-negative and fit the width at each bit-field use. Constant integer
+writes to untyped fields must fit their declared width; runtime writes retain
+the low-width bits. Bit fields are not addressable. Each storage block occupies
+exactly one ordinary storage integer in the plex layout.
 Plex annotations are written after `plex` and before the field body. The parser
 recognises `#c` and `#packed`; `#packed` also implies the C-layout flag. These
 annotations are not accepted on `union` or `enum`.

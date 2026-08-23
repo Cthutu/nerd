@@ -242,6 +242,7 @@ typedef struct {
     Array(u8) type_param_bit_widths;
     Array(u8) type_param_bit_offsets;
     Array(bool) type_param_bit_starts;
+    Array(u32) type_param_bit_storage_types;
     Array(SemaPlexUse) plex_uses;
     Array(SemaDecl) decls;
     Array(SemaGenericFnInstantiation) generic_fn_instantiations;

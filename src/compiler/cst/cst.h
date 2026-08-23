@@ -300,6 +300,7 @@ typedef struct {
 typedef struct {
     u32 token_index;
     u32 symbol_handle;
+    u32 type_node_index;
     u32 width_node_index;
 } CstPlexBitField;
 

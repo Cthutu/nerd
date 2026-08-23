@@ -507,17 +507,29 @@ internal bool lsp_code_action_ast_default_record(Arena*       arena,
         const AstPlexField* field = &ast->plex_fields[plex->first_field + i];
         if (field->bit_field_group) {
             for (u32 bit = 0; bit < field->bit_field_count; ++bit) {
-                u32 symbol  = ast->plex_bit_fields[field->first_bit_field + bit]
-                                  .symbol_handle;
-                string name = lex_symbol(lexer, symbol);
+                const AstPlexBitField* bit_field =
+                    &ast->plex_bit_fields[field->first_bit_field + bit];
+                u32    symbol = bit_field->symbol_handle;
+                string name   = lex_symbol(lexer, symbol);
                 if (string_eq(name, s("_"))) {
                     continue;
+                }
+                string value = s("0");
+                if (bit_field->type_node_index != U32_MAX &&
+                    !lsp_code_action_ast_default_value(
+                        arena,
+                        ast,
+                        lexer,
+                        bit_field->type_node_index,
+                        &value)) {
+                    return false;
                 }
                 if (emitted++ > 0) {
                     sb_append_cstr(&sb, " ");
                 }
                 sb_append_string(&sb, name);
-                sb_append_cstr(&sb, ": 0");
+                sb_append_cstr(&sb, ": ");
+                sb_append_string(&sb, value);
             }
             continue;
         }
@@ -2349,7 +2361,12 @@ lsp_code_action_missing_ast_plex_fields_from_type(Arena*             arena,
                              .symbol_handle;
             if (!string_eq(lex_symbol(type_lexer, symbol), s("_"))) {
                 array_push(logical_symbols, symbol);
-                array_push(logical_types, field->type_node_index);
+                const AstPlexBitField* bit_field =
+                    &type_ast->plex_bit_fields[field->first_bit_field + bit];
+                array_push(logical_types,
+                           bit_field->type_node_index == U32_MAX
+                               ? field->type_node_index
+                               : bit_field->type_node_index);
             }
         }
     }

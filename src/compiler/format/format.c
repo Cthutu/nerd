@@ -1771,6 +1771,11 @@ internal void format_emit_expr(StringBuilder* sb,
                         sb_append_char(sb, ' ');
                         sb_append_string(
                             sb, lex_symbol(lexer, bit_field->symbol_handle));
+                        if (bit_field->type_node_index != U32_MAX) {
+                            sb_append_char(sb, ' ');
+                            format_emit_expr(
+                                sb, cst, lexer, bit_field->type_node_index, 0);
+                        }
                         sb_append_cstr(sb, " : ");
                         format_emit_expr(
                             sb, cst, lexer, bit_field->width_node_index, 0);
@@ -4933,6 +4938,20 @@ internal void format_emit_type_plex_multiline(StringBuilder* sb,
                     max_bit_name = width;
                 }
             }
+            usize max_bit_lhs = max_bit_name;
+            for (u32 bit = 0; bit < field->bit_field_count; ++bit) {
+                const CstPlexBitField* bit_field =
+                    &cst->plex_bit_fields[field->first_bit_field + bit];
+                if (bit_field->type_node_index == U32_MAX) {
+                    continue;
+                }
+                usize width = max_bit_name + 1 +
+                              format_rendered_expr_width(
+                                  cst, lexer, bit_field->type_node_index, 0);
+                if (width > max_bit_lhs) {
+                    max_bit_lhs = width;
+                }
+            }
             for (u32 bit = 0; bit < field->bit_field_count; ++bit) {
                 const CstPlexBitField* bit_field =
                     &cst->plex_bit_fields[field->first_bit_field + bit];
@@ -4945,7 +4964,18 @@ internal void format_emit_type_plex_multiline(StringBuilder* sb,
                 format_emit_indent(sb, indent_level + 2);
                 string name = lex_symbol(lexer, bit_field->symbol_handle);
                 sb_append_string(sb, name);
-                for (usize pad = name.count; pad < max_bit_name; ++pad) {
+                usize lhs_width = name.count;
+                if (bit_field->type_node_index != U32_MAX) {
+                    for (usize pad = name.count; pad <= max_bit_name; ++pad) {
+                        sb_append_char(sb, ' ');
+                    }
+                    format_emit_expr(
+                        sb, cst, lexer, bit_field->type_node_index, 0);
+                    lhs_width = max_bit_name + 1 +
+                                format_rendered_expr_width(
+                                    cst, lexer, bit_field->type_node_index, 0);
+                }
+                for (usize pad = lhs_width; pad < max_bit_lhs; ++pad) {
                     sb_append_char(sb, ' ');
                 }
                 sb_append_cstr(sb, " : ");

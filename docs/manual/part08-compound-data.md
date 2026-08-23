@@ -226,10 +226,12 @@ An anonymous unsigned-integer block packs several named fields into one
 backing integer:
 
 ```nerd
+MessageKind :: enum { Request Response Event }
+
 Header :: plex {
     u8 {
-        version : 4 -- Protocol version.
-        kind    : 4 -- Message kind.
+        version           : 4 -- Protocol version.
+        kind MessageKind  : 4 -- Message kind.
     }
     length u16 -- Payload length.
 }
@@ -245,6 +247,14 @@ Named bits are ordinary flattened fields such as `header.version`; reads and
 writes use the backing integer type. A constant value that does not fit is a
 compile error. A runtime value is masked to the declared width. A bit field
 cannot be addressed because it has no independent storage location.
+
+A named bit can instead use a payload-free enum as its logical type by writing
+the type between the field name and colon. Reads then produce that enum and
+writes require it, while the block still occupies only its backing integer.
+Enums do not acquire a fixed representation width: the same enum can be used in
+fields of different widths, provided every non-negative discriminant fits each
+use. Payload variants are not accepted. Padding remains `_ : N` and cannot be
+typed.
 
 As with every public plex field, each public named bit field should have its own
 trailing documentation comment so editor hover can describe it. Padding does

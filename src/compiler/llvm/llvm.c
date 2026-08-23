@@ -416,6 +416,20 @@ internal bool llvm_record_bit_field(const Sema* sema,
     return true;
 }
 
+internal u32 llvm_record_bit_storage_type(const Sema* sema,
+                                          u32         type_index,
+                                          u32         field_index)
+{
+    type_index = sema_materialise_type(sema, type_index);
+    if (type_index >= array_count(sema->types) ||
+        sema->types[type_index].kind != STK_Plex ||
+        field_index >= sema->types[type_index].param_count) {
+        return sema_no_type();
+    }
+    u32 param = sema->types[type_index].first_param_type + field_index;
+    return sema->type_param_bit_storage_types[param];
+}
+
 internal u32 llvm_type_storage_bits(const Sema* sema, u32 type_index)
 {
     const LlvmLayout* layout   = llvm_default_layout();
@@ -459,6 +473,9 @@ internal u32 llvm_type_storage_bits(const Sema* sema, u32 type_index)
                 i += use->field_count - 1;
             } else if (sema->type_param_bit_widths[type->first_param_type + i] >
                        0) {
+                field_type =
+                    sema->type_param_bit_storage_types[type->first_param_type +
+                                                       i];
                 while (i + 1 < type->param_count &&
                        sema->type_param_bit_widths[type->first_param_type + i +
                                                    1] > 0 &&
@@ -965,12 +982,12 @@ llvm_append_type(StringBuilder* sb, const Sema* sema, u32 type_index)
                 llvm_append_type(sb, sema, use->type_index);
                 i += use->field_count - 1;
             } else {
-                llvm_append_type(
-                    sb,
-                    sema,
-                    sema->type_param_types[type->first_param_type + i]);
+                u32 field_type =
+                    sema->type_param_types[type->first_param_type + i];
                 if (sema->type_param_bit_widths[type->first_param_type + i] >
                     0) {
+                    field_type = sema->type_param_bit_storage_types
+                                     [type->first_param_type + i];
                     while (i + 1 < type->param_count &&
                            sema->type_param_bit_widths[type->first_param_type +
                                                        i + 1] > 0 &&
@@ -979,6 +996,7 @@ llvm_append_type(StringBuilder* sb, const Sema* sema, u32 type_index)
                         i++;
                     }
                 }
+                llvm_append_type(sb, sema, field_type);
             }
         }
         sb_append_cstr(sb, " }");
@@ -3444,6 +3462,9 @@ internal u32 llvm_debug_record_field_offset_bits(const Sema* sema,
     for (u32 i = 0; i < type->param_count; ++i) {
         u32 param      = type->first_param_type + i;
         u32 field_type = sema->type_param_types[param];
+        if (sema->type_param_bit_widths[param] > 0) {
+            field_type = sema->type_param_bit_storage_types[param];
+        }
         offset =
             llvm_align_bits(offset, llvm_type_align_bits(sema, field_type));
         if (sema->type_param_bit_widths[param] > 0) {
@@ -5347,8 +5368,10 @@ internal LlvmValue llvm_extract_record_field(LlvmFunctionContext* ctx,
             ctx->sema, current_type, field_index, &width, &offset)) {
         return (LlvmValue){.ok = true, .type_index = field_type, .value = temp};
     }
+    u32 storage_type =
+        llvm_record_bit_storage_type(ctx->sema, current_type, field_index);
     string shifted = temp;
-    string type    = llvm_type_string(ctx, field_type);
+    string type    = llvm_type_string(ctx, storage_type);
     if (offset > 0) {
         shifted = llvm_temp(ctx);
         sb_format(ctx->sb,
@@ -5358,7 +5381,7 @@ internal LlvmValue llvm_extract_record_field(LlvmFunctionContext* ctx,
                   STRINGV(temp),
                   offset);
     }
-    u32 storage_bits = llvm_integer_bits(ctx->sema, field_type);
+    u32 storage_bits = llvm_integer_bits(ctx->sema, storage_type);
     if (width < storage_bits) {
         u64    mask   = (1ull << width) - 1;
         string masked = llvm_temp(ctx);
@@ -5369,6 +5392,26 @@ internal LlvmValue llvm_extract_record_field(LlvmFunctionContext* ctx,
                   STRINGV(shifted),
                   (unsigned long long)mask);
         shifted = masked;
+    }
+    if (llvm_type_kind(ctx->sema, field_type) == STK_Enum) {
+        string tag = shifted;
+        if (storage_bits < 64) {
+            tag = llvm_temp(ctx);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = zext " STRINGP " " STRINGP " to i64\n",
+                      STRINGV(tag),
+                      STRINGV(type),
+                      STRINGV(shifted));
+        }
+        string enum_value = llvm_temp(ctx);
+        string enum_type  = llvm_type_string(ctx, field_type);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = insertvalue " STRINGP
+                  " zeroinitializer, i64 " STRINGP ", 0\n",
+                  STRINGV(enum_value),
+                  STRINGV(enum_type),
+                  STRINGV(tag));
+        shifted = enum_value;
     }
     return (LlvmValue){.ok = true, .type_index = field_type, .value = shifted};
 }
@@ -5408,11 +5451,36 @@ internal LlvmValue llvm_insert_record_field(LlvmFunctionContext* ctx,
     if (use == NULL &&
         llvm_record_bit_field(
             ctx->sema, record.type_index, field_index, &width, &offset)) {
-        u32 storage_type =
+        u32 logical_type =
             llvm_record_field_type(ctx->sema, record.type_index, field_index);
-        value = llvm_coerce_value_to_type(ctx, value, storage_type);
-        if (!value.ok) {
-            return (LlvmValue){0};
+        u32 storage_type = llvm_record_bit_storage_type(
+            ctx->sema, record.type_index, field_index);
+        if (llvm_type_kind(ctx->sema, logical_type) == STK_Enum) {
+            string tag = llvm_temp(ctx);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = extractvalue " STRINGP " " STRINGP
+                      ", 0\n",
+                      STRINGV(tag),
+                      STRINGV(llvm_type_string(ctx, logical_type)),
+                      STRINGV(value.value));
+            u32    storage_bits = llvm_integer_bits(ctx->sema, storage_type);
+            string stored       = tag;
+            if (storage_bits < 64) {
+                stored = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = trunc i64 " STRINGP " to " STRINGP
+                          "\n",
+                          STRINGV(stored),
+                          STRINGV(tag),
+                          STRINGV(llvm_type_string(ctx, storage_type)));
+            }
+            value = (LlvmValue){
+                .ok = true, .type_index = storage_type, .value = stored};
+        } else {
+            value = llvm_coerce_value_to_type(ctx, value, storage_type);
+            if (!value.ok) {
+                return (LlvmValue){0};
+            }
         }
         string aggregate_type = llvm_type_string(ctx, record.type_index);
         string storage_name   = llvm_temp(ctx);

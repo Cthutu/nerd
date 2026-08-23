@@ -516,7 +516,7 @@ plex-member     ::= plex-field | plex-bit-field-block | 'use' type
 plex-field      ::= IDENT type
 plex-bit-field-block
                 ::= IDENT '{' plex-bit-field* '}'
-plex-bit-field  ::= (IDENT | '_') ':' expression
+plex-bit-field  ::= IDENT [ type ] ':' expression | '_' ':' expression
 
 enum-type       ::= 'enum' generic-params? '{' enum-variant-list? '}'
 enum-variant    ::= IDENT [ '(' type-list? ')' ] [ '=' expression ]
@@ -537,6 +537,12 @@ A bit-field block uses one unsigned integer as backing storage. Its fields are
 laid out from least-significant to most-significant bit in declaration order;
 `_` reserves unnamed padding. Widths must be positive compile-time integers and
 must fit in the backing type.
+
+A named field may place a payload-free enum type between its name and colon,
+for example `kind TokenType : 4`. The width remains local to the bit-field use;
+the enum declaration itself has no fixed representation width. All of its
+discriminants must be non-negative and fit that use's width. Padding `_` cannot
+have a type annotation.
 
 Within a plex body, `use Type` embeds the fields of another plex at that point.
 Generic applications use the ordinary square-bracket syntax, for example

@@ -4047,7 +4047,8 @@ internal const AstPlexField*
 lsp_ast_find_field_for_type_symbol(const LspDocument* doc,
                                    u32                type_symbol,
                                    u32                field_symbol,
-                                   u32*               out_token_index)
+                                   u32*               out_token_index,
+                                   u32*               out_type_node_index)
 {
     const Ast* ast = &doc->front_end.ast;
     for (u32 i = 0; i < array_count(ast->nodes); ++i) {
@@ -4075,7 +4076,8 @@ lsp_ast_find_field_for_type_symbol(const LspDocument* doc,
 
             const AstPlexField* field = &ast->plex_fields[ast_field_index];
             if (field->symbol_handle == field_symbol) {
-                *out_token_index = field->token_index;
+                *out_token_index     = field->token_index;
+                *out_type_node_index = field->type_node_index;
                 return field;
             }
             if (field->bit_field_group) {
@@ -4084,6 +4086,10 @@ lsp_ast_find_field_for_type_symbol(const LspDocument* doc,
                         &ast->plex_bit_fields[field->first_bit_field + bit];
                     if (bit_field->symbol_handle == field_symbol) {
                         *out_token_index = bit_field->token_index;
+                        *out_type_node_index =
+                            bit_field->type_node_index == U32_MAX
+                                ? field->type_node_index
+                                : bit_field->type_node_index;
                         return field;
                     }
                 }
@@ -4239,9 +4245,10 @@ internal string lsp_ast_field_hover_text(const LspDocument* doc,
         return s("");
     }
 
-    u32                 token_index = U32_MAX;
-    const AstPlexField* plex_field  = lsp_ast_find_field_for_type_symbol(
-        doc, type_symbol, field->b, &token_index);
+    u32                 token_index     = U32_MAX;
+    u32                 type_node_index = U32_MAX;
+    const AstPlexField* plex_field      = lsp_ast_find_field_for_type_symbol(
+        doc, type_symbol, field->b, &token_index, &type_node_index);
     if (plex_field == NULL) {
         return s("");
     }
@@ -4249,12 +4256,12 @@ internal string lsp_ast_field_hover_text(const LspDocument* doc,
     string type       = s("<unknown>");
     u32    type_index = sema_no_type();
     if (lsp_sema_node_type(
-            &doc->front_end.sema, plex_field->type_node_index, &type_index)) {
+            &doc->front_end.sema, type_node_index, &type_index)) {
         type = sema_type_name(
             &doc->front_end.lexer, &doc->front_end.sema, arena, type_index);
     }
     if (string_eq(type, s("<unknown>"))) {
-        type = lsp_ast_type_node_source(doc, plex_field->type_node_index);
+        type = lsp_ast_type_node_source(doc, type_node_index);
     }
 
     string name  = lex_symbol(&doc->front_end.lexer, field->b);
@@ -4927,9 +4934,10 @@ internal JsonValue* lsp_ast_field_location(const LspDocument* doc,
         return NULL;
     }
 
-    u32                 token_index = U32_MAX;
-    const AstPlexField* plex_field  = lsp_ast_find_field_for_type_symbol(
-        doc, type_symbol, field->b, &token_index);
+    u32                 token_index     = U32_MAX;
+    u32                 type_node_index = U32_MAX;
+    const AstPlexField* plex_field      = lsp_ast_find_field_for_type_symbol(
+        doc, type_symbol, field->b, &token_index, &type_node_index);
     if (plex_field == NULL) {
         return NULL;
     }

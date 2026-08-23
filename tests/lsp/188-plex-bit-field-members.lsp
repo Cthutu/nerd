@@ -1,14 +1,16 @@
+TokenType :: enum { Eof Request Response }
+
 Header :: plex {
     u8 {
-        version : 4 -- Protocol version.
-        _       : 2
-        kind    : 2
+        version        : 4 -- Protocol version.
+        _              : 2
+        kind TokenType : 2
     }
 }
 
 main :: fn () {
-    header := Header { version: 1 kind: 2 }
-    _ := header.version
+    header := Header { version: 1 kind: TokenType.Response }
+    _ := header.kind
 }
 ¬
 [
@@ -21,7 +23,7 @@ main :: fn () {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 10,
+                "line": 12,
                 "character": 16
             }
         }
@@ -35,7 +37,7 @@ main :: fn () {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 10,
+                "line": 12,
                 "character": 18
             }
         }
@@ -49,7 +51,7 @@ main :: fn () {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 10,
+                "line": 12,
                 "character": 18
             }
         }
@@ -139,7 +141,7 @@ main :: fn () {
         "result": {
             "contents": {
                 "kind": "markdown",
-                "value": "```nerd\nversion\n```\n\n- Kind: plex field\n- Type: `u8`\n- Owner: `Header`\n\nProtocol version."
+                "value": "```nerd\nkind\n```\n\n- Kind: plex field\n- Type: `TokenType`\n- Owner: `Header`"
             }
         }
     },
@@ -150,12 +152,12 @@ main :: fn () {
             "uri": "file:///test.n",
             "range": {
                 "start": {
-                    "line": 2,
+                    "line": 6,
                     "character": 8
                 },
                 "end": {
-                    "line": 2,
-                    "character": 15
+                    "line": 6,
+                    "character": 12
                 }
             }
         }

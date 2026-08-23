@@ -1666,7 +1666,9 @@ internal u32 lsp_completion_ast_field_type_node_for_symbol(
                     const AstPlexBitField* bit_field =
                         &ast->plex_bit_fields[field->first_bit_field + bit];
                     if (bit_field->symbol_handle == field_symbol) {
-                        return field->type_node_index;
+                        return bit_field->type_node_index == U32_MAX
+                                   ? field->type_node_index
+                                   : bit_field->type_node_index;
                     }
                 }
             }
@@ -1714,7 +1716,9 @@ internal u32 lsp_completion_ast_field_type_node_for_name(const LspDocument* doc,
                         &ast->plex_bit_fields[field->first_bit_field + bit];
                     if (string_eq(lex_symbol(lexer, bit_field->symbol_handle),
                                   field_name)) {
-                        return field->type_node_index;
+                        return bit_field->type_node_index == U32_MAX
+                                   ? field->type_node_index
+                                   : bit_field->type_node_index;
                     }
                 }
             }
