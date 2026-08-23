@@ -1762,7 +1762,21 @@ internal void format_emit_expr(StringBuilder* sb,
                 const CstPlexField* field =
                     &cst->plex_fields[plex->first_field + i];
                 sb_append_char(sb, ' ');
-                if (field->embedded) {
+                if (field->bit_field_group) {
+                    format_emit_expr(sb, cst, lexer, field->type_node_index, 0);
+                    sb_append_cstr(sb, " {");
+                    for (u32 bit = 0; bit < field->bit_field_count; ++bit) {
+                        const CstPlexBitField* bit_field =
+                            &cst->plex_bit_fields[field->first_bit_field + bit];
+                        sb_append_char(sb, ' ');
+                        sb_append_string(
+                            sb, lex_symbol(lexer, bit_field->symbol_handle));
+                        sb_append_cstr(sb, " : ");
+                        format_emit_expr(
+                            sb, cst, lexer, bit_field->width_node_index, 0);
+                    }
+                    sb_append_cstr(sb, " }");
+                } else if (field->embedded) {
                     sb_append_cstr(sb, "use ");
                 } else {
                     sb_append_string(sb,
@@ -4768,7 +4782,7 @@ internal void format_emit_type_plex_multiline(StringBuilder* sb,
     usize                  max_field_width = 0;
     for (u32 i = 0; i < plex->field_count; ++i) {
         const CstPlexField* field = &cst->plex_fields[plex->first_field + i];
-        if (field->embedded) {
+        if (field->embedded || field->bit_field_group) {
             continue;
         }
         usize field_width = lex_symbol(lexer, field->symbol_handle).count;
@@ -4788,11 +4802,27 @@ internal void format_emit_type_plex_multiline(StringBuilder* sb,
         usize               type_width =
             format_rendered_expr_width(cst, lexer, field->type_node_index, 0);
         usize code_width =
-            field->embedded
+            field->embedded || field->bit_field_group
                 ? field_indent_width + 4 + type_width
                 : field_indent_width + max_field_width + 1 + type_width;
         u32 type_end_token =
             format_node_end_token_index(cst, lexer, field->type_node_index);
+        if (field->bit_field_group) {
+            u32 cursor = type_end_token + 1;
+            u32 depth  = 0;
+            while (cursor < array_count(lexer->tokens)) {
+                if (lexer->tokens[cursor].kind == TK_LBrace) {
+                    depth++;
+                } else if (lexer->tokens[cursor].kind == TK_RBrace) {
+                    depth--;
+                    if (depth == 0) {
+                        type_end_token = cursor;
+                        break;
+                    }
+                }
+                cursor++;
+            }
+        }
         usize type_end_offset =
             lex_token_end_offset(lexer, &lexer->tokens[type_end_token]);
         u32  comment_index = U32_MAX;
@@ -4870,10 +4900,11 @@ internal void format_emit_type_plex_multiline(StringBuilder* sb,
 
     for (u32 i = 0; i < plex->field_count; ++i) {
         const CstPlexField* field = &cst->plex_fields[plex->first_field + i];
-        string              field_name =
-            field->embedded ? s("") : lex_symbol(lexer, field->symbol_handle);
-        usize field_start_offset = lexer->tokens[field->token_index].offset;
-        usize group_start_offset = field_start_offset;
+        string field_name = field->embedded || field->bit_field_group
+                                ? s("")
+                                : lex_symbol(lexer, field->symbol_handle);
+        usize  field_start_offset = lexer->tokens[field->token_index].offset;
+        usize  group_start_offset = field_start_offset;
         if (comment_index < array_count(lexer->comments) &&
             lexer->comments[comment_index].offset < field_start_offset) {
             group_start_offset = lexer->comments[comment_index].offset;
@@ -4890,7 +4921,52 @@ internal void format_emit_type_plex_multiline(StringBuilder* sb,
                                                 indent_level + 1,
                                                 NULL);
         format_emit_indent(sb, indent_level + 1);
-        if (field->embedded) {
+        if (field->bit_field_group) {
+            format_emit_expr(sb, cst, lexer, field->type_node_index, 0);
+            sb_append_cstr(sb, " {\n");
+            usize max_bit_name = 0;
+            for (u32 bit = 0; bit < field->bit_field_count; ++bit) {
+                const CstPlexBitField* bit_field =
+                    &cst->plex_bit_fields[field->first_bit_field + bit];
+                usize width = lex_symbol(lexer, bit_field->symbol_handle).count;
+                if (width > max_bit_name) {
+                    max_bit_name = width;
+                }
+            }
+            for (u32 bit = 0; bit < field->bit_field_count; ++bit) {
+                const CstPlexBitField* bit_field =
+                    &cst->plex_bit_fields[field->first_bit_field + bit];
+                format_emit_block_comments_before_token(sb,
+                                                        lexer,
+                                                        &comment_index,
+                                                        bit_field->token_index,
+                                                        indent_level + 2,
+                                                        NULL);
+                format_emit_indent(sb, indent_level + 2);
+                string name = lex_symbol(lexer, bit_field->symbol_handle);
+                sb_append_string(sb, name);
+                for (usize pad = name.count; pad < max_bit_name; ++pad) {
+                    sb_append_char(sb, ' ');
+                }
+                sb_append_cstr(sb, " : ");
+                format_emit_expr(
+                    sb, cst, lexer, bit_field->width_node_index, 0);
+                if (!format_emit_trailing_comment_for_node(
+                        sb,
+                        cst,
+                        lexer,
+                        bit_field->width_node_index,
+                        &comment_index)) {
+                    sb_append_char(sb, '\n');
+                }
+            }
+            format_emit_indent(sb, indent_level + 1);
+            sb_append_char(sb, '}');
+            sb_append_char(sb, '\n');
+            previous_field_end_offset = field_end_offsets[i];
+            have_previous_field       = true;
+            continue;
+        } else if (field->embedded) {
             sb_append_cstr(sb, "use ");
         } else {
             sb_append_string(sb, field_name);

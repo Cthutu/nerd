@@ -235,6 +235,12 @@ VS Code debugger path to bind Nerd source breakpoints, step through Nerd lines,
 show shadowed locals in their lexical scopes, and let CodeLLDB evaluate the
 supported native watch subset.
 
+Plex bit-field groups lower to one unsigned LLVM integer per source storage
+block. Logical field extraction shifts and masks that integer; insertion uses a
+masked read-modify-write so neighbouring fields and padding survive. Debug
+metadata continues to expose the logical field names, widths, and bit offsets
+even though the LLVM aggregate has fewer physical members.
+
 `for in` lowering keeps the HIR collection semantics but chooses the appropriate
 LLVM address shape for each built-in iterable. Slices, strings, and dynamic
 arrays already carry a data pointer plus count. Fixed arrays are value-shaped in

@@ -291,8 +291,17 @@ typedef struct {
     u32  token_index;
     u32  symbol_handle;
     u32  type_node_index;
+    u32  first_bit_field;
+    u32  bit_field_count;
+    bool bit_field_group;
     bool embedded;
 } CstPlexField;
+
+typedef struct {
+    u32 token_index;
+    u32 symbol_handle;
+    u32 width_node_index;
+} CstPlexBitField;
 
 typedef struct {
     u32 first_field;
@@ -495,6 +504,7 @@ typedef struct {
     Array(CstTypeApplyInfo) type_applications;
     Array(CstSliceInfo) slices;
     Array(CstPlexField) plex_fields;
+    Array(CstPlexBitField) plex_bit_fields;
     Array(CstPlexTypeInfo) plex_types;
     Array(CstEnumVariant) enum_variants;
     Array(CstEnumTypeInfo) enum_types;

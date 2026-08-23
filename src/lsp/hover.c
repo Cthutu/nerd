@@ -2675,11 +2675,24 @@ internal string lsp_record_field_doc_comment_in_ast(const LspDocument* doc,
                 break;
             }
             const AstPlexField* field = &ast->plex_fields[ast_field_index];
-            if (string_eq(
+            if (field->symbol_handle != U32_MAX &&
+                string_eq(
                     lex_symbol(&doc->front_end.lexer, field->symbol_handle),
                     field_name)) {
                 return lsp_trailing_doc_comment_at_token(&doc->front_end.lexer,
                                                          field->token_index);
+            }
+            if (field->bit_field_group) {
+                for (u32 bit = 0; bit < field->bit_field_count; ++bit) {
+                    const AstPlexBitField* bit_field =
+                        &ast->plex_bit_fields[field->first_bit_field + bit];
+                    if (string_eq(lex_symbol(&doc->front_end.lexer,
+                                             bit_field->symbol_handle),
+                                  field_name)) {
+                        return lsp_trailing_doc_comment_at_token(
+                            &doc->front_end.lexer, bit_field->token_index);
+                    }
+                }
             }
         }
     }
@@ -4030,8 +4043,11 @@ internal u32 lsp_ast_receiver_type_symbol(const LspDocument* doc,
     return best_type_symbol;
 }
 
-internal const AstPlexField* lsp_ast_find_field_for_type_symbol(
-    const LspDocument* doc, u32 type_symbol, u32 field_symbol)
+internal const AstPlexField*
+lsp_ast_find_field_for_type_symbol(const LspDocument* doc,
+                                   u32                type_symbol,
+                                   u32                field_symbol,
+                                   u32*               out_token_index)
 {
     const Ast* ast = &doc->front_end.ast;
     for (u32 i = 0; i < array_count(ast->nodes); ++i) {
@@ -4059,7 +4075,18 @@ internal const AstPlexField* lsp_ast_find_field_for_type_symbol(
 
             const AstPlexField* field = &ast->plex_fields[ast_field_index];
             if (field->symbol_handle == field_symbol) {
+                *out_token_index = field->token_index;
                 return field;
+            }
+            if (field->bit_field_group) {
+                for (u32 bit = 0; bit < field->bit_field_count; ++bit) {
+                    const AstPlexBitField* bit_field =
+                        &ast->plex_bit_fields[field->first_bit_field + bit];
+                    if (bit_field->symbol_handle == field_symbol) {
+                        *out_token_index = bit_field->token_index;
+                        return field;
+                    }
+                }
             }
         }
     }
@@ -4212,8 +4239,9 @@ internal string lsp_ast_field_hover_text(const LspDocument* doc,
         return s("");
     }
 
-    const AstPlexField* plex_field =
-        lsp_ast_find_field_for_type_symbol(doc, type_symbol, field->b);
+    u32                 token_index = U32_MAX;
+    const AstPlexField* plex_field  = lsp_ast_find_field_for_type_symbol(
+        doc, type_symbol, field->b, &token_index);
     if (plex_field == NULL) {
         return s("");
     }
@@ -4229,10 +4257,10 @@ internal string lsp_ast_field_hover_text(const LspDocument* doc,
         type = lsp_ast_type_node_source(doc, plex_field->type_node_index);
     }
 
-    string name    = lex_symbol(&doc->front_end.lexer, field->b);
-    string owner   = lex_symbol(&doc->front_end.lexer, type_symbol);
-    string comment = lsp_trailing_doc_comment_at_token(&doc->front_end.lexer,
-                                                       plex_field->token_index);
+    string name  = lex_symbol(&doc->front_end.lexer, field->b);
+    string owner = lex_symbol(&doc->front_end.lexer, type_symbol);
+    string comment =
+        lsp_trailing_doc_comment_at_token(&doc->front_end.lexer, token_index);
     string suffix =
         comment.count == 0
             ? s("")
@@ -4719,16 +4747,28 @@ internal JsonValue* lsp_local_record_field_location(const LspDocument* doc,
         for (u32 j = 0; j < plex->field_count; ++j) {
             const AstPlexField* field =
                 &doc->front_end.ast.plex_fields[plex->first_field + j];
-            if (field->symbol_handle != field_symbol) {
+            u32  token_index = field->token_index;
+            bool matches     = field->symbol_handle == field_symbol;
+            if (field->bit_field_group) {
+                for (u32 bit = 0; !matches && bit < field->bit_field_count;
+                     ++bit) {
+                    const AstPlexBitField* bit_field =
+                        &doc->front_end.ast
+                             .plex_bit_fields[field->first_bit_field + bit];
+                    matches = bit_field->symbol_handle == field_symbol;
+                    if (matches) {
+                        token_index = bit_field->token_index;
+                    }
+                }
+            }
+            if (!matches) {
                 continue;
             }
 
             usize start_offset;
             usize end_offset;
-            lsp_token_offsets(&doc->front_end.lexer,
-                              field->token_index,
-                              &start_offset,
-                              &end_offset);
+            lsp_token_offsets(
+                &doc->front_end.lexer, token_index, &start_offset, &end_offset);
 
             JsonValue* location = json_new_object(arena);
             json_object_set_string(location, arena, "uri", uri);
@@ -4763,16 +4803,28 @@ internal JsonValue* lsp_field_location_from_type_node(const LspDocument* doc,
         for (u32 i = 0; i < plex->field_count; ++i) {
             const AstPlexField* field =
                 &doc->front_end.ast.plex_fields[plex->first_field + i];
-            if (field->symbol_handle != field_symbol) {
+            u32  token_index = field->token_index;
+            bool matches     = field->symbol_handle == field_symbol;
+            if (field->bit_field_group) {
+                for (u32 bit = 0; !matches && bit < field->bit_field_count;
+                     ++bit) {
+                    const AstPlexBitField* bit_field =
+                        &doc->front_end.ast
+                             .plex_bit_fields[field->first_bit_field + bit];
+                    matches = bit_field->symbol_handle == field_symbol;
+                    if (matches) {
+                        token_index = bit_field->token_index;
+                    }
+                }
+            }
+            if (!matches) {
                 continue;
             }
 
             usize start_offset;
             usize end_offset;
-            lsp_token_offsets(&doc->front_end.lexer,
-                              field->token_index,
-                              &start_offset,
-                              &end_offset);
+            lsp_token_offsets(
+                &doc->front_end.lexer, token_index, &start_offset, &end_offset);
 
             JsonValue* location = json_new_object(arena);
             json_object_set_string(location, arena, "uri", uri);
@@ -4817,11 +4869,21 @@ internal JsonValue* lsp_unique_record_field_location(const LspDocument* doc,
 
     for (u32 i = 0; i < array_count(doc->front_end.ast.plex_fields); ++i) {
         const AstPlexField* field = &doc->front_end.ast.plex_fields[i];
-        if (field->symbol_handle != field_symbol) {
-            continue;
+        if (field->symbol_handle == field_symbol) {
+            matched_token_index = field->token_index;
+            match_count += 1;
         }
-        matched_token_index = field->token_index;
-        match_count += 1;
+        if (field->bit_field_group) {
+            for (u32 bit = 0; bit < field->bit_field_count; ++bit) {
+                const AstPlexBitField* bit_field =
+                    &doc->front_end.ast
+                         .plex_bit_fields[field->first_bit_field + bit];
+                if (bit_field->symbol_handle == field_symbol) {
+                    matched_token_index = bit_field->token_index;
+                    match_count += 1;
+                }
+            }
+        }
         if (match_count > 1) {
             return NULL;
         }
@@ -4865,18 +4927,17 @@ internal JsonValue* lsp_ast_field_location(const LspDocument* doc,
         return NULL;
     }
 
-    const AstPlexField* plex_field =
-        lsp_ast_find_field_for_type_symbol(doc, type_symbol, field->b);
+    u32                 token_index = U32_MAX;
+    const AstPlexField* plex_field  = lsp_ast_find_field_for_type_symbol(
+        doc, type_symbol, field->b, &token_index);
     if (plex_field == NULL) {
         return NULL;
     }
 
     usize start_offset;
     usize end_offset;
-    lsp_token_offsets(&doc->front_end.lexer,
-                      plex_field->token_index,
-                      &start_offset,
-                      &end_offset);
+    lsp_token_offsets(
+        &doc->front_end.lexer, token_index, &start_offset, &end_offset);
 
     JsonValue* location = json_new_object(arena);
     json_object_set_string(location, arena, "uri", uri);

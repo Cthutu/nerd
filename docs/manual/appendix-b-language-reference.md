@@ -216,6 +216,12 @@ intended exit code.
 - Plexes, raw unions, and enums may be declared locally inside blocks and are
   scoped like local bindings.
 - Generic plexes are written as `plex [T] { ... }` and used as `Name[T]`.
+- `u8 { low : 4 high : 4 }` inside a plex declares an anonymous bit-field
+  storage block. Unsigned storage types are supported, declaration order runs
+  from the least-significant bit, and `_ : N` reserves padding.
+- Named bits are flattened plex fields with the backing integer type. Constant
+  writes must fit, runtime writes are masked, and bit fields are not
+  addressable.
 - `use P` inside a plex embeds the fields of plex type `P`; the fields are
   directly accessible on the containing value and participate in literals.
 - Embedded field-name conflicts are invalid. A plex cannot use the same type

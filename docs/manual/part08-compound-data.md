@@ -220,6 +220,36 @@ p.x = 10  -- assign a field
 p.y += 5  -- compound-assign a field
 ```
 
+### Bit fields
+
+An anonymous unsigned-integer block packs several named fields into one
+backing integer:
+
+```nerd
+Header :: plex {
+    u8 {
+        version : 4 -- Protocol version.
+        kind    : 4 -- Message kind.
+    }
+    length u16 -- Payload length.
+}
+```
+
+Widths are positive compile-time integers. They are assigned from the least
+significant bit upwards in declaration order and their total may not exceed the
+backing type's width. Use `_ : N` to reserve unnamed padding bits. The backing
+type must be `u8`, `u16`, `u32`, `u64`, or `usize`, and each block occupies one
+value of that type in the plex layout.
+
+Named bits are ordinary flattened fields such as `header.version`; reads and
+writes use the backing integer type. A constant value that does not fit is a
+compile error. A runtime value is masked to the declared width. A bit field
+cannot be addressed because it has no independent storage location.
+
+As with every public plex field, each public named bit field should have its own
+trailing documentation comment so editor hover can describe it. Padding does
+not need a comment.
+
 A plex can bring another plex's fields into scope with `use`:
 
 ```nerd

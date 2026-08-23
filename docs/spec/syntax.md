@@ -512,8 +512,11 @@ pointer-type    ::= '^' type
 plex-type       ::= 'plex' generic-params? plex-annotation* '{' plex-member* '}'
 union-type      ::= 'union' generic-params? '{' plex-field* '}'
 plex-annotation ::= '#c' | '#packed'
-plex-member     ::= plex-field | 'use' type
+plex-member     ::= plex-field | plex-bit-field-block | 'use' type
 plex-field      ::= IDENT type
+plex-bit-field-block
+                ::= IDENT '{' plex-bit-field* '}'
+plex-bit-field  ::= (IDENT | '_') ':' expression
 
 enum-type       ::= 'enum' generic-params? '{' enum-variant-list? '}'
 enum-variant    ::= IDENT [ '(' type-list? ')' ] [ '=' expression ]
@@ -528,7 +531,12 @@ function-type-param-list
 ```
 
 Plex field definitions use `field Type` with no colon. Colons are used in plex
-literals and plex patterns.
+literals, plex patterns, and fields inside an anonymous bit-field block.
+
+A bit-field block uses one unsigned integer as backing storage. Its fields are
+laid out from least-significant to most-significant bit in declaration order;
+`_` reserves unnamed padding. Widths must be positive compile-time integers and
+must fit in the backing type.
 
 Within a plex body, `use Type` embeds the fields of another plex at that point.
 Generic applications use the ordinary square-bracket syntax, for example

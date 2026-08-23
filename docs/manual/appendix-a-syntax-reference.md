@@ -38,6 +38,7 @@ name :: fn [T] (...) -> Type
 where T: Trait { ... }
 Name :: Type
 Name :: plex { field Type }
+Name :: plex { u8 { low : 4 high : 4 } }
 Name :: plex [T, U] { field Type }
 Name :: union { field Type }
 Name :: union [T, U] { field Type }

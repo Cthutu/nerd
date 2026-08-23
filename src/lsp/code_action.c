@@ -502,14 +502,31 @@ internal bool lsp_code_action_ast_default_record(Arena*       arena,
     StringBuilder          sb   = {0};
     sb_init(&sb, arena);
     sb_append_cstr(&sb, "{ ");
+    u32 emitted = 0;
     for (u32 i = 0; i < plex->field_count; ++i) {
         const AstPlexField* field = &ast->plex_fields[plex->first_field + i];
-        string              value = {0};
+        if (field->bit_field_group) {
+            for (u32 bit = 0; bit < field->bit_field_count; ++bit) {
+                u32 symbol  = ast->plex_bit_fields[field->first_bit_field + bit]
+                                  .symbol_handle;
+                string name = lex_symbol(lexer, symbol);
+                if (string_eq(name, s("_"))) {
+                    continue;
+                }
+                if (emitted++ > 0) {
+                    sb_append_cstr(&sb, " ");
+                }
+                sb_append_string(&sb, name);
+                sb_append_cstr(&sb, ": 0");
+            }
+            continue;
+        }
+        string value = {0};
         if (!lsp_code_action_ast_default_value(
                 arena, ast, lexer, field->type_node_index, &value)) {
             return false;
         }
-        if (i > 0) {
+        if (emitted++ > 0) {
             sb_append_cstr(&sb, " ");
         }
         sb_append_string(&sb, lex_symbol(lexer, field->symbol_handle));
@@ -2315,18 +2332,38 @@ lsp_code_action_missing_ast_plex_fields_from_type(Arena*             arena,
     }
 
     const AstPlexTypeInfo* plex = &type_ast->plex_types[type_plex_index];
-    bool* seen = arena_alloc(arena, sizeof(bool) * plex->field_count);
-    memset(seen, 0, sizeof(bool) * plex->field_count);
+    Array(u32) logical_symbols  = NULL;
+    Array(u32) logical_types    = NULL;
+    for (u32 i = 0; i < plex->field_count; ++i) {
+        const AstPlexField* field =
+            &type_ast->plex_fields[plex->first_field + i];
+        if (!field->bit_field_group) {
+            if (field->symbol_handle != U32_MAX) {
+                array_push(logical_symbols, field->symbol_handle);
+                array_push(logical_types, field->type_node_index);
+            }
+            continue;
+        }
+        for (u32 bit = 0; bit < field->bit_field_count; ++bit) {
+            u32 symbol = type_ast->plex_bit_fields[field->first_bit_field + bit]
+                             .symbol_handle;
+            if (!string_eq(lex_symbol(type_lexer, symbol), s("_"))) {
+                array_push(logical_symbols, symbol);
+                array_push(logical_types, field->type_node_index);
+            }
+        }
+    }
+    bool* seen =
+        arena_alloc(arena, sizeof(bool) * array_count(logical_symbols));
+    memset(seen, 0, sizeof(bool) * array_count(logical_symbols));
     for (u32 i = 0; i < literal->field_count; ++i) {
         const AstPlexLiteralField* field =
             &ast->plex_literal_fields[literal->first_field + i];
-        for (u32 j = 0; j < plex->field_count; ++j) {
-            const AstPlexField* plex_field =
-                &type_ast->plex_fields[plex->first_field + j];
+        for (u32 j = 0; j < array_count(logical_symbols); ++j) {
             if (lsp_code_action_symbol_names_equal(lexer,
                                                    field->symbol_handle,
                                                    type_lexer,
-                                                   plex_field->symbol_handle)) {
+                                                   logical_symbols[j])) {
                 seen[j] = true;
                 break;
             }
@@ -2338,10 +2375,8 @@ lsp_code_action_missing_ast_plex_fields_from_type(Arena*             arena,
     StringBuilder sb = {0};
     sb_init(&sb, arena);
     usize field_name_width = 0;
-    for (u32 i = 0; i < plex->field_count; ++i) {
-        const AstPlexField* field =
-            &type_ast->plex_fields[plex->first_field + i];
-        string name = lex_symbol(type_lexer, field->symbol_handle);
+    for (u32 i = 0; i < array_count(logical_symbols); ++i) {
+        string name = lex_symbol(type_lexer, logical_symbols[i]);
         if (name.count > field_name_width) {
             field_name_width = name.count;
         }
@@ -2349,16 +2384,16 @@ lsp_code_action_missing_ast_plex_fields_from_type(Arena*             arena,
 
     bool needs_leading_newline = literal->field_count > 0;
     u32  missing_count         = 0;
-    for (u32 i = 0; i < plex->field_count; ++i) {
+    for (u32 i = 0; i < array_count(logical_symbols); ++i) {
         if (seen[i]) {
             continue;
         }
 
-        const AstPlexField* field =
-            &type_ast->plex_fields[plex->first_field + i];
         string value = {0};
         if (!lsp_code_action_ast_default_value(
-                arena, type_ast, type_lexer, field->type_node_index, &value)) {
+                arena, type_ast, type_lexer, logical_types[i], &value)) {
+            array_free(logical_symbols);
+            array_free(logical_types);
             return false;
         }
 
@@ -2368,7 +2403,7 @@ lsp_code_action_missing_ast_plex_fields_from_type(Arena*             arena,
         needs_leading_newline = true;
         sb_append_string(&sb, base_indent);
         sb_append_cstr(&sb, "    ");
-        string name = lex_symbol(type_lexer, field->symbol_handle);
+        string name = lex_symbol(type_lexer, logical_symbols[i]);
         sb_append_string(&sb, name);
         lsp_code_action_append_spaces(&sb, field_name_width - name.count);
         sb_append_cstr(&sb, ": ");
@@ -2377,12 +2412,16 @@ lsp_code_action_missing_ast_plex_fields_from_type(Arena*             arena,
     }
 
     if (missing_count == 0) {
+        array_free(logical_symbols);
+        array_free(logical_types);
         return false;
     }
 
     sb_append_char(&sb, '\n');
     sb_append_string(&sb, base_indent);
     *out_insert_text = sb_to_string(&sb);
+    array_free(logical_symbols);
+    array_free(logical_types);
     return true;
 }
 

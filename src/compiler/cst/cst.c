@@ -742,6 +742,11 @@ internal bool cst_skip_type_tokens(const CstParseState* state, u32* io_index)
 internal bool
 cst_remaining_bind_value_is_type_syntax(const CstParseState* state)
 {
+    if (cst_current_token(state).kind == TK_plex ||
+        cst_current_token(state).kind == TK_union ||
+        cst_current_token(state).kind == TK_enum) {
+        return true;
+    }
     if (cst_current_token(state).kind == TK_Symbol) {
         u32 cursor = state->token_index + 1;
         if (cst_kind_at_stream_index(state, cursor) == TK_LBracket) {
@@ -1628,6 +1633,62 @@ internal bool cst_parse_type_primary(CstParseState* state, u32* out_node)
         u32 first_field = (u32)array_count(state->cst.plex_fields);
         u32 field_count = 0;
         while (cst_current_token(state).kind != TK_RBrace) {
+            if (!is_union && cst_current_token(state).kind == TK_Symbol &&
+                cst_peek_kind_at(state, 1) == TK_LBrace) {
+                u32 storage_token = state->token_index;
+                u32 storage_type  = 0;
+                if (!cst_parse_type(state, &storage_type) ||
+                    !cst_consume(state, TK_LBrace)) {
+                    return false;
+                }
+                u32 first_bit_field =
+                    (u32)array_count(state->cst.plex_bit_fields);
+                u32 bit_field_count = 0;
+                while (cst_current_token(state).kind != TK_RBrace) {
+                    if (cst_current_token(state).kind != TK_Symbol) {
+                        return false;
+                    }
+                    u32 bit_token  = state->token_index;
+                    u32 bit_symbol = cst_current_symbol_handle(state);
+                    cst_advance(state);
+                    if (!cst_consume(state, TK_Colon)) {
+                        return false;
+                    }
+                    u32  width_node        = 0;
+                    bool previous_boundary = state->allow_statement_boundary;
+                    state->allow_statement_boundary = true;
+                    bool parsed = cst_parse_expr_bp(state, 0, &width_node);
+                    state->allow_statement_boundary = previous_boundary;
+                    if (!parsed) {
+                        return false;
+                    }
+                    array_push(state->cst.plex_bit_fields,
+                               (CstPlexBitField){
+                                   .token_index      = bit_token,
+                                   .symbol_handle    = bit_symbol,
+                                   .width_node_index = width_node,
+                               });
+                    bit_field_count++;
+                    if (cst_current_token(state).kind == TK_Comma) {
+                        cst_advance(state);
+                    }
+                }
+                if (!cst_consume(state, TK_RBrace)) {
+                    return false;
+                }
+                array_push(state->cst.plex_fields,
+                           (CstPlexField){
+                               .token_index     = storage_token,
+                               .symbol_handle   = U32_MAX,
+                               .type_node_index = storage_type,
+                               .first_bit_field = first_bit_field,
+                               .bit_field_count = bit_field_count,
+                               .bit_field_group = true,
+                               .embedded        = false,
+                           });
+                field_count++;
+                continue;
+            }
             if (!is_union && cst_current_token(state).kind == TK_use) {
                 u32 use_token = state->token_index;
                 cst_advance(state);
@@ -1640,6 +1701,7 @@ internal bool cst_parse_type_primary(CstParseState* state, u32* out_node)
                                .token_index     = use_token,
                                .symbol_handle   = U32_MAX,
                                .type_node_index = type_node,
+                               .first_bit_field = U32_MAX,
                                .embedded        = true,
                            });
                 field_count++;
@@ -1660,6 +1722,7 @@ internal bool cst_parse_type_primary(CstParseState* state, u32* out_node)
                            .token_index     = field_token,
                            .symbol_handle   = field_symbol,
                            .type_node_index = type_node,
+                           .first_bit_field = U32_MAX,
                            .embedded        = false,
                        });
             field_count++;
@@ -6337,6 +6400,7 @@ void cst_done(Cst* cst)
     array_free(cst->type_applications);
     array_free(cst->slices);
     array_free(cst->plex_fields);
+    array_free(cst->plex_bit_fields);
     array_free(cst->plex_types);
     array_free(cst->enum_variants);
     array_free(cst->enum_types);

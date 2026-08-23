@@ -1661,6 +1661,15 @@ internal u32 lsp_completion_ast_field_type_node_for_symbol(
             if (field->symbol_handle == field_symbol) {
                 return field->type_node_index;
             }
+            if (field->bit_field_group) {
+                for (u32 bit = 0; bit < field->bit_field_count; ++bit) {
+                    const AstPlexBitField* bit_field =
+                        &ast->plex_bit_fields[field->first_bit_field + bit];
+                    if (bit_field->symbol_handle == field_symbol) {
+                        return field->type_node_index;
+                    }
+                }
+            }
         }
     }
     return U32_MAX;
@@ -1698,6 +1707,16 @@ internal u32 lsp_completion_ast_field_type_node_for_name(const LspDocument* doc,
                 string_eq(lex_symbol(lexer, field->symbol_handle),
                           field_name)) {
                 return field->type_node_index;
+            }
+            if (field->bit_field_group) {
+                for (u32 bit = 0; bit < field->bit_field_count; ++bit) {
+                    const AstPlexBitField* bit_field =
+                        &ast->plex_bit_fields[field->first_bit_field + bit];
+                    if (string_eq(lex_symbol(lexer, bit_field->symbol_handle),
+                                  field_name)) {
+                        return field->type_node_index;
+                    }
+                }
             }
         }
     }
@@ -1936,6 +1955,17 @@ internal void lsp_completion_add_ast_members(Arena*             arena,
             if (field->symbol_handle != U32_MAX) {
                 lsp_completion_add(
                     arena, items, lex_symbol(lexer, field->symbol_handle), 5);
+            }
+            if (field->bit_field_group) {
+                for (u32 bit = 0; bit < field->bit_field_count; ++bit) {
+                    u32 symbol =
+                        ast->plex_bit_fields[field->first_bit_field + bit]
+                            .symbol_handle;
+                    string name = lex_symbol(lexer, symbol);
+                    if (!string_eq(name, s("_"))) {
+                        lsp_completion_add(arena, items, name, 5);
+                    }
+                }
             }
         }
         return;
@@ -2874,6 +2904,16 @@ internal void lsp_completion_add_ast_plex_fields_for_symbol(Arena*       arena,
             lsp_completion_add(
                 arena, items, lex_symbol(lexer, field->symbol_handle), 5);
         }
+        if (field->bit_field_group) {
+            for (u32 bit = 0; bit < field->bit_field_count; ++bit) {
+                u32 symbol  = ast->plex_bit_fields[field->first_bit_field + bit]
+                                  .symbol_handle;
+                string name = lex_symbol(lexer, symbol);
+                if (!string_eq(name, s("_"))) {
+                    lsp_completion_add(arena, items, name, 5);
+                }
+            }
+        }
     }
 }
 
@@ -2911,6 +2951,19 @@ lsp_completion_add_ast_plex_literal_fields_for_name(Arena*       arena,
 
             const AstPlexField* field = &ast->plex_fields[ast_field_index];
             if (field->symbol_handle == U32_MAX) {
+                if (field->bit_field_group) {
+                    for (u32 bit = 0; bit < field->bit_field_count; ++bit) {
+                        u32 symbol =
+                            ast->plex_bit_fields[field->first_bit_field + bit]
+                                .symbol_handle;
+                        string name = lex_symbol(lexer, symbol);
+                        if (!string_eq(name, s("_")) &&
+                            !lsp_completion_seen_name(seen, name)) {
+                            lsp_completion_add_plex_literal_field(
+                                arena, items, name);
+                        }
+                    }
+                }
                 continue;
             }
             string name = lex_symbol(lexer, field->symbol_handle);

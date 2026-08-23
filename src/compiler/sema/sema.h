@@ -239,6 +239,9 @@ typedef struct {
     Array(u32) type_param_symbols;
     Array(i64) type_param_values;
     Array(bool) type_param_braced_payloads;
+    Array(u8) type_param_bit_widths;
+    Array(u8) type_param_bit_offsets;
+    Array(bool) type_param_bit_starts;
     Array(SemaPlexUse) plex_uses;
     Array(SemaDecl) decls;
     Array(SemaGenericFnInstantiation) generic_fn_instantiations;

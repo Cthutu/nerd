@@ -159,10 +159,10 @@ pub TermKeyAction :: enum {
 -- One physical keyboard event and any text or layout label associated with it.
 pub TermKeyEvent :: plex {
     scan_code TermScanCode
-    action TermKeyAction
+    action    TermKeyAction
     modifiers u32
     character ?u32
-    label ?u32
+    label     ?u32
 }
 
 -- An ordered keyboard, character, or mouse event received during a terminal

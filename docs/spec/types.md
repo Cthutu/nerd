@@ -171,8 +171,11 @@ itself.
 plex-type       ::= 'plex' generic-params? plex-annotation* '{' plex-member* '}'
 union-type      ::= 'union' generic-params? '{' plex-field* '}'
 plex-annotation ::= '#c' | '#packed'
-plex-member     ::= plex-field | 'use' type
+plex-member     ::= plex-field | plex-bit-field-block | 'use' type
 plex-field      ::= IDENT type
+plex-bit-field-block
+                ::= IDENT '{' plex-bit-field* '}'
+plex-bit-field  ::= (IDENT | '_') ':' expression
 
 enum-type       ::= 'enum' generic-params? '{' enum-variant-list? '}'
 enum-variant    ::= IDENT [ '(' type-list? ')' | plex-field-body ] [ '=' expression ]
@@ -180,6 +183,17 @@ plex-field-body ::= '{' plex-field* '}'
 ```
 
 Plex and union fields are written as `field Type`, not `field: Type`.
+Plexes may also contain anonymous bit-field storage blocks. The storage type
+must be `u8`, `u16`, `u32`, `u64`, or `usize`; aliases resolving to one of
+those types are accepted. Widths are positive compile-time integers and their
+sum must not exceed the storage width. Fields are allocated from the least
+significant bit in declaration order. `_ : N` reserves padding bits.
+
+Named bits are flattened into the plex namespace and use the storage integer
+type when read or written. Constant writes must fit their declared width;
+runtime writes retain the low-width bits. Bit fields are not addressable. Each
+storage block occupies exactly one ordinary storage integer in the plex
+layout.
 Plex annotations are written after `plex` and before the field body. The parser
 recognises `#c` and `#packed`; `#packed` also implies the C-layout flag. These
 annotations are not accepted on `union` or `enum`.

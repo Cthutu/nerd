@@ -105,6 +105,7 @@ internal bool
 sema_type_matches(const Sema* sema, u32 expected_type, u32 actual_type);
 internal const AstCastInfo* sema_cast_info(const Ast* ast, const AstNode* node);
 internal ErrorSpan sema_node_span(const Lexer* lexer, const AstNode* node);
+internal ErrorSpan sema_token_span(const Lexer* lexer, u32 token_index);
 internal ErrorSpan sema_decl_span(const Lexer*    lexer,
                                   const Ast*      ast,
                                   const SemaDecl* decl);
@@ -117,6 +118,11 @@ internal u32  sema_ast_enclosing_function_return_type(const Lexer* lexer,
                                                       u32          node_index);
 internal bool sema_module_is_core(const ProgramInfo* program, u32 module_index);
 internal bool sema_decl_is_from_core(const Sema* sema, const SemaDecl* decl);
+internal bool sema_try_eval_integer_constant(const Lexer* lexer,
+                                             const Ast*   ast,
+                                             const Sema*  sema,
+                                             u32          node_index,
+                                             i64*         out_value);
 
 internal u32 sema_find_symbol_handle_by_name(const Lexer* lexer, string name)
 {
@@ -193,6 +199,9 @@ internal u32 sema_add_function_type_ex(Sema* sema,
         array_push(sema->type_param_symbols, U32_MAX);
         array_push(sema->type_param_values, 0);
         array_push(sema->type_param_braced_payloads, false);
+        array_push(sema->type_param_bit_widths, 0);
+        array_push(sema->type_param_bit_offsets, 0);
+        array_push(sema->type_param_bit_starts, false);
     }
 
     return sema_add_type(sema,
@@ -247,6 +256,9 @@ internal u32 sema_add_module_type_raw(Sema*      sema,
         array_push(sema->type_param_symbols, export_symbols[i]);
         array_push(sema->type_param_values, 0);
         array_push(sema->type_param_braced_payloads, false);
+        array_push(sema->type_param_bit_widths, 0);
+        array_push(sema->type_param_bit_offsets, 0);
+        array_push(sema->type_param_bit_starts, false);
     }
 
     return sema_add_type(sema,
@@ -286,6 +298,9 @@ internal u32 sema_add_tuple_type(Sema* sema, Array(u32) item_types)
         array_push(sema->type_param_symbols, U32_MAX);
         array_push(sema->type_param_values, 0);
         array_push(sema->type_param_braced_payloads, false);
+        array_push(sema->type_param_bit_widths, 0);
+        array_push(sema->type_param_bit_offsets, 0);
+        array_push(sema->type_param_bit_starts, false);
     }
 
     return sema_add_type(sema,
@@ -367,6 +382,9 @@ internal u32 sema_add_record_type_raw(Sema*        sema,
                                       SemaTypeKind kind,
                                       const u32*   field_symbols,
                                       const u32*   field_types,
+                                      const u8*    bit_widths,
+                                      const u8*    bit_offsets,
+                                      const bool*  bit_starts,
                                       u32          field_count,
                                       u16          flags)
 {
@@ -381,7 +399,13 @@ internal u32 sema_add_record_type_raw(Sema*        sema,
             if (sema->type_param_symbols[existing->first_param_type + j] !=
                     field_symbols[j] ||
                 sema->type_param_types[existing->first_param_type + j] !=
-                    field_types[j]) {
+                    field_types[j] ||
+                sema->type_param_bit_widths[existing->first_param_type + j] !=
+                    (bit_widths == NULL ? 0 : bit_widths[j]) ||
+                sema->type_param_bit_offsets[existing->first_param_type + j] !=
+                    (bit_offsets == NULL ? 0 : bit_offsets[j]) ||
+                sema->type_param_bit_starts[existing->first_param_type + j] !=
+                    (bit_starts != NULL && bit_starts[j])) {
                 matches = false;
                 break;
             }
@@ -397,6 +421,12 @@ internal u32 sema_add_record_type_raw(Sema*        sema,
         array_push(sema->type_param_symbols, field_symbols[i]);
         array_push(sema->type_param_values, 0);
         array_push(sema->type_param_braced_payloads, false);
+        array_push(sema->type_param_bit_widths,
+                   bit_widths == NULL ? 0 : bit_widths[i]);
+        array_push(sema->type_param_bit_offsets,
+                   bit_offsets == NULL ? 0 : bit_offsets[i]);
+        array_push(sema->type_param_bit_starts,
+                   bit_starts != NULL && bit_starts[i]);
     }
     return sema_add_type(sema,
                          (SemaType){
@@ -408,14 +438,24 @@ internal u32 sema_add_record_type_raw(Sema*        sema,
                          });
 }
 
-internal u32 sema_add_plex_type_raw(Sema*      sema,
-                                    const u32* field_symbols,
-                                    const u32* field_types,
-                                    u32        field_count,
-                                    u16        flags)
+internal u32 sema_add_plex_type_raw(Sema*       sema,
+                                    const u32*  field_symbols,
+                                    const u32*  field_types,
+                                    const u8*   bit_widths,
+                                    const u8*   bit_offsets,
+                                    const bool* bit_starts,
+                                    u32         field_count,
+                                    u16         flags)
 {
-    return sema_add_record_type_raw(
-        sema, STK_Plex, field_symbols, field_types, field_count, flags);
+    return sema_add_record_type_raw(sema,
+                                    STK_Plex,
+                                    field_symbols,
+                                    field_types,
+                                    bit_widths,
+                                    bit_offsets,
+                                    bit_starts,
+                                    field_count,
+                                    flags);
 }
 
 internal u32 sema_add_union_type_raw(Sema*      sema,
@@ -423,18 +463,51 @@ internal u32 sema_add_union_type_raw(Sema*      sema,
                                      const u32* field_types,
                                      u32        field_count)
 {
-    return sema_add_record_type_raw(
-        sema, STK_Union, field_symbols, field_types, field_count, STF_None);
+    return sema_add_record_type_raw(sema,
+                                    STK_Union,
+                                    field_symbols,
+                                    field_types,
+                                    NULL,
+                                    NULL,
+                                    NULL,
+                                    field_count,
+                                    STF_None);
 }
 
-internal u32 sema_add_plex_type(Sema*               sema,
-                                const AstPlexField* fields,
-                                Array(u32) field_types,
-                                u32 field_count,
-                                u32 flags)
+internal u32 sema_unsigned_integer_bits(const Sema* sema, u32 type_index)
+{
+    if (type_index == sema_no_type()) {
+        return 0;
+    }
+    switch (sema->types[type_index].kind) {
+    case STK_U8:
+        return 8;
+    case STK_U16:
+        return 16;
+    case STK_U32:
+        return 32;
+    case STK_U64:
+    case STK_Usize:
+        return 64;
+    default:
+        return 0;
+    }
+}
+
+internal bool sema_add_plex_type(const Lexer*        lexer,
+                                 const Ast*          ast,
+                                 Sema*               sema,
+                                 const AstPlexField* fields,
+                                 Array(u32) field_types,
+                                 u32  field_count,
+                                 u32  flags,
+                                 u32* out_type_index)
 {
     Array(u32) field_symbols   = NULL;
     Array(u32) flattened_types = NULL;
+    Array(u8) bit_widths       = NULL;
+    Array(u8) bit_offsets      = NULL;
+    Array(bool) bit_starts     = NULL;
     Array(SemaPlexUse) uses    = NULL;
     for (u32 i = 0; i < field_count; ++i) {
         if (fields[i].embedded && field_types[i] < array_count(sema->types) &&
@@ -453,10 +526,94 @@ internal u32 sema_add_plex_type(Sema*               sema,
                 array_push(
                     flattened_types,
                     sema->type_param_types[embedded->first_param_type + j]);
+                array_push(
+                    bit_widths,
+                    sema->type_param_bit_widths[embedded->first_param_type +
+                                                j]);
+                array_push(
+                    bit_offsets,
+                    sema->type_param_bit_offsets[embedded->first_param_type +
+                                                 j]);
+                array_push(
+                    bit_starts,
+                    sema->type_param_bit_starts[embedded->first_param_type +
+                                                j]);
+            }
+        } else if (fields[i].bit_field_group) {
+            u32 storage_bits = sema_unsigned_integer_bits(sema, field_types[i]);
+            if (storage_bits == 0) {
+                Arena temp = {0};
+                arena_init(&temp);
+                bool result = error_0304_type_mismatch(
+                    lexer->source,
+                    sema_token_span(lexer, fields[i].token_index),
+                    s("unsigned integer bit-field storage type"),
+                    sema_type_name(lexer, sema, &temp, field_types[i]));
+                arena_done(&temp);
+                array_free(field_symbols);
+                array_free(flattened_types);
+                array_free(bit_widths);
+                array_free(bit_offsets);
+                array_free(bit_starts);
+                array_free(uses);
+                return result;
+            }
+            u32  offset           = 0;
+            bool have_named_field = false;
+            for (u32 j = 0; j < fields[i].bit_field_count; ++j) {
+                const AstPlexBitField* bit_field =
+                    &ast->plex_bit_fields[fields[i].first_bit_field + j];
+                i64 width = 0;
+                if (!sema_try_eval_integer_constant(lexer,
+                                                    ast,
+                                                    sema,
+                                                    bit_field->width_node_index,
+                                                    &width) ||
+                    width <= 0 || width > UINT8_MAX ||
+                    offset + (u32)width > storage_bits) {
+                    array_free(field_symbols);
+                    array_free(flattened_types);
+                    array_free(bit_widths);
+                    array_free(bit_offsets);
+                    array_free(bit_starts);
+                    array_free(uses);
+                    return error_0304_type_mismatch(
+                        lexer->source,
+                        sema_token_span(lexer, bit_field->token_index),
+                        s("positive compile-time bit width within storage"),
+                        s("invalid or overflowing bit width"));
+                }
+                bool padding = string_eq(
+                    lex_symbol(lexer, bit_field->symbol_handle), s("_"));
+                if (!padding) {
+                    array_push(field_symbols, bit_field->symbol_handle);
+                    array_push(flattened_types, field_types[i]);
+                    array_push(bit_widths, (u8)width);
+                    array_push(bit_offsets, (u8)offset);
+                    array_push(bit_starts, !have_named_field);
+                    have_named_field = true;
+                }
+                offset += (u32)width;
+            }
+            if (!have_named_field) {
+                array_free(field_symbols);
+                array_free(flattened_types);
+                array_free(bit_widths);
+                array_free(bit_offsets);
+                array_free(bit_starts);
+                array_free(uses);
+                return error_0304_type_mismatch(
+                    lexer->source,
+                    sema_token_span(lexer, fields[i].token_index),
+                    s("bit-field block with a named field"),
+                    s("padding-only bit-field block"));
             }
         } else {
             array_push(field_symbols, fields[i].symbol_handle);
             array_push(flattened_types, field_types[i]);
+            array_push(bit_widths, 0);
+            array_push(bit_offsets, 0);
+            array_push(bit_starts, false);
         }
     }
     if (array_count(uses) > 0) {
@@ -465,6 +622,9 @@ internal u32 sema_add_plex_type(Sema*               sema,
     u32 type_index = sema_add_plex_type_raw(sema,
                                             field_symbols,
                                             flattened_types,
+                                            bit_widths,
+                                            bit_offsets,
+                                            bit_starts,
                                             (u32)array_count(field_symbols),
                                             (u16)flags);
     if (array_count(uses) > 0 && sema->types[type_index].plex_use_count == 0) {
@@ -477,8 +637,12 @@ internal u32 sema_add_plex_type(Sema*               sema,
     }
     array_free(field_symbols);
     array_free(flattened_types);
+    array_free(bit_widths);
+    array_free(bit_offsets);
+    array_free(bit_starts);
     array_free(uses);
-    return type_index;
+    *out_type_index = type_index;
+    return true;
 }
 
 internal u32 sema_add_union_type(Sema*               sema,
@@ -544,6 +708,9 @@ internal u32 sema_add_enum_type_raw(Sema*       sema,
         array_push(sema->type_param_values, discriminants[i]);
         array_push(sema->type_param_braced_payloads,
                    braced_payloads != NULL && braced_payloads[i]);
+        array_push(sema->type_param_bit_widths, 0);
+        array_push(sema->type_param_bit_offsets, 0);
+        array_push(sema->type_param_bit_starts, false);
     }
     return sema_add_type(sema,
                          (SemaType){
@@ -792,6 +959,9 @@ u32 sema_import_type(Lexer*       dst_lexer,
         {
             Array(u32) field_symbols = NULL;
             Array(u32) field_types   = NULL;
+            Array(u8) bit_widths     = NULL;
+            Array(u8) bit_offsets    = NULL;
+            Array(bool) bit_starts   = NULL;
             for (u32 i = 0; i < src_type->param_count; ++i) {
                 array_push(field_symbols,
                            sema_import_symbol_handle(
@@ -808,12 +978,28 @@ u32 sema_import_type(Lexer*       dst_lexer,
                         src_sema,
                         src_sema->type_param_types[src_type->first_param_type +
                                                    i]));
+                array_push(
+                    bit_widths,
+                    src_sema->type_param_bit_widths[src_type->first_param_type +
+                                                    i]);
+                array_push(
+                    bit_offsets,
+                    src_sema
+                        ->type_param_bit_offsets[src_type->first_param_type +
+                                                 i]);
+                array_push(
+                    bit_starts,
+                    src_sema->type_param_bit_starts[src_type->first_param_type +
+                                                    i]);
             }
             u32 imported =
                 src_type->kind == STK_Plex
                     ? sema_add_plex_type_raw(dst_sema,
                                              field_symbols,
                                              field_types,
+                                             bit_widths,
+                                             bit_offsets,
+                                             bit_starts,
                                              (u32)array_count(field_symbols),
                                              src_type->flags)
                     : sema_add_union_type_raw(dst_sema,
@@ -839,6 +1025,9 @@ u32 sema_import_type(Lexer*       dst_lexer,
             }
             array_free(field_symbols);
             array_free(field_types);
+            array_free(bit_widths);
+            array_free(bit_offsets);
+            array_free(bit_starts);
             return imported;
         }
 
@@ -1065,6 +1254,9 @@ u32 sema_materialise_type(const Sema* sema, u32 type_index)
         sema->types[type_index].kind == STK_Union) {
         Array(u32) field_types   = NULL;
         Array(u32) field_symbols = NULL;
+        Array(u8) bit_widths     = NULL;
+        Array(u8) bit_offsets    = NULL;
+        Array(bool) bit_starts   = NULL;
         SemaType record          = sema->types[type_index];
         for (u32 i = 0; i < record.param_count; ++i) {
             array_push(
@@ -1073,11 +1265,23 @@ u32 sema_materialise_type(const Sema* sema, u32 type_index)
                     sema, sema->type_param_types[record.first_param_type + i]));
             array_push(field_symbols,
                        sema->type_param_symbols[record.first_param_type + i]);
+            array_push(
+                bit_widths,
+                sema->type_param_bit_widths[record.first_param_type + i]);
+            array_push(
+                bit_offsets,
+                sema->type_param_bit_offsets[record.first_param_type + i]);
+            array_push(
+                bit_starts,
+                sema->type_param_bit_starts[record.first_param_type + i]);
         }
         u32 materialised = record.kind == STK_Plex
                                ? sema_add_plex_type_raw((Sema*)sema,
                                                         field_symbols,
                                                         field_types,
+                                                        bit_widths,
+                                                        bit_offsets,
+                                                        bit_starts,
                                                         record.param_count,
                                                         record.flags)
                                : sema_add_union_type_raw((Sema*)sema,
@@ -1098,6 +1302,9 @@ u32 sema_materialise_type(const Sema* sema, u32 type_index)
         }
         array_free(field_types);
         array_free(field_symbols);
+        array_free(bit_widths);
+        array_free(bit_offsets);
+        array_free(bit_starts);
         return materialised;
     }
 
@@ -4421,6 +4628,28 @@ internal bool sema_validate_plex_uses(const Lexer*           lexer,
     Array(u32) used_bases   = NULL;
     for (u32 i = 0; i < plex->field_count; ++i) {
         const AstPlexField* field = &ast->plex_fields[plex->first_field + i];
+        if (field->bit_field_group) {
+            for (u32 bit = 0; bit < field->bit_field_count; ++bit) {
+                const AstPlexBitField* bit_field =
+                    &ast->plex_bit_fields[field->first_bit_field + bit];
+                if (string_eq(lex_symbol(lexer, bit_field->symbol_handle),
+                              s("_"))) {
+                    continue;
+                }
+                for (u32 j = 0; j < array_count(seen_symbols); ++j) {
+                    if (seen_symbols[j] == bit_field->symbol_handle) {
+                        array_free(seen_symbols);
+                        array_free(used_bases);
+                        return error_0362_conflicting_plex_field(
+                            lexer->source,
+                            sema_token_span(lexer, bit_field->token_index),
+                            lex_symbol(lexer, bit_field->symbol_handle));
+                    }
+                }
+                array_push(seen_symbols, bit_field->symbol_handle);
+            }
+            continue;
+        }
         if (!field->embedded) {
             for (u32 j = 0; j < array_count(seen_symbols); ++j) {
                 if (seen_symbols[j] == field->symbol_handle) {
@@ -4933,17 +5162,23 @@ internal bool sema_try_classify_type_node(const Lexer* lexer,
                 return false;
             }
             *out_is_type = true;
-            *out_type_index =
-                (plex->flags & APTF_Union)
-                    ? sema_add_union_type(sema,
-                                          &ast->plex_fields[plex->first_field],
-                                          field_types,
-                                          plex->field_count)
-                    : sema_add_plex_type(sema,
-                                         &ast->plex_fields[plex->first_field],
-                                         field_types,
-                                         plex->field_count,
-                                         plex->flags);
+            if (plex->flags & APTF_Union) {
+                *out_type_index =
+                    sema_add_union_type(sema,
+                                        &ast->plex_fields[plex->first_field],
+                                        field_types,
+                                        plex->field_count);
+            } else if (!sema_add_plex_type(lexer,
+                                           ast,
+                                           sema,
+                                           &ast->plex_fields[plex->first_field],
+                                           field_types,
+                                           plex->field_count,
+                                           plex->flags,
+                                           out_type_index)) {
+                array_free(field_types);
+                return false;
+            }
             array_free(field_types);
             return true;
         }
@@ -10888,17 +11123,24 @@ internal bool sema_resolve_type_node_ex(const Lexer*         lexer,
                 array_free(field_types);
                 return false;
             }
-            u32 type_index =
-                (plex->flags & APTF_Union)
-                    ? sema_add_union_type(sema,
-                                          &ast->plex_fields[plex->first_field],
-                                          field_types,
-                                          plex->field_count)
-                    : sema_add_plex_type(sema,
-                                         &ast->plex_fields[plex->first_field],
-                                         field_types,
-                                         plex->field_count,
-                                         plex->flags);
+            u32 type_index = sema_no_type();
+            if (plex->flags & APTF_Union) {
+                type_index =
+                    sema_add_union_type(sema,
+                                        &ast->plex_fields[plex->first_field],
+                                        field_types,
+                                        plex->field_count);
+            } else if (!sema_add_plex_type(lexer,
+                                           ast,
+                                           sema,
+                                           &ast->plex_fields[plex->first_field],
+                                           field_types,
+                                           plex->field_count,
+                                           plex->flags,
+                                           &type_index)) {
+                array_free(field_types);
+                return false;
+            }
             array_free(field_types);
             sema->node_type_indices[node_index] = type_index;
             *out_type_index                     = type_index;
@@ -13277,6 +13519,9 @@ internal bool sema_emit_generic_function_instantiation(const Lexer* lexer,
                    ast->generic_param_symbols[generic->first_symbol + i]);
         array_push(sema->type_param_values, 0);
         array_push(sema->type_param_braced_payloads, false);
+        array_push(sema->type_param_bit_widths, 0);
+        array_push(sema->type_param_bit_offsets, 0);
+        array_push(sema->type_param_bit_starts, false);
     }
 
     SemaTypeSubstitution previous = g_sema_type_subst;
@@ -14415,6 +14660,25 @@ internal bool sema_record_member_type(const Sema* sema,
     return false;
 }
 
+internal u8 sema_record_member_bit_width(const Sema* sema,
+                                         u32         record_type,
+                                         u32         member_symbol)
+{
+    record_type = sema_materialise_type(sema, record_type);
+    if (record_type >= array_count(sema->types) ||
+        sema->types[record_type].kind != STK_Plex) {
+        return 0;
+    }
+    const SemaType* record = &sema->types[record_type];
+    for (u32 i = 0; i < record->param_count; ++i) {
+        u32 param = record->first_param_type + i;
+        if (sema->type_param_symbols[param] == member_symbol) {
+            return sema->type_param_bit_widths[param];
+        }
+    }
+    return 0;
+}
+
 internal bool
 sema_method_target_matches_receiver(const Lexer*      lexer,
                                     Sema*             sema,
@@ -15433,6 +15697,20 @@ sema_node_is_addressable(const Ast* ast, Sema* sema, u32 node_index)
             u32 target_type = node->a < array_count(sema->node_type_indices)
                                   ? sema->node_type_indices[node->a]
                                   : sema_no_type();
+            if (node->kind == AK_Field) {
+                u32 record_type = sema_member_target_type(sema, target_type);
+                if (record_type < array_count(sema->types) &&
+                    sema->types[record_type].kind == STK_Plex) {
+                    const SemaType* record = &sema->types[record_type];
+                    for (u32 i = 0; i < record->param_count; ++i) {
+                        u32 param = record->first_param_type + i;
+                        if (sema->type_param_symbols[param] == node->b &&
+                            sema->type_param_bit_widths[param] > 0) {
+                            return false;
+                        }
+                    }
+                }
+            }
             if (target_type != sema_no_type() &&
                 target_type < array_count(sema->types) &&
                 (sema->types[target_type].kind == STK_Pointer ||
@@ -18817,6 +19095,26 @@ validate_type:
                                           &actual_field)) {
                     return false;
                 }
+                u8 width =
+                    sema->type_param_bit_widths[record->first_param_type +
+                                                field_index];
+                i64 constant = 0;
+                if (width > 0 &&
+                    sema_try_eval_integer_constant(
+                        lexer, ast, sema, field->value_node_index, &constant)) {
+                    u64 maximum =
+                        width == 64 ? UINT64_MAX : (1ull << width) - 1;
+                    if (constant < 0 || (u64)constant > maximum) {
+                        string expected = string_format(
+                            &temp_arena, "value fitting %u-bit field", width);
+                        return error_0304_type_mismatch(
+                            lexer->source,
+                            sema_node_span(
+                                lexer, &ast->nodes[field->value_node_index]),
+                            expected,
+                            s("out-of-range integer constant"));
+                    }
+                }
             }
             for (u32 i = 0; i < record->param_count; ++i) {
                 if (target_is_plex && node->kind == AK_Plex && !seen[i]) {
@@ -22035,8 +22333,9 @@ validate_type:
 
     case AK_Assign:
         {
-            u32            target_type = sema_no_type();
-            const AstNode* target      = &ast->nodes[node->a];
+            u32            target_type        = sema_no_type();
+            u32            target_record_type = sema_no_type();
+            const AstNode* target             = &ast->nodes[node->a];
             if (target->kind == AK_SymbolRef) {
                 if (sema->node_local_indices[node->a] != sema_no_local()) {
                     target_type =
@@ -22117,6 +22416,7 @@ validate_type:
                                           &target_type)) {
                     return false;
                 }
+                target_record_type = record_type;
             } else if (target->kind == AK_Index) {
                 if (!sema_infer_node_type(lexer,
                                           ast,
@@ -22147,6 +22447,25 @@ validate_type:
             if (!sema_infer_node_type(
                     lexer, ast, sema, node->b, target_type, &type_index)) {
                 return false;
+            }
+            if (target->kind == AK_Field) {
+                u8 width = sema_record_member_bit_width(
+                    sema, target_record_type, target->b);
+                i64 constant = 0;
+                if (width > 0 && sema_try_eval_integer_constant(
+                                     lexer, ast, sema, node->b, &constant)) {
+                    u64 maximum =
+                        width == 64 ? UINT64_MAX : (1ull << width) - 1;
+                    if (constant < 0 || (u64)constant > maximum) {
+                        string expected = string_format(
+                            &temp_arena, "value fitting %u-bit field", width);
+                        return error_0304_type_mismatch(
+                            lexer->source,
+                            sema_node_span(lexer, target),
+                            expected,
+                            s("out-of-range integer constant"));
+                    }
+                }
             }
             type_index = target_type;
         }
@@ -25393,6 +25712,9 @@ void sema_done(Sema* sema)
     array_free(sema->type_param_symbols);
     array_free(sema->type_param_values);
     array_free(sema->type_param_braced_payloads);
+    array_free(sema->type_param_bit_widths);
+    array_free(sema->type_param_bit_offsets);
+    array_free(sema->type_param_bit_starts);
     array_free(sema->plex_uses);
     array_free(sema->decls);
     array_free(sema->generic_fn_instantiations);

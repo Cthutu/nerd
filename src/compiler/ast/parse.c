@@ -1570,6 +1570,75 @@ internal bool ast_parse_type_primary(AstParseState* state, u32* out_node)
         u32 first_field = (u32)array_count(state->plex_fields);
         u32 field_count = 0;
         while (state->token.kind != TK_RBrace) {
+            if (!is_union && state->token.kind == TK_Symbol &&
+                ast_cursor_kind(state) == TK_LBrace) {
+                AstToken storage_token = state->token;
+                u32      storage_type  = 0;
+                if (!ast_parse_type(state, &storage_type) ||
+                    !ast_next_token(state) || state->token.kind != TK_LBrace ||
+                    !ast_next_token(state)) {
+                    return false;
+                }
+                u32 first_bit_field = (u32)array_count(state->plex_bit_fields);
+                u32 bit_field_count = 0;
+                while (state->token.kind != TK_RBrace) {
+                    if (state->token.kind != TK_Symbol) {
+                        return error_0203_expected_token(
+                            state->lexer->source,
+                            ast_token_span(state, &state->token),
+                            TK_Symbol,
+                            state->token.kind);
+                    }
+                    AstToken bit_field = state->token;
+                    if (!ast_next_token(state) ||
+                        state->token.kind != TK_Colon ||
+                        !ast_next_token(state)) {
+                        return error_0203_expected_token(
+                            state->lexer->source,
+                            ast_token_span(state, &state->token),
+                            TK_Colon,
+                            state->token.kind);
+                    }
+                    u32  width_node        = 0;
+                    bool previous_boundary = state->allow_statement_boundary;
+                    state->allow_statement_boundary = true;
+                    bool parsed = ast_parse_expr(state, &width_node);
+                    state->allow_statement_boundary = previous_boundary;
+                    if (!parsed) {
+                        return false;
+                    }
+                    array_push(
+                        state->plex_bit_fields,
+                        (AstPlexBitField){
+                            .token_index      = bit_field.token_index,
+                            .symbol_handle    = bit_field.value.symbol_handle,
+                            .width_node_index = width_node,
+                        });
+                    bit_field_count++;
+                    if (!ast_next_token(state)) {
+                        return false;
+                    }
+                    if (state->token.kind == TK_Comma &&
+                        !ast_next_token(state)) {
+                        return false;
+                    }
+                }
+                array_push(state->plex_fields,
+                           (AstPlexField){
+                               .token_index     = storage_token.token_index,
+                               .symbol_handle   = U32_MAX,
+                               .type_node_index = storage_type,
+                               .first_bit_field = first_bit_field,
+                               .bit_field_count = bit_field_count,
+                               .bit_field_group = true,
+                               .embedded        = false,
+                           });
+                field_count++;
+                if (!ast_next_token(state)) {
+                    return false;
+                }
+                continue;
+            }
             if (!is_union && state->token.kind == TK_use) {
                 AstToken use_token = state->token;
                 if (!ast_next_token(state)) {
@@ -1584,6 +1653,7 @@ internal bool ast_parse_type_primary(AstParseState* state, u32* out_node)
                                .token_index     = use_token.token_index,
                                .symbol_handle   = U32_MAX,
                                .type_node_index = type_node,
+                               .first_bit_field = U32_MAX,
                                .embedded        = true,
                            });
                 field_count++;
@@ -1621,6 +1691,7 @@ internal bool ast_parse_type_primary(AstParseState* state, u32* out_node)
                            .token_index     = field.token_index,
                            .symbol_handle   = field.value.symbol_handle,
                            .type_node_index = type_node,
+                           .first_bit_field = U32_MAX,
                            .embedded        = false,
                        });
             field_count++;
@@ -5899,6 +5970,7 @@ Ast ast_parse(Lexer* lexer)
         .type_applications     = state.type_applications,
         .slices                = state.slices,
         .plex_fields           = state.plex_fields,
+        .plex_bit_fields       = state.plex_bit_fields,
         .plex_types            = state.plex_types,
         .enum_variants         = state.enum_variants,
         .enum_types            = state.enum_types,
@@ -5938,6 +6010,7 @@ error:
                     .type_applications     = state.type_applications,
                     .slices                = state.slices,
                     .plex_fields           = state.plex_fields,
+                    .plex_bit_fields       = state.plex_bit_fields,
                     .plex_types            = state.plex_types,
                     .enum_variants         = state.enum_variants,
                     .enum_types            = state.enum_types,
@@ -5982,6 +6055,7 @@ void ast_done(Ast* ast)
     array_free(ast->type_applications);
     array_free(ast->slices);
     array_free(ast->plex_fields);
+    array_free(ast->plex_bit_fields);
     array_free(ast->plex_types);
     array_free(ast->enum_variants);
     array_free(ast->enum_types);
