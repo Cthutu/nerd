@@ -2074,7 +2074,8 @@ internal bool lsp_completion_source_receiver_type_name(string  source,
                                       source.data[cursor] == '\t')) {
                 cursor++;
             }
-            if (!inferred || (cursor < limit && source.data[cursor] == '.')) {
+            if (!inferred || (cursor < limit && (source.data[cursor] == '.' ||
+                                                 source.data[cursor] == '('))) {
                 *out_type_name = (string){.data  = source.data + start,
                                           .count = type_end - start};
                 return true;
@@ -2509,7 +2510,14 @@ lsp_completion_add_text_impl_methods_from_uses(Arena*             arena,
     arena_init(&temp);
 
     string current_path = uri;
-    usize  line_start   = 0;
+    cstr   core_path    = NULL;
+    if (lsp_completion_resolve_text_module(
+            &temp, doc, s("core"), current_path, &core_path)) {
+        (void)lsp_completion_add_text_impl_methods_from_module(
+            arena, items, core_path, type_name, associated_only);
+    }
+
+    usize line_start = 0;
     while (line_start < doc->source.count) {
         usize line_end = line_start;
         while (line_end < doc->source.count &&

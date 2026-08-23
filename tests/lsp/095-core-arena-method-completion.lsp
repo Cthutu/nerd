@@ -1,8 +1,13 @@
 -- Core bindings are implicit.
 
+Owner :: plex {
+    scratch arena
+    broken : string -- Keep completion available after an earlier error.
+}
+
 main :: fn () {
-    a := arena(16, 8)
-    _ := a.mark()
+    arena_var := arena(16, 8)
+    _ := arena_var.
 }
 ¬
 [
@@ -15,8 +20,8 @@ main :: fn () {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 4,
-                "character": 11
+                "line": 9,
+                "character": 19
             }
         }
     }
@@ -80,18 +85,63 @@ main :: fn () {
         "method": "textDocument/publishDiagnostics",
         "params": {
             "uri": "file:///test.n",
-            "diagnostics": []
+            "diagnostics": [
+                {
+                    "range": {
+                        "start": {
+                            "line": 4,
+                            "character": 11
+                        },
+                        "end": {
+                            "line": 4,
+                            "character": 12
+                        }
+                    },
+                    "severity": 1,
+                    "source": "nerd",
+                    "message": "Expected type but found Colon `:`",
+                    "relatedInformation": [
+                        {
+                            "location": {
+                                "uri": "file:///test.n",
+                                "range": {
+                                    "start": {
+                                        "line": 4,
+                                        "character": 11
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "character": 12
+                                    }
+                                }
+                            },
+                            "message": "note: Plex field definitions are written as `field Type`."
+                        },
+                        {
+                            "location": {
+                                "uri": "file:///test.n",
+                                "range": {
+                                    "start": {
+                                        "line": 4,
+                                        "character": 11
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "character": 12
+                                    }
+                                }
+                            },
+                            "message": "help: Remove the colon. Colons are used in plex literals such as `State { loc_index: 0 }`, not in plex definitions."
+                        }
+                    ]
+                }
+            ]
         }
     },
     {
         "jsonrpc": "2.0",
         "id": 2,
         "result": [
-            {
-                "label": "mark",
-                "kind": 2,
-                "detail": "method"
-            },
             {
                 "label": "pr",
                 "kind": 2,
@@ -119,6 +169,11 @@ main :: fn () {
             },
             {
                 "label": "reset",
+                "kind": 2,
+                "detail": "method"
+            },
+            {
+                "label": "mark",
                 "kind": 2,
                 "detail": "method"
             },
