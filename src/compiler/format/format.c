@@ -84,6 +84,12 @@ internal bool  format_fn_block_shorthand_expr(const Cst*   cst,
                                               const Lexer* lexer,
                                               u32          fn_node_index,
                                               u32*         out_expr_node_index);
+internal bool  format_collect_guard_return(const Cst*   cst,
+                                           const Lexer* lexer,
+                                           Arena*       arena,
+                                           u32          statement_node_index,
+                                           string*      out_condition,
+                                           string*      out_return_expr);
 internal bool  format_node_renders_multiline_on_expr(const Cst* cst,
                                                      u32        node_index);
 internal bool  format_plex_field_is_shorthand(const Cst*                 cst,
@@ -5721,6 +5727,61 @@ internal bool format_fn_block_shorthand_expr(const Cst*   cst,
     return true;
 }
 
+internal bool format_collect_guard_return(const Cst*   cst,
+                                          const Lexer* lexer,
+                                          Arena*       arena,
+                                          u32          statement_node_index,
+                                          string*      out_condition,
+                                          string*      out_return_expr)
+{
+    if (statement_node_index >= array_count(cst->nodes)) {
+        return false;
+    }
+    const CstNode* statement = &cst->nodes[statement_node_index];
+    if (statement->kind != CK_Statement ||
+        format_node_has_trailing_comment(cst, lexer, statement_node_index)) {
+        return false;
+    }
+    const CstNode* expr = &cst->nodes[statement->a];
+    if (expr->kind != CK_On) {
+        return false;
+    }
+    const CstOnInfo* on = &cst->ons[expr->b];
+    if (on->kind != COK_Bool || on->branch_count != 1) {
+        return false;
+    }
+    const CstOnBranch* branch      = &cst->on_branches[on->first_branch];
+    u32                block_index = format_collapsible_expr_block_index(
+        cst, lexer, branch->expr_node_index);
+    u32 return_expr = U32_MAX;
+    if (block_index != U32_MAX) {
+        if (!format_block_single_return_expr(
+                cst, lexer, block_index, &return_expr)) {
+            return false;
+        }
+    } else {
+        const CstNode* branch_expr = &cst->nodes[branch->expr_node_index];
+        if (branch_expr->kind != CK_ReturnExpr || branch_expr->a == U32_MAX) {
+            return false;
+        }
+        return_expr = branch_expr->a;
+    }
+    if (!format_node_is_single_line(cst, lexer, expr->a) ||
+        !format_node_is_single_line(cst, lexer, return_expr)) {
+        return false;
+    }
+
+    string condition = format_render_expr_to_string(arena, cst, lexer, expr->a);
+    string value = format_render_expr_to_string(arena, cst, lexer, return_expr);
+    if (format_string_has_newline(condition) ||
+        format_string_has_newline(value)) {
+        return false;
+    }
+    *out_condition   = condition;
+    *out_return_expr = value;
+    return true;
+}
+
 internal bool format_aligned_statements_same_family(FormatAlignedStatement a,
                                                     FormatAlignedStatement b)
 {
@@ -7881,6 +7942,88 @@ internal void format_emit_block_contents(StringBuilder* sb,
                 lexer, &comment_index, use_end_offset);
             array_free(use_nodes);
             continue;
+        }
+
+        string first_guard_condition = {0};
+        string first_guard_return    = {0};
+        if (format_collect_guard_return(cst,
+                                        lexer,
+                                        &align_arena,
+                                        i,
+                                        &first_guard_condition,
+                                        &first_guard_return)) {
+            Array(u32) guard_indices       = NULL;
+            Array(string) guard_conditions = NULL;
+            Array(string) guard_returns    = NULL;
+            array_push(guard_indices, i);
+            array_push(guard_conditions, first_guard_condition);
+            array_push(guard_returns, first_guard_return);
+
+            u32   last_guard_index = i;
+            u32   cursor           = i + 1;
+            usize condition_width  = first_guard_condition.count;
+            while (true) {
+                u32 next_statement = format_next_block_statement(
+                    cst, cursor, block->b, block_node_index);
+                if (next_statement == U32_MAX ||
+                    format_syntax_has_blank_line_between_nodes(
+                        &syntax, last_guard_index, next_statement) ||
+                    format_syntax_has_comment_between_nodes(
+                        &syntax, last_guard_index, next_statement)) {
+                    break;
+                }
+                string condition = {0};
+                string value     = {0};
+                if (!format_collect_guard_return(cst,
+                                                 lexer,
+                                                 &align_arena,
+                                                 next_statement,
+                                                 &condition,
+                                                 &value)) {
+                    break;
+                }
+                array_push(guard_indices, next_statement);
+                array_push(guard_conditions, condition);
+                array_push(guard_returns, value);
+                condition_width  = MAX(condition_width, condition.count);
+                last_guard_index = next_statement;
+                cursor           = next_statement + 1;
+            }
+
+            bool fits = array_count(guard_indices) > 1;
+            for (u32 guard = 0; fits && guard < array_count(guard_indices);
+                 ++guard) {
+                usize line_width = (usize)indent_level * 4 + 3 +
+                                   condition_width + 11 +
+                                   guard_returns[guard].count;
+                fits             = line_width <= FORMAT_WRAP_WIDTH;
+            }
+            if (fits) {
+                for (u32 guard = 0; guard < array_count(guard_indices);
+                     ++guard) {
+                    format_emit_indent(sb, indent_level);
+                    sb_append_cstr(sb, "on ");
+                    sb_append_string(sb, guard_conditions[guard]);
+                    format_emit_spaces(
+                        sb, condition_width - guard_conditions[guard].count);
+                    sb_append_cstr(sb, " => return ");
+                    sb_append_string(sb, guard_returns[guard]);
+                    sb_append_char(sb, '\n');
+                }
+                previous_statement_index = last_guard_index;
+                i                        = last_guard_index;
+                usize guard_end_offset =
+                    format_syntax_node_end_offset(&syntax, last_guard_index);
+                format_skip_block_comments_before_offset(
+                    lexer, &comment_index, guard_end_offset);
+                array_free(guard_indices);
+                array_free(guard_conditions);
+                array_free(guard_returns);
+                continue;
+            }
+            array_free(guard_indices);
+            array_free(guard_conditions);
+            array_free(guard_returns);
         }
 
         FormatAlignedStatement first_aligned = {0};
