@@ -10188,6 +10188,38 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             string temp = llvm_temp(ctx);
             switch (expr->unary_op) {
             case HIR_UNARY_LogicalNot:
+                if (operand.type_index < array_count(ctx->sema->types)) {
+                    const SemaType* operand_type =
+                        &ctx->sema->types[operand.type_index];
+                    if (operand_type->kind == STK_Enum &&
+                        (operand_type->flags & (STF_Optional | STF_Result))) {
+                        string operand_llvm_type =
+                            llvm_type_string(ctx, operand.type_index);
+                        string tag = llvm_temp(ctx);
+                        sb_format(ctx->sb,
+                                  "  " STRINGP " = extractvalue " STRINGP
+                                  " " STRINGP ", 0\n",
+                                  STRINGV(tag),
+                                  STRINGV(operand_llvm_type),
+                                  STRINGV(operand.value));
+                        u32 failure_variant =
+                            (operand_type->flags & STF_Optional) ? 0 : 1;
+                        i64 failure_tag = llvm_enum_variant_discriminant(
+                            ctx->sema, operand.type_index, failure_variant);
+                        sb_format(ctx->sb,
+                                  "  " STRINGP " = icmp eq i64 " STRINGP
+                                  ", %lld\n",
+                                  STRINGV(temp),
+                                  STRINGV(tag),
+                                  (long long)failure_tag);
+                        return (LlvmValue){
+                            .ok = true,
+                            .type_index =
+                                llvm_builtin_type(ctx->sema, STK_Bool),
+                            .value = temp,
+                        };
+                    }
+                }
                 type    = s("i1");
                 operand = llvm_coerce_value_to_type(
                     ctx, operand, llvm_builtin_type(ctx->sema, STK_Bool));

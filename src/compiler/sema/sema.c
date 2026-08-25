@@ -20618,15 +20618,19 @@ validate_type:
         if (node->kind == AK_LogicalNot) {
             u32 bool_type = sema_builtin_type(sema, STK_Bool);
             if (!sema_infer_node_type(
-                    lexer, ast, sema, node->a, bool_type, &type_index)) {
+                    lexer, ast, sema, node->a, sema_no_type(), &type_index)) {
                 return false;
             }
-            if (!sema_type_matches(sema, bool_type, type_index)) {
+            type_index = sema_materialise_type(sema, type_index);
+            const SemaType* operand_type = &sema->types[type_index];
+            if (!sema_type_matches(sema, bool_type, type_index) &&
+                !(operand_type->kind == STK_Enum &&
+                  (operand_type->flags & (STF_Optional | STF_Result)))) {
                 return error_0325_invalid_unary_operand(
                     lexer->source,
                     sema_node_span(lexer, node),
                     s("!"),
-                    s("bool"),
+                    s("bool, optional, or result"),
                     sema_type_name(lexer, sema, &temp_arena, type_index));
             }
             type_index = bool_type;

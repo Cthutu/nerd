@@ -4,6 +4,7 @@
 Context constructs present/success values, `nil` constructs optional absence,
 postfix `!` constructs a result error, and postfix `?` propagates failure.
 Neither wrapper exposes generic enum constructors or variant names.
+Prefix `!` is true when an optional is absent or a result contains an error.
 
 [Manual Index](README.md) | Previous: [Syntax Reference](appendix-a-syntax-reference.md) | Next: none
 

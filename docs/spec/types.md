@@ -153,6 +153,10 @@ compatible with `T` constructs success when `T\E` is expected. Postfix `!`
 injects its operand into the error channel and therefore requires an expected
 result type.
 
+Prefix `!` tests wrapper failure without extracting its payload. It is true for
+an absent `?T` and for an erroneous `T\E`, and false for present and successful
+values respectively. This extends its ordinary boolean-negation meaning.
+
 Optional and result wrappers are tagged values with ordinary value semantics.
 They are not aliases for generic enums and do not expose variant names.
 
