@@ -17480,6 +17480,115 @@ internal bool sema_infer_for_iterable_type(const Lexer*      lexer,
 }
 
 internal bool
+sema_seed_assignment_context_local_types(const Lexer*           lexer,
+                                         const Ast*             ast,
+                                         const FrontEndOptions* options,
+                                         Sema*                  sema)
+{
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* assignment = &ast->nodes[i];
+        if (assignment->kind != AK_Assign ||
+            sema_node_is_inside_disabled_top_on_body(options, lexer, ast, i)) {
+            continue;
+        }
+        const AstNode* target = &ast->nodes[assignment->a];
+        if (target->kind != AK_SymbolRef) {
+            continue;
+        }
+        u32 local_index = sema->node_local_indices[assignment->a];
+        if (local_index == sema_no_local() ||
+            sema->locals[local_index].type_index != sema_no_type()) {
+            continue;
+        }
+        u32 value_node_index = sema->locals[local_index].value_node_index;
+        if (value_node_index == sema_no_decl() ||
+            ast->nodes[sema_unwrap_expr_node(ast, value_node_index)].kind !=
+                AK_IntegerLiteral) {
+            continue;
+        }
+        u32 rhs_node_index = sema_unwrap_expr_node(ast, assignment->b);
+        const AstNode* rhs = &ast->nodes[rhs_node_index];
+        u32            assignment_type = sema_no_type();
+        switch (rhs->kind) {
+        case AK_IntegerPlus:
+        case AK_IntegerMinus:
+        case AK_IntegerMultiply:
+        case AK_IntegerDivide:
+        case AK_IntegerModulo:
+        case AK_BitwiseAnd:
+        case AK_BitwiseXor:
+        case AK_BitwiseOr:
+        case AK_ShiftLeft:
+        case AK_ShiftRight:
+            for (u32 operand = 0; operand < 2; ++operand) {
+                u32 operand_node_index = operand == 0 ? rhs->a : rhs->b;
+                operand_node_index =
+                    sema_unwrap_expr_node(ast, operand_node_index);
+                if (ast->nodes[operand_node_index].kind != AK_SymbolRef) {
+                    continue;
+                }
+                u32 operand_local =
+                    sema->node_local_indices[operand_node_index];
+                if (operand_local == sema_no_local() ||
+                    sema->locals[operand_local].type_index != sema_no_type()) {
+                    continue;
+                }
+                if (sema->locals[operand_local].owner_decl_index !=
+                    sema->locals[local_index].owner_decl_index) {
+                    continue;
+                }
+                u32 for_node_index =
+                    sema->locals[operand_local].decl_node_index;
+                if (for_node_index >= array_count(ast->nodes) ||
+                    ast->nodes[for_node_index].kind != AK_For) {
+                    continue;
+                }
+                const AstNode*    for_node = &ast->nodes[for_node_index];
+                const AstForInfo* for_info = &ast->fors[for_node->a];
+                u32               iterable_node_index =
+                    sema_unwrap_expr_node(ast, for_info->iterable_node_index);
+                AstKind iterable_kind = ast->nodes[iterable_node_index].kind;
+                if (iterable_kind != AK_RangeExclusive &&
+                    iterable_kind != AK_RangeInclusive) {
+                    continue;
+                }
+                u32 iterable_type = sema_no_type();
+                if (!sema_infer_for_iterable_type(
+                        lexer,
+                        ast,
+                        sema,
+                        for_node_index,
+                        for_info,
+                        sema->node_scope_indices[for_node_index],
+                        &iterable_type)) {
+                    return false;
+                }
+                u32 operand_type = sema->locals[operand_local].type_index;
+                if (assignment_type == sema_no_type()) {
+                    assignment_type = operand_type;
+                } else if (assignment_type != operand_type) {
+                    assignment_type = sema_no_type();
+                    break;
+                }
+            }
+            break;
+        default:
+            break;
+        }
+        if (assignment_type == sema_no_type() ||
+            (!sema_type_is_concrete_integer(sema, assignment_type) &&
+             !sema_type_is_concrete_float(sema, assignment_type))) {
+            continue;
+        }
+        if (!sema_seed_local_type_from_expected(
+                lexer, ast, sema, local_index, assignment_type)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+internal bool
 sema_node_definitely_returns(const Ast* ast, Sema* sema, u32 node_index);
 
 internal bool sema_block_definitely_returns(const Ast* ast,
@@ -26214,6 +26323,10 @@ bool sema_analyse(const Lexer*           lexer,
     }
     if (!sema_seed_compound_assignment_local_types(
             lexer, ast, options, &sema)) {
+        sema_done(&sema);
+        return false;
+    }
+    if (!sema_seed_assignment_context_local_types(lexer, ast, options, &sema)) {
         sema_done(&sema);
         return false;
     }
