@@ -8890,7 +8890,8 @@ internal void format_emit_value(StringBuilder* sb,
                 sb, cst, lexer, node->b, g_format_value_indent_level + 1);
         } else {
             sb_append_cstr(sb, " => ");
-            format_emit_expr(sb, cst, lexer, node->b, 0);
+            format_emit_expr_with_indent(
+                sb, cst, lexer, node->b, 0, g_format_value_indent_level);
         }
         break;
     case CK_FnBlock:
@@ -8900,7 +8901,12 @@ internal void format_emit_value(StringBuilder* sb,
                     cst, lexer, node_index, &return_expr)) {
                 format_emit_fn_signature(sb, cst, lexer, node->a, false);
                 sb_append_cstr(sb, " => ");
-                format_emit_expr(sb, cst, lexer, return_expr, 0);
+                format_emit_expr_with_indent(sb,
+                                             cst,
+                                             lexer,
+                                             return_expr,
+                                             0,
+                                             g_format_value_indent_level);
             } else {
                 format_emit_fn_signature(sb, cst, lexer, node->a, true);
                 sb_append_cstr(sb, " {\n");
