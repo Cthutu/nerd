@@ -292,14 +292,16 @@ function getServerEnvironment(sourcePath: string | undefined): NodeJS.ProcessEnv
         return env;
     }
 
-    const modsDir = path.join(path.dirname(sourcePath), "mods");
-    if (!fs.existsSync(modsDir) || !fs.statSync(modsDir).isDirectory()) {
+    const sourceDir = path.dirname(sourcePath);
+    const modsDir = newestExistingPath([
+        path.join(sourceDir, "mods"),
+        path.join(path.dirname(sourceDir), "mods"),
+    ]);
+    if (!modsDir || !fs.statSync(modsDir).isDirectory()) {
         return env;
     }
 
-    const separator = process.platform === "win32" ? ";" : ":";
-    const existing = env.NERD_LIB_PATH?.trim();
-    env.NERD_LIB_PATH = existing ? `${modsDir}${separator}${existing}` : modsDir;
+    env.NERD_INSTALL_LIB_PATH = modsDir;
     return env;
 }
 

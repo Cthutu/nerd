@@ -498,6 +498,17 @@ ModuleResolveStatus module_resolve_path(Arena*               arena,
         return MRS_Found;
     }
 
+    cstr install_lib_path = getenv("NERD_INSTALL_LIB_PATH");
+    if (module_path_exists_in_env_roots(arena,
+                                        lexer,
+                                        ast,
+                                        path,
+                                        install_lib_path,
+                                        current_path,
+                                        out_result)) {
+        return MRS_Found;
+    }
+
     cstr exe_dir = path_executable_dir(arena);
     if (module_path_exists_in_root(
             arena, lexer, ast, path, exe_dir, current_path, out_result)) {
@@ -553,6 +564,15 @@ ModuleResolveStatus module_resolve_qualified(Arena*     arena,
     cstr lib_path = getenv("NERD_LIB_PATH");
     if (module_qualified_exists_in_env_roots(
             arena, qualified_name, lib_path, current_path, out_result)) {
+        return MRS_Found;
+    }
+
+    cstr install_lib_path = getenv("NERD_INSTALL_LIB_PATH");
+    if (module_qualified_exists_in_env_roots(arena,
+                                             qualified_name,
+                                             install_lib_path,
+                                             current_path,
+                                             out_result)) {
         return MRS_Found;
     }
 
