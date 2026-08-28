@@ -303,6 +303,18 @@ function getServerEnvironment(sourcePath: string | undefined): NodeJS.ProcessEnv
     return env;
 }
 
+function getServerWorkingDirectory(): string | undefined {
+    const activeDocument = vscode.window.activeTextEditor?.document;
+    if (activeDocument?.uri.scheme === "file") {
+        const folder = vscode.workspace.getWorkspaceFolder(activeDocument.uri);
+        if (folder) {
+            return folder.uri.fsPath;
+        }
+    }
+
+    return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+}
+
 function getServerExecutable(
     context: vscode.ExtensionContext
 ): { executable: Executable; sourcePath?: string } {
@@ -315,9 +327,10 @@ function getServerExecutable(
         ? stageServerExecutable(sourcePath, context)
         : "nerd";
     const env = getServerEnvironment(sourcePath);
+    const cwd = getServerWorkingDirectory();
 
     return {
-        executable: { command, args, options: { env } },
+        executable: { command, args, options: { env, cwd } },
         sourcePath,
     };
 }
