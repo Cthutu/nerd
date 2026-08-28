@@ -3536,6 +3536,14 @@ internal bool sema_node_is_type_syntax(const Ast* ast, u32 node_index)
     }
 }
 
+internal bool sema_local_value_is_type_syntax(const Ast* ast, u32 node_index)
+{
+    u32 candidate = sema_unwrap_type_candidate_node(ast, node_index);
+    return candidate < array_count(ast->nodes) &&
+           ast->nodes[candidate].kind != AK_Field &&
+           sema_node_is_type_syntax(ast, node_index);
+}
+
 internal u32 sema_fn_def_generic_params_index(const Ast* ast, u32 fn_node_index)
 {
     const AstNode* fn_def = &ast->nodes[fn_node_index];
@@ -16248,7 +16256,7 @@ internal bool sema_infer_local_binding_type(const Lexer* lexer,
     AstNode* bind_node = &ast->nodes[local->decl_node_index];
     if (ast_has_flag(bind_node, ANF_ConstBusy)) {
         if (local->type_index != sema_no_type() &&
-            sema_node_is_type_syntax(ast, local->value_node_index)) {
+            sema_local_value_is_type_syntax(ast, local->value_node_index)) {
             *out_type_index = local->type_index;
             return true;
         }
@@ -16295,7 +16303,7 @@ internal bool sema_infer_local_binding_type(const Lexer* lexer,
     }
 
     if (ok && local->type_node_index == sema_no_type() &&
-        sema_node_is_type_syntax(ast, local->value_node_index) &&
+        sema_local_value_is_type_syntax(ast, local->value_node_index) &&
         !sema_resolve_type_node(
             lexer, ast, sema, local->value_node_index, &inferred)) {
         ok = false;
@@ -16333,7 +16341,7 @@ internal bool sema_infer_local_binding_type(const Lexer* lexer,
     if (ok) {
         bool local_is_type_alias =
             local->type_node_index == sema_no_type() &&
-            sema_node_is_type_syntax(ast, local->value_node_index);
+            sema_local_value_is_type_syntax(ast, local->value_node_index);
         if (local_is_type_alias) {
             local->kind       = SLK_TypeAlias;
             local->type_index = inferred;
@@ -17468,12 +17476,23 @@ internal bool sema_infer_for_iterable_type(const Lexer*      lexer,
         }
     }
 
+    u32 local_index = sema_no_local();
     if (for_scope != sema_no_scope()) {
-        u32 local_index =
-            sema_lookup_local(sema, for_scope, for_info->item_symbol);
-        if (local_index != sema_no_local()) {
-            sema->locals[local_index].type_index = item_type;
+        local_index = sema_lookup_local(sema, for_scope, for_info->item_symbol);
+    }
+    if (local_index == sema_no_local()) {
+        for (u32 i = array_count(sema->locals); i-- > 0;) {
+            const SemaLocal* local = &sema->locals[i];
+            if (local->symbol_handle == for_info->item_symbol &&
+                local->kind == SLK_Variable &&
+                local->value_node_index == sema_no_decl()) {
+                local_index = i;
+                break;
+            }
         }
+    }
+    if (local_index != sema_no_local()) {
+        sema->locals[local_index].type_index = item_type;
     }
     *out_iterable_type = iterable_type;
     return true;
@@ -20554,6 +20573,26 @@ validate_type:
             if (sema->node_local_indices[node_index] != sema_no_local()) {
                 u32        local_index = sema->node_local_indices[node_index];
                 SemaLocal* local       = &sema->locals[local_index];
+                if (local->type_index == sema_no_type() &&
+                    local->value_node_index == sema_no_decl() &&
+                    local->decl_node_index < array_count(ast->nodes) &&
+                    ast->nodes[local->decl_node_index].kind == AK_For) {
+                    const AstNode* for_node =
+                        &ast->nodes[local->decl_node_index];
+                    const AstForInfo* for_info = &ast->fors[for_node->a];
+                    u32 iterable_type = sema_no_type();
+                    if (!sema_infer_for_iterable_type(
+                            lexer,
+                            ast,
+                            sema,
+                            local->decl_node_index,
+                            for_info,
+                            sema->node_scope_indices[local->decl_node_index],
+                            &iterable_type)) {
+                        return false;
+                    }
+                    local = &sema->locals[local_index];
+                }
                 if (sema_local_is_decl_binding(local) &&
                     local->type_index == sema_no_type()) {
                     if (!sema_infer_local_binding_type(
