@@ -981,7 +981,7 @@ def test_command(path: pathlib.Path) -> list[Failure]:
         elif git_log.stdout.strip() != "Initial commit":
             failures.append(Failure(path, f"unexpected initial commit message: {git_log.stdout.strip()}"))
         git_status = subprocess.run(
-            ["git", "status", "--short"],
+            ["git", "status", "--porcelain=v1", "--untracked-files=all"],
             cwd=init_project,
             text=True,
             encoding="utf-8",
