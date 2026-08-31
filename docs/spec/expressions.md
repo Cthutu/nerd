@@ -44,10 +44,12 @@ enums, pointers, slices, and dynamic arrays where supported. For other values,
 the analyser accepts equality when the type implements the canonical `core.Eq`
 trait, and lowering calls `Eq.eq(lhs, rhs)`. `!=` negates that result.
 
-The `<`, `<=`, `>`, and `>=` operators are built in for numeric values. For
-other values, the analyser accepts ordering when the type implements the
-canonical `core.Order` trait. Lowering calls `Order.compare(lhs, rhs)` and
-compares the returned `i32` with zero.
+The `<`, `<=`, `>`, and `>=` operators are built in for numeric values and
+compatible pointers. Pointer ordering compares addresses as unsigned values and
+is meaningful when both pointers refer into the same allocation. For other
+values, the analyser accepts ordering when the type implements the canonical
+`core.Order` trait. Lowering calls `Order.compare(lhs, rhs)` and compares the
+returned `i32` with zero.
 
 The `in` operator tests an integer against a bracketed integer range:
 

@@ -130,6 +130,17 @@ distance: isize = third - first
 Offsets are counted in elements of the pointer's pointee type, not bytes.
 Arithmetic on `^void` is rejected because `void` has no element size.
 
+Compatible pointers can also be ordered with `<`, `<=`, `>`, and `>=`:
+
+```nerd
+before := first < third
+at_or_after := third >= first
+```
+
+These operators compare addresses as unsigned values. Use pointer ordering only
+for pointers into the same allocation, where their relative position is
+meaningful.
+
 ## Strings And String Slices
 
 `string` is distinct from `[]u8`, but it uses the same data/count shape.

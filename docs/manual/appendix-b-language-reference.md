@@ -79,6 +79,8 @@ intended exit code.
   exit.
 - Pointer equality supports matching pointer types, `nil`, and `^void` compared
   with any pointer type.
+- Pointer ordering supports compatible pointer types and compares their
+  addresses as unsigned values. The result is meaningful within one allocation.
 - Non-built-in equality with `==` and `!=` uses the canonical `core.Eq`
   implementation for the value type.
 - Non-built-in ordering with `<`, `<=`, `>`, and `>=` uses the canonical

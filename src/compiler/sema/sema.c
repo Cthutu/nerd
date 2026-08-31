@@ -12210,9 +12210,8 @@ internal bool sema_type_is_equality_comparable(const Sema* sema, u32 type_index)
     }
 }
 
-internal bool sema_pointer_types_are_equality_comparable(const Sema* sema,
-                                                         u32         lhs_type,
-                                                         u32         rhs_type)
+internal bool
+sema_pointer_types_are_comparable(const Sema* sema, u32 lhs_type, u32 rhs_type)
 {
     if (lhs_type == sema_no_type() || rhs_type == sema_no_type()) {
         return false;
@@ -12264,8 +12263,7 @@ internal bool sema_pointer_arithmetic_result_type(
             return true;
         }
         if (lhs_pointer_sized && rhs_pointer_sized &&
-            sema_pointer_types_are_equality_comparable(
-                sema, lhs_type, rhs_type)) {
+            sema_pointer_types_are_comparable(sema, lhs_type, rhs_type)) {
             *out_type = sema_builtin_type(sema, STK_Isize);
             return true;
         }
@@ -21668,10 +21666,13 @@ validate_type:
                 sema, node->kind, lhs_type, rhs_type, &pointer_arithmetic_type);
             bool pointer_equality =
                 (node->kind == AK_Equal || node->kind == AK_NotEqual) &&
-                sema_pointer_types_are_equality_comparable(
-                    sema, lhs_type, rhs_type);
+                sema_pointer_types_are_comparable(sema, lhs_type, rhs_type);
+            bool pointer_ordering =
+                (node->kind == AK_Less || node->kind == AK_LessEqual ||
+                 node->kind == AK_Greater || node->kind == AK_GreaterEqual) &&
+                sema_pointer_types_are_comparable(sema, lhs_type, rhs_type);
             if (lhs_type != rhs_type && !pointer_equality &&
-                !pointer_arithmetic) {
+                !pointer_ordering && !pointer_arithmetic) {
                 return error_0304_type_mismatch(
                     lexer->source,
                     sema_node_span(lexer, node),
@@ -21759,7 +21760,7 @@ validate_type:
                            ast->nodes[node->b].kind == AK_NilLiteral) {
                     rhs_type = lhs_type;
                 }
-                if (sema_pointer_types_are_equality_comparable(
+                if (sema_pointer_types_are_comparable(
                         sema, lhs_type, rhs_type)) {
                     type_index = sema_builtin_type(sema, STK_Bool);
                     break;
@@ -21806,6 +21807,10 @@ validate_type:
             case AK_LessEqual:
             case AK_Greater:
             case AK_GreaterEqual:
+                if (pointer_ordering) {
+                    type_index = sema_builtin_type(sema, STK_Bool);
+                    break;
+                }
                 {
                     u32 order_method_decl = sema_find_core_order_method_decl(
                         lexer, ast, sema, lhs_type, rhs_type);

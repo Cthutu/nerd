@@ -263,6 +263,11 @@ callable symbol. Function declarations establish that symbol before their
 bodies are ordered, so direct recursion is not a declaration-initialisation
 cycle. Other self-references continue through the normal cycle checks.
 
+Semantic pointer comparison accepts compatible pointee types, including a
+`^void` side, for equality and ordering. HIR retains the ordinary comparison
+operation and operand types; LLVM selects unsigned `icmp` predicates for
+ordered pointer comparisons.
+
 ## Related Documents
 
 - [FORMAT.md](/home/matt/nerd/docs/overviews/FORMAT.md) for formatter rules

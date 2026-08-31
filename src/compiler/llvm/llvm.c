@@ -7382,23 +7382,21 @@ internal string llvm_compare_instruction(const Sema* sema,
                                          u32         type_index,
                                          HirBinaryOp op)
 {
+    bool unsigned_order = llvm_type_is_unsigned_integer(sema, type_index) ||
+                          llvm_type_kind(sema, type_index) == STK_Pointer;
     switch (op) {
     case HIR_BINARY_Equal:
         return s("eq");
     case HIR_BINARY_NotEqual:
         return s("ne");
     case HIR_BINARY_Less:
-        return llvm_type_is_unsigned_integer(sema, type_index) ? s("ult")
-                                                               : s("slt");
+        return unsigned_order ? s("ult") : s("slt");
     case HIR_BINARY_LessEqual:
-        return llvm_type_is_unsigned_integer(sema, type_index) ? s("ule")
-                                                               : s("sle");
+        return unsigned_order ? s("ule") : s("sle");
     case HIR_BINARY_Greater:
-        return llvm_type_is_unsigned_integer(sema, type_index) ? s("ugt")
-                                                               : s("sgt");
+        return unsigned_order ? s("ugt") : s("sgt");
     case HIR_BINARY_GreaterEqual:
-        return llvm_type_is_unsigned_integer(sema, type_index) ? s("uge")
-                                                               : s("sge");
+        return unsigned_order ? s("uge") : s("sge");
     default:
         return (string){0};
     }

@@ -477,6 +477,10 @@ Pointer arithmetic follows C-style element offsets for sized pointee types.
 `isize` element distance. Arithmetic on `^void` is rejected because `void` has no
 element size.
 
+Compatible pointers support `<`, `<=`, `>`, and `>=`. LLVM lowers these as
+unsigned address comparisons. As with pointer subtraction, ordering is
+meaningful when both pointers refer into the same allocation.
+
 Local variables are resolved through semantic scope rows, not through AST node
 payloads. A function body creates a root scope, and each nested block statement
 creates a child scope. Locals enter their scope after their initializer has been
