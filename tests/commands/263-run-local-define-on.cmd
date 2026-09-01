@@ -1,3 +1,10 @@
+inactive_return :: fn () -> i32 {
+    on "missing_local_on_test" {
+        return 99
+    }
+    return 0
+}
+
 main :: fn () -> i32 {
     result := 0
 
@@ -15,7 +22,7 @@ main :: fn () -> i32 {
         result += 2
     }
 
-    return result - 42
+    return result - 42 + inactive_return()
 }
 ¬
 0

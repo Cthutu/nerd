@@ -3839,6 +3839,10 @@ internal u32 hir_lower_block_node(Hir*         hir,
     bool* owned_nodes = arena_alloc(&hir->arena, sizeof(bool) * end);
     memset(owned_nodes, 0, sizeof(bool) * end);
     for (u32 i = first; i < end; ++i) {
+        if (ast_has_flag(&ast->nodes[i], ANF_Disabled)) {
+            owned_nodes[i] = true;
+            continue;
+        }
         if (ast->nodes[i].kind == AK_ExprBlock) {
             u32 child_block_index = ast->nodes[i].a;
             if (child_block_index < end &&
