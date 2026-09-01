@@ -215,6 +215,18 @@ test "answer" {
 `test` declarations and declarations inside `test { ... }` cannot be marked
 `pub`.
 
+Tests may be placed inside compile-time define blocks. The test command
+discovers tests only from enabled blocks, using the host platform and any
+`-Dname` keys supplied on the command line:
+
+```nerd
+on "linux" {
+    test "Linux behaviour" {
+        assert yes
+    }
+}
+```
+
 Run them with:
 
 ```sh

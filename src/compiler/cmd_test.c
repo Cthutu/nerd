@@ -203,16 +203,64 @@ internal bool source_test_find_body(string source,
     return error_runtime("Unterminated test block");
 }
 
-internal bool source_test_discover(Arena* arena,
-                                   string source,
-                                   string name_prefix,
-                                   string filter,
-                                   Array(SourceTestDecl) * out_tests)
+internal bool source_test_keyword_is_defined(const NerdTestConfig* config,
+                                             string                name)
 {
-    usize offset = 0;
+    if (string_eq_cstr(name, "debug")) {
+        return true;
+    }
+#if OS_WINDOWS
+    if (string_eq_cstr(name, "windows")) {
+        return true;
+    }
+#endif
+#if OS_LINUX
+    if (string_eq_cstr(name, "linux")) {
+        return true;
+    }
+#endif
+#if OS_MACOS
+    if (string_eq_cstr(name, "macos")) {
+        return true;
+    }
+#endif
+#if OS_BSD
+    if (string_eq_cstr(name, "bsd")) {
+        return true;
+    }
+#endif
+#if OS_POSIX
+    if (string_eq_cstr(name, "posix")) {
+        return true;
+    }
+#endif
+#if ARCH_X86_64
+    if (string_eq_cstr(name, "x64")) {
+        return true;
+    }
+#endif
+
+    for (u32 i = 0; i < array_count(config->keywords); ++i) {
+        if (string_eq(name, config->keywords[i])) {
+            return true;
+        }
+    }
+    return false;
+}
+
+internal bool source_test_discover_range(Arena*                arena,
+                                         string                source,
+                                         usize                 start_offset,
+                                         usize                 end_offset,
+                                         string                name_prefix,
+                                         string                filter,
+                                         const NerdTestConfig* config,
+                                         Array(SourceTestDecl) * out_tests)
+{
+    usize offset = start_offset;
     u32   depth  = 0;
 
-    while (offset < source.count) {
+    while (offset < end_offset) {
         if (source_test_starts_with_at(source, offset, "--")) {
             source_test_skip_line_comment(source, &offset);
             continue;
@@ -242,6 +290,61 @@ internal bool source_test_discover(Arena* arena,
             }
             offset += 1;
             continue;
+        }
+
+        if (depth == 0 && source_test_starts_with_at(source, offset, "on")) {
+            bool left_ok =
+                offset == 0 || !source_test_is_ident(source.data[offset - 1]);
+            bool right_ok = offset + 2 >= source.count ||
+                            !source_test_is_ident(source.data[offset + 2]);
+            if (left_ok && right_ok) {
+                usize condition_offset = offset + 2;
+                source_test_skip_ws_and_comments(source, &condition_offset);
+                bool is_negated = false;
+                if (condition_offset < source.count &&
+                    source.data[condition_offset] == '!') {
+                    is_negated = true;
+                    condition_offset += 1;
+                    source_test_skip_ws_and_comments(source, &condition_offset);
+                }
+
+                if (condition_offset < source.count &&
+                    source.data[condition_offset] == '"') {
+                    string key = {0};
+                    if (!source_test_parse_name(
+                            source, &condition_offset, &key)) {
+                        return false;
+                    }
+                    usize body_start = 0;
+                    usize body_end   = 0;
+                    usize on_end     = 0;
+                    if (!source_test_find_body(source,
+                                               &condition_offset,
+                                               &body_start,
+                                               &body_end,
+                                               &on_end,
+                                               false)) {
+                        return false;
+                    }
+
+                    bool enabled = source_test_keyword_is_defined(config, key);
+                    if (is_negated) {
+                        enabled = !enabled;
+                    }
+                    if (enabled && !source_test_discover_range(arena,
+                                                               source,
+                                                               body_start,
+                                                               body_end,
+                                                               name_prefix,
+                                                               filter,
+                                                               config,
+                                                               out_tests)) {
+                        return false;
+                    }
+                    offset = on_end;
+                    continue;
+                }
+            }
         }
 
         if (depth == 0 && source_test_starts_with_at(source, offset, "test")) {
@@ -308,6 +411,17 @@ internal bool source_test_discover(Arena* arena,
     }
 
     return true;
+}
+
+internal bool source_test_discover(Arena*                arena,
+                                   string                source,
+                                   string                name_prefix,
+                                   string                filter,
+                                   const NerdTestConfig* config,
+                                   Array(SourceTestDecl) * out_tests)
+{
+    return source_test_discover_range(
+        arena, source, 0, source.count, name_prefix, filter, config, out_tests);
 }
 
 internal bool source_test_is_top_level_main_binding(string source, usize offset)
@@ -589,7 +703,9 @@ internal bool source_test_path_matches_platform(cstr path)
     return true;
 }
 
-internal bool source_test_file_has_named_tests(Arena* arena, cstr path)
+internal bool source_test_file_has_named_tests(Arena*                arena,
+                                               cstr                  path,
+                                               const NerdTestConfig* config)
 {
     FileMap map    = {0};
     string  source = filemap_load(path, &map);
@@ -599,7 +715,7 @@ internal bool source_test_file_has_named_tests(Arena* arena, cstr path)
 
     Array(SourceTestDecl) tests = NULL;
     bool discovered =
-        source_test_discover(arena, source, (string){0}, s(""), &tests);
+        source_test_discover(arena, source, (string){0}, s(""), config, &tests);
     bool found = false;
     if (discovered) {
         for (usize i = 0; i < array_count(tests); ++i) {
@@ -652,7 +768,7 @@ internal int source_test_run_directory(Arena*                arena,
 
         if (!path_has_extension(s(child_path), ".n") ||
             !source_test_path_matches_platform(child_path) ||
-            !source_test_file_has_named_tests(arena, child_path)) {
+            !source_test_file_has_named_tests(arena, child_path, config)) {
             continue;
         }
 
@@ -719,7 +835,7 @@ int compiler_cmd_test(const NerdTestConfig* config)
     if (!front_end_ok) {
         Array(SourceTestDecl) tests = NULL;
         bool root_discovered        = source_test_discover(
-            &arena, source, (string){0}, config->filter, &tests);
+            &arena, source, (string){0}, config->filter, config, &tests);
         if (!root_discovered) {
             array_free(tests);
             filemap_unload(&map);
@@ -840,6 +956,7 @@ int compiler_cmd_test(const NerdTestConfig* config)
                                   module->front_end.lexer.source.source,
                                   prefix,
                                   config->filter,
+                                  config,
                                   &tests)) {
             array_free(tests);
             discovered = false;
