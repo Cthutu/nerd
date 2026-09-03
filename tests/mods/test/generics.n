@@ -19,3 +19,8 @@ pub make_box :: fn [T] (value: T) -> Box[T] {
     box.value = value
     return box
 }
+
+pub pick :: fn [T] (values: []T, fallback: T) -> T {
+    on values.count == 0 => return fallback
+    return values[1]
+}

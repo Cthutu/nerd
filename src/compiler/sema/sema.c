@@ -1828,6 +1828,14 @@ internal u32 sema_unwrap_expr_node(const Ast* ast, u32 node_index)
     return node_index;
 }
 
+internal bool sema_node_is_empty_array_literal(const Ast* ast, u32 node_index)
+{
+    node_index = sema_unwrap_expr_node(ast, node_index);
+    return node_index < array_count(ast->nodes) &&
+           ast->nodes[node_index].kind == AK_Array &&
+           ast->nodes[node_index].b == 0;
+}
+
 internal u32 sema_signature_required_param_count(
     const Ast* ast, const AstFnSignature* signature)
 {
@@ -13114,7 +13122,8 @@ bool sema_bind_generic_type_node(const Lexer*            lexer,
     }
 
     if (type_node->kind == AK_TypeSlice &&
-        sema->types[actual_type].kind == STK_Slice) {
+        (sema->types[actual_type].kind == STK_Slice ||
+         sema->types[actual_type].kind == STK_Array)) {
         return sema_bind_generic_type_node(
             lexer,
             ast,
@@ -13961,6 +13970,10 @@ sema_instantiate_imported_generic_function(const Lexer*    lexer,
             array_free(source_arg_types);
             return false;
         }
+        if (explicit_arg_count == 0 &&
+            sema_node_is_empty_array_literal(ast, arg_node)) {
+            continue;
+        }
         u32 expected_src = sema_no_type();
         u32 expected_dst = sema_no_type();
 
@@ -14035,6 +14048,47 @@ sema_instantiate_imported_generic_function(const Lexer*    lexer,
                 sema_node_span(source_lexer, source_fn_def),
                 s("inferable generic type parameter"),
                 lex_symbol(source_lexer, symbol));
+        }
+    }
+
+    for (u32 i = 0; i < call_arg_count; ++i) {
+        const AstParam* source_param =
+            &source_ast->params[source_signature->first_param + i];
+        u32 arg_node = ast->call_args[call->first_arg + i];
+        if (!sema_call_arg_value_node(
+                lexer, ast, source_lexer, source_param, arg_node, &arg_node)) {
+            array_free(source_arg_types);
+            return false;
+        }
+        if (explicit_arg_count != 0 ||
+            !sema_node_is_empty_array_literal(ast, arg_node)) {
+            continue;
+        }
+
+        SemaTypeSubstitution source_subst = {
+            .param_symbols =
+                &source_ast
+                     ->generic_param_symbols[source_generic->first_symbol],
+            .arg_types = source_arg_types,
+            .count     = source_generic->symbol_count,
+        };
+        u32 expected_src = sema_no_type();
+        if (!sema_resolve_type_node_ex(source_lexer,
+                                       source_ast,
+                                       source_sema,
+                                       source_param->type_node_index,
+                                       source_subst,
+                                       &expected_src)) {
+            array_free(source_arg_types);
+            return false;
+        }
+        u32 expected_dst = sema_import_type(
+            (Lexer*)lexer, sema, source_lexer, source_sema, expected_src);
+        u32 actual_dst = sema_no_type();
+        if (!sema_infer_node_type(
+                lexer, ast, sema, arg_node, expected_dst, &actual_dst)) {
+            array_free(source_arg_types);
+            return false;
         }
     }
 
@@ -14155,6 +14209,10 @@ internal bool sema_instantiate_generic_function(const Lexer* lexer,
             array_free(arg_types);
             return false;
         }
+        if (explicit_arg_count == 0 &&
+            sema_node_is_empty_array_literal(ast, arg_node)) {
+            continue;
+        }
         u32 expected_arg = sema_no_type();
 
         if (explicit_arg_count != 0) {
@@ -14218,6 +14276,42 @@ internal bool sema_instantiate_generic_function(const Lexer* lexer,
                 sema_node_span(lexer, fn_def),
                 s("inferable generic type parameter"),
                 lex_symbol(lexer, symbol));
+        }
+    }
+
+    for (u32 i = 0; i < call_arg_count; ++i) {
+        const AstParam* param    = &ast->params[signature->first_param + i];
+        u32             arg_node = ast->call_args[call->first_arg + i];
+        if (!sema_call_arg_value_node(
+                lexer, ast, lexer, param, arg_node, &arg_node)) {
+            array_free(arg_types);
+            return false;
+        }
+        if (explicit_arg_count != 0 ||
+            !sema_node_is_empty_array_literal(ast, arg_node)) {
+            continue;
+        }
+
+        SemaTypeSubstitution subst = {
+            .param_symbols = &ast->generic_param_symbols[generic->first_symbol],
+            .arg_types     = arg_types,
+            .count         = generic->symbol_count,
+        };
+        u32 expected_arg = sema_no_type();
+        if (!sema_resolve_type_node_ex(lexer,
+                                       ast,
+                                       sema,
+                                       param->type_node_index,
+                                       subst,
+                                       &expected_arg)) {
+            array_free(arg_types);
+            return false;
+        }
+        u32 actual = sema_no_type();
+        if (!sema_infer_node_type(
+                lexer, ast, sema, arg_node, expected_arg, &actual)) {
+            array_free(arg_types);
+            return false;
         }
     }
 

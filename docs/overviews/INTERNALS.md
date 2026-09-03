@@ -214,6 +214,10 @@ leak diagnostics.
 Implicit fixed-array-to-slice call arguments are lowered from the address of the
 original HIR array expression. This preserves the language's borrowed-view
 semantics and avoids directing mutations through a copied LLVM temporary.
+Generic argument inference applies the same fixed-array-to-slice compatibility
+while binding element parameters. It defers empty array arguments until other
+arguments or the expected return type have supplied their generic element type,
+then checks those literals with the substituted parameter type.
 
 The parser recognises a same-line `arena name` sequence as a reversed built-in
 type declaration and reports Nerd's name-first declaration forms. The formatter
