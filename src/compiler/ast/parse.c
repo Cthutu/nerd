@@ -4635,40 +4635,6 @@ internal bool ast_parse_top_level_assert_on(AstParseState* state, u32* out_node)
     return true;
 }
 
-internal u32 ast_impl_generic_params_index(AstParseState* state,
-                                           u32            target_type_node)
-{
-    if (target_type_node >= array_count(state->nodes) ||
-        state->nodes[target_type_node].kind != AK_TypeApply) {
-        return U32_MAX;
-    }
-
-    const AstTypeApplyInfo* apply =
-        &state->type_applications[state->nodes[target_type_node].a];
-    u32 first_symbol = (u32)array_count(state->generic_param_symbols);
-    for (u32 i = 0; i < apply->arg_count; ++i) {
-        u32 arg_node = state->tuple_items[apply->first_arg + i];
-        if (arg_node < array_count(state->nodes) &&
-            state->nodes[arg_node].kind == AK_SymbolRef) {
-            array_push(state->generic_param_symbols, state->nodes[arg_node].a);
-        }
-    }
-
-    u32 symbol_count =
-        (u32)array_count(state->generic_param_symbols) - first_symbol;
-    if (symbol_count == 0) {
-        return U32_MAX;
-    }
-
-    u32 index = (u32)array_count(state->generic_params);
-    array_push(state->generic_params,
-               (AstGenericParams){
-                   .first_symbol = first_symbol,
-                   .symbol_count = symbol_count,
-               });
-    return index;
-}
-
 internal bool
 ast_impl_member_looks_like_top_level_type_decl(const AstParseState* state)
 {
@@ -4691,8 +4657,15 @@ internal bool
 ast_parse_impl(AstParseState* state, u32* out_node, AstNodeFlag flags)
 {
     ASSERT(state->token.kind == TK_impl, "Expected 'impl' token");
-    AstToken impl_token = state->token;
+    AstToken impl_token      = state->token;
 
+    u32 generic_params_index = U32_MAX;
+    if (ast_peek_kind_at(state, 0) == TK_LBracket &&
+        ast_peek_kind_at(state, 1) != TK_RBracket) {
+        if (!ast_parse_optional_generic_params(state, &generic_params_index)) {
+            return false;
+        }
+    }
     if (!ast_next_token(state)) {
         return error_0201_missing_value(
             state->lexer->source, ast_token_span(state, &impl_token), TK_impl);
@@ -4789,8 +4762,6 @@ ast_parse_impl(AstParseState* state, u32* out_node, AstNodeFlag flags)
         }
     }
 
-    u32 generic_params_index =
-        ast_impl_generic_params_index(state, target_type);
     u32 impl_index = (u32)array_count(state->impls);
     array_push(state->impls,
                (AstImplInfo){

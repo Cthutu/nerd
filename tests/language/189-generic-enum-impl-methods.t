@@ -3,7 +3,7 @@ Maybe :: enum [T] {
     Some(T)
 }
 
-impl Maybe[T] {
+impl [T] Maybe[T] {
     expect :: fn (self: Self, fallback: T) -> T {
         return on self {
             Some(value) => value

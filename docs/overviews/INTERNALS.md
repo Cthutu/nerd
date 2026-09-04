@@ -272,6 +272,14 @@ Semantic pointer comparison accepts compatible pointee types, including a
 operation and operand types; LLVM selects unsigned `icmp` predicates for
 ordered pointer comparisons.
 
+Generic implementation parameters are parsed from an explicit list immediately
+after `impl`, for example
+`impl [T] Display for Box[T] where T: Display { ... }`. Keeping declaration
+separate from target matching permits parameters used only in member signatures
+or bodies, such as `impl [T] Stack[i32]`. Method resolution first binds any
+parameters present in the receiver target, then binds remaining parameters from
+method arguments before instantiating the member.
+
 ## Related Documents
 
 - [FORMAT.md](/home/matt/nerd/docs/overviews/FORMAT.md) for formatter rules

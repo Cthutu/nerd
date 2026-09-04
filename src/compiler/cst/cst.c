@@ -5885,45 +5885,42 @@ internal bool cst_parse_top_level_assert_on(CstParseState* state, u32* out_node)
     return true;
 }
 
-internal u32 cst_impl_generic_params_index(CstParseState* state,
-                                           u32            target_type_node)
-{
-    if (target_type_node >= array_count(state->cst.nodes) ||
-        state->cst.nodes[target_type_node].kind != CK_TypeApply) {
-        return U32_MAX;
-    }
-
-    const CstTypeApplyInfo* apply =
-        &state->cst.type_applications[state->cst.nodes[target_type_node].a];
-    u32 first_symbol = (u32)array_count(state->cst.generic_param_symbols);
-    for (u32 i = 0; i < apply->arg_count; ++i) {
-        u32 arg_node = state->cst.tuple_items[apply->first_arg + i];
-        if (arg_node < array_count(state->cst.nodes) &&
-            state->cst.nodes[arg_node].kind == CK_SymbolRef) {
-            array_push(state->cst.generic_param_symbols,
-                       state->cst.nodes[arg_node].a);
-        }
-    }
-
-    u32 symbol_count =
-        (u32)array_count(state->cst.generic_param_symbols) - first_symbol;
-    if (symbol_count == 0) {
-        return U32_MAX;
-    }
-
-    u32 index = (u32)array_count(state->cst.generic_params);
-    array_push(state->cst.generic_params,
-               (CstGenericParams){
-                   .first_symbol = first_symbol,
-                   .symbol_count = symbol_count,
-               });
-    return index;
-}
-
 internal bool cst_parse_impl(CstParseState* state, u32* out_node, u32 flags)
 {
     u32 token_index = state->token_index;
     cst_advance(state);
+
+    u32 generic_params_index = CST_NO_VALUE;
+    if (cst_current_token(state).kind == TK_LBracket &&
+        cst_peek_kind_at(state, 1) != TK_RBracket) {
+        cst_advance(state);
+        u32 first_symbol = (u32)array_count(state->cst.generic_param_symbols);
+        u32 symbol_count = 0;
+        if (cst_current_token(state).kind != TK_RBracket) {
+            for (;;) {
+                if (cst_current_token(state).kind != TK_Symbol) {
+                    return false;
+                }
+                array_push(state->cst.generic_param_symbols,
+                           cst_current_symbol_handle(state));
+                symbol_count++;
+                cst_advance(state);
+                if (cst_current_token(state).kind != TK_Comma) {
+                    break;
+                }
+                cst_advance(state);
+            }
+        }
+        if (!cst_consume(state, TK_RBracket)) {
+            return false;
+        }
+        generic_params_index = (u32)array_count(state->cst.generic_params);
+        array_push(state->cst.generic_params,
+                   (CstGenericParams){
+                       .first_symbol = first_symbol,
+                       .symbol_count = symbol_count,
+                   });
+    }
 
     u32 trait_type  = U32_MAX;
     u32 target_type = 0;
@@ -5979,8 +5976,6 @@ internal bool cst_parse_impl(CstParseState* state, u32* out_node, u32 flags)
     }
     cst_advance(state);
 
-    u32 generic_params_index =
-        cst_impl_generic_params_index(state, target_type);
     u32 impl_index = (u32)array_count(state->cst.impls);
     array_push(state->cst.impls,
                (CstImplInfo){

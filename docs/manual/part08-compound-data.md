@@ -407,15 +407,17 @@ Stack :: plex [T] {
     data [..]T
 }
 
-impl Stack[T] {
+impl [T] Stack[T] {
     push :: fn (self: ^Stack[T], item: T) {
         self.data.push(item)
     }
 }
 ```
 
-The impl generic parameters are also in scope inside method bodies, so type
-operations such as `T.size` work there.
+Impl generic parameters are declared explicitly after `impl`. They are in scope
+in the target type, constraints, member signatures, and method bodies, so type
+operations such as `T.size` work there. A parameter does not need to occur in
+the target: `impl [T] Stack[i32]` is valid when members use `T` independently.
 
 Method functions can also have their own type parameters. A method call may
 infer those parameters from its value arguments, or provide them explicitly
@@ -430,7 +432,7 @@ the type rather than through a value. Associated functions are intended for
 constructors and factories, so they return `Self` or `^Self`:
 
 ```nerd
-impl Stack[T] {
+impl [T] Stack[T] {
     init :: fn () -> Self {
         return { data: nil }
     }
@@ -445,7 +447,7 @@ main :: fn () {
 Methods can be public inside a module:
 
 ```nerd
-impl Stack[T] {
+impl [T] Stack[T] {
     pub push :: fn (self: ^Stack[T], item: T) {
         self.data.push(item)
     }
@@ -529,7 +531,7 @@ Trait implementations can be generic when the implementation target contains
 type parameters:
 
 ```nerd
-impl Display for Box[T]
+impl [T] Display for Box[T]
 where T: Display {
     show :: fn (self: Self) -> string {
         return self.value.show()
@@ -537,9 +539,9 @@ where T: Display {
 }
 ```
 
-The type parameters are inferred from the target type. The `where` clause states
-what each concrete instantiation must prove before the implementation can be
-used.
+The type parameters are declared by the list after `impl`. The `where` clause
+states what each concrete instantiation must prove before the implementation
+can be used.
 
 ### Built-In Core Traits
 

@@ -46,8 +46,8 @@ top-level-on    ::= 'on' [ '!' ] STRING '{' { top-level-item } '}'
 top-level-assert-on
                 ::= 'assert' 'on' [ '!' ] STRING
 source-test     ::= 'test' STRING block | 'test' block
-impl-block      ::= 'impl' type where-clause? '{' { top-level-item } '}'
-                  | 'impl' type 'for' type where-clause? '{' { top-level-item } '}'
+impl-block      ::= 'impl' [ generic-params ] type where-clause? '{' { top-level-item } '}'
+                  | 'impl' [ generic-params ] type 'for' type where-clause? '{' { top-level-item } '}'
 ```
 
 `pub` applies only to bindings, variables, FFI declarations, and `use`
@@ -118,8 +118,10 @@ implementations for the same trait are rejected. Implementations may target
 compound types and primitive built-in types. A trait implementation block is
 the complete implementation for one trait/type pair; implementations are not
 split or merged across multiple blocks. Generic implementation parameters are
-inferred from the target type, for example
-`impl Display for Box[T] where T: Display { ... }`.
+declared explicitly after `impl`, for example
+`impl [T] Display for Box[T] where T: Display { ... }`. They are in scope in
+the trait type, target type, `where` clause, and member declarations and bodies.
+An implementation parameter need not appear in the target type.
 Generic functions and generic impl blocks may carry `where` constraints. The
 formatter places `where` on a new line, such as `where T: Display`, and aligns
 multi-constraint clauses. Constraint clauses are parsed and formatted,

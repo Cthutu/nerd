@@ -1,5 +1,5 @@
 impl atomic[i32] {
-    load :: fn (self: ^atomic[i32]) -> i32 {
+    load :: fn (_self: ^atomic[i32]) -> i32 {
         return 73
     }
 }

@@ -270,8 +270,9 @@ intended exit code.
   Local trait implementations are checked against the required member
   signatures. Duplicate concrete implementations and overlapping generic
   implementations for the same trait are rejected. Generic trait
-  implementation parameters are inferred from the implementation target, as in
-  `impl Display for Box[T] where T: Display { ... }`.
+  implementation parameters are declared explicitly after `impl`, as in
+  `impl [T] Display for Box[T] where T: Display { ... }`. A parameter may be
+  used only by implementation members and need not occur in the target type.
 - Fixed arrays own their elements and carry length in the type.
 - Slices borrow contiguous storage.
 - Dynamic arrays own growable storage and should be freed when no longer used.

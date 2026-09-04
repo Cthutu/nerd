@@ -4,7 +4,7 @@ Stack :: plex [T] {
     data [..]T
 }
 
-impl Stack[T] {
+impl [T] Stack[T] {
     push :: fn (self: ^Stack[T], elem: T) {
         self.data.push(elem)
     }

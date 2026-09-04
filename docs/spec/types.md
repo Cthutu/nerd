@@ -121,8 +121,10 @@ and overlapping generic implementations for the same trait are rejected. A
 trait implementation is atomic: all required members for one trait/type pair
 must appear in the same `impl Trait for Type` block. The language does not
 merge partial implementations of the same trait for the same type across
-multiple impl blocks. Generic implementation parameters are inferred from the
-target type, for example `impl Display for Box[T] where T: Display { ... }`.
+multiple impl blocks. Generic implementation parameters are declared explicitly
+after `impl`, for example
+`impl [T] Display for Box[T] where T: Display { ... }`. They may also be used
+only by implementation members, as in `impl [T] Stack[i32] { ... }`.
 
 Generic application uses square brackets on a type name, for example
 `Map[string, i32]`. Parser support permits an empty bracket list, but the useful

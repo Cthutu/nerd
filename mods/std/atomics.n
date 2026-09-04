@@ -29,7 +29,7 @@ pub AtomicCompareExchangeResult :: enum [T] {
     NotExchanged(T)
 }
 
-pub impl atomic[T] {
+pub impl [T] atomic[T] {
 
     pragma compiler_intrinsic("atomic.load")
 

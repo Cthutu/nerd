@@ -4,7 +4,7 @@ Box :: plex [T] {
 
 IntBox :: Box[i32]
 
-impl Box[T] {
+impl [T] Box[T] {
     init :: fn (value: T) -> Box {
         return { value }
     }

@@ -6939,6 +6939,22 @@ internal void format_emit_impl(StringBuilder* sb,
         sb_append_cstr(sb, "pub ");
     }
     sb_append_cstr(sb, "impl ");
+    if (impl->generic_params_index != U32_MAX) {
+        const CstGenericParams* generic =
+            &cst->generic_params[impl->generic_params_index];
+        sb_append_char(sb, '[');
+        for (u32 i = 0; i < generic->symbol_count; ++i) {
+            if (i > 0) {
+                sb_append_cstr(sb, ", ");
+            }
+            sb_append_string(
+                sb,
+                lex_symbol(
+                    lexer,
+                    cst->generic_param_symbols[generic->first_symbol + i]));
+        }
+        sb_append_cstr(sb, "] ");
+    }
     if (impl->trait_type_node_index != U32_MAX) {
         format_emit_expr(sb, cst, lexer, impl->trait_type_node_index, 0);
         sb_append_cstr(sb, " for ");

@@ -73,7 +73,7 @@ on "windows" {
 
 }
 
-impl Rect[U] {
+impl [U] Rect[U] {
 
     pub right :: fn (self: Self) -> U {
         return self.x + self.w

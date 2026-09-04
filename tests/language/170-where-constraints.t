@@ -30,7 +30,7 @@ Box :: plex [T] {
     value T
 }
 
-impl Box[T]
+impl [T] Box[T]
 where T: Display {
     get :: fn (self: Self) -> T {
         return self.value

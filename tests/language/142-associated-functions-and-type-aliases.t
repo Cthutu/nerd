@@ -6,7 +6,7 @@ IntBox :: Box[i32]
 
 global_box := IntBox.init(40)
 
-impl Box[T] {
+impl [T] Box[T] {
     init :: fn (value: T) -> Self {
         return { value }
     }

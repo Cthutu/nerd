@@ -15,7 +15,7 @@ Box :: plex [T] {
     value T
 }
 
-impl Display for Box[T]
+impl [T] Display for Box[T]
 where T: Display {
     show :: fn (self: Self) -> string {
         return self.value.show()

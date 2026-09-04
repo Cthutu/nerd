@@ -61,10 +61,10 @@ impl Type {
 impl TraitName for Type {
     name :: fn (self: Self) -> ReturnType { ... }
 }
-impl Name[T] {
+impl [T] Name[T] {
     name :: fn (self: ^Name[T], value: T) { ... }
 }
-impl Name[T]
+impl [T] Name[T]
 where T: Trait {
     name :: fn (self: Name[T]) -> T { ... }
 }

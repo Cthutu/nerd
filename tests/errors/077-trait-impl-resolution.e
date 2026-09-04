@@ -46,7 +46,7 @@ impl Display for Box[i32] {
     show :: fn (self: Self) => "i32 box"
 }
 
-impl Display for Box[T] {
+impl [T] Display for Box[T] {
     show :: fn (self: Self) => "any box"
 }
 
