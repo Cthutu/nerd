@@ -11,9 +11,9 @@ impl [T] Stack[i32] {
 
 impl [T] []T
 where T: Eq {
-    contains :: fn (self: Self, value: T) -> bool {
-        for item in self {
-            on item^ == value => return true
+    contains :: fn (self: ^Self, value: T) -> bool {
+        for i in [0 .. self.count] {
+            on (self^)[i] == value => return true
         }
         return false
     }

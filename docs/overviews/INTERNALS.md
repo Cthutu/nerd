@@ -219,6 +219,13 @@ while binding element parameters. It defers empty array arguments until other
 arguments or the expected return type have supplied their generic element type,
 then checks those literals with the substituted parameter type.
 
+Method receivers declared as `^Self` are lowered by taking the address of the
+receiver value. When `Self` is a slice and the call receiver is a fixed array,
+method resolution applies the normal fixed-array-to-slice borrow first and then
+passes a pointer to that slice value. Inside the method, the receiver therefore
+retains its declared pointer type; `(self^)[i]` explicitly indexes the slice,
+while `self[i]` uses Nerd's ordinary pointer-indexing semantics.
+
 The parser recognises a same-line `arena name` sequence as a reversed built-in
 type declaration and reports Nerd's name-first declaration forms. The formatter
 preserves that malformed sequence on one line so formatting cannot obscure the

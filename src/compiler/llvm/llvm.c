@@ -13331,6 +13331,15 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 return (LlvmValue){0};
             }
 
+            if (llvm_type_kind(ctx->sema, operand.type_index) == STK_Array &&
+                llvm_type_kind(ctx->sema, expr->type_index) == STK_Slice) {
+                return llvm_coerce_expr_to_type(ctx,
+                                                function,
+                                                expr->operand_expr_index,
+                                                operand,
+                                                expr->type_index);
+            }
+
             string source_type = llvm_type_string(ctx, operand.type_index);
             string target_type = llvm_type_string(ctx, expr->type_index);
             if (llvm_type_kind(ctx->sema, operand.type_index) == STK_Pointer &&

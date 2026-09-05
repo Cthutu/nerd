@@ -2005,6 +2005,34 @@ internal u32 hir_lower_expr(Hir*         hir,
                     receiver_type = hir_node_type(sema, receiver_node_index);
                 }
                 if (sema->node_method_call_receiver_refs[node_index]) {
+                    u32 receiver_value_type = sema_no_type();
+                    u32 actual_receiver_type =
+                        receiver_expr_index < array_count(hir->exprs)
+                            ? hir->exprs[receiver_expr_index].type_index
+                            : sema_no_type();
+                    if (receiver_type < array_count(sema->types) &&
+                        sema->types[receiver_type].kind == STK_Pointer) {
+                        receiver_value_type =
+                            sema->types[receiver_type].first_param_type;
+                    }
+                    if (receiver_value_type < array_count(sema->types) &&
+                        actual_receiver_type < array_count(sema->types) &&
+                        sema->types[receiver_value_type].kind == STK_Slice &&
+                        sema->types[actual_receiver_type].kind == STK_Array &&
+                        sema->types[receiver_value_type].first_param_type ==
+                            sema->types[actual_receiver_type]
+                                .first_param_type) {
+                        receiver_expr_index = hir_add_expr(
+                            hir,
+                            (HirExpr){
+                                .kind               = HIR_EXPR_Cast,
+                                .type_index         = receiver_value_type,
+                                .symbol_handle      = U32_MAX,
+                                .local_index        = sema_no_local(),
+                                .operand_expr_index = receiver_expr_index,
+                                .extra_expr_index   = hir_no_index(),
+                            });
+                    }
                     receiver_expr_index = hir_add_expr(
                         hir,
                         (HirExpr){

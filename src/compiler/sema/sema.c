@@ -14483,6 +14483,20 @@ typedef struct {
     bool receiver_deref;
 } SemaResolvedMethodCall;
 
+internal bool sema_method_receiver_matches_by_ref(Sema* sema,
+                                                  u32   expected_self,
+                                                  u32   receiver_type)
+{
+    if (expected_self == sema_no_type() ||
+        expected_self >= array_count(sema->types) ||
+        sema->types[expected_self].kind != STK_Pointer) {
+        return false;
+    }
+
+    return sema_type_matches(
+        sema, sema->types[expected_self].first_param_type, receiver_type);
+}
+
 internal bool sema_seed_local_from_call_arg_expected(const Lexer* lexer,
                                                      const Ast*   ast,
                                                      Sema*        sema,
@@ -14830,10 +14844,9 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
             if (!receiver_deferred && !sema_type_matches(receiver_match_sema,
                                                          expected_self,
                                                          receiver_match_type)) {
-                u32 pointer_receiver = sema_add_pointer_type(
-                    receiver_match_sema, receiver_match_type);
-                if (sema_type_matches(
-                        receiver_match_sema, expected_self, pointer_receiver)) {
+                if (sema_method_receiver_matches_by_ref(receiver_match_sema,
+                                                        expected_self,
+                                                        receiver_match_type)) {
                     receiver_ref = true;
                 } else if (receiver_match_type != sema_no_type() &&
                            receiver_match_sema->types[receiver_match_type]
@@ -15069,11 +15082,10 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
                 if (!sema_type_matches(receiver_match_sema,
                                        expected_self,
                                        receiver_match_type)) {
-                    u32 pointer_receiver = sema_add_pointer_type(
-                        receiver_match_sema, receiver_match_type);
-                    if (sema_type_matches(receiver_match_sema,
-                                          expected_self,
-                                          pointer_receiver)) {
+                    if (sema_method_receiver_matches_by_ref(
+                            receiver_match_sema,
+                            expected_self,
+                            receiver_match_type)) {
                         receiver_ref = true;
                     } else {
                         array_free(source_arg_types);
