@@ -333,7 +333,7 @@ on "windows" {
 
     -- Returns true for rooted and drive-absolute Windows paths.
     files_native_is_absolute :: fn (path: string) -> bool {
-        on path.count == 0 => return no
+        on path.count == 0                  => return no
         on files_is_separator(path.data[0]) => return yes
         return path.count >= 3 && path.data[1] == ':' && files_is_separator(path.data[2])
     }
@@ -342,22 +342,16 @@ on "windows" {
 
 -- Opens a file in the requested mode and transfers handle ownership to the
 -- caller.
-pub open :: fn (path: string, mode: FileMode = FileMode.Read) -> File\FileError {
-    return files_native_open(path, mode)
-}
+pub open :: fn (path: string, mode: FileMode = FileMode.Read) => files_native_open(path, mode)
 
 impl File {
 
     -- Reads up to the output slice length and returns the number of bytes read.
-    pub read :: fn (file: ^Self, output: []u8) -> usize\FileError {
-        return files_native_read(file, output)
-    }
+    pub read :: fn (file: ^Self, output: []u8) => files_native_read(file, output)
 
     -- Writes up to the input slice length and returns the number of bytes
     -- written.
-    pub write :: fn (file: ^Self, input: []u8) -> usize\FileError {
-        return files_native_write(file, input)
-    }
+    pub write :: fn (file: ^Self, input: []u8) => files_native_write(file, input)
 
     -- Writes every input byte unless an operating-system error occurs.
     pub write_all :: fn (file: ^Self, input: []u8) -> void\FileError {
@@ -370,14 +364,10 @@ impl File {
     }
 
     -- Flushes buffered file contents and metadata to stable storage.
-    pub flush :: fn (file: ^Self) -> void\FileError {
-        return files_native_flush(file)
-    }
+    pub flush :: fn (file: ^Self) => files_native_flush(file)
 
     -- Closes the owned handle and invalidates it after success.
-    pub close :: fn (file: ^Self) -> void\FileError {
-        return files_native_close(file)
-    }
+    pub close :: fn (file: ^Self) => files_native_close(file)
 
 }
 
@@ -407,10 +397,7 @@ pub read_bytes :: fn (path         : string,
 }
 
 -- Reads an entire file as bytes and returns an arena-backed string view.
-pub read_text :: fn (path         : string,
-                     output_arena : ^arena = temp_arena) -> string\FileError {
-    return read_bytes(path, output_arena)?.as(string)
-}
+pub read_text :: fn (path: string, output_arena: ^arena = temp_arena) => read_bytes(path, output_arena)?.as(string)
 
 -- Replaces a file's contents with the supplied bytes.
 pub write_bytes :: fn (path: string, input: []u8) -> void\FileError {
@@ -420,20 +407,14 @@ pub write_bytes :: fn (path: string, input: []u8) -> void\FileError {
 }
 
 -- Replaces a file's contents with the supplied string bytes.
-pub write_text :: fn (path: string, text: string) -> void\FileError {
-    return write_bytes(path, text.as([]u8))
-}
+pub write_text :: fn (path: string, text: string) => write_bytes(path, text.as([]u8))
 
 -- Removes a regular file or symbolic link.
-pub remove :: fn (path: string) -> void\FileError {
-    return files_native_remove(path)
-}
+pub remove :: fn (path: string) => files_native_remove(path)
 
 -- Returns all available portable metadata for a path without following a final
 -- symbolic link.
-pub file_info :: fn (path: string) -> FileInfo\FileError {
-    return files_native_file_info(path)
-}
+pub file_info :: fn (path: string) => files_native_file_info(path)
 
 -- Returns true when metadata can be read for a path.
 pub exists :: fn (path: string) -> bool {
@@ -488,9 +469,7 @@ files_extension_start :: fn (path: string) -> usize {
 }
 
 -- Returns a borrowed view of the final path component.
-pub file_name :: fn (path: string) -> string {
-    return path[files_component_start(path)..]
-}
+pub file_name :: fn (path: string) => path[files_component_start(path)..]
 
 -- Returns a borrowed view of the parent path.
 pub parent :: fn (path: string) -> string {
@@ -509,9 +488,7 @@ pub parent :: fn (path: string) -> string {
 }
 
 -- Returns a borrowed extension including its leading dot, or an empty view.
-pub extension :: fn (path: string) -> string {
-    return path[files_extension_start(path)..]
-}
+pub extension :: fn (path: string) => path[files_extension_start(path)..]
 
 -- Returns a borrowed final component without its extension.
 pub stem :: fn (path: string) -> string {
@@ -543,15 +520,13 @@ pub replace_extension :: fn (path          : string,
 }
 
 -- Returns true when a path is absolute on the active platform.
-pub is_absolute :: fn (path: string) -> bool {
-    return files_native_is_absolute(path)
-}
+pub is_absolute :: fn (path: string) => files_native_is_absolute(path)
 
 -- Joins two path fragments in the selected arena.
 pub join :: fn (left         : string,
                 right        : string,
                 output_arena : ^arena = temp_arena) -> string {
-    on left.count == 0 => return output_arena.pr(right)
+    on left.count == 0  => return output_arena.pr(right)
     on right.count == 0 => return output_arena.pr(left)
     left_has_separator          := files_is_separator(left.data[left.count - 1])
     right_has_separator         := files_is_separator(right.data[0])

@@ -32,19 +32,13 @@ on "linux" {
     math_tan :: ffi libm tan (value: f64) -> f64
 
     -- Returns the sine of `value`, where `value` is measured in radians.
-    pub sin :: fn (value: f64) -> f64 {
-        return math_sin(value)
-    }
+    pub sin :: fn (value: f64) => math_sin(value)
 
     -- Returns the cosine of `value`, where `value` is measured in radians.
-    pub cos :: fn (value: f64) -> f64 {
-        return math_cos(value)
-    }
+    pub cos :: fn (value: f64) => math_cos(value)
 
     -- Returns the tangent of `value`, where `value` is measured in radians.
-    pub tan :: fn (value: f64) -> f64 {
-        return math_tan(value)
-    }
+    pub tan :: fn (value: f64) => math_tan(value)
 
 }
 
@@ -57,19 +51,13 @@ on "windows" {
     math_tan :: ffi crt tan (value: f64) -> f64
 
     -- Returns the sine of `value`, where `value` is measured in radians.
-    pub sin :: fn (value: f64) -> f64 {
-        return math_sin(value)
-    }
+    pub sin :: fn (value: f64) => math_sin(value)
 
     -- Returns the cosine of `value`, where `value` is measured in radians.
-    pub cos :: fn (value: f64) -> f64 {
-        return math_cos(value)
-    }
+    pub cos :: fn (value: f64) => math_cos(value)
 
     -- Returns the tangent of `value`, where `value` is measured in radians.
-    pub tan :: fn (value: f64) -> f64 {
-        return math_tan(value)
-    }
+    pub tan :: fn (value: f64) => math_tan(value)
 
 }
 
@@ -99,9 +87,7 @@ impl [U] Rect[U] {
             else other.bottom()
 
         on right <= left ||
-            bottom <= top => {
-            return Self { x: left y: top w: 0 h: 0 }
-        }
+            bottom <= top => return Self { x: left y: top w: 0 h: 0 }
         return Self { x: left y: top w: right - left h: bottom - top }
     }
 

@@ -12,9 +12,7 @@ image_view_rect :: fn (view_width   : u32,
     on image_width == 0 ||
         image_height == 0 ||
         view_width == 0 ||
-        view_height == 0 => {
-        return PixelRect { x: 0 y: 0 width: 0 height: 0 }
-    }
+        view_height == 0 => return PixelRect { x: 0 y: 0 width: 0 height: 0 }
 
     width_from_height := (view_height * image_width) / image_height
     draw_width        := view_width

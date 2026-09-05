@@ -117,14 +117,8 @@ on "windows" {
 
     term_windows_virtual_key :: fn (virtual_key: u16) -> ?TermScanCode {
         vk := virtual_key.as(u32)
-        on vk >= '0'.as(u32) &&
-            vk <= '9'.as(u32) => {
-            return vk.as(TermScanCode)
-        }
-        on vk >= 'A'.as(u32) &&
-            vk <= 'Z'.as(u32) => {
-            return vk.as(TermScanCode)
-        }
+        on vk >= '0'.as(u32) && vk <= '9'.as(u32) => return vk.as(TermScanCode)
+        on vk >= 'A'.as(u32) && vk <= 'Z'.as(u32) => return vk.as(TermScanCode)
         return on virtual_key {
             VK_BACK      => Backspace
             VK_TAB       => Tab
@@ -397,9 +391,8 @@ on "windows" {
     -- Reads one translated terminal key.
     pub term_get_key :: fn () -> ?TermScanCode {
         key := term_windows_console_key()
-        on key => {
-            return key
-        } else {
+        on key => return key
+            else {
             byte := term_read_byte()
             on byte == 0 => return nil
             return term_scan_code_from_codepoint(byte.as(u32))

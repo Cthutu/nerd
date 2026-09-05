@@ -50,9 +50,7 @@ door_ink    :: rgb(232, 126, 102)
 door_paper  :: rgb(88, 22, 18)
 text_ink    :: rgb(224, 212, 176)
 
-dungeon_index :: fn (x: i32, y: i32) -> usize {
-    return (y.as(u32) * map_width + x.as(u32)).as(usize)
-}
+dungeon_index :: fn (x: i32, y: i32) => (y.as(u32) * map_width + x.as(u32)).as(usize)
 
 dungeon_in_bounds :: fn (x: i32, y: i32) -> bool {
     return x >= 0 && y >= 0 && x < map_width.as(i32) && y < map_height.as(i32)
@@ -88,9 +86,7 @@ dungeon_wall_visible :: fn (x: i32, y: i32) -> bool {
     return no
 }
 
-rand_i32 :: fn (min: i32, max: i32) -> i32 {
-    return random_range_i64(min.as(i64), max.as(i64)).as(i32)
-}
+rand_i32 :: fn (min: i32, max: i32) => random_range_i64(min.as(i64), max.as(i64)).as(i32)
 
 rand_odd :: fn (min: i32, max: i32) -> i32 {
     value := rand_i32(min, max)

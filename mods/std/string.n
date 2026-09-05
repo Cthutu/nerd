@@ -46,9 +46,7 @@ string_trim_end :: fn (text: string) -> string {
     return text[..end]
 }
 
-string_trim :: fn (text: string) -> string {
-    return string_trim_end(string_trim_start(text))
-}
+string_trim :: fn (text: string) => string_trim_end(string_trim_start(text))
 
 impl string {
 
@@ -96,31 +94,21 @@ impl string {
     }
 
     -- Returns a view with leading zero bytes and ASCII whitespace removed.
-    pub trim_start :: fn (text: Self) -> string {
-        return string_trim_start(text)
-    }
+    pub trim_start :: fn (text: Self) => string_trim_start(text)
 
     -- Returns a view with trailing zero bytes and ASCII whitespace removed.
-    pub trim_end :: fn (text: Self) -> string {
-        return string_trim_end(text)
-    }
+    pub trim_end :: fn (text: Self) => string_trim_end(text)
 
     -- Returns a view with leading and trailing zero bytes and ASCII whitespace
     -- removed.
-    pub trim :: fn (text: Self) -> string {
-        return string_trim(text)
-    }
+    pub trim :: fn (text: Self) => string_trim(text)
 
     -- Returns a view with leading and trailing zero bytes and ASCII whitespace
     -- removed.
-    pub trim_whitespace :: fn (text: Self) -> string {
-        return string_trim(text)
-    }
+    pub trim_whitespace :: fn (text: Self) => string_trim(text)
 
     -- Returns a view ending before the first zero byte.
-    pub trim_null_terminated :: fn (text: Self) -> string {
-        return from_null_terminated(text)
-    }
+    pub trim_null_terminated :: fn (text: Self) => from_null_terminated(text)
 
 }
 

@@ -35,9 +35,7 @@ pub impl [T] atomic[T] {
 
     -- Loads and returns the current value with the selected memory order.
     pub load :: fn (self  : ^atomic[T],
-                    order :: AtomicLoadOrder = SequentiallyConsistent) -> T {
-        return self^
-    }
+                    order :: AtomicLoadOrder = SequentiallyConsistent) => self^
 
     pragma compiler_intrinsic("atomic.store")
 
@@ -126,9 +124,7 @@ pub impl [T] atomic[T] {
         on observed == expected => {
             self^ = desired
             return Exchanged
-        } else {
-            return NotExchanged(observed)
-        }
+        } else return NotExchanged(observed)
     }
 
     pragma compiler_intrinsic("atomic.compare_exchange_weak")
@@ -143,9 +139,7 @@ pub impl [T] atomic[T] {
         on observed == expected => {
             self^ = desired
             return Exchanged
-        } else {
-            return NotExchanged(observed)
-        }
+        } else return NotExchanged(observed)
     }
 
 }

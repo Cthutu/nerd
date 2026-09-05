@@ -98,7 +98,7 @@ GfxFrameRenderer :: plex {
 
 -- Clamps a `u32` size to the public `u16` frame dimension range.
 gfx_u32_to_u16_size :: fn (value: u32) -> u16 {
-    on value == 0 => return 1
+    on value == 0    => return 1
     on value > 65535 => return 65535
     return value.as(u16)
 }
@@ -148,9 +148,7 @@ gfx_pixel_layer_resize :: fn (layer: ^PixelLayer, width: u16, height: u16) {
 -- Returns a clipped rectangle that fits inside the layer.
 gfx_pixel_layer_clip :: fn (layer: ^PixelLayer, rect: PixelRect) -> PixelRect {
     on rect.x >= layer.width.as(u32) ||
-        rect.y >= layer.height.as(u32) => {
-        return PixelRect { x: rect.x y: rect.y width: 0 height: 0 }
-    }
+        rect.y >= layer.height.as(u32) => return PixelRect { x: rect.x y: rect.y width: 0 height: 0 }
 
     max_width  := layer.width.as(u32) - rect.x
     max_height := layer.height.as(u32) - rect.y
@@ -161,9 +159,7 @@ gfx_pixel_layer_clip :: fn (layer: ^PixelLayer, rect: PixelRect) -> PixelRect {
 }
 
 -- Returns the linear storage index for a pixel coordinate.
-gfx_pixel_layer_index :: fn (layer: ^PixelLayer, x: u32, y: u32) -> usize {
-    return (y * layer.width.as(u32) + x).as(usize)
-}
+gfx_pixel_layer_index :: fn (layer: ^PixelLayer, x: u32, y: u32) => (y * layer.width.as(u32) + x).as(usize)
 
 gfx_blend_channel :: fn (source: u32, dest: u32, alpha: u32) -> u32 {
     return (source * alpha + dest * (255 - alpha) + 127) / 255
@@ -172,7 +168,7 @@ gfx_blend_channel :: fn (source: u32, dest: u32, alpha: u32) -> u32 {
 -- Blends an ARGB source pixel over an opaque destination pixel.
 gfx_blend_pixel :: fn (dest: u32, source: u32) -> u32 {
     alpha := (source >> 24) & 0xff
-    on alpha == 0 => return dest
+    on alpha == 0   => return dest
     on alpha == 255 => return 0xff000000 | (source & 0x00ffffff)
 
     sr := (source >> 16) & 0xff
@@ -463,11 +459,11 @@ gfx_gl_init_renderer :: fn (renderer: ^GfxFrameRenderer) -> bool {
 gfx_present_scaled_pixels_gl :: fn (system : ^GfxSystem,
                                     frame  : ^Frame,
                                     buffer : FrameScaledPixelBuffer) -> bool {
-    on !gl_init(frame) => return no
+    on !gl_init(frame)         => return no
     on !gl_make_current(frame) => return no
 
     renderer := gfx_find_renderer(system, frame.id)
-    on renderer == nil => return no
+    on renderer == nil                 => return no
     on !gfx_gl_init_renderer(renderer) => return no
 
     glViewport(0, 0, frame.width.as(GLsizei), frame.height.as(GLsizei))
@@ -567,20 +563,14 @@ gfx_present_pixels_gl :: fn (system : ^GfxSystem,
 impl PixelLayer {
 
     -- Returns the current virtual pixel width.
-    pub pixel_width :: fn (layer: ^Self) -> u32 {
-        return layer.width.as(u32)
-    }
+    pub pixel_width :: fn (layer: ^Self) => layer.width.as(u32)
 
     -- Returns the current virtual pixel height.
-    pub pixel_height :: fn (layer: ^Self) -> u32 {
-        return layer.height.as(u32)
-    }
+    pub pixel_height :: fn (layer: ^Self) => layer.height.as(u32)
 
     -- Returns the contiguous pixel storage borrowed from this layer. Each
     -- `u32` colour uses ARGB format (`0xAARRGGBB`).
-    pub pixels :: fn (layer: ^Self) -> []u32 {
-        return layer.data[..]
-    }
+    pub pixels :: fn (layer: ^Self) => layer.data[..]
 
     -- Clears every pixel to `colour`, which uses ARGB format (`0xAARRGGBB`).
     pub clear :: fn (layer: ^Self, colour: u32) {
@@ -839,9 +829,7 @@ test {
         for info in system.layers {
             on info.id == handle.id &&
                 info.kind == GfxLayerType.Pixel &&
-                info.index < system.pixel_layers.count => {
-                return ^system.pixel_layers[info.index]
-            }
+                info.index < system.pixel_layers.count => return ^system.pixel_layers[info.index]
         }
         return nil
     }

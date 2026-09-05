@@ -212,9 +212,7 @@ pub term_scroll :: fn () {
     term_print("\x1bD")
 }
 
-term_key_index :: fn (key: TermScanCode) -> usize {
-    return key.as(u32).as(usize)
-}
+term_key_index :: fn (key: TermScanCode) => key.as(u32).as(usize)
 
 term_key_index_valid :: fn (index: usize) -> bool {
     return index < TERM_SCAN_CODE_COUNT.as(usize)
@@ -297,41 +295,27 @@ pub term_alt_down :: fn (keyboard: TermKeyboard) -> bool {
 }
 
 -- Returns whether the physical left Alt key is held in this snapshot.
-pub term_left_alt_down :: fn (keyboard: TermKeyboard) -> bool {
-    return term_key_down(keyboard, TermScanCode.LeftAlt)
-}
+pub term_left_alt_down :: fn (keyboard: TermKeyboard) => term_key_down(keyboard, TermScanCode.LeftAlt)
 
 -- Returns whether the physical right Alt key is held in this snapshot.
-pub term_right_alt_down :: fn (keyboard: TermKeyboard) -> bool {
-    return term_key_down(keyboard, TermScanCode.RightAlt)
-}
+pub term_right_alt_down :: fn (keyboard: TermKeyboard) => term_key_down(keyboard, TermScanCode.RightAlt)
 
 -- Legacy alias for `term_alt_down`.
-pub term_mod_down :: fn (keyboard: TermKeyboard) -> bool {
-    return term_alt_down(keyboard)
-}
+pub term_mod_down :: fn (keyboard: TermKeyboard) => term_alt_down(keyboard)
 
 impl TermInput {
 
     -- Returns whether a physical key is currently held in this input snapshot.
-    pub key_down :: fn (input: Self, key: TermScanCode) -> bool {
-        return term_key_down(input.keyboard, key)
-    }
+    pub key_down :: fn (input: Self, key: TermScanCode) => term_key_down(input.keyboard, key)
 
     -- Returns whether a physical key was newly pressed in this input snapshot.
-    pub key_pressed :: fn (input: Self, key: TermScanCode) -> bool {
-        return term_key_pressed(input.keyboard, key)
-    }
+    pub key_pressed :: fn (input: Self, key: TermScanCode) => term_key_pressed(input.keyboard, key)
 
     -- Returns whether a physical key was released in this input snapshot.
-    pub key_released :: fn (input: Self, key: TermScanCode) -> bool {
-        return term_key_released(input.keyboard, key)
-    }
+    pub key_released :: fn (input: Self, key: TermScanCode) => term_key_released(input.keyboard, key)
 
     -- Returns the current-layout label for a physical key in this snapshot.
-    pub key_name :: fn (input: Self, key: TermScanCode) -> string {
-        return term_key_name(input.keyboard, key)
-    }
+    pub key_name :: fn (input: Self, key: TermScanCode) => term_key_name(input.keyboard, key)
 
 }
 
@@ -339,25 +323,17 @@ impl TermSimulate {
 
     -- Returns whether a physical key is currently held in this simulation
     -- snapshot.
-    pub key_down :: fn (sim: Self, key: TermScanCode) -> bool {
-        return term_key_down(sim.keyboard, key)
-    }
+    pub key_down :: fn (sim: Self, key: TermScanCode) => term_key_down(sim.keyboard, key)
 
     -- Returns whether a physical key was newly pressed in this simulation
     -- snapshot.
-    pub key_pressed :: fn (sim: Self, key: TermScanCode) -> bool {
-        return term_key_pressed(sim.keyboard, key)
-    }
+    pub key_pressed :: fn (sim: Self, key: TermScanCode) => term_key_pressed(sim.keyboard, key)
 
     -- Returns whether a physical key was released in this simulation snapshot.
-    pub key_released :: fn (sim: Self, key: TermScanCode) -> bool {
-        return term_key_released(sim.keyboard, key)
-    }
+    pub key_released :: fn (sim: Self, key: TermScanCode) => term_key_released(sim.keyboard, key)
 
     -- Returns the current-layout label for a physical key in this snapshot.
-    pub key_name :: fn (sim: Self, key: TermScanCode) -> string {
-        return term_key_name(sim.keyboard, key)
-    }
+    pub key_name :: fn (sim: Self, key: TermScanCode) => term_key_name(sim.keyboard, key)
 
 }
 
@@ -746,7 +722,7 @@ term_resize_if_needed :: fn () -> bool {
     on rows == 0 => rows = 1
 
     on columns == term_last_columns && rows == term_last_rows => return no
-    on !term_fb_resize(columns, rows) => return no
+    on !term_fb_resize(columns, rows)                         => return no
 
     term_last_columns = columns
     term_last_rows    = rows

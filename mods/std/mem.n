@@ -117,9 +117,7 @@ pub free :: fn (allocation: []u8) {
 }
 
 -- Returns the runtime-tracked size for an allocation, or zero for nil.
-pub alloc_size :: fn (allocation: []u8) -> usize {
-    return nrt_mem_size(allocation.data.as(^void))
-}
+pub alloc_size :: fn (allocation: []u8) => nrt_mem_size(allocation.data.as(^void))
 
 -- Records the runtime allocation index that should trigger a diagnostic
 -- message.

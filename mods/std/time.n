@@ -20,9 +20,7 @@ pub elapsed :: fn (start: Instant, finish: Instant) -> Duration {
 }
 
 -- Adds a duration to a monotonic timestamp.
-pub add_duration :: fn (time: Instant, duration: Duration) -> Instant {
-    return (time + duration).as(Instant)
-}
+pub add_duration :: fn (time: Instant, duration: Duration) => (time + duration).as(Instant)
 
 -- Converts a duration to whole seconds.
 pub duration_to_secs :: fn (duration: Duration) -> u64 {
@@ -40,9 +38,7 @@ pub duration_to_us :: fn (duration: Duration) -> u64 {
 }
 
 -- Converts a duration to whole nanoseconds.
-pub duration_to_ns :: fn (duration: Duration) -> u64 {
-    return duration
-}
+pub duration_to_ns :: fn (duration: Duration) => duration
 
 -- Converts a duration to fractional seconds.
 pub secs :: fn (duration: Duration) -> f64 {

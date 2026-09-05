@@ -76,8 +76,8 @@ matrix_update :: fn (width: u32, height: u32) {
 }
 
 matrix_trail_colour :: fn (distance: u32, length: u32) -> Colour {
-    on distance == 0 => return matrix_green_bright
-    on distance < 3 => return matrix_green
+    on distance == 0         => return matrix_green_bright
+    on distance < 3          => return matrix_green
     on distance < length / 2 => return matrix_green_dim
     return matrix_green_faint
 }

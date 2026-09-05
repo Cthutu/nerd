@@ -36,9 +36,7 @@ pub random_seed :: fn (seed: u64) {
 }
 
 -- Returns a pseudo-random unsigned 64-bit integer.
-pub random_u64 :: fn () -> u64 {
-    return random_step()
-}
+pub random_u64 :: fn () => random_step()
 
 -- Returns a pseudo-random unsigned 64-bit integer in the inclusive range.
 pub random_range_u64 :: fn (min: u64, max: u64) -> u64 {

@@ -80,9 +80,7 @@ png_error :: fn (error: ImageError) -> PngContainer\ImageError {
     return error!
 }
 
-png_ok :: fn (png: PngContainer) -> PngContainer\ImageError {
-    return png
-}
+png_ok :: fn (png: PngContainer) => png
 
 png_image_invalid :: fn (message: string) -> Image\ImageError {
     return (ImageError.InvalidData {
@@ -94,9 +92,7 @@ png_image_error :: fn (error: ImageError) -> Image\ImageError {
     return error!
 }
 
-png_image_ok :: fn (image: Image) -> Image\ImageError {
-    return image
-}
+png_image_ok :: fn (image: Image) => image
 
 png_pixels_invalid :: fn (message: string) -> PngPixels\ImageError {
     return (ImageError.InvalidData {
@@ -108,9 +104,7 @@ png_pixels_error :: fn (error: ImageError) -> PngPixels\ImageError {
     return error!
 }
 
-png_pixels_ok :: fn (pixels: PngPixels) -> PngPixels\ImageError {
-    return pixels
-}
+png_pixels_ok :: fn (pixels: PngPixels) => pixels
 
 png_invalid_chunk :: fn (message: string) -> PngChunk\ImageError {
     return (ImageError.InvalidData {
@@ -209,9 +203,7 @@ png_read_chunk :: fn (reader: ^ImageReader) -> PngChunk\ImageError {
     chunk_crc := png_be_u32_at(reader.bytes, reader.offset)
     reader.offset += 4
 
-    on (png_chunk_crc(chunk_kind, chunk_data) != chunk_crc) => {
-        return png_invalid_chunk("PNG chunk CRC mismatch")
-    }
+    on (png_chunk_crc(chunk_kind, chunk_data) != chunk_crc) => return png_invalid_chunk("PNG chunk CRC mismatch")
 
     return {
         length : chunk_length
@@ -427,7 +419,7 @@ png_paeth :: fn (left: u8, up: u8, upper_left: u8) -> u8 {
     on pc < 0 => pc = -pc
 
     on pa <= pb && pa <= pc => return left
-    on pb <= pc => return up
+    on pb <= pc             => return up
     return upper_left
 }
 
@@ -488,9 +480,7 @@ png_unfilter :: fn (bytes             : []u8,
 }
 
 -- Converts one RGB triplet to a byte greyscale value.
-png_luma :: fn (red: u8, green: u8, blue: u8) -> u8 {
-    return ((red.as(u32) * 77 + green.as(u32) * 150 + blue.as(u32) * 29) >> 8).as(u8)
-}
+png_luma :: fn (red: u8, green: u8, blue: u8) => ((red.as(u32) * 77 + green.as(u32) * 150 + blue.as(u32) * 29) >> 8).as(u8)
 
 -- Expands greyscale tRNS into greyscale-alpha pixels when present.
 png_expand_greyscale :: fn (pixels       : []u8,

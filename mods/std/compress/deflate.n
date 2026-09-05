@@ -59,9 +59,7 @@ compress_error :: fn (error: CompressionError) -> [..]u8\CompressionError {
     return error!
 }
 
-compress_ok :: fn (bytes: [..]u8) -> [..]u8\CompressionError {
-    return bytes
-}
+compress_ok :: fn (bytes: [..]u8) => bytes
 
 compress_huffman_invalid :: fn (message: string) -> Huffman\CompressionError {
     return (CompressionError.InvalidData {
@@ -69,9 +67,7 @@ compress_huffman_invalid :: fn (message: string) -> Huffman\CompressionError {
     })!
 }
 
-compress_huffman_ok :: fn (huffman: Huffman) -> Huffman\CompressionError {
-    return huffman
-}
+compress_huffman_ok :: fn (huffman: Huffman) => huffman
 
 -- Creates a reader over raw DEFLATE block bytes.
 deflate_reader_new :: fn (bytes: []u8) -> DeflateReader {

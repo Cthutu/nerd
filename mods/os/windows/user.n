@@ -284,9 +284,4 @@ ffi "gdi32" {
     pub SwapBuffers       (hdc: HDC) -> BOOL
 }
 
-pub MessageBox :: fn (hWnd      : HWND,
-                      lpText    : ^u8,
-                      lpCaption : ^u8,
-                      uType     : UINT) -> i32 {
-    return c_MessageBox(hWnd, lpText, lpCaption, uType)
-}
+pub MessageBox :: fn (hWnd: HWND, lpText: ^u8, lpCaption: ^u8, uType: UINT) => c_MessageBox(hWnd, lpText, lpCaption, uType)

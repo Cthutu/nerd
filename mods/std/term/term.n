@@ -418,9 +418,7 @@ term_arena_done :: fn () {
 }
 
 -- Constructs a terminal colour from red, green, and blue components.
-pub rgb :: fn (r: u8, g: u8, b: u8) -> Colour {
-    return (r.as(u32) << 16 | b.as(u32) | (g.as(u32) << 8)).as(Colour)
-}
+pub rgb :: fn (r: u8, g: u8, b: u8) => (r.as(u32) << 16 | b.as(u32) | (g.as(u32) << 8)).as(Colour)
 
 term_key_event :: fn (scan_code : TermScanCode,
                       action    : TermKeyAction = TermKeyAction.Press,
@@ -438,17 +436,11 @@ term_key_event :: fn (scan_code : TermScanCode,
 
 term_scan_code_from_codepoint :: fn (codepoint: u32) -> TermScanCode {
     on codepoint >= 'a'.as(u32) &&
-        codepoint <= 'z'.as(u32) => {
-        return (codepoint - 32).as(TermScanCode)
-    }
+        codepoint <= 'z'.as(u32) => return (codepoint - 32).as(TermScanCode)
     on codepoint >= 'A'.as(u32) &&
-        codepoint <= 'Z'.as(u32) => {
-        return codepoint.as(TermScanCode)
-    }
+        codepoint <= 'Z'.as(u32) => return codepoint.as(TermScanCode)
     on codepoint >= '0'.as(u32) &&
-        codepoint <= '9'.as(u32) => {
-        return codepoint.as(TermScanCode)
-    }
+        codepoint <= '9'.as(u32) => return codepoint.as(TermScanCode)
 
     return on codepoint {
         8     => Backspace
@@ -509,9 +501,7 @@ term_read_utf8_codepoint :: fn (first: u8) -> u32 {
         else on ((first & 0xf8) == 0xf0) => {
         remaining = 3
         codepoint = (first & 0x07).as(u32)
-    } else {
-        return utf8.REPLACEMENT_CODEPOINT
-    }
+    } else return utf8.REPLACEMENT_CODEPOINT
 
     for _ in [0 .. remaining] {
         next := term_read_byte()
@@ -650,9 +640,7 @@ pub term_key_name :: fn (keyboard  : TermKeyboard,
     return term_scan_code_name(scan_code)
 }
 
-term_fb_index :: fn (x: u32, y: u32) -> usize {
-    return (y * term_fb_width + x).as(usize)
-}
+term_fb_index :: fn (x: u32, y: u32) => (y * term_fb_width + x).as(usize)
 
 term_size_supported :: fn (width: u32, height: u32) -> bool {
     on width == 0 || height == 0 => return no
@@ -923,17 +911,11 @@ term_fb_put_clipped :: fn (x     : u32,
     }
 }
 
-term_codepoint_width :: fn (ch: u32) -> i32 {
-    return utf8.codepoint_display_width(ch)
-}
+term_codepoint_width :: fn (ch: u32) => utf8.codepoint_display_width(ch)
 
-term_utf8_decode_at :: fn (text: string, index: usize) -> (u32, usize) {
-    return utf8.decode_at(text, index)
-}
+term_utf8_decode_at :: fn (text: string, index: usize) => utf8.decode_at(text, index)
 
-term_text_display_width :: fn (text: string) -> i32 {
-    return utf8.display_width(text)
-}
+term_text_display_width :: fn (text: string) => utf8.display_width(text)
 
 -- Writes one Unicode codepoint and its colours to a framebuffer cell.
 pub term_fb_put :: fn (x     : i32,
@@ -1114,7 +1096,7 @@ term_box_string_char :: fn (chars: string, cell_index: usize) -> u32 {
 
     for byte_index < chars.count {
         decoded := term_utf8_decode_at(chars, byte_index)
-        on decoded.1 == 0 => return ' '.as(u32)
+        on decoded.1 == 0        => return ' '.as(u32)
         on current == cell_index => return decoded.0
         byte_index += decoded.1
         current    += 1
@@ -1138,25 +1120,25 @@ term_box_cell :: fn (source_x     : i32,
     on width == 1 && height == 1 => return fill
 
     on width == 1 => {
-        on source_y == 0 => return top
+        on source_y == 0          => return top
         on source_y == height - 1 => return bottom
         return left
     }
 
     on height == 1 => {
-        on source_x == 0 => return left
+        on source_x == 0         => return left
         on source_x == width - 1 => return right
         return top
     }
 
-    on source_x == 0 && source_y == 0 => return top_left
-    on source_x == width - 1 && source_y == 0 => return top_right
-    on source_x == 0 && source_y == height - 1 => return bottom_left
+    on source_x == 0 && source_y == 0                  => return top_left
+    on source_x == width - 1 && source_y == 0          => return top_right
+    on source_x == 0 && source_y == height - 1         => return bottom_left
     on source_x == width - 1 && source_y == height - 1 => return bottom_right
-    on source_y == 0 => return top
-    on source_y == height - 1 => return bottom
-    on source_x == 0 => return left
-    on source_x == width - 1 => return right
+    on source_y == 0                                   => return top
+    on source_y == height - 1                          => return bottom
+    on source_x == 0                                   => return left
+    on source_x == width - 1                           => return right
     return fill
 }
 
@@ -1314,9 +1296,7 @@ term_output_colour :: fn (output: ^TermOutput, prefix: string, colour: Colour) {
     term_output_push(output, $"\x1b[{prefix};2;{r};{g};{b}m")
 }
 
-term_output_string :: fn (output: TermOutput) -> string {
-    return output.bytes[..output.count].as(string)
-}
+term_output_string :: fn (output: TermOutput) => output.bytes[..output.count].as(string)
 
 -- Requests where the terminal cursor should be placed after the next retained
 -- framebuffer presentation.
@@ -1580,9 +1560,7 @@ term_csi_parameter :: fn (parameters      : TermCsiParameters,
             again
         }
         on field == wanted_field &&
-            subfield == wanted_subfield => {
-            return on seen => value else fallback
-        }
+            subfield == wanted_subfield => return on seen => value else fallback
         value = 0
         seen  = no
         on byte == ':' => subfield += 1
@@ -1710,14 +1688,12 @@ term_mouse_wheel_from_sgr :: fn (button_code : u32,
 
     -- Some terminals report horizontal wheel/trackpad scrolling as shifted
     -- vertical wheel events rather than xterm's direct 66/67 codes.
-    on (button_code & 4) != 0 => {
-        return on wheel {
-            0     => TermInputEvent.MouseWheel(x, y, -1, 0)
-            1     => TermInputEvent.MouseWheel(x, y, 1, 0)
-            2     => TermInputEvent.MouseWheel(x, y, -1, 0)
-            3     => TermInputEvent.MouseWheel(x, y, 1, 0)
-            else  => TermInputEvent.None
-        }
+    on (button_code & 4) != 0 => return on wheel {
+        0     => TermInputEvent.MouseWheel(x, y, -1, 0)
+        1     => TermInputEvent.MouseWheel(x, y, 1, 0)
+        2     => TermInputEvent.MouseWheel(x, y, -1, 0)
+        3     => TermInputEvent.MouseWheel(x, y, 1, 0)
+        else  => TermInputEvent.None
     }
 
     return on wheel {
@@ -1747,9 +1723,7 @@ term_read_sgr_mouse_sequence :: fn () -> TermInputEvent {
     on y < 0 => y = 0
 
     code := button.1
-    on (code & 64) != 0 => {
-        return term_mouse_wheel_from_sgr(code, x, y)
-    }
+    on (code & 64) != 0 => return term_mouse_wheel_from_sgr(code, x, y)
 
     button_mask := term_mouse_button_from_sgr(code)
     on y_param.2 == 'm' => {

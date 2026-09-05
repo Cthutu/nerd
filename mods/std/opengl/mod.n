@@ -12,9 +12,7 @@ on "linux" {
 
     use os.linux.glx
 
-    gl_get_proc_address :: fn (name: ^i8) -> ^void {
-        return glXGetProcAddress(name)
-    }
+    gl_get_proc_address :: fn (name: ^i8) => glXGetProcAddress(name)
 
 }
 
@@ -22,9 +20,7 @@ on "windows" {
 
     use os.windows
 
-    gl_get_proc_address :: fn (name: ^i8) -> ^void {
-        return wglGetOpenGLProcAddress(name)
-    }
+    gl_get_proc_address :: fn (name: ^i8) => wglGetOpenGLProcAddress(name)
 
 }
 
@@ -1790,9 +1786,7 @@ pub glActiveTexture :: fn (texture: GLenum) {
     gl_active_texture_proc(texture)
 }
 
-pub glCreateShader :: fn (type: GLenum) -> GLuint {
-    return gl_create_shader_proc(type)
-}
+pub glCreateShader :: fn (type: GLenum) => gl_create_shader_proc(type)
 
 pub glShaderSource :: fn (shader  : GLuint,
                           count   : GLsizei,
@@ -1820,9 +1814,7 @@ pub glDeleteShader :: fn (shader: GLuint) {
     gl_delete_shader_proc(shader)
 }
 
-pub glCreateProgram :: fn () -> GLuint {
-    return gl_create_program_proc()
-}
+pub glCreateProgram :: fn () => gl_create_program_proc()
 
 pub glAttachShader :: fn (program: GLuint, shader: GLuint) {
     gl_attach_shader_proc(program, shader)
@@ -1855,9 +1847,7 @@ pub glUseProgram :: fn (program: GLuint) {
     gl_use_program_proc(program)
 }
 
-pub glGetUniformLocation :: fn (program: GLuint, name: ^i8) -> GLint {
-    return gl_get_uniform_location_proc(program, name)
-}
+pub glGetUniformLocation :: fn (program: GLuint, name: ^i8) => gl_get_uniform_location_proc(program, name)
 
 pub glUniform1f :: fn (location: GLint, value0: GLfloat) {
     gl_uniform_1f_proc(location, value0)
@@ -2129,9 +2119,7 @@ pub glGenerateMipmap :: fn (target: GLenum) {
     gl_generate_mipmap_proc(target)
 }
 
-pub glIsRenderbuffer :: fn (renderbuffer: GLuint) -> GLboolean {
-    return gl_is_renderbuffer_proc(renderbuffer)
-}
+pub glIsRenderbuffer :: fn (renderbuffer: GLuint) => gl_is_renderbuffer_proc(renderbuffer)
 
 pub glBindRenderbuffer :: fn (target: GLenum, renderbuffer: GLuint) {
     gl_bind_renderbuffer_proc(target, renderbuffer)
@@ -2158,9 +2146,7 @@ pub glGetRenderbufferParameteriv :: fn (target : GLenum,
     gl_get_renderbuffer_parameter_iv_proc(target, name, values)
 }
 
-pub glIsFramebuffer :: fn (framebuffer: GLuint) -> GLboolean {
-    return gl_is_framebuffer_proc(framebuffer)
-}
+pub glIsFramebuffer :: fn (framebuffer: GLuint) => gl_is_framebuffer_proc(framebuffer)
 
 pub glBindFramebuffer :: fn (target: GLenum, framebuffer: GLuint) {
     gl_bind_framebuffer_proc(target, framebuffer)
@@ -2174,9 +2160,7 @@ pub glGenFramebuffers :: fn (count: GLsizei, framebuffers: ^GLuint) {
     gl_gen_framebuffers_proc(count, framebuffers)
 }
 
-pub glCheckFramebufferStatus :: fn (target: GLenum) -> GLenum {
-    return gl_check_framebuffer_status_proc(target)
-}
+pub glCheckFramebufferStatus :: fn (target: GLenum) => gl_check_framebuffer_status_proc(target)
 
 pub glFramebufferTexture2D :: fn (target     : GLenum,
                                   attachment : GLenum,
@@ -2255,9 +2239,7 @@ pub glFramebufferTextureLayer :: fn (target     : GLenum,
 pub glMapBufferRange :: fn (target : GLenum,
                             offset : GLintptr,
                             length : GLsizeiptr,
-                            access : GLbitfield) -> ^void {
-    return gl_map_buffer_range_proc(target, offset, length, access)
-}
+                            access : GLbitfield) => gl_map_buffer_range_proc(target, offset, length, access)
 
 pub glFlushMappedBufferRange :: fn (target : GLenum,
                                     offset : GLintptr,
@@ -2279,9 +2261,7 @@ test {
         return nil
     }
 
-    gl_test_present_proc :: fn (_name: ^i8) -> ^void {
-        return gl_stub_active_texture.as(^void)
-    }
+    gl_test_present_proc :: fn (_name: ^i8) => gl_stub_active_texture.as(^void)
 
 }
 

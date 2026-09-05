@@ -160,17 +160,13 @@ on "windows" {
 -- Runs a shell command, waits for it to finish, and returns its exit status.
 -- Returns -1 if the child cannot be created or waited for. On Linux, a child
 -- terminated by a signal returns 128 plus the signal number.
-pub run_string :: fn (command: string) -> i32 {
-    return process_run_string(command)
-}
+pub run_string :: fn (command: string) => process_run_string(command)
 
 -- Runs an executable, passes each later slice element as one argument, waits
 -- for it to finish, and returns its exit status. Element zero names the
 -- executable. Returns -1 when the slice is empty or the child cannot be created
 -- or waited for.
-pub run_array :: fn (arguments: []string) -> i32 {
-    return process_run_array(arguments)
-}
+pub run_array :: fn (arguments: []string) => process_run_array(arguments)
 
 -- Selects process execution by either a shell-command string or argument slice.
 pub run :: fn {

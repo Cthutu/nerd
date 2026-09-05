@@ -52,14 +52,10 @@ utf8_decode_storage_at :: fn (data  : ^u8,
 }
 
 -- Decodes one UTF-8 codepoint from a string at byte offset `index`.
-pub decode_at :: fn (text: string, index: usize) -> (u32, usize) {
-    return utf8_decode_storage_at(text.data, text.count, index)
-}
+pub decode_at :: fn (text: string, index: usize) => utf8_decode_storage_at(text.data, text.count, index)
 
 -- Decodes one UTF-8 codepoint from a byte slice at byte offset `index`.
-pub decode_bytes_at :: fn (bytes: []u8, index: usize) -> (u32, usize) {
-    return utf8_decode_storage_at(bytes.data, bytes.count, index)
-}
+pub decode_bytes_at :: fn (bytes: []u8, index: usize) => utf8_decode_storage_at(bytes.data, bytes.count, index)
 
 -- Decodes the first UTF-8 codepoint from a byte slice, or zero when empty.
 pub decode_first_byte_slice :: fn (bytes: []u8) -> u32 {
@@ -109,18 +105,18 @@ pub encode_to :: fn (codepoint: u32, output: []u8) -> usize {
 
 -- Returns the terminal display width of a Unicode codepoint.
 pub codepoint_display_width :: fn (codepoint: u32) -> i32 {
-    on codepoint == 0 => return 0
+    on codepoint == 0                                            => return 0
     on codepoint < 32 || (codepoint >= 0x7f && codepoint < 0xa0) => return 0
-    on codepoint == 30028 => return 2
-    on codepoint >= 0x1100 && codepoint <= 0x115f => return 2
-    on codepoint == 0x2329 || codepoint == 0x232a => return 2
-    on codepoint >= 0x2e80 && codepoint <= 0xa4cf => return 2
-    on codepoint >= 0xac00 && codepoint <= 0xd7a3 => return 2
-    on codepoint >= 0xf900 && codepoint <= 0xfaff => return 2
-    on codepoint >= 0xfe10 && codepoint <= 0xfe19 => return 2
-    on codepoint >= 0xfe30 && codepoint <= 0xfe6f => return 2
-    on codepoint >= 0xff00 && codepoint <= 0xff60 => return 2
-    on codepoint >= 0xffe0 && codepoint <= 0xffe6 => return 2
+    on codepoint == 30028                                        => return 2
+    on codepoint >= 0x1100 && codepoint <= 0x115f                => return 2
+    on codepoint == 0x2329 || codepoint == 0x232a                => return 2
+    on codepoint >= 0x2e80 && codepoint <= 0xa4cf                => return 2
+    on codepoint >= 0xac00 && codepoint <= 0xd7a3                => return 2
+    on codepoint >= 0xf900 && codepoint <= 0xfaff                => return 2
+    on codepoint >= 0xfe10 && codepoint <= 0xfe19                => return 2
+    on codepoint >= 0xfe30 && codepoint <= 0xfe6f                => return 2
+    on codepoint >= 0xff00 && codepoint <= 0xff60                => return 2
+    on codepoint >= 0xffe0 && codepoint <= 0xffe6                => return 2
     return 1
 }
 

@@ -315,9 +315,7 @@ ffi "kernel32" {
     c_Sleep :: Sleep (dwMilliseconds: DWORD)
 }
 
-pub GetStdHandle :: fn (nStdHandle: DWORD) -> HANDLE {
-    return c_GetStdHandle(nStdHandle)
-}
+pub GetStdHandle :: fn (nStdHandle: DWORD) => c_GetStdHandle(nStdHandle)
 
 pub CreateFile :: fn (lpFileName            : ^i8,
                       dwDesiredAccess       : DWORD,
@@ -353,20 +351,14 @@ pub CreateFileW :: fn (lpFileName            : ^u16,
 }
 
 -- Returns attributes for a UTF-16 Windows path.
-pub GetFileAttributesW :: fn (lpFileName: ^u16) -> DWORD {
-    return c_GetFileAttributesW(lpFileName)
-}
+pub GetFileAttributesW :: fn (lpFileName: ^u16) => c_GetFileAttributesW(lpFileName)
 
 -- Reads metadata for a UTF-16 Windows path.
 pub GetFileAttributesExW :: fn (lpFileName       : ^u16,
-                                file_information : ^WIN32_FILE_ATTRIBUTE_DATA) -> BOOL {
-    return c_GetFileAttributesExW(lpFileName, 0, file_information)
-}
+                                file_information : ^WIN32_FILE_ATTRIBUTE_DATA) => c_GetFileAttributesExW(lpFileName, 0, file_information)
 
 -- Removes a file using a UTF-16 Windows path.
-pub DeleteFileW :: fn (lpFileName: ^u16) -> BOOL {
-    return c_DeleteFileW(lpFileName)
-}
+pub DeleteFileW :: fn (lpFileName: ^u16) => c_DeleteFileW(lpFileName)
 
 -- Converts bytes in a selected code page to UTF-16 code units.
 pub MultiByteToWideChar :: fn (CodePage       : u32,
@@ -383,13 +375,9 @@ pub MultiByteToWideChar :: fn (CodePage       : u32,
                                  cchWideChar)
 }
 
-pub CloseHandle :: fn (hObject: HANDLE) -> BOOL {
-    return c_CloseHandle(hObject)
-}
+pub CloseHandle :: fn (hObject: HANDLE) => c_CloseHandle(hObject)
 
-pub FlushFileBuffers :: fn (hFile: HANDLE) -> BOOL {
-    return c_FlushFileBuffers(hFile)
-}
+pub FlushFileBuffers :: fn (hFile: HANDLE) => c_FlushFileBuffers(hFile)
 
 pub ReadFile :: fn (hFile                : HANDLE,
                     lpBuffer             : ^void,
@@ -437,9 +425,7 @@ pub ReadConsoleInput :: fn (hConsoleInput        : HANDLE,
                               lpNumberOfEventsRead)
 }
 
-pub FlushConsoleInputBuffer :: fn (hConsoleInput: HANDLE) -> BOOL {
-    return c_FlushConsoleInputBuffer(hConsoleInput)
-}
+pub FlushConsoleInputBuffer :: fn (hConsoleInput: HANDLE) => c_FlushConsoleInputBuffer(hConsoleInput)
 
 pub GetConsoleScreenBufferInfo :: fn (hConsoleOutput            : HANDLE,
                                       lpConsoleScreenBufferInfo : ^CONSOLE_SCREEN_BUFFER_INFO) -> BOOL {
@@ -447,37 +433,21 @@ pub GetConsoleScreenBufferInfo :: fn (hConsoleOutput            : HANDLE,
                                         lpConsoleScreenBufferInfo)
 }
 
-pub GetConsoleMode :: fn (hConsoleHandle: HANDLE, lpMode: ^DWORD) -> BOOL {
-    return c_GetConsoleMode(hConsoleHandle, lpMode)
-}
+pub GetConsoleMode :: fn (hConsoleHandle: HANDLE, lpMode: ^DWORD) => c_GetConsoleMode(hConsoleHandle, lpMode)
 
-pub SetConsoleMode :: fn (hConsoleHandle: HANDLE, dwMode: DWORD) -> BOOL {
-    return c_SetConsoleMode(hConsoleHandle, dwMode)
-}
+pub SetConsoleMode :: fn (hConsoleHandle: HANDLE, dwMode: DWORD) => c_SetConsoleMode(hConsoleHandle, dwMode)
 
-pub GetConsoleCP :: fn () -> DWORD {
-    return c_GetConsoleCP()
-}
+pub GetConsoleCP :: fn () => c_GetConsoleCP()
 
-pub SetConsoleCP :: fn (wCodePageID: DWORD) -> BOOL {
-    return c_SetConsoleCP(wCodePageID)
-}
+pub SetConsoleCP :: fn (wCodePageID: DWORD) => c_SetConsoleCP(wCodePageID)
 
-pub GetConsoleOutputCP :: fn () -> DWORD {
-    return c_GetConsoleOutputCP()
-}
+pub GetConsoleOutputCP :: fn () => c_GetConsoleOutputCP()
 
-pub SetConsoleOutputCP :: fn (wCodePageID: DWORD) -> BOOL {
-    return c_SetConsoleOutputCP(wCodePageID)
-}
+pub SetConsoleOutputCP :: fn (wCodePageID: DWORD) => c_SetConsoleOutputCP(wCodePageID)
 
-pub GetLastError :: fn () -> DWORD {
-    return c_GetLastError()
-}
+pub GetLastError :: fn () => c_GetLastError()
 
-pub WaitForSingleObject :: fn (hHandle: HANDLE, dwMilliseconds: DWORD) -> DWORD {
-    return c_WaitForSingleObject(hHandle, dwMilliseconds)
-}
+pub WaitForSingleObject :: fn (hHandle: HANDLE, dwMilliseconds: DWORD) => c_WaitForSingleObject(hHandle, dwMilliseconds)
 
 -- Creates a process from a mutable command line and returns its handles.
 pub CreateProcess :: fn (lpApplicationName    : ^i8,
@@ -503,17 +473,11 @@ pub CreateProcess :: fn (lpApplicationName    : ^i8,
 }
 
 -- Reads the termination status of a process that has finished.
-pub GetExitCodeProcess :: fn (hProcess: HANDLE, lpExitCode: ^DWORD) -> BOOL {
-    return c_GetExitCodeProcess(hProcess, lpExitCode)
-}
+pub GetExitCodeProcess :: fn (hProcess: HANDLE, lpExitCode: ^DWORD) => c_GetExitCodeProcess(hProcess, lpExitCode)
 
-pub QueryPerformanceCounter :: fn (lpPerformanceCount: ^LARGE_INTEGER) -> BOOL {
-    return c_QueryPerformanceCounter(lpPerformanceCount)
-}
+pub QueryPerformanceCounter :: fn (lpPerformanceCount: ^LARGE_INTEGER) => c_QueryPerformanceCounter(lpPerformanceCount)
 
-pub QueryPerformanceFrequency :: fn (lpFrequency: ^LARGE_INTEGER) -> BOOL {
-    return c_QueryPerformanceFrequency(lpFrequency)
-}
+pub QueryPerformanceFrequency :: fn (lpFrequency: ^LARGE_INTEGER) => c_QueryPerformanceFrequency(lpFrequency)
 
 pub Sleep :: fn (dwMilliseconds: DWORD) {
     c_Sleep(dwMilliseconds)

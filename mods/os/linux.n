@@ -57,9 +57,7 @@ pub EISDIR  :: 21
 pub EINVAL  :: 22
 
 -- Returns the calling thread's current C library error code.
-pub last_error :: fn () -> i32 {
-    return c_errno_location()^
-}
+pub last_error :: fn () => c_errno_location()^
 
 pub CLOCK_MONOTONIC :: 1  -- Linux clock identifier for monotonic time.
 
@@ -158,72 +156,43 @@ pub Stat :: plex #c {
 }
 
 -- Reads bytes from a file descriptor using the Linux `read` syscall.
-pub sys_read :: fn (fd: i32, buf: ^void, count: usize) -> isize {
-    return syscall(SYS_READ, fd.as(u64), buf.as(usize).as(u64), count.as(u64), 0, 0, 0).as(isize)
-}
+pub sys_read :: fn (fd: i32, buf: ^void, count: usize) => syscall(SYS_READ, fd.as(u64), buf.as(usize).as(u64), count.as(u64), 0, 0, 0).as(isize)
 
 -- Writes bytes to a file descriptor using the Linux `write` syscall.
-pub sys_write :: fn (fd: i32, buf: ^void, count: usize) -> isize {
-    return syscall(SYS_WRITE, fd.as(u64), buf.as(usize).as(u64), count.as(u64), 0, 0, 0).as(isize)
-}
+pub sys_write :: fn (fd: i32, buf: ^void, count: usize) => syscall(SYS_WRITE, fd.as(u64), buf.as(usize).as(u64), count.as(u64), 0, 0, 0).as(isize)
 
 -- Opens a path using the Linux `open` syscall.
-pub sys_open :: fn (path: ^i8, flags: i32, mode: i32) -> i32 {
-    return syscall(SYS_OPEN, path.as(usize).as(u64), flags.as(u64), mode.as(u64), 0, 0, 0).as(i32)
-}
+pub sys_open :: fn (path: ^i8, flags: i32, mode: i32) => syscall(SYS_OPEN, path.as(usize).as(u64), flags.as(u64), mode.as(u64), 0, 0, 0).as(i32)
 
 -- Closes a file descriptor using the Linux `close` syscall.
-pub sys_close :: fn (fd: i32) -> i32 {
-    return syscall(SYS_CLOSE, fd.as(u64), 0, 0, 0, 0, 0).as(i32)
-}
+pub sys_close :: fn (fd: i32) => syscall(SYS_CLOSE, fd.as(u64), 0, 0, 0, 0, 0).as(i32)
 
 -- Reads metadata for a path relative to a directory descriptor.
-pub sys_newfstatat :: fn (directory : i32,
-                          path      : ^i8,
-                          stat      : ^Stat,
-                          flags     : i32) -> i32 {
-    return syscall(SYS_NEWFSTATAT, directory.as(u64), path.as(usize).as(u64), stat.as(usize).as(u64), flags.as(u64), 0, 0).as(i32)
-}
+pub sys_newfstatat :: fn (directory: i32, path: ^i8, stat: ^Stat, flags: i32) => syscall(SYS_NEWFSTATAT, directory.as(u64), path.as(usize).as(u64), stat.as(usize).as(u64), flags.as(u64), 0, 0).as(i32)
 
 -- Waits for events on file descriptors using the Linux `poll` syscall.
-pub sys_poll :: fn (fds: ^PollFd, nfds: usize, timeout_ms: i32) -> i32 {
-    return syscall(SYS_POLL, fds.as(usize).as(u64), nfds.as(u64), timeout_ms.as(u64), 0, 0, 0).as(i32)
-}
+pub sys_poll :: fn (fds: ^PollFd, nfds: usize, timeout_ms: i32) => syscall(SYS_POLL, fds.as(usize).as(u64), nfds.as(u64), timeout_ms.as(u64), 0, 0, 0).as(i32)
 
 -- Flushes file contents and metadata using the Linux `fsync` syscall.
-pub sys_fsync :: fn (fd: i32) -> i32 {
-    return syscall(SYS_FSYNC, fd.as(u64), 0, 0, 0, 0, 0).as(i32)
-}
+pub sys_fsync :: fn (fd: i32) => syscall(SYS_FSYNC, fd.as(u64), 0, 0, 0, 0, 0).as(i32)
 
 -- Removes a filesystem name using the Linux `unlink` syscall.
-pub sys_unlink :: fn (path: ^i8) -> i32 {
-    return syscall(SYS_UNLINK, path.as(usize).as(u64), 0, 0, 0, 0, 0).as(i32)
-}
+pub sys_unlink :: fn (path: ^i8) => syscall(SYS_UNLINK, path.as(usize).as(u64), 0, 0, 0, 0, 0).as(i32)
 
 -- Applies a Linux `ioctl` request with a pointer argument.
-pub sys_ioctl :: fn (fd: i32, request: u64, arg: ^void) -> i32 {
-    return syscall(SYS_IOCTL, fd.as(u64), request, arg.as(usize).as(u64), 0, 0, 0).as(i32)
-}
+pub sys_ioctl :: fn (fd: i32, request: u64, arg: ^void) => syscall(SYS_IOCTL, fd.as(u64), request, arg.as(usize).as(u64), 0, 0, 0).as(i32)
 
 -- Reads a Linux clock into a `TimeSpec`.
-pub sys_clock_gettime :: fn (clock_id: i32, time: ^TimeSpec) -> i32 {
-    return syscall(SYS_CLOCK_GETTIME, clock_id.as(u64), time.as(usize).as(u64), 0, 0, 0, 0).as(i32)
-}
+pub sys_clock_gettime :: fn (clock_id: i32, time: ^TimeSpec) => syscall(SYS_CLOCK_GETTIME, clock_id.as(u64), time.as(usize).as(u64), 0, 0, 0, 0).as(i32)
 
 -- Suspends execution for a requested duration.
-pub sys_nanosleep :: fn (request: ^TimeSpec, remaining: ^TimeSpec) -> i32 {
-    return syscall(SYS_NANOSLEEP, request.as(usize).as(u64), remaining.as(usize).as(u64), 0, 0, 0, 0).as(i32)
-}
+pub sys_nanosleep :: fn (request: ^TimeSpec, remaining: ^TimeSpec) => syscall(SYS_NANOSLEEP, request.as(usize).as(u64), remaining.as(usize).as(u64), 0, 0, 0, 0).as(i32)
 
 -- Creates a child process by duplicating the calling process.
-pub sys_fork :: fn () -> i32 {
-    return syscall(SYS_FORK, 0, 0, 0, 0, 0, 0).as(i32)
-}
+pub sys_fork :: fn () => syscall(SYS_FORK, 0, 0, 0, 0, 0, 0).as(i32)
 
 -- Replaces the calling process with an executable and argument vector.
-pub sys_execve :: fn (path: ^i8, arguments: ^^i8, environment: ^^i8) -> i32 {
-    return syscall(SYS_EXECVE, path.as(usize).as(u64), arguments.as(usize).as(u64), environment.as(usize).as(u64), 0, 0, 0).as(i32)
-}
+pub sys_execve :: fn (path: ^i8, arguments: ^^i8, environment: ^^i8) => syscall(SYS_EXECVE, path.as(usize).as(u64), arguments.as(usize).as(u64), environment.as(usize).as(u64), 0, 0, 0).as(i32)
 
 -- Terminates the calling process with the supplied status.
 pub sys_exit :: fn (status: i32) {
@@ -231,6 +200,4 @@ pub sys_exit :: fn (status: i32) {
 }
 
 -- Waits for a child process to change state and writes its wait status.
-pub sys_waitpid :: fn (process_id: i32, status: ^i32, options: i32) -> i32 {
-    return syscall(SYS_WAIT4, process_id.as(u64), status.as(usize).as(u64), options.as(u64), 0, 0, 0).as(i32)
-}
+pub sys_waitpid :: fn (process_id: i32, status: ^i32, options: i32) => syscall(SYS_WAIT4, process_id.as(u64), status.as(usize).as(u64), options.as(u64), 0, 0, 0).as(i32)

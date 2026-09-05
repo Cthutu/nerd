@@ -130,9 +130,7 @@ on "windows" {
     frame_windows_default_proc :: fn (window  : HWND,
                                       message : UINT,
                                       wparam  : WPARAM,
-                                      lparam  : LPARAM) -> LRESULT {
-        return DefWindowProc(window, message, wparam, lparam)
-    }
+                                      lparam  : LPARAM) => DefWindowProc(window, message, wparam, lparam)
 
     frame_windows_register_class :: fn () -> bool {
         on frame_windows_class_registered => return yes
@@ -324,9 +322,7 @@ on "windows" {
                 return 0
             }
 
-            WM_SYSCHAR => {
-                return 0
-            }
+            WM_SYSCHAR => return 0
         }
 
         return DefWindowProc(window, message, wparam, lparam)
@@ -363,7 +359,7 @@ on "windows" {
     }
 
     frame_context_impl :: fn (frame: ^Frame) -> FrameContext\FrameError {
-        on frame.system == nil => return (FrameError.NoSystem)!
+        on frame.system == nil      => return (FrameError.NoSystem)!
         on frame.id == CLOSED_FRAME => return (FrameError.Closed)!
 
         info := frame_system_find_info(frame.system, frame.id)
@@ -827,7 +823,7 @@ on "windows" {
     }
 
     frame_windows_gl_init :: fn (info: ^FrameInfo) -> bool {
-        on info.platform_info.gl_context != nil => return yes
+        on info.platform_info.gl_context != nil     => return yes
         on info.platform_info.device_context == nil => return no
 
         on !info.platform_info.pixel_format_set => {
@@ -836,9 +832,7 @@ on "windows" {
         }
 
         legacy_context := wglCreateContext(info.platform_info.device_context)
-        on legacy_context == nil => {
-            return no
-        }
+        on legacy_context == nil => return no
         on wglMakeCurrent(info.platform_info.device_context, legacy_context) == 0 => {
             _ := wglDeleteContext(legacy_context)
             return no
@@ -867,7 +861,7 @@ on "windows" {
     frame_opengl_make_current_impl :: fn (system : ^FrameSystem,
                                           frame  : ^Frame) -> bool {
         info := frame_system_find_info(system, frame.id)
-        on info == nil => return no
+        on info == nil                  => return no
         on !frame_windows_gl_init(info) => return no
         return wglMakeCurrent(info.platform_info.device_context, info.platform_info.gl_context) != 0
     }

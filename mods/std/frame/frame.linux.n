@@ -86,7 +86,7 @@ on "linux" {
     }
 
     frame_context_impl :: fn (frame: ^Frame) -> FrameContext\FrameError {
-        on frame.system == nil => return (FrameError.NoSystem)!
+        on frame.system == nil      => return (FrameError.NoSystem)!
         on frame.id == CLOSED_FRAME => return (FrameError.Closed)!
 
         info := frame_system_find_info(frame.system, frame.id)
@@ -357,9 +357,7 @@ on "linux" {
     }
 
     -- Decodes the first UTF-8 codepoint from Xlib text translation output.
-    frame_linux_decode_utf8 :: fn (bytes: []u8) -> u32 {
-        return utf8.decode_first_byte_slice(bytes)
-    }
+    frame_linux_decode_utf8 :: fn (bytes: []u8) => utf8.decode_first_byte_slice(bytes)
 
     -- Queues key and character events from an X11 key event.
     frame_linux_push_key_event :: fn (system  : ^FrameSystem,
@@ -764,7 +762,7 @@ on "linux" {
     frame_opengl_make_current_impl :: fn (system : ^FrameSystem,
                                           frame  : ^Frame) -> bool {
         info := frame_system_find_info(system, frame.id)
-        on info == nil => return no
+        on info == nil                => return no
         on !frame_linux_gl_init(info) => return no
         made_current := glXMakeCurrent(info.platform_info.display,
                                        info.platform_info.window.as(GLXDrawable),

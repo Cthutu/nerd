@@ -48,7 +48,7 @@ image_is_jpeg :: fn (bytes: []u8) -> bool {
 }
 
 image_format :: fn (bytes: []u8) -> ?ImageFormat {
-    on image_is_png(bytes) => return PNG
+    on image_is_png(bytes)  => return PNG
     on image_is_jpeg(bytes) => return JPEG
     return nil
 }
