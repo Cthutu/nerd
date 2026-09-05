@@ -226,6 +226,13 @@ passes a pointer to that slice value. Inside the method, the receiver therefore
 retains its declared pointer type; `(self^)[i]` explicitly indexes the slice,
 while `self[i]` uses Nerd's ordinary pointer-indexing semantics.
 
+The install recipe copies the standard modules before atomically replacing the
+watched compiler executable. The VS Code extension also stages those companion
+modules beside its uniquely named server copy. This keeps implicit `core`
+resolution independent of the staged executable's location and ensures an
+editor-triggered LSP restart cannot observe a missing or partially installed
+`core.n` module.
+
 The parser recognises a same-line `arena name` sequence as a reversed built-in
 type declaration and reports Nerd's name-first declaration forms. The formatter
 preserves that malformed sequence on one line so formatting cannot obscure the

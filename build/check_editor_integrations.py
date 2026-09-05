@@ -75,6 +75,7 @@ def check_vscode_extension() -> None:
         "findWorkspaceServer()",
         "findUserServer()",
         'const command = sourcePath',
+        'fs.cpSync(modsDir, path.join(targetDir, "mods"), { recursive: true })',
         "getServerEnvironment(sourcePath)",
         "registerEnterIndentation(context)",
         "computeNerdIndent(lines, line)",

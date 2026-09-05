@@ -203,7 +203,10 @@ function cleanupLaunchedServer() {
     }
 
     try {
-        fs.rmSync(launchedServerPath, { force: true });
+        fs.rmSync(path.dirname(launchedServerPath), {
+            recursive: true,
+            force: true,
+        });
     } catch {
         // Ignore locked or already-removed files.
     }
@@ -272,10 +275,14 @@ function stageServerExecutable(
     const baseName = path.basename(sourcePath, ext);
     const uniqueName =
         `${baseName}-${Date.now()}-${process.pid}-${Math.random().toString(36).slice(2, 8)}${ext}`;
-    const targetDir = serverCopyDir(context);
-    const targetPath = path.join(targetDir, uniqueName);
+    const targetDir = path.join(serverCopyDir(context), uniqueName);
+    const targetPath = path.join(targetDir, path.basename(sourcePath));
 
     fs.mkdirSync(targetDir, { recursive: true });
+    const modsDir = findServerMods(sourcePath);
+    if (modsDir) {
+        fs.cpSync(modsDir, path.join(targetDir, "mods"), { recursive: true });
+    }
     fs.copyFileSync(sourcePath, targetPath);
 
     if (process.platform !== "win32") {
@@ -286,18 +293,23 @@ function stageServerExecutable(
     return targetPath;
 }
 
+function findServerMods(sourcePath: string): string | undefined {
+    const sourceDir = path.dirname(sourcePath);
+    const modsDir = newestExistingPath([
+        path.join(sourceDir, "mods"),
+        path.join(path.dirname(sourceDir), "mods"),
+    ]);
+    return modsDir && fs.statSync(modsDir).isDirectory() ? modsDir : undefined;
+}
+
 function getServerEnvironment(sourcePath: string | undefined): NodeJS.ProcessEnv {
     const env: NodeJS.ProcessEnv = { ...process.env };
     if (!sourcePath) {
         return env;
     }
 
-    const sourceDir = path.dirname(sourcePath);
-    const modsDir = newestExistingPath([
-        path.join(sourceDir, "mods"),
-        path.join(path.dirname(sourceDir), "mods"),
-    ]);
-    if (!modsDir || !fs.statSync(modsDir).isDirectory()) {
+    const modsDir = findServerMods(sourcePath);
+    if (!modsDir) {
         return env;
     }
 
