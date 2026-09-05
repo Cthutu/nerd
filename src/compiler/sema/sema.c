@@ -10182,8 +10182,9 @@ internal u32 sema_generic_param_symbol_from_type_node(const Ast* ast,
     return type_node->a;
 }
 
-internal u32 sema_generic_param_symbol_from_value_node(
-    const Ast* ast, const Sema* sema, Array(u32) generic_params, u32 node_index)
+internal u32 sema_generic_value_type_node(const Ast*  ast,
+                                          const Sema* sema,
+                                          u32         node_index)
 {
     if (node_index == U32_MAX || node_index >= array_count(ast->nodes)) {
         return U32_MAX;
@@ -10204,8 +10205,7 @@ internal u32 sema_generic_param_symbol_from_value_node(
         u32 local_index = sema->node_local_indices[node_index];
         if (local_index != sema_no_local() &&
             local_index < array_count(sema->locals)) {
-            return sema_generic_param_symbol_from_type_node(
-                ast, generic_params, sema->locals[local_index].type_node_index);
+            return sema->locals[local_index].type_node_index;
         }
     }
 
@@ -10225,11 +10225,89 @@ internal u32 sema_generic_param_symbol_from_value_node(
     for (u32 i = 0; i < signature->param_count; ++i) {
         const AstParam* param = &ast->params[signature->first_param + i];
         if (param->symbol_handle == node->a) {
-            return sema_generic_param_symbol_from_type_node(
-                ast, generic_params, param->type_node_index);
+            return param->type_node_index;
         }
     }
     return U32_MAX;
+}
+
+internal u32 sema_generic_index_element_param(const Lexer* lexer,
+                                              const Ast*   ast,
+                                              Array(u32) generic_params,
+                                              u32 value_node_index,
+                                              u32 type_node_index)
+{
+    if (type_node_index == U32_MAX ||
+        type_node_index >= array_count(ast->nodes)) {
+        return U32_MAX;
+    }
+
+    const AstNode* type_node = &ast->nodes[type_node_index];
+    while (
+        (type_node->kind == AK_Expression || type_node->kind == AK_Statement) &&
+        type_node->a < array_count(ast->nodes)) {
+        type_node_index = type_node->a;
+        type_node       = &ast->nodes[type_node_index];
+    }
+
+    if (type_node->kind == AK_SymbolRef &&
+        string_eq(lex_symbol(lexer, type_node->a), s("Self"))) {
+        u32 impl_node_index =
+            sema_enclosing_impl_node_index(ast, value_node_index);
+        if (impl_node_index == U32_MAX) {
+            return U32_MAX;
+        }
+        const AstNode* impl_node = &ast->nodes[impl_node_index];
+        if (impl_node->a >= array_count(ast->impls)) {
+            return U32_MAX;
+        }
+        return sema_generic_index_element_param(
+            lexer,
+            ast,
+            generic_params,
+            value_node_index,
+            ast->impls[impl_node->a].target_type_node_index);
+    }
+
+    u32 element_type_node = U32_MAX;
+    if (type_node->kind == AK_TypeSlice || type_node->kind == AK_TypePointer) {
+        element_type_node = type_node->a;
+    } else if (type_node->kind == AK_TypeArray ||
+               type_node->kind == AK_TypeDynamicArray) {
+        element_type_node = type_node->b;
+    }
+    return sema_generic_param_symbol_from_type_node(
+        ast, generic_params, element_type_node);
+}
+
+internal u32 sema_generic_param_symbol_from_value_node(const Lexer* lexer,
+                                                       const Ast*   ast,
+                                                       const Sema*  sema,
+                                                       Array(u32)
+                                                           generic_params,
+                                                       u32 node_index)
+{
+    if (node_index == U32_MAX || node_index >= array_count(ast->nodes)) {
+        return U32_MAX;
+    }
+
+    u32            value_node_index = node_index;
+    const AstNode* node             = &ast->nodes[node_index];
+    while ((node->kind == AK_Expression || node->kind == AK_Statement) &&
+           node->a < array_count(ast->nodes)) {
+        node_index = node->a;
+        node       = &ast->nodes[node_index];
+    }
+
+    if (node->kind == AK_Index) {
+        u32 target_type_node = sema_generic_value_type_node(ast, sema, node->a);
+        return sema_generic_index_element_param(
+            lexer, ast, generic_params, value_node_index, target_type_node);
+    }
+
+    u32 type_node_index = sema_generic_value_type_node(ast, sema, node_index);
+    return sema_generic_param_symbol_from_type_node(
+        ast, generic_params, type_node_index);
 }
 
 internal bool
@@ -10257,9 +10335,9 @@ sema_validate_generic_body_binary_trait_constraint(const Lexer* lexer,
     }
 
     u32 lhs_param = sema_generic_param_symbol_from_value_node(
-        ast, sema, generic_params, node->a);
+        lexer, ast, sema, generic_params, node->a);
     u32 rhs_param = sema_generic_param_symbol_from_value_node(
-        ast, sema, generic_params, node->b);
+        lexer, ast, sema, generic_params, node->b);
     if (lhs_param == U32_MAX || lhs_param != rhs_param) {
         return true;
     }

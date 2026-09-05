@@ -166,3 +166,33 @@ main :: fn () -> i32 {
         "Change the expression or annotation so both sides use the same type."
     ]
 }
+¬
+impl [T] []T {
+    contains :: fn (values: Self, expected: T) -> bool {
+        return values[0] == expected
+    }
+}
+
+main :: fn () => 0
+¬
+{
+    "message": "Type mismatch: expected `Eq constraint`, found `T`",
+    "source_file": "tests/errors/057-generics.e",
+    "primary_location": {
+        "line": 3,
+        "column": 22
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 3,
+            "column": 22,
+            "length": 1,
+            "message": "This expression has type `T`"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Change the expression or annotation so both sides use the same type."
+    ]
+}
