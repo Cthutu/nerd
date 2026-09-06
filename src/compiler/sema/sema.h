@@ -277,6 +277,8 @@ typedef struct {
     u32  bitfield_mismatch_symbol;
     u32  bitfield_mismatch_type;
     bool recoverable_method_call_error;
+    bool inferring_expression_function_return;
+    u32  inferred_expression_propagation_type;
 } Sema;
 
 //------------------------------------------------------------------------------

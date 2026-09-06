@@ -139,6 +139,8 @@ main :: fn () => answer()  -- run answer and return its result
 ```
 
 Expression-bodied functions infer their return type from the expression body.
+If the body propagates an optional or result with postfix `?`, the inferred
+return type keeps that failure channel around the body's successful value.
 
 ## Printing
 

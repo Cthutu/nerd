@@ -3998,15 +3998,35 @@ internal u32 hir_lower_function_body(Hir*         hir,
     if (fn_node->b == AFK_Expr) {
         u32 expr_node_index = fn_end > 0 ? fn_end - 1 : hir_no_index();
         if (expr_node_index < array_count(ast->nodes)) {
+            u32 function_type = hir_node_type(sema, fn_node_index);
+            u32 return_type =
+                function_type < array_count(sema->types) &&
+                        sema->types[function_type].kind == STK_Function
+                    ? sema->types[function_type].return_type
+                    : sema_no_type();
+            bool return_is_failure_sum =
+                return_type < array_count(sema->types) &&
+                sema->types[return_type].kind == STK_Enum &&
+                (sema->types[return_type].flags & (STF_Optional | STF_Result));
             u32 stmt_index = hir_add_stmt(
                 hir,
                 (HirStmt){
                     .kind = HIR_STMT_Return,
                     .expr_index =
-                        hir_lower_expr(hir, lexer, ast, sema, expr_node_index),
-                    .symbol_handle    = U32_MAX,
-                    .local_index      = sema_no_local(),
-                    .type_index       = hir_node_type(sema, expr_node_index),
+                        return_is_failure_sum
+                            ? hir_lower_expr_with_expected(hir,
+                                                           lexer,
+                                                           ast,
+                                                           sema,
+                                                           expr_node_index,
+                                                           return_type)
+                            : hir_lower_expr(
+                                  hir, lexer, ast, sema, expr_node_index),
+                    .symbol_handle = U32_MAX,
+                    .local_index   = sema_no_local(),
+                    .type_index    = return_is_failure_sum
+                                         ? return_type
+                                         : hir_node_type(sema, expr_node_index),
                     .body_block_index = hir_no_index(),
                 });
             array_push(hir->blocks[block_index].stmt_indices, stmt_index);

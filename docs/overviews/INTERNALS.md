@@ -232,6 +232,15 @@ index or slice postfix to follow immediately, as in `ptr^[i]`, while preserving
 spaced `lhs ^ rhs` as bitwise XOR. The formatter emits the chained postfix form
 without redundant parentheses.
 
+When an expression-bodied function omits its return annotation, semantic
+analysis records any postfix `?` failure channel while inferring the body. It
+then wraps the inferred success type in the corresponding optional or result
+type. Nested expression-function inference saves and restores this context, and
+multiple propagations must use compatible failure channels.
+
+Inferred expression returns also unwrap atomic storage to its ordinary value
+type, matching the language's implicit atomic-load semantics.
+
 The install recipe copies the standard modules before atomically replacing the
 watched compiler executable. The VS Code extension also stages those companion
 modules beside its uniquely named server copy. This keeps implicit `core`

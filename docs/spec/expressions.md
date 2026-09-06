@@ -21,6 +21,11 @@ primary ::= INT | FLOAT | STRING | CSTRING | interpolated-string
 Blocks and loops are expression-capable. If their result is used, semantic
 analysis requires compatible value-producing control flow.
 
+An expression-bodied function without a return annotation infers its return
+type from the body. Postfix `?` contributes its optional or result failure
+channel to that inferred type, while the remaining expression determines the
+success type.
+
 ## Operators
 
 From lowest binding power to highest:

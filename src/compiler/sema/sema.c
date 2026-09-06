@@ -21211,6 +21211,37 @@ validate_type:
                                                                         : 0)];
             u32 enclosing = sema_ast_enclosing_function_return_type(
                 lexer, ast, sema, node_index);
+            if (enclosing == sema_no_type() &&
+                sema->inferring_expression_function_return) {
+                u32 prior = sema->inferred_expression_propagation_type;
+                if (prior == sema_no_type()) {
+                    sema->inferred_expression_propagation_type = operand_type;
+                } else {
+                    const SemaType* prior_type = &sema->types[prior];
+                    bool            same_channel =
+                        (prior_type->flags & (STF_Optional | STF_Result)) ==
+                        (operand->flags & (STF_Optional | STF_Result));
+                    if (same_channel && (operand->flags & STF_Result)) {
+                        u32 prior_error =
+                            sema->type_param_types
+                                [prior_type->first_param_type + 1];
+                        u32 operand_error =
+                            sema->type_param_types[operand->first_param_type +
+                                                   1];
+                        same_channel =
+                            sema_type_matches(sema, prior_error, operand_error);
+                    }
+                    if (!same_channel) {
+                        return error_0304_type_mismatch(
+                            lexer->source,
+                            sema_node_span(lexer, node),
+                            sema_type_name(lexer, sema, &temp_arena, prior),
+                            sema_type_name(
+                                lexer, sema, &temp_arena, operand_type));
+                    }
+                }
+                break;
+            }
             if (enclosing == sema_no_type() ||
                 sema->types[enclosing].kind != STK_Enum ||
                 ((operand->flags & STF_Optional) &&
@@ -23600,15 +23631,47 @@ validate_type:
             if (node->b == AFK_Expr) {
                 u32 expected_return =
                     has_explicit_return_type ? return_type : sema_no_type();
-                if (!sema_infer_node_type(lexer,
-                                          ast,
-                                          sema,
-                                          fn_start->b - 1,
-                                          expected_return,
-                                          &return_type)) {
+                bool saved_inference =
+                    sema->inferring_expression_function_return;
+                u32 saved_propagation =
+                    sema->inferred_expression_propagation_type;
+                if (!has_explicit_return_type) {
+                    sema->inferring_expression_function_return = true;
+                    sema->inferred_expression_propagation_type = sema_no_type();
+                }
+                bool inferred = sema_infer_node_type(lexer,
+                                                     ast,
+                                                     sema,
+                                                     fn_start->b - 1,
+                                                     expected_return,
+                                                     &return_type);
+                u32  propagation_type =
+                    sema->inferred_expression_propagation_type;
+                sema->inferring_expression_function_return = saved_inference;
+                sema->inferred_expression_propagation_type = saved_propagation;
+                if (!inferred) {
                     return false;
                 }
                 return_type = sema_materialise_type(sema, return_type);
+                if (!has_explicit_return_type &&
+                    sema->types[return_type].kind == STK_Atomic) {
+                    return_type = sema->types[return_type].first_param_type;
+                }
+                if (!has_explicit_return_type &&
+                    propagation_type != sema_no_type()) {
+                    const SemaType* propagation =
+                        &sema->types[propagation_type];
+                    if (propagation->flags & STF_Optional) {
+                        return_type =
+                            sema_add_optional_type(lexer, sema, return_type);
+                    } else {
+                        u32 error_type =
+                            sema->type_param_types
+                                [propagation->first_param_type + 1];
+                        return_type = sema_add_result_type(
+                            lexer, sema, return_type, error_type);
+                    }
+                }
             } else {
                 bool has_return = false;
                 if (!sema_infer_block_statements(lexer,
