@@ -361,6 +361,10 @@ internal bool ast_caret_is_postfix_deref(const AstParseState* state,
                                          AstToken             token)
 {
     ASSERT(token.kind == TK_Caret, "Expected caret token");
+    if (ast_token_is_adjacent_to_previous(state, token.token_index) &&
+        ast_peek_kind_at(state, 0) == TK_LBracket) {
+        return true;
+    }
     if (token.token_index + 1 >= array_count(state->lexer->tokens)) {
         return true;
     }
@@ -382,6 +386,11 @@ internal bool ast_caret_is_postfix_deref(const AstParseState* state,
 
 internal bool ast_consumed_caret_is_postfix_deref(const AstParseState* state)
 {
+    if (state->token_index > 0 &&
+        ast_token_is_adjacent_to_previous(state, state->token_index - 1) &&
+        ast_expr_cursor_kind(state) == TK_LBracket) {
+        return true;
+    }
     if (state->token_index >= array_count(state->lexer->tokens)) {
         return true;
     }

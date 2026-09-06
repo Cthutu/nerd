@@ -994,6 +994,10 @@ internal bool cst_postfix_token_can_cross_statement_boundary(TokenKind kind)
 
 internal bool cst_caret_is_postfix_deref(const CstParseState* state)
 {
+    if (cst_token_is_adjacent_to_previous(state, state->token_index) &&
+        cst_peek_kind_at(state, 1) == TK_LBracket) {
+        return true;
+    }
     if (state->token_index >= array_count(state->lexer->tokens)) {
         return true;
     }
@@ -1010,6 +1014,11 @@ internal bool cst_caret_is_postfix_deref(const CstParseState* state)
 
 internal bool cst_consumed_caret_is_postfix_deref(const CstParseState* state)
 {
+    if (state->token_index > 0 &&
+        cst_token_is_adjacent_to_previous(state, state->token_index - 1) &&
+        cst_current_token(state).kind == TK_LBracket) {
+        return true;
+    }
     if (state->token_index >= array_count(state->lexer->tokens)) {
         return true;
     }

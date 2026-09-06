@@ -368,6 +368,11 @@ The bracket postfix is intentionally ambiguous between indexing and explicit
 generic arguments until semantic analysis knows whether the target is a generic
 function or method.
 
+Because `^` is both postfix dereference and infix bitwise XOR, attachment to the
+left operand disambiguates a dereference followed by another postfix operation.
+For example, `ptr^[i]` parses as `(ptr^)[i]`, while `value ^ [i]` parses as a
+bitwise XOR whose right operand is an array literal.
+
 `interpolated-string` starts with `$"` and is parsed from the token stream
 described in [`lexer.md`](lexer.md#interpolated-strings). A `+"..."` string
 continuation can be parsed after a string-like expression and is folded into the

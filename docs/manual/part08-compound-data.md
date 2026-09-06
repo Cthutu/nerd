@@ -184,6 +184,9 @@ main :: fn () -> i32 {
 ```
 
 Use prefix `^` to take an address and postfix `^` to dereference.
+Postfix operations can be chained without parentheses: `ptr^[i]` indexes the
+dereferenced value and is equivalent to `(ptr^)[i]`. Write spaces around
+bitwise XOR, such as `flags ^ mask`.
 
 ## Nil
 

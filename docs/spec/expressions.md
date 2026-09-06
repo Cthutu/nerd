@@ -100,6 +100,10 @@ pointee type; `ptr - ptr` returns an `isize` element distance. Arithmetic on
 parser-supported. Inclusive `..=` range syntax is used in array range literals
 and patterns, but slice postfix parsing currently accepts only `..`.
 
+Postfix operations can continue directly after a postfix dereference. Thus
+`ptr^[i]` is equivalent to `(ptr^)[i]`. Whitespace before `^` keeps its infix
+bitwise-XOR meaning when followed by an expression, as in `value ^ [i]`.
+
 ## Aggregate Expressions
 
 ```bnf

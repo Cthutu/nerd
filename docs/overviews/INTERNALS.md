@@ -223,8 +223,14 @@ Method receivers declared as `^Self` are lowered by taking the address of the
 receiver value. When `Self` is a slice and the call receiver is a fixed array,
 method resolution applies the normal fixed-array-to-slice borrow first and then
 passes a pointer to that slice value. Inside the method, the receiver therefore
-retains its declared pointer type; `(self^)[i]` explicitly indexes the slice,
+retains its declared pointer type; `self^[i]` explicitly indexes the slice,
 while `self[i]` uses Nerd's ordinary pointer-indexing semantics.
+
+The AST and CST Pratt parsers classify a caret attached to its left operand and
+followed by `[` as postfix dereference rather than bitwise XOR. This allows an
+index or slice postfix to follow immediately, as in `ptr^[i]`, while preserving
+spaced `lhs ^ rhs` as bitwise XOR. The formatter emits the chained postfix form
+without redundant parentheses.
 
 The install recipe copies the standard modules before atomically replacing the
 watched compiler executable. The VS Code extension also stages those companion

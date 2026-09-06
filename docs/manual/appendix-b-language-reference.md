@@ -149,6 +149,8 @@ intended exit code.
   size of their header or fat-pointer value.
 - Dot access automatically dereferences pointers when the pointee provides the
   requested tuple, collection, plex, or union member.
+- A postfix operation may follow dereference directly; `ptr^[i]` means
+  `(ptr^)[i]`. A spaced caret remains bitwise XOR, as in `value ^ mask`.
 - `@file` expands to the current source filename as a `string`.
 - `@line` expands to the current 1-based source line as an untyped integer.
 - `@embed("path")` embeds a source-relative file as static binary data and
