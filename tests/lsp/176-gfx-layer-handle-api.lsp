@@ -126,11 +126,11 @@ main :: fn () {
             "uri": "file:///home/matt/nerd/mods/std/gfx/mod.n",
             "range": {
                 "start": {
-                    "line": 663,
+                    "line": 653,
                     "character": 8
                 },
                 "end": {
-                    "line": 663,
+                    "line": 653,
                     "character": 26
                 }
             }
@@ -153,11 +153,11 @@ main :: fn () {
             "uri": "file:///home/matt/nerd/mods/std/gfx/mod.n",
             "range": {
                 "start": {
-                    "line": 687,
+                    "line": 677,
                     "character": 8
                 },
                 "end": {
-                    "line": 687,
+                    "line": 677,
                     "character": 23
                 }
             }
