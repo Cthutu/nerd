@@ -200,6 +200,11 @@ map = box[Map]()
 A `box[T]` also converts implicitly to `bool`: nil boxes are `no`, non-nil
 boxes are `yes`.
 
+Boxes support `==` and `!=` when their element type supports `Eq`. Equality
+compares element counts and contents, borrowing both boxes without moving them.
+Two nil boxes are equal; a nil box and an allocated box are unequal. Comparing
+with the literal `nil` only tests presence, regardless of the element type.
+
 Boxes are owning values. Use slices for borrowed views and boxes when ownership
 must be represented in the type. Passing a `box[T]` to a function that expects
 `box[T]`, assigning it to another `box[T]`, or returning it moves ownership and

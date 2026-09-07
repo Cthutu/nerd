@@ -229,6 +229,13 @@ typedef struct {
 } SemaCompoundFunction;
 
 //------------------------------------------------------------------------------
+// Custom element equality selected during semantic checking. Built-in
+// collection comparisons borrow their elements when calling these methods.
+typedef struct {
+    u32 type_index;
+    u32 decl_index;
+} SemaEqualityMethod;
+
 // Compact semantic side tables keyed by declaration and AST node index.
 
 typedef struct {
@@ -251,6 +258,7 @@ typedef struct {
     Array(SemaCompoundFunction) compound_functions;
     Array(u32) compound_candidates;
     Array(SemaMethod) methods;
+    Array(SemaEqualityMethod) equality_methods;
     Array(SemaLocal) locals;
     Array(SemaScope) scopes;
     Array(SemaDeclDep) deps;

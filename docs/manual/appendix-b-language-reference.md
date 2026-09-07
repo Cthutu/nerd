@@ -316,3 +316,20 @@ intended exit code.
   delimiter indentation is trimmed from body lines.
 - Prefer wrappers around raw FFI declarations.
 - Keep ownership explicit at the boundary.
+
+## Collection Equality
+
+- Arrays of matching type and slices compare counts and elements using element
+  equality. Boxes compare nil presence, then owned counts and elements.
+- Array, slice, and box `Eq` support is conditional on their element type's
+  equality support. Custom element `Eq` methods are respected.
+- Equality borrows storage and does not move boxes or consume their elements.
+- Integer and boolean sequences may use byte comparison. Floating-point
+  elements use numeric equality; strings compare text and nested containers
+  compare recursively. Address equality is not a shortcut for content equality.
+- Arenas, raw unions, and function values are not equality-comparable.
+- Literal `nil` comparisons retain presence checks for slices and boxes,
+  including containers of elements that cannot be compared.
+- Generic equality requires an explicit `where T: Eq`, including expressions
+  reached through pointer receivers, dereferencing, indexing, and container
+  types. Expression-bodied generic functions are checked too.

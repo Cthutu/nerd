@@ -124,6 +124,33 @@ bool error_0304_type_mismatch(NerdSource source,
     return false;
 }
 
+// A generic operator needs an explicit contract, even before instantiation.
+bool error_0304_missing_trait_constraint(NerdSource source,
+                                         ErrorSpan  span,
+                                         string     param,
+                                         string     trait)
+{
+    ErrorInfo error = error_init(source,
+                                 span,
+                                 "Generic parameter `" STRINGP
+                                 "` requires an `" STRINGP "` constraint",
+                                 STRINGV(param),
+                                 STRINGV(trait));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This operation requires `" STRINGP ": " STRINGP "`",
+                        STRINGV(param),
+                        STRINGV(trait));
+    error_add_help(&error,
+                   "Add `where " STRINGP ": " STRINGP
+                   "` to the generic function or impl.",
+                   STRINGV(param),
+                   STRINGV(trait));
+    error_render(&error);
+    return false;
+}
+
 bool error_0304_type_mismatch_with_note(NerdSource source,
                                         ErrorSpan  span,
                                         string     expected_type,

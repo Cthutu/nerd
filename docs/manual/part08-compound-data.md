@@ -554,7 +554,9 @@ language-known traits and result types:
 - `Display` supplies `show :: fn (Self) -> string`. String interpolation uses
   this trait for non-built-in values.
 - `Eq` supplies `eq :: fn (Self, Self) -> bool`. The `==` and `!=` operators
-  use this trait for non-built-in values.
+  use this trait for non-built-in values. Arrays, slices, and boxes support
+  content equality when their elements support `Eq`. Arenas, raw unions, and
+  function values are not comparable.
 - `Order` supplies `compare :: fn (Self, Self) -> i32`. The `<`, `<=`, `>`,
   and `>=` operators use this trait for non-built-in values.
 - `Default` supplies `default :: fn () -> Self`. Local typed variables without

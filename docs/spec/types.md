@@ -300,3 +300,23 @@ shorter signature for each omitted trailing default. Return types are excluded.
 Two structurally equal effective signatures make the declaration invalid.
 Structurally different signatures may remain ambiguous for a particular
 literal or implicit conversion at a call site.
+
+## Equality Capabilities
+
+`[]T`, `[N]T`, and `box[T]` have built-in value equality when `T` supports
+`Eq`. Slices require equal counts and pairwise equal elements; fixed arrays
+require matching array types and pairwise equality. Boxes require matching nil
+presence and, for allocated values, matching counts and pairwise equality.
+Allocation identity and spare capacity are not part of content equality.
+Comparisons borrow both operands, including boxed elements in borrowed slices.
+
+Integer and boolean element sequences retain the byte-comparison fast path.
+Floating-point elements use ordered numeric equality, strings use text equality,
+and nested containers recurse. Custom concrete element `Eq` implementations,
+including exported imported methods, are selected by semantic analysis.
+
+`arena`, raw unions, and function values do not have equality. Literal `nil`
+checks remain valid for nilable containers without requiring element `Eq`.
+Generic bodies must state `where T: Eq` before using equality on `T` or
+containers of `T`; checks include pointer/dereference/index chains and concise
+function bodies. Missing constraints report the operator and suggested bound.

@@ -339,6 +339,11 @@ typedef struct {
 } HirFor;
 
 typedef struct {
+    u32 type_index;
+    u32 callee_expr_index;
+} HirEqualityMethod;
+
+typedef struct {
     u32 current_module_index;
     Array(HirModuleImport) module_imports;
     Array(HirImport) imports;
@@ -353,6 +358,7 @@ typedef struct {
     Array(HirStmt) stmts;
     Array(HirDestructureItem) destructure_items;
     Array(HirExpr) exprs;
+    Array(HirEqualityMethod) equality_methods;
     Array(HirCallArg) call_args;
     Array(HirOnBranch) on_branches;
     Array(u32) on_branch_patterns;

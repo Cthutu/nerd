@@ -8539,6 +8539,281 @@ internal string llvm_cast_instruction(LlvmFunctionContext* ctx,
     return (string){0};
 }
 
+// Compare borrowed elements using checked equality methods, never moving boxes.
+internal string llvm_emit_element_equality(LlvmFunctionContext* ctx,
+                                           const HirFunction*   function,
+                                           u32                  element_type,
+                                           string               lhs,
+                                           string               rhs);
+
+// Short-circuit by count and by element. No identity shortcut: even a slice
+// compared with itself must observe floating-point NaNs and custom Eq methods.
+internal string llvm_emit_sequence_equality(LlvmFunctionContext* ctx,
+                                            const HirFunction*   function,
+                                            u32                  element_type,
+                                            string               lhs,
+                                            string               lhs_count,
+                                            string               rhs,
+                                            string               rhs_count)
+{
+    string start     = llvm_label(ctx, "eq.start");
+    string head      = llvm_label(ctx, "eq.head");
+    string body      = llvm_label(ctx, "eq.body");
+    string next      = llvm_label(ctx, "eq.next");
+    string equal     = llvm_label(ctx, "eq.equal");
+    string unequal   = llvm_label(ctx, "eq.unequal");
+    string end       = llvm_label(ctx, "eq.end");
+    string counts    = llvm_temp(ctx);
+    string index     = llvm_temp(ctx);
+    string increment = llvm_temp(ctx);
+    string done      = llvm_temp(ctx);
+    string lhs_item  = llvm_temp(ctx);
+    string rhs_item  = llvm_temp(ctx);
+    string result    = llvm_temp(ctx);
+    string type      = llvm_type_string(ctx, element_type);
+    sb_format(ctx->sb,
+              "  br label %%" STRINGP "\n" STRINGP ":\n"
+              "  " STRINGP " = icmp eq i64 " STRINGP ", " STRINGP "\n"
+              "  br i1 " STRINGP ", label %%" STRINGP ", label %%" STRINGP
+              "\n" STRINGP ":\n"
+              "  " STRINGP " = phi i64 [0, %%" STRINGP "], [" STRINGP
+              ", %%" STRINGP "]\n"
+              "  " STRINGP " = icmp eq i64 " STRINGP ", " STRINGP "\n"
+              "  br i1 " STRINGP ", label %%" STRINGP ", label %%" STRINGP
+              "\n" STRINGP ":\n"
+              "  " STRINGP " = getelementptr " STRINGP ", ptr " STRINGP
+              ", i64 " STRINGP "\n"
+              "  " STRINGP " = getelementptr " STRINGP ", ptr " STRINGP
+              ", i64 " STRINGP "\n",
+              STRINGV(start),
+              STRINGV(start),
+              STRINGV(counts),
+              STRINGV(lhs_count),
+              STRINGV(rhs_count),
+              STRINGV(counts),
+              STRINGV(head),
+              STRINGV(unequal),
+              STRINGV(head),
+              STRINGV(index),
+              STRINGV(start),
+              STRINGV(increment),
+              STRINGV(next),
+              STRINGV(done),
+              STRINGV(index),
+              STRINGV(lhs_count),
+              STRINGV(done),
+              STRINGV(equal),
+              STRINGV(body),
+              STRINGV(body),
+              STRINGV(lhs_item),
+              STRINGV(type),
+              STRINGV(lhs),
+              STRINGV(index),
+              STRINGV(rhs_item),
+              STRINGV(type),
+              STRINGV(rhs),
+              STRINGV(index));
+    string item_equal = llvm_emit_element_equality(
+        ctx, function, element_type, lhs_item, rhs_item);
+    if (item_equal.count == 0) {
+        return (string){0};
+    }
+    sb_format(ctx->sb,
+              "  br i1 " STRINGP ", label %%" STRINGP ", label %%" STRINGP
+              "\n" STRINGP ":\n"
+              "  " STRINGP " = add i64 " STRINGP ", 1\n"
+              "  br label %%" STRINGP "\n" STRINGP ":\n  br label %%" STRINGP
+              "\n" STRINGP ":\n  br label %%" STRINGP "\n" STRINGP ":\n"
+              "  " STRINGP " = phi i1 [1, %%" STRINGP "], [0, %%" STRINGP "]\n",
+              STRINGV(item_equal),
+              STRINGV(next),
+              STRINGV(unequal),
+              STRINGV(next),
+              STRINGV(increment),
+              STRINGV(index),
+              STRINGV(head),
+              STRINGV(equal),
+              STRINGV(end),
+              STRINGV(unequal),
+              STRINGV(end),
+              STRINGV(end),
+              STRINGV(result),
+              STRINGV(equal),
+              STRINGV(unequal));
+    return result;
+}
+
+internal string llvm_emit_box_equality(LlvmFunctionContext* ctx,
+                                       const HirFunction*   function,
+                                       u32                  box_type,
+                                       string               lhs,
+                                       string               rhs)
+{
+    u32    element   = ctx->sema->types[box_type].first_param_type;
+    u64    size      = llvm_type_sizeof_bytes(ctx->sema, element);
+    string lhs_bytes = llvm_temp(ctx), rhs_bytes = llvm_temp(ctx);
+    string lhs_count = llvm_temp(ctx), rhs_count = llvm_temp(ctx);
+    string lhs_nil = llvm_temp(ctx), rhs_nil = llvm_temp(ctx);
+    string same_presence = llvm_temp(ctx), result = llvm_temp(ctx);
+    sb_format(ctx->sb,
+              "  " STRINGP " = call i64 @nrt_mem_size(ptr " STRINGP ")\n"
+              "  " STRINGP " = call i64 @nrt_mem_size(ptr " STRINGP ")\n"
+              "  " STRINGP " = udiv i64 " STRINGP ", %llu\n"
+              "  " STRINGP " = udiv i64 " STRINGP ", %llu\n"
+              "  " STRINGP " = icmp eq ptr " STRINGP ", null\n"
+              "  " STRINGP " = icmp eq ptr " STRINGP ", null\n"
+              "  " STRINGP " = icmp eq i1 " STRINGP ", " STRINGP "\n",
+              STRINGV(lhs_bytes),
+              STRINGV(lhs),
+              STRINGV(rhs_bytes),
+              STRINGV(rhs),
+              STRINGV(lhs_count),
+              STRINGV(lhs_bytes),
+              (unsigned long long)(size ? size : 1),
+              STRINGV(rhs_count),
+              STRINGV(rhs_bytes),
+              (unsigned long long)(size ? size : 1),
+              STRINGV(lhs_nil),
+              STRINGV(lhs),
+              STRINGV(rhs_nil),
+              STRINGV(rhs),
+              STRINGV(same_presence),
+              STRINGV(lhs_nil),
+              STRINGV(rhs_nil));
+    string contents = llvm_emit_sequence_equality(
+        ctx, function, element, lhs, lhs_count, rhs, rhs_count);
+    if (contents.count == 0) {
+        return (string){0};
+    }
+    sb_format(ctx->sb,
+              "  " STRINGP " = and i1 " STRINGP ", " STRINGP "\n",
+              STRINGV(result),
+              STRINGV(same_presence),
+              STRINGV(contents));
+    return result;
+}
+
+internal string llvm_emit_element_equality(LlvmFunctionContext* ctx,
+                                           const HirFunction*   function,
+                                           u32                  element_type,
+                                           string               lhs,
+                                           string               rhs)
+{
+    string       type   = llvm_type_string(ctx, element_type);
+    string       result = llvm_temp(ctx);
+    SemaTypeKind kind   = llvm_type_kind(ctx->sema, element_type);
+    if (kind == STK_String) {
+        sb_format(ctx->sb,
+                  "  " STRINGP " = call i1 @string_eq(ptr " STRINGP
+                  ", ptr " STRINGP ")\n",
+                  STRINGV(result),
+                  STRINGV(lhs),
+                  STRINGV(rhs));
+        return result;
+    }
+    if (kind == STK_Array) {
+        string count = string_format(
+            ctx->arena, "%u", llvm_array_count(ctx->sema, element_type));
+        return llvm_emit_sequence_equality(
+            ctx,
+            function,
+            ctx->sema->types[element_type].first_param_type,
+            lhs,
+            count,
+            rhs,
+            count);
+    }
+    string lhs_value = llvm_temp(ctx), rhs_value = llvm_temp(ctx);
+    sb_format(ctx->sb,
+              "  " STRINGP " = load " STRINGP ", ptr " STRINGP "\n"
+              "  " STRINGP " = load " STRINGP ", ptr " STRINGP "\n",
+              STRINGV(lhs_value),
+              STRINGV(type),
+              STRINGV(lhs),
+              STRINGV(rhs_value),
+              STRINGV(type),
+              STRINGV(rhs));
+    if (kind == STK_Box) {
+        return llvm_emit_box_equality(
+            ctx, function, element_type, lhs_value, rhs_value);
+    }
+    if (kind == STK_Slice) {
+        string lhs_data = llvm_temp(ctx), rhs_data = llvm_temp(ctx);
+        string lhs_count = llvm_temp(ctx), rhs_count = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = extractvalue " STRINGP " " STRINGP ", 0\n"
+                  "  " STRINGP " = extractvalue " STRINGP " " STRINGP ", 1\n"
+                  "  " STRINGP " = extractvalue " STRINGP " " STRINGP ", 0\n"
+                  "  " STRINGP " = extractvalue " STRINGP " " STRINGP ", 1\n",
+                  STRINGV(lhs_data),
+                  STRINGV(type),
+                  STRINGV(lhs_value),
+                  STRINGV(lhs_count),
+                  STRINGV(type),
+                  STRINGV(lhs_value),
+                  STRINGV(rhs_data),
+                  STRINGV(type),
+                  STRINGV(rhs_value),
+                  STRINGV(rhs_count),
+                  STRINGV(type),
+                  STRINGV(rhs_value));
+        return llvm_emit_sequence_equality(
+            ctx,
+            function,
+            ctx->sema->types[element_type].first_param_type,
+            lhs_data,
+            lhs_count,
+            rhs_data,
+            rhs_count);
+    }
+    for (u32 i = 0; i < array_count(ctx->hir->equality_methods); ++i) {
+        const HirEqualityMethod* method = &ctx->hir->equality_methods[i];
+        if (method->type_index != element_type) {
+            continue;
+        }
+        string callee = {0};
+        if (!llvm_callee_name(
+                ctx, function, method->callee_expr_index, &callee)) {
+            return (string){0};
+        }
+        sb_format(ctx->sb,
+                  "  " STRINGP " = call i1 " STRINGP "(" STRINGP " " STRINGP
+                  ", " STRINGP " " STRINGP ")\n",
+                  STRINGV(result),
+                  STRINGV(callee),
+                  STRINGV(type),
+                  STRINGV(lhs_value),
+                  STRINGV(type),
+                  STRINGV(rhs_value));
+        return result;
+    }
+    if (kind == STK_Enum) {
+        string lhs_tag = llvm_temp(ctx), rhs_tag = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = extractvalue " STRINGP " " STRINGP ", 0\n"
+                  "  " STRINGP " = extractvalue " STRINGP " " STRINGP ", 0\n",
+                  STRINGV(lhs_tag),
+                  STRINGV(type),
+                  STRINGV(lhs_value),
+                  STRINGV(rhs_tag),
+                  STRINGV(type),
+                  STRINGV(rhs_value));
+        lhs_value = lhs_tag;
+        rhs_value = rhs_tag;
+        type      = s("i64");
+    }
+    sb_format(ctx->sb,
+              "  " STRINGP " = " STRINGP " " STRINGP " " STRINGP ", " STRINGP
+              "\n",
+              STRINGV(result),
+              STRINGV(llvm_float_bits(ctx->sema, element_type) ? s("fcmp oeq")
+                                                               : s("icmp eq")),
+              STRINGV(type),
+              STRINGV(lhs_value),
+              STRINGV(rhs_value));
+    return result;
+}
+
 internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                                   const HirFunction*   function,
                                   u32                  expr_index)
@@ -9706,6 +9981,24 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                                   STRINGV(temp));
                         temp = inverted;
                     }
+                } else if (lhs_kind == STK_Box && rhs_kind == STK_Box &&
+                           ctx->hir->exprs[expr->lhs_expr_index].kind !=
+                               HIR_EXPR_NilLiteral &&
+                           ctx->hir->exprs[expr->rhs_expr_index].kind !=
+                               HIR_EXPR_NilLiteral) {
+                    temp = llvm_emit_box_equality(
+                        ctx, function, lhs.type_index, lhs.value, rhs.value);
+                    if (temp.count == 0) {
+                        return (LlvmValue){0};
+                    }
+                    if (expr->binary_op == HIR_BINARY_NotEqual) {
+                        string inverted = llvm_temp(ctx);
+                        sb_format(ctx->sb,
+                                  "  " STRINGP " = xor i1 " STRINGP ", 1\n",
+                                  STRINGV(inverted),
+                                  STRINGV(temp));
+                        temp = inverted;
+                    }
                 } else if (lhs_kind == STK_Slice && rhs_kind == STK_Slice) {
                     string lhs_data  = llvm_temp(ctx);
                     string lhs_count = llvm_temp(ctx);
@@ -9770,20 +10063,37 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     } else {
                         u32 element_type =
                             ctx->sema->types[lhs.type_index].first_param_type;
-                        u64 element_size =
-                            llvm_type_sizeof_bytes(ctx->sema, element_type);
-                        string both_eq = llvm_temp(ctx);
-                        sb_format(ctx->sb,
-                                  "  " STRINGP
-                                  " = call i1 @slice_eq(ptr " STRINGP
-                                  ", i64 " STRINGP ", ptr " STRINGP
-                                  ", i64 " STRINGP ", i64 %llu)\n",
-                                  STRINGV(both_eq),
-                                  STRINGV(lhs_data),
-                                  STRINGV(lhs_count),
-                                  STRINGV(rhs_data),
-                                  STRINGV(rhs_count),
-                                  (unsigned long long)element_size);
+                        string       both_eq;
+                        SemaTypeKind element_kind =
+                            llvm_type_kind(ctx->sema, element_type);
+                        if (llvm_integer_bits(ctx->sema, element_type) > 0 ||
+                            element_kind == STK_Bool) {
+                            u64 element_size =
+                                llvm_type_sizeof_bytes(ctx->sema, element_type);
+                            both_eq = llvm_temp(ctx);
+                            sb_format(ctx->sb,
+                                      "  " STRINGP
+                                      " = call i1 @slice_eq(ptr " STRINGP
+                                      ", i64 " STRINGP ", ptr " STRINGP
+                                      ", i64 " STRINGP ", i64 %llu)\n",
+                                      STRINGV(both_eq),
+                                      STRINGV(lhs_data),
+                                      STRINGV(lhs_count),
+                                      STRINGV(rhs_data),
+                                      STRINGV(rhs_count),
+                                      (unsigned long long)element_size);
+                        } else {
+                            both_eq = llvm_emit_sequence_equality(ctx,
+                                                                  function,
+                                                                  element_type,
+                                                                  lhs_data,
+                                                                  lhs_count,
+                                                                  rhs_data,
+                                                                  rhs_count);
+                            if (both_eq.count == 0) {
+                                return (LlvmValue){0};
+                            }
+                        }
                         if (expr->binary_op == HIR_BINARY_Equal) {
                             temp = both_eq;
                         } else {
@@ -9845,20 +10155,42 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     }
                     u32 element_type =
                         ctx->sema->types[lhs.type_index].first_param_type;
-                    u64 element_size =
-                        llvm_type_sizeof_bytes(ctx->sema, element_type);
-                    u32 element_count =
-                        llvm_array_count(ctx->sema, lhs.type_index);
-                    string both_eq = llvm_temp(ctx);
-                    sb_format(ctx->sb,
-                              "  " STRINGP " = call i1 @slice_eq(ptr " STRINGP
-                              ", i64 %u, ptr " STRINGP ", i64 %u, i64 %llu)\n",
-                              STRINGV(both_eq),
-                              STRINGV(lhs_data),
-                              element_count,
-                              STRINGV(rhs_data),
-                              element_count,
-                              (unsigned long long)element_size);
+                    string       both_eq;
+                    SemaTypeKind element_kind =
+                        llvm_type_kind(ctx->sema, element_type);
+                    if (llvm_integer_bits(ctx->sema, element_type) > 0 ||
+                        element_kind == STK_Bool) {
+                        u64 element_size =
+                            llvm_type_sizeof_bytes(ctx->sema, element_type);
+                        u32 element_count =
+                            llvm_array_count(ctx->sema, lhs.type_index);
+                        both_eq = llvm_temp(ctx);
+                        sb_format(
+                            ctx->sb,
+                            "  " STRINGP " = call i1 @slice_eq(ptr " STRINGP
+                            ", i64 %u, ptr " STRINGP ", i64 %u, i64 %llu)\n",
+                            STRINGV(both_eq),
+                            STRINGV(lhs_data),
+                            element_count,
+                            STRINGV(rhs_data),
+                            element_count,
+                            (unsigned long long)element_size);
+                    } else {
+                        string count = string_format(
+                            ctx->arena,
+                            "%u",
+                            llvm_array_count(ctx->sema, lhs.type_index));
+                        both_eq = llvm_emit_sequence_equality(ctx,
+                                                              function,
+                                                              element_type,
+                                                              lhs_data,
+                                                              count,
+                                                              rhs_data,
+                                                              count);
+                        if (both_eq.count == 0) {
+                            return (LlvmValue){0};
+                        }
+                    }
                     if (expr->binary_op == HIR_BINARY_Equal) {
                         temp = both_eq;
                     } else {
@@ -11223,7 +11555,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     u32 item_type =
                         ctx->sema->types[target.type_index].first_param_type;
                     u64 item_size =
-                        llvm_type_storage_bytes(ctx->sema, item_type) / 8;
+                        llvm_type_storage_bytes(ctx->sema, item_type);
                     string count = bytes;
                     if (item_size > 1) {
                         count = llvm_temp(ctx);
@@ -17083,12 +17415,29 @@ internal void llvm_render_assert_runtime_declarations(StringBuilder* sb)
         sb, decls, (u32)(sizeof(decls) / sizeof(decls[0])));
 }
 
+// Collection equality may require runtime support for nested elements.
+internal bool
+llvm_equality_contains_kind(const Sema* sema, u32 type, SemaTypeKind wanted)
+{
+    SemaTypeKind kind = llvm_type_kind(sema, type);
+    if (kind == wanted) {
+        return true;
+    }
+    if (kind == STK_Array || kind == STK_Slice || kind == STK_Box) {
+        return llvm_equality_contains_kind(
+            sema, sema->types[type].first_param_type, wanted);
+    }
+    return false;
+}
+
 internal bool llvm_hir_uses_dynamic_array_runtime(const Hir*  hir,
                                                   const Sema* sema)
 {
     for (u32 i = 0; i < array_count(hir->exprs); ++i) {
         SemaTypeKind kind = llvm_type_kind(sema, hir->exprs[i].type_index);
-        if (kind == STK_DynamicArray || kind == STK_Box ||
+        if (kind == STK_DynamicArray ||
+            llvm_equality_contains_kind(
+                sema, hir->exprs[i].type_index, STK_Box) ||
             hir->exprs[i].kind == HIR_EXPR_Box) {
             return true;
         }
@@ -17156,10 +17505,14 @@ internal bool llvm_hir_uses_string_runtime(const Hir* hir, const Sema* sema)
              expr->binary_op == HIR_BINARY_NotEqual) &&
             expr->lhs_expr_index < array_count(hir->exprs) &&
             expr->rhs_expr_index < array_count(hir->exprs) &&
-            llvm_type_kind(sema, hir->exprs[expr->lhs_expr_index].type_index) ==
-                STK_String &&
-            llvm_type_kind(sema, hir->exprs[expr->rhs_expr_index].type_index) ==
-                STK_String) {
+            llvm_equality_contains_kind(
+                sema,
+                hir->exprs[expr->lhs_expr_index].type_index,
+                STK_String) &&
+            llvm_equality_contains_kind(
+                sema,
+                hir->exprs[expr->rhs_expr_index].type_index,
+                STK_String)) {
             return true;
         }
     }

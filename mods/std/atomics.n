@@ -119,7 +119,8 @@ pub impl [T] atomic[T] {
                                 expected      : T,
                                 desired       : T,
                                 success_order :: AtomicOrder = SequentiallyConsistent,
-                                failure_order :: AtomicLoadOrder = SequentiallyConsistent) -> AtomicCompareExchangeResult[T] {
+                                failure_order :: AtomicLoadOrder = SequentiallyConsistent) -> AtomicCompareExchangeResult[T]
+    where T: Eq {
         observed : T = self^
         on observed == expected => {
             self^ = desired
@@ -134,7 +135,8 @@ pub impl [T] atomic[T] {
                                      expected      : T,
                                      desired       : T,
                                      success_order :: AtomicOrder = SequentiallyConsistent,
-                                     failure_order :: AtomicLoadOrder = SequentiallyConsistent) -> AtomicCompareExchangeResult[T] {
+                                     failure_order :: AtomicLoadOrder = SequentiallyConsistent) -> AtomicCompareExchangeResult[T]
+    where T: Eq {
         observed : T = self^
         on observed == expected => {
             self^ = desired

@@ -382,3 +382,24 @@ compounds materialise local proxies for their signature set while retaining
 source-module provenance and private implementation visibility. HIR generation
 therefore receives only concrete function types and symbols. There is no HIR or
 LLVM compound entity, symbol, wrapper, or dispatcher.
+
+### Collection equality
+
+Semantic analysis checks element equality recursively for arrays, slices, and
+boxes. Selected custom element methods live in `Sema.equality_methods`, a
+compact type/declaration side table. HIR converts these to typed callee
+references in `Hir.equality_methods`, so LLVM does not resolve traits itself.
+Imported methods are resolved against their source module and imported types.
+
+LLVM retains `slice_eq` for integer and boolean sequences and emits typed,
+short-circuiting loops for other elements. Nested comparisons operate on
+borrowed element pointers. They do not consume owning boxes. Box comparisons
+use `nrt_mem_size` to obtain element counts and distinguish nil from allocated
+storage. Box count lowering divides allocation bytes by element storage bytes;
+count-based constructors ensure the semantic `usize` type exists for lowering.
+
+The generic-body validator follows receiver `Self`, pointer dereferences, and
+indexing to the generic element type. Equality of slices and boxes requires
+that element's `Eq` constraint; pointer identity and literal nil checks do not.
+Both block and concise generic bodies are validated. Missing-constraint
+errors highlight the operator and recommend an explicit `where` clause.

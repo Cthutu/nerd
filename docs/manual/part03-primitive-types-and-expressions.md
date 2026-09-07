@@ -141,6 +141,39 @@ is evaluated once.
 For non-built-in values, `==` and `!=` use the canonical `core.Eq`
 implementation when one exists for the value type.
 
+Slices compare their contents: their counts must match and each pair of elements
+must compare equal. Fixed arrays of the same type follow the same element rule.
+The element type must support `Eq`; this includes strings, floats, nested
+slices, boxes, and records with an `Eq` implementation. Storage addresses and
+capacity do not participate. Comparison stops at the first unequal element.
+
+Boxes compare owned contents rather than allocation addresses. Two nil boxes
+are equal. A nil box and an allocated box are unequal. Allocated boxes require
+matching element counts and pairwise equal contents. Equality borrows the
+boxes, so both remain owned by their original bindings afterwards. Use `.data`
+when pointer identity is intended.
+
+Arena values, raw unions, and function values do not support equality. Slices
+and boxes containing such values consequently do not support value equality.
+A comparison with the literal `nil` still tests presence without comparing
+contents. In particular, an empty slice can equal another empty slice while
+only the nil-backed one compares equal to `nil`.
+
+Generic code must declare the required contract, even if its current calls use
+only integers:
+
+```nerd
+same :: fn [T] (lhs: []T, rhs: []T) -> bool
+where T: Eq {
+    return lhs == rhs
+}
+```
+
+This also applies inside generic impls and expression-bodied functions. The
+compiler reports a missing constraint at the comparison operator and suggests
+`where T: Eq`. Floating-point element equality retains scalar behaviour:
+positive and negative zero are equal, and NaN is unequal even to itself.
+
 Logical operators work with `bool`:
 
 | Operator                  | Meaning |

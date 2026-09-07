@@ -4702,6 +4702,27 @@ Hir hir_generate(const Lexer* lexer, const Ast* ast, const Sema* sema)
                          NULL);
     }
 
+    for (u32 i = 0; i < array_count(sema->equality_methods); ++i) {
+        const SemaEqualityMethod* method  = &sema->equality_methods[i];
+        u32                       decl    = method->decl_index;
+        u32                       binding = hir_decl_binding(&hir, decl);
+        u32                       callee  = hir_add_expr(
+            &hir,
+            (HirExpr){
+                .kind          = HIR_EXPR_LocalRef,
+                .type_index    = sema->decls[decl].type_index,
+                .symbol_handle = sema->decls[decl].symbol_handle,
+                .local_index   = sema_no_local(),
+                .ref_kind =
+                    binding != hir_no_index() ? HIR_REF_Binding : HIR_REF_Decl,
+                .ref_index = binding != hir_no_index() ? binding : decl,
+            });
+        array_push(hir.equality_methods,
+                   ((HirEqualityMethod){
+                       .type_index        = method->type_index,
+                       .callee_expr_index = callee,
+                   }));
+    }
     return hir;
 }
 
@@ -4723,6 +4744,7 @@ void hir_done(Hir* hir)
     array_free(hir->stmts);
     array_free(hir->destructure_items);
     array_free(hir->exprs);
+    array_free(hir->equality_methods);
     array_free(hir->call_args);
     array_free(hir->on_branches);
     array_free(hir->on_branch_patterns);

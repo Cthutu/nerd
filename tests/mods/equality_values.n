@@ -1,0 +1,12 @@
+pub Value :: plex {
+    key   i32
+    cache i32
+}
+
+pub impl Eq for Value {
+
+    eq :: fn (lhs: Self, rhs: Self) -> bool {
+        return lhs.key == rhs.key
+    }
+
+}

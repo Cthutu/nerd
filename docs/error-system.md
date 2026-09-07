@@ -209,3 +209,8 @@ The usual pattern is:
 9. verify the LSP diagnostics rendering still makes sense
 
 New feature work is not complete until the error path is covered as well.
+
+Generic operators missing a trait constraint use the semantic type-error family.
+The primary span is the operator, and help names the required `where T: Eq`
+(or `Order`) clause on the generic function or impl. This distinguishes an
+absent generic contract from a concrete operand type mismatch.

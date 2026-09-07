@@ -1,6 +1,6 @@
 impl [T] []T {
-    contains :: fn (values: Self, expected: T) -> bool {
-        return values[0] == expected
+    contains :: fn (values: ^Self, expected: T) -> bool {
+        return values^[0] == expected
     }
 }
 
@@ -71,11 +71,11 @@ main :: fn () => 0
                     "range": {
                         "start": {
                             "line": 2,
-                            "character": 25
+                            "character": 26
                         },
                         "end": {
                             "line": 2,
-                            "character": 27
+                            "character": 28
                         }
                     },
                     "severity": 1,
@@ -88,11 +88,11 @@ main :: fn () => 0
                                 "range": {
                                     "start": {
                                         "line": 2,
-                                        "character": 25
+                                        "character": 26
                                     },
                                     "end": {
                                         "line": 2,
-                                        "character": 27
+                                        "character": 28
                                     }
                                 }
                             },

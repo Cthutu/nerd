@@ -58,24 +58,24 @@ bad_eq :: fn [T] (lhs: T, rhs: T) -> bool {
 main :: fn () => 0
 ¬
 {
-    "message": "Type mismatch: expected `Eq constraint`, found `T`",
+    "message": "Generic parameter `T` requires an `Eq` constraint",
     "source_file": "tests/errors/057-generics.e",
     "primary_location": {
         "line": 2,
-        "column": 12
+        "column": 16
     },
     "references": [
         {
             "kind": "primary",
             "line": 2,
-            "column": 12,
-            "length": 3,
-            "message": "This expression has type `T`"
+            "column": 16,
+            "length": 2,
+            "message": "This operation requires `T: Eq`"
         }
     ],
     "notes": [],
     "help": [
-        "Change the expression or annotation so both sides use the same type."
+        "Add `where T: Eq` to the generic function or impl."
     ]
 }
 ¬
@@ -86,24 +86,24 @@ bad_order :: fn [T] (lhs: T, rhs: T) -> bool {
 main :: fn () => 0
 ¬
 {
-    "message": "Type mismatch: expected `Order constraint`, found `T`",
+    "message": "Generic parameter `T` requires an `Order` constraint",
     "source_file": "tests/errors/057-generics.e",
     "primary_location": {
         "line": 2,
-        "column": 12
+        "column": 16
     },
     "references": [
         {
             "kind": "primary",
             "line": 2,
-            "column": 12,
-            "length": 3,
-            "message": "This expression has type `T`"
+            "column": 16,
+            "length": 1,
+            "message": "This operation requires `T: Order`"
         }
     ],
     "notes": [],
     "help": [
-        "Change the expression or annotation so both sides use the same type."
+        "Add `where T: Order` to the generic function or impl."
     ]
 }
 ¬
@@ -176,23 +176,23 @@ impl [T] []T {
 main :: fn () => 0
 ¬
 {
-    "message": "Type mismatch: expected `Eq constraint`, found `T`",
+    "message": "Generic parameter `T` requires an `Eq` constraint",
     "source_file": "tests/errors/057-generics.e",
     "primary_location": {
         "line": 3,
-        "column": 22
+        "column": 26
     },
     "references": [
         {
             "kind": "primary",
             "line": 3,
-            "column": 22,
-            "length": 1,
-            "message": "This expression has type `T`"
+            "column": 26,
+            "length": 2,
+            "message": "This operation requires `T: Eq`"
         }
     ],
     "notes": [],
     "help": [
-        "Change the expression or annotation so both sides use the same type."
+        "Add `where T: Eq` to the generic function or impl."
     ]
 }

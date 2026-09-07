@@ -221,6 +221,10 @@ bool error_0304_type_mismatch(NerdSource source,
                               ErrorSpan  span,
                               string     expected_type,
                               string     actual_type);
+bool error_0304_missing_trait_constraint(NerdSource source,
+                                         ErrorSpan  span,
+                                         string     param,
+                                         string     trait);
 bool error_0304_type_mismatch_with_note(NerdSource source,
                                         ErrorSpan  span,
                                         string     expected_type,
