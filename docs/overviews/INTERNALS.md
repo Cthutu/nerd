@@ -191,6 +191,14 @@ constraints report a type mismatch. Explicit types remain boundaries, and generi
 bodies and unresolved overloads are left to their existing inference paths.
 Callable signatures are resolved without inferring ordinary function bodies.
 
+The same constraint table records nominal types for targetless plex/union
+literals. Pointer parameters pass their pointee constraint through address
+expressions, and record field types constrain nested literals and numeric
+aliases. These literal targets are collected before local initialisers are
+checked, so aliases share a consistent target and incompatible record uses are
+reported before either use wins. Ordinary literal checking retains responsibility
+for field names, defaults, missing fields, and bitfield ranges.
+
 The tuple expression parser collects child nodes in a temporary array before
 appending them to the AST tuple item table. Nested tuples therefore cannot
 interleave their entries with the parent tuple's contiguous item range.

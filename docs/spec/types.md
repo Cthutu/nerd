@@ -38,6 +38,13 @@ Unconstrained fields retain the usual defaults. Incompatible concrete constraint
 are errors, and explicit annotations and casts are not rewritten. This pass does
 not choose generic specialisations or overloads from expected result types.
 
+Contextual plex and union literals in unannotated locals can also acquire their
+type from concrete usage. For `draw(state: ^State)`, passing `^draw_state`
+constrains the local's `{ ... }` initialiser to `State`. This propagates through
+local aliases, address expressions, tuples, and nested literal fields. Declared
+field types then provide context for field values. Conflicting record types are
+errors; inference does not select a record merely by matching its field names.
+
 Context can also come from an explicit numeric cast in a later compound assignment.
 For example, `total := 0` followed by `total += value.as(u64)` infers `total`
 as `u64`; an untyped compound operand does not override the default by itself.

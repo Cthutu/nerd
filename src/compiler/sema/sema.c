@@ -17604,7 +17604,7 @@ sema_seed_call_arg_context_local_types(const Lexer*           lexer,
     return true;
 }
 
-// Collect concrete usage constraints before defaulting numeric initialisers.
+// Collect concrete usage constraints before materialising local initialisers.
 // Constraints belong to literal leaves, so aliases and tuple projections share
 // them without changing the AST or choosing a type from the first use alone.
 typedef struct {
@@ -17743,6 +17743,15 @@ internal u32 sema_usage_expr_type(SemaUsageInference* ctx, u32 index, u32 depth)
         return sema_usage_expr_type(ctx, node->a, depth + 1);
     case AK_BoolLiteral:
         return sema_builtin_type(sema, STK_Bool);
+    case AK_Plex:
+        return ctx->literals[index];
+    case AK_AddressOf:
+        {
+            u32 pointee = sema_usage_expr_type(ctx, node->a, depth + 1);
+            return pointee == sema_no_type()
+                       ? sema_no_type()
+                       : sema_add_pointer_type(sema, pointee);
+        }
     case AK_StringLiteral:
         return ctx->lexer->tokens[node->token_index].kind == TK_CString
                    ? sema_no_type()
@@ -17866,6 +17875,8 @@ internal bool sema_usage_constrain(SemaUsageInference* ctx,
     }
     if (!sema_usage_numeric(sema, expected) &&
         sema->types[expected].kind != STK_Tuple &&
+        sema->types[expected].kind != STK_Plex &&
+        sema->types[expected].kind != STK_Union &&
         sema->types[expected].kind != STK_Pointer) {
         return true;
     }
@@ -17939,6 +17950,44 @@ internal bool sema_usage_constrain(SemaUsageInference* ctx,
         return true;
     }
     if (path_count != 0) {
+        return true;
+    }
+    if (sema_local_value_is_contextual_plex_literal(
+            ast, sema, index, expected)) {
+        u32 prior = ctx->literals[index];
+        if (prior != sema_no_type() && prior != expected) {
+            return error_0304_type_mismatch(
+                ctx->lexer->source,
+                sema_node_span(ctx->lexer, node),
+                sema_type_name(ctx->lexer, sema, &temp_arena, prior),
+                sema_type_name(ctx->lexer, sema, &temp_arena, expected));
+        }
+        if (prior == sema_no_type()) {
+            ctx->literals[index] = expected;
+            ctx->changed         = true;
+        }
+        // Resolve nested contextual literals and numeric aliases from the
+        // declared field types. Normal inference still validates field names,
+        // counts, defaults, and bitfield ranges.
+        const AstPlexLiteralInfo* literal = &ast->plex_literals[node->a];
+        u32 first = sema->types[expected].first_param_type;
+        u32 count = sema->types[expected].param_count;
+        for (u32 i = 0; i < literal->field_count; ++i) {
+            const AstPlexLiteralField* field =
+                &ast->plex_literal_fields[literal->first_field + i];
+            for (u32 j = 0; j < count; ++j) {
+                if (sema->type_param_symbols[first + j] ==
+                        field->symbol_handle &&
+                    !sema_usage_constrain(ctx,
+                                          field->value_node_index,
+                                          sema->type_param_types[first + j],
+                                          NULL,
+                                          0,
+                                          depth + 1)) {
+                    return false;
+                }
+            }
+        }
         return true;
     }
     if (node->kind == AK_AddressOf &&
@@ -18016,8 +18065,8 @@ internal bool sema_usage_has_local(const Ast* ast, const Sema* sema, u32 index)
     }
 }
 
-// Only eagerly seed initialisers whose literals actually need a non-default
-// type. Other expressions may depend on pattern bindings not yet inferred.
+// Only eagerly seed initialisers whose literals need contextual types.
+// Other expressions may depend on pattern bindings not yet inferred.
 internal bool
 sema_usage_needs_seed(SemaUsageInference* ctx, u32 index, u32 depth)
 {
@@ -18027,6 +18076,8 @@ sema_usage_needs_seed(SemaUsageInference* ctx, u32 index, u32 depth)
     }
     const AstNode* node = &ast->nodes[index];
     switch (node->kind) {
+    case AK_Plex:
+        return ctx->literals[index] != sema_no_type();
     case AK_IntegerLiteral:
     case AK_FloatLiteral:
         return ctx->literals[index] != sema_no_type() &&
@@ -18049,6 +18100,7 @@ sema_usage_needs_seed(SemaUsageInference* ctx, u32 index, u32 depth)
         }
     case AK_Expression:
     case AK_TupleField:
+    case AK_AddressOf:
     case AK_IntegerNegate:
     case AK_BitwiseNot:
         return sema_usage_needs_seed(ctx, node->a, depth + 1);
@@ -18128,8 +18180,20 @@ sema_seed_usage_context_local_types(const Lexer*           lexer,
                        sema_node_is_order_comparison(node)) {
                 u32 a = sema_usage_expr_type(&ctx, node->a, 0);
                 if (node->kind == AK_Assign && a != sema_no_type() &&
+                    (sema->types[a].kind == STK_Plex ||
+                     sema->types[a].kind == STK_Union)) {
+                    // The destination fixes the nominal type. Do not resolve
+                    // a factory call on the right before normal import
+                    // ordering.
+                    ctx.ok = ctx.ok &&
+                             sema_usage_constrain(&ctx, node->b, a, NULL, 0, 0);
+                    continue;
+                }
+                if (node->kind == AK_Assign && a != sema_no_type() &&
                     !sema_usage_numeric(sema, a) &&
                     sema->types[a].kind != STK_Tuple &&
+                    sema->types[a].kind != STK_Plex &&
+                    sema->types[a].kind != STK_Union &&
                     sema->types[a].kind != STK_Pointer) {
                     continue;
                 }

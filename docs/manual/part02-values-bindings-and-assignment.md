@@ -69,6 +69,19 @@ initialiser and available usage context. Numeric literals can take their type
 from later uses, including calls with concrete parameter types and assignments
 to typed destinations. This also works independently for tuple fields.
 
+A later call can also supply the type of a `{ ... }` plex literal, including
+when the call takes its address:
+
+```nerd
+State :: plex { background_colour (f32, f32, f32) }
+draw :: fn (state: ^State) -> f32 { return state.background_colour.0 }
+
+main :: fn () {
+    draw_state := { background_colour: (0.1, 0.2, 0.3) }
+    draw(^draw_state) -- draw_state is State; the colour components are f32
+}
+```
+
 ```nerd
 main :: fn () -> i32 {
     value := 21  -- mutable binding with inferred type
