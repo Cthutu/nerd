@@ -449,6 +449,28 @@ default_int   := 42    -- default_int is an i32
 default_float := 3.14  -- default_float is an f64
 ```
 
+Concrete parameter types can provide context through local aliases, arithmetic,
+and tuple fields before numeric defaults are chosen:
+
+```nerd
+single :: fn (value: f32) -> f32 { return value }
+
+main :: fn () {
+    colour := (0.1, 0.2, 0.3, 1.0)
+    red := colour.0
+    single(red)          -- red and colour.0 are f32
+    single(colour.1 + 0.1) -- colour.1 is also f32
+    -- colour.2 and colour.3 have no stronger context and default to f64
+}
+```
+
+Assignments to typed destinations and explicit local annotations also provide
+context. Constraints are collected before defaulting, so later uses can affect
+earlier bindings. Requiring the same binding or tuple field to be both `f32` and
+`f64` is an error. An annotation or cast fixes a type; inference does not insert
+conversions between concrete types. Generic and overloaded calls still follow
+their own argument inference rules.
+
 An explicit function return type can also provide context to a returned local
 whose initializer is still untyped:
 

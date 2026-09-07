@@ -65,7 +65,9 @@ answer: i32: 42  -- constant binding with explicit type
 ## Mutable Bindings
 
 Use `:=` to introduce a mutable binding whose type is inferred from its
-initialiser.
+initialiser and available usage context. Numeric literals can take their type
+from later uses, including calls with concrete parameter types and assignments
+to typed destinations. This also works independently for tuple fields.
 
 ```nerd
 main :: fn () -> i32 {

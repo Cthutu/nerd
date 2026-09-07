@@ -181,12 +181,22 @@ comparison when the lower-bound comparison fails. In loop headers, the parser
 reserves bare `for name in expression` for iteration; a membership condition is
 therefore written in parentheses.
 
+Before unannotated locals are materialised, Sema collects concrete numeric usage
+constraints from known call signatures, assignments, return annotations,
+arithmetic, and comparisons. A temporary table indexed by literal AST node stores
+constraints; traversing local initialisers and tuple projection paths shares them across
+aliases. A fixed-point scan propagates newly discovered constraints before
+constructing local types and defaulting unconstrained tuple fields. Conflicting
+constraints report a type mismatch. Explicit types remain boundaries, and generic
+bodies and unresolved overloads are left to their existing inference paths.
+Callable signatures are resolved without inferring ordinary function bodies.
+
 The tuple expression parser collects child nodes in a temporary array before
 appending them to the AST tuple item table. Nested tuples therefore cannot
 interleave their entries with the parent tuple's contiguous item range.
 
-Before unannotated locals are materialised, Sema also collects explicit numeric
-cast targets from compound-assignment operands. An untyped literal initializer
+Sema also collects explicit numeric cast targets from compound-assignment
+operands. An untyped literal initializer
 can therefore adopt a later explicit numeric type without requiring the rest of
 the operand to be inferred before loop bindings and other locals are ready.
 

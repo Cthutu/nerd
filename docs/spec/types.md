@@ -28,7 +28,17 @@ platform-sized signed integer values.
 literals. They materialise to concrete types from context, or to `i32` and
 `f64` respectively when no stronger destination type is available.
 
-Context can come from an explicit numeric cast in a later compound assignment.
+For unannotated numeric locals, concrete usage constraints are collected before
+materialisation. Known function and FFI parameter types, typed assignments,
+explicit return types, and concrete numeric operands in arithmetic and comparisons
+can supply context.
+Constraints propagate through local initialisers, aliases, arithmetic, and tuple
+projections; separate tuple fields may acquire different numeric types.
+Unconstrained fields retain the usual defaults. Incompatible concrete constraints
+are errors, and explicit annotations and casts are not rewritten. This pass does
+not choose generic specialisations or overloads from expected result types.
+
+Context can also come from an explicit numeric cast in a later compound assignment.
 For example, `total := 0` followed by `total += value.as(u64)` infers `total`
 as `u64`; an untyped compound operand does not override the default by itself.
 
