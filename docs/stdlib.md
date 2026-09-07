@@ -143,6 +143,8 @@ element zero and passes every later slice element as one process argument. The
 `run` compound function selects either operation from the argument type. A
 negative return value reports that the process could not be created or waited
 for. On Linux, termination by a signal returns `128` plus the signal number.
+Windows array arguments are quoted when empty or containing spaces, tabs, or
+double quotes; plain arguments such as `/C` are passed without quotes.
 
 ### `std.math`
 

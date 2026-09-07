@@ -240,12 +240,12 @@ on "windows" {
     -- Opens a Windows handle for a portable file mode.
     files_native_open :: fn (path: string, mode: FileMode) -> File\FileError {
         native_path := files_windows_path(path)?
-        access := on mode {
+        access: DWORD = on mode {
             FileMode.Read    => GENERIC_READ
             FileMode.Write   => GENERIC_WRITE
             FileMode.Append  => FILE_APPEND_DATA
         }
-        creation := on mode {
+        creation: DWORD = on mode {
             FileMode.Read    => OPEN_EXISTING
             FileMode.Write   => CREATE_ALWAYS
             FileMode.Append  => OPEN_ALWAYS

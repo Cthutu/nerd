@@ -76,24 +76,39 @@ on "windows" {
     process_append_windows_argument :: fn (command_line : ^[..]u8,
                                            argument     : string) {
         on command_line^.count != 0 => command_line^.push(WINDOWS_ARGUMENT_GAP)
+        needs_quotes := argument.count == 0
+        for byte in argument {
+            on byte^ == WINDOWS_ARGUMENT_GAP ||
+                byte^ == 9 ||
+                byte^ == WINDOWS_QUOTE => {
+                needs_quotes = yes
+                break
+            }
+        }
+        on !needs_quotes => {
+            for byte in argument {
+                command_line^.push(byte^)
+            }
+            return
+        }
         command_line^.push(WINDOWS_QUOTE)
 
         backslashes : usize = 0
         for byte in argument {
-            on byte == WINDOWS_BACKSLASH => {
+            on byte^ == WINDOWS_BACKSLASH => {
                 backslashes += 1
             }
-                else on byte == WINDOWS_QUOTE => {
+                else on byte^ == WINDOWS_QUOTE => {
                 process_append_bytes(command_line,
                                      WINDOWS_BACKSLASH,
                                      (backslashes * 2) + 1)
-                command_line^.push(byte)
+                command_line^.push(byte^)
                 backslashes = 0
             } else {
                 process_append_bytes(command_line,
                                      WINDOWS_BACKSLASH,
                                      backslashes)
-                command_line^.push(byte)
+                command_line^.push(byte^)
                 backslashes = 0
             }
         }
@@ -143,7 +158,7 @@ on "windows" {
         command_line : [..]u8
         defer command_line.free()
         for argument in arguments {
-            process_append_windows_argument(^command_line, argument)
+            process_append_windows_argument(^command_line, argument^)
         }
         command_line.push(0)
         return process_run_command_line(command_line.data.as(^i8))
