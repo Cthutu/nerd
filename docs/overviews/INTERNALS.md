@@ -181,6 +181,10 @@ comparison when the lower-bound comparison fails. In loop headers, the parser
 reserves bare `for name in expression` for iteration; a membership condition is
 therefore written in parentheses.
 
+The tuple expression parser collects child nodes in a temporary array before
+appending them to the AST tuple item table. Nested tuples therefore cannot
+interleave their entries with the parent tuple's contiguous item range.
+
 Before unannotated locals are materialised, Sema also collects explicit numeric
 cast targets from compound-assignment operands. An untyped literal initializer
 can therefore adopt a later explicit numeric type without requiring the rest of
