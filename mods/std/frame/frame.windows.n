@@ -24,6 +24,9 @@ on "windows" {
         restore_height   u16
         full_screen      bool
         resizable        bool
+        -- Native tracking limits must not clamp application-requested sizing.
+        applying_size    bool
+        minimised        bool
         closed_queued    bool
         clear_valid      bool
         clear_client_w   i32
@@ -224,6 +227,24 @@ on "windows" {
         info := frame_windows_find_info_for_window(window)
 
         on message {
+            WM_GETMINMAXINFO => {
+                on info != nil &&
+                    !info.platform_info.resizable &&
+                    !info.platform_info.full_screen &&
+                    !info.platform_info.applying_size &&
+                    !info.platform_info.minimised => {
+                    rect : RECT
+                    on GetWindowRect(window, ^rect) != 0 => {
+                        limits := lparam.as(^MINMAXINFO)
+                        limits.ptMinTrackSize.x = rect.right - rect.left
+                        limits.ptMinTrackSize.y = rect.bottom - rect.top
+                        limits.ptMaxTrackSize = limits.ptMinTrackSize
+                        return 0
+                    }
+                }
+                return DefWindowProc(window, message, wparam, lparam)
+            }
+
             WM_CLOSE => {
                 frame_windows_push_closed(info)
                 return 0
@@ -236,6 +257,7 @@ on "windows" {
 
             WM_SIZE => {
                 on info != nil => {
+                    info.platform_info.minimised = wparam == SIZE_MINIMIZED
                     value  := lparam.as(usize)
                     width  := (value & 0xffff).as(u16)
                     height := ((value >> 16) & 0xffff).as(u16)
@@ -443,6 +465,8 @@ on "windows" {
 
     frame_windows_apply_fullscreen :: fn (info: ^FrameInfo, frame: ^Frame) {
         on frame.full_screen == info.platform_info.full_screen => return
+        info.platform_info.applying_size = yes
+        defer info.platform_info.applying_size = no
         on frame.full_screen => frame_windows_enter_fullscreen(info)
         on !frame.full_screen => frame_windows_leave_fullscreen(info)
     }
@@ -522,6 +546,8 @@ on "windows" {
 
         on !info.platform_info.full_screen &&
             !was_full_screen => {
+            info.platform_info.applying_size = yes
+            defer info.platform_info.applying_size = no
             style := frame_windows_window_style(frame.resizable)
             (window_width, window_height) := frame_windows_adjusted_rect(frame.width, frame.height, style, 0)
             _ := SetWindowLongPtr(info.platform_info.window,

@@ -69,16 +69,21 @@ pub GWL_STYLE     :: -16
 
 pub PM_REMOVE :: 0x0001
 
-pub WM_DESTROY    :: 0x0002
-pub WM_CLOSE      :: 0x0010
-pub WM_SIZE       :: 0x0005
-pub WM_NCHITTEST  :: 0x0084
-pub WM_KEYDOWN    :: 0x0100
-pub WM_KEYUP      :: 0x0101
-pub WM_CHAR       :: 0x0102
-pub WM_SYSKEYDOWN :: 0x0104
-pub WM_SYSKEYUP   :: 0x0105
-pub WM_SYSCHAR    :: 0x0106
+pub WM_DESTROY       :: 0x0002
+pub WM_CLOSE         :: 0x0010
+pub WM_SIZE          :: 0x0005
+pub WM_GETMINMAXINFO :: 0x0024
+pub WM_NCHITTEST     :: 0x0084
+pub WM_KEYDOWN       :: 0x0100
+pub WM_KEYUP         :: 0x0101
+pub WM_CHAR          :: 0x0102
+pub WM_SYSKEYDOWN    :: 0x0104
+pub WM_SYSKEYUP      :: 0x0105
+pub WM_SYSCHAR       :: 0x0106
+
+pub SIZE_MINIMIZED :: 1
+pub SW_MINIMIZE    :: 6
+pub SW_RESTORE     :: 9
 
 pub HTLEFT        :: 10
 pub HTRIGHT       :: 11
@@ -113,6 +118,14 @@ pub RECT :: plex #c {
 pub POINT :: plex #c {
     x LONG
     y LONG
+}
+
+pub MINMAXINFO :: plex #c {
+    ptReserved     POINT
+    ptMaxSize      POINT
+    ptMaxPosition  POINT
+    ptMinTrackSize POINT
+    ptMaxTrackSize POINT
 }
 
 pub MSG :: plex #c {
@@ -213,6 +226,10 @@ ffi "user32" {
                                                 hInstance    : HINSTANCE,
                                                 lpParam      : ^void) -> HWND
     pub DefWindowProc    :: DefWindowProcA     (hWnd   : HWND,
+                                                Msg    : UINT,
+                                                wParam : WPARAM,
+                                                lParam : LPARAM) -> LRESULT
+    pub SendMessage      :: SendMessageA       (hWnd   : HWND,
                                                 Msg    : UINT,
                                                 wParam : WPARAM,
                                                 lParam : LPARAM) -> LRESULT

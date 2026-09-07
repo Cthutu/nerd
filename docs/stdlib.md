@@ -280,6 +280,14 @@ state, and platform context creation. `Frame.context() ->
 FrameContext\FrameError` is the public way to resolve platform handles;
 detached, closed, and invalid frames report explicit `FrameError` values.
 
+`Frame.resizable = no` asks the window manager to prevent user resizing.
+On Windows, fixed frames remove the resize/maximise styles and report equal
+minimum and maximum tracking sizes through `WM_GETMINMAXINFO`. These limits
+use the current outer window dimensions, including its non-client border.
+Programmatic size changes through `apply`, fullscreen transitions, and restoring
+a minimised window bypass the tracking limits; normal windowed operation
+restores the constraint.
+
 `std.gfx` owns frame-attached pixel layers and pixel presentation. It may use an
 OpenGL texture path internally when a frame has a usable context, with software
 platform presentation as the fallback.
