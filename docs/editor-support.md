@@ -32,6 +32,14 @@ milestone.
 
 ## VS Code Extension
 
+`nerd init` generates portable `.vscode/tasks.json` and `.vscode/launch.json`
+files. Check and build tasks invoke `nerd` from `PATH` as a process in the
+workspace directory. A build dependency creates `_bin` using `mkdir -p` on
+Linux or PowerShell on Windows. The Nerd launch configuration uses `_bin/main`
+by default and overrides it with `_bin/main.exe` on Windows. These tasks do not
+require `just` or a Unix shell on Windows; debugging requires the Nerd extension
+and CodeLLDB.
+
 The VS Code extension is repo-owned and lives in `syntax/nerd-vscode`. It
 registers `.n` files, contributes the TextMate grammar, and starts the language
 server with `nerd lsp`.

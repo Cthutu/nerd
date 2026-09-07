@@ -954,19 +954,61 @@ def test_command(path: pathlib.Path) -> list[Failure]:
                 if snippet not in text:
                     failures.append(Failure(path, f"generated tasks.json missing: {snippet}"))
             try:
-                tasks = json.loads(text)["tasks"]
+                task_config = json.loads(text)
+                tasks = task_config["tasks"]
             except Exception as exc:
                 failures.append(Failure(path, f"failed to parse generated tasks.json: {exc}"))
             else:
-                presentations = [task.get("presentation") for task in tasks]
+                presentations = [task.get("presentation") for task in tasks if task.get("command") == "nerd"]
                 if len(presentations) != 2 or presentations[0] != presentations[1]:
                     failures.append(Failure(path, "expected both generated tasks to use matching presentation settings"))
+                if task_config.get("options", {}).get("cwd") != "${workspaceFolder}":
+                    failures.append(Failure(path, "expected generated tasks to run in the workspace"))
         launch_json = init_project / ".vscode" / "launch.json"
         if launch_json.is_file():
             text = launch_json.read_text(encoding="utf-8")
             for snippet in ("Debug main.n", "${workspaceFolder}/_bin/main", "nerd: build main.n"):
                 if snippet not in text:
                     failures.append(Failure(path, f"generated launch.json missing: {snippet}"))
+            try:
+                launch = json.loads(text)["configurations"][0]
+                if launch["program"] != "${workspaceFolder}/_bin/main":
+                    raise ValueError("incorrect Linux executable path")
+                if launch["windows"]["program"] != "${workspaceFolder}/_bin/main.exe":
+                    raise ValueError("incorrect Windows executable path")
+                tasks_by_label = {task["label"]: task for task in tasks}
+                build_task = tasks_by_label[launch["preLaunchTask"]]
+                executed = set()
+
+                def execute_init_task(task):
+                    label = task["label"]
+                    if label in executed:
+                        return
+                    executed.add(label)
+                    if "dependsOn" in task:
+                        execute_init_task(tasks_by_label[task["dependsOn"]])
+                    effective = dict(task)
+                    effective.update(task.get("windows" if sys.platform == "win32" else "linux", {}))
+                    if effective["type"] != "process":
+                        raise ValueError("generated tasks must run without a shell")
+                    command = effective["command"]
+                    if command == "nerd":
+                        command = str(NERD)
+                    result = run_cmd([command, *effective["args"]], cwd=init_project)
+                    if result.returncode != 0:
+                        raise ValueError(f"task {label} failed: {result.stderr}")
+
+                execute_init_task(tasks_by_label["nerd: check main.n"])
+                execute_init_task(build_task)
+                effective_launch = dict(launch)
+                if sys.platform == "win32":
+                    effective_launch.update(launch["windows"])
+                launch_executable = effective_launch["program"].replace("${workspaceFolder}", str(init_project))
+                result = run_cmd([launch_executable], cwd=init_project)
+                if result.returncode != 0 or strip_ansi(result.stdout).strip() != "Hello, World!":
+                    raise ValueError(f"generated launch executable failed: {result.stderr}")
+            except Exception as exc:
+                failures.append(Failure(path, f"generated VS Code workflow failed: {exc}"))
         git_log = subprocess.run(
             ["git", "log", "--format=%s", "-1"],
             cwd=init_project,

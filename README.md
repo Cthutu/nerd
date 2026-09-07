@@ -100,6 +100,9 @@ LLVM backend status:
 - `nerd init [project]` creates a new Nerd project with `main.n`, a `Justfile`,
   VS Code task/launch files, `.gitignore`, and an initial git commit. When the
   project argument is omitted, it initialises the current directory.
+  The generated VS Code tasks invoke Nerd directly and create `_bin` with a
+  platform-specific command. The launch configuration selects `main.exe` on
+  Windows and `main` on Linux, so the same JSON files work on both platforms.
 - The previous IR/C backend has been removed; HIR is the compiler middle layer
   and LLVM IR is the executable backend output.
 - The executable backend targets the host 64-bit clang toolchain. Cross-target
