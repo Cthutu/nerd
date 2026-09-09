@@ -449,6 +449,16 @@ cstr module_path_to_qualified_name(Arena*               arena,
     return (cstr)sb_to_string(&sb).data;
 }
 
+// An explicitly empty path disables library lookup; an unset path selects the
+// bundled library. Callers must not add an executable-relative fallback.
+cstr module_library_path(Arena* arena)
+{
+    cstr configured = getenv("NERD_LIB_PATH");
+    return configured != NULL
+               ? configured
+               : path_join(arena, path_executable_dir(arena), "mods");
+}
+
 ModuleResolveStatus module_resolve_path(Arena*               arena,
                                         NerdSource           root_source,
                                         const Lexer*         lexer,
@@ -459,68 +469,36 @@ ModuleResolveStatus module_resolve_path(Arena*               arena,
     if (root_source.source_path.count == 0) {
         return MRS_InvalidRootSource;
     }
-
-    cstr root_path = module_source_file_path(arena, root_source);
-    if (root_path == NULL) {
-        return MRS_InvalidRootSource;
-    }
-
     cstr current_path = module_source_file_path(arena, lexer->source);
-    if (current_path != NULL) {
-        cstr current_dir = path_dirname(arena, current_path);
-        if (module_path_exists_in_root(arena,
-                                       lexer,
-                                       ast,
-                                       path,
-                                       current_dir,
-                                       current_path,
-                                       out_result)) {
-            return MRS_Found;
-        }
-    }
-
-    cstr root_dir = path_dirname(arena, root_path);
-    if (module_path_exists_in_root(
-            arena, lexer, ast, path, root_dir, current_path, out_result)) {
+    // Bare imports can name a sibling in the importing module. Qualified
+    // library imports and implicit core resolution never use source roots.
+    if (path->symbol_count == 1 && current_path != NULL &&
+        !module_current_path_is(
+            arena, path_dirname(arena, current_path), ".") &&
+        module_path_exists_in_root(arena,
+                                   lexer,
+                                   ast,
+                                   path,
+                                   path_dirname(arena, current_path),
+                                   current_path,
+                                   out_result)) {
         return MRS_Found;
     }
-
+    if (module_path_exists_in_env_roots(arena,
+                                        lexer,
+                                        ast,
+                                        path,
+                                        module_library_path(arena),
+                                        current_path,
+                                        out_result)) {
+        return MRS_Found;
+    }
     cstr cwd = path_canonical(arena, ".");
     if (cwd != NULL &&
         module_path_exists_in_root(
             arena, lexer, ast, path, cwd, current_path, out_result)) {
         return MRS_Found;
     }
-
-    cstr lib_path = getenv("NERD_LIB_PATH");
-    if (module_path_exists_in_env_roots(
-            arena, lexer, ast, path, lib_path, current_path, out_result)) {
-        return MRS_Found;
-    }
-
-    cstr install_lib_path = getenv("NERD_INSTALL_LIB_PATH");
-    if (module_path_exists_in_env_roots(arena,
-                                        lexer,
-                                        ast,
-                                        path,
-                                        install_lib_path,
-                                        current_path,
-                                        out_result)) {
-        return MRS_Found;
-    }
-
-    cstr exe_dir = path_executable_dir(arena);
-    if (module_path_exists_in_root(
-            arena, lexer, ast, path, exe_dir, current_path, out_result)) {
-        return MRS_Found;
-    }
-
-    cstr mods_dir = path_join(arena, exe_dir, "mods");
-    if (module_path_exists_in_root(
-            arena, lexer, ast, path, mods_dir, current_path, out_result)) {
-        return MRS_Found;
-    }
-
     return MRS_NotFound;
 }
 
@@ -533,61 +511,20 @@ ModuleResolveStatus module_resolve_qualified(Arena*     arena,
     if (root_source.source_path.count == 0) {
         return MRS_InvalidRootSource;
     }
-
-    cstr root_path = module_source_file_path(arena, root_source);
-    if (root_path == NULL) {
-        return MRS_InvalidRootSource;
-    }
-
     cstr current_path = module_source_file_path(arena, current_source);
-    if (current_path != NULL) {
-        cstr current_dir = path_dirname(arena, current_path);
-        if (module_qualified_exists_in_root(
-                arena, qualified_name, current_dir, current_path, out_result)) {
-            return MRS_Found;
-        }
-    }
-
-    cstr root_dir = path_dirname(arena, root_path);
-    if (module_qualified_exists_in_root(
-            arena, qualified_name, root_dir, current_path, out_result)) {
+    if (module_qualified_exists_in_env_roots(arena,
+                                             qualified_name,
+                                             module_library_path(arena),
+                                             current_path,
+                                             out_result)) {
         return MRS_Found;
     }
-
     cstr cwd = path_canonical(arena, ".");
     if (cwd != NULL &&
         module_qualified_exists_in_root(
             arena, qualified_name, cwd, current_path, out_result)) {
         return MRS_Found;
     }
-
-    cstr lib_path = getenv("NERD_LIB_PATH");
-    if (module_qualified_exists_in_env_roots(
-            arena, qualified_name, lib_path, current_path, out_result)) {
-        return MRS_Found;
-    }
-
-    cstr install_lib_path = getenv("NERD_INSTALL_LIB_PATH");
-    if (module_qualified_exists_in_env_roots(arena,
-                                             qualified_name,
-                                             install_lib_path,
-                                             current_path,
-                                             out_result)) {
-        return MRS_Found;
-    }
-
-    cstr exe_dir = path_executable_dir(arena);
-    if (module_qualified_exists_in_root(
-            arena, qualified_name, exe_dir, current_path, out_result)) {
-        return MRS_Found;
-    }
-
-    cstr mods_dir = path_join(arena, exe_dir, "mods");
-    if (module_qualified_exists_in_root(
-            arena, qualified_name, mods_dir, current_path, out_result)) {
-        return MRS_Found;
-    }
-
     return MRS_NotFound;
 }
 

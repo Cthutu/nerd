@@ -34,3 +34,12 @@ The currently supported fields are `env` and `define`:
 Configuration applies to normal compiler commands and the LSP server. This
 allows command-line builds and editor analysis to share module paths and
 compile-time `on "name"` branches.
+
+## Library search
+
+`NERD_LIB_PATH` replaces the compiler's bundled library search path. If it is
+unset, Nerd uses `mods` beside its executable; if defined but empty, Nerd skips
+library lookup. After the selected library roots, Nerd searches the invocation
+working directory. Missing modules never fall back to another installed library.
+`NERD_INSTALL_LIB_PATH` is no longer used. Bare sibling imports inside modules
+remain relative to their importing file.

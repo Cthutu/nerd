@@ -1129,23 +1129,16 @@ internal bool lsp_signature_resolve_text_module(Arena*             arena,
         current_source.source_path = current_source_path;
     }
     cstr current_path = module_source_file_path(arena, current_source);
-    if (current_path != NULL &&
+    if (memchr(module_path.data, '.', module_path.count) == NULL &&
+        current_path != NULL &&
+        strcmp(path_dirname(arena, current_path), path_canonical(arena, ".")) !=
+            0 &&
         lsp_signature_resolve_text_module_in_root(
             arena, module_path, path_dirname(arena, current_path), out_path)) {
         return true;
     }
 
-    NerdSource root_source = doc->program.root_source.source_path.count > 0
-                                 ? doc->program.root_source
-                                 : doc->front_end.lexer.source;
-    cstr       root_path   = module_source_file_path(arena, root_source);
-    if (root_path != NULL &&
-        lsp_signature_resolve_text_module_in_root(
-            arena, module_path, path_dirname(arena, root_path), out_path)) {
-        return true;
-    }
-
-    cstr lib_path = getenv("NERD_LIB_PATH");
+    cstr lib_path = module_library_path(arena);
     if (lib_path != NULL && *lib_path != '\0') {
 #if OS_WINDOWS
         char separator = ';';
@@ -1172,10 +1165,8 @@ internal bool lsp_signature_resolve_text_module(Arena*             arena,
         }
     }
 
-    cstr exe_dir  = path_executable_dir(arena);
-    cstr mods_dir = path_join(arena, exe_dir, "mods");
     return lsp_signature_resolve_text_module_in_root(
-        arena, module_path, mods_dir, out_path);
+        arena, module_path, path_canonical(arena, "."), out_path);
 }
 
 internal bool lsp_signature_source_use_decl_label(Arena*             arena,

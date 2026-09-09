@@ -130,29 +130,6 @@ Graphics :: plex {
         "id": 2,
         "result": [
             {
-                "title": "Add use os.windows",
-                "kind": "quickfix",
-                "edit": {
-                    "changes": {
-                        "__REPO_URI__/tests/lsp/130-workspace-root-add-use/tiny_engine/graphics.n": [
-                            {
-                                "range": {
-                                    "start": {
-                                        "line": 0,
-                                        "character": 0
-                                    },
-                                    "end": {
-                                        "line": 0,
-                                        "character": 0
-                                    }
-                                },
-                                "newText": "use os.windows\n\n"
-                            }
-                        ]
-                    }
-                }
-            },
-            {
                 "title": "Add use test.lsp_windows_exports",
                 "kind": "quickfix",
                 "edit": {
@@ -170,6 +147,29 @@ Graphics :: plex {
                                     }
                                 },
                                 "newText": "use test.lsp_windows_exports\n\n"
+                            }
+                        ]
+                    }
+                }
+            },
+            {
+                "title": "Add use os.windows",
+                "kind": "quickfix",
+                "edit": {
+                    "changes": {
+                        "__REPO_URI__/tests/lsp/130-workspace-root-add-use/tiny_engine/graphics.n": [
+                            {
+                                "range": {
+                                    "start": {
+                                        "line": 0,
+                                        "character": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "character": 0
+                                    }
+                                },
+                                "newText": "use os.windows\n\n"
                             }
                         ]
                     }

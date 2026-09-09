@@ -1678,31 +1678,14 @@ internal void lsp_code_action_find_modules_exporting_symbol(
         }
     }
 
-    cstr root_source_path =
-        module_source_file_path(arena, doc->program.root_source);
-    if (root_source_path != NULL) {
-        cstr program_root = path_dirname(arena, root_source_path);
-        if (lsp_code_action_should_scan_module_root(program_root)) {
-            lsp_code_action_find_modules_exporting_symbol_in_dir(
-                arena, paths, program_root, program_root, symbol);
-        }
-    }
-
-    cstr cwd_mods = path_canonical(arena, "mods");
-    if (cwd_mods != NULL && path_exists(cwd_mods) &&
-        path_is_directory(cwd_mods)) {
-        lsp_code_action_find_modules_exporting_symbol_in_dir(
-            arena, paths, cwd_mods, cwd_mods, symbol);
-    }
-
     lsp_code_action_find_modules_exporting_symbol_in_env_roots(
-        arena, paths, getenv("NERD_LIB_PATH"), symbol);
+        arena, paths, module_library_path(arena), symbol);
 
-    cstr exe_dir  = path_executable_dir(arena);
-    cstr mods_dir = path_join(arena, exe_dir, "mods");
-    if (path_exists(mods_dir) && path_is_directory(mods_dir)) {
+    cstr cwd = path_canonical(arena, ".");
+    if (array_count(*paths) == 0 && cwd != NULL &&
+        lsp_code_action_should_scan_module_root(cwd)) {
         lsp_code_action_find_modules_exporting_symbol_in_dir(
-            arena, paths, mods_dir, mods_dir, symbol);
+            arena, paths, cwd, cwd, symbol);
     }
 }
 

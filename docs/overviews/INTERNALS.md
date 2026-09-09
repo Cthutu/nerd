@@ -403,3 +403,11 @@ indexing to the generic element type. Equality of slices and boxes requires
 that element's `Eq` constraint; pointer identity and literal nil checks do not.
 Both block and concise generic bodies are validated. Missing-constraint
 errors highlight the operator and recommend an explicit `where` clause.
+
+### Module library selection
+
+`module_library_path` centralises library selection for compiler and LSP lookup:
+`NERD_LIB_PATH` when defined, otherwise `mods` beside the executable. An empty
+configured path disables library search. Explicit imports and implicit `core`
+then search the invocation directory, without legacy install or source-root
+fallbacks. Bare sibling imports retain their module-relative lookup.

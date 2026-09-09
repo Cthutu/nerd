@@ -29,6 +29,7 @@ format:
 test *args:
     just build nerd --skip-mod-sync
     python3 build/test.py {{args}}
+    python3 build/test_install.py --nerd _bin/nerd-debug{{exe_suffix}}
 
 test-release *args:
     just build-release nerd --skip-mod-sync

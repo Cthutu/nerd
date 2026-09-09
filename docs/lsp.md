@@ -229,7 +229,8 @@ semantic analysis.
 
 The server also offers import quick fixes for unresolved symbols. It searches
 loaded modules, sibling modules beside the active/root document, roots from
-`NERD_LIB_PATH`, and the available `mods` tree for public exports with the
+the selected library roots (`NERD_LIB_PATH` when defined, otherwise the
+compiler-adjacent `mods` tree) for public exports with the
 missing name, then inserts `use module.path` either at the top of the file or
 after the first leading group of `use` statements. Existing imports are filtered
 out before actions are returned, so a stale unresolved-symbol diagnostic cannot

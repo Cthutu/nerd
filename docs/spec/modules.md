@@ -30,13 +30,23 @@ an explicit import of `core` is neither required nor used.
 
 ## Resolution Order
 
-`module_resolve_path` currently searches:
+Explicit module imports and implicit `core` lookup use these search roots:
 
-1. The current source file's directory.
-2. The root source file's directory.
-3. Each directory in `NERD_LIB_PATH` (`:` separated on Unix, `;` on Windows).
-4. The executable directory.
-5. The executable directory's `mods` child.
+1. Each directory in `NERD_LIB_PATH`, when the variable is defined (`:` separated
+   on Unix, `;` on Windows). Otherwise, the executable directory's `mods` child.
+2. The current working directory of the compiler invocation.
+
+A defined `NERD_LIB_PATH` completely replaces the bundled library, even when it
+is empty or a requested module is missing. An empty value disables library
+lookup. `NERD_INSTALL_LIB_PATH` and the executable directory itself are not
+search roots. Qualified imports do not search the root or current source file's
+directory. The same library selection applies to language-server lookup.
+
+As a separate relative-import rule, a bare single-name import can first resolve
+an adjacent sibling when the importing file is outside the invocation directory.
+This keeps imports such as `use kernel32` inside `os.windows` relative to their
+module. Imports from the invocation directory retain library-first precedence.
+Implicit `core` lookup always uses the ordered roots above.
 
 For `a.b`, the resolver first tries `a/b.n`; if absent, it tries `a/b/mod.n`.
 When a `mod.n` file is found on a path prefix, it forms a package boundary for

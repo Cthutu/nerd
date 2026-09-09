@@ -82,6 +82,87 @@ def assert_no_run_outputs(directory: pathlib.Path, stem: str, label: str) -> Non
         raise AssertionError(f"{label} left LLVM artefacts: {names}")
 
 
+def check_module_resolution(nerd_cmd: str) -> None:
+    """Exercise real installed-module lookup independently of the repo config."""
+    with tempfile.TemporaryDirectory(prefix="nerd-module-search-") as directory:
+        root = pathlib.Path(directory)
+        installation = root / "installation"
+        bundled = installation / "mods"
+        library = root / "library"
+        project = root / "project"
+        source = project / "source"
+        for folder in (bundled, library, source):
+            folder.mkdir(parents=True)
+        executable = installation / ("nerd" + EXE_SUFFIX)
+        shutil.copy2(nerd_cmd, executable)
+
+        def write(base: pathlib.Path, name: str, content: str) -> None:
+            path = base / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(content, encoding="utf-8")
+
+        # Core participates in the same search as explicit qualified imports.
+        write(bundled, "core.n", "pub bundled_core :: 1\n")
+        write(library, "core.n", "pub local_core :: 1\n")
+        write(bundled, "probe/only.n", "pub value :: 1\n")
+        write(installation, "probe/beside.n", "pub value :: 1\n")
+        write(library, "probe/priority.n", "pub value :: yes\n")
+        write(project, "probe/priority.n", "pub value :: 1\n")
+        write(library, "priority.n", "pub value :: yes\n")
+        write(project, "priority.n", "pub value :: 1\n")
+        write(project, "probe/cwd.n", "pub value :: 1\n")
+        write(source, "probe/hidden.n", "pub value :: 1\n")
+        write(library, "package/mod.n", "pub use sibling\n")
+        write(library, "package/sibling.n", "pub value :: 1\n")
+        write(project, "sibling.n", "pub value :: no\n")
+        base_env = os.environ.copy()
+        base_env.pop("NERD_LIB_PATH", None)
+        base_env["NERD_INSTALL_LIB_PATH"] = str(bundled)
+
+        def expect(text: str, path: str | None, success: bool, label: str,
+                   nested: bool = False) -> None:
+            env = base_env.copy()
+            if path is not None:
+                env["NERD_LIB_PATH"] = path
+            target = (source if nested else project) / "main.n"
+            target.write_text(text + "\n", encoding="utf-8")
+            proc = run([str(executable), "check", str(target)], project, env)
+            if success:
+                check(proc, label)
+            elif proc.returncode == 0:
+                raise AssertionError(f"{label}: unexpectedly resolved a hidden module")
+
+        expect("use probe.only\nmain :: fn () { _x := bundled_core }",
+               None, True, "unset path uses bundled library")
+        expect("use probe.only\nmain :: fn () {}", str(library), False,
+               "override disables bundled and legacy install fallback")
+        expect("main :: fn () { _x := bundled_core }", str(library), False,
+               "implicit core does not fall back to installed core")
+        expect("main :: fn () { _x := local_core }", str(library), True,
+               "implicit core uses configured library")
+        expect("use probe.priority\nmain :: fn () { _x : bool = value }",
+               str(library), True, "library precedes invocation directory")
+        expect("use priority\nmain :: fn () { _x : bool = value }",
+               str(library), True, "bare invocation imports are library-first")
+        expect("use probe.cwd\nmain :: fn () {}", str(library), True,
+               "invocation directory remains searchable", nested=True)
+        expect("use probe.hidden\nmain :: fn () {}", str(library), False,
+               "qualified imports do not search source directories", nested=True)
+        expect("use package\nmain :: fn () { _x : i32 = value }",
+               str(library), True, "package sibling imports remain relative")
+        expect("use probe.only\nmain :: fn () {}", "", False,
+               "empty path disables bundled library")
+        expect("main :: fn () { _x := bundled_core }", "", False,
+               "empty path disables bundled core")
+        expect("use probe.cwd\nmain :: fn () {}", "", True,
+               "empty path retains invocation directory")
+        expect("use probe.beside\nmain :: fn () {}", None, False,
+               "executable directory itself is not a library root")
+        expect("use probe.priority\nmain :: fn () { _x : bool = value }",
+               str(root / "absent") + os.pathsep + str(library), True,
+               "configured roots are searched in order")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run installed nerd smoke tests")
     parser.add_argument(
@@ -101,6 +182,8 @@ def main() -> int:
         if resolved is None:
             raise SystemExit(f"nerd executable not found: {nerd}")
         nerd_cmd = resolved
+
+    check_module_resolution(nerd_cmd)
 
     env = os.environ.copy()
     env.setdefault("NERD_LIB_PATH", str(ROOT / "mods"))

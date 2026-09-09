@@ -4967,23 +4967,16 @@ internal bool lsp_completion_resolve_text_module(Arena*             arena,
         current_source.source_path = current_source_path;
     }
     cstr current_path = module_source_file_path(arena, current_source);
-    if (current_path != NULL &&
+    if (memchr(module_path.data, '.', module_path.count) == NULL &&
+        current_path != NULL &&
+        strcmp(path_dirname(arena, current_path), path_canonical(arena, ".")) !=
+            0 &&
         lsp_completion_resolve_text_module_in_root(
             arena, module_path, path_dirname(arena, current_path), out_path)) {
         return true;
     }
 
-    NerdSource root_source = doc->program.root_source.source_path.count > 0
-                                 ? doc->program.root_source
-                                 : doc->front_end.lexer.source;
-    cstr       root_path   = module_source_file_path(arena, root_source);
-    if (root_path != NULL &&
-        lsp_completion_resolve_text_module_in_root(
-            arena, module_path, path_dirname(arena, root_path), out_path)) {
-        return true;
-    }
-
-    cstr lib_path = getenv("NERD_LIB_PATH");
+    cstr lib_path = module_library_path(arena);
     if (lib_path != NULL && *lib_path != '\0') {
 #if OS_WINDOWS
         char separator = ';';
@@ -5010,10 +5003,8 @@ internal bool lsp_completion_resolve_text_module(Arena*             arena,
         }
     }
 
-    cstr exe_dir  = path_executable_dir(arena);
-    cstr mods_dir = path_join(arena, exe_dir, "mods");
     return lsp_completion_resolve_text_module_in_root(
-        arena, module_path, mods_dir, out_path);
+        arena, module_path, path_canonical(arena, "."), out_path);
 }
 
 internal void lsp_completion_add_source_module_members(Arena*             arena,
@@ -6296,7 +6287,9 @@ internal void lsp_completion_add_modules(Arena*             arena,
 
     cstr current_path =
         module_source_file_path(&temp, doc->front_end.lexer.source);
-    if (current_path != NULL) {
+    if (!has_dot && current_path != NULL &&
+        strcmp(path_dirname(&temp, current_path), path_canonical(&temp, ".")) !=
+            0) {
         lsp_completion_add_modules_in_root(arena,
                                            items,
                                            path_dirname(&temp, current_path),
@@ -6304,16 +6297,7 @@ internal void lsp_completion_add_modules(Arena*             arena,
                                            current_path);
     }
 
-    cstr root_path = module_source_file_path(&temp, doc->program.root_source);
-    if (root_path != NULL) {
-        lsp_completion_add_modules_in_root(arena,
-                                           items,
-                                           path_dirname(&temp, root_path),
-                                           module_path,
-                                           current_path);
-    }
-
-    cstr lib_path = getenv("NERD_LIB_PATH");
+    cstr lib_path = module_library_path(&temp);
     if (lib_path != NULL && *lib_path != '\0') {
 #if OS_WINDOWS
         char separator = ';';
@@ -6338,10 +6322,8 @@ internal void lsp_completion_add_modules(Arena*             arena,
         }
     }
 
-    cstr exe_dir  = path_executable_dir(&temp);
-    cstr mods_dir = path_join(&temp, exe_dir, "mods");
     lsp_completion_add_modules_in_root(
-        arena, items, mods_dir, module_path, current_path);
+        arena, items, path_canonical(&temp, "."), module_path, current_path);
 
     arena_done(&temp);
 }

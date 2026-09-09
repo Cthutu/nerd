@@ -233,3 +233,15 @@ Qualified names such as `str.split` make dependencies explicit.
 The standard library is still developing. This manual uses it for small
 examples, but does not try to document its full API. Treat standard library
 details as separate from the core language rules.
+
+## Choosing the library
+
+Set `NERD_LIB_PATH` to use your own library in place of the one installed with
+Nerd. It accepts multiple directories separated by `:` on Unix or `;` on Windows.
+When it is unset, Nerd uses `mods` beside the compiler. Setting it to an empty
+value disables library lookup.
+
+Nerd searches the selected library directories first, then the directory from
+which you invoked it. Missing modules do not fall back to the installed library.
+This also applies to the implicitly imported `core` module. A bare sibling import,
+such as `use kernel32` inside `os.windows`, still resolves relative to its module.

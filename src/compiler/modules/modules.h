@@ -49,3 +49,6 @@ ModuleResolveStatus module_resolve_qualified(Arena*     arena,
 cstr                module_source_file_path(Arena* arena, NerdSource source);
 
 //------------------------------------------------------------------------------
+
+// Selected library roots; an empty configured path disables library lookup.
+cstr module_library_path(Arena* arena);
