@@ -205,6 +205,11 @@ bool error_0213_misspelled_on(NerdSource source,
 bool error_0300_unknown_symbol(NerdSource source,
                                ErrorSpan  span,
                                string     symbol);
+bool error_0300_unknown_symbol_with_private_modules(NerdSource    source,
+                                                    ErrorSpan     span,
+                                                    string        symbol,
+                                                    const string* modules,
+                                                    u32           module_count);
 bool error_0301_duplicate_binding(NerdSource source,
                                   ErrorSpan  span,
                                   string     symbol,
@@ -217,6 +222,11 @@ bool error_0302_dependency_cycle(NerdSource source,
 bool error_0303_unknown_type(NerdSource source,
                              ErrorSpan  span,
                              string     type_name);
+bool error_0303_unknown_type_with_private_modules(NerdSource    source,
+                                                  ErrorSpan     span,
+                                                  string        type_name,
+                                                  const string* modules,
+                                                  u32           module_count);
 bool error_0304_type_mismatch(NerdSource source,
                               ErrorSpan  span,
                               string     expected_type,

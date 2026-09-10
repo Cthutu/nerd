@@ -23,6 +23,12 @@ Each reported diagnostic is assembled as an `ErrorInfo` value containing:
 Subsystem-specific helpers such as `error_0300_unknown_symbol(...)` construct
 that structured payload for one diagnostic category.
 
+Unknown-symbol and unknown-type diagnostics add a help message for each directly
+used module containing a matching private declaration. The message names the
+module and asks whether the declaration should be marked `pub`. Unknown-type
+suggestions only consider type declarations. These hints do not change
+visibility or search modules that have not been used.
+
 All public error helpers return `bool` so callers can write:
 
 ```c

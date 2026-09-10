@@ -3,6 +3,12 @@
 This document is the high-level map of the current codebase. It points at the
 main subsystems and tells you where to read next.
 
+For unknown-name diagnostics, Sema examines the current module's deduplicated
+direct imports and their already-loaded semantic declarations. Matching private
+declarations contribute per-module `pub` suggestions through the error helpers;
+type diagnostics filter out value declarations. Diagnostic discovery neither
+loads new modules nor follows transitive imports or re-exported declarations.
+
 Optional `?T` and result `T\E` types are semantic built-ins. Sema interns them
 as flagged tagged-sum types with private variants; HIR contextualises
 presence/success/error construction and has a dedicated propagation node. The

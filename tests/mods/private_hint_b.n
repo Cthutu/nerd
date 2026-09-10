@@ -1,0 +1,2 @@
+VertexArray :: plex { value i32 }
+secret_value :: 2

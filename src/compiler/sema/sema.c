@@ -23,6 +23,12 @@ internal u32 sema_no_scope(void) { return U32_MAX; }
 
 u32 sema_no_type(void) { return U32_MAX; }
 
+internal bool sema_error_unknown_name(const Lexer* lexer,
+                                      const Sema*  sema,
+                                      bool         type_context,
+                                      ErrorSpan    span,
+                                      string       name);
+
 internal cstr sema_cstr_from_string(Arena* arena, string value)
 {
     char* result = arena_alloc(arena, value.count + 1);
@@ -2518,8 +2524,10 @@ internal bool sema_infer_use_module_type(const Lexer* lexer,
         u32 symbol     = ast->nodes[root_node].a;
         u32 decl_index = sema_find_decl(sema, symbol);
         if (decl_index == sema_no_decl()) {
-            return error_0300_unknown_symbol(
-                lexer->source,
+            return sema_error_unknown_name(
+                lexer,
+                sema,
+                false,
                 sema_node_span(lexer, &ast->nodes[root_node]),
                 lex_symbol(lexer, symbol));
         }
@@ -4178,8 +4186,8 @@ internal bool sema_resolve_generic_type_application(const Lexer* lexer,
     const AstTypeApplyInfo* apply  = &ast->type_applications[node->a];
     const AstNode*          target = &ast->nodes[apply->target_node_index];
     if (target->kind != AK_SymbolRef) {
-        return error_0303_unknown_type(
-            lexer->source, sema_node_span(lexer, target), s("<generic>"));
+        return sema_error_unknown_name(
+            lexer, sema, true, sema_node_span(lexer, target), s("<generic>"));
     }
 
     string builtin_name = lex_symbol(lexer, target->a);
@@ -4231,7 +4239,9 @@ internal bool sema_resolve_generic_type_application(const Lexer* lexer,
     u32 decl_index = sema_find_decl(sema, target->a);
     if (decl_index == sema_no_decl() ||
         sema->decls[decl_index].kind != SK_GenericTypeAlias) {
-        return error_0303_unknown_type(lexer->source,
+        return sema_error_unknown_name(lexer,
+                                       sema,
+                                       true,
                                        sema_node_span(lexer, target),
                                        lex_symbol(lexer, target->a));
     }
@@ -4509,7 +4519,9 @@ internal bool sema_error_non_type_in_type_context(const Lexer* lexer,
     if (sema_find_unknown_type_ref_in_type_syntax(
             lexer, ast, sema, node_index, 0, &bad_type_ref)) {
         const AstNode* bad_node = &ast->nodes[bad_type_ref];
-        return error_0303_unknown_type(lexer->source,
+        return sema_error_unknown_name(lexer,
+                                       sema,
+                                       true,
                                        sema_node_span(lexer, bad_node),
                                        lex_symbol(lexer, bad_node->a));
     }
@@ -4531,6 +4543,59 @@ internal bool sema_decl_is_public(const Ast* ast, const SemaDecl* decl)
         return false;
     }
     return ast_has_flag(&ast->nodes[decl->bind_node_index], ANF_Public);
+}
+
+// Suggest only declarations from directly used, already loaded modules.
+// Do not load more modules or make private names visible during error
+// reporting.
+internal bool sema_error_unknown_name(const Lexer* lexer,
+                                      const Sema*  sema,
+                                      bool         type_context,
+                                      ErrorSpan    span,
+                                      string       name)
+{
+    Array(string) matches = NULL;
+    if (sema->program != NULL &&
+        sema->current_module_index < array_count(sema->program->modules)) {
+        const ModuleInfo* owner =
+            &sema->program->modules[sema->current_module_index];
+        for (u32 i = 0; i < array_count(owner->imported_module_indices); ++i) {
+            u32 index = owner->imported_module_indices[i];
+            if (index >= array_count(sema->program->modules)) {
+                continue;
+            }
+            const ModuleInfo* module = &sema->program->modules[index];
+            if (module->state != MODULE_Loaded) {
+                continue;
+            }
+            const FrontEndState* front = &module->front_end;
+            for (u32 j = 0; j < array_count(front->sema.decls); ++j) {
+                const SemaDecl* decl = &front->sema.decls[j];
+                if (decl->import_module_index != sema_no_decl() ||
+                    sema_decl_is_public(&front->ast, decl) ||
+                    (type_context && decl->kind != SK_TypeAlias &&
+                     decl->kind != SK_GenericTypeAlias) ||
+                    !string_eq(lex_symbol(&front->lexer, decl->symbol_handle),
+                               name)) {
+                    continue;
+                }
+                array_push(matches, module->qualified_name);
+                break;
+            }
+        }
+    }
+    bool ok =
+        type_context
+            ? error_0303_unknown_type_with_private_modules(
+                  lexer->source, span, name, matches, (u32)array_count(matches))
+            : error_0300_unknown_symbol_with_private_modules(
+                  lexer->source,
+                  span,
+                  name,
+                  matches,
+                  (u32)array_count(matches));
+    array_free(matches);
+    return ok;
 }
 
 internal bool sema_type_node_contains_private_type_ref(const Lexer* lexer,
@@ -8168,8 +8233,10 @@ internal bool sema_collect_block_statements(const Lexer* lexer,
                 } else {
                     u32 decl_index = sema->node_decl_indices[node->a];
                     if (decl_index == sema_no_decl()) {
-                        return error_0300_unknown_symbol(
-                            lexer->source,
+                        return sema_error_unknown_name(
+                            lexer,
+                            sema,
+                            false,
                             sema_node_span(lexer, target),
                             lex_symbol(lexer, target->a));
                     }
@@ -10703,9 +10770,11 @@ internal bool sema_validate_generic_body_refs_node(const Lexer* lexer,
             sema_find_decl(sema, node->a) != sema_no_decl()) {
             return true;
         }
-        return error_0300_unknown_symbol(lexer->source,
-                                         sema_node_span(lexer, node),
-                                         lex_symbol(lexer, node->a));
+        return sema_error_unknown_name(lexer,
+                                       sema,
+                                       false,
+                                       sema_node_span(lexer, node),
+                                       lex_symbol(lexer, node->a));
     case AK_Expression:
     case AK_Statement:
     case AK_Return:
@@ -11348,7 +11417,9 @@ internal bool sema_resolve_type_node_ex(const Lexer*         lexer,
                 }
             }
             if (type_index == sema_no_type()) {
-                return error_0303_unknown_type(lexer->source,
+                return sema_error_unknown_name(lexer,
+                                               sema,
+                                               true,
                                                sema_node_span(lexer, node),
                                                lex_symbol(lexer, node->a));
             }
@@ -11362,7 +11433,9 @@ internal bool sema_resolve_type_node_ex(const Lexer*         lexer,
             u32 type_index = sema_no_type();
             if (!sema_try_resolve_qualified_type_node(
                     lexer, ast, sema, node_index, &type_index)) {
-                return error_0303_unknown_type(lexer->source,
+                return sema_error_unknown_name(lexer,
+                                               sema,
+                                               true,
                                                sema_node_span(lexer, node),
                                                lex_symbol(lexer, node->b));
             }
@@ -11457,8 +11530,11 @@ internal bool sema_resolve_type_node_ex(const Lexer*         lexer,
             if (!sema_try_eval_integer_constant(
                     lexer, ast, sema, node->a, &item_count) ||
                 item_count < 0 || item_count > UINT32_MAX) {
-                return error_0303_unknown_type(
-                    lexer->source, sema_node_span(lexer, node), s("<array>"));
+                return sema_error_unknown_name(lexer,
+                                               sema,
+                                               true,
+                                               sema_node_span(lexer, node),
+                                               s("<array>"));
             }
 
             u32 item_type = sema_no_type();
@@ -11677,8 +11753,10 @@ internal bool sema_resolve_type_node_ex(const Lexer*         lexer,
                                                     &discriminant)) {
                     array_free(payload_types);
                     array_free(discriminants);
-                    return error_0303_unknown_type(
-                        lexer->source,
+                    return sema_error_unknown_name(
+                        lexer,
+                        sema,
+                        true,
                         sema_node_span(lexer,
                                        &ast->nodes[variant->value_node_index]),
                         s("<enum discriminant>"));
@@ -11712,8 +11790,8 @@ internal bool sema_resolve_type_node_ex(const Lexer*         lexer,
         }
 
     default:
-        return error_0303_unknown_type(
-            lexer->source, sema_node_span(lexer, node), s("<expression>"));
+        return sema_error_unknown_name(
+            lexer, sema, true, sema_node_span(lexer, node), s("<expression>"));
     }
 }
 
@@ -21862,10 +21940,11 @@ validate_type:
                             s("known enum variant"),
                             lex_symbol(lexer, node->a));
                     }
-                    return error_0300_unknown_symbol(
-                        lexer->source,
-                        sema_node_span(lexer, node),
-                        lex_symbol(lexer, node->a));
+                    return sema_error_unknown_name(lexer,
+                                                   sema,
+                                                   false,
+                                                   sema_node_span(lexer, node),
+                                                   lex_symbol(lexer, node->a));
                 }
                 if (sema->decls[decl_index].kind == SK_CompoundFunction &&
                     sema->node_compound_selected_decl_indices[node_index] ==
@@ -24269,8 +24348,10 @@ validate_type:
                                 sema_node_span(lexer, target),
                                 lex_symbol(lexer, target->a));
                         }
-                        return error_0300_unknown_symbol(
-                            lexer->source,
+                        return sema_error_unknown_name(
+                            lexer,
+                            sema,
+                            false,
                             sema_node_span(lexer, target),
                             lex_symbol(lexer, target->a));
                     }

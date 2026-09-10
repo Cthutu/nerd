@@ -1,0 +1,5 @@
+use private_hint_transitive
+
+VertexArray :: plex { value i32 }
+secret_value :: 1
+ValueOnly :: 1

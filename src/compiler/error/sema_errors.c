@@ -11,6 +11,31 @@
 
 bool error_0300_unknown_symbol(NerdSource source, ErrorSpan span, string symbol)
 {
+    return error_0300_unknown_symbol_with_private_modules(
+        source, span, symbol, NULL, 0);
+}
+
+internal void error_add_private_module_help(ErrorInfo*    error,
+                                            string        symbol,
+                                            const string* modules,
+                                            u32           count)
+{
+    for (u32 i = 0; i < count; ++i) {
+        error_add_help(error,
+                       "Used module `" STRINGP "` declares `" STRINGP
+                       "` privately. "
+                       "Did you intend to mark that declaration `pub`?",
+                       STRINGV(modules[i]),
+                       STRINGV(symbol));
+    }
+}
+
+bool error_0300_unknown_symbol_with_private_modules(NerdSource    source,
+                                                    ErrorSpan     span,
+                                                    string        symbol,
+                                                    const string* modules,
+                                                    u32           module_count)
+{
     ErrorInfo error = error_init(
         source, span, "Unknown symbol `" STRINGP "`", STRINGV(symbol));
     error_add_reference(
@@ -18,6 +43,7 @@ bool error_0300_unknown_symbol(NerdSource source, ErrorSpan span, string symbol)
     error_add_help(&error,
                    "Add a binding for `" STRINGP "` or fix the spelling.",
                    STRINGV(symbol));
+    error_add_private_module_help(&error, symbol, modules, module_count);
     error_render(&error);
     return false;
 }
@@ -87,6 +113,16 @@ bool error_0303_unknown_type(NerdSource source,
                              ErrorSpan  span,
                              string     type_name)
 {
+    return error_0303_unknown_type_with_private_modules(
+        source, span, type_name, NULL, 0);
+}
+
+bool error_0303_unknown_type_with_private_modules(NerdSource    source,
+                                                  ErrorSpan     span,
+                                                  string        type_name,
+                                                  const string* modules,
+                                                  u32           module_count)
+{
     ErrorInfo error = error_init(
         source, span, "Unknown type `" STRINGP "`", STRINGV(type_name));
     error_add_reference(
@@ -94,6 +130,7 @@ bool error_0303_unknown_type(NerdSource source,
     error_add_help(&error,
                    "Use a defined type name, or one of the built-in primitive "
                    "types.");
+    error_add_private_module_help(&error, type_name, modules, module_count);
     error_render(&error);
     return false;
 }
