@@ -47,7 +47,6 @@ def assert_no_link_temps(directory: pathlib.Path, stem: str, label: str) -> None
     patterns = [
         f"{stem}.link.ll",
         f"{stem}.nrt.o",
-        f"{stem}.pdb",
         f"_{stem}.link.ll",
         f"_{stem}.nrt.o",
         f"_{stem}.pdb",
@@ -209,6 +208,10 @@ def main() -> int:
         check(build_proc, "build --hir --llvm")
         if not (temp / f"build_smoke{EXE_SUFFIX}").exists():
             raise AssertionError("build did not produce executable")
+        # Windows builds retain symbols for the executable. Run/test cleanup
+        # still rejects all PDB outputs in assert_no_run_outputs below.
+        if EXE_SUFFIX and not (temp / "build_smoke.pdb").exists():
+            raise AssertionError("Windows build did not produce debug symbols")
         if not any(temp.glob("_build_smoke*.hir")):
             raise AssertionError("build --hir did not produce a HIR sidecar")
         if not any(temp.glob("_build_smoke*.ll")):
