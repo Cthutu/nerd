@@ -208,6 +208,11 @@ operands. An untyped literal initializer
 can therefore adopt a later explicit numeric type without requiring the rest of
 the operand to be inferred before loop bindings and other locals are ready.
 
+Function and FFI signature parsers collect their parameters in a temporary
+array before appending the contiguous outer parameter range. Nested function
+parameter and return types therefore cannot interleave their parameters with
+the enclosing signature.
+
 ## File Families
 
 - `src/compiler/lexer`

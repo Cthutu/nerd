@@ -841,20 +841,23 @@ bool ast_parse_fn_signature(AstParseState* state,
                             bool           require_return_type,
                             u32*           out_signature_index)
 {
+    Array(AstParam) params = NULL;
     ASSERT(state->token.kind == TK_fn, "Expected `fn` token for signature");
 
     u32 generic_params_index = U32_MAX;
     if (!ast_parse_optional_generic_params(state, &generic_params_index)) {
+        array_free(params);
         return false;
     }
 
-    u32 first_param = (u32)array_count(state->params);
     u32 param_count = 0;
 
     if (!ast_expect_token(state, TK_LParen)) {
+        array_free(params);
         return false;
     }
     if (!ast_next_token(state)) {
+        array_free(params);
         return error_0203_expected_token(state->lexer->source,
                                          ast_token_span(state, &state->token),
                                          TK_RParen,
@@ -865,6 +868,7 @@ bool ast_parse_fn_signature(AstParseState* state,
         for (;;) {
             if (allow_named_params) {
                 if (state->token.kind != TK_Symbol) {
+                    array_free(params);
                     return error_0203_expected_token(
                         state->lexer->source,
                         ast_token_span(state, &state->token),
@@ -875,18 +879,21 @@ bool ast_parse_fn_signature(AstParseState* state,
                 AstToken param_token = state->token;
                 if (!ast_expect_token(state, TK_Colon) ||
                     !ast_next_token(state)) {
+                    array_free(params);
                     return false;
                 }
                 bool compile_time = false;
                 if (state->token.kind == TK_Colon) {
                     compile_time = true;
                     if (!ast_next_token(state)) {
+                        array_free(params);
                         return false;
                     }
                 }
 
                 u32 type_node = 0;
                 if (!ast_parse_type(state, &type_node)) {
+                    array_free(params);
                     return false;
                 }
 
@@ -895,9 +902,11 @@ bool ast_parse_fn_signature(AstParseState* state,
                     ast_peek_kind_at(state, 0) == TK_Equal) {
                     if (state->token.kind != TK_Equal &&
                         !ast_expect_token(state, TK_Equal)) {
+                        array_free(params);
                         return false;
                     }
                     if (!ast_next_token(state)) {
+                        array_free(params);
                         return false;
                     }
                     bool previous_boundary = state->allow_statement_boundary;
@@ -910,11 +919,12 @@ bool ast_parse_fn_signature(AstParseState* state,
                         previous_param_separator;
                     state->allow_statement_boundary = previous_boundary;
                     if (!parsed) {
+                        array_free(params);
                         return false;
                     }
                 }
 
-                array_push(state->params,
+                array_push(params,
                            (AstParam){
                                .token_index   = param_token.token_index,
                                .symbol_handle = param_token.value.symbol_handle,
@@ -930,16 +940,18 @@ bool ast_parse_fn_signature(AstParseState* state,
                     symbol_handle = state->token.value.symbol_handle;
                     if (!ast_expect_token(state, TK_Colon) ||
                         !ast_next_token(state)) {
+                        array_free(params);
                         return false;
                     }
                     type_token = state->token;
                 }
                 u32 type_node = 0;
                 if (!ast_parse_type(state, &type_node)) {
+                    array_free(params);
                     return false;
                 }
 
-                array_push(state->params,
+                array_push(params,
                            (AstParam){
                                .token_index        = type_token.token_index,
                                .symbol_handle      = symbol_handle,
@@ -952,6 +964,7 @@ bool ast_parse_fn_signature(AstParseState* state,
             ++param_count;
             if (state->token.kind == TK_Comma) {
                 if (!ast_next_token(state)) {
+                    array_free(params);
                     return error_0201_missing_value(
                         state->token.source,
                         ast_token_span(state, &state->token),
@@ -961,6 +974,7 @@ bool ast_parse_fn_signature(AstParseState* state,
                     break;
                 }
                 if (!ast_next_token(state)) {
+                    array_free(params);
                     return error_0201_missing_value(
                         state->token.source,
                         ast_token_span(state, &state->token),
@@ -970,6 +984,7 @@ bool ast_parse_fn_signature(AstParseState* state,
             }
             if (ast_peek_kind_at(state, 0) == TK_Comma) {
                 if (!ast_expect_token(state, TK_Comma)) {
+                    array_free(params);
                     return error_0201_missing_value(
                         state->token.source,
                         ast_token_span(state, &state->token),
@@ -977,11 +992,13 @@ bool ast_parse_fn_signature(AstParseState* state,
                 }
                 if (ast_peek_kind_at(state, 0) == TK_RParen) {
                     if (!ast_next_token(state)) {
+                        array_free(params);
                         return false;
                     }
                     break;
                 }
                 if (!ast_next_token(state)) {
+                    array_free(params);
                     return error_0201_missing_value(
                         state->token.source,
                         ast_token_span(state, &state->token),
@@ -992,6 +1009,7 @@ bool ast_parse_fn_signature(AstParseState* state,
             break;
         }
         if (!ast_expect_token(state, TK_RParen)) {
+            array_free(params);
             return false;
         }
     }
@@ -999,12 +1017,15 @@ bool ast_parse_fn_signature(AstParseState* state,
     u32 return_type = U32_MAX;
     if (ast_peek_kind_at(state, 0) == TK_ThinArrow) {
         if (!ast_expect_token(state, TK_ThinArrow) || !ast_next_token(state)) {
+            array_free(params);
             return false;
         }
         if (!ast_parse_type(state, &return_type)) {
+            array_free(params);
             return false;
         }
     } else if (require_return_type) {
+        array_free(params);
         return error_0203_expected_token(state->token.source,
                                          ast_token_span(state, &state->token),
                                          TK_ThinArrow,
@@ -1015,7 +1036,14 @@ bool ast_parse_fn_signature(AstParseState* state,
     u32 constraint_count = 0;
     if (!ast_parse_optional_where_constraints(
             state, &first_constraint, &constraint_count)) {
+        array_free(params);
         return false;
+    }
+
+    // Nested parameter and return types append their own signatures first.
+    u32 first_param = (u32)array_count(state->params);
+    for (u32 i = 0; i < array_count(params); ++i) {
+        array_push(state->params, params[i]);
     }
 
     u32 signature_index = (u32)array_count(state->fn_signatures);
@@ -1029,6 +1057,7 @@ bool ast_parse_fn_signature(AstParseState* state,
                    .constraint_count       = constraint_count,
                });
     *out_signature_index = signature_index;
+    array_free(params);
     return true;
 }
 
@@ -1069,13 +1098,14 @@ internal bool ast_reject_fn_definition_after_type_annotation(
 internal bool ast_parse_ffi_signature(AstParseState* state,
                                       u32*           out_signature_index)
 {
+    Array(AstParam) params = NULL;
     ASSERT(state->token.kind == TK_LParen, "Expected FFI parameter list");
 
-    u32  first_param = (u32)array_count(state->params);
     u32  param_count = 0;
     bool is_varargs  = false;
 
     if (!ast_next_token(state)) {
+        array_free(params);
         return error_0203_expected_token(state->lexer->source,
                                          ast_token_span(state, &state->token),
                                          TK_RParen,
@@ -1090,6 +1120,7 @@ internal bool ast_parse_ffi_signature(AstParseState* state,
             }
 
             if (state->token.kind != TK_Symbol) {
+                array_free(params);
                 return error_0203_expected_token_ex(
                     state->lexer->source,
                     ast_token_span(state, &state->token),
@@ -1102,14 +1133,17 @@ internal bool ast_parse_ffi_signature(AstParseState* state,
             AstToken param_token = state->token;
             u32      symbol      = state->token.value.symbol_handle;
             if (!ast_expect_token(state, TK_Colon)) {
+                array_free(params);
                 return false;
             }
             if (!ast_next_token(state)) {
+                array_free(params);
                 return false;
             }
 
             u32 type_node = 0;
             if (!ast_parse_type(state, &type_node)) {
+                array_free(params);
                 return false;
             }
 
@@ -1118,9 +1152,11 @@ internal bool ast_parse_ffi_signature(AstParseState* state,
                 ast_peek_kind_at(state, 0) == TK_Equal) {
                 if (state->token.kind != TK_Equal &&
                     !ast_expect_token(state, TK_Equal)) {
+                    array_free(params);
                     return false;
                 }
                 if (!ast_next_token(state)) {
+                    array_free(params);
                     return false;
                 }
                 bool previous_boundary = state->allow_statement_boundary;
@@ -1132,11 +1168,12 @@ internal bool ast_parse_ffi_signature(AstParseState* state,
                 state->stop_before_param_separator = previous_param_separator;
                 state->allow_statement_boundary    = previous_boundary;
                 if (!parsed) {
+                    array_free(params);
                     return false;
                 }
             }
 
-            array_push(state->params,
+            array_push(params,
                        (AstParam){
                            .token_index        = param_token.token_index,
                            .symbol_handle      = symbol,
@@ -1147,6 +1184,7 @@ internal bool ast_parse_ffi_signature(AstParseState* state,
 
             if (state->token.kind == TK_Comma) {
                 if (!ast_next_token(state) || !ast_next_token(state)) {
+                    array_free(params);
                     return error_0201_missing_value(
                         state->token.source,
                         ast_token_span(state, &state->token),
@@ -1161,6 +1199,7 @@ internal bool ast_parse_ffi_signature(AstParseState* state,
             if (ast_peek_kind_at(state, 0) == TK_Comma) {
                 if (!ast_expect_token(state, TK_Comma) ||
                     !ast_next_token(state)) {
+                    array_free(params);
                     return error_0201_missing_value(
                         state->token.source,
                         ast_token_span(state, &state->token),
@@ -1176,6 +1215,7 @@ internal bool ast_parse_ffi_signature(AstParseState* state,
         }
 
         if (!ast_expect_token(state, TK_RParen)) {
+            array_free(params);
             return false;
         }
     }
@@ -1183,11 +1223,19 @@ internal bool ast_parse_ffi_signature(AstParseState* state,
     u32 return_type = U32_MAX;
     if (ast_peek_kind_at(state, 0) == TK_ThinArrow) {
         if (!ast_expect_token(state, TK_ThinArrow) || !ast_next_token(state)) {
+            array_free(params);
             return false;
         }
         if (!ast_parse_type(state, &return_type)) {
+            array_free(params);
             return false;
         }
+    }
+
+    // Nested parameter and return types append their own signatures first.
+    u32 first_param = (u32)array_count(state->params);
+    for (u32 i = 0; i < array_count(params); ++i) {
+        array_push(state->params, params[i]);
     }
 
     u32 signature_index = (u32)array_count(state->fn_signatures);
@@ -1200,6 +1248,7 @@ internal bool ast_parse_ffi_signature(AstParseState* state,
                    .is_varargs             = is_varargs,
                });
     *out_signature_index = signature_index;
+    array_free(params);
     return true;
 }
 
