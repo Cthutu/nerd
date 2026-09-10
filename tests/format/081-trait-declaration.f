@@ -1,19 +1,19 @@
-Display :: trait{show::fn(Self)->string}
+Display :: trait{show::fn(self: Self)->string}
 Hasher :: trait {
-hash :: fn(Self)->u64
+hash :: fn(self: Self)->u64
 finish :: fn()->u64
 }
-DisplayValue :: trait for Value{show::fn(Value)->string}
+DisplayValue :: trait for Value{show::fn(self: Value)->string}
 ¬
 Display :: trait {
-    show :: fn (Self) -> string
+    show :: fn (self: Self) -> string
 }
 
 Hasher :: trait {
-    hash   :: fn (Self) -> u64
+    hash   :: fn (self: Self) -> u64
     finish :: fn () -> u64
 }
 
 DisplayValue :: trait for Value {
-    show :: fn (Value) -> string
+    show :: fn (self: Value) -> string
 }

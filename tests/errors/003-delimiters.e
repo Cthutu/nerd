@@ -84,7 +84,7 @@ impl Display for Point {
     show :: fn (self: Self) => "point"
 
 Display :: trait {
-    show :: fn (Self) -> string
+    show :: fn (self: Self) -> string
 }
 ¬
 {

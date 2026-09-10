@@ -184,15 +184,15 @@ The trigonometric functions take radians and return `f64` values.
 - `epr(text: string = "") -> void`
 - `eprn(text: string = "") -> void`
 - `Display`
-  Requires `show :: fn (Self) -> string`.
+  Requires `show :: fn (self: Self) -> string`.
 - `Eq`
-  Requires `eq :: fn (Self, Self) -> bool`.
+  Requires `eq :: fn (self: Self, other: Self) -> bool`.
 - `Order`
-  Requires `compare :: fn (Self, Self) -> i32`.
+  Requires `compare :: fn (self: Self, other: Self) -> i32`.
 - `Default`
   Requires `default :: fn () -> Self`.
 - `Iterator[Item]`
-  Requires `next :: fn (^Self) -> ?Item`.
+  Requires `next :: fn (self: ^Self) -> ?Item`.
 
 Optional `?T` and result `T\E` are language types rather than declarations in
 `core`.
@@ -378,11 +378,11 @@ home for raw OpenGL commands.
 ### `std.traits`
 
 - `Display`
-  Requires `show :: fn (Self) -> string`.
+  Requires `show :: fn (self: Self) -> string`.
 - `Eq`
-  Requires `eq :: fn (Self, Self) -> bool`.
+  Requires `eq :: fn (self: Self, other: Self) -> bool`.
 - `Order`
-  Requires `compare :: fn (Self, Self) -> i32`.
+  Requires `compare :: fn (self: Self, other: Self) -> i32`.
 - `Default`
   Requires `default :: fn () -> Self`.
 

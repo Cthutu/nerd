@@ -53,6 +53,9 @@ definite-assignment checks require it to be assigned before read.
 
 Function-local runtime values are expected to be read. This applies to local
 variables, parameters, local bindings, and pattern binders.
+Method receivers follow the same rule: an unused `self` must be named `_self`
+(or `_`). Trait requirements have no body and do not receive unused-parameter
+diagnostics.
 
 Names beginning with `_` mark a local as deliberately unused:
 

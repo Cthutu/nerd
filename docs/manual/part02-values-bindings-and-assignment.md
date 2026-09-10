@@ -268,6 +268,10 @@ main :: fn () -> i32 {
 Assignments do not count as reads. If a binding is intentionally unused for now,
 prefix its name with `_`:
 
+This includes method receivers: use `_self: ^Self` when a method body does not
+read its receiver. Trait requirements have no body and are exempt from unused
+parameter checks.
+
 ```nerd
 helper :: fn (_unused: i32) -> i32 {
     _scratch := 10  -- deliberate placeholder

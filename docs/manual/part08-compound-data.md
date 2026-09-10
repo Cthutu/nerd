@@ -468,7 +468,7 @@ required function members:
 
 ```nerd
 Display :: trait {
-    show :: fn (Self) -> string
+    show :: fn (self: Self) -> string
 }
 ```
 
@@ -477,7 +477,7 @@ type a domain-specific name:
 
 ```nerd
 Clone :: trait for Value {
-    clone :: fn (Value) -> Value
+    clone :: fn (self: Value) -> Value
 }
 ```
 
@@ -496,6 +496,10 @@ impl Display for Point {
     }
 }
 ```
+
+Every parameter in a trait requirement must have a name, such as
+`self: ^Self`. The implementation may choose different parameter names; use
+`_self` when its body intentionally ignores the receiver.
 
 Trait members can be called with receiver syntax, or by naming the trait when a
 call needs to be explicit:
@@ -551,13 +555,13 @@ can be used.
 The `core` module is implicitly available in every module. It defines the
 language-known traits and result types:
 
-- `Display` supplies `show :: fn (Self) -> string`. String interpolation uses
+- `Display` supplies `show :: fn (self: Self) -> string`. String interpolation uses
   this trait for non-built-in values.
-- `Eq` supplies `eq :: fn (Self, Self) -> bool`. The `==` and `!=` operators
+- `Eq` supplies `eq :: fn (self: Self, other: Self) -> bool`. The `==` and `!=` operators
   use this trait for non-built-in values. Arrays, slices, and boxes support
   content equality when their elements support `Eq`. Arenas, raw unions, and
   function values are not comparable.
-- `Order` supplies `compare :: fn (Self, Self) -> i32`. The `<`, `<=`, `>`,
+- `Order` supplies `compare :: fn (self: Self, other: Self) -> i32`. The `<`, `<=`, `>`,
   and `>=` operators use this trait for non-built-in values.
 - `Default` supplies `default :: fn () -> Self`. Local typed variables without
   an initializer use this trait when the variable type has a concrete
@@ -566,7 +570,7 @@ language-known traits and result types:
   expression is presence.
 - `T\E` is the built-in result type; a contextual `T` is success and `error!`
   constructs failure.
-- `Iterator[Item]` supplies `next :: fn (^Self) -> ?Item`. `for item in
+- `Iterator[Item]` supplies `next :: fn (self: ^Self) -> ?Item`. `for item in
   iter` calls `next` until it returns `nil`; a present value becomes the loop
   item. If `Item` is a pointer type, dereference explicitly with `item^` when
   you need the pointed-to value.

@@ -93,9 +93,11 @@ function-type   ::= 'fn' generic-params? '(' type-list? ')' [ '->' type ]
 Function types may use unnamed parameter types or named parameter types such as
 `fn (value: i32)`. Parameter names are documentation only and do not participate
 in type identity. A function type without `-> type` has return type `void`.
-Trait requirements reuse this syntax, for example `show :: fn (Self) -> string`.
+Trait requirements require parameter names, for example
+`show :: fn (self: Self) -> string`. Names document the requirement and do not
+have to match the names in its implementation.
 A trait may use
-`trait [Item] { next :: fn (Self) -> Item }` to declare generic parameters.
+`trait [Item] { next :: fn (self: Self) -> Item }` to declare generic parameters.
 Generic trait declarations, implementations, and constraints are semantic
 language features. A trait may use `trait for Value` to name the self type
 `Value` instead of `Self`.

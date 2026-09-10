@@ -45,10 +45,10 @@ Name :: union [T, U] { field Type }
 Name :: enum { Variant, Payload(Type), Resized { width u16 height u16 } }
 Name :: enum [T, U] { Variant, Payload(Type), Resized { width u16 height u16 } }
 Name :: trait {
-    member :: fn (Self) -> Type
+    member :: fn (self: Self) -> Type
 }
 Name :: trait [T] {
-    member :: fn (Self) -> T
+    member :: fn (self: Self) -> T
 }
 pub name :: value
 pub name := value

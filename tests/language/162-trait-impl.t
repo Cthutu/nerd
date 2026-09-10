@@ -10,7 +10,7 @@ impl Display for Point {
 }
 
 Display :: trait {
-    show :: fn (Self) -> string
+    show :: fn (self: Self) -> string
 }
 
 main :: fn () -> i32 {

@@ -1,9 +1,9 @@
 Display :: trait {
-    show :: fn (Self) -> string
+    show :: fn (self: Self) -> string
 }
 
 Hasher :: trait {
-    hash   :: fn (Self) -> u64
+    hash   :: fn (self: Self) -> u64
     finish :: fn () -> u64
 }
 

@@ -2145,6 +2145,19 @@ internal bool ast_parse_trait(AstParseState* state, u32* out_node)
                 TK_fn,
                 state->token.kind);
         }
+        const AstFnSignature* signature =
+            &state->fn_signatures[state->nodes[value_node].a];
+        for (u32 i = 0; i < signature->param_count; ++i) {
+            const AstParam* param = &state->params[signature->first_param + i];
+            if (param->symbol_handle == U32_MAX) {
+                return error_0205_expected_declaration_or_expression(
+                    state->lexer->source,
+                    ast_span_for_token_index(state, param->token_index),
+                    state->lexer->tokens[param->token_index].kind,
+                    "Trait method parameters require names; write `name: "
+                    "Type`.");
+            }
+        }
         if (!ast_emit_node(state,
                            (AstNode){
                                .kind        = AK_Bind,

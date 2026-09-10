@@ -1,5 +1,5 @@
 Iterator :: trait [Item] {
-    next :: fn (Self) -> Item
+    next :: fn (self: Self) -> Item
 }
 
 first :: fn [T] (iter: T) -> T
@@ -32,7 +32,7 @@ main :: fn () => 0
 }
 ¬
 Iterator :: trait [Item] {
-    next :: fn (Self) -> Item
+    next :: fn (self: Self) -> Item
 }
 
 first :: fn [T] (iter: T) -> T

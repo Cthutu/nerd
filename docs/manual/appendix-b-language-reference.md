@@ -253,8 +253,8 @@ intended exit code.
 - Associated functions in impl blocks are called as `Type.name(...)` and return
   `Self` or `^Self`.
 - Public methods inside an impl block are imported with their type's module.
-- Trait declarations use `Name :: trait { member :: fn (Self) -> Type }`.
-  `Name :: trait [T] { member :: fn (Self) -> T }` declares generic trait
+- Trait declarations use `Name :: trait { member :: fn (self: Self) -> Type }`.
+  `Name :: trait [T] { member :: fn (self: Self) -> T }` declares generic trait
   parameters. Generic trait declarations parse and format, but generic trait
   implementations are not semantic yet.
   `Name :: trait for Value { ... }` names the trait self type `Value` instead

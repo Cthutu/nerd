@@ -1,5 +1,5 @@
 Display :: trait {
-    show :: fn (Self) -> string
+    show :: fn (self: Self) -> string
 }
 
 Point :: plex {
@@ -35,7 +35,7 @@ main :: fn () => 0
 }
 ¬
 Display :: trait {
-    show :: fn (Self) -> string
+    show :: fn (self: Self) -> string
 }
 
 Box :: plex [T] {
@@ -82,7 +82,7 @@ main :: fn () => 0
 }
 ¬
 Display :: trait {
-    show :: fn (Self) -> string
+    show :: fn (self: Self) -> string
 }
 
 Point :: plex {
@@ -125,7 +125,7 @@ main :: fn () {
 }
 ¬
 Display :: trait {
-    show :: fn (Self) -> string
+    show :: fn (self: Self) -> string
 }
 
 Point :: plex {
@@ -168,7 +168,7 @@ main :: fn () {
 }
 ¬
 Display :: trait {
-    show :: fn (Self) -> string
+    show :: fn (self: Self) -> string
 }
 
 impl Display for Missing {
@@ -200,7 +200,7 @@ main :: fn () => 0
 }
 ¬
 Display :: trait {
-    show :: fn (Self) -> string
+    show :: fn (self: Self) -> string
 }
 
 Point :: plex {
@@ -247,11 +247,11 @@ main :: fn () => 0
 }
 ¬
 Named :: trait {
-    name :: fn (Self) -> string
+    name :: fn (self: Self) -> string
 }
 
 Labelled :: trait {
-    name :: fn (Self) -> string
+    name :: fn (self: Self) -> string
 }
 
 Point :: plex {
@@ -294,7 +294,7 @@ main :: fn () {
 }
 ¬
 Display :: trait {
-    show :: fn (Self) -> string
+    show :: fn (self: Self) -> string
 }
 
 Point :: plex {
@@ -333,7 +333,7 @@ main :: fn () {
 }
 ¬
 Iterator :: trait [Item] {
-    next :: fn (Self) -> Item
+    next :: fn (self: Self) -> Item
 }
 
 impl Iterator[i32] for i32 {
@@ -395,7 +395,7 @@ main :: fn () => 0
 }
 ¬
 Display :: trait {
-    show :: fn (Self) -> string
+    show :: fn (self: Self) -> string
 }
 
 Plain :: plex {

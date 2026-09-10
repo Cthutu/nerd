@@ -3,7 +3,7 @@ Thing :: plex {
 }
 
 impl Thing {
-    touch :: fn (thing: ^Self, _value: i32) -> bool {
+    touch :: fn (_thing: ^Self, _value: i32) -> bool {
         return no
     }
 }
@@ -11,10 +11,11 @@ impl Thing {
 main :: fn () -> i32 {
     thing := Thing { value: 1 }
     _ := thing.touch(2)
-    return thing.value
+    assert thing.value == 1
+    return 0
 }
 ¬
-1
+0
 ¬
 
 ¬

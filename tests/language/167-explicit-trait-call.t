@@ -1,11 +1,11 @@
 use std.io
 
 Named :: trait {
-    name :: fn (Self) -> string
+    name :: fn (self: Self) -> string
 }
 
 Labelled :: trait {
-    name :: fn (Self) -> string
+    name :: fn (self: Self) -> string
 }
 
 Point :: plex {

@@ -1,5 +1,5 @@
 Display :: trait {
-    show :: fn (Self) -> string
+    show :: fn (self: Self) -> string
 }
 
 Point :: plex {

@@ -160,19 +160,19 @@ impl arena {
 -- Defines the canonical trait used to convert values to display strings.
 pub Display :: trait {
     -- Converts a value to a string representation.
-    show :: fn (Self) -> string
+    show :: fn (self: Self) -> string
 }
 
 -- Defines the canonical trait used by non-built-in equality.
 pub Eq :: trait {
     -- Returns true when two values are equal.
-    eq :: fn (Self, Self) -> bool
+    eq :: fn (self: Self, other: Self) -> bool
 }
 
 -- Defines the canonical trait used by non-built-in ordering.
 pub Order :: trait {
     -- Compares two values and returns a negative, zero, or positive result.
-    compare :: fn (Self, Self) -> i32
+    compare :: fn (self: Self, other: Self) -> i32
 }
 
 -- Defines the canonical trait used by typed default initialisation.
@@ -184,5 +184,5 @@ pub Default :: trait {
 -- Defines the canonical iterator trait used by `for in`.
 pub Iterator :: trait [Item] for Iter {
     -- Returns the next item, or `None` when iteration is complete.
-    next :: fn (^Iter) -> ?Item
+    next :: fn (self: ^Iter) -> ?Item
 }

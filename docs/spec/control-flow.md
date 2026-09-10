@@ -31,7 +31,7 @@ always binds pointer items; there is no separate pointer-binder spelling. Range
 iteration binds integer values. User-defined
 iterator iteration is selected when the iterable type has a concrete
 `core.Iterator[Item]` implementation whose `next` method has type
-`fn (^Iter) -> ?Item`; `nil` ends the loop and a present value binds the item.
+`fn (self: ^Iter) -> ?Item`; `nil` ends the loop and a present value binds the item.
 
 `break` exits the nearest loop or the named labelled loop. `again` resumes the
 nearest loop or the named labelled loop. `break` may carry a value when the loop

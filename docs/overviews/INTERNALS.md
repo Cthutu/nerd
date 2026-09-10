@@ -208,12 +208,17 @@ operands. An untyped literal initializer
 can therefore adopt a later explicit numeric type without requiring the rest of
 the operand to be inferred before loop bindings and other locals are ready.
 
+## File Families
+
+Trait requirement parsing validates that every outer function parameter has a
+name. Function definitions and FFI declarations also require names; standalone
+function types may omit them. Sema's unused-local validation treats method
+receivers like other parameters, including the underscore-name rules. Trait
+requirement parameters are signatures rather than runtime locals.
 Function and FFI signature parsers collect their parameters in a temporary
 array before appending the contiguous outer parameter range. Nested function
 parameter and return types therefore cannot interleave their parameters with
 the enclosing signature.
-
-## File Families
 
 - `src/compiler/lexer`
   Tokenisation and source-position helpers.

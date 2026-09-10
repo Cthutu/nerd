@@ -1,7 +1,7 @@
 use std.io
 
 Display :: trait for Value {
-    show :: fn (Value) -> string
+    show :: fn (self: Value) -> string
 }
 
 Default :: trait for Value {

@@ -1,5 +1,5 @@
 Display :: trait {
-    show :: fn (Self) -> string
+    show :: fn (self: Self) -> string
 }
 
 Point :: plex { x i32 y i32 }
@@ -14,8 +14,7 @@ main :: fn () {
     p := Point { x: 1, y: 2 }
     prn(p.show())
     prn(Display.show(p))
-}
-¬
+}¬
 [
     {
         "jsonrpc": "2.0",
@@ -107,8 +106,7 @@ main :: fn () {
             }
         }
     }
-]
-¬
+]¬
 [
     {
         "jsonrpc": "2.0",
@@ -292,7 +290,7 @@ main :: fn () {
         "result": {
             "contents": {
                 "kind": "markdown",
-                "value": "```nerd\nshow :: fn (Self) -> string\n```\n\n- Kind: trait member"
+                "value": "```nerd\nshow :: fn (self: Self) -> string\n```\n\n- Kind: trait member"
             }
         }
     },
@@ -387,6 +385,16 @@ main :: fn () {
                 0,
                 0,
                 4,
+                4,
+                0,
+                0,
+                0,
+                4,
+                1,
+                4,
+                0,
+                0,
+                2,
                 4,
                 2,
                 0,

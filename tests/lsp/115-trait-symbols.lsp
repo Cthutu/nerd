@@ -1,9 +1,8 @@
 Display :: trait {
-    show :: fn (Self) -> string
+    show :: fn (self: Self) -> string
 }
 
-main :: fn () => 0
-¬
+main :: fn () => 0¬
 [
     {
         "jsonrpc": "2.0",
@@ -25,8 +24,7 @@ main :: fn () => 0
             }
         }
     }
-]
-¬
+]¬
 [
     {
         "jsonrpc": "2.0",
@@ -191,6 +189,16 @@ main :: fn () => 0
                 0,
                 0,
                 4,
+                4,
+                0,
+                0,
+                0,
+                4,
+                1,
+                4,
+                0,
+                0,
+                2,
                 4,
                 2,
                 0,

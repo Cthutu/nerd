@@ -1,7 +1,7 @@
 use std.io
 
 Describe :: trait {
-    describe :: fn (Self) -> string
+    describe :: fn (self: Self) -> string
 }
 
 Point :: plex {

@@ -1,37 +1,22 @@
-Display :: trait {
-    show :: fn (self: Self) -> string
-    reset :: fn (self: Self)
-}
-
-Point :: plex {
-    x i32
-}
-
-impl Display for Point {
-}
+Render :: trait { render :: fn (self: ^Self) }
+Thing :: plex { value i32 }
+impl Render for Thing { render :: fn (self: ^Self) {} }
+main :: fn () {}
 ¬
 [
     {
         "jsonrpc": "2.0",
-        "id": 2,
-        "method": "textDocument/codeAction",
+        "method": "textDocument/didChange",
         "params": {
             "textDocument": {
-                "uri": "file:///test.n"
+                "uri": "file:///test.n",
+                "version": 2
             },
-            "range": {
-                "start": {
-                    "line": 10,
-                    "character": 0
-                },
-                "end": {
-                    "line": 10,
-                    "character": 0
+            "contentChanges": [
+                {
+                    "text": "Render :: trait { render :: fn (self: ^Self) }\nThing :: plex { value i32 }\nimpl Render for Thing { render :: fn (_self: ^Self) {} }\nmain :: fn () {}\n"
                 }
-            },
-            "context": {
-                "diagnostics": []
-            }
+            ]
         }
     }
 ]
@@ -98,49 +83,49 @@ impl Display for Point {
                 {
                     "range": {
                         "start": {
-                            "line": 9,
-                            "character": 0
+                            "line": 2,
+                            "character": 38
                         },
                         "end": {
-                            "line": 9,
-                            "character": 4
+                            "line": 2,
+                            "character": 42
                         }
                     },
                     "severity": 1,
                     "source": "nerd",
-                    "message": "Trait implementation is missing required members",
+                    "message": "Unused parameter `self`",
                     "relatedInformation": [
                         {
                             "location": {
                                 "uri": "file:///test.n",
                                 "range": {
                                     "start": {
-                                        "line": 9,
-                                        "character": 0
+                                        "line": 2,
+                                        "character": 38
                                     },
                                     "end": {
-                                        "line": 9,
-                                        "character": 4
+                                        "line": 2,
+                                        "character": 42
                                     }
                                 }
                             },
-                            "message": "note: Missing members: `show`, `reset`"
+                            "message": "note: Assigning to a variable does not count as using it."
                         },
                         {
                             "location": {
                                 "uri": "file:///test.n",
                                 "range": {
                                     "start": {
-                                        "line": 9,
-                                        "character": 0
+                                        "line": 2,
+                                        "character": 38
                                     },
                                     "end": {
-                                        "line": 9,
-                                        "character": 4
+                                        "line": 2,
+                                        "character": 42
                                     }
                                 }
                             },
-                            "message": "help: Add the missing members to this `impl` block."
+                            "message": "help: Remove `self` or prefix the name with `_` if it is deliberately unused."
                         }
                     ]
                 }
@@ -149,32 +134,11 @@ impl Display for Point {
     },
     {
         "jsonrpc": "2.0",
-        "id": 2,
-        "result": [
-            {
-                "title": "Stub missing trait members",
-                "kind": "quickfix",
-                "edit": {
-                    "changes": {
-                        "file:///test.n": [
-                            {
-                                "range": {
-                                    "start": {
-                                        "line": 10,
-                                        "character": 0
-                                    },
-                                    "end": {
-                                        "line": 10,
-                                        "character": 0
-                                    }
-                                },
-                                "newText": "    show :: fn (_self: Self) -> string {\n        result: string\n        return result\n    }\n\n    reset :: fn (_self: Self) {\n    }\n"
-                            }
-                        ]
-                    }
-                }
-            }
-        ]
+        "method": "textDocument/publishDiagnostics",
+        "params": {
+            "uri": "file:///test.n",
+            "diagnostics": []
+        }
     },
     {
         "jsonrpc": "2.0",

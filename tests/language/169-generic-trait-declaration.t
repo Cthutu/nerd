@@ -1,9 +1,9 @@
 Iterator :: trait [Item] {
-    next :: fn (Self) -> Item
+    next :: fn (self: Self) -> Item
 }
 
 Mapper :: trait [Input, Output] for This {
-    map :: fn (This, Input) -> Output
+    map :: fn (value: This, other: Input) -> Output
 }
 
 main :: fn () -> i32 {

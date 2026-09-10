@@ -1,6 +1,6 @@
 Display :: trait {
-    show :: fn (Self) -> string
-    describe :: fn (Self) -> string
+    show :: fn (self: Self) -> string
+    describe :: fn (self: Self) -> string
 }
 
 Point :: plex {
