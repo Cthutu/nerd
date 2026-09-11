@@ -5807,6 +5807,90 @@ void lsp_handle_hover(LspState* state, const LspMessage* message)
 }
 
 //------------------------------------------------------------------------------
+// Resolve an import without requiring any semantic products.
+
+internal JsonValue* lsp_modref_file_location(const Lexer* lexer,
+                                             const Ast*   ast,
+                                             u32          modref_index,
+                                             Arena*       arena)
+{
+    const AstNode* modref = &ast->nodes[modref_index];
+    Arena          temp   = {0};
+    arena_init(&temp);
+    ModuleResolveResult resolved = {0};
+    JsonValue*          location = NULL;
+    if (module_resolve_path(&temp,
+                            lexer->source,
+                            lexer,
+                            ast,
+                            &ast->module_paths[modref->a],
+                            &resolved) == MRS_Found) {
+        location = json_new_object(arena);
+        json_object_set_string(location,
+                               arena,
+                               "uri",
+                               lsp_path_to_uri(arena, resolved.resolved_path));
+        json_object_set_object(
+            location, "range", lsp_make_range(arena, lexer->source, 0, 0));
+    }
+    arena_done(&temp);
+    return location;
+}
+
+// An imported-module failure can discard the root AST. Parse the open buffer
+// alone so import navigation remains available without analysing its imports.
+internal JsonValue* lsp_source_import_definition(LspState*         state,
+                                                 const LspMessage* message)
+{
+    JsonValue* uri_value =
+        json_get_cstr(message->message, "params.textDocument.uri");
+    JsonValue* line = json_get_cstr(message->message, "params.position.line");
+    JsonValue* column =
+        json_get_cstr(message->message, "params.position.character");
+    if (!uri_value || uri_value->kind != JSON_STRING || !line ||
+        line->kind != JSON_NUMBER || !column || column->kind != JSON_NUMBER) {
+        return NULL;
+    }
+    string        uri  = json_string(uri_value);
+    LspSourceView view = {0};
+    if (!lsp_source_view(state, uri, &view)) {
+        return NULL;
+    }
+    NerdSource source = {.source = view.doc->source, .source_path = uri};
+    usize      offset = 0;
+    if (!lex_line_col_to_offset(source,
+                                (u32)json_integer(line),
+                                (u32)json_integer(column),
+                                &offset)) {
+        return NULL;
+    }
+    ErrorRenderMode previous_mode = error_system_mode();
+    bool            previous_emit = error_system_should_emit_output();
+    error_system_set_mode(ERROR_RENDER_DIAGNOSTICS);
+    error_system_set_emit_output(false);
+    Lexer      lexer    = {0};
+    JsonValue* location = NULL;
+    if (lex(source, &lexer)) {
+        Ast    ast       = ast_parse(&lexer);
+        u32    token_end = 0;
+        Token* token     = lex_find(&lexer, offset, &token_end);
+        if (token && token->kind == TK_Symbol) {
+            u32 modref = lsp_find_modref_node_at_token(
+                &lexer, &ast, lsp_token_index_from_pointer(&lexer, token));
+            if (modref != U32_MAX) {
+                location = lsp_modref_file_location(
+                    &lexer, &ast, modref, message->arena);
+            }
+        }
+        ast_done(&ast);
+    }
+    lex_done(&lexer);
+    error_system_set_mode(previous_mode);
+    error_system_set_emit_output(previous_emit);
+    return location;
+}
+
+//------------------------------------------------------------------------------
 // Respond to definition requests with the binding location of the resolved
 // declaration.
 
@@ -5821,7 +5905,13 @@ void lsp_handle_definition(LspState* state, const LspMessage* message)
 
     if (!lsp_get_request_context(
             state, message, &doc, &uri, &offset, &token_index, &token)) {
-        lsp_cancel(response, message->arena);
+        JsonValue* location = lsp_source_import_definition(state, message);
+        if (location != NULL) {
+            json_object_set_object(response, "result", location);
+            lsp_send_response(message->arena, response);
+        } else {
+            lsp_cancel(response, message->arena);
+        }
         return;
     }
 
@@ -5934,31 +6024,14 @@ void lsp_handle_definition(LspState* state, const LspMessage* message)
             }
         }
 
-        const AstNode* modref = &doc->front_end.ast.nodes[modref_node_index];
-        if (modref->a < array_count(doc->front_end.ast.module_paths)) {
-            Arena temp_arena = {0};
-            arena_init(&temp_arena);
-            ModuleResolveResult resolved = {0};
-            ModuleResolveStatus status =
-                module_resolve_path(&temp_arena,
-                                    doc->front_end.lexer.source,
-                                    &doc->front_end.lexer,
-                                    &doc->front_end.ast,
-                                    &doc->front_end.ast.module_paths[modref->a],
-                                    &resolved);
-            if (status == MRS_Found) {
-                LspModuleView module = {0};
-                if (lsp_program_module_view_by_path(
-                        &doc->program, resolved.resolved_path, &module)) {
-                    JsonValue* location =
-                        lsp_module_file_location(module, message->arena);
-                    arena_done(&temp_arena);
-                    json_object_set_object(response, "result", location);
-                    lsp_send_response(message->arena, response);
-                    return;
-                }
-            }
-            arena_done(&temp_arena);
+        JsonValue* location = lsp_modref_file_location(&doc->front_end.lexer,
+                                                       &doc->front_end.ast,
+                                                       modref_node_index,
+                                                       message->arena);
+        if (location != NULL) {
+            json_object_set_object(response, "result", location);
+            lsp_send_response(message->arena, response);
+            return;
         }
     }
 

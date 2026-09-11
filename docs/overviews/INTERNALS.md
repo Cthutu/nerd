@@ -427,3 +427,10 @@ errors highlight the operator and recommend an explicit `where` clause.
 configured path disables library search. Explicit imports and implicit `core`
 then search the invocation directory, without legacy install or source-root
 fallbacks. Bare sibling imports retain their module-relative lookup.
+
+LSP definition requests on import paths fall back to `module_resolve_path`
+and return the resolved file at line zero directly. They do not require a
+loaded program module view, so an earlier import failure cannot prevent
+navigation to another resolvable module (including folder-module `mod.n`).
+If that failure discarded the root AST, the request parses the open buffer
+without loading its imports and resolves the module path from that scratch AST.

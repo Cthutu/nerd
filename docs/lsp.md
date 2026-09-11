@@ -100,6 +100,11 @@ source and can still resolve unqualified public declarations imported through
 `use`, including standard-library declarations, by reading the imported module's
 AST.
 
+Definition on a module path in `use` opens the resolved module source file
+(`mod.n` for a folder module). This also works when an earlier import fails:
+navigation resolves the path without requiring the target module to have been
+loaded or analysed. Any component of the module path selects the same file.
+
 Rename supports same-document semantic renames for locals and syntax-fallback
 renames. For top-level declarations, it resolves the declaration origin to a
 module path plus exported name, then returns workspace edits for matching
