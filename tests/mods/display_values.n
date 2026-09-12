@@ -1,0 +1,13 @@
+pub Value :: plex { count i32 }
+pub impl Display for Value {
+    show :: fn (self: Self) => $"value={self.count}"
+}
+
+pub Failure :: enum { System { code u32 } }
+pub impl Display for Failure {
+    show :: fn (self: Self) -> string {
+        return on self { System { code } => $"error={code}" }
+    }
+}
+
+pub failure :: fn (code: u32) -> Failure { return Failure.System { code } }

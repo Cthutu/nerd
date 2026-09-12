@@ -465,3 +465,15 @@ callback signatures contain nested parameter lists, including variadic callbacks
 
 Local aliases of built-in types, including `VaList`, are resolved as types.
 HIR omits local type-alias declarations because they require no runtime storage.
+
+### Result propagation and imported display methods
+
+LLVM storage extraction treats a `void` result payload as a successful,
+valueless expression. Propagating `void\Error` must continue the success path,
+including later statements and deferred cleanup. It must not abort block
+emission because the payload has zero storage bits.
+
+Interpolation imports the canonical `core.Display` trait on demand when a
+non-primitive value needs it. Imported `show` methods are resolved using the
+implementation AST from their defining module, and lowered through their HIR
+import; their AST indices are not indices into the caller's module.

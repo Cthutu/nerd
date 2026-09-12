@@ -5228,6 +5228,11 @@ internal LlvmValue llvm_cast_from_storage_bits(LlvmFunctionContext* ctx,
                                                u32 storage_bits,
                                                u32 result_type)
 {
+    // A successful void result has no payload bits to extract. It still
+    // produces a valid expression so callers continue emitting statements.
+    if (llvm_type_kind(ctx->sema, result_type) == STK_Void) {
+        return (LlvmValue){.ok = true, .type_index = result_type};
+    }
     u32 result_bits = llvm_type_storage_bits(ctx->sema, result_type);
     if (storage_bits == 0 || result_bits == 0) {
         return (LlvmValue){0};
@@ -7569,9 +7574,9 @@ internal bool llvm_impl_is_display_trait(const LlvmFunctionContext* ctx,
     return false;
 }
 
-internal bool llvm_display_show_function_index(LlvmFunctionContext* ctx,
-                                               u32                  type_index,
-                                               u32*                 out)
+internal bool llvm_display_show_function_name(LlvmFunctionContext* ctx,
+                                              u32                  type_index,
+                                              string*              out)
 {
     const Ast* ast = llvm_current_ast(ctx);
     if (ctx == NULL || ast == NULL || out == NULL) {
@@ -7585,23 +7590,53 @@ internal bool llvm_display_show_function_index(LlvmFunctionContext* ctx,
             method->symbol_handle == U32_MAX ||
             !string_eq_cstr(lex_symbol(ctx->lexer, method->symbol_handle),
                             "show") ||
-            method->impl_node_index >= array_count(ast->nodes)) {
-            continue;
-        }
-
-        const AstNode* impl_node = &ast->nodes[method->impl_node_index];
-        if (impl_node->kind != AK_Impl ||
-            impl_node->a >= array_count(ast->impls) ||
-            !llvm_impl_is_display_trait(ctx, ast, &ast->impls[impl_node->a]) ||
             method->decl_index >= array_count(ctx->sema->decls)) {
             continue;
         }
 
-        u32 fn_type = ctx->sema->decls[method->decl_index].type_index;
+        const SemaDecl*     decl       = &ctx->sema->decls[method->decl_index];
+        const Ast*          source_ast = ast;
+        LlvmFunctionContext source_ctx = *ctx;
+        if (decl->import_module_index != U32_MAX) {
+            if (ctx->sema->program == NULL ||
+                decl->import_module_index >=
+                    array_count(ctx->sema->program->modules)) {
+                continue;
+            }
+            const ModuleInfo* module =
+                &ctx->sema->program->modules[decl->import_module_index];
+            source_ast       = &module->front_end.ast;
+            source_ctx.lexer = &module->front_end.lexer;
+            source_ctx.sema  = &module->front_end.sema;
+        }
+        // Imported method node indices belong to their defining module.
+        if (method->impl_node_index >= array_count(source_ast->nodes)) {
+            continue;
+        }
+        const AstNode* impl_node = &source_ast->nodes[method->impl_node_index];
+        if (impl_node->kind != AK_Impl ||
+            impl_node->a >= array_count(source_ast->impls) ||
+            !llvm_impl_is_display_trait(
+                &source_ctx, source_ast, &source_ast->impls[impl_node->a])) {
+            continue;
+        }
+
+        u32 fn_type = decl->type_index;
         if (!llvm_type_is_function(ctx->sema, fn_type) ||
             llvm_function_param_count(ctx->sema, fn_type) != 1 ||
             llvm_function_param_type(ctx->sema, fn_type, 0) != type_index ||
             llvm_function_return_type(ctx->sema, fn_type) != string_type) {
+            continue;
+        }
+
+        if (decl->import_module_index != U32_MAX) {
+            const HirImport* import =
+                llvm_import_for_symbol(ctx->hir, decl->symbol_handle, fn_type);
+            if (import != NULL) {
+                *out = llvm_import_name_string(
+                    ctx->sema, ctx->lexer, ctx->arena, import);
+                return true;
+            }
             continue;
         }
 
@@ -7612,7 +7647,8 @@ internal bool llvm_display_show_function_index(LlvmFunctionContext* ctx,
             if (function->decl_index == method->decl_index ||
                 function->fn_node_index ==
                     ctx->sema->decls[method->decl_index].value_node_index) {
-                *out = function_index;
+                *out = llvm_function_name_string(
+                    ctx->hir, ctx->lexer, ctx->arena, function_index);
                 return true;
             }
         }
@@ -7644,14 +7680,11 @@ llvm_function_index_for_decl(LlvmFunctionContext* ctx, u32 decl_index, u32* out)
 internal bool llvm_emit_append_display_string_value(LlvmFunctionContext* ctx,
                                                     LlvmValue            value)
 {
-    u32 function_index = U32_MAX;
-    if (!llvm_display_show_function_index(
-            ctx, value.type_index, &function_index)) {
+    string function_name = {0};
+    if (!llvm_display_show_function_name(
+            ctx, value.type_index, &function_name)) {
         return false;
     }
-
-    string function_name = llvm_function_name_string(
-        ctx->hir, ctx->lexer, ctx->arena, function_index);
     string value_type = llvm_type_string(ctx, value.type_index);
     string shown      = llvm_temp(ctx);
     string shown_ptr  = llvm_temp(ctx);

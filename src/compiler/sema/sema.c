@@ -20763,6 +20763,21 @@ validate_type:
             if (sema_type_is_builtin_interpolatable(sema, part_type)) {
                 continue;
             }
+            // Imported Display implementations may be used without spelling
+            // the trait name in this module, just like imported Eq methods.
+            if (sema_find_core_trait_symbol(lexer, sema, s("Display")) ==
+                sema_no_decl()) {
+                InternAddResult ignored = {0};
+                u32             symbol =
+                    lex_add_symbol((Lexer*)lexer, s("Display"), &ignored);
+                if (sema_find_symbol_handle_by_name(lexer, s("Display")) ==
+                    sema_no_decl()) {
+                    array_push(((Lexer*)lexer)->symbol_handles, symbol);
+                }
+                if (!sema_import_implicit_core_decls(lexer, sema)) {
+                    return false;
+                }
+            }
             u32 display_symbol =
                 sema_find_core_trait_symbol(lexer, sema, s("Display"));
             if (display_symbol != sema_no_decl()) {

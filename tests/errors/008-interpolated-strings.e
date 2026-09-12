@@ -31,7 +31,7 @@ main :: fn () {
 }
 ¬
 {
-    "message": "Cannot interpolate values of type `fn () -> i32`",
+    "message": "Type mismatch: expected `Display implementation`, found `fn () -> i32`",
     "source_file": "tests/errors/008-interpolated-strings.e",
     "primary_location": {
         "line": 5,
@@ -43,11 +43,11 @@ main :: fn () {
             "line": 5,
             "column": 19,
             "length": 6,
-            "message": "This expression type cannot be converted to string yet"
+            "message": "This expression has type `fn () -> i32`"
         }
     ],
     "notes": [],
     "help": [
-        "Use a built-in primitive or `string`, or cast the value to a supported type first."
+        "Change the expression or annotation so both sides use the same type."
     ]
 }
