@@ -67,12 +67,11 @@ main :: fn () {
 When a feature depends on module qualification, use:
 
 ```nerd
-str :: use std.string
+str :: use std.text
 
 main :: fn () {
-    parts := str.split("hello world", " ")
-    defer parts.free()
-    prn(parts[0])
+    decoded := str.utf8_decode("A".as([]u8))
+    prn($"{decoded.0}")
 }
 ```
 
@@ -488,7 +487,7 @@ Recommended project:
 
 - a small command-line text adventure
 - input through `std.io.input`
-- command parsing with `std.string.split`
+- command parsing with `string.split`
 - command dispatch with `on`
 - dynamic arrays for split words
 - `defer parts.free()` or `defer { parts.free() }`

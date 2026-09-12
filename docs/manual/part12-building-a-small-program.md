@@ -6,7 +6,7 @@ This part combines the earlier concepts into a small command-line text
 adventure. The goal is not to build a full game; it is to show how Nerd programs
 fit together.
 
-The examples use `input` from `std.io` and `split` from `std.string`. Those are
+The examples use `input` from `std.io` and `split` from `std.text`. Those are
 standard library helpers, not new language constructs.
 
 ## Build Pragmas
@@ -62,11 +62,11 @@ When a command needs words, split the input into a dynamic array:
 
 ```nerd
 io :: use std.io
-str :: use std.string
+str :: use std.text
 
 main :: fn () {
     input := io.input("--> ")
-    parts := str.split(input, " ")  -- split returns a dynamic array
+    parts := input.split(" ")  -- split returns a dynamic array
     defer parts.free()              -- free it before leaving the scope
 
     for part in parts {

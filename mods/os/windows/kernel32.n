@@ -1,0 +1,576 @@
+--
+--| Nerd Standard Library
+--| Windows Kernel32 DLL API
+--
+-- Copyright (C) 2026 Matt Davies, all rights reserved
+--
+
+on "windows" {
+
+    ffi "kernel32" {
+        pub CopyMemory :: RtlCopyMemory (Destination : ^void,
+                                         Source      : ^void,
+                                         Length      : usize)
+        pub MoveMemory :: RtlMoveMemory (Destination : ^void,
+                                         Source      : ^void,
+                                         Length      : usize)
+        pub FillMemory :: RtlFillMemory (Destination : ^void,
+                                         Length      : usize,
+                                         Fill        : u8)
+    }
+
+    pub HANDLE        :: ^void
+    pub BOOL          :: i32
+    pub DWORD         :: u32
+    pub LARGE_INTEGER :: i64
+
+    pub STD_INPUT_HANDLE  : DWORD : 0xfffffff6
+    pub STD_OUTPUT_HANDLE : DWORD : 0xfffffff5
+    pub STD_ERROR_HANDLE  : DWORD : 0xfffffff4
+
+    pub INVALID_HANDLE_VALUE         :: 0xffffffffffffffff
+    pub FILE_APPEND_DATA             :: 0x00000004
+    pub GENERIC_READ                 :: 0x80000000
+    pub GENERIC_WRITE                :: 0x40000000
+    pub FILE_SHARE_READ              :: 0x00000001
+    pub FILE_SHARE_WRITE             :: 0x00000002
+    pub CREATE_ALWAYS                :: 2
+    pub OPEN_EXISTING                :: 3
+    pub OPEN_ALWAYS                  :: 4
+    pub FILE_ATTRIBUTE_NORMAL        :: 0x00000080
+    pub FILE_ATTRIBUTE_READONLY      :: 0x00000001
+    pub FILE_ATTRIBUTE_DIRECTORY     :: 0x00000010
+    pub FILE_ATTRIBUTE_REPARSE_POINT :: 0x00000400
+    pub INVALID_FILE_ATTRIBUTES      :: 0xffffffff
+
+    pub ERROR_FILE_NOT_FOUND :: 2
+    pub ERROR_PATH_NOT_FOUND :: 3
+    pub ERROR_ACCESS_DENIED  :: 5
+    pub ERROR_INVALID_NAME   :: 123
+    pub ERROR_ALREADY_EXISTS :: 183
+
+    pub ENABLE_PROCESSED_INPUT             :: 0x0001
+    pub ENABLE_LINE_INPUT                  :: 0x0002
+    pub ENABLE_ECHO_INPUT                  :: 0x0004
+    pub ENABLE_WINDOW_INPUT                :: 0x0008
+    pub ENABLE_MOUSE_INPUT                 :: 0x0010
+    pub ENABLE_VIRTUAL_TERMINAL_INPUT      :: 0x0200
+    pub ENABLE_VIRTUAL_TERMINAL_PROCESSING :: 0x0004
+
+    pub WAIT_OBJECT_0 :: 0x00000000
+    pub WAIT_TIMEOUT  :: 0x00000102
+    pub INFINITE      :: 0xffffffff  -- Wait duration with no timeout.
+    pub CP_UTF8       :: 65001
+
+    pub KEY_EVENT   :: 0x0001
+    pub MOUSE_EVENT :: 0x0002
+
+    pub FROM_LEFT_1ST_BUTTON_PRESSED :: 0x0001
+    pub RIGHTMOST_BUTTON_PRESSED     :: 0x0002
+    pub FROM_LEFT_2ND_BUTTON_PRESSED :: 0x0004
+    pub FROM_LEFT_3RD_BUTTON_PRESSED :: 0x0008
+    pub FROM_LEFT_4TH_BUTTON_PRESSED :: 0x0010
+
+    pub MOUSE_MOVED    :: 0x0001
+    pub DOUBLE_CLICK   :: 0x0002
+    pub MOUSE_WHEELED  :: 0x0004
+    pub MOUSE_HWHEELED :: 0x0008
+
+    pub VK_BACK     :: 0x08
+    pub VK_TAB      :: 0x09
+    pub VK_RETURN   :: 0x0d
+    pub VK_ESCAPE   :: 0x1b
+    pub VK_SPACE    :: 0x20
+    pub VK_SHIFT    :: 0x10
+    pub VK_CONTROL  :: 0x11
+    pub VK_MENU     :: 0x12
+    pub VK_PRIOR    :: 0x21
+    pub VK_NEXT     :: 0x22
+    pub VK_END      :: 0x23
+    pub VK_HOME     :: 0x24
+    pub VK_LEFT     :: 0x25
+    pub VK_UP       :: 0x26
+    pub VK_RIGHT    :: 0x27
+    pub VK_DOWN     :: 0x28
+    pub VK_INSERT   :: 0x2d
+    pub VK_DELETE   :: 0x2e
+    pub VK_NUMPAD0  :: 0x60
+    pub VK_NUMPAD1  :: 0x61
+    pub VK_NUMPAD2  :: 0x62
+    pub VK_NUMPAD3  :: 0x63
+    pub VK_NUMPAD4  :: 0x64
+    pub VK_NUMPAD5  :: 0x65
+    pub VK_NUMPAD6  :: 0x66
+    pub VK_NUMPAD7  :: 0x67
+    pub VK_NUMPAD8  :: 0x68
+    pub VK_NUMPAD9  :: 0x69
+    pub VK_MULTIPLY :: 0x6a
+    pub VK_ADD      :: 0x6b
+    pub VK_SUBTRACT :: 0x6d
+    pub VK_DECIMAL  :: 0x6e
+    pub VK_DIVIDE   :: 0x6f
+    pub VK_F1       :: 0x70
+    pub VK_F2       :: 0x71
+    pub VK_F3       :: 0x72
+    pub VK_F4       :: 0x73
+    pub VK_F5       :: 0x74
+    pub VK_F6       :: 0x75
+    pub VK_F7       :: 0x76
+    pub VK_F8       :: 0x77
+    pub VK_F9       :: 0x78
+    pub VK_F10      :: 0x79
+    pub VK_F11      :: 0x7a
+    pub VK_F12      :: 0x7b
+    pub VK_LSHIFT   :: 0xa0
+    pub VK_RSHIFT   :: 0xa1
+    pub VK_LCONTROL :: 0xa2
+    pub VK_RCONTROL :: 0xa3
+    pub VK_LMENU    :: 0xa4
+    pub VK_RMENU    :: 0xa5
+
+    pub RIGHT_ALT_PRESSED  :: 0x0001
+    pub LEFT_ALT_PRESSED   :: 0x0002
+    pub RIGHT_CTRL_PRESSED :: 0x0004
+    pub LEFT_CTRL_PRESSED  :: 0x0008
+    pub SHIFT_PRESSED      :: 0x0010
+    pub NUMLOCK_ON         :: 0x0020
+    pub SCROLLLOCK_ON      :: 0x0040
+    pub CAPSLOCK_ON        :: 0x0080
+
+    pub COORD :: plex #c {
+        X i16
+        Y i16
+    }
+
+    pub SMALL_RECT :: plex #c {
+        Left   i16
+        Top    i16
+        Right  i16
+        Bottom i16
+    }
+
+    pub CONSOLE_SCREEN_BUFFER_INFO :: plex #c {
+        dwSize              COORD
+        dwCursorPosition    COORD
+        wAttributes         u16
+        srWindow            SMALL_RECT
+        dwMaximumWindowSize COORD
+    }
+
+    pub INPUT_RECORD :: plex #c {
+        EventType         u16
+        _padding          u16
+        bKeyDown          BOOL
+        wRepeatCount      u16
+        wVirtualKeyCode   u16
+        wVirtualScanCode  u16
+        UnicodeChar       u16
+        dwControlKeyState DWORD
+    }
+
+    pub MOUSE_INPUT_RECORD :: plex #c {
+        EventType         u16
+        _padding          u16
+        dwMousePosition   COORD
+        dwButtonState     DWORD
+        dwControlKeyState DWORD
+        dwEventFlags      DWORD
+    }
+
+    -- Describes the window and standard handles used to start a process.
+    pub STARTUPINFOA :: plex #c {
+        cb              DWORD   -- Size of this structure in bytes.
+        lpReserved      ^i8     -- Reserved pointer that must be nil.
+        lpDesktop       ^i8     -- Optional desktop name.
+        lpTitle         ^i8     -- Optional console-window title.
+        dwX             DWORD   -- Initial horizontal window position.
+        dwY             DWORD   -- Initial vertical window position.
+        dwXSize         DWORD   -- Initial window width.
+        dwYSize         DWORD   -- Initial window height.
+        dwXCountChars   DWORD   -- Initial console-buffer width.
+        dwYCountChars   DWORD   -- Initial console-buffer height.
+        dwFillAttribute DWORD   -- Initial console text and background colours.
+        dwFlags         DWORD   -- Flags selecting fields used by process
+                                --     creation.
+        wShowWindow     u16     -- Initial window display state.
+        cbReserved2     u16     -- Size of the reserved byte block.
+        lpReserved2     ^u8     -- Reserved byte block that must be nil.
+        hStdInput       HANDLE  -- Standard-input handle when requested by
+                                --     flags.
+        hStdOutput      HANDLE  -- Standard-output handle when requested by
+                                --     flags.
+        hStdError       HANDLE  -- Standard-error handle when requested by
+                                --     flags.
+    }
+
+    -- Receives handles and identifiers for a newly created process and thread.
+    pub PROCESS_INFORMATION :: plex #c {
+        hProcess    HANDLE  -- Handle to the new process.
+        hThread     HANDLE  -- Handle to the new process's primary thread.
+        dwProcessId DWORD   -- Identifier of the new process.
+        dwThreadId  DWORD   -- Identifier of the new process's primary thread.
+    }
+
+    -- Represents a Windows file timestamp as two 32-bit words.
+    pub FILETIME :: plex #c {
+        dwLowDateTime  DWORD  -- Low-order timestamp word.
+        dwHighDateTime DWORD  -- High-order timestamp word.
+    }
+
+    -- Receives filesystem metadata from `GetFileAttributesExW`.
+    pub WIN32_FILE_ATTRIBUTE_DATA :: plex #c {
+        dwFileAttributes DWORD     -- File attribute flags.
+        ftCreationTime   FILETIME  -- Creation timestamp.
+        ftLastAccessTime FILETIME  -- Last-access timestamp.
+        ftLastWriteTime  FILETIME  -- Last-write timestamp.
+        nFileSizeHigh    DWORD     -- High-order file-size word.
+        nFileSizeLow     DWORD     -- Low-order file-size word.
+    }
+
+    ffi "kernel32" {
+        c_GetStdHandle :: GetStdHandle (nStdHandle: DWORD) -> HANDLE
+
+        c_CreateFile :: CreateFileA (lpFileName            : ^i8,
+                                     dwDesiredAccess       : DWORD,
+                                     dwShareMode           : DWORD,
+                                     lpSecurityAttributes  : ^void,
+                                     dwCreationDisposition : DWORD,
+                                     dwFlagsAndAttributes  : DWORD,
+                                     hTemplateFile         : HANDLE) -> HANDLE
+
+        c_CreateFileW :: CreateFileW (lpFileName            : ^u16,
+                                      dwDesiredAccess       : DWORD,
+                                      dwShareMode           : DWORD,
+                                      lpSecurityAttributes  : ^void,
+                                      dwCreationDisposition : DWORD,
+                                      dwFlagsAndAttributes  : DWORD,
+                                      hTemplateFile         : HANDLE) -> HANDLE
+
+        c_GetFileAttributesW :: GetFileAttributesW (lpFileName: ^u16) -> DWORD
+
+        c_GetFileAttributesExW :: GetFileAttributesExW (lpFileName        : ^u16,
+                                                        fInfoLevelId      : i32,
+                                                        lpFileInformation : ^WIN32_FILE_ATTRIBUTE_DATA) -> BOOL
+
+        c_DeleteFileW :: DeleteFileW (lpFileName: ^u16) -> BOOL
+
+        c_MultiByteToWideChar :: MultiByteToWideChar (CodePage       : u32,
+                                                      dwFlags        : DWORD,
+                                                      lpMultiByteStr : ^u8,
+                                                      cbMultiByte    : i32,
+                                                      lpWideCharStr  : ^u16,
+                                                      cchWideChar    : i32) -> i32
+
+        c_CloseHandle :: CloseHandle (hObject: HANDLE) -> BOOL
+
+        c_FlushFileBuffers :: FlushFileBuffers (hFile: HANDLE) -> BOOL
+
+        c_ReadFile :: ReadFile (hFile                : HANDLE,
+                                lpBuffer             : ^void,
+                                nNumberOfBytesToRead : DWORD,
+                                lpNumberOfBytesRead  : ^DWORD,
+                                lpOverlapped         : ^void) -> BOOL
+
+        c_WriteFile :: WriteFile (hFile                  : HANDLE,
+                                  lpBuffer               : ^void,
+                                  nNumberOfBytesToWrite  : DWORD,
+                                  lpNumberOfBytesWritten : ^DWORD,
+                                  lpOverlapped           : ^void) -> BOOL
+
+        c_WriteConsole :: WriteConsoleA (hConsoleOutput         : HANDLE,
+                                         lpBuffer               : ^void,
+                                         nNumberOfCharsToWrite  : DWORD,
+                                         lpNumberOfCharsWritten : ^DWORD,
+                                         lpReserved             : ^void) -> BOOL
+
+        c_ReadConsoleInput :: ReadConsoleInputW (hConsoleInput        : HANDLE,
+                                                 lpBuffer             : ^INPUT_RECORD,
+                                                 nLength              : DWORD,
+                                                 lpNumberOfEventsRead : ^DWORD) -> BOOL
+
+        c_FlushConsoleInputBuffer :: FlushConsoleInputBuffer (hConsoleInput: HANDLE) -> BOOL
+
+        c_GetConsoleScreenBufferInfo :: GetConsoleScreenBufferInfo (hConsoleOutput            : HANDLE,
+                                                                    lpConsoleScreenBufferInfo : ^CONSOLE_SCREEN_BUFFER_INFO) -> BOOL
+
+        c_GetConsoleMode :: GetConsoleMode (hConsoleHandle : HANDLE,
+                                            lpMode         : ^DWORD) -> BOOL
+
+        c_SetConsoleMode :: SetConsoleMode (hConsoleHandle : HANDLE,
+                                            dwMode         : DWORD) -> BOOL
+
+        c_GetConsoleCP :: GetConsoleCP () -> DWORD
+
+        c_SetConsoleCP :: SetConsoleCP (wCodePageID: DWORD) -> BOOL
+
+        c_GetConsoleOutputCP :: GetConsoleOutputCP () -> DWORD
+
+        c_SetConsoleOutputCP :: SetConsoleOutputCP (wCodePageID: DWORD) -> BOOL
+
+        c_GetLastError :: GetLastError () -> DWORD
+
+        c_WaitForSingleObject :: WaitForSingleObject (hHandle        : HANDLE,
+                                                      dwMilliseconds : DWORD) -> DWORD
+
+        c_CreateProcess :: CreateProcessA (lpApplicationName    : ^i8,
+                                           lpCommandLine        : ^i8,
+                                           lpProcessAttributes  : ^void,
+                                           lpThreadAttributes   : ^void,
+                                           bInheritHandles      : BOOL,
+                                           dwCreationFlags      : DWORD,
+                                           lpEnvironment        : ^void,
+                                           lpCurrentDirectory   : ^i8,
+                                           lpStartupInfo        : ^STARTUPINFOA,
+                                           lpProcessInformation : ^PROCESS_INFORMATION) -> BOOL
+
+        c_GetExitCodeProcess :: GetExitCodeProcess (hProcess   : HANDLE,
+                                                    lpExitCode : ^DWORD) -> BOOL
+
+        c_QueryPerformanceCounter :: QueryPerformanceCounter (lpPerformanceCount: ^LARGE_INTEGER) -> BOOL
+
+        c_QueryPerformanceFrequency :: QueryPerformanceFrequency (lpFrequency: ^LARGE_INTEGER) -> BOOL
+
+        c_Sleep :: Sleep (dwMilliseconds: DWORD)
+    }
+
+    -- Returns a standard input, output, or error handle.
+
+    pub GetStdHandle :: fn (nStdHandle: DWORD) => c_GetStdHandle(nStdHandle)
+
+    -- Opens or creates a file using a Windows ANSI path.
+
+    pub CreateFile :: fn (lpFileName            : ^i8,
+                          dwDesiredAccess       : DWORD,
+                          dwShareMode           : DWORD,
+                          lpSecurityAttributes  : ^void,
+                          dwCreationDisposition : DWORD,
+                          dwFlagsAndAttributes  : DWORD,
+                          hTemplateFile         : HANDLE) -> HANDLE {
+        return c_CreateFile(lpFileName,
+                            dwDesiredAccess,
+                            dwShareMode,
+                            lpSecurityAttributes,
+                            dwCreationDisposition,
+                            dwFlagsAndAttributes,
+                            hTemplateFile)
+    }
+
+    -- Opens a file using a UTF-16 Windows path.
+    pub CreateFileW :: fn (lpFileName            : ^u16,
+                           dwDesiredAccess       : DWORD,
+                           dwShareMode           : DWORD,
+                           lpSecurityAttributes  : ^void,
+                           dwCreationDisposition : DWORD,
+                           dwFlagsAndAttributes  : DWORD,
+                           hTemplateFile         : HANDLE) -> HANDLE {
+        return c_CreateFileW(lpFileName,
+                             dwDesiredAccess,
+                             dwShareMode,
+                             lpSecurityAttributes,
+                             dwCreationDisposition,
+                             dwFlagsAndAttributes,
+                             hTemplateFile)
+    }
+
+    -- Returns attributes for a UTF-16 Windows path.
+    pub GetFileAttributesW :: fn (lpFileName: ^u16) => c_GetFileAttributesW(lpFileName)
+
+    -- Reads metadata for a UTF-16 Windows path.
+    pub GetFileAttributesExW :: fn (lpFileName       : ^u16,
+                                    file_information : ^WIN32_FILE_ATTRIBUTE_DATA) => c_GetFileAttributesExW(lpFileName, 0, file_information)
+
+    -- Removes a file using a UTF-16 Windows path.
+    pub DeleteFileW :: fn (lpFileName: ^u16) => c_DeleteFileW(lpFileName)
+
+    -- Converts bytes in a selected code page to UTF-16 code units.
+    pub MultiByteToWideChar :: fn (CodePage       : u32,
+                                   dwFlags        : DWORD,
+                                   lpMultiByteStr : ^u8,
+                                   cbMultiByte    : i32,
+                                   lpWideCharStr  : ^u16,
+                                   cchWideChar    : i32) -> i32 {
+        return c_MultiByteToWideChar(CodePage,
+                                     dwFlags,
+                                     lpMultiByteStr,
+                                     cbMultiByte,
+                                     lpWideCharStr,
+                                     cchWideChar)
+    }
+
+    -- Releases an owned kernel handle.
+
+    pub CloseHandle :: fn (hObject: HANDLE) => c_CloseHandle(hObject)
+
+    -- Flushes buffered writes for a file handle.
+
+    pub FlushFileBuffers :: fn (hFile: HANDLE) => c_FlushFileBuffers(hFile)
+
+    -- Reads bytes into a caller-provided buffer and reports the byte count.
+
+    pub ReadFile :: fn (hFile                : HANDLE,
+                        lpBuffer             : ^void,
+                        nNumberOfBytesToRead : DWORD,
+                        lpNumberOfBytesRead  : ^DWORD,
+                        lpOverlapped         : ^void) -> BOOL {
+        return c_ReadFile(hFile,
+                          lpBuffer,
+                          nNumberOfBytesToRead,
+                          lpNumberOfBytesRead,
+                          lpOverlapped)
+    }
+
+    -- Writes bytes from a caller-provided buffer and reports the byte count.
+
+    pub WriteFile :: fn (hFile                  : HANDLE,
+                         lpBuffer               : ^void,
+                         nNumberOfBytesToWrite  : DWORD,
+                         lpNumberOfBytesWritten : ^DWORD,
+                         lpOverlapped           : ^void) -> BOOL {
+        return c_WriteFile(hFile,
+                           lpBuffer,
+                           nNumberOfBytesToWrite,
+                           lpNumberOfBytesWritten,
+                           lpOverlapped)
+    }
+
+    -- Writes text to a console screen buffer.
+
+    pub WriteConsole :: fn (hConsoleOutput         : HANDLE,
+                            lpBuffer               : ^void,
+                            nNumberOfCharsToWrite  : DWORD,
+                            lpNumberOfCharsWritten : ^DWORD,
+                            lpReserved             : ^void) -> BOOL {
+        return c_WriteConsole(hConsoleOutput,
+                              lpBuffer,
+                              nNumberOfCharsToWrite,
+                              lpNumberOfCharsWritten,
+                              lpReserved)
+    }
+
+    -- Reads input records from the console event queue.
+
+    pub ReadConsoleInput :: fn (hConsoleInput        : HANDLE,
+                                lpBuffer             : ^INPUT_RECORD,
+                                nLength              : DWORD,
+                                lpNumberOfEventsRead : ^DWORD) -> BOOL {
+        return c_ReadConsoleInput(hConsoleInput,
+                                  lpBuffer,
+                                  nLength,
+                                  lpNumberOfEventsRead)
+    }
+
+    -- Discards pending console input events.
+
+    pub FlushConsoleInputBuffer :: fn (hConsoleInput: HANDLE) => c_FlushConsoleInputBuffer(hConsoleInput)
+
+    -- Reads console buffer dimensions, cursor state, and attributes.
+
+    pub GetConsoleScreenBufferInfo :: fn (hConsoleOutput            : HANDLE,
+                                          lpConsoleScreenBufferInfo : ^CONSOLE_SCREEN_BUFFER_INFO) -> BOOL {
+        return c_GetConsoleScreenBufferInfo(hConsoleOutput,
+                                            lpConsoleScreenBufferInfo)
+    }
+
+    -- Reads the input or output mode flags for a console handle.
+
+    pub GetConsoleMode :: fn (hConsoleHandle: HANDLE, lpMode: ^DWORD) => c_GetConsoleMode(hConsoleHandle, lpMode)
+
+    -- Sets the input or output mode flags for a console handle.
+
+    pub SetConsoleMode :: fn (hConsoleHandle: HANDLE, dwMode: DWORD) => c_SetConsoleMode(hConsoleHandle, dwMode)
+
+    -- Returns the console input code page.
+
+    pub GetConsoleCP :: fn () => c_GetConsoleCP()
+
+    -- Sets the console input code page.
+
+    pub SetConsoleCP :: fn (wCodePageID: DWORD) => c_SetConsoleCP(wCodePageID)
+
+    -- Returns the console output code page.
+
+    pub GetConsoleOutputCP :: fn () => c_GetConsoleOutputCP()
+
+    -- Sets the console output code page.
+
+    pub SetConsoleOutputCP :: fn (wCodePageID: DWORD) => c_SetConsoleOutputCP(wCodePageID)
+
+    -- Returns the calling thread's most recent Windows error code.
+
+    pub GetLastError :: fn () => c_GetLastError()
+
+    -- Waits for a handle to become signalled or for the timeout to expire.
+
+    pub WaitForSingleObject :: fn (hHandle: HANDLE, dwMilliseconds: DWORD) => c_WaitForSingleObject(hHandle, dwMilliseconds)
+
+    -- Creates a process from a mutable command line and returns its handles.
+    pub CreateProcess :: fn (lpApplicationName    : ^i8,
+                             lpCommandLine        : ^i8,
+                             lpProcessAttributes  : ^void,
+                             lpThreadAttributes   : ^void,
+                             bInheritHandles      : BOOL,
+                             dwCreationFlags      : DWORD,
+                             lpEnvironment        : ^void,
+                             lpCurrentDirectory   : ^i8,
+                             lpStartupInfo        : ^STARTUPINFOA,
+                             lpProcessInformation : ^PROCESS_INFORMATION) -> BOOL {
+        return c_CreateProcess(lpApplicationName,
+                               lpCommandLine,
+                               lpProcessAttributes,
+                               lpThreadAttributes,
+                               bInheritHandles,
+                               dwCreationFlags,
+                               lpEnvironment,
+                               lpCurrentDirectory,
+                               lpStartupInfo,
+                               lpProcessInformation)
+    }
+
+    -- Reads the termination status of a process that has finished.
+    pub GetExitCodeProcess :: fn (hProcess: HANDLE, lpExitCode: ^DWORD) => c_GetExitCodeProcess(hProcess, lpExitCode)
+
+    -- Reads the high-resolution monotonic performance counter.
+
+    pub QueryPerformanceCounter :: fn (lpPerformanceCount: ^LARGE_INTEGER) => c_QueryPerformanceCounter(lpPerformanceCount)
+
+    -- Reads the performance counter frequency in ticks per second.
+
+    pub QueryPerformanceFrequency :: fn (lpFrequency: ^LARGE_INTEGER) => c_QueryPerformanceFrequency(lpFrequency)
+
+    -- Suspends the current thread for the given number of milliseconds.
+
+    pub Sleep :: fn (dwMilliseconds: DWORD) {
+        c_Sleep(dwMilliseconds)
+    }
+
+}
+
+on "windows" {
+
+    test "kernel32 converts UTF-8 to UTF-16" {
+        output : [4]u16
+        count           := MultiByteToWideChar(CP_UTF8, 0, c"A界".as(^u8), 4, output.data, 4)
+
+        assert count == 2, "Expected two UTF-16 code units"
+        assert output[0] == 0x41 && output[1] == 0x754c,
+            "Expected conversion to preserve ASCII and non-ASCII characters"
+        assert MultiByteToWideChar(CP_UTF8, 0, c"A界".as(^u8), 4, output.data, 1) == 0,
+            "Expected insufficient output capacity to fail"
+        assert GetLastError() != 0, "Expected a conversion error code"
+    }
+
+    test "kernel32 performance counter and frequency" {
+        frequency : LARGE_INTEGER
+        before    : LARGE_INTEGER
+        after     : LARGE_INTEGER
+
+        assert QueryPerformanceFrequency(^frequency) != 0 && frequency > 0,
+            "Expected a positive performance counter frequency"
+        assert QueryPerformanceCounter(^before) != 0,
+            "Expected reading the performance counter to succeed"
+        Sleep(0)
+        assert QueryPerformanceCounter(^after) != 0 && after >= before,
+            "Expected the performance counter to be monotonic"
+    }
+
+}

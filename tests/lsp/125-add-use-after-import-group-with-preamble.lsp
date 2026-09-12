@@ -4,7 +4,7 @@
 
 pragma windowed
 
-use std.mem
+use std.memory
 
 main :: fn () {
     value := input()

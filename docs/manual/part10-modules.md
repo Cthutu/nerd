@@ -137,12 +137,11 @@ assert on !"windows"
 Bind a module to a local top-level name with `use` as the binding value:
 
 ```nerd
-str :: use std.string  -- bind the module to the name str
+str :: use std.text  -- bind the module to the name str
 
 main :: fn () {
-    parts := str.split("hello world", " ")
-    defer parts.free()
-    prn(parts[0])
+    decoded := str.utf8_decode("A".as([]u8))
+    prn($"{decoded.0}")
 }
 ```
 
@@ -197,7 +196,7 @@ A module can re-export public names from another module. Use this when building
 a small public surface over several internal files.
 
 ```nerd
-pub str :: use std.string  -- re-export std.string through this module
+pub str :: use std.text  -- re-export std.text through this module
 ```
 
 Code that imports this module can then access the public `str` module binding.
@@ -223,10 +222,10 @@ prn("hello")
 Use a named module binding when clarity matters:
 
 ```nerd
-str :: use std.string  -- keep names qualified
+str :: use std.text  -- keep names qualified
 ```
 
-Qualified names such as `str.split` make dependencies explicit.
+Qualified names such as `str.utf8_decode` make dependencies explicit.
 
 ## Standard Library
 

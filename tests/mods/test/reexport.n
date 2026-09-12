@@ -1,4 +1,4 @@
-pub memory :: use std.mem
+pub memory :: use std.memory
 
 pub forty_two :: fn() -> i32 {
     return 42

@@ -179,7 +179,7 @@ code outside the runtime. Arena debug nodes store the source file and line
 supplied to `nrt_arena_init`. When `nrt_arena_alloc` lazily initialises a
 zero-valued arena, it forwards its file and line arguments to that initialiser.
 
-`std.mem` is the public standard-library facade over this runtime foundation.
+`std.memory` is the public standard-library facade over this runtime foundation.
 It owns the source-level allocation API and an explicit leak-reporting command,
 while compiler-generated dynamic-array and arena operations use the same
 low-level allocation substrate.

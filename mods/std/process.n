@@ -8,7 +8,7 @@
 on "linux" {
 
     use os.linux
-    use std.string
+    use std.text
 
     -- Waits for a Linux child and converts its wait status to an exit status.
     process_wait :: fn (process_id: i32) -> i32 {
@@ -59,7 +59,7 @@ on "linux" {
 on "windows" {
 
     use os.windows
-    use std.string
+    use std.text
 
     WINDOWS_BACKSLASH    :: 92  -- Backslash byte used in command-line quoting.
     WINDOWS_QUOTE        :: 34  -- Double-quote byte used for quoting.

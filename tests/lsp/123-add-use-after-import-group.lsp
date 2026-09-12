@@ -1,4 +1,4 @@
-memory :: use std.mem
+memory :: use std.memory
 
 main :: fn () {
     value := input()

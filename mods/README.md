@@ -73,3 +73,12 @@ Coding rules for this repository live in
 [`CODING-STANDARDS.md`](CODING-STANDARDS.md). Follow them for every NSL source
 file unless a task explicitly updates the standards, including the requirement
 to use British English spelling.
+
+## Consolidated library APIs
+
+The OS bindings, `std.memory`, `std.text`, `std.slice`, and method-based time API
+were merged from `nerd-std` at `4a178b3`. `std.mem`, `std.string`, and `std.utf8`
+have been replaced by `std.memory` and `std.text`. Linux bindings now live in the
+`os.linux` folder module; import its public API rather than its private X11/GLX
+children. Windows kernel bindings live in `os.windows.kernel32` and are exported
+through `os.windows`. See [the standard-library reference](../docs/stdlib.md) for ownership rules and current APIs.

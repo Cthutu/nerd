@@ -78,7 +78,7 @@ files_system_error :: fn (code: u32) -> FileError {
 on "linux" {
 
     use os.linux
-    use std.string
+    use std.text
 
     -- Converts a Linux error code to the portable file error set.
     files_linux_error :: fn (code: u32) -> FileError {

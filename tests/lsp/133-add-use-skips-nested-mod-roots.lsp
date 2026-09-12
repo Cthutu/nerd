@@ -130,7 +130,7 @@ main :: fn () {
         "id": 2,
         "result": [
             {
-                "title": "Add use std.string",
+                "title": "Add use std.text",
                 "kind": "quickfix",
                 "edit": {
                     "changes": {
@@ -146,7 +146,7 @@ main :: fn () {
                                         "character": 0
                                     }
                                 },
-                                "newText": "use std.string\n\n"
+                                "newText": "use std.text\n\n"
                             }
                         ]
                     }

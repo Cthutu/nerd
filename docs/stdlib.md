@@ -35,14 +35,16 @@ library is organised into three layers:
   path processing.
 - `std.math`
   Mathematical constants, scalar functions, and small geometry helper types.
-- `std.mem`
+- `std.memory`
   Low-level allocation wrappers.
 - `std.process`
   Portable child-process execution and waiting.
-- `std.string`
-  String utilities.
-- `std.utf8`
-  UTF-8 conversion and display-width utilities.
+- `std.text`
+  String methods, Unicode scalar operations, and UTF-8 conversion.
+- `std.slice`
+  Borrowing slice membership with an `Eq` constraint.
+- `std.time`
+  Monotonic timestamps and duration construction and conversion.
 - `std.traits`
   Compatibility module for common trait declarations. Language-required traits
   are canonical in `core`.
@@ -51,7 +53,7 @@ library is organised into three layers:
   executable replacement, child waiting, and process exit.
 - `os.windows`
   Windows operating-system bindings re-exported from narrower modules such as
-  `os.windows.kernel`, including Win32 process creation, waiting, exit-code
+  `os.windows.kernel32`, including Win32 process creation, waiting, exit-code
   inspection, and handle management.
 
 The repository also contains early `std.random` source work. Treat it as
@@ -124,11 +126,17 @@ reset, or released. Path component functions return borrowed views. Filesystem
 failures use `FileError`; recognised conditions have portable enum variants and
 `System { code }` preserves an otherwise unmapped native error code.
 
-### `std.mem`
+### `std.memory`
 
-Low-level allocation helpers backed by C allocation functions. These APIs should
-be documented with exact ownership and lifetime rules before being presented as
-stable user-facing library functions.
+Runtime-backed `alloc`, `realloc`, `free`, and `alloc_size` operate on whole
+owned byte-slice allocations. Free each allocation exactly once. `realloc`
+replaces the old view and preserves bytes up to the smaller size. Zero-sized
+allocations still require freeing. Allocation failure terminates the process.
+
+`kb`, `mb`, and `gb` convert binary units to bytes. `align_up` requires a nonzero
+alignment and a result that fits in `usize`. `leak` excludes an allocation from
+reports without freeing it. `print_leaks(show_message_on_no_leaks = no)` reports
+live allocations in debug builds and is a no-op with the same API in release.
 
 ### `std.process`
 
@@ -208,42 +216,46 @@ and reuses storage, and `done()` releases the reserved arena range.
 `prn` does the same while appending a newline. Their results remain valid until
 the receiving arena is restored past the allocation, reset, or released.
 
-### `std.string`
+### `std.text`
 
-- `from_null_terminated(text: string) -> string`
-- `string.c_string() -> ^i8`
-- `split(s: string, sep: string) -> [..]string`
-- `string.trim() -> string`
-- `string.trim_start() -> string`
-- `string.trim_end() -> string`
-- `string.trim_null_terminated() -> string`
-- `string.trim_whitespace() -> string`
+- `Rune.is_ascii()`, `Rune.is_valid()`, and `Rune.utf8_length()`
+- `Rune.utf8_encode(output: []u8) -> usize`
+- `Rune.display_width() -> i32`
+- `utf8_decode(bytes: []u8) -> (Rune, usize)`
+- `string.utf8_validate() -> void\Utf8Error`
+- `string.is_empty()`, `string.starts_with(prefix)`, and `string.ends_with(suffix)`
+- `string.split(separator: string) -> [..]string`
+- `string.trim()`, `string.trim_start()`, and `string.trim_end()`
+- `string.trim_whitespace()` and `string.trim_null_terminated()`
+- `string.c_string() -> ^i8` and `string.display_width() -> i32`
 
-`c_string` copies a Nerd string into temporary arena storage and appends a zero
-byte for C APIs that expect `^i8`. `from_null_terminated` and
-`trim_null_terminated` return a borrowed view ending before the first zero byte.
-They are useful after casting fixed C-style byte buffers to `string`, for
-example `str.from_null_terminated(buffer.as(string))`. The `trim` family returns
-borrowed views with leading and/or trailing zero bytes and ASCII whitespace
-removed. `trim_whitespace` is kept as an alias for `trim`. `split` returns a
-dynamic array and the caller is responsible for freeing that array when it is no
-longer needed.
+`split` returns an owned array of borrowed string views; free the array when
+finished, keeping the original string storage alive while using its parts.
+Trimming returns borrowed views and removes NUL bytes and ASCII whitespace.
+`trim_null_terminated` stops at the first NUL. `c_string` copies into the temporary
+arena and appends a NUL; the pointer expires when that arena is restored or reset.
 
-### `std.utf8`
+`utf8_decode` returns U+FFFD and a zero byte count for invalid or empty input.
+It rejects overlong forms, surrogates, invalid continuation bytes, and values
+outside Unicode. A valid encoded U+FFFD is accepted. `utf8_encode` replaces
+invalid scalar values with U+FFFD and returns zero without writing when the
+output is too small. Display width uses the currently supported wide-character
+ranges, rather than a complete Unicode grapheme-width implementation.
 
-- `decode_at(text: string, index: usize) -> (u32, usize)`
-- `decode_bytes_at(bytes: []u8, index: usize) -> (u32, usize)`
-- `decode_first_byte_slice(bytes: []u8) -> u32`
-- `encoded_count(codepoint: u32) -> usize`
-- `encode_to(codepoint: u32, output: []u8) -> usize`
-- `codepoint_display_width(codepoint: u32) -> i32`
-- `display_width(text: string) -> i32`
+The old `std.string` and `std.utf8` modules have been absorbed into `std.text`.
 
-Decode functions return the decoded UTF-32 codepoint and the number of bytes
-consumed. A byte count of zero means the requested offset was at or beyond the
-end of the input. Malformed input decodes to `REPLACEMENT_CODEPOINT` and
-consumes one byte. `encode_to` returns zero without writing when the output
-slice is too small.
+### `std.slice`
+
+`slice.contains(value)` borrows its receiver and requires `T: Eq`. Matching uses
+value equality, including the content equality of nested slices and strings.
+
+### `std.time`
+
+`Instant` and `Duration` are nanosecond counts. Use `instant.add(duration)`,
+`duration.to_secs()`, `to_ms()`, `to_us()`, `to_ns()`, and `secs()` for the
+method-based API. `secs()` returns fractional seconds; the other conversions
+return whole units. Constructors remain `from_secs`, `from_ms`, `from_us`, and
+`from_ns`. `elapsed(start, finish)`, `now()`, and `sleep_ms()` remain free functions.
 
 ### `std.term`
 

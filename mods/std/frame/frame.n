@@ -55,7 +55,7 @@
 
 pragma windowed
 
-utf8 :: use std.utf8
+text :: use std.text
 
 -- A special frame ID that indicates a new frame should be created when `apply`
 -- is called.

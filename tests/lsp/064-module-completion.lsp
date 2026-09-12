@@ -156,6 +156,10 @@ main :: fn () {}
                 "kind": 9
             },
             {
+                "label": "file_module",
+                "kind": 9
+            },
+            {
                 "label": "folder_mod",
                 "kind": 9
             },

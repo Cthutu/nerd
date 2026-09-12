@@ -1,7 +1,6 @@
 on "linux" {
 
-    use os.linux.glx
-    use os.linux.x11
+    use os.linux
 
     pub FrameContext :: plex {
         display    XDisplay
@@ -357,7 +356,10 @@ on "linux" {
     }
 
     -- Decodes the first UTF-8 codepoint from Xlib text translation output.
-    frame_linux_decode_utf8 :: fn (bytes: []u8) => utf8.decode_first_byte_slice(bytes)
+    frame_linux_decode_utf8 :: fn (bytes: []u8) -> u32 {
+        on bytes.count == 0 => return 0
+        return text.utf8_decode(bytes).0
+    }
 
     -- Queues key and character events from an X11 key event.
     frame_linux_push_key_event :: fn (system  : ^FrameSystem,

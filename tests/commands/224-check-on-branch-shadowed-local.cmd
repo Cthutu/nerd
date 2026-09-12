@@ -22,7 +22,7 @@ main :: fn () {
         on frame_system.poll(^frame) {
             None => {
                 time := now()
-                draw(secs(time))
+                draw(time.secs())
             }
             Closed => {
             }

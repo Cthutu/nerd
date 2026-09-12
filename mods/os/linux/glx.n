@@ -5,24 +5,28 @@
 -- Provides Linux GLX bindings. Higher-level OpenGL commands and command loading
 -- live in `std.opengl`.
 
-use os.linux.x11
+on "linux" {
 
--- Opaque GLX rendering context handle.
-pub GLXContext :: ^void
+    use x11
 
--- GLX drawable handle. The current frame backend renders directly to X11
--- windows.
-pub GLXDrawable :: XWindow
+    -- Opaque GLX rendering context handle.
+    pub GLXContext :: ^void
 
-ffi "GL" {
-    pub glXCreateContext  (display    : XDisplay,
-                           visual     : ^XVisualInfo,
-                           share_list : GLXContext,
-                           direct     : i32) -> GLXContext
-    pub glXMakeCurrent    (display  : XDisplay,
-                           drawable : GLXDrawable,
-                           context  : GLXContext) -> i32
-    pub glXDestroyContext (display: XDisplay, context: GLXContext)
-    pub glXGetProcAddress (name: ^i8) -> ^void
-    pub glXSwapBuffers    (display: XDisplay, drawable: GLXDrawable)
+    -- GLX drawable handle. The current frame backend renders directly to X11
+    -- windows.
+    pub GLXDrawable :: XWindow
+
+    ffi "GL" {
+        pub glXCreateContext  (display    : XDisplay,
+                               visual     : ^XVisualInfo,
+                               share_list : GLXContext,
+                               direct     : i32) -> GLXContext
+        pub glXMakeCurrent    (display  : XDisplay,
+                               drawable : GLXDrawable,
+                               context  : GLXContext) -> i32
+        pub glXDestroyContext (display: XDisplay, context: GLXContext)
+        pub glXGetProcAddress (name: ^i8) -> ^void
+        pub glXSwapBuffers    (display: XDisplay, drawable: GLXDrawable)
+    }
+
 }

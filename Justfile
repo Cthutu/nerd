@@ -1,3 +1,5 @@
+export NERD_LIB_PATH := justfile_directory() + "/mods"
+
 default:
     just --list
 
@@ -112,8 +114,15 @@ do:
     just test-release
     just install
 
-run-example *example:
-    cd examples/{{example}} && nerd run -r
+# Build against this checkout's compiler and library, without opening a window.
+build-example example: (build-release "nerd")
+    mkdir -p _bin/examples
+    ./_bin/nerd{{exe_suffix}} build -r -o "_bin/examples/{{example}}{{exe_suffix}}" "examples/{{example}}/{{if example == "text-adventure" { "quill" } else { example }}}.n"
+
+run-example example: (build-example example)
+    cd "examples/{{example}}" && "../../_bin/examples/{{example}}{{exe_suffix}}"
+
+alias be := build-example
 
 list-examples:
     ls examples

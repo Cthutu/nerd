@@ -107,3 +107,12 @@ LLVM backend status:
   and LLVM IR is the executable backend output.
 - The executable backend targets the host 64-bit clang toolchain. Cross-target
   and aggregate FFI ABI support are future layout-context work.
+
+## Building examples
+
+`just build-example triangle` builds an example in release mode into
+`_bin/examples/`. It builds this checkout's compiler first and sets
+`NERD_LIB_PATH` to this checkout's `mods`, so it does not use installed modules.
+The recipe accepts all directories listed by `just list-examples`, including
+`text-adventure` (whose entry point is `quill.n`). `just run-example triangle`
+or `just re triangle` runs from the example directory so relative assets work.

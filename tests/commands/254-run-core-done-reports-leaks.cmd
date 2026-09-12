@@ -1,4 +1,4 @@
-use std.mem
+use std.memory
 
 main :: fn () {
     _ := alloc(13)

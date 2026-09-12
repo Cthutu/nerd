@@ -1,7 +1,7 @@
-memory :: use std.mem
+memory :: use std.memory
 
 main :: fn() {
-    local_memory :: use std.mem
+    local_memory :: use std.memory
 
     _ := local_memory.kb(1)
     _ := memory.mb(1)

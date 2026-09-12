@@ -129,7 +129,7 @@ main :: fn () {
         "id": 2,
         "result": [
             {
-                "title": "Add use std.mem",
+                "title": "Add use std.memory",
                 "kind": "quickfix",
                 "edit": {
                     "changes": {
@@ -145,7 +145,7 @@ main :: fn () {
                                         "character": 0
                                     }
                                 },
-                                "newText": "use std.mem\n\n"
+                                "newText": "use std.memory\n\n"
                             }
                         ]
                     }

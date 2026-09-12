@@ -1,0 +1,642 @@
+--
+--| Nerd Standard Library
+--| Text handling and Unicode support
+--
+-- Copyright (C) 2026 Matt Davies, all rights reserved.
+--
+
+-- Represents a validated Unicode scalar value
+pub Rune :: u32
+
+impl Rune {
+
+    -- Returns true if the Rune is an ASCII character (U+0000 to U+007F)
+    pub is_ascii :: fn (r: Self) -> bool {
+        return r <= 0x7f
+    }
+
+    -- Returns true if the Rune is a valid Unicode scalar value.
+    pub is_valid :: fn (r: Self) -> bool {
+        return r <= 0x10ffff && (r < 0xd800 || r > 0xdfff)
+    }
+
+    -- Returns the number of bytes required to encode the Rune in UTF-8. Returns
+    -- 0 if the value is an invalid Unicode scalar.
+    pub utf8_length :: fn (r: Self) -> usize {
+        on !r.is_valid() => return 0
+
+        return on r {
+            <= 0x7f      => 1
+            <= 0x7ff     => 2
+            <= 0xffff    => 3
+            <= 0x10ffff  => 4
+            else         => 0
+        }
+    }
+
+    -- Encodes the Rune into output and returns the number of bytes written.
+    -- Invalid scalar values are encoded as the replacement character (U+FFFD).
+    -- Returns zero without writing when `output` is too small.
+    pub utf8_encode :: fn (r: Self, output: []u8) -> usize {
+        value  := on r.is_valid() => r else 0xfffd.as(Rune)
+        needed := value.utf8_length()
+
+        on output.count < needed => return 0
+
+        on needed {
+            1 => {
+                output[0] = value.as(u8)
+            }
+
+            2 => {
+                output[0] = (0xc0 | (value >> 6)).as(u8)
+                output[1] = (0x80 | (value & 0x3f)).as(u8)
+            }
+
+            3 => {
+                output[0] = (0xe0 | (value >> 12)).as(u8)
+                output[1] = (0x80 | ((value >> 6) & 0x3f)).as(u8)
+                output[2] = (0x80 | (value & 0x3f)).as(u8)
+            }
+
+            else => {
+                output[0] = (0xf0 | (value >> 18)).as(u8)
+                output[1] = (0x80 | ((value >> 12) & 0x3f)).as(u8)
+                output[2] = (0x80 | ((value >> 6) & 0x3f)).as(u8)
+                output[3] = (0x80 | (value & 0x3f)).as(u8)
+            }
+        }
+
+        return needed
+    }
+
+    -- Returns the terminal display width of the Rune using the supported
+    -- wide-character ranges. Control characters have zero width.
+    pub display_width :: fn (r: Self) -> i32 {
+        on r == 0                            => return 0
+        on r < 32 || (r >= 0x7f && r < 0xa0) => return 0
+        on r >= 0x1100 && r <= 0x115f        => return 2
+        on r == 0x2329 || r == 0x232a        => return 2
+        on r >= 0x2e80 && r <= 0xa4cf        => return 2
+        on r >= 0xac00 && r <= 0xd7a3        => return 2
+        on r >= 0xf900 && r <= 0xfaff        => return 2
+        on r >= 0xfe10 && r <= 0xfe19        => return 2
+        on r >= 0xfe30 && r <= 0xfe6f        => return 2
+        on r >= 0xff00 && r <= 0xff60        => return 2
+        on r >= 0xffe0 && r <= 0xffe6        => return 2
+        return 1
+    }
+
+}
+
+test "Rune.is_ascii" {
+    assert 0x41.as(Rune).is_ascii() == yes, "Expected 0x41 to be ASCII"
+    assert 0x7f.as(Rune).is_ascii() == yes, "Expected 0x7f to be ASCII"
+    assert 0x80.as(Rune).is_ascii() == no, "Expected 0x80 to be non-ASCII"
+}
+
+test "Rune.is_valid" {
+    assert 0x41.as(Rune).is_valid() == yes, "Expected 0x41 to be valid"
+    assert 0xd7ff.as(Rune).is_valid() == yes, "Expected 0xd7ff to be valid"
+    assert 0xe000.as(Rune).is_valid() == yes, "Expected 0xe000 to be valid"
+    assert 0x10ffff.as(Rune).is_valid() == yes, "Expected 0x10ffff to be valid"
+    assert 0xd800.as(Rune).is_valid() == no, "Expected 0xd800 to be invalid"
+    assert 0x110000.as(Rune).is_valid() == no, "Expected 0x110000 to be invalid"
+}
+
+test "Rune.utf8_length" {
+    assert 0x24.as(Rune).utf8_length() == 1,
+        "Expected 0x24 to have UTF-8 length of 1"
+    assert 0xa2.as(Rune).utf8_length() == 2,
+        "Expected 0xa2 to have UTF-8 length of 2"
+    assert 0x20ac.as(Rune).utf8_length() == 3,
+        "Expected 0x20ac to have UTF-8 length of 3"
+    assert 0x10348.as(Rune).utf8_length() == 4,
+        "Expected 0x10348 to have UTF-8 length of 4"
+}
+
+-- Represents an error that occurs after a UTF-8 operation
+pub Utf8Error :: enum {
+    InvalidByteSequence
+    UnexpectedEndOfInput
+}
+
+-- Decodes a UTF-8 encoded byte slice into a Rune and returns the Rune and the
+-- number of bytes consumed.  If the byte slice is not valid UTF-8, returns the
+-- replacement character (U+FFFD) and the number of bytes as 0.
+pub utf8_decode :: fn (bytes: []u8) -> (Rune, usize) {
+    on bytes.count == 0 => return (0xfffd.as(Rune), 0)
+
+    first_byte := bytes[0].as(u32)
+    on first_byte <= 0x7f                     => return (first_byte.as(Rune), 1)
+    on first_byte < 0xc2 || first_byte > 0xf4 => return (0xfffd.as(Rune), 0)
+
+    size: usize = on first_byte {
+        <= 0xdf  => 2
+        <= 0xef  => 3
+        else     => 4
+    }
+    on bytes.count < size => return (0xfffd.as(Rune), 0)
+
+    mask: u32 = on size {
+        2     => 0x1f
+        3     => 0x0f
+        else  => 0x07
+    }
+    r := first_byte & mask
+    for i in [1 .. size] {
+        byte := bytes[i].as(u32)
+        on byte < 0x80 || byte > 0xbf => return (0xfffd.as(Rune), 0)
+        r = (r << 6) | (byte & 0x3f)
+    }
+
+    rune := r.as(Rune)
+    on !rune.is_valid()           => return (0xfffd.as(Rune), 0)
+    on rune.utf8_length() != size => return (0xfffd.as(Rune), 0)
+    return (rune, size)
+}
+
+-- Returns true for a NUL byte or ASCII whitespace; not Unicode whitespace.
+string_is_trim_byte :: fn (byte: u8) -> bool {
+    return byte == 0 || byte == ' ' || byte == '\t' || byte == '\n' || byte == '\r' || byte == 11 || byte == 12
+}
+
+impl string {
+
+    -- Validates that a string is valid UTF-8.  Returns an error if the string is not
+    -- valid UTF-8.
+    pub utf8_validate :: fn (s: Self) -> void\Utf8Error {
+        i : usize = 0
+        for i < s.bytes {
+            (_, size) := utf8_decode(s[i..].as([]u8))
+            on size == 0 => return InvalidByteSequence!
+            i += size
+        }
+    }
+
+    -- Copies all bytes into temporary NUL-terminated storage for C APIs.
+    -- The pointer is valid until the temporary arena is restored or reset.
+    -- Embedded NUL bytes are preserved; C APIs see only the prefix before them.
+    pub c_string :: fn (s: Self) -> ^i8 {
+        bytes := temp_arena.alloc_bytes(s.bytes + 1)
+        for i: usize = 0; i < s.bytes; i += 1 {
+            bytes[i] = s.data[i]
+        }
+        bytes[s.bytes] = 0
+        return bytes.data.as(^i8)
+    }
+
+    -- Splits at non-overlapping byte matches, preserving empty parts. An empty
+    -- separator returns one part containing the original string. Free the returned
+    -- array with parts.free(); its strings borrow the original storage.
+    pub split :: fn (s: Self, separator: string) -> [..]string {
+        parts : [..]string
+
+        on separator.bytes == 0 => {
+            parts.push(s)
+            return parts
+        }
+
+        start : usize = 0
+        index : usize = 0
+
+        for index + separator.bytes <= s.bytes {
+            matched := yes
+            for separator_index: usize = 0;
+                matched && separator_index < separator.bytes;
+                separator_index += 1 {
+                on s.data[index + separator_index] != separator.data[separator_index] => matched = no
+            }
+
+            on matched => {
+                parts.push(s[start..index])
+                index += separator.bytes
+                start = index
+            } else {
+                index += 1
+            }
+        }
+
+        parts.push(s[start..])
+        return parts
+    }
+
+    -- Returns a view with leading zero bytes and ASCII whitespace removed.
+    pub trim_start :: fn (s: Self) -> string {
+        start : usize = 0
+        for start < s.bytes && string_is_trim_byte(s.data[start]) {
+            start += 1
+        }
+        return s[start..]
+    }
+
+    -- Returns a view with trailing zero bytes and ASCII whitespace removed.
+    pub trim_end :: fn (s: Self) -> string {
+        end := s.bytes
+        for end > 0 && string_is_trim_byte(s.data[end - 1]) {
+            end -= 1
+        }
+        return s[..end]
+    }
+
+    -- Returns a view with leading and trailing zero bytes and ASCII whitespace
+    -- removed.
+    pub trim :: fn (s: Self) => s.trim_start().trim_end()
+
+    -- Returns a view with leading and trailing zero bytes and ASCII whitespace
+    -- removed.
+    pub trim_whitespace :: fn (s: Self) => s.trim()
+
+    -- Returns a view of `s` ending before the first zero byte.
+    --
+    -- This is useful for fixed buffers filled by C APIs. The returned string
+    -- borrows the same storage as `s`; no bytes are copied or validated.
+    pub trim_null_terminated :: fn (s: Self) -> string {
+        end := s.bytes
+        for i: usize = 0; i < s.bytes; i += 1 {
+            on s.data[i] == 0 => {
+                end = i
+                break
+            }
+        }
+
+        return s[..end]
+    }
+
+    -- Returns the terminal display width using the supported wide-character
+    -- ranges. Malformed UTF-8 bytes each count as one replacement character.
+    pub display_width :: fn (s: Self) -> i32 {
+        width : i32   = 0
+        i     : usize = 0
+
+        for i < s.bytes {
+            (r, size) := utf8_decode(s[i..].as([]u8))
+            width += r.display_width()
+            i     += on size == 0 => 1 else size
+        }
+        return width
+    }
+
+    -- Return true if the string is empty.
+    pub is_empty :: fn (s: Self) -> bool {
+        return s.bytes == 0
+    }
+
+    -- Return true if the string starts with the given prefix string.
+    pub starts_with :: fn (s: Self, prefix: string) -> bool {
+        on !s.utf8_validate()      => return no
+        on !prefix.utf8_validate() => return no
+
+        on s.bytes < prefix.bytes => return no
+
+        for i in [0 .. prefix.bytes] {
+            on s[i] != prefix[i] => return no
+        }
+
+        return yes
+    }
+
+    -- Return true if the string ends with the given suffix string.
+    pub ends_with :: fn (s: Self, suffix: string) -> bool {
+        on !s.utf8_validate()      => return no
+        on !suffix.utf8_validate() => return no
+
+        on s.bytes < suffix.bytes => return no
+
+        offset := s.bytes - suffix.bytes
+        for i in [0 .. suffix.bytes] {
+            on s[offset + i] != suffix[i] => return no
+        }
+
+        return yes
+    }
+
+}
+
+test "string.is_empty" {
+    assert "".is_empty() == yes, "Expected empty string to be empty"
+    assert "hello".is_empty() == no, "Expected non-empty string to not be empty"
+}
+
+test "string.starts_with" {
+    assert "hello".starts_with("he") == yes,
+        "Expected 'hello' to start with 'he'"
+    assert "hello".starts_with("lo") == no,
+        "Expected 'hello' to not start with 'lo'"
+    assert "hello".starts_with("hello world") == no,
+        "Expected 'hello' to not start with longer string"
+}
+
+test "utf8_decode" {
+    s                   := "A¢╭𐍈�"
+    expected : [5]Rune  = [0x41, 0xa2, 0x256d, 0x10348, 0xfffd]
+    lengths  : [5]usize = [1, 2, 3, 4, 3]
+    offset   : usize    = 0
+
+    for i in [0 .. expected.count] {
+        (r, size) := utf8_decode(s[offset..].as([]u8))
+        assert r == expected[i], "Expected the exact decoded Unicode scalar"
+        assert size == lengths[i], "Expected the UTF-8 byte count"
+        offset += size
+    }
+    assert utf8_decode(s[offset..].as([]u8)).1 == 0,
+        "Expected no bytes consumed at the end of the string"
+
+    bytes : [..]u8
+    defer bytes.free()
+    bytes.push(0xe2)
+    bytes.push(0x95)
+    bytes.push(0xad)
+    assert utf8_decode(bytes[..]).0 == 0x256d,
+        "Expected decoding to work with dynamic byte storage"
+}
+
+test "utf8_decode invalid sequences" {
+    -- Stray continuation, overlong forms, invalid continuation, surrogate,
+    -- out-of-range scalar and an invalid leading byte.
+    sequences: [8][4]u8 = [
+        [0x80, 0, 0, 0],
+        [0xc0, 0xaf, 0, 0],
+        [0xe0, 0x80, 0xaf, 0],
+        [0xf0, 0x80, 0x80, 0xaf],
+        [0xe2, 0x41, 0xad, 0],
+        [0xed, 0xa0, 0x80, 0],
+        [0xf4, 0x90, 0x80, 0x80],
+        [0xff, 0, 0, 0],
+    ]
+    for i in [0 .. sequences.count] {
+        bytes := sequences[i]
+        (r, size) := utf8_decode(bytes[..])
+        assert r == 0xfffd,
+            "Expected the replacement character for invalid UTF-8"
+        assert size == 0, "Expected invalid UTF-8 to consume no bytes"
+        assert !bytes.as(string).utf8_validate(),
+            "Expected validation to reject malformed UTF-8"
+    }
+
+    bytes : [4]u8 = [0xf0, 0x90, 0x8d, 0x88]
+    for size in [0 .. 4] {
+        assert utf8_decode(bytes[0..size]).1 == 0,
+            "Expected truncated UTF-8 to consume no bytes"
+    }
+}
+
+test "string.utf8_validate" {
+    assert !!"".utf8_validate(), "Expected empty text to be valid UTF-8"
+    assert !!"A¢╭𐍈�".utf8_validate(),
+        "Expected Unicode text including U+FFFD to be valid UTF-8"
+    assert "�hello�".starts_with("�"),
+        "Expected a valid replacement character prefix to match"
+    assert "�hello�".ends_with("�"),
+        "Expected a valid replacement character suffix to match"
+}
+
+test "Rune.utf8_encode" {
+    runes : [10]Rune =
+                       [0, 0x7f, 0x80, 0x7ff, 0x800, 0xd7ff, 0xe000, 0xffff, 0x10000, 0x10ffff]
+    for i in [0 .. runes.count] {
+        r              := runes[i]
+        output : [4]u8
+        size           := r.utf8_encode(output[..])
+
+        assert size == r.utf8_length(),
+            "Expected encoding to use the Rune's byte count"
+        assert utf8_decode(output[0..size]).0 == r,
+            "Expected UTF-8 encoding and decoding to preserve the Rune"
+    }
+    output : [4]u8
+    assert 0x256d.as(Rune).utf8_encode(output[..]) == 3,
+        "Expected three bytes for U+256D"
+    assert output[0] == 0xe2 && output[1] == 0x95 && output[2] == 0xad,
+        "Expected the UTF-8 bytes for U+256D"
+}
+
+test "Rune.utf8_encode invalid scalars and short output" {
+    invalid : [3]Rune = [0xd800, 0xdfff, 0x110000]
+    for i in [0 .. invalid.count] {
+        output : [4]u8
+        assert invalid[i].utf8_length() == 0,
+            "Expected invalid Unicode scalars to have no UTF-8 length"
+        assert invalid[i].utf8_encode(output[..]) == 3,
+            "Expected invalid Unicode scalars to encode as U+FFFD"
+        assert output[0] == 0xef && output[1] == 0xbf && output[2] == 0xbd,
+            "Expected the UTF-8 bytes for the replacement character"
+    }
+    for size in [0 .. 4] {
+        output : [4]u8 = [1, 2, 3, 4]
+        assert 0x10348.as(Rune).utf8_encode(output[0..size]) == 0,
+            "Expected encoding to fail when output is too short"
+        assert output == [1, 2, 3, 4],
+            "Expected short output to remain unchanged"
+    }
+}
+
+test "Rune.display_width" {
+    assert 0x41.as(Rune).display_width() == 1,
+        "Expected ASCII to occupy one column"
+    assert 0x754c.as(Rune).display_width() == 2,
+        "Expected a wide Rune to occupy two columns"
+    assert 0.as(Rune).display_width() == 0, "Expected NUL to occupy no columns"
+    assert 0x1f.as(Rune).display_width() == 0,
+        "Expected control characters to occupy no columns"
+}
+
+test "string.display_width" {
+    assert "".display_width() == 0, "Expected empty text to occupy no columns"
+    assert "ASCII".display_width() == 5,
+        "Expected one column per ASCII character"
+    assert "A界".display_width() == 3,
+        "Expected mixed narrow and wide characters to add their widths"
+    bytes : [3]u8 = [0xff, 0xe2, 0x41]
+    assert bytes.as(string).display_width() == 3,
+        "Expected malformed UTF-8 to make progress and count replacement "
+        +"characters"
+}
+
+test "split returns original text for empty separator" {
+    parts := "north".split("")
+    defer parts.free()
+
+    assert parts.count == 1
+    assert parts[0] == "north"
+}
+
+test "split separates text by separator" {
+    parts := "look around room".split(" ")
+    defer parts.free()
+
+    assert parts.count == 3
+    assert parts[0] == "look"
+    assert parts[1] == "around"
+    assert parts[2] == "room"
+}
+
+test "split keeps empty parts around repeated separators" {
+    parts := "a,,b,".split(",")
+    defer parts.free()
+
+    assert parts.count == 4
+    assert parts[0] == "a"
+    assert parts[1] == ""
+    assert parts[2] == "b"
+    assert parts[3] == ""
+}
+
+test "trim removes leading and trailing whitespace and nulls" {
+    bytes : [13]u8
+    bytes[0] = 0
+    bytes[1] = ' '
+    bytes[2] = '\t'
+    bytes[3] = '\n'
+    bytes[4] = 'c'
+    bytes[5] = 'l'
+    bytes[6] = 'e'
+    bytes[7] = 'a'
+    bytes[8] = 'n'
+    bytes[9] = '\r'
+    bytes[10] = 12
+    bytes[11] = ' '
+    bytes[12] = 0
+
+    trimmed := bytes.as(string).trim()
+
+    assert trimmed == "clean"
+}
+
+test "trim_start and trim_end trim only one side" {
+    text := "\t  clean  "
+
+    assert text.trim_start() == "clean  "
+    assert text.trim_end() == "\t  clean"
+}
+
+test "trim methods trim borrowed string views" {
+    text := "  clean  "
+
+    assert text.trim() == "clean"
+    assert text.trim_start() == "clean  "
+    assert text.trim_end() == "  clean"
+}
+
+test "trim returns empty string for all trimmable bytes" {
+    bytes : [5]u8
+    bytes[0] = 0
+    bytes[1] = '\t'
+    bytes[2] = ' '
+    bytes[3] = '\n'
+    bytes[4] = 0
+
+    trimmed := bytes.as(string).trim()
+
+    assert trimmed == ""
+}
+
+test "trim_whitespace is an alias for trim" {
+    trimmed := "\t  clean ".trim_whitespace()
+
+    assert trimmed == "clean"
+}
+
+test "string.trim_null_terminated trims at first zero byte" {
+    bytes : [8]i8
+    bytes[0] = 'O'
+    bytes[1] = 'p'
+    bytes[2] = 'e'
+    bytes[3] = 'n'
+    bytes[4] = 0
+    bytes[5] = 'G'
+    bytes[6] = 'L'
+    bytes[7] = 0
+
+    trimmed := bytes.as(string).trim_null_terminated()
+
+    assert trimmed == "Open"
+}
+
+test "trim_null_terminated leaves strings without zero bytes unchanged" {
+    trimmed := "plain".trim_null_terminated()
+
+    assert trimmed == "plain"
+}
+
+test "c_string copies text to null-terminated temp storage" {
+    text   := "OpenGL"
+    c_text := text.c_string()
+
+    assert c_text[0] == 'O'
+    assert c_text[1] == 'p'
+    assert c_text[2] == 'e'
+    assert c_text[3] == 'n'
+    assert c_text[4] == 'G'
+    assert c_text[5] == 'L'
+    assert c_text[6] == 0
+}
+
+test "string.split empty and unmatched input" {
+    empty := "".split(",")
+    defer empty.free()
+    assert empty.count == 1 && empty[0] == "",
+        "Expected empty input to produce one empty part"
+
+    unmatched := "abc".split("abcd")
+    defer unmatched.free()
+    assert unmatched.count == 1 && unmatched[0] == "abc",
+        "Expected a longer separator to leave the input intact"
+
+    edges := ",a,".split(",")
+    defer edges.free()
+    assert edges.count == 3 && edges[0] == "" && edges[1] == "a" && edges[2] == "",
+        "Expected leading and trailing separators to retain empty parts"
+}
+
+test "string.split multibyte and non-overlapping separators" {
+    parts := "one界two界three".split("界")
+    defer parts.free()
+    assert parts.count == 3 && parts[0] == "one" && parts[1] == "two" && parts[2] == "three",
+        "Expected a complete UTF-8 separator to split at each occurrence"
+
+    overlapping := "aaa".split("aa")
+    defer overlapping.free()
+    assert overlapping.count == 2 && overlapping[0] == "" && overlapping[1] == "a",
+        "Expected matches to consume the separator without overlapping"
+}
+
+test "string views borrow storage and c_string copies it" {
+    bytes : [5]u8 = [' ', 'a', ',', 'b', ' ']
+    s             := bytes.as(string)
+    parts         := s.split(",")
+
+    defer parts.free()
+    trimmed := s.trim()
+    c_text  := trimmed.c_string()
+
+    bytes[1] = 'z'
+    assert parts[0] == " z" && trimmed == "z,b",
+        "Expected split and trim views to retain the original storage"
+    assert c_text[0] == 'a' && c_text[3] == 0,
+        "Expected c_string to own a temporary copy with a trailing NUL"
+}
+
+test "string trimming empty text and Unicode whitespace" {
+    assert "".trim() == "" && "".trim_start() == "" && "".trim_end() == "",
+        "Expected trimming empty strings to be safe"
+    bytes : [11]u8 = [11, 12, ' ', 't', 'e', 'x', 't', ' ', 13, 10, 9]
+    assert bytes.as(string).trim() == "text",
+        "Expected all ASCII whitespace characters to be trimmed"
+    assert "　text　".trim() == "　text　",
+        "Expected non-ASCII whitespace to be preserved"
+}
+
+test "string NUL conversion boundaries" {
+    bytes : [3]u8 = [0, 'x', 0]
+    assert bytes.as(string).trim_null_terminated() == "",
+        "Expected a leading NUL to produce an empty view"
+    assert "".trim_null_terminated() == "",
+        "Expected empty input to produce an empty view"
+    c_empty := "".c_string()
+    assert c_empty[0] == 0,
+        "Expected an empty C string to contain its terminator"
+    c_bytes := bytes.as(string).c_string()
+    assert c_bytes[0] == 0 && c_bytes[1] == 'x' && c_bytes[2] == 0 && c_bytes[3] == 0,
+        "Expected embedded NUL bytes to be copied before the final terminator"
+}

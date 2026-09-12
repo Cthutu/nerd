@@ -10,7 +10,7 @@ use std.frame
 
 on "linux" {
 
-    use os.linux.glx
+    use os.linux
 
     gl_get_proc_address :: fn (name: ^i8) => glXGetProcAddress(name)
 

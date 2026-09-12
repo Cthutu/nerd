@@ -1,0 +1,671 @@
+--
+--| Nerd Standard Library
+--| Linux OS module
+--
+-- Copyright (C) 2026 Matt Davies, all rights reserved.
+--
+
+on "linux" {
+
+    -- Invokes a syscall using libc error semantics: -1 on failure, with the
+    -- error code available through last_error().
+    pub syscall :: intrinsic "syscall" (number: u64, a0: u64, a1: u64, a2: u64, a3: u64, a4: u64, a5: u64) -> i64
+
+    -- Linux x86-64 syscall numbers from arch/x86/entry/syscalls/syscall_64.tbl.
+    pub SYS_READ                    :: 0
+    pub SYS_WRITE                   :: 1
+    pub SYS_OPEN                    :: 2
+    pub SYS_CLOSE                   :: 3
+    pub SYS_STAT                    :: 4
+    pub SYS_FSTAT                   :: 5
+    pub SYS_LSTAT                   :: 6
+    pub SYS_POLL                    :: 7
+    pub SYS_LSEEK                   :: 8
+    pub SYS_MMAP                    :: 9
+    pub SYS_MPROTECT                :: 10
+    pub SYS_MUNMAP                  :: 11
+    pub SYS_BRK                     :: 12
+    pub SYS_RT_SIGACTION            :: 13
+    pub SYS_RT_SIGPROCMASK          :: 14
+    pub SYS_RT_SIGRETURN            :: 15
+    pub SYS_IOCTL                   :: 16
+    pub SYS_PREAD64                 :: 17
+    pub SYS_PWRITE64                :: 18
+    pub SYS_READV                   :: 19
+    pub SYS_WRITEV                  :: 20
+    pub SYS_ACCESS                  :: 21
+    pub SYS_PIPE                    :: 22
+    pub SYS_SELECT                  :: 23
+    pub SYS_SCHED_YIELD             :: 24
+    pub SYS_MREMAP                  :: 25
+    pub SYS_MSYNC                   :: 26
+    pub SYS_MINCORE                 :: 27
+    pub SYS_MADVISE                 :: 28
+    pub SYS_SHMGET                  :: 29
+    pub SYS_SHMAT                   :: 30
+    pub SYS_SHMCTL                  :: 31
+    pub SYS_DUP                     :: 32
+    pub SYS_DUP2                    :: 33
+    pub SYS_PAUSE                   :: 34
+    pub SYS_NANOSLEEP               :: 35
+    pub SYS_GETITIMER               :: 36
+    pub SYS_ALARM                   :: 37
+    pub SYS_SETITIMER               :: 38
+    pub SYS_GETPID                  :: 39
+    pub SYS_SENDFILE                :: 40
+    pub SYS_SOCKET                  :: 41
+    pub SYS_CONNECT                 :: 42
+    pub SYS_ACCEPT                  :: 43
+    pub SYS_SENDTO                  :: 44
+    pub SYS_RECVFROM                :: 45
+    pub SYS_SENDMSG                 :: 46
+    pub SYS_RECVMSG                 :: 47
+    pub SYS_SHUTDOWN                :: 48
+    pub SYS_BIND                    :: 49
+    pub SYS_LISTEN                  :: 50
+    pub SYS_GETSOCKNAME             :: 51
+    pub SYS_GETPEERNAME             :: 52
+    pub SYS_SOCKETPAIR              :: 53
+    pub SYS_SETSOCKOPT              :: 54
+    pub SYS_GETSOCKOPT              :: 55
+    pub SYS_CLONE                   :: 56
+    pub SYS_FORK                    :: 57
+    pub SYS_VFORK                   :: 58
+    pub SYS_EXECVE                  :: 59
+    pub SYS_EXIT                    :: 60
+    pub SYS_WAIT4                   :: 61
+    pub SYS_KILL                    :: 62
+    pub SYS_UNAME                   :: 63
+    pub SYS_SEMGET                  :: 64
+    pub SYS_SEMOP                   :: 65
+    pub SYS_SEMCTL                  :: 66
+    pub SYS_SHMDT                   :: 67
+    pub SYS_MSGGET                  :: 68
+    pub SYS_MSGSND                  :: 69
+    pub SYS_MSGRCV                  :: 70
+    pub SYS_MSGCTL                  :: 71
+    pub SYS_FCNTL                   :: 72
+    pub SYS_FLOCK                   :: 73
+    pub SYS_FSYNC                   :: 74
+    pub SYS_FDATASYNC               :: 75
+    pub SYS_TRUNCATE                :: 76
+    pub SYS_FTRUNCATE               :: 77
+    pub SYS_GETDENTS                :: 78
+    pub SYS_GETCWD                  :: 79
+    pub SYS_CHDIR                   :: 80
+    pub SYS_FCHDIR                  :: 81
+    pub SYS_RENAME                  :: 82
+    pub SYS_MKDIR                   :: 83
+    pub SYS_RMDIR                   :: 84
+    pub SYS_CREAT                   :: 85
+    pub SYS_LINK                    :: 86
+    pub SYS_UNLINK                  :: 87
+    pub SYS_SYMLINK                 :: 88
+    pub SYS_READLINK                :: 89
+    pub SYS_CHMOD                   :: 90
+    pub SYS_FCHMOD                  :: 91
+    pub SYS_CHOWN                   :: 92
+    pub SYS_FCHOWN                  :: 93
+    pub SYS_LCHOWN                  :: 94
+    pub SYS_UMASK                   :: 95
+    pub SYS_GETTIMEOFDAY            :: 96
+    pub SYS_GETRLIMIT               :: 97
+    pub SYS_GETRUSAGE               :: 98
+    pub SYS_SYSINFO                 :: 99
+    pub SYS_TIMES                   :: 100
+    pub SYS_PTRACE                  :: 101
+    pub SYS_GETUID                  :: 102
+    pub SYS_SYSLOG                  :: 103
+    pub SYS_GETGID                  :: 104
+    pub SYS_SETUID                  :: 105
+    pub SYS_SETGID                  :: 106
+    pub SYS_GETEUID                 :: 107
+    pub SYS_GETEGID                 :: 108
+    pub SYS_SETPGID                 :: 109
+    pub SYS_GETPPID                 :: 110
+    pub SYS_GETPGRP                 :: 111
+    pub SYS_SETSID                  :: 112
+    pub SYS_SETREUID                :: 113
+    pub SYS_SETREGID                :: 114
+    pub SYS_GETGROUPS               :: 115
+    pub SYS_SETGROUPS               :: 116
+    pub SYS_SETRESUID               :: 117
+    pub SYS_GETRESUID               :: 118
+    pub SYS_SETRESGID               :: 119
+    pub SYS_GETRESGID               :: 120
+    pub SYS_GETPGID                 :: 121
+    pub SYS_SETFSUID                :: 122
+    pub SYS_SETFSGID                :: 123
+    pub SYS_GETSID                  :: 124
+    pub SYS_CAPGET                  :: 125
+    pub SYS_CAPSET                  :: 126
+    pub SYS_RT_SIGPENDING           :: 127
+    pub SYS_RT_SIGTIMEDWAIT         :: 128
+    pub SYS_RT_SIGQUEUEINFO         :: 129
+    pub SYS_RT_SIGSUSPEND           :: 130
+    pub SYS_SIGALTSTACK             :: 131
+    pub SYS_UTIME                   :: 132
+    pub SYS_MKNOD                   :: 133
+    pub SYS_USELIB                  :: 134
+    pub SYS_PERSONALITY             :: 135
+    pub SYS_USTAT                   :: 136
+    pub SYS_STATFS                  :: 137
+    pub SYS_FSTATFS                 :: 138
+    pub SYS_SYSFS                   :: 139
+    pub SYS_GETPRIORITY             :: 140
+    pub SYS_SETPRIORITY             :: 141
+    pub SYS_SCHED_SETPARAM          :: 142
+    pub SYS_SCHED_GETPARAM          :: 143
+    pub SYS_SCHED_SETSCHEDULER      :: 144
+    pub SYS_SCHED_GETSCHEDULER      :: 145
+    pub SYS_SCHED_GET_PRIORITY_MAX  :: 146
+    pub SYS_SCHED_GET_PRIORITY_MIN  :: 147
+    pub SYS_SCHED_RR_GET_INTERVAL   :: 148
+    pub SYS_MLOCK                   :: 149
+    pub SYS_MUNLOCK                 :: 150
+    pub SYS_MLOCKALL                :: 151
+    pub SYS_MUNLOCKALL              :: 152
+    pub SYS_VHANGUP                 :: 153
+    pub SYS_MODIFY_LDT              :: 154
+    pub SYS_PIVOT_ROOT              :: 155
+    pub SYS_SYSCTL                  :: 156
+    pub SYS_PRCTL                   :: 157
+    pub SYS_ARCH_PRCTL              :: 158
+    pub SYS_ADJTIMEX                :: 159
+    pub SYS_SETRLIMIT               :: 160
+    pub SYS_CHROOT                  :: 161
+    pub SYS_SYNC                    :: 162
+    pub SYS_ACCT                    :: 163
+    pub SYS_SETTIMEOFDAY            :: 164
+    pub SYS_MOUNT                   :: 165
+    pub SYS_UMOUNT2                 :: 166
+    pub SYS_SWAPON                  :: 167
+    pub SYS_SWAPOFF                 :: 168
+    pub SYS_REBOOT                  :: 169
+    pub SYS_SETHOSTNAME             :: 170
+    pub SYS_SETDOMAINNAME           :: 171
+    pub SYS_IOPL                    :: 172
+    pub SYS_IOPERM                  :: 173
+    pub SYS_CREATE_MODULE           :: 174
+    pub SYS_INIT_MODULE             :: 175
+    pub SYS_DELETE_MODULE           :: 176
+    pub SYS_GET_KERNEL_SYMS         :: 177
+    pub SYS_QUERY_MODULE            :: 178
+    pub SYS_QUOTACTL                :: 179
+    pub SYS_NFSSERVCTL              :: 180
+    pub SYS_GETPMSG                 :: 181
+    pub SYS_PUTPMSG                 :: 182
+    pub SYS_AFS_SYSCALL             :: 183
+    pub SYS_TUXCALL                 :: 184
+    pub SYS_SECURITY                :: 185
+    pub SYS_GETTID                  :: 186
+    pub SYS_READAHEAD               :: 187
+    pub SYS_SETXATTR                :: 188
+    pub SYS_LSETXATTR               :: 189
+    pub SYS_FSETXATTR               :: 190
+    pub SYS_GETXATTR                :: 191
+    pub SYS_LGETXATTR               :: 192
+    pub SYS_FGETXATTR               :: 193
+    pub SYS_LISTXATTR               :: 194
+    pub SYS_LLISTXATTR              :: 195
+    pub SYS_FLISTXATTR              :: 196
+    pub SYS_REMOVEXATTR             :: 197
+    pub SYS_LREMOVEXATTR            :: 198
+    pub SYS_FREMOVEXATTR            :: 199
+    pub SYS_TKILL                   :: 200
+    pub SYS_TIME                    :: 201
+    pub SYS_FUTEX                   :: 202
+    pub SYS_SCHED_SETAFFINITY       :: 203
+    pub SYS_SCHED_GETAFFINITY       :: 204
+    pub SYS_SET_THREAD_AREA         :: 205
+    pub SYS_IO_SETUP                :: 206
+    pub SYS_IO_DESTROY              :: 207
+    pub SYS_IO_GETEVENTS            :: 208
+    pub SYS_IO_SUBMIT               :: 209
+    pub SYS_IO_CANCEL               :: 210
+    pub SYS_GET_THREAD_AREA         :: 211
+    pub SYS_LOOKUP_DCOOKIE          :: 212
+    pub SYS_EPOLL_CREATE            :: 213
+    pub SYS_EPOLL_CTL_OLD           :: 214
+    pub SYS_EPOLL_WAIT_OLD          :: 215
+    pub SYS_REMAP_FILE_PAGES        :: 216
+    pub SYS_GETDENTS64              :: 217
+    pub SYS_SET_TID_ADDRESS         :: 218
+    pub SYS_RESTART_SYSCALL         :: 219
+    pub SYS_SEMTIMEDOP              :: 220
+    pub SYS_FADVISE64               :: 221
+    pub SYS_TIMER_CREATE            :: 222
+    pub SYS_TIMER_SETTIME           :: 223
+    pub SYS_TIMER_GETTIME           :: 224
+    pub SYS_TIMER_GETOVERRUN        :: 225
+    pub SYS_TIMER_DELETE            :: 226
+    pub SYS_CLOCK_SETTIME           :: 227
+    pub SYS_CLOCK_GETTIME           :: 228
+    pub SYS_CLOCK_GETRES            :: 229
+    pub SYS_CLOCK_NANOSLEEP         :: 230
+    pub SYS_EXIT_GROUP              :: 231
+    pub SYS_EPOLL_WAIT              :: 232
+    pub SYS_EPOLL_CTL               :: 233
+    pub SYS_TGKILL                  :: 234
+    pub SYS_UTIMES                  :: 235
+    pub SYS_VSERVER                 :: 236
+    pub SYS_MBIND                   :: 237
+    pub SYS_SET_MEMPOLICY           :: 238
+    pub SYS_GET_MEMPOLICY           :: 239
+    pub SYS_MQ_OPEN                 :: 240
+    pub SYS_MQ_UNLINK               :: 241
+    pub SYS_MQ_TIMEDSEND            :: 242
+    pub SYS_MQ_TIMEDRECEIVE         :: 243
+    pub SYS_MQ_NOTIFY               :: 244
+    pub SYS_MQ_GETSETATTR           :: 245
+    pub SYS_KEXEC_LOAD              :: 246
+    pub SYS_WAITID                  :: 247
+    pub SYS_ADD_KEY                 :: 248
+    pub SYS_REQUEST_KEY             :: 249
+    pub SYS_KEYCTL                  :: 250
+    pub SYS_IOPRIO_SET              :: 251
+    pub SYS_IOPRIO_GET              :: 252
+    pub SYS_INOTIFY_INIT            :: 253
+    pub SYS_INOTIFY_ADD_WATCH       :: 254
+    pub SYS_INOTIFY_RM_WATCH        :: 255
+    pub SYS_MIGRATE_PAGES           :: 256
+    pub SYS_OPENAT                  :: 257
+    pub SYS_MKDIRAT                 :: 258
+    pub SYS_MKNODAT                 :: 259
+    pub SYS_FCHOWNAT                :: 260
+    pub SYS_FUTIMESAT               :: 261
+    pub SYS_NEWFSTATAT              :: 262
+    pub SYS_UNLINKAT                :: 263
+    pub SYS_RENAMEAT                :: 264
+    pub SYS_LINKAT                  :: 265
+    pub SYS_SYMLINKAT               :: 266
+    pub SYS_READLINKAT              :: 267
+    pub SYS_FCHMODAT                :: 268
+    pub SYS_FACCESSAT               :: 269
+    pub SYS_PSELECT6                :: 270
+    pub SYS_PPOLL                   :: 271
+    pub SYS_UNSHARE                 :: 272
+    pub SYS_SET_ROBUST_LIST         :: 273
+    pub SYS_GET_ROBUST_LIST         :: 274
+    pub SYS_SPLICE                  :: 275
+    pub SYS_TEE                     :: 276
+    pub SYS_SYNC_FILE_RANGE         :: 277
+    pub SYS_VMSPLICE                :: 278
+    pub SYS_MOVE_PAGES              :: 279
+    pub SYS_UTIMENSAT               :: 280
+    pub SYS_EPOLL_PWAIT             :: 281
+    pub SYS_SIGNALFD                :: 282
+    pub SYS_TIMERFD_CREATE          :: 283
+    pub SYS_EVENTFD                 :: 284
+    pub SYS_FALLOCATE               :: 285
+    pub SYS_TIMERFD_SETTIME         :: 286
+    pub SYS_TIMERFD_GETTIME         :: 287
+    pub SYS_ACCEPT4                 :: 288
+    pub SYS_SIGNALFD4               :: 289
+    pub SYS_EVENTFD2                :: 290
+    pub SYS_EPOLL_CREATE1           :: 291
+    pub SYS_DUP3                    :: 292
+    pub SYS_PIPE2                   :: 293
+    pub SYS_INOTIFY_INIT1           :: 294
+    pub SYS_PREADV                  :: 295
+    pub SYS_PWRITEV                 :: 296
+    pub SYS_RT_TGSIGQUEUEINFO       :: 297
+    pub SYS_PERF_EVENT_OPEN         :: 298
+    pub SYS_RECVMMSG                :: 299
+    pub SYS_FANOTIFY_INIT           :: 300
+    pub SYS_FANOTIFY_MARK           :: 301
+    pub SYS_PRLIMIT64               :: 302
+    pub SYS_NAME_TO_HANDLE_AT       :: 303
+    pub SYS_OPEN_BY_HANDLE_AT       :: 304
+    pub SYS_CLOCK_ADJTIME           :: 305
+    pub SYS_SYNCFS                  :: 306
+    pub SYS_SENDMMSG                :: 307
+    pub SYS_SETNS                   :: 308
+    pub SYS_GETCPU                  :: 309
+    pub SYS_PROCESS_VM_READV        :: 310
+    pub SYS_PROCESS_VM_WRITEV       :: 311
+    pub SYS_KCMP                    :: 312
+    pub SYS_FINIT_MODULE            :: 313
+    pub SYS_SCHED_SETATTR           :: 314
+    pub SYS_SCHED_GETATTR           :: 315
+    pub SYS_RENAMEAT2               :: 316
+    pub SYS_SECCOMP                 :: 317
+    pub SYS_GETRANDOM               :: 318
+    pub SYS_MEMFD_CREATE            :: 319
+    pub SYS_KEXEC_FILE_LOAD         :: 320
+    pub SYS_BPF                     :: 321
+    pub SYS_EXECVEAT                :: 322
+    pub SYS_USERFAULTFD             :: 323
+    pub SYS_MEMBARRIER              :: 324
+    pub SYS_MLOCK2                  :: 325
+    pub SYS_COPY_FILE_RANGE         :: 326
+    pub SYS_PREADV2                 :: 327
+    pub SYS_PWRITEV2                :: 328
+    pub SYS_PKEY_MPROTECT           :: 329
+    pub SYS_PKEY_ALLOC              :: 330
+    pub SYS_PKEY_FREE               :: 331
+    pub SYS_STATX                   :: 332
+    pub SYS_IO_PGETEVENTS           :: 333
+    pub SYS_RSEQ                    :: 334
+    pub SYS_URETPROBE               :: 335
+    pub SYS_UPROBE                  :: 336
+    pub SYS_PIDFD_SEND_SIGNAL       :: 424
+    pub SYS_IO_URING_SETUP          :: 425
+    pub SYS_IO_URING_ENTER          :: 426
+    pub SYS_IO_URING_REGISTER       :: 427
+    pub SYS_OPEN_TREE               :: 428
+    pub SYS_MOVE_MOUNT              :: 429
+    pub SYS_FSOPEN                  :: 430
+    pub SYS_FSCONFIG                :: 431
+    pub SYS_FSMOUNT                 :: 432
+    pub SYS_FSPICK                  :: 433
+    pub SYS_PIDFD_OPEN              :: 434
+    pub SYS_CLONE3                  :: 435
+    pub SYS_CLOSE_RANGE             :: 436
+    pub SYS_OPENAT2                 :: 437
+    pub SYS_PIDFD_GETFD             :: 438
+    pub SYS_FACCESSAT2              :: 439
+    pub SYS_PROCESS_MADVISE         :: 440
+    pub SYS_EPOLL_PWAIT2            :: 441
+    pub SYS_MOUNT_SETATTR           :: 442
+    pub SYS_QUOTACTL_FD             :: 443
+    pub SYS_LANDLOCK_CREATE_RULESET :: 444
+    pub SYS_LANDLOCK_ADD_RULE       :: 445
+    pub SYS_LANDLOCK_RESTRICT_SELF  :: 446
+    pub SYS_MEMFD_SECRET            :: 447
+    pub SYS_PROCESS_MRELEASE        :: 448
+    pub SYS_FUTEX_WAITV             :: 449
+    pub SYS_SET_MEMPOLICY_HOME_NODE :: 450
+    pub SYS_CACHESTAT               :: 451
+    pub SYS_FCHMODAT2               :: 452
+    pub SYS_MAP_SHADOW_STACK        :: 453
+    pub SYS_FUTEX_WAKE              :: 454
+    pub SYS_FUTEX_WAIT              :: 455
+    pub SYS_FUTEX_REQUEUE           :: 456
+    pub SYS_STATMOUNT               :: 457
+    pub SYS_LISTMOUNT               :: 458
+    pub SYS_LSM_GET_SELF_ATTR       :: 459
+    pub SYS_LSM_SET_SELF_ATTR       :: 460
+    pub SYS_LSM_LIST_MODULES        :: 461
+    pub SYS_MSEAL                   :: 462
+    pub SYS_SETXATTRAT              :: 463
+    pub SYS_GETXATTRAT              :: 464
+    pub SYS_LISTXATTRAT             :: 465
+    pub SYS_REMOVEXATTRAT           :: 466
+    pub SYS_OPEN_TREE_ATTR          :: 467
+    pub SYS_FILE_GETATTR            :: 468
+    pub SYS_FILE_SETATTR            :: 469
+    pub SYS_LISTNS                  :: 470
+    pub SYS_RSEQ_SLICE_YIELD        :: 471
+    pub SYS_FCHROOT                 :: 472
+
+    test "syscall" {
+        assert SYS_READ == 0 && SYS_RSEQ_SLICE_YIELD == 471 && SYS_FCHROOT == 472,
+            "Expected Linux x86-64 syscall numbers to match the kernel table"
+
+        process_id := syscall(SYS_GETPID, 0, 0, 0, 0, 0, 0)
+        assert process_id > 0,
+            "Expected the getpid syscall to return a positive process ID"
+    }
+
+    pub CLOCK_MONOTONIC :: 1  -- Linux clock identifier for monotonic time.
+
+    -- Represents the Linux timespec structure.
+    pub TimeSpec :: plex #c {
+        tv_sec  i64  -- Whole seconds.
+        tv_nsec i64  -- Additional nanoseconds.
+    }
+
+    -- Reads a Linux clock into a TimeSpec.
+    pub sys_clock_gettime :: fn (clock_id: i32, time: ^TimeSpec) => syscall(SYS_CLOCK_GETTIME, clock_id.as(u64), time.as(usize).as(u64), 0, 0, 0, 0).as(i32)
+
+    -- Sleeps for the requested duration, reporting time remaining if interrupted.
+    pub sys_nanosleep :: fn (request: ^TimeSpec, remaining: ^TimeSpec) => syscall(SYS_NANOSLEEP, request.as(usize).as(u64), remaining.as(usize).as(u64), 0, 0, 0, 0).as(i32)
+
+    pub use glx
+    pub use x11
+
+    ffi "c" {
+        c_errno_location :: __errno_location () -> ^i32
+    }
+
+    pub STDIN_FILENO  :: 0  -- File descriptor for standard input.
+    pub STDOUT_FILENO :: 1  -- File descriptor for standard output.
+
+    pub O_RDONLY :: 0x0000
+    pub O_WRONLY :: 0x0001
+    pub O_RDWR   :: 0x0002
+    pub O_CREAT  :: 0x0040
+    pub O_TRUNC  :: 0x0200
+    pub O_APPEND :: 0x0400
+
+    pub AT_FDCWD            :: -100
+    pub AT_SYMLINK_NOFOLLOW :: 0x0100
+
+    pub S_IFMT  :: 0xf000
+    pub S_IFDIR :: 0x4000
+    pub S_IFREG :: 0x8000
+    pub S_IFLNK :: 0xa000
+
+    pub ENOENT  :: 2
+    pub EINTR   :: 4
+    pub EACCES  :: 13
+    pub EEXIST  :: 17
+    pub ENOTDIR :: 20
+    pub EISDIR  :: 21
+    pub EINVAL  :: 22
+
+    -- Returns the calling thread's current C library error code.
+    pub last_error :: fn () => c_errno_location()^
+
+    pub POLLIN :: 0x0001  -- File descriptor has data available to read.
+
+    pub TIOCGWINSZ :: 0x5413
+    -- Linux terminal request for reading window
+    -- dimensions.
+    pub TCGETS :: 0x5401
+    -- Linux terminal request for reading terminal
+    -- attributes.
+    pub TCSETS :: 0x5402
+    -- Linux terminal request for writing terminal
+    -- attributes immediately.
+
+    pub ICANON :: 0x0002  -- Local terminal mode flag for canonical input.
+    pub ECHO   :: 0x0008  -- Local terminal mode flag for echoing input.
+    pub ISIG   :: 0x0001
+    -- Local terminal mode flag for signal-generating
+    -- characters.
+    pub IEXTEN :: 0x8000
+    -- Local terminal mode flag for implementation-defined
+    -- input processing.
+
+    pub ICRNL :: 0x0100
+    -- Input terminal mode flag for converting carriage return
+    -- to newline.
+    pub IXON   :: 0x0400  -- Input terminal mode flag for XON/XOFF flow control.
+    pub BRKINT :: 0x0002  -- Input terminal mode flag for break interrupt
+    --     handling.
+    pub INPCK  :: 0x0010  -- Input terminal mode flag for parity checking.
+    pub ISTRIP :: 0x0020  -- Input terminal mode flag for stripping the eighth
+    --     bit.
+
+    pub OPOST :: 0x0001  -- Output terminal mode flag for implementation-defined
+    -- output processing.
+    pub ONLCR :: 0x0004  -- Output terminal mode flag for mapping newline to
+    -- carriage-return newline.
+
+    pub CS8 :: 0x0030  -- Control terminal mode flag selecting 8-bit characters.
+
+    pub VMIN  :: 6  -- Control character index for noncanonical read byte count.
+    pub VTIME :: 5  -- Control character index for noncanonical read timeout.
+
+    -- Describes terminal window dimensions for `TIOCGWINSZ`.
+    pub WindowSize :: plex #c {
+        row    u16  -- Number of character rows.
+        col    u16  -- Number of character columns.
+        xpixel u16  -- Width in pixels when provided by the terminal.
+        ypixel u16  -- Height in pixels when provided by the terminal.
+    }
+
+    -- Linux terminal attributes used by `TCGETS` and `TCSETS`.
+    pub Termios :: plex #c {
+        iflag  u32
+        oflag  u32
+        cflag  u32
+        lflag  u32
+        line   u8
+        cc     [32]u8
+        ispeed u32
+        ospeed u32
+    }
+
+    -- Represents one Linux pollfd entry.
+    pub PollFd :: plex #c {
+        fd      i32
+        events  i16
+        revents i16
+    }
+
+    -- Represents file metadata returned by `newfstatat` on 64-bit Linux.
+    pub Stat :: plex #c {
+        dev         u64     -- Identifier of the containing device.
+        ino         u64     -- File serial number.
+        nlink       u64     -- Number of hard links.
+        mode        u32     -- File kind and permission bits.
+        uid         u32     -- Owning user identifier.
+        gid         u32     -- Owning group identifier.
+        _padding    u32     -- Native structure padding.
+        rdev        u64     -- Device identifier for special files.
+        size        i64     -- File size in bytes.
+        block_size  i64     -- Preferred block size for I/O.
+        blocks      i64     -- Allocated 512-byte blocks.
+        access_sec  i64     -- Last access time in seconds.
+        access_nsec i64     -- Last access subsecond component.
+        modify_sec  i64     -- Last modification time in seconds.
+        modify_nsec i64     -- Last modification subsecond component.
+        change_sec  i64     -- Last metadata-change time in seconds.
+        change_nsec i64     -- Last metadata-change subsecond component.
+        _reserved   [3]i64  -- Reserved native fields.
+    }
+
+    -- Reads bytes from a file descriptor using the Linux `read` syscall.
+    pub sys_read :: fn (fd: i32, buf: ^void, count: usize) => syscall(SYS_READ, fd.as(u64), buf.as(usize).as(u64), count.as(u64), 0, 0, 0).as(isize)
+
+    -- Writes bytes to a file descriptor using the Linux `write` syscall.
+    pub sys_write :: fn (fd: i32, buf: ^void, count: usize) => syscall(SYS_WRITE, fd.as(u64), buf.as(usize).as(u64), count.as(u64), 0, 0, 0).as(isize)
+
+    -- Opens a path using the Linux `open` syscall.
+    pub sys_open :: fn (path: ^i8, flags: i32, mode: i32) => syscall(SYS_OPEN, path.as(usize).as(u64), flags.as(u64), mode.as(u64), 0, 0, 0).as(i32)
+
+    -- Closes a file descriptor using the Linux `close` syscall.
+    pub sys_close :: fn (fd: i32) => syscall(SYS_CLOSE, fd.as(u64), 0, 0, 0, 0, 0).as(i32)
+
+    -- Reads metadata for a path relative to a directory descriptor.
+    pub sys_newfstatat :: fn (directory : i32,
+                              path      : ^i8,
+                              stat      : ^Stat,
+                              flags     : i32) => syscall(SYS_NEWFSTATAT, directory.as(u64), path.as(usize).as(u64), stat.as(usize).as(u64), flags.as(u64), 0, 0).as(i32)
+
+    -- Waits for events on file descriptors using the Linux `poll` syscall.
+    pub sys_poll :: fn (fds: ^PollFd, nfds: usize, timeout_ms: i32) => syscall(SYS_POLL, fds.as(usize).as(u64), nfds.as(u64), timeout_ms.as(u64), 0, 0, 0).as(i32)
+
+    -- Flushes file contents and metadata using the Linux `fsync` syscall.
+    pub sys_fsync :: fn (fd: i32) => syscall(SYS_FSYNC, fd.as(u64), 0, 0, 0, 0, 0).as(i32)
+
+    -- Removes a filesystem name using the Linux `unlink` syscall.
+    pub sys_unlink :: fn (path: ^i8) => syscall(SYS_UNLINK, path.as(usize).as(u64), 0, 0, 0, 0, 0).as(i32)
+
+    -- Applies a Linux `ioctl` request with a pointer argument.
+    pub sys_ioctl :: fn (fd: i32, request: u64, arg: ^void) => syscall(SYS_IOCTL, fd.as(u64), request, arg.as(usize).as(u64), 0, 0, 0).as(i32)
+
+    -- Creates a child process by duplicating the calling process.
+    pub sys_fork :: fn () => syscall(SYS_FORK, 0, 0, 0, 0, 0, 0).as(i32)
+
+    -- Replaces the calling process with an executable and argument vector.
+    pub sys_execve :: fn (path: ^i8, arguments: ^^i8, environment: ^^i8) => syscall(SYS_EXECVE, path.as(usize).as(u64), arguments.as(usize).as(u64), environment.as(usize).as(u64), 0, 0, 0).as(i32)
+
+    -- Terminates the calling process with the supplied status.
+    pub sys_exit :: fn (status: i32) {
+        _ := syscall(SYS_EXIT, status.as(u64), 0, 0, 0, 0, 0)
+    }
+
+    -- Waits for a child process to change state and writes its wait status.
+    pub sys_waitpid :: fn (process_id: i32, status: ^i32, options: i32) => syscall(SYS_WAIT4, process_id.as(u64), status.as(usize).as(u64), options.as(u64), 0, 0, 0).as(i32)
+
+}
+
+on "linux" {
+
+    test "file descriptor wrappers read and write the null device" {
+        reader := sys_open(c"/dev/null", O_RDONLY, 0)
+        assert reader >= 0,
+            "Expected opening the null device for reading to succeed"
+        defer _ := sys_close(reader)
+        buffer : [4]u8
+        assert sys_read(reader, buffer.data, buffer.bytes) == 0,
+            "Expected the null device to return end of file"
+
+        writer := sys_open(c"/dev/null", O_WRONLY, 0)
+        assert writer >= 0,
+            "Expected opening the null device for writing to succeed"
+        defer _ := sys_close(writer)
+        buffer[0] = 42
+        assert sys_write(writer, buffer.data, buffer.bytes) == 4,
+            "Expected the null device to accept all bytes"
+    }
+
+    test "file metadata and syscall errors" {
+        metadata : Stat
+        assert sys_newfstatat(AT_FDCWD, c"/dev/null", ^metadata, 0) == 0,
+            "Expected metadata lookup to fill the native Stat structure"
+        assert metadata.mode != 0 && metadata.nlink > 0,
+            "Expected valid mode and link-count fields"
+        assert sys_open(c"/dev/null/child", O_RDONLY, 0) == -1,
+            "Expected a non-directory path component to fail"
+        assert last_error() == ENOTDIR,
+            "Expected syscall failures to expose the libc error code"
+        assert sys_unlink(c"/dev/null/child") == -1,
+            "Expected unlink through a non-directory to fail safely"
+        assert last_error() == ENOTDIR,
+            "Expected unlink to preserve the native error code"
+        assert sys_fsync(-1) == -1,
+            "Expected flushing an invalid descriptor to fail"
+    }
+
+    test "poll and terminal requests" {
+        assert sys_poll(nil, 0, 0) == 0,
+            "Expected an empty poll with no timeout to return immediately"
+        descriptor := sys_open(c"/dev/null", O_RDONLY, 0)
+        assert descriptor >= 0, "Expected opening the null device to succeed"
+        defer _ := sys_close(descriptor)
+        event := PollFd { fd: descriptor events: POLLIN revents: 0 }
+        assert sys_poll(^event, 1, 0) == 1 && (event.revents & POLLIN) != 0,
+            "Expected poll to report the null device as readable"
+        size : WindowSize
+        assert sys_ioctl(descriptor, TIOCGWINSZ, ^size) == -1,
+            "Expected a terminal request on a non-terminal to fail"
+    }
+
+    test "fork exit and wait preserve child status" {
+        child := sys_fork()
+        assert child >= 0, "Expected fork to create a child process"
+        on child == 0 => {
+            sys_exit(37)
+        }
+        status : i32
+        assert sys_waitpid(child, ^status, 0) == child,
+            "Expected wait to return the child process ID"
+        assert status == (37 << 8),
+            "Expected the child's exit status to be preserved"
+    }
+
+    test "execve reports an invalid executable path" {
+        arguments : [2]^i8 = [c"/dev/null/child", nil]
+        assert sys_execve(arguments[0], arguments.data, nil) == -1,
+            "Expected an invalid executable path to return without replacing "
+            +"the process"
+        assert last_error() == ENOTDIR,
+            "Expected execve to expose the native path error"
+    }
+
+}

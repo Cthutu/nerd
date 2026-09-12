@@ -1,4 +1,4 @@
-memory :: use std.mem
+memory :: use std.memory
 
 main :: fn () {
     _ := memory.kb(2)
@@ -148,14 +148,14 @@ main :: fn () {
         "jsonrpc": "2.0",
         "id": 4,
         "result": {
-            "uri": "file:///home/matt/nerd/mods/std/mem.n",
+            "uri": "file:///home/matt/nerd/mods/std/memory.n",
             "range": {
                 "start": {
-                    "line": 30,
+                    "line": 308,
                     "character": 4
                 },
                 "end": {
-                    "line": 30,
+                    "line": 308,
                     "character": 6
                 }
             }
@@ -165,7 +165,7 @@ main :: fn () {
         "jsonrpc": "2.0",
         "id": 5,
         "result": {
-            "uri": "file:///home/matt/nerd/mods/std/mem.n",
+            "uri": "file:///home/matt/nerd/mods/std/memory.n",
             "range": {
                 "start": {
                     "line": 0,

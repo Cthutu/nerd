@@ -35,9 +35,8 @@
 -- terminal control.
 
 use std.math
+use std.text
 use std.time
-
-utf8 :: use std.utf8
 
 -- Portable physical key identifiers. Printable keys use the unshifted key on a
 -- standard PC layout; interpreted text is reported separately.
@@ -501,11 +500,11 @@ term_read_utf8_codepoint :: fn (first: u8) -> u32 {
         else on ((first & 0xf8) == 0xf0) => {
         remaining = 3
         codepoint = (first & 0x07).as(u32)
-    } else return utf8.REPLACEMENT_CODEPOINT
+    } else return 0xfffd
 
     for _ in [0 .. remaining] {
         next := term_read_byte()
-        on (next & 0xc0) != 0x80 => return utf8.REPLACEMENT_CODEPOINT
+        on (next & 0xc0) != 0x80 => return 0xfffd
         codepoint = (codepoint << 6) | (next & 0x3f).as(u32)
     }
     return codepoint
@@ -633,7 +632,7 @@ pub term_key_name :: fn (keyboard  : TermKeyboard,
         keyboard.labels[index] != 0 => {
         term_arena_ensure()
         bytes := term_arena.alloc_bytes(4)
-        count := utf8.encode_to(keyboard.labels[index], bytes)
+        count := keyboard.labels[index].as(Rune).utf8_encode(bytes)
 
         return bytes[..count].as(string)
     }
@@ -911,11 +910,16 @@ term_fb_put_clipped :: fn (x     : u32,
     }
 }
 
-term_codepoint_width :: fn (ch: u32) => utf8.codepoint_display_width(ch)
+term_codepoint_width :: fn (ch: u32) => ch.as(Rune).display_width()
 
-term_utf8_decode_at :: fn (text: string, index: usize) => utf8.decode_at(text, index)
+term_utf8_decode_at :: fn (text: string, index: usize) -> (u32, usize) {
+    on index >= text.bytes => return (0, 0)
+    (r, size) := utf8_decode(text[index..].as([]u8))
+    -- Consume malformed bytes so terminal rendering always makes progress.
+    return (r, on size == 0 => 1 else size)
+}
 
-term_text_display_width :: fn (text: string) => utf8.display_width(text)
+term_text_display_width :: fn (text: string) => text.display_width()
 
 -- Writes one Unicode codepoint and its colours to a framebuffer cell.
 pub term_fb_put :: fn (x     : i32,
@@ -1279,7 +1283,7 @@ term_output_push :: fn (output: ^TermOutput, text: string) {
 
 term_output_push_codepoint :: fn (output: ^TermOutput, ch: u32) {
     bytes : [4]u8
-    count         := utf8.encode_to(ch, bytes[..])
+    count         := ch.as(Rune).utf8_encode(bytes[..])
 
     for i: usize = 0;
         i < count;
@@ -1869,4 +1873,16 @@ test "SGR mouse buttons decode side buttons" {
     assert term_mouse_button_from_sgr(129) == TERM_MOUSE_X2
     assert term_mouse_button_from_sgr(160) == TERM_MOUSE_X1
     assert term_mouse_button_from_sgr(161) == TERM_MOUSE_X2
+}
+
+test "terminal UTF-8 decoding advances past malformed bytes" {
+    bytes : [4]u8 = [0xe2, 0x41, 0xff, 0x42]
+    text          := bytes.as(string)
+
+    assert term_utf8_decode_at(text, 0).0 == 0xfffd
+    assert term_utf8_decode_at(text, 0).1 == 1
+    assert term_utf8_decode_at(text, 1).0 == 'A'
+    assert term_utf8_decode_at(text, 2).1 == 1
+    assert term_utf8_decode_at(text, 3).0 == 'B'
+    assert term_utf8_decode_at(text, 4).1 == 0
 }

@@ -571,7 +571,7 @@ term_hook_remaining :: fn (last     : Instant,
 term_duration_wait_ms :: fn (duration: Duration) -> u64 {
     on duration == 0 => return 0
 
-    milliseconds := duration_to_ms(duration)
+    milliseconds := duration.to_ms()
     on from_ms(milliseconds) < duration => milliseconds += 1
     return milliseconds
 }

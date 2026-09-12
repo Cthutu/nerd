@@ -70,7 +70,7 @@ If you see an unknown symbol diagnostic, check:
 - spelling
 - whether the name is in scope
 - whether a module member is public
-- whether you meant to qualify it, such as `str.split`
+- whether you meant to qualify it, such as `str.utf8_decode`
 
 ## Type Mismatches
 

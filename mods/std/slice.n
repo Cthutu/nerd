@@ -1,0 +1,38 @@
+--
+--| Nerd Standard Library
+--| Slice handling utilities
+--
+-- Copyright (C) 2026 Matt Davies, all rights reserved.
+--
+
+impl [T] []T
+where T: Eq {
+
+    -- Returns true when an element equals value, borrowing the slice storage.
+    pub contains :: fn (s: ^Self, value: T) -> bool {
+        for i in [0 .. s.count] {
+            on s^[i] == value => return yes
+        }
+        return no
+    }
+
+}
+
+test "contains" {
+    assert [1, 2, 3].contains(2) == yes, "Expected 2 to be in the slice"
+    assert [1, 2, 3].contains(4) == no, "Expected 4 to not be in the slice"
+    assert [].contains(1) == no, "Expected 1 to not be in the empty slice"
+    assert [1].contains(1) == yes, "Expected 1 to be in the slice"
+    assert [1, 2, 3, 4, 5].contains(5) == yes, "Expected 5 to be in the slice"
+    assert ["one", "two"].contains("two"), "Expected matching text to be found"
+    assert !["one", "two"].contains("three"),
+        "Expected missing text to be rejected"
+
+    first    := [1, 2]
+    second   := [3, 4]
+    matching := [1, 2]
+    slices   := [first[..], second[..]]
+
+    assert slices.contains(matching[..]),
+        "Expected slice contents to determine equality"
+}

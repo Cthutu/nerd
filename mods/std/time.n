@@ -19,30 +19,26 @@ pub elapsed :: fn (start: Instant, finish: Instant) -> Duration {
     return (finish - start).as(Duration)
 }
 
--- Adds a duration to a monotonic timestamp.
-pub add_duration :: fn (time: Instant, duration: Duration) => (time + duration).as(Instant)
+impl Instant {
 
--- Converts a duration to whole seconds.
-pub duration_to_secs :: fn (duration: Duration) -> u64 {
-    return duration / 1_000_000_000
+    -- Adds a duration to a monotonic timestamp.
+    pub add :: fn (self: Instant, duration: Duration) => (self + duration).as(Instant)
+
 }
 
--- Converts a duration to whole milliseconds.
-pub duration_to_ms :: fn (duration: Duration) -> u64 {
-    return duration / 1_000_000
-}
+impl Duration {
 
--- Converts a duration to whole microseconds.
-pub duration_to_us :: fn (duration: Duration) -> u64 {
-    return duration / 1_000
-}
+    -- Converts a duration to whole seconds.
+    pub to_secs :: fn (self: Duration) => self / 1_000_000_000
+    -- Converts a duration to whole milliseconds.
+    pub to_ms :: fn (self: Duration) => self / 1_000_000
+    -- Converts a duration to whole microseconds.
+    pub to_us :: fn (self: Duration) => self / 1_000
+    -- Converts a duration to whole nanoseconds.
+    pub to_ns :: fn (self: Duration) => self
+    -- Converts a duration to fractional seconds.
+    pub secs :: fn (self: Duration) => self.as(f64) / 1_000_000_000.0
 
--- Converts a duration to whole nanoseconds.
-pub duration_to_ns :: fn (duration: Duration) => duration
-
--- Converts a duration to fractional seconds.
-pub secs :: fn (duration: Duration) -> f64 {
-    return duration.as(f64) / 1_000_000_000.0
 }
 
 -- Creates a duration from seconds.
@@ -125,10 +121,10 @@ test "duration constructors create nanosecond counts" {
 test "duration converters return whole units" {
     duration := from_secs(2) + from_ms(500)
 
-    assert duration_to_secs(duration) == 2
-    assert duration_to_ms(duration) == 2500
-    assert duration_to_us(duration) == 2_500_000
-    assert duration_to_ns(duration) == 2_500_000_000
+    assert duration.to_secs() == 2
+    assert duration.to_ms() == 2500
+    assert duration.to_us() == 2_500_000
+    assert duration.to_ns() == 2_500_000_000
 }
 
 test "elapsed returns finish minus start" {
@@ -141,5 +137,5 @@ test "elapsed returns finish minus start" {
 test "add_duration returns shifted instant" {
     start := 10.as(Instant)
 
-    assert add_duration(start, 15.as(Duration)) == 25
+    assert start.add(15.as(Duration)) == 25
 }

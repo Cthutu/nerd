@@ -148,11 +148,11 @@ C strings are not Nerd `string` values. Convert deliberately at the boundary.
 They are null-terminated so C functions can read them through `^i8`.
 
 When a C API expects a mutable pointer to null-terminated text, use
-`std.string.c_string` to copy a Nerd string into the temporary arena and append
+`string.c_string` to copy a Nerd string into the temporary arena and append
 the zero terminator:
 
 ```nerd
-str :: use std.string
+str :: use std.text
 
 name := "OpenGL".c_string()
 ```
@@ -160,13 +160,13 @@ name := "OpenGL".c_string()
 The returned pointer is valid until the temporary arena is restored or reset.
 
 When a C API writes text into a fixed byte buffer, cast the buffer to `string`
-and use `std.string.from_null_terminated` to trim at the first zero byte:
+and use `string.trim_null_terminated` to trim at the first zero byte:
 
 ```nerd
-str :: use std.string
+str :: use std.text
 
 buffer: [512]i8
-text := str.from_null_terminated(buffer.as(string))
+text := buffer.as(string).trim_null_terminated()
 ```
 
 The result is a borrowed view over `buffer`; it does not copy or validate the

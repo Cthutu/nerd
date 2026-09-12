@@ -5,55 +5,61 @@
 -- Provides Windows WGL bindings. Higher-level OpenGL commands and command
 -- loading live in `std.opengl`.
 
-use kernel
-use user
+on "windows" {
 
-pub WGL_CONTEXT_MAJOR_VERSION_ARB :: 0x2091
-pub WGL_CONTEXT_MINOR_VERSION_ARB :: 0x2092
-pub WGL_CONTEXT_PROFILE_MASK_ARB  :: 0x9126
+    use kernel32
+    use user
 
-pub WGL_CONTEXT_CORE_PROFILE_BIT_ARB          :: 0x00000001
-pub WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB :: 0x00000002
+    pub WGL_CONTEXT_MAJOR_VERSION_ARB :: 0x2091
+    pub WGL_CONTEXT_MINOR_VERSION_ARB :: 0x2092
+    pub WGL_CONTEXT_PROFILE_MASK_ARB  :: 0x9126
 
-pub WGLCreateContextAttribsARBFn :: fn (hdc           : HDC,
-                                        share_context : HGLRC,
-                                        attribs       : ^i32) -> HGLRC
+    pub WGL_CONTEXT_CORE_PROFILE_BIT_ARB          :: 0x00000001
+    pub WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB :: 0x00000002
 
-ffi "opengl32" {
-    pub wglCreateContext  (hdc: HDC) -> HGLRC
-    pub wglMakeCurrent    (hdc: HDC, hglrc: HGLRC) -> BOOL
-    pub wglDeleteContext  (hglrc: HGLRC) -> BOOL
-    pub wglGetProcAddress (name: ^i8) -> ^void
-}
+    pub WGLCreateContextAttribsARBFn ::
+                                        fn (hdc           : HDC,
+                                            share_context : HGLRC,
+                                            attribs       : ^i32) -> HGLRC
 
-ffi "kernel32" {
-    GetModuleHandle :: GetModuleHandleA (name: ^i8) -> HMODULE
-                       GetProcAddress   (module: HMODULE, name: ^i8) -> ^void
-}
+    ffi "opengl32" {
+        pub wglCreateContext  (hdc: HDC) -> HGLRC
+        pub wglMakeCurrent    (hdc: HDC, hglrc: HGLRC) -> BOOL
+        pub wglDeleteContext  (hglrc: HGLRC) -> BOOL
+        pub wglGetProcAddress (name: ^i8) -> ^void
+    }
 
-pub wglGetValidProcAddress :: fn (name: ^i8) -> ^void {
-    address := wglGetProcAddress(name)
-    value   := address.as(usize)
+    ffi "kernel32" {
+        GetModuleHandle :: GetModuleHandleA (name: ^i8) -> HMODULE
+                           GetProcAddress   (module : HMODULE,
+                                             name   : ^i8) -> ^void
+    }
 
-    on value == 0 ||
-        value == 1 ||
-        value == 2 ||
-        value == 3 ||
-        value == 0xffffffffffffffff => return nil
-    return address
-}
+    pub wglGetValidProcAddress :: fn (name: ^i8) -> ^void {
+        address := wglGetProcAddress(name)
+        value   := address.as(usize)
 
--- Resolves an OpenGL command through WGL, falling back to the OpenGL DLL for
--- commands from the Windows OpenGL 1.1 export surface.
-pub wglGetOpenGLProcAddress :: fn (name: ^i8) -> ^void {
-    address := wglGetValidProcAddress(name)
-    on address != nil => return address
+        on value == 0 ||
+            value == 1 ||
+            value == 2 ||
+            value == 3 ||
+            value == 0xffffffffffffffff => return nil
+        return address
+    }
 
-    module := GetModuleHandle(c"opengl32.dll")
-    on module == nil => return nil
-    return GetProcAddress(module, name)
-}
+    -- Resolves an OpenGL command through WGL, falling back to the OpenGL DLL for
+    -- commands from the Windows OpenGL 1.1 export surface.
+    pub wglGetOpenGLProcAddress :: fn (name: ^i8) -> ^void {
+        address := wglGetValidProcAddress(name)
+        on address != nil => return address
 
-test "Windows OpenGL resolver finds DLL-exported commands" {
-    assert wglGetOpenGLProcAddress(c"glPolygonMode") != nil
+        module := GetModuleHandle(c"opengl32.dll")
+        on module == nil => return nil
+        return GetProcAddress(module, name)
+    }
+
+    test "Windows OpenGL resolver finds DLL-exported commands" {
+        assert wglGetOpenGLProcAddress(c"glPolygonMode") != nil
+    }
+
 }
