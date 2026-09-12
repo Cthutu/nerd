@@ -40,16 +40,16 @@ The current helpers live in [data/nrt.c](/home/matt/nerd/data/nrt.c).
 The runtime provides:
 
 - the thread-local global string arena
-- `string_builder_reset()`
-- `string_builder_mark()`
-- `string_builder_append_string(...)`
-- `string_builder_finish(...)`
-- `to_string$<type>(...)` helpers for built-in primitive types
+- `nrt_string_builder_reset()`
+- `nrt_string_builder_mark()`
+- `nrt_string_builder_append_string(...)`
+- `nrt_string_builder_finish(...)`
+- `nrt_to_string_<type>(...)` helpers for built-in primitive types
 - `nrt_arena_pr(...)` and `nrt_arena_prn(...)` for placing finished strings in
   a selected arena
 
-The `to_string$<type>` helpers currently use straightforward C formatting and a
-shared scratch buffer, then `string_builder_append_string(...)` copies the
+The `nrt_to_string_<type>` helpers currently use straightforward C formatting and a
+shared scratch buffer, then `nrt_string_builder_append_string(...)` copies the
 result into the arena.
 
 The runtime is compiled to an object file by the build system and embedded in

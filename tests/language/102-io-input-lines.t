@@ -77,6 +77,6 @@ dynarray.free.done.4:
   ret void
 }
 
-@$main = alias void (), ptr @fn.0
+@$main = hidden alias void (), ptr @fn.0
 ¬
 hello world

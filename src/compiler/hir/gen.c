@@ -1943,6 +1943,37 @@ internal u32 hir_lower_expr(Hir*         hir,
                             });
     case AK_Call:
         {
+            const AstNode* va_callee = &ast->nodes[node->a];
+            if (va_callee->kind == AK_Index) {
+                va_callee = &ast->nodes[va_callee->a];
+            }
+            if (va_callee->kind == AK_Field &&
+                hir_node_type(sema, va_callee->a) != sema_no_type() &&
+                sema->types[hir_node_type(sema, va_callee->a)].kind ==
+                    STK_VaList) {
+                string member = lex_symbol(lexer, va_callee->b);
+                bool   format = string_eq(member, s("format"));
+                return hir_add_expr(
+                    hir,
+                    (HirExpr){
+                        .kind       = format ? HIR_EXPR_VaFormat
+                                      : string_eq(member, s("copy"))
+                                          ? HIR_EXPR_VaCopy
+                                          : HIR_EXPR_VaNext,
+                        .type_index = hir_node_type(sema, node_index),
+                        .operand_expr_index =
+                            hir_lower_expr(hir, lexer, ast, sema, va_callee->a),
+                        .extra_expr_index =
+                            format ? hir_lower_expr(
+                                         hir,
+                                         lexer,
+                                         ast,
+                                         sema,
+                                         ast->call_args[ast->calls[node->b]
+                                                            .first_arg])
+                                   : U32_MAX,
+                    });
+            }
             if (node->b >= array_count(ast->calls)) {
                 return hir_add_unsupported_expr(hir, sema, node_index);
             }
@@ -3248,7 +3279,11 @@ internal u32 hir_lower_stmt(Hir*         hir,
                 value_node_index = ast->nodes[value_node_index].b;
             }
             u32 local_index = hir_node_local(sema, node_index);
-            u32 local_type  = hir_local_type(sema, local_index);
+            if (local_index < array_count(sema->locals) &&
+                sema->locals[local_index].kind == SLK_TypeAlias) {
+                return hir_no_index();
+            }
+            u32 local_type = hir_local_type(sema, local_index);
             u32 expr_index =
                 value_node_index < array_count(ast->nodes)
                     ? hir_lower_expr_with_expected(
@@ -4229,6 +4264,10 @@ internal void hir_add_function_params(Hir*         hir,
         }
 
         const SemaLocal* local = &sema->locals[local_index];
+        if (local->is_variadic) {
+            function->varargs_local_index = local_index;
+            continue;
+        }
         if (local->kind != SLK_Param) {
             continue;
         }
@@ -4299,15 +4338,16 @@ internal void hir_add_function(Hir*            hir,
     u32 function_index = (u32)array_count(hir->functions);
     array_push(hir->functions,
                (HirFunction){
-                   .kind              = kind,
-                   .decl_index        = decl_index,
-                   .fn_node_index     = fn_node_index,
-                   .root_scope_index  = root_scope_index,
-                   .type_index        = type_index,
-                   .ffi_symbol_handle = ffi_symbol_handle,
-                   .first_param       = (u32)array_count(hir->params),
-                   .param_count       = 0,
-                   .body_block_index  = hir_no_index(),
+                   .kind                = kind,
+                   .decl_index          = decl_index,
+                   .fn_node_index       = fn_node_index,
+                   .root_scope_index    = root_scope_index,
+                   .varargs_local_index = U32_MAX,
+                   .type_index          = type_index,
+                   .ffi_symbol_handle   = ffi_symbol_handle,
+                   .first_param         = (u32)array_count(hir->params),
+                   .param_count         = 0,
+                   .body_block_index    = hir_no_index(),
                });
     if (out_function_index) {
         *out_function_index = function_index;
@@ -4662,6 +4702,39 @@ Hir hir_generate(const Lexer* lexer, const Ast* ast, const Sema* sema)
             }
         default:
             break;
+        }
+    }
+
+    // A public function alias chooses the C export spelling without a wrapper.
+    for (u32 i = 0; i < array_count(hir.bindings); ++i) {
+        HirBinding* binding = &hir.bindings[i];
+        if (binding->kind != HIR_BINDING_Value ||
+            binding->target_index >= array_count(hir.values)) {
+            continue;
+        }
+        const HirValue* value = &hir.values[binding->target_index];
+        if (value->kind != HIR_VALUE_Constant ||
+            value->type_index >= array_count(sema->types) ||
+            sema->types[value->type_index].kind != STK_Function ||
+            value->decl_index >= array_count(sema->decls)) {
+            continue;
+        }
+        const SemaDecl* decl = &sema->decls[value->decl_index];
+        if (decl->bind_node_index >= array_count(ast->nodes) ||
+            !ast_has_flag(&ast->nodes[decl->bind_node_index], ANF_Public) ||
+            value->value_expr_index >= array_count(hir.exprs)) {
+            continue;
+        }
+        const HirExpr* expr = &hir.exprs[value->value_expr_index];
+        if (expr->kind == HIR_EXPR_LocalRef &&
+            expr->ref_kind == HIR_REF_Binding &&
+            expr->ref_index < array_count(hir.bindings)) {
+            HirBinding target = hir.bindings[expr->ref_index];
+            if (target.kind == HIR_BINDING_Function ||
+                target.kind == HIR_BINDING_Import) {
+                binding->kind         = target.kind;
+                binding->target_index = target.target_index;
+            }
         }
     }
 

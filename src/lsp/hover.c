@@ -2084,6 +2084,12 @@ internal bool lsp_decl_ast_signature(const LspDocument* doc,
         if (signature->param_count > 0) {
             sb_append_cstr(&sb, ", ");
         }
+        if (signature->named_varargs) {
+            sb_append_string(
+                &sb,
+                lex_symbol(&doc->front_end.lexer, signature->varargs_symbol));
+            sb_append_cstr(&sb, ": ");
+        }
         sb_append_cstr(&sb, "...");
     }
     sb_append_char(&sb, ')');

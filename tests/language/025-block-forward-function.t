@@ -33,4 +33,4 @@ define internal i32 @fn.1() {
 }
 
 @$add = internal alias i32 (i32, i32), ptr @fn.0
-@$main = alias i32 (), ptr @fn.1
+@$main = hidden alias i32 (), ptr @fn.1

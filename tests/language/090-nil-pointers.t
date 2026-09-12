@@ -122,4 +122,4 @@ on.end.2:
 
 @$take_slice = internal alias i32 ({ ptr, i64 }), ptr @fn.0
 @$ret_ptr = internal alias ptr (), ptr @fn.1
-@$main = alias i32 (), ptr @fn.2
+@$main = hidden alias i32 (), ptr @fn.2

@@ -6414,6 +6414,10 @@ internal void format_emit_fn_signature_one_line(StringBuilder*        sb,
         if (signature->param_count > 0) {
             sb_append_cstr(sb, ", ");
         }
+        if (signature->named_varargs) {
+            sb_append_string(sb, lex_symbol(lexer, signature->varargs_symbol));
+            sb_append_cstr(sb, ": ");
+        }
         sb_append_cstr(sb, "...");
     }
     sb_append_char(sb, ')');
@@ -6472,6 +6476,10 @@ internal void format_emit_fn_signature(StringBuilder* sb,
             sb_append_cstr(sb, ",\n");
             format_emit_spaces(sb, param_column);
         }
+        if (signature->named_varargs) {
+            sb_append_string(sb, lex_symbol(lexer, signature->varargs_symbol));
+            sb_append_cstr(sb, ": ");
+        }
         sb_append_cstr(sb, "...");
     }
     sb_append_char(sb, ')');
@@ -6516,6 +6524,10 @@ internal void format_emit_fn_signature_multiline(StringBuilder* sb,
         if (signature->param_count > 0) {
             sb_append_cstr(sb, ",\n");
             format_emit_spaces(sb, param_column);
+        }
+        if (signature->named_varargs) {
+            sb_append_string(sb, lex_symbol(lexer, signature->varargs_symbol));
+            sb_append_cstr(sb, ": ");
         }
         sb_append_cstr(sb, "...");
     }
@@ -6614,6 +6626,10 @@ internal void format_emit_ffi_entry_one_line(StringBuilder* sb,
         if (signature->param_count > 0) {
             sb_append_cstr(sb, ", ");
         }
+        if (signature->named_varargs) {
+            sb_append_string(sb, lex_symbol(lexer, signature->varargs_symbol));
+            sb_append_cstr(sb, ": ");
+        }
         sb_append_cstr(sb, "...");
     }
     sb_append_char(sb, ')');
@@ -6664,6 +6680,10 @@ internal void format_emit_ffi_entry(StringBuilder*       sb,
             sb_append_cstr(sb, ",\n");
             format_emit_spaces(sb, param_column);
         }
+        if (signature->named_varargs) {
+            sb_append_string(sb, lex_symbol(lexer, signature->varargs_symbol));
+            sb_append_cstr(sb, ": ");
+        }
         sb_append_cstr(sb, "...");
     }
     sb_append_char(sb, ')');
@@ -6692,6 +6712,10 @@ internal void format_emit_ffi_signature_tail(StringBuilder* sb,
     if (signature->is_varargs) {
         if (signature->param_count > 0) {
             sb_append_cstr(sb, ", ");
+        }
+        if (signature->named_varargs) {
+            sb_append_string(sb, lex_symbol(lexer, signature->varargs_symbol));
+            sb_append_cstr(sb, ": ");
         }
         sb_append_cstr(sb, "...");
     }

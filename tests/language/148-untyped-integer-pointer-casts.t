@@ -68,4 +68,4 @@ on.end.4:
   ret i32 0
 }
 
-@$main = alias i32 (), ptr @fn.0
+@$main = hidden alias i32 (), ptr @fn.0

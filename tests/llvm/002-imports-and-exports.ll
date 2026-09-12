@@ -26,7 +26,7 @@ define internal i32 @fn.1() {
   ret i32 %t0
 }
 
-@$local_answer = alias i32 (), ptr @mN.fn.0
-@$child_answer = alias i32 (), ptr @mN.fn.0
-@$local = alias i32 (), ptr @fn.0
-@$main = alias i32 (), ptr @fn.1
+@$local_answer = internal alias i32 (), ptr @mN.fn.0
+@$child_answer = internal alias i32 (), ptr @mN.fn.0
+@$local = internal alias i32 (), ptr @fn.0
+@$main = hidden alias i32 (), ptr @fn.1

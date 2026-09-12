@@ -83,4 +83,4 @@ on.end.0:
 }
 
 @$wrap = internal alias ptr (), ptr @fn.0
-@$main = alias i32 (), ptr @fn.3
+@$main = hidden alias i32 (), ptr @fn.3

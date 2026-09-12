@@ -117,26 +117,26 @@ func fn.1() -> i32 {
 @.str.m0.2 = private unnamed_addr constant [5 x i8] c"look\00"
 @.str.m0.3 = private unnamed_addr constant [7 x i8] c"around\00"
 
-declare i1 @string_eq(ptr, ptr)
-declare void @string_builder_reset()
-declare i64 @string_builder_mark()
-declare void @string_builder_append_string(ptr)
-declare void @string_builder_append_byte(i8)
-declare void @string_builder_finish(ptr, i64)
-declare void @to_string$string(ptr, ptr)
-declare void @to_string$bool(ptr, i1)
-declare void @to_string$i8(ptr, i8)
-declare void @to_string$i16(ptr, i16)
-declare void @to_string$i32(ptr, i32)
-declare void @to_string$i64(ptr, i64)
-declare void @to_string$u8(ptr, i8)
-declare void @to_string$u16(ptr, i16)
-declare void @to_string$u32(ptr, i32)
-declare void @to_string$u64(ptr, i64)
-declare void @to_string$isize(ptr, i64)
-declare void @to_string$usize(ptr, i64)
-declare void @to_string$f32(ptr, float)
-declare void @to_string$f64(ptr, double)
+declare i1 @nrt_string_eq(ptr, ptr)
+declare void @nrt_string_builder_reset()
+declare i64 @nrt_string_builder_mark()
+declare void @nrt_string_builder_append_string(ptr)
+declare void @nrt_string_builder_append_byte(i8)
+declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_to_string_string(ptr, ptr)
+declare void @nrt_to_string_bool(ptr, i1)
+declare void @nrt_to_string_i8(ptr, i8)
+declare void @nrt_to_string_i16(ptr, i16)
+declare void @nrt_to_string_i32(ptr, i32)
+declare void @nrt_to_string_i64(ptr, i64)
+declare void @nrt_to_string_u8(ptr, i8)
+declare void @nrt_to_string_u16(ptr, i16)
+declare void @nrt_to_string_u32(ptr, i32)
+declare void @nrt_to_string_u64(ptr, i64)
+declare void @nrt_to_string_isize(ptr, i64)
+declare void @nrt_to_string_usize(ptr, i64)
+declare void @nrt_to_string_f32(ptr, float)
+declare void @nrt_to_string_f64(ptr, double)
 declare ptr @nrt_mem_alloc(i64, i64, ptr, i32)
 declare ptr @nrt_mem_realloc(ptr, i64, i64, ptr, i32)
 declare void @nrt_mem_free(ptr)
@@ -436,7 +436,7 @@ on.end.3:
   %t15 = load { ptr, i64 }, ptr %t14
   store { ptr, i64 } %t15, ptr %t17
   store { ptr, i64 } { ptr @.str.m0.2, i64 4 }, ptr %t18
-  %t16 = call i1 @string_eq(ptr %t17, ptr %t18)
+  %t16 = call i1 @nrt_string_eq(ptr %t17, ptr %t18)
   %t19 = xor i1 %t16, 1
   %t20 = icmp eq i1 %t19, 1
   br i1 %t20, label %on.body.6, label %on.end.5
@@ -451,7 +451,7 @@ on.end.5:
   %t26 = load { ptr, i64 }, ptr %t25
   store { ptr, i64 } %t26, ptr %t28
   store { ptr, i64 } { ptr @.str.m0.3, i64 6 }, ptr %t29
-  %t27 = call i1 @string_eq(ptr %t28, ptr %t29)
+  %t27 = call i1 @nrt_string_eq(ptr %t28, ptr %t29)
   %t30 = xor i1 %t27, 1
   %t31 = icmp eq i1 %t30, 1
   br i1 %t31, label %on.body.8, label %on.end.7
@@ -462,6 +462,6 @@ on.end.7:
 }
 
 @$split = internal alias ptr ({ ptr, i64 }, { ptr, i64 }), ptr @fn.0
-@$main = alias i32 (), ptr @fn.1
+@$main = hidden alias i32 (), ptr @fn.1
 
 declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

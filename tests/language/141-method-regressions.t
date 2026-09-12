@@ -75,26 +75,26 @@ func fn.3() -> i32 {
 @.macro.file.m0 = private unnamed_addr constant [40 x i8] c"tests/language/141-method-regressions.t\00"
 @.str.m0.0 = private unnamed_addr constant [6 x i8] c"area \00"
 
-declare i1 @string_eq(ptr, ptr)
-declare void @string_builder_reset()
-declare i64 @string_builder_mark()
-declare void @string_builder_append_string(ptr)
-declare void @string_builder_append_byte(i8)
-declare void @string_builder_finish(ptr, i64)
-declare void @to_string$string(ptr, ptr)
-declare void @to_string$bool(ptr, i1)
-declare void @to_string$i8(ptr, i8)
-declare void @to_string$i16(ptr, i16)
-declare void @to_string$i32(ptr, i32)
-declare void @to_string$i64(ptr, i64)
-declare void @to_string$u8(ptr, i8)
-declare void @to_string$u16(ptr, i16)
-declare void @to_string$u32(ptr, i32)
-declare void @to_string$u64(ptr, i64)
-declare void @to_string$isize(ptr, i64)
-declare void @to_string$usize(ptr, i64)
-declare void @to_string$f32(ptr, float)
-declare void @to_string$f64(ptr, double)
+declare i1 @nrt_string_eq(ptr, ptr)
+declare void @nrt_string_builder_reset()
+declare i64 @nrt_string_builder_mark()
+declare void @nrt_string_builder_append_string(ptr)
+declare void @nrt_string_builder_append_byte(i8)
+declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_to_string_string(ptr, ptr)
+declare void @nrt_to_string_bool(ptr, i1)
+declare void @nrt_to_string_i8(ptr, i8)
+declare void @nrt_to_string_i16(ptr, i16)
+declare void @nrt_to_string_i32(ptr, i32)
+declare void @nrt_to_string_i64(ptr, i64)
+declare void @nrt_to_string_u8(ptr, i8)
+declare void @nrt_to_string_u16(ptr, i16)
+declare void @nrt_to_string_u32(ptr, i32)
+declare void @nrt_to_string_u64(ptr, i64)
+declare void @nrt_to_string_isize(ptr, i64)
+declare void @nrt_to_string_usize(ptr, i64)
+declare void @nrt_to_string_f32(ptr, float)
+declare void @nrt_to_string_f64(ptr, double)
 
 declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
@@ -133,16 +133,16 @@ define internal i32 @fn.3() {
   store { i32, i32 } zeroinitializer, ptr %local.4
   call void @fn.1(ptr %local.4, i32 3)
   %t0 = call i32 @fn.2(ptr %local.4)
-  %t1 = call i64 @string_builder_mark()
+  %t1 = call i64 @nrt_string_builder_mark()
   %t2 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.0, i64 5 }, ptr %t3
-  call void @to_string$string(ptr %t2, ptr %t3)
-  call void @string_builder_append_string(ptr %t2)
+  call void @nrt_to_string_string(ptr %t2, ptr %t3)
+  call void @nrt_string_builder_append_string(ptr %t2)
   %t4 = alloca { ptr, i64 }
-  call void @to_string$i32(ptr %t4, i32 %t0)
-  call void @string_builder_append_string(ptr %t4)
+  call void @nrt_to_string_i32(ptr %t4, i32 %t0)
+  call void @nrt_string_builder_append_string(ptr %t4)
   %t5 = alloca { ptr, i64 }
-  call void @string_builder_finish(ptr %t5, i64 %t1)
+  call void @nrt_string_builder_finish(ptr %t5, i64 %t1)
   %t6 = load { ptr, i64 }, ptr %t5
   call void @$prn({ ptr, i64 } %t6)
   ret i32 0
@@ -151,4 +151,4 @@ define internal i32 @fn.3() {
 @$__impl_Rect_area = internal alias i32 ({ i32, i32 }), ptr @fn.0
 @$__impl_Rect_grow = internal alias void (ptr, i32), ptr @fn.1
 @$use_methods = internal alias i32 (ptr), ptr @fn.2
-@$main = alias i32 (), ptr @fn.3
+@$main = hidden alias i32 (), ptr @fn.3

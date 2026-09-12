@@ -210,7 +210,9 @@ object. These non-executable modes do not require a `main` entry point.
 The root module's public surface is the exported/linkable surface. This includes
 root `pub` declarations and root `pub use` re-exports; public declarations in
 imported modules are not exported unless the root module re-exports them. Public
-functions are emitted with their Nerd symbol alias, such as `$add`.
+functions receive plain C aliases, such as `add`. Private Nerd linkage aliases
+and the hidden executable entry alias remain compiler-managed. Runtime
+helpers use reserved `nrt_` names and hidden visibility in shared libraries.
 
 The current toolchain contract is textual LLVM IR plus clang. The compiler does
 not currently invoke `llvm-as`, `llc`, or `opt` directly. That keeps the install
@@ -275,8 +277,8 @@ is included in the `link executable` phase.
 Runtime helpers that exchange Nerd strings use a stable pointer/scalar ABI
 rather than C by-value structs. Generated LLVM stores `{ ptr, i64 }` string
 values into stack slots and passes pointers to runtime helpers such as
-`string_eq`, `to_string$...`, `string_builder_append_string`, and
-`nerd_assert`. This keeps the generated LLVM independent of platform-specific C
+`nrt_string_eq`, `nrt_to_string_...`, `nrt_string_builder_append_string`, and
+`nrt_nerd_assert`. This keeps the generated LLVM independent of platform-specific C
 aggregate calling conventions.
 
 Runtime helper declarations are emitted from declaration tables in
@@ -294,3 +296,11 @@ The codebase distinguishes between:
   human-oriented diagnostic output for local inspection
 
 That split shows up across the compiler, especially in HIR and LLVM generation.
+
+Variadic definitions bind an opaque `VaList` local outside their fixed parameter
+list. HIR represents cursor reads, copies, and formatting explicitly. LLVM
+initialises the receiving cursor with `llvm.va_start`; host-compiled C helpers
+perform `va_arg`, `va_copy`, and `va_end`. Each receiving invocation owns a linked
+list of cursor allocations, cleaned after defers on normal and early returns.
+C `va_list` FFI parameters have a distinct semantic function flag so lowering
+can adjust the pointer representation for the x86-64 host ABI.

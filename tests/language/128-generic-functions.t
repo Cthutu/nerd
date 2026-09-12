@@ -46,4 +46,4 @@ inst func fn.2(value: string) -> string {
 define internal void @fn.0() {
 define internal i32 @fn.1(i32 %value) {
 define internal { ptr, i64 } @fn.2({ ptr, i64 } %value) {
-@$main = alias void (), ptr @fn.0
+@$main = hidden alias void (), ptr @fn.0

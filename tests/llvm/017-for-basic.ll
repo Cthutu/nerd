@@ -84,4 +84,4 @@ define internal i32 @fn.2() {
 
 @$sum_while = internal alias i32 (i32), ptr @fn.0
 @$sum_c_style = internal alias i32 (), ptr @fn.1
-@$main = alias i32 (), ptr @fn.2
+@$main = hidden alias i32 (), ptr @fn.2

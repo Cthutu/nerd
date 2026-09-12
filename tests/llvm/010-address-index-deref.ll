@@ -44,4 +44,4 @@ define internal i32 @fn.3() {
 @$addr = internal alias ptr (i32), ptr @fn.0
 @$read = internal alias i32 (ptr), ptr @fn.1
 @$first = internal alias i32 ([2 x i32]), ptr @fn.2
-@$main = alias i32 (), ptr @fn.3
+@$main = hidden alias i32 (), ptr @fn.3

@@ -258,3 +258,18 @@ When adding a language feature, update tests horizontally:
 - LSP behaviour when names, types, or diagnostics are affected
 - VS Code and Neovim/LazyVim integration when filetypes, syntax highlighting,
   LSP launch/configuration, formatting, or install behaviour changes
+
+## Variadic C Interoperability
+
+`tests/commands/297-build-variadic-host.cmd` builds a Nerd shared library and
+links `tests/ffi/variadic_host.c` against it. The harness exercises C promotions,
+register and stack arguments, borrowed/copy cursors, early returns, formatting,
+plain export aliases, re-exports, and names formerly used by runtime helpers.
+It also checks the defined dynamic symbol table for unexpected exports.
+`build-variadic-host` is the command-test run mode for this fixture.
+
+Additional command, diagnostic, HIR, LLVM, formatter, and LSP fixtures cover
+variadic function pointers, C `va_list` forwarding, cleanup, forbidden cursor
+escapes, and nested callback signatures. End-to-end host-DLL coverage currently
+runs on Linux; Windows export alias IR can be compiled with clang's COFF target,
+but that is not a substitute for executing the tests on a Windows host.

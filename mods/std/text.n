@@ -640,3 +640,7 @@ test "string NUL conversion boundaries" {
     assert c_bytes[0] == 0 && c_bytes[1] == 'x' && c_bytes[2] == 0 && c_bytes[3] == 0,
         "Expected embedded NUL bytes to be copied before the final terminator"
 }
+
+-- Formats C printf arguments into the temporary arena without advancing args.
+-- The format must match the caller's promoted C argument types.
+pub format_c :: fn (format: ^i8, args: VaList) => args.format(format)

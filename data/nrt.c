@@ -61,7 +61,7 @@ static uint64_t            g_nrt_heap_break_index = 0;
 static uint64_t            g_nrt_arena_next_index = 0;
 #endif
 
-void string_builder_reset(void);
+void nrt_string_builder_reset(void);
 void nrt_mem_free(void* memory);
 size_t nrt_mem_size(void* memory);
 void nrt_mem_leak(void* memory);
@@ -126,7 +126,7 @@ void nrt_abort(const void* data, size_t count)
     exit(127);
 }
 
-void nerd_assert(bool condition,
+void nrt_nerd_assert(bool condition,
                  const char* source_path,
                  uint32_t    line,
                  const NerdString* message)
@@ -142,7 +142,7 @@ void nerd_assert(bool condition,
     exit(127);
 }
 
-bool string_eq(const NerdString* lhs, const NerdString* rhs)
+bool nrt_string_eq(const NerdString* lhs, const NerdString* rhs)
 {
     if (lhs == NULL || rhs == NULL) {
         return lhs == rhs;
@@ -156,7 +156,7 @@ bool string_eq(const NerdString* lhs, const NerdString* rhs)
     return memcmp(lhs->data, rhs->data, lhs->count) == 0;
 }
 
-bool slice_eq(const void* lhs,
+bool nrt_slice_eq(const void* lhs,
               size_t      lhs_count,
               const void* rhs,
               size_t      rhs_count,
@@ -711,7 +711,7 @@ void nrt_arena_prn(NerdString*       out,
     *out = (NerdString){.data = data, .count = count + 1};
 }
 
-void nrt_temp_arena_reset(void) { string_builder_reset(); }
+void nrt_temp_arena_reset(void) { nrt_string_builder_reset(); }
 
 static bool string_is_utf8_boundary(const NerdString* value, size_t index)
 {
@@ -721,7 +721,7 @@ static bool string_is_utf8_boundary(const NerdString* value, size_t index)
     return index == value->count || (value->data[index] & 0xC0) != 0x80;
 }
 
-void string_slice(NerdString* out,
+void nrt_string_slice(NerdString* out,
                   const NerdString* value,
                   size_t start,
                   size_t end)
@@ -922,15 +922,15 @@ static void string_builder_ensure_capacity(size_t needed)
     g_string_builder_capacity = capacity;
 }
 
-void string_builder_reset(void)
+void nrt_string_builder_reset(void)
 {
     g_string_builder_cursor = 0;
     nrt_arena_reset(&g_temp_arena);
 }
 
-size_t string_builder_mark(void) { return g_string_builder_cursor; }
+size_t nrt_string_builder_mark(void) { return g_string_builder_cursor; }
 
-void string_builder_append_string(const NerdString* str)
+void nrt_string_builder_append_string(const NerdString* str)
 {
     if (str == NULL) {
         return;
@@ -945,14 +945,14 @@ void string_builder_append_string(const NerdString* str)
     }
 }
 
-void string_builder_append_byte(u8 byte)
+void nrt_string_builder_append_byte(u8 byte)
 {
     string_builder_ensure_capacity(g_string_builder_cursor + 1);
 
     g_string_builder_data[g_string_builder_cursor++] = byte;
 }
 
-void string_builder_finish_in(NerdString* out, size_t start, NrtArena* arena)
+void nrt_string_builder_finish_in(NerdString* out, size_t start, NrtArena* arena)
 {
     if (out == NULL) {
         return;
@@ -972,19 +972,19 @@ void string_builder_finish_in(NerdString* out, size_t start, NrtArena* arena)
     g_string_builder_cursor = start;
 }
 
-void string_builder_finish(NerdString* out, size_t start)
+void nrt_string_builder_finish(NerdString* out, size_t start)
 {
-    string_builder_finish_in(out, start, &g_temp_arena);
+    nrt_string_builder_finish_in(out, start, &g_temp_arena);
 }
 
-void to_string$string(NerdString* out, const NerdString* value)
+void nrt_to_string_string(NerdString* out, const NerdString* value)
 {
     if (out != NULL && value != NULL) {
         *out = *value;
     }
 }
 
-void to_string$bool(NerdString* out, bool value)
+void nrt_to_string_bool(NerdString* out, bool value)
 {
     if (out == NULL) {
         return;
@@ -994,7 +994,7 @@ void to_string$bool(NerdString* out, bool value)
 }
 
 #define DEF_TO_STRING_INT(name, type, format, cast_type)                       \
-    void to_string$##name(NerdString* out, type value)                         \
+    void nrt_to_string_##name(NerdString* out, type value)                         \
     {                                                                          \
         static _Thread_local u8 buffer[64];                                    \
         int count =                                                            \
@@ -1010,7 +1010,7 @@ void to_string$bool(NerdString* out, bool value)
     }
 
 #define DEF_TO_STRING_FLOAT(name, type)                                        \
-    void to_string$##name(NerdString* out, type value)                         \
+    void nrt_to_string_##name(NerdString* out, type value)                         \
     {                                                                          \
         static _Thread_local u8 buffer[64];                                    \
         int count =                                                            \
@@ -1073,4 +1073,90 @@ size_t nrt_read_line(u8* buffer, size_t capacity)
     }
 
     return count;
+}
+
+// C owns va_list's representation and traversal. The receiving LLVM function
+// invokes llvm.va_start on the first member; borrowed cursors never own it.
+typedef struct NrtVaList {
+    va_list           args;
+    struct NrtVaList* owner;
+    struct NrtVaList* next;
+} NrtVaList;
+
+NrtVaList* nrt_va_create(void)
+{
+    NrtVaList* cursor = calloc(1, sizeof(*cursor));
+    if (cursor == NULL) {
+        abort();
+    }
+    cursor->owner = cursor;
+    return cursor;
+}
+
+NrtVaList* nrt_va_copy(NrtVaList* source)
+{
+    NrtVaList* cursor = nrt_va_create();
+    va_copy(cursor->args, source->args);
+    cursor->owner       = source->owner;
+    cursor->next        = cursor->owner->next;
+    cursor->owner->next = cursor;
+    return cursor;
+}
+
+void nrt_va_done(NrtVaList* cursor)
+{
+    while (cursor != NULL) {
+        NrtVaList* next = cursor->next;
+        va_end(cursor->args);
+        free(cursor);
+        cursor = next;
+    }
+}
+
+#define NRT_VA_NEXT(name, type)                                                \
+    type nrt_va_next_##name(NrtVaList* cursor)                                 \
+    {                                                                          \
+        return va_arg(cursor->args, type);                                     \
+    }
+NRT_VA_NEXT(i32, int32_t)
+NRT_VA_NEXT(u32, uint32_t)
+NRT_VA_NEXT(i64, int64_t)
+NRT_VA_NEXT(u64, uint64_t)
+NRT_VA_NEXT(isize, intptr_t)
+NRT_VA_NEXT(usize, uintptr_t)
+NRT_VA_NEXT(f64, double)
+NRT_VA_NEXT(ptr, void*)
+#undef NRT_VA_NEXT
+
+void nrt_va_format(NerdString* out, NrtVaList* cursor, const char* format)
+{
+    va_list measure;
+    va_copy(measure, cursor->args);
+    int count = vsnprintf(NULL, 0, format, measure);
+    va_end(measure);
+    if (count < 0) {
+        *out = (NerdString){0};
+        return;
+    }
+    char* buffer =
+        nrt_arena_alloc(nrt_temp_arena(), (size_t)count + 1, 1, NULL, 0);
+    va_list render;
+    va_copy(render, cursor->args);
+    int written = vsnprintf(buffer, (size_t)count + 1, format, render);
+    va_end(render);
+    *out = written < 0
+               ? (NerdString){0}
+               : (NerdString){(u8*)buffer,
+                              (size_t)written < (size_t)count ? (size_t)written
+                                                              : (size_t)count};
+}
+
+// The C parameter adjustment differs even between the two x86-64 ABIs.
+void* nrt_va_native(NrtVaList* cursor)
+{
+#if defined(_WIN32)
+    return cursor->args;
+#else
+    return &cursor->args;
+#endif
 }

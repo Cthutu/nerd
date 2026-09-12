@@ -75,6 +75,9 @@ typedef enum : u8 {
     HIR_EXPR_Assign,
     HIR_EXPR_Atomic,
     HIR_EXPR_Call,
+    HIR_EXPR_VaNext,
+    HIR_EXPR_VaCopy,
+    HIR_EXPR_VaFormat,
     HIR_EXPR_Box,
     HIR_EXPR_Cast,
     HIR_EXPR_Index,
@@ -169,6 +172,7 @@ typedef struct {
     u32             decl_index;
     u32             fn_node_index;
     u32             root_scope_index;
+    u32             varargs_local_index;
     u32             type_index;
     u32             ffi_symbol_handle;
     u32             first_param;

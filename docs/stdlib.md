@@ -419,3 +419,8 @@ manage pointee reclamation. Compare-exchange takes separate compile-time
 success and failure orders; the failure order may not be stronger than the
 success order. The compiler lowers these methods to dedicated atomic HIR and
 LLVM operations, while the public types and signatures remain Nerd source.
+
+`std.text.format_c(format: ^i8, args: VaList) -> string` formats a borrowed C
+argument cursor into the temporary arena without advancing it. The format
+must match the supplied promoted C types; this API is for receiving variadic
+FFI calls, not ordinary Nerd string interpolation.

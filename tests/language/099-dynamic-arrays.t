@@ -254,26 +254,26 @@ func fn.1() -> i32 {
 @.str.m0.12 = private unnamed_addr constant [2 x i8] c" \00"
 @.slice.const.m0.63 = private unnamed_addr constant [2 x { ptr, i64 }] [{ ptr, i64 } { ptr @.str.m0.5, i64 4 }, { ptr, i64 } { ptr @.str.m0.6, i64 2 }]
 
-declare i1 @string_eq(ptr, ptr)
-declare void @string_builder_reset()
-declare i64 @string_builder_mark()
-declare void @string_builder_append_string(ptr)
-declare void @string_builder_append_byte(i8)
-declare void @string_builder_finish(ptr, i64)
-declare void @to_string$string(ptr, ptr)
-declare void @to_string$bool(ptr, i1)
-declare void @to_string$i8(ptr, i8)
-declare void @to_string$i16(ptr, i16)
-declare void @to_string$i32(ptr, i32)
-declare void @to_string$i64(ptr, i64)
-declare void @to_string$u8(ptr, i8)
-declare void @to_string$u16(ptr, i16)
-declare void @to_string$u32(ptr, i32)
-declare void @to_string$u64(ptr, i64)
-declare void @to_string$isize(ptr, i64)
-declare void @to_string$usize(ptr, i64)
-declare void @to_string$f32(ptr, float)
-declare void @to_string$f64(ptr, double)
+declare i1 @nrt_string_eq(ptr, ptr)
+declare void @nrt_string_builder_reset()
+declare i64 @nrt_string_builder_mark()
+declare void @nrt_string_builder_append_string(ptr)
+declare void @nrt_string_builder_append_byte(i8)
+declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_to_string_string(ptr, ptr)
+declare void @nrt_to_string_bool(ptr, i1)
+declare void @nrt_to_string_i8(ptr, i8)
+declare void @nrt_to_string_i16(ptr, i16)
+declare void @nrt_to_string_i32(ptr, i32)
+declare void @nrt_to_string_i64(ptr, i64)
+declare void @nrt_to_string_u8(ptr, i8)
+declare void @nrt_to_string_u16(ptr, i16)
+declare void @nrt_to_string_u32(ptr, i32)
+declare void @nrt_to_string_u64(ptr, i64)
+declare void @nrt_to_string_isize(ptr, i64)
+declare void @nrt_to_string_usize(ptr, i64)
+declare void @nrt_to_string_f32(ptr, float)
+declare void @nrt_to_string_f64(ptr, double)
 declare ptr @nrt_mem_alloc(i64, i64, ptr, i32)
 declare ptr @nrt_mem_realloc(ptr, i64, i64, ptr, i32)
 declare void @nrt_mem_free(ptr)
@@ -688,7 +688,7 @@ on.end.41:
   store i64 %t143, ptr %t141
   store { ptr, i64 } %t145, ptr %t147
   store { ptr, i64 } { ptr @.str.m0.7, i64 2 }, ptr %t148
-  %t146 = call i1 @string_eq(ptr %t147, ptr %t148)
+  %t146 = call i1 @nrt_string_eq(ptr %t147, ptr %t148)
   %t149 = xor i1 %t146, 1
   %t150 = icmp eq i1 %t149, 1
   br i1 %t150, label %on.body.44, label %on.end.43
@@ -796,60 +796,60 @@ dynarray.slice.ready.56:
 on.body.58:
   ret i32 10
 on.end.57:
-  %t212 = call i64 @string_builder_mark()
+  %t212 = call i64 @nrt_string_builder_mark()
   %t213 = extractvalue { ptr, i64 } %t208, 0
   %t214 = getelementptr inbounds { ptr, i64 }, ptr %t213, i32 0
   %t215 = load { ptr, i64 }, ptr %t214
   %t216 = alloca { ptr, i64 }
   store { ptr, i64 } %t215, ptr %t217
-  call void @to_string$string(ptr %t216, ptr %t217)
-  call void @string_builder_append_string(ptr %t216)
+  call void @nrt_to_string_string(ptr %t216, ptr %t217)
+  call void @nrt_string_builder_append_string(ptr %t216)
   %t218 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.8, i64 1 }, ptr %t219
-  call void @to_string$string(ptr %t218, ptr %t219)
-  call void @string_builder_append_string(ptr %t218)
+  call void @nrt_to_string_string(ptr %t218, ptr %t219)
+  call void @nrt_string_builder_append_string(ptr %t218)
   %t220 = extractvalue { ptr, i64 } %t208, 0
   %t221 = getelementptr inbounds { ptr, i64 }, ptr %t220, i32 1
   %t222 = load { ptr, i64 }, ptr %t221
   %t223 = alloca { ptr, i64 }
   store { ptr, i64 } %t222, ptr %t224
-  call void @to_string$string(ptr %t223, ptr %t224)
-  call void @string_builder_append_string(ptr %t223)
+  call void @nrt_to_string_string(ptr %t223, ptr %t224)
+  call void @nrt_string_builder_append_string(ptr %t223)
   %t225 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.9, i64 1 }, ptr %t226
-  call void @to_string$string(ptr %t225, ptr %t226)
-  call void @string_builder_append_string(ptr %t225)
+  call void @nrt_to_string_string(ptr %t225, ptr %t226)
+  call void @nrt_string_builder_append_string(ptr %t225)
   %t227 = extractvalue { ptr, i64 } %t208, 0
   %t228 = getelementptr inbounds { ptr, i64 }, ptr %t227, i32 2
   %t229 = load { ptr, i64 }, ptr %t228
   %t230 = alloca { ptr, i64 }
   store { ptr, i64 } %t229, ptr %t231
-  call void @to_string$string(ptr %t230, ptr %t231)
-  call void @string_builder_append_string(ptr %t230)
+  call void @nrt_to_string_string(ptr %t230, ptr %t231)
+  call void @nrt_string_builder_append_string(ptr %t230)
   %t232 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.10, i64 1 }, ptr %t233
-  call void @to_string$string(ptr %t232, ptr %t233)
-  call void @string_builder_append_string(ptr %t232)
+  call void @nrt_to_string_string(ptr %t232, ptr %t233)
+  call void @nrt_string_builder_append_string(ptr %t232)
   %t234 = extractvalue { ptr, i64 } %t208, 0
   %t235 = getelementptr inbounds { ptr, i64 }, ptr %t234, i32 3
   %t236 = load { ptr, i64 }, ptr %t235
   %t237 = alloca { ptr, i64 }
   store { ptr, i64 } %t236, ptr %t238
-  call void @to_string$string(ptr %t237, ptr %t238)
-  call void @string_builder_append_string(ptr %t237)
+  call void @nrt_to_string_string(ptr %t237, ptr %t238)
+  call void @nrt_string_builder_append_string(ptr %t237)
   %t239 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.11, i64 1 }, ptr %t240
-  call void @to_string$string(ptr %t239, ptr %t240)
-  call void @string_builder_append_string(ptr %t239)
+  call void @nrt_to_string_string(ptr %t239, ptr %t240)
+  call void @nrt_string_builder_append_string(ptr %t239)
   %t241 = extractvalue { ptr, i64 } %t208, 0
   %t242 = getelementptr inbounds { ptr, i64 }, ptr %t241, i32 4
   %t243 = load { ptr, i64 }, ptr %t242
   %t244 = alloca { ptr, i64 }
   store { ptr, i64 } %t243, ptr %t245
-  call void @to_string$string(ptr %t244, ptr %t245)
-  call void @string_builder_append_string(ptr %t244)
+  call void @nrt_to_string_string(ptr %t244, ptr %t245)
+  call void @nrt_string_builder_append_string(ptr %t244)
   %t246 = alloca { ptr, i64 }
-  call void @string_builder_finish(ptr %t246, i64 %t212)
+  call void @nrt_string_builder_finish(ptr %t246, i64 %t212)
   %t247 = load { ptr, i64 }, ptr %t246
   call void @$prn({ ptr, i64 } %t247)
   %t248 = load ptr, ptr %local.3
@@ -928,7 +928,7 @@ dynarray.field.done.70:
 on.body.72:
   ret i32 12
 on.end.71:
-  %t286 = call i64 @string_builder_mark()
+  %t286 = call i64 @nrt_string_builder_mark()
   %t287 = load ptr, ptr %local.6
   %t288 = getelementptr inbounds i8, ptr %t287, i64 -24
   %t289 = getelementptr inbounds { ptr, i64, i64 }, ptr %t288, i64 0, i32 0
@@ -937,12 +937,12 @@ on.end.71:
   %t292 = load { ptr, i64 }, ptr %t291
   %t293 = alloca { ptr, i64 }
   store { ptr, i64 } %t292, ptr %t294
-  call void @to_string$string(ptr %t293, ptr %t294)
-  call void @string_builder_append_string(ptr %t293)
+  call void @nrt_to_string_string(ptr %t293, ptr %t294)
+  call void @nrt_string_builder_append_string(ptr %t293)
   %t295 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.12, i64 1 }, ptr %t296
-  call void @to_string$string(ptr %t295, ptr %t296)
-  call void @string_builder_append_string(ptr %t295)
+  call void @nrt_to_string_string(ptr %t295, ptr %t296)
+  call void @nrt_string_builder_append_string(ptr %t295)
   %t297 = load ptr, ptr %local.6
   %t298 = getelementptr inbounds i8, ptr %t297, i64 -24
   %t299 = getelementptr inbounds { ptr, i64, i64 }, ptr %t298, i64 0, i32 0
@@ -951,10 +951,10 @@ on.end.71:
   %t302 = load { ptr, i64 }, ptr %t301
   %t303 = alloca { ptr, i64 }
   store { ptr, i64 } %t302, ptr %t304
-  call void @to_string$string(ptr %t303, ptr %t304)
-  call void @string_builder_append_string(ptr %t303)
+  call void @nrt_to_string_string(ptr %t303, ptr %t304)
+  call void @nrt_string_builder_append_string(ptr %t303)
   %t305 = alloca { ptr, i64 }
-  call void @string_builder_finish(ptr %t305, i64 %t286)
+  call void @nrt_string_builder_finish(ptr %t305, i64 %t286)
   %t306 = load { ptr, i64 }, ptr %t305
   call void @$prn({ ptr, i64 } %t306)
   %t307 = load ptr, ptr %local.6
@@ -1426,6 +1426,6 @@ on.end.133:
 }
 
 @$make_words = internal alias ptr (), ptr @fn.0
-@$main = alias i32 (), ptr @fn.1
+@$main = hidden alias i32 (), ptr @fn.1
 
 declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

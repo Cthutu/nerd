@@ -54,32 +54,32 @@ func fn.0() -> i32 {
 
 @.macro.file.m0 = private unnamed_addr constant [43 x i8] c"tests/language/081-nested-array-literals.t\00"
 
-declare i1 @string_eq(ptr, ptr)
-declare void @string_builder_reset()
-declare i64 @string_builder_mark()
-declare void @string_builder_append_string(ptr)
-declare void @string_builder_append_byte(i8)
-declare void @string_builder_finish(ptr, i64)
-declare void @to_string$string(ptr, ptr)
-declare void @to_string$bool(ptr, i1)
-declare void @to_string$i8(ptr, i8)
-declare void @to_string$i16(ptr, i16)
-declare void @to_string$i32(ptr, i32)
-declare void @to_string$i64(ptr, i64)
-declare void @to_string$u8(ptr, i8)
-declare void @to_string$u16(ptr, i16)
-declare void @to_string$u32(ptr, i32)
-declare void @to_string$u64(ptr, i64)
-declare void @to_string$isize(ptr, i64)
-declare void @to_string$usize(ptr, i64)
-declare void @to_string$f32(ptr, float)
-declare void @to_string$f64(ptr, double)
+declare i1 @nrt_string_eq(ptr, ptr)
+declare void @nrt_string_builder_reset()
+declare i64 @nrt_string_builder_mark()
+declare void @nrt_string_builder_append_string(ptr)
+declare void @nrt_string_builder_append_byte(i8)
+declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_to_string_string(ptr, ptr)
+declare void @nrt_to_string_bool(ptr, i1)
+declare void @nrt_to_string_i8(ptr, i8)
+declare void @nrt_to_string_i16(ptr, i16)
+declare void @nrt_to_string_i32(ptr, i32)
+declare void @nrt_to_string_i64(ptr, i64)
+declare void @nrt_to_string_u8(ptr, i8)
+declare void @nrt_to_string_u16(ptr, i16)
+declare void @nrt_to_string_u32(ptr, i32)
+declare void @nrt_to_string_u64(ptr, i64)
+declare void @nrt_to_string_isize(ptr, i64)
+declare void @nrt_to_string_usize(ptr, i64)
+declare void @nrt_to_string_f32(ptr, float)
+declare void @nrt_to_string_f64(ptr, double)
 
 declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
 
 define internal i32 @fn.0() {
-  %t0 = call i64 @string_builder_mark()
+  %t0 = call i64 @nrt_string_builder_mark()
   %t1 = insertvalue { i64, i8 } poison, i64 0, 0
   %t2 = insertvalue { i64, i8 } %t1, i8 0, 1
   %t3 = insertvalue { i64, i8 } poison, i64 1, 0
@@ -105,13 +105,13 @@ define internal i32 @fn.0() {
   %t24 = extractvalue { i64, i8 } %t21, 0
   %t22 = icmp eq i64 %t23, %t24
   %t25 = alloca { ptr, i64 }
-  call void @to_string$bool(ptr %t25, i1 zeroext %t22)
-  call void @string_builder_append_string(ptr %t25)
+  call void @nrt_to_string_bool(ptr %t25, i1 zeroext %t22)
+  call void @nrt_string_builder_append_string(ptr %t25)
   %t26 = alloca { ptr, i64 }
-  call void @string_builder_finish(ptr %t26, i64 %t0)
+  call void @nrt_string_builder_finish(ptr %t26, i64 %t0)
   %t27 = load { ptr, i64 }, ptr %t26
   call void @$prn({ ptr, i64 } %t27)
-  %t28 = call i64 @string_builder_mark()
+  %t28 = call i64 @nrt_string_builder_mark()
   %t29 = insertvalue { i64, i8 } poison, i64 0, 0
   %t30 = insertvalue { i64, i8 } %t29, i8 0, 1
   %t31 = insertvalue { i64, i8 } poison, i64 1, 0
@@ -137,13 +137,13 @@ define internal i32 @fn.0() {
   %t52 = extractvalue { i64, i8 } %t49, 0
   %t50 = icmp eq i64 %t51, %t52
   %t53 = alloca { ptr, i64 }
-  call void @to_string$bool(ptr %t53, i1 zeroext %t50)
-  call void @string_builder_append_string(ptr %t53)
+  call void @nrt_to_string_bool(ptr %t53, i1 zeroext %t50)
+  call void @nrt_string_builder_append_string(ptr %t53)
   %t54 = alloca { ptr, i64 }
-  call void @string_builder_finish(ptr %t54, i64 %t28)
+  call void @nrt_string_builder_finish(ptr %t54, i64 %t28)
   %t55 = load { ptr, i64 }, ptr %t54
   call void @$prn({ ptr, i64 } %t55)
-  %t56 = call i64 @string_builder_mark()
+  %t56 = call i64 @nrt_string_builder_mark()
   %t57 = insertvalue { i64, i8 } poison, i64 0, 0
   %t58 = insertvalue { i64, i8 } %t57, i8 0, 1
   %t59 = insertvalue { i64, i8 } poison, i64 1, 0
@@ -169,13 +169,13 @@ define internal i32 @fn.0() {
   %t80 = extractvalue { i64, i8 } %t77, 0
   %t78 = icmp eq i64 %t79, %t80
   %t81 = alloca { ptr, i64 }
-  call void @to_string$bool(ptr %t81, i1 zeroext %t78)
-  call void @string_builder_append_string(ptr %t81)
+  call void @nrt_to_string_bool(ptr %t81, i1 zeroext %t78)
+  call void @nrt_string_builder_append_string(ptr %t81)
   %t82 = alloca { ptr, i64 }
-  call void @string_builder_finish(ptr %t82, i64 %t56)
+  call void @nrt_string_builder_finish(ptr %t82, i64 %t56)
   %t83 = load { ptr, i64 }, ptr %t82
   call void @$prn({ ptr, i64 } %t83)
-  %t84 = call i64 @string_builder_mark()
+  %t84 = call i64 @nrt_string_builder_mark()
   %t85 = insertvalue { i64, i8 } poison, i64 0, 0
   %t86 = insertvalue { i64, i8 } %t85, i8 0, 1
   %t87 = insertvalue { i64, i8 } poison, i64 1, 0
@@ -201,15 +201,15 @@ define internal i32 @fn.0() {
   %t108 = extractvalue { i64, i8 } %t105, 0
   %t106 = icmp eq i64 %t107, %t108
   %t109 = alloca { ptr, i64 }
-  call void @to_string$bool(ptr %t109, i1 zeroext %t106)
-  call void @string_builder_append_string(ptr %t109)
+  call void @nrt_to_string_bool(ptr %t109, i1 zeroext %t106)
+  call void @nrt_string_builder_append_string(ptr %t109)
   %t110 = alloca { ptr, i64 }
-  call void @string_builder_finish(ptr %t110, i64 %t84)
+  call void @nrt_string_builder_finish(ptr %t110, i64 %t84)
   %t111 = load { ptr, i64 }, ptr %t110
   call void @$prn({ ptr, i64 } %t111)
   ret i32 0
 }
 
-@$main = alias i32 (), ptr @fn.0
+@$main = hidden alias i32 (), ptr @fn.0
 
 declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

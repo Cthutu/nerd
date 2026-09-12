@@ -49,26 +49,26 @@ func fn.0() -> i32 {
 @.str.m0.2 = private unnamed_addr constant [2 x i8] c"a\00"
 @.slice.const.m0.3 = private unnamed_addr constant [1 x { { ptr, i64 }, { ptr, i64 } }] [{ { ptr, i64 }, { ptr, i64 } } { { ptr, i64 } { ptr @.str.m0.0, i64 1 }, { ptr, i64 } { ptr @.str.m0.1, i64 1 } }]
 
-declare i1 @string_eq(ptr, ptr)
-declare void @string_builder_reset()
-declare i64 @string_builder_mark()
-declare void @string_builder_append_string(ptr)
-declare void @string_builder_append_byte(i8)
-declare void @string_builder_finish(ptr, i64)
-declare void @to_string$string(ptr, ptr)
-declare void @to_string$bool(ptr, i1)
-declare void @to_string$i8(ptr, i8)
-declare void @to_string$i16(ptr, i16)
-declare void @to_string$i32(ptr, i32)
-declare void @to_string$i64(ptr, i64)
-declare void @to_string$u8(ptr, i8)
-declare void @to_string$u16(ptr, i16)
-declare void @to_string$u32(ptr, i32)
-declare void @to_string$u64(ptr, i64)
-declare void @to_string$isize(ptr, i64)
-declare void @to_string$usize(ptr, i64)
-declare void @to_string$f32(ptr, float)
-declare void @to_string$f64(ptr, double)
+declare i1 @nrt_string_eq(ptr, ptr)
+declare void @nrt_string_builder_reset()
+declare i64 @nrt_string_builder_mark()
+declare void @nrt_string_builder_append_string(ptr)
+declare void @nrt_string_builder_append_byte(i8)
+declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_to_string_string(ptr, ptr)
+declare void @nrt_to_string_bool(ptr, i1)
+declare void @nrt_to_string_i8(ptr, i8)
+declare void @nrt_to_string_i16(ptr, i16)
+declare void @nrt_to_string_i32(ptr, i32)
+declare void @nrt_to_string_i64(ptr, i64)
+declare void @nrt_to_string_u8(ptr, i8)
+declare void @nrt_to_string_u16(ptr, i16)
+declare void @nrt_to_string_u32(ptr, i32)
+declare void @nrt_to_string_u64(ptr, i64)
+declare void @nrt_to_string_isize(ptr, i64)
+declare void @nrt_to_string_usize(ptr, i64)
+declare void @nrt_to_string_f32(ptr, float)
+declare void @nrt_to_string_f64(ptr, double)
 
 @$locs = internal global { ptr, i64 } zeroinitializer
 
@@ -99,7 +99,7 @@ for.in.body.1:
   %t8 = extractvalue { { ptr, i64 }, { ptr, i64 } } %t7, 1
   store { ptr, i64 } { ptr @.str.m0.2, i64 1 }, ptr %t10
   store { ptr, i64 } %t8, ptr %t11
-  %t9 = call i1 @string_eq(ptr %t10, ptr %t11)
+  %t9 = call i1 @nrt_string_eq(ptr %t10, ptr %t11)
   %t12 = icmp eq i1 %t9, 1
   br i1 %t12, label %on.body.5, label %on.end.4
 on.body.5:
@@ -117,4 +117,4 @@ for.in.end.3:
   ret i32 0
 }
 
-@$main = alias i32 (), ptr @fn.0
+@$main = hidden alias i32 (), ptr @fn.0

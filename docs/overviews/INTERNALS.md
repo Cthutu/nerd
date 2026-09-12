@@ -434,3 +434,34 @@ loaded program module view, so an earlier import failure cannot prevent
 navigation to another resolvable module (including folder-module `mod.n`).
 If that failure discarded the root AST, the request parses the open buffer
 without loading its imports and resolves the module path from that scratch AST.
+
+## Receiving Variadic C Calls
+
+AST/CST function signatures retain the final named variadic binder separately
+from fixed parameters. Semantic analysis binds it as an `is_variadic` parameter
+of opaque `STK_VaList` type. HIR records `varargs_local_index` separately
+from the fixed ABI parameter list.
+`HIR_EXPR_VaNext`, `HIR_EXPR_VaCopy`, and `HIR_EXPR_VaFormat` represent the cursor
+operations. LLVM emits a variadic definition and calls `llvm.va_start` on the
+first member of a runtime-allocated `NrtVaList`. The host C compiler determines
+`va_list` storage and argument traversal, avoiding hard-coded register offsets.
+
+Copies are linked to the originating cursor. All allocations are released by
+`nrt_va_done` after user defers, including early return and propagation paths.
+The cursor may be borrowed by Nerd helpers but cannot escape via return,
+assignment, addressing, or containers. Formatting uses two temporary `va_copy`
+lists and preserves the input cursor. Fixed FFI `VaList` parameters on x86-64
+carry `STF_FunctionCVaList` to distinguish native C parameter adjustment.
+
+Runtime linker names consistently use `nrt_`; PIC runtime objects have hidden
+visibility. Public root C functions receive plain aliases. Existing public
+function bindings provide export-name overrides; generated implementations and
+Nerd-only linkage aliases remain compiler-managed. Non-executable builds
+validate exported signatures before generating artifacts.
+
+The CST parser buffers each callable parameter list before appending it to the
+shared parameter table. This preserves outer parameter names and types when
+callback signatures contain nested parameter lists, including variadic callbacks.
+
+Local aliases of built-in types, including `VaList`, are resolved as types.
+HIR omits local type-alias declarations because they require no runtime storage.

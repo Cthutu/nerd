@@ -89,7 +89,7 @@ on !"platform-key" { declarations }
 assert on "platform-key"
 
 FFI and intrinsic fixed parameters use the compulsory `name: Type` form.
-The variadic `...` marker remains unnamed.
+Imported FFI markers remain unnamed. Definitions use a final `args: ...` marker.
 assert on !"platform-key"
 pragma symbol
 pragma symbol(123, 1.5, "text", yes, no)
@@ -298,4 +298,18 @@ in [start..=end]
 pattern as name
 pattern on condition
 pattern as name on condition
+```
+
+## C Variadic Definitions
+
+```nerd
+pub name :: fn (fixed: Type, args: ...) -> ReturnType { ... }
+fn (Type, ...) -> ReturnType
+args.next[i32]()
+args.next[f64]()
+args.next[^i8]()
+copy := args.copy()
+args.format(format)
+helper :: fn (args: VaList) { ... }
+pub external_name :: implementation
 ```

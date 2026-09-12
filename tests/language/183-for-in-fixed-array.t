@@ -68,4 +68,4 @@ for.in.end.3:
   ret void
 }
 
-@$main = alias void (), ptr @fn.0
+@$main = hidden alias void (), ptr @fn.0

@@ -322,3 +322,23 @@ checks remain valid for nilable containers without requiring element `Eq`.
 Generic bodies must state `where T: Eq` before using equality on `T` or
 containers of `T`; checks include pointer/dereference/index chains and concise
 function bodies. Missing constraints report the operator and suggested bound.
+
+## C Variadic Cursors
+
+`VaList` (`STK_VaList`) is an opaque invocation resource. A final `args: ...`
+definition parameter binds it without adding a fixed ABI parameter. `next[T]()`
+accepts promoted scalar C types and pointers and consumes exactly one argument;
+it neither knows nor checks the remaining length or actual types. `copy()`
+creates independent traversal. `format(^i8)` formats a copied list and returns
+`string` in the temporary arena.
+
+A `VaList` function parameter borrows the cursor. A local cursor must be
+initialised with `copy()`. Cursors cannot be returned, ordinarily assigned,
+addressed, or embedded in other storage types. Their original receiving
+invocation owns all copies and releases them after defers on exit.
+
+Function types retain `STF_FunctionVarargs`; the source form is
+`fn (FixedType, ...) -> ReturnType`. x86-64 FFI declarations may use fixed
+`VaList` parameters; `STF_FunctionCVaList` distinguishes their C parameter
+adjustment from Nerd's borrowed cursor representation. `VaList` is not an FFI
+return type or a value that may be passed in the variadic tail.

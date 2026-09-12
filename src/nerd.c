@@ -4,7 +4,7 @@
 // clang-format off
 //> run: clang -std=c23 -Wall -Wextra -Werror -O2 -c data/nrt.c -o _obj/runtime/nrt.o
 //> run(windows): clang -std=c23 -Wall -Wextra -Werror -O2 -c data/nrt.c -o _obj/runtime/nrt.pic.o
-//> run(posix): clang -std=c23 -Wall -Wextra -Werror -O2 -fPIC -c data/nrt.c -o _obj/runtime/nrt.pic.o
+//> run(posix): clang -std=c23 -Wall -Wextra -Werror -O2 -fPIC -fvisibility=hidden -c data/nrt.c -o _obj/runtime/nrt.pic.o
 // clang-format on
 
 #include <cli/cli.h>

@@ -29,4 +29,4 @@ define internal i32 @fn.2() {
 
 @$not_value = internal alias i1 (i1), ptr @fn.0
 @$negative = internal alias i32 (i32), ptr @fn.1
-@$main = alias i32 (), ptr @fn.2
+@$main = hidden alias i32 (), ptr @fn.2

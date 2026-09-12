@@ -43,8 +43,4 @@ define internal i32 @fn.2() {
   ret i32 %t4
 }
 
-define i64 @$c_strlen(ptr %p0) {
-  %t0 = call i64 @strlen(ptr %p0)
-  ret i64 %t0
-}
-@$main = alias i32 (), ptr @fn.2
+@$main = hidden alias i32 (), ptr @fn.2

@@ -53,7 +53,7 @@ for.in.end.3:
   ret i32 %t14, !dbg !23
 }
 
-@$main = alias i32 (), ptr @fn.0
+@$main = hidden alias i32 (), ptr @fn.0
 
 declare void @llvm.dbg.declare(metadata, metadata, metadata)
 

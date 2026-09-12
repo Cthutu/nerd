@@ -68,26 +68,26 @@ func fn.0() -> i32 {
 @.str.m0.2 = private unnamed_addr constant [2 x i8] c" \00"
 @.str.m0.3 = private unnamed_addr constant [2 x i8] c" \00"
 
-declare i1 @string_eq(ptr, ptr)
-declare void @string_builder_reset()
-declare i64 @string_builder_mark()
-declare void @string_builder_append_string(ptr)
-declare void @string_builder_append_byte(i8)
-declare void @string_builder_finish(ptr, i64)
-declare void @to_string$string(ptr, ptr)
-declare void @to_string$bool(ptr, i1)
-declare void @to_string$i8(ptr, i8)
-declare void @to_string$i16(ptr, i16)
-declare void @to_string$i32(ptr, i32)
-declare void @to_string$i64(ptr, i64)
-declare void @to_string$u8(ptr, i8)
-declare void @to_string$u16(ptr, i16)
-declare void @to_string$u32(ptr, i32)
-declare void @to_string$u64(ptr, i64)
-declare void @to_string$isize(ptr, i64)
-declare void @to_string$usize(ptr, i64)
-declare void @to_string$f32(ptr, float)
-declare void @to_string$f64(ptr, double)
+declare i1 @nrt_string_eq(ptr, ptr)
+declare void @nrt_string_builder_reset()
+declare i64 @nrt_string_builder_mark()
+declare void @nrt_string_builder_append_string(ptr)
+declare void @nrt_string_builder_append_byte(i8)
+declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_to_string_string(ptr, ptr)
+declare void @nrt_to_string_bool(ptr, i1)
+declare void @nrt_to_string_i8(ptr, i8)
+declare void @nrt_to_string_i16(ptr, i16)
+declare void @nrt_to_string_i32(ptr, i32)
+declare void @nrt_to_string_i64(ptr, i64)
+declare void @nrt_to_string_u8(ptr, i8)
+declare void @nrt_to_string_u16(ptr, i16)
+declare void @nrt_to_string_u32(ptr, i32)
+declare void @nrt_to_string_u64(ptr, i64)
+declare void @nrt_to_string_isize(ptr, i64)
+declare void @nrt_to_string_usize(ptr, i64)
+declare void @nrt_to_string_f32(ptr, float)
+declare void @nrt_to_string_f64(ptr, double)
 declare ptr @nrt_mem_alloc(i64, i64, ptr, i32)
 declare ptr @nrt_mem_realloc(ptr, i64, i64, ptr, i32)
 declare void @nrt_mem_free(ptr)
@@ -226,27 +226,27 @@ dynarray.store.7:
   %t79 = load { ptr, i64 }, ptr %local.6
   %t80 = extractvalue { ptr, i64 } %t79, 0
   %t81 = getelementptr inbounds i8, ptr %t80, i32 1
-  %t82 = call i64 @string_builder_mark()
+  %t82 = call i64 @nrt_string_builder_mark()
   %t83 = load [3 x i32], ptr %local.0
   %t84 = extractvalue [3 x i32] %t83, 1
   %t85 = alloca { ptr, i64 }
-  call void @to_string$i32(ptr %t85, i32 %t84)
-  call void @string_builder_append_string(ptr %t85)
+  call void @nrt_to_string_i32(ptr %t85, i32 %t84)
+  call void @nrt_string_builder_append_string(ptr %t85)
   %t86 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.1, i64 1 }, ptr %t87
-  call void @to_string$string(ptr %t86, ptr %t87)
-  call void @string_builder_append_string(ptr %t86)
+  call void @nrt_to_string_string(ptr %t86, ptr %t87)
+  call void @nrt_string_builder_append_string(ptr %t86)
   %t88 = load { ptr, i64 }, ptr %local.2
   %t89 = extractvalue { ptr, i64 } %t88, 0
   %t90 = getelementptr inbounds i32, ptr %t89, i32 2
   %t91 = load i32, ptr %t90
   %t92 = alloca { ptr, i64 }
-  call void @to_string$i32(ptr %t92, i32 %t91)
-  call void @string_builder_append_string(ptr %t92)
+  call void @nrt_to_string_i32(ptr %t92, i32 %t91)
+  call void @nrt_string_builder_append_string(ptr %t92)
   %t93 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.2, i64 1 }, ptr %t94
-  call void @to_string$string(ptr %t93, ptr %t94)
-  call void @string_builder_append_string(ptr %t93)
+  call void @nrt_to_string_string(ptr %t93, ptr %t94)
+  call void @nrt_string_builder_append_string(ptr %t93)
   %t95 = load ptr, ptr %local.4
   %t96 = getelementptr inbounds i8, ptr %t95, i64 -24
   %t97 = getelementptr inbounds { ptr, i64, i64 }, ptr %t96, i64 0, i32 0
@@ -254,18 +254,18 @@ dynarray.store.7:
   %t99 = getelementptr inbounds i32, ptr %t98, i32 1
   %t100 = load i32, ptr %t99
   %t101 = alloca { ptr, i64 }
-  call void @to_string$i32(ptr %t101, i32 %t100)
-  call void @string_builder_append_string(ptr %t101)
+  call void @nrt_to_string_i32(ptr %t101, i32 %t100)
+  call void @nrt_string_builder_append_string(ptr %t101)
   %t102 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.3, i64 1 }, ptr %t103
-  call void @to_string$string(ptr %t102, ptr %t103)
-  call void @string_builder_append_string(ptr %t102)
+  call void @nrt_to_string_string(ptr %t102, ptr %t103)
+  call void @nrt_string_builder_append_string(ptr %t102)
   %t104 = load i8, ptr %t81
   %t105 = alloca { ptr, i64 }
-  call void @to_string$u8(ptr %t105, i8 zeroext %t104)
-  call void @string_builder_append_string(ptr %t105)
+  call void @nrt_to_string_u8(ptr %t105, i8 zeroext %t104)
+  call void @nrt_string_builder_append_string(ptr %t105)
   %t106 = alloca { ptr, i64 }
-  call void @string_builder_finish(ptr %t106, i64 %t82)
+  call void @nrt_string_builder_finish(ptr %t106, i64 %t82)
   %t107 = load { ptr, i64 }, ptr %t106
   call void @$prn({ ptr, i64 } %t107)
   %t108 = load [3 x i32], ptr %local.0
@@ -297,4 +297,4 @@ dynarray.free.done.9:
   ret i32 %t124
 }
 
-@$main = alias i32 (), ptr @fn.0
+@$main = hidden alias i32 (), ptr @fn.0

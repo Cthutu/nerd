@@ -1184,9 +1184,11 @@ internal bool cst_parse_callable_signature(CstParseState* state,
         return false;
     }
 
-    u32  first_param = (u32)array_count(state->cst.params);
-    u32  param_count = 0;
-    bool is_varargs  = false;
+    Array(CstParam) params = NULL;
+    u32  param_count       = 0;
+    bool is_varargs        = false;
+    bool named_varargs     = false;
+    u32  varargs_symbol    = CST_NO_VALUE;
 
     if (cst_current_token(state).kind != TK_RParen) {
         for (;;) {
@@ -1203,8 +1205,16 @@ internal bool cst_parse_callable_signature(CstParseState* state,
                     symbol_handle = cst_current_symbol_handle(state);
                     cst_advance(state);
                     if (!cst_consume(state, TK_Colon)) {
+                        array_free(params);
                         return false;
                     }
+                }
+                if (cst_current_token(state).kind == TK_Ellipsis) {
+                    is_varargs     = true;
+                    named_varargs  = true;
+                    varargs_symbol = symbol_handle;
+                    cst_advance(state);
+                    break;
                 }
                 bool compile_time = false;
                 if (cst_current_token(state).kind == TK_Colon) {
@@ -1213,16 +1223,18 @@ internal bool cst_parse_callable_signature(CstParseState* state,
                 }
                 u32 type_node = 0;
                 if (!cst_parse_type(state, &type_node)) {
+                    array_free(params);
                     return false;
                 }
                 u32 default_node = CST_NO_VALUE;
                 if (cst_current_token(state).kind == TK_Equal) {
                     cst_advance(state);
                     if (!cst_parse_expr_bp(state, 0, &default_node)) {
+                        array_free(params);
                         return false;
                     }
                 }
-                array_push(state->cst.params,
+                array_push(params,
                            (CstParam){
                                .symbol_handle      = symbol_handle,
                                .type_node_index    = type_node,
@@ -1236,14 +1248,16 @@ internal bool cst_parse_callable_signature(CstParseState* state,
                     symbol_handle = cst_current_symbol_handle(state);
                     cst_advance(state);
                     if (!cst_consume(state, TK_Colon)) {
+                        array_free(params);
                         return false;
                     }
                 }
                 u32 type_node = 0;
                 if (!cst_parse_type(state, &type_node)) {
+                    array_free(params);
                     return false;
                 }
-                array_push(state->cst.params,
+                array_push(params,
                            (CstParam){
                                .symbol_handle      = symbol_handle,
                                .type_node_index    = type_node,
@@ -1267,6 +1281,7 @@ internal bool cst_parse_callable_signature(CstParseState* state,
     }
 
     if (!cst_consume(state, TK_RParen)) {
+        array_free(params);
         return false;
     }
 
@@ -1274,9 +1289,11 @@ internal bool cst_parse_callable_signature(CstParseState* state,
     if (cst_current_token(state).kind == TK_ThinArrow) {
         cst_advance(state);
         if (!cst_parse_type(state, &return_type)) {
+            array_free(params);
             return false;
         }
     } else if (require_return_type) {
+        array_free(params);
         return false;
     }
 
@@ -1284,9 +1301,17 @@ internal bool cst_parse_callable_signature(CstParseState* state,
     u32 constraint_count = 0;
     if (!cst_parse_optional_where_constraints(
             state, &first_constraint, &constraint_count)) {
+        array_free(params);
         return false;
     }
 
+    // Nested callback types append their parameters first. Keep this list
+    // contiguous, just as the AST signature parser does.
+    u32 first_param = (u32)array_count(state->cst.params);
+    for (u32 i = 0; i < array_count(params); ++i) {
+        array_push(state->cst.params, params[i]);
+    }
+    array_free(params);
     u32 signature_index = (u32)array_count(state->cst.fn_signatures);
     array_push(state->cst.fn_signatures,
                (CstFnSignature){
@@ -1297,6 +1322,8 @@ internal bool cst_parse_callable_signature(CstParseState* state,
                    .first_constraint       = first_constraint,
                    .constraint_count       = constraint_count,
                    .is_varargs             = is_varargs,
+                   .named_varargs          = named_varargs,
+                   .varargs_symbol         = varargs_symbol,
                });
     *out_signature_index = signature_index;
     return true;

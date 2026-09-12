@@ -1,0 +1,4 @@
+implementation :: fn (_fixed: i32, args: ...) -> i32 {
+    return args.next[i32]()
+}
+pub va_imported :: implementation

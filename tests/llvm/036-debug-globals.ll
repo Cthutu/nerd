@@ -26,7 +26,7 @@ define internal void @fn.0() !dbg !12 {
   ret void, !dbg !16
 }
 
-@$main = alias void (), ptr @fn.0
+@$main = hidden alias void (), ptr @fn.0
 
 !llvm.dbg.cu = !{!0}
 !llvm.module.flags = !{!3, !4}

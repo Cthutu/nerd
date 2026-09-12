@@ -78,4 +78,4 @@ define internal i64 @fn.2({ i32 } %self) {
   ret i64 4
 }
 
-@$main = alias i32 (), ptr @fn.0
+@$main = hidden alias i32 (), ptr @fn.0

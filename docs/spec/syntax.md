@@ -600,3 +600,17 @@ compound-member   := qualified-symbol
 A compound function may appear only as the value of a top-level declaration.
 The ordinary `fn (` form remains a function definition. Newlines separate
 members; formatter output places one member on each line.
+
+## Receiving C Variadic Arguments
+
+```bnf
+variadic-function ::= 'fn' '(' named-param { ',' named-param } ',' IDENT ':' '...' ')' [ '->' type ] function-body
+variadic-function-type ::= 'fn' '(' function-type-param { ',' function-type-param } ',' '...' ')' [ '->' type ]
+```
+
+The final named marker binds a `VaList`; it is not a fixed parameter. Receiving
+variadic definitions require at least one fixed parameter and reject generic,
+compile-time, and defaulted parameters. Imported FFI declarations continue to
+use an unnamed marker. Generic cursor reads use `args.next[Type]()`; copying
+uses `args.copy()`. Explicit export naming uses existing public bindings, such
+as `pub myapp_log :: log_impl`.

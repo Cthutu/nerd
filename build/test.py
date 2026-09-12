@@ -1085,7 +1085,7 @@ def test_command(path: pathlib.Path) -> list[Failure]:
         artifact = command_artifact_path(input_path, cli_args)
         if not artifact.exists():
             failures.append(Failure(path, f"expected build artifact: {artifact.name}"))
-    if run_mode == "build-artifact-link":
+    if run_mode in {"build-artifact-link", "build-variadic-host"}:
         artifact = command_artifact_path(input_path, cli_args)
         if not artifact.exists():
             failures.append(Failure(path, f"expected build artifact: {artifact.name}"))
@@ -1095,11 +1095,21 @@ def test_command(path: pathlib.Path) -> list[Failure]:
             host_exe = cwd / f"{path.stem}.host"
             host_c.write_text(
                 '#include <stdio.h>\n'
-                f'extern int nerd_fn(int, int) asm("${host_symbol}");\n'
+                f'extern int nerd_fn(int, int) asm("{host_symbol}");\n'
                 'int main(void) { printf("%d\\n", nerd_fn(20, 22)); return 0; }\n',
                 encoding="utf-8",
                 newline="\n",
             )
+            if run_mode == "build-variadic-host":
+                host_c.write_text((ROOT / "tests/ffi/variadic_host.c").read_text(encoding="utf-8"), encoding="utf-8", newline="\n")
+                symbols = command_artifact_symbols(artifact, cli_args)
+                if symbols.returncode != 0:
+                    failures.append(Failure(path, f"nm failed: {symbols.stderr}"))
+                else:
+                    exported = {line.split()[-1] for line in symbols.stdout.splitlines() if len(line.split()) == 3}
+                    required = {"va_integers", "va_doubles", "va_mixed", "va_copies", "va_format", "va_imported", "string_eq", "string_builder_reset"}
+                    if exported != required:
+                        failures.append(Failure(path, f"unexpected DLL exports: {sorted(exported)}"))
             host_args = ["clang", str(host_c), str(artifact), "-o", str(host_exe)]
             if "--dll" in cli_args and os.name != "nt":
                 host_args.insert(-2, f"-Wl,-rpath,{cwd}")
@@ -1133,7 +1143,7 @@ def test_command(path: pathlib.Path) -> list[Failure]:
         if not artifact.exists():
             failures.append(Failure(path, f"expected build artifact: {artifact.name}"))
         else:
-            host_symbol = "$" + command_host_symbol(source)
+            host_symbol = command_host_symbol(source)
             symbols = command_artifact_symbols(artifact, cli_args)
             if symbols.returncode != 0:
                 failures.append(Failure(path, f"nm failed with {symbols.returncode}\n{symbols.stderr}"))

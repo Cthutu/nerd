@@ -399,6 +399,6 @@ on.end.17:
 
 @$describe_direction = internal alias { ptr, i64 } ({ i64, i8 }), ptr @fn.0
 @$describe_token = internal alias { ptr, i64 } ({ i64, i8 }), ptr @fn.1
-@$main = alias i32 (), ptr @fn.2
+@$main = hidden alias i32 (), ptr @fn.2
 
 declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

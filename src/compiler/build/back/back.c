@@ -685,21 +685,25 @@ internal bool back_end_render_llvm_modules(Arena*                    arena,
         debug_sidecars != NULL && strcmp(debug_sidecars, "1") == 0;
 
     for (u32 i = 0; i < module_count; ++i) {
-        const FrontEndState* front_end   = &program->modules[i].front_end;
-        string               module_llvm = llvm_render_hir(&front_end->hir,
-                                                           &front_end->lexer,
-                                                           &front_end->sema,
-                                                           arena,
-                                                           !artifacts->release);
+        const FrontEndState* front_end = &program->modules[i].front_end;
+        string module_llvm = llvm_render_hir(&front_end->hir,
+                                             &front_end->lexer,
+                                             &front_end->sema,
+                                             arena,
+                                             !artifacts->release,
+                                             artifacts->output_kind !=
+                                                 NERD_BUILD_OUTPUT_Executable);
         array_push(out->module_llvms, module_llvm);
         if (artifacts->emit_llvm_file) {
             string sidecar_llvm = module_llvm;
             if (!artifacts->release && !emit_debug_sidecars) {
-                sidecar_llvm = llvm_render_hir(&front_end->hir,
-                                               &front_end->lexer,
-                                               &front_end->sema,
-                                               arena,
-                                               false);
+                sidecar_llvm = llvm_render_hir(
+                    &front_end->hir,
+                    &front_end->lexer,
+                    &front_end->sema,
+                    arena,
+                    false,
+                    artifacts->output_kind != NERD_BUILD_OUTPUT_Executable);
             }
             cstr llvm_path = back_end_module_llvm_path(arena, artifacts, i);
             if (!back_end_write_text_file(llvm_path, sidecar_llvm)) {
@@ -837,6 +841,140 @@ internal bool back_end_link_shared_library(Arena*                    arena,
     return true;
 }
 
+// Aggregate C calling conventions are not yet modelled by Nerd's backend.
+// Pointer parameters may refer to opaque data; callable values must themselves
+// have signatures that the host C ABI can represent.
+internal bool back_end_c_export_type(const Sema* sema, u32 index, u32 depth)
+{
+    if (index >= array_count(sema->types) || depth > 64) {
+        return false;
+    }
+    const SemaType* type = &sema->types[index];
+    switch (type->kind) {
+    case STK_Void:
+    case STK_Bool:
+    case STK_I8:
+    case STK_I16:
+    case STK_I32:
+    case STK_I64:
+    case STK_U8:
+    case STK_U16:
+    case STK_U32:
+    case STK_U64:
+    case STK_Isize:
+    case STK_Usize:
+    case STK_F32:
+    case STK_F64:
+        return true;
+    case STK_Pointer:
+        if (type->first_param_type >= array_count(sema->types)) {
+            return false;
+        }
+        return sema->types[type->first_param_type].kind != STK_Function ||
+               back_end_c_export_type(sema, type->first_param_type, depth + 1);
+    case STK_Function:
+        if (!back_end_c_export_type(sema, type->return_type, depth + 1)) {
+            return false;
+        }
+        for (u32 i = 0; i < type->param_count; ++i) {
+            if (!back_end_c_export_type(
+                    sema,
+                    sema->type_param_types[type->first_param_type + i],
+                    depth + 1)) {
+                return false;
+            }
+        }
+        return true;
+    default:
+        return false;
+    }
+}
+
+internal bool back_end_validate_c_exports(const ProgramInfo* program)
+{
+    const FrontEndState* front =
+        &program->modules[program->root_module_index].front_end;
+    const Sema*       sema   = &front->sema;
+    const ModuleInfo* module = &program->modules[program->root_module_index];
+    for (u32 i = 0; i < array_count(module->export_decl_indices); ++i) {
+        u32 index = module->export_decl_indices[i];
+        if (index >= array_count(sema->decls)) {
+            continue;
+        }
+        const SemaDecl* decl = &sema->decls[index];
+        string          name = lex_symbol(&front->lexer, decl->symbol_handle);
+        if (decl->kind == SK_GenericFunction ||
+            decl->kind == SK_CompoundFunction) {
+            return error_runtime(
+                "C export `%.*s` needs one concrete function signature; export "
+                "a concrete function binding instead",
+                (int)name.count,
+                name.data);
+        }
+        if (decl->type_index >= array_count(sema->types) ||
+            sema->types[decl->type_index].kind != STK_Function) {
+            continue;
+        }
+        const HirBinding* exported_binding = NULL;
+        for (u32 b = 0; b < array_count(front->hir.bindings); ++b) {
+            if (front->hir.bindings[b].symbol_handle == decl->symbol_handle) {
+                exported_binding = &front->hir.bindings[b];
+            }
+        }
+        if (exported_binding == NULL ||
+            (exported_binding->kind != HIR_BINDING_Function &&
+             exported_binding->kind != HIR_BINDING_Import)) {
+            return error_runtime("C export `%.*s` needs a concrete function "
+                                 "declaration or function binding",
+                                 (int)name.count,
+                                 name.data);
+        }
+        bool foreign =
+            exported_binding->kind == HIR_BINDING_Function
+                ? front->hir.functions[exported_binding->target_index].kind ==
+                      HIR_FUNCTION_Ffi
+                : front->hir.imports[exported_binding->target_index]
+                          .ffi_symbol_handle != U32_MAX;
+        if (foreign &&
+            (sema->types[decl->type_index].flags & STF_FunctionVarargs)) {
+            return error_runtime(
+                "C export `%.*s` cannot forward an imported variadic tail; "
+                "write a receiving Nerd function and use a va_list API",
+                (int)name.count,
+                name.data);
+        }
+        for (u32 m = 0; m < array_count(program->modules); ++m) {
+            const FrontEndState* other = &program->modules[m].front_end;
+            for (u32 e = 0; e < array_count(other->hir.externs); ++e) {
+                if (string_eq(
+                        name,
+                        lex_symbol(&other->lexer,
+                                   other->hir.externs[e].symbol_handle))) {
+                    return error_runtime(
+                        "C export `%.*s` collides with an imported foreign "
+                        "symbol; choose a distinct public binding name",
+                        (int)name.count,
+                        name.data);
+                }
+            }
+        }
+        if (!back_end_c_export_type(sema, decl->type_index, 0)) {
+            return error_runtime(
+                "C export `%.*s` has an unsupported ABI signature; use scalar "
+                "values, pointers, and compatible function pointers",
+                (int)name.count,
+                name.data);
+        }
+        if (name.count >= 4 && memcmp(name.data, "nrt_", 4) == 0) {
+            return error_runtime(
+                "C export `%.*s` uses the reserved nrt_ runtime namespace",
+                (int)name.count,
+                name.data);
+        }
+    }
+    return true;
+}
+
 internal bool back_end_emit_llvm_artifacts(const ProgramInfo*        program,
                                            const NerdArtifactConfig* artifacts,
                                            Timing*                   timing)
@@ -847,6 +985,11 @@ internal bool back_end_emit_llvm_artifacts(const ProgramInfo*        program,
         return true;
     }
     if (program->root_module_index >= array_count(program->modules)) {
+        return false;
+    }
+
+    if (artifacts->output_kind != NERD_BUILD_OUTPUT_Executable &&
+        !back_end_validate_c_exports(program)) {
         return false;
     }
 

@@ -257,5 +257,5 @@ on.end.46:
   ret i32 %t36
 }
 
-@$main = alias i32 (), ptr @fn.0
+@$main = hidden alias i32 (), ptr @fn.0
 

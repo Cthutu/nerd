@@ -11,4 +11,4 @@ main :: fn () -> i32 {
 define internal i32 @fn.0() {
   %t11 = alloca [5 x i8]
   store [5 x i8] %t4, ptr %t11
-  %t12 = call i1 @slice_eq(ptr %t11, i64 5, ptr @.slice.const.m0.15, i64 5, i64 1)
+  %t12 = call i1 @nrt_slice_eq(ptr %t11, i64 5, ptr @.slice.const.m0.15, i64 5, i64 1)

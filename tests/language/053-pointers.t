@@ -47,26 +47,26 @@ func fn.0() -> i32 {
 @.str.m0.1 = private unnamed_addr constant [16 x i8] c"elem pointer = \00"
 @.str.m0.2 = private unnamed_addr constant [19 x i8] c"literal pointer = \00"
 
-declare i1 @string_eq(ptr, ptr)
-declare void @string_builder_reset()
-declare i64 @string_builder_mark()
-declare void @string_builder_append_string(ptr)
-declare void @string_builder_append_byte(i8)
-declare void @string_builder_finish(ptr, i64)
-declare void @to_string$string(ptr, ptr)
-declare void @to_string$bool(ptr, i1)
-declare void @to_string$i8(ptr, i8)
-declare void @to_string$i16(ptr, i16)
-declare void @to_string$i32(ptr, i32)
-declare void @to_string$i64(ptr, i64)
-declare void @to_string$u8(ptr, i8)
-declare void @to_string$u16(ptr, i16)
-declare void @to_string$u32(ptr, i32)
-declare void @to_string$u64(ptr, i64)
-declare void @to_string$isize(ptr, i64)
-declare void @to_string$usize(ptr, i64)
-declare void @to_string$f32(ptr, float)
-declare void @to_string$f64(ptr, double)
+declare i1 @nrt_string_eq(ptr, ptr)
+declare void @nrt_string_builder_reset()
+declare i64 @nrt_string_builder_mark()
+declare void @nrt_string_builder_append_string(ptr)
+declare void @nrt_string_builder_append_byte(i8)
+declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_to_string_string(ptr, ptr)
+declare void @nrt_to_string_bool(ptr, i1)
+declare void @nrt_to_string_i8(ptr, i8)
+declare void @nrt_to_string_i16(ptr, i16)
+declare void @nrt_to_string_i32(ptr, i32)
+declare void @nrt_to_string_i64(ptr, i64)
+declare void @nrt_to_string_u8(ptr, i8)
+declare void @nrt_to_string_u16(ptr, i16)
+declare void @nrt_to_string_u32(ptr, i32)
+declare void @nrt_to_string_u64(ptr, i64)
+declare void @nrt_to_string_isize(ptr, i64)
+declare void @nrt_to_string_usize(ptr, i64)
+declare void @nrt_to_string_f32(ptr, float)
+declare void @nrt_to_string_f64(ptr, double)
 
 declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
@@ -86,76 +86,76 @@ define internal i32 @fn.0() {
   %t6 = insertvalue [3 x i32] %t5, i32 3, 2
   %t7 = alloca [3 x i32]
   store [3 x i32] %t6, ptr %t7
-  %t8 = call i64 @string_builder_mark()
+  %t8 = call i64 @nrt_string_builder_mark()
   %t9 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.0, i64 16 }, ptr %t10
-  call void @to_string$string(ptr %t9, ptr %t10)
-  call void @string_builder_append_string(ptr %t9)
+  call void @nrt_to_string_string(ptr %t9, ptr %t10)
+  call void @nrt_string_builder_append_string(ptr %t9)
   %t11 = getelementptr inbounds [3 x i32], ptr %local.0, i32 0
   %t12 = load [3 x i32], ptr %t11
-  call void @string_builder_append_byte(i8 91)
+  call void @nrt_string_builder_append_byte(i8 91)
   %t13 = extractvalue [3 x i32] %t12, 0
   %t14 = alloca { ptr, i64 }
-  call void @to_string$i32(ptr %t14, i32 %t13)
-  call void @string_builder_append_string(ptr %t14)
-  call void @string_builder_append_byte(i8 44)
-  call void @string_builder_append_byte(i8 32)
+  call void @nrt_to_string_i32(ptr %t14, i32 %t13)
+  call void @nrt_string_builder_append_string(ptr %t14)
+  call void @nrt_string_builder_append_byte(i8 44)
+  call void @nrt_string_builder_append_byte(i8 32)
   %t15 = extractvalue [3 x i32] %t12, 1
   %t16 = alloca { ptr, i64 }
-  call void @to_string$i32(ptr %t16, i32 %t15)
-  call void @string_builder_append_string(ptr %t16)
-  call void @string_builder_append_byte(i8 44)
-  call void @string_builder_append_byte(i8 32)
+  call void @nrt_to_string_i32(ptr %t16, i32 %t15)
+  call void @nrt_string_builder_append_string(ptr %t16)
+  call void @nrt_string_builder_append_byte(i8 44)
+  call void @nrt_string_builder_append_byte(i8 32)
   %t17 = extractvalue [3 x i32] %t12, 2
   %t18 = alloca { ptr, i64 }
-  call void @to_string$i32(ptr %t18, i32 %t17)
-  call void @string_builder_append_string(ptr %t18)
-  call void @string_builder_append_byte(i8 93)
+  call void @nrt_to_string_i32(ptr %t18, i32 %t17)
+  call void @nrt_string_builder_append_string(ptr %t18)
+  call void @nrt_string_builder_append_byte(i8 93)
   %t19 = alloca { ptr, i64 }
-  call void @string_builder_finish(ptr %t19, i64 %t8)
+  call void @nrt_string_builder_finish(ptr %t19, i64 %t8)
   %t20 = load { ptr, i64 }, ptr %t19
   call void @$prn({ ptr, i64 } %t20)
-  %t21 = call i64 @string_builder_mark()
+  %t21 = call i64 @nrt_string_builder_mark()
   %t22 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.1, i64 15 }, ptr %t23
-  call void @to_string$string(ptr %t22, ptr %t23)
-  call void @string_builder_append_string(ptr %t22)
+  call void @nrt_to_string_string(ptr %t22, ptr %t23)
+  call void @nrt_string_builder_append_string(ptr %t22)
   %t24 = getelementptr inbounds i32, ptr %t3, i32 0
   %t25 = load i32, ptr %t24
   %t26 = alloca { ptr, i64 }
-  call void @to_string$i32(ptr %t26, i32 %t25)
-  call void @string_builder_append_string(ptr %t26)
+  call void @nrt_to_string_i32(ptr %t26, i32 %t25)
+  call void @nrt_string_builder_append_string(ptr %t26)
   %t27 = alloca { ptr, i64 }
-  call void @string_builder_finish(ptr %t27, i64 %t21)
+  call void @nrt_string_builder_finish(ptr %t27, i64 %t21)
   %t28 = load { ptr, i64 }, ptr %t27
   call void @$prn({ ptr, i64 } %t28)
-  %t29 = call i64 @string_builder_mark()
+  %t29 = call i64 @nrt_string_builder_mark()
   %t30 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.2, i64 18 }, ptr %t31
-  call void @to_string$string(ptr %t30, ptr %t31)
-  call void @string_builder_append_string(ptr %t30)
+  call void @nrt_to_string_string(ptr %t30, ptr %t31)
+  call void @nrt_string_builder_append_string(ptr %t30)
   %t32 = getelementptr inbounds [3 x i32], ptr %t7, i32 0
   %t33 = load [3 x i32], ptr %t32
-  call void @string_builder_append_byte(i8 91)
+  call void @nrt_string_builder_append_byte(i8 91)
   %t34 = extractvalue [3 x i32] %t33, 0
   %t35 = alloca { ptr, i64 }
-  call void @to_string$i32(ptr %t35, i32 %t34)
-  call void @string_builder_append_string(ptr %t35)
-  call void @string_builder_append_byte(i8 44)
-  call void @string_builder_append_byte(i8 32)
+  call void @nrt_to_string_i32(ptr %t35, i32 %t34)
+  call void @nrt_string_builder_append_string(ptr %t35)
+  call void @nrt_string_builder_append_byte(i8 44)
+  call void @nrt_string_builder_append_byte(i8 32)
   %t36 = extractvalue [3 x i32] %t33, 1
   %t37 = alloca { ptr, i64 }
-  call void @to_string$i32(ptr %t37, i32 %t36)
-  call void @string_builder_append_string(ptr %t37)
-  call void @string_builder_append_byte(i8 44)
-  call void @string_builder_append_byte(i8 32)
+  call void @nrt_to_string_i32(ptr %t37, i32 %t36)
+  call void @nrt_string_builder_append_string(ptr %t37)
+  call void @nrt_string_builder_append_byte(i8 44)
+  call void @nrt_string_builder_append_byte(i8 32)
   %t38 = extractvalue [3 x i32] %t33, 2
   %t39 = alloca { ptr, i64 }
-  call void @to_string$i32(ptr %t39, i32 %t38)
-  call void @string_builder_append_string(ptr %t39)
-  call void @string_builder_append_byte(i8 93)
+  call void @nrt_to_string_i32(ptr %t39, i32 %t38)
+  call void @nrt_string_builder_append_string(ptr %t39)
+  call void @nrt_string_builder_append_byte(i8 93)
   %t40 = alloca { ptr, i64 }
-  call void @string_builder_finish(ptr %t40, i64 %t29)
+  call void @nrt_string_builder_finish(ptr %t40, i64 %t29)
   %t41 = load { ptr, i64 }, ptr %t40
   call void @$prn({ ptr, i64 } %t41)
   %t42 = getelementptr inbounds [3 x i32], ptr %local.0, i32 0
@@ -171,4 +171,4 @@ define internal i32 @fn.0() {
   ret i32 %t51
 }
 
-@$main = alias i32 (), ptr @fn.0
+@$main = hidden alias i32 (), ptr @fn.0

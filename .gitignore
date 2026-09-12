@@ -6,6 +6,7 @@ syntax/nerd-vscode/out
 package-lock.json
 tests/**/*.ir
 tests/**/*.c
+!tests/ffi/*.c
 tests/**/*.out
 tests/**/*.pdb
 

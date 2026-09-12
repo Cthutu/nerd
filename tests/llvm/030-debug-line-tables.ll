@@ -19,7 +19,7 @@ define internal i32 @fn.0() !dbg !6 {
   ret i32 %t0, !dbg !15
 }
 
-@$main = alias i32 (), ptr @fn.0
+@$main = hidden alias i32 (), ptr @fn.0
 
 declare void @llvm.dbg.value(metadata, metadata, metadata)
 

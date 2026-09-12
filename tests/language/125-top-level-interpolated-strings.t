@@ -45,50 +45,50 @@ func fn.1() -> i32 {
 @.str.m0.6 = private unnamed_addr constant [31 x i8] c"Hello, world! count=42, ok=yes\00"
 @.str.m0.7 = private unnamed_addr constant [18 x i8] c"constant world 42\00"
 
-declare i1 @string_eq(ptr, ptr)
-declare void @string_builder_reset()
-declare i64 @string_builder_mark()
-declare void @string_builder_append_string(ptr)
-declare void @string_builder_append_byte(i8)
-declare void @string_builder_finish(ptr, i64)
-declare void @to_string$string(ptr, ptr)
-declare void @to_string$bool(ptr, i1)
-declare void @to_string$i8(ptr, i8)
-declare void @to_string$i16(ptr, i16)
-declare void @to_string$i32(ptr, i32)
-declare void @to_string$i64(ptr, i64)
-declare void @to_string$u8(ptr, i8)
-declare void @to_string$u16(ptr, i16)
-declare void @to_string$u32(ptr, i32)
-declare void @to_string$u64(ptr, i64)
-declare void @to_string$isize(ptr, i64)
-declare void @to_string$usize(ptr, i64)
-declare void @to_string$f32(ptr, float)
-declare void @to_string$f64(ptr, double)
+declare i1 @nrt_string_eq(ptr, ptr)
+declare void @nrt_string_builder_reset()
+declare i64 @nrt_string_builder_mark()
+declare void @nrt_string_builder_append_string(ptr)
+declare void @nrt_string_builder_append_byte(i8)
+declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_to_string_string(ptr, ptr)
+declare void @nrt_to_string_bool(ptr, i1)
+declare void @nrt_to_string_i8(ptr, i8)
+declare void @nrt_to_string_i16(ptr, i16)
+declare void @nrt_to_string_i32(ptr, i32)
+declare void @nrt_to_string_i64(ptr, i64)
+declare void @nrt_to_string_u8(ptr, i8)
+declare void @nrt_to_string_u16(ptr, i16)
+declare void @nrt_to_string_u32(ptr, i32)
+declare void @nrt_to_string_u64(ptr, i64)
+declare void @nrt_to_string_isize(ptr, i64)
+declare void @nrt_to_string_usize(ptr, i64)
+declare void @nrt_to_string_f32(ptr, float)
+declare void @nrt_to_string_f64(ptr, double)
 
 define internal { ptr, i64 } @fn.0() {
   %t2 = alloca { ptr, i64 }
   %t4 = alloca { ptr, i64 }
   %t6 = alloca { ptr, i64 }
-  %t0 = call i64 @string_builder_mark()
+  %t0 = call i64 @nrt_string_builder_mark()
   %t1 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.4, i64 9 }, ptr %t2
-  call void @to_string$string(ptr %t1, ptr %t2)
-  call void @string_builder_append_string(ptr %t1)
+  call void @nrt_to_string_string(ptr %t1, ptr %t2)
+  call void @nrt_string_builder_append_string(ptr %t1)
   %t3 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.0, i64 5 }, ptr %t4
-  call void @to_string$string(ptr %t3, ptr %t4)
-  call void @string_builder_append_string(ptr %t3)
+  call void @nrt_to_string_string(ptr %t3, ptr %t4)
+  call void @nrt_string_builder_append_string(ptr %t3)
   %t5 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.5, i64 1 }, ptr %t6
-  call void @to_string$string(ptr %t5, ptr %t6)
-  call void @string_builder_append_string(ptr %t5)
+  call void @nrt_to_string_string(ptr %t5, ptr %t6)
+  call void @nrt_string_builder_append_string(ptr %t5)
   %t7 = add i32 40, 2
   %t8 = alloca { ptr, i64 }
-  call void @to_string$i32(ptr %t8, i32 %t7)
-  call void @string_builder_append_string(ptr %t8)
+  call void @nrt_to_string_i32(ptr %t8, i32 %t7)
+  call void @nrt_string_builder_append_string(ptr %t8)
   %t9 = alloca { ptr, i64 }
-  call void @string_builder_finish(ptr %t9, i64 %t0)
+  call void @nrt_string_builder_finish(ptr %t9, i64 %t0)
   %t10 = load { ptr, i64 }, ptr %t9
   ret { ptr, i64 } %t10
 }
@@ -102,36 +102,36 @@ define internal i32 @fn.1() {
   %t16 = alloca { ptr, i64 }
   %t22 = alloca { ptr, i64 }
   %t23 = alloca { ptr, i64 }
-  %t0 = call i64 @string_builder_mark()
+  %t0 = call i64 @nrt_string_builder_mark()
   %t1 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.1, i64 7 }, ptr %t2
-  call void @to_string$string(ptr %t1, ptr %t2)
-  call void @string_builder_append_string(ptr %t1)
+  call void @nrt_to_string_string(ptr %t1, ptr %t2)
+  call void @nrt_string_builder_append_string(ptr %t1)
   %t3 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.0, i64 5 }, ptr %t4
-  call void @to_string$string(ptr %t3, ptr %t4)
-  call void @string_builder_append_string(ptr %t3)
+  call void @nrt_to_string_string(ptr %t3, ptr %t4)
+  call void @nrt_string_builder_append_string(ptr %t3)
   %t5 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.2, i64 8 }, ptr %t6
-  call void @to_string$string(ptr %t5, ptr %t6)
-  call void @string_builder_append_string(ptr %t5)
+  call void @nrt_to_string_string(ptr %t5, ptr %t6)
+  call void @nrt_string_builder_append_string(ptr %t5)
   %t7 = add i32 40, 2
   %t8 = alloca { ptr, i64 }
-  call void @to_string$i32(ptr %t8, i32 %t7)
-  call void @string_builder_append_string(ptr %t8)
+  call void @nrt_to_string_i32(ptr %t8, i32 %t7)
+  call void @nrt_string_builder_append_string(ptr %t8)
   %t9 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.3, i64 5 }, ptr %t10
-  call void @to_string$string(ptr %t9, ptr %t10)
-  call void @string_builder_append_string(ptr %t9)
+  call void @nrt_to_string_string(ptr %t9, ptr %t10)
+  call void @nrt_string_builder_append_string(ptr %t9)
   %t11 = alloca { ptr, i64 }
-  call void @to_string$bool(ptr %t11, i1 zeroext 1)
-  call void @string_builder_append_string(ptr %t11)
+  call void @nrt_to_string_bool(ptr %t11, i1 zeroext 1)
+  call void @nrt_string_builder_append_string(ptr %t11)
   %t12 = alloca { ptr, i64 }
-  call void @string_builder_finish(ptr %t12, i64 %t0)
+  call void @nrt_string_builder_finish(ptr %t12, i64 %t0)
   %t13 = load { ptr, i64 }, ptr %t12
   store { ptr, i64 } %t13, ptr %t15
   store { ptr, i64 } { ptr @.str.m0.6, i64 30 }, ptr %t16
-  %t14 = call i1 @string_eq(ptr %t15, ptr %t16)
+  %t14 = call i1 @nrt_string_eq(ptr %t15, ptr %t16)
   %t17 = xor i1 %t14, 1
   %t18 = alloca i1
   br i1 %t17, label %logical.short.1, label %logical.rhs.0
@@ -142,7 +142,7 @@ logical.rhs.0:
   %t20 = call { ptr, i64 } @fn.0()
   store { ptr, i64 } %t20, ptr %t22
   store { ptr, i64 } { ptr @.str.m0.7, i64 17 }, ptr %t23
-  %t21 = call i1 @string_eq(ptr %t22, ptr %t23)
+  %t21 = call i1 @nrt_string_eq(ptr %t22, ptr %t23)
   %t24 = xor i1 %t21, 1
   store i1 %t24, ptr %t18
   br label %logical.end.2
@@ -153,5 +153,5 @@ logical.end.2:
 }
 
 @$make = internal alias { ptr, i64 } (), ptr @fn.0
-@$main = alias i32 (), ptr @fn.1
+@$main = hidden alias i32 (), ptr @fn.1
 

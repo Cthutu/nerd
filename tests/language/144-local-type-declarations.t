@@ -30,9 +30,6 @@ main :: fn () -> i32 {
 hir 0
 bind main = fn.0
 func fn.0() -> i32 {
-  let Point: plex { i32 x, i32 y } = plex { i32 x, i32 y } <unsupported>
-  let Value: union { i32 i, f32 f } = union { i32 i, f32 f } <unsupported>
-  let Choice: enum { Left(i32), Right(i32) } = enum { Left(i32), Right(i32) } <unsupported>
   let point: plex { i32 x, i32 y } = plex { i32 x, i32 y } plex(x: i32 10, y: i32 20)
   let value: union { i32 i, f32 f } = union { i32 i, f32 f } plex(i: i32 7)
   let choice: enum { Left(i32), Right(i32) } = enum { Left(i32), Right(i32) } call Right(i32 5)
@@ -53,9 +50,7 @@ func fn.0() -> i32 {
 @.macro.file.m0 = private unnamed_addr constant [45 x i8] c"tests/language/144-local-type-declarations.t\00"
 
 define internal i32 @fn.0() {
-  %local.2 = alloca { i64, i32 }
   %local.5 = alloca { i64, i32 }
-  store { i64, i32 } zeroinitializer, ptr %local.2
   %t0 = insertvalue { i32, i32 } poison, i32 10, 0
   %t1 = insertvalue { i32, i32 } %t0, i32 20, 1
   %t2 = insertvalue { i64, i32 } poison, i64 1, 0
@@ -93,6 +88,6 @@ on.end.0:
   ret i32 %t18
 }
 
-@$main = alias i32 (), ptr @fn.0
+@$main = hidden alias i32 (), ptr @fn.0
 
 declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

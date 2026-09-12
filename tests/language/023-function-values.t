@@ -38,4 +38,4 @@ define internal i32 @fn.1() {
   ret i32 %t1
 }
 
-@$main = alias i32 (), ptr @fn.1
+@$main = hidden alias i32 (), ptr @fn.1

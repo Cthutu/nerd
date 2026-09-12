@@ -850,7 +850,11 @@ bool ast_parse_fn_signature(AstParseState* state,
         return false;
     }
 
-    u32 param_count = 0;
+    u32  param_count    = 0;
+    bool is_varargs     = false;
+    bool named_varargs  = false;
+    u32  varargs_symbol = U32_MAX;
+    u32  varargs_token  = U32_MAX;
 
     if (!ast_expect_token(state, TK_LParen)) {
         array_free(params);
@@ -866,6 +870,10 @@ bool ast_parse_fn_signature(AstParseState* state,
 
     if (state->token.kind != TK_RParen) {
         for (;;) {
+            if (!allow_named_params && state->token.kind == TK_Ellipsis) {
+                is_varargs = true;
+                break;
+            }
             if (allow_named_params) {
                 if (state->token.kind != TK_Symbol) {
                     array_free(params);
@@ -881,6 +889,13 @@ bool ast_parse_fn_signature(AstParseState* state,
                     !ast_next_token(state)) {
                     array_free(params);
                     return false;
+                }
+                if (state->token.kind == TK_Ellipsis) {
+                    is_varargs     = true;
+                    named_varargs  = true;
+                    varargs_symbol = param_token.value.symbol_handle;
+                    varargs_token  = param_token.token_index;
+                    break;
                 }
                 bool compile_time = false;
                 if (state->token.kind == TK_Colon) {
@@ -1055,6 +1070,10 @@ bool ast_parse_fn_signature(AstParseState* state,
                    .generic_params_index   = generic_params_index,
                    .first_constraint       = first_constraint,
                    .constraint_count       = constraint_count,
+                   .is_varargs             = is_varargs,
+                   .named_varargs          = named_varargs,
+                   .varargs_symbol         = varargs_symbol,
+                   .varargs_token          = varargs_token,
                });
     *out_signature_index = signature_index;
     array_free(params);

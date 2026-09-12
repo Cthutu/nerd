@@ -1,0 +1,12 @@
+use std.io
+use std.text
+
+log_impl :: fn (channel: ^i8, format: ^i8, args: ...) {
+    mark := temp_arena.mark()
+    defer temp_arena.restore(mark)
+    assert channel != nil
+    prn(format_c(format, args))
+}
+
+-- The C export is myapp_log; the implementation keeps its local name.
+pub myapp_log :: log_impl

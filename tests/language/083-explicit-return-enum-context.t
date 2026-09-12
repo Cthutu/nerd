@@ -130,26 +130,26 @@ func fn.3() -> i32 {
 @.str.m0.12 = private unnamed_addr constant [5 x i8] c"none\00"
 @.str.m0.13 = private unnamed_addr constant [2 x i8] c"n\00"
 
-declare i1 @string_eq(ptr, ptr)
-declare void @string_builder_reset()
-declare i64 @string_builder_mark()
-declare void @string_builder_append_string(ptr)
-declare void @string_builder_append_byte(i8)
-declare void @string_builder_finish(ptr, i64)
-declare void @to_string$string(ptr, ptr)
-declare void @to_string$bool(ptr, i1)
-declare void @to_string$i8(ptr, i8)
-declare void @to_string$i16(ptr, i16)
-declare void @to_string$i32(ptr, i32)
-declare void @to_string$i64(ptr, i64)
-declare void @to_string$u8(ptr, i8)
-declare void @to_string$u16(ptr, i16)
-declare void @to_string$u32(ptr, i32)
-declare void @to_string$u64(ptr, i64)
-declare void @to_string$isize(ptr, i64)
-declare void @to_string$usize(ptr, i64)
-declare void @to_string$f32(ptr, float)
-declare void @to_string$f64(ptr, double)
+declare i1 @nrt_string_eq(ptr, ptr)
+declare void @nrt_string_builder_reset()
+declare i64 @nrt_string_builder_mark()
+declare void @nrt_string_builder_append_string(ptr)
+declare void @nrt_string_builder_append_byte(i8)
+declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_to_string_string(ptr, ptr)
+declare void @nrt_to_string_bool(ptr, i1)
+declare void @nrt_to_string_i8(ptr, i8)
+declare void @nrt_to_string_i16(ptr, i16)
+declare void @nrt_to_string_i32(ptr, i32)
+declare void @nrt_to_string_i64(ptr, i64)
+declare void @nrt_to_string_u8(ptr, i8)
+declare void @nrt_to_string_u16(ptr, i16)
+declare void @nrt_to_string_u32(ptr, i32)
+declare void @nrt_to_string_u64(ptr, i64)
+declare void @nrt_to_string_isize(ptr, i64)
+declare void @nrt_to_string_usize(ptr, i64)
+declare void @nrt_to_string_f32(ptr, float)
+declare void @nrt_to_string_f64(ptr, double)
 
 declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
@@ -173,10 +173,10 @@ define internal { i64, i8 } @fn.0({ ptr, i64 } %word) {
   %t31 = alloca { ptr, i64 }
   store { ptr, i64 } %word, ptr %t0
   store { ptr, i64 } { ptr @.str.m0.0, i64 5 }, ptr %t1
-  %t2 = call i1 @string_eq(ptr %t0, ptr %t1)
+  %t2 = call i1 @nrt_string_eq(ptr %t0, ptr %t1)
   store { ptr, i64 } %word, ptr %t3
   store { ptr, i64 } { ptr @.str.m0.1, i64 1 }, ptr %t4
-  %t5 = call i1 @string_eq(ptr %t3, ptr %t4)
+  %t5 = call i1 @nrt_string_eq(ptr %t3, ptr %t4)
   %t6 = or i1 %t2, %t5
   br i1 %t6, label %on.body.1, label %on.next.2
 on.body.1:
@@ -188,10 +188,10 @@ on.value.3:
 on.next.2:
   store { ptr, i64 } %word, ptr %t9
   store { ptr, i64 } { ptr @.str.m0.2, i64 4 }, ptr %t10
-  %t11 = call i1 @string_eq(ptr %t9, ptr %t10)
+  %t11 = call i1 @nrt_string_eq(ptr %t9, ptr %t10)
   store { ptr, i64 } %word, ptr %t12
   store { ptr, i64 } { ptr @.str.m0.3, i64 1 }, ptr %t13
-  %t14 = call i1 @string_eq(ptr %t12, ptr %t13)
+  %t14 = call i1 @nrt_string_eq(ptr %t12, ptr %t13)
   %t15 = or i1 %t11, %t14
   br i1 %t15, label %on.body.4, label %on.next.5
 on.body.4:
@@ -203,10 +203,10 @@ on.value.6:
 on.next.5:
   store { ptr, i64 } %word, ptr %t18
   store { ptr, i64 } { ptr @.str.m0.4, i64 5 }, ptr %t19
-  %t20 = call i1 @string_eq(ptr %t18, ptr %t19)
+  %t20 = call i1 @nrt_string_eq(ptr %t18, ptr %t19)
   store { ptr, i64 } %word, ptr %t21
   store { ptr, i64 } { ptr @.str.m0.5, i64 1 }, ptr %t22
-  %t23 = call i1 @string_eq(ptr %t21, ptr %t22)
+  %t23 = call i1 @nrt_string_eq(ptr %t21, ptr %t22)
   %t24 = or i1 %t20, %t23
   br i1 %t24, label %on.body.7, label %on.next.8
 on.body.7:
@@ -218,10 +218,10 @@ on.value.9:
 on.next.8:
   store { ptr, i64 } %word, ptr %t27
   store { ptr, i64 } { ptr @.str.m0.6, i64 4 }, ptr %t28
-  %t29 = call i1 @string_eq(ptr %t27, ptr %t28)
+  %t29 = call i1 @nrt_string_eq(ptr %t27, ptr %t28)
   store { ptr, i64 } %word, ptr %t30
   store { ptr, i64 } { ptr @.str.m0.7, i64 1 }, ptr %t31
-  %t32 = call i1 @string_eq(ptr %t30, ptr %t31)
+  %t32 = call i1 @nrt_string_eq(ptr %t30, ptr %t31)
   %t33 = or i1 %t29, %t32
   br i1 %t33, label %on.body.10, label %on.next.11
 on.body.10:
@@ -333,6 +333,6 @@ define internal i32 @fn.3() {
 @$direction_from_word = internal alias { i64, i8 } ({ ptr, i64 }), ptr @fn.0
 @$default_direction = internal alias { i64, i8 } (), ptr @fn.1
 @$direction_name = internal alias { ptr, i64 } ({ i64, i8 }), ptr @fn.2
-@$main = alias i32 (), ptr @fn.3
+@$main = hidden alias i32 (), ptr @fn.3
 
 declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

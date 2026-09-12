@@ -2919,6 +2919,10 @@ internal bool lsp_code_action_append_trait_member_stub(Arena*             arena,
         if (signature->param_count > 0) {
             sb_append_cstr(sb, ", ");
         }
+        if (signature->named_varargs) {
+            sb_append_string(sb, lex_symbol(lexer, signature->varargs_symbol));
+            sb_append_cstr(sb, ": ");
+        }
         sb_append_cstr(sb, "...");
     }
     sb_append_char(sb, ')');

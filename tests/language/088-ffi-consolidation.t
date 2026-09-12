@@ -94,4 +94,4 @@ define internal void @fn.5() {
   ret void
 }
 
-@$main = alias void (), ptr @fn.5
+@$main = hidden alias void (), ptr @fn.5

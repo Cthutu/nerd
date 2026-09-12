@@ -67,4 +67,4 @@ define internal i32 @fn.2() {
 
 @$with_else = internal alias i32 (i32), ptr @fn.0
 @$labelled_value = internal alias i32 (), ptr @fn.1
-@$main = alias i32 (), ptr @fn.2
+@$main = hidden alias i32 (), ptr @fn.2

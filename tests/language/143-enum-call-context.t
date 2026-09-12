@@ -86,6 +86,6 @@ define internal i32 @fn.1() {
 }
 
 @$score = internal alias i32 ({ i64, i8 }), ptr @fn.0
-@$main = alias i32 (), ptr @fn.1
+@$main = hidden alias i32 (), ptr @fn.1
 
 declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

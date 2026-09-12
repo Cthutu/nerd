@@ -45,6 +45,7 @@ typedef enum : u8 {
     STK_Isize,
     STK_Usize,
     STK_Arena,
+    STK_VaList,
     STK_Function,
     STK_Module,
     STK_Tuple,
@@ -81,6 +82,7 @@ typedef enum : u16 {
     STF_Optional        = 1 << 3,
     STF_Result          = 1 << 4,
     STF_PlexEmbedded    = 1 << 5,
+    STF_FunctionCVaList = 1 << 6,
 } SemaTypeFlag;
 
 typedef struct {
@@ -121,7 +123,8 @@ typedef enum : u8 {
 typedef struct {
     SemaLocalKind kind;
     bool          implicit;
-    u16           _pad1;
+    bool          is_variadic;
+    u8            _pad1;
     u32           symbol_handle;
     u32           owner_decl_index;
     u32           scope_index;

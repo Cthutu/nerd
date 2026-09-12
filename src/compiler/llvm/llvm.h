@@ -14,7 +14,8 @@ string llvm_render_hir(const Hir*   hir,
                        const Lexer* lexer,
                        const Sema*  sema,
                        Arena*       arena,
-                       bool         emit_debug);
+                       bool         emit_debug,
+                       bool         export_c_symbols);
 bool   llvm_save_hir(const Hir*   hir,
                      const Lexer* lexer,
                      const Sema*  sema,

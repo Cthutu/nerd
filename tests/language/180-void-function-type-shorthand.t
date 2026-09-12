@@ -44,4 +44,4 @@ define internal void @fn.1() {
 }
 
 @$sink = internal alias void (i32), ptr @fn.0
-@$main = alias void (), ptr @fn.1
+@$main = hidden alias void (), ptr @fn.1

@@ -89,4 +89,4 @@ define internal i32 @fn.1() {
 }
 
 @$describe_choice = internal alias i32 ({ i64, i64 }), ptr @fn.0
-@$main = alias i32 (), ptr @fn.1
+@$main = hidden alias i32 (), ptr @fn.1

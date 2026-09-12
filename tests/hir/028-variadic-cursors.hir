@@ -1,0 +1,8 @@
+first :: fn (_fixed: i32, args: ...) -> i32 {
+    return args.next[i32]()
+}
+main :: fn () { _value := first(0, 42) }
+¬
+func fn.0(_fixed: i32, args: ...) -> i32 {
+  return i32 va.next VaList local.1(args)
+}

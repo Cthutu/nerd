@@ -30,7 +30,7 @@ on.end.0:
   ret void, !dbg !16
 }
 
-@$main = alias void (), ptr @fn.0
+@$main = hidden alias void (), ptr @fn.0
 
 declare void @llvm.dbg.declare(metadata, metadata, metadata)
 

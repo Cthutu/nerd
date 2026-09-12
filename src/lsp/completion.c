@@ -950,6 +950,8 @@ internal bool lsp_completion_builtin_type_kind_by_name(string        name,
         *out_kind = STK_Isize;
     } else if (string_eq(name, s("usize"))) {
         *out_kind = STK_Usize;
+    } else if (string_eq(name, s("VaList"))) {
+        *out_kind = STK_VaList;
     } else if (string_eq(name, s("arena"))) {
         *out_kind = STK_Arena;
     } else {
@@ -1195,7 +1197,11 @@ internal void lsp_completion_add_members(Arena*             arena,
     }
 
     const Lexer* lexer = &doc->front_end.lexer;
-    if (type->kind == STK_String) {
+    if (type->kind == STK_VaList) {
+        lsp_completion_add(arena, items, s("next"), 2);
+        lsp_completion_add(arena, items, s("copy"), 2);
+        lsp_completion_add(arena, items, s("format"), 2);
+    } else if (type->kind == STK_String) {
         lsp_completion_add_string_members(arena, items);
     } else if (type->kind == STK_Slice) {
         lsp_completion_add_slice_members(arena, items);

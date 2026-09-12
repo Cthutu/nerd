@@ -456,7 +456,14 @@ internal bool lsp_signature_decl_label(const LspTypeFactView* view,
         if (signature->param_count > 0) {
             sb_append_cstr(&sb, ", ");
         }
+        usize param_start = sb.size;
+        if (signature->named_varargs) {
+            sb_append_string(
+                &sb, lex_symbol(view->lexer, signature->varargs_symbol));
+            sb_append_cstr(&sb, ": ");
+        }
         sb_append_cstr(&sb, "...");
+        lsp_signature_add_param_range(arena, params, param_start, sb.size);
     }
     sb_append_cstr(&sb, ")");
     if (signature->return_type_node_index != U32_MAX) {

@@ -90,26 +90,26 @@ inst func fn.4(self: ^plex { [..]i32 data }) -> i32 {
 @.str.m0.0 = private unnamed_addr constant [2 x i8] c" \00"
 @.str.m0.1 = private unnamed_addr constant [2 x i8] c" \00"
 
-declare i1 @string_eq(ptr, ptr)
-declare void @string_builder_reset()
-declare i64 @string_builder_mark()
-declare void @string_builder_append_string(ptr)
-declare void @string_builder_append_byte(i8)
-declare void @string_builder_finish(ptr, i64)
-declare void @to_string$string(ptr, ptr)
-declare void @to_string$bool(ptr, i1)
-declare void @to_string$i8(ptr, i8)
-declare void @to_string$i16(ptr, i16)
-declare void @to_string$i32(ptr, i32)
-declare void @to_string$i64(ptr, i64)
-declare void @to_string$u8(ptr, i8)
-declare void @to_string$u16(ptr, i16)
-declare void @to_string$u32(ptr, i32)
-declare void @to_string$u64(ptr, i64)
-declare void @to_string$isize(ptr, i64)
-declare void @to_string$usize(ptr, i64)
-declare void @to_string$f32(ptr, float)
-declare void @to_string$f64(ptr, double)
+declare i1 @nrt_string_eq(ptr, ptr)
+declare void @nrt_string_builder_reset()
+declare i64 @nrt_string_builder_mark()
+declare void @nrt_string_builder_append_string(ptr)
+declare void @nrt_string_builder_append_byte(i8)
+declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_to_string_string(ptr, ptr)
+declare void @nrt_to_string_bool(ptr, i1)
+declare void @nrt_to_string_i8(ptr, i8)
+declare void @nrt_to_string_i16(ptr, i16)
+declare void @nrt_to_string_i32(ptr, i32)
+declare void @nrt_to_string_i64(ptr, i64)
+declare void @nrt_to_string_u8(ptr, i8)
+declare void @nrt_to_string_u16(ptr, i16)
+declare void @nrt_to_string_u32(ptr, i32)
+declare void @nrt_to_string_u64(ptr, i64)
+declare void @nrt_to_string_isize(ptr, i64)
+declare void @nrt_to_string_usize(ptr, i64)
+declare void @nrt_to_string_f32(ptr, float)
+declare void @nrt_to_string_f64(ptr, double)
 declare ptr @nrt_mem_alloc(i64, i64, ptr, i32)
 declare ptr @nrt_mem_realloc(ptr, i64, i64, ptr, i32)
 declare void @nrt_mem_free(ptr)
@@ -144,30 +144,30 @@ define internal void @fn.2() {
   %t1 = call i32 @fn.1({ i32 } %t0)
   call void @fn.3(ptr %local.4, i32 %t1)
   call void @fn.3(ptr %local.4, i32 30)
-  %t2 = call i64 @string_builder_mark()
+  %t2 = call i64 @nrt_string_builder_mark()
   %t3 = call i32 @fn.4(ptr %local.4)
   %t4 = alloca { ptr, i64 }
-  call void @to_string$i32(ptr %t4, i32 %t3)
-  call void @string_builder_append_string(ptr %t4)
+  call void @nrt_to_string_i32(ptr %t4, i32 %t3)
+  call void @nrt_string_builder_append_string(ptr %t4)
   %t5 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.0, i64 1 }, ptr %t6
-  call void @to_string$string(ptr %t5, ptr %t6)
-  call void @string_builder_append_string(ptr %t5)
+  call void @nrt_to_string_string(ptr %t5, ptr %t6)
+  call void @nrt_string_builder_append_string(ptr %t5)
   %t7 = call i32 @fn.4(ptr %local.4)
   %t8 = alloca { ptr, i64 }
-  call void @to_string$i32(ptr %t8, i32 %t7)
-  call void @string_builder_append_string(ptr %t8)
+  call void @nrt_to_string_i32(ptr %t8, i32 %t7)
+  call void @nrt_string_builder_append_string(ptr %t8)
   %t9 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.1, i64 1 }, ptr %t10
-  call void @to_string$string(ptr %t9, ptr %t10)
-  call void @string_builder_append_string(ptr %t9)
+  call void @nrt_to_string_string(ptr %t9, ptr %t10)
+  call void @nrt_string_builder_append_string(ptr %t9)
   %t11 = load { i32 }, ptr %local.3
   %t12 = call i32 @fn.1({ i32 } %t11)
   %t13 = alloca { ptr, i64 }
-  call void @to_string$i32(ptr %t13, i32 %t12)
-  call void @string_builder_append_string(ptr %t13)
+  call void @nrt_to_string_i32(ptr %t13, i32 %t12)
+  call void @nrt_string_builder_append_string(ptr %t13)
   %t14 = alloca { ptr, i64 }
-  call void @string_builder_finish(ptr %t14, i64 %t2)
+  call void @nrt_string_builder_finish(ptr %t14, i64 %t2)
   %t15 = load { ptr, i64 }, ptr %t14
   call void @$prn({ ptr, i64 } %t15)
   ret void
@@ -242,4 +242,4 @@ define internal i32 @fn.4(ptr %self) {
 
 @$__impl_Counter_inc = internal alias void (ptr, i32), ptr @fn.0
 @$__impl_Counter_get = internal alias i32 ({ i32 }), ptr @fn.1
-@$main = alias void (), ptr @fn.2
+@$main = hidden alias void (), ptr @fn.2

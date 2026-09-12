@@ -631,6 +631,20 @@ internal void hir_render_expr(StringBuilder* sb,
         }
         sb_append_char(sb, ')');
         break;
+    case HIR_EXPR_VaNext:
+    case HIR_EXPR_VaCopy:
+    case HIR_EXPR_VaFormat:
+        sb_append_cstr(sb,
+                       expr->kind == HIR_EXPR_VaNext   ? "va.next "
+                       : expr->kind == HIR_EXPR_VaCopy ? "va.copy "
+                                                       : "va.format ");
+        hir_render_expr(sb, hir, lexer, sema, arena, expr->operand_expr_index);
+        if (expr->kind == HIR_EXPR_VaFormat) {
+            sb_append_cstr(sb, ", ");
+            hir_render_expr(
+                sb, hir, lexer, sema, arena, expr->extra_expr_index);
+        }
+        break;
     case HIR_EXPR_Call:
         sb_append_cstr(sb, "call ");
         hir_render_call_callee(
@@ -1167,6 +1181,17 @@ hir_render(const Hir* hir, const Lexer* lexer, const Sema* sema, Arena* arena)
                 sb_append_cstr(&sb, "");
             }
             hir_append_type_name(&sb, lexer, sema, param->type_index);
+        }
+        if (function->varargs_local_index < array_count(sema->locals)) {
+            if (function->param_count > 0) {
+                sb_append_cstr(&sb, ", ");
+            }
+            sb_append_string(
+                &sb,
+                lex_symbol(
+                    lexer,
+                    sema->locals[function->varargs_local_index].symbol_handle));
+            sb_append_cstr(&sb, ": ...");
         }
         sb_append_cstr(&sb, ") -> ");
         hir_append_function_return_type_name(&sb, function, lexer, sema);

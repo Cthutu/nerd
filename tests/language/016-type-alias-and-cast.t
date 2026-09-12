@@ -29,4 +29,4 @@ define internal i8 @fn.0() {
   ret i8 %t0
 }
 
-@$main = alias i8 (), ptr @fn.0
+@$main = hidden alias i8 (), ptr @fn.0

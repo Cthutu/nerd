@@ -48,4 +48,4 @@ define internal i32 @fn.1() {
 }
 
 @$accept_void = internal alias i32 (ptr), ptr @fn.0
-@$main = alias i32 (), ptr @fn.1
+@$main = hidden alias i32 (), ptr @fn.1

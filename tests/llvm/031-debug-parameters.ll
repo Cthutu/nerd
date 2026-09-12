@@ -33,7 +33,7 @@ define internal i32 @fn.1() !dbg !15 {
 }
 
 @$add = internal alias i32 (i32, i32), ptr @fn.0
-@$main = alias i32 (), ptr @fn.1
+@$main = hidden alias i32 (), ptr @fn.1
 
 declare void @llvm.dbg.declare(metadata, metadata, metadata)
 declare void @llvm.dbg.value(metadata, metadata, metadata)

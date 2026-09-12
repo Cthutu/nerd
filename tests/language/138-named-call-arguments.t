@@ -105,6 +105,6 @@ define internal i32 @fn.4() {
 @$__impl_Counter_add = internal alias void (ptr, i32), ptr @fn.1
 @$__impl_Counter_get = internal alias i32 ({ i32 }), ptr @fn.2
 @$add = internal alias i32 (i32, i32, i32), ptr @fn.3
-@$main = alias i32 (), ptr @fn.4
+@$main = hidden alias i32 (), ptr @fn.4
 
 declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

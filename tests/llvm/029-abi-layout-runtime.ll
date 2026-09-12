@@ -61,26 +61,26 @@ main :: fn() -> i32 {
 @.str.m0.7 = private unnamed_addr constant [5 x i8] c"same\00"
 @.slice.const.m0.41 = private unnamed_addr constant [4 x i8] [i8 97, i8 98, i8 99, i8 100]
 
-declare i1 @string_eq(ptr, ptr)
-declare void @string_builder_reset()
-declare i64 @string_builder_mark()
-declare void @string_builder_append_string(ptr)
-declare void @string_builder_append_byte(i8)
-declare void @string_builder_finish(ptr, i64)
-declare void @to_string$string(ptr, ptr)
-declare void @to_string$bool(ptr, i1)
-declare void @to_string$i8(ptr, i8)
-declare void @to_string$i16(ptr, i16)
-declare void @to_string$i32(ptr, i32)
-declare void @to_string$i64(ptr, i64)
-declare void @to_string$u8(ptr, i8)
-declare void @to_string$u16(ptr, i16)
-declare void @to_string$u32(ptr, i32)
-declare void @to_string$u64(ptr, i64)
-declare void @to_string$isize(ptr, i64)
-declare void @to_string$usize(ptr, i64)
-declare void @to_string$f32(ptr, float)
-declare void @to_string$f64(ptr, double)
+declare i1 @nrt_string_eq(ptr, ptr)
+declare void @nrt_string_builder_reset()
+declare i64 @nrt_string_builder_mark()
+declare void @nrt_string_builder_append_string(ptr)
+declare void @nrt_string_builder_append_byte(i8)
+declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_to_string_string(ptr, ptr)
+declare void @nrt_to_string_bool(ptr, i1)
+declare void @nrt_to_string_i8(ptr, i8)
+declare void @nrt_to_string_i16(ptr, i16)
+declare void @nrt_to_string_i32(ptr, i32)
+declare void @nrt_to_string_i64(ptr, i64)
+declare void @nrt_to_string_u8(ptr, i8)
+declare void @nrt_to_string_u16(ptr, i16)
+declare void @nrt_to_string_u32(ptr, i32)
+declare void @nrt_to_string_u64(ptr, i64)
+declare void @nrt_to_string_isize(ptr, i64)
+declare void @nrt_to_string_usize(ptr, i64)
+declare void @nrt_to_string_f32(ptr, float)
+declare void @nrt_to_string_f64(ptr, double)
 declare ptr @nrt_mem_alloc(i64, i64, ptr, i32)
 declare ptr @nrt_mem_realloc(ptr, i64, i64, ptr, i32)
 declare void @nrt_mem_free(ptr)
@@ -284,29 +284,29 @@ define internal i32 @fn.5() {
   %t16 = insertvalue { ptr, i64 } poison, ptr %t15, 0
   %t17 = insertvalue { ptr, i64 } %t16, i64 16, 1
   %t18 = extractvalue { ptr, i64 } %t17, 1
-  %t19 = call i32 @snprintf(ptr %t14, i64 %t18, ptr @.str.m0.3, i32 7)
-  %t20 = call i64 @string_builder_mark()
+  %t19 = call i32 (ptr, i64, ptr, ...) @snprintf(ptr %t14, i64 %t18, ptr @.str.m0.3, i32 7)
+  %t20 = call i64 @nrt_string_builder_mark()
   %t21 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.4, i64 4 }, ptr %t22
-  call void @to_string$string(ptr %t21, ptr %t22)
-  call void @string_builder_append_string(ptr %t21)
+  call void @nrt_to_string_string(ptr %t21, ptr %t22)
+  call void @nrt_string_builder_append_string(ptr %t21)
   %t23 = alloca { ptr, i64 }
-  call void @to_string$usize(ptr %t23, i64 %t10)
-  call void @string_builder_append_string(ptr %t23)
+  call void @nrt_to_string_usize(ptr %t23, i64 %t10)
+  call void @nrt_string_builder_append_string(ptr %t23)
   %t24 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.5, i64 1 }, ptr %t25
-  call void @to_string$string(ptr %t24, ptr %t25)
-  call void @string_builder_append_string(ptr %t24)
+  call void @nrt_to_string_string(ptr %t24, ptr %t25)
+  call void @nrt_string_builder_append_string(ptr %t24)
   %t26 = alloca { ptr, i64 }
-  call void @to_string$i32(ptr %t26, i32 %t19)
-  call void @string_builder_append_string(ptr %t26)
+  call void @nrt_to_string_i32(ptr %t26, i32 %t19)
+  call void @nrt_string_builder_append_string(ptr %t26)
   %t27 = alloca { ptr, i64 }
-  call void @string_builder_finish(ptr %t27, i64 %t20)
+  call void @nrt_string_builder_finish(ptr %t27, i64 %t20)
   %t28 = load { ptr, i64 }, ptr %t27
   call void @fn.2({ ptr, i64 } %t28)
   store { ptr, i64 } { ptr @.str.m0.6, i64 4 }, ptr %t30
   store { ptr, i64 } { ptr @.str.m0.7, i64 4 }, ptr %t31
-  %t29 = call i1 @string_eq(ptr %t30, ptr %t31)
+  %t29 = call i1 @nrt_string_eq(ptr %t30, ptr %t31)
   %t32 = extractvalue { ptr, i64 } %t9, 0
   %t33 = getelementptr inbounds i8, ptr %t32, i32 0
   %t34 = load i8, ptr %t33
@@ -331,6 +331,6 @@ define internal i32 @fn.5() {
 @$consume = internal alias void ({ ptr, i64 }), ptr @fn.2
 @$score = internal alias i32 ({ i64, i128 }), ptr @fn.3
 @$use_dyn = internal alias i32 (), ptr @fn.4
-@$main = alias i32 (), ptr @fn.5
+@$main = hidden alias i32 (), ptr @fn.5
 
 declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

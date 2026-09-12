@@ -259,6 +259,9 @@ typedef struct {
     u32  first_constraint;
     u32  constraint_count;
     bool is_varargs;
+    bool named_varargs;
+    u32  varargs_symbol;
+    u32  varargs_token;
 } AstFnSignature;
 
 typedef struct {

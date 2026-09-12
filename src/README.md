@@ -18,7 +18,7 @@ Read the project and documentation indexes first:
 - `compiler/hir/hir.h`, `compiler/hir/gen.c`, `compiler/hir/render.c`
   HIR data model, lowering from semantic products, and stable textual HIR.
 - `compiler/llvm/llvm.c`
-  HIR to LLVM lowering. Nerd-visible bindings keep `$` names as LLVM aliases;
+  HIR to LLVM lowering. Public C functions use plain export names. Nerd linkage aliases and
   generated implementation names are compiler internals.
 - `compiler/build/back/back.c` and `compiler/build/back/llvm_text.c`
   Backend orchestration, runtime glue, combined LLVM input generation, and
