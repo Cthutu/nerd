@@ -151,12 +151,14 @@ fn [T, U] (a: T, b: U) -> T { ... }
 fn (a: Type, b: Type = expr) -> ReturnType { ... }
 fn (a: Type) => expr
 fn [T] (a: T) => expr
-fn (Type, Type) -> ReturnType
-fn (Type, Type)
+fn (arg1: Type, arg2: Type) -> ReturnType
+fn (arg1: Type, arg2: Type)
 ```
 
-Trait member requirements use function type syntax, so their parameter list
-contains types rather than named parameters.
+All fixed parameters in function types and trait requirements must use
+`name: Type`, just like function definitions. Parameter names do not affect
+function type compatibility. The C variadic `...` marker is not a fixed
+parameter and remains unnamed in imported signatures and callback types.
 
 ## Control Flow
 
@@ -224,8 +226,8 @@ f32 f64
 [..]T
 [N..]T
 (T1, T2)
-fn (T1, T2) -> R
-fn (T1, T2)
+fn (arg1: T1, arg2: T2) -> R
+fn (arg1: T1, arg2: T2)
 plex { field Type }
 plex [T] { field T }
 plex #c { field Type }
@@ -304,7 +306,7 @@ pattern as name on condition
 
 ```nerd
 pub name :: fn (fixed: Type, args: ...) -> ReturnType { ... }
-fn (Type, ...) -> ReturnType
+fn (arg1: Type, ...) -> ReturnType
 args.next[i32]()
 args.next[f64]()
 args.next[^i8]()

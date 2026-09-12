@@ -31,8 +31,8 @@ prefix_count :: fn (prefix: string, value: string = "x") -> i32 {
 }
 
 main :: fn () -> i32 {
-    concrete: fn(i32) -> i32 = convert
-    _address: ^fn(i32) -> i32 = ^convert
+    concrete: fn(arg1: i32) -> i32 = convert
+    _address: ^fn(arg1: i32) -> i32 = ^convert
     return convert(4) + convert("abc") + concrete(5) + with_default(8) +
            with_default("ab") + imported.convert(1) +
            imported.convert("ab") - 57

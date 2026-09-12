@@ -1,7 +1,7 @@
 ffi "c" strlen (^i8) -> usize
 ¬
 {
-    "message": "Expected Symbol but found Caret `^`",
+    "message": "Expected declaration or expression but found Caret `^`",
     "source_file": "tests/errors/104-ffi-parameter-names.e",
     "primary_location": {
         "line": 1,
@@ -16,10 +16,8 @@ ffi "c" strlen (^i8) -> usize
             "message": "Found Caret `^` here"
         }
     ],
-    "notes": [
-        "FFI parameters require a name before their type."
-    ],
+    "notes": [],
     "help": [
-        "Write the parameter as `name: Type`."
+        "Function parameters require names; write `name: Type`."
     ]
 }

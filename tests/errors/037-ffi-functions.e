@@ -83,7 +83,7 @@ bad :: fn (...) -> i32
 main :: fn() {}
 ¬
 {
-    "message": "Expected Symbol but found Ellipsis `...`",
+    "message": "Expected declaration or expression but found Ellipsis `...`",
     "source_file": "tests/errors/037-ffi-functions.e",
     "primary_location": {
         "line": 1,
@@ -100,7 +100,7 @@ main :: fn() {}
     ],
     "notes": [],
     "help": [
-        "Check for a missing closing delimiter or misplaced operator"
+        "Function parameters require names; write `name: Type`."
     ]
 }
 ¬

@@ -1,4 +1,4 @@
-MeasureFn :: fn (i32) -> i32
+MeasureFn :: fn (arg1: i32) -> i32
 
 double :: fn (value: i32) -> i32 {
     return value * 2

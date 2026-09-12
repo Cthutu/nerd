@@ -874,16 +874,17 @@ bool ast_parse_fn_signature(AstParseState* state,
                 is_varargs = true;
                 break;
             }
+            // Every fixed parameter, including callback types, has a name.
+            if (state->token.kind != TK_Symbol ||
+                ast_peek_kind_at(state, 0) != TK_Colon) {
+                array_free(params);
+                return error_0205_expected_declaration_or_expression(
+                    state->lexer->source,
+                    ast_token_span(state, &state->token),
+                    state->token.kind,
+                    "Function parameters require names; write `name: Type`.");
+            }
             if (allow_named_params) {
-                if (state->token.kind != TK_Symbol) {
-                    array_free(params);
-                    return error_0203_expected_token(
-                        state->lexer->source,
-                        ast_token_span(state, &state->token),
-                        TK_Symbol,
-                        state->token.kind);
-                }
-
                 AstToken param_token = state->token;
                 if (!ast_expect_token(state, TK_Colon) ||
                     !ast_next_token(state)) {
@@ -1138,15 +1139,14 @@ internal bool ast_parse_ffi_signature(AstParseState* state,
                 break;
             }
 
-            if (state->token.kind != TK_Symbol) {
+            if (state->token.kind != TK_Symbol ||
+                ast_peek_kind_at(state, 0) != TK_Colon) {
                 array_free(params);
-                return error_0203_expected_token_ex(
+                return error_0205_expected_declaration_or_expression(
                     state->lexer->source,
                     ast_token_span(state, &state->token),
-                    TK_Symbol,
                     state->token.kind,
-                    "FFI parameters require a name before their type.",
-                    "Write the parameter as `name: Type`.");
+                    "Function parameters require names; write `name: Type`.");
             }
 
             AstToken param_token = state->token;
@@ -2163,19 +2163,6 @@ internal bool ast_parse_trait(AstParseState* state, u32* out_node)
                 ast_token_span(state, &state->token),
                 TK_fn,
                 state->token.kind);
-        }
-        const AstFnSignature* signature =
-            &state->fn_signatures[state->nodes[value_node].a];
-        for (u32 i = 0; i < signature->param_count; ++i) {
-            const AstParam* param = &state->params[signature->first_param + i];
-            if (param->symbol_handle == U32_MAX) {
-                return error_0205_expected_declaration_or_expression(
-                    state->lexer->source,
-                    ast_span_for_token_index(state, param->token_index),
-                    state->lexer->tokens[param->token_index].kind,
-                    "Trait method parameters require names; write `name: "
-                    "Type`.");
-            }
         }
         if (!ast_emit_node(state,
                            (AstNode){
@@ -5542,8 +5529,15 @@ internal bool ast_fn_after_single_colon_looks_like_value(AstParseState* state,
                 return false;
             }
         } else if (kind == TK_Colon && depth == 1) {
+            // Named parameters are also required in function types. Only a
+            // following body distinguishes a misplaced function definition.
+            u32 after_type = state->token.token_index;
+            if (!ast_skip_type_tokens(state, &after_type)) {
+                return false;
+            }
+            TokenKind next = ast_kind_at_stream_index(state, after_type);
             *out_bad_token = state->token.token_index;
-            return true;
+            return next == TK_LBrace || next == TK_FatArrow;
         } else if (kind == TK_EOF) {
             return false;
         }

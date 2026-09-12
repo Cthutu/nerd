@@ -1,4 +1,4 @@
-pub bad :: fn (_callback: ^fn (string)) {}
+pub bad :: fn (_callback: ^fn (arg1: string)) {}
 ¬
 1
 ¬

@@ -189,7 +189,7 @@ without exporting their implementation names.
 An expected function type can select a compound member:
 
 ```nerd
-write_number: fn(i64) = write
+write_number: fn(arg1: i64) = write
 ```
 
 Without a selecting function type, a compound cannot be stored as a value or
@@ -198,15 +198,15 @@ not generate a runtime dispatcher. Concrete members remain directly callable.
 
 ## Function Types
 
-Function types are written with parameter types and an optional return type:
+Function types are written with named parameters and an optional return type:
 
 ```nerd
-operation: fn (i32, i32) -> i32 = add  -- store a function value
-handler: fn (i32) = log_value           -- no return value
+operation: fn (left: i32, right: i32) -> i32 = add  -- store a function value
+handler: fn (value: i32) = log_value           -- no return value
 ```
 
-Parameter names are allowed in function types for readability, but they are not
-part of the type:
+Parameter names are required in every signature, including callback fields and
+nested function types. They do not affect type compatibility:
 
 ```nerd
 handler: fn (value: i32) = log_value
@@ -216,7 +216,7 @@ A function type describes a function value. This means a function can receive
 another function as an argument:
 
 ```nerd
-apply :: fn (f: fn (i32) -> i32, value: i32) -> i32 {
+apply :: fn (f: fn (value: i32) -> i32, value: i32) -> i32 {
     return f(value)  -- run the function passed as f
 }
 

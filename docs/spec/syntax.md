@@ -538,7 +538,7 @@ enum-variant-list
 
 function-type   ::= 'fn' generic-params? '(' function-type-param-list? ')' [ '->' type ]
 function-type-param
-                ::= [ IDENT ':' ] type
+                ::= IDENT ':' type
 function-type-param-list
                 ::= function-type-param { ',' function-type-param } [ ',' ]
 ```

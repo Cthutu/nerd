@@ -87,12 +87,14 @@ type            ::= type-name
 type-name       ::= IDENT { '.' IDENT } { '[' type-list? ']' }
 type-list       ::= type { ',' type }
 
-function-type   ::= 'fn' generic-params? '(' type-list? ')' [ '->' type ]
+function-type   ::= 'fn' generic-params? '(' named-param-list? ')' [ '->' type ]
 ```
 
-Function types may use unnamed parameter types or named parameter types such as
+Function types require named parameters, such as
 `fn (value: i32)`. Parameter names are documentation only and do not participate
 in type identity. A function type without `-> type` has return type `void`.
+Missing names in callback fields and nested function types produce a diagnostic
+with `name: Type` as help.
 Trait requirements require parameter names, for example
 `show :: fn (self: Self) -> string`. Names document the requirement and do not
 have to match the names in its implementation.
@@ -338,7 +340,7 @@ addressed, or embedded in other storage types. Their original receiving
 invocation owns all copies and releases them after defers on exit.
 
 Function types retain `STF_FunctionVarargs`; the source form is
-`fn (FixedType, ...) -> ReturnType`. x86-64 FFI declarations may use fixed
+`fn (arg1: FixedType, ...) -> ReturnType`. x86-64 FFI declarations may use fixed
 `VaList` parameters; `STF_FunctionCVaList` distinguishes their C parameter
 adjustment from Nerd's borrowed cursor representation. `VaList` is not an FFI
 return type or a value that may be passed in the variadic tail.

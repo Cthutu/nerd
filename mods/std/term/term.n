@@ -303,13 +303,13 @@ pub TermTooSmallPolicy :: enum {
 }
 
 -- Callback type accepted by `term_hook_input`.
-pub TermInputFn :: fn (TermInput)
+pub TermInputFn :: fn (input: TermInput)
 
 -- Callback type accepted by `term_hook_simulation`.
-pub TermSimulateFn :: fn (TermSimulate)
+pub TermSimulateFn :: fn (simulation: TermSimulate)
 
 -- Callback type accepted by `term_hook_presentation`.
-pub TermPresentFn :: fn (TermPresent)
+pub TermPresentFn :: fn (presentation: TermPresent)
 
 -- Border style used by `term_fb_box`; `Custom` supplies the border glyphs.
 pub BoxStyle :: enum {

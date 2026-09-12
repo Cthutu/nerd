@@ -25,7 +25,7 @@ main :: fn () {
     _result := failure(0, 42)
     assert first(0, 42) == 42
     assert second(0, 20, 42) == 42
-    cb: fn (i32, ...) -> f64 = sum
+    cb: fn (arg1: i32, ...) -> f64 = sum
     a: i8 = 40
     b: f32 = 2.0
     assert cb(2, a, b) == 42.0

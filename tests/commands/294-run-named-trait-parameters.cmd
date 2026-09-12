@@ -1,6 +1,6 @@
-Callback :: fn (i32) -> i32
+Callback :: fn (arg1: i32) -> i32
 Render :: trait {
-    render :: fn (self: ^Self, callback: fn (i32) -> i32) -> i32
+    render :: fn (self: ^Self, callback: fn (arg1: i32) -> i32) -> i32
 }
 Thing :: plex { value i32 }
 impl Render for Thing {

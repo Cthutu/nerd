@@ -143,7 +143,7 @@ pub sum :: fn (count: i32, args: ...) -> i32 {
 
 A receiving function needs at least one fixed runtime parameter. Generic,
 compile-time, and defaulted parameters are not supported on these definitions.
-The corresponding callback type is `fn (i32, ...) -> i32`. Imported FFI
+The corresponding callback type is `fn (arg1: i32, ...) -> i32`. Imported FFI
 signatures retain the unnamed `...` spelling.
 
 `next[T]()` consumes one argument. C supplies no count or type metadata: a
