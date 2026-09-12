@@ -3,11 +3,13 @@
 From the repository root, run:
 
 ```sh
-just run-example shutdown
+just build-example shutdown
+./_bin/examples/shutdown
 ```
 
 Press Ctrl+C when the example says it is ready. It prints `Shutdown requested.`
-and `Cleanup complete.`, then exits successfully.
+and `Cleanup complete.`, then exits successfully. Running the binary directly
+keeps Ctrl+C from also interrupting the `just` recipe runner.
 
 The example uses `std.signal.watch_shutdown()` to own shutdown notification,
 `wait()` to sleep until a request arrives, and `requested()` to read the sticky
