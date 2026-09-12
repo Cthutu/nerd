@@ -1,0 +1,115 @@
+-- Portable, explicitly owned shutdown notifications for applications.
+
+pub Error :: enum {
+    AlreadyWatching                  -- This process already has an active
+                                     --     shutdown watcher.
+    Closed                           -- The watcher was closed or is an obsolete
+                                     --     copy.
+    WrongThread                      -- Watchers must be used and closed on
+                                     --     their opening thread.
+    Unsupported                      -- No shutdown backend exists for this
+                                     --     platform.
+    System {
+        code u32
+    }  -- Native operation failed; code is
+                                     --     platform-specific.
+}
+
+pub impl Display for Error {
+
+    show :: fn (self: Self) -> string {
+        return on self {
+            AlreadyWatching  => "a shutdown watcher is already active"
+            Closed           => "the shutdown watcher is closed"
+            WrongThread      => "use the shutdown watcher on its opening thread"
+            Unsupported      => "shutdown watching is unsupported on this "
+                +"platform"
+            System { code }  => $"native shutdown operation failed (error {code})"
+        }
+    }
+
+}
+
+-- Opaque ownership token. Do not edit or copy it; use and close it on the
+-- opening thread. A generation check prevents stale copies affecting a reopen.
+pub ShutdownWatcher :: plex {
+    generation u64
+}
+
+active_generation  : u64
+next_generation    : u64
+owner_thread       : u64
+shutdown_requested : bool
+
+-- Starts watching shutdown before worker threads are created. One watcher may
+-- be active in the process. Libraries must leave this policy to their host.
+pub watch_shutdown :: fn () -> ShutdownWatcher\Error {
+    on active_generation != 0 => return Error.AlreadyWatching!
+    native_open()?
+    next_generation += 1
+    on next_generation == 0 => next_generation = 1
+    active_generation  = next_generation
+    owner_thread       = native_thread()
+    shutdown_requested = no
+    return ShutdownWatcher { generation: active_generation }
+}
+
+-- Validates the token before touching platform state.
+validate :: fn (watcher: ShutdownWatcher) -> void\Error {
+    on watcher.generation == 0 ||
+        watcher.generation != active_generation => return Error.Closed!
+    on native_thread() != owner_thread => return Error.WrongThread!
+}
+
+pub impl ShutdownWatcher {
+
+    -- Polls without blocking. A request remains latched until close.
+    requested :: fn (self: Self) -> bool\Error {
+        validate(self)?
+        on !shutdown_requested => shutdown_requested = native_receive(no)?
+        return shutdown_requested
+    }
+
+    -- Waits without polling; returns immediately after a request is latched.
+    wait :: fn (self: Self) -> void\Error {
+        validate(self)?
+        on !shutdown_requested => shutdown_requested = native_receive(yes)?
+    }
+
+    -- Releases native registration and restores prior signal policy. Repeated
+    -- closes are harmless; an obsolete copy cannot close a newer watcher.
+    close :: fn (self: ^Self) -> void\Error {
+        on self.generation == 0 ||
+            self.generation != active_generation => {
+            self.generation = 0
+            return
+        }
+        validate(self^)?
+        native_close()?
+        active_generation = 0
+        self.generation = 0
+    }
+
+}
+
+on !"linux" {
+
+    on !"windows" {
+
+        native_open :: fn () -> void\Error {
+            return Error.Unsupported!
+        }
+
+        native_thread :: fn () => 0.as(u64)
+
+        native_receive :: fn (_block: bool) -> bool\Error {
+            return Error.Unsupported!
+        }
+
+        native_close :: fn () -> void\Error {
+            return Error.Unsupported!
+        }
+
+    }
+
+}

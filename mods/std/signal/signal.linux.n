@@ -1,0 +1,39 @@
+on "linux" {
+
+    use os.linux
+
+    shutdown_mask : KernelSignalSet = (1 << (SIGINT - 1)) | (1 << (SIGTERM - 1))
+                                          | (1 << (SIGHUP - 1))
+    previous_mask : KernelSignalSet
+
+    native_thread :: fn () => sys_gettid().as(u64)
+
+    -- New worker threads inherit this blocked mask. Existing threads must not
+    -- be running when the application opens its shutdown watcher.
+    native_open :: fn () -> void\Error {
+        on sys_rt_sigprocmask(SIG_BLOCK, ^shutdown_mask, ^previous_mask) < 0 => return Error.System { code: last_error().as(u32) }!
+    }
+
+    -- Consume shutdown signals synchronously using the kernel's signal set.
+    native_receive :: fn (block: bool) -> bool\Error {
+        zero    : TimeSpec
+        timeout : ^TimeSpec = on block => nil else ^zero
+
+        for {
+            result := sys_rt_sigtimedwait(^shutdown_mask, timeout)
+            on result >= 0 => return yes
+            code := last_error()
+            on code == EINTR => again
+            on !block && code == EAGAIN => return no
+            return Error.System { code: code.as(u32) }!
+        }
+    }
+
+    -- Consume pending requests before restoring the caller's original mask.
+    native_close :: fn () -> void\Error {
+        for native_receive(no)? {
+        }
+        on sys_rt_sigprocmask(SIG_SETMASK, ^previous_mask, nil) < 0 => return Error.System { code: last_error().as(u32) }!
+    }
+
+}

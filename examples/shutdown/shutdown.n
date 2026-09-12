@@ -1,0 +1,21 @@
+signal :: use std.signal
+
+-- Own the watcher for the application's lifetime; all cleanup is normal code.
+run :: fn () -> void\(signal.Error) {
+    shutdown := signal.watch_shutdown()?
+    defer _ := shutdown.close()
+    defer prn("Cleanup complete.")
+
+    prn("Ready. Press Ctrl+C to shut down.")
+    shutdown.wait()?
+    assert shutdown.requested()?
+    prn("Shutdown requested.")
+}
+
+main :: fn () -> i32 {
+    on run() => return 0
+        else [error] {
+        prn($"Shutdown watcher failed: {error}")
+        return 1
+    }
+}

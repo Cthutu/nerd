@@ -1,0 +1,24 @@
+-- Native Windows console control and address-wait APIs.
+on "windows" {
+
+    pub CTRL_C_EVENT        :: 0
+    pub CTRL_BREAK_EVENT    :: 1
+    pub CTRL_CLOSE_EVENT    :: 2
+    pub CTRL_LOGOFF_EVENT   :: 5
+    pub CTRL_SHUTDOWN_EVENT :: 6
+
+    pub ffi "kernel32" {
+        SetConsoleCtrlHandler (handler : ^fn (event: DWORD) -> BOOL,
+                               add     : BOOL) -> BOOL
+        GetCurrentThreadId    () -> DWORD
+    }
+
+    pub ffi "synchronization" {
+        WaitOnAddress    (address    : ^void,
+                          compare    : ^void,
+                          size       : usize,
+                          timeout_ms : DWORD) -> BOOL
+        WakeByAddressAll (address: ^void)
+    }
+
+}

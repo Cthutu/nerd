@@ -1,0 +1,64 @@
+on "windows" {
+
+    use os.windows
+    use std.atomics
+
+    -- Stable process-lifetime storage lets callbacks finish safely after close.
+    -- Zero is inactive; an even generation is active; its low bit is latched.
+    control_state      : atomic[u64]
+    control_generation : u64
+
+    native_thread :: fn () => GetCurrentThreadId().as(u64)
+
+    -- Native callbacks only latch and wake. Application cleanup stays on the
+    -- owner's thread. Windows bounds cleanup time for console closure events.
+    control_handler :: fn (event: u32) -> i32 {
+        on event != CTRL_C_EVENT &&
+            event != CTRL_BREAK_EVENT &&
+            event != CTRL_CLOSE_EVENT &&
+            event != CTRL_LOGOFF_EVENT &&
+            event != CTRL_SHUTDOWN_EVENT => return 0
+        state := control_state.load()
+        on state == 0 => return 0
+        result := control_state.compare_exchange(state, state | 1)
+        on result {
+            Exchanged        => WakeByAddressAll(^control_state)
+            NotExchanged(_)  => return 1
+        }
+        on event == CTRL_CLOSE_EVENT ||
+            event == CTRL_LOGOFF_EVENT ||
+            event == CTRL_SHUTDOWN_EVENT => {
+            pending := state | 1
+            _       := WaitOnAddress(^control_state, ^pending, u64.size, 4000)
+        }
+        return 1
+    }
+
+    native_open :: fn () -> void\Error {
+        control_generation += 2
+        on control_generation == 0 => control_generation = 2
+        control_state.store(control_generation)
+        on SetConsoleCtrlHandler(^control_handler, 1) == 0 => {
+            code := GetLastError()
+            control_state.store(0)
+            return Error.System { code }!
+        }
+    }
+
+    native_receive :: fn (block: bool) -> bool\Error {
+        state := control_state.load()
+        for (state & 1) == 0 {
+            on !block => return no
+            on WaitOnAddress(^control_state, ^state, u64.size, INFINITE) == 0 => return Error.System { code: GetLastError() }!
+            state = control_state.load()
+        }
+        return yes
+    }
+
+    native_close :: fn () -> void\Error {
+        on SetConsoleCtrlHandler(^control_handler, 0) == 0 => return Error.System { code: GetLastError() }!
+        control_state.store(0)
+        WakeByAddressAll(^control_state)
+    }
+
+}

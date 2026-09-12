@@ -39,6 +39,8 @@ library is organised into three layers:
   Low-level allocation wrappers.
 - `std.process`
   Portable child-process execution and waiting.
+- `std.signal`
+  Owned shutdown notifications with blocking wait and a sticky request flag.
 - `std.text`
   String methods, Unicode scalar operations, and UTF-8 conversion.
 - `std.slice`
@@ -436,3 +438,38 @@ log :: fn (format: string, args: ...) {
     prn(format_c(format, args))
 }
 ```
+
+## Shutdown notifications
+
+`std.signal.watch_shutdown() -> ShutdownWatcher\Error` registers the application
+for shutdown notifications. The watcher provides:
+
+- `requested() -> bool\Error`: polls without blocking; once true, stays true.
+- `wait() -> void\Error`: sleeps until shutdown is requested; subsequent waits
+  return immediately.
+- `close() -> void\Error`: releases registration and restores previous policy.
+  Repeated closes are harmless. Pending requests are consumed before release.
+
+Use `?` to propagate registration and wait failures, and
+`defer _ := shutdown.close()` to release the watcher during normal cleanup.
+[The shutdown example](../examples/shutdown/shutdown.n) is a complete program.
+
+Open the watcher on the main thread **before creating worker threads**. Use all
+watcher operations on that thread; stop and join workers before closing it.
+Do not copy or edit the ownership token, or concurrently call this API. Only one
+watcher is active per process. Libraries should leave registration to the host
+application. `AlreadyWatching`, `Closed`, `WrongThread`, `Unsupported`, and
+`System { code }` report failures; system codes are platform-specific.
+
+Linux blocks SIGINT, SIGTERM, and SIGHUP on the opening thread and synchronously
+consumes them through `os.linux` kernel syscall wrappers. Workers inherit that
+mask. Closing restores the opening thread's previous mask. Signals delivered
+after closure follow the restored policy.
+
+Windows registers a console control handler through `os.windows`. Ctrl+C,
+Ctrl+Break, console closure, logoff, and shutdown request cleanup. The native
+callback only sets atomic state and wakes the owner; application cleanup runs
+in ordinary code. Console closure, logoff, and shutdown remain subject to
+Windows termination deadlines: the handler allows up to four seconds for
+cleanup, and the OS may allow less. Windows service notifications and GUI
+session messages are not part of this API. Other platforms return `Unsupported`.

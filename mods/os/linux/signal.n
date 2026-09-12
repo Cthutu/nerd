@@ -1,0 +1,23 @@
+-- Linux kernel signal ABI; no libc sigset_t or signal handlers are involved.
+on "linux" {
+
+    pub KernelSignalSet :: u64
+    pub SIGINT          :: 2
+    pub SIGTERM         :: 15
+    pub SIGHUP          :: 1
+    pub SIG_BLOCK       :: 0
+    pub SIG_SETMASK     :: 2
+    pub EAGAIN          :: 11
+
+    -- Gets the calling kernel thread ID, used to enforce mask ownership.
+    pub sys_gettid :: fn () => syscall(SYS_GETTID, 0, 0, 0, 0, 0, 0).as(i32)
+
+    -- Changes the calling thread's mask; nil set queries the existing mask.
+    pub sys_rt_sigprocmask :: fn (how      : i32,
+                                  set      : ^KernelSignalSet,
+                                  previous : ^KernelSignalSet) => syscall(SYS_RT_SIGPROCMASK, how.as(u64), set.as(usize).as(u64), previous.as(usize).as(u64), KernelSignalSet.size.as(u64), 0, 0).as(i32)
+
+    -- Waits for a blocked signal; nil timeout waits indefinitely, zero polls.
+    pub sys_rt_sigtimedwait :: fn (set: ^KernelSignalSet, timeout: ^TimeSpec) => syscall(SYS_RT_SIGTIMEDWAIT, set.as(usize).as(u64), 0, timeout.as(usize).as(u64), KernelSignalSet.size.as(u64), 0, 0).as(i32)
+
+}
