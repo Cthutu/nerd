@@ -961,6 +961,13 @@ bool ast_parse_fn_signature(AstParseState* state,
                     }
                     type_token = state->token;
                 }
+                if (state->token.kind == TK_Ellipsis) {
+                    is_varargs     = true;
+                    named_varargs  = true;
+                    varargs_symbol = symbol_handle;
+                    varargs_token  = type_token.token_index;
+                    break;
+                }
                 u32 type_node = 0;
                 if (!ast_parse_type(state, &type_node)) {
                     array_free(params);

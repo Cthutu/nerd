@@ -605,7 +605,7 @@ members; formatter output places one member on each line.
 
 ```bnf
 variadic-function ::= 'fn' '(' named-param { ',' named-param } ',' IDENT ':' '...' ')' [ '->' type ] function-body
-variadic-function-type ::= 'fn' '(' function-type-param { ',' function-type-param } ',' '...' ')' [ '->' type ]
+variadic-function-type ::= 'fn' '(' function-type-param { ',' function-type-param } ',' [ IDENT ':' ] '...' ')' [ '->' type ]
 ```
 
 The final named marker binds a `VaList`; it is not a fixed parameter. Receiving

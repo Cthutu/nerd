@@ -642,5 +642,16 @@ test "string NUL conversion boundaries" {
 }
 
 -- Formats C printf arguments into the temporary arena without advancing args.
--- The format must match the caller's promoted C argument types.
-pub format_c :: fn (format: ^i8, args: VaList) => args.format(format)
+-- Accepts a Nerd string or a null-terminated C string. The format must match
+-- the caller's promoted C argument types. Results live until the arena resets
+-- or is restored; a C formatting failure returns an empty string.
+pub format_c :: fn {
+    format_c_string
+    format_c_pointer
+}
+
+-- Copies the format to terminated temporary storage before calling C.
+format_c_string :: fn (format: string, args: VaList) => args.format(format.c_string())
+
+-- Uses an existing terminated format without an additional copy.
+format_c_pointer :: fn (format: ^i8, args: VaList) => args.format(format)

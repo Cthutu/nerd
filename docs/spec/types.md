@@ -340,7 +340,8 @@ addressed, or embedded in other storage types. Their original receiving
 invocation owns all copies and releases them after defers on exit.
 
 Function types retain `STF_FunctionVarargs`; the source form is
-`fn (arg1: FixedType, ...) -> ReturnType`. x86-64 FFI declarations may use fixed
+`fn (fixed: FixedType, args: ...) -> ReturnType` (a bare final `...` is
+also accepted). The cursor name does not affect type identity. x86-64 FFI declarations may use fixed
 `VaList` parameters; `STF_FunctionCVaList` distinguishes their C parameter
 adjustment from Nerd's borrowed cursor representation. `VaList` is not an FFI
 return type or a value that may be passed in the variadic tail.

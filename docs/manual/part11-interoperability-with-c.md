@@ -143,7 +143,7 @@ pub sum :: fn (count: i32, args: ...) -> i32 {
 
 A receiving function needs at least one fixed runtime parameter. Generic,
 compile-time, and defaulted parameters are not supported on these definitions.
-The corresponding callback type is `fn (arg1: i32, ...) -> i32`. Imported FFI
+The corresponding callback type is `fn (count: i32, args: ...) -> i32`. Imported FFI
 signatures retain the unnamed `...` spelling.
 
 `next[T]()` consumes one argument. C supplies no count or type metadata: a
@@ -165,10 +165,13 @@ receiving invocation and are released together when that function returns,
 after user `defer` statements. Copies created repeatedly in a loop remain
 allocated until that return.
 
-For a printf-style logger, `std.text.format_c(format, args)` returns a string
-in the temporary arena without advancing `args`. It uses separate C argument
-list copies for sizing and rendering; a C formatting failure returns an empty
-string. `args.format(format)` is the underlying cursor operation.
+For a printf-style logger, `std.text.format_c(format, args)` accepts a Nerd
+`string` or a null-terminated C string (`^i8`) and returns a string in the
+temporary arena without advancing `args`. The Nerd-string form copies the
+format into terminated temporary storage, so slices need no trailing NUL.
+It uses separate C argument list copies for sizing and rendering; a C formatting
+failure returns an empty string. The result lives until the temporary arena is
+reset or restored. `args.format(format)` is the underlying C-pointer operation.
 
 On x86-64 hosts, a fixed `VaList` parameter in an FFI declaration means C's
 `va_list` parameter, with target-specific argument adjustment:

@@ -158,7 +158,8 @@ fn (arg1: Type, arg2: Type)
 All fixed parameters in function types and trait requirements must use
 `name: Type`, just like function definitions. Parameter names do not affect
 function type compatibility. The C variadic `...` marker is not a fixed
-parameter and remains unnamed in imported signatures and callback types.
+parameter. Callback types also accept a named marker (`args: ...`); imported
+FFI signatures use the bare `...` marker.
 
 ## Control Flow
 
@@ -306,7 +307,7 @@ pattern as name on condition
 
 ```nerd
 pub name :: fn (fixed: Type, args: ...) -> ReturnType { ... }
-fn (arg1: Type, ...) -> ReturnType
+fn (fixed: Type, args: ...) -> ReturnType
 args.next[i32]()
 args.next[f64]()
 args.next[^i8]()

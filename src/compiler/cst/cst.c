@@ -1252,6 +1252,13 @@ internal bool cst_parse_callable_signature(CstParseState* state,
                         return false;
                     }
                 }
+                if (cst_current_token(state).kind == TK_Ellipsis) {
+                    is_varargs     = true;
+                    named_varargs  = true;
+                    varargs_symbol = symbol_handle;
+                    cst_advance(state);
+                    break;
+                }
                 u32 type_node = 0;
                 if (!cst_parse_type(state, &type_node)) {
                     array_free(params);
