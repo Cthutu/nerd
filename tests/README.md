@@ -69,7 +69,9 @@ selected command runtime regressions, and `tests/cgen/*.n`. Each program is
 built with LLVM, then generated as C and compiled by Clang at `-O0` and `-O2`.
 The runner compares exit status, stdout and stderr, forwarding fixture stdin.
 It also checks output names, paths with spaces, inline source, argument forwarding,
-invalid input, and generation without Clang on `PATH`. `just test` runs this suite.
+invalid input, and generation without Clang on `PATH`. The pixels examples also
+exercise `--cgen --copts` with default source discovery and standalone compilation
+without requiring a display server. `just test` runs this suite.
 Installation smoke tests move generated C out of its source directory and compile
 it independently for debug and release runtime configurations.
 

@@ -19147,7 +19147,9 @@ internal bool sema_infer_block_statements(const Lexer* lexer,
                 }
             }
             sema->node_type_indices[i] = sema_builtin_type(sema, STK_Void);
-            if (for_info->condition_node_index == U32_MAX && loop_has_return) {
+            // Iterable loops may be empty or exhaust without returning.
+            if (for_info->condition_node_index == U32_MAX &&
+                for_info->iterable_node_index == U32_MAX && loop_has_return) {
                 *out_has_return = true;
                 return true;
             }

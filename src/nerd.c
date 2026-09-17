@@ -592,7 +592,7 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
         json_array_push(
             build_flags,
             nerd_cli_make_flag(arena,
-                               "genc",
+                               "cgen",
                                NULL,
                                "Generate a single C file instead of a binary"));
         json_array_push(
@@ -983,7 +983,7 @@ nerd_build_config_from_json(const JsonValue* cli_result, Array(string) keywords)
         .output_kind = nerd_build_output_kind_from_json(cli_result),
         .print_c_options =
             nerd_cli_flag_bool(cli_result, "command.flags.copts", false),
-        .emit_c   = nerd_cli_flag_bool(cli_result, "command.flags.genc", false),
+        .emit_c   = nerd_cli_flag_bool(cli_result, "command.flags.cgen", false),
         .emit_hir = nerd_cli_flag_bool(cli_result, "command.flags.hir", false),
         .emit_llvm =
             nerd_cli_flag_bool(cli_result, "command.flags.llvm", false),
@@ -1002,10 +1002,10 @@ internal bool nerd_build_output_flags_valid(const JsonValue* cli_result)
     count += nerd_cli_flag_bool(cli_result, "command.flags.obj", false) ? 1 : 0;
     count += nerd_cli_flag_bool(cli_result, "command.flags.lib", false) ? 1 : 0;
     count += nerd_cli_flag_bool(cli_result, "command.flags.dll", false) ? 1 : 0;
-    bool c_mode = nerd_cli_flag_bool(cli_result, "command.flags.genc", false) ||
+    bool c_mode = nerd_cli_flag_bool(cli_result, "command.flags.cgen", false) ||
                   nerd_cli_flag_bool(cli_result, "command.flags.copts", false);
     if (c_mode && nerd_cli_flag_bool(cli_result, "command.flags.llvm", false)) {
-        eprn("`--genc` and `--copts` cannot be combined with `--llvm`.");
+        eprn("`--cgen` and `--copts` cannot be combined with `--llvm`.");
         return false;
     }
     if (count <= 1) {

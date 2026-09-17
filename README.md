@@ -92,10 +92,10 @@ python3 build/build.py
 LLVM backend status:
 
 - `nerd build --llvm source.n` writes the HIR-derived LLVM IR sidecar.
-- `nerd build --genc source.n` generates a standalone `source.c` from HIR.
+- `nerd build --cgen source.n` generates a standalone `source.c` from HIR.
   Compile it with `clang source.c $(nerd build --copts source.n) -o source`.
   `--copts` prints Clang arguments, including external libraries, without building.
-  Combine it with `--genc` to generate C and print the arguments in one invocation.
+  Combine it with `--cgen` to generate C and print the arguments in one invocation.
   `-o path/name` selects `path/name.c`, and `--release` selects release runtime behaviour.
 - `nerd check source.n` runs lexing, parsing, and semantic analysis without
   HIR generation, LLVM generation, or linking.

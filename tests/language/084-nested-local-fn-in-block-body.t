@@ -42,7 +42,7 @@ func fn.0(text: string, char: u8) -> u8 {
       return u8 call local.1(tolower)(u8 deref(^u8 local.4(c)))
     }
   }
-  return <unknown> 0
+  return u8 0
 }
 func fn.1(char: u8) -> u8 {
   return u8 on u8 local.2(char) {

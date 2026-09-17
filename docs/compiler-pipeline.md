@@ -58,7 +58,7 @@ The backend is intentionally split into small pieces:
 
 ## C transpilation
 
-`nerd build --genc source.n` selects the HIR-to-C backend in
+`nerd build --cgen source.n` selects the HIR-to-C backend in
 `src/compiler/cgen/cgen.c`. It writes one C file in place of the binary, replacing
 the output extension with `.c`; `-o` controls the output location. This mode
 embeds the runtime source and does not invoke Clang. Compile the file with
@@ -69,7 +69,7 @@ embeds the runtime source and does not invoke Clang. Compile the file with
 
 `--copts` alone checks the source and imports to collect external-library
 requirements, then prints space-separated Clang arguments on one line without producing or
-cleaning artifacts. Combined with `--genc`, it prints after successful generation.
+cleaning artifacts. Combined with `--cgen`, it prints after successful generation.
 Verbose/timing reports are suppressed to keep stdout usable as arguments.
 Arguments exclude input and output paths: callers supply those to Clang.
 Debug uses `-g -O0`; release uses `-O2 -DNDEBUG`. Object/static-library output

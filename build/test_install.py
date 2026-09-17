@@ -221,8 +221,8 @@ def main() -> int:
         # Generate with an installed compiler, then move only the C file to a
         # separate directory: no Nerd source, runtime object or modules at link time.
         for mode in ([], ["--release"]):
-            generated = run([nerd_cmd, "build", "--genc", "--copts", *mode, "run_smoke.n"], temp, env)
-            check(generated, "installed build --genc --copts")
+            generated = run([nerd_cmd, "build", "--cgen", "--copts", *mode, "run_smoke.n"], temp, env)
+            check(generated, "installed build --cgen --copts")
             copts = generated.stdout.split()
             standalone = temp / ("standalone-release" if mode else "standalone-debug")
             standalone.mkdir()

@@ -1,6 +1,6 @@
 # C transpilation implementation plan
 
-The `feature/c-transpilation` branch adds `nerd build --genc`: checked HIR
+The `feature/c-transpilation` branch adds `nerd build --cgen`: checked HIR
 becomes one C translation unit at the normal output location, with the output
 extension replaced by `.c`. No binary or external compiler invocation is needed
 for generation. Clang compiles the translation unit, including the embedded Nerd

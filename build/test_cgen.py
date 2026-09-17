@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 # Runtime regressions beyond the language suite: defaults, ABI, ownership,
 # atomics, allocator diagnostics, formatting and generic dispatch.
 COMMANDS = (
+    "310-run-return-after-iteration",
     "309-run-on-implicit-binder-mutation",
     "210-run-fixed-array-implicit-slice",
     "211-run-implicit-integer-comparison-width",
@@ -111,7 +112,7 @@ def differential(nerd, fixture, tmp, env):
     run([nerd, "build", "-o", output, source], env)
     expected = run([output], env, check=False, stdin=stdin)
     output.unlink()
-    run([nerd, "build", "--genc", "-o", output, source], env)
+    run([nerd, "build", "--cgen", "-o", output, source], env)
     assert not output.exists(), "C generation must not create a binary"
     generated = output.with_suffix(".c")
     assert generated.is_file(), "C output must replace the binary extension"
@@ -131,18 +132,20 @@ def cli_checks(nerd, tmp, env):
     work.mkdir()
     source = work / "hello.n"
     source.write_text('main :: fn () { prn("generated C") }\n', encoding="utf-8")
+    legacy = run([nerd, "build", "--genc", source], env, check=False)
+    assert legacy.returncode and not source.with_suffix(".c").exists()
     # Generation is independent of clang and the runtime object cache.
     no_compiler = {**env, "PATH": str(work / "empty-path")}
-    run([nerd, "build", "--genc", "--hir", source], no_compiler)
+    run([nerd, "build", "--cgen", "--hir", source], no_compiler)
     assert source.with_suffix(".c").is_file()
-    assert list(work.glob("*.hir")), "--genc --hir must preserve the HIR sidecar"
+    assert list(work.glob("*.hir")), "--cgen --hir must preserve the HIR sidecar"
     assert not source.with_suffix(".exe" if os.name == "nt" else "").exists()
     for suffix in ("", ".exe", ".out", ".c"):
         output = work / ("custom" + suffix)
-        run([nerd, "build", "--genc", "-o", output, source], env)
+        run([nerd, "build", "--cgen", "-o", output, source], env)
         assert output.with_suffix(".c").is_file()
     snippet_output = work / "snippet"
-    run([nerd, "build", "--genc", "-o", snippet_output,
+    run([nerd, "build", "--cgen", "-o", snippet_output,
          'main :: fn (args: []string) -> i32 { assert args.count == 3\n assert args[1] == "one"\n assert args[2] == "two words"\n return 7 }'], env)
     executable = work / ("snippet.exe" if os.name == "nt" else "snippet")
     run(["clang", snippet_output.with_suffix(".c"), "-o", executable], env)
@@ -150,7 +153,7 @@ def cli_checks(nerd, tmp, env):
     assert behaviour(result) == (7, b"", b""), "generated main must forward arguments and exit status"
     invalid = work / "invalid.n"
     invalid.write_text("main :: fn () { missing_symbol() }", encoding="utf-8")
-    result = run([nerd, "build", "--genc", invalid], env, check=False)
+    result = run([nerd, "build", "--cgen", invalid], env, check=False)
     assert result.returncode and not invalid.with_suffix(".c").exists()
 
 
@@ -221,7 +224,7 @@ def dungeon_check(nerd, tmp, env):
     run([nerd, "build", "-o", executable, source], env)
     expected = terminal_frame(executable, env)
     executable.unlink()
-    run([nerd, "build", "--genc", "-o", executable, source], env)
+    run([nerd, "build", "--cgen", "-o", executable, source], env)
     for optimisation in ("-O0", "-O2"):
         run(["clang", "-Werror", optimisation, source.with_suffix(".c"), "-o", executable], env)
         actual = terminal_frame(executable, env)
@@ -261,12 +264,12 @@ def copts_checks(nerd, tmp, env):
     for path in sentinels:
         assert path.read_text() == "preserve me", f"--copts modified {path}"
         path.unlink()
-    flags = options("--genc", "-r", source)
+    flags = options("--cgen", "-r", source)
     executable = work / ("app.exe" if os.name == "nt" else "app")
     run(["clang", "-Werror", source.with_suffix(".c"), *flags, "-o", executable], env)
     run([executable], env)
     if os.name != "nt":
-        run(["bash", "-c", 'clang "$1" $("$2" build --genc --copts -r "$3") -o "$4"',
+        run(["bash", "-c", 'clang "$1" $("$2" build --cgen --copts -r "$3") -o "$4"',
              "copts-test", source.with_suffix(".c"), nerd, source, executable], env)
         run([executable], env)
     invalid = run([nerd, "build", "--copts", "main :: fn () { missing() }"], env, check=False)
@@ -294,7 +297,7 @@ int main(void) {
 }
 ''', encoding="utf-8")
     for mode in ("--obj", "--lib", "--dll"):
-        flags = options("--genc", mode, "-r", library)
+        flags = options("--cgen", mode, "-r", library)
         object_path = work / ("library.obj" if os.name == "nt" else "library.o")
         if mode == "--dll":
             assert "-shared" in flags or "-dynamiclib" in flags
@@ -317,17 +320,33 @@ int main(void) {
         run([executable], env)
     if sys.platform.startswith("linux"):
         library.write_text(sections(ROOT / "tests/commands/297-build-variadic-host.cmd")[0], encoding="utf-8")
-        flags = options("--genc", "--dll", library)
+        flags = options("--cgen", "--dll", library)
         artifact = work / "variadic.so"
         run(["clang", "-Werror", library.with_suffix(".c"), *flags, "-o", artifact], env)
         run(["clang", ROOT / "tests/ffi/variadic_host.c", artifact, "-o", executable], env)
         assert run([executable], env).stdout == b"42\n"
     for mode in ("--obj", "--lib", "--dll"):
-        rejected = run([nerd, "build", "--genc", "--copts", mode, "-o", work / "rejected",
+        rejected = run([nerd, "build", "--cgen", "--copts", mode, "-o", work / "rejected",
                         'pub invalid :: fn (value: string) -> string { return value }'], env, check=False)
         assert rejected.returncode and not rejected.stdout
         assert not (work / "rejected.c").exists()
     print("[PASS] --copts queries, external libraries, release, object, archive and shared-library host calls", flush=True)
+
+
+def graphics_compile_checks(nerd, tmp, env):
+    # Exercise default source discovery and real graphics imports without needing
+    # a display server in CI. Keep all generated artifacts in the test directory.
+    for name in ("pixels", "pixels_fit", "pixels_layers"):
+        work = tmp / name
+        work.mkdir()
+        (work / (name + ".n")).write_bytes((ROOT / "examples" / name / (name + ".n")).read_bytes())
+        generated = subprocess.run([str(nerd), "b", "--cgen", "--copts"],
+                                   cwd=work, env=env, capture_output=True, timeout=60)
+        assert generated.returncode == 0, generated.stderr.decode(errors="replace")
+        flags = generated.stdout.decode().split()
+        output = work / (name + (".exe" if os.name == "nt" else ""))
+        run(["clang", work / (name + ".c"), *flags, "-Werror", "-o", output], env)
+    print("[PASS] Pixels examples: default source discovery and standalone C compilation", flush=True)
 
 
 def main():
@@ -356,9 +375,10 @@ def main():
         assert not failures, "\n".join(failures)
         cli_checks(nerd, tmp, env)
         copts_checks(nerd, tmp, env)
+        graphics_compile_checks(nerd, tmp, env)
         dungeon_check(nerd, tmp, env)
         for flags in (("--llvm",), ("--obj", "--lib"), ("--lib", "--dll"), ("--obj", "--dll")):
-            for cflag in ("--genc", "--copts"):
+            for cflag in ("--cgen", "--copts"):
                 result = run([nerd, "build", cflag, *flags, "main :: fn () {}"], env, check=False)
                 assert result.returncode and not result.stdout, f"{cflag} must reject {flags}"
     print(f"C generation: {len(fixtures)} differential fixtures at two optimisation levels and CLI conflicts passed")
