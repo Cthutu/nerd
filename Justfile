@@ -19,7 +19,7 @@ run-release proj *args: (build-release proj)
 
 clean:
     rm -rf _*
-    find tests -type f \( -name '*.c' -o -name '*.out' -o -name '*.format' -o -name '*.input.n' -o -name '*.lsp.in' -o -name '*.lsp.out' -o -name '_*.hir' -o -name '_*.ll' -o -name '*.link.ll' -o -name '*.input.m*.ll' -o -name '*.m*.ll' \) -delete
+    find tests -type f \( -name '*.host.c' -o -name '*.input.c' -o -name '*.out' -o -name '*.format' -o -name '*.input.n' -o -name '*.lsp.in' -o -name '*.lsp.out' -o -name '_*.hir' -o -name '_*.ll' -o -name '*.link.ll' -o -name '*.input.m*.ll' -o -name '*.m*.ll' \) -delete
     rm -rf syntax/nerd-vscode/node_modules
     rm -rf syntax/nerd-vscode/out
     rm -f syntax/nerd-vscode/package-lock.json
@@ -29,6 +29,7 @@ format:
     python3 build/format.py
 
 test *args:
+    python3 build/test_clean.py
     just build nerd --skip-mod-sync
     python3 build/test.py {{args}}
     python3 build/test_install.py --nerd _bin/nerd-debug{{exe_suffix}}

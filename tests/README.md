@@ -14,6 +14,10 @@ index for the test inputs.
 source files. Repository regression tests are run by the Python harness via
 `just test`.
 
+`just test` also runs `build/test_clean.py`, which exercises the cleanup recipe
+in a temporary workspace. Cleanup removes generated `.host.c` and `.input.c`
+files while preserving C source fixtures, including `tests/ffi/variadic_host.c`.
+
 ## Test Families
 
 - `language`
