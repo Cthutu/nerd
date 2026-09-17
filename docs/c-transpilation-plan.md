@@ -6,7 +6,7 @@ extension replaced by `.c`. No binary or external compiler invocation is needed
 for generation. Clang compiles the translation unit, including the embedded Nerd
 runtime. External libraries retain their normal link requirements.
 
-## Milestones
+## Completed milestones
 
 1. Add the HIR-to-C emitter, explicit type/declaration ordering, module linkage,
    runtime embedding, entry-point glue, CLI selection, and output path policy.
@@ -29,3 +29,14 @@ runtime. External libraries retain their normal link requirements.
 - Emit runtime source in the file so installed compilers need no source checkout.
 - Diagnose unsupported lowering explicitly; never silently emit a default value.
 - Target the same host 64-bit Clang contract as the existing backend.
+
+## Validation
+
+- `just test`: 1,113 existing tests passed, with 9 platform skips.
+- C differential suite: 275 programs matched LLVM exit status, stdout and stderr
+  after Clang compilation at both `-O0` and `-O2`.
+- CLI checks cover default and explicit output paths, paths with spaces, inline
+  source, arguments, HIR sidecars, incompatible flags and generation without Clang.
+- `just format` and `just install` completed. The installed release compiler
+  passed the standalone C smoke test with debug and release runtime settings.
+- Runtime execution was validated on Linux; generated code follows the host ABI.

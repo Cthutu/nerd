@@ -1,0 +1,16 @@
+add :: fn (a: i64, b: i64) -> i64 { return a + b }
+multiply :: fn (a: i64, b: i64) -> i64 { return a * b }
+negate :: fn (a: i64) -> i64 { return -a }
+main :: fn () {
+    largest: i64 = 0x7fff_ffff_ffff_ffff
+    smallest: i64 = 0x8000_0000_0000_0000
+    assert add(largest, 1) == smallest
+    assert multiply(largest, 2) == -2
+    assert negate(smallest) == smallest
+    a: u16 = 65535
+    b: u16 = 65535
+    assert a * b == 1
+    c: i32 = 2147483647
+    assert c + 1 == -2147483648
+    assert c << 1 == -2
+}

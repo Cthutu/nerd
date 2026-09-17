@@ -20,6 +20,7 @@
 #define COMPILER_PHASE_PARSE "parse tokens into AST"
 #define COMPILER_PHASE_SEMA "analyse AST semantics"
 #define COMPILER_PHASE_HIR_GEN "generate HIR from sema"
+#define COMPILER_PHASE_C_RENDER "render C"
 #define COMPILER_PHASE_LLVM_RENDER "render module LLVM"
 #define COMPILER_PHASE_LLVM_COMBINE "combine LLVM text"
 #define COMPILER_PHASE_LLVM_WRITE "write combined LLVM"

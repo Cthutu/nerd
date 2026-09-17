@@ -41,8 +41,12 @@ across modules, and emits forward declarations before function bodies. Separate
 arenas own output, function bodies, declarations, and temporary names. Generated
 C embeds `data/nrt.c` and `data/ncg.c`, so generation works after installation
 without access to the compiler source tree. LLVM remains the default backend.
-The implementation plan and remaining parity work are tracked in
-[../c-transpilation-plan.md](../c-transpilation-plan.md).
+C layout identity is separate from semantic type identity so generic dispatch
+can distinguish, for example, slices of different element types. Expression
+temporaries preserve evaluation order; explicit exit cleanup handles `defer`,
+boxes and varargs. Differential tests compile the generated C at two optimisation
+levels and compare execution with LLVM. See
+[../compiler-pipeline.md](../compiler-pipeline.md) for the backend contract.
 
 ## Overall Shape
 

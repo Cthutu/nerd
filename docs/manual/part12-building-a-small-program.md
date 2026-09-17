@@ -9,6 +9,32 @@ fit together.
 The examples use `input` from `std.io` and `split` from `std.text`. Those are
 standard library helpers, not new language constructs.
 
+## Generate C
+
+Use `--genc` when you want C source as the build output:
+
+```sh
+nerd build --genc adventure.n
+clang adventure.c -o adventure
+./adventure
+```
+
+The generated file includes the Nerd runtime and all imported Nerd modules.
+Clang needs no Nerd source files or installation to compile it. External C
+libraries still need their usual link options, such as `-lm` for the maths
+library on Linux.
+
+The output goes where the executable would normally go, with its extension
+replaced by `.c`. For example, `nerd build --genc -o output/game adventure.n`
+writes `output/game.c`. The output directory must already exist.
+On Windows, `pragma windowed` also emits `WinMain`; choose the Windows subsystem
+when linking that program with Clang.
+
+`--release` selects release runtime behaviour, and Clang's `-O2` optimises the
+result. You can combine `--genc` with `--hir` to inspect HIR too. Choose one
+output mode: `--genc` cannot be combined with `--llvm`, `--obj`, `--lib`, or
+`--dll`. Generated C targets the host platform used to check the program.
+
 ## Build Pragmas
 
 Pragmas are optional compiler controls:

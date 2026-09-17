@@ -218,6 +218,19 @@ def main() -> int:
             raise AssertionError("build --llvm did not produce an LLVM sidecar")
         assert_no_link_temps(temp, "build_smoke", "build --hir --llvm")
 
+        # Generate with an installed compiler, then move only the C file to a
+        # separate directory: no Nerd source, runtime object or modules at link time.
+        for mode in ([], ["--release"]):
+            check(run([nerd_cmd, "build", "--genc", *mode, "run_smoke.n"], temp, env),
+                  "installed build --genc")
+            standalone = temp / ("standalone-release" if mode else "standalone-debug")
+            standalone.mkdir()
+            shutil.move(str(temp / "run_smoke.c"), standalone / "program.c")
+            check(run(["clang", "-O2", "program.c", "-o", f"program{EXE_SUFFIX}"], standalone, env),
+                  "compile standalone generated C")
+            check(run([str(standalone / f"program{EXE_SUFFIX}")], standalone, env),
+                  "run standalone generated C", "installed smoke\n")
+
         run_proc = run([nerd_cmd, "run", "run_smoke.n"], temp, env)
         check(run_proc, "run", "installed smoke\n")
         assert_no_run_outputs(temp, "run_smoke", "run")

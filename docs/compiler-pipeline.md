@@ -62,10 +62,19 @@ The backend is intentionally split into small pieces:
 `src/compiler/cgen/cgen.c`. It writes one C file in place of the binary, replacing
 the output extension with `.c`; `-o` controls the output location. This mode
 embeds the runtime source and does not invoke Clang. Compile the file with
-`clang -std=gnu11 -fwrapv source.c -o source` and any external libraries used by
+`clang source.c -o source` and any external libraries used by
 the program. `--hir` remains available; `--llvm`, `--obj`, `--lib`, and `--dll`
-are incompatible with `--genc`. Language parity is being completed on the
-feature branch; see [the implementation plan](c-transpilation-plan.md).
+are incompatible with `--genc`. `--release` embeds the release runtime configuration.
+The output targets the same host ABI as the checked program, using Clang's C11
+extensions. It includes all imported modules in a single translation unit.
+
+The emitter materialises expression temporaries in source evaluation order,
+uses labels for HIR control flow, and runs deferred blocks and ownership cleanup
+at scope exits. Aggregate definitions preserve embedded plex and bitfield storage
+layout; generic dispatch uses semantic types separately from C layout identity.
+Integer arithmetic wraps explicitly, and atomic operations use Clang builtins.
+`build/test_cgen.py` compares generated C at `-O0` and `-O2` with LLVM across the
+language suite and runtime regressions, including diagnostics and standard input.
 
 ## Lexer
 

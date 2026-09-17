@@ -1166,7 +1166,13 @@ bool back_end_program(const ProgramInfo*        program,
 
     (void)verbose;
     if (artifacts->emit_c_file) {
-        return cgen_save_program(program, artifacts);
+        MemoryStats memory_before = compiler_memory_profile_begin();
+        TimePoint   start         = back_end_timing_begin(timing);
+        bool        ok            = cgen_save_program(program, artifacts);
+        back_end_timing_end(timing, COMPILER_PHASE_C_RENDER, start);
+        compiler_memory_profile_end(
+            COMPILER_STAGE_BACK_END, COMPILER_PHASE_C_RENDER, memory_before);
+        return ok;
     }
     return back_end_emit_llvm_artifacts(program, artifacts, timing);
 }
