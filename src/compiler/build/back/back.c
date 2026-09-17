@@ -1146,7 +1146,8 @@ internal bool back_end_emit_llvm_artifacts(const ProgramInfo*        program,
     return true;
 }
 
-// Keep stdout suitable for command substitution: one raw argv entry per line.
+// Keep stdout suitable for command substitution: space-separated arguments on
+// one line.
 internal bool back_end_print_c_options(const ProgramInfo*        program,
                                        const NerdArtifactConfig* artifacts)
 {
@@ -1154,31 +1155,31 @@ internal bool back_end_print_c_options(const ProgramInfo*        program,
     arena_init(&arena);
     StringBuilder flags = {0};
     sb_init(&flags, &arena);
-    sb_append_cstr(&flags, "-std=gnu11\n");
-    sb_append_cstr(&flags, artifacts->release ? "-O2\n-DNDEBUG" : "-g\n-O0");
+    sb_append_cstr(&flags, "-std=gnu11 ");
+    sb_append_cstr(&flags, artifacts->release ? "-O2 -DNDEBUG" : "-g -O0");
     bool link = artifacts->output_kind == NERD_BUILD_OUTPUT_Executable ||
                 artifacts->output_kind == NERD_BUILD_OUTPUT_SharedLibrary;
     if (!link) {
-        sb_append_cstr(&flags, "\n-c");
+        sb_append_cstr(&flags, " -c");
     }
     if (artifacts->output_kind == NERD_BUILD_OUTPUT_SharedLibrary) {
 #if OS_MACOS
-        sb_append_cstr(&flags, "\n-dynamiclib");
+        sb_append_cstr(&flags, " -dynamiclib");
 #else
-        sb_append_cstr(&flags, "\n-shared");
+        sb_append_cstr(&flags, " -shared");
 #endif
 #if OS_POSIX
-        sb_append_cstr(&flags, "\n-fPIC");
+        sb_append_cstr(&flags, " -fPIC");
 #endif
     }
 #if OS_WINDOWS
     if (artifacts->output_kind == NERD_BUILD_OUTPUT_Executable &&
         program->windowed) {
-        sb_append_cstr(&flags, "\n-Wl,/SUBSYSTEM:WINDOWS");
+        sb_append_cstr(&flags, " -Wl,/SUBSYSTEM:WINDOWS");
     }
 #endif
     if (link) {
-        back_end_append_hir_extern_link_flags(&flags, program, "\n");
+        back_end_append_hir_extern_link_flags(&flags, program, " ");
     }
     string output = sb_to_string(&flags);
     bool   ok = fwrite(output.data, 1, output.count, stdout) == output.count &&

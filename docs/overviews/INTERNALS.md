@@ -51,7 +51,7 @@ arenas own output, function bodies, declarations, and temporary names. Generated
 C embeds `data/nrt.c` and `data/ncg.c`, so generation works after installation
 without access to the compiler source tree. LLVM remains the default backend.
 `build --copts` is an artifact-free query after whole-program checking: it reuses
-the backend's library filtering to print Clang arguments, one per line. It can
+the backend's library filtering to print Clang arguments on one space-separated line. It can
 also accompany C generation. C object/library modes omit the executable entry
 point, emit validated root C exports, and initialise modules through a library
 constructor. The static-library options describe object compilation; archiving

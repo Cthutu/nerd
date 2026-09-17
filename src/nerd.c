@@ -601,7 +601,7 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
                 arena,
                 "copts",
                 NULL,
-                "Print Clang arguments for generated C, one per line"));
+                "Print Clang arguments for generated C on one line"));
         json_array_push(
             build_flags,
             nerd_cli_make_flag(

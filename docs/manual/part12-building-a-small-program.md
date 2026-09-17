@@ -43,13 +43,7 @@ clang adventure.c $(nerd build --genc --copts -r adventure.n) -o adventure
 use `-g -O0`. Use the same mode flags for generation and an independent
 `--copts` query. Supply the input C file and `-o` yourself.
 
-Options are printed one per line. In Bash, use an array if an argument contains
-spaces or shell wildcard characters:
-
-```bash
-mapfile -t copts < <(nerd build --genc --copts -r adventure.n)
-clang adventure.c "${copts[@]}" -o adventure
-```
+Options are printed on one space-separated line, such as `-std=gnu11 -O2 -DNDEBUG`.
 
 You can also generate C for a shared library or object file using `--dll` or
 `--obj`. Public functions become C exports; library sources need no `main`.

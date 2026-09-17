@@ -68,7 +68,7 @@ embeds the runtime source and does not invoke Clang. Compile the file with
 `--dll` select C suitable for that artifact rather than an executable entry point.
 
 `--copts` alone checks the source and imports to collect external-library
-requirements, then prints one Clang argument per line without producing or
+requirements, then prints space-separated Clang arguments on one line without producing or
 cleaning artifacts. Combined with `--genc`, it prints after successful generation.
 Verbose/timing reports are suppressed to keep stdout usable as arguments.
 Arguments exclude input and output paths: callers supply those to Clang.

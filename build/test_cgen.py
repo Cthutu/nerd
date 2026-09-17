@@ -240,7 +240,8 @@ def copts_checks(nerd, tmp, env):
     def options(*args, environment=env):
         result = run([nerd, "build", "--copts", *args], environment)
         assert not result.stderr, result.stderr
-        flags = result.stdout.decode().splitlines()
+        assert len(result.stdout.splitlines()) == 1, result.stdout
+        flags = result.stdout.decode().split()
         assert flags and all(flag.startswith("-") for flag in flags), flags
         return flags
 

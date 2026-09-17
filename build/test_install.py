@@ -223,7 +223,7 @@ def main() -> int:
         for mode in ([], ["--release"]):
             generated = run([nerd_cmd, "build", "--genc", "--copts", *mode, "run_smoke.n"], temp, env)
             check(generated, "installed build --genc --copts")
-            copts = generated.stdout.splitlines()
+            copts = generated.stdout.split()
             standalone = temp / ("standalone-release" if mode else "standalone-debug")
             standalone.mkdir()
             shutil.move(str(temp / "run_smoke.c"), standalone / "program.c")
