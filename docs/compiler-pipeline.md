@@ -62,9 +62,27 @@ The backend is intentionally split into small pieces:
 `src/compiler/cgen/cgen.c`. It writes one C file in place of the binary, replacing
 the output extension with `.c`; `-o` controls the output location. This mode
 embeds the runtime source and does not invoke Clang. Compile the file with
-`clang source.c -o source` and any external libraries used by
-the program. `--hir` remains available; `--llvm`, `--obj`, `--lib`, and `--dll`
-are incompatible with `--genc`. `--release` embeds the release runtime configuration.
+`clang source.c $(nerd build --copts source.n) -o source` in Bash.
+`--hir` remains available; `--llvm` is incompatible with C output/options.
+`--release` embeds the release runtime configuration. `--obj`, `--lib`, and
+`--dll` select C suitable for that artifact rather than an executable entry point.
+
+`--copts` alone checks the source and imports to collect external-library
+requirements, then prints one Clang argument per line without producing or
+cleaning artifacts. Combined with `--genc`, it prints after successful generation.
+Verbose/timing reports are suppressed to keep stdout usable as arguments.
+Arguments exclude input and output paths: callers supply those to Clang.
+Debug uses `-g -O0`; release uses `-O2 -DNDEBUG`. Object/static-library output
+uses `-c`; shared libraries use the host shared-library flag and, on POSIX,
+`-fPIC`. Link modes reuse the LLVM backend's external-library filtering and
+deduplication, including Windows CRT defaults and windowed executables.
+Static archives require a separate `ar` or `llvm-lib` invocation.
+
+C library exports use the same root-export ABI validation as LLVM. Native
+function bodies are emitted under their public assembler symbols (also supporting
+variadic definitions and re-exports); non-variadic FFI exports forward to the
+foreign function. Generated library constructors initialise imported globals,
+and destructors run runtime shutdown. No executable `main` is added.
 The output targets the same host ABI as the checked program, using Clang's C11
 extensions. It includes all imported modules in a single translation unit.
 

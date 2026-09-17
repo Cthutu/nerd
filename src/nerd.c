@@ -598,6 +598,13 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
         json_array_push(
             build_flags,
             nerd_cli_make_flag(
+                arena,
+                "copts",
+                NULL,
+                "Print Clang arguments for generated C, one per line"));
+        json_array_push(
+            build_flags,
+            nerd_cli_make_flag(
                 arena, "llvm", NULL, "Write generated LLVM IR to a file"));
         json_array_push(
             build_flags,
@@ -974,6 +981,8 @@ nerd_build_config_from_json(const JsonValue* cli_result, Array(string) keywords)
         .output_path = nerd_cli_param_string(
             cli_result, "command.params.output", (string){0}),
         .output_kind = nerd_build_output_kind_from_json(cli_result),
+        .print_c_options =
+            nerd_cli_flag_bool(cli_result, "command.flags.copts", false),
         .emit_c   = nerd_cli_flag_bool(cli_result, "command.flags.genc", false),
         .emit_hir = nerd_cli_flag_bool(cli_result, "command.flags.hir", false),
         .emit_llvm =
@@ -993,11 +1002,10 @@ internal bool nerd_build_output_flags_valid(const JsonValue* cli_result)
     count += nerd_cli_flag_bool(cli_result, "command.flags.obj", false) ? 1 : 0;
     count += nerd_cli_flag_bool(cli_result, "command.flags.lib", false) ? 1 : 0;
     count += nerd_cli_flag_bool(cli_result, "command.flags.dll", false) ? 1 : 0;
-    if (nerd_cli_flag_bool(cli_result, "command.flags.genc", false) &&
-        (count ||
-         nerd_cli_flag_bool(cli_result, "command.flags.llvm", false))) {
-        eprn("`--genc` cannot be combined with `--obj`, `--lib`, `--dll`, or "
-             "`--llvm`.");
+    bool c_mode = nerd_cli_flag_bool(cli_result, "command.flags.genc", false) ||
+                  nerd_cli_flag_bool(cli_result, "command.flags.copts", false);
+    if (c_mode && nerd_cli_flag_bool(cli_result, "command.flags.llvm", false)) {
+        eprn("`--genc` and `--copts` cannot be combined with `--llvm`.");
         return false;
     }
     if (count <= 1) {

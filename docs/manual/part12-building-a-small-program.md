@@ -15,7 +15,7 @@ Use `--genc` when you want C source as the build output:
 
 ```sh
 nerd build --genc adventure.n
-clang adventure.c -o adventure
+clang adventure.c $(nerd build --copts adventure.n) -o adventure
 ./adventure
 ```
 
@@ -30,10 +30,49 @@ writes `output/game.c`. The output directory must already exist.
 On Windows, `pragma windowed` also emits `WinMain`; choose the Windows subsystem
 when linking that program with Clang.
 
-`--release` selects release runtime behaviour, and Clang's `-O2` optimises the
-result. You can combine `--genc` with `--hir` to inspect HIR too. Choose one
-output mode: `--genc` cannot be combined with `--llvm`, `--obj`, `--lib`, or
-`--dll`. Generated C targets the host platform used to check the program.
+`--copts` prints the Clang arguments for the selected source, including its
+external libraries. By itself it produces no build artifacts. Bash's `$(...)`
+syntax runs a command and substitutes its output as arguments. You can generate
+C and compile it in one command:
+
+```sh
+clang adventure.c $(nerd build --genc --copts -r adventure.n) -o adventure
+```
+
+`-r` (or `--release`) selects release runtime behaviour and `-O2`; debug builds
+use `-g -O0`. Use the same mode flags for generation and an independent
+`--copts` query. Supply the input C file and `-o` yourself.
+
+Options are printed one per line. In Bash, use an array if an argument contains
+spaces or shell wildcard characters:
+
+```bash
+mapfile -t copts < <(nerd build --genc --copts -r adventure.n)
+clang adventure.c "${copts[@]}" -o adventure
+```
+
+You can also generate C for a shared library or object file using `--dll` or
+`--obj`. Public functions become C exports; library sources need no `main`.
+For example, on Linux:
+
+```sh
+clang library.c $(nerd build --genc --copts --dll -r library.n) -o library.so
+```
+
+For `--lib`, Clang compiles an object, then an archiver creates the static library:
+
+```sh
+clang library.c $(nerd build --genc --copts --lib -r library.n) -o library.o
+ar rcs library.a library.o
+```
+
+On Windows, use `llvm-lib /OUT:library.lib library.obj` for the archive step.
+External-library dependencies of a static library belong on its final link
+command. `--obj`, `--lib`, and `--dll` are mutually exclusive.
+
+Combine `--genc` with `--hir` to inspect HIR too. `--llvm` cannot be combined
+with `--genc` or `--copts`. Generated C targets the host platform used to check
+the program.
 
 ## Build Pragmas
 

@@ -50,6 +50,12 @@ across modules, and emits forward declarations before function bodies. Separate
 arenas own output, function bodies, declarations, and temporary names. Generated
 C embeds `data/nrt.c` and `data/ncg.c`, so generation works after installation
 without access to the compiler source tree. LLVM remains the default backend.
+`build --copts` is an artifact-free query after whole-program checking: it reuses
+the backend's library filtering to print Clang arguments, one per line. It can
+also accompany C generation. C object/library modes omit the executable entry
+point, emit validated root C exports, and initialise modules through a library
+constructor. The static-library options describe object compilation; archiving
+is a separate tool invocation.
 C layout identity is separate from semantic type identity so generic dispatch
 can distinguish, for example, slices of different element types. Expression
 temporaries preserve evaluation order; explicit exit cleanup handles `defer`,

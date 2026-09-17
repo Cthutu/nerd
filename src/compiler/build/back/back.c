@@ -51,7 +51,8 @@ internal cstr back_end_cstr(Arena* arena, string text)
 }
 
 internal void back_end_append_hir_extern_link_flags(StringBuilder* link_flags,
-                                                    const ProgramInfo* program)
+                                                    const ProgramInfo* program,
+                                                    cstr separator)
 {
     for (u32 module_index = 0; module_index < array_count(program->modules);
          ++module_index) {
@@ -103,7 +104,8 @@ internal void back_end_append_hir_extern_link_flags(StringBuilder* link_flags,
                 }
             }
             if (!already_added) {
-                sb_format(link_flags, " -l" STRINGP, STRINGV(library));
+                sb_format(
+                    link_flags, "%s-l" STRINGP, separator, STRINGV(library));
             }
         }
     }
@@ -737,7 +739,7 @@ internal bool back_end_link_combined_llvm(Arena*                    arena,
 #endif
     StringBuilder link_flags = {0};
     sb_init(&link_flags, arena);
-    back_end_append_hir_extern_link_flags(&link_flags, program);
+    back_end_append_hir_extern_link_flags(&link_flags, program, " ");
     StringBuilder command_builder = {0};
     sb_init(&command_builder, arena);
     sb_format(&command_builder,
@@ -825,7 +827,7 @@ internal bool back_end_link_shared_library(Arena*                    arena,
     string        opt_flags  = artifacts->release ? s("-O2") : s("-g -O0");
     StringBuilder link_flags = {0};
     sb_init(&link_flags, arena);
-    back_end_append_hir_extern_link_flags(&link_flags, program);
+    back_end_append_hir_extern_link_flags(&link_flags, program, " ");
     string command = string_format(arena,
                                    "clang -shared -Wno-override-module " STRINGP
                                    " -o \"%s\" \"%s\" \"%s\"" STRINGP,
@@ -1144,6 +1146,47 @@ internal bool back_end_emit_llvm_artifacts(const ProgramInfo*        program,
     return true;
 }
 
+// Keep stdout suitable for command substitution: one raw argv entry per line.
+internal bool back_end_print_c_options(const ProgramInfo*        program,
+                                       const NerdArtifactConfig* artifacts)
+{
+    Arena arena = {0};
+    arena_init(&arena);
+    StringBuilder flags = {0};
+    sb_init(&flags, &arena);
+    sb_append_cstr(&flags, "-std=gnu11\n");
+    sb_append_cstr(&flags, artifacts->release ? "-O2\n-DNDEBUG" : "-g\n-O0");
+    bool link = artifacts->output_kind == NERD_BUILD_OUTPUT_Executable ||
+                artifacts->output_kind == NERD_BUILD_OUTPUT_SharedLibrary;
+    if (!link) {
+        sb_append_cstr(&flags, "\n-c");
+    }
+    if (artifacts->output_kind == NERD_BUILD_OUTPUT_SharedLibrary) {
+#if OS_MACOS
+        sb_append_cstr(&flags, "\n-dynamiclib");
+#else
+        sb_append_cstr(&flags, "\n-shared");
+#endif
+#if OS_POSIX
+        sb_append_cstr(&flags, "\n-fPIC");
+#endif
+    }
+#if OS_WINDOWS
+    if (artifacts->output_kind == NERD_BUILD_OUTPUT_Executable &&
+        program->windowed) {
+        sb_append_cstr(&flags, "\n-Wl,/SUBSYSTEM:WINDOWS");
+    }
+#endif
+    if (link) {
+        back_end_append_hir_extern_link_flags(&flags, program, "\n");
+    }
+    string output = sb_to_string(&flags);
+    bool   ok = fwrite(output.data, 1, output.count, stdout) == output.count &&
+                fputc('\n', stdout) != EOF;
+    arena_done(&arena);
+    return ok;
+}
+
 bool back_end_program(const ProgramInfo*        program,
                       const NerdArtifactConfig* artifacts,
                       bool                      verbose,
@@ -1152,6 +1195,15 @@ bool back_end_program(const ProgramInfo*        program,
     NerdArtifactConfig default_artifacts = compiler_default_artifacts();
     if (!artifacts) {
         artifacts = &default_artifacts;
+    }
+
+    if ((artifacts->emit_c_file || artifacts->print_c_options) &&
+        artifacts->output_kind != NERD_BUILD_OUTPUT_Executable &&
+        !back_end_validate_c_exports(program)) {
+        return false;
+    }
+    if (artifacts->print_c_options && !artifacts->emit_c_file) {
+        return back_end_print_c_options(program, artifacts);
     }
 
     if (artifacts->emit_hir_file &&
@@ -1172,7 +1224,8 @@ bool back_end_program(const ProgramInfo*        program,
         back_end_timing_end(timing, COMPILER_PHASE_C_RENDER, start);
         compiler_memory_profile_end(
             COMPILER_STAGE_BACK_END, COMPILER_PHASE_C_RENDER, memory_before);
-        return ok;
+        return ok && (!artifacts->print_c_options ||
+                      back_end_print_c_options(program, artifacts));
     }
     return back_end_emit_llvm_artifacts(program, artifacts, timing);
 }

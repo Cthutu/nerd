@@ -78,3 +78,8 @@ PTY regression also builds the actual dungeon example with a fixed seed, waits
 for a complete frame before sending any input, compares that frame across LLVM
 and C at both optimisation levels, and checks that Q exits successfully. Waiting
 for the frame first distinguishes normal presentation from the shutdown flush.
+
+C option tests execute `--copts` with no Clang on PATH, verify that existing
+artifacts are preserved, and compile with its returned arguments. C hosts call
+exports from generated objects, archives and shared libraries, covering imported
+functions, variadic definitions and global initialisation.

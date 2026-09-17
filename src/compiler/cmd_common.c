@@ -170,10 +170,12 @@ bool compile(NerdSource                source,
     effective_artifacts.side_files         = &side_files;
     artifacts                              = &effective_artifacts;
 
-    if (!artifacts->emit_hir_file) {
+    if (!artifacts->emit_hir_file &&
+        (!artifacts->print_c_options || artifacts->emit_c_file)) {
         nerd_side_file_register_cleanup(&side_files, artifacts->hir_path);
     }
-    if (!artifacts->emit_llvm_file) {
+    if (!artifacts->emit_llvm_file &&
+        (!artifacts->print_c_options || artifacts->emit_c_file)) {
         nerd_side_file_register_cleanup(&side_files, artifacts->llvm_path);
     }
 

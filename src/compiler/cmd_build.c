@@ -68,7 +68,8 @@ compiler_cmd_build_artifacts(Arena* arena, const NerdBuildConfig* config)
         artifacts.binary_path =
             path_replace_extension(arena, artifacts.binary_path, ".c");
     }
-    artifacts.emit_c_file = config->emit_c;
+    artifacts.emit_c_file     = config->emit_c;
+    artifacts.print_c_options = config->print_c_options;
     artifacts.hir_path  = compiler_cmd_sidecar_path(arena, output_root, ".hir");
     artifacts.llvm_path = compiler_cmd_sidecar_path(arena, output_root, ".ll");
     artifacts.emit_hir_file  = config->emit_hir;
@@ -143,12 +144,18 @@ int compiler_cmd_build(const NerdBuildConfig* config)
     Arena arena = {0};
     arena_init(&arena);
     NerdArtifactConfig artifacts = compiler_cmd_build_artifacts(&arena, config);
-    compiler_cmd_build_cleanup_stale_sidecars(&arena, artifacts.binary_path);
+    if (!config->print_c_options || config->emit_c) {
+        compiler_cmd_build_cleanup_stale_sidecars(&arena,
+                                                  artifacts.binary_path);
+    }
 
     Timing timing = {0};
     timing_init(&timing);
-    bool ok = compile(config->source, &artifacts, config->verbose, &timing);
-    if (config->timing) {
+    bool ok = compile(config->source,
+                      &artifacts,
+                      config->verbose && !config->print_c_options,
+                      &timing);
+    if (config->timing && !config->print_c_options) {
         timing_dump(&timing);
     }
     timing_done(&timing);

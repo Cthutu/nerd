@@ -229,6 +229,106 @@ def dungeon_check(nerd, tmp, env):
     print("[PASS] Dungeon renders before input, matches LLVM and quits on Q (-O0, -O2)", flush=True)
 
 
+def copts_checks(nerd, tmp, env):
+    import sys
+    work = tmp / "copts with spaces"
+    work.mkdir()
+    source = work / "app.n"
+    source.write_text('use std.math\nmain :: fn () { assert sin(0.0) == 0.0 }\n', encoding="utf-8")
+    no_compiler = {**env, "PATH": str(work / "empty-path")}
+
+    def options(*args, environment=env):
+        result = run([nerd, "build", "--copts", *args], environment)
+        assert not result.stderr, result.stderr
+        flags = result.stdout.decode().splitlines()
+        assert flags and all(flag.startswith("-") for flag in flags), flags
+        return flags
+
+    # Querying must not compile or remove any pre-existing outputs/sidecars.
+    sentinels = [source.with_suffix(suffix) for suffix in (".c", ".exe", "")]
+    sentinels += [work / "_app.hir", work / "_app.ll", work / "app.m1.ll"]
+    for path in sentinels:
+        path.write_text("preserve me", encoding="utf-8")
+    debug = options("--hir", "--timing", "-v", source, environment=no_compiler)
+    assert "-g" in debug and "-O0" in debug and "-std=gnu11" in debug
+    release = options("-r", source)
+    assert "-O2" in release and "-DNDEBUG" in release and "-g" not in release
+    if sys.platform.startswith("linux"):
+        assert debug.count("-lm") == 1
+    else:
+        assert "-lm" not in debug
+    for path in sentinels:
+        assert path.read_text() == "preserve me", f"--copts modified {path}"
+        path.unlink()
+    flags = options("--genc", "-r", source)
+    executable = work / ("app.exe" if os.name == "nt" else "app")
+    run(["clang", "-Werror", source.with_suffix(".c"), *flags, "-o", executable], env)
+    run([executable], env)
+    if os.name != "nt":
+        run(["bash", "-c", 'clang "$1" $("$2" build --genc --copts -r "$3") -o "$4"',
+             "copts-test", source.with_suffix(".c"), nerd, source, executable], env)
+        run([executable], env)
+    invalid = run([nerd, "build", "--copts", "main :: fn () { missing() }"], env, check=False)
+    assert invalid.returncode and not invalid.stdout
+    windowed = options('pragma windowed\nmain :: fn () {}')
+    assert ("-Wl,/SUBSYSTEM:WINDOWS" in windowed) == (os.name == "nt")
+
+    library = work / "library.n"
+    library.write_text('''pub use test.library_exports
+base: i32 = 10
+pub add :: fn (a: i32, b: i32) -> i32 { return base + a + b }
+foreign_abs :: ffi "c" abs (value: i32) -> i32
+pub absolute :: foreign_abs
+pub first :: fn (fixed: i32, args: ...) -> i32 { return fixed + args.next[i32]() }
+''', encoding="utf-8")
+    host = work / "host.c"
+    host.write_text('''#include <assert.h>
+extern int add(int, int), absolute(int), library_add(int, int), first(int, ...);
+int main(void) {
+    assert(add(20, 12) == 42);
+    assert(absolute(-42) == 42);
+    assert(library_add(20, 22) == 42);
+    assert(first(20, 22) == 42);
+    return 0;
+}
+''', encoding="utf-8")
+    for mode in ("--obj", "--lib", "--dll"):
+        flags = options("--genc", mode, "-r", library)
+        object_path = work / ("library.obj" if os.name == "nt" else "library.o")
+        if mode == "--dll":
+            assert "-shared" in flags or "-dynamiclib" in flags
+            assert ("-fPIC" in flags) == (os.name != "nt")
+            suffix = ".dll" if os.name == "nt" else ".dylib" if sys.platform == "darwin" else ".so"
+            artifact = work / ("library" + suffix)
+        else:
+            assert "-c" in flags and not any(f.startswith("-l") for f in flags)
+            artifact = object_path
+        run(["clang", "-Werror", library.with_suffix(".c"), *flags, "-o", artifact], env)
+        if mode == "--lib":
+            artifact = work / ("library.lib" if os.name == "nt" else "library.a")
+            if os.name == "nt":
+                run(["llvm-lib", "/NOLOGO", f"/OUT:{artifact}", object_path], env)
+            else:
+                run(["ar", "rcs", artifact, object_path], env)
+        # On Windows clang emits an import library alongside the DLL.
+        link_artifact = artifact.with_suffix(".lib") if mode == "--dll" and os.name == "nt" else artifact
+        run(["clang", host, link_artifact, "-o", executable], env)
+        run([executable], env)
+    if sys.platform.startswith("linux"):
+        library.write_text(sections(ROOT / "tests/commands/297-build-variadic-host.cmd")[0], encoding="utf-8")
+        flags = options("--genc", "--dll", library)
+        artifact = work / "variadic.so"
+        run(["clang", "-Werror", library.with_suffix(".c"), *flags, "-o", artifact], env)
+        run(["clang", ROOT / "tests/ffi/variadic_host.c", artifact, "-o", executable], env)
+        assert run([executable], env).stdout == b"42\n"
+    for mode in ("--obj", "--lib", "--dll"):
+        rejected = run([nerd, "build", "--genc", "--copts", mode, "-o", work / "rejected",
+                        'pub invalid :: fn (value: string) -> string { return value }'], env, check=False)
+        assert rejected.returncode and not rejected.stdout
+        assert not (work / "rejected.c").exists()
+    print("[PASS] --copts queries, external libraries, release, object, archive and shared-library host calls", flush=True)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--nerd", type=Path, default=ROOT / "_bin/nerd-debug")
@@ -254,10 +354,12 @@ def main():
                     print(f"[FAIL] {failures[-1]}", flush=True)
         assert not failures, "\n".join(failures)
         cli_checks(nerd, tmp, env)
+        copts_checks(nerd, tmp, env)
         dungeon_check(nerd, tmp, env)
-        for flags in (("--llvm",), ("--obj",), ("--lib",), ("--dll",)):
-            result = run([nerd, "build", "--genc", *flags, "main :: fn () {}"], env, check=False)
-            assert result.returncode, f"--genc must reject {flags}"
+        for flags in (("--llvm",), ("--obj", "--lib"), ("--lib", "--dll"), ("--obj", "--dll")):
+            for cflag in ("--genc", "--copts"):
+                result = run([nerd, "build", cflag, *flags, "main :: fn () {}"], env, check=False)
+                assert result.returncode and not result.stdout, f"{cflag} must reject {flags}"
     print(f"C generation: {len(fixtures)} differential fixtures at two optimisation levels and CLI conflicts passed")
 
 

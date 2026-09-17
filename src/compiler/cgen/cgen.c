@@ -41,6 +41,11 @@ typedef struct {
     CValue value;
 } COverride;
 typedef struct {
+    u32    id;
+    cstr   target;
+    string symbol;
+} CExport;
+typedef struct {
     const ProgramInfo* program;
     Arena              arena, out_arena, body_arena, decl_arena;
     StringBuilder      out, body, declarations;
@@ -52,6 +57,7 @@ typedef struct {
     Array(bool) locals;
     Array(u32) local_types;
     Array(COverride) overrides;
+    Array(CExport) exports;
     string macro_path;
     cstr   interpolation_arena;
     u32    macro_line;
@@ -2916,15 +2922,19 @@ internal void cgen_block(CGen* c, u32 index)
     cgen_value_block(c, index, (CValue){NULL, U32_MAX, false});
 }
 
-internal void cgen_signature(CGen* c, StringBuilder* b, u32 fi, bool prototype)
+internal void cgen_signature(
+    CGen* c, StringBuilder* b, u32 fi, bool prototype, const CExport* exported)
 {
     const HirFunction* fn = &cgen_hir(c)->functions[fi];
     const SemaType*    t  = cgen_type(c, fn->type_index);
     sb_format(b,
               "%s%s %s(",
-              fn->kind == HIR_FUNCTION_Ffi ? "extern " : "static ",
+              exported                       ? "NCG_EXPORT "
+              : fn->kind == HIR_FUNCTION_Ffi ? "extern "
+                                             : "static ",
               cgen_ctype(c, t->return_type),
-              cgen_function(c, c->module, fi));
+              exported ? CF("ncg_export%u", exported->id)
+                       : cgen_function(c, c->module, fi));
     for (u32 i = 0; i < t->param_count; ++i) {
         u32 local = i < fn->param_count
                         ? cgen_hir(c)->params[fn->first_param + i].local_index
@@ -2942,7 +2952,9 @@ internal void cgen_signature(CGen* c, StringBuilder* b, u32 fi, bool prototype)
     }
     sb_append_char(b, ')');
     if (prototype) {
-        if (fn->kind == HIR_FUNCTION_Ffi) {
+        if (exported) {
+            sb_format(b, " __asm__(%s)", cgen_quote(c, exported->symbol));
+        } else if (fn->kind == HIR_FUNCTION_Ffi) {
             sb_format(b,
                       " __asm__(%s)",
                       cgen_quote(c,
@@ -3001,8 +3013,8 @@ bool cgen_save_program(const ProgramInfo*        program,
     arena_init(&c->decl_arena);
     sb_init(&c->out, &c->out_arena);
     sb_append_cstr(&c->out,
-                   "/* Generated from Nerd HIR. Compile with clang -std=gnu11 "
-                   "source.c -o program (plus external libraries). */\n");
+                   "/* Generated from Nerd HIR. Query Clang options with nerd "
+                   "build --copts using the same source and build flags. */\n");
     if (artifacts->release) {
         sb_append_cstr(&c->out, "#define NDEBUG 1\n");
     }
@@ -3010,6 +3022,25 @@ bool cgen_save_program(const ProgramInfo*        program,
                      string_from((u8*)cgen_runtime, sizeof(cgen_runtime)));
     sb_append_string(&c->out,
                      string_from((u8*)cgen_helpers, sizeof(cgen_helpers)));
+    if (artifacts->output_kind != NERD_BUILD_OUTPUT_Executable) {
+        sb_append_cstr(&c->out,
+                       "\n#if defined(_WIN32)\n#define NCG_EXPORT "
+                       "__declspec(dllexport)\n#else\n#define NCG_EXPORT "
+                       "__attribute__((visibility(\"default\")))\n#endif\n");
+        c->module              = program->root_module_index;
+        const ModuleInfo* root = &program->modules[c->module];
+        for (u32 i = 0; i < array_count(root->export_decl_indices); ++i) {
+            u32             d    = root->export_decl_indices[i];
+            const SemaDecl* decl = &cgen_sema(c)->decls[d];
+            if (cgen_kind(c, decl->type_index) == STK_Function) {
+                array_push(c->exports,
+                           ((CExport){i,
+                                      cgen_decl(c, c->module, d, 0),
+                                      lex_symbol(&cgen_front(c)->lexer,
+                                                 decl->symbol_handle)}));
+            }
+        }
+    }
     for (u32 m = 0; m < array_count(program->modules); ++m) {
         array_push(c->offsets, (u32)array_count(c->type_map));
         for (u32 i = 0;
@@ -3031,7 +3062,14 @@ bool cgen_save_program(const ProgramInfo*        program,
          ++c->module) {
         const Hir* h = cgen_hir(c);
         for (u32 i = 0; i < array_count(h->functions); ++i) {
-            cgen_signature(c, &c->out, i, true);
+            cgen_signature(c, &c->out, i, true, NULL);
+            for (u32 e = 0; e < array_count(c->exports); ++e) {
+                const CExport* exported = &c->exports[e];
+                if (strcmp(exported->target, cgen_function(c, c->module, i)) ==
+                    0) {
+                    cgen_signature(c, &c->out, i, true, exported);
+                }
+            }
         }
         for (u32 i = 0; i < array_count(h->exprs); ++i) {
             const HirExpr* e = &h->exprs[i];
@@ -3116,11 +3154,26 @@ bool cgen_save_program(const ProgramInfo*        program,
             }
             cgen_block(c, fn->body_block_index);
             cgen_return(c, cgen_temp(c, c->return_type, NULL));
-            cgen_signature(c, &c->out, i, false);
+            cgen_signature(c, &c->out, i, false, NULL);
             sb_append_cstr(&c->out, " {\n");
             sb_append_string(&c->out, sb_to_string(&c->declarations));
             sb_append_string(&c->out, sb_to_string(&c->body));
             sb_append_cstr(&c->out, "}\n");
+            // Emit each public alias with its own C entry. Reusing the checked
+            // body also supports variadic exports without forwarding a va_list
+            // into an ellipsis or relying on platform-specific linker aliases.
+            for (u32 e = 0; e < array_count(c->exports); ++e) {
+                const CExport* exported = &c->exports[e];
+                if (strcmp(exported->target, cgen_function(c, c->module, i)) !=
+                    0) {
+                    continue;
+                }
+                cgen_signature(c, &c->out, i, false, exported);
+                sb_append_cstr(&c->out, " {\n");
+                sb_append_string(&c->out, sb_to_string(&c->declarations));
+                sb_append_string(&c->out, sb_to_string(&c->body));
+                sb_append_cstr(&c->out, "}\n");
+            }
         }
         cgen_reset_body(c);
         c->return_type = U32_MAX;
@@ -3139,6 +3192,40 @@ bool cgen_save_program(const ProgramInfo*        program,
         sb_append_string(&c->out, sb_to_string(&c->body));
         sb_append_cstr(&c->out, "}\n");
     }
+    for (c->module = 0; c->module < array_count(program->modules);
+         ++c->module) {
+        for (u32 i = 0; i < array_count(cgen_hir(c)->functions); ++i) {
+            const HirFunction* fn = &cgen_hir(c)->functions[i];
+            if (fn->kind != HIR_FUNCTION_Ffi) {
+                continue;
+            }
+            for (u32 e = 0; e < array_count(c->exports); ++e) {
+                const CExport* exported = &c->exports[e];
+                if (strcmp(exported->target, cgen_function(c, c->module, i)) !=
+                    0) {
+                    continue;
+                }
+                const SemaType* t = cgen_type(c, fn->type_index);
+                cgen_signature(c, &c->out, i, false, exported);
+                sb_format(&c->out,
+                          " { %s%s(",
+                          cgen_void(c, t->return_type) ? "" : "return ",
+                          exported->target);
+                for (u32 j = 0; j < t->param_count; ++j) {
+                    u32 local = j < fn->param_count
+                                    ? cgen_hir(c)
+                                          ->params[fn->first_param + j]
+                                          .local_index
+                                    : j;
+                    sb_format(&c->out,
+                              "%sncg_l%u",
+                              j ? "," : "",
+                              local == U32_MAX ? j : local);
+                }
+                sb_append_cstr(&c->out, "); }\n");
+            }
+        }
+    }
     c->module          = program->root_module_index;
     const Hir* root    = cgen_hir(c);
     u32        main_fn = U32_MAX;
@@ -3149,7 +3236,20 @@ bool cgen_save_program(const ProgramInfo*        program,
             main_fn = root->bindings[i].target_index;
         }
     }
-    if (main_fn == U32_MAX) {
+    if (artifacts->output_kind != NERD_BUILD_OUTPUT_Executable) {
+        sb_append_cstr(&c->out,
+                       "__attribute__((constructor)) static void "
+                       "ncg_library_init(void) {\nnrt_core_init();\n");
+        Array(bool) done = NULL;
+        for (u32 i = 0; i < array_count(program->modules); ++i) {
+            array_push(done, false);
+        }
+        cgen_init_module(c, program->root_module_index, &done);
+        array_free(done);
+        sb_append_cstr(&c->out,
+                       "}\n__attribute__((destructor)) static void "
+                       "ncg_library_done(void) { nrt_core_done(); }\n");
+    } else if (main_fn == U32_MAX) {
         cgen_error(c, "missing main", 0);
     } else {
         const HirFunction* fn = &root->functions[main_fn];
@@ -3214,6 +3314,7 @@ bool cgen_save_program(const ProgramInfo*        program,
     array_free(c->offsets);
     array_free(c->type_map);
     array_free(c->overrides);
+    array_free(c->exports);
     array_free(c->locals);
     array_free(c->local_types);
     array_free(c->cleanups);
