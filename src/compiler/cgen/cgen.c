@@ -598,6 +598,9 @@ internal CValue cgen_coerce(CGen* c, CValue v, u32 t)
     }
     if (to == STK_Enum) {
         const SemaType* st = cgen_type(c, t);
+        if (from == STK_Nil && (st->flags & STF_Optional)) {
+            return cgen_temp(c, t, NULL);
+        }
         if (from == STK_Enum) {
             CValue r = cgen_temp(c, t, NULL);
             CGEN_OUT("memcpy(&%s, &%s, sizeof(%s) < sizeof(%s) ? sizeof(%s) : "

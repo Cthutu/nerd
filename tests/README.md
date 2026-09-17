@@ -72,3 +72,9 @@ It also checks output names, paths with spaces, inline source, argument forwardi
 invalid input, and generation without Clang on `PATH`. `just test` runs this suite.
 Installation smoke tests move generated C out of its source directory and compile
 it independently for debug and release runtime configurations.
+
+Generated C is compiled with `-Werror` in the differential suite. On Linux, a
+PTY regression also builds the actual dungeon example with a fixed seed, waits
+for a complete frame before sending any input, compares that frame across LLVM
+and C at both optimisation levels, and checks that Q exits successfully. Waiting
+for the frame first distinguishes normal presentation from the shutdown flush.

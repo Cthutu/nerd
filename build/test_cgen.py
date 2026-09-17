@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 # Runtime regressions beyond the language suite: defaults, ABI, ownership,
 # atomics, allocator diagnostics, formatting and generic dispatch.
 COMMANDS = (
+    "309-run-on-implicit-binder-mutation",
     "210-run-fixed-array-implicit-slice",
     "211-run-implicit-integer-comparison-width",
     "212-run-large-array-field-index",
@@ -116,7 +117,7 @@ def differential(nerd, fixture, tmp, env):
     assert generated.is_file(), "C output must replace the binary extension"
     for optimisation in ("-O0", "-O2"):
         run(["clang", "-std=gnu11", optimisation,
-             "-Wno-unused-value", generated, "-o", output,
+             "-Werror", generated, "-o", output,
              *([] if os.name == "nt" else ["-lm"])], env)
         actual = run([output], env, check=False, stdin=stdin)
         assert behaviour(actual) == behaviour(expected), (
@@ -153,6 +154,81 @@ def cli_checks(nerd, tmp, env):
     assert result.returncode and not invalid.with_suffix(".c").exists()
 
 
+def terminal_frame(executable, env):
+    # Read a complete frame before sending any input. A test that sends Q first
+    # can mistake the shutdown flush for working presentation.
+    import fcntl
+    import pty
+    import select
+    import struct
+    import termios
+    import time
+
+    master, slave = pty.openpty()
+    proc = None
+    data = bytearray()
+    first_frame = None
+    try:
+        fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 80, 0, 0))
+        proc = subprocess.Popen([str(executable)], stdin=slave, stdout=slave,
+                                stderr=slave, env=env, cwd=ROOT, start_new_session=True)
+        os.close(slave)
+        slave = -1
+        deadline = time.monotonic() + 15
+        while time.monotonic() < deadline:
+            if select.select([master], [], [], 0.05)[0]:
+                try:
+                    chunk = os.read(master, 65536)
+                except OSError:
+                    break
+                if not chunk:
+                    break
+                data.extend(chunk)
+                end = data.find(b"\x1b[0m")
+                if first_frame is None and end >= 0:
+                    first_frame = bytes(data[:end + 4])
+                    os.write(master, b"q")
+            if proc.poll() is not None:
+                break
+        assert first_frame is not None, (
+            f"{executable}: no frame appeared before input; received {bytes(data[:160])!r}")
+        assert b"rooms " in first_frame and b"seed 12345" in first_frame
+        assert b"#" in first_frame and b"." in first_frame
+        assert proc.wait(timeout=3) == 0, "Dungeon must exit successfully on Q"
+        return first_frame
+    finally:
+        if proc is not None and proc.poll() is None:
+            proc.kill()
+            proc.wait()
+        os.close(master)
+        if slave >= 0:
+            os.close(slave)
+
+
+def dungeon_check(nerd, tmp, env):
+    import sys
+    if not sys.platform.startswith("linux"):
+        print("[SKIP] Dungeon terminal regression requires Linux PTYs", flush=True)
+        return
+    work = tmp / "dungeon"
+    work.mkdir()
+    source = work / "dungeon.n"
+    # Keep the actual example and library rendering path, but use a fixed seed
+    # so the first frame can be compared byte for byte across backends.
+    source.write_text((ROOT / "examples/dungeon/dungeon.n").read_text().replace(
+        "seed = now()", "seed = 12345"), encoding="utf-8")
+    executable = work / "dungeon"
+    run([nerd, "build", "-o", executable, source], env)
+    expected = terminal_frame(executable, env)
+    executable.unlink()
+    run([nerd, "build", "--genc", "-o", executable, source], env)
+    for optimisation in ("-O0", "-O2"):
+        run(["clang", "-Werror", optimisation, source.with_suffix(".c"), "-o", executable], env)
+        actual = terminal_frame(executable, env)
+        assert actual == expected, f"Dungeon {optimisation}: first frame differs between C and LLVM"
+    print("[PASS] Dungeon renders before input, matches LLVM and quits on Q (-O0, -O2)", flush=True)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--nerd", type=Path, default=ROOT / "_bin/nerd-debug")
@@ -178,6 +254,7 @@ def main():
                     print(f"[FAIL] {failures[-1]}", flush=True)
         assert not failures, "\n".join(failures)
         cli_checks(nerd, tmp, env)
+        dungeon_check(nerd, tmp, env)
         for flags in (("--llvm",), ("--obj",), ("--lib",), ("--dll",)):
             result = run([nerd, "build", "--genc", *flags, "main :: fn () {}"], env, check=False)
             assert result.returncode, f"--genc must reject {flags}"

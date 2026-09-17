@@ -22623,6 +22623,36 @@ validate_type:
                 }
                 u32 branch_local_index =
                     sema->on_branch_local_indices[on->first_branch + i];
+                // The parser provisionally binds a bare subject name before
+                // its type is known. Only payload extraction introduces a new
+                // value; boolean branches (and an optional's absent branch)
+                // must keep referring to the original, possibly mutable
+                // subject.
+                bool implicit_without_payload =
+                    (branch->flags & AOBF_ImplicitBinder) &&
+                    (!extract_form ||
+                     ((branch->flags & AOBF_Else) &&
+                      (sema->types[scrutinee_type].flags & STF_Optional)));
+                if (branch_local_index != sema_no_local() &&
+                    implicit_without_payload) {
+                    for (u32 ref = 0;
+                         ref < array_count(sema->node_local_indices);
+                         ++ref) {
+                        if (sema->node_local_indices[ref] ==
+                            branch_local_index) {
+                            sema->node_local_indices[ref] =
+                                sema->node_local_indices[node->a];
+                            sema->node_decl_indices[ref] =
+                                sema->node_decl_indices[node->a];
+                            sema->node_type_indices[ref] = sema_no_type();
+                        }
+                    }
+                    sema->locals[branch_local_index].type_index =
+                        scrutinee_type;
+                    sema->on_branch_local_indices[on->first_branch + i] =
+                        sema_no_local();
+                    branch_local_index = sema_no_local();
+                }
                 if (branch_local_index != sema_no_local()) {
                     u32 binder_type = scrutinee_type;
                     if (extract_form) {

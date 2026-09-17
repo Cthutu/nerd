@@ -25,6 +25,15 @@ Parser recovery and semantic index checking recognise the extraction-shaped
 point to the binder and suggest the required `=> [payload]` syntax instead of
 blaming the closing brace or reporting that a result is not indexable.
 
+The parser provisionally creates implicit binders for bare-identifier `on`
+subjects before their types are known. Sema retains these only for branches
+that extract a payload. Boolean branches and optional absent branches resolve
+references back to the original subject, preserving assignments and mutability
+checks. Otherwise, updates such as `on ready => ... else { ready = yes }`
+would write a branch-local copy and leave the surrounding state unchanged.
+The C backend converts untyped `nil` to an absent optional before considering
+payload promotion, including when evaluating omitted default arguments.
+
 For deeper implementation notes, use these companion documents:
 
 - [../compiler-pipeline.md](/home/matt/nerd/docs/compiler-pipeline.md)

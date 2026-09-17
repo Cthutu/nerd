@@ -1,0 +1,11 @@
+absent :: fn (value: ?u32 = nil) {
+    assert !value
+}
+present :: fn (value: ?u32) {
+    on value => [number] { assert number == 7 } else { assert no }
+}
+main :: fn () {
+    absent()
+    absent(nil)
+    present(7)
+}
