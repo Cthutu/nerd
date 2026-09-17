@@ -64,6 +64,11 @@ compiler_cmd_build_artifacts(Arena* arena, const NerdBuildConfig* config)
         }
         break;
     }
+    if (config->emit_c) {
+        artifacts.binary_path =
+            path_replace_extension(arena, artifacts.binary_path, ".c");
+    }
+    artifacts.emit_c_file = config->emit_c;
     artifacts.hir_path  = compiler_cmd_sidecar_path(arena, output_root, ".hir");
     artifacts.llvm_path = compiler_cmd_sidecar_path(arena, output_root, ".ll");
     artifacts.emit_hir_file  = config->emit_hir;

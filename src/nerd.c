@@ -591,6 +591,12 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
                 arena, "hir", NULL, "Write generated HIR to a file"));
         json_array_push(
             build_flags,
+            nerd_cli_make_flag(arena,
+                               "genc",
+                               NULL,
+                               "Generate a single C file instead of a binary"));
+        json_array_push(
+            build_flags,
             nerd_cli_make_flag(
                 arena, "llvm", NULL, "Write generated LLVM IR to a file"));
         json_array_push(
@@ -968,6 +974,7 @@ nerd_build_config_from_json(const JsonValue* cli_result, Array(string) keywords)
         .output_path = nerd_cli_param_string(
             cli_result, "command.params.output", (string){0}),
         .output_kind = nerd_build_output_kind_from_json(cli_result),
+        .emit_c   = nerd_cli_flag_bool(cli_result, "command.flags.genc", false),
         .emit_hir = nerd_cli_flag_bool(cli_result, "command.flags.hir", false),
         .emit_llvm =
             nerd_cli_flag_bool(cli_result, "command.flags.llvm", false),
@@ -986,6 +993,13 @@ internal bool nerd_build_output_flags_valid(const JsonValue* cli_result)
     count += nerd_cli_flag_bool(cli_result, "command.flags.obj", false) ? 1 : 0;
     count += nerd_cli_flag_bool(cli_result, "command.flags.lib", false) ? 1 : 0;
     count += nerd_cli_flag_bool(cli_result, "command.flags.dll", false) ? 1 : 0;
+    if (nerd_cli_flag_bool(cli_result, "command.flags.genc", false) &&
+        (count ||
+         nerd_cli_flag_bool(cli_result, "command.flags.llvm", false))) {
+        eprn("`--genc` cannot be combined with `--obj`, `--lib`, `--dll`, or "
+             "`--llvm`.");
+        return false;
+    }
     if (count <= 1) {
         return true;
     }

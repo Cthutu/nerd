@@ -68,6 +68,7 @@ typedef struct {
     NerdBuildOutputKind output_kind;
     bool                emit_hir;
     bool                emit_llvm;
+    bool                emit_c;
     bool                release;
     bool                verbose;
     bool                timing;
@@ -120,6 +121,7 @@ typedef struct {
     cstr                llvm_path;
     bool                emit_hir_file;
     bool                emit_llvm_file;
+    bool                emit_c_file;
     NerdBuildOutputKind output_kind;
     bool                require_entry_point;
     bool                release;

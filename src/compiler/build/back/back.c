@@ -15,6 +15,7 @@
 #include <compiler/build/back/llvm_runtime.h>
 #include <compiler/build/back/llvm_text.h>
 #include <compiler/build/front/front.h>
+#include <compiler/cgen/cgen.h>
 #include <compiler/error/error.h>
 #include <compiler/llvm/llvm.h>
 
@@ -1164,6 +1165,9 @@ bool back_end_program(const ProgramInfo*        program,
     }
 
     (void)verbose;
+    if (artifacts->emit_c_file) {
+        return cgen_save_program(program, artifacts);
+    }
     return back_end_emit_llvm_artifacts(program, artifacts, timing);
 }
 

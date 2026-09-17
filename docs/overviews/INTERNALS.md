@@ -33,6 +33,17 @@ For deeper implementation notes, use these companion documents:
 - [../lsp.md](/home/matt/nerd/docs/lsp.md)
 - [../testing.md](/home/matt/nerd/docs/testing.md)
 
+## C output
+
+`src/compiler/cgen/cgen.c` implements the optional HIR-to-C backend. It consumes
+the checked whole-program HIR and semantic type tables, canonicalises C types
+across modules, and emits forward declarations before function bodies. Separate
+arenas own output, function bodies, declarations, and temporary names. Generated
+C embeds `data/nrt.c` and `data/ncg.c`, so generation works after installation
+without access to the compiler source tree. LLVM remains the default backend.
+The implementation plan and remaining parity work are tracked in
+[../c-transpilation-plan.md](../c-transpilation-plan.md).
+
 ## Overall Shape
 
 The repository contains:

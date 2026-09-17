@@ -56,6 +56,17 @@ The backend is intentionally split into small pieces:
   owns textual LLVM concatenation and declaration filtering for the combined
   input.
 
+## C transpilation
+
+`nerd build --genc source.n` selects the HIR-to-C backend in
+`src/compiler/cgen/cgen.c`. It writes one C file in place of the binary, replacing
+the output extension with `.c`; `-o` controls the output location. This mode
+embeds the runtime source and does not invoke Clang. Compile the file with
+`clang -std=gnu11 -fwrapv source.c -o source` and any external libraries used by
+the program. `--hir` remains available; `--llvm`, `--obj`, `--lib`, and `--dll`
+are incompatible with `--genc`. Language parity is being completed on the
+feature branch; see [the implementation plan](c-transpilation-plan.md).
+
 ## Lexer
 
 The lexer owns:
