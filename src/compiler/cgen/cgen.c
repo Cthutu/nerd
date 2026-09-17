@@ -63,7 +63,7 @@ typedef struct {
 } CGen;
 
 #define CF(...) cgen_format(c, __VA_ARGS__)
-#define OUT(...) sb_format(&c->body, __VA_ARGS__)
+#define CGEN_OUT(...) sb_format(&c->body, __VA_ARGS__)
 
 internal cstr cgen_format(CGen* c, cstr format, ...)
 {
@@ -308,12 +308,13 @@ internal CValue cgen_temp(CGen* c, u32 t, cstr expr)
 {
     if (cgen_void(c, t)) {
         if (expr && *expr) {
-            OUT("%s;\n", expr);
+            CGEN_OUT("%s;\n", expr);
         }
         return (CValue){"0", t, false};
     }
     cstr name = CF("ncg_v%u", c->next++);
-    OUT("%s %s = %s;\n", cgen_ctype(c, t), name, expr ? expr : cgen_zero(c, t));
+    CGEN_OUT(
+        "%s %s = %s;\n", cgen_ctype(c, t), name, expr ? expr : cgen_zero(c, t));
     return (CValue){name, t, false};
 }
 internal bool cgen_bitfield(CGen* c, u32 type, u32 field)
@@ -599,26 +600,26 @@ internal CValue cgen_coerce(CGen* c, CValue v, u32 t)
         const SemaType* st = cgen_type(c, t);
         if (from == STK_Enum) {
             CValue r = cgen_temp(c, t, NULL);
-            OUT("memcpy(&%s, &%s, sizeof(%s) < sizeof(%s) ? sizeof(%s) : "
-                "sizeof(%s));\n",
-                r.text,
-                v.text,
-                r.text,
-                v.text,
-                r.text,
-                v.text);
+            CGEN_OUT("memcpy(&%s, &%s, sizeof(%s) < sizeof(%s) ? sizeof(%s) : "
+                     "sizeof(%s));\n",
+                     r.text,
+                     v.text,
+                     r.text,
+                     v.text,
+                     r.text,
+                     v.text);
             return r;
         }
         if (st->flags & (STF_Optional | STF_Result)) {
             u32    which = (st->flags & STF_Optional) ? 1 : 0;
             CValue r     = cgen_temp(c, t, NULL);
-            OUT("%s.tag = %lld;\n",
-                r.text,
-                (long long)cgen_sema(c)
-                    ->type_param_values[st->first_param_type + which]);
+            CGEN_OUT("%s.tag = %lld;\n",
+                     r.text,
+                     (long long)cgen_sema(c)
+                         ->type_param_values[st->first_param_type + which]);
             CValue payload = cgen_coerce(c, v, cgen_field_type(c, t, which));
             if (!cgen_void(c, payload.type)) {
-                OUT("%s.payload.f%u = %s;\n", r.text, which, payload.text);
+                CGEN_OUT("%s.payload.f%u = %s;\n", r.text, which, payload.text);
             }
             return r;
         }
@@ -803,7 +804,8 @@ internal void cgen_cleanup_to(CGen* c, u32 base)
         if (cl.block) {
             cgen_block(c, cl.index);
         } else {
-            OUT("nrt_mem_free(ncg_l%u); ncg_l%u = NULL;\n", cl.index, cl.index);
+            CGEN_OUT(
+                "nrt_mem_free(ncg_l%u); ncg_l%u = NULL;\n", cl.index, cl.index);
         }
         __array_count(c->cleanups) = save;
     }
@@ -815,7 +817,7 @@ internal void cgen_consume(CGen* c, u32 index, u32 t)
     }
     const HirExpr* e = &cgen_hir(c)->exprs[index];
     if (e->kind == HIR_EXPR_LocalRef && e->ref_kind == HIR_REF_Local) {
-        OUT("ncg_l%u = NULL;\n", e->ref_index);
+        CGEN_OUT("ncg_l%u = NULL;\n", e->ref_index);
     }
 }
 internal void cgen_return(CGen* c, CValue v)
@@ -825,22 +827,22 @@ internal void cgen_return(CGen* c, CValue v)
     }
     cgen_cleanup_to(c, 0);
     if (c->va_local != U32_MAX) {
-        OUT("nrt_va_done(ncg_l%u);\n", c->va_local);
+        CGEN_OUT("nrt_va_done(ncg_l%u);\n", c->va_local);
     }
     if (cgen_void(c, c->return_type)) {
-        OUT("return;\n");
+        CGEN_OUT("return;\n");
     } else {
-        OUT("return %s;\n", v.text);
+        CGEN_OUT("return %s;\n", v.text);
     }
 }
 internal CValue cgen_enum(CGen* c, const HirExpr* e, u32 variant)
 {
     CValue          result = cgen_temp(c, e->type_index, NULL);
     const SemaType* st     = cgen_type(c, e->type_index);
-    OUT("%s.tag=%lld;\n",
-        result.text,
-        (long long)cgen_sema(c)
-            ->type_param_values[st->first_param_type + variant]);
+    CGEN_OUT("%s.tag=%lld;\n",
+             result.text,
+             (long long)cgen_sema(c)
+                 ->type_param_values[st->first_param_type + variant]);
     u32 pt = cgen_field_type(c, e->type_index, variant);
     if (e->arg_count && !cgen_void(c, pt)) {
         if ((cgen_kind(c, pt) == STK_Tuple || cgen_kind(c, pt) == STK_Plex) &&
@@ -857,18 +859,18 @@ internal CValue cgen_enum(CGen* c, const HirExpr* e, u32 variant)
                                 : cgen_field_index(c, pt, a->symbol_handle);
                 CValue v  = cgen_coerce(
                     c, cgen_expr(c, a->expr_index), cgen_field_type(c, pt, fi));
-                OUT("%s.payload.f%u.f%u=%s;\n",
-                    result.text,
-                    variant,
-                    fi,
-                    v.text);
+                CGEN_OUT("%s.payload.f%u.f%u=%s;\n",
+                         result.text,
+                         variant,
+                         fi,
+                         v.text);
             }
         } else {
             CValue v = cgen_coerce(
                 c,
                 cgen_expr(c, cgen_hir(c)->call_args[e->first_arg].expr_index),
                 pt);
-            OUT("%s.payload.f%u=%s;\n", result.text, variant, v.text);
+            CGEN_OUT("%s.payload.f%u=%s;\n", result.text, variant, v.text);
         }
     }
     return result;
@@ -903,7 +905,8 @@ internal cstr cgen_equal(CGen* c, CValue a, CValue b, u32 depth)
                         ? CF("(%s?%s->data:NULL)", b.text, b.text)
                         : CF("%s.data", b.text);
         cstr r = CF("ncg_eq%u", c->next++), i = CF("ncg_i%u", c->next++);
-        OUT("bool %s = %s == %s;\nfor(uintptr_t %s=0; %s && %s<%s; ++%s) {\n",
+        CGEN_OUT(
+            "bool %s = %s == %s;\nfor(uintptr_t %s=0; %s && %s<%s; ++%s) {\n",
             r,
             ac,
             bc,
@@ -916,7 +919,7 @@ internal cstr cgen_equal(CGen* c, CValue a, CValue b, u32 depth)
             cgen_temp(c, item, CF("((%s*)%s)[%s]", cgen_ctype(c, item), ad, i));
         CValue y =
             cgen_temp(c, item, CF("((%s*)%s)[%s]", cgen_ctype(c, item), bd, i));
-        OUT("%s=%s;\n}\n", r, cgen_equal(c, x, y, depth + 1));
+        CGEN_OUT("%s=%s;\n}\n", r, cgen_equal(c, x, y, depth + 1));
         return r;
     }
     if (k == STK_Box) {
@@ -933,7 +936,8 @@ internal cstr cgen_equal(CGen* c, CValue a, CValue b, u32 depth)
         }
         cstr r = CF("ncg_eq%u", c->next++), n = CF("ncg_n%u", c->next++),
              i = CF("ncg_i%u", c->next++);
-        OUT("bool %s=%s==%s; if(%s && %s) { uintptr_t "
+        CGEN_OUT(
+            "bool %s=%s==%s; if(%s && %s) { uintptr_t "
             "%s=nrt_mem_size(%s)/sizeof(%s); "
             "%s=%s==nrt_mem_size(%s)/sizeof(%s);\nfor(uintptr_t %s=0;%s && "
             "%s<%s;++%s) {\n",
@@ -958,7 +962,7 @@ internal cstr cgen_equal(CGen* c, CValue a, CValue b, u32 depth)
             c, item, CF("((%s*)%s)[%s]", cgen_ctype(c, item), a.text, i));
         CValue y = cgen_temp(
             c, item, CF("((%s*)%s)[%s]", cgen_ctype(c, item), b.text, i));
-        OUT("%s=%s; }}\n", r, cgen_equal(c, x, y, depth + 1));
+        CGEN_OUT("%s=%s; }}\n", r, cgen_equal(c, x, y, depth + 1));
         return r;
     }
     for (u32 j = 0; j < array_count(cgen_hir(c)->equality_methods); ++j) {
@@ -978,7 +982,7 @@ internal cstr cgen_pattern(CGen* c, u32 index, CValue value)
     }
     if (p->kind == HIR_PATTERN_Bind) {
         cgen_local(c, p->local_index, value.type);
-        OUT("ncg_l%u=%s;\n", p->local_index, value.text);
+        CGEN_OUT("ncg_l%u=%s;\n", p->local_index, value.text);
         return "true";
     }
     bool braced = false;
@@ -1003,7 +1007,7 @@ internal cstr cgen_pattern(CGen* c, u32 index, CValue value)
                              false};
         }
         cstr result = CF("ncg_match%u", c->next++);
-        OUT("bool %s=%s; if(%s) {\n", result, condition, result);
+        CGEN_OUT("bool %s=%s; if(%s) {\n", result, condition, result);
         for (u32 i = 0; i < p->child_count; ++i) {
             const HirPatternChild* ch =
                 &cgen_hir(c)->pattern_children[p->first_child + i];
@@ -1023,9 +1027,9 @@ internal cstr cgen_pattern(CGen* c, u32 index, CValue value)
                                  false};
             }
             cstr test = cgen_pattern(c, ch->pattern_index, child);
-            OUT("%s = %s && %s;\n", result, result, test);
+            CGEN_OUT("%s = %s && %s;\n", result, result, test);
         }
-        OUT("}\n");
+        CGEN_OUT("}\n");
         return result;
     }
     CValue rhs = cgen_coerce(c, cgen_expr(c, p->expr_index), value.type);
@@ -1066,7 +1070,7 @@ internal CValue cgen_control(CGen* c, const HirExpr* e)
         array_push(c->targets, target);
         cgen_value_block(c, e->body_block_index, result);
         array_pop(c->targets);
-        OUT("ncg_end%u:;\n", id);
+        CGEN_OUT("ncg_end%u:;\n", id);
         return result;
     }
     if (e->kind == HIR_EXPR_On) {
@@ -1087,11 +1091,11 @@ internal CValue cgen_control(CGen* c, const HirExpr* e)
             cstr cond = "true";
             if (!b->is_else) {
                 cstr matched = CF("ncg_match%u", c->next++);
-                OUT("bool %s=%s;\n",
-                    matched,
-                    b->pattern_count ? "false" : "true");
+                CGEN_OUT("bool %s=%s;\n",
+                         matched,
+                         b->pattern_count ? "false" : "true");
                 for (u32 j = 0; j < b->pattern_count; ++j) {
-                    OUT("if(!%s) {\n", matched);
+                    CGEN_OUT("if(!%s) {\n", matched);
                     u32 pi =
                         cgen_hir(c)->on_branch_patterns[b->first_pattern + j];
                     if (e->on_kind == HIR_ON_Condition) {
@@ -1101,30 +1105,30 @@ internal CValue cgen_control(CGen* c, const HirExpr* e)
                     } else {
                         cond = cgen_pattern(c, pi, subject);
                     }
-                    OUT("%s=%s; }\n", matched, cond);
+                    CGEN_OUT("%s=%s; }\n", matched, cond);
                 }
                 cond = matched;
             }
-            OUT("if(%s) {\n", cond);
+            CGEN_OUT("if(%s) {\n", cond);
             if (b->binder_local_index != U32_MAX && subject.text) {
                 cgen_local(c, b->binder_local_index, subject.type);
-                OUT("ncg_l%u=%s;\n", b->binder_local_index, subject.text);
+                CGEN_OUT("ncg_l%u=%s;\n", b->binder_local_index, subject.text);
             }
             if (b->guard_expr_index != U32_MAX) {
                 CValue guard = cgen_expr(c, b->guard_expr_index);
-                OUT("if(%s) {\n", cgen_truth(c, guard));
+                CGEN_OUT("if(%s) {\n", cgen_truth(c, guard));
             }
             cgen_value_block(c, b->body_block_index, result);
-            OUT("goto ncg_end%u;\n", id);
+            CGEN_OUT("goto ncg_end%u;\n", id);
             if (b->guard_expr_index != U32_MAX) {
-                OUT("}\n");
+                CGEN_OUT("}\n");
             }
-            OUT("}\n");
+            CGEN_OUT("}\n");
         }
         if (push) {
             array_pop(c->targets);
         }
-        OUT("ncg_end%u:;\n", id);
+        CGEN_OUT("ncg_end%u:;\n", id);
         return result;
     }
     const HirFor* loop = &cgen_hir(c)->fors[e->for_index];
@@ -1146,7 +1150,8 @@ internal CValue cgen_control(CGen* c, const HirExpr* e)
             CValue start  = cgen_expr(c, ie->lhs_expr_index),
                    finish = cgen_expr(c, ie->rhs_expr_index);
             range_start   = start.text;
-            OUT("%s %s=%s;\n", cgen_ctype(c, start.type), counter, start.text);
+            CGEN_OUT(
+                "%s %s=%s;\n", cgen_ctype(c, start.type), counter, start.text);
             end = CF("%s%s%s",
                      counter,
                      ie->kind == HIR_EXPR_RangeInclusive ? "<=" : "<",
@@ -1161,7 +1166,7 @@ internal CValue cgen_control(CGen* c, const HirExpr* e)
                 : cgen_kind(c, iterable.type) == STK_DynamicArray
                     ? CF("(%s?%s->count:0)", iterable.text, iterable.text)
                     : CF("%s.count", iterable.text);
-            OUT("uintptr_t %s=0;\n", counter);
+            CGEN_OUT("uintptr_t %s=0;\n", counter);
             end = CF("%s<%s", counter, count);
         }
     }
@@ -1172,13 +1177,13 @@ internal CValue cgen_control(CGen* c, const HirExpr* e)
         next_type =
             cgen_sema(c)->decls[loop->iterator_next_decl_index].type_index;
     }
-    OUT("ncg_cond%u:;\n", id);
+    CGEN_OUT("ncg_cond%u:;\n", id);
     if (loop->condition_expr_index != U32_MAX) {
         CValue condition = cgen_expr(c, loop->condition_expr_index);
         end              = cgen_truth(c, condition);
     }
     if (end) {
-        OUT("if(!(%s)) goto ncg_else%u;\n", end, id);
+        CGEN_OUT("if(!(%s)) goto ncg_else%u;\n", end, id);
     }
     if (custom) {
         CValue next = cgen_temp(
@@ -1187,52 +1192,52 @@ internal CValue cgen_control(CGen* c, const HirExpr* e)
             CF("%s(&(%s))",
                cgen_decl(c, c->module, loop->iterator_next_decl_index, 0),
                iterator.text));
-        OUT("if(%s.tag!=1)goto ncg_else%u;\n", next.text, id);
+        CGEN_OUT("if(%s.tag!=1)goto ncg_else%u;\n", next.text, id);
         u32 it = cgen_field_type(c, next.type, 1);
         cgen_local(c, loop->item_local_index, it);
-        OUT("ncg_l%u=%s.payload.f1;\n", loop->item_local_index, next.text);
+        CGEN_OUT("ncg_l%u=%s.payload.f1;\n", loop->item_local_index, next.text);
     }
     if (loop->kind == HIR_FOR_In && !custom) {
         if (loop->index_local_index != U32_MAX) {
             u32 t = cgen_sema(c)->locals[loop->index_local_index].type_index;
             cgen_local(c, loop->index_local_index, t);
-            OUT("ncg_l%u=%s;\n",
-                loop->index_local_index,
-                range ? CF("%s-%s", counter, range_start) : counter);
+            CGEN_OUT("ncg_l%u=%s;\n",
+                     loop->index_local_index,
+                     range ? CF("%s-%s", counter, range_start) : counter);
         }
         if (loop->item_local_index != U32_MAX) {
             u32 t = cgen_sema(c)->locals[loop->item_local_index].type_index;
             cgen_local(c, loop->item_local_index, t);
             if (range) {
-                OUT("ncg_l%u=%s;\n", loop->item_local_index, counter);
+                CGEN_OUT("ncg_l%u=%s;\n", loop->item_local_index, counter);
             } else {
                 cstr data = cgen_kind(c, iterable.type) == STK_DynamicArray
                                 ? CF("%s->data", iterable.text)
                                 : CF("%s.data", iterable.text);
-                OUT("ncg_l%u=&((%s*)%s)[%s];\n",
-                    loop->item_local_index,
-                    cgen_ctype(c, cgen_type(c, t)->first_param_type),
-                    data,
-                    counter);
+                CGEN_OUT("ncg_l%u=&((%s*)%s)[%s];\n",
+                         loop->item_local_index,
+                         cgen_ctype(c, cgen_type(c, t)->first_param_type),
+                         data,
+                         counter);
             }
         }
     }
     array_push(c->targets, target);
     cgen_block(c, loop->body_block_index);
-    OUT("ncg_continue%u:;\n", id);
+    CGEN_OUT("ncg_continue%u:;\n", id);
     for (u32 i = 0; i < loop->update_stmt_count; ++i) {
         cgen_stmt(c,
                   cgen_hir(c)->for_update_stmts[loop->first_update_stmt + i]);
     }
     if (loop->kind == HIR_FOR_In && !custom) {
-        OUT("++%s;\n", counter);
+        CGEN_OUT("++%s;\n", counter);
     }
-    OUT("goto ncg_cond%u;\nncg_else%u:;\n", id, id);
+    CGEN_OUT("goto ncg_cond%u;\nncg_else%u:;\n", id, id);
     if (loop->else_block_index != U32_MAX) {
         cgen_value_block(c, loop->else_block_index, result);
     }
     array_pop(c->targets);
-    OUT("ncg_end%u:;\n", id);
+    CGEN_OUT("ncg_end%u:;\n", id);
     return result;
 }
 
@@ -1547,15 +1552,15 @@ internal void cgen_display(CGen* c, CValue value, u32 depth)
                       CF("%s(%s)",
                          cgen_decl(c, c->module, method->decl_index, 0),
                          value.text));
-        OUT("nrt_string_builder_append_string(&%s);\n", text.text);
+        CGEN_OUT("nrt_string_builder_append_string(&%s);\n", text.text);
         return;
     }
     if (k == STK_Tuple || k == STK_Plex) {
-        OUT("nrt_string_builder_append_byte('(');\n");
+        CGEN_OUT("nrt_string_builder_append_byte('(');\n");
         for (u32 i = 0; i < cgen_type(c, value.type)->param_count; ++i) {
             if (i) {
-                OUT("nrt_string_builder_append_byte(','); "
-                    "nrt_string_builder_append_byte(' ');\n");
+                CGEN_OUT("nrt_string_builder_append_byte(','); "
+                         "nrt_string_builder_append_byte(' ');\n");
             }
             CValue v = cgen_temp(c,
                                  cgen_field_type(c, value.type, i),
@@ -1563,9 +1568,9 @@ internal void cgen_display(CGen* c, CValue value, u32 depth)
             cgen_display(c, v, depth + 1);
         }
         if (cgen_type(c, value.type)->param_count == 1) {
-            OUT("nrt_string_builder_append_byte(',');\n");
+            CGEN_OUT("nrt_string_builder_append_byte(',');\n");
         }
-        OUT("nrt_string_builder_append_byte(')');\n");
+        CGEN_OUT("nrt_string_builder_append_byte(')');\n");
         return;
     }
     if (k == STK_Array || k == STK_Slice || k == STK_DynamicArray) {
@@ -1578,7 +1583,8 @@ internal void cgen_display(CGen* c, CValue value, u32 depth)
         cstr data  = k == STK_DynamicArray ? CF("%s->data", value.text)
                                            : CF("%s.data", value.text),
              i     = CF("ncg_show%u", c->next++);
-        OUT("nrt_string_builder_append_byte('['); for(uintptr_t "
+        CGEN_OUT(
+            "nrt_string_builder_append_byte('['); for(uintptr_t "
             "%s=0;%s<%s;++%s) "
             "{\nif(%s){nrt_string_builder_append_byte(',');nrt_string_builder_"
             "append_byte(' ');}\n",
@@ -1590,7 +1596,7 @@ internal void cgen_display(CGen* c, CValue value, u32 depth)
         CValue v =
             cgen_temp(c, it, CF("((%s*)%s)[%s]", cgen_ctype(c, it), data, i));
         cgen_display(c, v, depth + 1);
-        OUT("} nrt_string_builder_append_byte(']');\n");
+        CGEN_OUT("} nrt_string_builder_append_byte(']');\n");
         return;
     }
     if (k == STK_Enum) {
@@ -1606,14 +1612,15 @@ internal void cgen_display(CGen* c, CValue value, u32 depth)
                         ? "u64"
                         : "i64";
         cstr str  = CF("ncg_str%u", c->next++);
-        OUT("NerdString %s={0}; nrt_to_string_%s(&%s,%s);\n",
-            str,
-            name,
-            str,
-            k == STK_Pointer ? CF("(uintptr_t)%s", value.text) : value.text);
+        CGEN_OUT("NerdString %s={0}; nrt_to_string_%s(&%s,%s);\n",
+                 str,
+                 name,
+                 str,
+                 k == STK_Pointer ? CF("(uintptr_t)%s", value.text)
+                                  : value.text);
         value.text = str;
     }
-    OUT("nrt_string_builder_append_string(&%s);\n", value.text);
+    CGEN_OUT("nrt_string_builder_append_string(&%s);\n", value.text);
 }
 
 internal CValue cgen_array_call(CGen*          c,
@@ -1623,7 +1630,7 @@ internal CValue cgen_array_call(CGen*          c,
     CValue receiver = cgen_lvalue(c, callee->operand_expr_index);
     u32    item     = cgen_type(c, receiver.type)->first_param_type;
     cstr   ptr      = CF("ncg_array%u", c->next++);
-    OUT("NcgArray** %s=&(%s);\n", ptr, receiver.text);
+    CGEN_OUT("NcgArray** %s=&(%s);\n", ptr, receiver.text);
     cstr a = CF("(*%s)", ptr), method = cgen_symbol(c, callee->symbol_handle),
          it            = cgen_ctype(c, item);
     Array(CValue) args = NULL;
@@ -1638,21 +1645,22 @@ internal CValue cgen_array_call(CGen*          c,
         strncmp(method, "reserve_", 8) == 0 ||
         strncmp(method, "resize", 6) == 0 ||
         strncmp(method, "extend", 6) == 0) {
-        OUT("if(!%s)ncg_reserve(%s,0,sizeof(%s),_Alignof(%s),%s,%u);\n",
-            a,
-            ptr,
-            it,
-            it,
-            file,
-            e->source_line);
+        CGEN_OUT("if(!%s)ncg_reserve(%s,0,sizeof(%s),_Alignof(%s),%s,%u);\n",
+                 a,
+                 ptr,
+                 it,
+                 it,
+                 file,
+                 e->source_line);
     }
     if (strcmp(method, "free") == 0) {
-        OUT("ncg_array_free(%s);\n", ptr);
+        CGEN_OUT("ncg_array_free(%s);\n", ptr);
     } else if (strcmp(method, "clear") == 0) {
-        OUT("if(%s)%s->count=0;\n", a, a);
+        CGEN_OUT("if(%s)%s->count=0;\n", a, a);
     } else if (strcmp(method, "push") == 0) {
         CValue v = cgen_coerce(c, args[0], item);
-        OUT("ncg_reserve(%s,(%s->count<%s->capacity?%s->capacity:(%s->capacity?"
+        CGEN_OUT(
+            "ncg_reserve(%s,(%s->count<%s->capacity?%s->capacity:(%s->capacity?"
             "%s->capacity*2:1)),sizeof(%s),_Alignof(%s),%s,%u);"
             "\n",
             ptr,
@@ -1665,21 +1673,22 @@ internal CValue cgen_array_call(CGen*          c,
             it,
             file,
             e->source_line);
-        OUT("((%s*)%s->data)[%s->count++]=%s;\n", it, a, a, v.text);
+        CGEN_OUT("((%s*)%s->data)[%s->count++]=%s;\n", it, a, a, v.text);
     } else if (strcmp(method, "pop") == 0) {
         result = cgen_temp(c, item, NULL);
-        OUT("if(%s && %s->count) %s=((%s*)%s->data)[--%s->count];\n",
-            a,
-            a,
-            result.text,
-            it,
-            a,
-            a);
+        CGEN_OUT("if(%s && %s->count) %s=((%s*)%s->data)[--%s->count];\n",
+                 a,
+                 a,
+                 result.text,
+                 it,
+                 a,
+                 a);
     } else if (strcmp(method, "delete") == 0 ||
                strcmp(method, "swap_delete") == 0) {
-        OUT("if(%s && %s<%s->count) {\n", a, args[0].text, a);
+        CGEN_OUT("if(%s && %s<%s->count) {\n", a, args[0].text, a);
         if (strcmp(method, "delete") == 0) {
-            OUT("memmove((%s*)%s->data+%s,(%s*)%s->data+%s+1,(%s->count-%s-1)*"
+            CGEN_OUT(
+                "memmove((%s*)%s->data+%s,(%s*)%s->data+%s+1,(%s->count-%s-1)*"
                 "sizeof(%s));\n",
                 it,
                 a,
@@ -1691,31 +1700,32 @@ internal CValue cgen_array_call(CGen*          c,
                 args[0].text,
                 it);
         } else {
-            OUT("((%s*)%s->data)[%s]=((%s*)%s->data)[%s->count-1];\n",
-                it,
-                a,
-                args[0].text,
-                it,
-                a,
-                a);
+            CGEN_OUT("((%s*)%s->data)[%s]=((%s*)%s->data)[%s->count-1];\n",
+                     it,
+                     a,
+                     args[0].text,
+                     it,
+                     a,
+                     a);
         }
-        OUT("--%s->count; }\n", a);
+        CGEN_OUT("--%s->count; }\n", a);
     } else if (strcmp(method, "reserve_to") == 0 ||
                strcmp(method, "reserve_extra") == 0) {
         cstr cap = strcmp(method, "reserve_extra") == 0
                        ? CF("(%s?%s->count:0)+%s", a, a, args[0].text)
                        : args[0].text;
-        OUT("ncg_reserve(%s,%s,sizeof(%s),_Alignof(%s),%s,%u);\n",
-            ptr,
-            cap,
-            it,
-            it,
-            file,
-            e->source_line);
+        CGEN_OUT("ncg_reserve(%s,%s,sizeof(%s),_Alignof(%s),%s,%u);\n",
+                 ptr,
+                 cap,
+                 it,
+                 it,
+                 file,
+                 e->source_line);
     } else if (strcmp(method, "append") == 0) {
         cstr count = CF("ncg_count%u", c->next++);
-        OUT("uintptr_t %s=%s.count;\n", count, args[0].text);
-        OUT("ncg_reserve(%s,(%s?%s->count:0)+%s,sizeof(%s),_Alignof(%s),%s,%u);"
+        CGEN_OUT("uintptr_t %s=%s.count;\n", count, args[0].text);
+        CGEN_OUT(
+            "ncg_reserve(%s,(%s?%s->count:0)+%s,sizeof(%s),_Alignof(%s),%s,%u);"
             "\n",
             ptr,
             a,
@@ -1725,7 +1735,8 @@ internal CValue cgen_array_call(CGen*          c,
             it,
             file,
             e->source_line);
-        OUT("memmove((%s*)%s->data+%s->count,%s.data,%s*sizeof(%s));%s->count+="
+        CGEN_OUT(
+            "memmove((%s*)%s->data+%s->count,%s.data,%s*sizeof(%s));%s->count+="
             "%s;\n",
             it,
             a,
@@ -1743,22 +1754,23 @@ internal CValue cgen_array_call(CGen*          c,
         }
         cstr old   = CF("ncg_old%u", c->next++),
              count = CF("ncg_count%u", c->next++);
-        OUT("uintptr_t %s=%s?%s->count:0; uintptr_t %s=%s%s;\n",
-            old,
-            a,
-            a,
-            count,
-            extend ? CF("%s+", old) : "",
-            args[0].text);
-        OUT("ncg_reserve(%s,%s,sizeof(%s),_Alignof(%s),%s,%u);\n",
-            ptr,
-            count,
-            it,
-            it,
-            file,
-            e->source_line);
+        CGEN_OUT("uintptr_t %s=%s?%s->count:0; uintptr_t %s=%s%s;\n",
+                 old,
+                 a,
+                 a,
+                 count,
+                 extend ? CF("%s+", old) : "",
+                 args[0].text);
+        CGEN_OUT("ncg_reserve(%s,%s,sizeof(%s),_Alignof(%s),%s,%u);\n",
+                 ptr,
+                 count,
+                 it,
+                 it,
+                 file,
+                 e->source_line);
         if (!undefined) {
-            OUT("if(%s>%s)memset((%s*)%s->data+%s,0,(%s-%s)*sizeof(%s));\n",
+            CGEN_OUT(
+                "if(%s>%s)memset((%s*)%s->data+%s,0,(%s-%s)*sizeof(%s));\n",
                 count,
                 old,
                 it,
@@ -1768,7 +1780,7 @@ internal CValue cgen_array_call(CGen*          c,
                 old,
                 it);
         }
-        OUT("%s->count=%s;\n", a, count);
+        CGEN_OUT("%s->count=%s;\n", a, count);
         if (!cgen_void(c, e->type_index)) {
             result = cgen_temp(c,
                                e->type_index,
@@ -1803,7 +1815,7 @@ internal CValue cgen_call(CGen* c, const HirExpr* e)
         if (cgen_kind(c, bt) == STK_Box &&
             strcmp(cgen_symbol(c, callee->symbol_handle), "free") == 0) {
             CValue v = cgen_lvalue(c, callee->operand_expr_index);
-            OUT("nrt_mem_free(%s);%s=NULL;\n", v.text, v.text);
+            CGEN_OUT("nrt_mem_free(%s);%s=NULL;\n", v.text, v.text);
             return (CValue){"0", e->type_index, false};
         }
     }
@@ -1816,12 +1828,12 @@ internal CValue cgen_call(CGen* c, const HirExpr* e)
                           cgen_hir(c)->call_args[e->first_arg + i].expr_index)
                     .text;
         }
-        OUT("nrt_arena_init(&%s,%s,%s,%s,%u);\n",
-            a.text,
-            args[0],
-            args[1],
-            cgen_quote(c, e->source_path),
-            e->source_line);
+        CGEN_OUT("nrt_arena_init(&%s,%s,%s,%s,%u);\n",
+                 a.text,
+                 args[0],
+                 args[1],
+                 cgen_quote(c, e->source_path),
+                 e->source_line);
         return a;
     }
     u32  fm = U32_MAX, ff = U32_MAX;
@@ -1950,15 +1962,15 @@ internal CValue cgen_call(CGen* c, const HirExpr* e)
 internal void cgen_store(CGen* c, CValue lhs, CValue rhs)
 {
     if (cgen_kind(c, lhs.type) == STK_Atomic) {
-        OUT("__atomic_store_n(&(%s),%s,__ATOMIC_SEQ_CST);\n",
-            lhs.text,
-            rhs.text);
+        CGEN_OUT("__atomic_store_n(&(%s),%s,__ATOMIC_SEQ_CST);\n",
+                 lhs.text,
+                 rhs.text);
     } else {
-        OUT("%s=%s;\n",
-            lhs.text,
-            lhs.bitfield && cgen_kind(c, lhs.type) == STK_Enum
-                ? CF("%s.tag", rhs.text)
-                : rhs.text);
+        CGEN_OUT("%s=%s;\n",
+                 lhs.text,
+                 lhs.bitfield && cgen_kind(c, lhs.type) == STK_Enum
+                     ? CF("%s.tag", rhs.text)
+                     : rhs.text);
     }
 }
 internal bool cgen_integer(CGen* c, u32 t)
@@ -2157,24 +2169,24 @@ internal CValue cgen_expr(CGen* c, u32 index)
             if (e->binary_op == HIR_BINARY_LogicalAnd ||
                 e->binary_op == HIR_BINARY_LogicalOr) {
                 CValue r = cgen_temp(c, t, cgen_truth(c, a));
-                OUT("if(%s%s) {\n",
-                    e->binary_op == HIR_BINARY_LogicalOr ? "!" : "",
-                    r.text);
+                CGEN_OUT("if(%s%s) {\n",
+                         e->binary_op == HIR_BINARY_LogicalOr ? "!" : "",
+                         r.text);
                 CValue b = cgen_expr(c, e->rhs_expr_index);
-                OUT("%s=%s; }\n", r.text, cgen_truth(c, b));
+                CGEN_OUT("%s=%s; }\n", r.text, cgen_truth(c, b));
                 return r;
             }
             if (e->binary_op == HIR_BINARY_InRange) {
                 const HirExpr* re = &cgen_hir(c)->exprs[e->rhs_expr_index];
                 CValue         lo = cgen_expr(c, re->lhs_expr_index);
                 CValue result = cgen_temp(c, t, CF("%s>=%s", a.text, lo.text));
-                OUT("if(%s) {\n", result.text);
+                CGEN_OUT("if(%s) {\n", result.text);
                 CValue hi = cgen_expr(c, re->rhs_expr_index);
-                OUT("%s=%s%s%s; }\n",
-                    result.text,
-                    a.text,
-                    re->kind == HIR_EXPR_RangeInclusive ? "<=" : "<",
-                    hi.text);
+                CGEN_OUT("%s=%s%s%s; }\n",
+                         result.text,
+                         a.text,
+                         re->kind == HIR_EXPR_RangeInclusive ? "<=" : "<",
+                         hi.text);
                 return result;
             }
             CValue b = cgen_expr(c, e->rhs_expr_index);
@@ -2316,10 +2328,10 @@ internal CValue cgen_expr(CGen* c, u32 index)
                        : e->atomic_failure_order == 1 ? 2
                                                       : 5));
                 CValue result = cgen_temp(c, t, NULL);
-                OUT("%s.tag=%s?0:1;\n", result.text, success.text);
+                CGEN_OUT("%s.tag=%s?0:1;\n", result.text, success.text);
                 if (cgen_type(c, t)->param_count > 1 &&
                     !cgen_void(c, cgen_field_type(c, t, 1))) {
-                    OUT("%s.payload.f1=%s;\n", result.text, expected.text);
+                    CGEN_OUT("%s.payload.f1=%s;\n", result.text, expected.text);
                 }
                 return result;
             }
@@ -2411,32 +2423,32 @@ internal CValue cgen_expr(CGen* c, u32 index)
                         : CF("%u",
                              e->integer > e->arg_count ? (u32)e->integer
                                                        : e->arg_count);
-                OUT("ncg_reserve(&%s,%s,sizeof(%s),_Alignof(%s),%s,%u); "
-                    "%s->count=%u;\n",
-                    r.text,
-                    capacity,
-                    cgen_ctype(c, cgen_type(c, t)->first_param_type),
-                    cgen_ctype(c, cgen_type(c, t)->first_param_type),
-                    cgen_quote(c, e->source_path),
-                    e->source_line,
-                    r.text,
-                    e->arg_count);
+                CGEN_OUT("ncg_reserve(&%s,%s,sizeof(%s),_Alignof(%s),%s,%u); "
+                         "%s->count=%u;\n",
+                         r.text,
+                         capacity,
+                         cgen_ctype(c, cgen_type(c, t)->first_param_type),
+                         cgen_ctype(c, cgen_type(c, t)->first_param_type),
+                         cgen_quote(c, e->source_path),
+                         e->source_line,
+                         r.text,
+                         e->arg_count);
             }
             if (k == STK_Slice) {
                 data = (c->global_init || c->returning)
                            ? CF("ncg_m%u_array%u", c->module, index)
                            : CF("ncg_data%u", c->next++);
                 if (!c->global_init && !c->returning) {
-                    OUT("%s %s[%u]={0};\n",
-                        cgen_ctype(c, cgen_type(c, t)->first_param_type),
-                        data,
-                        e->arg_count ? e->arg_count : 1);
+                    CGEN_OUT("%s %s[%u]={0};\n",
+                             cgen_ctype(c, cgen_type(c, t)->first_param_type),
+                             data,
+                             e->arg_count ? e->arg_count : 1);
                 }
-                OUT("%s.data=%s; %s.count=%u;\n",
-                    r.text,
-                    data,
-                    r.text,
-                    e->arg_count);
+                CGEN_OUT("%s.data=%s; %s.count=%u;\n",
+                         r.text,
+                         data,
+                         r.text,
+                         e->arg_count);
             }
             for (u32 i = 0; i < e->arg_count; ++i) {
                 const HirCallArg* arg =
@@ -2451,22 +2463,23 @@ internal CValue cgen_expr(CGen* c, u32 index)
                 CValue v = cgen_expr_as(c, arg->expr_index, it);
                 cgen_consume(c, arg->expr_index, it);
                 if (k == STK_DynamicArray) {
-                    OUT("((%s*)%s->data)[%u]=%s;\n",
-                        cgen_ctype(c, it),
-                        r.text,
-                        i,
-                        v.text);
+                    CGEN_OUT("((%s*)%s->data)[%u]=%s;\n",
+                             cgen_ctype(c, it),
+                             r.text,
+                             i,
+                             v.text);
                 } else if (k == STK_Slice) {
-                    OUT("%s[%u]=%s;\n", data, i, v.text);
+                    CGEN_OUT("%s[%u]=%s;\n", data, i, v.text);
                 } else if (k == STK_Array) {
-                    OUT("%s.data[%u]=%s;\n", r.text, i, v.text);
+                    CGEN_OUT("%s.data[%u]=%s;\n", r.text, i, v.text);
                 } else {
-                    OUT("%s.f%u=%s;\n",
-                        r.text,
-                        fi,
-                        cgen_bitfield(c, t, fi) && cgen_kind(c, it) == STK_Enum
-                            ? CF("%s.tag", v.text)
-                            : v.text);
+                    CGEN_OUT("%s.f%u=%s;\n",
+                             r.text,
+                             fi,
+                             cgen_bitfield(c, t, fi) &&
+                                     cgen_kind(c, it) == STK_Enum
+                                 ? CF("%s.tag", v.text)
+                                 : v.text);
                 }
             }
             return r;
@@ -2627,7 +2640,7 @@ internal CValue cgen_expr(CGen* c, u32 index)
     case HIR_EXPR_InterpolatedString:
         {
             cstr mark = CF("ncg_mark%u", c->next++);
-            OUT("uintptr_t %s=nrt_string_builder_mark();\n", mark);
+            CGEN_OUT("uintptr_t %s=nrt_string_builder_mark();\n", mark);
             u32 n = e->kind == HIR_EXPR_StringConcat ? 2 : e->arg_count;
             for (u32 i = 0; i < n; ++i) {
                 u32 ei =
@@ -2639,12 +2652,12 @@ internal CValue cgen_expr(CGen* c, u32 index)
             }
             CValue r = cgen_temp(c, t, NULL);
             if (c->interpolation_arena) {
-                OUT("nrt_string_builder_finish_in(&%s,%s,%s);\n",
-                    r.text,
-                    mark,
-                    c->interpolation_arena);
+                CGEN_OUT("nrt_string_builder_finish_in(&%s,%s,%s);\n",
+                         r.text,
+                         mark,
+                         c->interpolation_arena);
             } else {
-                OUT("nrt_string_builder_finish(&%s,%s);\n", r.text, mark);
+                CGEN_OUT("nrt_string_builder_finish(&%s,%s);\n", r.text, mark);
             }
             return r;
         }
@@ -2659,19 +2672,19 @@ internal CValue cgen_expr(CGen* c, u32 index)
             CValue v        = cgen_expr(c, e->operand_expr_index);
             bool   optional = cgen_type(c, v.type)->flags & STF_Optional;
             u32    success  = optional ? 1 : 0;
-            OUT("if(%s.tag != %u) {\n", v.text, success);
+            CGEN_OUT("if(%s.tag != %u) {\n", v.text, success);
             CValue failure = cgen_temp(c, c->return_type, NULL);
             if (!optional) {
-                OUT("%s.tag=1;\n", failure.text);
+                CGEN_OUT("%s.tag=1;\n", failure.text);
                 CValue payload = {CF("%s.payload.f1", v.text),
                                   cgen_field_type(c, v.type, 1),
                                   false};
                 payload        = cgen_coerce(
                     c, payload, cgen_field_type(c, c->return_type, 1));
-                OUT("%s.payload.f1=%s;\n", failure.text, payload.text);
+                CGEN_OUT("%s.payload.f1=%s;\n", failure.text, payload.text);
             }
             cgen_return(c, failure);
-            OUT("}\n");
+            CGEN_OUT("}\n");
             return cgen_void(c, t)
                        ? (CValue){"0", t, false}
                        : cgen_temp(c, t, CF("%s.payload.f%u", v.text, success));
@@ -2696,10 +2709,10 @@ internal CValue cgen_expr(CGen* c, u32 index)
                                     cgen_quote(c, e->source_path),
                                     e->source_line));
             if (!e->arg_count) {
-                OUT("*(%s*)%s=%s;\n",
-                    cgen_ctype(c, it),
-                    r.text,
-                    cgen_zero(c, it));
+                CGEN_OUT("*(%s*)%s=%s;\n",
+                         cgen_ctype(c, it),
+                         r.text,
+                         cgen_zero(c, it));
             }
             return r;
         }
@@ -2719,7 +2732,7 @@ internal CValue cgen_expr(CGen* c, u32 index)
             CValue v   = cgen_expr(c, e->operand_expr_index),
                    fmt = cgen_expr(c, e->extra_expr_index),
                    r   = cgen_temp(c, t, NULL);
-            OUT("nrt_va_format(&%s,%s,%s);\n", r.text, v.text, fmt.text);
+            CGEN_OUT("nrt_va_format(&%s,%s,%s);\n", r.text, v.text, fmt.text);
             return r;
         }
     default:
@@ -2760,7 +2773,7 @@ internal void cgen_stmt(CGen* c, u32 index)
                            : cgen_coerce(c,
                                          cgen_expr(c, st->expr_index),
                                          st->type_index);
-            OUT("ncg_l%u=%s;\n", st->local_index, v.text);
+            CGEN_OUT("ncg_l%u=%s;\n", st->local_index, v.text);
             cgen_consume(c, st->expr_index, st->type_index);
             if (cgen_kind(c, st->type_index) == STK_Box) {
                 array_push(c->cleanups, ((CCleanup){false, st->local_index}));
@@ -2783,10 +2796,10 @@ internal void cgen_stmt(CGen* c, u32 index)
                 const HirDestructureItem* item =
                     &cgen_hir(c)->destructure_items[st->target_expr_index + i];
                 cgen_local(c, item->local_index, item->type_index);
-                OUT("ncg_l%u=%s.f%u;\n",
-                    item->local_index,
-                    v.text,
-                    item->field_index);
+                CGEN_OUT("ncg_l%u=%s.f%u;\n",
+                         item->local_index,
+                         v.text,
+                         item->field_index);
             }
             break;
         }
@@ -2810,11 +2823,11 @@ internal void cgen_stmt(CGen* c, u32 index)
                           "(NerdString){(uint8_t*)\"assertion failed\",16}",
                           U32_MAX,
                           false};
-            OUT("nrt_nerd_assert(%s,%s,%u,&(%s));\n",
-                cgen_truth(c, condition),
-                cgen_quote(c, st->source_path),
-                st->source_line,
-                message.text);
+            CGEN_OUT("nrt_nerd_assert(%s,%s,%u,&(%s));\n",
+                     cgen_truth(c, condition),
+                     cgen_quote(c, st->source_path),
+                     st->source_line,
+                     message.text);
             break;
         }
     case HIR_STMT_Defer:
@@ -2844,12 +2857,12 @@ internal void cgen_stmt(CGen* c, u32 index)
             if (st->expr_index != U32_MAX && saved.result) {
                 CValue v =
                     cgen_coerce(c, cgen_expr(c, st->expr_index), saved.type);
-                OUT("%s=%s;\n", saved.result, v.text);
+                CGEN_OUT("%s=%s;\n", saved.result, v.text);
             }
             cgen_cleanup_to(c, saved.cleanup);
-            OUT("goto ncg_%s%u;\n",
-                st->kind == HIR_STMT_Break ? "end" : "continue",
-                saved.id);
+            CGEN_OUT("goto ncg_%s%u;\n",
+                     st->kind == HIR_STMT_Break ? "end" : "continue",
+                     saved.id);
             break;
         }
     }
@@ -2861,7 +2874,7 @@ internal void cgen_value_block(CGen* c, u32 index, CValue result)
     }
     u32             base  = array_count(c->cleanups);
     const HirBlock* block = &cgen_hir(c)->blocks[index];
-    OUT("{\n");
+    CGEN_OUT("{\n");
     // Local function bindings are visible throughout their lexical block.
     for (u32 i = 0; i < block->stmt_count; ++i) {
         const HirStmt* st = &cgen_hir(c)->stmts[block->stmt_indices[i]];
@@ -2869,7 +2882,8 @@ internal void cgen_value_block(CGen* c, u32 index, CValue result)
             st->expr_index != U32_MAX &&
             cgen_hir(c)->exprs[st->expr_index].kind == HIR_EXPR_FunctionRef) {
             cgen_local(c, st->local_index, st->type_index);
-            OUT("ncg_l%u=%s;\n",
+            CGEN_OUT(
+                "ncg_l%u=%s;\n",
                 st->local_index,
                 cgen_function(c,
                               c->module,
@@ -2883,7 +2897,7 @@ internal void cgen_value_block(CGen* c, u32 index, CValue result)
             !cgen_void(c, result.type)) {
             CValue v =
                 cgen_coerce(c, cgen_expr(c, st->expr_index), result.type);
-            OUT("%s=%s;\n", result.text, v.text);
+            CGEN_OUT("%s=%s;\n", result.text, v.text);
         } else {
             cgen_stmt(c, si);
         }
@@ -2892,7 +2906,7 @@ internal void cgen_value_block(CGen* c, u32 index, CValue result)
     if (c->cleanups) {
         __array_count(c->cleanups) = base;
     }
-    OUT("}\n");
+    CGEN_OUT("}\n");
 }
 internal void cgen_block(CGen* c, u32 index)
 {
@@ -3088,7 +3102,8 @@ bool cgen_save_program(const ProgramInfo*        program,
                 cgen_local(c,
                            c->va_local,
                            cgen_sema(c)->locals[c->va_local].type_index);
-                OUT("ncg_l%u=nrt_va_create(); "
+                CGEN_OUT(
+                    "ncg_l%u=nrt_va_create(); "
                     "va_start(ncg_l%u->args,ncg_l%u);\n",
                     c->va_local,
                     c->va_local,
@@ -3114,7 +3129,7 @@ bool cgen_save_program(const ProgramInfo*        program,
             }
             CValue value = cgen_coerce(
                 c, cgen_expr(c, v->value_expr_index), v->type_index);
-            OUT("ncg_m%u_g%u=%s;\n", c->module, i, value.text);
+            CGEN_OUT("ncg_m%u_g%u=%s;\n", c->module, i, value.text);
         }
         sb_format(&c->out, "static void ncg_init%u(void) {\n", c->module);
         sb_append_string(&c->out, sb_to_string(&c->declarations));
