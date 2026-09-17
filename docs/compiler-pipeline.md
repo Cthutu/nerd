@@ -90,6 +90,9 @@ The emitter materialises expression temporaries in source evaluation order,
 uses labels for HIR control flow, and runs deferred blocks and ownership cleanup
 at scope exits. Aggregate definitions preserve embedded plex and bitfield storage
 layout; generic dispatch uses semantic types separately from C layout identity.
+Calls through mutable function variables read the current pointer, including
+globals populated by dynamic API loaders. Only statically resolved functions
+and constant aliases become direct calls.
 Integer arithmetic wraps explicitly, and atomic operations use Clang builtins.
 `build/test_cgen.py` compares generated C at `-O0` and `-O2` with LLVM across the
 language suite and runtime regressions, including diagnostics and standard input.

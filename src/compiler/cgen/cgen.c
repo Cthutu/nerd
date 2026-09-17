@@ -1338,7 +1338,7 @@ internal bool cgen_matches(CGen* c, u32 type, u32 expected)
 }
 
 // Resolve a callable through HIR bindings, imports, local functions and checked
-// instantiations. Parameter values remain ordinary indirect calls.
+// instantiations. Mutable variables and parameters remain indirect calls.
 internal bool cgen_resolve(CGen* c,
                            u32   module,
                            u32   index,
@@ -1385,6 +1385,8 @@ internal bool cgen_resolve(CGen* c,
             decl = e->ref_index;
         } else if (e->ref_kind == HIR_REF_Local &&
                    e->ref_index < array_count(sema->locals) &&
+                   (sema->locals[e->ref_index].kind == SLK_Constant ||
+                    sema->locals[e->ref_index].kind == SLK_Function) &&
                    cgen_kind(c, sema->locals[e->ref_index].type_index) ==
                        STK_Function) {
             for (u32 i = 0; i < array_count(h->stmts); ++i) {
@@ -1459,6 +1461,9 @@ internal bool cgen_resolve(CGen* c,
                 sema      = cgen_sema(c);
                 continue;
             }
+            if (d->kind == SK_Variable) {
+                break;
+            }
             for (u32 f = 0; f < array_count(h->functions); ++f) {
                 const HirFunction* fn = &h->functions[f];
                 if ((fn->decl_index == decl ||
@@ -1497,6 +1502,9 @@ internal bool cgen_resolve(CGen* c,
             continue;
         }
         if (b->kind == HIR_BINDING_Value) {
+            if (h->values[b->target_index].kind != HIR_VALUE_Constant) {
+                break;
+            }
             bool ok = cgen_resolve(c,
                                    module,
                                    h->values[b->target_index].value_expr_index,

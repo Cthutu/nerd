@@ -1,0 +1,21 @@
+Callback :: fn () -> i32
+first :: fn () -> i32 { return 1 }
+second :: fn () -> i32 { return 2 }
+callback: Callback = first
+call_global :: fn () -> i32 { return callback() }
+invoke :: fn (f: Callback) -> i32 { return f() }
+main :: fn () {
+    assert call_global() == 1
+    callback = second
+    assert call_global() == 2
+    assert invoke(callback) == 2
+    snapshot := callback
+    callback = first
+    assert snapshot() == 2
+    assert callback() == 1
+    local: Callback = first
+    assert local() == 1
+    local = second
+    assert local() == 2
+    assert invoke(local) == 2
+}
