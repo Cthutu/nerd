@@ -10,7 +10,7 @@
 
 //------------------------------------------------------------------------------
 
-bool back_end_program(const ProgramInfo*        program,
+bool back_end_program(ProgramInfo*              program,
                       const NerdArtifactConfig* artifacts,
                       bool                      verbose,
                       Timing*                   timing);

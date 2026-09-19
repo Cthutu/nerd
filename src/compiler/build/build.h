@@ -59,6 +59,8 @@ typedef struct ModuleInfo {
 } ModuleInfo;
 
 typedef struct ProgramInfo {
+    // Borrowed only during LLVM emission; immutable after construction.
+    Map*       llvm_function_name_counts;
     NerdSource root_source;
     Arena      arena;
     Array(ModuleInfo) modules;

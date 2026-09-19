@@ -19,3 +19,5 @@ Current backend timing notes:
   allocation churn, and revised optimisation priorities.
 - `compiler-m2-scratch.md`: alternating before/after comparison of LLVM combiner
   scratch reuse, with byte-identical LLVM and allocation/RSS measurements.
+- `compiler-m2-function-names.md`: LLVM function-name conflict index timings,
+  byte-identical output checks and peak process memory comparison.

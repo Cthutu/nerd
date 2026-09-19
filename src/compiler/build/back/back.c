@@ -1502,7 +1502,7 @@ internal bool back_end_print_c_options(const ProgramInfo*        program,
     return ok;
 }
 
-bool back_end_program(const ProgramInfo*        program,
+bool back_end_program(ProgramInfo*              program,
                       const NerdArtifactConfig* artifacts,
                       bool                      verbose,
                       Timing*                   timing)
@@ -1549,7 +1549,13 @@ bool back_end_program(const ProgramInfo*        program,
         return ok && (!artifacts->print_c_options ||
                       back_end_print_c_options(program, artifacts));
     }
-    return back_end_emit_llvm_artifacts(program, artifacts, timing);
+    Map function_names = {0};
+    llvm_index_function_names(program, &function_names);
+    program->llvm_function_name_counts = &function_names;
+    bool ok = back_end_emit_llvm_artifacts(program, artifacts, timing);
+    program->llvm_function_name_counts = NULL;
+    map_done(&function_names);
+    return ok;
 }
 
 bool back_end_llvm_tool_output_self_test(void)

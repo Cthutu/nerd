@@ -1762,6 +1762,28 @@ internal bool llvm_import_source_value(const Sema*      sema,
                                           0);
 }
 
+// Count functions, not bindings: aliases of one function must not introduce
+// additional conflicts. The first binding remains the canonical symbol.
+void llvm_index_function_names(const ProgramInfo* program, Map* counts)
+{
+    _map_init(counts, sizeof(u32), 64);
+    for (u32 m = 0; m < array_count(program->modules); ++m) {
+        const FrontEndState* front = &program->modules[m].front_end;
+        const Hir*           hir   = &front->hir;
+        for (u32 i = 0; i < array_count(hir->functions); ++i) {
+            u32 symbol = llvm_function_symbol_handle(hir, i);
+            if (symbol != U32_MAX) {
+                u32* count =
+                    map_entry(counts, lex_symbol(&front->lexer, symbol), NULL);
+                // Only zero, one and multiple occurrences matter.
+                if (*count < 2) {
+                    ++*count;
+                }
+            }
+        }
+    }
+}
+
 internal bool llvm_program_function_symbol_conflicts(const Sema* sema,
                                                      const Hir*  hir,
                                                      u32         function_index)
@@ -1778,8 +1800,14 @@ internal bool llvm_program_function_symbol_conflicts(const Sema* sema,
 
     const ModuleInfo* module =
         &sema->program->modules[hir->current_module_index];
-    string name    = lex_symbol(&module->front_end.lexer, symbol_handle);
-    u32    matches = 0;
+    string name = lex_symbol(&module->front_end.lexer, symbol_handle);
+    if (sema->program->llvm_function_name_counts != NULL) {
+        const u32* count =
+            map_find(sema->program->llvm_function_name_counts, name);
+        return count != NULL && *count > 1;
+    }
+    // Standalone HIR rendering may not have an emission-scoped index.
+    u32 matches = 0;
     for (u32 module_index = 0;
          module_index < array_count(sema->program->modules);
          ++module_index) {
@@ -1795,6 +1823,72 @@ internal bool llvm_program_function_symbol_conflicts(const Sema* sema,
         }
     }
     return matches > 1;
+}
+
+bool llvm_function_names_self_test(void)
+{
+    ProgramInfo program = {0};
+    // Different insertion orders give the same spelling different local
+    // handles.
+    for (u32 m = 0; m < 3; ++m) {
+        ModuleInfo module = {0};
+        lex((NerdSource){.source = s("")}, &module.front_end.lexer);
+        Hir* hir                  = &module.front_end.hir;
+        hir->current_module_index = m;
+        if (m != 0) {
+            lex_add_symbol(&module.front_end.lexer, s("padding"), NULL);
+        }
+        for (u32 i = 0; i < 100; ++i) {
+            char name[64];
+            snprintf(name, sizeof(name), "name_%u_%u", i == 0 ? 0 : m, i);
+            u32 symbol = lex_add_symbol(
+                &module.front_end.lexer, string_from_cstr(name), NULL);
+            array_push(hir->functions, ((HirFunction){0}));
+            array_push(hir->bindings,
+                       ((HirBinding){.kind          = HIR_BINDING_Function,
+                                     .symbol_handle = symbol,
+                                     .target_index  = i}));
+        }
+        // Alias bindings count once; an unbound function does not count.
+        array_push(hir->bindings, hir->bindings[1]);
+        array_push(hir->functions, ((HirFunction){0}));
+        // A second function with the same name within one module conflicts.
+        array_push(hir->functions, ((HirFunction){0}));
+        HirBinding duplicate   = hir->bindings[2];
+        duplicate.target_index = 101;
+        array_push(hir->bindings, duplicate);
+        array_push(program.modules, module);
+    }
+    Map counts = {0};
+    llvm_index_function_names(&program, &counts);
+    bool ok = true;
+    for (u32 m = 0; m < array_count(program.modules); ++m) {
+        const Hir* hir  = &program.modules[m].front_end.hir;
+        Sema       sema = {.program = &program};
+        for (u32 i = 0; i < array_count(hir->functions); ++i) {
+            program.llvm_function_name_counts = NULL;
+            bool scanned =
+                llvm_program_function_symbol_conflicts(&sema, hir, i);
+            program.llvm_function_name_counts = &counts;
+            bool indexed =
+                llvm_program_function_symbol_conflicts(&sema, hir, i);
+            ok = ok && indexed == scanned &&
+                 indexed == (i == 0 || i == 2 || i == 101);
+        }
+    }
+    program.llvm_function_name_counts = NULL;
+    map_done(&counts);
+    for (u32 m = 0; m < array_count(program.modules); ++m) {
+        FrontEndState* front = &program.modules[m].front_end;
+        array_free(front->hir.functions);
+        array_free(front->hir.bindings);
+        lex_done(&front->lexer);
+    }
+    array_free(program.modules);
+    if (ok) {
+        prn("llvm-function-names ok");
+    }
+    return ok;
 }
 
 internal bool llvm_function_imported_from_other_module(

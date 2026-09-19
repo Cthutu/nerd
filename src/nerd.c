@@ -13,6 +13,7 @@
 #include <compiler/build/front/front.h>
 #include <compiler/compiler.h>
 #include <compiler/error/error.h>
+#include <compiler/llvm/llvm.h>
 #include <lsp/lsp.h>
 #include <table/table.h>
 
@@ -484,6 +485,9 @@ internal int nerd_internal_test(const JsonValue* cli_result)
 {
     string name =
         nerd_cli_param_string(cli_result, "command.params.name", (string){0});
+    if (string_eq_cstr(name, "llvm-function-names")) {
+        return llvm_function_names_self_test() ? 0 : 1;
+    }
     if (string_eq_cstr(name, "llvm-text")) {
         return back_end_llvm_text_self_test() ? 0 : 1;
     }

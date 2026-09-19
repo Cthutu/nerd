@@ -530,3 +530,16 @@ The LLVM text combiner reuses one line scratch arena per input module. Each
 rendered line is copied into the combined output or named metadata builders
 before scratch reset. The arena retains capacity for that input's longest line
 and is freed at the end of the input, avoiding per-line virtual-memory churn.
+
+
+Before LLVM emission, the backend builds a program-wide table of function-name
+counts. Names come from each function's first HIR binding, preserving the
+existing qualification rules: aliases count once, unbound functions do not
+count, and repeated spellings within or across modules require qualification.
+Counts saturate at two. `ProgramInfo.llvm_function_name_counts` borrows this
+read-only table throughout module and sidecar rendering; the backend clears
+the pointer and frees the table after successful or failed emission. C emission
+and checking do not build it. Standalone HIR rendering without an index retains
+the scan fallback. Index construction still resolves canonical bindings by
+scanning each module's bindings once per function; repeated conflict queries
+now look up the resulting spelling instead of rescanning the whole program.
