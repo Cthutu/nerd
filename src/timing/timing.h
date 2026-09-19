@@ -44,3 +44,21 @@ void timing_accumulate_session_done(TimingAccumulateSession* session);
 void timing_dump(const Timing* timing);
 
 //------------------------------------------------------------------------------
+
+// Opt-in serial profiling stream; independent of human-readable --timing.
+// CPU time excludes child processes; U64_MAX means unavailable.
+typedef struct {
+    bool        enabled;
+    TimePoint   wall;
+    u64         cpu_ns;
+    MemoryStats memory;
+} TimingProbe;
+
+TimingProbe timing_probe_begin(void);
+void        timing_probe_end(TimingProbe probe,
+                             cstr        stage,
+                             cstr        phase,
+                             string      module,
+                             bool        success,
+                             usize       output_bytes);
+void        timing_probe_dependency(string module, string dependency);

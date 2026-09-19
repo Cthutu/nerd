@@ -94,3 +94,7 @@ functions, variadic definitions and global initialisation.
 `nerd doctor`. On POSIX it restricts PATH to LLVM tools, traps any Clang use,
 and checks each missing tool plus C generation without a binary toolchain.
 It runs as part of `just test`.
+
+`build/test_profile.py` checks module labels, dependency records, thread CPU
+availability, allocation fields, failed phases, JSON escaping and output parity
+with profiling enabled. It also runs as part of `just test`.

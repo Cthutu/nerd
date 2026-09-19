@@ -1,0 +1,20 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 305  of event 'cpu-clock:u'
+# Event count (approx.): 305305305
+#
+# Overhead  Symbol                                         IPC   [IPC Coverage]
+# ........  .............................................  ....................
+#
+    70.82%  [.] sema_seed_usage_context_local_types        -      -
+    16.07%  [.] sema_collect_decls_in_range                -      -
+     1.64%  [.] sema_collect_top_level_uses_in_range       -      -
+     1.31%  [.] array_maybe_grow                           -      -
+
+
+#
+# (Tip: Profiling branch (mis)predictions with: perf record -b / perf report)
+#

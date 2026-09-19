@@ -14,3 +14,6 @@ Current backend timing notes:
   report.
 - `llvm-cli-tool-comparison.md`: coarse comparison of clang text input versus
   `llvm-as`/`llc` object generation.
+
+- `compiler-m1.md`: pinned direct-LLVM baseline, module imbalance, CPU samples,
+  allocation churn, and revised optimisation priorities.

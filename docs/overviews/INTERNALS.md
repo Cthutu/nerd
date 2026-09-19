@@ -513,3 +513,14 @@ Interpolation imports the canonical `core.Display` trait on demand when a
 non-primitive value needs it. Imported `show` methods are resolved using the
 implementation AST from their defining module, and lowered through their HIR
 import; their AST indices are not indices into the caller's module.
+
+## Compiler performance instrumentation
+
+`NERD_PROFILE=1` emits JSON records on stderr for whole-program front-end module
+phases, HIR, module LLVM rendering, LLVM combining, C rendering and each external
+LLVM tool. Dependency records include implicit imports. The opt-in probes live
+in `src/timing/timing.c` and avoid compiler arenas so active string builders are
+unaffected. Thread CPU and elapsed wall time are separate; subprocess CPU and
+peak process RSS come from the benchmark runner. This stream is currently serial
+and requires per-task sinks before concurrency. See
+[profiling and benchmarking](../compiler-profiling.md).

@@ -4,6 +4,12 @@
 // Copyright (C)2026 Matt Davies, all rights reserved
 //------------------------------------------------------------------------------
 
+#ifndef _WIN32
+#    define _POSIX_C_SOURCE 200809L
+#endif
+
+#include <stdio.h>
+#include <time.h>
 #include <timing/timing.h>
 
 #include <table/table.h>
@@ -234,3 +240,120 @@ void timing_dump(const Timing* timing)
 }
 
 //------------------------------------------------------------------------------
+
+// Machine-readable records deliberately avoid compiler arenas and builders.
+// This serial implementation must gain per-task sinks before worker use.
+internal bool timing_probe_enabled(void)
+{
+    cstr value = getenv("NERD_PROFILE");
+    return value && strcmp(value, "1") == 0;
+}
+
+internal u64 timing_probe_cpu_ns(void)
+{
+#if OS_WINDOWS
+    FILETIME created, exited, kernel, user;
+    if (!GetThreadTimes(
+            GetCurrentThread(), &created, &exited, &kernel, &user)) {
+        return U64_MAX;
+    }
+    u64 ticks = ((u64)kernel.dwHighDateTime << 32) | kernel.dwLowDateTime;
+    ticks += ((u64)user.dwHighDateTime << 32) | user.dwLowDateTime;
+    return ticks * 100;
+#elif defined(CLOCK_THREAD_CPUTIME_ID)
+    struct timespec ts;
+    if (clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts) != 0) {
+        return U64_MAX;
+    }
+    return (u64)ts.tv_sec * 1000000000ull + (u64)ts.tv_nsec;
+#else
+    return U64_MAX;
+#endif
+}
+
+internal void timing_probe_json_string(string value)
+{
+    fputc('"', stderr);
+    for (usize i = 0; i < value.count; ++i) {
+        u8 ch = value.data[i];
+        if (ch == '"' || ch == '\\') {
+            fputc('\\', stderr);
+            fputc(ch, stderr);
+        } else if (ch < 32) {
+            fprintf(stderr, "\\u%04x", ch);
+        } else {
+            fputc(ch, stderr);
+        }
+    }
+    fputc('"', stderr);
+}
+
+TimingProbe timing_probe_begin(void)
+{
+    TimingProbe probe = {.enabled = timing_probe_enabled()};
+    if (probe.enabled) {
+        probe.memory = mem_stats_snapshot();
+        probe.cpu_ns = timing_probe_cpu_ns();
+        probe.wall   = time_now();
+    }
+    return probe;
+}
+
+void timing_probe_end(TimingProbe probe,
+                      cstr        stage,
+                      cstr        phase,
+                      string      module,
+                      bool        success,
+                      usize       output_bytes)
+{
+    if (!probe.enabled) {
+        return;
+    }
+    TimePoint   end   = time_now();
+    u64         cpu   = timing_probe_cpu_ns();
+    MemoryStats after = mem_stats_snapshot();
+    MemoryStats delta = mem_stats_delta(probe.memory, after);
+    fputs("nerd-profile\t{\"kind\":\"phase\",\"stage\":", stderr);
+    timing_probe_json_string(s(stage));
+    fputs(",\"phase\":", stderr);
+    timing_probe_json_string(s(phase));
+    fputs(",\"module\":", stderr);
+    timing_probe_json_string(module);
+    fprintf(
+        stderr,
+        ",\"start_ns\":%llu,\"wall_ns\":%llu,\"cpu_ns\":",
+        (unsigned long long)(u64)time_nsecs(probe.wall),
+        (unsigned long long)time_duration_to_ns(time_elapsed(probe.wall, end)));
+    if (cpu == U64_MAX || probe.cpu_ns == U64_MAX) {
+        fputs("null", stderr);
+    } else {
+        fprintf(stderr, "%llu", (unsigned long long)(cpu - probe.cpu_ns));
+    }
+    fprintf(
+        stderr,
+        ",\"success\":%s,\"output_bytes\":%zu,\"heap_allocs\":%zu,"
+        "\"heap_reallocs\":%zu,\"heap_live_bytes\":%zu,\"heap_peak_bytes\":%zu,"
+        "\"arena_requested_bytes\":%zu,\"arena_committed_bytes\":%zu,"
+        "\"array_growths\":%zu}\n",
+        success ? "true" : "false",
+        output_bytes,
+        delta.heap_alloc_count,
+        delta.heap_realloc_count,
+        after.heap_current_bytes,
+        after.heap_peak_bytes,
+        delta.arena_bytes_allocated,
+        delta.arena_bytes_committed,
+        delta.array_growth_count);
+}
+
+void timing_probe_dependency(string module, string dependency)
+{
+    if (!timing_probe_enabled()) {
+        return;
+    }
+    fputs("nerd-profile\t{\"kind\":\"dependency\",\"module\":", stderr);
+    timing_probe_json_string(module);
+    fputs(",\"dependency\":", stderr);
+    timing_probe_json_string(dependency);
+    fputs("}\n", stderr);
+}

@@ -1,10 +1,13 @@
 # Compiler task scheduling and single-core performance
 
-Status: proposed experiment; implementation has not started.
+Status: M1 profiling and Linux baseline complete; scheduler implementation has not started.
 Audit date: 2026-09-19. Source baseline: `a15e965dcfd4c554cc7691a82786142f74031eab`.
 Branch: `experiment/task-scheduler-performance`.
 
 ## Recommendation and scope
+
+Follow-up: [M1 measurements and revised priorities](../measurements/compiler-m1.md).
+The initial timing tables below remain historical; use M1 for the direct LLVM baseline.
 
 Architectural requirement clarified by Matt on 2026-09-19: Nerd must never
 invoke Clang. Normal compilation produces binaries via LLVM tooling; optional
@@ -212,8 +215,8 @@ allocation and timing notes are useful hypotheses, not current baselines.
 | Milestone | Deliverable | Completion gate |
 | --- | --- | --- |
 | M0 — this audit | Experiment branch, source audit, exploratory measurements, proposed plan | Report checked against current source; no scheduler changes |
-| M1 — reproducible baseline | Benchmark runner; per-module wall/CPU timings; queue-ready instrumentation; memory and output-size data | Debug/release targets, LLVM/C/check, tiny/real/wide/deep/single-large-module inputs; warm and cold runs; raw results retained |
-| M2 — serial improvements | Profile-guided LLVM membership index first; separately evaluate sema indexes and allocation savings | Same outputs/diagnostics; measured one-core improvement beyond noise; retained-memory comparison |
+| M1 — reproducible baseline (complete on Linux) | Benchmark runner; per-module wall/CPU timings; dependency graph; memory and output-size data | Debug/release targets, LLVM/C/check, tiny/real/wide/deep/single-large-module inputs; warm and cold runs; raw results retained |
+| M2 — serial improvements | Combiner scratch reuse first; then function-name conflict and source-line indexes; investigate usage-context inference | Same outputs/diagnostics; measured one-core improvement beyond noise; retained-memory comparison |
 | M3 — ownership preparation | Task diagnostic sink; safe allocator bookkeeping; result lifetimes; portable worker primitives | Serial tests unchanged; allocation/free across threads and failure cleanup stress tests; race checking where supported |
 | M4 — scheduler + LLVM modules | Bounded queue, inline one-worker mode, ordered render-result merge | Jobs 1/2/4/8/physical-core count; byte-stable C/HIR/LLVM where applicable; debug behavior and runtime parity; no deadlock on failure |
 | M5 — module front end | Split discovery from checking; stable registry; parallel parse, then HIR and dependency-ready sema in separate changes | Diamond/duplicate/cyclic/missing/conditional imports; shared FFI symbols; identical diagnostics; randomized completion stress |
@@ -241,6 +244,7 @@ testing. Verify library output modes, C/LLVM parity, source debugging, determini
 diagnostics and cancellation cleanup. Full compiler tests establish correctness;
 they do not establish a performance win.
 
-Next implementation step: M1, with module-labelled profiles of pixels, dungeon
-and quill to determine which semantic/HIR modules dominate and why LLVM combining
-is expensive. Do not begin parallel semantic analysis before that evidence.
+Next implementation step: M2, starting with combiner scratch-arena reuse.
+The [M1 evidence](../measurements/compiler-m1.md) revises the initial hypotheses:
+usage-context inference, name-conflict scans and source-line lookup are measured
+hotspots. Actual queue waiting will be instrumented when a scheduler exists.

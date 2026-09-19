@@ -91,3 +91,5 @@ explicitly keeps it visible.
 
 - [LLVM toolchain and doctor](toolchain.md): native build dependencies, platform
   linking configuration, and dependency diagnostics.
+- [Compiler profiling](compiler-profiling.md): per-module CPU/wall/allocation
+  records and a repeatable single-core benchmark matrix.

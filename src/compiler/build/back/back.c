@@ -693,6 +693,7 @@ internal bool back_end_render_llvm_modules(Arena*                    arena,
 
     for (u32 i = 0; i < module_count; ++i) {
         const FrontEndState* front_end = &program->modules[i].front_end;
+        TimingProbe          probe     = timing_probe_begin();
         string module_llvm = llvm_render_hir(&front_end->hir,
                                              &front_end->lexer,
                                              &front_end->sema,
@@ -700,17 +701,30 @@ internal bool back_end_render_llvm_modules(Arena*                    arena,
                                              !artifacts->release,
                                              artifacts->output_kind !=
                                                  NERD_BUILD_OUTPUT_Executable);
+        timing_probe_end(probe,
+                         COMPILER_STAGE_BACK_END,
+                         COMPILER_PHASE_LLVM_RENDER,
+                         front_end->lexer.source.source_path,
+                         true,
+                         module_llvm.count);
         array_push(out->module_llvms, module_llvm);
         if (artifacts->emit_llvm_file) {
             string sidecar_llvm = module_llvm;
             if (!artifacts->release && !emit_debug_sidecars) {
-                sidecar_llvm = llvm_render_hir(
+                TimingProbe sidecar_probe = timing_probe_begin();
+                sidecar_llvm              = llvm_render_hir(
                     &front_end->hir,
                     &front_end->lexer,
                     &front_end->sema,
                     arena,
                     false,
                     artifacts->output_kind != NERD_BUILD_OUTPUT_Executable);
+                timing_probe_end(sidecar_probe,
+                                 COMPILER_STAGE_BACK_END,
+                                 "render LLVM sidecar",
+                                 front_end->lexer.source.source_path,
+                                 true,
+                                 sidecar_llvm.count);
             }
             cstr llvm_path = back_end_module_llvm_path(arena, artifacts, i);
             if (!back_end_write_text_file(llvm_path, sidecar_llvm)) {
@@ -734,7 +748,18 @@ internal bool back_end_render_llvm_modules(Arena*                    arena,
 internal bool
 back_end_run_tool(Arena* arena, string command, cstr ir, cstr runtime)
 {
+    TimingProbe probe  = timing_probe_begin();
     ShellResult result = shell_capture(back_end_cstr(arena, command), arena);
+    usize       end    = 0;
+    while (end < command.count && command.data[end] != ' ') {
+        ++end;
+    }
+    // All command names here are literal LLVM tool names.
+    char  tool[32] = {0};
+    usize count    = end < sizeof(tool) - 1 ? end : sizeof(tool) - 1;
+    memcpy(tool, command.data, count);
+    timing_probe_end(
+        probe, "tool", tool, (string){0}, result.exit_code == 0, 0);
     return result.exit_code == 0 || back_end_report_llvm_tool_failure(
                                         arena, result, command, ir, runtime);
 }
@@ -1329,10 +1354,17 @@ internal bool back_end_emit_llvm_artifacts(const ProgramInfo*        program,
         init_ll = back_end_llvm_runtime_render_init(
             &arena, modules.init_module_indices);
     }
-    memory_before        = compiler_memory_profile_begin();
-    timing_start         = back_end_timing_begin(timing);
-    string combined_llvm = back_end_llvm_text_build_combined(
+    memory_before             = compiler_memory_profile_begin();
+    timing_start              = back_end_timing_begin(timing);
+    TimingProbe combine_probe = timing_probe_begin();
+    string      combined_llvm = back_end_llvm_text_build_combined(
         &arena, modules.module_llvms, runtime_epilogue, init_ll);
+    timing_probe_end(combine_probe,
+                     COMPILER_STAGE_BACK_END,
+                     COMPILER_PHASE_LLVM_COMBINE,
+                     (string){0},
+                     true,
+                     combined_llvm.count);
     back_end_timing_end(timing, COMPILER_PHASE_LLVM_COMBINE, timing_start);
     compiler_memory_profile_end(
         COMPILER_STAGE_BACK_END, COMPILER_PHASE_LLVM_COMBINE, memory_before);
@@ -1503,7 +1535,14 @@ bool back_end_program(const ProgramInfo*        program,
     if (artifacts->emit_c_file) {
         MemoryStats memory_before = compiler_memory_profile_begin();
         TimePoint   start         = back_end_timing_begin(timing);
+        TimingProbe probe         = timing_probe_begin();
         bool        ok            = cgen_save_program(program, artifacts);
+        timing_probe_end(probe,
+                         COMPILER_STAGE_BACK_END,
+                         COMPILER_PHASE_C_RENDER,
+                         (string){0},
+                         ok,
+                         0);
         back_end_timing_end(timing, COMPILER_PHASE_C_RENDER, start);
         compiler_memory_profile_end(
             COMPILER_STAGE_BACK_END, COMPILER_PHASE_C_RENDER, memory_before);

@@ -62,12 +62,15 @@ internal void program_rebind_sema_programs(ProgramInfo* program)
     }
 }
 
-internal bool
-program_run_timed(Timing* timing, cstr phase, bool (*run)(void*), void* data)
+internal bool program_run_timed(
+    Timing* timing, cstr phase, string module, bool (*run)(void*), void* data)
 {
+    TimingProbe probe         = timing_probe_begin();
     MemoryStats memory_before = compiler_memory_profile_begin();
     if (timing == NULL) {
         bool result = run(data);
+        timing_probe_end(
+            probe, COMPILER_STAGE_FRONT_END, phase, module, result, 0);
         compiler_memory_profile_end(
             COMPILER_STAGE_FRONT_END, phase, memory_before);
         return result;
@@ -76,6 +79,7 @@ program_run_timed(Timing* timing, cstr phase, bool (*run)(void*), void* data)
     ThreadTimePoint start  = thread_time_now();
     bool            result = run(data);
     ThreadTimePoint end    = thread_time_now();
+    timing_probe_end(probe, COMPILER_STAGE_FRONT_END, phase, module, result, 0);
     timing_add(timing,
                COMPILER_STAGE_FRONT_END,
                phase,
@@ -158,15 +162,21 @@ internal bool program_front_end_parse_only(NerdSource             source,
         .front_end = front_end,
     };
 
-    bool result = program_run_timed(
-        timing, COMPILER_PHASE_LEX, program_front_end_lex, &ctx);
+    bool result = program_run_timed(timing,
+                                    COMPILER_PHASE_LEX,
+                                    ctx.source.source_path,
+                                    program_front_end_lex,
+                                    &ctx);
     if (result && ctx.options.verbose) {
         lex_dump(&ctx.front_end->lexer);
     }
 
     if (result) {
-        result = program_run_timed(
-            timing, COMPILER_PHASE_PARSE, program_front_end_parse, &ctx);
+        result = program_run_timed(timing,
+                                   COMPILER_PHASE_PARSE,
+                                   ctx.source.source_path,
+                                   program_front_end_parse,
+                                   &ctx);
         if (result && ctx.options.verbose) {
             ast_dump(&ctx.front_end->ast, &ctx.front_end->lexer);
         }
@@ -197,8 +207,11 @@ internal bool program_front_end_finish(ProgramInfo*           program,
         .front_end = &module->front_end,
     };
 
-    bool result = program_run_timed(
-        timing, COMPILER_PHASE_SEMA, program_front_end_sema, &ctx);
+    bool result = program_run_timed(timing,
+                                    COMPILER_PHASE_SEMA,
+                                    ctx.source.source_path,
+                                    program_front_end_sema,
+                                    &ctx);
     return result;
 }
 
@@ -208,6 +221,18 @@ internal bool program_front_end_generate_hir(ProgramInfo*           program,
 {
     FrontEndOptions effective_options =
         options ? *options : (FrontEndOptions){0};
+    // Graph facts let benchmarks estimate ready work without implying that a
+    // scheduler exists. Include implicit imports and preserve loader
+    // identities.
+    for (u32 i = 0; i < array_count(program->modules); ++i) {
+        const ModuleInfo* module = &program->modules[i];
+        for (u32 j = 0; j < array_count(module->imported_module_indices); ++j) {
+            timing_probe_dependency(
+                s(module->resolved_path),
+                s(program->modules[module->imported_module_indices[j]]
+                      .resolved_path));
+        }
+    }
     if (effective_options.skip_hir_generation) {
         return true;
     }
@@ -223,8 +248,11 @@ internal bool program_front_end_generate_hir(ProgramInfo*           program,
             .options   = effective_options,
             .front_end = &module->front_end,
         };
-        if (!program_run_timed(
-                timing, COMPILER_PHASE_HIR_GEN, program_front_end_hir, &ctx)) {
+        if (!program_run_timed(timing,
+                               COMPILER_PHASE_HIR_GEN,
+                               ctx.source.source_path,
+                               program_front_end_hir,
+                               &ctx)) {
             return false;
         }
         if (effective_options.verbose) {
