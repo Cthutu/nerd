@@ -543,3 +543,20 @@ and checking do not build it. Standalone HIR rendering without an index retains
 the scan fallback. Index construction still resolves canonical bindings by
 scanning each module's bindings once per function; repeated conflict queries
 now look up the resulting spelling instead of rescanning the whole program.
+
+
+Immediately before whole-program HIR generation, the front end builds line-start
+arrays for source snapshots and mapped fragment buffers. `ProgramInfo` owns the
+table; lexer and module layouts are unchanged. Equal buffer pointer/length pairs
+share one index. HIR source locations and LLVM local debug locations use
+`lex_indexed_offset_to_line_col`, which finds the buffer's index then binary
+searches its line starts. Zero-based lines and byte columns, LF handling, EOF
+positions and invalid-offset behavior match the original scanner. Fragment
+mapping still happens before lookup. Other source buffers and standalone HIR
+without a program index fall back to scanning. The table is read-only after
+construction and freed by `program_info_done` before source snapshots are
+released. Checking does not allocate an index. Entries use 32-bit byte offsets;
+external fragments larger than that range retain scanning. Diagnostic, formatter
+and LSP callers of the source-only API keep their existing behavior. Storage
+grows with indexed line count, including separate fragment indexes when their
+buffer views differ from the combined source.

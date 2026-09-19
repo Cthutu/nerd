@@ -139,6 +139,11 @@ typedef struct {
 } LexerComment;
 
 typedef struct {
+    string source; // Borrowed from the lexer's immutable source snapshot.
+    Array(u32) starts;
+} LexerLineIndex;
+
+typedef struct {
     NerdSource source;
     LexerMode  mode;
     Array(Token) tokens;
@@ -163,6 +168,15 @@ u32    lex_add_symbol(Lexer* lexer, string str, InternAddResult* out_result);
 string lex_symbol(const Lexer* lexer, u32 handle);
 usize  lex_token_end_offset(const Lexer* lexer, const Token* token);
 Token* lex_find(const Lexer* lexer, usize offset, u32* token_end);
+void   lex_prepare_line_indexes(Array(LexerLineIndex) * indexes,
+                                NerdSource source);
+void   lex_line_indexes_done(Array(LexerLineIndex) * indexes);
+bool   lex_line_index_self_test(void);
+bool   lex_indexed_offset_to_line_col(const LexerLineIndex* indexes,
+                                      NerdSource            source,
+                                      usize                 offset,
+                                      u32*                  out_line,
+                                      u32*                  out_col);
 bool   lex_offset_to_line_col(NerdSource source,
                               usize      offset,
                               u32*       out_line,

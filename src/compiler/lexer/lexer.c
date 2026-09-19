@@ -1256,6 +1256,46 @@ internal bool lexer_lex_one_token(NerdSource source,
     return true;
 }
 
+internal void lex_add_line_index(Array(LexerLineIndex) * indexes, string source)
+{
+    for (usize i = 0; i < array_count(*indexes); ++i) {
+        string indexed = (*indexes)[i].source;
+        if (indexed.data == source.data && indexed.count == source.count) {
+            return;
+        }
+    }
+    // Tokens use 32-bit offsets; unusually large external fragments fall back
+    // to scanning instead of truncating their line starts.
+    if (source.count > U32_MAX) {
+        return;
+    }
+    LexerLineIndex index = {.source = source};
+    array_push(index.starts, (u32)0);
+    for (usize i = 0; i < source.count; ++i) {
+        if (source.data[i] == '\n') {
+            array_push(index.starts, (u32)(i + 1));
+        }
+    }
+    array_push(*indexes, index);
+}
+
+void lex_prepare_line_indexes(Array(LexerLineIndex) * indexes,
+                              NerdSource source)
+{
+    lex_add_line_index(indexes, source.source);
+    for (usize i = 0; i < array_count(source.fragments); ++i) {
+        lex_add_line_index(indexes, source.fragments[i].source);
+    }
+}
+
+void lex_line_indexes_done(Array(LexerLineIndex) * indexes)
+{
+    for (usize i = 0; i < array_count(*indexes); ++i) {
+        array_free((*indexes)[i].starts);
+    }
+    array_free(*indexes);
+}
+
 bool lex_with_config(NerdSource source, const LexerConfig* config, Lexer* lexer)
 {
     string source_code = source.source;
@@ -1525,6 +1565,41 @@ Token* lex_find(const Lexer* lexer, usize offset, u32* token_end)
 
 //------------------------------------------------------------------------------
 
+bool lex_indexed_offset_to_line_col(const LexerLineIndex* indexes,
+                                    NerdSource            source,
+                                    usize                 offset,
+                                    u32*                  out_line,
+                                    u32*                  out_col)
+{
+    if (offset > source.source.count) {
+        return false;
+    }
+    if (indexes != NULL) {
+        for (usize i = 0; i < array_count(indexes); ++i) {
+            const LexerLineIndex* index = &indexes[i];
+            if (index->source.data != source.source.data ||
+                index->source.count != source.source.count) {
+                continue;
+            }
+            // Upper bound: the last start at or before offset owns the byte.
+            usize low = 0, high = array_count(index->starts);
+            while (low < high) {
+                usize mid = low + (high - low) / 2;
+                if (index->starts[mid] <= offset) {
+                    low = mid + 1;
+                } else {
+                    high = mid;
+                }
+            }
+            usize line = low - 1;
+            *out_line  = (u32)line;
+            *out_col   = (u32)(offset - index->starts[line]);
+            return true;
+        }
+    }
+    return lex_offset_to_line_col(source, offset, out_line, out_col);
+}
+
 bool lex_offset_to_line_col(NerdSource source,
                             usize      offset,
                             u32*       out_line,
@@ -1577,4 +1652,45 @@ bool lex_line_col_to_offset(NerdSource source,
     }
 
     return false;
+}
+
+bool lex_line_index_self_test(void)
+{
+    Array(LexerLineIndex) indexes = NULL;
+    string sources[]              = {s(""),
+                                     s("// one"),
+                                     s("// tab\t\r\n\n// utf8: \xc3\xa9\n"),
+                                     s("// last\r")};
+    for (usize i = 0; i < sizeof(sources) / sizeof(sources[0]); ++i) {
+        lex_add_line_index(&indexes, sources[i]);
+        lex_add_line_index(&indexes,
+                           sources[i]); // Same buffer is indexed once.
+    }
+    bool   ok       = array_count(indexes) == 4;
+    // Include a source without an index to exercise the scan fallback.
+    string fallback = s("// fallback\n\tend");
+    for (usize i = 0; i < 5; ++i) {
+        NerdSource source = {.source = i < 4 ? sources[i] : fallback};
+        for (usize offset = 0; offset <= source.source.count + 1; ++offset) {
+            u32  a = U32_MAX, b = U32_MAX, c = U32_MAX, d = U32_MAX;
+            bool scanned = lex_offset_to_line_col(source, offset, &a, &b);
+            bool indexed =
+                lex_indexed_offset_to_line_col(indexes, source, offset, &c, &d);
+            ok = ok && scanned == indexed && a == c && b == d;
+        }
+    }
+    lex_line_indexes_done(&indexes);
+    // Verify explicit preparation indexes mapped buffers and is idempotent.
+    NerdSource source = {.source = s("// combined\n")};
+    array_push(source.fragments, ((NerdSourceFragment){.source = sources[2]}));
+    ok = ok && array_count(indexes) == 0;
+    lex_prepare_line_indexes(&indexes, source);
+    lex_prepare_line_indexes(&indexes, source);
+    ok = ok && array_count(indexes) == 2;
+    lex_line_indexes_done(&indexes);
+    array_free(source.fragments);
+    if (ok) {
+        prn("lexer-line-index ok");
+    }
+    return ok;
 }

@@ -66,4 +66,6 @@ typedef struct ProgramInfo {
     Array(ModuleInfo) modules;
     u32  root_module_index;
     bool windowed;
+    // Prepared after checking; immutable throughout HIR/LLVM generation.
+    Array(LexerLineIndex) line_indexes;
 } ProgramInfo;

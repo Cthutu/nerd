@@ -21,3 +21,5 @@ Current backend timing notes:
   scratch reuse, with byte-identical LLVM and allocation/RSS measurements.
 - `compiler-m2-function-names.md`: LLVM function-name conflict index timings,
   byte-identical output checks and peak process memory comparison.
+- `compiler-m2-lines.md`: program-owned source-line indexes, LLVM/C timings,
+  paired checking comparisons and memory measurements.

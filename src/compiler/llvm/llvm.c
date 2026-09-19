@@ -3863,8 +3863,12 @@ internal u32 llvm_debug_local_line(const Lexer* lexer,
     }
     u32 line = 0;
     u32 col  = 0;
-    if (!lex_offset_to_line_col(
-            lexer->source, lexer->tokens[token_index].offset, &line, &col)) {
+    if (!lex_indexed_offset_to_line_col(
+            sema->program != NULL ? sema->program->line_indexes : NULL,
+            lexer->source,
+            lexer->tokens[token_index].offset,
+            &line,
+            &col)) {
         return 0;
     }
     return line + 1;

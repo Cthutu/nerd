@@ -238,6 +238,11 @@ internal bool program_front_end_generate_hir(ProgramInfo*           program,
     }
 
     for (u32 i = 0; i < array_count(program->modules); ++i) {
+        lex_prepare_line_indexes(&program->line_indexes,
+                                 program->modules[i].front_end.lexer.source);
+    }
+
+    for (u32 i = 0; i < array_count(program->modules); ++i) {
         ModuleInfo*            module = &program->modules[i];
         ProgramFrontEndContext ctx    = {
             .source =
@@ -1209,6 +1214,7 @@ bool front_end_program(NerdSource             source,
 
 void program_info_done(ProgramInfo* program)
 {
+    lex_line_indexes_done(&program->line_indexes);
     for (u32 i = 0; i < array_count(program->modules); ++i) {
         ModuleInfo* module = &program->modules[i];
         array_free(module->imported_module_indices);

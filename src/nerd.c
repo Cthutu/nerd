@@ -485,6 +485,9 @@ internal int nerd_internal_test(const JsonValue* cli_result)
 {
     string name =
         nerd_cli_param_string(cli_result, "command.params.name", (string){0});
+    if (string_eq_cstr(name, "lexer-line-index")) {
+        return lex_line_index_self_test() ? 0 : 1;
+    }
     if (string_eq_cstr(name, "llvm-function-names")) {
         return llvm_function_names_self_test() ? 0 : 1;
     }

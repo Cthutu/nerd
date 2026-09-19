@@ -248,7 +248,9 @@ The first M2 slice, combiner scratch-arena reuse, is complete on Linux; see
 [the before/after report](../measurements/compiler-m2-scratch.md).
 The second slice, function-name conflict indexing, is also complete on Linux;
 see [its comparison](../measurements/compiler-m2-function-names.md).
-Next implementation step: M2 source-line lookup indexing.
+The third slice, source-line lookup indexing, is complete on Linux; see
+[its measurements](../measurements/compiler-m2-lines.md).
+Next implementation step: investigate repeated semantic usage-context inference.
 The [M1 evidence](../measurements/compiler-m1.md) revises the initial hypotheses:
 usage-context inference, name-conflict scans and source-line lookup are measured
 hotspots. Actual queue waiting will be instrumented when a scheduler exists.
