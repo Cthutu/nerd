@@ -512,6 +512,35 @@ typedef struct {
     Array(string) help_messages;
 } ErrorInfo;
 
+// A context is owned by one task. Binding is thread-local, but the allocator
+// must also be made concurrency-safe before contexts can run in parallel.
+typedef struct {
+    ErrorRenderMode mode;
+    bool            emit_output;
+    bool            capture;
+    Arena           arena;
+    Arena           rendered_arena;
+    Arena           captured_arena;
+    string          last_rendered;
+    Array(ErrorInfo) pending;
+} ErrorContext;
+
+// Initialize fresh or previously destroyed storage. Arenas are allocated
+// lazily.
+void          error_context_init(ErrorContext*   context,
+                                 ErrorRenderMode mode,
+                                 bool            capture);
+// Restore the previous binding before destroying a context.
+void          error_context_done(ErrorContext* context);
+// Returns the previous binding; NULL selects the thread's default context.
+ErrorContext* error_context_select(ErrorContext* context);
+// Consume the queue into the selected context, using its output settings.
+// The source context must not be selected. Rendering remains coordinator-only.
+void          error_context_replay(ErrorContext* context);
+bool          error_context_capture(const ErrorInfo* info);
+bool          error_context_self_test(void);
+bool          error_context_render_self_test(bool capture);
+
 ErrorInfo error_init(NerdSource source, ErrorSpan span, cstr error_format, ...);
 ErrorInfo
 warning_init(NerdSource source, ErrorSpan span, cstr error_format, ...);

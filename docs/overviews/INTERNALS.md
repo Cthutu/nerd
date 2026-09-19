@@ -585,4 +585,20 @@ render-result arenas and borrowed module views are released before writing
 combined LLVM or invoking tools. Cleanup tolerates unstarted slots and already
 released results. Module order, sidecar writes, timings and initialization-order
 collection remain serial. This establishes result ownership for future workers;
-global allocation tracking and diagnostics still require concurrency work.
+global allocation tracking and task metrics still require concurrency work.
+
+Each result slot also owns an `ErrorContext`. A thread-local binding selects
+the context used by the existing diagnostic APIs, with a default context for
+ordinary callers. Contexts own message scratch, rendering mode, output settings,
+last-rendered text and a deferred queue. Arenas are allocated lazily. Capturing
+deep-copies diagnostic messages, references, notes, help and source/fragment
+snapshots, so queued records survive scratch resets and input-storage release.
+
+LLVM rendering binds the module context, captures diagnostics, restores the
+previous binding and replays on the coordinator in module order. Replay consumes
+the queue using the destination context's rendering and output settings; cleanup
+also handles discarded queues and unstarted slots. The renderer still uses the
+global temporary arena and must remain on the coordinator. Fatal internal
+compiler errors remain immediate process exits. Rendering is still serial;
+thread-local context selection alone does not make allocation or LLVM rendering
+safe to run concurrently.

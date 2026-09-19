@@ -33,6 +33,23 @@ def main():
                        if line.startswith(PREFIX)]
             return result, records
 
+        # Deferred diagnostics must survive task/source cleanup and reproduce
+        # immediate output despite reversed task completion order.
+        for test_mode in [False, True]:
+            diagnostic_env = dict(env, NERD_PROFILE='0')
+            diagnostic_env.pop('NERD_ERROR_RENDER_TEST', None)
+            if test_mode:
+                diagnostic_env['NERD_ERROR_RENDER_TEST'] = '1'
+            outputs = []
+            for variant in ['immediate', 'deferred']:
+                result = subprocess.run([str(nerd), 'internal-test',
+                                         'error-context-' + variant], cwd=work,
+                                        env=diagnostic_env, capture_output=True)
+                assert result.returncode == 0, result.stderr
+                assert b'message 1' in result.stderr and b'message 2' in result.stderr
+                outputs.append((result.stdout, result.stderr))
+            assert outputs[0] == outputs[1], outputs
+
         _, disabled = run('0', 'check', source)
         assert not disabled
         _, records = run('1', 'check', source)

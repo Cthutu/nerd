@@ -863,6 +863,12 @@ internal void error_diagnostics_render(const ErrorInfo* error_info)
 
 void error_render(ErrorInfo* error_info)
 {
+    if (error_context_capture(error_info)) {
+        error_info_done(error_info);
+        error_system_reset();
+        return;
+    }
+
     if (!error_system_should_emit_output() &&
         error_system_mode() == ERROR_RENDER_NORMAL) {
         error_info_done(error_info);

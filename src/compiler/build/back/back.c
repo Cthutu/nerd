@@ -645,8 +645,9 @@ internal void back_end_cleanup_llvm_artifacts(Array(cstr) llvm_paths,
 }
 
 typedef struct {
-    Arena  arena;
-    string llvm;
+    Arena        arena;
+    string       llvm;
+    ErrorContext diagnostics;
 } BackEndLlvmModuleResult;
 
 typedef struct {
@@ -659,6 +660,7 @@ typedef struct {
 internal void back_end_llvm_render_results_done(BackEndLlvmModules* modules)
 {
     for (usize i = 0; i < array_count(modules->results); ++i) {
+        error_context_done(&modules->results[i].diagnostics);
         if (modules->results[i].arena.data != NULL) {
             arena_done(&modules->results[i].arena);
         }
@@ -719,6 +721,8 @@ internal bool back_end_render_llvm_modules(Arena*                    arena,
         BackEndLlvmModuleResult* result    = &out->results[i];
         TimingProbe              probe     = timing_probe_begin();
         arena_init(&result->arena);
+        error_context_init(&result->diagnostics, error_system_mode(), true);
+        ErrorContext* previous = error_context_select(&result->diagnostics);
         string module_llvm = llvm_render_hir(&front_end->hir,
                                              &front_end->lexer,
                                              &front_end->sema,
@@ -726,6 +730,9 @@ internal bool back_end_render_llvm_modules(Arena*                    arena,
                                              !artifacts->release,
                                              artifacts->output_kind !=
                                                  NERD_BUILD_OUTPUT_Executable);
+        error_context_select(previous);
+        // Replay stays on the coordinator; workers will only capture.
+        error_context_replay(&result->diagnostics);
         timing_probe_end(probe,
                          COMPILER_STAGE_BACK_END,
                          COMPILER_PHASE_LLVM_RENDER,
@@ -738,13 +745,16 @@ internal bool back_end_render_llvm_modules(Arena*                    arena,
             string sidecar_llvm = module_llvm;
             if (!artifacts->release && !emit_debug_sidecars) {
                 TimingProbe sidecar_probe = timing_probe_begin();
-                sidecar_llvm              = llvm_render_hir(
+                previous     = error_context_select(&result->diagnostics);
+                sidecar_llvm = llvm_render_hir(
                     &front_end->hir,
                     &front_end->lexer,
                     &front_end->sema,
                     &result->arena,
                     false,
                     artifacts->output_kind != NERD_BUILD_OUTPUT_Executable);
+                error_context_select(previous);
+                error_context_replay(&result->diagnostics);
                 timing_probe_end(sidecar_probe,
                                  COMPILER_STAGE_BACK_END,
                                  "render LLVM sidecar",

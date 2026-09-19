@@ -257,9 +257,13 @@ Declaration collection now also avoids irrelevant scope scans; see
 the planned Linux M2 work. Further semantic indexes remain optional candidates.
 M3 has started with per-module result arenas and fixed result slots; see
 [the ownership and validation report](../measurements/compiler-m3-results.md).
-Result lifetimes and partial cleanup are now explicit. Next implementation step:
-task-owned diagnostics, followed by safe allocator bookkeeping and worker
-primitives. LLVM rendering remains serial; M3 is not yet complete.
+Result lifetimes and partial cleanup are now explicit. Task-owned diagnostic
+contexts and deep-owned deferred queues are also implemented; see
+[the diagnostic ownership report](../measurements/compiler-m3-diagnostics.md).
+The coordinator replays diagnostics in stable order; rendering still uses its
+global temporary arena. Next: safe allocator bookkeeping, task metrics and
+portable worker primitives, plus the remaining borrowed-input audit.
+LLVM rendering remains serial; M3 is not yet complete.
 The [M1 evidence](../measurements/compiler-m1.md) revises the initial hypotheses:
 usage-context inference, name-conflict scans and source-line lookup are measured
 hotspots. Actual queue waiting will be instrumented when a scheduler exists.

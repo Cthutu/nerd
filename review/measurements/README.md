@@ -29,3 +29,5 @@ Current backend timing notes:
   refreshed CPU samples and completion of the Linux M2 serial work.
 - `compiler-m3-results.md`: module result ownership, partial cleanup and the
   single-core overhead/output-identity check before introducing workers.
+- `compiler-m3-diagnostics.md`: task-owned diagnostic queues, lifetime and output
+  parity checks, and single-core overhead before introducing workers.
