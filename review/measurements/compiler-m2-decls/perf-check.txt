@@ -1,0 +1,30 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 1K of event 'cpu/cycles/Pu'
+# Event count (approx.): 6230262553
+#
+# Overhead  Symbol                                           IPC   [IPC Coverage]
+# ........  ...............................................  ....................
+#
+    29.76%  [.] sema_seed_usage_context_local_types          -      -
+    12.15%  [.] sema_collect_decls_in_range                  -      -
+    11.92%  [.] sema_collect_top_level_uses_in_range         -      -
+     4.23%  [.] array_maybe_grow                             -      -
+     3.82%  [.] sema_seed_call_arg_context_local_types       -      -
+     3.65%  [.] lex_symbol                                   -      -
+     2.55%  [.] sema_find_core_trait_symbol                  -      -
+     2.25%  [.] sema_seed_assignment_context_local_types     -      -
+     2.22%  [.] sema_seed_return_context_local_types         -      -
+     1.89%  [.] sema_find_symbol_handle_by_name              -      -
+     1.54%  [.] sema_validate_definite_assignment            -      -
+     1.50%  [.] sema_seed_compound_assignment_local_types    -      -
+     1.16%  [.] string_eq                                    -      -
+     1.12%  [.] sema_import_type                             -      -
+
+
+#
+# (Tip: To filter subset of samples with report or script add --time X-Y or --cpu A,B,C or --socket-filter ...)
+#

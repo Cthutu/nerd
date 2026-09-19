@@ -25,3 +25,5 @@ Current backend timing notes:
   paired checking comparisons and memory measurements.
 - `compiler-m2-usage.md`: usage-inference scope filtering, paired check/build
   timings and fresh CPU samples identifying declaration collection.
+- `compiler-m2-decls.md`: declaration-scope filtering, paired checks/builds,
+  refreshed CPU samples and completion of the Linux M2 serial work.

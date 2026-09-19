@@ -6621,6 +6621,13 @@ internal bool sema_collect_decls_in_range(const Lexer*           lexer,
 {
     for (u32 i = first_node; i < end_node; ++i) {
         const AstNode* node = &ast->nodes[i];
+        // Only these nodes affect declaration collection. Avoid scanning
+        // enclosing top-level bodies for every other expression/token node.
+        if (node->kind != AK_Impl && node->kind != AK_TopOn &&
+            node->kind != AK_Bind && node->kind != AK_Variable &&
+            node->kind != AK_FfiDef) {
+            continue;
+        }
         if (sema_node_is_inside_top_on_body(ast, i, current_body_node_index)) {
             continue;
         }
@@ -6792,9 +6799,8 @@ internal bool sema_collect_decls_in_range(const Lexer*           lexer,
             bool wrapped_by_binding = false;
             for (u32 j = 0; j < array_count(ast->nodes); ++j) {
                 const AstNode* candidate = &ast->nodes[j];
-                if ((candidate->kind != AK_Bind &&
-                     candidate->kind != AK_Variable) ||
-                    sema_node_is_inside_function_body(ast, j)) {
+                if (candidate->kind != AK_Bind &&
+                    candidate->kind != AK_Variable) {
                     continue;
                 }
 
@@ -6808,7 +6814,10 @@ internal bool sema_collect_decls_in_range(const Lexer*           lexer,
                     continue;
                 }
 
-                if (candidate_value_index == i) {
+                // Function-scope lookup scans the AST; only a binding to
+                // this exact FFI node can wrap it.
+                if (candidate_value_index == i &&
+                    !sema_node_is_inside_function_body(ast, j)) {
                     wrapped_by_binding = true;
                     break;
                 }

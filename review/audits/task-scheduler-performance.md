@@ -216,7 +216,7 @@ allocation and timing notes are useful hypotheses, not current baselines.
 | --- | --- | --- |
 | M0 — this audit | Experiment branch, source audit, exploratory measurements, proposed plan | Report checked against current source; no scheduler changes |
 | M1 — reproducible baseline (complete on Linux) | Benchmark runner; per-module wall/CPU timings; dependency graph; memory and output-size data | Debug/release targets, LLVM/C/check, tiny/real/wide/deep/single-large-module inputs; warm and cold runs; raw results retained |
-| M2 — serial improvements | Combiner scratch reuse first; then function-name conflict and source-line indexes; investigate usage-context inference | Same outputs/diagnostics; measured one-core improvement beyond noise; retained-memory comparison |
+| M2 — serial improvements (complete on Linux) | Combiner scratch reuse; function-name and source-line indexes; usage-context and declaration filtering | Same outputs/diagnostics; measured one-core improvement beyond noise; retained-memory comparison |
 | M3 — ownership preparation | Task diagnostic sink; safe allocator bookkeeping; result lifetimes; portable worker primitives | Serial tests unchanged; allocation/free across threads and failure cleanup stress tests; race checking where supported |
 | M4 — scheduler + LLVM modules | Bounded queue, inline one-worker mode, ordered render-result merge | Jobs 1/2/4/8/physical-core count; byte-stable C/HIR/LLVM where applicable; debug behavior and runtime parity; no deadlock on failure |
 | M5 — module front end | Split discovery from checking; stable registry; parallel parse, then HIR and dependency-ready sema in separate changes | Diamond/duplicate/cyclic/missing/conditional imports; shared FFI symbols; identical diagnostics; randomized completion stress |
@@ -252,8 +252,11 @@ The third slice, source-line lookup indexing, is complete on Linux; see
 [its measurements](../measurements/compiler-m2-lines.md).
 Usage-context inference now skips scope scans for AST kinds that cannot
 contribute constraints; see [the fourth M2 comparison](../measurements/compiler-m2-usage.md).
-Fresh CPU samples put declaration collection first. Next implementation step:
-investigate `sema_collect_decls_in_range` before considering an inference worklist.
+Declaration collection now also avoids irrelevant scope scans; see
+[the fifth M2 comparison](../measurements/compiler-m2-decls.md). This completes
+the planned Linux M2 work. Further semantic indexes remain optional candidates.
+Next implementation step: M3 task-owned diagnostics, safe allocator bookkeeping
+and render-result lifetimes, before enabling parallel LLVM module rendering.
 The [M1 evidence](../measurements/compiler-m1.md) revises the initial hypotheses:
 usage-context inference, name-conflict scans and source-line lookup are measured
 hotspots. Actual queue waiting will be instrumented when a scheduler exists.

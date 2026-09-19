@@ -568,3 +568,10 @@ scan AST ranges, so nodes that cannot contribute constraints bypass them.
 Eligible nodes retain their traversal order and scope exclusions on every
 fixed-point pass. Local-declaration constraints, convergence and final seeding
 are unchanged; no inference results are cached.
+
+
+Declaration collection filters non-declaration AST kinds before querying their
+enclosing conditional bodies. Its FFI wrapper search resolves a binding's
+payload and compares the exact target node before checking function scope.
+These read-only checks avoid repeated AST scans for unrelated nodes while
+preserving recursive traversal, first-wrapper selection and diagnostic order.
