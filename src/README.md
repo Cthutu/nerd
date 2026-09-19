@@ -22,7 +22,7 @@ Read the project and documentation indexes first:
   generated implementation names are compiler internals.
 - `compiler/build/back/back.c` and `compiler/build/back/llvm_text.c`
   Backend orchestration, runtime glue, combined LLVM input generation, and
-  clang invocation.
+  direct LLVM optimisation, object generation, linking, and doctor checks.
 - `compiler/format/format.c`
   Formatter implementation.
 
@@ -35,7 +35,7 @@ Read the project and documentation indexes first:
 For language-surface changes, read [../docs/manual/README.md](../docs/manual/README.md)
 and [../docs/spec/README.md](../docs/spec/README.md) before editing source.
 
-`compiler/cgen/` is the optional HIR-to-C backend selected by `build --genc`.
+`compiler/cgen/` is the optional HIR-to-C backend selected by `build --cgen`.
 It emits a single C translation unit, embedding the runtime and small array
 helpers from `data/`. See `docs/compiler-pipeline.md` for its lowering and test
 contract.

@@ -16,3 +16,4 @@ bool back_end_program(const ProgramInfo*        program,
                       Timing*                   timing);
 
 bool back_end_llvm_tool_output_self_test(void);
+bool back_end_doctor(void);

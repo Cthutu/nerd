@@ -37,7 +37,8 @@ It currently:
 2. renders LLVM IR from HIR
 3. optionally saves generated LLVM IR sidecars
 4. builds one combined LLVM IR link input
-5. invokes clang on one combined LLVM IR input plus that runtime object
+5. runs `opt` for release optimisation, then `llc` to produce a native object
+6. links that object and the embedded runtime with the platform LLVM linker
 
 The current executable back end is LLVM, so the user-facing compiler flow is
 effectively:
@@ -48,7 +49,7 @@ The backend is intentionally split into small pieces:
 
 - `back.c`
   owns artifact policy, module iteration, temporary paths, external link flags,
-  and process orchestration.
+  and direct LLVM tool orchestration.
 - `llvm_runtime.c`
   owns the embedded runtime object and generated runtime glue such as the `init`
   wrapper and tiny C-compatible `main` wrapper.
@@ -221,14 +222,14 @@ builds then concatenate:
 
 The concatenated text is written to one temporary `<output>.link.ll` file and
 the embedded runtime object is written beside it as `<output>.nrt.o`. The
-backend then invokes clang on both inputs. Using a single generated LLVM input
+backend then uses `opt` (release only), `llc`, and the platform LLVM linker. Using a single generated LLVM input
 avoids backend-specific C dependency ordering and lets LLVM resolve
 function/type ordering within the module.
 
 The combiner removes declarations that are satisfied by definitions or aliases
 inside the combined input, and keeps one declaration for unresolved external
-symbols such as libc calls. This matters because clang accepts separate `.ll`
-inputs that each declare the same symbol, but rejects one textual LLVM module
+symbols such as libc calls. This matters because separate LLVM modules may each declare the same symbol,
+but LLVM rejects one textual module
 that both declares and defines the same symbol.
 
 Temporary link inputs and runtime object copies are removed after successful
@@ -244,7 +245,7 @@ passes the operating-system executable path as `args[0]`. `nerd run` forwards
 program arguments written after `--` to that generated executable.
 
 `nerd build --obj` combines module LLVM without the executable `main` wrapper
-and asks clang to produce a relocatable object. `nerd build --lib` compiles the
+and uses `llc` to produce a relocatable object. `nerd build --lib` compiles the
 same combined module object and archives it with the embedded Nerd runtime
 object. `nerd build --dll` links a host shared library using a PIC runtime
 object. These non-executable modes do not require a `main` entry point.
@@ -255,16 +256,17 @@ functions receive plain C aliases, such as `add`. Private Nerd linkage aliases
 and the hidden executable entry alias remain compiler-managed. Runtime
 helpers use reserved `nrt_` names and hidden visibility in shared libraries.
 
-The current toolchain contract is textual LLVM IR plus clang. The compiler does
-not currently invoke `llvm-as`, `llc`, or `opt` directly. That keeps the install
-surface small while still allowing a future measurement-backed switch to LLVM
-CLI tools or bitcode if clang startup or textual parsing becomes a bottleneck.
+The runtime toolchain is `opt` (release optimisation), `llc` (native object
+emission), and `ld.lld` on Linux, `lld-link` on Windows, or `ld64.lld` on macOS.
+Static libraries use `llvm-ar` or Windows `llvm-lib`. Nerd does not invoke Clang.
+The host SDK still supplies startup objects and system/runtime libraries.
+See [Toolchain and doctor](toolchain.md) for installation and diagnostics.
 
-Normal non-release executable builds emit source-level LLVM debug metadata and
-pass `-g -O0` to clang. On Linux, that debug information is embedded in the
-produced executable and can be inspected with tools such as
-`readelf --debug-dump=decodedline`. Release builds pass `-O2` and currently omit
-the Nerd debug metadata product.
+Debug builds emit source-level LLVM debug metadata and use `llc -O0`.
+Release builds omit that metadata and run `opt -passes=default<O2>` followed by
+`llc -O2`. Both emit position-independent objects. Optimised bitcode and native
+objects used for linking are temporary. Each successful stage removes its
+intermediates; failed stages retain their inputs for diagnosis.
 
 The current debug metadata contract includes compile units, canonical source
 file paths, function subprograms, source locations, parameters, locals, globals,
@@ -302,7 +304,7 @@ opaque `ptr`, pointer-sized integers as `i64`, string and slice values as
 `i64`. The context is intentionally conservative: it centralises the choices
 the backend already made before broadening target support.
 
-The supported target is currently the host 64-bit clang target. The compiler
+The supported target is currently the host 64-bit LLVM target. The compiler
 does not yet claim cross-target reproducibility, 32-bit support, or C-compatible
 aggregate FFI passing/returning. Those require explicit target datalayout/triple
 emission, layout-context expansion, ABI diagnostics, and regression tests.
@@ -312,8 +314,8 @@ module loading, and semantic analysis, then stops before HIR generation. Use it
 for fast validation when no executable or sidecar output is needed.
 
 Use `--timing` with `nerd check`, `nerd build`, or `nerd run` to print phase
-timings. Back-end timings use wall-clock time so the external clang invocation
-is included in the `link executable` phase.
+timings. Back-end timings use wall-clock time so the external LLVM tool invocations
+are included in the `link executable` phase.
 
 Runtime helpers that exchange Nerd strings use a stable pointer/scalar ABI
 rather than C by-value structs. Generated LLVM stores `{ ptr, i64 }` string

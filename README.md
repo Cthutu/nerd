@@ -110,7 +110,10 @@ LLVM backend status:
   Windows and `main` on Linux, so the same JSON files work on both platforms.
 - The previous IR/C backend has been removed; HIR is the compiler middle layer
   and LLVM IR is the executable backend output.
-- The executable backend targets the host 64-bit clang toolchain. Cross-target
+- `nerd doctor` checks LLVM tools and host linking dependencies with a compile/link/run probe.
+  See [toolchain setup](docs/toolchain.md). Nerd uses `opt`, `llc`, and LLVM linkers;
+  it does not invoke Clang to build Nerd programs.
+- The executable backend targets the host 64-bit LLVM toolchain. Cross-target
   and aggregate FFI ABI support are future layout-context work.
 
 ## Building examples

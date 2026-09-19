@@ -4,6 +4,10 @@
 // Copyright (C)2026 Matt Davies, all rights reserved
 //------------------------------------------------------------------------------
 
+#ifndef _WIN32
+#    define _POSIX_C_SOURCE 200809L
+#endif
+
 #include <compiler/internal.h>
 #if OS_POSIX
 #    include <sys/stat.h>
@@ -71,11 +75,13 @@ internal void back_end_append_hir_extern_link_flags(StringBuilder* link_flags,
             }
 #endif
 #if OS_WINDOWS
-            // clang links the Windows C runtime (UCRT) by default. Naming it as
-            // an FFI library resolves the DLL for symbol validation, but there
-            // is no matching `ucrtbase.lib` import library, and an explicit
+            // The native linker configuration supplies the Windows CRT. Naming
+            // it as an FFI library resolves the DLL for symbol validation, but
+            // there is no matching `ucrtbase.lib` import library, and an
+            // explicit
             // `-lucrt` clashes with the statically linked `libucrt`. Treat the
-            // CRT like `c`: let clang's default linkage provide the symbols.
+            // CRT like `c`: let the configured runtime libraries provide the
+            // symbols.
             if (string_eq(library, s("ucrtbase")) ||
                 string_eq(library, s("ucrtbase.dll")) ||
                 string_eq(library, s("ucrt")) ||
@@ -235,7 +241,7 @@ back_end_parse_llvm_source_error_line(string                     line,
         }
 
         out->kind = BACK_END_LLVM_TOOL_DIAG_SOURCE_ERROR;
-        out->tool = s("clang");
+        out->tool = s("LLVM");
         out->path = string_from(line.data, path_end);
         out->line = string_from(line.data + line_start, line_end - line_start);
         out->column =
@@ -488,20 +494,18 @@ internal bool back_end_report_llvm_tool_failure(Arena*      arena,
 
     BackEndLlvmToolDiagnostic diagnostic = {0};
     if (!back_end_parse_llvm_tool_output(output, &diagnostic)) {
-        return error_ice(
-            "Failed to parse LLVM tool output.\n"
-            "The compiler fell back to the raw tool output so this format can "
-            "be taught to the parser.\n"
-            "Exit code: %d\n"
-            "Command: " STRINGP "\n"
-            "Generated LLVM: %s\n"
-            "Runtime object: %s\n"
-            "Tool output:\n" STRINGP,
-            result.exit_code,
-            STRINGV(command),
-            combined_llvm_path,
-            runtime_object_path,
-            STRINGV(output));
+        return error_runtime("LLVM tool failed; ensure the LLVM tools and host "
+                             "SDK are installed.\n"
+                             "Exit code: %d\n"
+                             "Command: " STRINGP "\n"
+                             "Generated LLVM: %s\n"
+                             "Runtime object: %s\n"
+                             "Tool output:\n" STRINGP,
+                             result.exit_code,
+                             STRINGV(command),
+                             combined_llvm_path,
+                             runtime_object_path,
+                             STRINGV(output));
     }
 
     (void)arena;
@@ -724,47 +728,15 @@ internal bool back_end_render_llvm_modules(Arena*                    arena,
     return true;
 }
 
-internal bool back_end_link_combined_llvm(Arena*                    arena,
-                                          const ProgramInfo*        program,
-                                          const NerdArtifactConfig* artifacts,
-                                          cstr combined_llvm_path,
-                                          cstr runtime_object_path)
+// Direct LLVM toolchain. The host SDK supplies CRT objects and system
+// libraries; Nerd never uses a C compiler driver to discover or invoke these
+// tools.
+internal bool
+back_end_run_tool(Arena* arena, string command, cstr ir, cstr runtime)
 {
-    string opt_flags       = artifacts->release ? s("-O2") : s("-g -O0");
-    string subsystem_flags = s("");
-#if OS_WINDOWS
-    if (program->windowed) {
-        subsystem_flags = s(" -Wl,/SUBSYSTEM:WINDOWS");
-    }
-#endif
-    StringBuilder link_flags = {0};
-    sb_init(&link_flags, arena);
-    back_end_append_hir_extern_link_flags(&link_flags, program, " ");
-    StringBuilder command_builder = {0};
-    sb_init(&command_builder, arena);
-    sb_format(&command_builder,
-              "clang -Wno-override-module " STRINGP " -o \"%s\" \"%s\" \"%s\"",
-              STRINGV(opt_flags),
-              artifacts->binary_path,
-              combined_llvm_path,
-              runtime_object_path);
-    sb_append_string(&command_builder, subsystem_flags);
-    sb_append_string(&command_builder, sb_to_string(&link_flags));
-    string      command = sb_to_string(&command_builder);
-    ShellResult result  = shell_capture(back_end_cstr(arena, command), arena);
-    if (result.exit_code != 0) {
-        return back_end_report_llvm_tool_failure(
-            arena, result, command, combined_llvm_path, runtime_object_path);
-    }
-
-#if OS_POSIX
-    if (chmod(artifacts->binary_path, 0755) != 0) {
-        return error_runtime("Failed to make %s executable",
-                             artifacts->binary_path);
-    }
-#endif
-
-    return true;
+    ShellResult result = shell_capture(back_end_cstr(arena, command), arena);
+    return result.exit_code == 0 || back_end_report_llvm_tool_failure(
+                                        arena, result, command, ir, runtime);
 }
 
 internal bool back_end_compile_object(Arena*                    arena,
@@ -772,19 +744,227 @@ internal bool back_end_compile_object(Arena*                    arena,
                                       cstr combined_llvm_path,
                                       cstr object_path)
 {
-    string      opt_flags = artifacts->release ? s("-O2") : s("-g -O0");
-    string      command = string_format(arena,
-                                        "clang -Wno-override-module -c " STRINGP
-                                        " -o \"%s\" \"%s\"",
-                                        STRINGV(opt_flags),
-                                        object_path,
-                                        combined_llvm_path);
-    ShellResult result  = shell_capture(back_end_cstr(arena, command), arena);
-    if (result.exit_code != 0) {
-        return back_end_report_llvm_tool_failure(
-            arena, result, command, combined_llvm_path, NULL);
+    cstr input     = combined_llvm_path;
+    cstr optimized = NULL;
+    if (artifacts->release) {
+        optimized = back_end_cstr(
+            arena, string_format(arena, "%s.opt.bc", object_path));
+        nerd_side_file_register_cleanup(artifacts->side_files, optimized);
+        string command =
+            string_format(arena,
+                          "opt \"-passes=default<O2>\" -o \"%s\" \"%s\"",
+                          optimized,
+                          input);
+        if (!back_end_run_tool(arena, command, input, NULL)) {
+            return false;
+        }
+        input = optimized;
+    }
+    string command = string_format(
+        arena,
+        "llc -filetype=obj -relocation-model=pic -O%s -o \"%s\" \"%s\"",
+        artifacts->release ? "2" : "0",
+        object_path,
+        input);
+    if (!back_end_run_tool(arena, command, combined_llvm_path, NULL)) {
+        return false;
+    }
+    if (optimized) {
+        path_remove(optimized);
     }
     return true;
+}
+
+#if OS_LINUX
+// Common native glibc/musl layouts. A nonstandard SDK can supply its library
+// directory explicitly, without depending on GCC or Clang discovery commands.
+internal cstr back_end_linux_crt_dir(Arena* arena)
+{
+    cstr configured = getenv("NERD_CRT_DIR");
+    if (configured && configured[0]) {
+        return path_exists(path_join(arena, configured, "crti.o")) ? configured
+                                                                   : NULL;
+    }
+    static cstr dirs[] = {
+#    if ARCH_X86_64
+        "/usr/lib/x86_64-linux-gnu",
+        "/usr/lib64",
+#    elif ARCH_ARM64
+        "/usr/lib/aarch64-linux-gnu",
+        "/usr/lib64",
+#    endif
+        "/usr/lib",
+        "/lib"};
+    for (u32 i = 0; i < sizeof(dirs) / sizeof(dirs[0]); ++i) {
+        if (path_exists(path_join(arena, dirs[i], "crti.o"))) {
+            return dirs[i];
+        }
+    }
+    return NULL;
+}
+
+internal cstr back_end_linux_loader(void)
+{
+    cstr configured = getenv("NERD_DYNAMIC_LINKER");
+    if (configured && configured[0]) {
+        return configured;
+    }
+    static cstr paths[] = {
+#    if ARCH_X86_64
+        "/lib64/ld-linux-x86-64.so.2",
+        "/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2",
+        "/lib/ld-musl-x86_64.so.1",
+#    elif ARCH_ARM64
+        "/lib/ld-linux-aarch64.so.1",
+        "/lib/aarch64-linux-gnu/ld-linux-aarch64.so.1",
+        "/lib/ld-musl-aarch64.so.1",
+#    endif
+        NULL};
+    for (u32 i = 0; paths[i]; ++i) {
+        if (path_exists(paths[i])) {
+            return paths[i];
+        }
+    }
+    return NULL;
+}
+#endif
+
+internal bool back_end_link_native(Arena*                    arena,
+                                   const ProgramInfo*        program,
+                                   const NerdArtifactConfig* artifacts,
+                                   cstr                      ir,
+                                   cstr                      runtime,
+                                   bool                      shared)
+{
+    cstr object = back_end_cstr(
+        arena, string_format(arena, "%s.obj.o", artifacts->binary_path));
+    nerd_side_file_register_cleanup(artifacts->side_files, object);
+    if (!back_end_compile_object(arena, artifacts, ir, object)) {
+        return false;
+    }
+    StringBuilder command = {0};
+#if OS_WINDOWS
+    StringBuilder libraries = {0};
+    sb_init(&libraries, arena);
+    back_end_append_hir_extern_link_flags(&libraries, program, " ");
+    string flags = sb_to_string(&libraries);
+    sb_init(&command, arena);
+    sb_format(&command,
+              "lld-link /nologo /out:\"%s\" %s %s /subsystem:%s ",
+              artifacts->binary_path,
+              shared ? "/dll" : "",
+              artifacts->release ? "" : "/debug:dwarf",
+              program->windowed ? "windows" : "console");
+    sb_format(&command,
+              "\"%s\" \"%s\" /defaultlib:libcmt /defaultlib:libvcruntime "
+              "/defaultlib:libucrt /defaultlib:oldnames /defaultlib:kernel32",
+              object,
+              runtime);
+    // lld-link reads SDK/VC library paths from the developer environment's LIB.
+    // Translate the existing deduplicated library list to COFF import names.
+    for (usize i = 0; i + 3 <= flags.count;) {
+        if (flags.data[i] != ' ' || flags.data[i + 1] != '-' ||
+            flags.data[i + 2] != 'l') {
+            ++i;
+            continue;
+        }
+        usize start = i + 3;
+        i           = start;
+        while (i < flags.count && flags.data[i] != ' ') {
+            ++i;
+        }
+        sb_format(
+            &command, " \"%.*s.lib\"", (int)(i - start), flags.data + start);
+    }
+#elif OS_LINUX
+    cstr crt = back_end_linux_crt_dir(arena);
+    if (!crt) {
+        return error_runtime("Cannot find native CRT objects; install the libc "
+                             "development files or set NERD_CRT_DIR");
+    }
+    cstr start = path_join(arena, crt, "Scrt1.o");
+    cstr init  = path_join(arena, crt, "crti.o");
+    cstr fini  = path_join(arena, crt, "crtn.o");
+    sb_init(&command, arena);
+    sb_format(&command,
+              "ld.lld %s -o \"%s\" -L\"%s\" -L/usr/lib -L/lib",
+              shared ? "-shared" : "-pie",
+              artifacts->binary_path,
+              crt);
+#    if ARCH_X86_64
+    sb_append_cstr(&command,
+                   " -L/usr/lib/x86_64-linux-gnu -L/lib/x86_64-linux-gnu "
+                   "-L/usr/lib64 -L/lib64");
+#    elif ARCH_ARM64
+    sb_append_cstr(&command,
+                   " -L/usr/lib/aarch64-linux-gnu -L/lib/aarch64-linux-gnu "
+                   "-L/usr/lib64 -L/lib64");
+#    endif
+    if (!shared) {
+        cstr loader = back_end_linux_loader();
+        if (!loader) {
+            return error_runtime(
+                "Cannot find native dynamic loader; set NERD_DYNAMIC_LINKER");
+        }
+        sb_format(&command, " --dynamic-linker \"%s\" \"%s\"", loader, start);
+    }
+    sb_format(&command, " \"%s\" \"%s\" \"%s\"", init, object, runtime);
+    back_end_append_hir_extern_link_flags(&command, program, " ");
+    sb_format(&command, " -lc -lm -l:libgcc_s.so.1 \"%s\"", fini);
+#elif OS_MACOS
+    ShellResult sdk =
+        shell_capture("xcrun --sdk macosx --show-sdk-path", arena);
+    if (sdk.exit_code != 0) {
+        return error_runtime("Cannot locate macOS SDK with xcrun");
+    }
+    string sdk_path = sdk.stdout_text;
+    while (sdk_path.count && (sdk_path.data[sdk_path.count - 1] == '\n' ||
+                              sdk_path.data[sdk_path.count - 1] == '\r')) {
+        --sdk_path.count;
+    }
+    sb_init(&command, arena);
+    sb_format(&command,
+              "ld64.lld -arch %s -platform_version macos 11.0 11.0 -syslibroot "
+              "\"" STRINGP "\" %s -o \"%s\" \"%s\" \"%s\" -lSystem",
+              ARCH_ARM64 ? "arm64" : "x86_64",
+              STRINGV(sdk_path),
+              shared ? "-dylib" : "",
+              artifacts->binary_path,
+              object,
+              runtime);
+    back_end_append_hir_extern_link_flags(&command, program, " ");
+#else
+    return error_runtime("Direct LLVM linking is not configured for this host");
+#endif
+    if (!back_end_run_tool(arena, sb_to_string(&command), ir, runtime)) {
+        return false;
+    }
+    path_remove(object);
+#if OS_POSIX
+    if (!shared && chmod(artifacts->binary_path, 0755) != 0) {
+        return error_runtime("Failed to make %s executable",
+                             artifacts->binary_path);
+    }
+#endif
+    return true;
+}
+
+internal bool back_end_link_combined_llvm(Arena*                    arena,
+                                          const ProgramInfo*        program,
+                                          const NerdArtifactConfig* artifacts,
+                                          cstr                      ir,
+                                          cstr                      runtime)
+{
+    return back_end_link_native(arena, program, artifacts, ir, runtime, false);
+}
+
+internal bool back_end_link_shared_library(Arena*                    arena,
+                                           const ProgramInfo*        program,
+                                           const NerdArtifactConfig* artifacts,
+                                           cstr                      ir,
+                                           cstr                      runtime)
+{
+    return back_end_link_native(arena, program, artifacts, ir, runtime, true);
 }
 
 internal bool back_end_archive_static_library(Arena* arena,
@@ -800,48 +980,149 @@ internal bool back_end_archive_static_library(Arena* arena,
                                    runtime_object_path);
 #else
     string command = string_format(arena,
-                                   "ar rcs \"%s\" \"%s\" \"%s\"",
+                                   "llvm-ar rcs \"%s\" \"%s\" \"%s\"",
                                    library_path,
                                    object_path,
                                    runtime_object_path);
 #endif
-    ShellResult result = shell_capture(back_end_cstr(arena, command), arena);
-    if (result.exit_code != 0) {
-        string output = back_end_tool_output_excerpt(result);
-        return error_runtime("Failed to create static library (exit code %d)\n"
-                             "Command: " STRINGP "\n"
-                             "Output: " STRINGP,
-                             result.exit_code,
-                             STRINGV(command),
-                             STRINGV(output));
-    }
-    return true;
+    return back_end_run_tool(
+        arena, command, "(object archive)", runtime_object_path);
 }
 
-internal bool back_end_link_shared_library(Arena*                    arena,
-                                           const ProgramInfo*        program,
-                                           const NerdArtifactConfig* artifacts,
-                                           cstr combined_llvm_path,
-                                           cstr runtime_object_path)
+// Probe versions first so doctor reports every missing tool in one invocation.
+// Then exercise the actual release pipeline and host CRT in an isolated
+// directory.
+bool back_end_doctor(void)
 {
-    string        opt_flags  = artifacts->release ? s("-O2") : s("-g -O0");
-    StringBuilder link_flags = {0};
-    sb_init(&link_flags, arena);
-    back_end_append_hir_extern_link_flags(&link_flags, program, " ");
-    string command = string_format(arena,
-                                   "clang -shared -Wno-override-module " STRINGP
-                                   " -o \"%s\" \"%s\" \"%s\"" STRINGP,
-                                   STRINGV(opt_flags),
-                                   artifacts->binary_path,
-                                   combined_llvm_path,
-                                   runtime_object_path,
-                                   STRINGV(sb_to_string(&link_flags)));
-    ShellResult result = shell_capture(back_end_cstr(arena, command), arena);
-    if (result.exit_code != 0) {
-        return back_end_report_llvm_tool_failure(
-            arena, result, command, combined_llvm_path, runtime_object_path);
+    Arena arena = {0};
+    arena_init(&arena);
+    bool        ok      = true;
+    static cstr tools[] = {
+        "opt",
+        "llc",
+#if OS_WINDOWS
+        "lld-link",
+        "llvm-lib",
+#elif OS_MACOS
+        "ld64.lld",
+        "llvm-ar",
+#else
+        "ld.lld",
+        "llvm-ar",
+#endif
+    };
+    prn("Nerd binary toolchain");
+    for (u32 i = 0; i < sizeof(tools) / sizeof(tools[0]); ++i) {
+        cstr   option  = strcmp(tools[i], "llvm-lib") == 0 ? "/?" : "--version";
+        string command = string_format(&arena, "%s %s", tools[i], option);
+        ShellResult result =
+            shell_capture(back_end_cstr(&arena, command), &arena);
+        bool found = result.exit_code == 0;
+        prn("[%s] %s%s",
+            found ? "OK" : "ERROR",
+            tools[i],
+            found ? ""
+                  : " — unavailable or failed; install LLVM with this tool on "
+                    "PATH");
+        ok = found && ok;
     }
-    return true;
+#if OS_WINDOWS
+    cstr libraries = getenv("LIB");
+    bool sdk_ok    = libraries && libraries[0];
+    prn("[%s] Windows SDK / VC runtime libraries%s",
+        sdk_ok ? "OK" : "ERROR",
+        sdk_ok ? " (LIB configured; link probe will validate)"
+               : " — run in a Visual Studio developer environment");
+    ok = sdk_ok && ok;
+#elif OS_LINUX
+    cstr crt    = back_end_linux_crt_dir(&arena);
+    bool crt_ok = crt && path_exists(path_join(&arena, crt, "Scrt1.o")) &&
+                  path_exists(path_join(&arena, crt, "crtn.o"));
+    prn("[%s] libc startup objects%s",
+        crt_ok ? "OK" : "ERROR",
+        crt_ok ? "" : " — install libc development files or set NERD_CRT_DIR");
+    bool loader_ok =
+        back_end_linux_loader() && path_exists(back_end_linux_loader());
+    prn("[%s] dynamic loader%s",
+        loader_ok ? "OK" : "ERROR",
+        loader_ok ? "" : " — set NERD_DYNAMIC_LINKER to the host loader");
+    ok = crt_ok && loader_ok && ok;
+#elif OS_MACOS
+    ShellResult sdk =
+        shell_capture("xcrun --sdk macosx --show-sdk-path", &arena);
+    prn("[%s] macOS SDK%s",
+        sdk.exit_code == 0 ? "OK" : "ERROR",
+        sdk.exit_code == 0 ? "" : " — install the Apple command-line SDK");
+    ok = sdk.exit_code == 0 && ok;
+#endif
+    if (ok) {
+        char directory[4096] = {0};
+#if OS_WINDOWS
+        char temp[4096] = {0};
+        if (!GetTempPathA(sizeof(temp), temp) ||
+            !GetTempFileNameA(temp, "nrd", 0, directory)) {
+            ok = false;
+        } else {
+            DeleteFileA(directory);
+            ok = CreateDirectoryA(directory, NULL) != 0;
+        }
+#else
+        cstr temp  = getenv("TMPDIR");
+        int  count = snprintf(directory,
+                              sizeof(directory),
+                              "%s/nerd-doctor-XXXXXX",
+                              temp && temp[0] ? temp : "/tmp");
+        ok         = count > 0 && (usize)count < sizeof(directory) &&
+                     mkdtemp(directory) != NULL;
+#endif
+        if (!ok) {
+            prn("[ERROR] Cannot create a temporary directory for the link "
+                "probe");
+        } else {
+            NerdSideFileRegistry files = {0};
+            nerd_side_file_registry_init(&files);
+            cstr ir      = path_join(&arena, directory, "probe.ll");
+            cstr runtime = path_join(&arena, directory, "probe.nrt.o");
+            cstr binary  = path_join(&arena, directory, "probe.exe");
+            nerd_side_file_register_cleanup(&files, ir);
+            nerd_side_file_register_cleanup(&files, runtime);
+            nerd_side_file_register_cleanup(&files, binary);
+            NerdArtifactConfig artifacts = {
+                .binary_path = binary,
+                .release     = true,
+                .side_files  = &files,
+                .output_kind = NERD_BUILD_OUTPUT_Executable,
+            };
+            ProgramInfo program = {0};
+            ok                  = back_end_write_text_file(
+                                      ir, s("define i32 @main() { ret i32 0 }\n")) &&
+                                  back_end_llvm_runtime_write_pic_object(runtime) &&
+                                  back_end_link_native(
+                                      &arena, &program, &artifacts, ir, runtime, false);
+            if (ok) {
+                string      command = string_format(&arena, "\"%s\"", binary);
+                ShellResult result =
+                    shell_capture(back_end_cstr(&arena, command), &arena);
+                ok = result.exit_code == 0;
+            }
+            prn("[%s] LLVM optimisation, object generation, host runtime link "
+                "and execution",
+                ok ? "OK" : "ERROR");
+            nerd_side_file_cleanup_registered(&files);
+            nerd_side_file_registry_done(&files);
+#if OS_WINDOWS
+            RemoveDirectoryA(directory);
+#else
+            rmdir(directory);
+#endif
+        }
+    }
+    prn("%s",
+        ok ? "Toolchain ready. C emission does not require these tools."
+           : "Toolchain incomplete. Fix the errors above and run nerd doctor "
+             "again.");
+    arena_done(&arena);
+    return ok;
 }
 
 // Aggregate C calling conventions are not yet modelled by Nerd's backend.
@@ -1067,7 +1348,8 @@ internal bool back_end_emit_llvm_artifacts(const ProgramInfo*        program,
         memory_before = compiler_memory_profile_begin();
         timing_start  = back_end_timing_begin(timing);
         bool wrote_runtime =
-            artifacts->output_kind == NERD_BUILD_OUTPUT_SharedLibrary
+            (artifacts->output_kind == NERD_BUILD_OUTPUT_SharedLibrary ||
+             artifacts->output_kind == NERD_BUILD_OUTPUT_Executable)
                 ? back_end_llvm_runtime_write_pic_object(runtime_object_path)
                 : back_end_llvm_runtime_write_object(runtime_object_path);
         if (!wrote_runtime) {

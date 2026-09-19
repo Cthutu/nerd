@@ -572,6 +572,14 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
                             "Path to a Nerd JSON configuration file",
                             false));
 
+    json_array_push(
+        commands,
+        nerd_cli_make_command(arena,
+                              "doctor",
+                              "Check LLVM tools and host linking dependencies",
+                              json_new_array(arena),
+                              json_new_array(arena)));
+
     {
         JsonValue* build_params = json_new_array(arena);
         JsonValue* build_flags  = json_new_array(arena);
@@ -1409,6 +1417,8 @@ internal int nerd_run_with_cli(int argc, char** argv)
                          ? 1
                          : compiler_cmd_build(&config);
         }
+    } else if (string_eq_cstr(name, "doctor")) {
+        result = back_end_doctor() ? 0 : 1;
     } else if (string_eq_cstr(name, "check")) {
         NerdCheckConfig config =
             nerd_check_config_from_json(cli_result, cli_keywords);

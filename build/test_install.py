@@ -47,6 +47,8 @@ def assert_no_link_temps(directory: pathlib.Path, stem: str, label: str) -> None
     patterns = [
         f"{stem}.link.ll",
         f"{stem}.nrt.o",
+        f"{stem}*.obj.o",
+        f"{stem}*.opt.bc",
         f"_{stem}.link.ll",
         f"_{stem}.nrt.o",
         f"_{stem}.pdb",

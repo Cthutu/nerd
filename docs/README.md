@@ -88,3 +88,6 @@ Use the manual appendix for source-level syntax reference:
 Older language-design notes should not be added here unless they are still
 actively maintained. Retain outdated planning material only when the roadmap
 explicitly keeps it visible.
+
+- [LLVM toolchain and doctor](toolchain.md): native build dependencies, platform
+  linking configuration, and dependency diagnostics.

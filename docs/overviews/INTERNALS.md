@@ -129,7 +129,13 @@ The back end currently runs:
 1. optional save of generated HIR
 2. LLVM IR generation
 3. optional save of generated LLVM IR
-4. native compilation through clang, linking the embedded Nerd runtime object
+4. release IR optimisation through `opt`, followed by `llc` object generation
+5. linking with the embedded Nerd runtime through the platform LLVM linker
+
+`nerd doctor` checks the LLVM executables and host SDK, then exercises this
+pipeline with a temporary executable. Nerd does not invoke Clang; C emission is
+an independent compatibility output. See [toolchain setup](../toolchain.md) for
+host dependencies and [the pipeline](../compiler-pipeline.md) for artifact policy.
 
 Every non-core module receives semantic proxy declarations for every public
 export from `mods/core.n`; there is no symbol-name whitelist and no explicit

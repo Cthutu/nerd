@@ -1,6 +1,6 @@
 # 0009: Backend Toolchain Contract
 
-Status: accepted
+Status: superseded by [0011: Direct LLVM Toolchain](0011-direct-llvm-toolchain.md)
 Date: 2026-05-12
 
 ## Context
@@ -50,4 +50,3 @@ Revisit this decision with larger programs and release-mode measurements if:
 - cross-target support requires tighter control over LLVM target triples,
   data layouts, or object emission
 - a future in-process LLVM binding becomes preferable to a CLI toolchain
-

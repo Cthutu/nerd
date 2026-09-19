@@ -89,3 +89,8 @@ C option tests execute `--copts` with no Clang on PATH, verify that existing
 artifacts are preserved, and compile with its returned arguments. C hosts call
 exports from generated objects, archives and shared libraries, covering imported
 functions, variadic definitions and global initialisation.
+
+`build/test_toolchain.py` checks direct LLVM binary/object/library output and
+`nerd doctor`. On POSIX it restricts PATH to LLVM tools, traps any Clang use,
+and checks each missing tool plus C generation without a binary toolchain.
+It runs as part of `just test`.

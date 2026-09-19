@@ -6,6 +6,17 @@ Branch: `experiment/task-scheduler-performance`.
 
 ## Recommendation and scope
 
+Architectural requirement clarified by Matt on 2026-09-19: Nerd must never
+invoke Clang. Normal compilation produces binaries via LLVM tooling; optional
+C emission exists for compatibility (for example, PS5 development) and stops
+at the C file. This performance experiment prioritises source through LLVM-IR
+generation. Dedicated parallel C emission is deferred.
+
+Implementation update: the backend now invokes direct LLVM tools, and
+`nerd doctor` checks the toolchain. The Clang-based timings below remain historical
+measurements of the audit baseline, not measurements of the new backend. M1 must
+establish a fresh baseline before performance conclusions are carried forward.
+
 Improve avoidable serial work first, then introduce a small task scheduler and
 use module LLVM rendering as its first compiler workload. Keep a serial path
 through the same task functions. Parallel front-end work follows explicit
@@ -82,7 +93,7 @@ scheduler experiment, but insufficient as the whole performance strategy.
 | File read + lex + parse per discovered module | Overlap sibling work | Stable module storage; coordinator-owned discovery; task diagnostics | After loader separation |
 | Semantic analysis per ready module | Run independent branches of import graph | Published immutable dependency exports/types; no recursive worker waits | Later, higher risk |
 | C function/module body emission | Independent body buffers after type planning | Split shared CGen state; freeze type/export names; merge in source order | After LLVM success |
-| Clang per module/object | May address external compilation cost | ABI/debug/type compatibility, init ordering, bounded subprocesses, optimisation comparison | Separate measured experiment |
+| LLVM tooling per module/object | Evaluate after the source-to-IR experiment | No Clang invocation; ABI/debug/type compatibility and init ordering | Separate scope |
 | Function-level sema | Could help one dominant module | Shared type interning, generics, declaration dependencies and side tables need redesign | Defer |
 | Tests / independent builds | Coarse process-level throughput | Isolated paths, CPU budget, deterministic reports | Separate tooling improvement |
 
@@ -206,13 +217,13 @@ allocation and timing notes are useful hypotheses, not current baselines.
 | M3 — ownership preparation | Task diagnostic sink; safe allocator bookkeeping; result lifetimes; portable worker primitives | Serial tests unchanged; allocation/free across threads and failure cleanup stress tests; race checking where supported |
 | M4 — scheduler + LLVM modules | Bounded queue, inline one-worker mode, ordered render-result merge | Jobs 1/2/4/8/physical-core count; byte-stable C/HIR/LLVM where applicable; debug behavior and runtime parity; no deadlock on failure |
 | M5 — module front end | Split discovery from checking; stable registry; parallel parse, then HIR and dependency-ready sema in separate changes | Diamond/duplicate/cyclic/missing/conditional imports; shared FFI symbols; identical diagnostics; randomized completion stress |
-| M6 — C emission | Frozen type/export plan and independent body emitters | One C file, warning-free supported fixtures, LLVM parity at C O0/O2, library ABI and initialization tests |
-| M7 — external compilation experiment | Compare combined LLVM against bounded per-module objects/cache | End-to-end time, peak RSS, binary size, debug stepping, FFI and generated-program performance; retain combined mode if better |
+| M6 — C emission (deferred) | Reconsider only if compatibility workloads justify it | One C file; preserve compatibility and initialization behavior |
+| M7 — LLVM tooling (implemented separately) | Direct LLVM tooling and linking, plus `nerd doctor` | No Clang invocation by Nerd; preserve output modes, debugging, FFI and runtime behavior |
 | M8 — adoption decision | Worker default and task-size thresholds backed by data | Cross-platform validation and documented regressions/tradeoffs; accept or stop individual experiments |
 
-M2 and M3 are independent after M1; M4 requires M3. M5 and M6 follow evidence
-from M4 and can be evaluated separately. M7 is optional: it must not block useful
-in-process improvements. Each implementation milestone should be a small series
+M2 and M3 are independent after M1; M4 requires M3. M5 follows evidence
+from M4. M6 is deferred. M7 records the architectural correction implemented outside
+this source-to-IR experiment. Each implementation milestone should be a small series
 of independently reviewable commits with its own before/after measurements.
 
 Suggested adoption gates (targets, not measured promises): no more than 5%

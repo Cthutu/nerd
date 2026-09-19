@@ -24,6 +24,10 @@ Date: YYYY-MM-DD
 
 ## Records
 
+- [0011: Direct LLVM Toolchain](0011-direct-llvm-toolchain.md)
+  - Status: accepted; supersedes 0009's toolchain choice.
+  - Direct LLVM tools and host linking configuration; `nerd doctor` validates
+    dependencies. Earlier closeout statements below describe the original review.
 - [0001: HIR And Backend Boundary](0001-hir-and-backend-boundary.md)
   - Status: accepted.
   - Closeout: implemented. HIR is the middle layer and LLVM is the only

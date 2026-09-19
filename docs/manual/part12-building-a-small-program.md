@@ -9,7 +9,14 @@ fit together.
 The examples use `input` from `std.io` and `split` from `std.text`. Those are
 standard library helpers, not new language constructs.
 
-## Generate C
+## Check the binary toolchain
+
+`nerd build adventure.n` produces a native binary through LLVM tooling.
+Run `nerd doctor` to check the required tools and host runtime libraries. It
+reports missing dependencies and returns a nonzero exit status if the toolchain
+is incomplete. See [toolchain setup](../toolchain.md) for platform requirements.
+
+## Generate C for compatibility
 
 Use `--cgen` when you want C source as the build output:
 
