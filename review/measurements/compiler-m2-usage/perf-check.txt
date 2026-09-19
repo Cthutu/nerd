@@ -1,0 +1,24 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 2K of event 'cpu/cycles/Pu'
+# Event count (approx.): 12565955307
+#
+# Overhead  Symbol                                           IPC   [IPC Coverage]
+# ........  ...............................................  ....................
+#
+    56.79%  [.] sema_collect_decls_in_range                  -      -
+    14.81%  [.] sema_seed_usage_context_local_types          -      -
+     6.02%  [.] sema_collect_top_level_uses_in_range         -      -
+     2.11%  [.] array_maybe_grow                             -      -
+     1.96%  [.] sema_seed_call_arg_context_local_types       -      -
+     1.91%  [.] lex_symbol                                   -      -
+     1.52%  [.] sema_find_core_trait_symbol                  -      -
+     1.08%  [.] sema_seed_assignment_context_local_types     -      -
+
+
+#
+# (Tip: Use parent filter to see specific call path: perf report -p <regex>)
+#

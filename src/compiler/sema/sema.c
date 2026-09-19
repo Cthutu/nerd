@@ -18485,13 +18485,22 @@ sema_seed_usage_context_local_types(const Lexer*           lexer,
     do {
         ctx.changed = false;
         for (u32 i = 0; ctx.ok && i < array_count(ast->nodes); ++i) {
+            const AstNode* node = &ast->nodes[i];
+            // Scope predicates scan the AST. Nodes that cannot contribute a
+            // constraint need none of those scans, on any fixed-point pass.
+            if (node->kind != AK_Call && node->kind != AK_Assign &&
+                node->kind != AK_Equal && node->kind != AK_NotEqual &&
+                node->kind != AK_Return && node->kind != AK_ReturnExpr &&
+                !sema_binary_kind_can_be_compound_assignment(node->kind) &&
+                !sema_node_is_order_comparison(node)) {
+                continue;
+            }
             if (sema_node_is_inside_disabled_top_on_body(
                     options, lexer, ast, i) ||
                 sema_node_is_inside_generic_function(ast, i) ||
                 sema_node_is_inside_generic_impl(ast, i)) {
                 continue;
             }
-            const AstNode* node = &ast->nodes[i];
             if (node->kind == AK_Call) {
                 const AstCallInfo* call      = &ast->calls[node->b];
                 bool               has_local = false;

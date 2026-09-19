@@ -250,7 +250,10 @@ The second slice, function-name conflict indexing, is also complete on Linux;
 see [its comparison](../measurements/compiler-m2-function-names.md).
 The third slice, source-line lookup indexing, is complete on Linux; see
 [its measurements](../measurements/compiler-m2-lines.md).
-Next implementation step: investigate repeated semantic usage-context inference.
+Usage-context inference now skips scope scans for AST kinds that cannot
+contribute constraints; see [the fourth M2 comparison](../measurements/compiler-m2-usage.md).
+Fresh CPU samples put declaration collection first. Next implementation step:
+investigate `sema_collect_decls_in_range` before considering an inference worklist.
 The [M1 evidence](../measurements/compiler-m1.md) revises the initial hypotheses:
 usage-context inference, name-conflict scans and source-line lookup are measured
 hotspots. Actual queue waiting will be instrumented when a scheduler exists.

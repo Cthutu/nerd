@@ -560,3 +560,11 @@ external fragments larger than that range retain scanning. Diagnostic, formatter
 and LSP callers of the source-only API keep their existing behavior. Storage
 grows with indexed line count, including separate fragment indexes when their
 buffer views differ from the combined source.
+
+
+Usage-context local-type inference filters AST node kinds before checking
+whether nodes belong to disabled or generic bodies. Those scope predicates
+scan AST ranges, so nodes that cannot contribute constraints bypass them.
+Eligible nodes retain their traversal order and scope exclusions on every
+fixed-point pass. Local-declaration constraints, convergence and final seeding
+are unchanged; no inference results are cached.

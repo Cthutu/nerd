@@ -23,3 +23,5 @@ Current backend timing notes:
   byte-identical output checks and peak process memory comparison.
 - `compiler-m2-lines.md`: program-owned source-line indexes, LLVM/C timings,
   paired checking comparisons and memory measurements.
+- `compiler-m2-usage.md`: usage-inference scope filtering, paired check/build
+  timings and fresh CPU samples identifying declaration collection.
