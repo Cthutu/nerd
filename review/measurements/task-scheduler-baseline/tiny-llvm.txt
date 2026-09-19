@@ -1,0 +1,24 @@
+┌──────────────────────────────────────────────────┐
+│ Timing Report                                    │
+├───────────┬────────────────────────┬─────────────┤
+│ stage     │ phase                  │ duration    │
+├───────────┼────────────────────────┼─────────────┤
+│ front-end │ tokenise source text   │ 11.471 μs   │
+│ front-end │ parse tokens into AST  │ 8.195 μs    │
+│ front-end │ tokenise source text   │ 43.341 μs   │
+│ front-end │ parse tokens into AST  │ 25.848 μs   │
+│ front-end │ analyse AST semantics  │ 599.697 μs  │
+│ front-end │ analyse AST semantics  │ 7.804 μs    │
+│ front-end │ generate HIR from sema │ 7.985 μs    │
+│ front-end │ generate HIR from sema │ 135.775 μs  │
+│ front-end │ front-end total        │ 840.116 μs  │
+├───────────┼────────────────────────┼─────────────┤
+│ back-end  │ render module LLVM     │ 796.728 μs  │
+│ back-end  │ combine LLVM text      │ 2.659 ms    │
+│ back-end  │ write combined LLVM    │ 19.226 μs   │
+│ back-end  │ write runtime object   │ 17.483 μs   │
+│ back-end  │ link executable        │ 27.670 ms   │
+│ back-end  │ back-end total         │ 31.163 ms   │
+├───────────┼────────────────────────┼─────────────┤
+│ compiler  │ compiler total         │ 32.003 ms   │
+└───────────┴────────────────────────┴─────────────┘

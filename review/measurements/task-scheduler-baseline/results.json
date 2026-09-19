@@ -1,0 +1,238 @@
+[
+  {
+    "name": "tiny",
+    "mode": "check",
+    "command": [
+      "_bin/nerd",
+      "--timing",
+      "check",
+      "/tmp/nerd-scheduler-audit/tiny.n"
+    ],
+    "milliseconds": [
+      1.394261998939328,
+      1.6219499957514927,
+      1.489860995206982,
+      1.332316009211354,
+      1.6756910044932738
+    ],
+    "median": 1.489860995206982
+  },
+  {
+    "name": "tiny",
+    "mode": "llvm",
+    "command": [
+      "_bin/nerd",
+      "--timing",
+      "build",
+      "-o",
+      "/tmp/nerd-scheduler-audit/tiny-llvm",
+      "/tmp/nerd-scheduler-audit/tiny.n"
+    ],
+    "milliseconds": [
+      32.32036699773744,
+      32.809487005579285,
+      34.9364260036964,
+      32.62077199178748,
+      33.31938499468379
+    ],
+    "median": 32.809487005579285
+  },
+  {
+    "name": "tiny",
+    "mode": "cgen",
+    "command": [
+      "_bin/nerd",
+      "--timing",
+      "build",
+      "--cgen",
+      "-o",
+      "/tmp/nerd-scheduler-audit/tiny-cgen",
+      "/tmp/nerd-scheduler-audit/tiny.n"
+    ],
+    "milliseconds": [
+      2.220805996330455,
+      2.4454280064674094,
+      2.559202999691479,
+      2.2173000033944845,
+      2.4099219881463796
+    ],
+    "median": 2.4099219881463796
+  },
+  {
+    "name": "dungeon",
+    "mode": "check",
+    "command": [
+      "_bin/nerd",
+      "--timing",
+      "check",
+      "examples/dungeon/dungeon.n"
+    ],
+    "milliseconds": [
+      244.02459600241855,
+      241.88056398998015,
+      243.45866199291777,
+      243.2203429925721,
+      243.22177599242423
+    ],
+    "median": 243.22177599242423
+  },
+  {
+    "name": "dungeon",
+    "mode": "llvm",
+    "command": [
+      "_bin/nerd",
+      "--timing",
+      "build",
+      "-o",
+      "/tmp/nerd-scheduler-audit/dungeon-llvm",
+      "examples/dungeon/dungeon.n"
+    ],
+    "milliseconds": [
+      2174.2157799890265,
+      2172.113567998167,
+      2182.737126000575,
+      2177.9071539931465,
+      2179.3673600041075
+    ],
+    "median": 2177.9071539931465
+  },
+  {
+    "name": "dungeon",
+    "mode": "cgen",
+    "command": [
+      "_bin/nerd",
+      "--timing",
+      "build",
+      "--cgen",
+      "-o",
+      "/tmp/nerd-scheduler-audit/dungeon-cgen",
+      "examples/dungeon/dungeon.n"
+    ],
+    "milliseconds": [
+      332.37427299900446,
+      333.2271760009462,
+      332.7489079965744,
+      333.43944601074327,
+      331.913005997194
+    ],
+    "median": 332.7489079965744
+  },
+  {
+    "name": "pixels",
+    "mode": "check",
+    "command": [
+      "_bin/nerd",
+      "--timing",
+      "check",
+      "examples/pixels/pixels.n"
+    ],
+    "milliseconds": [
+      277.8993959946092,
+      281.1451390007278,
+      279.9412750027841,
+      280.71817599993665,
+      279.7269930015318
+    ],
+    "median": 279.9412750027841
+  },
+  {
+    "name": "pixels",
+    "mode": "llvm",
+    "command": [
+      "_bin/nerd",
+      "--timing",
+      "build",
+      "-o",
+      "/tmp/nerd-scheduler-audit/pixels-llvm",
+      "examples/pixels/pixels.n"
+    ],
+    "milliseconds": [
+      849.3716299999505,
+      854.0035110054305,
+      853.9734039950417,
+      861.5483890025644,
+      849.7096869978122
+    ],
+    "median": 853.9734039950417
+  },
+  {
+    "name": "pixels",
+    "mode": "cgen",
+    "command": [
+      "_bin/nerd",
+      "--timing",
+      "build",
+      "--cgen",
+      "-o",
+      "/tmp/nerd-scheduler-audit/pixels-cgen",
+      "examples/pixels/pixels.n"
+    ],
+    "milliseconds": [
+      363.65340200427454,
+      364.68898999737576,
+      361.945509997895,
+      361.94685300870333,
+      364.3093059945386
+    ],
+    "median": 363.65340200427454
+  },
+  {
+    "name": "quill",
+    "mode": "check",
+    "command": [
+      "_bin/nerd",
+      "--timing",
+      "check",
+      "examples/text-adventure/quill.n"
+    ],
+    "milliseconds": [
+      23.03043700521812,
+      22.761482003261335,
+      22.611099004279822,
+      22.830963003798388,
+      22.86889399692882
+    ],
+    "median": 22.830963003798388
+  },
+  {
+    "name": "quill",
+    "mode": "llvm",
+    "command": [
+      "_bin/nerd",
+      "--timing",
+      "build",
+      "-o",
+      "/tmp/nerd-scheduler-audit/quill-llvm",
+      "examples/text-adventure/quill.n"
+    ],
+    "milliseconds": [
+      143.22798300418071,
+      141.44596199912485,
+      141.8293030001223,
+      142.775061991415,
+      143.34260899340734
+    ],
+    "median": 142.775061991415
+  },
+  {
+    "name": "quill",
+    "mode": "cgen",
+    "command": [
+      "_bin/nerd",
+      "--timing",
+      "build",
+      "--cgen",
+      "-o",
+      "/tmp/nerd-scheduler-audit/quill-cgen",
+      "examples/text-adventure/quill.n"
+    ],
+    "milliseconds": [
+      35.894927990739234,
+      35.06049899442587,
+      35.62887798761949,
+      34.64931600319687,
+      34.961602999828756
+    ],
+    "median": 35.06049899442587
+  }
+]

@@ -1,0 +1,56 @@
+┌──────────────────────────────────────────────────┐
+│ Timing Report                                    │
+├───────────┬────────────────────────┬─────────────┤
+│ stage     │ phase                  │ duration    │
+├───────────┼────────────────────────┼─────────────┤
+│ front-end │ tokenise source text   │ 63.800 μs   │
+│ front-end │ parse tokens into AST  │ 31.299 μs   │
+│ front-end │ tokenise source text   │ 38.262 μs   │
+│ front-end │ parse tokens into AST  │ 19.437 μs   │
+│ front-end │ tokenise source text   │ 183.986 μs  │
+│ front-end │ parse tokens into AST  │ 49.513 μs   │
+│ front-end │ tokenise source text   │ 160.502 μs  │
+│ front-end │ parse tokens into AST  │ 46.047 μs   │
+│ front-end │ tokenise source text   │ 14.297 μs   │
+│ front-end │ parse tokens into AST  │ 2.775 μs    │
+│ front-end │ tokenise source text   │ 88.677 μs   │
+│ front-end │ parse tokens into AST  │ 21.200 μs   │
+│ front-end │ tokenise source text   │ 46.708 μs   │
+│ front-end │ parse tokens into AST  │ 20.258 μs   │
+│ front-end │ analyse AST semantics  │ 583.646 μs  │
+│ front-end │ analyse AST semantics  │ 1.220 ms    │
+│ front-end │ analyse AST semantics  │ 123.542 μs  │
+│ front-end │ analyse AST semantics  │ 9.306 ms    │
+│ front-end │ analyse AST semantics  │ 533.803 μs  │
+│ front-end │ tokenise source text   │ 235.032 μs  │
+│ front-end │ parse tokens into AST  │ 60.283 μs   │
+│ front-end │ tokenise source text   │ 13.065 μs   │
+│ front-end │ parse tokens into AST  │ 1.353 μs    │
+│ front-end │ tokenise source text   │ 14.657 μs   │
+│ front-end │ parse tokens into AST  │ 3.286 μs    │
+│ front-end │ analyse AST semantics  │ 10.811 μs   │
+│ front-end │ analyse AST semantics  │ 3.108 ms    │
+│ front-end │ tokenise source text   │ 263.144 μs  │
+│ front-end │ parse tokens into AST  │ 72.957 μs   │
+│ front-end │ analyse AST semantics  │ 3.420 ms    │
+│ front-end │ tokenise source text   │ 38.422 μs   │
+│ front-end │ parse tokens into AST  │ 20.678 μs   │
+│ front-end │ analyse AST semantics  │ 525.848 μs  │
+│ front-end │ analyse AST semantics  │ 570.502 μs  │
+│ front-end │ generate HIR from sema │ 144.862 μs  │
+│ front-end │ generate HIR from sema │ 109.867 μs  │
+│ front-end │ generate HIR from sema │ 592.453 μs  │
+│ front-end │ generate HIR from sema │ 20.107 μs   │
+│ front-end │ generate HIR from sema │ 18.725 μs   │
+│ front-end │ generate HIR from sema │ 127.580 μs  │
+│ front-end │ generate HIR from sema │ 915.601 μs  │
+│ front-end │ generate HIR from sema │ 2.946 μs    │
+│ front-end │ generate HIR from sema │ 987.637 μs  │
+│ front-end │ generate HIR from sema │ 144.551 μs  │
+│ front-end │ front-end total        │ 23.977 ms   │
+├───────────┼────────────────────────┼─────────────┤
+│ back-end  │ render C               │ 8.565 ms    │
+│ back-end  │ back-end total         │ 8.565 ms    │
+├───────────┼────────────────────────┼─────────────┤
+│ compiler  │ compiler total         │ 32.542 ms   │
+└───────────┴────────────────────────┴─────────────┘

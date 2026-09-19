@@ -1,0 +1,20 @@
+┌──────────────────────────────────────────────────┐
+│ Timing Report                                    │
+├───────────┬────────────────────────┬─────────────┤
+│ stage     │ phase                  │ duration    │
+├───────────┼────────────────────────┼─────────────┤
+│ front-end │ tokenise source text   │ 10.319 μs   │
+│ front-end │ parse tokens into AST  │ 3.627 μs    │
+│ front-end │ tokenise source text   │ 53.590 μs   │
+│ front-end │ parse tokens into AST  │ 27.412 μs   │
+│ front-end │ analyse AST semantics  │ 670.700 μs  │
+│ front-end │ analyse AST semantics  │ 5.931 μs    │
+│ front-end │ generate HIR from sema │ 6.271 μs    │
+│ front-end │ generate HIR from sema │ 129.122 μs  │
+│ front-end │ front-end total        │ 906.972 μs  │
+├───────────┼────────────────────────┼─────────────┤
+│ back-end  │ render C               │ 627.830 μs  │
+│ back-end  │ back-end total         │ 627.830 μs  │
+├───────────┼────────────────────────┼─────────────┤
+│ compiler  │ compiler total         │ 1.535 ms    │
+└───────────┴────────────────────────┴─────────────┘

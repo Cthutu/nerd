@@ -1,0 +1,15 @@
+┌─────────────────────────────────────────────────┐
+│ Timing Report                                   │
+├───────────┬───────────────────────┬─────────────┤
+│ stage     │ phase                 │ duration    │
+├───────────┼───────────────────────┼─────────────┤
+│ front-end │ tokenise source text  │ 17.342 μs   │
+│ front-end │ parse tokens into AST │ 6.613 μs    │
+│ front-end │ tokenise source text  │ 55.324 μs   │
+│ front-end │ parse tokens into AST │ 30.768 μs   │
+│ front-end │ analyse AST semantics │ 613.774 μs  │
+│ front-end │ analyse AST semantics │ 6.342 μs    │
+│ front-end │ front-end total       │ 730.163 μs  │
+├───────────┼───────────────────────┼─────────────┤
+│ compiler  │ compiler total        │ 730.163 μs  │
+└───────────┴───────────────────────┴─────────────┘

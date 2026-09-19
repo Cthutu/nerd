@@ -4,6 +4,8 @@ This folder holds detailed architecture review material.
 
 - `decisions/`: accepted, rejected, or superseded decision records.
 - `audits/`: evidence gathered before decisions.
+  - `audits/task-scheduler-performance.md`: compiler concurrency audit,
+    single-core opportunities, and proposed experiment milestones.
   - `audits/lsp-boundaries.md`: current LSP product/readiness boundaries.
   - `audits/hir-backend-readiness.md`: current HIR surface and LLVM backend
     blockers.

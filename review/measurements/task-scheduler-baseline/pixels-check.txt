@@ -1,0 +1,43 @@
+┌─────────────────────────────────────────────────┐
+│ Timing Report                                   │
+├───────────┬───────────────────────┬─────────────┤
+│ stage     │ phase                 │ duration    │
+├───────────┼───────────────────────┼─────────────┤
+│ front-end │ tokenise source text  │ 48.191 μs   │
+│ front-end │ parse tokens into AST │ 31.158 μs   │
+│ front-end │ tokenise source text  │ 771.000 ns  │
+│ front-end │ parse tokens into AST │ 561.000 ns  │
+│ front-end │ tokenise source text  │ 493.679 μs  │
+│ front-end │ parse tokens into AST │ 339.007 μs  │
+│ front-end │ tokenise source text  │ 180.800 μs  │
+│ front-end │ parse tokens into AST │ 50.685 μs   │
+│ front-end │ tokenise source text  │ 154.029 μs  │
+│ front-end │ parse tokens into AST │ 45.636 μs   │
+│ front-end │ tokenise source text  │ 17.863 μs   │
+│ front-end │ parse tokens into AST │ 2.645 μs    │
+│ front-end │ tokenise source text  │ 87.254 μs   │
+│ front-end │ parse tokens into AST │ 19.928 μs   │
+│ front-end │ tokenise source text  │ 46.858 μs   │
+│ front-end │ parse tokens into AST │ 20.639 μs   │
+│ front-end │ analyse AST semantics │ 602.382 μs  │
+│ front-end │ analyse AST semantics │ 1.147 ms    │
+│ front-end │ analyse AST semantics │ 104.977 μs  │
+│ front-end │ analyse AST semantics │ 9.532 ms    │
+│ front-end │ tokenise source text  │ 273.121 μs  │
+│ front-end │ parse tokens into AST │ 74.610 μs   │
+│ front-end │ analyse AST semantics │ 3.508 ms    │
+│ front-end │ analyse AST semantics │ 90.056 ms   │
+│ front-end │ tokenise source text  │ 269.557 μs  │
+│ front-end │ parse tokens into AST │ 144.973 μs  │
+│ front-end │ tokenise source text  │ 665.260 μs  │
+│ front-end │ parse tokens into AST │ 190.508 μs  │
+│ front-end │ analyse AST semantics │ 142.757 ms  │
+│ front-end │ analyse AST semantics │ 22.063 ms   │
+│ front-end │ tokenise source text  │ 43.101 μs   │
+│ front-end │ parse tokens into AST │ 21.390 μs   │
+│ front-end │ analyse AST semantics │ 496.072 μs  │
+│ front-end │ analyse AST semantics │ 2.789 ms    │
+│ front-end │ front-end total       │ 276.279 ms  │
+├───────────┼───────────────────────┼─────────────┤
+│ compiler  │ compiler total        │ 276.279 ms  │
+└───────────┴───────────────────────┴─────────────┘
