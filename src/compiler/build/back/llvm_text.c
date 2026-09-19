@@ -250,8 +250,12 @@ internal void back_end_append_llvm_without_satisfied_declarations(
 {
     // Keep the first declaration for unresolved external symbols such as libc
     // calls, but drop duplicate declarations and declarations for symbols this
-    // combined module defines. Clang rejects `declare @x` plus `define @x` in
+    // combined module defines. LLVM rejects `declare @x` plus `define @x` in
     // one textual module even though separate input files allowed that shape.
+    // Remapped text is copied into the output/metadata builders before reuse.
+    // Keep scratch only for this input, bounded by its longest rendered line.
+    Arena line_arena = {0};
+    arena_init(&line_arena);
     usize line_start = 0;
     for (usize i = 0; i <= text.count; ++i) {
         if (i < text.count && text.data[i] != '\n') {
@@ -272,8 +276,7 @@ internal void back_end_append_llvm_without_satisfied_declarations(
             }
             array_push(*declared_symbols, declared_symbol);
         }
-        Arena line_arena = {0};
-        arena_init(&line_arena);
+        arena_reset(&line_arena);
         StringBuilder remapped_line = {0};
         sb_init(&remapped_line, &line_arena);
         back_end_append_remapped_llvm_metadata_line(
@@ -284,7 +287,6 @@ internal void back_end_append_llvm_without_satisfied_declarations(
         if (back_end_llvm_line_named_metadata_items(
                 rendered_line, "!llvm.dbg.cu = !{", &named_items)) {
             back_end_append_named_metadata_items(dbg_cu_items, named_items);
-            arena_done(&line_arena);
             line_start = i + 1;
             continue;
         }
@@ -295,18 +297,17 @@ internal void back_end_append_llvm_without_satisfied_declarations(
                                                      named_items);
                 *has_module_flags = true;
             }
-            arena_done(&line_arena);
             line_start = i + 1;
             continue;
         }
 
         sb_append_string(sb, rendered_line);
-        arena_done(&line_arena);
         if (i < text.count) {
             sb_append_char(sb, '\n');
         }
         line_start = i + 1;
     }
+    arena_done(&line_arena);
 }
 
 string back_end_llvm_text_build_combined(Arena* arena,
@@ -509,6 +510,47 @@ bool back_end_llvm_text_self_test(void)
               ok;
 
     array_free(module_llvms);
+
+    // Exercise scratch growth followed by shorter lines, and metadata copied
+    // into separate builders that must survive every subsequent scratch reset.
+    Arena input_arena = {0};
+    arena_init(&input_arena);
+    StringBuilder input = {0};
+    sb_init(&input, &input_arena);
+    sb_append_cstr(&input,
+                   "!0 = !{!\"first\"}\n"
+                   "!llvm.dbg.cu = !{!0}\n"
+                   "!llvm.module.flags = !{!0}\n;");
+    for (u32 i = 0; i < 100000; ++i) {
+        sb_append_char(&input, 'x');
+    }
+    sb_append_char(&input, '\n');
+    for (u32 i = 0; i < 1000; ++i) {
+        sb_append_cstr(&input, "; short\n");
+    }
+    array_push(module_llvms, sb_to_string(&input));
+    array_push(module_llvms,
+               s("!0 = !{!\"second\"}\n"
+                 "!llvm.dbg.cu = !{!0}\n"
+                 "!llvm.module.flags = !{!0}\n; final"));
+    combined = back_end_llvm_text_build_combined(
+        &arena, module_llvms, (string){0}, (string){0});
+    ok = back_end_llvm_text_expect_line_count(combined, "; short", 1000) && ok;
+    ok = back_end_llvm_text_expect_line_count(combined, "; final", 1) && ok;
+    ok = back_end_llvm_text_expect_line_count(
+             combined, "!0 = !{!\"first\"}", 1) &&
+         ok;
+    ok = back_end_llvm_text_expect_line_count(
+             combined, "!1 = !{!\"second\"}", 1) &&
+         ok;
+    ok = back_end_llvm_text_expect_line_count(
+             combined, "!llvm.dbg.cu = !{!0, !1}", 1) &&
+         ok;
+    ok = back_end_llvm_text_expect_line_count(
+             combined, "!llvm.module.flags = !{!0}", 1) &&
+         ok;
+    array_free(module_llvms);
+    arena_done(&input_arena);
     arena_done(&arena);
     if (ok) {
         prn("llvm-text ok");

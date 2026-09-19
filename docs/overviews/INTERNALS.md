@@ -524,3 +524,9 @@ unaffected. Thread CPU and elapsed wall time are separate; subprocess CPU and
 peak process RSS come from the benchmark runner. This stream is currently serial
 and requires per-task sinks before concurrency. See
 [profiling and benchmarking](../compiler-profiling.md).
+
+
+The LLVM text combiner reuses one line scratch arena per input module. Each
+rendered line is copied into the combined output or named metadata builders
+before scratch reset. The arena retains capacity for that input's longest line
+and is freed at the end of the input, avoiding per-line virtual-memory churn.

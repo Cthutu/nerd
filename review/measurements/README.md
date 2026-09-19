@@ -17,3 +17,5 @@ Current backend timing notes:
 
 - `compiler-m1.md`: pinned direct-LLVM baseline, module imbalance, CPU samples,
   allocation churn, and revised optimisation priorities.
+- `compiler-m2-scratch.md`: alternating before/after comparison of LLVM combiner
+  scratch reuse, with byte-identical LLVM and allocation/RSS measurements.

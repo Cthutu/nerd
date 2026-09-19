@@ -244,7 +244,9 @@ testing. Verify library output modes, C/LLVM parity, source debugging, determini
 diagnostics and cancellation cleanup. Full compiler tests establish correctness;
 they do not establish a performance win.
 
-Next implementation step: M2, starting with combiner scratch-arena reuse.
+The first M2 slice, combiner scratch-arena reuse, is complete on Linux; see
+[the before/after report](../measurements/compiler-m2-scratch.md).
+Next implementation step: M2 function-name conflict indexing.
 The [M1 evidence](../measurements/compiler-m1.md) revises the initial hypotheses:
 usage-context inference, name-conflict scans and source-line lookup are measured
 hotspots. Actual queue waiting will be instrumented when a scheduler exists.
