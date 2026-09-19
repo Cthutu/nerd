@@ -575,3 +575,14 @@ enclosing conditional bodies. Its FFI wrapper search resolves a binding's
 payload and compares the exact target node before checking function scope.
 These read-only checks avoid repeated AST scans for unrelated nodes while
 preserving recursive traversal, first-wrapper selection and diagnostic order.
+
+
+LLVM module outputs use fixed result slots, each with its own arena. The slot
+array is fully sized before rendering; LLVM text and any alternate sidecar
+render belong to that module's arena. Output paths, runtime glue and combined
+LLVM belong to the coordinator arena. Combining copies the module text, so
+render-result arenas and borrowed module views are released before writing
+combined LLVM or invoking tools. Cleanup tolerates unstarted slots and already
+released results. Module order, sidecar writes, timings and initialization-order
+collection remain serial. This establishes result ownership for future workers;
+global allocation tracking and diagnostics still require concurrency work.

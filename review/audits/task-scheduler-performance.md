@@ -255,8 +255,11 @@ contribute constraints; see [the fourth M2 comparison](../measurements/compiler-
 Declaration collection now also avoids irrelevant scope scans; see
 [the fifth M2 comparison](../measurements/compiler-m2-decls.md). This completes
 the planned Linux M2 work. Further semantic indexes remain optional candidates.
-Next implementation step: M3 task-owned diagnostics, safe allocator bookkeeping
-and render-result lifetimes, before enabling parallel LLVM module rendering.
+M3 has started with per-module result arenas and fixed result slots; see
+[the ownership and validation report](../measurements/compiler-m3-results.md).
+Result lifetimes and partial cleanup are now explicit. Next implementation step:
+task-owned diagnostics, followed by safe allocator bookkeeping and worker
+primitives. LLVM rendering remains serial; M3 is not yet complete.
 The [M1 evidence](../measurements/compiler-m1.md) revises the initial hypotheses:
 usage-context inference, name-conflict scans and source-line lookup are measured
 hotspots. Actual queue waiting will be instrumented when a scheduler exists.

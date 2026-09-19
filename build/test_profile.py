@@ -62,6 +62,21 @@ def main():
         assert any(r.get('phase') == 'render LLVM sidecar' for r in sidecars)
         run('0', 'build', '--llvm', source, '-o', binary)
         assert llvm_files == {p.name: p.read_bytes() for p in work.glob('*.ll')}
+        # Fail after one completed module sidecar. The second result owns its
+        # rendered text, and later stable slots have not started yet.
+        blocked_binary = work / 'blocked.exe'
+        blocked_sidecar = Path(str(blocked_binary) + '.m1.ll')
+        blocked_sidecar.mkdir()
+        failure, failed_render = run('1', 'build', '--llvm', source,
+                                     '-o', blocked_binary, success=False)
+        assert str(blocked_sidecar) in failure.stderr
+        assert 'internal compiler error' not in failure.stderr
+        assert sum(r.get('phase') == 'render module LLVM' for r in failed_render) == 2
+        assert not any(r.get('stage') == 'tool' for r in failed_render)
+        assert (work / '_blocked.ll').is_file()
+        blocked_sidecar.rmdir()
+        run('0', 'build', '--llvm', source, '-o', blocked_binary)
+        subprocess.run([str(blocked_binary)], check=True)
         output = work / 'program.c'
         _, c_records = run('1', 'build', '--cgen', source, '-o', output)
         profiled_c = output.read_bytes()

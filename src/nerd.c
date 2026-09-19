@@ -491,6 +491,9 @@ internal int nerd_internal_test(const JsonValue* cli_result)
     if (string_eq_cstr(name, "llvm-function-names")) {
         return llvm_function_names_self_test() ? 0 : 1;
     }
+    if (string_eq_cstr(name, "llvm-result-lifetime")) {
+        return back_end_llvm_result_lifetime_self_test() ? 0 : 1;
+    }
     if (string_eq_cstr(name, "llvm-text")) {
         return back_end_llvm_text_self_test() ? 0 : 1;
     }

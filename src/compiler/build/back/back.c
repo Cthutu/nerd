@@ -645,15 +645,32 @@ internal void back_end_cleanup_llvm_artifacts(Array(cstr) llvm_paths,
 }
 
 typedef struct {
+    Arena  arena;
+    string llvm;
+} BackEndLlvmModuleResult;
+
+typedef struct {
+    Array(BackEndLlvmModuleResult) results;
     Array(cstr) llvm_paths;
     Array(string) module_llvms;
     Array(u32) init_module_indices;
 } BackEndLlvmModules;
 
+internal void back_end_llvm_render_results_done(BackEndLlvmModules* modules)
+{
+    for (usize i = 0; i < array_count(modules->results); ++i) {
+        if (modules->results[i].arena.data != NULL) {
+            arena_done(&modules->results[i].arena);
+        }
+    }
+    array_free(modules->results);
+    array_free(modules->module_llvms);
+}
+
 internal void back_end_llvm_modules_done(BackEndLlvmModules* modules)
 {
+    back_end_llvm_render_results_done(modules);
     array_free(modules->llvm_paths);
-    array_free(modules->module_llvms);
     array_free(modules->init_module_indices);
     *modules = (BackEndLlvmModules){0};
 }
@@ -681,6 +698,12 @@ internal bool back_end_render_llvm_modules(Arena*                    arena,
                                            BackEndLlvmModules*       out)
 {
     u32 module_count = (u32)array_count(program->modules);
+    // Freeze result slots before rendering. Each arena owns only its module's
+    // output, while paths and combined text belong to the coordinator arena.
+    array_requires_capacity(out->results, module_count);
+    for (u32 i = 0; i < module_count; ++i) {
+        array_push(out->results, ((BackEndLlvmModuleResult){0}));
+    }
     array_requires_capacity(out->module_llvms, module_count);
     array_requires_capacity(out->init_module_indices, module_count);
     if (artifacts->emit_llvm_file) {
@@ -692,12 +715,14 @@ internal bool back_end_render_llvm_modules(Arena*                    arena,
         debug_sidecars != NULL && strcmp(debug_sidecars, "1") == 0;
 
     for (u32 i = 0; i < module_count; ++i) {
-        const FrontEndState* front_end = &program->modules[i].front_end;
-        TimingProbe          probe     = timing_probe_begin();
+        const FrontEndState*     front_end = &program->modules[i].front_end;
+        BackEndLlvmModuleResult* result    = &out->results[i];
+        TimingProbe              probe     = timing_probe_begin();
+        arena_init(&result->arena);
         string module_llvm = llvm_render_hir(&front_end->hir,
                                              &front_end->lexer,
                                              &front_end->sema,
-                                             arena,
+                                             &result->arena,
                                              !artifacts->release,
                                              artifacts->output_kind !=
                                                  NERD_BUILD_OUTPUT_Executable);
@@ -707,7 +732,8 @@ internal bool back_end_render_llvm_modules(Arena*                    arena,
                          front_end->lexer.source.source_path,
                          true,
                          module_llvm.count);
-        array_push(out->module_llvms, module_llvm);
+        result->llvm = module_llvm;
+        array_push(out->module_llvms, result->llvm);
         if (artifacts->emit_llvm_file) {
             string sidecar_llvm = module_llvm;
             if (!artifacts->release && !emit_debug_sidecars) {
@@ -716,7 +742,7 @@ internal bool back_end_render_llvm_modules(Arena*                    arena,
                     &front_end->hir,
                     &front_end->lexer,
                     &front_end->sema,
-                    arena,
+                    &result->arena,
                     false,
                     artifacts->output_kind != NERD_BUILD_OUTPUT_Executable);
                 timing_probe_end(sidecar_probe,
@@ -1368,6 +1394,9 @@ internal bool back_end_emit_llvm_artifacts(const ProgramInfo*        program,
     back_end_timing_end(timing, COMPILER_PHASE_LLVM_COMBINE, timing_start);
     compiler_memory_profile_end(
         COMPILER_STAGE_BACK_END, COMPILER_PHASE_LLVM_COMBINE, memory_before);
+    // Combining copies all module text. Release task results before invoking
+    // LLVM tools; no borrowed module views may survive this point.
+    back_end_llvm_render_results_done(&modules);
     timing_start = back_end_timing_begin(timing);
     if (!back_end_write_text_file(combined_llvm_path, combined_llvm)) {
         back_end_timing_end(timing, COMPILER_PHASE_LLVM_WRITE, timing_start);
@@ -1662,3 +1691,38 @@ bool back_end_llvm_tool_output_self_test(void)
 }
 
 //------------------------------------------------------------------------------
+
+bool back_end_llvm_result_lifetime_self_test(void)
+{
+    BackEndLlvmModules modules = {0};
+    for (u32 i = 0; i < 5; ++i) {
+        array_push(modules.results, ((BackEndLlvmModuleResult){0}));
+    }
+    // Only two slots started: exercise the same cleanup as an early failure.
+    for (u32 i = 0; i < 2; ++i) {
+        BackEndLlvmModuleResult* result = &modules.results[i];
+        arena_init(&result->arena);
+        result->llvm = string_format(&result->arena, "declare i32 @f%u()\n", i);
+        array_push(modules.module_llvms, result->llvm);
+    }
+    Arena combined_arena = {0};
+    arena_init(&combined_arena);
+    string combined = back_end_llvm_text_build_combined(
+        &combined_arena, modules.module_llvms, (string){0}, (string){0});
+    u8* expected = arena_alloc(&combined_arena, combined.count);
+    memcpy(expected, combined.data, combined.count);
+    MemoryStats before = mem_stats_snapshot();
+    back_end_llvm_render_results_done(&modules);
+    MemoryStats after = mem_stats_snapshot();
+    bool ok = after.arena_done_count - before.arena_done_count == 2 &&
+              array_count(modules.results) == 0 &&
+              array_count(modules.module_llvms) == 0 && combined.count != 0 &&
+              memcmp(expected, combined.data, combined.count) == 0;
+    back_end_llvm_modules_done(&modules);
+    ok = ok && mem_stats_snapshot().arena_done_count == after.arena_done_count;
+    arena_done(&combined_arena);
+    if (ok) {
+        prn("llvm-result-lifetime ok");
+    }
+    return ok;
+}

@@ -27,3 +27,5 @@ Current backend timing notes:
   timings and fresh CPU samples identifying declaration collection.
 - `compiler-m2-decls.md`: declaration-scope filtering, paired checks/builds,
   refreshed CPU samples and completion of the Linux M2 serial work.
+- `compiler-m3-results.md`: module result ownership, partial cleanup and the
+  single-core overhead/output-identity check before introducing workers.
