@@ -43,3 +43,5 @@ Current backend timing notes:
   sanitizer/failure tests, serial overhead and worker-count scaling.
 - `compiler-m4-contention.md`: corrected-target scaling, opt-in lock-acquisition
   timing, render dispatch/drain boundaries and remaining system CPU evidence.
+- `compiler-m4-metadata.md`: contiguous metadata-text copying, exact LLVM
+  comparisons, fewer bookkeeping acquisitions and single-core latency gains.

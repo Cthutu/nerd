@@ -80,9 +80,17 @@ internal void back_end_append_remapped_llvm_metadata_line(StringBuilder* sb,
                                                           string         line,
                                                           u32            base)
 {
+    usize unchanged = 0;
     for (usize i = 0; i < line.count; ++i) {
         if (line.data[i] == '!' && i + 1 < line.count &&
             line.data[i + 1] >= '0' && line.data[i + 1] <= '9') {
+            // Copy unchanged text in a single arena operation. The scanner
+            // and numeric remapping retain their existing byte semantics.
+            if (i > unchanged) {
+                sb_append_string(sb,
+                                 (string){.data  = line.data + unchanged,
+                                          .count = i - unchanged});
+            }
             usize id_start = i + 1;
             usize id_end   = id_start;
             u32   id       = 0;
@@ -92,10 +100,15 @@ internal void back_end_append_remapped_llvm_metadata_line(StringBuilder* sb,
                 id_end++;
             }
             sb_format(sb, "!%u", id + base);
-            i = id_end - 1;
+            unchanged = id_end;
+            i         = id_end - 1;
             continue;
         }
-        sb_append_char(sb, line.data[i]);
+    }
+    if (unchanged < line.count) {
+        sb_append_string(sb,
+                         (string){.data  = line.data + unchanged,
+                                  .count = line.count - unchanged});
     }
 }
 
@@ -510,6 +523,16 @@ bool back_end_llvm_text_self_test(void)
               ok;
 
     array_free(module_llvms);
+
+    StringBuilder remapped = {0};
+    sb_init(&remapped, &arena);
+    back_end_append_remapped_llvm_metadata_line(
+        &remapped, s("!1!23 x !4 !x !"), 10);
+    back_end_append_remapped_llvm_metadata_line(&remapped, s(""), 10);
+    back_end_append_remapped_llvm_metadata_line(&remapped, s(" tail !5"), 10);
+    ok =
+        string_eq_cstr(sb_to_string(&remapped), "!11!33 x !14 !x ! tail !15") &&
+        ok;
 
     // Exercise scratch growth followed by shorter lines, and metadata copied
     // into separate builders that must survive every subsequent scratch reset.

@@ -538,6 +538,10 @@ The LLVM text combiner reuses one line scratch arena per input module. Each
 rendered line is copied into the combined output or named metadata builders
 before scratch reset. The arena retains capacity for that input's longest line
 and is freed at the end of the input, avoiding per-line virtual-memory churn.
+Metadata remapping scans for numeric references but appends each unchanged span
+in one operation. This preserves the remapped text while avoiding an arena
+allocation and shared bookkeeping-lock acquisition for every unchanged byte.
+Adjacent references, empty lines and trailing spans retain their old behavior.
 
 
 Before LLVM emission, the backend builds a program-wide table of function-name
