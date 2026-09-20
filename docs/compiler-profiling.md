@@ -119,7 +119,10 @@ python3 build/benchmark_compare.py --before /tmp/nerd-before --cpu 2 \
 This runner alternates baseline and changed compilers on the same input and
 output paths, using checkout modules for both. It tests debug and release LLVM
 builds, with one warm-up, five unprofiled samples and a separate profiled sample
-per compiler. `--after`, `--samples` and `--scenarios` override defaults. Both
+per compiler. `--after`, `--samples` and `--scenarios` override defaults.
+For a paired parallel comparison, `--jobs N` passes the same worker count to
+both compilers and `--cpus 0 1 ...` selects a shared multi-core affinity set
+instead of `--cpu`. Omitting `--jobs` preserves each compiler's default. Both
 compilers must support `NERD_PROFILE`. It retains combined LLVM and rejects any
 byte difference, including in profiled runs. Use it for changes that should
 preserve exact LLVM output. JSON records compiler hashes, commands, samples,

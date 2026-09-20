@@ -45,3 +45,5 @@ Current backend timing notes:
   timing, render dispatch/drain boundaries and remaining system CPU evidence.
 - `compiler-m4-metadata.md`: contiguous metadata-text copying, exact LLVM
   comparisons, fewer bookkeeping acquisitions and single-core latency gains.
+- `compiler-m4-render-scratch.md`: per-module reuse of function scratch arenas,
+  sanitizer/growth regression, serial/parallel comparisons and fresh scaling.

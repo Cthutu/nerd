@@ -589,6 +589,18 @@ These read-only checks avoid repeated AST scans for unrelated nodes while
 preserving recursive traversal, first-wrapper selection and diagnostic order.
 
 
+LLVM rendering lazily initializes three private scratch arenas per module:
+temporary values, entry-block text and body text. Global initialization and each
+function body reuse this set, resetting cursors before the next body. Declarations
+without bodies do not initialize scratch. Entry/body text, including annotated
+debug text, is copied into the module output before reset; function-local arrays
+are still freed after each body. Debug metadata and module output use separate
+longer-lived arenas. The scratch set is destroyed after the function loop,
+before export wrappers, and is never shared across module tasks. Committed
+capacity follows each arena's largest function in the module, rather than
+reserving/committing/unmapping three arenas per function. This trades temporary
+high-water retention within a module for fewer virtual-memory operations.
+
 LLVM module outputs use fixed result slots, each with its own arena. The slot
 array is fully sized before rendering; LLVM text and any alternate sidecar
 render belong to that module's arena. Output paths, runtime glue and combined

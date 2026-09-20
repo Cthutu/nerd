@@ -18169,11 +18169,43 @@ internal void llvm_render_global_slice_backing_values(StringBuilder* sb,
     }
 }
 
-internal void llvm_render_global_init(StringBuilder* sb,
-                                      const Hir*     hir,
-                                      const Lexer*   lexer,
-                                      const Sema*    sema,
-                                      Arena*         arena)
+// Private to one module render. Function text is copied into the module's
+// output before the next reset; no scratch pointer may escape a function.
+typedef struct {
+    Arena temp;
+    Arena entry;
+    Arena body;
+} LlvmRenderScratch;
+
+internal void llvm_render_scratch_begin(LlvmRenderScratch* scratch)
+{
+    if (scratch->temp.data == NULL) {
+        arena_init(&scratch->temp);
+        arena_init(&scratch->entry);
+        arena_init(&scratch->body);
+    } else {
+        arena_reset(&scratch->temp);
+        arena_reset(&scratch->entry);
+        arena_reset(&scratch->body);
+    }
+}
+
+internal void llvm_render_scratch_done(LlvmRenderScratch* scratch)
+{
+    if (scratch->temp.data == NULL) {
+        return;
+    }
+    arena_done(&scratch->body);
+    arena_done(&scratch->entry);
+    arena_done(&scratch->temp);
+}
+
+internal void llvm_render_global_init(StringBuilder*     sb,
+                                      const Hir*         hir,
+                                      const Lexer*       lexer,
+                                      const Sema*        sema,
+                                      Arena*             arena,
+                                      LlvmRenderScratch* scratch)
 {
     if (!llvm_hir_has_globals(sema, hir)) {
         return;
@@ -18182,23 +18214,21 @@ internal void llvm_render_global_init(StringBuilder* sb,
     sb_append_cstr(sb, "define void ");
     llvm_append_module_init_name(sb, hir);
     sb_append_cstr(sb, "() {\n");
-    Arena temp        = {0};
-    Arena entry_arena = {0};
-    Arena body_arena  = {0};
-    arena_init(&temp);
-    arena_init(&entry_arena);
-    arena_init(&body_arena);
-    StringBuilder entry_sb = {0};
-    StringBuilder body_sb  = {0};
-    sb_init(&entry_sb, &entry_arena);
-    sb_init(&body_sb, &body_arena);
+    llvm_render_scratch_begin(scratch);
+    Arena*        temp        = &scratch->temp;
+    Arena*        entry_arena = &scratch->entry;
+    Arena*        body_arena  = &scratch->body;
+    StringBuilder entry_sb    = {0};
+    StringBuilder body_sb     = {0};
+    sb_init(&entry_sb, entry_arena);
+    sb_init(&body_sb, body_arena);
     LlvmFunctionContext ctx = {
         .sb                      = &body_sb,
         .entry_sb                = &entry_sb,
         .hir                     = hir,
         .lexer                   = lexer,
         .sema                    = sema,
-        .arena                   = &temp,
+        .arena                   = temp,
         .layout                  = llvm_default_layout(),
         .next_temp               = 0,
         .global_init_value_index = U32_MAX,
@@ -18211,7 +18241,7 @@ internal void llvm_render_global_init(StringBuilder* sb,
             continue;
         }
 
-        string name = llvm_value_name_string(hir, lexer, &temp, i);
+        string name = llvm_value_name_string(hir, lexer, temp, i);
         if (name.count == 0) {
             continue;
         }
@@ -18242,9 +18272,6 @@ internal void llvm_render_global_init(StringBuilder* sb,
     array_free(ctx.assigned_locals);
     array_free(ctx.defer_block_indices);
     array_free(ctx.control_targets);
-    arena_done(&body_arena);
-    arena_done(&entry_arena);
-    arena_done(&temp);
     (void)arena;
 }
 
@@ -18255,7 +18282,8 @@ internal void llvm_render_function(StringBuilder*     sb,
                                    Arena*             arena,
                                    LlvmDebugModule*   debug,
                                    const HirFunction* function,
-                                   u32                function_index)
+                                   u32                function_index,
+                                   LlvmRenderScratch* scratch)
 {
     if (function->kind == HIR_FUNCTION_Ffi ||
         function->body_block_index == U32_MAX) {
@@ -18281,23 +18309,21 @@ internal void llvm_render_function(StringBuilder*     sb,
         sb_format(sb, " !dbg !%u", debug_scope_id);
     }
     sb_append_cstr(sb, " {\n");
-    Arena temp        = {0};
-    Arena entry_arena = {0};
-    Arena body_arena  = {0};
-    arena_init(&temp);
-    arena_init(&entry_arena);
-    arena_init(&body_arena);
-    StringBuilder entry_sb = {0};
-    StringBuilder body_sb  = {0};
-    sb_init(&entry_sb, &entry_arena);
-    sb_init(&body_sb, &body_arena);
+    llvm_render_scratch_begin(scratch);
+    Arena*        temp        = &scratch->temp;
+    Arena*        entry_arena = &scratch->entry;
+    Arena*        body_arena  = &scratch->body;
+    StringBuilder entry_sb    = {0};
+    StringBuilder body_sb     = {0};
+    sb_init(&entry_sb, entry_arena);
+    sb_init(&body_sb, body_arena);
     LlvmFunctionContext ctx = {
         .sb                      = &body_sb,
         .entry_sb                = &entry_sb,
         .hir                     = hir,
         .lexer                   = lexer,
         .sema                    = sema,
-        .arena                   = &temp,
+        .arena                   = temp,
         .layout                  = llvm_default_layout(),
         .next_temp               = 0,
         .global_init_value_index = U32_MAX,
@@ -18337,15 +18363,12 @@ internal void llvm_render_function(StringBuilder*     sb,
     sb_append_string(sb, sb_to_string(&entry_sb));
     sb_append_string(
         sb,
-        llvm_debug_annotate_body(&body_arena, debug, sb_to_string(&body_sb)));
+        llvm_debug_annotate_body(body_arena, debug, sb_to_string(&body_sb)));
     array_free(ctx.locals);
     array_free(ctx.slots);
     array_free(ctx.assigned_locals);
     array_free(ctx.defer_block_indices);
     array_free(ctx.control_targets);
-    arena_done(&body_arena);
-    arena_done(&entry_arena);
-    arena_done(&temp);
     sb_append_cstr(sb, "}\n");
     (void)arena;
 }
@@ -18622,19 +18645,29 @@ string llvm_render_hir(const Hir*   hir,
         sb_append_char(&sb, '\n');
     }
 
+    LlvmRenderScratch scratch = {0};
     if (llvm_hir_has_globals(render_sema, hir)) {
         llvm_render_global_slice_backing_values(&sb, hir, lexer, render_sema);
         llvm_render_global_values(&sb, hir, lexer, render_sema, arena, debug);
         sb_append_char(&sb, '\n');
-        llvm_render_global_init(&sb, hir, lexer, render_sema, arena);
+        llvm_render_global_init(&sb, hir, lexer, render_sema, arena, &scratch);
         sb_append_char(&sb, '\n');
     }
 
     for (u32 i = 0; i < array_count(hir->functions); ++i) {
-        llvm_render_function(
-            &sb, hir, lexer, render_sema, arena, debug, &hir->functions[i], i);
+        llvm_render_function(&sb,
+                             hir,
+                             lexer,
+                             render_sema,
+                             arena,
+                             debug,
+                             &hir->functions[i],
+                             i,
+                             &scratch);
         sb_append_char(&sb, '\n');
     }
+
+    llvm_render_scratch_done(&scratch);
 
     for (u32 i = 0; i < array_count(hir->bindings); ++i) {
         const HirBinding* binding = &hir->bindings[i];

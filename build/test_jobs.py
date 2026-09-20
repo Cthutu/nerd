@@ -44,6 +44,16 @@ def main():
                     for r in records if r.get('kind') != 'scheduler']
 
         inputs = generate_inputs(work / 'inputs', modules=6, functions=8)
+        # Grow function scratch beyond its initial commitment, then reuse it
+        # for a much smaller function. Runtime and debug-IR parity catch stale
+        # text/metadata or function state surviving a reset.
+        growth = work / 'scratch-growth.n'
+        growth.write_text('seed: i32 = 7\n'
+                          'large :: fn (x: i32) -> i32 {\n value := x\n' +
+                          ' value += 1\n' * 1500 + ' return value\n}\n'
+                          'small :: fn () -> i32 { return seed }\n'
+                          'main :: fn () -> i32 { return large(0) + small() - 1507 }\n')
+        inputs['scratch-growth'] = growth
         # The same source/output paths make byte comparisons meaningful even
         # for debug metadata. Each compiled synthetic program returns zero.
         for name, source in inputs.items():

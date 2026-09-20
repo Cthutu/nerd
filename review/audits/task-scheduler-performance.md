@@ -292,8 +292,10 @@ implemented. Memory-budget sizing and native Windows/macOS validation remain. Se
 The [contention report](../measurements/compiler-m4-contention.md) records
 corrected-target scaling and separates lock pressure from rising system CPU.
 [Batched unchanged LLVM metadata text](../measurements/compiler-m4-metadata.md)
-now reduces serial combine work with byte-identical output. Next: investigate
-render scratch-arena reuse and reduced bookkeeping contention. Legacy memory-profile output and human timing
+now reduces serial combine work with byte-identical output.
+[Per-module function scratch reuse](../measurements/compiler-m4-render-scratch.md)
+also reduces serial and parallel render costs. Next: the remaining per-function
+debug-name arenas, followed by reassessment of bookkeeping contention. Legacy memory-profile output and human timing
 aggregation remain coordinator work. LLVM module rendering is opt-in parallel;
 the default and the front end remain serial.
 The [M1 evidence](../measurements/compiler-m1.md) revises the initial hypotheses:
