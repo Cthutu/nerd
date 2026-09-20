@@ -1740,3 +1740,240 @@ bool back_end_llvm_result_lifetime_self_test(void)
     }
     return ok;
 }
+
+// Internal stress harness. No build command dispatches concurrent work yet.
+typedef struct {
+    Mutex     mutex;
+    Condition changed;
+    usize     ready;
+    bool      go;
+} LlvmRenderTestGate;
+
+typedef struct {
+    const FrontEndState*    front;
+    BackEndLlvmModuleResult result;
+    LlvmRenderTestGate*     gate;
+    ErrorRenderMode         mode;
+    bool                    debug;
+    bool                    exports;
+} LlvmRenderTestTask;
+
+internal void back_end_render_test_task(void* argument)
+{
+    LlvmRenderTestTask* task = argument;
+    if (task->gate != NULL) {
+        mutex_lock(&task->gate->mutex);
+        task->gate->ready++;
+        condition_broadcast(&task->gate->changed);
+        while (!task->gate->go) {
+            if (!condition_wait(&task->gate->changed, &task->gate->mutex)) {
+                abort();
+            }
+        }
+        mutex_unlock(&task->gate->mutex);
+    }
+    TimingProbe probe = timing_probe_begin();
+    arena_init(&task->result.arena);
+    error_context_init(&task->result.diagnostics, task->mode, true);
+    ErrorContext* previous = error_context_select(&task->result.diagnostics);
+    task->result.llvm      = llvm_render_hir(&task->front->hir,
+                                             &task->front->lexer,
+                                             &task->front->sema,
+                                             &task->result.arena,
+                                             task->debug,
+                                             task->exports);
+    task->result.primary_metrics = timing_probe_finish(probe);
+    error_context_select(previous);
+}
+
+internal void back_end_render_test_task_done(LlvmRenderTestTask* task)
+{
+    error_context_done(&task->result.diagnostics);
+    if (task->result.arena.data != NULL) {
+        arena_done(&task->result.arena);
+    }
+}
+
+internal u64 back_end_render_test_type_hash(const Sema* sema)
+{
+    u64 hash = 0;
+    hash     = (hash * 1099511628211ull) ^
+               hash_fnv1a(sema->types,
+                          array_count(sema->types) * sizeof(*sema->types));
+    hash     = (hash * 1099511628211ull) ^
+               hash_fnv1a(sema->type_param_types,
+                          array_count(sema->type_param_types) *
+                              sizeof(*sema->type_param_types));
+    hash     = (hash * 1099511628211ull) ^
+               hash_fnv1a(sema->type_param_symbols,
+                          array_count(sema->type_param_symbols) *
+                              sizeof(*sema->type_param_symbols));
+    hash     = (hash * 1099511628211ull) ^
+               hash_fnv1a(sema->type_param_values,
+                          array_count(sema->type_param_values) *
+                              sizeof(*sema->type_param_values));
+    hash     = (hash * 1099511628211ull) ^
+               hash_fnv1a(sema->type_param_braced_payloads,
+                          array_count(sema->type_param_braced_payloads) *
+                              sizeof(*sema->type_param_braced_payloads));
+    hash     = (hash * 1099511628211ull) ^
+               hash_fnv1a(sema->type_param_bit_widths,
+                          array_count(sema->type_param_bit_widths) *
+                              sizeof(*sema->type_param_bit_widths));
+    hash     = (hash * 1099511628211ull) ^
+               hash_fnv1a(sema->type_param_bit_offsets,
+                          array_count(sema->type_param_bit_offsets) *
+                              sizeof(*sema->type_param_bit_offsets));
+    hash     = (hash * 1099511628211ull) ^
+               hash_fnv1a(sema->type_param_bit_starts,
+                          array_count(sema->type_param_bit_starts) *
+                              sizeof(*sema->type_param_bit_starts));
+    hash     = (hash * 1099511628211ull) ^
+               hash_fnv1a(sema->type_param_bit_storage_types,
+                          array_count(sema->type_param_bit_storage_types) *
+                              sizeof(*sema->type_param_bit_storage_types));
+    hash = (hash * 1099511628211ull) ^
+           hash_fnv1a(sema->plex_uses,
+                      array_count(sema->plex_uses) * sizeof(*sema->plex_uses));
+    return hash;
+}
+
+bool back_end_llvm_concurrency_self_test(void)
+{
+    cstr path = getenv("NERD_TEST_RENDER_SOURCE");
+    if (path == NULL || path[0] == '\0') {
+        return false;
+    }
+    FileMap file   = {0};
+    string  source = filemap_load(path, &file);
+    if (source.data == NULL) {
+        return false;
+    }
+    ProgramInfo     program = {0};
+    FrontEndOptions options = {.require_entry_point = true};
+    bool            ok      = front_end_program(
+        (NerdSource){.source = source, .source_path = string_from_cstr(path)},
+        &options,
+        NULL,
+        &program);
+    if (!ok) {
+        filemap_unload(&file);
+        return false;
+    }
+    Map names = {0};
+    llvm_index_function_names(&program, &names);
+    program.llvm_function_name_counts = &names;
+    LlvmRenderTestGate gate           = {0};
+    bool               mutex_ready    = mutex_init_checked(&gate.mutex);
+    bool condition_ready    = mutex_ready && condition_init(&gate.changed);
+    ok                      = condition_ready;
+    usize modules           = array_count(program.modules);
+    Array(u64) input_hashes = NULL;
+    for (usize i = 0; i < modules; ++i) {
+        array_push(
+            input_hashes,
+            back_end_render_test_type_hash(&program.modules[i].front_end.sema));
+    }
+    // Both debug modes and export modes, plus two concurrent replicas of each
+    // module: the latter catches mutation even in a single-module input.
+    for (usize variant = 0; ok && variant < 4; ++variant) {
+        Array(LlvmRenderTestTask) serial = NULL;
+        array_requires_capacity(serial, modules);
+        for (usize i = 0; i < modules; ++i) {
+            array_push(
+                serial,
+                ((LlvmRenderTestTask){.front   = &program.modules[i].front_end,
+                                      .mode    = error_system_mode(),
+                                      .debug   = (variant & 1) != 0,
+                                      .exports = (variant & 2) != 0}));
+            back_end_render_test_task(&serial[i]);
+            ok = ok && array_count(serial[i].result.diagnostics.pending) == 0;
+        }
+        for (usize base = 0; ok && base < modules * 2; base += 4) {
+            LlvmRenderTestTask tasks[4]   = {0};
+            Thread             threads[4] = {0};
+            usize              indices[4] = {0};
+            usize              count      = modules * 2 - base;
+            if (count > 4) {
+                count = 4;
+            }
+            gate.ready    = 0;
+            gate.go       = false;
+            usize started = 0;
+            for (; started < count; ++started) {
+                // Adjacent jobs share input, with module order reversed on
+                // alternating variants. Completion order is left to the OS.
+                usize module = (base + started) / 2;
+                if (variant & 1) {
+                    module = modules - 1 - module;
+                }
+                indices[started] = module;
+                tasks[started]   = (LlvmRenderTestTask){
+                    .front   = &program.modules[module].front_end,
+                    .gate    = &gate,
+                    .mode    = error_system_mode(),
+                    .debug   = (variant & 1) != 0,
+                    .exports = (variant & 2) != 0};
+                if (!thread_start(&threads[started],
+                                  back_end_render_test_task,
+                                  &tasks[started])) {
+                    ok = false;
+                    break;
+                }
+            }
+            mutex_lock(&gate.mutex);
+            while (gate.ready != started) {
+                if (!condition_wait(&gate.changed, &gate.mutex)) {
+                    abort();
+                }
+            }
+            gate.go = true;
+            condition_broadcast(&gate.changed);
+            mutex_unlock(&gate.mutex);
+            for (usize i = 0; i < started; ++i) {
+                // A failed join cannot safely unwind borrowed program data.
+                if (!thread_join(&threads[i])) {
+                    abort();
+                }
+                ok = ok && string_eq(tasks[i].result.llvm,
+                                     serial[indices[i]].result.llvm);
+                ok =
+                    ok && array_count(tasks[i].result.diagnostics.pending) == 0;
+                back_end_render_test_task_done(&tasks[i]);
+            }
+        }
+        // Re-render after worker cleanup to detect corruption of borrowed data.
+        for (usize i = 0; i < modules; ++i) {
+            LlvmRenderTestTask again = {.front   = serial[i].front,
+                                        .mode    = error_system_mode(),
+                                        .debug   = serial[i].debug,
+                                        .exports = serial[i].exports};
+            back_end_render_test_task(&again);
+            ok = ok && string_eq(again.result.llvm, serial[i].result.llvm);
+            back_end_render_test_task_done(&again);
+            back_end_render_test_task_done(&serial[i]);
+        }
+        array_free(serial);
+        for (usize i = 0; i < modules; ++i) {
+            ok = ok &&
+                 input_hashes[i] == back_end_render_test_type_hash(
+                                        &program.modules[i].front_end.sema);
+        }
+    }
+    array_free(input_hashes);
+    if (condition_ready) {
+        condition_done(&gate.changed);
+    }
+    if (mutex_ready) {
+        mutex_done(&gate.mutex);
+    }
+    // Every worker has joined before the emission-scoped index and input die.
+    program.llvm_function_name_counts = NULL;
+    map_done(&names);
+    program_info_done(&program);
+    filemap_unload(&file);
+    if (ok) {
+        prn("llvm-render-concurrent ok");
+    }
+    return ok;
+}

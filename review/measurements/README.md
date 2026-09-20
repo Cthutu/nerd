@@ -37,3 +37,5 @@ Current backend timing notes:
   concurrent attribution tests and serial overhead measurements.
 - `compiler-m3-threads.md`: portable worker primitives, lifecycle/failure tests
   and the initial LLVM shared-input review.
+- `compiler-m3-render.md`: completed render ownership review, private type
+  metadata fixes, concurrent render/sanitizer tests and serial overhead.

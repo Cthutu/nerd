@@ -585,7 +585,7 @@ render-result arenas and borrowed module views are released before writing
 combined LLVM or invoking tools. Cleanup tolerates unstarted slots and already
 released results. Module order, sidecar writes, timings and initialization-order
 collection remain serial. This establishes result ownership for future workers;
-worker primitives and the remaining borrowed-input audit still require work.
+the bounded scheduler and worker-count scaling tests remain to be implemented.
 
 Each result slot also owns an `ErrorContext`. A thread-local binding selects
 the context used by the existing diagnostic APIs, with a default context for
@@ -632,7 +632,7 @@ and optional sidecar records, finished before diagnostic replay. The coordinator
 supplies labels/paths and emits records in stable module order. Other serial
 callers use the existing finish-and-emit wrapper. Dependency records, human
 timing tables and legacy memory-profile output still require coordinator or
-serial use. Worker primitives, the borrowed-input audit and lock-contention
+serial use. Scheduler integration, worker-count scaling and lock-contention
 measurement remain; the compiler still runs sequentially.
 
 Core worker primitives use pthread threads/conditions on POSIX and
@@ -650,3 +650,19 @@ predicate with that mutex and recheck it in a loop, including a stop predicate
 for shutdown. The coordinator wakes stopped workers and joins them before
 destroying synchronization objects or task input/result storage. These are
 primitives only: normal compiler builds do not create workers yet.
+
+LLVM render semantic snapshots own all ten mutable type arrays: types,
+parameter types/symbols/values, braced-payload flags, four bitfield metadata
+arrays and plex uses. `sema_materialise_type` can mutate these despite its
+const parameter. Imported constants and default-argument expressions also use
+private snapshots, with default snapshots allocated only when needed. The rest
+of the program is borrowed read-only and must outlive every render task.
+The internal concurrent-render harness checks serial/worker output identity,
+input type-array fingerprints and serial reuse after worker cleanup, including
+two workers rendering the same module. It joins all workers before releasing
+the emission-scoped name index or input program. Normal builds remain serial.
+
+Record-literal semantic inference copies the enclosing record's type layout
+before checking field expressions: recursive inference may grow and relocate
+the type array. Keeping a pointer into that array caused a use-after-free
+detected by AddressSanitizer on Quill.

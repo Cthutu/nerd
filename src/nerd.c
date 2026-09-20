@@ -491,6 +491,12 @@ internal int nerd_internal_test(const JsonValue* cli_result)
     if (string_eq_cstr(name, "llvm-function-names")) {
         return llvm_function_names_self_test() ? 0 : 1;
     }
+    if (string_eq_cstr(name, "llvm-render-sema")) {
+        return llvm_render_sema_self_test() ? 0 : 1;
+    }
+    if (string_eq_cstr(name, "llvm-render-concurrent")) {
+        return back_end_llvm_concurrency_self_test() ? 0 : 1;
+    }
     if (string_eq_cstr(name, "llvm-result-lifetime")) {
         return back_end_llvm_result_lifetime_self_test() ? 0 : 1;
     }

@@ -221,7 +221,7 @@ allocation and timing notes are useful hypotheses, not current baselines.
 | M0 — this audit | Experiment branch, source audit, exploratory measurements, proposed plan | Report checked against current source; no scheduler changes |
 | M1 — reproducible baseline (complete on Linux) | Benchmark runner; per-module wall/CPU timings; dependency graph; memory and output-size data | Debug/release targets, LLVM/C/check, tiny/real/wide/deep/single-large-module inputs; warm and cold runs; raw results retained |
 | M2 — serial improvements (complete on Linux) | Combiner scratch reuse; function-name and source-line indexes; usage-context and declaration filtering | Same outputs/diagnostics; measured one-core improvement beyond noise; retained-memory comparison |
-| M3 — ownership preparation | Task diagnostic sink; safe allocator bookkeeping; result lifetimes; task metrics; portable worker primitives | Serial tests unchanged; allocation/free across threads and failure cleanup stress tests; race checking where supported |
+| M3 — ownership preparation (complete on Linux) | Task diagnostic sink; safe allocator bookkeeping; result lifetimes; task metrics; portable worker primitives | Serial tests unchanged; allocation/free across threads and failure cleanup stress tests; race checking where supported |
 | M4 — scheduler + LLVM modules | Bounded queue, inline one-worker mode, ordered render-result merge | Jobs 1/2/4/8/physical-core count; byte-stable C/HIR/LLVM where applicable; debug behavior and runtime parity; no deadlock on failure |
 | M5 — module front end | Split discovery from checking; stable registry; parallel parse, then HIR and dependency-ready sema in separate changes | Diamond/duplicate/cyclic/missing/conditional imports; shared FFI symbols; identical diagnostics; randomized completion stress |
 | M6 — C emission (deferred) | Reconsider only if compatibility workloads justify it | One C file; preserve compatibility and initialization behavior |
@@ -274,12 +274,17 @@ separate task measurement from coordinator reporting; see
 Portable joinable threads and condition variables now have lifecycle, native
 creation-failure and sanitizer tests; see
 [the worker preparation report](../measurements/compiler-m3-threads.md).
-The report also records the first pass over LLVM render inputs and the lifetime
-requirements for the emission-scoped name index. Next: finish the borrowed-input
-audit and add concurrent-render stress coverage before connecting a bounded pool.
-Measure allocator lock contention when workers exist. Legacy memory-profile
-output and human timing aggregation still belong on the coordinator.
-LLVM rendering remains serial; M3 is not yet complete.
+The render ownership review and concurrent-render gate are now complete on
+Linux; see [the render report](../measurements/compiler-m3-render.md). That audit
+found and fixed borrowed type metadata and imported-expression materialization
+paths; AddressSanitizer also found a serial semantic type-pointer lifetime bug.
+Actual compiler renders now pass serial/concurrent identity, unchanged-input and
+reuse checks under ThreadSanitizer and AddressSanitizer on the exercised inputs.
+This completes the Linux M3 preparation gate; native Windows/macOS validation
+remains pending. Next is M4: a bounded queue, inline jobs=1 path, ordered merge,
+startup/failure handling and jobs 1/2/4/8 scaling measurements. Measure allocator
+lock contention with the pool. Legacy memory-profile output and human timing
+aggregation remain coordinator work. Normal LLVM builds are still serial.
 The [M1 evidence](../measurements/compiler-m1.md) revises the initial hypotheses:
 usage-context inference, name-conflict scans and source-line lookup are measured
 hotspots. Actual queue waiting will be instrumented when a scheduler exists.

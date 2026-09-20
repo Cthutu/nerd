@@ -222,29 +222,60 @@ internal u32 llvm_ensure_pointer_type(Sema* sema, u32 pointee_type)
                                     });
 }
 
+// sema_materialise_type casts away const and may append every parallel type
+// metadata array and plex uses. None may alias the program's semantic storage.
 internal Sema llvm_prepare_render_sema(const Sema* sema)
 {
-    Sema result               = sema != NULL ? *sema : (Sema){0};
-    result.types              = NULL;
-    result.type_param_types   = NULL;
-    result.type_param_symbols = NULL;
-    result.type_param_values  = NULL;
-
+    Sema result                         = sema != NULL ? *sema : (Sema){0};
+    result.types                        = NULL;
+    result.type_param_types             = NULL;
+    result.type_param_symbols           = NULL;
+    result.type_param_values            = NULL;
+    result.type_param_braced_payloads   = NULL;
+    result.type_param_bit_widths        = NULL;
+    result.type_param_bit_offsets       = NULL;
+    result.type_param_bit_starts        = NULL;
+    result.type_param_bit_storage_types = NULL;
+    result.plex_uses                    = NULL;
     if (sema != NULL) {
-        for (u32 i = 0; i < array_count(sema->types); ++i) {
+        for (usize i = 0; i < array_count(sema->types); ++i) {
             array_push(result.types, sema->types[i]);
         }
-        for (u32 i = 0; i < array_count(sema->type_param_types); ++i) {
+        for (usize i = 0; i < array_count(sema->type_param_types); ++i) {
             array_push(result.type_param_types, sema->type_param_types[i]);
         }
-        for (u32 i = 0; i < array_count(sema->type_param_symbols); ++i) {
+        for (usize i = 0; i < array_count(sema->type_param_symbols); ++i) {
             array_push(result.type_param_symbols, sema->type_param_symbols[i]);
         }
-        for (u32 i = 0; i < array_count(sema->type_param_values); ++i) {
+        for (usize i = 0; i < array_count(sema->type_param_values); ++i) {
             array_push(result.type_param_values, sema->type_param_values[i]);
         }
+        for (usize i = 0; i < array_count(sema->type_param_braced_payloads);
+             ++i) {
+            array_push(result.type_param_braced_payloads,
+                       sema->type_param_braced_payloads[i]);
+        }
+        for (usize i = 0; i < array_count(sema->type_param_bit_widths); ++i) {
+            array_push(result.type_param_bit_widths,
+                       sema->type_param_bit_widths[i]);
+        }
+        for (usize i = 0; i < array_count(sema->type_param_bit_offsets); ++i) {
+            array_push(result.type_param_bit_offsets,
+                       sema->type_param_bit_offsets[i]);
+        }
+        for (usize i = 0; i < array_count(sema->type_param_bit_starts); ++i) {
+            array_push(result.type_param_bit_starts,
+                       sema->type_param_bit_starts[i]);
+        }
+        for (usize i = 0; i < array_count(sema->type_param_bit_storage_types);
+             ++i) {
+            array_push(result.type_param_bit_storage_types,
+                       sema->type_param_bit_storage_types[i]);
+        }
+        for (usize i = 0; i < array_count(sema->plex_uses); ++i) {
+            array_push(result.plex_uses, sema->plex_uses[i]);
+        }
     }
-
     u32 u8_type = llvm_ensure_builtin_type(&result, STK_U8);
     llvm_ensure_pointer_type(&result, u8_type);
     return result;
@@ -256,6 +287,78 @@ internal void llvm_render_sema_done(Sema* sema)
     array_free(sema->type_param_types);
     array_free(sema->type_param_symbols);
     array_free(sema->type_param_values);
+    array_free(sema->type_param_braced_payloads);
+    array_free(sema->type_param_bit_widths);
+    array_free(sema->type_param_bit_offsets);
+    array_free(sema->type_param_bit_starts);
+    array_free(sema->type_param_bit_storage_types);
+    array_free(sema->plex_uses);
+}
+
+bool llvm_render_sema_self_test(void)
+{
+    Sema original = {0};
+    array_push(original.types, ((SemaType){.kind = STK_UntypedInteger}));
+    array_push(original.types, ((SemaType){.kind = STK_I32}));
+    array_push(original.types,
+               ((SemaType){.kind             = STK_Plex,
+                           .param_count      = 1,
+                           .first_param_type = 0,
+                           .first_plex_use   = 0,
+                           .plex_use_count   = 1}));
+    array_push(original.types,
+               ((SemaType){
+                   .kind = STK_Enum, .param_count = 1, .first_param_type = 0}));
+    array_push(original.type_param_types, 0);
+    array_push(original.type_param_symbols, 7);
+    array_push(original.type_param_values, 9);
+    array_push(original.type_param_braced_payloads, true);
+    array_push(original.type_param_bit_widths, 0);
+    array_push(original.type_param_bit_offsets, 0);
+    array_push(original.type_param_bit_starts, false);
+    array_push(original.type_param_bit_storage_types, sema_no_type());
+    array_push(original.plex_uses, ((SemaPlexUse){.type_index = 0}));
+    Sema copy = llvm_prepare_render_sema(&original);
+    bool ok   = true;
+    ok        = ok && copy.types != original.types;
+    ok        = ok && copy.type_param_types != original.type_param_types;
+    ok        = ok && copy.type_param_symbols != original.type_param_symbols;
+    ok        = ok && copy.type_param_values != original.type_param_values;
+    ok = ok &&
+         copy.type_param_braced_payloads != original.type_param_braced_payloads;
+    ok = ok && copy.type_param_bit_widths != original.type_param_bit_widths;
+    ok = ok && copy.type_param_bit_offsets != original.type_param_bit_offsets;
+    ok = ok && copy.type_param_bit_starts != original.type_param_bit_starts;
+    ok = ok && copy.type_param_bit_storage_types !=
+                   original.type_param_bit_storage_types;
+    ok = ok && copy.plex_uses != original.plex_uses;
+    if (ok) {
+        u32 record      = sema_materialise_type(&copy, 2);
+        u32 enumeration = sema_materialise_type(&copy, 3);
+        ok              = record != 2 && enumeration != 3 &&
+                          array_count(copy.plex_uses) == 2 &&
+                          array_count(copy.type_param_types) == 3;
+        ok              = ok && array_count(original.types) == 4;
+        ok              = ok && array_count(original.type_param_types) == 1;
+        ok              = ok && array_count(original.type_param_symbols) == 1;
+        ok              = ok && array_count(original.type_param_values) == 1;
+        ok = ok && array_count(original.type_param_braced_payloads) == 1;
+        ok = ok && array_count(original.type_param_bit_widths) == 1;
+        ok = ok && array_count(original.type_param_bit_offsets) == 1;
+        ok = ok && array_count(original.type_param_bit_starts) == 1;
+        ok = ok && array_count(original.type_param_bit_storage_types) == 1;
+        ok = ok && array_count(original.plex_uses) == 1;
+        ok = ok && original.type_param_types[0] == 0 &&
+             original.type_param_braced_payloads[0] &&
+             original.type_param_values[0] == 9 &&
+             original.plex_uses[0].type_index == 0;
+    }
+    llvm_render_sema_done(&copy);
+    llvm_render_sema_done(&original);
+    if (ok) {
+        prn("llvm-render-sema ok");
+    }
+    return ok;
 }
 
 internal bool llvm_type_is_unsigned_integer(const Sema* sema, u32 type_index)
@@ -5974,12 +6077,14 @@ llvm_emit_imported_constant_value(LlvmFunctionContext* ctx,
         }
 
         if (source_value->value_expr_index != U32_MAX) {
+            Sema source_storage = llvm_prepare_render_sema(source_sema);
             LlvmFunctionContext source_ctx = *ctx;
             source_ctx.hir                 = source_hir;
             source_ctx.lexer               = source_lexer;
-            source_ctx.sema                = source_sema;
+            source_ctx.sema                = &source_storage;
             LlvmValue result               = llvm_emit_expr(
                 &source_ctx, function, source_value->value_expr_index);
+            llvm_render_sema_done(&source_storage);
             ctx->next_temp  = source_ctx.next_temp;
             ctx->next_label = source_ctx.next_label;
             if (result.ok && result_type != sema_no_type()) {
@@ -14443,8 +14548,10 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 array_push(args, value);
             }
             if (callee_function != NULL) {
-                LlvmFunctionContext  default_ctx      = *ctx;
-                LlvmFunctionContext* default_emit_ctx = ctx;
+                LlvmFunctionContext  default_ctx          = *ctx;
+                LlvmFunctionContext* default_emit_ctx     = ctx;
+                Sema                 default_sema_storage = {0};
+                bool                 owns_default_sema    = false;
                 if (callee_hir != ctx->hir) {
                     default_ctx.hir             = callee_hir;
                     default_ctx.lexer           = callee_lexer;
@@ -14462,6 +14569,12 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     if (i < array_count(args)) {
                         context_value = args[i];
                     } else if (param->default_expr_index != U32_MAX) {
+                        if (callee_hir != ctx->hir && !owns_default_sema) {
+                            default_sema_storage =
+                                llvm_prepare_render_sema(callee_sema);
+                            default_ctx.sema  = &default_sema_storage;
+                            owns_default_sema = true;
+                        }
                         default_emit_ctx->macro_source_path = expr->source_path;
                         default_emit_ctx->macro_source_line = expr->source_line;
                         default_emit_ctx->macro_source_hir  = ctx->hir;
@@ -14475,6 +14588,9 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                         default_emit_ctx->macro_source_hir   = NULL;
                         default_emit_ctx->macro_source_lexer = NULL;
                         if (!context_value.ok) {
+                            if (owns_default_sema) {
+                                llvm_render_sema_done(&default_sema_storage);
+                            }
                             array_free(default_values);
                             array_free(args);
                             if (callee_hir != ctx->hir) {
@@ -14514,6 +14630,9 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                         break;
                     }
                     array_push(args, default_values[i]);
+                }
+                if (owns_default_sema) {
+                    llvm_render_sema_done(&default_sema_storage);
                 }
                 array_free(default_values);
                 if (callee_hir != ctx->hir) {

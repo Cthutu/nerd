@@ -17,4 +17,5 @@ bool back_end_program(ProgramInfo*              program,
 
 bool back_end_llvm_tool_output_self_test(void);
 bool back_end_llvm_result_lifetime_self_test(void);
+bool back_end_llvm_concurrency_self_test(void);
 bool back_end_doctor(void);

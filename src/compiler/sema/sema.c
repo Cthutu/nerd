@@ -20991,7 +20991,10 @@ validate_type:
                     s("plex value"),
                     sema_type_name(lexer, sema, &temp_arena, target_type));
             }
-            const SemaType* record = &sema->types[target_type];
+            // Inferring field expressions may append types and relocate the
+            // table. Preserve this record's layout across recursive inference.
+            SemaType        record_storage = sema->types[target_type];
+            const SemaType* record         = &record_storage;
             if (target_is_union && literal->field_count != 1) {
                 return error_0304_type_mismatch(lexer->source,
                                                 sema_node_span(lexer, node),
