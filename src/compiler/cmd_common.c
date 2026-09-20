@@ -217,6 +217,7 @@ bool compile(NerdSource                source,
     }
 
     FrontEndOptions front_end_options = {
+        .jobs                = artifacts->jobs,
         .verbose             = dump_compiler_state,
         .release             = artifacts->release,
         .require_entry_point = artifacts->require_entry_point,

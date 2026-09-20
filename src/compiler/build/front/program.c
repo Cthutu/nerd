@@ -62,9 +62,63 @@ internal void program_rebind_sema_programs(ProgramInfo* program)
     }
 }
 
+// Workers capture phase records; only the coordinator publishes them.
+typedef struct {
+    cstr              phase;
+    string            module;
+    TimingProbeResult probe;
+    TimeDuration      duration;
+    bool              success;
+} ProgramPhaseResult;
+
+typedef struct {
+    Array(ProgramPhaseResult) phases;
+    ErrorContext diagnostics;
+    bool         success;
+} ProgramTaskResult;
+
+internal thread_local ProgramTaskResult* program_task_result;
+
+internal void program_task_publish(ProgramTaskResult* result, Timing* timing)
+{
+    error_context_replay(&result->diagnostics);
+    error_context_done(&result->diagnostics);
+    for (usize i = 0; i < array_count(result->phases); ++i) {
+        ProgramPhaseResult* phase = &result->phases[i];
+        timing_probe_emit(phase->probe,
+                          COMPILER_STAGE_FRONT_END,
+                          phase->phase,
+                          phase->module,
+                          phase->success,
+                          0);
+        if (timing != NULL) {
+            timing_add(timing,
+                       COMPILER_STAGE_FRONT_END,
+                       phase->phase,
+                       phase->duration);
+        }
+    }
+    array_free(result->phases);
+}
+
 internal bool program_run_timed(
     Timing* timing, cstr phase, string module, bool (*run)(void*), void* data)
 {
+    if (program_task_result != NULL) {
+        TimingProbe     probe = timing_probe_begin();
+        ThreadTimePoint start = thread_time_now();
+        bool            ok    = run(data);
+        ThreadTimePoint end   = thread_time_now();
+        array_push(program_task_result->phases,
+                   ((ProgramPhaseResult){
+                       .phase    = phase,
+                       .module   = module,
+                       .probe    = timing_probe_finish(probe),
+                       .duration = thread_time_elapsed(start, end),
+                       .success  = ok,
+                   }));
+        return ok;
+    }
     TimingProbe probe         = timing_probe_begin();
     MemoryStats memory_before = compiler_memory_profile_begin();
     if (timing == NULL) {
@@ -215,6 +269,36 @@ internal bool program_front_end_finish(ProgramInfo*           program,
     return result;
 }
 
+typedef struct {
+    ProgramInfo*           program;
+    const FrontEndOptions* options;
+    ProgramTaskResult*     results;
+} ProgramHirTasks;
+
+internal bool program_hir_task(void* data, usize index)
+{
+    ProgramHirTasks*   tasks  = data;
+    ModuleInfo*        module = &tasks->program->modules[index];
+    ProgramTaskResult* result = &tasks->results[index];
+    error_context_init(&result->diagnostics, ERROR_RENDER_NORMAL, true);
+    ErrorContext*      previous = error_context_select(&result->diagnostics);
+    ProgramTaskResult* previous_task = program_task_result;
+    program_task_result              = result;
+    ProgramFrontEndContext ctx       = {
+        .source    = module->front_end.lexer.source,
+        .options   = *tasks->options,
+        .front_end = &module->front_end,
+    };
+    result->success     = program_run_timed(NULL,
+                                            COMPILER_PHASE_HIR_GEN,
+                                            ctx.source.source_path,
+                                            program_front_end_hir,
+                                            &ctx);
+    program_task_result = previous_task;
+    error_context_select(previous);
+    return result->success;
+}
+
 internal bool program_front_end_generate_hir(ProgramInfo*           program,
                                              const FrontEndOptions* options,
                                              Timing*                timing)
@@ -240,6 +324,25 @@ internal bool program_front_end_generate_hir(ProgramInfo*           program,
     for (u32 i = 0; i < array_count(program->modules); ++i) {
         lex_prepare_line_indexes(&program->line_indexes,
                                  program->modules[i].front_end.lexer.source);
+    }
+
+    if (effective_options.jobs > 1 && !effective_options.verbose &&
+        getenv("NERD_MEMORY_PROFILE") == NULL) {
+        usize count                      = array_count(program->modules);
+        Array(ProgramTaskResult) results = NULL;
+        array_requires_size(results, count);
+        memset(results, 0, count * sizeof(*results));
+        ProgramHirTasks tasks = {program, &effective_options, results};
+        TaskRunStatus   status =
+            task_run(count, effective_options.jobs, program_hir_task, &tasks);
+        for (usize i = 0; i < count; ++i) {
+            program_task_publish(&results[i], timing);
+        }
+        array_free(results);
+        if (status == TASK_RUN_START_FAILED) {
+            return error_runtime("Failed to start front-end workers");
+        }
+        return status == TASK_RUN_OK;
     }
 
     for (u32 i = 0; i < array_count(program->modules); ++i) {

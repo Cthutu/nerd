@@ -510,7 +510,8 @@ internal u32 hir_add_expr(Hir* hir, HirExpr expr)
     return (u32)array_count(hir->exprs) - 1;
 }
 
-internal const SemaCompileTimeFnInstantiation* g_hir_compile_time_instantiation;
+internal thread_local const SemaCompileTimeFnInstantiation*
+    g_hir_compile_time_instantiation;
 
 internal const SemaCompileTimeValue* hir_compile_time_value(const Sema* sema,
                                                             u32         symbol)

@@ -730,3 +730,14 @@ Record-literal semantic inference copies the enclosing record's type layout
 before checking field expressions: recursive inference may grow and relocate
 the type array. Keeping a pointer into that array caused a use-after-free
 detected by AddressSanitizer on Quill.
+
+### Front-end task ownership
+
+`build --jobs N` also bounds module HIR lowering after all semantic analysis
+and line-index preparation finish. Each task owns its module's HIR and captures
+diagnostics and phase measurements; the coordinator publishes those records in
+module order after joining. Compile-time HIR specialization selection is
+thread-local. Foreign symbol interning writes only the destination lexer;
+imported symbol reads use existing handles in stable reserved arenas, whose
+data pointers and existing strings do not move. Verbose dumps and the legacy
+process-wide memory report retain serial lowering. The default remains one job.

@@ -33,6 +33,7 @@ typedef bool (*NerdModuleSourceLoader)(void*   user_data,
                                        string* out_source);
 
 typedef struct {
+    u32                    jobs;
     bool                   verbose;
     bool                   release;
     bool                   require_entry_point;
