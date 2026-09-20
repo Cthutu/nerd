@@ -66,6 +66,7 @@ typedef struct {
     NerdSource          source;
     string              output_path;
     NerdBuildOutputKind output_kind;
+    u32                 jobs; // Zero means the serial default.
     bool                emit_hir;
     bool                emit_llvm;
     bool                emit_c;
@@ -125,6 +126,7 @@ typedef struct {
     bool                emit_c_file;
     bool                print_c_options;
     NerdBuildOutputKind output_kind;
+    u32                 jobs; // Zero means the serial default.
     bool                require_entry_point;
     bool                release;
     Array(string) keywords;

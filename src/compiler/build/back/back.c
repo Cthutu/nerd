@@ -647,6 +647,7 @@ internal void back_end_cleanup_llvm_artifacts(Array(cstr) llvm_paths,
 typedef struct {
     Arena             arena;
     string            llvm;
+    string            sidecar;
     ErrorContext      diagnostics;
     TimingProbeResult primary_metrics;
     TimingProbeResult sidecar_metrics;
@@ -696,6 +697,46 @@ internal bool back_end_llvm_module_defines_init(string module_llvm,
     return false;
 }
 
+typedef struct {
+    const ProgramInfo*       program;
+    BackEndLlvmModuleResult* results;
+    ErrorRenderMode          mode;
+    bool                     debug;
+    bool                     exports;
+    bool                     alternate_sidecar;
+} BackEndLlvmRenderBatch;
+
+internal bool back_end_render_llvm_task(void* argument, usize index)
+{
+    BackEndLlvmRenderBatch*  batch  = argument;
+    const FrontEndState*     front  = &batch->program->modules[index].front_end;
+    BackEndLlvmModuleResult* result = &batch->results[index];
+    TimingProbe              probe  = timing_probe_begin();
+    arena_init(&result->arena);
+    error_context_init(&result->diagnostics, batch->mode, true);
+    ErrorContext* previous  = error_context_select(&result->diagnostics);
+    result->llvm            = llvm_render_hir(&front->hir,
+                                              &front->lexer,
+                                              &front->sema,
+                                              &result->arena,
+                                              batch->debug,
+                                              batch->exports);
+    result->primary_metrics = timing_probe_finish(probe);
+    result->sidecar         = result->llvm;
+    if (batch->alternate_sidecar) {
+        probe                   = timing_probe_begin();
+        result->sidecar         = llvm_render_hir(&front->hir,
+                                                  &front->lexer,
+                                                  &front->sema,
+                                                  &result->arena,
+                                                  false,
+                                                  batch->exports);
+        result->sidecar_metrics = timing_probe_finish(probe);
+    }
+    error_context_select(previous);
+    return true;
+}
+
 internal bool back_end_render_llvm_modules(Arena*                    arena,
                                            const ProgramInfo*        program,
                                            const NerdArtifactConfig* artifacts,
@@ -718,23 +759,33 @@ internal bool back_end_render_llvm_modules(Arena*                    arena,
     bool        emit_debug_sidecars =
         debug_sidecars != NULL && strcmp(debug_sidecars, "1") == 0;
 
+    BackEndLlvmRenderBatch batch = {
+        .program = program,
+        .results = out->results,
+        .mode    = error_system_mode(),
+        .debug   = !artifacts->release,
+        .exports = artifacts->output_kind != NERD_BUILD_OUTPUT_Executable,
+        .alternate_sidecar = artifacts->emit_llvm_file && !artifacts->release &&
+                             !emit_debug_sidecars};
+    u32 jobs = artifacts->jobs == 0 ? 1 : artifacts->jobs;
+    if (jobs > 1) {
+        TaskRunStatus status =
+            task_run(module_count, jobs, back_end_render_llvm_task, &batch);
+        if (status != TASK_RUN_OK) {
+            return error_runtime(
+                "Failed to start or complete LLVM render workers");
+        }
+    }
+    // All parallel tasks are joined before any output, index teardown or
+    // cleanup. Inline mode preserves early file-error behavior without starting
+    // threads.
     for (u32 i = 0; i < module_count; ++i) {
         const FrontEndState*     front_end = &program->modules[i].front_end;
         BackEndLlvmModuleResult* result    = &out->results[i];
-        TimingProbe              probe     = timing_probe_begin();
-        arena_init(&result->arena);
-        error_context_init(&result->diagnostics, error_system_mode(), true);
-        ErrorContext* previous = error_context_select(&result->diagnostics);
-        string module_llvm = llvm_render_hir(&front_end->hir,
-                                             &front_end->lexer,
-                                             &front_end->sema,
-                                             &result->arena,
-                                             !artifacts->release,
-                                             artifacts->output_kind !=
-                                                 NERD_BUILD_OUTPUT_Executable);
-        result->primary_metrics = timing_probe_finish(probe);
-        error_context_select(previous);
-        // Replay stays on the coordinator; workers will only capture.
+        if (jobs == 1) {
+            back_end_render_llvm_task(&batch, i);
+        }
+        string module_llvm = result->llvm;
         error_context_replay(&result->diagnostics);
         timing_probe_emit(result->primary_metrics,
                           COMPILER_STAGE_BACK_END,
@@ -745,20 +796,8 @@ internal bool back_end_render_llvm_modules(Arena*                    arena,
         result->llvm = module_llvm;
         array_push(out->module_llvms, result->llvm);
         if (artifacts->emit_llvm_file) {
-            string sidecar_llvm = module_llvm;
-            if (!artifacts->release && !emit_debug_sidecars) {
-                TimingProbe sidecar_probe = timing_probe_begin();
-                previous     = error_context_select(&result->diagnostics);
-                sidecar_llvm = llvm_render_hir(
-                    &front_end->hir,
-                    &front_end->lexer,
-                    &front_end->sema,
-                    &result->arena,
-                    false,
-                    artifacts->output_kind != NERD_BUILD_OUTPUT_Executable);
-                result->sidecar_metrics = timing_probe_finish(sidecar_probe);
-                error_context_select(previous);
-                error_context_replay(&result->diagnostics);
+            string sidecar_llvm = result->sidecar;
+            if (batch.alternate_sidecar) {
                 timing_probe_emit(result->sidecar_metrics,
                                   COMPILER_STAGE_BACK_END,
                                   "render LLVM sidecar",

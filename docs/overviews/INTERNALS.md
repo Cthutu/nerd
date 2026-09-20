@@ -584,8 +584,8 @@ LLVM belong to the coordinator arena. Combining copies the module text, so
 render-result arenas and borrowed module views are released before writing
 combined LLVM or invoking tools. Cleanup tolerates unstarted slots and already
 released results. Module order, sidecar writes, timings and initialization-order
-collection remain serial. This establishes result ownership for future workers;
-the bounded scheduler and worker-count scaling tests remain to be implemented.
+collection remain serial. `build --jobs N` dispatches module rendering into
+these fixed slots; the default is one job.
 
 Each result slot also owns an `ErrorContext`. A thread-local binding selects
 the context used by the existing diagnostic APIs, with a default context for
@@ -597,11 +597,10 @@ snapshots, so queued records survive scratch resets and input-storage release.
 LLVM rendering binds the module context, captures diagnostics, restores the
 previous binding and replays on the coordinator in module order. Replay consumes
 the queue using the destination context's rendering and output settings; cleanup
-also handles discarded queues and unstarted slots. The renderer still uses the
+also handles discarded queues and unstarted slots. The diagnostic renderer still uses the
 global temporary arena and must remain on the coordinator. Fatal internal
-compiler errors remain immediate process exits. Rendering is still serial;
-thread-local context selection alone does not make LLVM rendering safe to run
-concurrently.
+compiler errors remain immediate process exits. Workers capture diagnostics;
+the coordinator alone invokes the diagnostic renderer after joining workers.
 
 Memory bookkeeping uses a statically initialized process-wide lock (SRW lock on
 Windows, pthread mutex on POSIX). It protects counters, coherent snapshots and
@@ -632,8 +631,9 @@ and optional sidecar records, finished before diagnostic replay. The coordinator
 supplies labels/paths and emits records in stable module order. Other serial
 callers use the existing finish-and-emit wrapper. Dependency records, human
 timing tables and legacy memory-profile output still require coordinator or
-serial use. Scheduler integration, worker-count scaling and lock-contention
-measurement remain; the compiler still runs sequentially.
+serial use. Per-module wall times can overlap with multiple jobs: use their
+start/end envelope for render elapsed time, not their sum. Queue-wait and
+allocator-lock contention instrumentation remain future work.
 
 Core worker primitives use pthread threads/conditions on POSIX and
 `_beginthreadex` plus Windows condition variables on Windows. `Thread` is
@@ -649,7 +649,7 @@ Condition waits release and reacquire the associated mutex. Callers protect a
 predicate with that mutex and recheck it in a loop, including a stop predicate
 for shutdown. The coordinator wakes stopped workers and joins them before
 destroying synchronization objects or task input/result storage. These are
-primitives only: normal compiler builds do not create workers yet.
+also used by the bounded LLVM task batch in normal builds with `--jobs N`.
 
 LLVM render semantic snapshots own all ten mutable type arrays: types,
 parameter types/symbols/values, braced-payload flags, four bitfield metadata
@@ -660,7 +660,34 @@ of the program is borrowed read-only and must outlive every render task.
 The internal concurrent-render harness checks serial/worker output identity,
 input type-array fingerprints and serial reuse after worker cleanup, including
 two workers rendering the same module. It joins all workers before releasing
-the emission-scoped name index or input program. Normal builds remain serial.
+the emission-scoped name index or input program. Production builds preserve
+the same input lifetime until all task workers have joined.
+
+`task_run` dispatches a finite range of task indices. It clamps the requested
+execution slots (1–256, including the calling thread) to the task count. One
+slot runs inline without native threads or synchronization allocation. Multiple
+slots share a mutex-protected next-index counter and fixed stack-owned thread
+slots. A condition-variable startup gate prevents any callbacks until every
+worker starts successfully. Partial startup wakes and joins started workers
+without executing tasks. Callback failure stops further dispatch; active tasks
+finish before all workers are joined. No worker waits for another queued task.
+A failed join aborts rather than returning with live pointers into stack storage.
+
+`NerdBuildConfig.jobs` flows into `NerdArtifactConfig.jobs`; zero in an internal
+configuration means the serial default. `build --jobs N` / `-j N` validates the
+range before compilation. Each callback owns one module's arena, diagnostics,
+primary LLVM text and optional alternate sidecar render. All parallel callbacks
+finish before diagnostic/metric replay, sidecar writes, initialization-order
+collection, combining, tool invocation or program teardown. The inline path
+processes one result at a time so an early sidecar-write failure still stops
+before rendering subsequent modules. Parallel mode may have completed later
+modules by then; their results are safely discarded. The current LLVM callback
+always completes or raises a fatal internal error; recoverable renderer errors
+will need to return failure explicitly before task cancellation applies there.
+C generation/options and `run` remain serial. There is no automatic memory budget
+or worker sizing yet; the default remains one. `build/test_jobs.py` exercises
+production CLI parity and failure cleanup, including optional full-compiler
+ThreadSanitizer/AddressSanitizer builds.
 
 Record-literal semantic inference copies the enclosing record's type layout
 before checking field expressions: recursive inference may grow and relocate

@@ -74,6 +74,7 @@ def main() -> int:
         default=None,
         help="LLDB executable to use; defaults to the latest CodeLLDB-bundled LLDB",
     )
+    parser.add_argument("--jobs", type=int, default=1, help="LLVM render slots")
     args = parser.parse_args()
 
     nerd = pathlib.Path(args.nerd)
@@ -95,7 +96,8 @@ def main() -> int:
     source_for_lldb = source.as_posix()
     source.write_text(SOURCE, encoding="utf-8", newline="\n")
 
-    build = run([str(nerd), "build", "--output", str(binary), str(source)])
+    build = run([str(nerd), "build", "--jobs", str(args.jobs),
+                 "--output", str(binary), str(source)])
     if build.returncode != 0:
         return fail("Nerd debug build failed", build.stderr)
 

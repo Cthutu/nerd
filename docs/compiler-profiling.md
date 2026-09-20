@@ -51,14 +51,14 @@ deltas remain process-wide.
 
 Dependency records contain `module` and `dependency` source paths, including
 implicit core imports. The loader emits them after successful semantic analysis.
-They support an estimate of dependency-constrained work; there is no scheduler
-or measured queue wait yet. Lex/parse includes local conditional-block selection.
+They support an estimate of dependency-constrained work. The LLVM render batch
+has no dependency scheduling or measured queue wait yet. Lex/parse includes local conditional-block selection.
 LLVM sidecar re-rendering has its own phase when requested. Tool phases distinguish
 `opt`, `llc`, the linker and the archiver. The existing human-readable backend
 summary still groups these under its output-operation phase.
 
-The stream is currently serial. Per-task sinks and safe allocation accounting
-must precede concurrent use. Instrumentation avoids compiler arena allocations,
+The stream is emitted serially by the coordinator; concurrent render tasks
+record values in their own result slots. Instrumentation avoids compiler arena allocations,
 so it cannot invalidate active string builders. Record writing occurs after a
 phase's clocks and memory counters are sampled, but still adds total process
 overhead. Use separate unprofiled runs to measure build latency.
@@ -124,3 +124,29 @@ preserve exact LLVM output. JSON records compiler hashes, commands, samples,
 phase data, output hashes and affinity. Outputs live in a temporary directory;
 programs are compiled but not run. The same affinity and RSS limitations above
 apply. Keep a separate correctness test run after timing completes.
+
+
+## Comparing LLVM worker counts
+
+`nerd build --jobs N` (or `-j N`) enables concurrent LLVM module rendering;
+1 is the default and runs inline. The front end, merge and external LLVM tools
+remain serial. Each module's profile is emitted in program order after workers
+join, irrespective of completion order. Per-task wall times overlap; their sum
+is work duration, not elapsed render time. Heap live/peak observations remain
+process-wide. Queue wait and lock contention are not measured yet.
+
+```sh
+python3 build/benchmark_jobs.py --cpus 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 \
+  --output /tmp/nerd-jobs.json
+```
+
+Choose an affinity set appropriate to the host (the example assumes 16 distinct
+physical cores). This runner rotates jobs 1/2/4/8/16, with one warmup and five
+unprofiled samples each, plus one separately profiled run. It checks identical
+combined LLVM bytes at fixed paths for debug and release builds. The profiled
+render envelope spans earliest task start to latest task finish; it excludes
+thread startup, final joins and ordered merge. Whole-command timings include
+those costs and all front-end/tool work. Profile envelopes are single-sample
+diagnostic evidence, not repeated latency measurements. `--jobs`, `--samples`
+and `--scenarios` override defaults. Do not run competing builds/tests while
+measuring. Generated programs are not executed by the benchmark.

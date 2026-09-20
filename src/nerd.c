@@ -663,6 +663,16 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
                                             "o",
                                             "Output binary path",
                                             false));
+        json_array_push(
+            build_params,
+            nerd_cli_make_param(
+                arena,
+                "jobs",
+                "named",
+                "jobs",
+                "j",
+                "LLVM render slots including caller (1-256; default 1)",
+                false));
         json_array_push(commands,
                         nerd_cli_make_command(arena,
                                               "build",
@@ -975,6 +985,23 @@ nerd_build_output_kind_from_json(const JsonValue* cli_result)
     return NERD_BUILD_OUTPUT_Executable;
 }
 
+internal u32 nerd_build_jobs(const JsonValue* cli_result)
+{
+    string text =
+        nerd_cli_param_string(cli_result, "command.params.jobs", s("1"));
+    u32 jobs = 0;
+    for (usize i = 0; i < text.count; ++i) {
+        if (text.data[i] < '0' || text.data[i] > '9') {
+            return 0;
+        }
+        jobs = jobs * 10 + (u32)(text.data[i] - '0');
+        if (jobs > TASK_MAX_JOBS) {
+            return 0;
+        }
+    }
+    return jobs;
+}
+
 internal NerdBuildConfig
 nerd_build_config_from_json(const JsonValue* cli_result, Array(string) keywords)
 {
@@ -1017,6 +1044,7 @@ nerd_build_config_from_json(const JsonValue* cli_result, Array(string) keywords)
         .output_path = nerd_cli_param_string(
             cli_result, "command.params.output", (string){0}),
         .output_kind = nerd_build_output_kind_from_json(cli_result),
+        .jobs        = nerd_build_jobs(cli_result),
         .print_c_options =
             nerd_cli_flag_bool(cli_result, "command.flags.copts", false),
         .emit_c   = nerd_cli_flag_bool(cli_result, "command.flags.cgen", false),
@@ -1034,6 +1062,10 @@ nerd_build_config_from_json(const JsonValue* cli_result, Array(string) keywords)
 
 internal bool nerd_build_output_flags_valid(const JsonValue* cli_result)
 {
+    if (nerd_build_jobs(cli_result) == 0) {
+        eprn("`--jobs` must be an integer from 1 to 256.");
+        return false;
+    }
     u32 count = 0;
     count += nerd_cli_flag_bool(cli_result, "command.flags.obj", false) ? 1 : 0;
     count += nerd_cli_flag_bool(cli_result, "command.flags.lib", false) ? 1 : 0;

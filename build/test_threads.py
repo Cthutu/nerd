@@ -32,6 +32,7 @@ def main():
             command = cc + flags + defines + [
                 str(ROOT / 'tests/core/thread-lifecycle.c'),
                 str(ROOT / 'src/core/mutex.c'),
+                str(ROOT / 'src/core/task.c'),
                 str(ROOT / implementation), '-o', str(output)]
             subprocess.run(command, check=True)
             for _ in range(3):

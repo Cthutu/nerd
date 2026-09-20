@@ -39,3 +39,5 @@ Current backend timing notes:
   and the initial LLVM shared-input review.
 - `compiler-m3-render.md`: completed render ownership review, private type
   metadata fixes, concurrent render/sanitizer tests and serial overhead.
+- `compiler-m4-scheduler.md`: production bounded task batch, `--jobs` CLI,
+  sanitizer/failure tests, serial overhead and worker-count scaling.

@@ -2,6 +2,7 @@
 #include <core/core.h>
 #undef NDEBUG
 #include <assert.h>
+#include <stdatomic.h>
 #include <stdio.h>
 
 #ifdef NERD_TEST_START_FAILURE
@@ -121,6 +122,65 @@ static void run_batch(usize count, bool reject_start, bool stop_with_work)
 
 static void set_value(void* argument) { *(usize*)argument = 42; }
 
+typedef struct {
+    usize       visits[128];
+    atomic_uint active;
+    atomic_uint peak;
+    bool        fail;
+} BatchTest;
+
+static bool task_test(void* argument, usize index)
+{
+    BatchTest* test   = argument;
+    unsigned   active = atomic_fetch_add(&test->active, 1) + 1;
+    unsigned   peak   = atomic_load(&test->peak);
+    while (peak < active &&
+           !atomic_compare_exchange_weak(&test->peak, &peak, active)) {
+    }
+    test->visits[index]++;
+    atomic_fetch_sub(&test->active, 1);
+    return !test->fail;
+}
+
+static void batch_test(void)
+{
+    for (u32 jobs = 1; jobs <= 8; jobs *= 2) {
+        for (usize repeat = 0; repeat < 20; ++repeat) {
+            BatchTest test = {0};
+            assert(task_run(128, jobs, task_test, &test) == TASK_RUN_OK);
+            for (usize i = 0; i < 128; ++i) {
+                assert(test.visits[i] == 1);
+            }
+            assert(atomic_load(&test.active) == 0);
+            assert(atomic_load(&test.peak) <= jobs);
+            test = (BatchTest){.fail = true};
+            assert(task_run(128, jobs, task_test, &test) == TASK_RUN_FAILED);
+            usize calls = 0;
+            for (usize i = 0; i < 128; ++i) {
+                calls += test.visits[i];
+            }
+            assert(calls > 0 && calls <= jobs &&
+                   atomic_load(&test.active) == 0);
+        }
+    }
+    BatchTest test = {0};
+    assert(task_run(0, 4, task_test, &test) == TASK_RUN_OK);
+    assert(task_run(1, TASK_MAX_JOBS, task_test, &test) == TASK_RUN_OK);
+    assert(task_run(1, 0, task_test, &test) == TASK_RUN_START_FAILED);
+    assert(task_run(1, TASK_MAX_JOBS + 1, task_test, &test) ==
+           TASK_RUN_START_FAILED);
+#ifdef NERD_TEST_START_FAILURE
+    test = (BatchTest){0};
+    thread_test_fail_after(2);
+    assert(task_run(128, 4, task_test, &test) == TASK_RUN_START_FAILED);
+    // Startup is transactional: no work begins until every worker starts.
+    for (usize i = 0; i < 128; ++i) {
+        assert(test.visits[i] == 0);
+    }
+    assert(task_run(128, 4, task_test, &test) == TASK_RUN_OK);
+#endif
+}
+
 int main(void)
 {
     Thread reused = {0};
@@ -137,5 +197,6 @@ int main(void)
         run_batch(WORKERS, false, i % 2 == 0);
         run_batch(WORKERS, true, false);
     }
+    batch_test();
     puts("thread-lifecycle ok");
 }

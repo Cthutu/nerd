@@ -1,6 +1,7 @@
 # Compiler task scheduling and single-core performance
 
-Status: M1 profiling and Linux baseline complete; scheduler implementation has not started.
+Status: M1–M3 complete on Linux; M4 bounded LLVM scheduler implemented, with
+measurement and adoption gates in progress. Default compilation remains serial.
 Audit date: 2026-09-19. Source baseline: `a15e965dcfd4c554cc7691a82786142f74031eab`.
 Branch: `experiment/task-scheduler-performance`.
 
@@ -157,7 +158,8 @@ Proposed `--jobs N` counts total execution slots, including the calling thread;
 `--jobs 1` runs inline without starting workers. Keep the experimental default
 at one until benchmarks justify automatic sizing. Cap workers to ready work and
 a memory budget; logical CPU count alone is not a suitable default for every
-machine. This flag is proposed, not currently implemented.
+machine. The first M4 slice implements this flag and the ready-work cap; a memory-budget
+cap remains future work.
 
 Each task owns scratch storage, result storage, diagnostics and metrics. Inputs
 are immutable published products; results occupy preassigned stable slots.
@@ -222,7 +224,7 @@ allocation and timing notes are useful hypotheses, not current baselines.
 | M1 — reproducible baseline (complete on Linux) | Benchmark runner; per-module wall/CPU timings; dependency graph; memory and output-size data | Debug/release targets, LLVM/C/check, tiny/real/wide/deep/single-large-module inputs; warm and cold runs; raw results retained |
 | M2 — serial improvements (complete on Linux) | Combiner scratch reuse; function-name and source-line indexes; usage-context and declaration filtering | Same outputs/diagnostics; measured one-core improvement beyond noise; retained-memory comparison |
 | M3 — ownership preparation (complete on Linux) | Task diagnostic sink; safe allocator bookkeeping; result lifetimes; task metrics; portable worker primitives | Serial tests unchanged; allocation/free across threads and failure cleanup stress tests; race checking where supported |
-| M4 — scheduler + LLVM modules | Bounded queue, inline one-worker mode, ordered render-result merge | Jobs 1/2/4/8/physical-core count; byte-stable C/HIR/LLVM where applicable; debug behavior and runtime parity; no deadlock on failure |
+| M4 — scheduler + LLVM modules (in progress) | Bounded queue, inline one-worker mode, ordered render-result merge | Jobs 1/2/4/8/physical-core count; byte-stable C/HIR/LLVM where applicable; debug behavior and runtime parity; no deadlock on failure |
 | M5 — module front end | Split discovery from checking; stable registry; parallel parse, then HIR and dependency-ready sema in separate changes | Diamond/duplicate/cyclic/missing/conditional imports; shared FFI symbols; identical diagnostics; randomized completion stress |
 | M6 — C emission (deferred) | Reconsider only if compatibility workloads justify it | One C file; preserve compatibility and initialization behavior |
 | M7 — LLVM tooling (implemented separately) | Direct LLVM tooling and linking, plus `nerd doctor` | No Clang invocation by Nerd; preserve output modes, debugging, FFI and runtime behavior |
@@ -281,10 +283,15 @@ paths; AddressSanitizer also found a serial semantic type-pointer lifetime bug.
 Actual compiler renders now pass serial/concurrent identity, unchanged-input and
 reuse checks under ThreadSanitizer and AddressSanitizer on the exercised inputs.
 This completes the Linux M3 preparation gate; native Windows/macOS validation
-remains pending. Next is M4: a bounded queue, inline jobs=1 path, ordered merge,
-startup/failure handling and jobs 1/2/4/8 scaling measurements. Measure allocator
-lock contention with the pool. Legacy memory-profile output and human timing
-aggregation remain coordinator work. Normal LLVM builds are still serial.
+remains pending. M4 is in progress: the bounded finite-index queue, inline
+jobs=1 path, ordered
+merge and transactional worker startup are implemented. The default stays one.
+Production CLI parity and failure recovery pass under both sanitizers on Linux.
+Queue-wait instrumentation, memory-budget sizing and native Windows/macOS
+validation remain. See [the scheduler report](../measurements/compiler-m4-scheduler.md).
+Measure allocator lock contention with the pool. Legacy memory-profile output and human timing
+aggregation remain coordinator work. LLVM module rendering is opt-in parallel;
+the default and the front end remain serial.
 The [M1 evidence](../measurements/compiler-m1.md) revises the initial hypotheses:
 usage-context inference, name-conflict scans and source-line lookup are measured
-hotspots. Actual queue waiting will be instrumented when a scheduler exists.
+hotspots. Actual queue waiting is a follow-up instrumentation task for M4.

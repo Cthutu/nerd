@@ -578,6 +578,20 @@ bool condition_wait(Condition* condition, Mutex* mutex);
 void condition_signal(Condition* condition);
 void condition_broadcast(Condition* condition);
 
+enum { TASK_MAX_JOBS = 256 };
+typedef bool (*TaskFunction)(void* context, usize index);
+typedef enum {
+    TASK_RUN_OK,
+    TASK_RUN_FAILED,
+    TASK_RUN_START_FAILED,
+} TaskRunStatus;
+// Finite index queue, at most jobs concurrent callbacks including the caller.
+// jobs=1 runs inline without synchronization. All started workers are joined
+// before return. A failed callback stops dispatch; already running tasks
+// finish.
+TaskRunStatus
+task_run(usize count, u32 jobs, TaskFunction function, void* context);
+
 //------------------------------------------------------------------------------[Output]
 
 void prv(const char* format, va_list args);
