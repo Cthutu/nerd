@@ -93,6 +93,13 @@ def main():
                 for jobs in [2, 4, 8]:
                     actual = run(source, jobs, flags)
                     assert actual[:5] == reference[:5], (source, flags, jobs, actual[2])
+                    # Successful inputs must exercise discovery/check separation,
+                    # not silently obtain parity through the serial retry.
+                    parse_end = max(r['start_ns'] + r['wall_ns'] for r in actual[5]
+                                    if r.get('phase') == 'parse tokens into AST')
+                    check_start = min(r['start_ns'] for r in actual[5]
+                                      if r.get('phase') == 'analyse AST semantics')
+                    assert check_start >= parse_end, (source, 'unexpected serial retry')
                 if source in list(inputs.values()) + valid[:2] and '--cgen' not in flags:
                     subprocess.run([str(output)], check=True, timeout=10)
             print('[PASS] front-end output identity:', source.parent.name, source.name, flush=True)

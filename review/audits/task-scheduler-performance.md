@@ -1,7 +1,8 @@
 # Compiler task scheduling and single-core performance
 
-Status: M1–M3 complete on Linux; M4 bounded LLVM scheduler implemented, with
-measurement and adoption gates in progress. Default compilation remains serial.
+Status (2026-09-20): M1–M5 complete for the Linux experiment. M8 adoption
+gates remain open; measured gains are mixed and the default remains one job.
+See [M5 results and limits](../measurements/compiler-m5-front-end.md).
 Audit date: 2026-09-19. Source baseline: `a15e965dcfd4c554cc7691a82786142f74031eab`.
 Branch: `experiment/task-scheduler-performance`.
 
@@ -224,8 +225,8 @@ allocation and timing notes are useful hypotheses, not current baselines.
 | M1 — reproducible baseline (complete on Linux) | Benchmark runner; per-module wall/CPU timings; dependency graph; memory and output-size data | Debug/release targets, LLVM/C/check, tiny/real/wide/deep/single-large-module inputs; warm and cold runs; raw results retained |
 | M2 — serial improvements (complete on Linux) | Combiner scratch reuse; function-name and source-line indexes; usage-context and declaration filtering | Same outputs/diagnostics; measured one-core improvement beyond noise; retained-memory comparison |
 | M3 — ownership preparation (complete on Linux) | Task diagnostic sink; safe allocator bookkeeping; result lifetimes; task metrics; portable worker primitives | Serial tests unchanged; allocation/free across threads and failure cleanup stress tests; race checking where supported |
-| M4 — scheduler + LLVM modules (in progress) | Bounded queue, inline one-worker mode, ordered render-result merge | Jobs 1/2/4/8/physical-core count; byte-stable C/HIR/LLVM where applicable; debug behavior and runtime parity; no deadlock on failure |
-| M5 — module front end | Split discovery from checking; stable registry; parallel parse, then HIR and dependency-ready sema in separate changes | Diamond/duplicate/cyclic/missing/conditional imports; shared FFI symbols; identical diagnostics; randomized completion stress |
+| M4 — scheduler + LLVM modules (complete on Linux) | Bounded queue, inline one-worker mode, ordered render-result merge | Jobs 1/2/4/8/physical-core count; byte-stable C/HIR/LLVM where applicable; debug behavior and runtime parity; no deadlock on failure |
+| M5 — module front end (complete on Linux) | Separate discovery/checking; stable registry; parallel sibling parse/HIR; dependency-ready sema with exclusive import closures | Diamond/duplicate/cyclic/missing/conditional imports; shared FFI symbols; identical diagnostics; randomized completion stress |
 | M6 — C emission (deferred) | Reconsider only if compatibility workloads justify it | One C file; preserve compatibility and initialization behavior |
 | M7 — LLVM tooling (implemented separately) | Direct LLVM tooling and linking, plus `nerd doctor` | No Clang invocation by Nerd; preserve output modes, debugging, FFI and runtime behavior |
 | M8 — adoption decision | Worker default and task-size thresholds backed by data | Cross-platform validation and documented regressions/tradeoffs; accept or stop individual experiments |
@@ -283,21 +284,37 @@ paths; AddressSanitizer also found a serial semantic type-pointer lifetime bug.
 Actual compiler renders now pass serial/concurrent identity, unchanged-input and
 reuse checks under ThreadSanitizer and AddressSanitizer on the exercised inputs.
 This completes the Linux M3 preparation gate; native Windows/macOS validation
-remains pending. M4 is in progress: the bounded finite-index queue, inline
-jobs=1 path, ordered
-merge and transactional worker startup are implemented. The default stays one.
+remains pending. M4's Linux gates are complete: the bounded finite-index queue,
+inline jobs=1 path, ordered merge and transactional worker startup are implemented.
 Production CLI parity and failure recovery pass under both sanitizers on Linux.
 Batch dispatch/drain and opt-in allocator-lock acquisition measurements are
-implemented. Memory-budget sizing and native Windows/macOS validation remain. See [the scheduler report](../measurements/compiler-m4-scheduler.md).
+implemented. Memory-budget sizing and native Windows/macOS validation remain
+adoption work. See [the scheduler report](../measurements/compiler-m4-scheduler.md).
 The [contention report](../measurements/compiler-m4-contention.md) records
 corrected-target scaling and separates lock pressure from rising system CPU.
 [Batched unchanged LLVM metadata text](../measurements/compiler-m4-metadata.md)
-now reduces serial combine work with byte-identical output.
-[Per-module function scratch reuse](../measurements/compiler-m4-render-scratch.md)
-also reduces serial and parallel render costs. Next: the remaining per-function
-debug-name arenas, followed by reassessment of bookkeeping contention. Legacy memory-profile output and human timing
-aggregation remain coordinator work. LLVM module rendering is opt-in parallel;
-the default and the front end remain serial.
+and [per-module function scratch reuse](../measurements/compiler-m4-render-scratch.md)
+reduce serial and parallel render costs with identical output. Remaining debug-name
+arena optimization is a separate opportunity.
+
+[M5 is complete on Linux](../measurements/compiler-m5-front-end.md):
+`0661fca0` adds HIR tasks and thread-local compile-time specialization;
+`9f6ed1c1` adds sibling parse tasks with private source storage and ordered
+adoption; `81a566dd` separates discovery/checking and schedules dependency-ready
+semantic closures. Module IDs and publication order retain DFS identity.
+Imported generic mutations require exclusive transitive-import ownership, so
+modules sharing implicit core currently serialize checking. Failed attempts retry
+the original serial loader to preserve diagnostics. Randomized imported generic
+and compile-time specialization tests show concurrent work in disjoint closures
+and pass both sanitizers. Graph/diagnostic/C/HIR/LLVM/runtime gates pass.
+
+One-job timings and maximum-process RSS are essentially unchanged. Added
+front-end concurrency does not consistently improve whole builds; the paired
+four-job Pixels debug run regressed 8.7%. Default jobs stays one. M8 should
+resolve native-platform checks, memory sizing and the case for finer-grained
+semantic ownership or task thresholds before any default adoption. M6 C-render
+parallelism stays deferred. Normal binary generation still uses LLVM tooling
+and never invokes Clang.
 The [M1 evidence](../measurements/compiler-m1.md) revises the initial hypotheses:
 usage-context inference, name-conflict scans and source-line lookup are measured
 hotspots. Batch dispatch delay now includes startup and waiting behind earlier

@@ -47,3 +47,7 @@ Current backend timing notes:
   comparisons, fewer bookkeeping acquisitions and single-core latency gains.
 - `compiler-m4-render-scratch.md`: per-module reuse of function scratch arenas,
   sanitizer/growth regression, serial/parallel comparisons and fresh scaling.
+
+- `compiler-m5-front-end.md`: completed Linux M5 ownership/scheduling and
+  graph/sanitizer gates, paired timings, worker scaling, and the decision to
+  retain the one-job default because gains are mixed.
