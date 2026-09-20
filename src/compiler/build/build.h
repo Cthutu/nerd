@@ -54,15 +54,17 @@ typedef struct ModuleInfo {
     ModuleState   state;
     FrontEndState front_end;
     FileMap       source_map;
+    Arena         source_arena;
     Array(u32) imported_module_indices;
     Array(u32) export_decl_indices;
 } ModuleInfo;
 
 typedef struct ProgramInfo {
     // Borrowed only during LLVM emission; immutable after construction.
-    Map*       llvm_function_name_counts;
-    NerdSource root_source;
-    Arena      arena;
+    struct ProgramLoadState* load_state; // Coordinator-owned discovery scratch.
+    Map*                     llvm_function_name_counts;
+    NerdSource               root_source;
+    Arena                    arena;
     Array(ModuleInfo) modules;
     u32  root_module_index;
     bool windowed;

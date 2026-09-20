@@ -741,3 +741,11 @@ thread-local. Foreign symbol interning writes only the destination lexer;
 imported symbol reads use existing handles in stable reserved arenas, whose
 data pointers and existing strings do not move. Verbose dumps and the legacy
 process-wide memory report retain serial lowering. The default remains one job.
+
+The loader can preparse resolved sibling imports into private source arenas and
+front-end states. It registers and adopts those results only at their original
+depth-first visit, so completion order cannot change module IDs, pragmas,
+exports, or the first diagnostic. Pending parse failures are captured, not
+printed. Source-loader callbacks, verbose output and legacy memory reporting
+keep the serial loader. Cache cleanup also destroys unvisited results when an
+earlier module fails. Folder-module expansion uses the parse entry's arena.

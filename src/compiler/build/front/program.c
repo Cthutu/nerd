@@ -877,6 +877,137 @@ internal bool program_front_end_parse_module(ProgramInfo*           program,
         expanded_source, options, timing, front_end);
 }
 
+// Parse siblings ahead of the depth-first loader, without assigning module IDs.
+// A cache entry owns all source/AST storage until the loader adopts it.
+typedef struct {
+    ProgramInfo       storage;
+    NerdSource        source;
+    FrontEndState     front_end;
+    FrontEndOptions   options;
+    ProgramTaskResult result;
+    bool              adopted;
+} ProgramParseEntry;
+
+typedef struct ProgramLoadState {
+    Array(ProgramParseEntry*) parses;
+} ProgramLoadState;
+
+internal ProgramParseEntry* program_cached_parse(ProgramInfo* program,
+                                                 cstr         path)
+{
+    if (program->load_state == NULL) {
+        return NULL;
+    }
+    for (usize i = 0; i < array_count(program->load_state->parses); ++i) {
+        ProgramParseEntry* entry = program->load_state->parses[i];
+        if (string_eq_cstr(entry->source.source_path, path)) {
+            return entry;
+        }
+    }
+    return NULL;
+}
+
+internal bool program_parse_task(void* data, usize index)
+{
+    ProgramParseEntry* entry = ((ProgramParseEntry**)data)[index];
+    error_context_init(&entry->result.diagnostics, ERROR_RENDER_NORMAL, true);
+    ErrorContext* previous = error_context_select(&entry->result.diagnostics);
+    ProgramTaskResult* previous_task = program_task_result;
+    program_task_result              = &entry->result;
+    entry->result.success = program_front_end_parse_module(&entry->storage,
+                                                           entry->source,
+                                                           &entry->options,
+                                                           NULL,
+                                                           &entry->front_end);
+    program_task_result   = previous_task;
+    error_context_select(previous);
+    // Keep parsing independent siblings even if one fails. The DFS visit
+    // determines which error is observable, not worker completion order.
+    return true;
+}
+
+internal void program_prefetch_imports(ProgramInfo*           program,
+                                       const FrontEndOptions* options,
+                                       const Lexer*           lexer,
+                                       const Ast*             ast,
+                                       u32                    first_node,
+                                       u32                    end_node,
+                                       Array(ProgramParseEntry*) * pending)
+{
+    for (u32 i = first_node; i < end_node; ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (node->kind == AK_TopOn) {
+            const AstTopOnInfo* info = &ast->top_ons[node->a];
+            if (info->is_assert) {
+                continue;
+            }
+            const AstNode* body = &ast->nodes[info->body_node_index];
+            if (program_top_on_is_enabled(options, lexer, ast, node)) {
+                program_prefetch_imports(
+                    program, options, lexer, ast, body->a, body->b, pending);
+            }
+            i = body->b - 1;
+            continue;
+        }
+        if (node->kind != AK_ModRef) {
+            continue;
+        }
+        Arena temp = {0};
+        arena_init(&temp);
+        ModuleResolveResult resolved = {0};
+        ModuleResolveStatus status =
+            module_resolve_path(&temp,
+                                program->root_source,
+                                lexer,
+                                ast,
+                                &ast->module_paths[node->a],
+                                &resolved);
+        if (status == MRS_Found &&
+            program_find_module_by_path(program, resolved.resolved_path) ==
+                U32_MAX &&
+            program_cached_parse(program, resolved.resolved_path) == NULL) {
+            FileMap mapping = {0};
+            string  source  = filemap_load(resolved.resolved_path, &mapping);
+            if (source.data != NULL) {
+                ProgramParseEntry* entry = ALLOC(sizeof(*entry));
+                *entry = (ProgramParseEntry){.options = *options};
+                arena_init(&entry->storage.arena);
+                entry->source = (NerdSource){
+                    .source =
+                        program_copy_string(&entry->storage.arena, source),
+                    .source_path = s(program_copy_cstr(&entry->storage.arena,
+                                                       resolved.resolved_path)),
+                };
+                filemap_unload(&mapping);
+                array_push(program->load_state->parses, entry);
+                array_push(*pending, entry);
+            }
+        }
+        arena_done(&temp);
+    }
+}
+
+internal void program_load_state_done(ProgramInfo* program)
+{
+    if (program->load_state == NULL) {
+        return;
+    }
+    for (usize i = 0; i < array_count(program->load_state->parses); ++i) {
+        ProgramParseEntry* entry = program->load_state->parses[i];
+        if (!entry->adopted) {
+            array_free(entry->front_end.lexer.source.fragments);
+            front_end_results_done(&entry->front_end);
+            arena_done(&entry->storage.arena);
+        }
+        error_context_done(&entry->result.diagnostics);
+        array_free(entry->result.phases);
+        FREE(entry);
+    }
+    array_free(program->load_state->parses);
+    FREE(program->load_state);
+    program->load_state = NULL;
+}
+
 internal void program_collect_module_exports(ModuleInfo* module)
 {
     const Ast*  ast  = &module->front_end.ast;
@@ -988,44 +1119,59 @@ internal bool program_load_module_by_path(ProgramInfo*           program,
         .state          = MODULE_Loading,
     };
     array_push(program->modules, module);
-    u32 module_index    = (u32)array_count(program->modules) - 1;
+    u32 module_index                 = (u32)array_count(program->modules) - 1;
 
-    ModuleInfo* current = &program->modules[module_index];
-    string      source  = {0};
-    if (options != NULL && options->module_source_loader != NULL) {
-        options->module_source_loader(options->module_source_loader_data,
-                                      current->resolved_path,
-                                      &source);
-    }
-    if (source.data == NULL) {
-        FileMap source_map = {0};
-        source             = filemap_load(current->resolved_path, &source_map);
-        if (source.data == NULL) {
+    ModuleInfo*        current       = &program->modules[module_index];
+    NerdSource         module_source = {0};
+    ProgramParseEntry* cached = program_cached_parse(program, resolved_path);
+    if (cached != NULL) {
+        program_task_publish(&cached->result, timing);
+        if (!cached->result.success) {
             current->state = MODULE_Failed;
-            return error_runtime("Failed to load module source file: %s",
-                                 current->resolved_path);
+            return false;
         }
-        string source_text = program_copy_string(&program->arena, source);
-        filemap_unload(&source_map);
-        source = source_text;
+        current->front_end    = cached->front_end;
+        current->source_arena = cached->storage.arena;
+        cached->adopted       = true;
+        module_source         = cached->source;
     } else {
-        source = program_copy_string(&program->arena, source);
-    }
+        string source = {0};
+        if (options != NULL && options->module_source_loader != NULL) {
+            options->module_source_loader(options->module_source_loader_data,
+                                          current->resolved_path,
+                                          &source);
+        }
+        if (source.data == NULL) {
+            FileMap source_map = {0};
+            source = filemap_load(current->resolved_path, &source_map);
+            if (source.data == NULL) {
+                current->state = MODULE_Failed;
+                return error_runtime("Failed to load module source file: %s",
+                                     current->resolved_path);
+            }
+            string source_text = program_copy_string(&program->arena, source);
+            filemap_unload(&source_map);
+            source = source_text;
+        } else {
+            source = program_copy_string(&program->arena, source);
+        }
 
-    NerdSource module_source = {
-        .source      = source,
-        .source_path = s(current->resolved_path),
-    };
-    FrontEndOptions module_options = options ? *options : (FrontEndOptions){0};
-    module_options.require_entry_point = false;
+        module_source = (NerdSource){
+            .source      = source,
+            .source_path = s(current->resolved_path),
+        };
+        FrontEndOptions module_options =
+            options ? *options : (FrontEndOptions){0};
+        module_options.require_entry_point = false;
 
-    if (!program_front_end_parse_module(program,
-                                        module_source,
-                                        &module_options,
-                                        timing,
-                                        &current->front_end)) {
-        current->state = MODULE_Failed;
-        return false;
+        if (!program_front_end_parse_module(program,
+                                            module_source,
+                                            &module_options,
+                                            timing,
+                                            &current->front_end)) {
+            current->state = MODULE_Failed;
+            return false;
+        }
     }
 
     Lexer module_lexer = current->front_end.lexer;
@@ -1133,6 +1279,17 @@ program_collect_module_dependencies(ProgramInfo*           program,
                                     u32                    first_node,
                                     u32                    end_node)
 {
+    if (program->load_state != NULL) {
+        Array(ProgramParseEntry*) pending = NULL;
+        program_prefetch_imports(
+            program, options, lexer, ast, first_node, end_node, &pending);
+        TaskRunStatus status = task_run(
+            array_count(pending), options->jobs, program_parse_task, pending);
+        array_free(pending);
+        if (status == TASK_RUN_START_FAILED) {
+            return error_runtime("Failed to start parser workers");
+        }
+    }
     for (u32 i = first_node; i < end_node; ++i) {
         const AstNode* node = &ast->nodes[i];
         if (node->kind == AK_TopOn) {
@@ -1211,6 +1368,12 @@ bool front_end_program(NerdSource             source,
         .root_module_index = 0,
     };
     arena_init(&program.arena);
+    if (effective_options.jobs > 1 && !effective_options.verbose &&
+        effective_options.module_source_loader == NULL &&
+        getenv("NERD_MEMORY_PROFILE") == NULL) {
+        program.load_state  = ALLOC(sizeof(*program.load_state));
+        *program.load_state = (ProgramLoadState){0};
+    }
 
     NerdSource effective_source = {0};
     if (!program_expand_part_root(&program, source, &effective_source)) {
@@ -1306,6 +1469,7 @@ bool front_end_program(NerdSource             source,
         return false;
     }
 
+    program_load_state_done(&program);
     if (out_program != NULL) {
         *out_program = program;
         program_rebind_sema_programs(out_program);
@@ -1317,6 +1481,7 @@ bool front_end_program(NerdSource             source,
 
 void program_info_done(ProgramInfo* program)
 {
+    program_load_state_done(program);
     lex_line_indexes_done(&program->line_indexes);
     for (u32 i = 0; i < array_count(program->modules); ++i) {
         ModuleInfo* module = &program->modules[i];
@@ -1324,6 +1489,9 @@ void program_info_done(ProgramInfo* program)
         array_free(module->export_decl_indices);
         array_free(module->front_end.lexer.source.fragments);
         front_end_results_done(&module->front_end);
+        if (module->source_arena.data != NULL) {
+            arena_done(&module->source_arena);
+        }
         if (module->source_map.data != NULL) {
             filemap_unload(&module->source_map);
         }
