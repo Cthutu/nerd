@@ -302,6 +302,10 @@ typedef struct {
 // include every thread; they are not task-local attribution. Individual blocks
 // and arenas still require exclusive ownership or caller synchronization.
 MemoryStats mem_stats_snapshot(void);
+// Cumulative activity on this OS thread; live/peak fields are always zero.
+// Difference snapshots around non-yielding work on the same thread to obtain
+// task activity. Free/realloc events belong to the executing, not owning, task.
+MemoryStats mem_stats_thread_snapshot(void);
 MemoryStats mem_stats_delta(MemoryStats before, MemoryStats after);
 bool        mem_stats_profile_enabled(void);
 void        mem_stats_print_delta(cstr stage, cstr phase, MemoryStats stats);

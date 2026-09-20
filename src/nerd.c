@@ -500,6 +500,9 @@ internal int nerd_internal_test(const JsonValue* cli_result)
     if (string_eq_cstr(name, "error-context-deferred")) {
         return error_context_render_self_test(true) ? 0 : 1;
     }
+    if (string_eq_cstr(name, "profile-results")) {
+        return timing_probe_self_test() ? 0 : 1;
+    }
     if (string_eq_cstr(name, "error-context")) {
         return error_context_self_test() ? 0 : 1;
     }

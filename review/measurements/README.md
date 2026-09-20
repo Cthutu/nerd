@@ -33,3 +33,5 @@ Current backend timing notes:
   parity checks, and single-core overhead before introducing workers.
 - `compiler-m3-memory.md`: synchronized allocator bookkeeping, cross-thread
   ownership tests and serial overhead measurements.
+- `compiler-m3-metrics.md`: thread-local activity, deferred render timing records,
+  concurrent attribution tests and serial overhead measurements.

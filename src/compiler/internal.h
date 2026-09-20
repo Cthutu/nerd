@@ -32,6 +32,8 @@
 #define COMPILER_PHASE_FORMAT_SOURCE "format source"
 #define COMPILER_PHASE_LSP_ANALYSE "analyse document"
 
+// Legacy process-wide stream: keep these calls on serial/coordinator paths.
+// Worker tasks use TimingProbe's thread activity and deferred result API.
 static inline MemoryStats compiler_memory_profile_begin(void)
 {
     return mem_stats_snapshot();

@@ -33,8 +33,21 @@ Phase records contain:
   bytes and array growths. `heap_live_bytes` and `heap_peak_bytes` are cumulative
   tracked heap snapshots, not per-phase RSS. Arena commitments are cumulative
   new commitments during the phase, not current live arena memory.
-  Snapshots are synchronized and process-wide. Deltas would include unrelated
-  concurrent tasks; task-local attribution remains part of scheduler preparation.
+  Activity deltas use counters on the executing thread, so another thread's
+  allocations are excluded. A probe must begin and finish on one thread without
+  running unrelated tasks between them. Nested probes are inclusive. Frees and
+  reallocations count toward the executing task, even for handed-off blocks.
+  Live/peak snapshots remain synchronized and process-wide; they do not measure
+  a task's retained footprint.
+
+LLVM render tasks finish value-only timing records before coordinator diagnostic
+replay. The coordinator emits these records in module order, including alternate
+sidecar renders. JSON formatting, diagnostic replay and later file writes are
+outside the render measurement. Labels and paths are supplied at emission;
+finished records retain no source pointers. Other serial callers retain the
+combined finish-and-emit API. Dependency records and the legacy
+`NERD_MEMORY_PROFILE` stream still require coordinator/serial use; the latter's
+deltas remain process-wide.
 
 Dependency records contain `module` and `dependency` source paths, including
 implicit core imports. The loader emits them after successful semantic analysis.

@@ -242,7 +242,7 @@ void timing_dump(const Timing* timing)
 //------------------------------------------------------------------------------
 
 // Machine-readable records deliberately avoid compiler arenas and builders.
-// This serial implementation must gain per-task sinks before worker use.
+// Workers finish value-only records; only the coordinator emits JSON.
 internal bool timing_probe_enabled(void)
 {
     cstr value = getenv("NERD_PROFILE");
@@ -292,42 +292,60 @@ TimingProbe timing_probe_begin(void)
 {
     TimingProbe probe = {.enabled = timing_probe_enabled()};
     if (probe.enabled) {
-        probe.memory = mem_stats_snapshot();
+        probe.memory = mem_stats_thread_snapshot();
         probe.cpu_ns = timing_probe_cpu_ns();
         probe.wall   = time_now();
     }
     return probe;
 }
 
-void timing_probe_end(TimingProbe probe,
-                      cstr        stage,
-                      cstr        phase,
-                      string      module,
-                      bool        success,
-                      usize       output_bytes)
+TimingProbeResult timing_probe_finish(TimingProbe probe)
 {
     if (!probe.enabled) {
+        return (TimingProbeResult){0};
+    }
+    TimePoint   end      = time_now();
+    u64         cpu      = timing_probe_cpu_ns();
+    MemoryStats activity = mem_stats_thread_snapshot();
+    MemoryStats process  = mem_stats_snapshot();
+    return (TimingProbeResult){
+        .enabled         = true,
+        .start_ns        = (u64)time_nsecs(probe.wall),
+        .wall_ns         = time_duration_to_ns(time_elapsed(probe.wall, end)),
+        .cpu_ns          = cpu == U64_MAX || probe.cpu_ns == U64_MAX
+                               ? U64_MAX
+                               : cpu - probe.cpu_ns,
+        .activity        = mem_stats_delta(probe.memory, activity),
+        .heap_live_bytes = process.heap_current_bytes,
+        .heap_peak_bytes = process.heap_peak_bytes,
+    };
+}
+
+void timing_probe_emit(TimingProbeResult result,
+                       cstr              stage,
+                       cstr              phase,
+                       string            module,
+                       bool              success,
+                       usize             output_bytes)
+{
+    if (!result.enabled) {
         return;
     }
-    TimePoint   end   = time_now();
-    u64         cpu   = timing_probe_cpu_ns();
-    MemoryStats after = mem_stats_snapshot();
-    MemoryStats delta = mem_stats_delta(probe.memory, after);
+    MemoryStats delta = result.activity;
     fputs("nerd-profile\t{\"kind\":\"phase\",\"stage\":", stderr);
     timing_probe_json_string(s(stage));
     fputs(",\"phase\":", stderr);
     timing_probe_json_string(s(phase));
     fputs(",\"module\":", stderr);
     timing_probe_json_string(module);
-    fprintf(
-        stderr,
-        ",\"start_ns\":%llu,\"wall_ns\":%llu,\"cpu_ns\":",
-        (unsigned long long)(u64)time_nsecs(probe.wall),
-        (unsigned long long)time_duration_to_ns(time_elapsed(probe.wall, end)));
-    if (cpu == U64_MAX || probe.cpu_ns == U64_MAX) {
+    fprintf(stderr,
+            ",\"start_ns\":%llu,\"wall_ns\":%llu,\"cpu_ns\":",
+            (unsigned long long)result.start_ns,
+            (unsigned long long)result.wall_ns);
+    if (result.cpu_ns == U64_MAX) {
         fputs("null", stderr);
     } else {
-        fprintf(stderr, "%llu", (unsigned long long)(cpu - probe.cpu_ns));
+        fprintf(stderr, "%llu", (unsigned long long)result.cpu_ns);
     }
     fprintf(
         stderr,
@@ -339,11 +357,58 @@ void timing_probe_end(TimingProbe probe,
         output_bytes,
         delta.heap_alloc_count,
         delta.heap_realloc_count,
-        after.heap_current_bytes,
-        after.heap_peak_bytes,
+        result.heap_live_bytes,
+        result.heap_peak_bytes,
         delta.arena_bytes_allocated,
         delta.arena_bytes_committed,
         delta.array_growth_count);
+}
+
+void timing_probe_end(TimingProbe probe,
+                      cstr        stage,
+                      cstr        phase,
+                      string      module,
+                      bool        success,
+                      usize       output_bytes)
+{
+    timing_probe_emit(timing_probe_finish(probe),
+                      stage,
+                      phase,
+                      module,
+                      success,
+                      output_bytes);
+}
+
+bool timing_probe_self_test(void)
+{
+    TimingProbe probe = timing_probe_begin();
+    if (!probe.enabled) {
+        return false;
+    }
+    void*             block = mem_alloc(37, __FILE__, __LINE__);
+    TimingProbeResult first = timing_probe_finish(probe);
+    // A second task's work must not change the finished result. Results may
+    // be emitted later in coordinator order rather than completion order.
+    probe                   = timing_probe_begin();
+    block                   = mem_realloc(block, 83, __FILE__, __LINE__);
+    mem_free(block, __FILE__, __LINE__);
+    TimingProbeResult second = timing_probe_finish(probe);
+    if (first.activity.heap_alloc_count != 1 ||
+        first.activity.heap_bytes_allocated != 37 ||
+        first.activity.heap_realloc_count != 0 ||
+        first.activity.heap_free_count != 0 ||
+        second.activity.heap_alloc_count != 0 ||
+        second.activity.heap_realloc_count != 1 ||
+        second.activity.heap_bytes_freed != 83) {
+        return false;
+    }
+    // No profile output is allowed before this marker.
+    fputs("profile-results-ready\n", stderr);
+    timing_probe_emit(second, "test", "second", s("quoted\"module"), false, 83);
+    timing_probe_emit(first, "test", "first", s("first\nmodule"), true, 37);
+    timing_probe_emit(
+        (TimingProbeResult){0}, "test", "disabled", s(""), true, 0);
+    return true;
 }
 
 void timing_probe_dependency(string module, string dependency)

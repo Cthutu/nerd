@@ -44,8 +44,9 @@ static void work(usize id)
         }
         return;
     }
+    MemoryStats activity_before = mem_stats_thread_snapshot();
     // Each phase hands allocations to a different thread after join.
-    usize owner = (id + phase) % WORKERS;
+    usize       owner           = (id + phase) % WORKERS;
     for (usize i = 0; i < SLOTS; ++i) {
         void** block = &blocks[owner][i];
         if (phase == 0) {
@@ -77,6 +78,32 @@ static void work(usize id)
             mem_stats_record_arena_done();
             mem_stats_record_array_growth(64);
         }
+    }
+    MemoryStats activity =
+        mem_stats_delta(activity_before, mem_stats_thread_snapshot());
+    assert(activity.heap_current_bytes == 0 && activity.heap_peak_bytes == 0);
+    if (phase == 0) {
+        assert(activity.heap_alloc_count == SLOTS);
+        assert(activity.heap_bytes_allocated == 32 * SLOTS);
+        assert(activity.heap_realloc_count == 0 &&
+               activity.heap_free_count == 0);
+    } else if (phase == 1) {
+        assert(activity.heap_alloc_count == 0 && activity.heap_free_count == 0);
+        assert(activity.heap_realloc_count == 2 * SLOTS);
+        assert(activity.heap_bytes_reallocated == (64 + 48) * SLOTS);
+    } else {
+        assert(activity.heap_alloc_count == SLOTS);
+        assert(activity.heap_realloc_count == SLOTS);
+        assert(activity.heap_free_count == 2 * SLOTS);
+        assert(activity.heap_bytes_freed == (48 + 80) * SLOTS);
+        assert(activity.arena_init_count == SLOTS &&
+               activity.arena_done_count == SLOTS);
+        assert(activity.arena_alloc_count == SLOTS &&
+               activity.arena_bytes_allocated == 17 * SLOTS);
+        assert(activity.arena_commit_count == 2 * SLOTS &&
+               activity.arena_bytes_committed == 8192 * SLOTS);
+        assert(activity.array_growth_count == SLOTS &&
+               activity.array_bytes_allocated == 64 * SLOTS);
     }
 }
 
@@ -123,7 +150,8 @@ int main(void)
     mem_free(reported, __FILE__, __LINE__);
     mem_print_leaks();
 #endif
-    MemoryStats before = mem_stats_snapshot();
+    MemoryStats before       = mem_stats_snapshot();
+    MemoryStats local_before = mem_stats_thread_snapshot();
     for (phase = 0; phase < 3; ++phase) {
         atomic_store(&finished, false);
         TestThread observer = start(WORKERS);
@@ -144,6 +172,12 @@ int main(void)
         assert(mem_get_total_allocated() == expected * (phase == 0 ? 32 : 48));
 #endif
     }
+    MemoryStats local_delta =
+        mem_stats_delta(local_before, mem_stats_thread_snapshot());
+    assert(local_delta.heap_alloc_count == 0 &&
+           local_delta.heap_free_count == 0);
+    assert(local_delta.heap_realloc_count == 0 &&
+           local_delta.arena_alloc_count == 0);
     MemoryStats after = mem_stats_snapshot();
     MemoryStats delta = mem_stats_delta(before, after);
     usize       n     = WORKERS * SLOTS;

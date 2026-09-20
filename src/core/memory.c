@@ -79,7 +79,12 @@ internal void mem_link(MemoryHeader* header)
 }
 #endif
 
-static MemoryStats g_memory_stats = {0};
+static MemoryStats              g_memory_stats    = {0};
+// Activity belongs to the executing thread, including frees of handed-off
+// blocks. Live/peak bytes are deliberately process-wide only.
+static thread_local MemoryStats g_memory_activity = {0};
+
+MemoryStats mem_stats_thread_snapshot(void) { return g_memory_activity; }
 
 internal void mem_stats_add_heap_current(usize size)
 {
@@ -177,8 +182,11 @@ void mem_stats_record_arena_init(usize bytes_committed)
 {
     mem_lock();
     g_memory_stats.arena_init_count++;
+    g_memory_activity.arena_init_count++;
     g_memory_stats.arena_commit_count++;
+    g_memory_activity.arena_commit_count++;
     g_memory_stats.arena_bytes_committed += bytes_committed;
+    g_memory_activity.arena_bytes_committed += bytes_committed;
     mem_unlock();
 }
 
@@ -186,6 +194,7 @@ void mem_stats_record_arena_done(void)
 {
     mem_lock();
     g_memory_stats.arena_done_count++;
+    g_memory_activity.arena_done_count++;
     mem_unlock();
 }
 
@@ -193,7 +202,9 @@ void mem_stats_record_arena_commit(usize bytes_committed)
 {
     mem_lock();
     g_memory_stats.arena_commit_count++;
+    g_memory_activity.arena_commit_count++;
     g_memory_stats.arena_bytes_committed += bytes_committed;
+    g_memory_activity.arena_bytes_committed += bytes_committed;
     mem_unlock();
 }
 
@@ -201,7 +212,9 @@ void mem_stats_record_arena_alloc(usize bytes_allocated)
 {
     mem_lock();
     g_memory_stats.arena_alloc_count++;
+    g_memory_activity.arena_alloc_count++;
     g_memory_stats.arena_bytes_allocated += bytes_allocated;
+    g_memory_activity.arena_bytes_allocated += bytes_allocated;
     mem_unlock();
 }
 
@@ -209,7 +222,9 @@ void mem_stats_record_array_growth(usize bytes_allocated)
 {
     mem_lock();
     g_memory_stats.array_growth_count++;
+    g_memory_activity.array_growth_count++;
     g_memory_stats.array_bytes_allocated += bytes_allocated;
+    g_memory_activity.array_bytes_allocated += bytes_allocated;
     mem_unlock();
 }
 
@@ -224,7 +239,9 @@ void* mem_alloc(usize size, const char* file, int line)
     header->size = size;
     mem_lock();
     g_memory_stats.heap_alloc_count++;
+    g_memory_activity.heap_alloc_count++;
     g_memory_stats.heap_bytes_allocated += size;
+    g_memory_activity.heap_bytes_allocated += size;
     mem_stats_add_heap_current(size);
 
 #if CONFIG_DEBUG
@@ -276,7 +293,9 @@ void* mem_realloc(void* ptr, usize size, const char* file, int line)
     header->size = size;
     mem_lock();
     g_memory_stats.heap_realloc_count++;
+    g_memory_activity.heap_realloc_count++;
     g_memory_stats.heap_bytes_reallocated += size;
+    g_memory_activity.heap_bytes_reallocated += size;
     if (size >= old_size) {
         mem_stats_add_heap_current(size - old_size);
     } else {
@@ -315,7 +334,9 @@ void* mem_free(void* ptr, const char* file, int line)
     MemoryHeader* header = (MemoryHeader*)ptr - 1;
     mem_lock();
     g_memory_stats.heap_free_count++;
+    g_memory_activity.heap_free_count++;
     g_memory_stats.heap_bytes_freed += header->size;
+    g_memory_activity.heap_bytes_freed += header->size;
     mem_stats_sub_heap_current(header->size);
 
 #if CONFIG_DEBUG

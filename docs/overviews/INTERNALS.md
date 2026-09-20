@@ -585,7 +585,7 @@ render-result arenas and borrowed module views are released before writing
 combined LLVM or invoking tools. Cleanup tolerates unstarted slots and already
 released results. Module order, sidecar writes, timings and initialization-order
 collection remain serial. This establishes result ownership for future workers;
-task metrics and the remaining borrowed-input audit still require concurrency work.
+worker primitives and the remaining borrowed-input audit still require work.
 
 Each result slot also owns an `ErrorContext`. A thread-local binding selects
 the context used by the existing diagnostic APIs, with a default context for
@@ -618,5 +618,19 @@ Leak reporting uses libc output while holding the bookkeeping lock, avoiding
 recursive allocation through Nerd's formatted-output buffer. Individual blocks
 and arenas still require exclusive ownership or caller synchronization. Global
 counter deltas include all concurrent work and cannot attribute memory to a
-task. Task-local metrics and contention measurement remain prerequisites for
-the scheduler; the compiler still runs sequentially.
+task. A separate set of thread-local activity counters counts events on the
+executing thread, including frees and reallocations of handed-off blocks.
+Its live/peak fields stay zero; those values are only meaningful process-wide.
+
+`TimingProbe` compares thread-local activity snapshots around non-yielding
+work that begins and ends on one OS thread. Nested probes include nested work;
+future tasks must not migrate or execute unrelated queued tasks inside a probe.
+`timing_probe_finish` returns a value-only `TimingProbeResult` with wall time,
+thread CPU time, activity deltas and process-wide live/peak observations. It
+does not render output or retain source pointers. LLVM result slots own primary
+and optional sidecar records, finished before diagnostic replay. The coordinator
+supplies labels/paths and emits records in stable module order. Other serial
+callers use the existing finish-and-emit wrapper. Dependency records, human
+timing tables and legacy memory-profile output still require coordinator or
+serial use. Worker primitives, the borrowed-input audit and lock-contention
+measurement remain; the compiler still runs sequentially.

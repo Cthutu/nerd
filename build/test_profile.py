@@ -50,6 +50,17 @@ def main():
                 outputs.append((result.stdout, result.stderr))
             assert outputs[0] == outputs[1], outputs
 
+        deferred, results = run('1', 'internal-test', 'profile-results')
+        assert deferred.stderr.startswith('profile-results-ready\n'), deferred.stderr
+        assert [r['phase'] for r in results] == ['second', 'first'], results
+        assert [r['module'] for r in results] == ['quoted"module', 'first\nmodule']
+        assert results[0]['heap_allocs'] == 0 and results[0]['heap_reallocs'] == 1
+        assert results[1]['heap_allocs'] == 1 and results[1]['heap_reallocs'] == 0
+        assert not results[0]['success'] and results[1]['success']
+        assert [r['output_bytes'] for r in results] == [83, 37]
+        assert all(r['start_ns'] > 0 and r['wall_ns'] >= 0 for r in results)
+        assert all(r['cpu_ns'] is None or r['cpu_ns'] >= 0 for r in results)
+
         _, disabled = run('0', 'check', source)
         assert not disabled
         _, records = run('1', 'check', source)

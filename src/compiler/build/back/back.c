@@ -645,9 +645,11 @@ internal void back_end_cleanup_llvm_artifacts(Array(cstr) llvm_paths,
 }
 
 typedef struct {
-    Arena        arena;
-    string       llvm;
-    ErrorContext diagnostics;
+    Arena             arena;
+    string            llvm;
+    ErrorContext      diagnostics;
+    TimingProbeResult primary_metrics;
+    TimingProbeResult sidecar_metrics;
 } BackEndLlvmModuleResult;
 
 typedef struct {
@@ -730,15 +732,16 @@ internal bool back_end_render_llvm_modules(Arena*                    arena,
                                              !artifacts->release,
                                              artifacts->output_kind !=
                                                  NERD_BUILD_OUTPUT_Executable);
+        result->primary_metrics = timing_probe_finish(probe);
         error_context_select(previous);
         // Replay stays on the coordinator; workers will only capture.
         error_context_replay(&result->diagnostics);
-        timing_probe_end(probe,
-                         COMPILER_STAGE_BACK_END,
-                         COMPILER_PHASE_LLVM_RENDER,
-                         front_end->lexer.source.source_path,
-                         true,
-                         module_llvm.count);
+        timing_probe_emit(result->primary_metrics,
+                          COMPILER_STAGE_BACK_END,
+                          COMPILER_PHASE_LLVM_RENDER,
+                          front_end->lexer.source.source_path,
+                          true,
+                          module_llvm.count);
         result->llvm = module_llvm;
         array_push(out->module_llvms, result->llvm);
         if (artifacts->emit_llvm_file) {
@@ -753,14 +756,15 @@ internal bool back_end_render_llvm_modules(Arena*                    arena,
                     &result->arena,
                     false,
                     artifacts->output_kind != NERD_BUILD_OUTPUT_Executable);
+                result->sidecar_metrics = timing_probe_finish(sidecar_probe);
                 error_context_select(previous);
                 error_context_replay(&result->diagnostics);
-                timing_probe_end(sidecar_probe,
-                                 COMPILER_STAGE_BACK_END,
-                                 "render LLVM sidecar",
-                                 front_end->lexer.source.source_path,
-                                 true,
-                                 sidecar_llvm.count);
+                timing_probe_emit(result->sidecar_metrics,
+                                  COMPILER_STAGE_BACK_END,
+                                  "render LLVM sidecar",
+                                  front_end->lexer.source.source_path,
+                                  true,
+                                  sidecar_llvm.count);
             }
             cstr llvm_path = back_end_module_llvm_path(arena, artifacts, i);
             if (!back_end_write_text_file(llvm_path, sidecar_llvm)) {

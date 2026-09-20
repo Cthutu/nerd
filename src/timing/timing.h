@@ -45,7 +45,8 @@ void timing_dump(const Timing* timing);
 
 //------------------------------------------------------------------------------
 
-// Opt-in serial profiling stream; independent of human-readable --timing.
+// Opt-in profiling; independent of human-readable --timing.
+// A probe must begin and finish on one thread without executing other tasks.
 // CPU time excludes child processes; U64_MAX means unavailable.
 typedef struct {
     bool        enabled;
@@ -54,11 +55,33 @@ typedef struct {
     MemoryStats memory;
 } TimingProbe;
 
-TimingProbe timing_probe_begin(void);
-void        timing_probe_end(TimingProbe probe,
-                             cstr        stage,
-                             cstr        phase,
-                             string      module,
-                             bool        success,
-                             usize       output_bytes);
-void        timing_probe_dependency(string module, string dependency);
+// Value-only result owned by the task. It retains no input or scratch pointers.
+// Activity is task-local; heap live/peak values are process-wide observations.
+typedef struct {
+    bool        enabled;
+    u64         start_ns;
+    u64         wall_ns;
+    u64         cpu_ns;
+    MemoryStats activity;
+    usize       heap_live_bytes;
+    usize       heap_peak_bytes;
+} TimingProbeResult;
+
+TimingProbe       timing_probe_begin(void);
+TimingProbeResult timing_probe_finish(TimingProbe probe);
+// Emit only on the coordinator, with labels valid for the duration of this
+// call.
+void              timing_probe_emit(TimingProbeResult result,
+                                    cstr              stage,
+                                    cstr              phase,
+                                    string            module,
+                                    bool              success,
+                                    usize             output_bytes);
+bool              timing_probe_self_test(void);
+void              timing_probe_end(TimingProbe probe,
+                                   cstr        stage,
+                                   cstr        phase,
+                                   string      module,
+                                   bool        success,
+                                   usize       output_bytes);
+void              timing_probe_dependency(string module, string dependency);
