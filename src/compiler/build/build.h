@@ -44,6 +44,7 @@ typedef struct FrontEndState {
 
 typedef enum : u8 {
     MODULE_Loading,
+    MODULE_Discovered,
     MODULE_Loaded,
     MODULE_Failed,
 } ModuleState;

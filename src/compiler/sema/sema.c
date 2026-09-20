@@ -79,7 +79,7 @@ typedef struct {
     bool                  imported;
 } SemaKnownCallSignature;
 
-internal SemaTypeSubstitution g_sema_type_subst = {0};
+internal thread_local SemaTypeSubstitution g_sema_type_subst = {0};
 
 internal u32  sema_builtin_type(Sema* sema, SemaTypeKind kind);
 internal u32  sema_type_index_for_name(Sema* sema, string name);

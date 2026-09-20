@@ -92,10 +92,11 @@ python3 build/build.py
 LLVM backend status:
 
 - `nerd build --llvm source.n` writes the HIR-derived LLVM IR sidecar.
-- `nerd build --jobs 4 source.n` renders LLVM modules concurrently. `-j 4` is
+- `nerd build --jobs 4 source.n` schedules parsing, HIR and LLVM module work
+  concurrently, plus semantic checking of independent import closures. `-j 4` is
   equivalent; the default is one job. The count includes the calling thread
-  (1–256), and active slots are capped at the module count. Front-end checking
-  and LLVM tools remain serial. C generation is unaffected.
+  (1–256), capped by ready work. Checking of shared import closures, final
+  merging, LLVM tools and C emission remain serial.
 - `nerd build --cgen source.n` generates a standalone `source.c` from HIR.
   Compile it with `clang source.c $(nerd build --copts source.n) -o source`.
   `--copts` prints Clang arguments, including external libraries, without building.

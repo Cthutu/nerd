@@ -66,6 +66,7 @@ internal void program_rebind_sema_programs(ProgramInfo* program)
 typedef struct {
     cstr              phase;
     string            module;
+    string            dependency;
     TimingProbeResult probe;
     TimeDuration      duration;
     bool              success;
@@ -85,6 +86,14 @@ internal void program_task_publish(ProgramTaskResult* result, Timing* timing)
     error_context_done(&result->diagnostics);
     for (usize i = 0; i < array_count(result->phases); ++i) {
         ProgramPhaseResult* phase = &result->phases[i];
+        if (program_task_result != NULL) {
+            array_push(program_task_result->phases, *phase);
+            continue;
+        }
+        if (phase->dependency.data != NULL) {
+            timing_probe_dependency(phase->module, phase->dependency);
+            continue;
+        }
         timing_probe_emit(phase->probe,
                           COMPILER_STAGE_FRONT_END,
                           phase->phase,
@@ -305,16 +314,23 @@ internal bool program_front_end_generate_hir(ProgramInfo*           program,
 {
     FrontEndOptions effective_options =
         options ? *options : (FrontEndOptions){0};
-    // Graph facts let benchmarks estimate ready work without implying that a
-    // scheduler exists. Include implicit imports and preserve loader
-    // identities.
+    // Preserve the public import graph and loader identities. Semantic
+    // scheduling also claims implicit core, without adding artifact imports.
     for (u32 i = 0; i < array_count(program->modules); ++i) {
         const ModuleInfo* module = &program->modules[i];
         for (u32 j = 0; j < array_count(module->imported_module_indices); ++j) {
-            timing_probe_dependency(
-                s(module->resolved_path),
+            string dependency =
                 s(program->modules[module->imported_module_indices[j]]
-                      .resolved_path));
+                      .resolved_path);
+            if (program_task_result != NULL) {
+                array_push(program_task_result->phases,
+                           ((ProgramPhaseResult){
+                               .module     = s(module->resolved_path),
+                               .dependency = dependency,
+                           }));
+            } else {
+                timing_probe_dependency(s(module->resolved_path), dependency);
+            }
         }
     }
     if (effective_options.skip_hir_generation) {
@@ -890,6 +906,8 @@ typedef struct {
 
 typedef struct ProgramLoadState {
     Array(ProgramParseEntry*) parses;
+    Array(u32) check_order;
+    Array(usize) check_phase_slots;
 } ProgramLoadState;
 
 internal ProgramParseEntry* program_cached_parse(ProgramInfo* program,
@@ -1004,6 +1022,8 @@ internal void program_load_state_done(ProgramInfo* program)
         FREE(entry);
     }
     array_free(program->load_state->parses);
+    array_free(program->load_state->check_order);
+    array_free(program->load_state->check_phase_slots);
     FREE(program->load_state);
     program->load_state = NULL;
 }
@@ -1076,6 +1096,171 @@ internal void program_collect_module_exports(ModuleInfo* module)
     }
 }
 
+internal void program_defer_check(ProgramInfo* program, u32 index)
+{
+    program->modules[index].state = MODULE_Discovered;
+    array_push(program->load_state->check_order, index);
+    array_push(program->load_state->check_phase_slots,
+               array_count(program_task_result->phases));
+    array_push(program_task_result->phases, ((ProgramPhaseResult){0}));
+}
+
+// Imported generic checking can append semantic types, specializations and
+// symbols in any transitive dependency. Claim the whole closure exclusively.
+// Overlapping closures retain their original DFS checking order.
+internal void
+program_check_closure(ProgramInfo* program, u32 index, u32 core, bool* closure)
+{
+    if (closure[index]) {
+        return;
+    }
+    closure[index]     = true;
+    ModuleInfo* module = &program->modules[index];
+    for (usize i = 0; i < array_count(module->imported_module_indices); ++i) {
+        program_check_closure(
+            program, module->imported_module_indices[i], core, closure);
+    }
+    if (core != U32_MAX && core != index) {
+        program_check_closure(program, core, core, closure);
+    }
+}
+
+typedef struct {
+    ProgramInfo view;
+    Array(bool) closure;
+    u32               module_index;
+    FrontEndOptions   options;
+    ProgramTaskResult result;
+} ProgramCheckTask;
+
+internal bool program_check_task(void* data, usize index)
+{
+    ProgramCheckTask* task          = &((ProgramCheckTask*)data)[index];
+    Arena             previous_temp = temp_arena;
+    temp_arena                      = (Arena){0};
+    arena_init(&temp_arena);
+    error_context_init(&task->result.diagnostics, ERROR_RENDER_NORMAL, true);
+    ErrorContext* previous = error_context_select(&task->result.diagnostics);
+    ProgramTaskResult* previous_task = program_task_result;
+    program_task_result              = &task->result;
+    task->result.success             = program_front_end_finish(
+        &task->view,
+        task->module_index,
+        &task->options,
+        NULL,
+        task->module_index == task->view.root_module_index &&
+            task->options.require_entry_point);
+    if (task->result.success) {
+        ModuleInfo* module = &task->view.modules[task->module_index];
+        program_collect_module_exports(module);
+        module->state = MODULE_Loaded;
+    }
+    program_task_result = previous_task;
+    error_context_select(previous);
+    arena_done(&temp_arena);
+    temp_arena = previous_temp;
+    return true;
+}
+
+internal bool program_check_discovered(ProgramInfo*           program,
+                                       const FrontEndOptions* options)
+{
+    ProgramLoadState* state = program->load_state;
+    usize             count = array_count(program->modules);
+    u32               core  = U32_MAX;
+    for (u32 i = 0; i < count; ++i) {
+        if (core == U32_MAX &&
+            string_eq_cstr(program->modules[i].qualified_name, "core")) {
+            core = i;
+        }
+    }
+    usize next = 0;
+    while (next < array_count(state->check_order)) {
+        Array(ProgramCheckTask) tasks = NULL;
+        Array(bool) claimed           = NULL;
+        array_requires_size(claimed, count);
+        memset(claimed, 0, count * sizeof(*claimed));
+        while (next + array_count(tasks) < array_count(state->check_order) &&
+               array_count(tasks) < options->jobs) {
+            u32 index = state->check_order[next + array_count(tasks)];
+            ProgramCheckTask task = {.module_index = index,
+                                     .options      = *options};
+            array_requires_size(task.closure, count);
+            memset(task.closure, 0, count * sizeof(*task.closure));
+            program_check_closure(program, index, core, task.closure);
+            bool ready = true;
+            for (u32 j = 0; j < count; ++j) {
+                if (task.closure[j] &&
+                    (claimed[j] || (j != index && program->modules[j].state !=
+                                                      MODULE_Loaded))) {
+                    ready = false;
+                    break;
+                }
+            }
+            if (!ready) {
+                array_free(task.closure);
+                break;
+            }
+            task.view         = *program;
+            task.view.modules = NULL;
+            array_requires_size(task.view.modules, count);
+            for (u32 j = 0; j < count; ++j) {
+                task.view.modules[j] = program->modules[j];
+                if (task.closure[j]) {
+                    claimed[j] = true;
+                } else {
+                    // Unrelated modules are not published in this task's view.
+                    // Error-only global suggestions are recovered by serial
+                    // retry.
+                    task.view.modules[j].front_end = (FrontEndState){0};
+                    task.view.modules[j].export_decl_indices = NULL;
+                }
+            }
+            array_push(tasks, task);
+        }
+        array_free(claimed);
+        if (array_count(tasks) == 0) {
+            array_free(tasks);
+            return error_runtime(
+                "No dependency-ready module for semantic checking");
+        }
+        // The task array is now fixed: all program pointers remain stable.
+        for (usize i = 0; i < array_count(tasks); ++i) {
+            program_rebind_sema_programs(&tasks[i].view);
+        }
+        TaskRunStatus status = task_run(
+            array_count(tasks), options->jobs, program_check_task, tasks);
+        bool ok = status == TASK_RUN_OK;
+        for (usize i = 0; i < array_count(tasks); ++i) {
+            ProgramCheckTask* task = &tasks[i];
+            // Workers only mutate their exclusive closure; publish after join.
+            for (u32 j = 0; j < count; ++j) {
+                if (task->closure[j]) {
+                    program->modules[j] = task->view.modules[j];
+                }
+            }
+            ok = ok && task->result.success;
+            error_context_replay(&task->result.diagnostics);
+            error_context_done(&task->result.diagnostics);
+            if (array_count(task->result.phases) == 1) {
+                program_task_result
+                    ->phases[state->check_phase_slots[next + i]] =
+                    task->result.phases[0];
+            }
+            array_free(task->result.phases);
+            array_free(task->closure);
+            array_free(task->view.modules);
+        }
+        next += array_count(tasks);
+        array_free(tasks);
+        program_rebind_sema_programs(program);
+        if (!ok) {
+            return false;
+        }
+    }
+    return true;
+}
+
 internal bool
 program_collect_module_dependencies(ProgramInfo*           program,
                                     const FrontEndOptions* options,
@@ -1110,7 +1295,8 @@ internal bool program_load_module_by_path(ProgramInfo*           program,
             return error_runtime(
                 "Module import cycle detected while loading %s", resolved_path);
         }
-        return program->modules[existing].state == MODULE_Loaded;
+        return program->modules[existing].state == MODULE_Loaded ||
+               program->modules[existing].state == MODULE_Discovered;
     }
 
     ModuleInfo module = {
@@ -1198,6 +1384,11 @@ internal bool program_load_module_by_path(ProgramInfo*           program,
             program, options, timing, module_index, module_source)) {
         program->modules[module_index].state = MODULE_Failed;
         return false;
+    }
+
+    if (program->load_state != NULL && program_task_result != NULL) {
+        program_defer_check(program, module_index);
+        return true;
     }
 
     if (!program_front_end_finish(
@@ -1352,10 +1543,10 @@ program_collect_module_dependencies(ProgramInfo*           program,
     return true;
 }
 
-bool front_end_program(NerdSource             source,
-                       const FrontEndOptions* options,
-                       Timing*                timing,
-                       ProgramInfo*           out_program)
+internal bool program_front_end_attempt(NerdSource             source,
+                                        const FrontEndOptions* options,
+                                        Timing*                timing,
+                                        ProgramInfo*           out_program)
 {
     FrontEndOptions effective_options =
         options ? *options : (FrontEndOptions){0};
@@ -1445,23 +1636,32 @@ bool front_end_program(NerdSource             source,
         return false;
     }
 
-    if (!program_front_end_finish(&program,
-                                  program.root_module_index,
-                                  &effective_options,
-                                  timing,
-                                  effective_options.require_entry_point)) {
-        program.modules[program.root_module_index].state = MODULE_Failed;
-        if (effective_options.keep_partial_results && out_program != NULL) {
-            *out_program = program;
-            program_rebind_sema_programs(out_program);
+    if (program.load_state != NULL && program_task_result != NULL) {
+        program_defer_check(&program, program.root_module_index);
+        if (!program_check_discovered(&program, &effective_options)) {
+            program_info_done(&program);
             return false;
         }
-        program_info_done(&program);
-        return false;
-    }
+    } else {
+        if (!program_front_end_finish(&program,
+                                      program.root_module_index,
+                                      &effective_options,
+                                      timing,
+                                      effective_options.require_entry_point)) {
+            program.modules[program.root_module_index].state = MODULE_Failed;
+            if (effective_options.keep_partial_results && out_program != NULL) {
+                *out_program = program;
+                program_rebind_sema_programs(out_program);
+                return false;
+            }
+            program_info_done(&program);
+            return false;
+        }
 
-    program_collect_module_exports(&program.modules[program.root_module_index]);
-    program.modules[program.root_module_index].state = MODULE_Loaded;
+        program_collect_module_exports(
+            &program.modules[program.root_module_index]);
+        program.modules[program.root_module_index].state = MODULE_Loaded;
+    }
 
     if (!program_front_end_generate_hir(&program, &effective_options, timing)) {
         program.modules[program.root_module_index].state = MODULE_Failed;
@@ -1470,6 +1670,49 @@ bool front_end_program(NerdSource             source,
     }
 
     program_load_state_done(&program);
+    if (out_program != NULL) {
+        *out_program = program;
+        program_rebind_sema_programs(out_program);
+    } else {
+        program_info_done(&program);
+    }
+    return true;
+}
+
+bool front_end_program(NerdSource             source,
+                       const FrontEndOptions* options,
+                       Timing*                timing,
+                       ProgramInfo*           out_program)
+{
+    if (options == NULL || options->jobs <= 1 || options->verbose ||
+        options->module_source_loader != NULL ||
+        options->keep_partial_results || options->keep_decl_error_results ||
+        getenv("NERD_MEMORY_PROFILE") != NULL) {
+        FrontEndOptions serial =
+            options ? *options : (FrontEndOptions){.require_entry_point = true};
+        serial.jobs = 1;
+        return program_front_end_attempt(source, &serial, timing, out_program);
+    }
+    // Discovery can encounter a later parse error before an earlier semantic
+    // error. Publish nothing until success; on failure rerun the original DFS
+    // path, preserving diagnostic choice, ordering and partial-result behavior.
+    ProgramTaskResult result = {0};
+    error_context_init(&result.diagnostics, error_system_mode(), true);
+    ErrorContext*      previous = error_context_select(&result.diagnostics);
+    ProgramTaskResult* previous_task = program_task_result;
+    program_task_result              = &result;
+    ProgramInfo program              = {0};
+    bool        ok = program_front_end_attempt(source, options, NULL, &program);
+    program_task_result = previous_task;
+    error_context_select(previous);
+    if (!ok) {
+        error_context_done(&result.diagnostics);
+        array_free(result.phases);
+        FrontEndOptions serial = *options;
+        serial.jobs            = 1;
+        return program_front_end_attempt(source, &serial, timing, out_program);
+    }
+    program_task_publish(&result, timing);
     if (out_program != NULL) {
         *out_program = program;
         program_rebind_sema_programs(out_program);

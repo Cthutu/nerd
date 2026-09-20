@@ -6,8 +6,8 @@
 
 #include <core/core.h>
 
-extern Mutex g_output_mutex;
-Arena        temp_arena;
+extern Mutex       g_output_mutex;
+thread_local Arena temp_arena;
 
 //------------------------------------------------------------------------------
 

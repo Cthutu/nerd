@@ -671,7 +671,7 @@ internal JsonValue* nerd_cli_schema(Arena* arena)
                 "named",
                 "jobs",
                 "j",
-                "LLVM render slots including caller (1-256; default 1)",
+                "Compiler task slots including caller (1-256; default 1)",
                 false));
         json_array_push(commands,
                         nerd_cli_make_command(arena,

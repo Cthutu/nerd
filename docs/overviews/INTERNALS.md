@@ -749,3 +749,20 @@ exports, or the first diagnostic. Pending parse failures are captured, not
 printed. Source-loader callbacks, verbose output and legacy memory reporting
 keep the serial loader. Cache cleanup also destroys unvisited results when an
 earlier module fails. Folder-module expansion uses the parse entry's arena.
+
+For scheduled builds, discovery records the original DFS checking order and
+then freezes the registry. Dependency-ready semantic tasks exclusively own
+their transitive import closure, including implicit core: generic checking can
+append types, symbols and instantiations to imported modules. Overlapping
+closures retain DFS order. Disjoint closures use task-local program views and
+publish changed module records only after joining. The active type substitution
+and semantic scratch arena are thread-local, with scoped task cleanup. Common
+core imports currently serialize checking; this deliberately preserves generic
+instantiation order rather than promising parallel checking for every graph.
+
+The coordinator buffers phase records at their original DFS positions. Failed
+scheduled attempts discard captured output and retry the original serial loader;
+this preserves the first diagnostic even when discovery reaches a later parse
+error before an earlier semantic error. Error-only global suggestions also use
+the serial retry. Custom source loaders, partial-result tooling, verbose dumps
+and legacy memory profiling keep the original serial front end.

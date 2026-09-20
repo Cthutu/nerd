@@ -131,11 +131,12 @@ programs are compiled but not run. The same affinity and RSS limitations above
 apply. Keep a separate correctness test run after timing completes.
 
 
-## Comparing LLVM worker counts
+## Comparing compiler worker counts
 
-`nerd build --jobs N` (or `-j N`) enables concurrent LLVM module rendering;
-1 is the default and runs inline. The front end, merge and external LLVM tools
-remain serial. Each module's profile is emitted in program order after workers
+`nerd build --jobs N` (or `-j N`) enables concurrent sibling parsing, HIR
+lowering, independent semantic import closures and LLVM module rendering;
+1 is the default and runs inline. Shared semantic import closures, final merge
+and external LLVM tools remain serial. Each module's profile is emitted in program order after workers
 join, irrespective of completion order. Per-task wall times overlap; their sum
 is work duration, not elapsed render time. Heap live/peak observations remain
 process-wide. Batch dispatch/drain timings are recorded separately. Optional
@@ -195,3 +196,14 @@ coordinator output. Per-module phase profiles remain available in both paths.
 per cell alongside its ordinary profile and unprofiled samples. It checks LLVM
 identity in every mode and retains `lock_profile` and `lock_sample` separately.
 The runner clears inherited lock instrumentation for ordinary measurements.
+
+Front-end phase records are published in the original depth-first order, even
+though parsing and checking now run in separate stages. Use `start_ns` and
+`wall_ns` to examine overlap; publication order is not execution order. A
+failed parallel front end retries serially and publishes only the retry's phase
+records and diagnostics. Total command time still includes the failed attempt.
+Semantic tasks claim transitive imports exclusively because generic checking
+can mutate them. Shared implicit core therefore currently serializes checking.
+Verbose output, custom source loaders, partial results and legacy
+`NERD_MEMORY_PROFILE` keep the serial front end. HIR/parse tasks retain owned
+results until ordered adoption/publication, and the default remains one job.
