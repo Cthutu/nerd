@@ -49,22 +49,27 @@ void timing_dump(const Timing* timing);
 // A probe must begin and finish on one thread without executing other tasks.
 // CPU time excludes child processes; U64_MAX means unavailable.
 typedef struct {
-    bool        enabled;
-    TimePoint   wall;
-    u64         cpu_ns;
-    MemoryStats memory;
+    bool            enabled;
+    TimePoint       wall;
+    u64             cpu_ns;
+    MemoryStats     memory;
+    bool            lock_profile;
+    bool            previous_lock_profile;
+    MemoryLockStats locks;
 } TimingProbe;
 
 // Value-only result owned by the task. It retains no input or scratch pointers.
 // Activity is task-local; heap live/peak values are process-wide observations.
 typedef struct {
-    bool        enabled;
-    u64         start_ns;
-    u64         wall_ns;
-    u64         cpu_ns;
-    MemoryStats activity;
-    usize       heap_live_bytes;
-    usize       heap_peak_bytes;
+    bool            enabled;
+    u64             start_ns;
+    u64             wall_ns;
+    u64             cpu_ns;
+    MemoryStats     activity;
+    usize           heap_live_bytes;
+    usize           heap_peak_bytes;
+    bool            lock_profile;
+    MemoryLockStats locks;
 } TimingProbeResult;
 
 TimingProbe       timing_probe_begin(void);

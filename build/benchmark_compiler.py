@@ -105,6 +105,7 @@ def main():
     nerd = args.nerd.resolve()
     env = dict(os.environ, NERD_LIB_PATH=str(ROOT / 'mods'))
     env.pop('NERD_PROFILE', None)
+    env.pop('NERD_PROFILE_LOCKS', None)
     env.pop('NERD_MEMORY_PROFILE', None)
     env.pop('NERD_DEBUG_LLVM_SIDECARS', None)
     env.pop('NERD_DEBUG_KEEP_LINK_LLVM', None)

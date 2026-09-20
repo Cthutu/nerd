@@ -22,6 +22,8 @@ def main():
     parser.add_argument('--nerd', type=Path, default=ROOT / '_bin/nerd')
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--jobs', nargs='+', type=int, default=[1, 2, 4, 8, 16])
+    parser.add_argument('--lock-profile', action='store_true',
+                        help='Add a separate intrusive lock-timing run per cell')
     parser.add_argument('--cpus', nargs='+', type=int)
     parser.add_argument('--samples', type=int, default=5)
     parser.add_argument('--scenarios', nargs='+', default=['tiny', 'dungeon', 'pixels', 'quill', 'wide', 'deep', 'large'])
@@ -34,7 +36,7 @@ def main():
         os.sched_setaffinity(0, set(args.cpus))
     nerd = args.nerd.resolve()
     env = dict(os.environ, NERD_LIB_PATH=str(ROOT / 'mods'), NERD_DEBUG_KEEP_LINK_LLVM='1')
-    for name in ['NERD_PROFILE', 'NERD_MEMORY_PROFILE', 'NERD_DEBUG_LLVM_SIDECARS']:
+    for name in ['NERD_PROFILE', 'NERD_PROFILE_LOCKS', 'NERD_MEMORY_PROFILE', 'NERD_DEBUG_LLVM_SIDECARS']:
         env.pop(name, None)
     results = {'metadata': {
         'commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip(),
@@ -42,6 +44,7 @@ def main():
         'compiler': str(nerd), 'compiler_sha256': digest(nerd), 'platform': platform.platform(),
         'affinity': sorted(os.sched_getaffinity(0)) if hasattr(os, 'sched_getaffinity') else None,
         'jobs': args.jobs, 'samples': args.samples, 'warmups_per_jobs': 1,
+        'lock_profile': args.lock_profile,
         'order': 'rotate counts each iteration', 'keep_combined_llvm': True,
     }, 'runs': []}
     args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -82,6 +85,12 @@ def main():
                     row['jobs'][str(jobs)].update(profile_sample=sample, profile=records,
                         render_span_ns=span, median_wall_ns=statistics.median(
                             s['wall_ns'] for s in row['jobs'][str(jobs)]['samples']))
+                    if args.lock_profile:
+                        lock_sample, lock_records = invoke(
+                            [str(nerd), *tail, '--jobs', str(jobs)],
+                            dict(env, NERD_PROFILE='1', NERD_PROFILE_LOCKS='1'))
+                        assert digest(ir) == reference
+                        row['jobs'][str(jobs)].update(lock_sample=lock_sample, lock_profile=lock_records)
                 row.update(combined_sha256=reference, combined_bytes=ir.stat().st_size)
                 results['runs'].append(row)
                 args.output.write_text(json.dumps(results, indent=2) + '\n')

@@ -41,3 +41,5 @@ Current backend timing notes:
   metadata fixes, concurrent render/sanitizer tests and serial overhead.
 - `compiler-m4-scheduler.md`: production bounded task batch, `--jobs` CLI,
   sanitizer/failure tests, serial overhead and worker-count scaling.
+- `compiler-m4-contention.md`: corrected-target scaling, opt-in lock-acquisition
+  timing, render dispatch/drain boundaries and remaining system CPU evidence.

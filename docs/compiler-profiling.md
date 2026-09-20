@@ -52,7 +52,9 @@ deltas remain process-wide.
 Dependency records contain `module` and `dependency` source paths, including
 implicit core imports. The loader emits them after successful semantic analysis.
 They support an estimate of dependency-constrained work. The LLVM render batch
-has no dependency scheduling or measured queue wait yet. Lex/parse includes local conditional-block selection.
+has no dependency scheduling. Its dispatch-delay record includes startup and
+waiting behind earlier module tasks; it is not a dependency-ready timestamp.
+Lex/parse includes local conditional-block selection.
 LLVM sidecar re-rendering has its own phase when requested. Tool phases distinguish
 `opt`, `llc`, the linker and the archiver. The existing human-readable backend
 summary still groups these under its output-operation phase.
@@ -133,7 +135,8 @@ apply. Keep a separate correctness test run after timing completes.
 remain serial. Each module's profile is emitted in program order after workers
 join, irrespective of completion order. Per-task wall times overlap; their sum
 is work duration, not elapsed render time. Heap live/peak observations remain
-process-wide. Queue wait and lock contention are not measured yet.
+process-wide. Batch dispatch/drain timings are recorded separately. Optional
+lock-acquisition timings require `NERD_PROFILE_LOCKS=1` as described below.
 
 ```sh
 python3 build/benchmark_jobs.py --cpus 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 \
@@ -150,3 +153,42 @@ those costs and all front-end/tool work. Profile envelopes are single-sample
 diagnostic evidence, not repeated latency measurements. `--jobs`, `--samples`
 and `--scenarios` override defaults. Do not run competing builds/tests while
 measuring. Generated programs are not executed by the benchmark.
+
+
+## Allocator and scheduler diagnosis
+
+Set both `NERD_PROFILE=1` and `NERD_PROFILE_LOCKS=1` to add
+`memory_lock_acquisitions` and `memory_lock_acquire_ns` to phase records.
+Counters are cumulative per OS thread, sampled around each probe. Nested probes
+are inclusive; records retain values and the coordinator emits them later.
+Turning on the lock flag alone produces no output and does not enable timing.
+Scopes restore the preceding thread-local setting. The final process heap
+snapshot is outside the probe's own lock measurements.
+
+Acquisition duration runs from immediately before the native bookkeeping lock
+to immediately after acquisition. It includes uncontended lock cost, clock
+cost and descheduling, so it is not a pure blocked-time measurement. Every
+instrumented acquisition takes two clock readings, one while holding the lock;
+conversion and counter updates occur after unlocking. This perturbs contention.
+Use a separate diagnostic run, never these timings as an unprofiled speedup.
+When disabled, there are no extra clock reads; the allocator still tests the
+thread-local enable flag.
+
+With more than one requested job, a `kind: "scheduler"` record describes the
+LLVM render batch. It is emitted after joining workers and before ordered
+module records. `jobs` is requested slots; `slots` is capped at `modules`.
+`completed` and `success` record batch completion, including startup failure.
+`wall_ns` spans the task-run call, including startup and joins.
+`first_dispatch_ns` is the interval before the first callback starts, and
+`drain_ns` spans the last callback's completion to return from the task batch.
+These are elapsed boundaries, not isolated native thread-create/join costs.
+`dispatch_delay_ns_sum` sums each task's delay from batch submission to callback
+entry, including startup and waiting for earlier tasks. Do not add it to elapsed
+wall time. A failed startup reports zero completed tasks and zero task intervals.
+The inline jobs=1 path has no batch record, since it interleaves rendering with
+coordinator output. Per-module phase profiles remain available in both paths.
+
+`build/benchmark_jobs.py --lock-profile` adds a separate lock-instrumented run
+per cell alongside its ordinary profile and unprofiled samples. It checks LLVM
+identity in every mode and retains `lock_profile` and `lock_sample` separately.
+The runner clears inherited lock instrumentation for ordinary measurements.

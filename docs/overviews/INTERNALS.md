@@ -529,8 +529,8 @@ phases, HIR, module LLVM rendering, LLVM combining, C rendering and each externa
 LLVM tool. Dependency records include implicit imports. The opt-in probes live
 in `src/timing/timing.c` and avoid compiler arenas so active string builders are
 unaffected. Thread CPU and elapsed wall time are separate; subprocess CPU and
-peak process RSS come from the benchmark runner. This stream is currently serial
-and requires per-task sinks before concurrency. See
+peak process RSS come from the benchmark runner. Workers capture value-only
+records in fixed result slots; the coordinator emits the stream. See
 [profiling and benchmarking](../compiler-profiling.md).
 
 
@@ -640,8 +640,13 @@ supplies labels/paths and emits records in stable module order. Other serial
 callers use the existing finish-and-emit wrapper. Dependency records, human
 timing tables and legacy memory-profile output still require coordinator or
 serial use. Per-module wall times can overlap with multiple jobs: use their
-start/end envelope for render elapsed time, not their sum. Queue-wait and
-allocator-lock contention instrumentation remain future work.
+start/end envelope for render elapsed time, not their sum. `NERD_PROFILE_LOCKS=1`
+adds scoped thread-local acquisition counts/timings to enabled probes, preserving
+nested settings. Two clock reads measure native-lock acquisition duration;
+accounting/conversion occurs after unlock. Disabled scopes perform no extra
+clock reads. This intrusive measurement includes uncontended overhead and
+scheduler delays, so collect it separately from latency samples. The Windows
+performance-counter frequency cache is thread-local to avoid lazy-init races.
 
 Core worker primitives use pthread threads/conditions on POSIX and
 `_beginthreadex` plus Windows condition variables on Windows. `Thread` is
@@ -692,6 +697,14 @@ before rendering subsequent modules. Parallel mode may have completed later
 modules by then; their results are safely discarded. The current LLVM callback
 always completes or raises a fatal internal error; recoverable renderer errors
 will need to return failure explicitly before task cancellation applies there.
+Profiled parallel builds also capture callback entry/exit points in stable
+result slots. After joining, the coordinator emits a scheduler record with
+batch wall time, first-dispatch and drain intervals, and summed task dispatch
+delays. These intervals include startup and waiting for earlier tasks; they do
+not isolate queue-mutex contention or pure native-thread API costs. Startup
+failure emits zero completed tasks before the normal error. Single-job mode
+retains per-module profiles without a parallel-batch record.
+
 C generation/options and `run` remain serial. There is no automatic memory budget
 or worker sizing yet; the default remains one. `build/test_jobs.py` exercises
 production CLI parity and failure cleanup, including optional full-compiler

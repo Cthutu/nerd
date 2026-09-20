@@ -292,6 +292,12 @@ TimingProbe timing_probe_begin(void)
 {
     TimingProbe probe = {.enabled = timing_probe_enabled()};
     if (probe.enabled) {
+        cstr locks         = getenv("NERD_PROFILE_LOCKS");
+        probe.lock_profile = locks && strcmp(locks, "1") == 0;
+        if (probe.lock_profile) {
+            probe.previous_lock_profile = mem_lock_profile_select(true);
+            probe.locks                 = mem_lock_profile_snapshot();
+        }
         probe.memory = mem_stats_thread_snapshot();
         probe.cpu_ns = timing_probe_cpu_ns();
         probe.wall   = time_now();
@@ -304,12 +310,21 @@ TimingProbeResult timing_probe_finish(TimingProbe probe)
     if (!probe.enabled) {
         return (TimingProbeResult){0};
     }
-    TimePoint   end      = time_now();
-    u64         cpu      = timing_probe_cpu_ns();
-    MemoryStats activity = mem_stats_thread_snapshot();
-    MemoryStats process  = mem_stats_snapshot();
+    TimePoint       end      = time_now();
+    u64             cpu      = timing_probe_cpu_ns();
+    MemoryStats     activity = mem_stats_thread_snapshot();
+    MemoryLockStats locks    = {0};
+    if (probe.lock_profile) {
+        locks = mem_lock_profile_snapshot();
+        locks.acquisitions -= probe.locks.acquisitions;
+        locks.acquire_ns -= probe.locks.acquire_ns;
+        mem_lock_profile_select(probe.previous_lock_profile);
+    }
+    MemoryStats process = mem_stats_snapshot();
     return (TimingProbeResult){
         .enabled         = true,
+        .lock_profile    = probe.lock_profile,
+        .locks           = locks,
         .start_ns        = (u64)time_nsecs(probe.wall),
         .wall_ns         = time_duration_to_ns(time_elapsed(probe.wall, end)),
         .cpu_ns          = cpu == U64_MAX || probe.cpu_ns == U64_MAX
@@ -352,7 +367,7 @@ void timing_probe_emit(TimingProbeResult result,
         ",\"success\":%s,\"output_bytes\":%zu,\"heap_allocs\":%zu,"
         "\"heap_reallocs\":%zu,\"heap_live_bytes\":%zu,\"heap_peak_bytes\":%zu,"
         "\"arena_requested_bytes\":%zu,\"arena_committed_bytes\":%zu,"
-        "\"array_growths\":%zu}\n",
+        "\"array_growths\":%zu",
         success ? "true" : "false",
         output_bytes,
         delta.heap_alloc_count,
@@ -362,6 +377,14 @@ void timing_probe_emit(TimingProbeResult result,
         delta.arena_bytes_allocated,
         delta.arena_bytes_committed,
         delta.array_growth_count);
+    if (result.lock_profile) {
+        fprintf(stderr,
+                ",\"memory_lock_acquisitions\":%llu,\"memory_lock_acquire_ns\":"
+                "%llu",
+                (unsigned long long)result.locks.acquisitions,
+                (unsigned long long)result.locks.acquire_ns);
+    }
+    fputs("}\n", stderr);
 }
 
 void timing_probe_end(TimingProbe probe,

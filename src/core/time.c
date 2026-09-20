@@ -12,7 +12,7 @@
 
 static u64 time_frequency(void)
 {
-    local_persist u64 frequency = 0;
+    static thread_local u64 frequency = 0;
     if (frequency == 0) {
         LARGE_INTEGER value;
         QueryPerformanceFrequency(&value);

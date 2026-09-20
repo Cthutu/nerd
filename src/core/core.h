@@ -306,6 +306,16 @@ MemoryStats mem_stats_snapshot(void);
 // Difference snapshots around non-yielding work on the same thread to obtain
 // task activity. Free/realloc events belong to the executing, not owning, task.
 MemoryStats mem_stats_thread_snapshot(void);
+// Optional per-thread lock-acquisition instrumentation. Select only outside a
+// bookkeeping operation; restore the returned setting at the end of a scope.
+// Acquisition time includes uncontended lock/clock overhead, not just blocking.
+typedef struct {
+    u64 acquisitions;
+    u64 acquire_ns;
+} MemoryLockStats;
+bool            mem_lock_profile_select(bool enabled);
+MemoryLockStats mem_lock_profile_snapshot(void);
+
 MemoryStats mem_stats_delta(MemoryStats before, MemoryStats after);
 bool        mem_stats_profile_enabled(void);
 void        mem_stats_print_delta(cstr stage, cstr phase, MemoryStats stats);

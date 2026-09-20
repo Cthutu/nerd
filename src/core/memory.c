@@ -40,13 +40,56 @@ static u64           g_memory_break_index = 0; // Index to break on allocation
 // lock.
 #if OS_WINDOWS
 static SRWLOCK g_memory_mutex = SRWLOCK_INIT;
-internal void  mem_lock(void) { AcquireSRWLockExclusive(&g_memory_mutex); }
-internal void  mem_unlock(void) { ReleaseSRWLockExclusive(&g_memory_mutex); }
+internal void  mem_lock_native(void)
+{
+    AcquireSRWLockExclusive(&g_memory_mutex);
+}
+internal void mem_unlock_native(void)
+{
+    ReleaseSRWLockExclusive(&g_memory_mutex);
+}
 #else
 static pthread_mutex_t g_memory_mutex = PTHREAD_MUTEX_INITIALIZER;
-internal void          mem_lock(void) { pthread_mutex_lock(&g_memory_mutex); }
-internal void mem_unlock(void) { pthread_mutex_unlock(&g_memory_mutex); }
+internal void mem_lock_native(void) { pthread_mutex_lock(&g_memory_mutex); }
+internal void mem_unlock_native(void) { pthread_mutex_unlock(&g_memory_mutex); }
 #endif
+
+static thread_local bool            g_lock_profile_enabled;
+static thread_local TimePoint       g_lock_started;
+static thread_local TimePoint       g_lock_acquired;
+static thread_local MemoryLockStats g_lock_stats;
+
+bool mem_lock_profile_select(bool enabled)
+{
+    bool previous          = g_lock_profile_enabled;
+    g_lock_profile_enabled = enabled;
+    return previous;
+}
+
+MemoryLockStats mem_lock_profile_snapshot(void) { return g_lock_stats; }
+
+internal void mem_lock(void)
+{
+    if (g_lock_profile_enabled) {
+        g_lock_started = time_now();
+    }
+    mem_lock_native();
+    if (g_lock_profile_enabled) {
+        g_lock_acquired = time_now();
+    }
+}
+
+internal void mem_unlock(void)
+{
+    mem_unlock_native();
+    // Conversion/accounting happens outside the shared lock. No allocation or
+    // output is permitted in these instrumentation helpers.
+    if (g_lock_profile_enabled) {
+        g_lock_stats.acquisitions++;
+        g_lock_stats.acquire_ns +=
+            time_duration_to_ns(time_elapsed(g_lock_started, g_lock_acquired));
+    }
+}
 
 #if CONFIG_DEBUG
 // Caller holds the bookkeeping lock. Untracked application-lifetime blocks

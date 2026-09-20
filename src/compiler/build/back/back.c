@@ -651,6 +651,8 @@ typedef struct {
     ErrorContext      diagnostics;
     TimingProbeResult primary_metrics;
     TimingProbeResult sidecar_metrics;
+    TimePoint         task_started;
+    TimePoint         task_finished;
 } BackEndLlvmModuleResult;
 
 typedef struct {
@@ -704,6 +706,7 @@ typedef struct {
     bool                     debug;
     bool                     exports;
     bool                     alternate_sidecar;
+    bool                     profile_batch;
 } BackEndLlvmRenderBatch;
 
 internal bool back_end_render_llvm_task(void* argument, usize index)
@@ -711,7 +714,10 @@ internal bool back_end_render_llvm_task(void* argument, usize index)
     BackEndLlvmRenderBatch*  batch  = argument;
     const FrontEndState*     front  = &batch->program->modules[index].front_end;
     BackEndLlvmModuleResult* result = &batch->results[index];
-    TimingProbe              probe  = timing_probe_begin();
+    if (batch->profile_batch) {
+        result->task_started = time_now();
+    }
+    TimingProbe probe = timing_probe_begin();
     arena_init(&result->arena);
     error_context_init(&result->diagnostics, batch->mode, true);
     ErrorContext* previous  = error_context_select(&result->diagnostics);
@@ -734,6 +740,9 @@ internal bool back_end_render_llvm_task(void* argument, usize index)
         result->sidecar_metrics = timing_probe_finish(probe);
     }
     error_context_select(previous);
+    if (batch->profile_batch) {
+        result->task_finished = time_now();
+    }
     return true;
 }
 
@@ -769,8 +778,57 @@ internal bool back_end_render_llvm_modules(Arena*                    arena,
                              !emit_debug_sidecars};
     u32 jobs = artifacts->jobs == 0 ? 1 : artifacts->jobs;
     if (jobs > 1) {
+        TimingProbe dispatch = timing_probe_begin();
+        batch.profile_batch  = dispatch.enabled;
         TaskRunStatus status =
             task_run(module_count, jobs, back_end_render_llvm_task, &batch);
+        TimePoint         joined     = dispatch.enabled ? time_now() : 0;
+        TimingProbeResult scheduling = timing_probe_finish(dispatch);
+        if (dispatch.enabled) {
+            TimePoint first = joined, last = dispatch.wall;
+            u64       delay     = 0;
+            u32       completed = 0;
+            for (u32 i = 0; i < module_count; ++i) {
+                const BackEndLlvmModuleResult* result = &out->results[i];
+                if (!result->task_finished) {
+                    continue;
+                }
+                completed++;
+                if (result->task_started < first) {
+                    first = result->task_started;
+                }
+                if (result->task_finished > last) {
+                    last = result->task_finished;
+                }
+                delay += time_duration_to_ns(
+                    time_elapsed(dispatch.wall, result->task_started));
+            }
+            // These are elapsed intervals outside the first/last callbacks,
+            // not isolated OS thread-create/join costs. Dispatch delay includes
+            // startup and time spent waiting for earlier module tasks.
+            fprintf(
+                stderr,
+                "nerd-profile\t{\"kind\":\"scheduler\",\"stage\":\"back-end\","
+                "\"phase\":\"LLVM render "
+                "batch\",\"jobs\":%u,\"slots\":%u,\"modules\":%u,"
+                "\"completed\":%u,\"success\":%s,\"wall_ns\":%llu,\"first_"
+                "dispatch_ns\":%llu,"
+                "\"drain_ns\":%llu,\"dispatch_delay_ns_sum\":%llu}\n",
+                jobs,
+                jobs < module_count ? jobs : module_count,
+                module_count,
+                completed,
+                status == TASK_RUN_OK ? "true" : "false",
+                (unsigned long long)scheduling.wall_ns,
+                (unsigned long long)(completed
+                                         ? time_duration_to_ns(time_elapsed(
+                                               dispatch.wall, first))
+                                         : 0),
+                (unsigned long long)(completed ? time_duration_to_ns(
+                                                     time_elapsed(last, joined))
+                                               : 0),
+                (unsigned long long)delay);
+        }
         if (status != TASK_RUN_OK) {
             return error_runtime(
                 "Failed to start or complete LLVM render workers");

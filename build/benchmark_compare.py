@@ -34,7 +34,7 @@ def main():
         os.sched_setaffinity(0, {args.cpu})
     compilers = {'before': args.before.resolve(), 'after': args.after.resolve()}
     env = dict(os.environ, NERD_LIB_PATH=str(ROOT / 'mods'), NERD_DEBUG_KEEP_LINK_LLVM='1')
-    for name in ['NERD_PROFILE', 'NERD_MEMORY_PROFILE', 'NERD_DEBUG_LLVM_SIDECARS']:
+    for name in ['NERD_PROFILE', 'NERD_PROFILE_LOCKS', 'NERD_MEMORY_PROFILE', 'NERD_DEBUG_LLVM_SIDECARS']:
         env.pop(name, None)
     results = {'metadata': {
         'commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip(),

@@ -44,9 +44,12 @@ static void work(usize id)
         }
         return;
     }
-    MemoryStats activity_before = mem_stats_thread_snapshot();
+    bool profile = id % 2 == 0;
+    assert(!mem_lock_profile_select(profile));
+    MemoryLockStats lock_before     = mem_lock_profile_snapshot();
+    MemoryStats     activity_before = mem_stats_thread_snapshot();
     // Each phase hands allocations to a different thread after join.
-    usize       owner           = (id + phase) % WORKERS;
+    usize           owner           = (id + phase) % WORKERS;
     for (usize i = 0; i < SLOTS; ++i) {
         void** block = &blocks[owner][i];
         if (phase == 0) {
@@ -78,6 +81,15 @@ static void work(usize id)
             mem_stats_record_arena_done();
             mem_stats_record_array_growth(64);
         }
+    }
+    MemoryLockStats lock_after = mem_lock_profile_snapshot();
+    assert(mem_lock_profile_select(false) == profile);
+    if (profile) {
+        assert(lock_after.acquisitions - lock_before.acquisitions >= SLOTS);
+        assert(lock_after.acquire_ns >= lock_before.acquire_ns);
+    } else {
+        assert(lock_after.acquisitions == lock_before.acquisitions);
+        assert(lock_after.acquire_ns == lock_before.acquire_ns);
     }
     MemoryStats activity =
         mem_stats_delta(activity_before, mem_stats_thread_snapshot());

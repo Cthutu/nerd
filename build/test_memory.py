@@ -26,6 +26,7 @@ def main():
             command = cc + flags + (['-DNDEBUG'] if release else []) + [
                 str(ROOT / 'tests/core/memory-concurrency.c'),
                 str(ROOT / 'src/core/memory.c'),
+                str(ROOT / 'src/core/time.c'),
                 str(ROOT / 'src/core/thread.c'), '-o', str(output)]
             subprocess.run(command, check=True)
             for _ in range(3):
