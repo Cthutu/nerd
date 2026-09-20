@@ -585,7 +585,7 @@ render-result arenas and borrowed module views are released before writing
 combined LLVM or invoking tools. Cleanup tolerates unstarted slots and already
 released results. Module order, sidecar writes, timings and initialization-order
 collection remain serial. This establishes result ownership for future workers;
-global allocation tracking and task metrics still require concurrency work.
+task metrics and the remaining borrowed-input audit still require concurrency work.
 
 Each result slot also owns an `ErrorContext`. A thread-local binding selects
 the context used by the existing diagnostic APIs, with a default context for
@@ -600,5 +600,23 @@ the queue using the destination context's rendering and output settings; cleanup
 also handles discarded queues and unstarted slots. The renderer still uses the
 global temporary arena and must remain on the coordinator. Fatal internal
 compiler errors remain immediate process exits. Rendering is still serial;
-thread-local context selection alone does not make allocation or LLVM rendering
-safe to run concurrently.
+thread-local context selection alone does not make LLVM rendering safe to run
+concurrently.
+
+Memory bookkeeping uses a statically initialized process-wide lock (SRW lock on
+Windows, pthread mutex on POSIX). It protects counters, coherent snapshots and
+the debug allocation list/index. Live and peak bytes remain process-wide, so a
+block can be allocated, reallocated and freed by different threads after an
+ownership handoff. Debug list removal is constant-time using previous/next
+links; application-lifetime blocks remain accounted for but are excluded from
+leak reports. Headers preserve `max_align_t` alignment for returned pointers in
+both build configurations. The allocator releases the lock around libc
+allocation calls; an in-flight reallocation is temporarily absent from debug
+list queries.
+
+Leak reporting uses libc output while holding the bookkeeping lock, avoiding
+recursive allocation through Nerd's formatted-output buffer. Individual blocks
+and arenas still require exclusive ownership or caller synchronization. Global
+counter deltas include all concurrent work and cannot attribute memory to a
+task. Task-local metrics and contention measurement remain prerequisites for
+the scheduler; the compiler still runs sequentially.

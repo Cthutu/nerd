@@ -12,13 +12,15 @@
 //------------------------------------------------------------------------------
 
 typedef struct MemoryHeader_t {
-    usize size; // Number of bytes allocated
+    // Keep the user pointer aligned even when debug header fields change.
+    _Alignas(max_align_t) usize size; // Number of bytes allocated
 
 #if CONFIG_DEBUG
     const char* file;  // File where the allocation was made
     int         line;  // Line number where the allocation was made
     u64         index; // Index of the allocation for debugging purposes
 
+    struct MemoryHeader_t* prev; // Previous tracked allocation
     struct MemoryHeader_t* next; // Pointer to the next header in a linked list
     bool leaked; // Flag to indicate if this block was leaked and therefore
                  // should not be in the linked list.  This is used to mark
@@ -32,6 +34,50 @@ static MemoryHeader* g_memory_head        = NULL;
 static u64           g_memory_index       = 0; // Global index for allocations
 static u64           g_memory_break_index = 0; // Index to break on allocation
 #endif                                         // CONFIG_DEBUG
+
+// Static initialization permits tracking before core initialization and after
+// shutdown. Never call Nerd allocation or output helpers while holding this
+// lock.
+#if OS_WINDOWS
+static SRWLOCK g_memory_mutex = SRWLOCK_INIT;
+internal void  mem_lock(void) { AcquireSRWLockExclusive(&g_memory_mutex); }
+internal void  mem_unlock(void) { ReleaseSRWLockExclusive(&g_memory_mutex); }
+#else
+static pthread_mutex_t g_memory_mutex = PTHREAD_MUTEX_INITIALIZER;
+internal void          mem_lock(void) { pthread_mutex_lock(&g_memory_mutex); }
+internal void mem_unlock(void) { pthread_mutex_unlock(&g_memory_mutex); }
+#endif
+
+#if CONFIG_DEBUG
+// Caller holds the bookkeeping lock. Untracked application-lifetime blocks
+// retain their size and can still be reallocated or freed by another thread.
+internal void mem_unlink(MemoryHeader* header)
+{
+    if (header->leaked) {
+        return;
+    }
+    if (header->prev) {
+        header->prev->next = header->next;
+    } else {
+        g_memory_head = header->next;
+    }
+    if (header->next) {
+        header->next->prev = header->prev;
+    }
+    header->prev = NULL;
+    header->next = NULL;
+}
+
+internal void mem_link(MemoryHeader* header)
+{
+    header->prev = NULL;
+    header->next = g_memory_head;
+    if (g_memory_head) {
+        g_memory_head->prev = header;
+    }
+    g_memory_head = header;
+}
+#endif
 
 static MemoryStats g_memory_stats = {0};
 
@@ -52,7 +98,13 @@ internal void mem_stats_sub_heap_current(usize size)
     g_memory_stats.heap_current_bytes -= size;
 }
 
-MemoryStats mem_stats_snapshot(void) { return g_memory_stats; }
+MemoryStats mem_stats_snapshot(void)
+{
+    mem_lock();
+    MemoryStats snapshot = g_memory_stats;
+    mem_unlock();
+    return snapshot;
+}
 
 MemoryStats mem_stats_delta(MemoryStats before, MemoryStats after)
 {
@@ -123,28 +175,42 @@ void mem_stats_print_delta(cstr stage, cstr phase, MemoryStats stats)
 
 void mem_stats_record_arena_init(usize bytes_committed)
 {
+    mem_lock();
     g_memory_stats.arena_init_count++;
-    mem_stats_record_arena_commit(bytes_committed);
+    g_memory_stats.arena_commit_count++;
+    g_memory_stats.arena_bytes_committed += bytes_committed;
+    mem_unlock();
 }
 
-void mem_stats_record_arena_done(void) { g_memory_stats.arena_done_count++; }
+void mem_stats_record_arena_done(void)
+{
+    mem_lock();
+    g_memory_stats.arena_done_count++;
+    mem_unlock();
+}
 
 void mem_stats_record_arena_commit(usize bytes_committed)
 {
+    mem_lock();
     g_memory_stats.arena_commit_count++;
     g_memory_stats.arena_bytes_committed += bytes_committed;
+    mem_unlock();
 }
 
 void mem_stats_record_arena_alloc(usize bytes_allocated)
 {
+    mem_lock();
     g_memory_stats.arena_alloc_count++;
     g_memory_stats.arena_bytes_allocated += bytes_allocated;
+    mem_unlock();
 }
 
 void mem_stats_record_array_growth(usize bytes_allocated)
 {
+    mem_lock();
     g_memory_stats.array_growth_count++;
     g_memory_stats.array_bytes_allocated += bytes_allocated;
+    mem_unlock();
 }
 
 void* mem_alloc(usize size, const char* file, int line)
@@ -156,6 +222,7 @@ void* mem_alloc(usize size, const char* file, int line)
     }
 
     header->size = size;
+    mem_lock();
     g_memory_stats.heap_alloc_count++;
     g_memory_stats.heap_bytes_allocated += size;
     mem_stats_add_heap_current(size);
@@ -172,10 +239,10 @@ void* mem_alloc(usize size, const char* file, int line)
     }
 
     // Add to linked list
-    header->next  = g_memory_head;
-    g_memory_head = header;
+    mem_link(header);
 #endif // CONFIG_DEBUG
 
+    mem_unlock();
     return (void*)(header + 1);
 }
 
@@ -193,22 +260,11 @@ void* mem_realloc(void* ptr, usize size, const char* file, int line)
     bool was_leaked = old_header->leaked;
 #endif // CONFIG_DEBUG
 
-// Remove old header from linked list
 #if CONFIG_DEBUG
-    if (!old_header->leaked) {
-        if (g_memory_head == old_header) {
-            g_memory_head = old_header->next;
-        } else {
-            MemoryHeader* current = g_memory_head;
-            while (current && current->next != old_header) {
-                current = current->next;
-            }
-            if (current) {
-                current->next = old_header->next;
-            }
-        }
-    }
-#endif // CONFIG_DEBUG
+    mem_lock();
+    mem_unlink(old_header);
+    mem_unlock();
+#endif
 
     MemoryHeader* header =
         (MemoryHeader*)realloc(old_header, sizeof(MemoryHeader) + size);
@@ -218,6 +274,7 @@ void* mem_realloc(void* ptr, usize size, const char* file, int line)
     }
 
     header->size = size;
+    mem_lock();
     g_memory_stats.heap_realloc_count++;
     g_memory_stats.heap_bytes_reallocated += size;
     if (size >= old_size) {
@@ -238,11 +295,11 @@ void* mem_realloc(void* ptr, usize size, const char* file, int line)
 
     // Add new header to linked list only if it's not leaked
     if (!header->leaked) {
-        header->next  = g_memory_head;
-        g_memory_head = header;
+        mem_link(header);
     }
 #endif // CONFIG_DEBUG
 
+    mem_unlock();
     return (void*)(header + 1);
 }
 
@@ -256,26 +313,15 @@ void* mem_free(void* ptr, const char* file, int line)
     }
 
     MemoryHeader* header = (MemoryHeader*)ptr - 1;
+    mem_lock();
     g_memory_stats.heap_free_count++;
     g_memory_stats.heap_bytes_freed += header->size;
     mem_stats_sub_heap_current(header->size);
 
 #if CONFIG_DEBUG
-    // Remove from linked list
-    if (!header->leaked) {
-        if (g_memory_head == header) {
-            g_memory_head = header->next;
-        } else {
-            MemoryHeader* current = g_memory_head;
-            while (current && current->next != header) {
-                current = current->next;
-            }
-            if (current) {
-                current->next = header->next;
-            }
-        }
-    }
+    mem_unlink(header);
 #endif // CONFIG_DEBUG
+    mem_unlock();
 
     free(header);
     return nullptr;
@@ -300,20 +346,10 @@ void mem_leak(void* ptr)
     }
 
     MemoryHeader* header = (MemoryHeader*)ptr - 1;
-    header->leaked       = true; // Mark this block as leaked
-
-    // Remove from linked list if it exists
-    if (g_memory_head == header) {
-        g_memory_head = header->next;
-    } else {
-        MemoryHeader* current = g_memory_head;
-        while (current && current->next != header) {
-            current = current->next;
-        }
-        if (current) {
-            current->next = header->next;
-        }
-    }
+    mem_lock();
+    mem_unlink(header);
+    header->leaked = true;
+    mem_unlock();
 
 #else
     UNUSED(ptr);
@@ -324,7 +360,9 @@ void mem_leak(void* ptr)
 void mem_break_on_alloc(u64 index)
 {
 #if CONFIG_DEBUG
+    mem_lock();
     g_memory_break_index = index;
+    mem_unlock();
 #else
     UNUSED(index);
 #endif
@@ -335,40 +373,53 @@ void mem_break_on_alloc(u64 index)
 // Memory debugging utilities
 void mem_print_leaks(void)
 {
+    mem_lock();
     MemoryHeader* current      = g_memory_head;
     usize         leak_count   = 0;
     usize         total_leaked = 0;
 
     if (!current) {
+        mem_unlock();
         return;
     }
 
-    eprn(ANSI_BOLD_RED "┌──────────────────────────────────────┐" ANSI_RESET);
-    eprn(ANSI_BOLD_RED "│        Memory leaks detected         │" ANSI_RESET);
-    eprn(ANSI_BOLD_RED "└──────────────────────────────────────┘" ANSI_RESET);
+    fprintf(stderr,
+            ANSI_BOLD_RED "┌──────────────────────────────────────┐" ANSI_RESET
+                          "\n");
+    fprintf(stderr,
+            ANSI_BOLD_RED "│        Memory leaks detected         │" ANSI_RESET
+                          "\n");
+    fprintf(stderr,
+            ANSI_BOLD_RED "└──────────────────────────────────────┘" ANSI_RESET
+                          "\n");
 
     while (current) {
-        eprn(ANSI_FAINT " %s" ANSI_RESET ANSI_BOLD "[%zu]" ANSI_RESET
-                        " %s:%d " ANSI_BOLD_YELLOW "%zu bytes" ANSI_RESET,
-             UNICODE_TREE_BRANCH,
-             current->index,
-             current->file,
-             current->line,
-             current->size);
+        fprintf(stderr,
+                ANSI_FAINT " %s" ANSI_RESET ANSI_BOLD "[%zu]" ANSI_RESET
+                           " %s:%d " ANSI_BOLD_YELLOW "%zu bytes" ANSI_RESET
+                           "\n",
+                UNICODE_TREE_BRANCH,
+                current->index,
+                current->file,
+                current->line,
+                current->size);
 
         total_leaked += current->size;
         leak_count++;
         current = current->next;
     }
 
-    eprn(" " ANSI_FAINT UNICODE_TREE_LAST_BRANCH ANSI_RESET ANSI_BOLD_RED
-         "Total:" ANSI_RESET " %zu leaks, %zu bytes",
-         leak_count,
-         total_leaked);
+    fprintf(stderr,
+            " " ANSI_FAINT UNICODE_TREE_LAST_BRANCH ANSI_RESET ANSI_BOLD_RED
+            "Total:" ANSI_RESET " %zu leaks, %zu bytes\n",
+            leak_count,
+            total_leaked);
+    mem_unlock();
 }
 
 usize mem_get_allocation_count(void)
 {
+    mem_lock();
     usize         count   = 0;
     MemoryHeader* current = g_memory_head;
 
@@ -377,11 +428,13 @@ usize mem_get_allocation_count(void)
         current = current->next;
     }
 
+    mem_unlock();
     return count;
 }
 
 usize mem_get_total_allocated(void)
 {
+    mem_lock();
     usize         total   = 0;
     MemoryHeader* current = g_memory_head;
 
@@ -390,6 +443,7 @@ usize mem_get_total_allocated(void)
         current = current->next;
     }
 
+    mem_unlock();
     return total;
 }
 

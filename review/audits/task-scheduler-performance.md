@@ -106,6 +106,10 @@ Limit total concurrency when a test worker launches a multithreaded compiler.
 
 ### Thread-safety blockers found in source
 
+These are the original audit findings. M3 progress below records the subsequent
+diagnostic ownership and allocator bookkeeping fixes; task metrics and other
+shared compiler state still need preparation before enabling workers.
+
 * **Allocation tracking:** [`memory.c`](../../src/core/memory.c) updates global
   `g_memory_stats`; debug builds also mutate a linked allocation list and index.
   Separate arenas alone do not fix these races. Protect debug bookkeeping;
@@ -261,8 +265,11 @@ Result lifetimes and partial cleanup are now explicit. Task-owned diagnostic
 contexts and deep-owned deferred queues are also implemented; see
 [the diagnostic ownership report](../measurements/compiler-m3-diagnostics.md).
 The coordinator replays diagnostics in stable order; rendering still uses its
-global temporary arena. Next: safe allocator bookkeeping, task metrics and
-portable worker primitives, plus the remaining borrowed-input audit.
+global temporary arena. Allocator bookkeeping now has synchronized global
+counters and a protected debug list, with cross-thread ownership stress tests;
+see [the allocator report](../measurements/compiler-m3-memory.md).
+Next: task-local metrics and portable worker primitives, plus the remaining
+borrowed-input audit. Measure allocator lock contention when workers exist.
 LLVM rendering remains serial; M3 is not yet complete.
 The [M1 evidence](../measurements/compiler-m1.md) revises the initial hypotheses:
 usage-context inference, name-conflict scans and source-line lookup are measured

@@ -298,6 +298,9 @@ typedef struct {
     usize array_bytes_allocated;
 } MemoryStats;
 
+// Process-wide, coherent bookkeeping snapshot. Deltas across concurrent work
+// include every thread; they are not task-local attribution. Individual blocks
+// and arenas still require exclusive ownership or caller synchronization.
 MemoryStats mem_stats_snapshot(void);
 MemoryStats mem_stats_delta(MemoryStats before, MemoryStats after);
 bool        mem_stats_profile_enabled(void);

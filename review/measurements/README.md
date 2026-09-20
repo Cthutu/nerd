@@ -31,3 +31,5 @@ Current backend timing notes:
   single-core overhead/output-identity check before introducing workers.
 - `compiler-m3-diagnostics.md`: task-owned diagnostic queues, lifetime and output
   parity checks, and single-core overhead before introducing workers.
+- `compiler-m3-memory.md`: synchronized allocator bookkeeping, cross-thread
+  ownership tests and serial overhead measurements.

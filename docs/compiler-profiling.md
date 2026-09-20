@@ -33,6 +33,8 @@ Phase records contain:
   bytes and array growths. `heap_live_bytes` and `heap_peak_bytes` are cumulative
   tracked heap snapshots, not per-phase RSS. Arena commitments are cumulative
   new commitments during the phase, not current live arena memory.
+  Snapshots are synchronized and process-wide. Deltas would include unrelated
+  concurrent tasks; task-local attribution remains part of scheduler preparation.
 
 Dependency records contain `module` and `dependency` source paths, including
 implicit core imports. The loader emits them after successful semantic analysis.
