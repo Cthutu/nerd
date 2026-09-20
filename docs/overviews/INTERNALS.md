@@ -634,3 +634,19 @@ callers use the existing finish-and-emit wrapper. Dependency records, human
 timing tables and legacy memory-profile output still require coordinator or
 serial use. Worker primitives, the borrowed-input audit and lock-contention
 measurement remain; the compiler still runs sequentially.
+
+Core worker primitives use pthread threads/conditions on POSIX and
+`_beginthreadex` plus Windows condition variables on Windows. `Thread` is
+zero-initialized storage owned by one coordinator. Its address and callback
+arguments must remain stable from start through successful join; do not copy
+or move a live thread. Failed creation resets the slot, duplicate starts fail,
+and joins release/reset successfully joined slots. Joining unstarted or already
+joined slots succeeds, allowing partial-start cleanup. Join failure retains the
+handle so callers cannot silently free live worker storage. Workers are never
+detached or asynchronously cancelled.
+
+Condition waits release and reacquire the associated mutex. Callers protect a
+predicate with that mutex and recheck it in a loop, including a stop predicate
+for shutdown. The coordinator wakes stopped workers and joins them before
+destroying synchronization objects or task input/result storage. These are
+primitives only: normal compiler builds do not create workers yet.

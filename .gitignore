@@ -7,6 +7,8 @@ package-lock.json
 tests/**/*.ir
 tests/**/*.c
 !tests/core/memory-concurrency.c
+!tests/core/thread-lifecycle.c
+!tests/core/thread-create-failure.c
 !tests/ffi/*.c
 tests/**/*.out
 tests/**/*.pdb

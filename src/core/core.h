@@ -34,7 +34,7 @@
 // [Library]            Library initialisation and shutdown
 // [Memory]             Memory management functions
 // [Array]              Dynamic array implementation
-// [Mutex]              Simple locking for resource protection
+// [Mutex]              Locking, joinable threads and condition variables
 // [Output]             Basic output to stdout and stderr
 // [Arena]              Memory management via arenas and paging
 // [Time]               Various cross-platform functions for handling time
@@ -539,9 +539,44 @@ typedef pthread_mutex_t Mutex;
 #endif
 
 void mutex_init(Mutex* mutex);
+// New worker startup paths can propagate native initialization failure.
+bool mutex_init_checked(Mutex* mutex);
 void mutex_done(Mutex* mutex);
 void mutex_lock(Mutex* mutex);
 void mutex_unlock(Mutex* mutex);
+
+// Joinable worker primitives. Zero-initialize Thread and keep its address and
+// argument storage stable until a successful join. One coordinator owns start/
+// join; workers must not manipulate their own Thread. No detached workers.
+typedef void (*ThreadFunction)(void* argument);
+typedef struct {
+#if OS_WINDOWS
+    HANDLE handle;
+#else
+    pthread_t handle;
+#endif
+    ThreadFunction function;
+    void*          argument;
+    bool           started;
+} Thread;
+
+bool thread_start(Thread* thread, ThreadFunction function, void* argument);
+// An unstarted/already joined thread succeeds. Failure retains the live handle.
+bool thread_join(Thread* thread);
+
+#if OS_WINDOWS
+typedef CONDITION_VARIABLE Condition;
+#else
+typedef pthread_cond_t Condition;
+#endif
+bool condition_init(Condition* condition);
+// Destroy successfully initialized conditions only after all waiters have
+// joined. Wait requires the mutex held and returns with it held; always recheck
+// the predicate in a loop after waking.
+void condition_done(Condition* condition);
+bool condition_wait(Condition* condition, Mutex* mutex);
+void condition_signal(Condition* condition);
+void condition_broadcast(Condition* condition);
 
 //------------------------------------------------------------------------------[Output]
 

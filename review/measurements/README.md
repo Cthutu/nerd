@@ -35,3 +35,5 @@ Current backend timing notes:
   ownership tests and serial overhead measurements.
 - `compiler-m3-metrics.md`: thread-local activity, deferred render timing records,
   concurrent attribution tests and serial overhead measurements.
+- `compiler-m3-threads.md`: portable worker primitives, lifecycle/failure tests
+  and the initial LLVM shared-input review.

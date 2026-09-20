@@ -25,7 +25,8 @@ def main():
             output = Path(directory) / ('memory.exe' if os.name == 'nt' else 'memory')
             command = cc + flags + (['-DNDEBUG'] if release else []) + [
                 str(ROOT / 'tests/core/memory-concurrency.c'),
-                str(ROOT / 'src/core/memory.c'), '-o', str(output)]
+                str(ROOT / 'src/core/memory.c'),
+                str(ROOT / 'src/core/thread.c'), '-o', str(output)]
             subprocess.run(command, check=True)
             for _ in range(3):
                 result = subprocess.run([str(output)], capture_output=True,

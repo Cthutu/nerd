@@ -271,7 +271,12 @@ see [the allocator report](../measurements/compiler-m3-memory.md).
 Thread-local allocation activity and value-only render timing records now
 separate task measurement from coordinator reporting; see
 [the metrics report](../measurements/compiler-m3-metrics.md).
-Next: portable worker primitives and the remaining borrowed-input audit.
+Portable joinable threads and condition variables now have lifecycle, native
+creation-failure and sanitizer tests; see
+[the worker preparation report](../measurements/compiler-m3-threads.md).
+The report also records the first pass over LLVM render inputs and the lifetime
+requirements for the emission-scoped name index. Next: finish the borrowed-input
+audit and add concurrent-render stress coverage before connecting a bounded pool.
 Measure allocator lock contention when workers exist. Legacy memory-profile
 output and human timing aggregation still belong on the coordinator.
 LLVM rendering remains serial; M3 is not yet complete.

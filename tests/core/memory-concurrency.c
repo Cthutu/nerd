@@ -107,39 +107,7 @@ static void work(usize id)
     }
 }
 
-#if OS_WINDOWS
-static DWORD WINAPI entry(void* arg)
-{
-    work((usize)arg);
-    return 0;
-}
-typedef HANDLE    TestThread;
-static TestThread start(usize id)
-{
-    HANDLE thread = CreateThread(NULL, 0, entry, (void*)id, 0, NULL);
-    assert(thread != NULL);
-    return thread;
-}
-static void join(TestThread thread)
-{
-    assert(WaitForSingleObject(thread, INFINITE) == WAIT_OBJECT_0);
-    assert(CloseHandle(thread));
-}
-#else
-static void* entry(void* arg)
-{
-    work((usize)arg);
-    return NULL;
-}
-typedef pthread_t TestThread;
-static TestThread start(usize id)
-{
-    pthread_t thread;
-    assert(pthread_create(&thread, NULL, entry, (void*)id) == 0);
-    return thread;
-}
-static void join(TestThread thread) { assert(pthread_join(thread, NULL) == 0); }
-#endif
+static void entry(void* arg) { work((usize)arg); }
 
 int main(void)
 {
@@ -154,16 +122,17 @@ int main(void)
     MemoryStats local_before = mem_stats_thread_snapshot();
     for (phase = 0; phase < 3; ++phase) {
         atomic_store(&finished, false);
-        TestThread observer = start(WORKERS);
-        TestThread threads[WORKERS];
+        Thread observer         = {0};
+        Thread threads[WORKERS] = {0};
+        assert(thread_start(&observer, entry, (void*)(usize)WORKERS));
         for (usize i = 0; i < WORKERS; ++i) {
-            threads[i] = start(i);
+            assert(thread_start(&threads[i], entry, (void*)i));
         }
         for (usize i = 0; i < WORKERS; ++i) {
-            join(threads[i]);
+            assert(thread_join(&threads[i]));
         }
         atomic_store(&finished, true);
-        join(observer);
+        assert(thread_join(&observer));
 #if CONFIG_DEBUG
         usize expected = phase == 0   ? WORKERS * SLOTS
                          : phase == 1 ? WORKERS * SLOTS / 2
