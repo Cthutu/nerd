@@ -44,6 +44,23 @@ The installed compiler invokes LLVM tools directly and never invokes Clang.
   failed callbacks, empty batches, clamping and repeated reuse.
 - Native Windows/macOS execution remains pending.
 
+## Subsequent Pixels runtime finding
+
+The user reported an immediate Pixels crash after this slice. A release binary
+built by the pre-scheduler compiler also crashes. The direct toolchain passed
+IR without a target to `opt`, allowing optimization with a generic data layout
+that disagreed with native `llc`. Supplying the same explicit native triple to
+both tools fixes the headless pixel-layer reproducer and the graphics program.
+The toolchain suite now executes that reproducer in debug and release mode.
+After the fix, all 1,121 compiler tests pass. A live X11 smoke check of Pixels
+with debug/release builds and jobs 1/4 verifies varied rendered pixel colors
+and clean Escape-to-quit behavior; debugger stepping also passes.
+
+The timings below are historical compilation measurements. The runners checked
+IR identity but did not execute the real example binaries, so they did not
+establish runtime correctness for Pixels. Release performance must be measured
+again with the corrected optimization target before an adoption decision.
+
 ## Measurement method
 
 Both benchmark compilers are release builds. The serial comparison uses baseline

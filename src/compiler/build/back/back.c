@@ -843,33 +843,65 @@ back_end_run_tool(Arena* arena, string command, cstr ir, cstr runtime)
                                         arena, result, command, ir, runtime);
 }
 
+// opt must know the native target before any layout-sensitive optimization.
+// With no triple it uses a generic data layout, which can disagree with llc
+// about field offsets and allocation sizes (notably i64 alignment on x86-64).
+internal cstr back_end_native_llvm_triple(void)
+{
+#if ARCH_X86_64
+#    if OS_WINDOWS
+    return "x86_64-pc-windows-msvc";
+#    elif OS_MACOS
+    return "x86_64-apple-darwin";
+#    elif OS_LINUX
+    return "x86_64-unknown-linux-gnu";
+#    endif
+#elif ARCH_ARM64
+#    if OS_WINDOWS
+    return "aarch64-pc-windows-msvc";
+#    elif OS_MACOS
+    return "arm64-apple-darwin";
+#    elif OS_LINUX
+    return "aarch64-unknown-linux-gnu";
+#    endif
+#endif
+    return NULL;
+}
+
 internal bool back_end_compile_object(Arena*                    arena,
                                       const NerdArtifactConfig* artifacts,
                                       cstr combined_llvm_path,
                                       cstr object_path)
 {
+    cstr triple = back_end_native_llvm_triple();
+    if (triple == NULL) {
+        return error_runtime("Unsupported native LLVM target");
+    }
     cstr input     = combined_llvm_path;
     cstr optimized = NULL;
     if (artifacts->release) {
         optimized = back_end_cstr(
             arena, string_format(arena, "%s.opt.bc", object_path));
         nerd_side_file_register_cleanup(artifacts->side_files, optimized);
-        string command =
-            string_format(arena,
-                          "opt \"-passes=default<O2>\" -o \"%s\" \"%s\"",
-                          optimized,
-                          input);
+        string command = string_format(
+            arena,
+            "opt --mtriple=%s \"-passes=default<O2>\" -o \"%s\" \"%s\"",
+            triple,
+            optimized,
+            input);
         if (!back_end_run_tool(arena, command, input, NULL)) {
             return false;
         }
         input = optimized;
     }
-    string command = string_format(
-        arena,
-        "llc -filetype=obj -relocation-model=pic -O%s -o \"%s\" \"%s\"",
-        artifacts->release ? "2" : "0",
-        object_path,
-        input);
+    string command =
+        string_format(arena,
+                      "llc --mtriple=%s -filetype=obj -relocation-model=pic "
+                      "-O%s -o \"%s\" \"%s\"",
+                      triple,
+                      artifacts->release ? "2" : "0",
+                      object_path,
+                      input);
     if (!back_end_run_tool(arena, command, combined_llvm_path, NULL)) {
         return false;
     }

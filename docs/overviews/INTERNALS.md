@@ -132,6 +132,14 @@ The back end currently runs:
 4. release IR optimisation through `opt`, followed by `llc` object generation
 5. linking with the embedded Nerd runtime through the platform LLVM linker
 
+Both `opt` and `llc` receive the same explicit native target triple, selected
+from the compiler's architecture and host OS (x86-64/AArch64 on Linux, Windows
+or macOS). `opt` must select the target data layout before optimization;
+otherwise its generic layout can disagree with `llc` about aggregate field
+offsets. This caused release-only corruption of Pixels' layer data pointer.
+The headless pixel-layer regression runs allocation, painting and cleanup in
+debug/release mode through the production toolchain, including parallel renders.
+
 `nerd doctor` checks the LLVM executables and host SDK, then exercises this
 pipeline with a temporary executable. Nerd does not invoke Clang; C emission is
 an independent compatibility output. See [toolchain setup](../toolchain.md) for

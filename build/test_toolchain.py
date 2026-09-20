@@ -64,15 +64,16 @@ def main():
         # Exercise opt on real ownership, atomic and variadic lowering, not just
         # a constant-return program. Both target modes must retain behavior.
         for name in ['242-run-atomic-operators', '298-run-variadic-promotions',
-                     '308-run-shutdown-watcher']:
+                     '308-run-shutdown-watcher', '316-run-pixel-layer-layout']:
             fixture = ROOT / 'tests/commands' / (name + '.cmd')
             source.write_text(fixture.read_text().split('¬')[0])
             behaviors = []
             for release in [[], ['-r']]:
-                run('build', *release, source, '-o', executable)
+                run('build', *release, '--jobs', 4, source, '-o', executable)
                 result = subprocess.run([str(executable)], env=env, capture_output=True)
                 behaviors.append((result.returncode, result.stdout, result.stderr))
             assert behaviors[0] == behaviors[1], (name, behaviors)
+            assert behaviors[0][0] == 0, (name, behaviors)
         source.write_text('main :: fn () -> i32 { return 0 }\n')
         assert not list(work.glob('*.obj.o'))
         assert not list(work.glob('*.opt.bc'))
