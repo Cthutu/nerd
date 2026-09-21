@@ -51,3 +51,7 @@ Current backend timing notes:
 - `compiler-m5-front-end.md`: completed Linux M5 ownership/scheduling and
   graph/sanitizer gates, paired timings, worker scaling, and the decision to
   retain the one-job default because gains are mixed.
+
+- `compiler-main-to-m5.md`: fresh cumulative comparison against original `main`,
+  including installed baseline, one-core checking/full builds, incremental
+  worker scaling, byte-identical LLVM and raw five-sample measurements.
