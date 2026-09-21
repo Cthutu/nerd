@@ -1,0 +1,40 @@
+{
+  "platform": "Linux-7.2.6-1-cachyos-x86_64-with-glibc2.44",
+  "native_windows": false,
+  "python": "3.14.7 (main, Aug 13 2026, 07:40:04) [GCC 16.2.1 20260810]",
+  "logical_cpus": 32,
+  "commit": "bb2c441b7bf5459fc82c5771802c280c07b302e2",
+  "branch": "experiment/task-scheduler-performance",
+  "working_tree_at_start": "?? validation/",
+  "selection": [
+    "threads"
+  ],
+  "status": "passed",
+  "stages": [
+    {
+      "name": "threads",
+      "command": [
+        "/usr/bin/python3",
+        "build/test_threads.py"
+      ],
+      "cwd": "/home/matt/nerd",
+      "started_utc": "2026-09-21T19:29:54.915170+00:00",
+      "log": "threads.log",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 1.166
+    }
+  ],
+  "tool_paths": {
+    "clang": "/usr/bin/clang",
+    "opt": "/usr/bin/opt",
+    "llc": "/usr/bin/llc",
+    "llvm-lib": "/usr/bin/llvm-lib",
+    "lld-link": "/usr/bin/lld-link",
+    "lldb": null,
+    "just": "/home/matt/.cargo/bin/just",
+    "git": "/usr/bin/git",
+    "uv": "/home/matt/.local/bin/uv"
+  },
+  "finished_utc": "2026-09-21T19:29:56.081282+00:00"
+}

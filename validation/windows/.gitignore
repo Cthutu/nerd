@@ -1,0 +1,3 @@
+# Commit reports and logs, but not compiler/runtime scratch artifacts.
+results/**/scratch/
+*.pyc
