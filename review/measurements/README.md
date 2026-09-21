@@ -55,3 +55,8 @@ Current backend timing notes:
 - `compiler-main-to-m5.md`: fresh cumulative comparison against original `main`,
   including installed baseline, one-core checking/full builds, incremental
   worker scaling, byte-identical LLVM and raw five-sample measurements.
+
+- [M8 adoption decision](../audits/compiler-m8-adoption.md): final fixed-compiler
+  serial/scaling measurements, CPU work and memory limits, task granularity and
+  shared-core ownership review. Raw results are in `compiler-m8-adoption/`.
+  Default remains one job; native Windows/macOS gates remain outstanding.

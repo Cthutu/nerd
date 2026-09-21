@@ -1,7 +1,9 @@
 # Compiler task scheduling and single-core performance
 
-Status (2026-09-20): M1–M5 complete for the Linux experiment. M8 adoption
-gates remain open; measured gains are mixed and the default remains one job.
+Status (2026-09-21): M1–M5 complete for the Linux experiment. The
+[M8 Linux adoption review](compiler-m8-adoption.md) is complete: retain one job
+by default and keep scheduling opt-in. Native Windows/macOS adoption gates
+remain open. The imported-generic correctness bug is fixed in `590105cd`.
 See [M5 results and limits](../measurements/compiler-m5-front-end.md).
 Audit date: 2026-09-19. Source baseline: `a15e965dcfd4c554cc7691a82786142f74031eab`.
 Branch: `experiment/task-scheduler-performance`.
@@ -229,7 +231,7 @@ allocation and timing notes are useful hypotheses, not current baselines.
 | M5 — module front end (complete on Linux) | Separate discovery/checking; stable registry; parallel sibling parse/HIR; dependency-ready sema with exclusive import closures | Diamond/duplicate/cyclic/missing/conditional imports; shared FFI symbols; identical diagnostics; randomized completion stress |
 | M6 — C emission (deferred) | Reconsider only if compatibility workloads justify it | One C file; preserve compatibility and initialization behavior |
 | M7 — LLVM tooling (implemented separately) | Direct LLVM tooling and linking, plus `nerd doctor` | No Clang invocation by Nerd; preserve output modes, debugging, FFI and runtime behavior |
-| M8 — adoption decision | Worker default and task-size thresholds backed by data | Cross-platform validation and documented regressions/tradeoffs; accept or stop individual experiments |
+| M8 — adoption decision (Linux review complete; native gates open) | One-job default retained; automatic thresholds/sizing and finer-grained semantic scheduling deferred | [Decision and evidence](compiler-m8-adoption.md); cross-platform validation still required before broader adoption |
 
 M2 and M3 are independent after M1; M4 requires M3. M5 follows evidence
 from M4. M6 is deferred. M7 records the architectural correction implemented outside
@@ -310,10 +312,11 @@ and pass both sanitizers. Graph/diagnostic/C/HIR/LLVM/runtime gates pass.
 
 One-job timings and maximum-process RSS are essentially unchanged. Added
 front-end concurrency does not consistently improve whole builds; the paired
-four-job Pixels debug run regressed 8.7%. Default jobs stays one. M8 should
-resolve native-platform checks, memory sizing and the case for finer-grained
-semantic ownership or task thresholds before any default adoption. M6 C-render
-parallelism stays deferred. Normal binary generation still uses LLVM tooling
+four-job Pixels debug run regressed 8.7%. The M8 follow-up retains one job by
+default: the final sweep's best real-workload gain was about 7.2%, below the 15%
+adoption gate. Automatic memory sizing, source-size thresholds and finer-grained
+semantic ownership are deferred; native-platform validation remains outstanding.
+M6 C-render parallelism stays deferred. Normal binary generation still uses LLVM tooling
 and never invokes Clang.
 The [M1 evidence](../measurements/compiler-m1.md) revises the initial hypotheses:
 usage-context inference, name-conflict scans and source-line lookup are measured

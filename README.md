@@ -96,7 +96,8 @@ LLVM backend status:
   concurrently, plus semantic checking of independent import closures. `-j 4` is
   equivalent; the default is one job. The count includes the calling thread
   (1–256), capped by ready work. Checking of shared import closures, final
-  merging, LLVM tools and C emission remain serial.
+  merging, LLVM tools and C emission remain serial. Parallel jobs remain opt-in;
+  see the [adoption decision and measurements](review/audits/compiler-m8-adoption.md).
 - `nerd build --cgen source.n` generates a standalone `source.c` from HIR.
   Compile it with `clang source.c $(nerd build --copts source.n) -o source`.
   `--copts` prints Clang arguments, including external libraries, without building.

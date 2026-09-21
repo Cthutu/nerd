@@ -721,9 +721,13 @@ not isolate queue-mutex contention or pure native-thread API costs. Startup
 failure emits zero completed tasks before the normal error. Single-job mode
 retains per-module profiles without a parallel-batch record.
 
-C generation/options and `run` remain serial. There is no automatic memory budget
-or worker sizing yet; the default remains one. `build/test_jobs.py` exercises
-production CLI parity and failure cleanup, including optional full-compiler
+C rendering, tool-option queries and `run` remain serial; `build --cgen` can
+use the scheduled front end. There is no automatic memory budget or worker sizing;
+the M8 adoption review retains one job by default. Batches with fewer than two
+tasks run inline; explicit larger job counts remain bounded by available work.
+Source-size thresholds and sharing imported semantic state are deferred because
+measurements do not justify default parallel adoption. `build/test_jobs.py`
+exercises production CLI parity and failure cleanup, including optional full-compiler
 ThreadSanitizer/AddressSanitizer builds.
 
 Record-literal semantic inference copies the enclosing record's type layout
