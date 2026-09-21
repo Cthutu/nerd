@@ -766,3 +766,14 @@ this preserves the first diagnostic even when discovery reaches a later parse
 error before an earlier semantic error. Error-only global suggestions also use
 the serial retry. Custom source loaders, partial-result tooling, verbose dumps
 and legacy memory profiling keep the original serial front end.
+
+### Imported generic identity
+
+HIR keeps the semantic analyzer's selected specialization symbol on generic
+symbol references and explicit type-argument indexes. LLVM emission resolves
+imported specializations by that symbol's text in the source lexer; type IDs
+are module-local and cannot be compared across caller and source tables.
+Explicit specializations also resolve as function values, not just direct calls.
+The front-end scheduling suite exercises distinct specializations of a shared
+import, inferred calls and function values through LLVM and generated C, with
+runtime checks at each worker count.

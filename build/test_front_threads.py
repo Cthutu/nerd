@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import random
+import shlex
 import subprocess
 import tempfile
 
@@ -67,7 +68,7 @@ def main():
             'leaf.n': 'pub id :: fn [T] (value: T) -> T { return value }\n'
                       'pub ffi "c" { absolute :: abs (value: i32) -> i32 }\n',
             'left.n': 'use leaf\npub value :: fn () -> i32 { return absolute(id[i32](-7)) }\n',
-            'right.n': 'use leaf\npub value :: fn () -> i32 { return id[i32](7) }\n',
+            'right.n': 'use leaf\npub value :: fn () -> i32 { _x := id[i64](7)\n return 7 }\n',
             'main.n': 'left :: use left\nright :: use right\nduplicate :: use left\n'
                       'main :: fn () -> i32 { return left.value() + right.value() + duplicate.value() - 21 }\n',
         }))
@@ -78,6 +79,18 @@ def main():
                       'on "never_enabled" { missing :: use missing }\n'
                       'main :: fn () -> i32 { return pack.first() }\n',
         }))
+        runtime_cases = valid[:]
+        diamond = valid[0].parent
+        for name, body in [
+            ('explicit', 'return id[i64](7).as(i32)'),
+            ('inferred', 'return id(7.as(i64)).as(i32)'),
+            ('function-value', 'f := id[i64]\n return f(7).as(i32)'),
+        ]:
+            files = {p.name: p.read_text() for p in diamond.glob('*.n')}
+            files['right.n'] = 'use leaf\npub value :: fn () -> i32 { ' + body + ' }\n'
+            source = case('diamond-' + name, files)
+            valid.append(source)
+            runtime_cases.append(source)
         inputs = generate_inputs(work / 'shapes', modules=12, functions=32)
         valid += list(inputs.values())
         for fixture in ['128-generic-functions', '196-plex-use', '077-enum-discriminants']:
@@ -90,9 +103,23 @@ def main():
             for flags in [(), ('-r',), ('--cgen',)]:
                 reference = run(source, 1, flags)
                 assert reference[0] == 0, reference[2]
+                def check_runtime():
+                    if source not in list(inputs.values()) + runtime_cases:
+                        return
+                    if '--cgen' in flags:
+                        # Clang is only a compatibility-output test driver.
+                        opts = subprocess.run([str(nerd), 'build', '--copts', str(source)],
+                                              env=env, capture_output=True, text=True, check=True)
+                        subprocess.run(['clang', '-Werror', str(output.with_suffix('.c')),
+                                        *shlex.split(opts.stdout), '-o', str(output)],
+                                       check=True, timeout=60)
+                    subprocess.run([str(output)], check=True, timeout=10)
+
+                check_runtime()
                 for jobs in [2, 4, 8]:
                     actual = run(source, jobs, flags)
                     assert actual[:5] == reference[:5], (source, flags, jobs, actual[2])
+                    check_runtime()
                     # Successful inputs must exercise discovery/check separation,
                     # not silently obtain parity through the serial retry.
                     parse_end = max(r['start_ns'] + r['wall_ns'] for r in actual[5]
@@ -100,8 +127,6 @@ def main():
                     check_start = min(r['start_ns'] for r in actual[5]
                                       if r.get('phase') == 'analyse AST semantics')
                     assert check_start >= parse_end, (source, 'unexpected serial retry')
-                if source in list(inputs.values()) + valid[:2] and '--cgen' not in flags:
-                    subprocess.run([str(output)], check=True, timeout=10)
             print('[PASS] front-end output identity:', source.parent.name, source.name, flush=True)
 
         failures = [

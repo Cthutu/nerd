@@ -1922,7 +1922,9 @@ internal u32 hir_lower_expr(Hir*         hir,
                     : sema_no_decl();
             if (selected_compound_decl != sema_no_decl()) {
                 decl_index = selected_compound_decl;
-            } else if (!hir_is_compile_time_specialization(sema,
+            } else if ((decl_index == sema_no_decl() ||
+                        sema->decls[decl_index].kind != SK_GenericFunction) &&
+                       !hir_is_compile_time_specialization(sema,
                                                            lowered_symbol)) {
                 lowered_symbol = node->a;
             }
@@ -2428,17 +2430,21 @@ internal u32 hir_lower_expr(Hir*         hir,
                 });
         }
     case AK_Index:
-        return hir_add_expr(hir,
-                            (HirExpr){
-                                .kind       = HIR_EXPR_Index,
-                                .type_index = hir_node_type(sema, node_index),
-                                .symbol_handle      = U32_MAX,
-                                .local_index        = sema_no_local(),
-                                .operand_expr_index = hir_lower_expr(
-                                    hir, lexer, ast, sema, node->a),
-                                .extra_expr_index = hir_lower_expr(
-                                    hir, lexer, ast, sema, node->b),
-                            });
+        return hir_add_expr(
+            hir,
+            (HirExpr){
+                .kind       = HIR_EXPR_Index,
+                .type_index = hir_node_type(sema, node_index),
+                .symbol_handle =
+                    node_index < array_count(sema->node_lowered_symbol_handles)
+                        ? sema->node_lowered_symbol_handles[node_index]
+                        : U32_MAX,
+                .local_index = sema_no_local(),
+                .operand_expr_index =
+                    hir_lower_expr(hir, lexer, ast, sema, node->a),
+                .extra_expr_index =
+                    hir_lower_expr(hir, lexer, ast, sema, node->b),
+            });
     case AK_Tuple:
     case AK_Array:
         {

@@ -58,8 +58,8 @@ func fn.0(self: Point) -> string {
   return string interpolate(<unknown> "Point(", i32 field(Point local.0(self), x), <unknown> ", ", i32 field(Point local.0(self), y), <unknown> ")")
 }
 func fn.1() -> i32 {
-  let point: Point = Point call decl.3(id)(Point plex(x: i32 3, y: i32 4))
-  return i32 add(i32 add(i32 add(i32 field(Point local.1(point), x), i32 field(Point local.1(point), y)), i32 cast(usize field(string call decl.4(describe)(Point local.1(point)), count) as i32)), i32 cast(usize field(string call decl.5(describe_explicit)(Point local.1(point)), count) as i32))
+  let point: Point = Point call decl.3(id_g_55ae2fd0)(Point plex(x: i32 3, y: i32 4))
+  return i32 add(i32 add(i32 add(i32 field(Point local.1(point), x), i32 field(Point local.1(point), y)), i32 cast(usize field(string call decl.4(describe_g_55a3e630)(Point local.1(point)), count) as i32)), i32 cast(usize field(string call decl.5(describe_explicit_g_54ec9b50)(Point local.1(point)), count) as i32))
 }
 inst func fn.2(value: Point) -> Point {
   return Point local.2(value)

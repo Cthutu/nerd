@@ -1630,7 +1630,6 @@ internal bool llvm_import_source_generic_function(const Sema*      sema,
                                                   const Lexer*     lexer,
                                                   const HirImport* import,
                                                   u32 callee_symbol_handle,
-                                                  u32 callee_type,
                                                   const Hir** out_hir,
                                                   u32* out_function_index)
 {
@@ -1669,11 +1668,9 @@ internal bool llvm_import_source_generic_function(const Sema*      sema,
             callee_name.count > 0 && inst_symbol != U32_MAX &&
             string_eq(callee_name, lex_symbol(source_lexer, inst_symbol));
 
-        bool no_type_discriminator = callee_type == sema_no_type() ||
-                                     llvm_type_is_void(sema, callee_type);
-        if ((template_matches || symbol_matches) &&
-            (no_type_discriminator || function->type_index == callee_type ||
-             symbol_matches)) {
+        // Type indices belong to separate module tables. The selected
+        // specialization symbol is the identity shared by caller and source.
+        if (symbol_matches) {
             *out_hir            = hir;
             *out_function_index = i;
             return true;
@@ -8350,7 +8347,6 @@ internal bool llvm_callee_name(LlvmFunctionContext* ctx,
                                                     ctx->lexer,
                                                     import,
                                                     callee->symbol_handle,
-                                                    callee->type_index,
                                                     &source_hir,
                                                     &function_index)) {
                 *out = llvm_function_name_string(
@@ -8443,7 +8439,6 @@ internal bool llvm_callee_name(LlvmFunctionContext* ctx,
                                                     ctx->lexer,
                                                     import,
                                                     callee->symbol_handle,
-                                                    callee->type_index,
                                                     &source_hir,
                                                     &function_index)) {
                 *out = llvm_function_name_string(
@@ -8673,6 +8668,36 @@ internal bool llvm_explicit_generic_function_index(LlvmFunctionContext* ctx,
     return false;
 }
 
+internal bool llvm_imported_generic_callee_name(LlvmFunctionContext* ctx,
+                                                const HirExpr*       callee,
+                                                string*              out)
+{
+    if (callee->kind == HIR_EXPR_Index &&
+        llvm_type_is_function(ctx->sema, callee->type_index) &&
+        callee->operand_expr_index < array_count(ctx->hir->exprs)) {
+        const HirExpr* target = &ctx->hir->exprs[callee->operand_expr_index];
+        if (target->kind == HIR_EXPR_LocalRef &&
+            target->ref_kind == HIR_REF_Binding) {
+            const HirImport* import =
+                llvm_binding_import(ctx->hir, target->ref_index);
+            const Hir* source_hir      = NULL;
+            u32        source_fn_index = U32_MAX;
+            if (import != NULL &&
+                llvm_import_source_generic_function(ctx->sema,
+                                                    ctx->lexer,
+                                                    import,
+                                                    callee->symbol_handle,
+                                                    &source_hir,
+                                                    &source_fn_index)) {
+                *out = llvm_function_name_string(
+                    source_hir, ctx->lexer, ctx->arena, source_fn_index);
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 internal bool llvm_generic_callee_name_for_call(LlvmFunctionContext* ctx,
                                                 const HirExpr*       call,
                                                 string*              out)
@@ -8696,31 +8721,7 @@ internal bool llvm_generic_callee_name_for_call(LlvmFunctionContext* ctx,
             ctx->hir, ctx->lexer, ctx->arena, function_index);
         return true;
     }
-    if (callee->kind == HIR_EXPR_Index &&
-        llvm_type_is_function(ctx->sema, callee->type_index) &&
-        callee->operand_expr_index < array_count(ctx->hir->exprs)) {
-        const HirExpr* target = &ctx->hir->exprs[callee->operand_expr_index];
-        if (target->kind == HIR_EXPR_LocalRef &&
-            target->ref_kind == HIR_REF_Binding) {
-            const HirImport* import =
-                llvm_binding_import(ctx->hir, target->ref_index);
-            const Hir* source_hir      = NULL;
-            u32        source_fn_index = U32_MAX;
-            if (import != NULL &&
-                llvm_import_source_generic_function(ctx->sema,
-                                                    ctx->lexer,
-                                                    import,
-                                                    target->symbol_handle,
-                                                    callee->type_index,
-                                                    &source_hir,
-                                                    &source_fn_index)) {
-                *out = llvm_function_name_string(
-                    source_hir, ctx->lexer, ctx->arena, source_fn_index);
-                return true;
-            }
-        }
-    }
-    return false;
+    return llvm_imported_generic_callee_name(ctx, callee, out);
 }
 
 internal string llvm_cast_instruction(LlvmFunctionContext* ctx,
@@ -10911,6 +10912,13 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                                                        ctx->arena,
                                                        generic_function_index),
                 };
+            }
+
+            string imported_name = {0};
+            if (llvm_imported_generic_callee_name(ctx, expr, &imported_name)) {
+                return (LlvmValue){.ok         = true,
+                                   .type_index = expr->type_index,
+                                   .value      = imported_name};
             }
 
             if (expr->operand_expr_index < array_count(ctx->hir->exprs)) {
