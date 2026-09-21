@@ -24,7 +24,8 @@ def overlap(records, phase):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--nerd', type=Path, default=ROOT / '_bin/nerd-debug')
+    parser.add_argument('--nerd', type=Path,
+                        default=ROOT / '_bin' / ('nerd-debug.exe' if os.name == 'nt' else 'nerd-debug'))
     parser.add_argument('--sanitize', choices=['thread', 'address'])
     args = parser.parse_args()
     with tempfile.TemporaryDirectory(prefix='nerd-front-threads-') as directory:
@@ -35,7 +36,7 @@ def main():
                    NERD_DEBUG_KEEP_LINK_LLVM='1')
         for name in ['NERD_MEMORY_PROFILE', 'NERD_PROFILE_LOCKS', 'NERD_DEBUG_LLVM_SIDECARS']:
             env.pop(name, None)
-        output = work / 'program'
+        output = work / 'program.exe'
 
         def run(source, jobs, flags=(), library=None):
             settings = env if library is None else dict(env, NERD_LIB_PATH=library)
@@ -82,9 +83,9 @@ def main():
         runtime_cases = valid[:]
         diamond = valid[0].parent
         for name, body in [
-            ('explicit', 'return id[i64](7).as(i32)'),
-            ('inferred', 'return id(7.as(i64)).as(i32)'),
-            ('function-value', 'f := id[i64]\n return f(7).as(i32)'),
+            ('explicit', 'on id[i64](4294967303) != 4294967303 => return 99\n return 7'),
+            ('inferred', 'x: i64 = 4294967303\n on id(x) != 4294967303 => return 99\n return 7'),
+            ('function-value', 'f := id[i64]\n on f(4294967303) != 4294967303 => return 99\n return 7'),
         ]:
             files = {p.name: p.read_text() for p in diamond.glob('*.n')}
             files['right.n'] = 'use leaf\npub value :: fn () -> i32 { ' + body + ' }\n'
