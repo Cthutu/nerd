@@ -100,7 +100,8 @@ LLVM backend status:
   see the [adoption decision and measurements](review/audits/compiler-m8-adoption.md).
   `--jobs auto` experimentally selects half the available logical CPUs (rounded
   down, minimum 1, maximum 256); explicit numeric counts remain overrides.
-  This selects a ceiling, not an adaptive workload policy yet. Omitted `--jobs`
+  Small batches and batches dominated by one task use fewer workers or run inline.
+  Automatic dispatch estimates parse/HIR/LLVM work separately. Omitted `--jobs`
   stays at 1 until the [adaptive-default plan](review/audits/task-scheduler-performance.md#adaptive-performance-default--follow-up-plan-2026-09-22)
   passes its adoption gates.
 - `nerd build --cgen source.n` generates a standalone `source.c` from HIR.

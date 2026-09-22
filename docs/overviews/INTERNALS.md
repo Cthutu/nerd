@@ -839,8 +839,8 @@ before default adoption. The platform-specific Windows behavior follows the
 Core lifecycle tests cover rounding, zero/one-CPU fallback and the 256-worker
 cap. Production jobs tests restrict inherited affinity to exercise available-CPU
 counts, verify numeric overrides and the unchanged serial default, and compare
-LLVM/C output and executable results. Work estimation, dispatch thresholds and
-worker reuse belong to M10; shared semantic ownership is unchanged.
+LLVM/C output and executable results. M10 adds work estimation and dispatch
+thresholds below; shared semantic ownership is unchanged.
 
 ### Adaptive dispatch experiment (M10)
 
@@ -852,8 +852,8 @@ total work and work outside its largest task. Small or dominated batches run
 inline. Numeric jobs bypass this policy. Shared semantic closures retain their
 existing exclusive ownership rule.
 
-The initial opt-in calibration uses grains of 65,536 source bytes, 8,192 AST
-nodes and 512 HIR nodes. These are experimental policy parameters, not universal
+The second opt-in calibration uses grains of 16,384 source bytes, 2,048 AST
+nodes and 1,024 HIR nodes. These are experimental policy parameters, not universal
 crossover claims or a memory budget. `NERD_PROFILE=1` reports
 `scheduler-policy` records with phase, ceiling, selected jobs and work estimates.
 Front-end decisions are buffered with phase results so a discarded speculative

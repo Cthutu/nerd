@@ -88,6 +88,10 @@ internal thread_local ProgramTaskResult* program_task_result;
 internal void program_task_policy(
     cstr phase, u32 ceiling, u32 jobs, CompilerTaskWork work, u64 grain)
 {
+    const char* profile = getenv("NERD_PROFILE");
+    if (profile == NULL || strcmp(profile, "1") != 0) {
+        return;
+    }
     if (program_task_result != NULL) {
         array_push(program_task_result->phases,
                    ((ProgramPhaseResult){.phase = phase, .policy = true,

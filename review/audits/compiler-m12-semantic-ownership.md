@@ -20,6 +20,7 @@ The relevant mutation paths in `src/compiler/sema/sema.c` are:
 | `sema_instantiate_imported_generic_function` | Imports argument types into the defining module, resolves constraints there, then instantiates the body there |
 | `sema_emit_generic_function_instantiation` | Appends type parameter metadata, symbols, locals/scopes, specialization records and per-node tables; snapshots restore selected node tables, not all appended state |
 | Trait-constraint and method selection | Imports receiver types into the defining module, resolves types/constraints and may instantiate a generic method or infer its signature |
+| Constant evaluation through const signatures | `sema_try_eval_integer_constant` casts away constness to resolve enum/type expressions; returning a const imported view alone does not make this call tree immutable |
 | HIR and LLVM consumers | Read specialization symbols, root scopes, function types and saved node tables from the owning semantic module |
 
 `SemaGenericFnInstantiation` in `sema.h` contains ten copied node tables plus

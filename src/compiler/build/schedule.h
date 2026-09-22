@@ -22,10 +22,11 @@ static inline void compiler_task_work_add(CompilerTaskWork* work, u64 weight)
     }
 }
 
-// Initial calibration candidates, to be measured before adoption.
-#define COMPILER_PARSE_GRAIN 65536
-#define COMPILER_HIR_GRAIN 8192
-#define COMPILER_RENDER_GRAIN 512
+// Opt-in Linux calibration B; see review/measurements/compiler-m10-adaptive.md.
+// Native validation and default adoption remain separate gates.
+#define COMPILER_PARSE_GRAIN 16384
+#define COMPILER_HIR_GRAIN 2048
+#define COMPILER_RENDER_GRAIN 1024
 
 static inline u32
 compiler_task_jobs(u32 ceiling, CompilerTaskWork work, u64 grain)

@@ -144,6 +144,12 @@ def main():
                         assert batches[0]['slots'] == min(expected, batches[0]['modules'])
                     assert reference == {p.name: p.read_bytes() for p in work.glob('*.ll')}
                     subprocess.run([str(output)], check=True, timeout=10)
+        # Small/dominated batches should not create a worker pool even when
+        # the CPU ceiling allows it. Numeric overrides above still do.
+        _, tiny_auto = run('--jobs', 'auto', inputs['tiny'], '-o', work / 'tiny-auto.exe')
+        policies = [r for r in tiny_auto if r['kind'] == 'scheduler-policy']
+        assert policies and all(r['jobs'] == 1 for r in policies), policies
+        assert not any(r['kind'] == 'scheduler' for r in tiny_auto)
         _, default = run(*flags)
         assert not any(r['kind'] == 'scheduler' for r in default), 'Default changed before adoption gate'
         run('--cgen', '--jobs', 1, source, '-o', work / 'auto.c')
