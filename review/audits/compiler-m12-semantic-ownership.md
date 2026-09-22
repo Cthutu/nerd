@@ -1,7 +1,8 @@
 # M12: semantic ownership design
 
-Status: design and mutation inventory, 2026-09-22. Implementation and adoption
-are not complete. This is a separate experiment from M9–M11 and does not change
+Status: Linux design/feasibility investigation complete, 2026-09-22. The
+module-level ownership implementation is not adopted after the headroom analysis
+below. This is a separate experiment from M9–M11 and does not change
 the default worker count or remove closure exclusion.
 
 ## What prevents shared-core concurrency
@@ -71,3 +72,51 @@ M12a must precede changing task eligibility. The existing closure scheduler stay
 in production while these interfaces are introduced. M12 cannot be called
 complete on the strength of a design document or a thread-count change. Native
 validation and implementation remain outstanding; there is no claimed speedup.
+
+## Feasibility result: module-level redesign does not meet the target
+
+Before changing ownership, `build/semantic_headroom.py` models ideal module
+checking from saved jobs=1 profiles. It uses unlimited workers, fixed measured
+per-module semantic weights and only the recorded import dependencies. It
+ignores shared-core exclusion, scheduling/transfer costs and unrecorded implicit
+edges, making it deliberately optimistic. This is a model from single profiled
+samples, not measured parallel execution or a bound on every possible redesign.
+Known independent/chain/diamond graphs and invalid graphs test the analysis.
+
+| Workload, debug target | Semantic sum | Dependency critical path | Optimistic whole-profile gain |
+| --- | ---: | ---: | ---: |
+| Pixels, policy-B sweep serial sample | 62.50 ms | 60.07 ms | 1.09% |
+| Quill, policy-B sweep serial sample | 6.87 ms | 4.51 ms | 2.98% |
+| Dungeon, full sweep serial sample | 62.51 ms | 60.89 ms | 0.09% |
+| Wide synthetic, 48 functions/module | 5.32 ms | 0.57 ms | 6.38% |
+| Deep synthetic, 48 functions/module | 5.57 ms | 5.32 ms | 0.33% |
+| Large single module | 47.61 ms | 47.39 ms | 0.19% |
+
+The same model reports source-to-IR headroom separately: Pixels debug 2.0%,
+Quill 10.4%, wide synthetic 16.7%, deep 0.9%, and one large module 0.3%. This
+supports focusing on the heavy dependency chain or finer task granularity rather
+than treating all source-to-IR workloads as equally parallelizable.
+
+Pixels' expensive frame → OpenGL → gfx checks lie on one dependency chain.
+Removing the implicit-core conflict cannot parallelize that chain. The full
+sweep's independent profile gives the same conclusion (Pixels 0.88%, Quill
+3.45%, Dungeon 0.09%). Release whole-build headroom is smaller for the real
+inputs. Raw model outputs are `semantic-headroom*.json` in
+`review/measurements/compiler-m10-adaptive/`.
+
+Decision: do not undertake the above ownership implementation solely to meet the
+15% whole-build target with the existing module task granularity. The M12
+feasibility/design investigation is complete on the measured Linux inputs; its
+implementation is deliberately not adopted. This does not assert that semantic
+parallelism is impossible. Splitting declaration/signature preparation from
+function-body checking changes the dependency graph and requires a separate
+measurement/design experiment. Single-core improvements in the heavy modules
+can also save time without introducing that ownership model. The implementation
+sequence above is retained as a design, not reported as completed code.
+
+Reproduce the model with:
+
+```sh
+python3 build/test_semantic_headroom.py
+python3 build/semantic_headroom.py review/measurements/compiler-m10-adaptive/m10-policy-b.json.gz --output /tmp/semantic-headroom.json
+```

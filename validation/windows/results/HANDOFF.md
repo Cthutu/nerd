@@ -192,3 +192,12 @@ or zero-memory failures rather than accepting missing counters. Windows counters
 cover the compiler only; whole-tree CPU/memory remains unmeasured. Review the
 new README accounting section and `review/audits/compiler-m12-semantic-ownership.md`.
 M12's shared-core exclusion must remain until its ownership redesign is proven.
+
+Linux M10 completion: the full suite and ASan/TSan passed with adaptive dispatch.
+The retained policy uses parse/HIR/render grains 16384/2048/1024. Nine-sample
+unrestricted Linux results give Pixels debug about 5% improvement, far below the
+15% adoption target; omitted jobs remains one. M12's optimistic dependency-graph
+model finds only about 1% module-level whole-build headroom on Pixels and below
+0.1% on Dungeon. Its module-level ownership implementation was not adopted;
+see the feasibility decision in the M12 design. Do not report these native
+validation gates as passed until the updated runner actually runs on Windows.

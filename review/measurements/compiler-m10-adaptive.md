@@ -99,12 +99,16 @@ selected render count. Profiling-disabled builds do not allocate policy records.
 
 `just test` passed: 1,122 fixtures, zero failures, nine platform skips;
 280 C differential fixtures at both optimization levels, including Dungeon
-rendering and Q-to-quit parity. Sanitizer results are recorded below once complete. Windows's
+rendering and Q-to-quit parity. The expanded front-end suite and core lifecycle suite also pass AddressSanitizer
+and ThreadSanitizer. The final release compiler also passes the production jobs
+and front-end suites with the retained policy. Compressed logs are retained alongside the measurements. Windows's
 updated runner includes auto/16-worker measurements and a known CPU/memory child
 sanity check. Its new native accounting path still requires execution on Windows;
 compiler-only Windows counters must not be equated with POSIX descendant totals.
 
 M12's [ownership design](../audits/compiler-m12-semantic-ownership.md) is separate
 work. It identifies imported generic and trait mutations and the required
-canonical identities, request publication and continuation boundaries. It is not
-an implemented semantic-parallelism feature, and shared-core exclusion remains.
+canonical identities, request publication and continuation boundaries. Its ideal dependency-graph model finds only about 1% module-level whole-build
+headroom on Pixels and below 0.1% on Dungeon. The module-level ownership redesign
+is therefore not adopted for the current performance objective. It is not an
+implemented semantic-parallelism feature, and shared-core exclusion remains.

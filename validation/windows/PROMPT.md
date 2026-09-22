@@ -11,7 +11,8 @@ audit, plan, first failure, or a request to approve routine fixes or commits.
 - Work on `experiment/task-scheduler-performance`. Do not merge into `main`,
   delete branches, force-push, or overwrite unrelated user changes.
 - Read the repository's applicable `AGENTS.md` instructions if any, `CODEX.md`,
-  `validation/windows/README.md`, and `review/audits/compiler-m8-adoption.md`.
+  `validation/windows/README.md`, `review/audits/compiler-m8-adoption.md`, and
+  the follow-up milestones in `review/audits/task-scheduler-performance.md`.
 - Nerd's normal source-to-binary pipeline invokes LLVM tooling directly:
   `opt`, `llc`, and platform linker/archive tools. **Never add a Clang fallback
   to Nerd.** Clang may build Nerd itself or externally compile compatibility C.

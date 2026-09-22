@@ -1,0 +1,126 @@
+{
+  "input": "review/measurements/compiler-m10-adaptive/m10-policy-b.json.gz",
+  "model": "unlimited workers, fixed serial module weights, recorded dependency edges only",
+  "runs": [
+    {
+      "optimistic_source_to_ir_gain_percent": 0.37255629872458773,
+      "scenario": "tiny",
+      "target": "debug",
+      "modules": 2,
+      "semantic_serial_ns": 238749,
+      "semantic_critical_path_ns": 232828,
+      "optimistic_saved_ns": 5921,
+      "optimistic_whole_profile_gain_percent": 0.024912166835531692
+    },
+    {
+      "optimistic_source_to_ir_gain_percent": 0.538689930185712,
+      "scenario": "tiny",
+      "target": "release",
+      "modules": 2,
+      "semantic_serial_ns": 226337,
+      "semantic_critical_path_ns": 220435,
+      "optimistic_saved_ns": 5902,
+      "optimistic_whole_profile_gain_percent": 0.018962441514265654
+    },
+    {
+      "optimistic_source_to_ir_gain_percent": 2.001510641752388,
+      "scenario": "pixels",
+      "target": "debug",
+      "modules": 10,
+      "semantic_serial_ns": 62500853,
+      "semantic_critical_path_ns": 60068156,
+      "optimistic_saved_ns": 2432697,
+      "optimistic_whole_profile_gain_percent": 1.0873639380389613
+    },
+    {
+      "optimistic_source_to_ir_gain_percent": 2.1506446041451466,
+      "scenario": "pixels",
+      "target": "release",
+      "modules": 10,
+      "semantic_serial_ns": 61351982,
+      "semantic_critical_path_ns": 59430317,
+      "optimistic_saved_ns": 1921665,
+      "optimistic_whole_profile_gain_percent": 0.5677574970881549
+    },
+    {
+      "optimistic_source_to_ir_gain_percent": 10.397290909441848,
+      "scenario": "quill",
+      "target": "debug",
+      "modules": 10,
+      "semantic_serial_ns": 6865548,
+      "semantic_critical_path_ns": 4511548,
+      "optimistic_saved_ns": 2354000,
+      "optimistic_whole_profile_gain_percent": 2.9797437802627065
+    },
+    {
+      "optimistic_source_to_ir_gain_percent": 13.774997793455418,
+      "scenario": "quill",
+      "target": "release",
+      "modules": 10,
+      "semantic_serial_ns": 6295244,
+      "semantic_critical_path_ns": 4161770,
+      "optimistic_saved_ns": 2133474,
+      "optimistic_whole_profile_gain_percent": 2.3753549715388145
+    },
+    {
+      "optimistic_source_to_ir_gain_percent": 16.69810488916962,
+      "scenario": "wide",
+      "target": "debug",
+      "modules": 18,
+      "semantic_serial_ns": 5316351,
+      "semantic_critical_path_ns": 570613,
+      "optimistic_saved_ns": 4745738,
+      "optimistic_whole_profile_gain_percent": 6.382806111251539
+    },
+    {
+      "optimistic_source_to_ir_gain_percent": 32.365396885542296,
+      "scenario": "wide",
+      "target": "release",
+      "modules": 18,
+      "semantic_serial_ns": 5428693,
+      "semantic_critical_path_ns": 597584,
+      "optimistic_saved_ns": 4831109,
+      "optimistic_whole_profile_gain_percent": 3.7613985185469394
+    },
+    {
+      "optimistic_source_to_ir_gain_percent": 0.8659338930878728,
+      "scenario": "deep",
+      "target": "debug",
+      "modules": 18,
+      "semantic_serial_ns": 5570257,
+      "semantic_critical_path_ns": 5318333,
+      "optimistic_saved_ns": 251924,
+      "optimistic_whole_profile_gain_percent": 0.32864598010134455
+    },
+    {
+      "optimistic_source_to_ir_gain_percent": 1.499932411675169,
+      "scenario": "deep",
+      "target": "release",
+      "modules": 18,
+      "semantic_serial_ns": 5510267,
+      "semantic_critical_path_ns": 5286015,
+      "optimistic_saved_ns": 224252,
+      "optimistic_whole_profile_gain_percent": 0.17626545124842144
+    },
+    {
+      "optimistic_source_to_ir_gain_percent": 0.31667995412806266,
+      "scenario": "large",
+      "target": "debug",
+      "modules": 2,
+      "semantic_serial_ns": 47609747,
+      "semantic_critical_path_ns": 47388982,
+      "optimistic_saved_ns": 220765,
+      "optimistic_whole_profile_gain_percent": 0.19021424664685407
+    },
+    {
+      "optimistic_source_to_ir_gain_percent": 0.39382342195507436,
+      "scenario": "large",
+      "target": "release",
+      "modules": 2,
+      "semantic_serial_ns": 47431471,
+      "semantic_critical_path_ns": 47214894,
+      "optimistic_saved_ns": 216577,
+      "optimistic_whole_profile_gain_percent": 0.23539566398615352
+    }
+  ]
+}
