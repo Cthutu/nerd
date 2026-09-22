@@ -604,7 +604,6 @@ typedef enum {
     TASK_RUN_OK,
     TASK_RUN_FAILED,
     TASK_RUN_START_FAILED,
-    TASK_RUN_INVALID_GRAPH,
 } TaskRunStatus;
 // Finite index queue, at most jobs concurrent callbacks including the caller.
 // jobs=1 runs inline without synchronization. All started workers are joined
@@ -612,26 +611,6 @@ typedef enum {
 // finish.
 TaskRunStatus
 task_run(usize count, u32 jobs, TaskFunction function, void* context);
-
-// Persistent dependency scheduler. Nodes/edges and callback context are borrowed
-// until run returns. One coordinator owns run/destroy; callbacks must not wait
-// for queued work or destroy their pool. Failure drains in-flight callbacks.
-typedef struct TaskPool TaskPool;
-typedef struct {
-    TaskFunction function;
-    void*        context;
-    usize        index;
-} TaskNode;
-typedef struct { usize before, after; } TaskEdge;
-TaskPool* task_pool_create(u32 jobs);
-void task_pool_destroy(TaskPool* pool);
-TaskRunStatus task_pool_run(TaskPool* pool, const TaskNode* nodes, usize count,
-                            const TaskEdge* edges, usize edge_count);
-
-// Run with a smaller callback budget while retaining the pool's native workers.
-TaskRunStatus task_pool_run_jobs(TaskPool* pool, u32 jobs,
-                                 const TaskNode* nodes, usize count,
-                                 const TaskEdge* edges, usize edge_count);
 
 //------------------------------------------------------------------------------[Output]
 

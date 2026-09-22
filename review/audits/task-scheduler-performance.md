@@ -14,10 +14,12 @@ See [M5 results and limits](../measurements/compiler-m5-front-end.md).
 Audit date: 2026-09-19. Source baseline: `a15e965dcfd4c554cc7691a82786142f74031eab`.
 Branch: `experiment/task-scheduler-performance`.
 
-The subsequent [dependency-driven compiler plan](compiler-task-graph.md) introduces
-a persistent work-stealing scheduler and finer pipeline tasks. The module-level
-M12 result above does not bound that new graph, particularly a future split
-between signature preparation and function-body checking.
+The subsequent [dependency-driven compiler experiment](compiler-task-graph.md)
+implemented G1/G2, but was withdrawn after paired measurements failed to show a
+consistent benefit over the simpler batch implementation. G3–G6 are deferred.
+Earlier optimisations and batch parallelism remain. Next candidates are LLVM
+symbol lookup, semantic-analysis costs and the expression-depth crash discovered
+in the temporary large-project benchmark.
 
 ## Recommendation and scope
 

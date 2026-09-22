@@ -2,10 +2,36 @@
 
 2026-09-22, branch `experiment/task-scheduler-performance`.
 
-Implement a persistent work-stealing task scheduler and expose dependencies
-between compiler operations. The previous module-level headroom analysis does
+Historical proposal: implement a persistent work-stealing task scheduler and
+expose dependencies between compiler operations. The previous module-level headroom analysis does
 not bound this architecture: splitting signatures from bodies changes the graph.
 Normal binary production continues through LLVM tooling; Nerd never invokes Clang.
+
+## Decision: experiment withdrawn (2026-09-22)
+
+G1/G2 were implemented and validated, then removed after the paired benchmarks
+failed to establish a consistent gain over the simpler pre-graph implementation.
+The user approved withdrawing this complexity. G3–G6 are deferred; the proposal
+and historical validation below are retained as evidence, not active work.
+
+The compiler again uses the established finite-batch `task_run` implementation.
+Earlier parallel parsing, exclusive semantic-closure batches, HIR and LLVM
+rendering, adaptive opt-in worker selection, and single-core optimisations remain.
+Omitted jobs remains one. Benchmark tools and measurements are retained.
+[Withdrawal validation](../measurements/compiler-task-graph-withdrawal.md)
+records the restored implementation and passing checks.
+
+The temporary large-project experiment found roughly 7–8% speedups with four
+workers on 1,000-module synthetic projects, but compared worker counts within G2,
+not G2 against the earlier scheduler. Background CPU load also limited confidence.
+Those results do not establish a benefit from work stealing.
+
+Next priorities are the linear symbol-list searches during LLVM text combination,
+semantic-analysis costs, and the recursive LLVM expression-emission crash exposed
+by the concentrated synthetic workload. These need separate fixes and measurement;
+this withdrawal does not claim to resolve them. The temporary experiment remains
+in `/tmp/nerd-scale-bench-Xo1BUG` on the originating machine and is not portable
+or durable repository evidence.
 
 ## Milestones
 
@@ -52,7 +78,7 @@ Use real examples and tiny/wide/deep/single-large-module cases. Attribute change
 to the graph/ownership changes separately from scheduler policy. Keep old graphs
 and native handoff evidence so future decisions are reproducible.
 
-## Progress
+## Historical progress before withdrawal
 
 - G1 implemented: persistent pool, dependency validation and ready-queue stealing.
   Linux debug/release, injected partial startup failure, ASan and TSan pass.
@@ -61,7 +87,7 @@ and native handoff evidence so future decisions are reproducible.
   with capacity growth at drained boundaries and per-graph callback budgets.
   Final release output/runtime/diagnostic parity, full suite, ASan and TSan
   pass on Linux. [Validation evidence](../measurements/compiler-task-graph.md)
-  records the exact scope. Native checks pending; G3–G6 remain open.
+  records the exact scope. Native checks were pending; G3–G6 were not implemented.
 
 
 ## G2 performance checkpoint
@@ -71,6 +97,6 @@ against original main and the exact pre-graph revision. Cumulative single-core
 gains remain, but G2 has not established a consistent general scheduler speedup.
 The initial four-worker Pixels improvement reverses in a longer broad-affinity
 repeat; restricting four workers to four physical cores gives about 1% gain.
-Single-worker changes are small. Retain the serial default and carry these
-measurements forward as the baseline for G3–G6; correctness and infrastructure
-completion must not be mistaken for demonstrated performance gains.
+Single-worker changes are small. This checkpoint led to withdrawing G1/G2 and
+deferring G3–G6; correctness and infrastructure completion did not establish
+performance gains.

@@ -335,10 +335,6 @@ internal bool program_hir_task(void* data, usize index)
     return result->success;
 }
 
-internal TaskRunStatus program_run_tasks(ProgramInfo* program, usize count,
-                                         u32 jobs, TaskFunction function,
-                                         void* context);
-
 internal bool program_front_end_generate_hir(ProgramInfo*           program,
                                              const FrontEndOptions* options,
                                              Timing*                timing)
@@ -393,7 +389,7 @@ internal bool program_front_end_generate_hir(ProgramInfo*           program,
         memset(results, 0, count * sizeof(*results));
         ProgramHirTasks tasks = {program, &effective_options, results};
         TaskRunStatus   status =
-            program_run_tasks(program, count, effective_options.jobs, program_hir_task, &tasks);
+            task_run(count, effective_options.jobs, program_hir_task, &tasks);
         for (usize i = 0; i < count; ++i) {
             program_task_publish(&results[i], timing);
         }
@@ -907,12 +903,16 @@ internal bool program_expand_module_parts(ProgramInfo* program,
     return true;
 }
 
-internal bool program_front_end_expand_parts(ProgramInfo*           program,
+internal bool program_front_end_parse_module(ProgramInfo*           program,
                                              NerdSource             source,
                                              const FrontEndOptions* options,
                                              Timing*                timing,
                                              FrontEndState*         front_end)
 {
+    if (!program_front_end_parse_only(source, options, timing, front_end)) {
+        return false;
+    }
+
     NerdSource expanded_source = {0};
     if (!program_expand_module_parts(program,
                                      source,
@@ -932,19 +932,6 @@ internal bool program_front_end_expand_parts(ProgramInfo*           program,
         expanded_source, options, timing, front_end);
 }
 
-internal bool program_front_end_parse_module(ProgramInfo*           program,
-                                             NerdSource             source,
-                                             const FrontEndOptions* options,
-                                             Timing*                timing,
-                                             FrontEndState*         front_end)
-{
-    if (!program_front_end_parse_only(source, options, timing, front_end)) {
-        return false;
-    }
-
-    return program_front_end_expand_parts(program, source, options, timing, front_end);
-}
-
 // Parse siblings ahead of the depth-first loader, without assigning module IDs.
 // A cache entry owns all source/AST storage until the loader adopts it.
 typedef struct {
@@ -957,49 +944,10 @@ typedef struct {
 } ProgramParseEntry;
 
 typedef struct ProgramLoadState {
-    TaskPool* pool;
-    u32 pool_jobs;
     Array(ProgramParseEntry*) parses;
     Array(u32) check_order;
     Array(usize) check_phase_slots;
 } ProgramLoadState;
-
-internal TaskPool* program_task_pool(ProgramInfo* program, u32 jobs)
-{
-    ProgramLoadState* state = program->load_state;
-    if (state->pool == NULL || state->pool_jobs < jobs) {
-        // Grow only at a drained discovery boundary. Small batches must not
-        // eagerly create all requested workers (especially --jobs 256).
-        task_pool_destroy(state->pool);
-        state->pool_jobs = jobs;
-        state->pool = task_pool_create(jobs);
-    }
-    return state->pool;
-}
-
-internal TaskRunStatus program_run_tasks(ProgramInfo* program, usize count,
-                                         u32 jobs, TaskFunction function,
-                                         void* context)
-{
-    if (jobs <= 1 || count <= 1 || program->load_state == NULL) {
-        return task_run(count, jobs, function, context);
-    }
-    if (jobs > count) {
-        jobs = (u32)count;
-    }
-    TaskPool* pool = program_task_pool(program, jobs);
-    if (pool == NULL) {
-        return TASK_RUN_START_FAILED;
-    }
-    Array(TaskNode) nodes = NULL;
-    array_requires_size(nodes, count);
-    for (usize i = 0; i < count; ++i) {
-        nodes[i] = (TaskNode){function, context, i};
-    }
-    TaskRunStatus status = task_pool_run_jobs(pool, jobs, nodes, count, NULL, 0);
-    array_free(nodes);
-    return status;
-}
 
 internal ProgramParseEntry* program_cached_parse(ProgramInfo* program,
                                                  cstr         path)
@@ -1033,67 +981,6 @@ internal bool program_parse_task(void* data, usize index)
     // Keep parsing independent siblings even if one fails. The DFS visit
     // determines which error is observable, not worker completion order.
     return true;
-}
-
-// Each entry owns its diagnostics and source products. Dependency publication
-// makes the lex result visible to parse, even when another worker steals parse.
-internal bool program_parse_stage(void* data, usize stage)
-{
-    ProgramParseEntry* entry = data;
-    if (stage == 0) {
-        error_context_init(&entry->result.diagnostics, ERROR_RENDER_NORMAL, true);
-    }
-    ErrorContext* previous = error_context_select(&entry->result.diagnostics);
-    ProgramTaskResult* previous_task = program_task_result;
-    program_task_result = &entry->result;
-    ProgramFrontEndContext ctx = {
-        .source = entry->source, .options = entry->options,
-        .front_end = &entry->front_end};
-    if (stage == 0) {
-        entry->result.success = program_run_timed(NULL, COMPILER_PHASE_LEX,
-            entry->source.source_path, program_front_end_lex, &ctx);
-    } else if (entry->result.success) {
-        entry->result.success = program_run_timed(NULL, COMPILER_PHASE_PARSE,
-            entry->source.source_path, program_front_end_parse, &ctx);
-        if (entry->result.success) {
-            entry->result.success = program_front_end_expand_parts(
-                &entry->storage, entry->source, &entry->options, NULL,
-                &entry->front_end);
-        }
-    }
-    program_task_result = previous_task;
-    error_context_select(previous);
-    // Preserve independent sibling errors for stable DFS error selection.
-    return true;
-}
-
-internal TaskRunStatus program_parse_graph(ProgramInfo* program,
-                                            Array(ProgramParseEntry*) pending,
-                                            u32 jobs)
-{
-    usize count = array_count(pending);
-    if (jobs <= 1 || count <= 1) {
-        return task_run(count, jobs, program_parse_task, pending);
-    }
-    if (jobs > count) {
-        jobs = (u32)count;
-    }
-    TaskPool* pool = program_task_pool(program, jobs);
-    if (pool == NULL) {
-        return TASK_RUN_START_FAILED;
-    }
-    Array(TaskNode) nodes = NULL;
-    Array(TaskEdge) edges = NULL;
-    for (usize i = 0; i < count; ++i) {
-        array_push(nodes, ((TaskNode){program_parse_stage, pending[i], 0}));
-        array_push(nodes, ((TaskNode){program_parse_stage, pending[i], 1}));
-        array_push(edges, ((TaskEdge){i * 2, i * 2 + 1}));
-    }
-    TaskRunStatus status = task_pool_run_jobs(pool, jobs, nodes,
-        array_count(nodes), edges, array_count(edges));
-    array_free(nodes);
-    array_free(edges);
-    return status;
 }
 
 internal void program_prefetch_imports(ProgramInfo*           program,
@@ -1162,7 +1049,6 @@ internal void program_load_state_done(ProgramInfo* program)
     if (program->load_state == NULL) {
         return;
     }
-    task_pool_destroy(program->load_state->pool);
     for (usize i = 0; i < array_count(program->load_state->parses); ++i) {
         ProgramParseEntry* entry = program->load_state->parses[i];
         if (!entry->adopted) {
@@ -1381,7 +1267,7 @@ internal bool program_check_discovered(ProgramInfo*           program,
         for (usize i = 0; i < array_count(tasks); ++i) {
             program_rebind_sema_programs(&tasks[i].view);
         }
-        TaskRunStatus status = program_run_tasks(program,
+        TaskRunStatus status = task_run(
             array_count(tasks), options->jobs, program_check_task, tasks);
         bool ok = status == TASK_RUN_OK;
         for (usize i = 0; i < array_count(tasks); ++i) {
@@ -1638,10 +1524,10 @@ program_collect_module_dependencies(ProgramInfo*           program,
                                 work, COMPILER_PARSE_GRAIN);
         }
         TaskRunStatus status =
-            program_parse_graph(program, pending, jobs);
+            task_run(array_count(pending), jobs, program_parse_task, pending);
         array_free(pending);
-        if (status != TASK_RUN_OK) {
-            return error_runtime("Failed to run parser task graph");
+        if (status == TASK_RUN_START_FAILED) {
+            return error_runtime("Failed to start parser workers");
         }
     }
     for (u32 i = first_node; i < end_node; ++i) {

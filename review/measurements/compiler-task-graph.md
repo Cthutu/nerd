@@ -6,7 +6,11 @@
 - `55883666`: persistent dependency scheduler and per-worker work stealing.
 - `598a2d1a`: file-stage dependencies, front-end pool reuse and reduced callback budgets.
 
-## Implemented behavior
+G1/G2 were subsequently withdrawn for lack of consistent measured benefit. This
+report records historical validation; it does not describe the current compiler.
+See the plan for the withdrawal decision.
+
+## Historical implemented behavior
 
 Eligible sibling files use a lex node followed by a dependent parse node. The
 coordinator retains stable DFS adoption, source capture and error publication.

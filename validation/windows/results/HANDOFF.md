@@ -202,21 +202,15 @@ model finds only about 1% module-level whole-build headroom on Pixels and below
 see the feasibility decision in the M12 design. Do not report these native
 validation gates as passed until the updated runner actually runs on Windows.
 
-## Dependency scheduler G1/G2 native follow-up
+## Dependency scheduler G1/G2 withdrawn (2026-09-22)
 
-Read `review/audits/compiler-task-graph.md` and its linked validation report.
-The compiler now reuses a persistent work-stealing pool for eligible front-end
-batches, with lex → parse dependencies for sibling files. Semantic import-closure
-exclusion and serial error fallback remain. Pool capacity grows at drained
-boundaries, and smaller batches reuse it with a reduced callback budget.
-Omitted jobs is still one. G3 dynamic discovery and later semantic task changes
-remain open; the previous module-level M12 headroom result does not bound them.
+G1/G2 were removed after the paired Linux benchmarks failed to establish a
+consistent benefit over the previous batch implementation. G3–G6 are deferred.
+The historical plan and validation remain under `review/audits/compiler-task-graph.md`
+and its linked measurements. Do not restore the dependency pool or run its removed
+`task-graph` suite as part of native follow-up.
 
-The updated full Windows runner adds the `task-graph` core suite, covering
-persistent reuse, forced stealing, dependency validation, reduced budgets,
-partial thread startup failure and failure draining. Its production front-end
-suite checks lex-before-parse publication and output/runtime/error parity.
-Linux full suite, release checks and both sanitizers pass; native Windows/macOS
-validation has not been performed for these changes. Run the full native runner,
-retain failures and fixes, and update this handoff without marking Linux evidence
-as native evidence.
+The full Windows runner again uses the established batch scheduler and its core
+thread tests. Earlier adaptive-dispatch validation remains applicable and pending
+on native Windows as described above. Run the current full runner and retain
+native results; Linux validation does not satisfy that gate.
