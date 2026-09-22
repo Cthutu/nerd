@@ -71,3 +71,26 @@ To verify this harness itself (does not validate Windows compiler behavior):
 ```powershell
 python validation/windows/test_runner.py
 ```
+
+## Adaptive scheduling follow-up (M9–M11)
+
+The benchmark now includes jobs `1 2 4 8 16 auto`. Automatic mode chooses a
+half-logical-CPU ceiling and reduces dispatch for small/dominated batches;
+numeric overrides retain their previous behavior. Keep omitted jobs at one
+until the adoption gates in `review/audits/task-scheduler-performance.md` pass.
+
+`benchmark-accounting` verifies a known CPU/memory workload before the benchmark.
+On CPython/Windows the harness reads process times and peak working set through
+the retained process handle. API failures or zero peaks fail visibly. Native
+validation of this new path is required. Windows CPU/RSS counters describe the
+compiler process only, excluding LLVM/linker descendants; elapsed time includes
+the entire build. POSIX wait4 CPU includes waited-for descendants, and RSS is a
+maximum process peak rather than simultaneous process-tree memory. The JSON
+`accounting_scope` field identifies this distinction. Do not compare these CPU
+figures across operating systems as equivalent totals. Whole-tree Windows CPU
+and peak-memory accounting remains an additional adoption measurement.
+
+Review `scheduler-policy` records and the source-to-IR/front-end elapsed spans
+alongside whole-build latency. Policy profiles are separate intrusive runs, not
+latency samples. Report repeated noisy results and failures of the acceptance
+gate; do not enable automatic defaults merely because correctness tests pass.

@@ -46,13 +46,14 @@ def plan(folder: Path) -> list[Stage]:
                             [python, 'build/check_debugger_stepping.py', '--nerd', nerd, '--jobs', '4'], needs))
         stages.append(Stage('editor-' + mode,
                             [python, 'build/check_editor_integrations.py', '--nerd', nerd], needs))
+    stages.append(Stage('benchmark-accounting', [python, 'build/test_benchmark_usage.py']))
     stages.append(Stage('adapter-transforms', [python, 'build/check_debugger_adapter_transforms.py']))
     # Benchmark only after every selected correctness stage succeeds. Never run
     # latency measurements concurrently with compiler builds or other tests.
     needs = tuple(stage.name for stage in stages)
     stages.append(Stage('benchmark', [python, 'build/benchmark_jobs.py', '--nerd',
                                      str(ROOT / '_bin' / ('nerd' + suffix)),
-                                     '--jobs', '1', '2', '4', '8', '--output',
+                                     '--jobs', '1', '2', '4', '8', '16', 'auto', '--output',
                                      str(folder / 'benchmark.json')], needs))
     return stages
 

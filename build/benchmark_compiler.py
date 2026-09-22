@@ -67,11 +67,15 @@ def invoke(command, env):
     if process.returncode:
         raise RuntimeError(f'{command}\n{output}\n{errors}')
     sample = {'wall_ns': elapsed, 'user_seconds': None, 'system_seconds': None,
-              'max_process_rss_bytes': None}
+              'max_process_rss_bytes': None, 'accounting_scope': 'unavailable'}
     if usage:
-        sample.update(user_seconds=usage.ru_utime, system_seconds=usage.ru_stime,
+        sample.update(accounting_scope="wait4-including-waited-children",
+                      user_seconds=usage.ru_utime, system_seconds=usage.ru_stime,
                       max_process_rss_bytes=int(usage.ru_maxrss *
                           (1 if platform.system() == 'Darwin' else 1024)))
+    elif os.name == 'nt':
+        from windows_process_usage import completed_process_usage
+        sample.update(completed_process_usage(process))
     return sample, [json.loads(line[len(PREFIX):]) for line in errors.splitlines()
                     if line.startswith(PREFIX)]
 

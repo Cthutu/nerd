@@ -26,10 +26,15 @@ def main():
                         help='Add a separate intrusive lock-timing run per cell')
     parser.add_argument('--cpus', nargs='+', type=int)
     parser.add_argument('--samples', type=int, default=5)
+    parser.add_argument('--modules', type=int, default=16)
+    parser.add_argument('--functions', type=int, default=48)
+    parser.add_argument('--targets', nargs='+', choices=['debug', 'release'], default=['debug', 'release'])
     parser.add_argument('--scenarios', nargs='+', default=['tiny', 'dungeon', 'pixels', 'quill', 'wide', 'deep', 'large'])
     args = parser.parse_args()
     if args.samples < 1 or any(j != 'auto' and (not j.isdecimal() or not 1 <= int(j) <= 256) for j in args.jobs) or '1' not in args.jobs:
         parser.error('positive samples and worker counts 1-256/auto including 1 are required')
+    if args.modules < 1 or args.functions < 1:
+        parser.error('positive module and function counts are required')
     if args.cpus:
         if not hasattr(os, 'sched_setaffinity'):
             parser.error('--cpus requires Linux affinity support')
@@ -43,6 +48,7 @@ def main():
         'dirty': bool(subprocess.check_output(['git', 'diff', 'HEAD'], cwd=ROOT)),
         'compiler': str(nerd), 'compiler_sha256': digest(nerd), 'platform': platform.platform(),
         'affinity': sorted(os.sched_getaffinity(0)) if hasattr(os, 'sched_getaffinity') else None,
+        'synthetic_modules': args.modules, 'synthetic_functions_per_module': args.functions,
         'jobs': args.jobs, 'samples': args.samples, 'warmups_per_jobs': 1,
         'lock_profile': args.lock_profile,
         'order': 'rotate counts each iteration', 'keep_combined_llvm': True,
@@ -50,14 +56,14 @@ def main():
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='nerd-jobs-bench-') as directory:
         work = Path(directory)
-        inputs = generate_inputs(work)
+        inputs = generate_inputs(work, modules=args.modules, functions=args.functions)
         inputs.update(dungeon=ROOT / 'examples/dungeon/dungeon.n',
                       pixels=ROOT / 'examples/pixels/pixels.n',
                       quill=ROOT / 'examples/text-adventure/quill.n')
         if set(args.scenarios) - inputs.keys():
             parser.error('unknown scenario')
         for scenario in args.scenarios:
-            for target in ['debug', 'release']:
+            for target in args.targets:
                 binary = work / 'program.exe'
                 ir = Path(str(binary) + '.link.ll')
                 tail = ['build', *(['-r'] if target == 'release' else []),
@@ -82,7 +88,13 @@ def main():
                     renders = [r for r in records if r.get('phase') == 'render module LLVM']
                     # An elapsed envelope, not a sum of overlapping task times.
                     span = max(r['start_ns'] + r['wall_ns'] for r in renders) - min(r['start_ns'] for r in renders)
+                    front = [r for r in records if r.get('stage') == 'front-end' and r.get('kind') == 'phase']
+                    combined = [r for r in records if r.get('phase') == 'combine LLVM text']
+                    first_source = min(r['start_ns'] for r in front)
+                    source_to_ir = max(r['start_ns'] + r['wall_ns'] for r in combined) - first_source
+                    front_span = max(r['start_ns'] + r['wall_ns'] for r in front) - first_source
                     row['jobs'][str(jobs)].update(profile_sample=sample, profile=records,
+                        source_to_ir_span_ns=source_to_ir, front_span_ns=front_span,
                         render_span_ns=span, median_wall_ns=statistics.median(
                             s['wall_ns'] for s in row['jobs'][str(jobs)]['samples']))
                     if args.lock_profile:

@@ -181,3 +181,14 @@ They pass on Linux; the earlier Windows evidence does not cover this new code.
 The next native run should repeat the full Windows runner, which automatically
 includes these tests with both compiler configurations. Primary processor-group
 sizing and CPU Sets/job-object budget limitations are documented in INTERNALS.
+
+## Next native run: adaptive dispatch (M10/M11)
+
+Linux implemented work-aware `--jobs auto` with ordered policy profiling and
+LLVM/C/error parity checks. Numeric overrides and omitted jobs=1 are preserved.
+Run the updated full `validation/windows/run.py`; its benchmark includes
+1/2/4/8/16/auto and a new known-workload accounting sanity check. Investigate API
+or zero-memory failures rather than accepting missing counters. Windows counters
+cover the compiler only; whole-tree CPU/memory remains unmeasured. Review the
+new README accounting section and `review/audits/compiler-m12-semantic-ownership.md`.
+M12's shared-core exclusion must remain until its ownership redesign is proven.
