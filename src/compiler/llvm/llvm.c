@@ -9072,6 +9072,131 @@ internal string llvm_emit_element_equality(LlvmFunctionContext* ctx,
     return result;
 }
 
+internal bool llvm_expr_is_eager_binary(const Hir* hir, u32 index)
+{
+    if (index >= array_count(hir->exprs)) {
+        return false;
+    }
+    const HirExpr* expr = &hir->exprs[index];
+    return expr->kind == HIR_EXPR_Binary && expr->binary_op >= HIR_BINARY_Add &&
+           expr->binary_op <= HIR_BINARY_ShiftRight;
+}
+
+internal LlvmValue llvm_emit_eager_binary_values(LlvmFunctionContext* ctx,
+                                                 const HirExpr*       expr,
+                                                 LlvmValue            lhs,
+                                                 LlvmValue            rhs)
+{
+    if (!lhs.ok || !rhs.ok) {
+        return (LlvmValue){0};
+    }
+
+    LlvmValue pointer_arithmetic = {0};
+    if (llvm_emit_pointer_arithmetic(ctx,
+                                     lhs,
+                                     rhs,
+                                     expr->binary_op,
+                                     expr->type_index,
+                                     &pointer_arithmetic)) {
+        return pointer_arithmetic;
+    }
+
+    u32 result_type = expr->type_index;
+    if (llvm_integer_bits(ctx->sema, result_type) == 0 &&
+        llvm_float_bits(ctx->sema, result_type) == 0) {
+        if (llvm_integer_bits(ctx->sema, lhs.type_index) > 0 ||
+            llvm_float_bits(ctx->sema, lhs.type_index) > 0) {
+            result_type = lhs.type_index;
+        } else if (llvm_integer_bits(ctx->sema, rhs.type_index) > 0 ||
+                   llvm_float_bits(ctx->sema, rhs.type_index) > 0) {
+            result_type = rhs.type_index;
+        }
+    }
+    string type = llvm_type_string(ctx, result_type);
+    string temp = llvm_temp(ctx);
+    string instr =
+        llvm_binary_instruction(ctx->sema, result_type, expr->binary_op);
+    if (instr.count == 0) {
+        return (LlvmValue){0};
+    }
+    if (llvm_float_bits(ctx->sema, result_type) > 0) {
+        instr = llvm_float_binary_instruction(expr->binary_op);
+        if (instr.count == 0) {
+            return (LlvmValue){0};
+        }
+    }
+    sb_format(ctx->sb,
+              "  " STRINGP " = " STRINGP " " STRINGP " " STRINGP ", " STRINGP
+              "\n",
+              STRINGV(temp),
+              STRINGV(instr),
+              STRINGV(type),
+              STRINGV(lhs.value),
+              STRINGV(rhs.value));
+    return (LlvmValue){
+        .ok         = true,
+        .type_index = result_type,
+        .value      = temp,
+    };
+}
+
+// Preserve the original tree and left-to-right evaluation, using heap frames
+// for nested arithmetic rather than one large llvm_emit_expr stack frame per
+// operator. Short-circuit and comparison expressions retain their own lowering.
+internal LlvmValue llvm_emit_eager_binary(LlvmFunctionContext* ctx,
+                                          const HirFunction*   function,
+                                          u32                  expr_index)
+{
+    const HirExpr* expr = &ctx->hir->exprs[expr_index];
+    if (!llvm_expr_is_eager_binary(ctx->hir, expr->lhs_expr_index) &&
+        !llvm_expr_is_eager_binary(ctx->hir, expr->rhs_expr_index)) {
+        LlvmValue lhs = llvm_emit_expr(ctx, function, expr->lhs_expr_index);
+        LlvmValue rhs = llvm_emit_expr(ctx, function, expr->rhs_expr_index);
+        return llvm_emit_eager_binary_values(ctx, expr, lhs, rhs);
+    }
+
+    typedef struct {
+        u32       index;
+        bool      have_lhs;
+        LlvmValue lhs;
+    } BinaryFrame;
+    Array(BinaryFrame) frames = NULL;
+    LlvmValue value           = {0};
+    u32       index           = expr_index;
+    for (;;) {
+        while (llvm_expr_is_eager_binary(ctx->hir, index)) {
+            BinaryFrame frame = {.index = index};
+            array_push(frames, frame);
+            index = ctx->hir->exprs[index].lhs_expr_index;
+        }
+        value = llvm_emit_expr(ctx, function, index);
+        if (!value.ok) {
+            break;
+        }
+        while (array_count(frames) > 0) {
+            BinaryFrame*   frame  = &frames[array_count(frames) - 1];
+            const HirExpr* binary = &ctx->hir->exprs[frame->index];
+            if (!frame->have_lhs) {
+                frame->lhs      = value;
+                frame->have_lhs = true;
+                index           = binary->rhs_expr_index;
+                break;
+            }
+            value =
+                llvm_emit_eager_binary_values(ctx, binary, frame->lhs, value);
+            array_pop(frames);
+            if (!value.ok) {
+                break;
+            }
+        }
+        if (!value.ok || array_count(frames) == 0) {
+            break;
+        }
+    }
+    array_free(frames);
+    return value;
+}
+
 internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                                   const HirFunction*   function,
                                   u32                  expr_index)
@@ -10587,59 +10712,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     .value      = result,
                 };
             }
-            LlvmValue lhs = llvm_emit_expr(ctx, function, expr->lhs_expr_index);
-            LlvmValue rhs = llvm_emit_expr(ctx, function, expr->rhs_expr_index);
-            if (!lhs.ok || !rhs.ok) {
-                return (LlvmValue){0};
-            }
-
-            LlvmValue pointer_arithmetic = {0};
-            if (llvm_emit_pointer_arithmetic(ctx,
-                                             lhs,
-                                             rhs,
-                                             expr->binary_op,
-                                             expr->type_index,
-                                             &pointer_arithmetic)) {
-                return pointer_arithmetic;
-            }
-
-            u32 result_type = expr->type_index;
-            if (llvm_integer_bits(ctx->sema, result_type) == 0 &&
-                llvm_float_bits(ctx->sema, result_type) == 0) {
-                if (llvm_integer_bits(ctx->sema, lhs.type_index) > 0 ||
-                    llvm_float_bits(ctx->sema, lhs.type_index) > 0) {
-                    result_type = lhs.type_index;
-                } else if (llvm_integer_bits(ctx->sema, rhs.type_index) > 0 ||
-                           llvm_float_bits(ctx->sema, rhs.type_index) > 0) {
-                    result_type = rhs.type_index;
-                }
-            }
-            string type  = llvm_type_string(ctx, result_type);
-            string temp  = llvm_temp(ctx);
-            string instr = llvm_binary_instruction(
-                ctx->sema, result_type, expr->binary_op);
-            if (instr.count == 0) {
-                return (LlvmValue){0};
-            }
-            if (llvm_float_bits(ctx->sema, result_type) > 0) {
-                instr = llvm_float_binary_instruction(expr->binary_op);
-                if (instr.count == 0) {
-                    return (LlvmValue){0};
-                }
-            }
-            sb_format(ctx->sb,
-                      "  " STRINGP " = " STRINGP " " STRINGP " " STRINGP
-                      ", " STRINGP "\n",
-                      STRINGV(temp),
-                      STRINGV(instr),
-                      STRINGV(type),
-                      STRINGV(lhs.value),
-                      STRINGV(rhs.value));
-            return (LlvmValue){
-                .ok         = true,
-                .type_index = result_type,
-                .value      = temp,
-            };
+            return llvm_emit_eager_binary(ctx, function, expr_index);
         }
     case HIR_EXPR_Atomic:
         return llvm_emit_atomic_expr(ctx, function, expr);

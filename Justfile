@@ -36,6 +36,7 @@ test *args:
     python3 build/test.py {{args}}
     python3 build/test_profile.py --nerd _bin/nerd-debug{{exe_suffix}}
     python3 build/test_render_threads.py --nerd _bin/nerd-debug{{exe_suffix}}
+    python3 build/test_expression_depth.py --nerd _bin/nerd-debug{{exe_suffix}}
     python3 build/test_jobs.py --nerd _bin/nerd-debug{{exe_suffix}}
     python3 build/test_front_threads.py --nerd _bin/nerd-debug{{exe_suffix}}
     python3 build/test_toolchain.py --nerd _bin/nerd-debug{{exe_suffix}}

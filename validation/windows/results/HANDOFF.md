@@ -214,3 +214,18 @@ The full Windows runner again uses the established batch scheduler and its core
 thread tests. Earlier adaptive-dispatch validation remains applicable and pending
 on native Windows as described above. Run the current full runner and retain
 native results; Linux validation does not satisfy that gate.
+
+## Single-core lookup and arithmetic-depth follow-up (2026-09-22)
+
+LLVM text symbol membership now uses hash maps; input order still determines
+emission. The arithmetic emitter uses explicit frames for nested eager binary
+operators. The runner adds expression-depth checks to both compiler builds:
+512 terms for debug, 6,000 for release, with jobs=1/4 and runtime/order/IR parity.
+Linux release handles the original 24,000-function stress project; native
+Windows/macOS results are still pending.
+
+There is a separate known semantic-inference stack limit: the Linux debug and
+ASan compilers overflow in `sema_infer_node_type` with the 6,000-term source,
+before LLVM emission. The 512-term test passes there. Do not interpret this LLVM
+fix as general elimination of compiler recursion, or hide any native depth
+failures by claiming the large case passed. Preserve failures for follow-up.

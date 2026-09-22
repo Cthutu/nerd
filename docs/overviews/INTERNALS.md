@@ -568,6 +568,16 @@ records in fixed result slots; the coordinator emits the stream. See
 [profiling and benchmarking](../compiler-profiling.md).
 
 
+LLVM emission walks nested eager arithmetic/bitwise binary expressions with an
+explicit array of traversal frames. Each frame holds its HIR index and the
+completed left operand while the right subtree is evaluated. This preserves
+left-to-right side effects, parenthesization, pointer arithmetic and temporary
+numbering without one native expression-emitter frame per binary operator.
+Single operators with non-arithmetic children keep an allocation-free path.
+The traversal array is freed on success or failure. Comparisons, range tests,
+short-circuit operators and other expression kinds retain their existing
+lowering; this does not eliminate recursion from every compiler phase.
+
 The LLVM text combiner uses string hash maps for defined and already-declared
 symbol membership, avoiding repeated linear scans as module/function counts grow.
 It never iterates those maps for emission: module and line order still determine

@@ -39,9 +39,12 @@ def plan(folder: Path) -> list[Stage]:
         nerd = str(ROOT / '_bin' / (('nerd-debug' if mode == 'debug' else 'nerd') + suffix))
         needs = ('build-' + mode,)
         stages.append(Stage('doctor-' + mode, [nerd, 'doctor'], needs))
-        for name in ['profile', 'render_threads', 'jobs', 'front_threads', 'toolchain', 'install', 'cgen']:
+        for name in ['profile', 'render_threads', 'expression_depth', 'jobs', 'front_threads', 'toolchain', 'install', 'cgen']:
+            command = [python, f'build/test_{name}.py', '--nerd', nerd]
+            if name == 'expression_depth' and mode == 'release':
+                command += ['--terms', '6000']
             stages.append(Stage(name.replace('_', '-') + '-' + mode,
-                                [python, f'build/test_{name}.py', '--nerd', nerd], needs))
+                                command, needs))
         stages.append(Stage('debugger-' + mode,
                             [python, 'build/check_debugger_stepping.py', '--nerd', nerd, '--jobs', '4'], needs))
         stages.append(Stage('editor-' + mode,

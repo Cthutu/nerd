@@ -106,4 +106,12 @@ performance gains.
 LLVM combination now uses string hash membership while preserving input order.
 [Paired measurements](../measurements/compiler-symbol-lookup.md) show 16.4% less
 whole-build time on the 1,000-module synthetic case with byte-identical LLVM.
-Semantic-analysis costs and expression-depth handling remain separate follow-ups.
+The [LLVM arithmetic-depth failure](../measurements/compiler-expression-depth.md)
+now has an explicit traversal fix and a source regression. Release handles the original large reproducer. Debug/ASan
+semantic inference still overflows at 6,000 terms before emission; semantic
+performance and depth handling remain follow-ups. Native depth checks are open.
+
+The depth-fix timing check also finds a repeatable 4–6% regression on the
+single-module synthetic case, concentrated in the frontend envelope despite no
+semantic source changes. Retain that comparison for the next semantic hot-path
+investigation; the depth fix is a correctness change, not a claimed speedup.
