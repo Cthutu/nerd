@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Exercise the production LLVM scheduler, ordered output and failure cleanup."""
 import argparse
+from contextlib import contextmanager
 import json
 import os
 from pathlib import Path
@@ -12,6 +13,41 @@ from test_render_threads import sanitized_compiler
 
 ROOT = Path(__file__).resolve().parents[1]
 PREFIX = 'nerd-profile\t'
+
+
+@contextmanager
+def restricted_cpus(count):
+    """Restrict the test process so children inherit a known CPU budget."""
+    if hasattr(os, 'sched_getaffinity'):
+        original = os.sched_getaffinity(0)
+        chosen = sorted(original)[-count:]
+        try:
+            os.sched_setaffinity(0, chosen)
+            yield len(chosen)
+        finally:
+            os.sched_setaffinity(0, original)
+    elif os.name == 'nt':
+        import ctypes
+        from ctypes import wintypes
+        kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+        kernel.GetCurrentProcess.restype = wintypes.HANDLE
+        kernel.GetProcessAffinityMask.argtypes = [wintypes.HANDLE,
+                                                 ctypes.POINTER(ctypes.c_size_t),
+                                                 ctypes.POINTER(ctypes.c_size_t)]
+        kernel.SetProcessAffinityMask.argtypes = [wintypes.HANDLE, ctypes.c_size_t]
+        process = kernel.GetCurrentProcess()
+        original, system = ctypes.c_size_t(), ctypes.c_size_t()
+        assert kernel.GetProcessAffinityMask(process, ctypes.byref(original), ctypes.byref(system))
+        bits = [i for i in range(ctypes.sizeof(original) * 8) if original.value & (1 << i)]
+        chosen = bits[-count:]
+        assert chosen, 'No primary-group CPU affinity available'
+        try:
+            assert kernel.SetProcessAffinityMask(process, sum(1 << i for i in chosen))
+            yield len(chosen)
+        finally:
+            assert kernel.SetProcessAffinityMask(process, original.value)
+    else:
+        yield None
 
 
 def main():
@@ -80,6 +116,36 @@ def main():
             print(f'[PASS] --jobs LLVM identity and execution: {name}', flush=True)
 
         source = inputs['wide']
+        output = work / 'auto.exe'
+        flags = ['--llvm', source, '-o', output]
+        _, serial = run('--jobs', 1, *flags)
+        reference = {p.name: p.read_bytes() for p in work.glob('*.ll')}
+        _, automatic = run('--jobs', 'auto', *flags)
+        assert labels(automatic) == labels(serial)
+        assert reference == {p.name: p.read_bytes() for p in work.glob('*.ll')}
+        subprocess.run([str(output)], check=True, timeout=10)
+        for count in [1, 2, 3, 4, 8]:
+            with restricted_cpus(count) as available:
+                if available is None:
+                    print('[SKIP] process-affinity auto sizing on this platform', flush=True)
+                    break
+                for requested, expected in [('auto', max(1, available // 2)), (1, 1), (4, 4)]:
+                    _, records = run('--jobs', requested, *flags)
+                    batches = [r for r in records if r['kind'] == 'scheduler']
+                    assert len(batches) == (expected > 1), (available, requested, batches)
+                    if batches:
+                        assert batches[0]['jobs'] == expected, (available, requested, batches)
+                        assert batches[0]['slots'] == min(expected, batches[0]['modules'])
+                    assert reference == {p.name: p.read_bytes() for p in work.glob('*.ll')}
+                    subprocess.run([str(output)], check=True, timeout=10)
+        _, default = run(*flags)
+        assert not any(r['kind'] == 'scheduler' for r in default), 'Default changed before adoption gate'
+        run('--cgen', '--jobs', 1, source, '-o', work / 'auto.c')
+        serial_c = (work / 'auto.c').read_bytes()
+        run('--cgen', '--jobs', 'auto', source, '-o', work / 'auto.c')
+        assert (work / 'auto.c').read_bytes() == serial_c
+        print('[PASS] automatic half-CPU sizing, affinity, numeric overrides and LLVM/C parity', flush=True)
+
         # Lock timing is opt-in and must not change generated code or labels.
         output = work / 'locks.exe'
         _, ordinary = run('--jobs', 4, source, '-o', output)

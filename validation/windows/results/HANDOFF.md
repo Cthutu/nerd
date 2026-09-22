@@ -170,3 +170,14 @@ was needed. Logs and compiler hashes are retained alongside that summary.
 Native macOS and Windows CPU/RSS evidence remain outstanding; jobs 1 remains
 the default. The next step is to decide on merging the validated fixes or arrange
 the remaining platform/measurement work; no merge into main was performed here.
+
+## Subsequent Linux work: M9 auto ceiling
+
+The adaptive-default plan now adds opt-in `--jobs auto`; omitted jobs still uses
+one. See [M9 implementation and validation](../../../review/measurements/compiler-m9-auto-ceiling.md).
+The new core discovery and production jobs tests include CPU-affinity restriction,
+half-CPU selection, explicit overrides and safe discovery-failure fallback.
+They pass on Linux; the earlier Windows evidence does not cover this new code.
+The next native run should repeat the full Windows runner, which automatically
+includes these tests with both compiler configurations. Primary processor-group
+sizing and CPU Sets/job-object budget limitations are documented in INTERNALS.

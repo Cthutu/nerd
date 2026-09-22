@@ -60,3 +60,6 @@ Current backend timing notes:
   serial/scaling measurements, CPU work and memory limits, task granularity and
   shared-core ownership review. Raw results are in `compiler-m8-adoption/`.
   Default remains one job; native Windows/macOS gates remain outstanding.
+
+- `compiler-m9-auto-ceiling.md`: opt-in half-logical-CPU worker selection,
+  affinity/override/failure tests, unchanged default, and pending native gates.

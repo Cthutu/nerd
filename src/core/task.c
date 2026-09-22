@@ -4,6 +4,12 @@
 //------------------------------------------------------------------------------
 #include <core/core.h>
 
+u32 task_auto_jobs(u32 available_cpus)
+{
+    u32 jobs = available_cpus / 2;
+    return jobs == 0 ? 1 : jobs > TASK_MAX_JOBS ? TASK_MAX_JOBS : jobs;
+}
+
 typedef struct {
     Mutex        mutex;
     Condition    changed;

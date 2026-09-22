@@ -1,9 +1,11 @@
 # Compiler task scheduling and single-core performance
 
-Status (2026-09-21): M1–M5 complete for the Linux experiment. The
-[M8 Linux adoption review](compiler-m8-adoption.md) is complete: retain one job
-by default and keep scheduling opt-in. Native Windows/macOS adoption gates
-remain open. The imported-generic correctness bug is fixed in `590105cd`.
+Status (2026-09-22): M1–M5 and the M8 Linux review are complete; Windows
+correctness and the subsequent Linux return checks passed. Native macOS and
+Windows CPU/RSS evidence remain open. The adaptive-default follow-up below has
+[M9 implemented and validated on Linux](../measurements/compiler-m9-auto-ceiling.md);
+M10 adaptive dispatch is next. Omitted jobs stays one until M11 adoption gates
+pass. The imported-generic correctness bug is fixed in `590105cd`.
 See [M5 results and limits](../measurements/compiler-m5-front-end.md).
 Audit date: 2026-09-19. Source baseline: `a15e965dcfd4c554cc7691a82786142f74031eab`.
 Branch: `experiment/task-scheduler-performance`.
@@ -332,7 +334,7 @@ remains an override. Normal compilation continues to use LLVM tooling directly.
 
 | Milestone | Work | Completion gate |
 | --- | --- | --- |
-| M9 — automatic worker ceiling (next) | Portable CPU discovery; `max(1, floor(available logical CPUs / 2))`, capped at 256; opt-in `--jobs auto`; preserve numeric overrides | Arithmetic boundaries, CPU-affinity constraints, output/runtime parity, error handling; record native-platform limitations |
+| M9 — automatic worker ceiling (complete on Linux; native checks pending) | Portable CPU discovery; `max(1, floor(available logical CPUs / 2))`, capped at 256; opt-in `--jobs auto`; preserve numeric overrides | Arithmetic boundaries, CPU-affinity constraints, output/runtime parity, error handling; record native-platform limitations |
 | M10 — adaptive task dispatch | Estimate parse work from source bytes and render/HIR work from IR size; stay inline for small batches; cap by independent work; measure worker reuse across phases | Measured crossover points and policies on tiny/real/wide/deep inputs; stable diagnostics, failure cleanup and output; no guessed universal size cutoff |
 | M11 — validate and enable the default | Compare automatic policy to jobs 1/2/4/8/16 on Linux and Windows; measure total CPU, latency and memory; switch omitted jobs to automatic only after acceptance | No material small-build regression (target <=5% outside noise), representative gains (existing 15% adoption target), bounded memory, deterministic output/runtime parity and native checks |
 | M12 — semantic parallelism (separate experiment) | Immutable shared declarations/types; task-owned specialization requests; deterministic deduplication/publication and diagnostics | Ownership design first, generic/trait stress and sanitizers, source-to-IR gains plus whole-build benefit before adoption |

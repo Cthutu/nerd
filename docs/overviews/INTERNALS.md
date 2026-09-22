@@ -815,3 +815,29 @@ Explicit specializations also resolve as function values, not just direct calls.
 The front-end scheduling suite exercises distinct specializations of a shared
 import, inferred calls and function values through LLVM and generated C, with
 runtime checks at each worker count.
+
+### Automatic worker ceiling (M9)
+
+`build --jobs auto` resolves through `thread_available_cpu_count()` and
+`task_auto_jobs()` to `max(1, min(256, floor(logical CPUs / 2)))`. The calling
+thread counts as a worker. This opt-in ceiling flows through the existing
+front-end and LLVM task paths; batch readiness still limits actual concurrency.
+Numeric jobs remain explicit overrides even under restricted affinity. Omitted
+jobs remain one until adaptive dispatch and native performance gates pass.
+
+Linux counts the calling thread's allowed CPUs using `sched_getaffinity`, growing
+the CPU mask for sparse CPU IDs and large machines. Allocation/query failure
+falls back to one (the mask-growth bound is 1,048,576 CPU IDs). Windows counts
+`GetProcessAffinityMask` bits, conservatively restricted to its primary processor
+group on machines with multiple groups. Other supported POSIX platforms query
+online CPUs with `sysconf` when available, otherwise use one. CPU quotas,
+Windows CPU Sets/job-object CPU budgets and macOS affinity are not accounted
+for; this is not a memory budget. Windows/macOS paths require native validation
+before default adoption. The platform-specific Windows behavior follows the
+[GetProcessAffinityMask contract](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getprocessaffinitymask).
+
+Core lifecycle tests cover rounding, zero/one-CPU fallback and the 256-worker
+cap. Production jobs tests restrict inherited affinity to exercise available-CPU
+counts, verify numeric overrides and the unchanged serial default, and compare
+LLVM/C output and executable results. Work estimation, dispatch thresholds and
+worker reuse belong to M10; shared semantic ownership is unchanged.

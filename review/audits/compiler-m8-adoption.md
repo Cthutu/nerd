@@ -235,3 +235,12 @@ Windows CPU/RSS remain null, and no Windows paired main/M5 comparison was made.
 Do not interpret these omissions as passing memory or serial-regression gates.
 Earlier Linux measurements above remain Linux results. macOS stays a separate
 native gate; automatic parallel adoption remains deferred.
+
+## Follow-up: adaptive defaults (2026-09-22)
+
+The [M9–M12 plan](task-scheduler-performance.md#adaptive-performance-default--follow-up-plan-2026-09-22)
+reopens automatic sizing as a bounded experiment. M9 adds opt-in `--jobs auto`
+for the half-logical-CPU ceiling. M10 will measure workload thresholds and worker
+reuse, and M11 will evaluate enabling automatic behavior by default. This does
+not change M8's measured conclusions or the current one-job default. Semantic
+ownership redesign remains a separate M12 experiment.

@@ -6,6 +6,13 @@
 
 #include <core/core.h>
 
+#if OS_LINUX
+#    include <errno.h>
+#    include <sched.h>
+#elif OS_POSIX
+#    include <unistd.h>
+#endif
+
 #if OS_WINDOWS
 #    include <process.h>
 
@@ -23,6 +30,51 @@ internal void* thread_entry(void* argument)
     return NULL;
 }
 #endif
+
+// Count processors available to this process, not physical cores. Failure
+// falls back to one rather than assuming unrestricted use of the host.
+u32 thread_available_cpu_count(void)
+{
+#if OS_WINDOWS
+    DWORD_PTR process_mask = 0, system_mask = 0;
+    if (GetProcessAffinityMask(
+            GetCurrentProcess(), &process_mask, &system_mask)) {
+        u32 count = 0;
+        while (process_mask != 0) {
+            count += (u32)(process_mask & 1);
+            process_mask >>= 1;
+        }
+        return count == 0 ? 1 : count;
+    }
+#elif OS_LINUX
+    // Grow for sparse/high-numbered CPU IDs as well as machines above 1024
+    // CPUs.
+    for (usize capacity = 128; capacity <= 1048576; capacity *= 2) {
+        cpu_set_t* mask = CPU_ALLOC(capacity);
+        if (mask == NULL) {
+            break;
+        }
+        usize bytes = CPU_ALLOC_SIZE(capacity);
+        CPU_ZERO_S(bytes, mask);
+        int result = sched_getaffinity(0, bytes, mask);
+        int code   = errno;
+        int count  = result == 0 ? CPU_COUNT_S(bytes, mask) : 0;
+        CPU_FREE(mask);
+        if (result == 0) {
+            return count > 0 ? (u32)count : 1;
+        }
+        if (code != EINVAL) {
+            break;
+        }
+    }
+#elif defined(_SC_NPROCESSORS_ONLN)
+    long count = sysconf(_SC_NPROCESSORS_ONLN);
+    if (count > 0) {
+        return (u64)count > U32_MAX ? U32_MAX : (u32)count;
+    }
+#endif
+    return 1;
+}
 
 bool thread_start(Thread* thread, ThreadFunction function, void* argument)
 {

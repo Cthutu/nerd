@@ -183,6 +183,23 @@ static void batch_test(void)
 
 int main(void)
 {
+#if defined(NERD_TEST_START_FAILURE) && (OS_WINDOWS || OS_LINUX)
+    extern void thread_test_fail_cpu_query(bool fail);
+    thread_test_fail_cpu_query(true);
+    assert(thread_available_cpu_count() == 1);
+    thread_test_fail_cpu_query(false);
+#endif
+    assert(thread_available_cpu_count() >= 1);
+    assert(task_auto_jobs(0) == 1);
+    assert(task_auto_jobs(1) == 1);
+    assert(task_auto_jobs(2) == 1);
+    assert(task_auto_jobs(3) == 1);
+    assert(task_auto_jobs(4) == 2);
+    assert(task_auto_jobs(31) == 15);
+    assert(task_auto_jobs(32) == 16);
+    assert(task_auto_jobs(512) == 256);
+    assert(task_auto_jobs(1024) == 256);
+    assert(task_auto_jobs(U32_MAX) == 256);
     Thread reused = {0};
     assert(thread_join(&reused));
     assert(!thread_start(&reused, NULL, NULL));

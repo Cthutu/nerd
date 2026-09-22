@@ -571,6 +571,9 @@ typedef struct {
     bool           started;
 } Thread;
 
+// Available logical CPUs; discovery failure returns one. Windows uses the
+// primary processor group; POSIX platforms without affinity use online CPUs.
+u32  thread_available_cpu_count(void);
 bool thread_start(Thread* thread, ThreadFunction function, void* argument);
 // An unstarted/already joined thread succeeds. Failure retains the live handle.
 bool thread_join(Thread* thread);
@@ -590,6 +593,8 @@ void condition_signal(Condition* condition);
 void condition_broadcast(Condition* condition);
 
 enum { TASK_MAX_JOBS = 256 };
+// Half the logical CPU count, rounded down, clamped to 1..TASK_MAX_JOBS.
+u32 task_auto_jobs(u32 available_cpus);
 typedef bool (*TaskFunction)(void* context, usize index);
 typedef enum {
     TASK_RUN_OK,

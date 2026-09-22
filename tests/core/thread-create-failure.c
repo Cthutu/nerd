@@ -49,4 +49,29 @@ static int test_pthread_create(pthread_t*            thread,
 #    define pthread_create test_pthread_create
 #endif
 
+#if OS_WINDOWS || OS_LINUX
+static bool fail_cpu_query;
+void        thread_test_fail_cpu_query(bool fail) { fail_cpu_query = fail; }
+#    if OS_WINDOWS
+static BOOL
+test_process_affinity(HANDLE process, PDWORD_PTR mask, PDWORD_PTR system)
+{
+    return fail_cpu_query ? FALSE
+                          : GetProcessAffinityMask(process, mask, system);
+}
+#        define GetProcessAffinityMask test_process_affinity
+#    else
+#        include <sched.h>
+static int test_cpu_affinity(pid_t pid, size_t bytes, cpu_set_t* mask)
+{
+    if (fail_cpu_query) {
+        errno = EACCES;
+        return -1;
+    }
+    return sched_getaffinity(pid, bytes, mask);
+}
+#        define sched_getaffinity test_cpu_affinity
+#    endif
+#endif
+
 #include "../../src/core/thread.c"

@@ -98,6 +98,11 @@ LLVM backend status:
   (1–256), capped by ready work. Checking of shared import closures, final
   merging, LLVM tools and C emission remain serial. Parallel jobs remain opt-in;
   see the [adoption decision and measurements](review/audits/compiler-m8-adoption.md).
+  `--jobs auto` experimentally selects half the available logical CPUs (rounded
+  down, minimum 1, maximum 256); explicit numeric counts remain overrides.
+  This selects a ceiling, not an adaptive workload policy yet. Omitted `--jobs`
+  stays at 1 until the [adaptive-default plan](review/audits/task-scheduler-performance.md#adaptive-performance-default--follow-up-plan-2026-09-22)
+  passes its adoption gates.
 - `nerd build --cgen source.n` generates a standalone `source.c` from HIR.
   Compile it with `clang source.c $(nerd build --copts source.n) -o source`.
   `--copts` prints Clang arguments, including external libraries, without building.
