@@ -13,6 +13,7 @@ compiler_cmd_build_artifacts(Arena* arena, const NerdBuildConfig* config)
 {
     NerdArtifactConfig artifacts = compiler_cmd_default_artifacts();
     artifacts.jobs               = config->jobs;
+    artifacts.auto_jobs          = config->auto_jobs;
 
     cstr output_root =
         compiler_cmd_output_root(arena, config->output_path, config->source);

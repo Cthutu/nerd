@@ -1047,6 +1047,9 @@ nerd_build_config_from_json(const JsonValue* cli_result, Array(string) keywords)
             cli_result, "command.params.output", (string){0}),
         .output_kind = nerd_build_output_kind_from_json(cli_result),
         .jobs        = nerd_build_jobs(cli_result),
+        .auto_jobs   = string_eq(
+            nerd_cli_param_string(cli_result, "command.params.jobs", s("1")),
+            s("auto")),
         .print_c_options =
             nerd_cli_flag_bool(cli_result, "command.flags.copts", false),
         .emit_c   = nerd_cli_flag_bool(cli_result, "command.flags.cgen", false),

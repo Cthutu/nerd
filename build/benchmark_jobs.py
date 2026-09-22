@@ -21,15 +21,15 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--nerd', type=Path, default=ROOT / '_bin/nerd')
     parser.add_argument('--output', type=Path, required=True)
-    parser.add_argument('--jobs', nargs='+', type=int, default=[1, 2, 4, 8, 16])
+    parser.add_argument('--jobs', nargs='+', default=['1', '2', '4', '8', '16', 'auto'])
     parser.add_argument('--lock-profile', action='store_true',
                         help='Add a separate intrusive lock-timing run per cell')
     parser.add_argument('--cpus', nargs='+', type=int)
     parser.add_argument('--samples', type=int, default=5)
     parser.add_argument('--scenarios', nargs='+', default=['tiny', 'dungeon', 'pixels', 'quill', 'wide', 'deep', 'large'])
     args = parser.parse_args()
-    if args.samples < 1 or any(j < 1 or j > 256 for j in args.jobs) or 1 not in args.jobs:
-        parser.error('positive samples and worker counts 1-256 including 1 are required')
+    if args.samples < 1 or any(j != 'auto' and (not j.isdecimal() or not 1 <= int(j) <= 256) for j in args.jobs) or '1' not in args.jobs:
+        parser.error('positive samples and worker counts 1-256/auto including 1 are required')
     if args.cpus:
         if not hasattr(os, 'sched_setaffinity'):
             parser.error('--cpus requires Linux affinity support')

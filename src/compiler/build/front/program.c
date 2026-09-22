@@ -5,6 +5,7 @@
 //------------------------------------------------------------------------------
 
 #include <compiler/build/front/front.h>
+#include <compiler/build/schedule.h>
 #include <compiler/error/error.h>
 #include <compiler/internal.h>
 #include <compiler/modules/modules.h>
@@ -70,6 +71,10 @@ typedef struct {
     TimingProbeResult probe;
     TimeDuration      duration;
     bool              success;
+    bool              policy;
+    u32               ceiling, jobs;
+    u64               grain;
+    CompilerTaskWork  work;
 } ProgramPhaseResult;
 
 typedef struct {
@@ -80,6 +85,19 @@ typedef struct {
 
 internal thread_local ProgramTaskResult* program_task_result;
 
+internal void program_task_policy(
+    cstr phase, u32 ceiling, u32 jobs, CompilerTaskWork work, u64 grain)
+{
+    if (program_task_result != NULL) {
+        array_push(program_task_result->phases,
+                   ((ProgramPhaseResult){.phase = phase, .policy = true,
+                       .ceiling = ceiling, .jobs = jobs, .grain = grain,
+                       .work = work}));
+    } else {
+        compiler_task_policy_emit(phase, ceiling, jobs, work, grain);
+    }
+}
+
 internal void program_task_publish(ProgramTaskResult* result, Timing* timing)
 {
     error_context_replay(&result->diagnostics);
@@ -88,6 +106,11 @@ internal void program_task_publish(ProgramTaskResult* result, Timing* timing)
         ProgramPhaseResult* phase = &result->phases[i];
         if (program_task_result != NULL) {
             array_push(program_task_result->phases, *phase);
+            continue;
+        }
+        if (phase->policy) {
+            compiler_task_policy_emit(phase->phase, phase->ceiling, phase->jobs,
+                                      phase->work, phase->grain);
             continue;
         }
         if (phase->dependency.data != NULL) {
@@ -340,6 +363,18 @@ internal bool program_front_end_generate_hir(ProgramInfo*           program,
     for (u32 i = 0; i < array_count(program->modules); ++i) {
         lex_prepare_line_indexes(&program->line_indexes,
                                  program->modules[i].front_end.lexer.source);
+    }
+
+    if (effective_options.auto_jobs) {
+        CompilerTaskWork work = {0};
+        for (usize i = 0; i < array_count(program->modules); ++i) {
+            compiler_task_work_add(
+                &work, array_count(program->modules[i].front_end.ast.nodes));
+        }
+        effective_options.jobs = compiler_task_jobs(
+            effective_options.jobs, work, COMPILER_HIR_GRAIN);
+        program_task_policy("HIR", options->jobs, effective_options.jobs,
+                            work, COMPILER_HIR_GRAIN);
     }
 
     if (effective_options.jobs > 1 && !effective_options.verbose &&
@@ -1474,8 +1509,18 @@ program_collect_module_dependencies(ProgramInfo*           program,
         Array(ProgramParseEntry*) pending = NULL;
         program_prefetch_imports(
             program, options, lexer, ast, first_node, end_node, &pending);
-        TaskRunStatus status = task_run(
-            array_count(pending), options->jobs, program_parse_task, pending);
+        u32 jobs = options->jobs;
+        if (options->auto_jobs) {
+            CompilerTaskWork work = {0};
+            for (usize i = 0; i < array_count(pending); ++i) {
+                compiler_task_work_add(&work, pending[i]->source.source.count);
+            }
+            jobs = compiler_task_jobs(jobs, work, COMPILER_PARSE_GRAIN);
+            program_task_policy("parse", options->jobs, jobs,
+                                work, COMPILER_PARSE_GRAIN);
+        }
+        TaskRunStatus status =
+            task_run(array_count(pending), jobs, program_parse_task, pending);
         array_free(pending);
         if (status == TASK_RUN_START_FAILED) {
             return error_runtime("Failed to start parser workers");

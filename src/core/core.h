@@ -595,6 +595,10 @@ void condition_broadcast(Condition* condition);
 enum { TASK_MAX_JOBS = 256 };
 // Half the logical CPU count, rounded down, clamped to 1..TASK_MAX_JOBS.
 u32 task_auto_jobs(u32 available_cpus);
+// Bound concurrency by total and independent estimated work. One dominant
+// task cannot justify a large pool. Counts/weights do not change queue order.
+u32 task_jobs_for_work(
+    u32 ceiling, usize count, u64 total, u64 largest, u64 grain);
 typedef bool (*TaskFunction)(void* context, usize index);
 typedef enum {
     TASK_RUN_OK,

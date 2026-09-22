@@ -10,6 +10,29 @@ u32 task_auto_jobs(u32 available_cpus)
     return jobs == 0 ? 1 : jobs > TASK_MAX_JOBS ? TASK_MAX_JOBS : jobs;
 }
 
+u32 task_jobs_for_work(
+    u32 ceiling, usize count, u64 total, u64 largest, u64 grain)
+{
+    if (ceiling <= 1 || count <= 1 || grain == 0 || largest > total) {
+        return 1;
+    }
+    u64 jobs        = total / grain;
+    u64 independent = (total - largest) / grain;
+    if (independent < jobs) {
+        jobs = independent + 1;
+    }
+    if (jobs > count) {
+        jobs = count;
+    }
+    if (jobs > ceiling) {
+        jobs = ceiling;
+    }
+    if (jobs > TASK_MAX_JOBS) {
+        jobs = TASK_MAX_JOBS;
+    }
+    return jobs > 0 ? (u32)jobs : 1;
+}
+
 typedef struct {
     Mutex        mutex;
     Condition    changed;

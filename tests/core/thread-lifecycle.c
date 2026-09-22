@@ -200,6 +200,18 @@ int main(void)
     assert(task_auto_jobs(512) == 256);
     assert(task_auto_jobs(1024) == 256);
     assert(task_auto_jobs(U32_MAX) == 256);
+    // Small batches, dominant tasks, independent work and arithmetic limits.
+    assert(task_jobs_for_work(16, 0, 0, 0, 100) == 1);
+    assert(task_jobs_for_work(16, 1, 10000, 10000, 100) == 1);
+    assert(task_jobs_for_work(16, 8, 199, 100, 100) == 1);
+    assert(task_jobs_for_work(16, 8, 200, 100, 100) == 2);
+    assert(task_jobs_for_work(16, 8, 10000, 9950, 100) == 1);
+    assert(task_jobs_for_work(16, 8, 10000, 9800, 100) == 3);
+    assert(task_jobs_for_work(2, 8, 800, 100, 100) == 2);
+    assert(task_jobs_for_work(16, 8, 800, 100, 100) == 8);
+    assert(task_jobs_for_work(512, 512, U64_MAX, 0, 1) == 256);
+    assert(task_jobs_for_work(16, 8, 10, 11, 1) == 1);
+    assert(task_jobs_for_work(16, 8, 10, 1, 0) == 1);
     Thread reused = {0};
     assert(thread_join(&reused));
     assert(!thread_start(&reused, NULL, NULL));

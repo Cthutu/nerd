@@ -52,7 +52,7 @@ def main():
                          if p.suffix in ['.ll', '.hir', '.c']}
             labels = [(r.get('kind'), r.get('phase'), r.get('module'),
                        r.get('dependency'), r.get('success')) for r in records
-                      if r.get('kind') != 'scheduler']
+                      if r.get('kind') not in ('scheduler', 'scheduler-policy')]
             return result.returncode, result.stdout, stderr, artifacts, labels, records
 
         def case(name, files):
@@ -117,7 +117,7 @@ def main():
                     subprocess.run([str(output)], check=True, timeout=10)
 
                 check_runtime()
-                for jobs in [2, 4, 8]:
+                for jobs in [2, 4, 8, 'auto']:
                     actual = run(source, jobs, flags)
                     assert actual[:5] == reference[:5], (source, flags, jobs, actual[2])
                     check_runtime()
@@ -144,7 +144,7 @@ def main():
             source = case(name, files)
             reference = run(source, 1)
             assert reference[0] != 0, name
-            for jobs in [2, 4, 8, 256]:
+            for jobs in [2, 4, 8, 256, 'auto']:
                 actual = run(source, jobs)
                 assert actual[:3] == reference[:3], (name, jobs, actual[2], reference[2])
                 assert actual[4] == reference[4], (name, jobs, 'profile labels')

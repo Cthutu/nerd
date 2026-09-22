@@ -34,6 +34,7 @@ typedef bool (*NerdModuleSourceLoader)(void*   user_data,
 
 typedef struct {
     u32                    jobs;
+    bool                   auto_jobs;
     bool                   verbose;
     bool                   release;
     bool                   require_entry_point;
@@ -68,6 +69,7 @@ typedef struct {
     string              output_path;
     NerdBuildOutputKind output_kind;
     u32                 jobs; // Zero means the serial default.
+    bool                auto_jobs;
     bool                emit_hir;
     bool                emit_llvm;
     bool                emit_c;
@@ -128,6 +130,7 @@ typedef struct {
     bool                print_c_options;
     NerdBuildOutputKind output_kind;
     u32                 jobs; // Zero means the serial default.
+    bool                auto_jobs;
     bool                require_entry_point;
     bool                release;
     Array(string) keywords;

@@ -8,6 +8,7 @@
 #    define _POSIX_C_SOURCE 200809L
 #endif
 
+#include <compiler/build/schedule.h>
 #include <compiler/internal.h>
 #if OS_POSIX
 #    include <sys/stat.h>
@@ -777,6 +778,17 @@ internal bool back_end_render_llvm_modules(Arena*                    arena,
         .alternate_sidecar = artifacts->emit_llvm_file && !artifacts->release &&
                              !emit_debug_sidecars};
     u32 jobs = artifacts->jobs == 0 ? 1 : artifacts->jobs;
+    if (artifacts->auto_jobs) {
+        CompilerTaskWork work = {0};
+        for (u32 i = 0; i < module_count; ++i) {
+            const Hir* hir = &program->modules[i].front_end.hir;
+            compiler_task_work_add(
+                &work, array_count(hir->exprs) + array_count(hir->stmts));
+        }
+        jobs = compiler_task_jobs(jobs, work, COMPILER_RENDER_GRAIN);
+        compiler_task_policy_emit("LLVM render", artifacts->jobs, jobs,
+                                  work, COMPILER_RENDER_GRAIN);
+    }
     if (jobs > 1) {
         TimingProbe dispatch = timing_probe_begin();
         batch.profile_batch  = dispatch.enabled;

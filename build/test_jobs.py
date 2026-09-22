@@ -77,7 +77,7 @@ def main():
         def labels(records):
             return [(r.get('kind'), r.get('stage'), r.get('phase'), r.get('module'),
                      r.get('dependency'), r.get('output_bytes'), r.get('success'))
-                    for r in records if r.get('kind') != 'scheduler']
+                    for r in records if r.get('kind') not in ('scheduler', 'scheduler-policy')]
 
         inputs = generate_inputs(work / 'inputs', modules=6, functions=8)
         # Grow function scratch beyond its initial commitment, then reuse it
@@ -131,6 +131,12 @@ def main():
                     break
                 for requested, expected in [('auto', max(1, available // 2)), (1, 1), (4, 4)]:
                     _, records = run('--jobs', requested, *flags)
+                    if requested == 'auto':
+                        policy = [r for r in records if r['kind'] == 'scheduler-policy'
+                                  and r['phase'] == 'LLVM render']
+                        assert len(policy) == 1 and policy[0]['ceiling'] == expected
+                        assert 1 <= policy[0]['jobs'] <= expected
+                        expected = policy[0]['jobs']
                     batches = [r for r in records if r['kind'] == 'scheduler']
                     assert len(batches) == (expected > 1), (available, requested, batches)
                     if batches:

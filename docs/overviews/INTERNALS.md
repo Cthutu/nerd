@@ -841,3 +841,21 @@ cap. Production jobs tests restrict inherited affinity to exercise available-CPU
 counts, verify numeric overrides and the unchanged serial default, and compare
 LLVM/C output and executable results. Work estimation, dispatch thresholds and
 worker reuse belong to M10; shared semantic ownership is unchanged.
+
+### Adaptive dispatch experiment (M10)
+
+Automatic mode retains its CPU ceiling separately from numeric overrides.
+`compiler/build/schedule.h` collects saturating work estimates: source bytes for
+prefetched parses, AST nodes for HIR, and HIR expressions plus statements for
+LLVM rendering. `task_jobs_for_work` limits a batch by its task count, ceiling,
+total work and work outside its largest task. Small or dominated batches run
+inline. Numeric jobs bypass this policy. Shared semantic closures retain their
+existing exclusive ownership rule.
+
+The initial opt-in calibration uses grains of 65,536 source bytes, 8,192 AST
+nodes and 512 HIR nodes. These are experimental policy parameters, not universal
+crossover claims or a memory budget. `NERD_PROFILE=1` reports
+`scheduler-policy` records with phase, ceiling, selected jobs and work estimates.
+Front-end decisions are buffered with phase results so a discarded speculative
+load does not leak profile records. Workers still join before publication;
+there is no persistent pool. Omitted jobs remains one pending the adoption gate.
