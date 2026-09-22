@@ -5,6 +5,7 @@
 //------------------------------------------------------------------------------
 
 #include <compiler/build/back/llvm_text.h>
+#include <stdio.h>
 
 //------------------------------------------------------------------------------
 
@@ -141,7 +142,7 @@ internal void back_end_append_named_metadata_items(StringBuilder* sb,
 }
 
 // The executable backend combines independently-rendered textual LLVM modules
-// into one clang input. Before concatenating, remove declarations already
+// into one LLVM input. Before concatenating, remove declarations already
 // satisfied by a definition or alias in another module. This is deliberately a
 // small top-level LLVM scanner, not a general LLVM parser.
 internal bool back_end_llvm_line_symbol(string line, string* out)
@@ -219,19 +220,10 @@ internal bool back_end_llvm_line_declares_symbol(string line, string* out)
     return back_end_llvm_line_symbol(line, out);
 }
 
-internal bool back_end_symbol_array_contains(Array(string) symbols,
-                                             string symbol)
-{
-    for (u32 i = 0; i < array_count(symbols); ++i) {
-        if (string_eq(symbols[i], symbol)) {
-            return true;
-        }
-    }
-    return false;
-}
+// Membership only: output order continues to follow input lines, never map
+// order.
 
-internal void back_end_collect_llvm_defined_symbols(Array(string) * symbols,
-                                                    string text)
+internal void back_end_collect_llvm_defined_symbols(Map* symbols, string text)
 {
     usize line_start = 0;
     for (usize i = 0; i <= text.count; ++i) {
@@ -243,9 +235,8 @@ internal void back_end_collect_llvm_defined_symbols(Array(string) * symbols,
             .count = i - line_start,
         };
         string symbol = {0};
-        if (back_end_llvm_line_defines_symbol(line, &symbol) &&
-            !back_end_symbol_array_contains(*symbols, symbol)) {
-            array_push(*symbols, symbol);
+        if (back_end_llvm_line_defines_symbol(line, &symbol)) {
+            map_entry(symbols, symbol, NULL);
         }
         line_start = i + 1;
     }
@@ -254,8 +245,8 @@ internal void back_end_collect_llvm_defined_symbols(Array(string) * symbols,
 internal void back_end_append_llvm_without_satisfied_declarations(
     StringBuilder* sb,
     string         text,
-    Array(string) defined_symbols,
-    Array(string) * declared_symbols,
+    Map*           defined_symbols,
+    Map*           declared_symbols,
     StringBuilder* dbg_cu_items,
     StringBuilder* module_flag_items,
     bool*          has_module_flags,
@@ -280,14 +271,12 @@ internal void back_end_append_llvm_without_satisfied_declarations(
         };
         string declared_symbol = {0};
         if (back_end_llvm_line_declares_symbol(line, &declared_symbol)) {
-            if (back_end_symbol_array_contains(defined_symbols,
-                                               declared_symbol) ||
-                back_end_symbol_array_contains(*declared_symbols,
-                                               declared_symbol)) {
+            if (map_find(defined_symbols, declared_symbol) ||
+                map_find(declared_symbols, declared_symbol)) {
                 line_start = i + 1;
                 continue;
             }
-            array_push(*declared_symbols, declared_symbol);
+            map_entry(declared_symbols, declared_symbol, NULL);
         }
         arena_reset(&line_arena);
         StringBuilder remapped_line = {0};
@@ -328,9 +317,10 @@ string back_end_llvm_text_build_combined(Arena* arena,
                                          string runtime_epilogue,
                                          string init_ll)
 {
-    Array(string) defined_symbols = NULL;
-    array_requires_capacity(defined_symbols,
-                            array_count(module_llvms) * 32 + 16);
+    Map defined_symbols = {0};
+    _map_init(&defined_symbols,
+              sizeof(bool),
+              (usize)array_count(module_llvms) * 32 + 16);
     for (u32 i = 0; i < array_count(module_llvms); ++i) {
         back_end_collect_llvm_defined_symbols(&defined_symbols,
                                               module_llvms[i]);
@@ -343,9 +333,8 @@ string back_end_llvm_text_build_combined(Arena* arena,
     Arena         module_flag_arena     = {0};
     StringBuilder dbg_cu_items          = {0};
     StringBuilder module_flag_items     = {0};
-    Array(string) declared_symbols      = NULL;
-    array_requires_capacity(declared_symbols,
-                            array_count(defined_symbols) + 16);
+    Map           declared_symbols      = {0};
+    _map_init(&declared_symbols, sizeof(bool), 32);
     sb_init(&combined_llvm_builder, arena);
     arena_init(&dbg_cu_arena);
     arena_init(&module_flag_arena);
@@ -357,7 +346,7 @@ string back_end_llvm_text_build_combined(Arena* arena,
         back_end_append_llvm_without_satisfied_declarations(
             &combined_llvm_builder,
             module_llvms[i],
-            defined_symbols,
+            &defined_symbols,
             &declared_symbols,
             &dbg_cu_items,
             &module_flag_items,
@@ -369,7 +358,7 @@ string back_end_llvm_text_build_combined(Arena* arena,
     }
     back_end_append_llvm_without_satisfied_declarations(&combined_llvm_builder,
                                                         runtime_epilogue,
-                                                        defined_symbols,
+                                                        &defined_symbols,
                                                         &declared_symbols,
                                                         &dbg_cu_items,
                                                         &module_flag_items,
@@ -380,7 +369,7 @@ string back_end_llvm_text_build_combined(Arena* arena,
     sb_append_cstr(&combined_llvm_builder, "\n");
     back_end_append_llvm_without_satisfied_declarations(&combined_llvm_builder,
                                                         init_ll,
-                                                        defined_symbols,
+                                                        &defined_symbols,
                                                         &declared_symbols,
                                                         &dbg_cu_items,
                                                         &module_flag_items,
@@ -404,8 +393,8 @@ string back_end_llvm_text_build_combined(Arena* arena,
     }
 
     string combined_llvm = sb_to_string(&combined_llvm_builder);
-    array_free(defined_symbols);
-    array_free(declared_symbols);
+    map_done(&defined_symbols);
+    map_done(&declared_symbols);
     arena_done(&dbg_cu_arena);
     arena_done(&module_flag_arena);
     return combined_llvm;
@@ -523,6 +512,44 @@ bool back_end_llvm_text_self_test(void)
               ok;
 
     array_free(module_llvms);
+
+    // Force both membership maps to grow, with repeated unresolved declarations
+    // and declarations resolved by definitions in a later input module.
+    StringBuilder declarations       = {0};
+    StringBuilder definitions        = {0};
+    Arena         declarations_arena = {0};
+    Arena         definitions_arena  = {0};
+    arena_init(&declarations_arena);
+    arena_init(&definitions_arena);
+    sb_init(&declarations, &declarations_arena);
+    sb_init(&definitions, &definitions_arena);
+    for (u32 i = 0; i < 256; ++i) {
+        sb_format(&declarations,
+                  "declare void @external.%u()\n"
+                  "declare void @external.%u()\n"
+                  "declare void @\"defined.%u\"()\n",
+                  i,
+                  i,
+                  i);
+        sb_format(
+            &definitions, "define void @\"defined.%u\"() { ret void }\n", i);
+    }
+    array_push(module_llvms, sb_to_string(&declarations));
+    array_push(module_llvms, sb_to_string(&definitions));
+    combined = back_end_llvm_text_build_combined(
+        &arena, module_llvms, (string){0}, (string){0});
+    for (u32 i = 0; i < 256; ++i) {
+        char external[64];
+        char defined[64];
+        snprintf(external, sizeof(external), "declare void @external.%u()", i);
+        snprintf(defined, sizeof(defined), "declare void @\"defined.%u\"()", i);
+        ok = back_end_llvm_text_expect_line_count(combined, external, 1) && ok;
+        ok = back_end_llvm_text_expect_line_count(combined, defined, 0) && ok;
+    }
+    array_free(module_llvms);
+
+    arena_done(&declarations_arena);
+    arena_done(&definitions_arena);
 
     StringBuilder remapped = {0};
     sb_init(&remapped, &arena);

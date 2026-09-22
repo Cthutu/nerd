@@ -100,3 +100,10 @@ repeat; restricting four workers to four physical cores gives about 1% gain.
 Single-worker changes are small. This checkpoint led to withdrawing G1/G2 and
 deferring G3–G6; correctness and infrastructure completion did not establish
 performance gains.
+
+## Single-core follow-up
+
+LLVM combination now uses string hash membership while preserving input order.
+[Paired measurements](../measurements/compiler-symbol-lookup.md) show 16.4% less
+whole-build time on the 1,000-module synthetic case with byte-identical LLVM.
+Semantic-analysis costs and expression-depth handling remain separate follow-ups.

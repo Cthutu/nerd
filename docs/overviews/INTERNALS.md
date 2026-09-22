@@ -568,6 +568,12 @@ records in fixed result slots; the coordinator emits the stream. See
 [profiling and benchmarking](../compiler-profiling.md).
 
 
+The LLVM text combiner uses string hash maps for defined and already-declared
+symbol membership, avoiding repeated linear scans as module/function counts grow.
+It never iterates those maps for emission: module and line order still determine
+output and the first retained external declaration. Maps own their key storage
+and are freed after combination.
+
 The LLVM text combiner reuses one line scratch arena per input module. Each
 rendered line is copied into the combined output or named metadata builders
 before scratch reset. The arena retains capacity for that input's longest line
