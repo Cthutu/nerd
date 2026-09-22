@@ -1,0 +1,124 @@
+{
+  "platform": "Windows-11-10.0.26200-SP0",
+  "native_windows": true,
+  "python": "3.14.7 (tags/v3.14.7:823f032, Aug  5 2026, 10:51:32) [MSC v.1944 64 bit (AMD64)]",
+  "logical_cpus": 32,
+  "commit": "a618456b5d0013917b22a50933f9408cedfd5dbb",
+  "branch": "experiment/task-scheduler-performance",
+  "working_tree_at_start": "M build/test_toolchain.py\n M data/ncg.c\n M docs/overviews/INTERNALS.md\n M src/compiler/llvm/llvm.c\n?? tests/commands/317-run-dynamic-enum-alignment.cmd\n?? tests/commands/317-run-dynamic-enum-alignment.input.n\n?? validation/windows/results/20260922T075157Z-7bec6ae1/\n?? validation/windows/results/20260922T075856Z-e3a49814/",
+  "selection": [
+    "toolchain-debug",
+    "toolchain-release",
+    "cgen-debug",
+    "cgen-release"
+  ],
+  "status": "incomplete-or-failed",
+  "stages": [
+    {
+      "name": "build-debug",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/build.py",
+        "nerd",
+        "--skip-mod-sync"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T08:30:53.117693+00:00",
+      "log": "build-debug.log",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 2.367
+    },
+    {
+      "name": "build-release",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/build.py",
+        "-r",
+        "nerd",
+        "--skip-mod-sync"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T08:30:55.487540+00:00",
+      "log": "build-release.log",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 4.739
+    },
+    {
+      "name": "toolchain-debug",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/test_toolchain.py",
+        "--nerd",
+        "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T08:31:00.229453+00:00",
+      "log": "toolchain-debug.log",
+      "status": "failed",
+      "exit_code": 1,
+      "seconds": 7.893
+    },
+    {
+      "name": "cgen-debug",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/test_cgen.py",
+        "--nerd",
+        "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T08:31:08.125068+00:00",
+      "log": "cgen-debug.log",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 96.622
+    },
+    {
+      "name": "toolchain-release",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/test_toolchain.py",
+        "--nerd",
+        "C:\\Users\\matt\\nerd\\_bin\\nerd.exe"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T08:32:44.750348+00:00",
+      "log": "toolchain-release.log",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 14.039
+    },
+    {
+      "name": "cgen-release",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/test_cgen.py",
+        "--nerd",
+        "C:\\Users\\matt\\nerd\\_bin\\nerd.exe"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T08:32:58.792636+00:00",
+      "log": "cgen-release.log",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 96.361
+    }
+  ],
+  "tool_paths": {
+    "clang": "C:\\Users\\matt\\nerd\\_tmp\\llvm-tools\\clang+llvm-22.1.8-x86_64-pc-windows-msvc\\bin\\clang.EXE",
+    "opt": "C:\\Users\\matt\\nerd\\_tmp\\llvm-tools\\clang+llvm-22.1.8-x86_64-pc-windows-msvc\\bin\\opt.EXE",
+    "llc": "C:\\Users\\matt\\nerd\\_tmp\\llvm-tools\\clang+llvm-22.1.8-x86_64-pc-windows-msvc\\bin\\llc.EXE",
+    "llvm-lib": "C:\\Users\\matt\\nerd\\_tmp\\llvm-tools\\clang+llvm-22.1.8-x86_64-pc-windows-msvc\\bin\\llvm-lib.EXE",
+    "lld-link": "C:\\Users\\matt\\nerd\\_tmp\\llvm-tools\\clang+llvm-22.1.8-x86_64-pc-windows-msvc\\bin\\lld-link.EXE",
+    "llvm-dwarfdump": "C:\\Users\\matt\\nerd\\_tmp\\llvm-tools\\clang+llvm-22.1.8-x86_64-pc-windows-msvc\\bin\\llvm-dwarfdump.EXE",
+    "lldb": "C:\\Users\\matt\\scoop\\apps\\llvm\\current\\bin\\lldb.EXE",
+    "just": "C:\\Users\\matt\\.cargo\\bin\\just.EXE",
+    "git": "C:\\Apps\\Git\\cmd\\git.EXE",
+    "uv": "C:\\Users\\matt\\.local\\bin\\uv.EXE",
+    "node": "C:\\Users\\matt\\scoop\\apps\\nodejs\\current\\node.EXE",
+    "npm": "C:\\Users\\matt\\scoop\\apps\\nodejs\\current\\bin\\npm.CMD"
+  },
+  "finished_utc": "2026-09-22T08:34:35.155879+00:00"
+}

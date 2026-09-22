@@ -1,0 +1,322 @@
+{
+  "debug-triangle-release-j1-llvm": {
+    "example": "triangle",
+    "program_sha256": "32E1C22376B838C58707C1DB1A8B2C0BC9A39E63732BB484AF5DCD88D5443DF8",
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "resized": {
+      "height": 600,
+      "image": "desktop-captures/debug-triangle-release-j1-llvm-resized.png",
+      "width": 800,
+      "sampled_colours": 1257,
+      "method": "PrintWindow client capture",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "observed_utc": "2026-09-22T08:19:50.3068991Z",
+    "jobs": 1,
+    "backend": "llvm",
+    "compiler": "debug",
+    "target": "release",
+    "before_input": {
+      "height": 600,
+      "image": "desktop-captures/debug-triangle-release-j1-llvm-before.png",
+      "width": 800,
+      "sampled_colours": 1257,
+      "method": "PrintWindow client capture",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "exit_code": 0,
+    "status": "CAPTURED; visual review required"
+  },
+  "debug-triangle-release-j1-c": {
+    "example": "triangle",
+    "program_sha256": "927A3512A46295CB980C2BDA7A6CB52A2D8FAD3917B6F6FAE8171B20EC94EE7B",
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "resized": {
+      "height": 600,
+      "image": "desktop-captures/debug-triangle-release-j1-c-resized.png",
+      "width": 800,
+      "sampled_colours": 1257,
+      "method": "PrintWindow client capture",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "observed_utc": "2026-09-22T08:19:48.9841857Z",
+    "jobs": 1,
+    "backend": "c",
+    "compiler": "debug",
+    "target": "release",
+    "before_input": {
+      "height": 600,
+      "image": "desktop-captures/debug-triangle-release-j1-c-before.png",
+      "width": 800,
+      "sampled_colours": 1257,
+      "method": "PrintWindow client capture",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "exit_code": 0,
+    "status": "CAPTURED; visual review required"
+  },
+  "debug-triangle-debug-j4-llvm": {
+    "example": "triangle",
+    "program_sha256": "F90EE59E7CC2D023EA934936894425E76BCB050D69A5D41132CF223F47DE6802",
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "resized": {
+      "height": 600,
+      "image": "desktop-captures/debug-triangle-debug-j4-llvm-resized.png",
+      "width": 800,
+      "sampled_colours": 1257,
+      "method": "PrintWindow client capture",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "observed_utc": "2026-09-22T08:19:47.618191Z",
+    "jobs": 4,
+    "backend": "llvm",
+    "compiler": "debug",
+    "target": "debug",
+    "before_input": {
+      "height": 600,
+      "image": "desktop-captures/debug-triangle-debug-j4-llvm-before.png",
+      "width": 800,
+      "sampled_colours": 1257,
+      "method": "PrintWindow client capture",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "exit_code": 0,
+    "status": "CAPTURED; visual review required"
+  },
+  "debug-triangle-release-j4-llvm": {
+    "example": "triangle",
+    "program_sha256": "68B2A8252235CDCDCB32C4E3D7A1FA8360026AF2D8E2DBD6B7ED5BB2D4706056",
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "resized": {
+      "height": 600,
+      "image": "desktop-captures/debug-triangle-release-j4-llvm-resized.png",
+      "width": 800,
+      "sampled_colours": 1257,
+      "method": "PrintWindow client capture",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "observed_utc": "2026-09-22T08:19:52.9245172Z",
+    "jobs": 4,
+    "backend": "llvm",
+    "compiler": "debug",
+    "target": "release",
+    "before_input": {
+      "height": 600,
+      "image": "desktop-captures/debug-triangle-release-j4-llvm-before.png",
+      "width": 800,
+      "sampled_colours": 1257,
+      "method": "PrintWindow client capture",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "exit_code": 0,
+    "status": "CAPTURED; visual review required"
+  },
+  "debug-triangle-debug-j1-llvm": {
+    "example": "triangle",
+    "program_sha256": "C455B2C3B674449C1313DAB58B376DFE1DEF69EE56FEF4C5B356913FCAF0961F",
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "resized": {
+      "height": 600,
+      "image": "desktop-captures/debug-triangle-debug-j1-llvm-resized.png",
+      "width": 800,
+      "sampled_colours": 1257,
+      "method": "PrintWindow client capture",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "observed_utc": "2026-09-22T08:19:44.9184873Z",
+    "jobs": 1,
+    "backend": "llvm",
+    "compiler": "debug",
+    "target": "debug",
+    "before_input": {
+      "height": 600,
+      "image": "desktop-captures/debug-triangle-debug-j1-llvm-before.png",
+      "width": 800,
+      "sampled_colours": 1257,
+      "method": "PrintWindow client capture",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "exit_code": 0,
+    "status": "CAPTURED; visual review required"
+  },
+  "debug-triangle-debug-j1-c": {
+    "example": "triangle",
+    "program_sha256": "DEE0B6944A5DC31D8A7754C449E2A84696F27A8F0DC3E9C7ED5910E4CBD963D3",
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "resized": {
+      "height": 600,
+      "image": "desktop-captures/debug-triangle-debug-j1-c-resized.png",
+      "width": 800,
+      "sampled_colours": 1257,
+      "method": "PrintWindow client capture",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "observed_utc": "2026-09-22T08:19:43.4446404Z",
+    "jobs": 1,
+    "backend": "c",
+    "compiler": "debug",
+    "target": "debug",
+    "before_input": {
+      "height": 600,
+      "image": "desktop-captures/debug-triangle-debug-j1-c-before.png",
+      "width": 800,
+      "sampled_colours": 1257,
+      "method": "PrintWindow client capture",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "exit_code": 0,
+    "status": "CAPTURED; visual review required"
+  },
+  "debug-triangle-debug-j4-c": {
+    "example": "triangle",
+    "program_sha256": "CA739C78E8804C95A950EFF3955D4CF16F704B39E19E48531F0AE6A3D8696D61",
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "resized": {
+      "height": 600,
+      "image": "desktop-captures/debug-triangle-debug-j4-c-resized.png",
+      "width": 800,
+      "sampled_colours": 1257,
+      "method": "PrintWindow client capture",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "observed_utc": "2026-09-22T08:19:46.3103034Z",
+    "jobs": 4,
+    "backend": "c",
+    "compiler": "debug",
+    "target": "debug",
+    "before_input": {
+      "height": 600,
+      "image": "desktop-captures/debug-triangle-debug-j4-c-before.png",
+      "width": 800,
+      "sampled_colours": 1257,
+      "method": "PrintWindow client capture",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "exit_code": 0,
+    "status": "CAPTURED; visual review required"
+  },
+  "debug-triangle-release-j4-c": {
+    "example": "triangle",
+    "program_sha256": "F8D22EB078C8D39978A9C6A09FF615A19037A3D0FD42BD67311F80F81C8B24C6",
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "resized": {
+      "height": 600,
+      "image": "desktop-captures/debug-triangle-release-j4-c-resized.png",
+      "width": 800,
+      "sampled_colours": 1257,
+      "method": "PrintWindow client capture",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "observed_utc": "2026-09-22T08:19:51.5964003Z",
+    "jobs": 4,
+    "backend": "c",
+    "compiler": "debug",
+    "target": "release",
+    "before_input": {
+      "height": 600,
+      "image": "desktop-captures/debug-triangle-release-j4-c-before.png",
+      "width": 800,
+      "sampled_colours": 1257,
+      "method": "PrintWindow client capture",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "exit_code": 0,
+    "status": "CAPTURED; visual review required"
+  },
+  "debug-dungeon-debug-j1-c": {
+    "example": "dungeon",
+    "observed_utc": "2026-09-22T08:20:14.9407966Z",
+    "status": "BLOCKED OR FAILED",
+    "compiler": "debug",
+    "backend": "c",
+    "error": "No visible test window",
+    "program_sha256": "BCA740C20CC227747D8B2F6B327577ABBF97D1534974B5F0433139E4543B65D1",
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "jobs": 1,
+    "target": "debug"
+  },
+  "debug-dungeon-debug-j1-llvm": {
+    "example": "dungeon",
+    "observed_utc": "2026-09-22T08:20:28.1882047Z",
+    "status": "BLOCKED OR FAILED",
+    "compiler": "debug",
+    "backend": "llvm",
+    "error": "No visible test window",
+    "program_sha256": "E385CE4204CB4CA8315D7BC6D78FACE4245FEB2CF3F725FDEAC5E8899FD8958D",
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "jobs": 1,
+    "target": "debug"
+  },
+  "debug-dungeon-debug-j4-c": {
+    "example": "dungeon",
+    "observed_utc": "2026-09-22T08:20:41.2695719Z",
+    "status": "BLOCKED OR FAILED",
+    "compiler": "debug",
+    "backend": "c",
+    "error": "No visible test window",
+    "program_sha256": "78B9379B203B4BC3306ABDFD785F37B692B0E77F2E73900A2F8BB501FAD1CE21",
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "jobs": 4,
+    "target": "debug"
+  },
+  "debug-dungeon-debug-j4-llvm": {
+    "example": "dungeon",
+    "observed_utc": "2026-09-22T08:20:54.4375132Z",
+    "status": "BLOCKED OR FAILED",
+    "compiler": "debug",
+    "backend": "llvm",
+    "error": "No visible test window",
+    "program_sha256": "69AEC88AF4CF54545ADBACB0F5C0608C4693DB28BBBF7B19788AE8FA1B0B1443",
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "jobs": 4,
+    "target": "debug"
+  },
+  "debug-dungeon-release-j1-c": {
+    "example": "dungeon",
+    "observed_utc": "2026-09-22T08:21:07.5891905Z",
+    "status": "BLOCKED OR FAILED",
+    "compiler": "debug",
+    "backend": "c",
+    "error": "No visible test window",
+    "program_sha256": "7B5088DAA7D3A2899C2304B892D6A5CA212D90CDD9D31192A24203BF5FB7BE8D",
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "jobs": 1,
+    "target": "release"
+  },
+  "debug-dungeon-release-j1-llvm": {
+    "example": "dungeon",
+    "observed_utc": "2026-09-22T08:21:20.7483076Z",
+    "status": "BLOCKED OR FAILED",
+    "compiler": "debug",
+    "backend": "llvm",
+    "error": "No visible test window",
+    "program_sha256": "F6A0CABBF266D5BF723083ADD3D52BC963697B15AAB9A1E723E357521CA2BC07",
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "jobs": 1,
+    "target": "release"
+  },
+  "debug-dungeon-release-j4-c": {
+    "example": "dungeon",
+    "observed_utc": "2026-09-22T08:21:33.9057980Z",
+    "status": "BLOCKED OR FAILED",
+    "compiler": "debug",
+    "backend": "c",
+    "error": "No visible test window",
+    "program_sha256": "519001A064431A39DBE5A608FD315BF28941E691D7697E0918AFEC0164D7CD69",
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "jobs": 4,
+    "target": "release"
+  },
+  "debug-dungeon-release-j4-llvm": {
+    "example": "dungeon",
+    "observed_utc": "2026-09-22T08:21:46.9813222Z",
+    "status": "BLOCKED OR FAILED",
+    "compiler": "debug",
+    "backend": "llvm",
+    "error": "No visible test window",
+    "program_sha256": "C3933F6D5983AE1CB2EE5A3BD0F88AD7189CE618B53F34B35DB3AAF73AAD8C80",
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "jobs": 4,
+    "target": "release"
+  }
+}

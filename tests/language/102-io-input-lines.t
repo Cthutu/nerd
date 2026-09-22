@@ -52,10 +52,10 @@ dynarray.string.empty.0:
   store { ptr, i64 } { ptr null, i64 0 }, ptr %t2
   br label %dynarray.string.done.2
 dynarray.string.load.1:
-  %t4 = getelementptr inbounds i8, ptr %t1, i64 -24
+  %t4 = getelementptr inbounds i8, ptr %t1, i64 -32
   %t5 = getelementptr inbounds { ptr, i64, i64 }, ptr %t4, i64 0, i32 0
   %t6 = load ptr, ptr %t5
-  %t7 = getelementptr inbounds i8, ptr %t1, i64 -24
+  %t7 = getelementptr inbounds i8, ptr %t1, i64 -32
   %t8 = getelementptr inbounds { ptr, i64, i64 }, ptr %t7, i64 0, i32 1
   %t9 = load i64, ptr %t8
   %t10 = insertvalue { ptr, i64 } poison, ptr %t6, 0
@@ -69,7 +69,7 @@ dynarray.string.done.2:
   %t14 = icmp eq ptr %t13, null
   br i1 %t14, label %dynarray.free.done.4, label %dynarray.free.3
 dynarray.free.3:
-  %t15 = getelementptr inbounds i8, ptr %t13, i64 -24
+  %t15 = getelementptr inbounds i8, ptr %t13, i64 -32
   call void @nrt_mem_free(ptr %t15)
   store ptr null, ptr %local.0
   br label %dynarray.free.done.4

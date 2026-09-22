@@ -1,0 +1,23 @@
+[PASS] entry-point integer widths, signedness, arguments and target modes
+Traceback (most recent call last):
+  File "C:\Users\matt\nerd\build\test_toolchain.py", line 187, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\matt\nerd\build\test_toolchain.py", line 116, in main
+    run('build', *release, '--jobs', jobs, source, '-o', executable)
+    ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\matt\nerd\build\test_toolchain.py", line 53, in run
+    assert (result.returncode == 0) == success, result.stdout + result.stderr
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: [1;31merror:[0m Missing value before Keyword `assert`
+ --> C:\Users\matt\nerd\validation\windows\results\20260922T083052Z-6bf97fd5\scratch\nerd toolchain-72a8iigb\program.n:14:33
+   [1;36m|[0m
+12 [1;36m|[0m     for i: usize = 0; i < events.count; i += 1 {
+13 [1;36m|[0m         on events[i] {
+14 [1;36m|[0m             Character(value) => assert value == i.as(u32) + 65
+   [1;36m|[0m                                 [1;31m^^^^^^ Keyword `assert` cannot appear here[0m
+15 [1;36m|[0m             else => assert no
+16 [1;36m|[0m         }
+   [1;36m|[0m
+[1;36mhelp:[0m Insert a literal, parenthesized expression, or unary operator
+

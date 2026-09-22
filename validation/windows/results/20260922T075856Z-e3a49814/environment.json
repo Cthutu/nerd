@@ -1,0 +1,24 @@
+{
+  "date": "2026-09-22T07:49:07.9544586Z",
+  "windows": "Microsoft Windows 11 Pro",
+  "build": "10.0.26200",
+  "architecture": "64-bit",
+  "processors": [
+    {
+      "Name": "AMD Ryzen Threadripper PRO 5955WX 16-Cores     ",
+      "NumberOfCores": 16,
+      "NumberOfLogicalProcessors": 32
+    }
+  ],
+  "power_scheme": "Power Scheme GUID: 381b4222-f694-41f0-9685-ff5bb260df2e  (Balanced)",
+  "sdk": "10.0.26100.0",
+  "msvc": "14.44.35207",
+  "llvm": "22.1.8",
+  "compiler_commit": "a618456b5d0013917b22a50933f9408cedfd5dbb",
+  "validation_harness_commit": "a618456b5d0013917b22a50933f9408cedfd5dbb",
+  "windows_cpu_rss_benchmark_accounting": null,
+  "compiler_sha256": {
+    "debug": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "release": "a7a3597ac58d2b11ead1a39c31631ca7835226c5813798ab25d1975fdd27a958"
+  }
+}

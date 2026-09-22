@@ -1,0 +1,22 @@
+[PASS] front-end output identity: diamond-generic-ffi main.n
+[PASS] front-end output identity: conditional-parts main.n
+[PASS] front-end output identity: diamond-explicit main.n
+[PASS] front-end output identity: diamond-inferred main.n
+[PASS] front-end output identity: diamond-function-value main.n
+[PASS] front-end output identity: tiny main.n
+[PASS] front-end output identity: wide main.n
+[PASS] front-end output identity: deep main.n
+[PASS] front-end output identity: large main.n
+[PASS] front-end output identity: nerd-front-threads-s7znwc3b 128-generic-functions.n
+[PASS] front-end output identity: nerd-front-threads-s7znwc3b 196-plex-use.n
+[PASS] front-end output identity: nerd-front-threads-s7znwc3b 077-enum-discriminants.n
+[PASS] front-end output identity: dungeon dungeon.n
+[PASS] front-end output identity: pixels pixels.n
+[PASS] front-end output identity: text-adventure quill.n
+[PASS] ordered diagnostics and cleanup: semantic-before-parse
+[PASS] ordered diagnostics and cleanup: cycle
+[PASS] ordered diagnostics and cleanup: missing
+[PASS] ordered diagnostics and cleanup: private-method
+[PASS] ordered diagnostics and cleanup: assert
+[PASS] randomized completion; overlapping phases: ['analyse AST semantics', 'generate HIR from sema', 'parse tokens into AST', 'tokenise source text']
+Scheduled front-end graph, diagnostics, FFI, generics and runtime checks passed

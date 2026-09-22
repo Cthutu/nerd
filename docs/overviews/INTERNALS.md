@@ -319,6 +319,14 @@ array expression used to allocate a capacity-bearing dynamic-array local uses
 the local declaration location, which LLVM passes to the runtime allocator for
 leak diagnostics.
 
+Dynamic-array heap storage pads its three-word header to 32 bytes before the
+first element. Both LLVM lowering and the compatibility C helper preserve the
+allocator's 16-byte alignment across allocation, growth, reserve and pointer
+conversions. The former 24-byte prefix misaligned LLVM enums with wide payloads;
+optimized Windows Dungeon then faulted on an aligned SIMD store while appending
+terminal input events. Regression checks exercise these stores and their values
+in debug/release targets at jobs 1/4, including explicit capacity and reserve.
+
 Implicit fixed-array-to-slice call arguments are lowered from the address of the
 original HIR array expression. This preserves the language's borrowed-view
 semantics and avoids directing mutations through a copied LLVM temporary.

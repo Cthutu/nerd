@@ -1,0 +1,386 @@
+{
+  "debug-triangle-release-j1-llvm": {
+    "example": "triangle",
+    "program_sha256": "32E1C22376B838C58707C1DB1A8B2C0BC9A39E63732BB484AF5DCD88D5443DF8",
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "resized": {
+      "height": 600,
+      "image": "desktop-captures/debug-triangle-release-j1-llvm-resized.png",
+      "width": 800,
+      "sampled_colours": 1257,
+      "method": "PrintWindow client capture",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "observed_utc": "2026-09-22T08:19:50.3068991Z",
+    "jobs": 1,
+    "backend": "llvm",
+    "compiler": "debug",
+    "target": "release",
+    "before_input": {
+      "height": 600,
+      "image": "desktop-captures/debug-triangle-release-j1-llvm-before.png",
+      "width": 800,
+      "sampled_colours": 1257,
+      "method": "PrintWindow client capture",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "exit_code": 0,
+    "status": "CAPTURED; visual review required"
+  },
+  "debug-triangle-release-j1-c": {
+    "example": "triangle",
+    "program_sha256": "927A3512A46295CB980C2BDA7A6CB52A2D8FAD3917B6F6FAE8171B20EC94EE7B",
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "resized": {
+      "height": 600,
+      "image": "desktop-captures/debug-triangle-release-j1-c-resized.png",
+      "width": 800,
+      "sampled_colours": 1257,
+      "method": "PrintWindow client capture",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "observed_utc": "2026-09-22T08:19:48.9841857Z",
+    "jobs": 1,
+    "backend": "c",
+    "compiler": "debug",
+    "target": "release",
+    "before_input": {
+      "height": 600,
+      "image": "desktop-captures/debug-triangle-release-j1-c-before.png",
+      "width": 800,
+      "sampled_colours": 1257,
+      "method": "PrintWindow client capture",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "exit_code": 0,
+    "status": "CAPTURED; visual review required"
+  },
+  "debug-triangle-debug-j4-llvm": {
+    "example": "triangle",
+    "program_sha256": "F90EE59E7CC2D023EA934936894425E76BCB050D69A5D41132CF223F47DE6802",
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "resized": {
+      "height": 600,
+      "image": "desktop-captures/debug-triangle-debug-j4-llvm-resized.png",
+      "width": 800,
+      "sampled_colours": 1257,
+      "method": "PrintWindow client capture",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "observed_utc": "2026-09-22T08:19:47.618191Z",
+    "jobs": 4,
+    "backend": "llvm",
+    "compiler": "debug",
+    "target": "debug",
+    "before_input": {
+      "height": 600,
+      "image": "desktop-captures/debug-triangle-debug-j4-llvm-before.png",
+      "width": 800,
+      "sampled_colours": 1257,
+      "method": "PrintWindow client capture",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "exit_code": 0,
+    "status": "CAPTURED; visual review required"
+  },
+  "debug-triangle-release-j4-llvm": {
+    "example": "triangle",
+    "program_sha256": "68B2A8252235CDCDCB32C4E3D7A1FA8360026AF2D8E2DBD6B7ED5BB2D4706056",
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "resized": {
+      "height": 600,
+      "image": "desktop-captures/debug-triangle-release-j4-llvm-resized.png",
+      "width": 800,
+      "sampled_colours": 1257,
+      "method": "PrintWindow client capture",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "observed_utc": "2026-09-22T08:19:52.9245172Z",
+    "jobs": 4,
+    "backend": "llvm",
+    "compiler": "debug",
+    "target": "release",
+    "before_input": {
+      "height": 600,
+      "image": "desktop-captures/debug-triangle-release-j4-llvm-before.png",
+      "width": 800,
+      "sampled_colours": 1257,
+      "method": "PrintWindow client capture",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "exit_code": 0,
+    "status": "CAPTURED; visual review required"
+  },
+  "debug-triangle-debug-j1-llvm": {
+    "example": "triangle",
+    "program_sha256": "C455B2C3B674449C1313DAB58B376DFE1DEF69EE56FEF4C5B356913FCAF0961F",
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "resized": {
+      "height": 600,
+      "image": "desktop-captures/debug-triangle-debug-j1-llvm-resized.png",
+      "width": 800,
+      "sampled_colours": 1257,
+      "method": "PrintWindow client capture",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "observed_utc": "2026-09-22T08:19:44.9184873Z",
+    "jobs": 1,
+    "backend": "llvm",
+    "compiler": "debug",
+    "target": "debug",
+    "before_input": {
+      "height": 600,
+      "image": "desktop-captures/debug-triangle-debug-j1-llvm-before.png",
+      "width": 800,
+      "sampled_colours": 1257,
+      "method": "PrintWindow client capture",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "exit_code": 0,
+    "status": "CAPTURED; visual review required"
+  },
+  "debug-triangle-debug-j1-c": {
+    "example": "triangle",
+    "program_sha256": "DEE0B6944A5DC31D8A7754C449E2A84696F27A8F0DC3E9C7ED5910E4CBD963D3",
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "resized": {
+      "height": 600,
+      "image": "desktop-captures/debug-triangle-debug-j1-c-resized.png",
+      "width": 800,
+      "sampled_colours": 1257,
+      "method": "PrintWindow client capture",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "observed_utc": "2026-09-22T08:19:43.4446404Z",
+    "jobs": 1,
+    "backend": "c",
+    "compiler": "debug",
+    "target": "debug",
+    "before_input": {
+      "height": 600,
+      "image": "desktop-captures/debug-triangle-debug-j1-c-before.png",
+      "width": 800,
+      "sampled_colours": 1257,
+      "method": "PrintWindow client capture",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "exit_code": 0,
+    "status": "CAPTURED; visual review required"
+  },
+  "debug-triangle-debug-j4-c": {
+    "example": "triangle",
+    "program_sha256": "CA739C78E8804C95A950EFF3955D4CF16F704B39E19E48531F0AE6A3D8696D61",
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "resized": {
+      "height": 600,
+      "image": "desktop-captures/debug-triangle-debug-j4-c-resized.png",
+      "width": 800,
+      "sampled_colours": 1257,
+      "method": "PrintWindow client capture",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "observed_utc": "2026-09-22T08:19:46.3103034Z",
+    "jobs": 4,
+    "backend": "c",
+    "compiler": "debug",
+    "target": "debug",
+    "before_input": {
+      "height": 600,
+      "image": "desktop-captures/debug-triangle-debug-j4-c-before.png",
+      "width": 800,
+      "sampled_colours": 1257,
+      "method": "PrintWindow client capture",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "exit_code": 0,
+    "status": "CAPTURED; visual review required"
+  },
+  "debug-triangle-release-j4-c": {
+    "example": "triangle",
+    "program_sha256": "F8D22EB078C8D39978A9C6A09FF615A19037A3D0FD42BD67311F80F81C8B24C6",
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "resized": {
+      "height": 600,
+      "image": "desktop-captures/debug-triangle-release-j4-c-resized.png",
+      "width": 800,
+      "sampled_colours": 1257,
+      "method": "PrintWindow client capture",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "observed_utc": "2026-09-22T08:19:51.5964003Z",
+    "jobs": 4,
+    "backend": "c",
+    "compiler": "debug",
+    "target": "release",
+    "before_input": {
+      "height": 600,
+      "image": "desktop-captures/debug-triangle-release-j4-c-before.png",
+      "width": 800,
+      "sampled_colours": 1257,
+      "method": "PrintWindow client capture",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "exit_code": 0,
+    "status": "CAPTURED; visual review required"
+  },
+  "debug-dungeon-debug-j1-c": {
+    "observed_utc": "2026-09-22T08:22:16.3918314Z",
+    "jobs": 1,
+    "example": "dungeon",
+    "program_sha256": "BCA740C20CC227747D8B2F6B327577ABBF97D1534974B5F0433139E4543B65D1",
+    "compiler": "debug",
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "target": "debug",
+    "error": "Could not send Dungeon regeneration input",
+    "before_input": {
+      "height": 480,
+      "sampled_colours": 31,
+      "sha256": "7BF24104E9726DD9906B77E7C7A3746EE8A096ACFCC506BD54F6CFB0DE6223DF",
+      "width": 960,
+      "method": "PrintWindow client capture",
+      "image": "desktop-captures/debug-dungeon-debug-j1-c-before.png"
+    },
+    "status": "BLOCKED OR FAILED",
+    "backend": "c"
+  },
+  "debug-dungeon-debug-j1-llvm": {
+    "observed_utc": "2026-09-22T08:22:17.3388793Z",
+    "jobs": 1,
+    "example": "dungeon",
+    "program_sha256": "E385CE4204CB4CA8315D7BC6D78FACE4245FEB2CF3F725FDEAC5E8899FD8958D",
+    "compiler": "debug",
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "target": "debug",
+    "error": "Could not send Dungeon regeneration input",
+    "before_input": {
+      "height": 480,
+      "sampled_colours": 31,
+      "sha256": "05C333EFE0126411643FF6E52E7CDD1137DD6E334372E0C1CFB98ED1CB856CE9",
+      "width": 960,
+      "method": "PrintWindow client capture",
+      "image": "desktop-captures/debug-dungeon-debug-j1-llvm-before.png"
+    },
+    "status": "BLOCKED OR FAILED",
+    "backend": "llvm"
+  },
+  "debug-dungeon-debug-j4-c": {
+    "observed_utc": "2026-09-22T08:22:18.2060369Z",
+    "jobs": 4,
+    "example": "dungeon",
+    "program_sha256": "78B9379B203B4BC3306ABDFD785F37B692B0E77F2E73900A2F8BB501FAD1CE21",
+    "compiler": "debug",
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "target": "debug",
+    "error": "Could not send Dungeon regeneration input",
+    "before_input": {
+      "height": 480,
+      "sampled_colours": 31,
+      "sha256": "07E4B43D866277D5BEDDD5F698E4520DF3A93A641B5C1E3AFB57E5D3D07FE653",
+      "width": 960,
+      "method": "PrintWindow client capture",
+      "image": "desktop-captures/debug-dungeon-debug-j4-c-before.png"
+    },
+    "status": "BLOCKED OR FAILED",
+    "backend": "c"
+  },
+  "debug-dungeon-debug-j4-llvm": {
+    "observed_utc": "2026-09-22T08:22:19.0080599Z",
+    "jobs": 4,
+    "example": "dungeon",
+    "program_sha256": "69AEC88AF4CF54545ADBACB0F5C0608C4693DB28BBBF7B19788AE8FA1B0B1443",
+    "compiler": "debug",
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "target": "debug",
+    "error": "Could not send Dungeon regeneration input",
+    "before_input": {
+      "height": 480,
+      "sampled_colours": 31,
+      "sha256": "7E884CF7096368CE60B405FC26D05CC0A20351C1B4D196CD5F01C07FB3526830",
+      "width": 960,
+      "method": "PrintWindow client capture",
+      "image": "desktop-captures/debug-dungeon-debug-j4-llvm-before.png"
+    },
+    "status": "BLOCKED OR FAILED",
+    "backend": "llvm"
+  },
+  "debug-dungeon-release-j1-c": {
+    "observed_utc": "2026-09-22T08:22:19.8687419Z",
+    "jobs": 1,
+    "example": "dungeon",
+    "program_sha256": "7B5088DAA7D3A2899C2304B892D6A5CA212D90CDD9D31192A24203BF5FB7BE8D",
+    "compiler": "debug",
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "target": "release",
+    "error": "Could not send Dungeon regeneration input",
+    "before_input": {
+      "height": 480,
+      "sampled_colours": 31,
+      "sha256": "AB37077B50AE131705D5E6580074CCD59DFCDE96DAE3D46E163D441670B95119",
+      "width": 960,
+      "method": "PrintWindow client capture",
+      "image": "desktop-captures/debug-dungeon-release-j1-c-before.png"
+    },
+    "status": "BLOCKED OR FAILED",
+    "backend": "c"
+  },
+  "debug-dungeon-release-j1-llvm": {
+    "observed_utc": "2026-09-22T08:22:20.6577904Z",
+    "jobs": 1,
+    "example": "dungeon",
+    "program_sha256": "F6A0CABBF266D5BF723083ADD3D52BC963697B15AAB9A1E723E357521CA2BC07",
+    "compiler": "debug",
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "target": "release",
+    "error": "Could not send Dungeon regeneration input",
+    "before_input": {
+      "height": 480,
+      "sampled_colours": 31,
+      "sha256": "D8D87EE4C5D98825940AB582ADFE618A2FBCA6A918996C4F228C856DB2404990",
+      "width": 960,
+      "method": "PrintWindow client capture",
+      "image": "desktop-captures/debug-dungeon-release-j1-llvm-before.png"
+    },
+    "status": "BLOCKED OR FAILED",
+    "backend": "llvm"
+  },
+  "debug-dungeon-release-j4-c": {
+    "observed_utc": "2026-09-22T08:22:21.4394591Z",
+    "jobs": 4,
+    "example": "dungeon",
+    "program_sha256": "519001A064431A39DBE5A608FD315BF28941E691D7697E0918AFEC0164D7CD69",
+    "compiler": "debug",
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "target": "release",
+    "error": "Could not send Dungeon regeneration input",
+    "before_input": {
+      "height": 480,
+      "sampled_colours": 31,
+      "sha256": "F85A74C9F513268C8DDBFD688730F6694D8093322093FE4FCD7E819663699B5A",
+      "width": 960,
+      "method": "PrintWindow client capture",
+      "image": "desktop-captures/debug-dungeon-release-j4-c-before.png"
+    },
+    "status": "BLOCKED OR FAILED",
+    "backend": "c"
+  },
+  "debug-dungeon-release-j4-llvm": {
+    "observed_utc": "2026-09-22T08:22:22.2401146Z",
+    "jobs": 4,
+    "example": "dungeon",
+    "program_sha256": "C3933F6D5983AE1CB2EE5A3BD0F88AD7189CE618B53F34B35DB3AAF73AAD8C80",
+    "compiler": "debug",
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "target": "release",
+    "error": "Could not send Dungeon regeneration input",
+    "before_input": {
+      "height": 480,
+      "sampled_colours": 31,
+      "sha256": "58CC2DB42DDFC1F13310F94A1C10D31F129A7798EE396189E43988095BEA9FFF",
+      "width": 960,
+      "method": "PrintWindow client capture",
+      "image": "desktop-captures/debug-dungeon-release-j4-llvm-before.png"
+    },
+    "status": "BLOCKED OR FAILED",
+    "backend": "llvm"
+  }
+}

@@ -179,11 +179,11 @@ define internal void @fn.3(ptr %self, i32 %elem) {
   %t2 = icmp eq ptr %t1, null
   br i1 %t2, label %dynarray.alloc.0, label %dynarray.ready.1
 dynarray.alloc.0:
-  %t3 = call ptr @nrt_mem_alloc(i64 24, i64 16, ptr @.macro.file.m0, i32 9)
+  %t3 = call ptr @nrt_mem_alloc(i64 32, i64 16, ptr @.macro.file.m0, i32 9)
   %t4 = getelementptr inbounds { ptr, i64, i64 }, ptr %t3, i64 0, i32 0
   %t5 = getelementptr inbounds { ptr, i64, i64 }, ptr %t3, i64 0, i32 1
   %t6 = getelementptr inbounds { ptr, i64, i64 }, ptr %t3, i64 0, i32 2
-  %t7 = getelementptr inbounds i8, ptr %t3, i64 24
+  %t7 = getelementptr inbounds i8, ptr %t3, i64 32
   store ptr %t7, ptr %t4
   store i64 0, ptr %t5
   store i64 0, ptr %t6
@@ -191,7 +191,7 @@ dynarray.alloc.0:
   br label %dynarray.ready.1
 dynarray.ready.1:
   %t8 = load ptr, ptr %t0
-  %t9 = getelementptr inbounds i8, ptr %t8, i64 -24
+  %t9 = getelementptr inbounds i8, ptr %t8, i64 -32
   %t10 = getelementptr inbounds { ptr, i64, i64 }, ptr %t9, i64 0, i32 0
   %t11 = getelementptr inbounds { ptr, i64, i64 }, ptr %t9, i64 0, i32 1
   %t12 = getelementptr inbounds { ptr, i64, i64 }, ptr %t9, i64 0, i32 2
@@ -206,9 +206,9 @@ dynarray.grow.2:
   %t19 = mul i64 %t15, 2
   %t20 = select i1 %t18, i64 1, i64 %t19
   %t21 = mul i64 %t20, 4
-  %t22 = add i64 24, %t21
+  %t22 = add i64 32, %t21
   %t23 = call ptr @nrt_mem_realloc(ptr %t9, i64 %t22, i64 16, ptr @.macro.file.m0, i32 9)
-  %t24 = getelementptr inbounds i8, ptr %t23, i64 24
+  %t24 = getelementptr inbounds i8, ptr %t23, i64 32
   %t25 = getelementptr inbounds { ptr, i64, i64 }, ptr %t23, i64 0, i32 0
   %t26 = getelementptr inbounds { ptr, i64, i64 }, ptr %t23, i64 0, i32 2
   store ptr %t24, ptr %t25
@@ -217,7 +217,7 @@ dynarray.grow.2:
   br label %dynarray.store.3
 dynarray.store.3:
   %t27 = load ptr, ptr %t0
-  %t28 = getelementptr inbounds i8, ptr %t27, i64 -24
+  %t28 = getelementptr inbounds i8, ptr %t27, i64 -32
   %t29 = getelementptr inbounds { ptr, i64, i64 }, ptr %t28, i64 0, i32 0
   %t30 = getelementptr inbounds { ptr, i64, i64 }, ptr %t28, i64 0, i32 1
   %t31 = load ptr, ptr %t29
@@ -230,7 +230,7 @@ dynarray.store.3:
 define internal i32 @fn.4(ptr %self) {
   %t0 = load { ptr }, ptr %self
   %t1 = extractvalue { ptr } %t0, 0
-  %t2 = getelementptr inbounds i8, ptr %t1, i64 -24
+  %t2 = getelementptr inbounds i8, ptr %t1, i64 -32
   %t3 = getelementptr inbounds { ptr, i64, i64 }, ptr %t2, i64 0, i32 1
   %t4 = load i64, ptr %t3
   %t5 = sub i64 %t4, 1

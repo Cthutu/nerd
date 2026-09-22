@@ -108,6 +108,15 @@ def main():
                         result = subprocess.run([str(executable)], env=env, capture_output=True)
                         assert result.returncode == expected, (kind, parameters, windowed, release, result.returncode, expected, result.stderr)
         print('[PASS] entry-point integer widths, signedness, arguments and target modes')
+        # Heap enum stores must remain aligned after header placement, growth,
+        # and explicit reserve. Optimized Windows code uses aligned SIMD stores.
+        source.write_text((ROOT / 'tests/commands/317-run-dynamic-enum-alignment.cmd').read_text().split('\u00ac')[0])
+        for release in [[], ['-r']]:
+            for jobs in [1, 4]:
+                run('build', *release, '--jobs', jobs, source, '-o', executable)
+                result = subprocess.run([str(executable)], env=env, capture_output=True)
+                assert result.returncode == 0, (release, jobs, result.returncode, result.stderr)
+        print('[PASS] dynamic enum allocation, growth and reserve alignment at debug/release jobs 1/4')
         source.write_text('main :: fn () -> i32 { return 0 }\n')
 
         if os.name == 'nt':

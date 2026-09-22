@@ -2,6 +2,29 @@
 
 **Native Windows validation in progress, 2026-09-22.**
 
+Latest finding: the full automated run at `a618456b` passed all stages, 1,115
+fixtures and jobs 1/2/4/8 timings, but subsequent native desktop interaction
+exposed a repeatable optimized Dungeon access violation. Preserve
+[that run](20260922T075856Z-e3a49814/SUMMARY.md) and its crash records/captures;
+automated success did not establish full desktop correctness. Its benchmarks
+precede the next alignment repair and are not final-code timings.
+
+Dynamic arrays placed wide enum elements after a 24-byte header despite their
+16-byte alignment. Native Windows crash records identify an aligned SIMD store
+at executable offset `0x1e9c6` in terminal event append. LLVM and compatibility C
+now pad the header to 32 bytes; allocation/growth/reserve and pointer conversions
+share that layout. The new `317-run-dynamic-enum-alignment` regression checks
+addresses and payload values; toolchain checks exercise debug/release targets
+at jobs 1/4, and C differential checks exercise O0/O2.
+
+[Focused alignment evidence](20260922T083052Z-6bf97fd5/SUMMARY.md): both compiler
+builds and C suites pass; the first debug-toolchain attempt caught syntax in the
+new regression, fixed before the recorded debug rerun and release suite passed.
+All 16 Dungeon desktop cases now draw, regenerate and exit zero; capture records
+are in that folder. Language/LLVM reruns pass after snapshot updates reflecting
+the extra eight header bytes; the allocator leak expectation increases by eight
+bytes too. The next full run must use the committed alignment repair.
+
 Starting commit: `6bbc17e8e14facc95caee55abdca35db216bbb05`; clean working tree,
 up to date with `hub/experiment/task-scheduler-performance`. Authenticated remote
 `hub` points to `git@github.com:Cthutu/nerd.git`.

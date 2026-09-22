@@ -1,0 +1,508 @@
+{
+  "cases": {
+    "debug-dungeon-debug-j1-llvm": {
+      "compiler": "debug",
+      "example": "dungeon",
+      "target": "debug",
+      "jobs": 1,
+      "backend": "llvm",
+      "status": "NOT RUN",
+      "commit": "a618456b5d0013917b22a50933f9408cedfd5dbb",
+      "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "1",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083052Z-6bf97fd5\\scratch\\manual\\debug-dungeon-debug-j1-llvm.exe"
+        ]
+      ],
+      "log": "debug-dungeon-debug-j1-llvm.log",
+      "build_exit": 0
+    },
+    "debug-dungeon-debug-j1-c": {
+      "compiler": "debug",
+      "example": "dungeon",
+      "target": "debug",
+      "jobs": 1,
+      "backend": "c",
+      "status": "NOT RUN",
+      "commit": "a618456b5d0013917b22a50933f9408cedfd5dbb",
+      "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "1",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083052Z-6bf97fd5\\scratch\\manual\\debug-dungeon-debug-j1-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083052Z-6bf97fd5\\scratch\\manual\\debug-dungeon-debug-j1-c.c",
+          "-std=gnu11",
+          "-g",
+          "-O0",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-lopengl32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083052Z-6bf97fd5\\scratch\\manual\\debug-dungeon-debug-j1-c.exe"
+        ]
+      ],
+      "log": "debug-dungeon-debug-j1-c.log",
+      "build_exit": 0
+    },
+    "debug-dungeon-debug-j4-llvm": {
+      "compiler": "debug",
+      "example": "dungeon",
+      "target": "debug",
+      "jobs": 4,
+      "backend": "llvm",
+      "status": "NOT RUN",
+      "commit": "a618456b5d0013917b22a50933f9408cedfd5dbb",
+      "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "4",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083052Z-6bf97fd5\\scratch\\manual\\debug-dungeon-debug-j4-llvm.exe"
+        ]
+      ],
+      "log": "debug-dungeon-debug-j4-llvm.log",
+      "build_exit": 0
+    },
+    "debug-dungeon-debug-j4-c": {
+      "compiler": "debug",
+      "example": "dungeon",
+      "target": "debug",
+      "jobs": 4,
+      "backend": "c",
+      "status": "NOT RUN",
+      "commit": "a618456b5d0013917b22a50933f9408cedfd5dbb",
+      "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "4",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083052Z-6bf97fd5\\scratch\\manual\\debug-dungeon-debug-j4-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083052Z-6bf97fd5\\scratch\\manual\\debug-dungeon-debug-j4-c.c",
+          "-std=gnu11",
+          "-g",
+          "-O0",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-lopengl32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083052Z-6bf97fd5\\scratch\\manual\\debug-dungeon-debug-j4-c.exe"
+        ]
+      ],
+      "log": "debug-dungeon-debug-j4-c.log",
+      "build_exit": 0
+    },
+    "debug-dungeon-release-j1-llvm": {
+      "compiler": "debug",
+      "example": "dungeon",
+      "target": "release",
+      "jobs": 1,
+      "backend": "llvm",
+      "status": "NOT RUN",
+      "commit": "a618456b5d0013917b22a50933f9408cedfd5dbb",
+      "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "1",
+          "-r",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083052Z-6bf97fd5\\scratch\\manual\\debug-dungeon-release-j1-llvm.exe"
+        ]
+      ],
+      "log": "debug-dungeon-release-j1-llvm.log",
+      "build_exit": 0
+    },
+    "debug-dungeon-release-j1-c": {
+      "compiler": "debug",
+      "example": "dungeon",
+      "target": "release",
+      "jobs": 1,
+      "backend": "c",
+      "status": "NOT RUN",
+      "commit": "a618456b5d0013917b22a50933f9408cedfd5dbb",
+      "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "1",
+          "-r",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083052Z-6bf97fd5\\scratch\\manual\\debug-dungeon-release-j1-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083052Z-6bf97fd5\\scratch\\manual\\debug-dungeon-release-j1-c.c",
+          "-std=gnu11",
+          "-O2",
+          "-DNDEBUG",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-lopengl32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083052Z-6bf97fd5\\scratch\\manual\\debug-dungeon-release-j1-c.exe"
+        ]
+      ],
+      "log": "debug-dungeon-release-j1-c.log",
+      "build_exit": 0
+    },
+    "debug-dungeon-release-j4-llvm": {
+      "compiler": "debug",
+      "example": "dungeon",
+      "target": "release",
+      "jobs": 4,
+      "backend": "llvm",
+      "status": "NOT RUN",
+      "commit": "a618456b5d0013917b22a50933f9408cedfd5dbb",
+      "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "4",
+          "-r",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083052Z-6bf97fd5\\scratch\\manual\\debug-dungeon-release-j4-llvm.exe"
+        ]
+      ],
+      "log": "debug-dungeon-release-j4-llvm.log",
+      "build_exit": 0
+    },
+    "debug-dungeon-release-j4-c": {
+      "compiler": "debug",
+      "example": "dungeon",
+      "target": "release",
+      "jobs": 4,
+      "backend": "c",
+      "status": "NOT RUN",
+      "commit": "a618456b5d0013917b22a50933f9408cedfd5dbb",
+      "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "4",
+          "-r",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083052Z-6bf97fd5\\scratch\\manual\\debug-dungeon-release-j4-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083052Z-6bf97fd5\\scratch\\manual\\debug-dungeon-release-j4-c.c",
+          "-std=gnu11",
+          "-O2",
+          "-DNDEBUG",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-lopengl32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083052Z-6bf97fd5\\scratch\\manual\\debug-dungeon-release-j4-c.exe"
+        ]
+      ],
+      "log": "debug-dungeon-release-j4-c.log",
+      "build_exit": 0
+    },
+    "release-dungeon-debug-j1-llvm": {
+      "compiler": "release",
+      "example": "dungeon",
+      "target": "debug",
+      "jobs": 1,
+      "backend": "llvm",
+      "status": "NOT RUN",
+      "commit": "a618456b5d0013917b22a50933f9408cedfd5dbb",
+      "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "1",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083052Z-6bf97fd5\\scratch\\manual\\release-dungeon-debug-j1-llvm.exe"
+        ]
+      ],
+      "log": "release-dungeon-debug-j1-llvm.log",
+      "build_exit": 0
+    },
+    "release-dungeon-debug-j1-c": {
+      "compiler": "release",
+      "example": "dungeon",
+      "target": "debug",
+      "jobs": 1,
+      "backend": "c",
+      "status": "NOT RUN",
+      "commit": "a618456b5d0013917b22a50933f9408cedfd5dbb",
+      "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "1",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083052Z-6bf97fd5\\scratch\\manual\\release-dungeon-debug-j1-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083052Z-6bf97fd5\\scratch\\manual\\release-dungeon-debug-j1-c.c",
+          "-std=gnu11",
+          "-g",
+          "-O0",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-lopengl32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083052Z-6bf97fd5\\scratch\\manual\\release-dungeon-debug-j1-c.exe"
+        ]
+      ],
+      "log": "release-dungeon-debug-j1-c.log",
+      "build_exit": 0
+    },
+    "release-dungeon-debug-j4-llvm": {
+      "compiler": "release",
+      "example": "dungeon",
+      "target": "debug",
+      "jobs": 4,
+      "backend": "llvm",
+      "status": "NOT RUN",
+      "commit": "a618456b5d0013917b22a50933f9408cedfd5dbb",
+      "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "4",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083052Z-6bf97fd5\\scratch\\manual\\release-dungeon-debug-j4-llvm.exe"
+        ]
+      ],
+      "log": "release-dungeon-debug-j4-llvm.log",
+      "build_exit": 0
+    },
+    "release-dungeon-debug-j4-c": {
+      "compiler": "release",
+      "example": "dungeon",
+      "target": "debug",
+      "jobs": 4,
+      "backend": "c",
+      "status": "NOT RUN",
+      "commit": "a618456b5d0013917b22a50933f9408cedfd5dbb",
+      "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "4",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083052Z-6bf97fd5\\scratch\\manual\\release-dungeon-debug-j4-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083052Z-6bf97fd5\\scratch\\manual\\release-dungeon-debug-j4-c.c",
+          "-std=gnu11",
+          "-g",
+          "-O0",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-lopengl32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083052Z-6bf97fd5\\scratch\\manual\\release-dungeon-debug-j4-c.exe"
+        ]
+      ],
+      "log": "release-dungeon-debug-j4-c.log",
+      "build_exit": 0
+    },
+    "release-dungeon-release-j1-llvm": {
+      "compiler": "release",
+      "example": "dungeon",
+      "target": "release",
+      "jobs": 1,
+      "backend": "llvm",
+      "status": "NOT RUN",
+      "commit": "a618456b5d0013917b22a50933f9408cedfd5dbb",
+      "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "1",
+          "-r",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083052Z-6bf97fd5\\scratch\\manual\\release-dungeon-release-j1-llvm.exe"
+        ]
+      ],
+      "log": "release-dungeon-release-j1-llvm.log",
+      "build_exit": 0
+    },
+    "release-dungeon-release-j1-c": {
+      "compiler": "release",
+      "example": "dungeon",
+      "target": "release",
+      "jobs": 1,
+      "backend": "c",
+      "status": "NOT RUN",
+      "commit": "a618456b5d0013917b22a50933f9408cedfd5dbb",
+      "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "1",
+          "-r",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083052Z-6bf97fd5\\scratch\\manual\\release-dungeon-release-j1-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083052Z-6bf97fd5\\scratch\\manual\\release-dungeon-release-j1-c.c",
+          "-std=gnu11",
+          "-O2",
+          "-DNDEBUG",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-lopengl32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083052Z-6bf97fd5\\scratch\\manual\\release-dungeon-release-j1-c.exe"
+        ]
+      ],
+      "log": "release-dungeon-release-j1-c.log",
+      "build_exit": 0
+    },
+    "release-dungeon-release-j4-llvm": {
+      "compiler": "release",
+      "example": "dungeon",
+      "target": "release",
+      "jobs": 4,
+      "backend": "llvm",
+      "status": "NOT RUN",
+      "commit": "a618456b5d0013917b22a50933f9408cedfd5dbb",
+      "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "4",
+          "-r",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083052Z-6bf97fd5\\scratch\\manual\\release-dungeon-release-j4-llvm.exe"
+        ]
+      ],
+      "log": "release-dungeon-release-j4-llvm.log",
+      "build_exit": 0
+    },
+    "release-dungeon-release-j4-c": {
+      "compiler": "release",
+      "example": "dungeon",
+      "target": "release",
+      "jobs": 4,
+      "backend": "c",
+      "status": "NOT RUN",
+      "commit": "a618456b5d0013917b22a50933f9408cedfd5dbb",
+      "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "4",
+          "-r",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083052Z-6bf97fd5\\scratch\\manual\\release-dungeon-release-j4-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083052Z-6bf97fd5\\scratch\\manual\\release-dungeon-release-j4-c.c",
+          "-std=gnu11",
+          "-O2",
+          "-DNDEBUG",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-lopengl32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083052Z-6bf97fd5\\scratch\\manual\\release-dungeon-release-j4-c.exe"
+        ]
+      ],
+      "log": "release-dungeon-release-j4-c.log",
+      "build_exit": 0
+    }
+  }
+}

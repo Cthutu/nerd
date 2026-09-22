@@ -1,0 +1,1458 @@
+{
+  "debug-triangle-release-j1-llvm": {
+    "compiler": "debug",
+    "observed_utc": "2026-09-22T08:23:12.4807256Z",
+    "jobs": 1,
+    "before_input": {
+      "width": 800,
+      "image": "desktop-captures/debug-triangle-release-j1-llvm-before.png",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B",
+      "height": 600,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1257
+    },
+    "example": "triangle",
+    "target": "release",
+    "exit_code": 0,
+    "backend": "llvm",
+    "resized": {
+      "width": 960,
+      "image": "desktop-captures/debug-triangle-release-j1-llvm-resized.png",
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6",
+      "height": 720,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1787
+    },
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "status": "CAPTURED; visual review required",
+    "program_sha256": "32E1C22376B838C58707C1DB1A8B2C0BC9A39E63732BB484AF5DCD88D5443DF8"
+  },
+  "debug-triangle-release-j1-c": {
+    "compiler": "debug",
+    "observed_utc": "2026-09-22T08:23:11.0221371Z",
+    "jobs": 1,
+    "before_input": {
+      "width": 800,
+      "image": "desktop-captures/debug-triangle-release-j1-c-before.png",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B",
+      "height": 600,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1257
+    },
+    "example": "triangle",
+    "target": "release",
+    "exit_code": 0,
+    "backend": "c",
+    "resized": {
+      "width": 960,
+      "image": "desktop-captures/debug-triangle-release-j1-c-resized.png",
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6",
+      "height": 720,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1787
+    },
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "status": "CAPTURED; visual review required",
+    "program_sha256": "927A3512A46295CB980C2BDA7A6CB52A2D8FAD3917B6F6FAE8171B20EC94EE7B"
+  },
+  "debug-triangle-debug-j4-llvm": {
+    "compiler": "debug",
+    "observed_utc": "2026-09-22T08:23:09.5894702Z",
+    "jobs": 4,
+    "before_input": {
+      "width": 800,
+      "image": "desktop-captures/debug-triangle-debug-j4-llvm-before.png",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B",
+      "height": 600,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1257
+    },
+    "example": "triangle",
+    "target": "debug",
+    "exit_code": 0,
+    "backend": "llvm",
+    "resized": {
+      "width": 960,
+      "image": "desktop-captures/debug-triangle-debug-j4-llvm-resized.png",
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6",
+      "height": 720,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1787
+    },
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "status": "CAPTURED; visual review required",
+    "program_sha256": "F90EE59E7CC2D023EA934936894425E76BCB050D69A5D41132CF223F47DE6802"
+  },
+  "debug-triangle-release-j4-llvm": {
+    "compiler": "debug",
+    "observed_utc": "2026-09-22T08:23:15.377253Z",
+    "jobs": 4,
+    "before_input": {
+      "width": 800,
+      "image": "desktop-captures/debug-triangle-release-j4-llvm-before.png",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B",
+      "height": 600,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1257
+    },
+    "example": "triangle",
+    "target": "release",
+    "exit_code": 0,
+    "backend": "llvm",
+    "resized": {
+      "width": 960,
+      "image": "desktop-captures/debug-triangle-release-j4-llvm-resized.png",
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6",
+      "height": 720,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1787
+    },
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "status": "CAPTURED; visual review required",
+    "program_sha256": "68B2A8252235CDCDCB32C4E3D7A1FA8360026AF2D8E2DBD6B7ED5BB2D4706056"
+  },
+  "debug-triangle-debug-j1-llvm": {
+    "compiler": "debug",
+    "observed_utc": "2026-09-22T08:23:06.7277656Z",
+    "jobs": 1,
+    "before_input": {
+      "width": 800,
+      "image": "desktop-captures/debug-triangle-debug-j1-llvm-before.png",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B",
+      "height": 600,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1257
+    },
+    "example": "triangle",
+    "target": "debug",
+    "exit_code": 0,
+    "backend": "llvm",
+    "resized": {
+      "width": 960,
+      "image": "desktop-captures/debug-triangle-debug-j1-llvm-resized.png",
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6",
+      "height": 720,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1787
+    },
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "status": "CAPTURED; visual review required",
+    "program_sha256": "C455B2C3B674449C1313DAB58B376DFE1DEF69EE56FEF4C5B356913FCAF0961F"
+  },
+  "debug-triangle-debug-j1-c": {
+    "compiler": "debug",
+    "observed_utc": "2026-09-22T08:23:05.3079282Z",
+    "jobs": 1,
+    "before_input": {
+      "width": 800,
+      "image": "desktop-captures/debug-triangle-debug-j1-c-before.png",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B",
+      "height": 600,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1257
+    },
+    "example": "triangle",
+    "target": "debug",
+    "exit_code": 0,
+    "backend": "c",
+    "resized": {
+      "width": 960,
+      "image": "desktop-captures/debug-triangle-debug-j1-c-resized.png",
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6",
+      "height": 720,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1787
+    },
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "status": "CAPTURED; visual review required",
+    "program_sha256": "DEE0B6944A5DC31D8A7754C449E2A84696F27A8F0DC3E9C7ED5910E4CBD963D3"
+  },
+  "debug-triangle-debug-j4-c": {
+    "compiler": "debug",
+    "observed_utc": "2026-09-22T08:23:08.155367Z",
+    "jobs": 4,
+    "before_input": {
+      "width": 800,
+      "image": "desktop-captures/debug-triangle-debug-j4-c-before.png",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B",
+      "height": 600,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1257
+    },
+    "example": "triangle",
+    "target": "debug",
+    "exit_code": 0,
+    "backend": "c",
+    "resized": {
+      "width": 960,
+      "image": "desktop-captures/debug-triangle-debug-j4-c-resized.png",
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6",
+      "height": 720,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1787
+    },
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "status": "CAPTURED; visual review required",
+    "program_sha256": "CA739C78E8804C95A950EFF3955D4CF16F704B39E19E48531F0AE6A3D8696D61"
+  },
+  "debug-triangle-release-j4-c": {
+    "compiler": "debug",
+    "observed_utc": "2026-09-22T08:23:13.9079777Z",
+    "jobs": 4,
+    "before_input": {
+      "width": 800,
+      "image": "desktop-captures/debug-triangle-release-j4-c-before.png",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B",
+      "height": 600,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1257
+    },
+    "example": "triangle",
+    "target": "release",
+    "exit_code": 0,
+    "backend": "c",
+    "resized": {
+      "width": 960,
+      "image": "desktop-captures/debug-triangle-release-j4-c-resized.png",
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6",
+      "height": 720,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1787
+    },
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "status": "CAPTURED; visual review required",
+    "program_sha256": "F8D22EB078C8D39978A9C6A09FF615A19037A3D0FD42BD67311F80F81C8B24C6"
+  },
+  "debug-dungeon-debug-j1-c": {
+    "status": "CAPTURED; visual review required",
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "program_sha256": "BCA740C20CC227747D8B2F6B327577ABBF97D1534974B5F0433139E4543B65D1",
+    "observed_utc": "2026-09-22T08:24:08.3266686Z",
+    "target": "debug",
+    "compiler": "debug",
+    "backend": "c",
+    "after_input": {
+      "width": 960,
+      "sha256": "9675AA07836F6903A777F2D95C070A374D884961908B1D1B2C5E0F2CA661605F",
+      "image": "desktop-captures/debug-dungeon-debug-j1-c-regenerated.png",
+      "height": 480,
+      "sampled_colours": 31,
+      "method": "PrintWindow client capture"
+    },
+    "before_input": {
+      "width": 960,
+      "sha256": "1A946937EF0131945AC775DFB5FCE4F4E7AFBC18AC6EE012D78FC72A525287BE",
+      "image": "desktop-captures/debug-dungeon-debug-j1-c-before.png",
+      "height": 480,
+      "sampled_colours": 31,
+      "method": "PrintWindow client capture"
+    },
+    "jobs": 1,
+    "example": "dungeon",
+    "exit_code": 0
+  },
+  "debug-dungeon-debug-j1-llvm": {
+    "status": "CAPTURED; visual review required",
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "program_sha256": "E385CE4204CB4CA8315D7BC6D78FACE4245FEB2CF3F725FDEAC5E8899FD8958D",
+    "observed_utc": "2026-09-22T08:24:09.9676426Z",
+    "target": "debug",
+    "compiler": "debug",
+    "backend": "llvm",
+    "after_input": {
+      "width": 960,
+      "sha256": "58E1BFD5CA0C31032C513CA0E6DCD6767782C7384F7D08731F45733F9E5F903E",
+      "image": "desktop-captures/debug-dungeon-debug-j1-llvm-regenerated.png",
+      "height": 480,
+      "sampled_colours": 31,
+      "method": "PrintWindow client capture"
+    },
+    "before_input": {
+      "width": 960,
+      "sha256": "1AEFF0431A2B66C4683CC308CFC51CED08ACE86B864CA2C9438C6E785FA59550",
+      "image": "desktop-captures/debug-dungeon-debug-j1-llvm-before.png",
+      "height": 480,
+      "sampled_colours": 31,
+      "method": "PrintWindow client capture"
+    },
+    "jobs": 1,
+    "example": "dungeon",
+    "exit_code": 0
+  },
+  "debug-dungeon-debug-j4-c": {
+    "status": "CAPTURED; visual review required",
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "program_sha256": "78B9379B203B4BC3306ABDFD785F37B692B0E77F2E73900A2F8BB501FAD1CE21",
+    "observed_utc": "2026-09-22T08:24:11.4800130Z",
+    "target": "debug",
+    "compiler": "debug",
+    "backend": "c",
+    "after_input": {
+      "width": 960,
+      "sha256": "C9107E401DB397F1C63F090AEBAA2AF4B5E50E5689A4B34C7E77BCE88583033B",
+      "image": "desktop-captures/debug-dungeon-debug-j4-c-regenerated.png",
+      "height": 480,
+      "sampled_colours": 31,
+      "method": "PrintWindow client capture"
+    },
+    "before_input": {
+      "width": 960,
+      "sha256": "29B9D1126D47D9141C02AF9E94F2555C2B95FA6E7617869CAFBED36F12989A88",
+      "image": "desktop-captures/debug-dungeon-debug-j4-c-before.png",
+      "height": 480,
+      "sampled_colours": 31,
+      "method": "PrintWindow client capture"
+    },
+    "jobs": 4,
+    "example": "dungeon",
+    "exit_code": 0
+  },
+  "debug-dungeon-debug-j4-llvm": {
+    "status": "CAPTURED; visual review required",
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "program_sha256": "69AEC88AF4CF54545ADBACB0F5C0608C4693DB28BBBF7B19788AE8FA1B0B1443",
+    "observed_utc": "2026-09-22T08:24:13.0276204Z",
+    "target": "debug",
+    "compiler": "debug",
+    "backend": "llvm",
+    "after_input": {
+      "width": 960,
+      "sha256": "35D7300E5B2FEFF88FCABA1EF611865698DDED4F5A4072AE2D45367194EDD5BF",
+      "image": "desktop-captures/debug-dungeon-debug-j4-llvm-regenerated.png",
+      "height": 480,
+      "sampled_colours": 31,
+      "method": "PrintWindow client capture"
+    },
+    "before_input": {
+      "width": 960,
+      "sha256": "DD98E3270652A10EAA1B651C67CC376B197A2B6E54E3757D1ABD2BA5152B323B",
+      "image": "desktop-captures/debug-dungeon-debug-j4-llvm-before.png",
+      "height": 480,
+      "sampled_colours": 31,
+      "method": "PrintWindow client capture"
+    },
+    "jobs": 4,
+    "example": "dungeon",
+    "exit_code": 0
+  },
+  "debug-dungeon-release-j1-c": {
+    "status": "CAPTURED; visual review required",
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "program_sha256": "7B5088DAA7D3A2899C2304B892D6A5CA212D90CDD9D31192A24203BF5FB7BE8D",
+    "observed_utc": "2026-09-22T08:24:14.5392037Z",
+    "target": "release",
+    "compiler": "debug",
+    "backend": "c",
+    "after_input": {
+      "width": 960,
+      "sha256": "99F1477F9F75877C70B85FF364A9BDDAB6D00D81591ADB1518BD6B75ADCE61C5",
+      "image": "desktop-captures/debug-dungeon-release-j1-c-regenerated.png",
+      "height": 480,
+      "sampled_colours": 31,
+      "method": "PrintWindow client capture"
+    },
+    "before_input": {
+      "width": 960,
+      "sha256": "B3A0AF3C459315FDA2989517613946B31630E583FD15093177292463D6D39870",
+      "image": "desktop-captures/debug-dungeon-release-j1-c-before.png",
+      "height": 480,
+      "sampled_colours": 31,
+      "method": "PrintWindow client capture"
+    },
+    "jobs": 1,
+    "example": "dungeon",
+    "exit_code": 0
+  },
+  "debug-dungeon-release-j1-llvm": {
+    "status": "BLOCKED OR FAILED",
+    "error": "Dungeon did not change after regeneration input",
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "program_sha256": "F6A0CABBF266D5BF723083ADD3D52BC963697B15AAB9A1E723E357521CA2BC07",
+    "observed_utc": "2026-09-22T08:24:16.0437367Z",
+    "target": "release",
+    "compiler": "debug",
+    "backend": "llvm",
+    "after_input": {
+      "width": 960,
+      "sha256": "00BDCF8B27D541CE7FE05783944F7D9A264F1B3D9E9B5D9276FCE036B8184A81",
+      "image": "desktop-captures/debug-dungeon-release-j1-llvm-regenerated.png",
+      "height": 480,
+      "sampled_colours": 31,
+      "method": "PrintWindow client capture"
+    },
+    "before_input": {
+      "width": 960,
+      "sha256": "00BDCF8B27D541CE7FE05783944F7D9A264F1B3D9E9B5D9276FCE036B8184A81",
+      "image": "desktop-captures/debug-dungeon-release-j1-llvm-before.png",
+      "height": 480,
+      "sampled_colours": 31,
+      "method": "PrintWindow client capture"
+    },
+    "jobs": 1,
+    "example": "dungeon"
+  },
+  "debug-dungeon-release-j4-c": {
+    "status": "CAPTURED; visual review required",
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "program_sha256": "519001A064431A39DBE5A608FD315BF28941E691D7697E0918AFEC0164D7CD69",
+    "observed_utc": "2026-09-22T08:24:17.4718177Z",
+    "target": "release",
+    "compiler": "debug",
+    "backend": "c",
+    "after_input": {
+      "width": 960,
+      "sha256": "B001D8DA63B3F24499BD89FFB7B0899A8DCD713D2764220DC37844CA4029385A",
+      "image": "desktop-captures/debug-dungeon-release-j4-c-regenerated.png",
+      "height": 480,
+      "sampled_colours": 31,
+      "method": "PrintWindow client capture"
+    },
+    "before_input": {
+      "width": 960,
+      "sha256": "38BEF63FBB7870D035603CFD5BB69772FEA1847F37D83AF6438ADABA73EDD0E6",
+      "image": "desktop-captures/debug-dungeon-release-j4-c-before.png",
+      "height": 480,
+      "sampled_colours": 31,
+      "method": "PrintWindow client capture"
+    },
+    "jobs": 4,
+    "example": "dungeon",
+    "exit_code": 0
+  },
+  "debug-dungeon-release-j4-llvm": {
+    "status": "BLOCKED OR FAILED",
+    "error": "No visible test window",
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "program_sha256": "C3933F6D5983AE1CB2EE5A3BD0F88AD7189CE618B53F34B35DB3AAF73AAD8C80",
+    "observed_utc": "2026-09-22T08:24:18.9841081Z",
+    "target": "release",
+    "compiler": "debug",
+    "backend": "llvm",
+    "jobs": 4,
+    "example": "dungeon"
+  },
+  "debug-pixels-debug-j1-c": {
+    "compiler": "debug",
+    "observed_utc": "2026-09-22T08:22:50.2948142Z",
+    "jobs": 1,
+    "before_input": {
+      "width": 640,
+      "image": "desktop-captures/debug-pixels-debug-j1-c-before.png",
+      "sha256": "CBEE963987077A94CED616EBDB9419AD0F7644F95F4F1C5393FF0C7379CD8D34",
+      "height": 480,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881
+    },
+    "example": "pixels",
+    "exit_code": 0,
+    "target": "debug",
+    "animated": {
+      "width": 640,
+      "image": "desktop-captures/debug-pixels-debug-j1-c-animated.png",
+      "sha256": "0F2877DF5BE2399FFD52EF7BDB805D7A89F44115B9A07E6583730A7EECFA619F",
+      "height": 480,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881
+    },
+    "backend": "c",
+    "resized": {
+      "width": 960,
+      "image": "desktop-captures/debug-pixels-debug-j1-c-resized.png",
+      "sha256": "25C92E89AFA15AE79D324AC425C4B7E545161CBC8B1EC5422E2528B36293E7DE",
+      "height": 720,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 7883
+    },
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "status": "CAPTURED; visual review required",
+    "program_sha256": "7FC253C29DCB0CC21E544C8DAFE551D4746B9BB385DC09BB72AEE1255A092F8C"
+  },
+  "debug-pixels-debug-j1-llvm": {
+    "compiler": "debug",
+    "observed_utc": "2026-09-22T08:22:52.2057444Z",
+    "jobs": 1,
+    "before_input": {
+      "width": 640,
+      "image": "desktop-captures/debug-pixels-debug-j1-llvm-before.png",
+      "sha256": "31095A937A17462F9D952CC2579074813AC1CAD1FDEA1A3B6546F4914623EFC7",
+      "height": 480,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881
+    },
+    "example": "pixels",
+    "exit_code": 0,
+    "target": "debug",
+    "animated": {
+      "width": 640,
+      "image": "desktop-captures/debug-pixels-debug-j1-llvm-animated.png",
+      "sha256": "9EC55C4BB8A476CCEA1BE9881032EFF10AE54353080FAFEE8FC4C5EFFDF1BCD2",
+      "height": 480,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881
+    },
+    "backend": "llvm",
+    "resized": {
+      "width": 960,
+      "image": "desktop-captures/debug-pixels-debug-j1-llvm-resized.png",
+      "sha256": "912E681E8CCF605FFFC374FF7DEA0C8861DD69EF8F833FCB75D48E80A511CD3E",
+      "height": 720,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 7879
+    },
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "status": "CAPTURED; visual review required",
+    "program_sha256": "FE09C974D63B256E3049D890796D2E2EEE3454449CD7B45D05898B31EC8C243D"
+  },
+  "debug-pixels-debug-j4-c": {
+    "compiler": "debug",
+    "observed_utc": "2026-09-22T08:22:54.0453063Z",
+    "jobs": 4,
+    "before_input": {
+      "width": 640,
+      "image": "desktop-captures/debug-pixels-debug-j4-c-before.png",
+      "sha256": "CC6ED942A824731FDBB119ABAF9ED2F1AF1F4A5636A621064D1735AB53E582AA",
+      "height": 480,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881
+    },
+    "example": "pixels",
+    "exit_code": 0,
+    "target": "debug",
+    "animated": {
+      "width": 640,
+      "image": "desktop-captures/debug-pixels-debug-j4-c-animated.png",
+      "sha256": "06B09FB6BE613FE470216D99AB827B0D1B9044427B1ABC97E05DA0F2B953E6DC",
+      "height": 480,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881
+    },
+    "backend": "c",
+    "resized": {
+      "width": 960,
+      "image": "desktop-captures/debug-pixels-debug-j4-c-resized.png",
+      "sha256": "7BA0E52741CE5B64C82F2793DC170B41BAADAB5C852F66578310E2314570A7FA",
+      "height": 720,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 7881
+    },
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "status": "CAPTURED; visual review required",
+    "program_sha256": "7E4F65C7D8B0CFD57E9626EA0553BA1ABFB7D223FA6287FE00572D0565A497A5"
+  },
+  "debug-pixels-debug-j4-llvm": {
+    "compiler": "debug",
+    "observed_utc": "2026-09-22T08:22:55.9261819Z",
+    "jobs": 4,
+    "before_input": {
+      "width": 640,
+      "image": "desktop-captures/debug-pixels-debug-j4-llvm-before.png",
+      "sha256": "CBEE963987077A94CED616EBDB9419AD0F7644F95F4F1C5393FF0C7379CD8D34",
+      "height": 480,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881
+    },
+    "example": "pixels",
+    "exit_code": 0,
+    "target": "debug",
+    "animated": {
+      "width": 640,
+      "image": "desktop-captures/debug-pixels-debug-j4-llvm-animated.png",
+      "sha256": "0F2877DF5BE2399FFD52EF7BDB805D7A89F44115B9A07E6583730A7EECFA619F",
+      "height": 480,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881
+    },
+    "backend": "llvm",
+    "resized": {
+      "width": 960,
+      "image": "desktop-captures/debug-pixels-debug-j4-llvm-resized.png",
+      "sha256": "25C92E89AFA15AE79D324AC425C4B7E545161CBC8B1EC5422E2528B36293E7DE",
+      "height": 720,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 7883
+    },
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "status": "CAPTURED; visual review required",
+    "program_sha256": "78F24EA37F71DD97225379CE9B4185875741367CE3316DAD9ADF2AEFA8762AD5"
+  },
+  "debug-pixels-release-j1-c": {
+    "compiler": "debug",
+    "observed_utc": "2026-09-22T08:22:57.792154Z",
+    "jobs": 1,
+    "before_input": {
+      "width": 640,
+      "image": "desktop-captures/debug-pixels-release-j1-c-before.png",
+      "sha256": "CC6ED942A824731FDBB119ABAF9ED2F1AF1F4A5636A621064D1735AB53E582AA",
+      "height": 480,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881
+    },
+    "example": "pixels",
+    "exit_code": 0,
+    "target": "release",
+    "animated": {
+      "width": 640,
+      "image": "desktop-captures/debug-pixels-release-j1-c-animated.png",
+      "sha256": "06B09FB6BE613FE470216D99AB827B0D1B9044427B1ABC97E05DA0F2B953E6DC",
+      "height": 480,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881
+    },
+    "backend": "c",
+    "resized": {
+      "width": 960,
+      "image": "desktop-captures/debug-pixels-release-j1-c-resized.png",
+      "sha256": "7BA0E52741CE5B64C82F2793DC170B41BAADAB5C852F66578310E2314570A7FA",
+      "height": 720,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 7881
+    },
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "status": "CAPTURED; visual review required",
+    "program_sha256": "3680710C863D6FB23719855237C010E3F91EBABD7DB4D5342703F7D26430A2A4"
+  },
+  "debug-pixels-release-j1-llvm": {
+    "compiler": "debug",
+    "observed_utc": "2026-09-22T08:22:59.6747356Z",
+    "jobs": 1,
+    "before_input": {
+      "width": 640,
+      "image": "desktop-captures/debug-pixels-release-j1-llvm-before.png",
+      "sha256": "AC84D2D62C838BFF2BCA0D76E72DCEEA8AE13EAF1811887D8B30B9DC7E0B2E61",
+      "height": 480,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881
+    },
+    "example": "pixels",
+    "exit_code": 0,
+    "target": "release",
+    "animated": {
+      "width": 640,
+      "image": "desktop-captures/debug-pixels-release-j1-llvm-animated.png",
+      "sha256": "DAE563B6BC000AE578BA7CA65D368C8DFC9ABF5A30BB8440523EAD2A44B61F69",
+      "height": 480,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881
+    },
+    "backend": "llvm",
+    "resized": {
+      "width": 960,
+      "image": "desktop-captures/debug-pixels-release-j1-llvm-resized.png",
+      "sha256": "C3DB3E031FFDE0FD58C213DB086980F5A2338B3F7910A6F51E7AD01634E1B57C",
+      "height": 720,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 7885
+    },
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "status": "CAPTURED; visual review required",
+    "program_sha256": "D3899F7231168648B57F310548FEFC84B2C1D677B4F5B228FF07888251220DEA"
+  },
+  "debug-pixels-release-j4-c": {
+    "compiler": "debug",
+    "observed_utc": "2026-09-22T08:23:01.5870742Z",
+    "jobs": 4,
+    "before_input": {
+      "width": 640,
+      "image": "desktop-captures/debug-pixels-release-j4-c-before.png",
+      "sha256": "AC84D2D62C838BFF2BCA0D76E72DCEEA8AE13EAF1811887D8B30B9DC7E0B2E61",
+      "height": 480,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881
+    },
+    "example": "pixels",
+    "exit_code": 0,
+    "target": "release",
+    "animated": {
+      "width": 640,
+      "image": "desktop-captures/debug-pixels-release-j4-c-animated.png",
+      "sha256": "0F2877DF5BE2399FFD52EF7BDB805D7A89F44115B9A07E6583730A7EECFA619F",
+      "height": 480,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881
+    },
+    "backend": "c",
+    "resized": {
+      "width": 960,
+      "image": "desktop-captures/debug-pixels-release-j4-c-resized.png",
+      "sha256": "25C92E89AFA15AE79D324AC425C4B7E545161CBC8B1EC5422E2528B36293E7DE",
+      "height": 720,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 7883
+    },
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "status": "CAPTURED; visual review required",
+    "program_sha256": "1DD0AA1F51965ABC927D951DB485FA1CFE11CC8D062E11E1D4262B1EBFF5793E"
+  },
+  "debug-pixels-release-j4-llvm": {
+    "compiler": "debug",
+    "observed_utc": "2026-09-22T08:23:03.5015502Z",
+    "jobs": 4,
+    "before_input": {
+      "width": 640,
+      "image": "desktop-captures/debug-pixels-release-j4-llvm-before.png",
+      "sha256": "CBEE963987077A94CED616EBDB9419AD0F7644F95F4F1C5393FF0C7379CD8D34",
+      "height": 480,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881
+    },
+    "example": "pixels",
+    "exit_code": 0,
+    "target": "release",
+    "animated": {
+      "width": 640,
+      "image": "desktop-captures/debug-pixels-release-j4-llvm-animated.png",
+      "sha256": "0F2877DF5BE2399FFD52EF7BDB805D7A89F44115B9A07E6583730A7EECFA619F",
+      "height": 480,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881
+    },
+    "backend": "llvm",
+    "resized": {
+      "width": 960,
+      "image": "desktop-captures/debug-pixels-release-j4-llvm-resized.png",
+      "sha256": "C3DB3E031FFDE0FD58C213DB086980F5A2338B3F7910A6F51E7AD01634E1B57C",
+      "height": 720,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 7885
+    },
+    "compiler_sha256": "81aada56150c6faa794965be6bbd24697d23f4f6f754c4ed86777cfc24f69660",
+    "status": "CAPTURED; visual review required",
+    "program_sha256": "93AD6B831701523FBCD0B1807F658539EF6F547F5EA1E773323494BC903636C8"
+  },
+  "release-dungeon-debug-j1-c": {
+    "status": "CAPTURED; visual review required",
+    "compiler_sha256": "a7a3597ac58d2b11ead1a39c31631ca7835226c5813798ab25d1975fdd27a958",
+    "program_sha256": "236831BE76DB74BA707C2EEB0B431DC4BBAF9D8E08A7379CFF4A5E09C6390913",
+    "observed_utc": "2026-09-22T08:24:19.2628029Z",
+    "target": "debug",
+    "compiler": "release",
+    "backend": "c",
+    "after_input": {
+      "width": 960,
+      "sha256": "78347057FDA7A5CEAD2C7A9AFD8482CDDE7C74587F33B34882D9D5B1EA33404F",
+      "image": "desktop-captures/release-dungeon-debug-j1-c-regenerated.png",
+      "height": 480,
+      "sampled_colours": 31,
+      "method": "PrintWindow client capture"
+    },
+    "before_input": {
+      "width": 960,
+      "sha256": "B68F3B8FD3E39E07ED7BECF618EB0E46C1B42B654053C71D45C1DFB0763C71CC",
+      "image": "desktop-captures/release-dungeon-debug-j1-c-before.png",
+      "height": 480,
+      "sampled_colours": 31,
+      "method": "PrintWindow client capture"
+    },
+    "jobs": 1,
+    "example": "dungeon",
+    "exit_code": 0
+  },
+  "release-dungeon-debug-j1-llvm": {
+    "status": "CAPTURED; visual review required",
+    "compiler_sha256": "a7a3597ac58d2b11ead1a39c31631ca7835226c5813798ab25d1975fdd27a958",
+    "program_sha256": "30CE03254859FEF21419ADC4CB6EC140D8F53D81FC996FE28A7398BD4E57D63B",
+    "observed_utc": "2026-09-22T08:24:20.7956153Z",
+    "target": "debug",
+    "compiler": "release",
+    "backend": "llvm",
+    "after_input": {
+      "width": 960,
+      "sha256": "206BB9A80306CBEEEEBC927848647BB2F3DEB858DC943B60BA8C97FA74D50917",
+      "image": "desktop-captures/release-dungeon-debug-j1-llvm-regenerated.png",
+      "height": 480,
+      "sampled_colours": 31,
+      "method": "PrintWindow client capture"
+    },
+    "before_input": {
+      "width": 960,
+      "sha256": "996E2C9DFF66D0680CCD82C55409AFC93046336A215729C6B1B107BF69CB3E95",
+      "image": "desktop-captures/release-dungeon-debug-j1-llvm-before.png",
+      "height": 480,
+      "sampled_colours": 31,
+      "method": "PrintWindow client capture"
+    },
+    "jobs": 1,
+    "example": "dungeon",
+    "exit_code": 0
+  },
+  "release-dungeon-debug-j4-c": {
+    "status": "CAPTURED; visual review required",
+    "compiler_sha256": "a7a3597ac58d2b11ead1a39c31631ca7835226c5813798ab25d1975fdd27a958",
+    "program_sha256": "1433F6599007D5F69C38D23ACFFC386EC19FADDCF1AC610424D2DC7C150B4385",
+    "observed_utc": "2026-09-22T08:24:22.3135023Z",
+    "target": "debug",
+    "compiler": "release",
+    "backend": "c",
+    "after_input": {
+      "width": 960,
+      "sha256": "9462DBA40B666ABE0BCBC1FB33DEF1F65E2418E6FC911656E0F8BB13D5A119D8",
+      "image": "desktop-captures/release-dungeon-debug-j4-c-regenerated.png",
+      "height": 480,
+      "sampled_colours": 31,
+      "method": "PrintWindow client capture"
+    },
+    "before_input": {
+      "width": 960,
+      "sha256": "5E6732B55AE4E8538A9D8080F76A55203E523969DBC712565C4133FBDF426C70",
+      "image": "desktop-captures/release-dungeon-debug-j4-c-before.png",
+      "height": 480,
+      "sampled_colours": 31,
+      "method": "PrintWindow client capture"
+    },
+    "jobs": 4,
+    "example": "dungeon",
+    "exit_code": 0
+  },
+  "release-dungeon-debug-j4-llvm": {
+    "status": "CAPTURED; visual review required",
+    "compiler_sha256": "a7a3597ac58d2b11ead1a39c31631ca7835226c5813798ab25d1975fdd27a958",
+    "program_sha256": "8AB2BAEBD3614E1A598B184CD5F74AE6A4DF1C61425E44A262D83ED09244E11C",
+    "observed_utc": "2026-09-22T08:24:23.8454665Z",
+    "target": "debug",
+    "compiler": "release",
+    "backend": "llvm",
+    "after_input": {
+      "width": 960,
+      "sha256": "F4700AFDCDD35D20ED9818C2148E2AFA375EE403098A6CD4CAB1BA8F360CBA68",
+      "image": "desktop-captures/release-dungeon-debug-j4-llvm-regenerated.png",
+      "height": 480,
+      "sampled_colours": 31,
+      "method": "PrintWindow client capture"
+    },
+    "before_input": {
+      "width": 960,
+      "sha256": "41C086C6978BE9BB9545166ED415970595DB932E368FCB567C4DBE31F16C05DD",
+      "image": "desktop-captures/release-dungeon-debug-j4-llvm-before.png",
+      "height": 480,
+      "sampled_colours": 31,
+      "method": "PrintWindow client capture"
+    },
+    "jobs": 4,
+    "example": "dungeon",
+    "exit_code": 0
+  },
+  "release-dungeon-release-j1-c": {
+    "status": "CAPTURED; visual review required",
+    "compiler_sha256": "a7a3597ac58d2b11ead1a39c31631ca7835226c5813798ab25d1975fdd27a958",
+    "program_sha256": "5EB135C90111F19529EC604D2028A8B04348404884BF6373DF40DF3D18B99FE3",
+    "observed_utc": "2026-09-22T08:24:25.3812422Z",
+    "target": "release",
+    "compiler": "release",
+    "backend": "c",
+    "after_input": {
+      "width": 960,
+      "sha256": "368AA6960F267B0DCE8E4AD10088D197412CD02AE0462CD09B54CF72C28B7CD9",
+      "image": "desktop-captures/release-dungeon-release-j1-c-regenerated.png",
+      "height": 480,
+      "sampled_colours": 31,
+      "method": "PrintWindow client capture"
+    },
+    "before_input": {
+      "width": 960,
+      "sha256": "E294619382FA9D0675ED8C53A7F011F076B737BEDDA89A8D828DC7C896825164",
+      "image": "desktop-captures/release-dungeon-release-j1-c-before.png",
+      "height": 480,
+      "sampled_colours": 31,
+      "method": "PrintWindow client capture"
+    },
+    "jobs": 1,
+    "example": "dungeon",
+    "exit_code": 0
+  },
+  "release-dungeon-release-j1-llvm": {
+    "status": "BLOCKED OR FAILED",
+    "error": "Dungeon did not change after regeneration input",
+    "compiler_sha256": "a7a3597ac58d2b11ead1a39c31631ca7835226c5813798ab25d1975fdd27a958",
+    "program_sha256": "798FD9491348372E40C6CCA675288DBB59087673EE45591CE30FD70F595A8FDF",
+    "observed_utc": "2026-09-22T08:24:26.9206155Z",
+    "target": "release",
+    "compiler": "release",
+    "backend": "llvm",
+    "after_input": {
+      "width": 960,
+      "sha256": "7C0563C3F12D9B6D6BB8DF35B0C519930F36D40277E7C023CC1E6AEC7615DF92",
+      "image": "desktop-captures/release-dungeon-release-j1-llvm-regenerated.png",
+      "height": 480,
+      "sampled_colours": 31,
+      "method": "PrintWindow client capture"
+    },
+    "before_input": {
+      "width": 960,
+      "sha256": "7C0563C3F12D9B6D6BB8DF35B0C519930F36D40277E7C023CC1E6AEC7615DF92",
+      "image": "desktop-captures/release-dungeon-release-j1-llvm-before.png",
+      "height": 480,
+      "sampled_colours": 31,
+      "method": "PrintWindow client capture"
+    },
+    "jobs": 1,
+    "example": "dungeon"
+  },
+  "release-dungeon-release-j4-c": {
+    "status": "CAPTURED; visual review required",
+    "compiler_sha256": "a7a3597ac58d2b11ead1a39c31631ca7835226c5813798ab25d1975fdd27a958",
+    "program_sha256": "15ACBB94E79749D22FE6A99E4059C2CDE5CB0EA9791A25254A6B98B070146035",
+    "observed_utc": "2026-09-22T08:24:28.5535779Z",
+    "target": "release",
+    "compiler": "release",
+    "backend": "c",
+    "after_input": {
+      "width": 960,
+      "sha256": "9857FE1CF4ADE53189EB67A9E5D488402C5F78F50C25A733928D181DCE08375C",
+      "image": "desktop-captures/release-dungeon-release-j4-c-regenerated.png",
+      "height": 480,
+      "sampled_colours": 31,
+      "method": "PrintWindow client capture"
+    },
+    "before_input": {
+      "width": 960,
+      "sha256": "8DB5F3FE63B7A8CF085252B7D88500C77A487297428611C33A119160FEBB0569",
+      "image": "desktop-captures/release-dungeon-release-j4-c-before.png",
+      "height": 480,
+      "sampled_colours": 31,
+      "method": "PrintWindow client capture"
+    },
+    "jobs": 4,
+    "example": "dungeon",
+    "exit_code": 0
+  },
+  "release-dungeon-release-j4-llvm": {
+    "status": "BLOCKED OR FAILED",
+    "error": "Dungeon did not change after regeneration input",
+    "compiler_sha256": "a7a3597ac58d2b11ead1a39c31631ca7835226c5813798ab25d1975fdd27a958",
+    "program_sha256": "88AA887ECA56BF20819FD0A24FC4622C5F301E6C5CB2DA270D27B2561755942C",
+    "observed_utc": "2026-09-22T08:24:30.0804592Z",
+    "target": "release",
+    "compiler": "release",
+    "backend": "llvm",
+    "after_input": {
+      "width": 960,
+      "sha256": "B6F6CE557D1CAF7B4011F790E81A76CA0CC5369A82BD56FFF0B14194DCF9F96C",
+      "image": "desktop-captures/release-dungeon-release-j4-llvm-regenerated.png",
+      "height": 480,
+      "sampled_colours": 31,
+      "method": "PrintWindow client capture"
+    },
+    "before_input": {
+      "width": 960,
+      "sha256": "B6F6CE557D1CAF7B4011F790E81A76CA0CC5369A82BD56FFF0B14194DCF9F96C",
+      "image": "desktop-captures/release-dungeon-release-j4-llvm-before.png",
+      "height": 480,
+      "sampled_colours": 31,
+      "method": "PrintWindow client capture"
+    },
+    "jobs": 4,
+    "example": "dungeon"
+  },
+  "release-pixels-debug-j1-c": {
+    "compiler": "release",
+    "observed_utc": "2026-09-22T08:23:27.6462951Z",
+    "jobs": 1,
+    "before_input": {
+      "width": 640,
+      "image": "desktop-captures/release-pixels-debug-j1-c-before.png",
+      "sha256": "CBEE963987077A94CED616EBDB9419AD0F7644F95F4F1C5393FF0C7379CD8D34",
+      "height": 480,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881
+    },
+    "example": "pixels",
+    "exit_code": 0,
+    "target": "debug",
+    "animated": {
+      "width": 640,
+      "image": "desktop-captures/release-pixels-debug-j1-c-animated.png",
+      "sha256": "0F2877DF5BE2399FFD52EF7BDB805D7A89F44115B9A07E6583730A7EECFA619F",
+      "height": 480,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881
+    },
+    "backend": "c",
+    "resized": {
+      "width": 960,
+      "image": "desktop-captures/release-pixels-debug-j1-c-resized.png",
+      "sha256": "25C92E89AFA15AE79D324AC425C4B7E545161CBC8B1EC5422E2528B36293E7DE",
+      "height": 720,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 7883
+    },
+    "compiler_sha256": "a7a3597ac58d2b11ead1a39c31631ca7835226c5813798ab25d1975fdd27a958",
+    "status": "CAPTURED; visual review required",
+    "program_sha256": "86009A8122DEC0BC7760AB675C8B18027DC581E184FB0EC9C4E2AFB7C4967A3E"
+  },
+  "release-pixels-debug-j1-llvm": {
+    "compiler": "release",
+    "observed_utc": "2026-09-22T08:23:29.5510563Z",
+    "jobs": 1,
+    "before_input": {
+      "width": 640,
+      "image": "desktop-captures/release-pixels-debug-j1-llvm-before.png",
+      "sha256": "CBEE963987077A94CED616EBDB9419AD0F7644F95F4F1C5393FF0C7379CD8D34",
+      "height": 480,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881
+    },
+    "example": "pixels",
+    "exit_code": 0,
+    "target": "debug",
+    "animated": {
+      "width": 640,
+      "image": "desktop-captures/release-pixels-debug-j1-llvm-animated.png",
+      "sha256": "0F2877DF5BE2399FFD52EF7BDB805D7A89F44115B9A07E6583730A7EECFA619F",
+      "height": 480,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881
+    },
+    "backend": "llvm",
+    "resized": {
+      "width": 960,
+      "image": "desktop-captures/release-pixels-debug-j1-llvm-resized.png",
+      "sha256": "25C92E89AFA15AE79D324AC425C4B7E545161CBC8B1EC5422E2528B36293E7DE",
+      "height": 720,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 7883
+    },
+    "compiler_sha256": "a7a3597ac58d2b11ead1a39c31631ca7835226c5813798ab25d1975fdd27a958",
+    "status": "CAPTURED; visual review required",
+    "program_sha256": "0FE0C31382CB03A6FC70C7BFBF38687B5E770102DA7714C533CDBED8557D9062"
+  },
+  "release-pixels-debug-j4-c": {
+    "compiler": "release",
+    "observed_utc": "2026-09-22T08:23:31.4472751Z",
+    "jobs": 4,
+    "before_input": {
+      "width": 640,
+      "image": "desktop-captures/release-pixels-debug-j4-c-before.png",
+      "sha256": "CC6ED942A824731FDBB119ABAF9ED2F1AF1F4A5636A621064D1735AB53E582AA",
+      "height": 480,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881
+    },
+    "example": "pixels",
+    "exit_code": 0,
+    "target": "debug",
+    "animated": {
+      "width": 640,
+      "image": "desktop-captures/release-pixels-debug-j4-c-animated.png",
+      "sha256": "06B09FB6BE613FE470216D99AB827B0D1B9044427B1ABC97E05DA0F2B953E6DC",
+      "height": 480,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881
+    },
+    "backend": "c",
+    "resized": {
+      "width": 960,
+      "image": "desktop-captures/release-pixels-debug-j4-c-resized.png",
+      "sha256": "25C92E89AFA15AE79D324AC425C4B7E545161CBC8B1EC5422E2528B36293E7DE",
+      "height": 720,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 7883
+    },
+    "compiler_sha256": "a7a3597ac58d2b11ead1a39c31631ca7835226c5813798ab25d1975fdd27a958",
+    "status": "CAPTURED; visual review required",
+    "program_sha256": "705B0FA09BF37A0122A9D941B7ACE6D6EA4238DB67D6D84717F3285AD69A20C4"
+  },
+  "release-pixels-debug-j4-llvm": {
+    "compiler": "release",
+    "observed_utc": "2026-09-22T08:23:33.2945006Z",
+    "jobs": 4,
+    "before_input": {
+      "width": 640,
+      "image": "desktop-captures/release-pixels-debug-j4-llvm-before.png",
+      "sha256": "CC6ED942A824731FDBB119ABAF9ED2F1AF1F4A5636A621064D1735AB53E582AA",
+      "height": 480,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881
+    },
+    "example": "pixels",
+    "exit_code": 0,
+    "target": "debug",
+    "animated": {
+      "width": 640,
+      "image": "desktop-captures/release-pixels-debug-j4-llvm-animated.png",
+      "sha256": "06B09FB6BE613FE470216D99AB827B0D1B9044427B1ABC97E05DA0F2B953E6DC",
+      "height": 480,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881
+    },
+    "backend": "llvm",
+    "resized": {
+      "width": 960,
+      "image": "desktop-captures/release-pixels-debug-j4-llvm-resized.png",
+      "sha256": "25C92E89AFA15AE79D324AC425C4B7E545161CBC8B1EC5422E2528B36293E7DE",
+      "height": 720,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 7883
+    },
+    "compiler_sha256": "a7a3597ac58d2b11ead1a39c31631ca7835226c5813798ab25d1975fdd27a958",
+    "status": "CAPTURED; visual review required",
+    "program_sha256": "D654F69AF1C0AAB412EC3A26CD468E09ECEC103EBEBD9A2A7C8BB37707EEB565"
+  },
+  "release-pixels-release-j1-c": {
+    "compiler": "release",
+    "observed_utc": "2026-09-22T08:23:35.1212107Z",
+    "jobs": 1,
+    "before_input": {
+      "width": 640,
+      "image": "desktop-captures/release-pixels-release-j1-c-before.png",
+      "sha256": "CC6ED942A824731FDBB119ABAF9ED2F1AF1F4A5636A621064D1735AB53E582AA",
+      "height": 480,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881
+    },
+    "example": "pixels",
+    "exit_code": 0,
+    "target": "release",
+    "animated": {
+      "width": 640,
+      "image": "desktop-captures/release-pixels-release-j1-c-animated.png",
+      "sha256": "06B09FB6BE613FE470216D99AB827B0D1B9044427B1ABC97E05DA0F2B953E6DC",
+      "height": 480,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881
+    },
+    "backend": "c",
+    "resized": {
+      "width": 960,
+      "image": "desktop-captures/release-pixels-release-j1-c-resized.png",
+      "sha256": "7BA0E52741CE5B64C82F2793DC170B41BAADAB5C852F66578310E2314570A7FA",
+      "height": 720,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 7881
+    },
+    "compiler_sha256": "a7a3597ac58d2b11ead1a39c31631ca7835226c5813798ab25d1975fdd27a958",
+    "status": "CAPTURED; visual review required",
+    "program_sha256": "140A6CCD9DCFEEBD17207B7D4E502130813B35C33C23B4A9A4352B494D0D8994"
+  },
+  "release-pixels-release-j1-llvm": {
+    "compiler": "release",
+    "observed_utc": "2026-09-22T08:23:37.0303945Z",
+    "jobs": 1,
+    "before_input": {
+      "width": 640,
+      "image": "desktop-captures/release-pixels-release-j1-llvm-before.png",
+      "sha256": "CC6ED942A824731FDBB119ABAF9ED2F1AF1F4A5636A621064D1735AB53E582AA",
+      "height": 480,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881
+    },
+    "example": "pixels",
+    "exit_code": 0,
+    "target": "release",
+    "animated": {
+      "width": 640,
+      "image": "desktop-captures/release-pixels-release-j1-llvm-animated.png",
+      "sha256": "06B09FB6BE613FE470216D99AB827B0D1B9044427B1ABC97E05DA0F2B953E6DC",
+      "height": 480,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881
+    },
+    "backend": "llvm",
+    "resized": {
+      "width": 960,
+      "image": "desktop-captures/release-pixels-release-j1-llvm-resized.png",
+      "sha256": "7BA0E52741CE5B64C82F2793DC170B41BAADAB5C852F66578310E2314570A7FA",
+      "height": 720,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 7881
+    },
+    "compiler_sha256": "a7a3597ac58d2b11ead1a39c31631ca7835226c5813798ab25d1975fdd27a958",
+    "status": "CAPTURED; visual review required",
+    "program_sha256": "313EA0840708FB85E9C825293A177EEA9064992D029D85E08F739C936C6DAEC8"
+  },
+  "release-pixels-release-j4-c": {
+    "compiler": "release",
+    "observed_utc": "2026-09-22T08:23:38.8653691Z",
+    "jobs": 4,
+    "before_input": {
+      "width": 640,
+      "image": "desktop-captures/release-pixels-release-j4-c-before.png",
+      "sha256": "CC6ED942A824731FDBB119ABAF9ED2F1AF1F4A5636A621064D1735AB53E582AA",
+      "height": 480,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881
+    },
+    "example": "pixels",
+    "exit_code": 0,
+    "target": "release",
+    "animated": {
+      "width": 640,
+      "image": "desktop-captures/release-pixels-release-j4-c-animated.png",
+      "sha256": "06B09FB6BE613FE470216D99AB827B0D1B9044427B1ABC97E05DA0F2B953E6DC",
+      "height": 480,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881
+    },
+    "backend": "c",
+    "resized": {
+      "width": 960,
+      "image": "desktop-captures/release-pixels-release-j4-c-resized.png",
+      "sha256": "7BA0E52741CE5B64C82F2793DC170B41BAADAB5C852F66578310E2314570A7FA",
+      "height": 720,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 7881
+    },
+    "compiler_sha256": "a7a3597ac58d2b11ead1a39c31631ca7835226c5813798ab25d1975fdd27a958",
+    "status": "CAPTURED; visual review required",
+    "program_sha256": "89FD99522AF2D3CBBB40A66AFC6952B1E51EE0061870CC89344B4865894B064A"
+  },
+  "release-pixels-release-j4-llvm": {
+    "compiler": "release",
+    "observed_utc": "2026-09-22T08:23:40.7310272Z",
+    "jobs": 4,
+    "before_input": {
+      "width": 640,
+      "image": "desktop-captures/release-pixels-release-j4-llvm-before.png",
+      "sha256": "CBEE963987077A94CED616EBDB9419AD0F7644F95F4F1C5393FF0C7379CD8D34",
+      "height": 480,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881
+    },
+    "example": "pixels",
+    "exit_code": 0,
+    "target": "release",
+    "animated": {
+      "width": 640,
+      "image": "desktop-captures/release-pixels-release-j4-llvm-animated.png",
+      "sha256": "0F2877DF5BE2399FFD52EF7BDB805D7A89F44115B9A07E6583730A7EECFA619F",
+      "height": 480,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881
+    },
+    "backend": "llvm",
+    "resized": {
+      "width": 960,
+      "image": "desktop-captures/release-pixels-release-j4-llvm-resized.png",
+      "sha256": "25C92E89AFA15AE79D324AC425C4B7E545161CBC8B1EC5422E2528B36293E7DE",
+      "height": 720,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 7883
+    },
+    "compiler_sha256": "a7a3597ac58d2b11ead1a39c31631ca7835226c5813798ab25d1975fdd27a958",
+    "status": "CAPTURED; visual review required",
+    "program_sha256": "D07E08F26FCB7FFC8E26772F40B44FD5FF281D2A0BA033E6D6CF8B4924187919"
+  },
+  "release-triangle-debug-j1-c": {
+    "compiler": "release",
+    "observed_utc": "2026-09-22T08:23:42.5817927Z",
+    "jobs": 1,
+    "before_input": {
+      "width": 800,
+      "image": "desktop-captures/release-triangle-debug-j1-c-before.png",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B",
+      "height": 600,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1257
+    },
+    "example": "triangle",
+    "target": "debug",
+    "exit_code": 0,
+    "backend": "c",
+    "resized": {
+      "width": 960,
+      "image": "desktop-captures/release-triangle-debug-j1-c-resized.png",
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6",
+      "height": 720,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1787
+    },
+    "compiler_sha256": "a7a3597ac58d2b11ead1a39c31631ca7835226c5813798ab25d1975fdd27a958",
+    "status": "CAPTURED; visual review required",
+    "program_sha256": "144B9C4C02DE36264C644D414F1AA7D6209C823A2CF90CA93B01B6B6FC028F49"
+  },
+  "release-triangle-debug-j1-llvm": {
+    "compiler": "release",
+    "observed_utc": "2026-09-22T08:23:44.0381064Z",
+    "jobs": 1,
+    "before_input": {
+      "width": 800,
+      "image": "desktop-captures/release-triangle-debug-j1-llvm-before.png",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B",
+      "height": 600,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1257
+    },
+    "example": "triangle",
+    "target": "debug",
+    "exit_code": 0,
+    "backend": "llvm",
+    "resized": {
+      "width": 960,
+      "image": "desktop-captures/release-triangle-debug-j1-llvm-resized.png",
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6",
+      "height": 720,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1787
+    },
+    "compiler_sha256": "a7a3597ac58d2b11ead1a39c31631ca7835226c5813798ab25d1975fdd27a958",
+    "status": "CAPTURED; visual review required",
+    "program_sha256": "EBF6D247CAADE753747846EB2D5E24C81EB82D65641A2BA58DEB9EF009193F30"
+  },
+  "release-triangle-debug-j4-c": {
+    "compiler": "release",
+    "observed_utc": "2026-09-22T08:23:45.5006542Z",
+    "jobs": 4,
+    "before_input": {
+      "width": 800,
+      "image": "desktop-captures/release-triangle-debug-j4-c-before.png",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B",
+      "height": 600,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1257
+    },
+    "example": "triangle",
+    "target": "debug",
+    "exit_code": 0,
+    "backend": "c",
+    "resized": {
+      "width": 960,
+      "image": "desktop-captures/release-triangle-debug-j4-c-resized.png",
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6",
+      "height": 720,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1787
+    },
+    "compiler_sha256": "a7a3597ac58d2b11ead1a39c31631ca7835226c5813798ab25d1975fdd27a958",
+    "status": "CAPTURED; visual review required",
+    "program_sha256": "4A55B21ECC27DF5FF7A9E929D3783D428B8768692076C3F748211ADC62023428"
+  },
+  "release-triangle-debug-j4-llvm": {
+    "compiler": "release",
+    "observed_utc": "2026-09-22T08:23:46.992124Z",
+    "jobs": 4,
+    "before_input": {
+      "width": 800,
+      "image": "desktop-captures/release-triangle-debug-j4-llvm-before.png",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B",
+      "height": 600,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1257
+    },
+    "example": "triangle",
+    "target": "debug",
+    "exit_code": 0,
+    "backend": "llvm",
+    "resized": {
+      "width": 960,
+      "image": "desktop-captures/release-triangle-debug-j4-llvm-resized.png",
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6",
+      "height": 720,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1787
+    },
+    "compiler_sha256": "a7a3597ac58d2b11ead1a39c31631ca7835226c5813798ab25d1975fdd27a958",
+    "status": "CAPTURED; visual review required",
+    "program_sha256": "1CB3F8A42AAB2C805E0F46A708D4AECFB52FE9B3FEEB8AC99A510BB50ED5A28E"
+  },
+  "release-triangle-release-j1-c": {
+    "compiler": "release",
+    "observed_utc": "2026-09-22T08:23:48.4244941Z",
+    "jobs": 1,
+    "before_input": {
+      "width": 800,
+      "image": "desktop-captures/release-triangle-release-j1-c-before.png",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B",
+      "height": 600,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1257
+    },
+    "example": "triangle",
+    "target": "release",
+    "exit_code": 0,
+    "backend": "c",
+    "resized": {
+      "width": 960,
+      "image": "desktop-captures/release-triangle-release-j1-c-resized.png",
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6",
+      "height": 720,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1787
+    },
+    "compiler_sha256": "a7a3597ac58d2b11ead1a39c31631ca7835226c5813798ab25d1975fdd27a958",
+    "status": "CAPTURED; visual review required",
+    "program_sha256": "8356A3774357E75D9476DB77BEA3FF6D41DEF47C65EA6DD05DEAB6A8E222C513"
+  },
+  "release-triangle-release-j1-llvm": {
+    "compiler": "release",
+    "observed_utc": "2026-09-22T08:23:49.9011098Z",
+    "jobs": 1,
+    "before_input": {
+      "width": 800,
+      "image": "desktop-captures/release-triangle-release-j1-llvm-before.png",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B",
+      "height": 600,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1257
+    },
+    "example": "triangle",
+    "target": "release",
+    "exit_code": 0,
+    "backend": "llvm",
+    "resized": {
+      "width": 960,
+      "image": "desktop-captures/release-triangle-release-j1-llvm-resized.png",
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6",
+      "height": 720,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1787
+    },
+    "compiler_sha256": "a7a3597ac58d2b11ead1a39c31631ca7835226c5813798ab25d1975fdd27a958",
+    "status": "CAPTURED; visual review required",
+    "program_sha256": "64F351B081A6E5E899A5D1637EE1CBFC43B6B0C0EBDF8CCB80CCBA92186A1F2B"
+  },
+  "release-triangle-release-j4-c": {
+    "compiler": "release",
+    "observed_utc": "2026-09-22T08:23:51.3318199Z",
+    "jobs": 4,
+    "before_input": {
+      "width": 800,
+      "image": "desktop-captures/release-triangle-release-j4-c-before.png",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B",
+      "height": 600,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1257
+    },
+    "example": "triangle",
+    "target": "release",
+    "exit_code": 0,
+    "backend": "c",
+    "resized": {
+      "width": 960,
+      "image": "desktop-captures/release-triangle-release-j4-c-resized.png",
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6",
+      "height": 720,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1787
+    },
+    "compiler_sha256": "a7a3597ac58d2b11ead1a39c31631ca7835226c5813798ab25d1975fdd27a958",
+    "status": "CAPTURED; visual review required",
+    "program_sha256": "17F865D09AF5F0037D1B55803AA543721E0376DB030FA2F6420B89F68FBADFAC"
+  },
+  "release-triangle-release-j4-llvm": {
+    "compiler": "release",
+    "observed_utc": "2026-09-22T08:23:52.7617687Z",
+    "jobs": 4,
+    "before_input": {
+      "width": 800,
+      "image": "desktop-captures/release-triangle-release-j4-llvm-before.png",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B",
+      "height": 600,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1257
+    },
+    "example": "triangle",
+    "target": "release",
+    "exit_code": 0,
+    "backend": "llvm",
+    "resized": {
+      "width": 960,
+      "image": "desktop-captures/release-triangle-release-j4-llvm-resized.png",
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6",
+      "height": 720,
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1787
+    },
+    "compiler_sha256": "a7a3597ac58d2b11ead1a39c31631ca7835226c5813798ab25d1975fdd27a958",
+    "status": "CAPTURED; visual review required",
+    "program_sha256": "D7682D742017D1954D464F5734EA65856E918350E0E157BC2B0943DD2B89A326"
+  }
+}

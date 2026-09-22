@@ -1,0 +1,450 @@
+{
+  "debug-dungeon-release-j1-c": {
+    "example": "dungeon",
+    "backend": "c",
+    "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+    "observed_utc": "2026-09-22T08:33:33.2871240Z",
+    "after_input": {
+      "width": 960,
+      "method": "PrintWindow client capture",
+      "image": "desktop-captures/debug-dungeon-release-j1-c-regenerated.png",
+      "sha256": "1E46E5A8E105B32E54734C09C509EB26D5ABECF68028CB0DF254E463E969182D",
+      "height": 480,
+      "sampled_colours": 31
+    },
+    "before_input": {
+      "width": 960,
+      "method": "PrintWindow client capture",
+      "image": "desktop-captures/debug-dungeon-release-j1-c-before.png",
+      "sha256": "CE7DF952586F52EDDD8C9803AD008100BFE2F944DEFE4CE6DCDFBA55E696898B",
+      "height": 480,
+      "sampled_colours": 31
+    },
+    "program_sha256": "B0CFE56DCC6D2BA1B59A856353B1328D07918BE13635D46ACCF06CD4D8F3CC05",
+    "jobs": 1,
+    "status": "CAPTURED; visual review required",
+    "target": "release",
+    "compiler": "debug",
+    "exit_code": 0
+  },
+  "release-dungeon-debug-j4-c": {
+    "example": "dungeon",
+    "backend": "c",
+    "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+    "observed_utc": "2026-09-22T08:33:42.8513776Z",
+    "after_input": {
+      "width": 960,
+      "method": "PrintWindow client capture",
+      "image": "desktop-captures/release-dungeon-debug-j4-c-regenerated.png",
+      "sha256": "268DC9F6B7674585A0D2D7FD4463D1DBB447509F213B9C1C9018B8DC2F7D5374",
+      "height": 480,
+      "sampled_colours": 31
+    },
+    "before_input": {
+      "width": 960,
+      "method": "PrintWindow client capture",
+      "image": "desktop-captures/release-dungeon-debug-j4-c-before.png",
+      "sha256": "34CDBDFCF66326992FBBC6A9BC31437AC8E9625D6EC617A805F5C79E17ABC42E",
+      "height": 480,
+      "sampled_colours": 31
+    },
+    "program_sha256": "551FBACFB8D5167A47EAD06718D94249A0770878C41E10351EB932C9C34EDA61",
+    "jobs": 4,
+    "status": "CAPTURED; visual review required",
+    "target": "debug",
+    "compiler": "release",
+    "exit_code": 0
+  },
+  "release-dungeon-debug-j1-llvm": {
+    "example": "dungeon",
+    "backend": "llvm",
+    "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+    "observed_utc": "2026-09-22T08:33:41.2808404Z",
+    "after_input": {
+      "width": 960,
+      "method": "PrintWindow client capture",
+      "image": "desktop-captures/release-dungeon-debug-j1-llvm-regenerated.png",
+      "sha256": "D1BF160BC21B5D009877E0509167310A43395E8AD949FE779B284CB93EBF42F5",
+      "height": 480,
+      "sampled_colours": 31
+    },
+    "before_input": {
+      "width": 960,
+      "method": "PrintWindow client capture",
+      "image": "desktop-captures/release-dungeon-debug-j1-llvm-before.png",
+      "sha256": "B6C6907CF2B99CB3B748B62670BFC6ABEC75A35A668C516394209BDD82C91682",
+      "height": 480,
+      "sampled_colours": 31
+    },
+    "program_sha256": "74230109425387E0BC74C15F947C0EB05FFD7E6498B8F8214DE8A6D251CBF32B",
+    "jobs": 1,
+    "status": "CAPTURED; visual review required",
+    "target": "debug",
+    "compiler": "release",
+    "exit_code": 0
+  },
+  "debug-dungeon-release-j4-llvm": {
+    "example": "dungeon",
+    "backend": "llvm",
+    "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+    "observed_utc": "2026-09-22T08:33:38.1382527Z",
+    "after_input": {
+      "width": 960,
+      "method": "PrintWindow client capture",
+      "image": "desktop-captures/debug-dungeon-release-j4-llvm-regenerated.png",
+      "sha256": "5ED33A533931BBFA1355840A52C008D932B32EEE03F9509B1CEBA1DE5F1162F6",
+      "height": 480,
+      "sampled_colours": 31
+    },
+    "before_input": {
+      "width": 960,
+      "method": "PrintWindow client capture",
+      "image": "desktop-captures/debug-dungeon-release-j4-llvm-before.png",
+      "sha256": "BAFB2FB198E1E5E83869B6DC3497E5129C31CC10E90F49DA76134EDA4DD37C17",
+      "height": 480,
+      "sampled_colours": 31
+    },
+    "program_sha256": "9FB12F581A1CC4FA0BFB126D2CB777A958A96051D6D2F0AA2CB8D1D3F7E8F2F9",
+    "jobs": 4,
+    "status": "CAPTURED; visual review required",
+    "target": "release",
+    "compiler": "debug",
+    "exit_code": 0
+  },
+  "release-dungeon-debug-j1-c": {
+    "example": "dungeon",
+    "backend": "c",
+    "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+    "observed_utc": "2026-09-22T08:33:39.7113285Z",
+    "after_input": {
+      "width": 960,
+      "method": "PrintWindow client capture",
+      "image": "desktop-captures/release-dungeon-debug-j1-c-regenerated.png",
+      "sha256": "A0779A1623DCD7A37C1E44C18A218CD1CA749361C63EAB0055EEB5F49B7E9ACB",
+      "height": 480,
+      "sampled_colours": 31
+    },
+    "before_input": {
+      "width": 960,
+      "method": "PrintWindow client capture",
+      "image": "desktop-captures/release-dungeon-debug-j1-c-before.png",
+      "sha256": "61DED8A1EE88CB2B44DDED11E02EB1F59CBFAE9489D90D7BF9754FD0EE051F6C",
+      "height": 480,
+      "sampled_colours": 31
+    },
+    "program_sha256": "532C6AA26F7EC0573C2900297DC687E424D9944EEA5FC916A8FD66F9A4CD8EFC",
+    "jobs": 1,
+    "status": "CAPTURED; visual review required",
+    "target": "debug",
+    "compiler": "release",
+    "exit_code": 0
+  },
+  "release-dungeon-debug-j4-llvm": {
+    "example": "dungeon",
+    "backend": "llvm",
+    "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+    "observed_utc": "2026-09-22T08:33:44.4312751Z",
+    "after_input": {
+      "width": 960,
+      "method": "PrintWindow client capture",
+      "image": "desktop-captures/release-dungeon-debug-j4-llvm-regenerated.png",
+      "sha256": "A5935AADDFE884BA9CD593B23C0E0A2CAD7372EABA2582A4EA697C27AE76EB1D",
+      "height": 480,
+      "sampled_colours": 31
+    },
+    "before_input": {
+      "width": 960,
+      "method": "PrintWindow client capture",
+      "image": "desktop-captures/release-dungeon-debug-j4-llvm-before.png",
+      "sha256": "9A41F9BAA2BF40933DF7CC7E9A2E4E469DDC9D32D0677CBD64DD4DF3211B8361",
+      "height": 480,
+      "sampled_colours": 31
+    },
+    "program_sha256": "7377619ED7EBAEA2D6A763D063B5327984087C567A2B667E1853CCF3143E0C2E",
+    "jobs": 4,
+    "status": "CAPTURED; visual review required",
+    "target": "debug",
+    "compiler": "release",
+    "exit_code": 0
+  },
+  "release-dungeon-release-j4-c": {
+    "example": "dungeon",
+    "backend": "c",
+    "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+    "observed_utc": "2026-09-22T08:33:49.1591544Z",
+    "after_input": {
+      "width": 960,
+      "method": "PrintWindow client capture",
+      "image": "desktop-captures/release-dungeon-release-j4-c-regenerated.png",
+      "sha256": "897813532B093E0E6FD274CD6E9775DD2FD0D58716E2A5FA0FF05869A51C1802",
+      "height": 480,
+      "sampled_colours": 31
+    },
+    "before_input": {
+      "width": 960,
+      "method": "PrintWindow client capture",
+      "image": "desktop-captures/release-dungeon-release-j4-c-before.png",
+      "sha256": "59606AF776284DF35679DC986FE7962A9988FAEC9D3FAB8C4F7D58917E63A5D7",
+      "height": 480,
+      "sampled_colours": 31
+    },
+    "program_sha256": "E7363E83639633C6222C11713959A58DE876605691800224E0B5813540A5286A",
+    "jobs": 4,
+    "status": "CAPTURED; visual review required",
+    "target": "release",
+    "compiler": "release",
+    "exit_code": 0
+  },
+  "release-dungeon-release-j1-c": {
+    "example": "dungeon",
+    "backend": "c",
+    "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+    "observed_utc": "2026-09-22T08:33:46.0149771Z",
+    "after_input": {
+      "width": 960,
+      "method": "PrintWindow client capture",
+      "image": "desktop-captures/release-dungeon-release-j1-c-regenerated.png",
+      "sha256": "5DC2CC9389CD464BC958B02436BE1BD2164F3C4E3192A67D99D35FCBC00C05A0",
+      "height": 480,
+      "sampled_colours": 31
+    },
+    "before_input": {
+      "width": 960,
+      "method": "PrintWindow client capture",
+      "image": "desktop-captures/release-dungeon-release-j1-c-before.png",
+      "sha256": "069645095523BB1A9E4D3182428ECDC30988D16C4A1D80FEC44B59F4DAAB0B22",
+      "height": 480,
+      "sampled_colours": 31
+    },
+    "program_sha256": "2DEE625325E302B58E4419C70E8A70469739FB2A8DAE46A26D96E65EE55B7A0D",
+    "jobs": 1,
+    "status": "CAPTURED; visual review required",
+    "target": "release",
+    "compiler": "release",
+    "exit_code": 0
+  },
+  "debug-dungeon-debug-j1-c": {
+    "example": "dungeon",
+    "backend": "c",
+    "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+    "observed_utc": "2026-09-22T08:33:26.5163068Z",
+    "after_input": {
+      "width": 960,
+      "method": "PrintWindow client capture",
+      "image": "desktop-captures/debug-dungeon-debug-j1-c-regenerated.png",
+      "sha256": "B89E39D67C1EC725FCE6B50A9DD17CF218566CF55D9BEF8C0C3C1F22F280ED2F",
+      "height": 480,
+      "sampled_colours": 31
+    },
+    "before_input": {
+      "width": 960,
+      "method": "PrintWindow client capture",
+      "image": "desktop-captures/debug-dungeon-debug-j1-c-before.png",
+      "sha256": "245078C0B3C775644AB5619763AF491757AD8566F6F715CF6D448B1DD2E58A76",
+      "height": 480,
+      "sampled_colours": 31
+    },
+    "program_sha256": "7FD965959455C9114543246A3AFA0B7F896411E2406A7588FDB9C5B9C1E587E7",
+    "jobs": 1,
+    "status": "CAPTURED; visual review required",
+    "target": "debug",
+    "compiler": "debug",
+    "exit_code": 0
+  },
+  "debug-dungeon-debug-j1-llvm": {
+    "example": "dungeon",
+    "backend": "llvm",
+    "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+    "observed_utc": "2026-09-22T08:33:28.4001377Z",
+    "after_input": {
+      "width": 960,
+      "method": "PrintWindow client capture",
+      "image": "desktop-captures/debug-dungeon-debug-j1-llvm-regenerated.png",
+      "sha256": "A851D4DDF47F1C6F289C8DAFD0A39205F939556804B6BA232A359737CD2FC838",
+      "height": 480,
+      "sampled_colours": 31
+    },
+    "before_input": {
+      "width": 960,
+      "method": "PrintWindow client capture",
+      "image": "desktop-captures/debug-dungeon-debug-j1-llvm-before.png",
+      "sha256": "65D20359E0378379441B86743F1F61869FEC8C433745E39036B4732DB9F3614D",
+      "height": 480,
+      "sampled_colours": 31
+    },
+    "program_sha256": "2BA5150D60442F8E194D7FDE4EAF77B608B11668ADD2EC0A577D02ECAD65B940",
+    "jobs": 1,
+    "status": "CAPTURED; visual review required",
+    "target": "debug",
+    "compiler": "debug",
+    "exit_code": 0
+  },
+  "debug-dungeon-release-j1-llvm": {
+    "example": "dungeon",
+    "backend": "llvm",
+    "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+    "observed_utc": "2026-09-22T08:33:34.8492311Z",
+    "after_input": {
+      "width": 960,
+      "method": "PrintWindow client capture",
+      "image": "desktop-captures/debug-dungeon-release-j1-llvm-regenerated.png",
+      "sha256": "3ADCEEED8627B5DEF1E1D2AF68132D1A04C1D2380B562B12862FD6899C5A89BD",
+      "height": 480,
+      "sampled_colours": 31
+    },
+    "before_input": {
+      "width": 960,
+      "method": "PrintWindow client capture",
+      "image": "desktop-captures/debug-dungeon-release-j1-llvm-before.png",
+      "sha256": "BDCC2391877673358CC4017D41898F2683076843E5301EBB7DD5904DCA7D53B5",
+      "height": 480,
+      "sampled_colours": 31
+    },
+    "program_sha256": "332734E88B7F212018FD9F9F61894EA8AAAE11A47936FFDB901A6E2AB0DD4FBF",
+    "jobs": 1,
+    "status": "CAPTURED; visual review required",
+    "target": "release",
+    "compiler": "debug",
+    "exit_code": 0
+  },
+  "debug-dungeon-debug-j4-c": {
+    "example": "dungeon",
+    "backend": "c",
+    "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+    "observed_utc": "2026-09-22T08:33:30.0760846Z",
+    "after_input": {
+      "width": 960,
+      "method": "PrintWindow client capture",
+      "image": "desktop-captures/debug-dungeon-debug-j4-c-regenerated.png",
+      "sha256": "0D88CD20D0D31206857676AC7DF8EACE63854118CAF7AAF6EBEE2B9511A211B6",
+      "height": 480,
+      "sampled_colours": 31
+    },
+    "before_input": {
+      "width": 960,
+      "method": "PrintWindow client capture",
+      "image": "desktop-captures/debug-dungeon-debug-j4-c-before.png",
+      "sha256": "BD5730C0FA9D19FB60435B5ADB70EBA2623A43534607C871C8890BBD128C5DC7",
+      "height": 480,
+      "sampled_colours": 31
+    },
+    "program_sha256": "D3E5233198FEBD1A3115098044519D8CF3CBC684EBD9C8205A0AC237DF65979E",
+    "jobs": 4,
+    "status": "CAPTURED; visual review required",
+    "target": "debug",
+    "compiler": "debug",
+    "exit_code": 0
+  },
+  "debug-dungeon-debug-j4-llvm": {
+    "example": "dungeon",
+    "backend": "llvm",
+    "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+    "observed_utc": "2026-09-22T08:33:31.6828081Z",
+    "after_input": {
+      "width": 960,
+      "method": "PrintWindow client capture",
+      "image": "desktop-captures/debug-dungeon-debug-j4-llvm-regenerated.png",
+      "sha256": "D1242F2CF8CC73F25D5ECD16ED05155C1D7F2E1D51EC3A1775890B6EB97B1305",
+      "height": 480,
+      "sampled_colours": 31
+    },
+    "before_input": {
+      "width": 960,
+      "method": "PrintWindow client capture",
+      "image": "desktop-captures/debug-dungeon-debug-j4-llvm-before.png",
+      "sha256": "8B3C8FAC2D9156FBD5C04666EFFCA492B2D79670EA3834B19FBCE34F46E80190",
+      "height": 480,
+      "sampled_colours": 31
+    },
+    "program_sha256": "CE840E8E69741A09F71081821B089E610E1D4BB467C5F4136B18D991476D6C60",
+    "jobs": 4,
+    "status": "CAPTURED; visual review required",
+    "target": "debug",
+    "compiler": "debug",
+    "exit_code": 0
+  },
+  "release-dungeon-release-j4-llvm": {
+    "example": "dungeon",
+    "backend": "llvm",
+    "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+    "observed_utc": "2026-09-22T08:33:50.7048037Z",
+    "after_input": {
+      "width": 960,
+      "method": "PrintWindow client capture",
+      "image": "desktop-captures/release-dungeon-release-j4-llvm-regenerated.png",
+      "sha256": "D98CDE82D032A3E36BAE264DD502B6A78D5E8B7BBCE58D3856BAC490F52CFB72",
+      "height": 480,
+      "sampled_colours": 31
+    },
+    "before_input": {
+      "width": 960,
+      "method": "PrintWindow client capture",
+      "image": "desktop-captures/release-dungeon-release-j4-llvm-before.png",
+      "sha256": "C3C412E13430702EC542C03ACD62D4F44635BA89565766FAE8F6A13D046DDDF5",
+      "height": 480,
+      "sampled_colours": 31
+    },
+    "program_sha256": "3BBBCB8FBCBD853AE3231EFC8AEFCD0441AD5E5D46F652EDCF33773F89C3ADF0",
+    "jobs": 4,
+    "status": "CAPTURED; visual review required",
+    "target": "release",
+    "compiler": "release",
+    "exit_code": 0
+  },
+  "debug-dungeon-release-j4-c": {
+    "example": "dungeon",
+    "backend": "c",
+    "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+    "observed_utc": "2026-09-22T08:33:36.4218104Z",
+    "after_input": {
+      "width": 960,
+      "method": "PrintWindow client capture",
+      "image": "desktop-captures/debug-dungeon-release-j4-c-regenerated.png",
+      "sha256": "AFC74FB3778DDC3FD5FD0A61F98CA05100DA4A70486E29268D48EF4C20303CD3",
+      "height": 480,
+      "sampled_colours": 31
+    },
+    "before_input": {
+      "width": 960,
+      "method": "PrintWindow client capture",
+      "image": "desktop-captures/debug-dungeon-release-j4-c-before.png",
+      "sha256": "193D87619529DBE5DC287D84AF9492E62609EA6D013B5108F43E1BF1A9BCD8CB",
+      "height": 480,
+      "sampled_colours": 31
+    },
+    "program_sha256": "E4147BAB96CA17CA1EC39F985A22D4658E6087014FF41723418072DE8C883F5D",
+    "jobs": 4,
+    "status": "CAPTURED; visual review required",
+    "target": "release",
+    "compiler": "debug",
+    "exit_code": 0
+  },
+  "release-dungeon-release-j1-llvm": {
+    "example": "dungeon",
+    "backend": "llvm",
+    "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+    "observed_utc": "2026-09-22T08:33:47.5735537Z",
+    "after_input": {
+      "width": 960,
+      "method": "PrintWindow client capture",
+      "image": "desktop-captures/release-dungeon-release-j1-llvm-regenerated.png",
+      "sha256": "C2596E9C9FA2606DDED91F21B0AC77628AB44451D5D10375D707FDE993B7EF4B",
+      "height": 480,
+      "sampled_colours": 31
+    },
+    "before_input": {
+      "width": 960,
+      "method": "PrintWindow client capture",
+      "image": "desktop-captures/release-dungeon-release-j1-llvm-before.png",
+      "sha256": "5AFA1C079D2FE7D56EFC13C17ADE94DC39349810AAC42E19DD179E78A563E6C0",
+      "height": 480,
+      "sampled_colours": 31
+    },
+    "program_sha256": "46B8045F5381D12C5FA5FDCAE288CA393CA0AEAC2E50F08D25853ACC2B9BC0AE",
+    "jobs": 1,
+    "status": "CAPTURED; visual review required",
+    "target": "release",
+    "compiler": "release",
+    "exit_code": 0
+  }
+}

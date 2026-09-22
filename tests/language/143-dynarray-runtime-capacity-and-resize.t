@@ -86,12 +86,12 @@ define internal i32 @fn.0(i64 %initial_size) {
   %t17 = alloca i64
   %t101 = alloca i64
   %t1 = mul i64 %initial_size, 4
-  %t2 = add i64 24, %t1
+  %t2 = add i64 32, %t1
   %t0 = call ptr @nrt_mem_alloc(i64 %t2, i64 16, ptr @.macro.file.m0, i32 2)
   %t3 = getelementptr inbounds { ptr, i64, i64 }, ptr %t0, i64 0, i32 0
   %t4 = getelementptr inbounds { ptr, i64, i64 }, ptr %t0, i64 0, i32 1
   %t5 = getelementptr inbounds { ptr, i64, i64 }, ptr %t0, i64 0, i32 2
-  %t6 = getelementptr inbounds i8, ptr %t0, i64 24
+  %t6 = getelementptr inbounds i8, ptr %t0, i64 32
   store ptr %t6, ptr %t3
   store i64 0, ptr %t4
   store i64 %initial_size, ptr %t5
@@ -103,7 +103,7 @@ dynarray.field.empty.0:
   store i64 0, ptr %t8
   br label %dynarray.field.done.2
 dynarray.field.load.1:
-  %t10 = getelementptr inbounds i8, ptr %t7, i64 -24
+  %t10 = getelementptr inbounds i8, ptr %t7, i64 -32
   %t11 = getelementptr inbounds { ptr, i64, i64 }, ptr %t10, i64 0, i32 2
   %t12 = load i64, ptr %t11
   store i64 %t12, ptr %t8
@@ -123,7 +123,7 @@ dynarray.field.empty.5:
   store i64 0, ptr %t17
   br label %dynarray.field.done.7
 dynarray.field.load.6:
-  %t19 = getelementptr inbounds i8, ptr %t16, i64 -24
+  %t19 = getelementptr inbounds i8, ptr %t16, i64 -32
   %t20 = getelementptr inbounds { ptr, i64, i64 }, ptr %t19, i64 0, i32 1
   %t21 = load i64, ptr %t20
   store i64 %t21, ptr %t17
@@ -140,11 +140,11 @@ on.end.8:
   %t26 = icmp eq ptr %t25, null
   br i1 %t26, label %dynarray.alloc.10, label %dynarray.ready.11
 dynarray.alloc.10:
-  %t27 = call ptr @nrt_mem_alloc(i64 24, i64 16, ptr @.macro.file.m0, i32 6)
+  %t27 = call ptr @nrt_mem_alloc(i64 32, i64 16, ptr @.macro.file.m0, i32 6)
   %t28 = getelementptr inbounds { ptr, i64, i64 }, ptr %t27, i64 0, i32 0
   %t29 = getelementptr inbounds { ptr, i64, i64 }, ptr %t27, i64 0, i32 1
   %t30 = getelementptr inbounds { ptr, i64, i64 }, ptr %t27, i64 0, i32 2
-  %t31 = getelementptr inbounds i8, ptr %t27, i64 24
+  %t31 = getelementptr inbounds i8, ptr %t27, i64 32
   store ptr %t31, ptr %t28
   store i64 0, ptr %t29
   store i64 0, ptr %t30
@@ -152,7 +152,7 @@ dynarray.alloc.10:
   br label %dynarray.ready.11
 dynarray.ready.11:
   %t32 = load ptr, ptr %local.1
-  %t33 = getelementptr inbounds i8, ptr %t32, i64 -24
+  %t33 = getelementptr inbounds i8, ptr %t32, i64 -32
   %t34 = getelementptr inbounds { ptr, i64, i64 }, ptr %t33, i64 0, i32 0
   %t35 = getelementptr inbounds { ptr, i64, i64 }, ptr %t33, i64 0, i32 1
   %t36 = getelementptr inbounds { ptr, i64, i64 }, ptr %t33, i64 0, i32 2
@@ -163,9 +163,9 @@ dynarray.ready.11:
   br i1 %t40, label %dynarray.resize.grow.12, label %dynarray.resize.count.14
 dynarray.resize.grow.12:
   %t41 = mul i64 %initial_size, 4
-  %t42 = add i64 24, %t41
+  %t42 = add i64 32, %t41
   %t43 = call ptr @nrt_mem_realloc(ptr %t33, i64 %t42, i64 16, ptr @.macro.file.m0, i32 6)
-  %t44 = getelementptr inbounds i8, ptr %t43, i64 24
+  %t44 = getelementptr inbounds i8, ptr %t43, i64 32
   %t45 = getelementptr inbounds { ptr, i64, i64 }, ptr %t43, i64 0, i32 0
   %t46 = getelementptr inbounds { ptr, i64, i64 }, ptr %t43, i64 0, i32 2
   store ptr %t44, ptr %t45
@@ -174,23 +174,23 @@ dynarray.resize.grow.12:
   br label %dynarray.resize.count.14
 dynarray.resize.count.14:
   %t47 = load ptr, ptr %local.1
-  %t48 = getelementptr inbounds i8, ptr %t47, i64 -24
+  %t48 = getelementptr inbounds i8, ptr %t47, i64 -32
   %t49 = getelementptr inbounds { ptr, i64, i64 }, ptr %t48, i64 0, i32 1
   store i64 %initial_size, ptr %t49
   %t50 = load ptr, ptr %local.1
-  %t51 = getelementptr inbounds i8, ptr %t50, i64 -24
+  %t51 = getelementptr inbounds i8, ptr %t50, i64 -32
   %t52 = getelementptr inbounds { ptr, i64, i64 }, ptr %t51, i64 0, i32 0
   %t53 = load ptr, ptr %t52
   %t54 = getelementptr inbounds i32, ptr %t53, i32 0
   store i32 7, ptr %t54
   %t55 = load ptr, ptr %local.1
-  %t56 = getelementptr inbounds i8, ptr %t55, i64 -24
+  %t56 = getelementptr inbounds i8, ptr %t55, i64 -32
   %t57 = getelementptr inbounds { ptr, i64, i64 }, ptr %t56, i64 0, i32 0
   %t58 = load ptr, ptr %t57
   %t59 = getelementptr inbounds i32, ptr %t58, i32 1
   store i32 8, ptr %t59
   %t60 = load ptr, ptr %local.1
-  %t61 = getelementptr inbounds i8, ptr %t60, i64 -24
+  %t61 = getelementptr inbounds i8, ptr %t60, i64 -32
   %t62 = getelementptr inbounds { ptr, i64, i64 }, ptr %t61, i64 0, i32 0
   %t63 = load ptr, ptr %t62
   %t64 = getelementptr inbounds i32, ptr %t63, i32 2
@@ -199,11 +199,11 @@ dynarray.resize.count.14:
   %t66 = icmp eq ptr %t65, null
   br i1 %t66, label %dynarray.alloc.15, label %dynarray.ready.16
 dynarray.alloc.15:
-  %t67 = call ptr @nrt_mem_alloc(i64 24, i64 16, ptr @.macro.file.m0, i32 11)
+  %t67 = call ptr @nrt_mem_alloc(i64 32, i64 16, ptr @.macro.file.m0, i32 11)
   %t68 = getelementptr inbounds { ptr, i64, i64 }, ptr %t67, i64 0, i32 0
   %t69 = getelementptr inbounds { ptr, i64, i64 }, ptr %t67, i64 0, i32 1
   %t70 = getelementptr inbounds { ptr, i64, i64 }, ptr %t67, i64 0, i32 2
-  %t71 = getelementptr inbounds i8, ptr %t67, i64 24
+  %t71 = getelementptr inbounds i8, ptr %t67, i64 32
   store ptr %t71, ptr %t68
   store i64 0, ptr %t69
   store i64 0, ptr %t70
@@ -211,7 +211,7 @@ dynarray.alloc.15:
   br label %dynarray.ready.16
 dynarray.ready.16:
   %t72 = load ptr, ptr %local.1
-  %t73 = getelementptr inbounds i8, ptr %t72, i64 -24
+  %t73 = getelementptr inbounds i8, ptr %t72, i64 -32
   %t74 = getelementptr inbounds { ptr, i64, i64 }, ptr %t73, i64 0, i32 0
   %t75 = getelementptr inbounds { ptr, i64, i64 }, ptr %t73, i64 0, i32 1
   %t76 = getelementptr inbounds { ptr, i64, i64 }, ptr %t73, i64 0, i32 2
@@ -222,9 +222,9 @@ dynarray.ready.16:
   br i1 %t80, label %dynarray.resize.grow.17, label %dynarray.resize.init.18
 dynarray.resize.grow.17:
   %t81 = mul i64 5, 4
-  %t82 = add i64 24, %t81
+  %t82 = add i64 32, %t81
   %t83 = call ptr @nrt_mem_realloc(ptr %t73, i64 %t82, i64 16, ptr @.macro.file.m0, i32 11)
-  %t84 = getelementptr inbounds i8, ptr %t83, i64 24
+  %t84 = getelementptr inbounds i8, ptr %t83, i64 32
   %t85 = getelementptr inbounds { ptr, i64, i64 }, ptr %t83, i64 0, i32 0
   %t86 = getelementptr inbounds { ptr, i64, i64 }, ptr %t83, i64 0, i32 2
   store ptr %t84, ptr %t85
@@ -233,7 +233,7 @@ dynarray.resize.grow.17:
   br label %dynarray.resize.init.18
 dynarray.resize.init.18:
   %t87 = load ptr, ptr %local.1
-  %t88 = getelementptr inbounds i8, ptr %t87, i64 -24
+  %t88 = getelementptr inbounds i8, ptr %t87, i64 -32
   %t89 = getelementptr inbounds { ptr, i64, i64 }, ptr %t88, i64 0, i32 0
   %t90 = icmp ugt i64 5, %t78
   br i1 %t90, label %dynarray.resize.init.loop.20, label %dynarray.resize.count.19
@@ -254,7 +254,7 @@ dynarray.resize.init.store.22:
   br label %dynarray.resize.init.body.21
 dynarray.resize.count.19:
   %t97 = load ptr, ptr %local.1
-  %t98 = getelementptr inbounds i8, ptr %t97, i64 -24
+  %t98 = getelementptr inbounds i8, ptr %t97, i64 -32
   %t99 = getelementptr inbounds { ptr, i64, i64 }, ptr %t98, i64 0, i32 1
   store i64 5, ptr %t99
   %t100 = load ptr, ptr %local.1
@@ -264,7 +264,7 @@ dynarray.field.empty.23:
   store i64 0, ptr %t101
   br label %dynarray.field.done.25
 dynarray.field.load.24:
-  %t103 = getelementptr inbounds i8, ptr %t100, i64 -24
+  %t103 = getelementptr inbounds i8, ptr %t100, i64 -32
   %t104 = getelementptr inbounds { ptr, i64, i64 }, ptr %t103, i64 0, i32 1
   %t105 = load i64, ptr %t104
   store i64 %t105, ptr %t101
@@ -278,7 +278,7 @@ on.body.27:
   ret i32 3
 on.end.26:
   %t109 = load ptr, ptr %local.1
-  %t110 = getelementptr inbounds i8, ptr %t109, i64 -24
+  %t110 = getelementptr inbounds i8, ptr %t109, i64 -32
   %t111 = getelementptr inbounds { ptr, i64, i64 }, ptr %t110, i64 0, i32 0
   %t112 = load ptr, ptr %t111
   %t113 = getelementptr inbounds i32, ptr %t112, i32 3
@@ -290,7 +290,7 @@ on.body.29:
   ret i32 4
 on.end.28:
   %t117 = load ptr, ptr %local.1
-  %t118 = getelementptr inbounds i8, ptr %t117, i64 -24
+  %t118 = getelementptr inbounds i8, ptr %t117, i64 -32
   %t119 = getelementptr inbounds { ptr, i64, i64 }, ptr %t118, i64 0, i32 0
   %t120 = load ptr, ptr %t119
   %t121 = getelementptr inbounds i32, ptr %t120, i32 4
@@ -302,20 +302,20 @@ on.body.31:
   ret i32 5
 on.end.30:
   %t125 = load ptr, ptr %local.1
-  %t126 = getelementptr inbounds i8, ptr %t125, i64 -24
+  %t126 = getelementptr inbounds i8, ptr %t125, i64 -32
   %t127 = getelementptr inbounds { ptr, i64, i64 }, ptr %t126, i64 0, i32 0
   %t128 = load ptr, ptr %t127
   %t129 = getelementptr inbounds i32, ptr %t128, i32 0
   %t130 = load i32, ptr %t129
   %t131 = load ptr, ptr %local.1
-  %t132 = getelementptr inbounds i8, ptr %t131, i64 -24
+  %t132 = getelementptr inbounds i8, ptr %t131, i64 -32
   %t133 = getelementptr inbounds { ptr, i64, i64 }, ptr %t132, i64 0, i32 0
   %t134 = load ptr, ptr %t133
   %t135 = getelementptr inbounds i32, ptr %t134, i32 1
   %t136 = load i32, ptr %t135
   %t137 = add i32 %t130, %t136
   %t138 = load ptr, ptr %local.1
-  %t139 = getelementptr inbounds i8, ptr %t138, i64 -24
+  %t139 = getelementptr inbounds i8, ptr %t138, i64 -32
   %t140 = getelementptr inbounds { ptr, i64, i64 }, ptr %t139, i64 0, i32 0
   %t141 = load ptr, ptr %t140
   %t142 = getelementptr inbounds i32, ptr %t141, i32 2
@@ -325,7 +325,7 @@ on.end.30:
   %t146 = icmp eq ptr %t145, null
   br i1 %t146, label %dynarray.free.done.33, label %dynarray.free.32
 dynarray.free.32:
-  %t147 = getelementptr inbounds i8, ptr %t145, i64 -24
+  %t147 = getelementptr inbounds i8, ptr %t145, i64 -32
   call void @nrt_mem_free(ptr %t147)
   store ptr null, ptr %local.1
   br label %dynarray.free.done.33

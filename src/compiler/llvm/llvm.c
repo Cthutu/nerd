@@ -57,7 +57,12 @@ internal string llvm_layout_dynamic_array_header_type(const LlvmLayout* layout)
 
 internal u64 llvm_layout_dynamic_array_header_bytes(const LlvmLayout* layout)
 {
-    return (u64)((layout->pointer_bits + layout->size_bits * 2) / 8);
+    // Elements follow the header in the same allocation. Preserve the maximum
+    // aggregate alignment requested from the allocator: a 24-byte header would
+    // misalign 16-byte enum payloads and permit faulting aligned SIMD stores.
+    u64 bytes = (u64)((layout->pointer_bits + layout->size_bits * 2) / 8);
+    u64 align = layout->aggregate_payload_align_bits / 8;
+    return (bytes + align - 1) / align * align;
 }
 
 internal const LlvmLayout* llvm_layout_or_default(const LlvmLayout* layout)

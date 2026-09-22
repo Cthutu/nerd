@@ -76,7 +76,7 @@ def main():
                                 continue
                             print('\n' + key, flush=True)
                             print('Check visible drawing, input/resize response, then Q/Escape or normal close.\n'
-                                  'For Dungeon, confirm it draws BEFORE pressing any key, move, then Q.\n'
+                                  'For Dungeon, confirm it draws BEFORE pressing any key, regenerate, then Q.\n'
                                   'Compare generated C with LLVM output.', flush=True)
                             input('Press Enter to launch: ')
                             process = subprocess.Popen([str(output)], cwd=source.parent, env=env,
