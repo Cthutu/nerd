@@ -44,6 +44,9 @@ def plan(folder: Path) -> list[Stage]:
                                 [python, f'build/test_{name}.py', '--nerd', nerd], needs))
         stages.append(Stage('debugger-' + mode,
                             [python, 'build/check_debugger_stepping.py', '--nerd', nerd, '--jobs', '4'], needs))
+        stages.append(Stage('editor-' + mode,
+                            [python, 'build/check_editor_integrations.py', '--nerd', nerd], needs))
+    stages.append(Stage('adapter-transforms', [python, 'build/check_debugger_adapter_transforms.py']))
     # Benchmark only after every selected correctness stage succeeds. Never run
     # latency measurements concurrently with compiler builds or other tests.
     needs = tuple(stage.name for stage in stages)
@@ -168,7 +171,8 @@ def main() -> int:
                  'NERD_DEBUG_KEEP_LINK_LLVM', 'NERD_DEBUG_LLVM_SIDECARS']:
         env.pop(name, None)
     report['tool_paths'] = {name: shutil.which(name) for name in
-                            ['clang', 'opt', 'llc', 'llvm-lib', 'lld-link', 'lldb', 'just', 'git', 'uv']}
+                            ['clang', 'opt', 'llc', 'llvm-lib', 'lld-link', 'llvm-dwarfdump',
+                             'lldb', 'just', 'git', 'uv', 'node', 'npm']}
     save(folder, report)
     print('Results: ' + str(folder), flush=True)
     # Version probes are evidence, not prerequisite gates: doctor and builds

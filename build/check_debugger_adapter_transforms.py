@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -17,7 +18,7 @@ def fail(message: str, detail: str = "") -> int:
 
 def main() -> int:
     compile_result = subprocess.run(
-        ["npm", "run", "compile"],
+        [shutil.which("npm") or "npm", "run", "compile"],
         cwd=ROOT / "syntax" / "nerd-vscode",
         text=True,
         stdout=subprocess.PIPE,

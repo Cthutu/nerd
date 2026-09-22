@@ -14,6 +14,8 @@ uses `opt`, `llc`, `lld-link`, `llvm-lib` and the Windows SDK/CRT. Use a configu
 Windows development shell; `nerd doctor` diagnoses compiler runtime dependencies.
 Python 3.10+, Git and `just` are needed by the existing checks; some tests also
 use external Clang for C-output validation and LLDB/CodeLLDB for debugging.
+Editor checks require Node/npm and installed local dependencies under
+`syntax/nerd-vscode/node_modules` (`npm install` in that directory if absent).
 Missing dependencies must be recorded and resolved, not treated as passing tests.
 
 From the repository root in PowerShell:

@@ -49,6 +49,8 @@ ignored `_tmp/clang23-objects` before a fresh LLVM 22.1.8 build.
 
 Repair details (focused verification passed; final full run still pending):
 
+Compiler/runtime fixes and expanded checks were pushed as `c760a1bf`.
+
 - Link `legacy_stdio_definitions.lib` for direct Windows C FFI such as `vprintf`.
 - Call the real integer return type of Nerd main, then explicitly convert to
   i32. The original C/LLVM differential exposed garbage upper Windows exit bits
@@ -67,6 +69,13 @@ Python 3.14.7; Visual Studio Professional 2022/MSVC 14.44.35207; SDK 10.0.26100.
 The 48-cell desktop build matrix is stored in
 [desktop.json](20260922T073444Z-2a8ab0b9/desktop.json). All builds succeeded;
 human observations are pending. The helper records exact argv and compiler hashes.
+
+Additional editor verification: `npm run compile` and
+`python build/check_editor_integrations.py --nerd _bin/nerd-debug.exe` passed.
+`check_debugger_adapter_transforms.py` originally failed to locate npm on Windows;
+resolving npm through `shutil.which` selects npm.cmd and passes. The full runner
+now includes both editor integration checks and adapter transforms. Original
+failure and rerun logs are in the `20260922T074219Z-d55d7186` directory.
 
 Reproduce: `. ./_tmp/windows-env.ps1; python validation/windows/run.py`.
 `nerd-debug.exe doctor` passed with LLVM 22 and the SDK/CRT paths above.
