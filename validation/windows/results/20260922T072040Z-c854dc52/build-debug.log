@@ -1,0 +1,53 @@
+[36m================================================[0m
+[1m[36m build :: clang :: debug [0m
+[1m[36m projects :: nerd[0m
+[36m================================================[0m
+[33m[1m[run ][0m _obj\runtime\nrt.o
+[33m[1m[run ][0m _obj\runtime\nrt.pic.o
+[32m[1m[ cc ][0m nerd.c
+[32m[1m[ cc ][0m core\arena.c
+[32m[1m[ cc ][0m core\array.c
+[32m[1m[ cc ][0m core\dir.c
+[32m[1m[ cc ][0m core\filemap.c
+[32m[1m[ cc ][0m core\hash.c
+[32m[1m[ cc ][0m core\main.c
+[32m[1m[ cc ][0m core\map.c
+[32m[1m[ cc ][0m core\memory.c
+[32m[1m[ cc ][0m core\mutex.c
+[32m[1m[ cc ][0m core\output.c
+[32m[1m[ cc ][0m core\path.c
+[32m[1m[ cc ][0m core\random.c
+[32m[1m[ cc ][0m core\shell.c
+[32m[1m[ cc ][0m core\string.c
+[32m[1m[ cc ][0m core\task.c
+[32m[1m[ cc ][0m core\thread.c
+[32m[1m[ cc ][0m core\time.c
+[32m[1m[ cc ][0m intern\intern.c
+[32m[1m[ cc ][0m compiler\ast\dump.c
+[32m[1m[ cc ][0m compiler\ast\expr.c
+[32m[1m[ cc ][0m compiler\ast\parse.c
+[32m[1m[ cc ][0m compiler\ast\query.c
+[32m[1m[ cc ][0m compiler\ast\utils.c
+[32m[1m[ cc ][0m compiler\build\back\back.c
+[32m[1m[ cc ][0m compiler\build\back\llvm_runtime.c
+[32m[1m[ cc ][0m compiler\build\back\llvm_text.c
+[32m[1m[ cc ][0m compiler\build\front\front.c
+[32m[1m[ cc ][0m compiler\build\front\program.c
+[32m[1m[ cc ][0m compiler\cgen\cgen.c
+[32m[1m[ cc ][0m compiler\cmd_build.c
+[32m[1m[ cc ][0m compiler\cmd_check.c
+[32m[1m[ cc ][0m compiler\cmd_common.c
+[32m[1m[ cc ][0m compiler\cmd_format.c
+[32m[1m[ cc ][0m compiler\cmd_run.c
+[32m[1m[ cc ][0m compiler\cmd_test.c
+[32m[1m[ cc ][0m compiler\cst\cst.c
+[32m[1m[ cc ][0m compiler\error\ast_errors.c
+[32m[1m[ cc ][0m compiler\error\error.c
+C:\Users\matt\nerd\src\compiler\error\error.c:375:34: error: comparison of integers of different signs: 'ErrorRenderMode' and 'u32' (aka 'unsigned int') [-Werror,-Wsign-compare]
+  375 |              error_system_mode() == mode;
+      |              ~~~~~~~~~~~~~~~~~~~ ^  ~~~~
+1 error generated.
+[31m================================================[0m
+[31m[1m[fail][0m exit 1
+[90mclang -std=c23 -Wall -Wextra -Werror -pipe -g -O0 -DDEBUG -Isrc -c C:\Users\matt\nerd\src\compiler\error\error.c -o C:\Users\matt\nerd\_obj\debug\compiler\error\error.o[0m
+[31m================================================[0m

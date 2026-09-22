@@ -372,7 +372,7 @@ bool error_context_self_test(void)
         arena_done(&source_arena);
         error_context_select(&output);
         ok = ok && !error_system_should_emit_output() &&
-             error_system_mode() == mode;
+             error_system_mode() == (ErrorRenderMode)mode;
         // Use a capturing coordinator to observe replay order and ownership.
         ErrorContext ordered;
         error_context_init(&ordered, ERROR_RENDER_NORMAL, true);

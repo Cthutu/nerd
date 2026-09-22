@@ -1,0 +1,27 @@
+[36m================================================[0m
+[1m[36m build :: clang :: debug [0m
+[1m[36m projects :: nerd[0m
+[36m================================================[0m
+[90m[skip][0m 2 run directive(s) up to date
+[32m[1m[ cc ][0m timing\timing.c
+[32m[1m[ cc ][0m table\info.c
+[32m[1m[ cc ][0m table\table.c
+[32m[1m[ cc ][0m cli\cli.c
+[32m[1m[ cc ][0m lsp\builtin.c
+[32m[1m[ cc ][0m lsp\code_action.c
+[32m[1m[ cc ][0m lsp\completion.c
+[32m[1m[ cc ][0m lsp\document.c
+[32m[1m[ cc ][0m lsp\document_link.c
+[32m[1m[ cc ][0m lsp\hover.c
+[32m[1m[ cc ][0m lsp\lsp.c
+[32m[1m[ cc ][0m lsp\rename.c
+[32m[1m[ cc ][0m lsp\semantic_tokens.c
+[32m[1m[ cc ][0m lsp\signature.c
+[32m[1m[ cc ][0m lsp\utils.c
+[32m[1m[ cc ][0m object\object.c
+[32m[1m[ cc ][0m unicode\unicode.c
+[33m[1m[link][0m _bin\nerd-debug.exe
+[90m[skip][0m 51 source file(s) up to date
+[32m================================================[0m
+[1m[32m>> Build complete. Go be nerdy! \o/ <<[0m
+[32m================================================[0m

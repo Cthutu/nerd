@@ -1,0 +1,59 @@
+{
+  "platform": "Windows-11-10.0.26200-SP0",
+  "native_windows": true,
+  "python": "3.14.7 (tags/v3.14.7:823f032, Aug  5 2026, 10:51:32) [MSC v.1944 64 bit (AMD64)]",
+  "logical_cpus": 32,
+  "commit": "6bbc17e8e14facc95caee55abdca35db216bbb05",
+  "branch": "experiment/task-scheduler-performance",
+  "working_tree_at_start": "M src/compiler/error/error.c\n M src/timing/timing.c\n?? validation/windows/results/20260922T072040Z-c854dc52/\n?? validation/windows/results/20260922T072126Z-6c5bc397/",
+  "selection": [
+    "build-debug",
+    "build-release"
+  ],
+  "status": "passed",
+  "stages": [
+    {
+      "name": "build-debug",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/build.py",
+        "nerd",
+        "--skip-mod-sync"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T07:22:51.288701+00:00",
+      "log": "build-debug.log",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 5.093
+    },
+    {
+      "name": "build-release",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/build.py",
+        "-r",
+        "nerd",
+        "--skip-mod-sync"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T07:22:56.384523+00:00",
+      "log": "build-release.log",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 7.673
+    }
+  ],
+  "tool_paths": {
+    "clang": "C:\\Users\\matt\\scoop\\apps\\llvm\\current\\bin\\clang.EXE",
+    "opt": null,
+    "llc": null,
+    "llvm-lib": "C:\\Users\\matt\\scoop\\apps\\llvm\\current\\bin\\llvm-lib.EXE",
+    "lld-link": "C:\\Users\\matt\\scoop\\apps\\llvm\\current\\bin\\lld-link.EXE",
+    "lldb": "C:\\Users\\matt\\scoop\\apps\\llvm\\current\\bin\\lldb.EXE",
+    "just": "C:\\Users\\matt\\.cargo\\bin\\just.EXE",
+    "git": "C:\\Apps\\Git\\cmd\\git.EXE",
+    "uv": "C:\\Users\\matt\\.local\\bin\\uv.EXE"
+  },
+  "finished_utc": "2026-09-22T07:23:04.059999+00:00"
+}

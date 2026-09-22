@@ -8,9 +8,10 @@
 #    define _POSIX_C_SOURCE 200809L
 #endif
 
+#include <timing/timing.h>
+
 #include <stdio.h>
 #include <time.h>
-#include <timing/timing.h>
 
 #include <table/table.h>
 

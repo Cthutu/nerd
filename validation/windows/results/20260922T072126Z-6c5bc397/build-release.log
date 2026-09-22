@@ -1,0 +1,48 @@
+[36m================================================[0m
+[1m[36m build :: clang :: release [0m
+[1m[36m projects :: nerd[0m
+[36m================================================[0m
+[90m[skip][0m 2 run directive(s) up to date
+[32m[1m[ cc ][0m compiler\error\error.c
+[32m[1m[ cc ][0m compiler\error\lex_errors.c
+[32m[1m[ cc ][0m compiler\error\render.c
+[32m[1m[ cc ][0m compiler\error\sema_errors.c
+[32m[1m[ cc ][0m compiler\format\format.c
+[32m[1m[ cc ][0m compiler\hir\dump.c
+[32m[1m[ cc ][0m compiler\hir\gen.c
+[32m[1m[ cc ][0m compiler\lexer\dump.c
+[32m[1m[ cc ][0m compiler\lexer\interner.c
+[32m[1m[ cc ][0m compiler\lexer\lexer.c
+[32m[1m[ cc ][0m compiler\llvm\llvm.c
+[32m[1m[ cc ][0m compiler\modules\modules.c
+[32m[1m[ cc ][0m compiler\sema\sema.c
+[32m[1m[ cc ][0m timing\timing.c
+C:\Users\matt\nerd\src\timing\timing.c:248:18: error: 'getenv' is deprecated: This function or variable may be unsafe. Consider using _dupenv_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [-Werror,-Wdeprecated-declarations]
+  248 |     cstr value = getenv("NERD_PROFILE");
+      |                  ^
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\ucrt\stdlib.h:1183:20: note: 'getenv' has been explicitly marked deprecated here
+ 1183 |     _Check_return_ _CRT_INSECURE_DEPRECATE(_dupenv_s)
+      |                    ^
+C:\Program Files\Microsoft Visual Studio\2022\Professional\VC\Tools\MSVC\14.44.35207\include\vcruntime.h:368:55: note: expanded from macro '_CRT_INSECURE_DEPRECATE'
+  368 |         #define _CRT_INSECURE_DEPRECATE(_Replacement) _CRT_DEPRECATE_TEXT(    \
+      |                                                       ^
+C:\Program Files\Microsoft Visual Studio\2022\Professional\VC\Tools\MSVC\14.44.35207\include\vcruntime.h:358:47: note: expanded from macro '_CRT_DEPRECATE_TEXT'
+  358 | #define _CRT_DEPRECATE_TEXT(_Text) __declspec(deprecated(_Text))
+      |                                               ^
+C:\Users\matt\nerd\src\timing\timing.c:295:30: error: 'getenv' is deprecated: This function or variable may be unsafe. Consider using _dupenv_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [-Werror,-Wdeprecated-declarations]
+  295 |         cstr locks         = getenv("NERD_PROFILE_LOCKS");
+      |                              ^
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\ucrt\stdlib.h:1183:20: note: 'getenv' has been explicitly marked deprecated here
+ 1183 |     _Check_return_ _CRT_INSECURE_DEPRECATE(_dupenv_s)
+      |                    ^
+C:\Program Files\Microsoft Visual Studio\2022\Professional\VC\Tools\MSVC\14.44.35207\include\vcruntime.h:368:55: note: expanded from macro '_CRT_INSECURE_DEPRECATE'
+  368 |         #define _CRT_INSECURE_DEPRECATE(_Replacement) _CRT_DEPRECATE_TEXT(    \
+      |                                                       ^
+C:\Program Files\Microsoft Visual Studio\2022\Professional\VC\Tools\MSVC\14.44.35207\include\vcruntime.h:358:47: note: expanded from macro '_CRT_DEPRECATE_TEXT'
+  358 | #define _CRT_DEPRECATE_TEXT(_Text) __declspec(deprecated(_Text))
+      |                                               ^
+2 errors generated.
+[31m================================================[0m
+[31m[1m[fail][0m exit 1
+[90mclang -std=c23 -Wall -Wextra -Werror -pipe -O2 -DNDEBUG -Isrc -c C:\Users\matt\nerd\src\timing\timing.c -o C:\Users\matt\nerd\_obj\release\timing\timing.o[0m
+[31m================================================[0m

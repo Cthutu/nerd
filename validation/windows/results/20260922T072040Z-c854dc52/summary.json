@@ -1,0 +1,320 @@
+{
+  "platform": "Windows-11-10.0.26200-SP0",
+  "native_windows": true,
+  "python": "3.14.7 (tags/v3.14.7:823f032, Aug  5 2026, 10:51:32) [MSC v.1944 64 bit (AMD64)]",
+  "logical_cpus": 32,
+  "commit": "6bbc17e8e14facc95caee55abdca35db216bbb05",
+  "branch": "experiment/task-scheduler-performance",
+  "working_tree_at_start": "",
+  "selection": "full",
+  "status": "incomplete-or-failed",
+  "stages": [
+    {
+      "name": "build-debug",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/build.py",
+        "nerd",
+        "--skip-mod-sync"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T07:20:41.732362+00:00",
+      "log": "build-debug.log",
+      "status": "failed",
+      "exit_code": 1,
+      "seconds": 9.63
+    },
+    {
+      "name": "build-release",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/build.py",
+        "-r",
+        "nerd",
+        "--skip-mod-sync"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T07:20:51.366492+00:00",
+      "log": "build-release.log",
+      "status": "failed",
+      "exit_code": 1,
+      "seconds": 11.86
+    },
+    {
+      "name": "clean",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/test_clean.py"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T07:21:03.230256+00:00",
+      "log": "clean.log",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 0.496
+    },
+    {
+      "name": "memory",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/test_memory.py"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T07:21:03.729902+00:00",
+      "log": "memory.log",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 2.218
+    },
+    {
+      "name": "threads",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/test_threads.py"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T07:21:05.951929+00:00",
+      "log": "threads.log",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 3.95
+    },
+    {
+      "name": "fixtures",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/test.py"
+      ],
+      "status": "blocked",
+      "reason": "Prerequisites failed: build-debug"
+    },
+    {
+      "name": "doctor-debug",
+      "command": [
+        "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+        "doctor"
+      ],
+      "status": "blocked",
+      "reason": "Prerequisites failed: build-debug"
+    },
+    {
+      "name": "profile-debug",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/test_profile.py",
+        "--nerd",
+        "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe"
+      ],
+      "status": "blocked",
+      "reason": "Prerequisites failed: build-debug"
+    },
+    {
+      "name": "render-threads-debug",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/test_render_threads.py",
+        "--nerd",
+        "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe"
+      ],
+      "status": "blocked",
+      "reason": "Prerequisites failed: build-debug"
+    },
+    {
+      "name": "jobs-debug",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/test_jobs.py",
+        "--nerd",
+        "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe"
+      ],
+      "status": "blocked",
+      "reason": "Prerequisites failed: build-debug"
+    },
+    {
+      "name": "front-threads-debug",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/test_front_threads.py",
+        "--nerd",
+        "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe"
+      ],
+      "status": "blocked",
+      "reason": "Prerequisites failed: build-debug"
+    },
+    {
+      "name": "toolchain-debug",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/test_toolchain.py",
+        "--nerd",
+        "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe"
+      ],
+      "status": "blocked",
+      "reason": "Prerequisites failed: build-debug"
+    },
+    {
+      "name": "install-debug",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/test_install.py",
+        "--nerd",
+        "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe"
+      ],
+      "status": "blocked",
+      "reason": "Prerequisites failed: build-debug"
+    },
+    {
+      "name": "cgen-debug",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/test_cgen.py",
+        "--nerd",
+        "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe"
+      ],
+      "status": "blocked",
+      "reason": "Prerequisites failed: build-debug"
+    },
+    {
+      "name": "debugger-debug",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/check_debugger_stepping.py",
+        "--nerd",
+        "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+        "--jobs",
+        "4"
+      ],
+      "status": "blocked",
+      "reason": "Prerequisites failed: build-debug"
+    },
+    {
+      "name": "doctor-release",
+      "command": [
+        "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+        "doctor"
+      ],
+      "status": "blocked",
+      "reason": "Prerequisites failed: build-release"
+    },
+    {
+      "name": "profile-release",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/test_profile.py",
+        "--nerd",
+        "C:\\Users\\matt\\nerd\\_bin\\nerd.exe"
+      ],
+      "status": "blocked",
+      "reason": "Prerequisites failed: build-release"
+    },
+    {
+      "name": "render-threads-release",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/test_render_threads.py",
+        "--nerd",
+        "C:\\Users\\matt\\nerd\\_bin\\nerd.exe"
+      ],
+      "status": "blocked",
+      "reason": "Prerequisites failed: build-release"
+    },
+    {
+      "name": "jobs-release",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/test_jobs.py",
+        "--nerd",
+        "C:\\Users\\matt\\nerd\\_bin\\nerd.exe"
+      ],
+      "status": "blocked",
+      "reason": "Prerequisites failed: build-release"
+    },
+    {
+      "name": "front-threads-release",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/test_front_threads.py",
+        "--nerd",
+        "C:\\Users\\matt\\nerd\\_bin\\nerd.exe"
+      ],
+      "status": "blocked",
+      "reason": "Prerequisites failed: build-release"
+    },
+    {
+      "name": "toolchain-release",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/test_toolchain.py",
+        "--nerd",
+        "C:\\Users\\matt\\nerd\\_bin\\nerd.exe"
+      ],
+      "status": "blocked",
+      "reason": "Prerequisites failed: build-release"
+    },
+    {
+      "name": "install-release",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/test_install.py",
+        "--nerd",
+        "C:\\Users\\matt\\nerd\\_bin\\nerd.exe"
+      ],
+      "status": "blocked",
+      "reason": "Prerequisites failed: build-release"
+    },
+    {
+      "name": "cgen-release",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/test_cgen.py",
+        "--nerd",
+        "C:\\Users\\matt\\nerd\\_bin\\nerd.exe"
+      ],
+      "status": "blocked",
+      "reason": "Prerequisites failed: build-release"
+    },
+    {
+      "name": "debugger-release",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/check_debugger_stepping.py",
+        "--nerd",
+        "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+        "--jobs",
+        "4"
+      ],
+      "status": "blocked",
+      "reason": "Prerequisites failed: build-release"
+    },
+    {
+      "name": "benchmark",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/benchmark_jobs.py",
+        "--nerd",
+        "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+        "--jobs",
+        "1",
+        "2",
+        "4",
+        "8",
+        "--output",
+        "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T072040Z-c854dc52\\benchmark.json"
+      ],
+      "status": "blocked",
+      "reason": "Prerequisites failed: build-debug, build-release, fixtures, doctor-debug, profile-debug, render-threads-debug, jobs-debug, front-threads-debug, toolchain-debug, install-debug, cgen-debug, debugger-debug, doctor-release, profile-release, render-threads-release, jobs-release, front-threads-release, toolchain-release, install-release, cgen-release, debugger-release"
+    }
+  ],
+  "tool_paths": {
+    "clang": "C:\\Users\\matt\\scoop\\apps\\llvm\\current\\bin\\clang.EXE",
+    "opt": null,
+    "llc": null,
+    "llvm-lib": "C:\\Users\\matt\\scoop\\apps\\llvm\\current\\bin\\llvm-lib.EXE",
+    "lld-link": "C:\\Users\\matt\\scoop\\apps\\llvm\\current\\bin\\lld-link.EXE",
+    "lldb": "C:\\Users\\matt\\scoop\\apps\\llvm\\current\\bin\\lldb.EXE",
+    "just": "C:\\Users\\matt\\.cargo\\bin\\just.EXE",
+    "git": "C:\\Apps\\Git\\cmd\\git.EXE",
+    "uv": "C:\\Users\\matt\\.local\\bin\\uv.EXE"
+  },
+  "finished_utc": "2026-09-22T07:21:09.941049+00:00"
+}

@@ -1,0 +1,48 @@
+
+clang: C:\Users\matt\scoop\apps\llvm\current\bin\clang.EXE
+clang version 23.1.0 (https://github.com/llvm/llvm-project ea7d852a70e8bdfaf601d6626a760f9771b2c4b4)
+Target: x86_64-pc-windows-msvc
+Thread model: posix
+InstalledDir: C:\Users\matt\scoop\apps\llvm\23.1.0\bin
+Build config: +alloc:rpmalloc
+
+exit=0
+
+opt: None
+
+llc: None
+
+llvm-lib: C:\Users\matt\scoop\apps\llvm\current\bin\llvm-lib.EXE
+ignoring unknown argument: --version
+warning: no input files, not writing output file
+         pass /llvmlibempty to write empty .lib file,
+         pass /ignore:emptyoutput to suppress warning
+
+exit=0
+
+lld-link: C:\Users\matt\scoop\apps\llvm\current\bin\lld-link.EXE
+LLD 23.1.0 (https://github.com/llvm/llvm-project ea7d852a70e8bdfaf601d6626a760f9771b2c4b4)
+
+exit=0
+
+lldb: C:\Users\matt\scoop\apps\llvm\current\bin\lldb.EXE
+lldb version 23.1.0 (https://github.com/llvm/llvm-project revision ea7d852a70e8bdfaf601d6626a760f9771b2c4b4)
+  clang revision ea7d852a70e8bdfaf601d6626a760f9771b2c4b4
+  llvm revision ea7d852a70e8bdfaf601d6626a760f9771b2c4b4
+
+exit=0
+
+just: C:\Users\matt\.cargo\bin\just.EXE
+just 1.48.0
+
+exit=0
+
+git: C:\Apps\Git\cmd\git.EXE
+git version 2.51.1.windows.1
+
+exit=0
+
+uv: C:\Users\matt\.local\bin\uv.EXE
+uv 0.11.1 (a6042f67f 2026-03-24 x86_64-pc-windows-msvc)
+
+exit=0
