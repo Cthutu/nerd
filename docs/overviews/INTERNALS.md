@@ -19,6 +19,13 @@ C output names replace the requested output root's extension directly, before
 any Windows executable suffix is appended, so `--cgen -o program.c` stays
 `program.c` rather than becoming `program.c.c`.
 
+C output creation on Windows retries only sharing and lock violations for at
+most 50 ten-millisecond waits. Repeated C differential/front-end runs can race
+with external readers of the preceding output. Other open errors fail
+immediately; persistent locks still diagnose failure and preserve the old
+file. The C CLI regression holds a native read handle to test both temporary
+and persistent sharing violations without relying on scanner timing.
+
 This document is the high-level map of the current codebase. It points at the
 main subsystems and tells you where to read next.
 

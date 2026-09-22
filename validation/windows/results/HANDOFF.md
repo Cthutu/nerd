@@ -44,8 +44,15 @@ ignored `_tmp/clang23-objects` before a fresh LLVM 22.1.8 build.
 - Release front-end runs intermittently encountered WinError 32 while reopening
   generated `program.c`. [Isolated rerun](20260922T073919Z-3ae286a6/SUMMARY.md)
   passed all 15 successful source shapes, five ordered diagnostic cases and six
-  randomized independent-closure iterations. The transient sharing failure's
-  external owner was not established; keep it visible pending the final full run.
+  randomized independent-closure iterations. A later
+  [full run](20260922T074219Z-d55d7186/SUMMARY.md) passed 1,115 fixtures and every
+  auxiliary suite except release front-end, where the sharing failure recurred.
+  The external lock owner was not established. C output now retries only native
+  sharing/lock violations, bounded to 500 ms; persistent locks still fail.
+  [Controlled CLI reproduction](20260922T075157Z-7bec6ae1/sharing-cli.log) holds
+  a native read handle and verifies both delayed release and persistent failure,
+  with byte-identical output/preservation. Broader focused reruns are in that
+  directory, followed by a final full run after the code commit.
 
 Repair details (focused verification passed; final full run still pending):
 
@@ -69,6 +76,12 @@ Python 3.14.7; Visual Studio Professional 2022/MSVC 14.44.35207; SDK 10.0.26100.
 The 48-cell desktop build matrix is stored in
 [desktop.json](20260922T073444Z-2a8ab0b9/desktop.json). All builds succeeded;
 human observations are pending. The helper records exact argv and compiler hashes.
+
+VS Code manual smoke: the user reported “It seemed to work” after the requested
+breakpoint, step-over, step-in, locals and call-stack procedure in the isolated
+extension-development window. Record this as a broad user-reported smoke pass;
+the automated LLDB transcripts establish exact source lines and local values.
+See [manual evidence](20260922T074219Z-d55d7186/MANUAL.md).
 
 Additional editor verification: `npm run compile` and
 `python build/check_editor_integrations.py --nerd _bin/nerd-debug.exe` passed.

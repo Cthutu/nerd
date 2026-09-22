@@ -3010,6 +3010,27 @@ internal void cgen_init_module(CGen* c, u32 module, Array(bool) * done)
     }
     sb_format(&c->out, "ncg_init%u();\n", module);
 }
+internal FILE* cgen_open_output(cstr path)
+{
+    FILE* file = fopen(path, "wb");
+#if OS_WINDOWS
+    // A reader (including a scanner inspecting recently generated C) can
+    // briefly deny writes after the previous tool has exited. Retry only
+    // sharing/lock violations, with a fixed half-second bound. Permissions,
+    // missing directories and persistent locks still fail normally.
+    for (u32 attempt = 0; file == NULL && attempt < 50; ++attempt) {
+        unsigned long code = 0;
+        _get_doserrno(&code);
+        if (code != ERROR_SHARING_VIOLATION && code != ERROR_LOCK_VIOLATION) {
+            break;
+        }
+        Sleep(10);
+        file = fopen(path, "wb");
+    }
+#endif
+    return file;
+}
+
 bool cgen_save_program(const ProgramInfo*        program,
                        const NerdArtifactConfig* artifacts)
 {
@@ -3304,7 +3325,7 @@ bool cgen_save_program(const ProgramInfo*        program,
     }
     bool ok = !c->failed;
     if (ok) {
-        FILE* f = fopen(artifacts->binary_path, "wb");
+        FILE* f = cgen_open_output(artifacts->binary_path);
         if (!f) {
             ok = error_runtime("Failed to open C output: %s",
                                artifacts->binary_path);

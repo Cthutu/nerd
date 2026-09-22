@@ -1,0 +1,6 @@
+[PASS] --jobs LLVM identity and execution: tiny
+[PASS] --jobs LLVM identity and execution: wide
+[PASS] --jobs LLVM identity and execution: deep
+[PASS] --jobs LLVM identity and execution: large
+[PASS] --jobs LLVM identity and execution: scratch-growth
+LLVM scheduler CLI, ordered output, artifacts and failure recovery passed

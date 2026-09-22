@@ -1,0 +1,34 @@
+Traceback (most recent call last):
+  File "C:\Users\matt\nerd\build\check_debugger_adapter_transforms.py", line 116, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "C:\Users\matt\nerd\build\check_debugger_adapter_transforms.py", line 19, in main
+    compile_result = subprocess.run(
+        ["npm", "run", "compile"],
+    ...<3 lines>...
+        stderr=subprocess.PIPE,
+    )
+  File "C:\Users\matt\scoop\apps\python\current\Lib\subprocess.py", line 555, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\matt\scoop\apps\python\current\Lib\subprocess.py", line 1039, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\matt\scoop\apps\python\current\Lib\subprocess.py", line 1553, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] The system cannot find the file specified

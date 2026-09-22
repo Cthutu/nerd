@@ -1,0 +1,8 @@
+Nerd binary toolchain
+[OK] opt
+[OK] llc
+[OK] lld-link
+[OK] llvm-lib
+[OK] Windows SDK / VC runtime libraries (LIB configured; link probe will validate)
+[OK] LLVM optimisation, object generation, host runtime link and execution
+Toolchain ready. C emission does not require these tools.

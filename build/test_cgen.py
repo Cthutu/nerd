@@ -158,6 +158,45 @@ def cli_checks(nerd, tmp, env):
     result = run([nerd, "build", "--cgen", invalid], env, check=False)
     assert result.returncode and not invalid.with_suffix(".c").exists()
 
+    if os.name == "nt":
+        import ctypes
+        from ctypes import wintypes
+        import threading
+        kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+        kernel.CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                                      wintypes.LPVOID, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+        kernel.CreateFileW.restype = wintypes.HANDLE
+        kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+        generated = source.with_suffix('.c')
+        command = [nerd, 'build', '--cgen', '-o', generated, source]
+        run(command, env)
+        reference = generated.read_bytes()
+
+        def lock_output():
+            handle = kernel.CreateFileW(str(generated), 0x80000000, 1, None, 3, 0, None)
+            assert handle != ctypes.c_void_p(-1).value, ctypes.get_last_error()
+            return handle
+
+        # A stable sharing violation must fail without truncating old output.
+        handle = lock_output()
+        try:
+            failed = run(command, env, check=False)
+            assert failed.returncode and b'Failed to open C output' in failed.stderr
+            assert generated.read_bytes() == reference
+        finally:
+            kernel.CloseHandle(handle)
+        # A temporary reader releases its lock while the compiler is opening
+        # the file; the eventual write must remain byte-identical.
+        handle = lock_output()
+        released = threading.Timer(0.2, kernel.CloseHandle, args=[handle])
+        released.start()
+        try:
+            run(command, env)
+        finally:
+            released.join()
+        assert generated.read_bytes() == reference
+        print('[PASS] Windows C output: temporary sharing retry and persistent-lock failure', flush=True)
+
 
 def terminal_frame(executable, env):
     # Read a complete frame before sending any input. A test that sends Q first
