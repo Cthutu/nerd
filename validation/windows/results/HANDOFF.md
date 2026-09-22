@@ -237,3 +237,11 @@ The default expression-depth test is 6,000 terms for both debug and release; ASa
 and debug pass that source on Linux with jobs=1/4. The earlier semantic stack
 failure above is historical for this source. Native Windows/macOS must still
 run these checks; do not infer native success from Linux results.
+
+## Semantic scope queries (2026-09-22)
+
+Scope membership now uses completed parser side tables for conditionals, traits
+and generic implementations; function-body queries search backwards. Run the
+full current runner to cover platform keyword/negation, nested declarations,
+generics and diagnostics. Linux output parity and tests pass; native evidence
+for this change is still required. Scheduling defaults are unchanged.

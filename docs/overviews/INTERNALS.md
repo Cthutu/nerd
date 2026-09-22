@@ -568,6 +568,14 @@ records in fixed result slots; the coordinator emits the stream. See
 [profiling and benchmarking](../compiler-profiling.md).
 
 
+Semantic scope predicates query the parser's completed conditional, trait and
+implementation tables rather than scanning all AST nodes for each expression.
+An empty implementation table rules out an enclosing implementation immediately.
+Function-body membership searches backward for an enclosing function start,
+which keeps local queries within the nearby function rather than repeatedly
+walking earlier functions. Conditional keyword evaluation and disabled-node
+flags retain their existing meaning; no mutable scope cache is shared by workers.
+
 Semantic inference and HIR lowering also traverse eager arithmetic trees with
 explicit frames. Inference retains the expected type for each parent, derives
 the right operand's expectation from the completed left type, and runs the same

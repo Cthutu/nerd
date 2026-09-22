@@ -3173,18 +3173,17 @@ internal void sema_add_dep(Sema* sema, u32 from_decl_index, u32 to_decl_index)
 
 internal bool sema_node_is_inside_function_body(const Ast* ast, u32 node_index)
 {
-    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+    if (node_index >= array_count(ast->nodes)) {
+        return false;
+    }
+    // A containing function starts before its body. Search backwards so local
+    // declarations do not rescan every earlier function in the module.
+    for (u32 i = node_index; i-- > 0;) {
         const AstNode* node = &ast->nodes[i];
-        if (node->kind != AK_FnDef) {
-            continue;
-        }
-
-        const AstNode* fn_start = &ast->nodes[node->a];
-        if (node_index > node->a && node_index < fn_start->b) {
+        if (node->kind == AK_FnStart && node_index < node->b) {
             return true;
         }
     }
-
     return false;
 }
 
@@ -3293,6 +3292,10 @@ internal bool sema_ffi_library_literal(const Lexer* lexer,
 
 internal u32 sema_enclosing_impl_node_index(const Ast* ast, u32 node_index)
 {
+    if (array_count(ast->impls) == 0) {
+        return U32_MAX;
+    }
+
     for (u32 i = 0; i < array_count(ast->nodes); ++i) {
         const AstNode* owner = &ast->nodes[i];
         if (owner->kind != AK_Impl) {
@@ -3314,13 +3317,8 @@ internal bool sema_node_is_inside_impl_body(const Ast* ast, u32 node_index)
 
 internal bool sema_node_is_inside_trait_body(const Ast* ast, u32 node_index)
 {
-    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
-        const AstNode* owner = &ast->nodes[i];
-        if (owner->kind != AK_Trait ||
-            owner->a >= array_count(ast->trait_infos)) {
-            continue;
-        }
-        const AstTraitInfo* trait = &ast->trait_infos[owner->a];
+    for (u32 i = 0; i < array_count(ast->trait_infos); ++i) {
+        const AstTraitInfo* trait = &ast->trait_infos[i];
         if (trait->body_node_index >= array_count(ast->nodes)) {
             continue;
         }
@@ -5820,6 +5818,8 @@ internal bool sema_validate_top_on_assertion(const FrontEndOptions* options,
         info->is_negated);
 }
 
+// Parser side tables contain completed constructs. Query those tables rather
+// than every expression node; most modules have very few such constructs.
 internal bool sema_node_is_inside_top_on_body(const Ast* ast,
                                               u32        node_index,
                                               u32 current_body_node_index)
@@ -5827,13 +5827,8 @@ internal bool sema_node_is_inside_top_on_body(const Ast* ast,
     u32 innermost_body = U32_MAX;
     u32 innermost_span = U32_MAX;
 
-    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
-        const AstNode* owner = &ast->nodes[i];
-        if (owner->kind != AK_TopOn) {
-            continue;
-        }
-
-        const AstTopOnInfo* info = &ast->top_ons[owner->a];
+    for (u32 i = 0; i < array_count(ast->top_ons); ++i) {
+        const AstTopOnInfo* info = &ast->top_ons[i];
         if (info->body_node_index == U32_MAX) {
             continue;
         }
@@ -5861,18 +5856,17 @@ sema_node_is_inside_disabled_top_on_body(const FrontEndOptions* options,
         ast_has_flag(&ast->nodes[node_index], ANF_Disabled)) {
         return true;
     }
-    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
-        const AstNode* owner = &ast->nodes[i];
-        if (owner->kind != AK_TopOn) {
+    for (u32 i = 0; i < array_count(ast->top_ons); ++i) {
+        const AstTopOnInfo* info = &ast->top_ons[i];
+        if (info->is_assert || info->body_node_index == U32_MAX) {
             continue;
         }
 
-        const AstTopOnInfo* info = &ast->top_ons[owner->a];
-        if (info->is_assert || info->body_node_index == U32_MAX ||
-            sema_top_on_is_enabled(options, lexer, ast, owner)) {
+        bool enabled = sema_keyword_is_defined(
+            options, lexer->strings[info->string_index]);
+        if (info->is_negated ? !enabled : enabled) {
             continue;
         }
-
         const AstNode* body = &ast->nodes[info->body_node_index];
         if (body->a <= node_index && node_index < body->b) {
             return true;
@@ -17683,12 +17677,8 @@ internal u32 sema_ast_enclosing_function_start_node(const Ast* ast,
 
 internal bool sema_node_is_inside_generic_impl(const Ast* ast, u32 node_index)
 {
-    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
-        const AstNode* node = &ast->nodes[i];
-        if (node->kind != AK_Impl) {
-            continue;
-        }
-        const AstImplInfo* impl = &ast->impls[node->a];
+    for (u32 i = 0; i < array_count(ast->impls); ++i) {
+        const AstImplInfo* impl = &ast->impls[i];
         if (impl->generic_params_index == U32_MAX) {
             continue;
         }
