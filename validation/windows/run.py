@@ -41,8 +41,6 @@ def plan(folder: Path) -> list[Stage]:
         stages.append(Stage('doctor-' + mode, [nerd, 'doctor'], needs))
         for name in ['profile', 'render_threads', 'expression_depth', 'jobs', 'front_threads', 'toolchain', 'install', 'cgen']:
             command = [python, f'build/test_{name}.py', '--nerd', nerd]
-            if name == 'expression_depth' and mode == 'release':
-                command += ['--terms', '6000']
             stages.append(Stage(name.replace('_', '-') + '-' + mode,
                                 command, needs))
         stages.append(Stage('debugger-' + mode,

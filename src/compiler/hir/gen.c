@@ -1608,11 +1608,109 @@ internal u32 hir_lower_default_trait_expr(Hir*        hir,
                         });
 }
 
+internal bool hir_ast_is_arithmetic(const Ast* ast, u32 index)
+{
+    return index < array_count(ast->nodes) &&
+           ast->nodes[index].kind >= AK_IntegerPlus &&
+           ast->nodes[index].kind <= AK_ShiftRight;
+}
+
+internal u32 hir_lower_arithmetic_tree(Hir*         hir,
+                                       const Lexer* lexer,
+                                       const Ast*   ast,
+                                       const Sema*  sema,
+                                       u32          node_index)
+{
+    const AstNode* root = &ast->nodes[node_index];
+    if (!hir_ast_is_arithmetic(ast, hir_unwrap_node(ast, root->a)) &&
+        !hir_ast_is_arithmetic(ast, hir_unwrap_node(ast, root->b))) {
+        u32         lhs = hir_lower_expr(hir, lexer, ast, sema, root->a);
+        u32         rhs = hir_lower_expr(hir, lexer, ast, sema, root->b);
+        HirBinaryOp op;
+        hir_binary_op_from_ast_kind(root->kind, &op);
+        return hir_add_expr(hir,
+                            (HirExpr){
+                                .kind       = HIR_EXPR_Binary,
+                                .type_index = hir_node_type(sema, node_index),
+                                .symbol_handle  = U32_MAX,
+                                .local_index    = sema_no_local(),
+                                .lhs_expr_index = lhs,
+                                .rhs_expr_index = rhs,
+                                .binary_op      = op,
+                            });
+    }
+    typedef struct {
+        u32  node;
+        u32  lhs;
+        bool have_lhs;
+    } LowerFrame;
+    Array(LowerFrame) frames = NULL;
+    u32 index                = node_index;
+    u32 value                = hir_no_index();
+    for (;;) {
+        index = hir_unwrap_node(ast, index);
+        while (hir_ast_is_arithmetic(ast, index)) {
+            LowerFrame frame = {.node = index};
+            array_push(frames, frame);
+            index = hir_unwrap_node(ast, ast->nodes[index].a);
+        }
+        value = hir_lower_expr(hir, lexer, ast, sema, index);
+        while (array_count(frames) > 0) {
+            LowerFrame*    frame = &frames[array_count(frames) - 1];
+            const AstNode* node  = &ast->nodes[frame->node];
+            if (!frame->have_lhs) {
+                frame->lhs      = value;
+                frame->have_lhs = true;
+                index           = node->b;
+                break;
+            }
+            HirBinaryOp op;
+            hir_binary_op_from_ast_kind(node->kind, &op);
+            value =
+                hir_add_expr(hir,
+                             (HirExpr){
+                                 .kind       = HIR_EXPR_Binary,
+                                 .type_index = hir_node_type(sema, frame->node),
+                                 .symbol_handle  = U32_MAX,
+                                 .local_index    = sema_no_local(),
+                                 .lhs_expr_index = frame->lhs,
+                                 .rhs_expr_index = value,
+                                 .binary_op      = op,
+                             });
+            array_pop(frames);
+        }
+        if (array_count(frames) == 0) {
+            break;
+        }
+    }
+    array_free(frames);
+    return value;
+}
+
+internal u32 hir_lower_expr_impl(Hir*         hir,
+                                 const Lexer* lexer,
+                                 const Ast*   ast,
+                                 const Sema*  sema,
+                                 u32          node_index);
+
 internal u32 hir_lower_expr(Hir*         hir,
                             const Lexer* lexer,
                             const Ast*   ast,
                             const Sema*  sema,
                             u32          node_index)
+{
+    node_index = hir_unwrap_node(ast, node_index);
+    if (hir_ast_is_arithmetic(ast, node_index)) {
+        return hir_lower_arithmetic_tree(hir, lexer, ast, sema, node_index);
+    }
+    return hir_lower_expr_impl(hir, lexer, ast, sema, node_index);
+}
+
+internal u32 hir_lower_expr_impl(Hir*         hir,
+                                 const Lexer* lexer,
+                                 const Ast*   ast,
+                                 const Sema*  sema,
+                                 u32          node_index)
 {
     node_index = hir_unwrap_node(ast, node_index);
     if (node_index >= array_count(ast->nodes)) {

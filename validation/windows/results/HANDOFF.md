@@ -229,3 +229,11 @@ ASan compilers overflow in `sema_infer_node_type` with the 6,000-term source,
 before LLVM emission. The 512-term test passes there. Do not interpret this LLVM
 fix as general elimination of compiler recursion, or hide any native depth
 failures by claiming the large case passed. Preserve failures for follow-up.
+
+## Frontend depth fix supersedes the preceding limit (2026-09-22)
+
+Semantic arithmetic inference and HIR lowering now use explicit traversal frames.
+The default expression-depth test is 6,000 terms for both debug and release; ASan
+and debug pass that source on Linux with jobs=1/4. The earlier semantic stack
+failure above is historical for this source. Native Windows/macOS must still
+run these checks; do not infer native success from Linux results.

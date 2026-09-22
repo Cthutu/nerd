@@ -12,8 +12,8 @@ ROOT = Path(__file__).resolve().parents[1]
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--nerd', type=Path, default=ROOT / '_bin/nerd-debug')
-    parser.add_argument('--terms', type=int, default=512,
-                        help='Use 6000 with a release compiler for the original LLVM crash; debug/ASan sema has a lower stack limit')
+    parser.add_argument('--terms', type=int, default=6000,
+                        help='Number of operands in the left-deep arithmetic regression')
     args = parser.parse_args()
     if args.terms < 2:
         parser.error('--terms must be at least two')

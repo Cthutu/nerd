@@ -568,6 +568,16 @@ records in fixed result slots; the coordinator emits the stream. See
 [profiling and benchmarking](../compiler-profiling.md).
 
 
+Semantic inference and HIR lowering also traverse eager arithmetic trees with
+explicit frames. Inference retains the expected type for each parent, derives
+the right operand's expectation from the completed left type, and runs the same
+result validation and diagnostic logic at each node. Traversal results are not
+reused across inference contexts. HIR indices retain recursive postorder. Simple
+operators take an allocation-free path; nested arithmetic uses storage proportional
+to expression depth. This permits the 6,000-term regression in debug, release and
+ASan without increasing the native stack. Other expression forms keep their
+existing handling; this is not a universal arbitrary-depth guarantee.
+
 LLVM emission walks nested eager arithmetic/bitwise binary expressions with an
 explicit array of traversal frames. Each frame holds its HIR index and the
 completed left operand while the right subtree is evaluated. This preserves
