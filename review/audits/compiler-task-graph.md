@@ -62,3 +62,15 @@ and native handoff evidence so future decisions are reproducible.
   Final release output/runtime/diagnostic parity, full suite, ASan and TSan
   pass on Linux. [Validation evidence](../measurements/compiler-task-graph.md)
   records the exact scope. Native checks pending; G3–G6 remain open.
+
+
+## G2 performance checkpoint
+
+[The paired benchmark](../measurements/compiler-g2-benchmark.md) compares G2
+against original main and the exact pre-graph revision. Cumulative single-core
+gains remain, but G2 has not established a consistent general scheduler speedup.
+The initial four-worker Pixels improvement reverses in a longer broad-affinity
+repeat; restricting four workers to four physical cores gives about 1% gain.
+Single-worker changes are small. Retain the serial default and carry these
+measurements forward as the baseline for G3–G6; correctness and infrastructure
+completion must not be mistaken for demonstrated performance gains.

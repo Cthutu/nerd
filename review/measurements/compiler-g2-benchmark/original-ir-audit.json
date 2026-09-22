@@ -1,0 +1,40 @@
+{
+  "case": "pixels/debug",
+  "sha256": [
+    "e4b810c60dcb09b584492152a369e64132a5c3d02bdc7239db0bbe56e8f14d45",
+    "e52dc9899aaa3cf2a4119f8a33ce598e2b000a93f581da113c08b757224a019b"
+  ],
+  "changed_lines": 350,
+  "first_changes": [
+    "-  %t43 = getelementptr inbounds i8, ptr %t41, i64 -24, !dbg !327",
+    "+  %t43 = getelementptr inbounds i8, ptr %t41, i64 -32, !dbg !327",
+    "-  %t6 = getelementptr inbounds i8, ptr %t3, i64 -24, !dbg !361",
+    "+  %t6 = getelementptr inbounds i8, ptr %t3, i64 -32, !dbg !361",
+    "-  %t15 = getelementptr inbounds i8, ptr %t13, i64 -24, !dbg !367",
+    "+  %t15 = getelementptr inbounds i8, ptr %t13, i64 -32, !dbg !367",
+    "-  %t32 = getelementptr inbounds i8, ptr %t29, i64 -24, !dbg !370",
+    "+  %t32 = getelementptr inbounds i8, ptr %t29, i64 -32, !dbg !370",
+    "-  %t8 = getelementptr inbounds i8, ptr %t5, i64 -24, !dbg !379",
+    "+  %t8 = getelementptr inbounds i8, ptr %t5, i64 -32, !dbg !379",
+    "-  %t17 = getelementptr inbounds i8, ptr %t16, i64 -24, !dbg !381",
+    "+  %t17 = getelementptr inbounds i8, ptr %t16, i64 -32, !dbg !381",
+    "-  %t12 = getelementptr inbounds i8, ptr %t9, i64 -24, !dbg !424",
+    "+  %t12 = getelementptr inbounds i8, ptr %t9, i64 -32, !dbg !424",
+    "-  %t21 = getelementptr inbounds i8, ptr %t20, i64 -24, !dbg !428",
+    "+  %t21 = getelementptr inbounds i8, ptr %t20, i64 -32, !dbg !428",
+    "-  %t28 = getelementptr inbounds i8, ptr %t27, i64 -24, !dbg !429",
+    "+  %t28 = getelementptr inbounds i8, ptr %t27, i64 -32, !dbg !429",
+    "-  %t43 = call ptr @nrt_mem_alloc(i64 24, i64 16, ptr @.expr.source_path.m1.20, i32 128), !dbg !447",
+    "+  %t43 = call ptr @nrt_mem_alloc(i64 32, i64 16, ptr @.expr.source_path.m1.20, i32 128), !dbg !447",
+    "-  %t47 = getelementptr inbounds i8, ptr %t43, i64 24, !dbg !447",
+    "+  %t47 = getelementptr inbounds i8, ptr %t43, i64 32, !dbg !447",
+    "-  %t49 = getelementptr inbounds i8, ptr %t48, i64 -24, !dbg !447",
+    "+  %t49 = getelementptr inbounds i8, ptr %t48, i64 -32, !dbg !447",
+    "-  %t70 = add i64 24, %t69, !dbg !447",
+    "+  %t70 = add i64 32, %t69, !dbg !447",
+    "-  %t72 = getelementptr inbounds i8, ptr %t71, i64 24, !dbg !447",
+    "+  %t72 = getelementptr inbounds i8, ptr %t71, i64 32, !dbg !447",
+    "-  %t76 = getelementptr inbounds i8, ptr %t75, i64 -24, !dbg !447",
+    "+  %t76 = getelementptr inbounds i8, ptr %t75, i64 -32, !dbg !447"
+  ]
+}

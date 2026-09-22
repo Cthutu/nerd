@@ -1,0 +1,36 @@
+{
+  "original_ref": "a15e965d",
+  "before_ref": "f3af9bb1",
+  "after_implementation_ref": "598a2d1a",
+  "after_validation_ref": "7f08bf0e",
+  "harness_ref": "4a61a525",
+  "samples": 9,
+  "profile_samples": 3,
+  "binaries": {
+    "/tmp/nerd-comparison-main": "978451574094446ccafddbbeff16eafc676f5815c656045099e0c465a3214684",
+    "/tmp/nerd-bench-pre-graph/_bin/nerd": "57925c2fae7f09a1109ed24eef45274fd9c1d9f8908e444d4c5511fe3b8be7ae",
+    "/home/matt/nerd/_bin/nerd": "f42cb81cb8c8bdd3e899928bb7f360192bd61fdce0f3ba9b1e05e3ec1f2a7211"
+  },
+  "tools": {
+    "clang": [
+      "clang version 22.1.8",
+      "Target: x86_64-pc-linux-gnu",
+      "Thread model: posix"
+    ],
+    "opt": [
+      "LLVM (http://llvm.org/):",
+      "  LLVM version 22.1.8",
+      "  Optimized build."
+    ],
+    "llc": [
+      "LLVM (http://llvm.org/):",
+      "  LLVM version 22.1.8",
+      "  Optimized build."
+    ],
+    "ld.lld": [
+      "LLD 22.1.8 (compatible with GNU linkers)"
+    ]
+  },
+  "cpu2_governor": "performance",
+  "preserved_before_binary": "/tmp/nerd-benchmark-pre-graph"
+}
