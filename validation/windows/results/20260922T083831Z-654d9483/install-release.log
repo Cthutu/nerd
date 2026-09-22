@@ -1,0 +1,9 @@
+compile standalone generated C failed with 1
+stdout:
+
+stderr:
+program.c:5:10: fatal error: 'stdio.h' file not found
+    5 | #include <stdio.h>
+      |          ^~~~~~~~~
+1 error generated.
+

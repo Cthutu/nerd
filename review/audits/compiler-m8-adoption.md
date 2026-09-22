@@ -11,7 +11,8 @@ threshold, or relax semantic closure ownership. Parallel C emission remains
 deferred; compatibility C output is still produced without invoking Clang.
 
 The Linux adoption review is complete. The cross-platform adoption gate is
-**not complete**: native Windows and macOS execution is still outstanding.
+**not complete**: native Windows correctness now passes; macOS execution and
+Windows CPU/RSS measurements remain outstanding. See the Windows addendum below.
 Default parallel adoption is therefore deferred.
 
 ## Gates
@@ -28,7 +29,7 @@ not be counted as gains from extra workers. See the separate
 | Single-worker cost | Fixed compiler vs M5: -1.99% to +0.93% across 14 cells; identical combined LLVM | No material regression from the correctness fix |
 | Representative whole-build gain | Best real-workload improvement in this sweep is about 7.2% (Pixels debug); release builds are flat or slower | Does not clear the 15% gate |
 | Memory at selected default | One worker retained; no material high-water RSS increase observed | No automatic worker/memory policy justified |
-| Native-platform validation | Linux exercised; native Windows/macOS not available | Broader adoption remains gated |
+| Native-platform validation | Linux and native Windows exercised; macOS and Windows CPU/RSS remain open | Broader adoption remains gated |
 
 ## Final compiler measurements
 
@@ -164,8 +165,9 @@ expanding this adoption milestone without evidence of an end-to-end benefit.
   32 bits, so choosing an i32 specialization cannot accidentally pass. The
   complete front-end suite was rerun with the release compiler after this
   strengthening and the portable executable-path adjustment.
-- Native Windows/macOS results and a new visible Pixels framebuffer capture
-  are not claimed. The existing headless Pixels layout/runtime checks pass.
+- The original Linux review did not claim native Windows/macOS or new visible
+  Pixels captures. The Windows addendum now records actual native results and
+  captures; macOS remains unrun.
 
 The original imported-generic reproduction now returns zero. HIR preserves the
 selected specialization symbol, and LLVM resolves imported specializations by
@@ -178,7 +180,7 @@ externally compiled C results execute at jobs 1/2/4/8. See the
 | Platform | Evidence | Adoption status |
 | --- | --- | --- |
 | Linux x86-64 | Compiler/runtime parity, scheduler failures, sanitizer checks and pinned timings | One-job default retained; explicit jobs available |
-| Native Windows | Source review only; no native runner available in this session | Runtime, debugger, CRT/tool discovery and performance gates pending |
+| Native Windows | Full debug/release validation, 48 desktop cases, editor smoke and repeated worker timings | One-job default retained; CPU/RSS and paired baseline gates unmeasured |
 | Native macOS | No native runner/SDK available in this session | Runtime, SDK/linker, debugger and performance gates pending |
 
 For each native platform, build debug and release Nerd, run `nerd doctor`, the
@@ -199,3 +201,37 @@ worker-count tuning as a route to a default change on the current architecture.
 Defer automatic worker/memory sizing, source-size thresholds, shared-core
 semantic checking and parallel C rendering. Reopen adoption only after a concrete
 workload clears the performance gate and native correctness validation passes.
+
+
+## Native Windows addendum — 2026-09-22
+
+Tested implementation: `828d4b56ec08ea7f2001334e33cf660da9d82bbb`.
+Windows 11 Pro 10.0.26200 x64, Threadripper PRO 5955WX (16 physical cores,
+32 logical processors), Balanced power plan, LLVM 22.1.8 and SDK 10.0.26100.0.
+The [Windows handoff](../../validation/windows/results/HANDOFF.md) contains
+environment setup, original failures, repair commits and Linux follow-up.
+
+The [final full run](../../validation/windows/results/20260922T084515Z-f15c8c4e/SUMMARY.md)
+passed 1,116 fixtures with zero failures and 15 declared platform skips, plus
+all debug/release auxiliary suites. C parity covers 278 fixtures per compiler
+at both O0/O2. Native desktop captures and input/resize/Q checks passed all
+48 combinations of Pixels/Dungeon/Triangle, both compilers, debug/release
+targets, jobs 1/4 and LLVM/C. Automated LLDB/editor checks pass; the separate
+VS Code workflow has a broad user-reported smoke pass.
+
+The desktop checks found an optimized Dungeon crash that automated tests had
+missed: a 24-byte dynamic-array prefix misaligned wide enum values. Padding the
+LLVM and C headers to 32 bytes repairs it; new regressions cover allocation,
+growth, reserve and values under optimization. Other Windows repairs address
+main return width, direct vprintf linkage, C output naming and bounded retries
+for native sharing violations. No Clang fallback or default-worker change.
+
+The [final Windows timings](../../validation/windows/results/20260922T084515Z-f15c8c4e/BENCHMARKS.md)
+retain raw five-sample jobs 1/2/4/8 and separate jobs 1/16 sweeps with independent
+one-worker baselines. Combined LLVM hashes match within every scenario/target.
+The best representative gains are 3.2% for Pixels debug at eight workers and
+4.8% at 16 in the separate sweep; neither clears the 15% adoption threshold.
+Windows CPU/RSS remain null, and no Windows paired main/M5 comparison was made.
+Do not interpret these omissions as passing memory or serial-regression gates.
+Earlier Linux measurements above remain Linux results. macOS stays a separate
+native gate; automatic parallel adoption remains deferred.

@@ -1,0 +1,12 @@
+Results: C:\Users\matt\AppData\Local\Temp\tmpta1tgj50\results\20260922T083830Z-fc35011f
+Running build-debug (output streams to its log)
+build-debug: failed
+dependent: blocked
+Running independent (output streams to its log)
+independent: passed
+Report: C:\Users\matt\AppData\Local\Temp\tmpta1tgj50\results\20260922T083830Z-fc35011f\SUMMARY.md
+....
+----------------------------------------------------------------------
+Ran 4 tests in 0.704s
+
+OK

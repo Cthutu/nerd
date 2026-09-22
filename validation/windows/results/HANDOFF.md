@@ -1,149 +1,160 @@
-# Windows handoff status
+# Windows return handoff
 
-**Native Windows validation in progress, 2026-09-22.**
+Native Windows correctness validation completed on 2026-09-22. Work is on
+`experiment/task-scheduler-performance`, remote `hub` at
+`git@github.com:Cthutu/nerd.git`. Starting commit was
+`6bbc17e8e14facc95caee55abdca35db216bbb05`, with a clean working tree.
+The final tested implementation is **`828d4b56ec08ea7f2001334e33cf660da9d82bbb`**.
+Subsequent commits contain validation evidence and documentation only.
 
-Latest finding: the full automated run at `a618456b` passed all stages, 1,115
-fixtures and jobs 1/2/4/8 timings, but subsequent native desktop interaction
-exposed a repeatable optimized Dungeon access violation. Preserve
-[that run](20260922T075856Z-e3a49814/SUMMARY.md) and its crash records/captures;
-automated success did not establish full desktop correctness. Its benchmarks
-precede the next alignment repair and are not final-code timings.
+Read the [final full run](20260922T084515Z-f15c8c4e/SUMMARY.md),
+[suite counts](20260922T084515Z-f15c8c4e/suite-counts.json),
+[desktop/editor observations](20260922T084515Z-f15c8c4e/MANUAL.md) and
+[benchmark report](20260922T084515Z-f15c8c4e/BENCHMARKS.md).
+Keep `--jobs 1` as the default. The broader M8 adoption gate remains incomplete:
+native macOS and Windows CPU/RSS measurements are outstanding.
 
-Dynamic arrays placed wide enum elements after a 24-byte header despite their
-16-byte alignment. Native Windows crash records identify an aligned SIMD store
-at executable offset `0x1e9c6` in terminal event append. LLVM and compatibility C
-now pad the header to 32 bytes; allocation/growth/reserve and pointer conversions
-share that layout. The new `317-run-dynamic-enum-alignment` regression checks
-addresses and payload values; toolchain checks exercise debug/release targets
-at jobs 1/4, and C differential checks exercise O0/O2.
+## Host and reproduction
 
-[Focused alignment evidence](20260922T083052Z-6bf97fd5/SUMMARY.md): both compiler
-builds and C suites pass; the first debug-toolchain attempt caught syntax in the
-new regression, fixed before the recorded debug rerun and release suite passed.
-All 16 Dungeon desktop cases now draw, regenerate and exit zero; capture records
-are in that folder. Language/LLVM reruns pass after snapshot updates reflecting
-the extra eight header bytes; the allocator leak expectation increases by eight
-bytes too. The next full run must use the committed alignment repair.
+Windows 11 Pro 10.0.26200 x64; AMD Ryzen Threadripper PRO 5955WX,
+**16 physical cores / 32 logical processors**; Balanced power plan.
+LLVM/Clang 22.1.8, Python 3.14.7, Git 2.51.1.windows.1,
+Visual Studio Professional 2022/MSVC 14.44.35207 and Windows SDK 10.0.26100.0.
+CodeLLDB 1.12.2 supplies LLDB 22.1.4-codelldb; Node 26.8.1/npm 11.10.0.
+Exact compiler hashes and hardware are in
+[environment.json](20260922T084515Z-f15c8c4e/environment.json); tool probes are
+in that run's `tools.log`.
 
-Starting commit: `6bbc17e8e14facc95caee55abdca35db216bbb05`; clean working tree,
-up to date with `hub/experiment/task-scheduler-performance`. Authenticated remote
-`hub` points to `git@github.com:Cthutu/nerd.git`.
+The installed Scoop Clang 23.1.0 lacked opt/llc. We extracted the official full
+[LLVM 22.1.8 Windows x64 archive](https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.8/clang%2Bllvm-22.1.8-x86_64-pc-windows-msvc.tar.xz)
+under ignored `_tmp/llvm-tools`. Its SHA-256 matches the published release digest:
+`d96c2cc1736f4eb7fa43cb9bbdf56d93551a9ae0a9aadb9c99c3c3b2b712a234`.
+Old Clang 23 caches were moved to `_tmp/clang23-objects` before rebuilding.
+No globally installed compiler, extension, toolchain or machine policy changed.
 
-Host: Windows 11 Pro 10.0.26200 x64, AMD Ryzen Threadripper PRO 5955WX,
-16 physical cores / 32 logical processors, Balanced power plan.
-Installed Clang 23.1.0 lacks opt/llc. Official LLVM 22.1.8 Windows x64 archive
-was extracted under ignored `_tmp/llvm-tools` without replacing installed tools.
-Validation uses its bin directory first on process PATH and these LIB directories:
+From the repository root in PowerShell:
 
-```text
-C:\Program Files\Microsoft Visual Studio\2022\Professional\VC\Tools\MSVC\14.44.35207\lib\x64
-C:\Program Files (x86)\Windows Kits\10\Lib\10.0.26100.0\ucrt\x64
-C:\Program Files (x86)\Windows Kits\10\Lib\10.0.26100.0\um\x64
+```powershell
+. ./validation/windows/results/20260922T084515Z-f15c8c4e/environment.ps1
+python validation/windows/test_runner.py
+python validation/windows/run.py
+python validation/windows/manual.py validation/windows/results/<new-run> --prepare
 ```
 
-Local `_tmp/windows-env.ps1` sets that process-only environment and NERD_LIB_PATH.
-No global compiler, extension, policy, or toolchain was replaced. CodeLLDB 1.12.2
-is installed (1.11.3 also present). Compiler caches from Clang 23 were moved to
-ignored `_tmp/clang23-objects` before a fresh LLVM 22.1.8 build.
+The checked-in environment script prepends the local full LLVM bin directory,
+sets NERD_LIB_PATH and selects the installed MSVC x64, UCRT x64 and UM x64 LIB
+directories, plus explicit INCLUDE, VCToolsInstallDir and Windows SDK variables.
+The [preceding run](20260922T083831Z-654d9483/SUMMARY.md) passed all 1,116 fixtures
+and the desktop matrix, but external Clang later failed to discover stdio.h
+despite the installed header being present. The explicit process-local SDK
+configuration passed a standalone C probe and the final full run. The reason
+automatic discovery stopped working was not established; no system settings
+were changed. Use the generated
+`desktop.json` commands or `manual.py --observe` for interactive reproduction;
+the final run's `capture-desktop.ps1` records native window/input checks for the
+prepared matrix. Generated C is compiled externally from `--copts` arguments.
+Nerd itself continues to call opt/llc and the native linker/archive tools directly.
 
-- Harness self-tests: 4 passed.
-- [Initial full run](20260922T072040Z-c854dc52/SUMMARY.md): both compiler builds
-  failed on enum/u32 signedness; clean, allocator and thread suites passed;
-  dependent suites correctly blocked.
-- [Second build run](20260922T072126Z-6c5bc397/SUMMARY.md): exposed CRT getenv
-  deprecation because timing.c included system headers before core definitions.
-- [Build repair verification](20260922T072250Z-0648ef15/SUMMARY.md): both builds
-  passed with Clang 23. Explicitly cast the test mode back to ErrorRenderMode;
-  include timing.h before CRT headers to apply the existing portability policy.
-- [Fresh LLVM 22 full run](20260922T072410Z-d0e26691/SUMMARY.md): 1,114 fixture
-  passes, one failure (`vprintf` link), 15 declared platform skips. Both debugger
-  stepping probes passed. Original auxiliary failures remain in their logs.
-- Build portability fixes were committed and pushed as `66ad592e`.
-- [Focused repair run](20260922T073444Z-2a8ab0b9/SUMMARY.md): both compiler builds,
-  profiling, jobs, toolchain and installation passed. Both C differential runs
-  passed 277 fixtures at O0/O2; two declared Linux fixture exclusions are now
-  honoured. The separate Linux PTY Dungeon check remains skipped on Windows;
-  native Dungeon desktop observations are required instead.
-- Release front-end runs intermittently encountered WinError 32 while reopening
-  generated `program.c`. [Isolated rerun](20260922T073919Z-3ae286a6/SUMMARY.md)
-  passed all 15 successful source shapes, five ordered diagnostic cases and six
-  randomized independent-closure iterations. A later
-  [full run](20260922T074219Z-d55d7186/SUMMARY.md) passed 1,115 fixtures and every
-  auxiliary suite except release front-end, where the sharing failure recurred.
-  The external lock owner was not established. C output now retries only native
-  sharing/lock violations, bounded to 500 ms; persistent locks still fail.
-  [Controlled CLI reproduction](20260922T075157Z-7bec6ae1/sharing-cli.log) holds
-  a native read handle and verifies both delayed release and persistent failure,
-  with byte-identical output/preservation. Broader focused reruns are in that
-  directory, followed by a final full run after the code commit.
+## Repairs and retained failures
 
-Repair details (focused verification passed; final full run still pending):
+- `66ad592e`: enum/u32 signedness cast and CRT include ordering. Original failed
+  builds: [initial full run](20260922T072040Z-c854dc52/SUMMARY.md) and
+  [second build](20260922T072126Z-6c5bc397/SUMMARY.md).
+- `c760a1bf`: correct main return width/sign conversion into the Windows exit
+  status, direct `vprintf` linking with Microsoft's `legacy_stdio_definitions`,
+  and C output suffix handling. Expanded missing-tool/SDK/no-Clang, entry-point,
+  DWARF and portable harness checks. Original failures:
+  [fresh LLVM 22 run](20260922T072410Z-d0e26691/SUMMARY.md); focused repairs:
+  [073444](20260922T073444Z-2a8ab0b9/SUMMARY.md) and
+  [073919](20260922T073919Z-3ae286a6/SUMMARY.md).
+- `abee4399`: resolve Windows npm.cmd for editor adapter validation and include
+  editor checks in the full runner. Earlier editor logs and isolated VS Code
+  launcher: [074219](20260922T074219Z-d55d7186/MANUAL.md).
+- `a618456b`: retry only native sharing/lock violations when opening generated
+  C, bounded to 500 ms; persistent locks still fail. WinError 32 recurred in
+  [074219](20260922T074219Z-d55d7186/SUMMARY.md); controlled native-handle
+  reproduction and successful focused checks:
+  [075157](20260922T075157Z-7bec6ae1/SUMMARY.md). The external lock owner was
+  not established; other I/O errors are not retried.
+- `828d4b56`: pad dynamic-array headers to 32 bytes in LLVM and compatibility C
+  to preserve 16-byte element alignment. The preceding
+  [full automated pass](20260922T075856Z-e3a49814/SUMMARY.md) was insufficient:
+  native optimized Dungeon input faulted at an aligned SIMD store. Its crash
+  records, failed captures and pre-repair benchmarks remain in that folder.
+  The new alignment regression checks allocation/growth/reserve and payload
+  values in debug/release targets at jobs 1/4 and external C O0/O2. Existing
+  LLVM snapshots and one leak-size expectation changed by the eight-byte header
+  padding. [Focused repair evidence](20260922T083052Z-6bf97fd5/SUMMARY.md)
+  includes successful reruns after an initial regression-source syntax mistake.
 
-Compiler/runtime fixes and expanded checks were pushed as `c760a1bf`.
+Significant compiler changes are documented in `docs/overviews/INTERNALS.md`.
+The original imported-generic wide-value cases and semantic ownership protection
+remain intact; no Clang fallback, weakened assertions or new broad skips.
 
-- Link `legacy_stdio_definitions.lib` for direct Windows C FFI such as `vprintf`.
-- Call the real integer return type of Nerd main, then explicitly convert to
-  i32. The original C/LLVM differential exposed garbage upper Windows exit bits
-  for u8 main. New toolchain regressions exercise signed/unsigned 8/16/64-bit
-  returns, arguments, console/windowed paths and debug/release targets.
-- Derive C output paths from the requested root, preventing `program.c.c` on
-  Windows. Existing C CLI regressions cover suffixes and spaces.
-- Fix auxiliary diagnostic assertions' terminal width, retaining full paths.
-- Inspect embedded DWARF source lines instead of requiring an obsolete PDB.
-- Native toolchain tests now isolate PATH without Clang and exercise individual
-  missing LLVM tools, absent SDK libraries and tool-independent check/C output.
+## Final correctness results
 
-The official archive SHA-256 matches GitHub's published digest:
-`d96c2cc1736f4eb7fa43cb9bbdf56d93551a9ae0a9aadb9c99c3c3b2b712a234`.
-Python 3.14.7; Visual Studio Professional 2022/MSVC 14.44.35207; SDK 10.0.26100.0.
-The 48-cell desktop build matrix is stored in
-[desktop.json](20260922T073444Z-2a8ab0b9/desktop.json). All builds succeeded;
-human observations are pending. The helper records exact argv and compiler hashes.
+- Harness self-tests: **4 passed**.
+- Full fixtures using the fresh debug compiler: **1,116 passed, 0 failed,
+  15 skipped**. Language 202/0/2; errors 117; HIR 28; LLVM 48; format 198;
+  LSP 198; commands 312/0/13; stdlib root 1; examples 12.
+- Fresh debug AND release compiler auxiliary checks all passed: allocator and
+  thread lifecycle, doctor, profile contracts, render ownership, jobs,
+  front-end graphs/diagnostics, toolchain/output modes, install, C generation,
+  LLDB stepping, editor integrations and adapter transformations.
+- Each render suite prints 11 workload passes; each jobs suite prints five
+  synthetic passes plus CLI/output contracts. Each front-end suite covers 15
+  valid source shapes, five diagnostic cases and six randomized independent
+  closure iterations (one aggregate printed group). These are workload counts,
+  not the number of assertions.
+- Toolchain suites each cover 36 Windows integer-main cases plus four alignment
+  cases, console/windowed paths, output modes and isolated missing-tool/SDK
+  checks with no Clang on PATH.
+- C differential: **278 fixtures per compiler**, each externally compiled and
+  executed at **O0 and O2**. C option/output/library/graphics checks and the
+  controlled sharing-violation test passed too.
+- Native desktop: **48 cases passed** across Pixels/Dungeon/Triangle, both
+  compilers, debug/release targets, jobs 1/4 and LLVM/C. Actual client captures
+  were inspected, Pixels animation and graphics resize were checked, Dungeon
+  drew before input and regenerated, and every automated Q exit returned zero.
+  The user also reported that the separate isolated VS Code/CodeLLDB procedure
+  seemed to work; detailed automated line/locals transcripts passed for both
+  final compilers. See MANUAL.md for the scope of the human observation.
 
-VS Code manual smoke: the user reported “It seemed to work” after the requested
-breakpoint, step-over, step-in, locals and call-stack procedure in the isolated
-extension-development window. Record this as a broad user-reported smoke pass;
-the automated LLDB transcripts establish exact source lines and local values.
-See [manual evidence](20260922T074219Z-d55d7186/MANUAL.md).
+The 15 fixture skips follow existing platform annotations: two Linux language
+fixtures (fcntl varargs and terminal implementation) and 13 Linux-only command
+contracts. Exact names are in suite-counts.json. The C harness honours the same
+two language annotations; its separate Linux PTY Dungeon probe is skipped on
+Windows and supplemented by the full native console matrix, not counted as a
+PTY pass. Embedded DWARF source/line tables replace an obsolete PDB expectation.
+Full-path diagnostic assertions use a fixed wide terminal width.
 
-Additional editor verification: `npm run compile` and
-`python build/check_editor_integrations.py --nerd _bin/nerd-debug.exe` passed.
-`check_debugger_adapter_transforms.py` originally failed to locate npm on Windows;
-resolving npm through `shutil.which` selects npm.cmd and passes. The full runner
-now includes both editor integration checks and adapter transforms. Original
-failure and rerun logs are in the `20260922T074219Z-d55d7186` directory.
+## Performance and remaining work
 
-Reproduce: `. ./_tmp/windows-env.ps1; python validation/windows/run.py`.
-`nerd-debug.exe doctor` passed with LLVM 22 and the SDK/CRT paths above.
-Manual checks are pending; the user is available for desktop observations.
-Windows CPU/RSS benchmark accounting is unavailable; macOS remains untested.
-Keep jobs 1 as default and do not mark the M8 cross-platform gate complete.
+Both final-code benchmark sweeps ran after correctness with no concurrent
+builds, tests or desktop examples. Each has one warmup and five unprofiled
+samples per cell, plus separate profiles and combined LLVM hash checks.
+Jobs 1/2/4/8 and the separate jobs 1/16 physical-core sweep retain their own
+one-worker baselines. The best representative improvements are 3.2% for Pixels
+debug at eight workers and 4.8% at 16 in the separate sweep, below the 15% gate.
+Read BENCHMARKS.md for the actual medians and interpretation;
+do not mix baselines or claim speedups from the pre-alignment run as final-code
+measurements. Default parallel adoption remains deferred.
 
-## Original Linux preparation record
+Windows benchmark CPU time and peak RSS are **null**, not zero. The extra
+eight-byte array prefix is a known allocation cost, not a measured peak-RSS
+result. No Windows main/M5 paired comparison was performed. macOS remains
+unrun, and its SDK/linker, runtime, editor and memory/performance gates are
+separate. These limitations prevent marking M8 fully validated.
 
-Branch: `experiment/task-scheduler-performance`.
-Compiler baseline when this package was prepared: `bb2c441b` (M8 Linux report).
+## Next Linux action
 
-On Windows, read and execute [the handoff prompt](../PROMPT.md). Replace/extend
-this status with the actual Windows run, fix commits, evidence and remaining
-blockers. Preserve earlier run folders.
-
-Preparation on Linux:
-
-- `python3 validation/windows/test_runner.py`: four harness tests passed.
-  Covers dependency selection, failed-build blocking with independent-stage
-  continuation, pass/failure/missing-command/timeout recording, and summaries.
-- `python3 validation/windows/run.py --list --only front-threads-release jobs-debug`:
-  correctly included debug/release build prerequisites and explicit compiler paths.
-- `python3 validation/windows/run.py --allow-non-windows --only threads`:
-  passed the native Linux worker lifecycle suite through the runner. See its
-  [summary](20260921T192954Z-b94fb83e/SUMMARY.md) and logs. This is a harness
-  smoke test only, not Windows compiler validation.
-- PowerShell is unavailable on the preparation machine; `run.ps1` has been
-  reviewed but not executed. Python is the primary runner and can be invoked
-  directly by Windows Codex.
-
-Return to Linux: fetch/pull this branch, read this file and the linked Windows
-runs, inspect all fixes and remaining failures, then run Linux regression checks
-appropriate to the Windows changes. The one-job default remains in place;
-macOS validation is still a separate outstanding gate.
+Fetch and pull `experiment/task-scheduler-performance` from the repository's
+working remote, then read this handoff and the linked audit. Review the Windows
+fixes and run the full Linux `just test` sequence with freshly built compilers.
+In particular rerun main-width/output-mode toolchain checks, the new dynamic
+enum alignment regression in optimized LLVM and C, array pointer conversions,
+allocator/leak diagnostics, profile/jobs/front-end ownership and wide imported
+generic regressions. Rerun front-end AddressSanitizer/ThreadSanitizer checks and
+native Linux PTY Dungeon interaction. The alignment change affects Linux too;
+the Windows-only controlled sharing test is intentionally OS guarded.
+Review adoption only with the missing native/memory evidence; retain jobs 1.

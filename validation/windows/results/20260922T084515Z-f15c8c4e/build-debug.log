@@ -1,0 +1,10 @@
+[36m================================================[0m
+[1m[36m build :: clang :: debug [0m
+[1m[36m projects :: nerd[0m
+[36m================================================[0m
+[90m[skip][0m 2 run directive(s) up to date
+[90m[skip][0m _bin\nerd-debug.exe (up to date)
+[90m[skip][0m 68 source file(s) up to date
+[32m================================================[0m
+[1m[32m>> Build complete. Go be nerdy! \o/ <<[0m
+[32m================================================[0m

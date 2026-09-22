@@ -1,0 +1,446 @@
+{
+  "platform": "Windows-11-10.0.26200-SP0",
+  "native_windows": true,
+  "python": "3.14.7 (tags/v3.14.7:823f032, Aug  5 2026, 10:51:32) [MSC v.1944 64 bit (AMD64)]",
+  "logical_cpus": 32,
+  "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+  "branch": "experiment/task-scheduler-performance",
+  "working_tree_at_start": "?? validation/windows/results/20260922T083831Z-654d9483/",
+  "selection": "full",
+  "status": "passed",
+  "stages": [
+    {
+      "name": "build-debug",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/build.py",
+        "nerd",
+        "--skip-mod-sync"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T08:45:16.736144+00:00",
+      "log": "build-debug.log",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 1.466
+    },
+    {
+      "name": "build-release",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/build.py",
+        "-r",
+        "nerd",
+        "--skip-mod-sync"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T08:45:18.206325+00:00",
+      "log": "build-release.log",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 1.507
+    },
+    {
+      "name": "clean",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/test_clean.py"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T08:45:19.716769+00:00",
+      "log": "clean.log",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 0.531
+    },
+    {
+      "name": "memory",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/test_memory.py"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T08:45:20.251136+00:00",
+      "log": "memory.log",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 2.444
+    },
+    {
+      "name": "threads",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/test_threads.py"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T08:45:22.699779+00:00",
+      "log": "threads.log",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 5.027
+    },
+    {
+      "name": "fixtures",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/test.py"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T08:45:27.730241+00:00",
+      "log": "fixtures.log",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 162.362
+    },
+    {
+      "name": "doctor-debug",
+      "command": [
+        "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+        "doctor"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T08:48:10.097091+00:00",
+      "log": "doctor-debug.log",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 0.23
+    },
+    {
+      "name": "profile-debug",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/test_profile.py",
+        "--nerd",
+        "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T08:48:10.331878+00:00",
+      "log": "profile-debug.log",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 0.919
+    },
+    {
+      "name": "render-threads-debug",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/test_render_threads.py",
+        "--nerd",
+        "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T08:48:11.254964+00:00",
+      "log": "render-threads-debug.log",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 3.552
+    },
+    {
+      "name": "jobs-debug",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/test_jobs.py",
+        "--nerd",
+        "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T08:48:14.811771+00:00",
+      "log": "jobs-debug.log",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 15.846
+    },
+    {
+      "name": "front-threads-debug",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/test_front_threads.py",
+        "--nerd",
+        "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T08:48:30.662627+00:00",
+      "log": "front-threads-debug.log",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 93.878
+    },
+    {
+      "name": "toolchain-debug",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/test_toolchain.py",
+        "--nerd",
+        "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T08:50:04.544459+00:00",
+      "log": "toolchain-debug.log",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 15.616
+    },
+    {
+      "name": "install-debug",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/test_install.py",
+        "--nerd",
+        "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T08:50:20.165925+00:00",
+      "log": "install-debug.log",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 1.934
+    },
+    {
+      "name": "cgen-debug",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/test_cgen.py",
+        "--nerd",
+        "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T08:50:22.104766+00:00",
+      "log": "cgen-debug.log",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 95.459
+    },
+    {
+      "name": "debugger-debug",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/check_debugger_stepping.py",
+        "--nerd",
+        "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+        "--jobs",
+        "4"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T08:51:57.568695+00:00",
+      "log": "debugger-debug.log",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 0.977
+    },
+    {
+      "name": "editor-debug",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/check_editor_integrations.py",
+        "--nerd",
+        "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T08:51:58.549955+00:00",
+      "log": "editor-debug.log",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 0.169
+    },
+    {
+      "name": "doctor-release",
+      "command": [
+        "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+        "doctor"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T08:51:58.723953+00:00",
+      "log": "doctor-release.log",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 0.306
+    },
+    {
+      "name": "profile-release",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/test_profile.py",
+        "--nerd",
+        "C:\\Users\\matt\\nerd\\_bin\\nerd.exe"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T08:51:59.035124+00:00",
+      "log": "profile-release.log",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 0.8
+    },
+    {
+      "name": "render-threads-release",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/test_render_threads.py",
+        "--nerd",
+        "C:\\Users\\matt\\nerd\\_bin\\nerd.exe"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T08:51:59.840002+00:00",
+      "log": "render-threads-release.log",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 2.013
+    },
+    {
+      "name": "jobs-release",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/test_jobs.py",
+        "--nerd",
+        "C:\\Users\\matt\\nerd\\_bin\\nerd.exe"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T08:52:01.858332+00:00",
+      "log": "jobs-release.log",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 11.343
+    },
+    {
+      "name": "front-threads-release",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/test_front_threads.py",
+        "--nerd",
+        "C:\\Users\\matt\\nerd\\_bin\\nerd.exe"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T08:52:13.206101+00:00",
+      "log": "front-threads-release.log",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 81.316
+    },
+    {
+      "name": "toolchain-release",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/test_toolchain.py",
+        "--nerd",
+        "C:\\Users\\matt\\nerd\\_bin\\nerd.exe"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T08:53:34.526169+00:00",
+      "log": "toolchain-release.log",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 14.755
+    },
+    {
+      "name": "install-release",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/test_install.py",
+        "--nerd",
+        "C:\\Users\\matt\\nerd\\_bin\\nerd.exe"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T08:53:49.284386+00:00",
+      "log": "install-release.log",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 1.938
+    },
+    {
+      "name": "cgen-release",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/test_cgen.py",
+        "--nerd",
+        "C:\\Users\\matt\\nerd\\_bin\\nerd.exe"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T08:53:51.225881+00:00",
+      "log": "cgen-release.log",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 96.256
+    },
+    {
+      "name": "debugger-release",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/check_debugger_stepping.py",
+        "--nerd",
+        "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+        "--jobs",
+        "4"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T08:55:27.487514+00:00",
+      "log": "debugger-release.log",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 0.991
+    },
+    {
+      "name": "editor-release",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/check_editor_integrations.py",
+        "--nerd",
+        "C:\\Users\\matt\\nerd\\_bin\\nerd.exe"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T08:55:28.483085+00:00",
+      "log": "editor-release.log",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 0.176
+    },
+    {
+      "name": "adapter-transforms",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/check_debugger_adapter_transforms.py"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T08:55:28.664824+00:00",
+      "log": "adapter-transforms.log",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 1.52
+    },
+    {
+      "name": "benchmark",
+      "command": [
+        "C:\\Users\\matt\\scoop\\apps\\python\\current\\python.exe",
+        "build/benchmark_jobs.py",
+        "--nerd",
+        "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+        "--jobs",
+        "1",
+        "2",
+        "4",
+        "8",
+        "--output",
+        "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T084515Z-f15c8c4e\\benchmark.json"
+      ],
+      "cwd": "C:\\Users\\matt\\nerd",
+      "started_utc": "2026-09-22T08:55:30.188692+00:00",
+      "log": "benchmark.log",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 310.574
+    }
+  ],
+  "tool_paths": {
+    "clang": "C:\\Users\\matt\\nerd\\_tmp\\llvm-tools\\clang+llvm-22.1.8-x86_64-pc-windows-msvc\\bin\\clang.EXE",
+    "opt": "C:\\Users\\matt\\nerd\\_tmp\\llvm-tools\\clang+llvm-22.1.8-x86_64-pc-windows-msvc\\bin\\opt.EXE",
+    "llc": "C:\\Users\\matt\\nerd\\_tmp\\llvm-tools\\clang+llvm-22.1.8-x86_64-pc-windows-msvc\\bin\\llc.EXE",
+    "llvm-lib": "C:\\Users\\matt\\nerd\\_tmp\\llvm-tools\\clang+llvm-22.1.8-x86_64-pc-windows-msvc\\bin\\llvm-lib.EXE",
+    "lld-link": "C:\\Users\\matt\\nerd\\_tmp\\llvm-tools\\clang+llvm-22.1.8-x86_64-pc-windows-msvc\\bin\\lld-link.EXE",
+    "llvm-dwarfdump": "C:\\Users\\matt\\nerd\\_tmp\\llvm-tools\\clang+llvm-22.1.8-x86_64-pc-windows-msvc\\bin\\llvm-dwarfdump.EXE",
+    "lldb": "C:\\Users\\matt\\scoop\\apps\\llvm\\current\\bin\\lldb.EXE",
+    "just": "C:\\Users\\matt\\.cargo\\bin\\just.EXE",
+    "git": "C:\\Apps\\Git\\cmd\\git.EXE",
+    "uv": "C:\\Users\\matt\\.local\\bin\\uv.EXE",
+    "node": "C:\\Users\\matt\\scoop\\apps\\nodejs\\current\\node.EXE",
+    "npm": "C:\\Users\\matt\\scoop\\apps\\nodejs\\current\\bin\\npm.CMD"
+  },
+  "finished_utc": "2026-09-22T09:00:40.764544+00:00"
+}

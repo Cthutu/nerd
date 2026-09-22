@@ -1,0 +1,1676 @@
+{
+  "cases": {
+    "debug-pixels-debug-j1-llvm": {
+      "compiler": "debug",
+      "example": "pixels",
+      "target": "debug",
+      "jobs": 1,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "1",
+          "C:\\Users\\matt\\nerd\\examples\\pixels\\pixels.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-pixels-debug-j1-llvm.exe"
+        ]
+      ],
+      "log": "debug-pixels-debug-j1-llvm.log",
+      "build_exit": 0,
+      "observation": "Reviewed colourful pixel framebuffer before and after resize; changed animation frame; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "debug-pixels-debug-j1-c": {
+      "compiler": "debug",
+      "example": "pixels",
+      "target": "debug",
+      "jobs": 1,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "1",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\pixels\\pixels.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-pixels-debug-j1-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-pixels-debug-j1-c.c",
+          "-std=gnu11",
+          "-g",
+          "-O0",
+          "-Wl,/SUBSYSTEM:WINDOWS",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-lopengl32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-pixels-debug-j1-c.exe"
+        ]
+      ],
+      "log": "debug-pixels-debug-j1-c.log",
+      "build_exit": 0,
+      "observation": "Reviewed colourful pixel framebuffer before and after resize; changed animation frame; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "debug-pixels-debug-j4-llvm": {
+      "compiler": "debug",
+      "example": "pixels",
+      "target": "debug",
+      "jobs": 4,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "4",
+          "C:\\Users\\matt\\nerd\\examples\\pixels\\pixels.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-pixels-debug-j4-llvm.exe"
+        ]
+      ],
+      "log": "debug-pixels-debug-j4-llvm.log",
+      "build_exit": 0,
+      "observation": "Reviewed colourful pixel framebuffer before and after resize; changed animation frame; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "debug-pixels-debug-j4-c": {
+      "compiler": "debug",
+      "example": "pixels",
+      "target": "debug",
+      "jobs": 4,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "4",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\pixels\\pixels.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-pixels-debug-j4-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-pixels-debug-j4-c.c",
+          "-std=gnu11",
+          "-g",
+          "-O0",
+          "-Wl,/SUBSYSTEM:WINDOWS",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-lopengl32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-pixels-debug-j4-c.exe"
+        ]
+      ],
+      "log": "debug-pixels-debug-j4-c.log",
+      "build_exit": 0,
+      "observation": "Reviewed colourful pixel framebuffer before and after resize; changed animation frame; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "debug-pixels-release-j1-llvm": {
+      "compiler": "debug",
+      "example": "pixels",
+      "target": "release",
+      "jobs": 1,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "1",
+          "-r",
+          "C:\\Users\\matt\\nerd\\examples\\pixels\\pixels.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-pixels-release-j1-llvm.exe"
+        ]
+      ],
+      "log": "debug-pixels-release-j1-llvm.log",
+      "build_exit": 0,
+      "observation": "Reviewed colourful pixel framebuffer before and after resize; changed animation frame; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "debug-pixels-release-j1-c": {
+      "compiler": "debug",
+      "example": "pixels",
+      "target": "release",
+      "jobs": 1,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "1",
+          "-r",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\pixels\\pixels.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-pixels-release-j1-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-pixels-release-j1-c.c",
+          "-std=gnu11",
+          "-O2",
+          "-DNDEBUG",
+          "-Wl,/SUBSYSTEM:WINDOWS",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-lopengl32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-pixels-release-j1-c.exe"
+        ]
+      ],
+      "log": "debug-pixels-release-j1-c.log",
+      "build_exit": 0,
+      "observation": "Reviewed colourful pixel framebuffer before and after resize; changed animation frame; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "debug-pixels-release-j4-llvm": {
+      "compiler": "debug",
+      "example": "pixels",
+      "target": "release",
+      "jobs": 4,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "4",
+          "-r",
+          "C:\\Users\\matt\\nerd\\examples\\pixels\\pixels.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-pixels-release-j4-llvm.exe"
+        ]
+      ],
+      "log": "debug-pixels-release-j4-llvm.log",
+      "build_exit": 0,
+      "observation": "Reviewed colourful pixel framebuffer before and after resize; changed animation frame; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "debug-pixels-release-j4-c": {
+      "compiler": "debug",
+      "example": "pixels",
+      "target": "release",
+      "jobs": 4,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "4",
+          "-r",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\pixels\\pixels.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-pixels-release-j4-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-pixels-release-j4-c.c",
+          "-std=gnu11",
+          "-O2",
+          "-DNDEBUG",
+          "-Wl,/SUBSYSTEM:WINDOWS",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-lopengl32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-pixels-release-j4-c.exe"
+        ]
+      ],
+      "log": "debug-pixels-release-j4-c.log",
+      "build_exit": 0,
+      "observation": "Reviewed colourful pixel framebuffer before and after resize; changed animation frame; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "debug-dungeon-debug-j1-llvm": {
+      "compiler": "debug",
+      "example": "dungeon",
+      "target": "debug",
+      "jobs": 1,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "1",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-dungeon-debug-j1-llvm.exe"
+        ]
+      ],
+      "log": "debug-dungeon-debug-j1-llvm.log",
+      "build_exit": 0,
+      "observation": "Reviewed drawn rooms/corridors before input and different map after Space; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "debug-dungeon-debug-j1-c": {
+      "compiler": "debug",
+      "example": "dungeon",
+      "target": "debug",
+      "jobs": 1,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "1",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-dungeon-debug-j1-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-dungeon-debug-j1-c.c",
+          "-std=gnu11",
+          "-g",
+          "-O0",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-lopengl32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-dungeon-debug-j1-c.exe"
+        ]
+      ],
+      "log": "debug-dungeon-debug-j1-c.log",
+      "build_exit": 0,
+      "observation": "Reviewed drawn rooms/corridors before input and different map after Space; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "debug-dungeon-debug-j4-llvm": {
+      "compiler": "debug",
+      "example": "dungeon",
+      "target": "debug",
+      "jobs": 4,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "4",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-dungeon-debug-j4-llvm.exe"
+        ]
+      ],
+      "log": "debug-dungeon-debug-j4-llvm.log",
+      "build_exit": 0,
+      "observation": "Reviewed drawn rooms/corridors before input and different map after Space; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "debug-dungeon-debug-j4-c": {
+      "compiler": "debug",
+      "example": "dungeon",
+      "target": "debug",
+      "jobs": 4,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "4",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-dungeon-debug-j4-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-dungeon-debug-j4-c.c",
+          "-std=gnu11",
+          "-g",
+          "-O0",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-lopengl32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-dungeon-debug-j4-c.exe"
+        ]
+      ],
+      "log": "debug-dungeon-debug-j4-c.log",
+      "build_exit": 0,
+      "observation": "Reviewed drawn rooms/corridors before input and different map after Space; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "debug-dungeon-release-j1-llvm": {
+      "compiler": "debug",
+      "example": "dungeon",
+      "target": "release",
+      "jobs": 1,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "1",
+          "-r",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-dungeon-release-j1-llvm.exe"
+        ]
+      ],
+      "log": "debug-dungeon-release-j1-llvm.log",
+      "build_exit": 0,
+      "observation": "Reviewed drawn rooms/corridors before input and different map after Space; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "debug-dungeon-release-j1-c": {
+      "compiler": "debug",
+      "example": "dungeon",
+      "target": "release",
+      "jobs": 1,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "1",
+          "-r",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-dungeon-release-j1-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-dungeon-release-j1-c.c",
+          "-std=gnu11",
+          "-O2",
+          "-DNDEBUG",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-lopengl32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-dungeon-release-j1-c.exe"
+        ]
+      ],
+      "log": "debug-dungeon-release-j1-c.log",
+      "build_exit": 0,
+      "observation": "Reviewed drawn rooms/corridors before input and different map after Space; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "debug-dungeon-release-j4-llvm": {
+      "compiler": "debug",
+      "example": "dungeon",
+      "target": "release",
+      "jobs": 4,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "4",
+          "-r",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-dungeon-release-j4-llvm.exe"
+        ]
+      ],
+      "log": "debug-dungeon-release-j4-llvm.log",
+      "build_exit": 0,
+      "observation": "Reviewed drawn rooms/corridors before input and different map after Space; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "debug-dungeon-release-j4-c": {
+      "compiler": "debug",
+      "example": "dungeon",
+      "target": "release",
+      "jobs": 4,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "4",
+          "-r",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-dungeon-release-j4-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-dungeon-release-j4-c.c",
+          "-std=gnu11",
+          "-O2",
+          "-DNDEBUG",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-lopengl32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-dungeon-release-j4-c.exe"
+        ]
+      ],
+      "log": "debug-dungeon-release-j4-c.log",
+      "build_exit": 0,
+      "observation": "Reviewed drawn rooms/corridors before input and different map after Space; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "debug-triangle-debug-j1-llvm": {
+      "compiler": "debug",
+      "example": "triangle",
+      "target": "debug",
+      "jobs": 1,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "1",
+          "C:\\Users\\matt\\nerd\\examples\\triangle\\triangle.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-triangle-debug-j1-llvm.exe"
+        ]
+      ],
+      "log": "debug-triangle-debug-j1-llvm.log",
+      "build_exit": 0,
+      "observation": "Reviewed coloured triangle on dark background before and after resize; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "debug-triangle-debug-j1-c": {
+      "compiler": "debug",
+      "example": "triangle",
+      "target": "debug",
+      "jobs": 1,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "1",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\triangle\\triangle.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-triangle-debug-j1-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-triangle-debug-j1-c.c",
+          "-std=gnu11",
+          "-g",
+          "-O0",
+          "-Wl,/SUBSYSTEM:WINDOWS",
+          "-lopengl32",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-triangle-debug-j1-c.exe"
+        ]
+      ],
+      "log": "debug-triangle-debug-j1-c.log",
+      "build_exit": 0,
+      "observation": "Reviewed coloured triangle on dark background before and after resize; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "debug-triangle-debug-j4-llvm": {
+      "compiler": "debug",
+      "example": "triangle",
+      "target": "debug",
+      "jobs": 4,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "4",
+          "C:\\Users\\matt\\nerd\\examples\\triangle\\triangle.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-triangle-debug-j4-llvm.exe"
+        ]
+      ],
+      "log": "debug-triangle-debug-j4-llvm.log",
+      "build_exit": 0,
+      "observation": "Reviewed coloured triangle on dark background before and after resize; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "debug-triangle-debug-j4-c": {
+      "compiler": "debug",
+      "example": "triangle",
+      "target": "debug",
+      "jobs": 4,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "4",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\triangle\\triangle.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-triangle-debug-j4-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-triangle-debug-j4-c.c",
+          "-std=gnu11",
+          "-g",
+          "-O0",
+          "-Wl,/SUBSYSTEM:WINDOWS",
+          "-lopengl32",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-triangle-debug-j4-c.exe"
+        ]
+      ],
+      "log": "debug-triangle-debug-j4-c.log",
+      "build_exit": 0,
+      "observation": "Reviewed coloured triangle on dark background before and after resize; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "debug-triangle-release-j1-llvm": {
+      "compiler": "debug",
+      "example": "triangle",
+      "target": "release",
+      "jobs": 1,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "1",
+          "-r",
+          "C:\\Users\\matt\\nerd\\examples\\triangle\\triangle.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-triangle-release-j1-llvm.exe"
+        ]
+      ],
+      "log": "debug-triangle-release-j1-llvm.log",
+      "build_exit": 0,
+      "observation": "Reviewed coloured triangle on dark background before and after resize; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "debug-triangle-release-j1-c": {
+      "compiler": "debug",
+      "example": "triangle",
+      "target": "release",
+      "jobs": 1,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "1",
+          "-r",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\triangle\\triangle.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-triangle-release-j1-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-triangle-release-j1-c.c",
+          "-std=gnu11",
+          "-O2",
+          "-DNDEBUG",
+          "-Wl,/SUBSYSTEM:WINDOWS",
+          "-lopengl32",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-triangle-release-j1-c.exe"
+        ]
+      ],
+      "log": "debug-triangle-release-j1-c.log",
+      "build_exit": 0,
+      "observation": "Reviewed coloured triangle on dark background before and after resize; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "debug-triangle-release-j4-llvm": {
+      "compiler": "debug",
+      "example": "triangle",
+      "target": "release",
+      "jobs": 4,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "4",
+          "-r",
+          "C:\\Users\\matt\\nerd\\examples\\triangle\\triangle.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-triangle-release-j4-llvm.exe"
+        ]
+      ],
+      "log": "debug-triangle-release-j4-llvm.log",
+      "build_exit": 0,
+      "observation": "Reviewed coloured triangle on dark background before and after resize; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "debug-triangle-release-j4-c": {
+      "compiler": "debug",
+      "example": "triangle",
+      "target": "release",
+      "jobs": 4,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "4",
+          "-r",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\triangle\\triangle.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-triangle-release-j4-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-triangle-release-j4-c.c",
+          "-std=gnu11",
+          "-O2",
+          "-DNDEBUG",
+          "-Wl,/SUBSYSTEM:WINDOWS",
+          "-lopengl32",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\debug-triangle-release-j4-c.exe"
+        ]
+      ],
+      "log": "debug-triangle-release-j4-c.log",
+      "build_exit": 0,
+      "observation": "Reviewed coloured triangle on dark background before and after resize; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "release-pixels-debug-j1-llvm": {
+      "compiler": "release",
+      "example": "pixels",
+      "target": "debug",
+      "jobs": 1,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "1",
+          "C:\\Users\\matt\\nerd\\examples\\pixels\\pixels.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-pixels-debug-j1-llvm.exe"
+        ]
+      ],
+      "log": "release-pixels-debug-j1-llvm.log",
+      "build_exit": 0,
+      "observation": "Reviewed colourful pixel framebuffer before and after resize; changed animation frame; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "release-pixels-debug-j1-c": {
+      "compiler": "release",
+      "example": "pixels",
+      "target": "debug",
+      "jobs": 1,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "1",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\pixels\\pixels.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-pixels-debug-j1-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-pixels-debug-j1-c.c",
+          "-std=gnu11",
+          "-g",
+          "-O0",
+          "-Wl,/SUBSYSTEM:WINDOWS",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-lopengl32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-pixels-debug-j1-c.exe"
+        ]
+      ],
+      "log": "release-pixels-debug-j1-c.log",
+      "build_exit": 0,
+      "observation": "Reviewed colourful pixel framebuffer before and after resize; changed animation frame; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "release-pixels-debug-j4-llvm": {
+      "compiler": "release",
+      "example": "pixels",
+      "target": "debug",
+      "jobs": 4,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "4",
+          "C:\\Users\\matt\\nerd\\examples\\pixels\\pixels.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-pixels-debug-j4-llvm.exe"
+        ]
+      ],
+      "log": "release-pixels-debug-j4-llvm.log",
+      "build_exit": 0,
+      "observation": "Reviewed colourful pixel framebuffer before and after resize; changed animation frame; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "release-pixels-debug-j4-c": {
+      "compiler": "release",
+      "example": "pixels",
+      "target": "debug",
+      "jobs": 4,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "4",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\pixels\\pixels.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-pixels-debug-j4-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-pixels-debug-j4-c.c",
+          "-std=gnu11",
+          "-g",
+          "-O0",
+          "-Wl,/SUBSYSTEM:WINDOWS",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-lopengl32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-pixels-debug-j4-c.exe"
+        ]
+      ],
+      "log": "release-pixels-debug-j4-c.log",
+      "build_exit": 0,
+      "observation": "Reviewed colourful pixel framebuffer before and after resize; changed animation frame; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "release-pixels-release-j1-llvm": {
+      "compiler": "release",
+      "example": "pixels",
+      "target": "release",
+      "jobs": 1,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "1",
+          "-r",
+          "C:\\Users\\matt\\nerd\\examples\\pixels\\pixels.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-pixels-release-j1-llvm.exe"
+        ]
+      ],
+      "log": "release-pixels-release-j1-llvm.log",
+      "build_exit": 0,
+      "observation": "Reviewed colourful pixel framebuffer before and after resize; changed animation frame; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "release-pixels-release-j1-c": {
+      "compiler": "release",
+      "example": "pixels",
+      "target": "release",
+      "jobs": 1,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "1",
+          "-r",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\pixels\\pixels.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-pixels-release-j1-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-pixels-release-j1-c.c",
+          "-std=gnu11",
+          "-O2",
+          "-DNDEBUG",
+          "-Wl,/SUBSYSTEM:WINDOWS",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-lopengl32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-pixels-release-j1-c.exe"
+        ]
+      ],
+      "log": "release-pixels-release-j1-c.log",
+      "build_exit": 0,
+      "observation": "Reviewed colourful pixel framebuffer before and after resize; changed animation frame; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "release-pixels-release-j4-llvm": {
+      "compiler": "release",
+      "example": "pixels",
+      "target": "release",
+      "jobs": 4,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "4",
+          "-r",
+          "C:\\Users\\matt\\nerd\\examples\\pixels\\pixels.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-pixels-release-j4-llvm.exe"
+        ]
+      ],
+      "log": "release-pixels-release-j4-llvm.log",
+      "build_exit": 0,
+      "observation": "Reviewed colourful pixel framebuffer before and after resize; changed animation frame; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "release-pixels-release-j4-c": {
+      "compiler": "release",
+      "example": "pixels",
+      "target": "release",
+      "jobs": 4,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "4",
+          "-r",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\pixels\\pixels.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-pixels-release-j4-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-pixels-release-j4-c.c",
+          "-std=gnu11",
+          "-O2",
+          "-DNDEBUG",
+          "-Wl,/SUBSYSTEM:WINDOWS",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-lopengl32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-pixels-release-j4-c.exe"
+        ]
+      ],
+      "log": "release-pixels-release-j4-c.log",
+      "build_exit": 0,
+      "observation": "Reviewed colourful pixel framebuffer before and after resize; changed animation frame; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "release-dungeon-debug-j1-llvm": {
+      "compiler": "release",
+      "example": "dungeon",
+      "target": "debug",
+      "jobs": 1,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "1",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-dungeon-debug-j1-llvm.exe"
+        ]
+      ],
+      "log": "release-dungeon-debug-j1-llvm.log",
+      "build_exit": 0,
+      "observation": "Reviewed drawn rooms/corridors before input and different map after Space; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "release-dungeon-debug-j1-c": {
+      "compiler": "release",
+      "example": "dungeon",
+      "target": "debug",
+      "jobs": 1,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "1",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-dungeon-debug-j1-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-dungeon-debug-j1-c.c",
+          "-std=gnu11",
+          "-g",
+          "-O0",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-lopengl32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-dungeon-debug-j1-c.exe"
+        ]
+      ],
+      "log": "release-dungeon-debug-j1-c.log",
+      "build_exit": 0,
+      "observation": "Reviewed drawn rooms/corridors before input and different map after Space; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "release-dungeon-debug-j4-llvm": {
+      "compiler": "release",
+      "example": "dungeon",
+      "target": "debug",
+      "jobs": 4,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "4",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-dungeon-debug-j4-llvm.exe"
+        ]
+      ],
+      "log": "release-dungeon-debug-j4-llvm.log",
+      "build_exit": 0,
+      "observation": "Reviewed drawn rooms/corridors before input and different map after Space; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "release-dungeon-debug-j4-c": {
+      "compiler": "release",
+      "example": "dungeon",
+      "target": "debug",
+      "jobs": 4,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "4",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-dungeon-debug-j4-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-dungeon-debug-j4-c.c",
+          "-std=gnu11",
+          "-g",
+          "-O0",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-lopengl32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-dungeon-debug-j4-c.exe"
+        ]
+      ],
+      "log": "release-dungeon-debug-j4-c.log",
+      "build_exit": 0,
+      "observation": "Reviewed drawn rooms/corridors before input and different map after Space; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "release-dungeon-release-j1-llvm": {
+      "compiler": "release",
+      "example": "dungeon",
+      "target": "release",
+      "jobs": 1,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "1",
+          "-r",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-dungeon-release-j1-llvm.exe"
+        ]
+      ],
+      "log": "release-dungeon-release-j1-llvm.log",
+      "build_exit": 0,
+      "observation": "Reviewed drawn rooms/corridors before input and different map after Space; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "release-dungeon-release-j1-c": {
+      "compiler": "release",
+      "example": "dungeon",
+      "target": "release",
+      "jobs": 1,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "1",
+          "-r",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-dungeon-release-j1-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-dungeon-release-j1-c.c",
+          "-std=gnu11",
+          "-O2",
+          "-DNDEBUG",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-lopengl32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-dungeon-release-j1-c.exe"
+        ]
+      ],
+      "log": "release-dungeon-release-j1-c.log",
+      "build_exit": 0,
+      "observation": "Reviewed drawn rooms/corridors before input and different map after Space; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "release-dungeon-release-j4-llvm": {
+      "compiler": "release",
+      "example": "dungeon",
+      "target": "release",
+      "jobs": 4,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "4",
+          "-r",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-dungeon-release-j4-llvm.exe"
+        ]
+      ],
+      "log": "release-dungeon-release-j4-llvm.log",
+      "build_exit": 0,
+      "observation": "Reviewed drawn rooms/corridors before input and different map after Space; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "release-dungeon-release-j4-c": {
+      "compiler": "release",
+      "example": "dungeon",
+      "target": "release",
+      "jobs": 4,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "4",
+          "-r",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-dungeon-release-j4-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-dungeon-release-j4-c.c",
+          "-std=gnu11",
+          "-O2",
+          "-DNDEBUG",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-lopengl32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-dungeon-release-j4-c.exe"
+        ]
+      ],
+      "log": "release-dungeon-release-j4-c.log",
+      "build_exit": 0,
+      "observation": "Reviewed drawn rooms/corridors before input and different map after Space; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "release-triangle-debug-j1-llvm": {
+      "compiler": "release",
+      "example": "triangle",
+      "target": "debug",
+      "jobs": 1,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "1",
+          "C:\\Users\\matt\\nerd\\examples\\triangle\\triangle.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-triangle-debug-j1-llvm.exe"
+        ]
+      ],
+      "log": "release-triangle-debug-j1-llvm.log",
+      "build_exit": 0,
+      "observation": "Reviewed coloured triangle on dark background before and after resize; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "release-triangle-debug-j1-c": {
+      "compiler": "release",
+      "example": "triangle",
+      "target": "debug",
+      "jobs": 1,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "1",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\triangle\\triangle.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-triangle-debug-j1-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-triangle-debug-j1-c.c",
+          "-std=gnu11",
+          "-g",
+          "-O0",
+          "-Wl,/SUBSYSTEM:WINDOWS",
+          "-lopengl32",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-triangle-debug-j1-c.exe"
+        ]
+      ],
+      "log": "release-triangle-debug-j1-c.log",
+      "build_exit": 0,
+      "observation": "Reviewed coloured triangle on dark background before and after resize; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "release-triangle-debug-j4-llvm": {
+      "compiler": "release",
+      "example": "triangle",
+      "target": "debug",
+      "jobs": 4,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "4",
+          "C:\\Users\\matt\\nerd\\examples\\triangle\\triangle.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-triangle-debug-j4-llvm.exe"
+        ]
+      ],
+      "log": "release-triangle-debug-j4-llvm.log",
+      "build_exit": 0,
+      "observation": "Reviewed coloured triangle on dark background before and after resize; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "release-triangle-debug-j4-c": {
+      "compiler": "release",
+      "example": "triangle",
+      "target": "debug",
+      "jobs": 4,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "4",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\triangle\\triangle.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-triangle-debug-j4-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-triangle-debug-j4-c.c",
+          "-std=gnu11",
+          "-g",
+          "-O0",
+          "-Wl,/SUBSYSTEM:WINDOWS",
+          "-lopengl32",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-triangle-debug-j4-c.exe"
+        ]
+      ],
+      "log": "release-triangle-debug-j4-c.log",
+      "build_exit": 0,
+      "observation": "Reviewed coloured triangle on dark background before and after resize; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "release-triangle-release-j1-llvm": {
+      "compiler": "release",
+      "example": "triangle",
+      "target": "release",
+      "jobs": 1,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "1",
+          "-r",
+          "C:\\Users\\matt\\nerd\\examples\\triangle\\triangle.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-triangle-release-j1-llvm.exe"
+        ]
+      ],
+      "log": "release-triangle-release-j1-llvm.log",
+      "build_exit": 0,
+      "observation": "Reviewed coloured triangle on dark background before and after resize; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "release-triangle-release-j1-c": {
+      "compiler": "release",
+      "example": "triangle",
+      "target": "release",
+      "jobs": 1,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "1",
+          "-r",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\triangle\\triangle.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-triangle-release-j1-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-triangle-release-j1-c.c",
+          "-std=gnu11",
+          "-O2",
+          "-DNDEBUG",
+          "-Wl,/SUBSYSTEM:WINDOWS",
+          "-lopengl32",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-triangle-release-j1-c.exe"
+        ]
+      ],
+      "log": "release-triangle-release-j1-c.log",
+      "build_exit": 0,
+      "observation": "Reviewed coloured triangle on dark background before and after resize; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "release-triangle-release-j4-llvm": {
+      "compiler": "release",
+      "example": "triangle",
+      "target": "release",
+      "jobs": 4,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "4",
+          "-r",
+          "C:\\Users\\matt\\nerd\\examples\\triangle\\triangle.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-triangle-release-j4-llvm.exe"
+        ]
+      ],
+      "log": "release-triangle-release-j4-llvm.log",
+      "build_exit": 0,
+      "observation": "Reviewed coloured triangle on dark background before and after resize; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    },
+    "release-triangle-release-j4-c": {
+      "compiler": "release",
+      "example": "triangle",
+      "target": "release",
+      "jobs": 4,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "828d4b56ec08ea7f2001334e33cf660da9d82bbb",
+      "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "4",
+          "-r",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\triangle\\triangle.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-triangle-release-j4-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-triangle-release-j4-c.c",
+          "-std=gnu11",
+          "-O2",
+          "-DNDEBUG",
+          "-Wl,/SUBSYSTEM:WINDOWS",
+          "-lopengl32",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T083831Z-654d9483\\scratch\\manual\\release-triangle-release-j4-c.exe"
+        ]
+      ],
+      "log": "release-triangle-release-j4-c.log",
+      "build_exit": 0,
+      "observation": "Reviewed coloured triangle on dark background before and after resize; Q exit zero.",
+      "exit_code": 0,
+      "evidence": "desktop-automated.json"
+    }
+  }
+}

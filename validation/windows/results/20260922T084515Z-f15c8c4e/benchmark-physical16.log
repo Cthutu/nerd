@@ -1,0 +1,14 @@
+tiny     debug  : j1=93.14ms, j16=93.05ms
+tiny     release: j1=112.20ms, j16=116.62ms
+dungeon  debug  : j1=2701.58ms, j16=2779.30ms
+dungeon  release: j1=5311.65ms, j16=5307.89ms
+pixels   debug  : j1=388.60ms, j16=370.09ms
+pixels   release: j1=582.32ms, j16=573.98ms
+quill    debug  : j1=167.36ms, j16=166.15ms
+quill    release: j1=194.40ms, j16=199.46ms
+wide     debug  : j1=202.81ms, j16=203.88ms
+wide     release: j1=266.99ms, j16=272.29ms
+deep     debug  : j1=205.07ms, j16=206.23ms
+deep     release: j1=269.05ms, j16=275.25ms
+large    debug  : j1=230.77ms, j16=231.09ms
+large    release: j1=187.44ms, j16=186.16ms

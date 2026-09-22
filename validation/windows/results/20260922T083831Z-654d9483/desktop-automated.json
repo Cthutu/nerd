@@ -1,0 +1,1570 @@
+{
+  "debug-dungeon-debug-j1-llvm": {
+    "exit_code": 0,
+    "backend": "llvm",
+    "example": "dungeon",
+    "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+    "jobs": 1,
+    "before_input": {
+      "image": "desktop-captures/debug-dungeon-debug-j1-llvm-before.png",
+      "sampled_colours": 31,
+      "height": 480,
+      "sha256": "288E4EB75E9A2EB9FAF24DD48D2BF272EB3F3319BCF2C072287DCBA98C2B77D0",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "debug",
+    "program_sha256": "D7379B0017C1BB1E67FC6AD84088ED7C8D221A603F620E3288752E2933FA0295",
+    "status": "PASS",
+    "after_input": {
+      "image": "desktop-captures/debug-dungeon-debug-j1-llvm-regenerated.png",
+      "sampled_colours": 31,
+      "height": 480,
+      "sha256": "8E554B2C6996F0EEFBF0A20C34214B95F38925F75B18979E4A4A5C67054E2AC1",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "target": "debug",
+    "observed_utc": "2026-09-22T08:40:38.8735340Z",
+    "visual_review": "Reviewed drawn rooms/corridors before input and different map after Space; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "debug-dungeon-debug-j4-c": {
+    "exit_code": 0,
+    "backend": "c",
+    "example": "dungeon",
+    "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+    "jobs": 4,
+    "before_input": {
+      "image": "desktop-captures/debug-dungeon-debug-j4-c-before.png",
+      "sampled_colours": 31,
+      "height": 480,
+      "sha256": "8FF783C6B8B6A0A41A9CF5F42D5F89F741A342F231C44FFB4E7EF9E7126A4129",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "debug",
+    "program_sha256": "D6AF5FC2FF1EE6712B0741E21B992977EAACB0ECF2566C0B7E8707DB8AE892ED",
+    "status": "PASS",
+    "after_input": {
+      "image": "desktop-captures/debug-dungeon-debug-j4-c-regenerated.png",
+      "sampled_colours": 31,
+      "height": 480,
+      "sha256": "8B850591DC9B9CBB52246307EA8560D21866B60FA9CAC79F8774AFBCF5B08D88",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "target": "debug",
+    "observed_utc": "2026-09-22T08:40:40.4534189Z",
+    "visual_review": "Reviewed drawn rooms/corridors before input and different map after Space; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "debug-pixels-debug-j1-c": {
+    "resized": {
+      "image": "desktop-captures/debug-pixels-debug-j1-c-resized.png",
+      "sampled_colours": 7881,
+      "height": 720,
+      "sha256": "7BA0E52741CE5B64C82F2793DC170B41BAADAB5C852F66578310E2314570A7FA",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "exit_code": 0,
+    "backend": "c",
+    "example": "pixels",
+    "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+    "jobs": 1,
+    "before_input": {
+      "image": "desktop-captures/debug-pixels-debug-j1-c-before.png",
+      "sampled_colours": 2881,
+      "height": 480,
+      "sha256": "CC6ED942A824731FDBB119ABAF9ED2F1AF1F4A5636A621064D1735AB53E582AA",
+      "width": 640,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "debug",
+    "program_sha256": "2EFD4CB96C4FD5B8EF2FF9041CB31946F4E2A79F2A128B66DF35D81BFE355F07",
+    "status": "PASS",
+    "animated": {
+      "image": "desktop-captures/debug-pixels-debug-j1-c-animated.png",
+      "sampled_colours": 2881,
+      "height": 480,
+      "sha256": "06B09FB6BE613FE470216D99AB827B0D1B9044427B1ABC97E05DA0F2B953E6DC",
+      "width": 640,
+      "method": "PrintWindow client capture"
+    },
+    "target": "debug",
+    "observed_utc": "2026-09-22T08:40:49.9666150Z",
+    "visual_review": "Reviewed colourful pixel framebuffer before and after resize; changed animation frame; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "release-triangle-debug-j4-llvm": {
+    "exit_code": 0,
+    "backend": "llvm",
+    "example": "triangle",
+    "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+    "jobs": 4,
+    "before_input": {
+      "image": "desktop-captures/release-triangle-debug-j4-llvm-before.png",
+      "sampled_colours": 1257,
+      "height": 600,
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B",
+      "width": 800,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "release",
+    "program_sha256": "0F2FE444CB3C30C2E0246204828A8C0F56BE9126F965955F9F2AD852E1B7009D",
+    "status": "PASS",
+    "resized": {
+      "image": "desktop-captures/release-triangle-debug-j4-llvm-resized.png",
+      "sampled_colours": 1787,
+      "height": 720,
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "target": "debug",
+    "observed_utc": "2026-09-22T08:41:50.4667482Z",
+    "visual_review": "Reviewed coloured triangle on dark background before and after resize; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "debug-triangle-release-j4-llvm": {
+    "exit_code": 0,
+    "backend": "llvm",
+    "example": "triangle",
+    "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+    "jobs": 4,
+    "before_input": {
+      "image": "desktop-captures/debug-triangle-release-j4-llvm-before.png",
+      "sampled_colours": 1257,
+      "height": 600,
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B",
+      "width": 800,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "debug",
+    "program_sha256": "0C1B809CDCA438AD329E76C8906CA9F14FEAA787ACE2AA80EFB11FE7C016B841",
+    "status": "PASS",
+    "resized": {
+      "image": "desktop-captures/debug-triangle-release-j4-llvm-resized.png",
+      "sampled_colours": 1787,
+      "height": 720,
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "target": "release",
+    "observed_utc": "2026-09-22T08:41:16.2420020Z",
+    "visual_review": "Reviewed coloured triangle on dark background before and after resize; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "debug-pixels-debug-j4-llvm": {
+    "resized": {
+      "image": "desktop-captures/debug-pixels-debug-j4-llvm-resized.png",
+      "sampled_colours": 7881,
+      "height": 720,
+      "sha256": "7BA0E52741CE5B64C82F2793DC170B41BAADAB5C852F66578310E2314570A7FA",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "exit_code": 0,
+    "backend": "llvm",
+    "example": "pixels",
+    "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+    "jobs": 4,
+    "before_input": {
+      "image": "desktop-captures/debug-pixels-debug-j4-llvm-before.png",
+      "sampled_colours": 2881,
+      "height": 480,
+      "sha256": "CC6ED942A824731FDBB119ABAF9ED2F1AF1F4A5636A621064D1735AB53E582AA",
+      "width": 640,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "debug",
+    "program_sha256": "5C3D3431C3FC451A8272422AC96D5A14AFC987B05231FACBD8CF94B45107AEC5",
+    "status": "PASS",
+    "animated": {
+      "image": "desktop-captures/debug-pixels-debug-j4-llvm-animated.png",
+      "sampled_colours": 2881,
+      "height": 480,
+      "sha256": "06B09FB6BE613FE470216D99AB827B0D1B9044427B1ABC97E05DA0F2B953E6DC",
+      "width": 640,
+      "method": "PrintWindow client capture"
+    },
+    "target": "debug",
+    "observed_utc": "2026-09-22T08:40:55.7877632Z",
+    "visual_review": "Reviewed colourful pixel framebuffer before and after resize; changed animation frame; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "release-dungeon-debug-j4-c": {
+    "exit_code": 0,
+    "backend": "c",
+    "example": "dungeon",
+    "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+    "jobs": 4,
+    "before_input": {
+      "image": "desktop-captures/release-dungeon-debug-j4-c-before.png",
+      "sampled_colours": 31,
+      "height": 480,
+      "sha256": "2BC736006FC60076901F17F51B81807BAA66C72EBABC6D5A2B1EF0F8C0DA86D8",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "release",
+    "program_sha256": "A50CBEFA8F651FA22ED01E9D5DC913359B3762E69DB4315BA16BF3272AA3925A",
+    "status": "PASS",
+    "after_input": {
+      "image": "desktop-captures/release-dungeon-debug-j4-c-regenerated.png",
+      "sampled_colours": 31,
+      "height": 480,
+      "sha256": "5EC2BDBE7A9A8878CCA2D2EBF7D18D61F2EE7407DFAFAEC5558F23738F692095",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "target": "debug",
+    "observed_utc": "2026-09-22T08:41:20.9868648Z",
+    "visual_review": "Reviewed drawn rooms/corridors before input and different map after Space; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "release-dungeon-debug-j1-llvm": {
+    "exit_code": 0,
+    "backend": "llvm",
+    "example": "dungeon",
+    "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+    "jobs": 1,
+    "before_input": {
+      "image": "desktop-captures/release-dungeon-debug-j1-llvm-before.png",
+      "sampled_colours": 31,
+      "height": 480,
+      "sha256": "4FD1BAFD3E5B861FE00B8B4CCCE77EBD036F24622F5D5A5B644A2AF7B3A4EC09",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "release",
+    "program_sha256": "F356DEAF955AE8171E406684A5580281712BAB0AB18C4F8A807B3F8238D7F113",
+    "status": "PASS",
+    "after_input": {
+      "image": "desktop-captures/release-dungeon-debug-j1-llvm-regenerated.png",
+      "sampled_colours": 31,
+      "height": 480,
+      "sha256": "6366C237C71EE47D9954113D4AC6EA594C29A59BEBCC44FD463114CBC13B4F83",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "target": "debug",
+    "observed_utc": "2026-09-22T08:41:19.3868754Z",
+    "visual_review": "Reviewed drawn rooms/corridors before input and different map after Space; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "debug-triangle-debug-j1-c": {
+    "exit_code": 0,
+    "backend": "c",
+    "example": "triangle",
+    "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+    "jobs": 1,
+    "before_input": {
+      "image": "desktop-captures/debug-triangle-debug-j1-c-before.png",
+      "sampled_colours": 1257,
+      "height": 600,
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B",
+      "width": 800,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "debug",
+    "program_sha256": "A88EA1EF1A04BF5CCCCD9C342F30638BDAA30E12E3010A976871AEC97582DC17",
+    "status": "PASS",
+    "resized": {
+      "image": "desktop-captures/debug-triangle-debug-j1-c-resized.png",
+      "sampled_colours": 1787,
+      "height": 720,
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "target": "debug",
+    "observed_utc": "2026-09-22T08:41:05.3423444Z",
+    "visual_review": "Reviewed coloured triangle on dark background before and after resize; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "release-triangle-debug-j4-c": {
+    "exit_code": 0,
+    "backend": "c",
+    "example": "triangle",
+    "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+    "jobs": 4,
+    "before_input": {
+      "image": "desktop-captures/release-triangle-debug-j4-c-before.png",
+      "sampled_colours": 1257,
+      "height": 600,
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B",
+      "width": 800,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "release",
+    "program_sha256": "5D1B548D26730A2D5416A85AA0ED83B55F1DA466A5E250E3F5146C2574AEA026",
+    "status": "PASS",
+    "resized": {
+      "image": "desktop-captures/release-triangle-debug-j4-c-resized.png",
+      "sampled_colours": 1787,
+      "height": 720,
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "target": "debug",
+    "observed_utc": "2026-09-22T08:41:48.8989510Z",
+    "visual_review": "Reviewed coloured triangle on dark background before and after resize; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "release-pixels-release-j1-c": {
+    "resized": {
+      "image": "desktop-captures/release-pixels-release-j1-c-resized.png",
+      "sampled_colours": 7883,
+      "height": 720,
+      "sha256": "25C92E89AFA15AE79D324AC425C4B7E545161CBC8B1EC5422E2528B36293E7DE",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "exit_code": 0,
+    "backend": "c",
+    "example": "pixels",
+    "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+    "jobs": 1,
+    "before_input": {
+      "image": "desktop-captures/release-pixels-release-j1-c-before.png",
+      "sampled_colours": 2881,
+      "height": 480,
+      "sha256": "CBEE963987077A94CED616EBDB9419AD0F7644F95F4F1C5393FF0C7379CD8D34",
+      "width": 640,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "release",
+    "program_sha256": "432C2D938047E9644C2FA8BF36FC7D34DCAAD27690F5A39E40B46ACDD34325CF",
+    "status": "PASS",
+    "animated": {
+      "image": "desktop-captures/release-pixels-release-j1-c-animated.png",
+      "sampled_colours": 2881,
+      "height": 480,
+      "sha256": "0F2877DF5BE2399FFD52EF7BDB805D7A89F44115B9A07E6583730A7EECFA619F",
+      "width": 640,
+      "method": "PrintWindow client capture"
+    },
+    "target": "release",
+    "observed_utc": "2026-09-22T08:41:38.1542987Z",
+    "visual_review": "Reviewed colourful pixel framebuffer before and after resize; changed animation frame; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "release-triangle-release-j4-c": {
+    "exit_code": 0,
+    "backend": "c",
+    "example": "triangle",
+    "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+    "jobs": 4,
+    "before_input": {
+      "image": "desktop-captures/release-triangle-release-j4-c-before.png",
+      "sampled_colours": 1257,
+      "height": 600,
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B",
+      "width": 800,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "release",
+    "program_sha256": "26FECE6AB3239CEA8A908ADE28570E132A9BBEF0DA79EE52B37670A266B04DF5",
+    "status": "PASS",
+    "resized": {
+      "image": "desktop-captures/release-triangle-release-j4-c-resized.png",
+      "sampled_colours": 1787,
+      "height": 720,
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "target": "release",
+    "observed_utc": "2026-09-22T08:41:55.0084475Z",
+    "visual_review": "Reviewed coloured triangle on dark background before and after resize; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "release-pixels-release-j1-llvm": {
+    "resized": {
+      "image": "desktop-captures/release-pixels-release-j1-llvm-resized.png",
+      "sampled_colours": 7879,
+      "height": 720,
+      "sha256": "912E681E8CCF605FFFC374FF7DEA0C8861DD69EF8F833FCB75D48E80A511CD3E",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "exit_code": 0,
+    "backend": "llvm",
+    "example": "pixels",
+    "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+    "jobs": 1,
+    "before_input": {
+      "image": "desktop-captures/release-pixels-release-j1-llvm-before.png",
+      "sampled_colours": 2881,
+      "height": 480,
+      "sha256": "31095A937A17462F9D952CC2579074813AC1CAD1FDEA1A3B6546F4914623EFC7",
+      "width": 640,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "release",
+    "program_sha256": "1FA8D54D4EE1D50B291BCE98393A4AE3EA6474CA5F8D8D73FEEE928193EF8EA8",
+    "status": "PASS",
+    "animated": {
+      "image": "desktop-captures/release-pixels-release-j1-llvm-animated.png",
+      "sampled_colours": 2881,
+      "height": 480,
+      "sha256": "BB448F7C8FCFB0F3E586EB80571A318D1EDFB92034C93D5A3F03CD3A95C5684D",
+      "width": 640,
+      "method": "PrintWindow client capture"
+    },
+    "target": "release",
+    "observed_utc": "2026-09-22T08:41:40.0642110Z",
+    "visual_review": "Reviewed colourful pixel framebuffer before and after resize; changed animation frame; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "debug-dungeon-release-j1-llvm": {
+    "exit_code": 0,
+    "backend": "llvm",
+    "example": "dungeon",
+    "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+    "jobs": 1,
+    "before_input": {
+      "image": "desktop-captures/debug-dungeon-release-j1-llvm-before.png",
+      "sampled_colours": 31,
+      "height": 480,
+      "sha256": "B471D245193764CEA440D3F2BEE40E41CCD81C25F1461B63B899EE7134995B65",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "debug",
+    "program_sha256": "524DA06187987358B0DAC2ECAC6FAF8275AA1C293F80675E45482AD4ED63FF93",
+    "status": "PASS",
+    "after_input": {
+      "image": "desktop-captures/debug-dungeon-release-j1-llvm-regenerated.png",
+      "sampled_colours": 31,
+      "height": 480,
+      "sha256": "2D2331B80C7D7651A3D1517053650034D1E58CF35BE97A49B8476CF93583DDA5",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "target": "release",
+    "observed_utc": "2026-09-22T08:40:45.2075597Z",
+    "visual_review": "Reviewed drawn rooms/corridors before input and different map after Space; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "release-triangle-debug-j1-llvm": {
+    "exit_code": 0,
+    "backend": "llvm",
+    "example": "triangle",
+    "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+    "jobs": 1,
+    "before_input": {
+      "image": "desktop-captures/release-triangle-debug-j1-llvm-before.png",
+      "sampled_colours": 1257,
+      "height": 600,
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B",
+      "width": 800,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "release",
+    "program_sha256": "D4B4F234AC87D371C32C3702216CFF0023D93D3F27A5167E19BBC841AA2721F5",
+    "status": "PASS",
+    "resized": {
+      "image": "desktop-captures/release-triangle-debug-j1-llvm-resized.png",
+      "sampled_colours": 1787,
+      "height": 720,
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "target": "debug",
+    "observed_utc": "2026-09-22T08:41:47.3201438Z",
+    "visual_review": "Reviewed coloured triangle on dark background before and after resize; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "debug-pixels-debug-j1-llvm": {
+    "resized": {
+      "image": "desktop-captures/debug-pixels-debug-j1-llvm-resized.png",
+      "sampled_colours": 7881,
+      "height": 720,
+      "sha256": "7BA0E52741CE5B64C82F2793DC170B41BAADAB5C852F66578310E2314570A7FA",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "exit_code": 0,
+    "backend": "llvm",
+    "example": "pixels",
+    "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+    "jobs": 1,
+    "before_input": {
+      "image": "desktop-captures/debug-pixels-debug-j1-llvm-before.png",
+      "sampled_colours": 2881,
+      "height": 480,
+      "sha256": "CC6ED942A824731FDBB119ABAF9ED2F1AF1F4A5636A621064D1735AB53E582AA",
+      "width": 640,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "debug",
+    "program_sha256": "DB48ED536C36C5F60E1C9DD81C93C848723AE81025AB2258A05FEBF29A2C3DB5",
+    "status": "PASS",
+    "animated": {
+      "image": "desktop-captures/debug-pixels-debug-j1-llvm-animated.png",
+      "sampled_colours": 2881,
+      "height": 480,
+      "sha256": "06B09FB6BE613FE470216D99AB827B0D1B9044427B1ABC97E05DA0F2B953E6DC",
+      "width": 640,
+      "method": "PrintWindow client capture"
+    },
+    "target": "debug",
+    "observed_utc": "2026-09-22T08:40:51.9444626Z",
+    "visual_review": "Reviewed colourful pixel framebuffer before and after resize; changed animation frame; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "release-triangle-release-j1-llvm": {
+    "exit_code": 0,
+    "backend": "llvm",
+    "example": "triangle",
+    "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+    "jobs": 1,
+    "before_input": {
+      "image": "desktop-captures/release-triangle-release-j1-llvm-before.png",
+      "sampled_colours": 1257,
+      "height": 600,
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B",
+      "width": 800,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "release",
+    "program_sha256": "FD975465475988E72E3A610EEF9EC857B0A239BFD6BFDB5798AB0E7EB49B6A58",
+    "status": "PASS",
+    "resized": {
+      "image": "desktop-captures/release-triangle-release-j1-llvm-resized.png",
+      "sampled_colours": 1787,
+      "height": 720,
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "target": "release",
+    "observed_utc": "2026-09-22T08:41:53.4694644Z",
+    "visual_review": "Reviewed coloured triangle on dark background before and after resize; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "debug-pixels-release-j1-c": {
+    "resized": {
+      "image": "desktop-captures/debug-pixels-release-j1-c-resized.png",
+      "sampled_colours": 7881,
+      "height": 720,
+      "sha256": "7BA0E52741CE5B64C82F2793DC170B41BAADAB5C852F66578310E2314570A7FA",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "exit_code": 0,
+    "backend": "c",
+    "example": "pixels",
+    "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+    "jobs": 1,
+    "before_input": {
+      "image": "desktop-captures/debug-pixels-release-j1-c-before.png",
+      "sampled_colours": 2881,
+      "height": 480,
+      "sha256": "CBEE963987077A94CED616EBDB9419AD0F7644F95F4F1C5393FF0C7379CD8D34",
+      "width": 640,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "debug",
+    "program_sha256": "BCBC1108578A84141C76D146C792633340B93165A81B75623A64E699AA841271",
+    "status": "PASS",
+    "animated": {
+      "image": "desktop-captures/debug-pixels-release-j1-c-animated.png",
+      "sampled_colours": 2881,
+      "height": 480,
+      "sha256": "06B09FB6BE613FE470216D99AB827B0D1B9044427B1ABC97E05DA0F2B953E6DC",
+      "width": 640,
+      "method": "PrintWindow client capture"
+    },
+    "target": "release",
+    "observed_utc": "2026-09-22T08:40:57.7016825Z",
+    "visual_review": "Reviewed colourful pixel framebuffer before and after resize; changed animation frame; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "debug-dungeon-release-j1-c": {
+    "exit_code": 0,
+    "backend": "c",
+    "example": "dungeon",
+    "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+    "jobs": 1,
+    "before_input": {
+      "image": "desktop-captures/debug-dungeon-release-j1-c-before.png",
+      "sampled_colours": 31,
+      "height": 480,
+      "sha256": "F523DFA5DB8FF50D45A5C2065A045C475F5628C891751B0E88E3FB54AA6D7E4E",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "debug",
+    "program_sha256": "9099A5FC8D4A78B3689C16B37ACC80FA4830B7459CC5FC284E1424A685CF2711",
+    "status": "PASS",
+    "after_input": {
+      "image": "desktop-captures/debug-dungeon-release-j1-c-regenerated.png",
+      "sampled_colours": 31,
+      "height": 480,
+      "sha256": "BC932ECEF4E3D2B60E6360D479E03384C80B33911BAFCE0349885A366EAB3299",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "target": "release",
+    "observed_utc": "2026-09-22T08:40:43.6117449Z",
+    "visual_review": "Reviewed drawn rooms/corridors before input and different map after Space; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "release-dungeon-debug-j4-llvm": {
+    "exit_code": 0,
+    "backend": "llvm",
+    "example": "dungeon",
+    "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+    "jobs": 4,
+    "before_input": {
+      "image": "desktop-captures/release-dungeon-debug-j4-llvm-before.png",
+      "sampled_colours": 31,
+      "height": 480,
+      "sha256": "78C06BCADB6FF7B71D2D381C5ADC21DF145E2BFB61E9B50A3BDA6F7774B692F7",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "release",
+    "program_sha256": "D4F3D827CA086724DC039E15A4C8590B4DE1C1F0EE9FA90A5E397DB5E2B5B248",
+    "status": "PASS",
+    "after_input": {
+      "image": "desktop-captures/release-dungeon-debug-j4-llvm-regenerated.png",
+      "sampled_colours": 31,
+      "height": 480,
+      "sha256": "CBDDF7E5BB24CC8EE1AB7EA08B70E52B8F5CC556E28882141A7C540508E97D9A",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "target": "debug",
+    "observed_utc": "2026-09-22T08:41:22.5525502Z",
+    "visual_review": "Reviewed drawn rooms/corridors before input and different map after Space; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "release-pixels-release-j4-c": {
+    "resized": {
+      "image": "desktop-captures/release-pixels-release-j4-c-resized.png",
+      "sampled_colours": 7881,
+      "height": 720,
+      "sha256": "7BA0E52741CE5B64C82F2793DC170B41BAADAB5C852F66578310E2314570A7FA",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "exit_code": 0,
+    "backend": "c",
+    "example": "pixels",
+    "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+    "jobs": 4,
+    "before_input": {
+      "image": "desktop-captures/release-pixels-release-j4-c-before.png",
+      "sampled_colours": 2881,
+      "height": 480,
+      "sha256": "CC6ED942A824731FDBB119ABAF9ED2F1AF1F4A5636A621064D1735AB53E582AA",
+      "width": 640,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "release",
+    "program_sha256": "922682FD9C028AD30EC82AA00E8BB6BC4CA213B23D88FB3C8481B5DF0EBF5D42",
+    "status": "PASS",
+    "animated": {
+      "image": "desktop-captures/release-pixels-release-j4-c-animated.png",
+      "sampled_colours": 2881,
+      "height": 480,
+      "sha256": "06B09FB6BE613FE470216D99AB827B0D1B9044427B1ABC97E05DA0F2B953E6DC",
+      "width": 640,
+      "method": "PrintWindow client capture"
+    },
+    "target": "release",
+    "observed_utc": "2026-09-22T08:41:42.0188100Z",
+    "visual_review": "Reviewed colourful pixel framebuffer before and after resize; changed animation frame; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "debug-triangle-release-j4-c": {
+    "exit_code": 0,
+    "backend": "c",
+    "example": "triangle",
+    "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+    "jobs": 4,
+    "before_input": {
+      "image": "desktop-captures/debug-triangle-release-j4-c-before.png",
+      "sampled_colours": 1257,
+      "height": 600,
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B",
+      "width": 800,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "debug",
+    "program_sha256": "DE0E2F0736BC967C380DF023149013B20B73D868A72A97F243A1F3897BDAB5D0",
+    "status": "PASS",
+    "resized": {
+      "image": "desktop-captures/debug-triangle-release-j4-c-resized.png",
+      "sampled_colours": 1787,
+      "height": 720,
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "target": "release",
+    "observed_utc": "2026-09-22T08:41:14.6378286Z",
+    "visual_review": "Reviewed coloured triangle on dark background before and after resize; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "release-pixels-debug-j4-llvm": {
+    "resized": {
+      "image": "desktop-captures/release-pixels-debug-j4-llvm-resized.png",
+      "sampled_colours": 7883,
+      "height": 720,
+      "sha256": "25C92E89AFA15AE79D324AC425C4B7E545161CBC8B1EC5422E2528B36293E7DE",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "exit_code": 0,
+    "backend": "llvm",
+    "example": "pixels",
+    "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+    "jobs": 4,
+    "before_input": {
+      "image": "desktop-captures/release-pixels-debug-j4-llvm-before.png",
+      "sampled_colours": 2881,
+      "height": 480,
+      "sha256": "CBEE963987077A94CED616EBDB9419AD0F7644F95F4F1C5393FF0C7379CD8D34",
+      "width": 640,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "release",
+    "program_sha256": "BFA3BB50807CDA8C36374549852ABD07EB49975C42AA12C5E2CDFE1FFD2BDB37",
+    "status": "PASS",
+    "animated": {
+      "image": "desktop-captures/release-pixels-debug-j4-llvm-animated.png",
+      "sampled_colours": 2881,
+      "height": 480,
+      "sha256": "0F2877DF5BE2399FFD52EF7BDB805D7A89F44115B9A07E6583730A7EECFA619F",
+      "width": 640,
+      "method": "PrintWindow client capture"
+    },
+    "target": "debug",
+    "observed_utc": "2026-09-22T08:41:36.2359453Z",
+    "visual_review": "Reviewed colourful pixel framebuffer before and after resize; changed animation frame; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "debug-triangle-debug-j4-c": {
+    "exit_code": 0,
+    "backend": "c",
+    "example": "triangle",
+    "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+    "jobs": 4,
+    "before_input": {
+      "image": "desktop-captures/debug-triangle-debug-j4-c-before.png",
+      "sampled_colours": 1257,
+      "height": 600,
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B",
+      "width": 800,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "debug",
+    "program_sha256": "72AD817D5509245E287A0D0AEBB0427B7CC06F4E6F9E965BF8749121CFE7DF8B",
+    "status": "PASS",
+    "resized": {
+      "image": "desktop-captures/debug-triangle-debug-j4-c-resized.png",
+      "sampled_colours": 1787,
+      "height": 720,
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "target": "debug",
+    "observed_utc": "2026-09-22T08:41:08.4425836Z",
+    "visual_review": "Reviewed coloured triangle on dark background before and after resize; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "release-dungeon-debug-j1-c": {
+    "exit_code": 0,
+    "backend": "c",
+    "example": "dungeon",
+    "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+    "jobs": 1,
+    "before_input": {
+      "image": "desktop-captures/release-dungeon-debug-j1-c-before.png",
+      "sampled_colours": 31,
+      "height": 480,
+      "sha256": "343C123F113822EA77D9E7FD4E73CC2B30A98CA2F7AF37EE7B4D21213C6EE9D7",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "release",
+    "program_sha256": "30A95F3EECB7E10B15A82993314F72182BBA3E062883FD7EE12FC75490D9306E",
+    "status": "PASS",
+    "after_input": {
+      "image": "desktop-captures/release-dungeon-debug-j1-c-regenerated.png",
+      "sampled_colours": 31,
+      "height": 480,
+      "sha256": "944645EC64673A96E17FC3D5C4DBAEE07F4C3BFEBD9C760AAAD98F631CF669DC",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "target": "debug",
+    "observed_utc": "2026-09-22T08:41:17.7672963Z",
+    "visual_review": "Reviewed drawn rooms/corridors before input and different map after Space; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "release-dungeon-release-j1-c": {
+    "exit_code": 0,
+    "backend": "c",
+    "example": "dungeon",
+    "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+    "jobs": 1,
+    "before_input": {
+      "image": "desktop-captures/release-dungeon-release-j1-c-before.png",
+      "sampled_colours": 31,
+      "height": 480,
+      "sha256": "A0C69B893D75816D3D998064C93A6B8DA1586A49D6A144EC0B9641EBCD463579",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "release",
+    "program_sha256": "F0638E9772881FF097C4F4A95D44520B50B14EED00975ACD2C6E70D3AC5359B6",
+    "status": "PASS",
+    "after_input": {
+      "image": "desktop-captures/release-dungeon-release-j1-c-regenerated.png",
+      "sampled_colours": 31,
+      "height": 480,
+      "sha256": "C69CF240A936A285900A0484398EA67CD78CCB2431F672102DBF4E665EF25250",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "target": "release",
+    "observed_utc": "2026-09-22T08:41:24.1541986Z",
+    "visual_review": "Reviewed drawn rooms/corridors before input and different map after Space; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "release-dungeon-release-j1-llvm": {
+    "exit_code": 0,
+    "backend": "llvm",
+    "example": "dungeon",
+    "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+    "jobs": 1,
+    "before_input": {
+      "image": "desktop-captures/release-dungeon-release-j1-llvm-before.png",
+      "sampled_colours": 31,
+      "height": 480,
+      "sha256": "60FEE10BEDE83D63C057E0A69293B464E2AB85440E045D9D62CAE26AD2C2D483",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "release",
+    "program_sha256": "C8F3C6946F88C49E2A218825D0B15C8611129CC28A866659E3D30638D3601B6C",
+    "status": "PASS",
+    "after_input": {
+      "image": "desktop-captures/release-dungeon-release-j1-llvm-regenerated.png",
+      "sampled_colours": 31,
+      "height": 480,
+      "sha256": "B56217D80F7C79767E7266483060D341DF459338002394C69C3E3E36F2D68F1B",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "target": "release",
+    "observed_utc": "2026-09-22T08:41:25.7146450Z",
+    "visual_review": "Reviewed drawn rooms/corridors before input and different map after Space; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "debug-triangle-debug-j1-llvm": {
+    "exit_code": 0,
+    "backend": "llvm",
+    "example": "triangle",
+    "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+    "jobs": 1,
+    "before_input": {
+      "image": "desktop-captures/debug-triangle-debug-j1-llvm-before.png",
+      "sampled_colours": 1257,
+      "height": 600,
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B",
+      "width": 800,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "debug",
+    "program_sha256": "F2BBE2A9002FDF0E506521CDC934D9BBE1134CA60F668DC51275980691D1039B",
+    "status": "PASS",
+    "resized": {
+      "image": "desktop-captures/debug-triangle-debug-j1-llvm-resized.png",
+      "sampled_colours": 1787,
+      "height": 720,
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "target": "debug",
+    "observed_utc": "2026-09-22T08:41:06.8907586Z",
+    "visual_review": "Reviewed coloured triangle on dark background before and after resize; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "release-pixels-release-j4-llvm": {
+    "resized": {
+      "image": "desktop-captures/release-pixels-release-j4-llvm-resized.png",
+      "sampled_colours": 7881,
+      "height": 720,
+      "sha256": "7BA0E52741CE5B64C82F2793DC170B41BAADAB5C852F66578310E2314570A7FA",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "exit_code": 0,
+    "backend": "llvm",
+    "example": "pixels",
+    "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+    "jobs": 4,
+    "before_input": {
+      "image": "desktop-captures/release-pixels-release-j4-llvm-before.png",
+      "sampled_colours": 2881,
+      "height": 480,
+      "sha256": "CC6ED942A824731FDBB119ABAF9ED2F1AF1F4A5636A621064D1735AB53E582AA",
+      "width": 640,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "release",
+    "program_sha256": "1AB4C9A5BBD9FFC1332E0C526F8DD07E1F08BFA0DF4BEF89B049EDDBC33B5439",
+    "status": "PASS",
+    "animated": {
+      "image": "desktop-captures/release-pixels-release-j4-llvm-animated.png",
+      "sampled_colours": 2881,
+      "height": 480,
+      "sha256": "06B09FB6BE613FE470216D99AB827B0D1B9044427B1ABC97E05DA0F2B953E6DC",
+      "width": 640,
+      "method": "PrintWindow client capture"
+    },
+    "target": "release",
+    "observed_utc": "2026-09-22T08:41:43.9471052Z",
+    "visual_review": "Reviewed colourful pixel framebuffer before and after resize; changed animation frame; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "debug-dungeon-debug-j4-llvm": {
+    "exit_code": 0,
+    "backend": "llvm",
+    "example": "dungeon",
+    "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+    "jobs": 4,
+    "before_input": {
+      "image": "desktop-captures/debug-dungeon-debug-j4-llvm-before.png",
+      "sampled_colours": 31,
+      "height": 480,
+      "sha256": "C347151EC14AD52EBE3D5C01B414D516CCF697DC300E12ACA431AA15F4C0DA1F",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "debug",
+    "program_sha256": "E1071BD3D504A354B0E65903ED69F3FF94542783AD87B8BA00BF8B50AD8907A9",
+    "status": "PASS",
+    "after_input": {
+      "image": "desktop-captures/debug-dungeon-debug-j4-llvm-regenerated.png",
+      "sampled_colours": 31,
+      "height": 480,
+      "sha256": "C752D40B1A4557F94A6FCA17654D33205DFB590C767205D13B5D893B8AECF6E7",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "target": "debug",
+    "observed_utc": "2026-09-22T08:40:42.0318618Z",
+    "visual_review": "Reviewed drawn rooms/corridors before input and different map after Space; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "debug-pixels-release-j1-llvm": {
+    "resized": {
+      "image": "desktop-captures/debug-pixels-release-j1-llvm-resized.png",
+      "sampled_colours": 7881,
+      "height": 720,
+      "sha256": "7BA0E52741CE5B64C82F2793DC170B41BAADAB5C852F66578310E2314570A7FA",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "exit_code": 0,
+    "backend": "llvm",
+    "example": "pixels",
+    "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+    "jobs": 1,
+    "before_input": {
+      "image": "desktop-captures/debug-pixels-release-j1-llvm-before.png",
+      "sampled_colours": 2881,
+      "height": 480,
+      "sha256": "CC6ED942A824731FDBB119ABAF9ED2F1AF1F4A5636A621064D1735AB53E582AA",
+      "width": 640,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "debug",
+    "program_sha256": "121149D972FBDB441A648D6D13A8CFDFC5091223EAAF2DAC68DEABF88D9FB05B",
+    "status": "PASS",
+    "animated": {
+      "image": "desktop-captures/debug-pixels-release-j1-llvm-animated.png",
+      "sampled_colours": 2881,
+      "height": 480,
+      "sha256": "06B09FB6BE613FE470216D99AB827B0D1B9044427B1ABC97E05DA0F2B953E6DC",
+      "width": 640,
+      "method": "PrintWindow client capture"
+    },
+    "target": "release",
+    "observed_utc": "2026-09-22T08:40:59.5981581Z",
+    "visual_review": "Reviewed colourful pixel framebuffer before and after resize; changed animation frame; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "debug-triangle-debug-j4-llvm": {
+    "exit_code": 0,
+    "backend": "llvm",
+    "example": "triangle",
+    "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+    "jobs": 4,
+    "before_input": {
+      "image": "desktop-captures/debug-triangle-debug-j4-llvm-before.png",
+      "sampled_colours": 1257,
+      "height": 600,
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B",
+      "width": 800,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "debug",
+    "program_sha256": "61B2602A25F11D8B506DDA648EA54772FAF776FF79A1A2FAE6C3625AED119A1C",
+    "status": "PASS",
+    "resized": {
+      "image": "desktop-captures/debug-triangle-debug-j4-llvm-resized.png",
+      "sampled_colours": 1787,
+      "height": 720,
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "target": "debug",
+    "observed_utc": "2026-09-22T08:41:09.9825621Z",
+    "visual_review": "Reviewed coloured triangle on dark background before and after resize; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "debug-triangle-release-j1-llvm": {
+    "exit_code": 0,
+    "backend": "llvm",
+    "example": "triangle",
+    "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+    "jobs": 1,
+    "before_input": {
+      "image": "desktop-captures/debug-triangle-release-j1-llvm-before.png",
+      "sampled_colours": 1257,
+      "height": 600,
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B",
+      "width": 800,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "debug",
+    "program_sha256": "2EA5A734A9E1DB36801B649272CCAE8F775D3D9AC8156A91A3A7849174D9F8E0",
+    "status": "PASS",
+    "resized": {
+      "image": "desktop-captures/debug-triangle-release-j1-llvm-resized.png",
+      "sampled_colours": 1787,
+      "height": 720,
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "target": "release",
+    "observed_utc": "2026-09-22T08:41:13.0725884Z",
+    "visual_review": "Reviewed coloured triangle on dark background before and after resize; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "debug-pixels-debug-j4-c": {
+    "resized": {
+      "image": "desktop-captures/debug-pixels-debug-j4-c-resized.png",
+      "sampled_colours": 7881,
+      "height": 720,
+      "sha256": "7BA0E52741CE5B64C82F2793DC170B41BAADAB5C852F66578310E2314570A7FA",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "exit_code": 0,
+    "backend": "c",
+    "example": "pixels",
+    "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+    "jobs": 4,
+    "before_input": {
+      "image": "desktop-captures/debug-pixels-debug-j4-c-before.png",
+      "sampled_colours": 2881,
+      "height": 480,
+      "sha256": "CC6ED942A824731FDBB119ABAF9ED2F1AF1F4A5636A621064D1735AB53E582AA",
+      "width": 640,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "debug",
+    "program_sha256": "C8DCEACAE404A219A98799CF3EFF22DC3A232F65B5F041B1DA831A5CC6D06DBA",
+    "status": "PASS",
+    "animated": {
+      "image": "desktop-captures/debug-pixels-debug-j4-c-animated.png",
+      "sampled_colours": 2881,
+      "height": 480,
+      "sha256": "06B09FB6BE613FE470216D99AB827B0D1B9044427B1ABC97E05DA0F2B953E6DC",
+      "width": 640,
+      "method": "PrintWindow client capture"
+    },
+    "target": "debug",
+    "observed_utc": "2026-09-22T08:40:53.8722498Z",
+    "visual_review": "Reviewed colourful pixel framebuffer before and after resize; changed animation frame; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "release-dungeon-release-j4-c": {
+    "exit_code": 0,
+    "backend": "c",
+    "example": "dungeon",
+    "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+    "jobs": 4,
+    "before_input": {
+      "image": "desktop-captures/release-dungeon-release-j4-c-before.png",
+      "sampled_colours": 31,
+      "height": 480,
+      "sha256": "02DB706C356AB8F68DFF7465C973CBAFF703F280036EA00F58E99A664BAAA59F",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "release",
+    "program_sha256": "3A2AF993F5F5239F334A5B85F304E8EFAFE790640F162173D1EA617D71ADC92E",
+    "status": "PASS",
+    "after_input": {
+      "image": "desktop-captures/release-dungeon-release-j4-c-regenerated.png",
+      "sampled_colours": 31,
+      "height": 480,
+      "sha256": "6CF8AFE68739E3BD4836066CB9A79B7B00C5F26F81C8AB4EE5E63D5BCCF61699",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "target": "release",
+    "observed_utc": "2026-09-22T08:41:27.2651375Z",
+    "visual_review": "Reviewed drawn rooms/corridors before input and different map after Space; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "debug-dungeon-release-j4-c": {
+    "exit_code": 0,
+    "backend": "c",
+    "example": "dungeon",
+    "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+    "jobs": 4,
+    "before_input": {
+      "image": "desktop-captures/debug-dungeon-release-j4-c-before.png",
+      "sampled_colours": 31,
+      "height": 480,
+      "sha256": "1FC11D3CDBE4597EAA6452A560904F81015E1253A48E6A68F6A457834E8FF956",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "debug",
+    "program_sha256": "6943A325416204A268B7D570C23D5E3439EA1019893520C8E64C35C11AAECF82",
+    "status": "PASS",
+    "after_input": {
+      "image": "desktop-captures/debug-dungeon-release-j4-c-regenerated.png",
+      "sampled_colours": 31,
+      "height": 480,
+      "sha256": "7B38D56B462E85376D34BABFE5525ECD4BFB3B7BB20E272A448F0A33481D4D33",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "target": "release",
+    "observed_utc": "2026-09-22T08:40:46.7918518Z",
+    "visual_review": "Reviewed drawn rooms/corridors before input and different map after Space; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "release-triangle-release-j1-c": {
+    "exit_code": 0,
+    "backend": "c",
+    "example": "triangle",
+    "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+    "jobs": 1,
+    "before_input": {
+      "image": "desktop-captures/release-triangle-release-j1-c-before.png",
+      "sampled_colours": 1257,
+      "height": 600,
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B",
+      "width": 800,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "release",
+    "program_sha256": "A4A2A49E3CB8CD94CBAA48C6B3BEB5BC495B444B724B834106CF9CE769720C64",
+    "status": "PASS",
+    "resized": {
+      "image": "desktop-captures/release-triangle-release-j1-c-resized.png",
+      "sampled_colours": 1787,
+      "height": 720,
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "target": "release",
+    "observed_utc": "2026-09-22T08:41:51.9922489Z",
+    "visual_review": "Reviewed coloured triangle on dark background before and after resize; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "debug-triangle-release-j1-c": {
+    "exit_code": 0,
+    "backend": "c",
+    "example": "triangle",
+    "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+    "jobs": 1,
+    "before_input": {
+      "image": "desktop-captures/debug-triangle-release-j1-c-before.png",
+      "sampled_colours": 1257,
+      "height": 600,
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B",
+      "width": 800,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "debug",
+    "program_sha256": "4DD96EA6EC64129DA9178BD28BC3D5E3AAE6B4A2FE9E6E20BAA7FB7899460B67",
+    "status": "PASS",
+    "resized": {
+      "image": "desktop-captures/debug-triangle-release-j1-c-resized.png",
+      "sampled_colours": 1787,
+      "height": 720,
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "target": "release",
+    "observed_utc": "2026-09-22T08:41:11.5463046Z",
+    "visual_review": "Reviewed coloured triangle on dark background before and after resize; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "debug-pixels-release-j4-c": {
+    "resized": {
+      "image": "desktop-captures/debug-pixels-release-j4-c-resized.png",
+      "sampled_colours": 7879,
+      "height": 720,
+      "sha256": "912E681E8CCF605FFFC374FF7DEA0C8861DD69EF8F833FCB75D48E80A511CD3E",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "exit_code": 0,
+    "backend": "c",
+    "example": "pixels",
+    "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+    "jobs": 4,
+    "before_input": {
+      "image": "desktop-captures/debug-pixels-release-j4-c-before.png",
+      "sampled_colours": 2881,
+      "height": 480,
+      "sha256": "CC6ED942A824731FDBB119ABAF9ED2F1AF1F4A5636A621064D1735AB53E582AA",
+      "width": 640,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "debug",
+    "program_sha256": "6388AD681C8248597E2F2A61DA1C98A1951864BB945112E021F5885819E5BD19",
+    "status": "PASS",
+    "animated": {
+      "image": "desktop-captures/debug-pixels-release-j4-c-animated.png",
+      "sampled_colours": 2881,
+      "height": 480,
+      "sha256": "BB448F7C8FCFB0F3E586EB80571A318D1EDFB92034C93D5A3F03CD3A95C5684D",
+      "width": 640,
+      "method": "PrintWindow client capture"
+    },
+    "target": "release",
+    "observed_utc": "2026-09-22T08:41:01.5011293Z",
+    "visual_review": "Reviewed colourful pixel framebuffer before and after resize; changed animation frame; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "release-dungeon-release-j4-llvm": {
+    "exit_code": 0,
+    "backend": "llvm",
+    "example": "dungeon",
+    "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+    "jobs": 4,
+    "before_input": {
+      "image": "desktop-captures/release-dungeon-release-j4-llvm-before.png",
+      "sampled_colours": 31,
+      "height": 480,
+      "sha256": "7AA30A56645558417A65ACAD91C200CB13203B69DC230372872D3E1A40F8551A",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "release",
+    "program_sha256": "27F0C9A7F68CB9A96A26E18EAEBF351A77004FBEADE5DB5D299F5F142F15EF87",
+    "status": "PASS",
+    "after_input": {
+      "image": "desktop-captures/release-dungeon-release-j4-llvm-regenerated.png",
+      "sampled_colours": 31,
+      "height": 480,
+      "sha256": "25A34F0B97C89F362BF3358795F906DB11D4618E728235FB8F01B36236233139",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "target": "release",
+    "observed_utc": "2026-09-22T08:41:28.8860478Z",
+    "visual_review": "Reviewed drawn rooms/corridors before input and different map after Space; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "release-triangle-debug-j1-c": {
+    "exit_code": 0,
+    "backend": "c",
+    "example": "triangle",
+    "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+    "jobs": 1,
+    "before_input": {
+      "image": "desktop-captures/release-triangle-debug-j1-c-before.png",
+      "sampled_colours": 1257,
+      "height": 600,
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B",
+      "width": 800,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "release",
+    "program_sha256": "DEAA52C013379172E3F04EF8BF0209F90CAD6032D5B879E414025CBF3CA3D82C",
+    "status": "PASS",
+    "resized": {
+      "image": "desktop-captures/release-triangle-debug-j1-c-resized.png",
+      "sampled_colours": 1787,
+      "height": 720,
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "target": "debug",
+    "observed_utc": "2026-09-22T08:41:45.7977478Z",
+    "visual_review": "Reviewed coloured triangle on dark background before and after resize; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "release-triangle-release-j4-llvm": {
+    "exit_code": 0,
+    "backend": "llvm",
+    "example": "triangle",
+    "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+    "jobs": 4,
+    "before_input": {
+      "image": "desktop-captures/release-triangle-release-j4-llvm-before.png",
+      "sampled_colours": 1257,
+      "height": 600,
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B",
+      "width": 800,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "release",
+    "program_sha256": "752E34B43DA116770025F3C41D46E585B41528B211BE5C046F8DF230EC6DE541",
+    "status": "PASS",
+    "resized": {
+      "image": "desktop-captures/release-triangle-release-j4-llvm-resized.png",
+      "sampled_colours": 1787,
+      "height": 720,
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "target": "release",
+    "observed_utc": "2026-09-22T08:41:56.5405545Z",
+    "visual_review": "Reviewed coloured triangle on dark background before and after resize; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "release-pixels-debug-j1-llvm": {
+    "resized": {
+      "image": "desktop-captures/release-pixels-debug-j1-llvm-resized.png",
+      "sampled_colours": 7879,
+      "height": 720,
+      "sha256": "912E681E8CCF605FFFC374FF7DEA0C8861DD69EF8F833FCB75D48E80A511CD3E",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "exit_code": 0,
+    "backend": "llvm",
+    "example": "pixels",
+    "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+    "jobs": 1,
+    "before_input": {
+      "image": "desktop-captures/release-pixels-debug-j1-llvm-before.png",
+      "sampled_colours": 2881,
+      "height": 480,
+      "sha256": "CC6ED942A824731FDBB119ABAF9ED2F1AF1F4A5636A621064D1735AB53E582AA",
+      "width": 640,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "release",
+    "program_sha256": "D475E0DF6332AD934DEA2259A8A02FCA77651963D9A47281DEB616CE4A71A570",
+    "status": "PASS",
+    "animated": {
+      "image": "desktop-captures/release-pixels-debug-j1-llvm-animated.png",
+      "sampled_colours": 2881,
+      "height": 480,
+      "sha256": "BB448F7C8FCFB0F3E586EB80571A318D1EDFB92034C93D5A3F03CD3A95C5684D",
+      "width": 640,
+      "method": "PrintWindow client capture"
+    },
+    "target": "debug",
+    "observed_utc": "2026-09-22T08:41:32.3839032Z",
+    "visual_review": "Reviewed colourful pixel framebuffer before and after resize; changed animation frame; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "debug-pixels-release-j4-llvm": {
+    "resized": {
+      "image": "desktop-captures/debug-pixels-release-j4-llvm-resized.png",
+      "sampled_colours": 7881,
+      "height": 720,
+      "sha256": "7BA0E52741CE5B64C82F2793DC170B41BAADAB5C852F66578310E2314570A7FA",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "exit_code": 0,
+    "backend": "llvm",
+    "example": "pixels",
+    "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+    "jobs": 4,
+    "before_input": {
+      "image": "desktop-captures/debug-pixels-release-j4-llvm-before.png",
+      "sampled_colours": 2881,
+      "height": 480,
+      "sha256": "CC6ED942A824731FDBB119ABAF9ED2F1AF1F4A5636A621064D1735AB53E582AA",
+      "width": 640,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "debug",
+    "program_sha256": "337D4D0C3DE033B1CF39D58FF9C383A7761EC1DBFF7CA7C37B563C2AC404CE86",
+    "status": "PASS",
+    "animated": {
+      "image": "desktop-captures/debug-pixels-release-j4-llvm-animated.png",
+      "sampled_colours": 2881,
+      "height": 480,
+      "sha256": "06B09FB6BE613FE470216D99AB827B0D1B9044427B1ABC97E05DA0F2B953E6DC",
+      "width": 640,
+      "method": "PrintWindow client capture"
+    },
+    "target": "release",
+    "observed_utc": "2026-09-22T08:41:03.4301513Z",
+    "visual_review": "Reviewed colourful pixel framebuffer before and after resize; changed animation frame; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "debug-dungeon-debug-j1-c": {
+    "exit_code": 0,
+    "backend": "c",
+    "example": "dungeon",
+    "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+    "jobs": 1,
+    "before_input": {
+      "image": "desktop-captures/debug-dungeon-debug-j1-c-before.png",
+      "sampled_colours": 31,
+      "height": 480,
+      "sha256": "46A66BCABCBE8F8984C1655BF702B5581E0A87079BCC51D11817BA00E563AAD3",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "debug",
+    "program_sha256": "D840F37299438B2757D51564B683D075A9FA28F89919EFF129F0CD02DF8DFFB3",
+    "status": "PASS",
+    "after_input": {
+      "image": "desktop-captures/debug-dungeon-debug-j1-c-regenerated.png",
+      "sampled_colours": 31,
+      "height": 480,
+      "sha256": "CC24905B1E969D0BD610F4C216AB574FF185FCCBE9D388679982CBF379A70FB5",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "target": "debug",
+    "observed_utc": "2026-09-22T08:40:37.1889189Z",
+    "visual_review": "Reviewed drawn rooms/corridors before input and different map after Space; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "release-pixels-debug-j1-c": {
+    "resized": {
+      "image": "desktop-captures/release-pixels-debug-j1-c-resized.png",
+      "sampled_colours": 7885,
+      "height": 720,
+      "sha256": "C3DB3E031FFDE0FD58C213DB086980F5A2338B3F7910A6F51E7AD01634E1B57C",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "exit_code": 0,
+    "backend": "c",
+    "example": "pixels",
+    "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+    "jobs": 1,
+    "before_input": {
+      "image": "desktop-captures/release-pixels-debug-j1-c-before.png",
+      "sampled_colours": 2881,
+      "height": 480,
+      "sha256": "8FDB6F488E12EC17960B924BA3B8C620761F78E442CFCAF4BBC07B736EDCA61A",
+      "width": 640,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "release",
+    "program_sha256": "C56118323CDBAFEBC243AF4663C7A5697F32BA918DD784B5920F5BA4CC22E445",
+    "status": "PASS",
+    "animated": {
+      "image": "desktop-captures/release-pixels-debug-j1-c-animated.png",
+      "sampled_colours": 2881,
+      "height": 480,
+      "sha256": "311536F558F4E7759D065B26F88D07A4DE8B6C0B898AC0A82FCF86D1CB0641C0",
+      "width": 640,
+      "method": "PrintWindow client capture"
+    },
+    "target": "debug",
+    "observed_utc": "2026-09-22T08:41:30.4460787Z",
+    "visual_review": "Reviewed colourful pixel framebuffer before and after resize; changed animation frame; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "release-pixels-debug-j4-c": {
+    "resized": {
+      "image": "desktop-captures/release-pixels-debug-j4-c-resized.png",
+      "sampled_colours": 7879,
+      "height": 720,
+      "sha256": "912E681E8CCF605FFFC374FF7DEA0C8861DD69EF8F833FCB75D48E80A511CD3E",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "exit_code": 0,
+    "backend": "c",
+    "example": "pixels",
+    "compiler_sha256": "91191ead8f123ec14e724fc5eab9b1ba21fdc9415057d8d04618264c5948d7aa",
+    "jobs": 4,
+    "before_input": {
+      "image": "desktop-captures/release-pixels-debug-j4-c-before.png",
+      "sampled_colours": 2881,
+      "height": 480,
+      "sha256": "31095A937A17462F9D952CC2579074813AC1CAD1FDEA1A3B6546F4914623EFC7",
+      "width": 640,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "release",
+    "program_sha256": "2FB802B985DC034547CA1D4F658CD373A054F8DD700F4AF3C75411D20E56D026",
+    "status": "PASS",
+    "animated": {
+      "image": "desktop-captures/release-pixels-debug-j4-c-animated.png",
+      "sampled_colours": 2881,
+      "height": 480,
+      "sha256": "BB448F7C8FCFB0F3E586EB80571A318D1EDFB92034C93D5A3F03CD3A95C5684D",
+      "width": 640,
+      "method": "PrintWindow client capture"
+    },
+    "target": "debug",
+    "observed_utc": "2026-09-22T08:41:34.3160691Z",
+    "visual_review": "Reviewed colourful pixel framebuffer before and after resize; changed animation frame; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  },
+  "debug-dungeon-release-j4-llvm": {
+    "exit_code": 0,
+    "backend": "llvm",
+    "example": "dungeon",
+    "compiler_sha256": "e32607e41096bdbbaddb01fd8d37fa3b782703a6944b39bf73f86d99aafcb65d",
+    "jobs": 4,
+    "before_input": {
+      "image": "desktop-captures/debug-dungeon-release-j4-llvm-before.png",
+      "sampled_colours": 31,
+      "height": 480,
+      "sha256": "A151125FD3516E17DD7905FE5C8999BA80D89FF4F231042A8A469E1D6EA2C19D",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "compiler": "debug",
+    "program_sha256": "BFE41C3B7713FCA64EAF82082C0F7DD96C513257251409A452A97B8FEE33739A",
+    "status": "PASS",
+    "after_input": {
+      "image": "desktop-captures/debug-dungeon-release-j4-llvm-regenerated.png",
+      "sampled_colours": 31,
+      "height": 480,
+      "sha256": "35C258AF98A4F7346D0FD6B635255D42595C8C6895178341A98206071F096F47",
+      "width": 960,
+      "method": "PrintWindow client capture"
+    },
+    "target": "release",
+    "observed_utc": "2026-09-22T08:40:48.3915439Z",
+    "visual_review": "Reviewed drawn rooms/corridors before input and different map after Space; Q exit zero.",
+    "reviewer": "Codex native client screenshot review"
+  }
+}
