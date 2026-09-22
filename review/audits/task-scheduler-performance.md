@@ -322,3 +322,24 @@ The [M1 evidence](../measurements/compiler-m1.md) revises the initial hypotheses
 usage-context inference, name-conflict scans and source-line lookup are measured
 hotspots. Batch dispatch delay now includes startup and waiting behind earlier
 tasks; isolated queue-mutex waiting is not yet measured.
+
+## Adaptive performance default — follow-up plan (2026-09-22)
+
+The requested destination is automatic performance-oriented scheduling, with
+half the available logical CPUs as a concurrency ceiling. A ceiling is not a
+requirement to start that many workers. Explicit `--jobs N`, especially 1,
+remains an override. Normal compilation continues to use LLVM tooling directly.
+
+| Milestone | Work | Completion gate |
+| --- | --- | --- |
+| M9 — automatic worker ceiling (next) | Portable CPU discovery; `max(1, floor(available logical CPUs / 2))`, capped at 256; opt-in `--jobs auto`; preserve numeric overrides | Arithmetic boundaries, CPU-affinity constraints, output/runtime parity, error handling; record native-platform limitations |
+| M10 — adaptive task dispatch | Estimate parse work from source bytes and render/HIR work from IR size; stay inline for small batches; cap by independent work; measure worker reuse across phases | Measured crossover points and policies on tiny/real/wide/deep inputs; stable diagnostics, failure cleanup and output; no guessed universal size cutoff |
+| M11 — validate and enable the default | Compare automatic policy to jobs 1/2/4/8/16 on Linux and Windows; measure total CPU, latency and memory; switch omitted jobs to automatic only after acceptance | No material small-build regression (target <=5% outside noise), representative gains (existing 15% adoption target), bounded memory, deterministic output/runtime parity and native checks |
+| M12 — semantic parallelism (separate experiment) | Immutable shared declarations/types; task-owned specialization requests; deterministic deduplication/publication and diagnostics | Ownership design first, generic/trait stress and sanitizers, source-to-IR gains plus whole-build benefit before adoption |
+
+Execute M9, M10 and M11 as the bounded default-policy experiment. M12 is not a
+prerequisite: do not relax shared-core ownership to obtain concurrency. Until
+M11 passes, omitted `--jobs` remains one; `--jobs auto` exposes the ceiling for
+measurement and is not yet adaptive dispatch. M6 parallel C emission remains
+deferred. CPU quotas and native affinity limitations must be stated explicitly;
+CPU count is not a memory budget. Reuse the Windows handoff for native checks.
