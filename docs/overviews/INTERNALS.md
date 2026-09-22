@@ -859,3 +859,26 @@ crossover claims or a memory budget. `NERD_PROFILE=1` reports
 Front-end decisions are buffered with phase results so a discarded speculative
 load does not leak profile records. Workers still join before publication;
 there is no persistent pool. Omitted jobs remains one pending the adoption gate.
+
+### Dependency task pool (G1)
+
+`core/task_graph.c` adds `TaskPool`, independently of the existing batch runner.
+One coordinator creates the pool, submits frozen graphs and destroys it after
+all runs return. Nodes carry callback/context/index values; edges identify
+prerequisites. Kahn validation rejects invalid/cyclic graphs before callbacks.
+Per-worker intrusive deques hold ready node indices: owners pop the newest item,
+thieves take the oldest. A mutex protects queues, dependency counts and completion
+publication; callbacks run outside it. The caller is worker zero, within the
+requested job count. Native workers persist across runs and sleep on a condition
+variable. A generation acknowledgement from every worker prevents a completed
+graph's storage being freed before late-starting workers observe it.
+
+Failure stops new dispatch and drains callbacks before returning; a fresh graph
+can reuse the pool. Partially created pools run no callbacks and join all started
+threads. Graph descriptors/context are borrowed until return. Callbacks cannot
+wait for queued work, recursively submit work to the same pool, or destroy it.
+The initial implementation uses checked calloc/free for scheduler infrastructure;
+these allocations appear in OS process memory, not Nerd's tracked arena counters.
+Graph storage is O(nodes + edges); the pool is bounded by TASK_MAX_JOBS. This is
+the G1 foundation in `review/audits/compiler-task-graph.md`, not yet a dynamic
+compiler graph. Existing compilation still uses the original batch scheduler.

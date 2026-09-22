@@ -54,4 +54,7 @@ and native handoff evidence so future decisions are reproducible.
 
 ## Progress
 
-- Plan recorded; G1 implementation begins next. Later milestones remain open.
+- G1 implemented: persistent pool, dependency validation and ready-queue stealing.
+  Linux debug/release, injected partial startup failure, ASan and TSan pass.
+  A forced fan-out test requires stealing to make progress. Native checks pending.
+- G2 begins next; G3–G6 remain open.

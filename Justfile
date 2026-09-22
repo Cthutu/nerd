@@ -32,6 +32,7 @@ test *args:
     python3 build/test_clean.py
     python3 build/test_memory.py
     python3 build/test_threads.py
+    python3 build/test_task_graph.py
     just build nerd --skip-mod-sync
     python3 build/test.py {{args}}
     python3 build/test_profile.py --nerd _bin/nerd-debug{{exe_suffix}}
