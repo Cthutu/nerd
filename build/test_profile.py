@@ -22,7 +22,8 @@ def main():
         source = work / 'main.n'
         source.write_text('dep :: use dep\nmain :: fn () -> i32 { return dep.value() }\n')
         (work / 'dep.n').write_text('pub value :: fn () -> i32 { return 0 }\n')
-        env = dict(os.environ, NERD_LIB_PATH=str(ROOT / 'mods'))
+        # Keep full diagnostic paths intact even under long Windows temp roots.
+        env = dict(os.environ, NERD_LIB_PATH=str(ROOT / 'mods'), COLUMNS='32768')
 
         def run(profile, *args, success=True):
             result = subprocess.run([str(nerd), *map(str, args)], cwd=work,
@@ -97,7 +98,7 @@ def main():
         blocked_sidecar.mkdir()
         failure, failed_render = run('1', 'build', '--llvm', source,
                                      '-o', blocked_binary, success=False)
-        assert str(blocked_sidecar) in failure.stderr
+        assert str(blocked_sidecar) in failure.stderr, failure.stderr
         assert 'internal compiler error' not in failure.stderr
         assert sum(r.get('phase') == 'render module LLVM' for r in failed_render) == 2
         assert not any(r.get('stage') == 'tool' for r in failed_render)

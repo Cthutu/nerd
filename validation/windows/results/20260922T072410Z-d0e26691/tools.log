@@ -1,0 +1,85 @@
+
+clang: C:\Users\matt\nerd\_tmp\llvm-tools\clang+llvm-22.1.8-x86_64-pc-windows-msvc\bin\clang.EXE
+clang version 22.1.8 (https://github.com/llvm/llvm-project ca7933e47d3a3451d81e72ac174dcb5aa28b59d1)
+Target: x86_64-pc-windows-msvc
+Thread model: posix
+InstalledDir: C:\Users\matt\nerd\_tmp\llvm-tools\clang+llvm-22.1.8-x86_64-pc-windows-msvc\bin
+
+exit=0
+
+opt: C:\Users\matt\nerd\_tmp\llvm-tools\clang+llvm-22.1.8-x86_64-pc-windows-msvc\bin\opt.EXE
+LLVM (http://llvm.org/):
+  LLVM version 22.1.8
+  Optimized build.
+  Default target: x86_64-pc-windows-msvc
+  Host CPU: znver3
+
+exit=0
+
+llc: C:\Users\matt\nerd\_tmp\llvm-tools\clang+llvm-22.1.8-x86_64-pc-windows-msvc\bin\llc.EXE
+LLVM (http://llvm.org/):
+  LLVM version 22.1.8
+  Optimized build.
+  Default target: x86_64-pc-windows-msvc
+  Host CPU: znver3
+
+  Registered Targets:
+    aarch64    - AArch64 (little endian)
+    aarch64_32 - AArch64 (little endian ILP32)
+    aarch64_be - AArch64 (big endian)
+    arm        - ARM
+    arm64      - ARM64 (little endian)
+    arm64_32   - ARM64 (little endian ILP32)
+    armeb      - ARM (big endian)
+    bpf        - BPF (host endian)
+    bpfeb      - BPF (big endian)
+    bpfel      - BPF (little endian)
+    nvptx      - NVIDIA PTX 32-bit
+    nvptx64    - NVIDIA PTX 64-bit
+    riscv32    - 32-bit RISC-V
+    riscv32be  - 32-bit big endian RISC-V
+    riscv64    - 64-bit RISC-V
+    riscv64be  - 64-bit big endian RISC-V
+    thumb      - Thumb
+    thumbeb    - Thumb (big endian)
+    wasm32     - WebAssembly 32-bit
+    wasm64     - WebAssembly 64-bit
+    x86        - 32-bit X86: Pentium-Pro and above
+    x86-64     - 64-bit X86: EM64T and AMD64
+
+exit=0
+
+llvm-lib: C:\Users\matt\nerd\_tmp\llvm-tools\clang+llvm-22.1.8-x86_64-pc-windows-msvc\bin\llvm-lib.EXE
+ignoring unknown argument: --version
+warning: no input files, not writing output file
+         pass /llvmlibempty to write empty .lib file,
+         pass /ignore:emptyoutput to suppress warning
+
+exit=0
+
+lld-link: C:\Users\matt\nerd\_tmp\llvm-tools\clang+llvm-22.1.8-x86_64-pc-windows-msvc\bin\lld-link.EXE
+LLD 22.1.8 (https://github.com/llvm/llvm-project ca7933e47d3a3451d81e72ac174dcb5aa28b59d1)
+
+exit=0
+
+lldb: C:\Users\matt\scoop\apps\llvm\current\bin\lldb.EXE
+lldb version 23.1.0 (https://github.com/llvm/llvm-project revision ea7d852a70e8bdfaf601d6626a760f9771b2c4b4)
+  clang revision ea7d852a70e8bdfaf601d6626a760f9771b2c4b4
+  llvm revision ea7d852a70e8bdfaf601d6626a760f9771b2c4b4
+
+exit=0
+
+just: C:\Users\matt\.cargo\bin\just.EXE
+just 1.48.0
+
+exit=0
+
+git: C:\Apps\Git\cmd\git.EXE
+git version 2.51.1.windows.1
+
+exit=0
+
+uv: C:\Users\matt\.local\bin\uv.EXE
+uv 0.11.1 (a6042f67f 2026-03-24 x86_64-pc-windows-msvc)
+
+exit=0

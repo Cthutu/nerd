@@ -21,6 +21,19 @@ def main():
         tools = ['opt', 'llc', 'llvm-lib' if os.name == 'nt' else 'llvm-ar',
                  'lld-link' if os.name == 'nt' else
                  'ld64.lld' if sys.platform == 'darwin' else 'ld.lld']
+        if os.name == 'nt':
+            # No Clang/CL on the native build PATH. Hard links avoid copying a
+            # full LLVM distribution and require no symlink privilege.
+            bindir = work / 'tools'
+            bindir.mkdir()
+            for name in tools:
+                resolved = shutil.which(name)
+                assert resolved, f'Missing required test dependency: {name}'
+                try:
+                    os.link(resolved, bindir / (name + '.exe'))
+                except OSError:
+                    shutil.copy2(resolved, bindir / (name + '.exe'))
+            env['PATH'] = str(bindir)
         if os.name != 'nt':
             # Only LLVM tools are reachable. A trap additionally proves that a
             # hidden C compiler fallback cannot silently pass the smoke tests.
@@ -78,6 +91,52 @@ def main():
         assert not list(work.glob('*.obj.o'))
         assert not list(work.glob('*.opt.bc'))
         assert not list(work.glob('nerd-doctor-*'))
+
+        # The host wrapper must call the exact Nerd return type before converting
+        # to a process status. POSIX truncation hides dirty upper bits on narrow
+        # returns, so assert the full DWORD status on Windows.
+        for kind, value in [('i8', -7), ('u8', 232), ('i16', -300),
+                            ('u16', 60000), ('i64', -4294967303), ('u64', 4294967528)]:
+            expected = value & (0xffffffff if os.name == 'nt' else 0xff)
+            for parameters in ['', 'args: []string']:
+                body = ('assert args.count >= 1\n' if parameters else '') + f'return {value}.as({kind})'
+                for windowed in ([False, True] if os.name == 'nt' and not parameters else [False]):
+                    source.write_text(('pragma windowed\n' if windowed else '') +
+                                      f'main :: fn ({parameters}) {{ {body} }}\n')
+                    for release in [[], ['-r']]:
+                        run('build', *release, '--jobs', 4 if parameters else 1, source, '-o', executable)
+                        result = subprocess.run([str(executable)], env=env, capture_output=True)
+                        assert result.returncode == expected, (kind, parameters, windowed, release, result.returncode, expected, result.stderr)
+        print('[PASS] entry-point integer widths, signedness, arguments and target modes')
+        source.write_text('main :: fn () -> i32 { return 0 }\n')
+
+        if os.name == 'nt':
+            for missing in tools:
+                original = bindir / (missing + '.exe')
+                hidden = original.with_suffix('.disabled')
+                original.rename(hidden)
+                try:
+                    assert f'[ERROR] {missing}' in run('doctor', success=False)
+                finally:
+                    hidden.rename(original)
+            previous_lib = env.get('LIB')
+            env['LIB'] = str(work / 'absent-sdk')
+            assert '[ERROR]' in run('doctor', success=False)
+            if previous_lib is None:
+                del env['LIB']
+            else:
+                env['LIB'] = previous_lib
+            empty = work / 'empty'
+            empty.mkdir()
+            env['PATH'] = str(empty)
+            failure = run('doctor', success=False)
+            assert all(f'[ERROR] {name}' in failure for name in tools), failure
+            failure = run('build', source, '-o', work / 'missing-tool', success=False)
+            assert 'LLVM tool failed' in failure and 'llc' in failure
+            assert 'internal compiler error' not in failure
+            run('check', source)
+            run('build', '--cgen', source, '-o', work / 'compatible.c')
+            assert (work / 'compatible.c').exists()
 
         if os.name != 'nt':
             for missing in tools:

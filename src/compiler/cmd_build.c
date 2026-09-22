@@ -67,7 +67,7 @@ compiler_cmd_build_artifacts(Arena* arena, const NerdBuildConfig* config)
     }
     if (config->emit_c) {
         artifacts.binary_path =
-            path_replace_extension(arena, artifacts.binary_path, ".c");
+            path_replace_extension(arena, output_root, ".c");
     }
     artifacts.emit_c_file     = config->emit_c;
     artifacts.print_c_options = config->print_c_options;

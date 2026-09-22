@@ -14,6 +14,8 @@
 typedef struct {
     bool returns_void;
     bool takes_args;
+    u32  return_bits;
+    bool return_signed;
 } BackEndRootMainInfo;
 
 typedef struct {

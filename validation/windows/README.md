@@ -48,6 +48,22 @@ memory adoption gate passed. Native memory observations and physical-core-count
 runs can be collected separately, recording the method and hardware. Do not run
 benchmarks alongside builds/tests. Keep the one-job default pending evidence.
 
+For repeatable desktop evidence, prepare the matrix after building both compilers
+and before benchmarks, then observe it from an interactive Windows terminal:
+
+```powershell
+python validation/windows/manual.py validation/windows/results/<run> --prepare
+python validation/windows/manual.py validation/windows/results/<run> --observe
+```
+
+The helper covers both compilers, debug/release targets, jobs 1/4 and LLVM/C
+backends for Pixels, Dungeon and Triangle. Each launch requires a human
+PASS/FAIL/BLOCKED observation; evidence is saved incrementally to `desktop.json`.
+Use `--compiler release` or `--example pixels` to observe smaller groups.
+VS Code breakpoints, stepping, locals and call stacks still require the separate
+editor check in `MANUAL.md`. Windows installation smoke additionally requires
+`llvm-dwarfdump` from the full LLVM distribution to inspect embedded DWARF.
+
 To verify this harness itself (does not validate Windows compiler behavior):
 
 ```powershell

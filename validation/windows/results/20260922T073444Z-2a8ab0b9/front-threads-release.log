@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "C:\Users\matt\nerd\build\test_front_threads.py", line 183, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\matt\nerd\build\test_front_threads.py", line 122, in main
+    assert actual[:5] == reference[:5], (source, flags, jobs, actual[2])
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: (WindowsPath('C:/Users/matt/nerd/validation/windows/results/20260922T073444Z-2a8ab0b9/scratch/nerd-front-threads-n8eedoyw/diamond-generic-ffi/main.n'), ('--cgen',), 2, '\x1b[1;31mruntime-error:\x1b[0m Failed to open C output:\n               C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T073444Z-2a\n               8ab0b9\\scratch\\nerd-front-threads-n8eedoyw\\program.c')

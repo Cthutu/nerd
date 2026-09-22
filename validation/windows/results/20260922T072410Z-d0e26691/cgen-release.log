@@ -1,0 +1,369 @@
+[PASS] C: 001-number.t (-O0, -O2)
+[PASS] C: 002-add-2-numbers.t (-O0, -O2)
+[PASS] C: 003-precedence.t (-O0, -O2)
+[PASS] C: 004-unary-and-grouping.t (-O0, -O2)
+[PASS] C: 005-muldivmod-assoc.t (-O0, -O2)
+[PASS] C: 006-global-vars.t (-O0, -O2)
+[PASS] C: 007-forward-refs.t (-O0, -O2)
+[PASS] C: 008-folded-bind-chain.t (-O0, -O2)
+[PASS] C: 009-folded-const-tree.t (-O0, -O2)
+[PASS] C: 010-hello-world.t (-O0, -O2)
+[PASS] C: 011-adjacent-strings.t (-O0, -O2)
+[PASS] C: 012-block-return.t (-O0, -O2)
+[PASS] C: 013-typed-binding.t (-O0, -O2)
+[PASS] C: 014-annotated-function-type.t (-O0, -O2)
+[PASS] C: 015-variables.t (-O0, -O2)
+[FAIL] 016-type-alias-and-cast.t: 016-type-alias-and-cast.t -O0: C and LLVM behaviour differs
+C: (232, b'', b'')
+LLVM: (177865704, b'', b'')
+[PASS] C: 017-function-type-alias.t (-O0, -O2)
+[PASS] C: 018-primitive-variables.t (-O0, -O2)
+[PASS] C: 019-interpolated-strings.t (-O0, -O2)
+[PASS] C: 020-nested-blocks.t (-O0, -O2)
+[PASS] C: 021-function-parameters.t (-O0, -O2)
+[PASS] C: 022-void-main.t (-O0, -O2)
+[PASS] C: 023-function-values.t (-O0, -O2)
+[PASS] C: 024-nested-functions.t (-O0, -O2)
+[PASS] C: 025-block-forward-function.t (-O0, -O2)
+[PASS] C: 026-local-function-forward-ref.t (-O0, -O2)
+[PASS] C: 027-on-bool.t (-O0, -O2)
+[PASS] C: 028-on-value-branches.t (-O0, -O2)
+[PASS] C: 029-on-comma-patterns.t (-O0, -O2)
+[PASS] C: 030-on-ranges.t (-O0, -O2)
+[PASS] C: 031-primitive-operators.t (-O0, -O2)
+[PASS] C: 032-unannotated-float-literal.t (-O0, -O2)
+[PASS] C: 033-binding-expression-starts.t (-O0, -O2)
+[PASS] C: 034-local-const-interpolation.t (-O0, -O2)
+[PASS] C: 035-on-pattern-binders.t (-O0, -O2)
+[PASS] C: 036-on-untyped-local.t (-O0, -O2)
+[PASS] C: 037-on-statement-partial.t (-O0, -O2)
+[PASS] C: 038-for-infinite.t (-O0, -O2)
+[PASS] C: 039-5-prints.t (-O0, -O2)
+[PASS] C: 040-compound-assignments.t (-O0, -O2)
+[PASS] C: 041-for-while.t (-O0, -O2)
+[PASS] C: 042-for-c-style.t (-O0, -O2)
+[PASS] C: 043-for-c-style-empty-init.t (-O0, -O2)
+[PASS] C: 044-for-break-again.t (-O0, -O2)
+[PASS] C: 045-expression-block.t (-O0, -O2)
+[PASS] C: 046-on-string-patterns.t (-O0, -O2)
+[PASS] C: 047-expression-block-bindings.t (-O0, -O2)
+[PASS] C: 048-labelled-expression-block.t (-O0, -O2)
+[PASS] C: 049-labelled-loop-expressions.t (-O0, -O2)
+[PASS] C: 050-for-else.t (-O0, -O2)
+[PASS] C: 051-tuples.t (-O0, -O2)
+[PASS] C: 052-fixed-arrays.t (-O0, -O2)
+[PASS] C: 053-pointers.t (-O0, -O2)
+[PASS] C: 054-slices.t (-O0, -O2)
+[PASS] C: 055-string-slices.t (-O0, -O2)
+[PASS] C: 056-plexes.t (-O0, -O2)
+[PASS] C: 057-plex-newline-fields.t (-O0, -O2)
+[PASS] C: 058-plex-ergonomics.t (-O0, -O2)
+[PASS] C: 059-destructuring-bindings.t (-O0, -O2)
+[PASS] C: 060-on-pattern-guards.t (-O0, -O2)
+[PASS] C: 061-on-structural-patterns.t (-O0, -O2)
+[PASS] C: 062-raw-unions.t (-O0, -O2)
+[PASS] C: 063-enum-unit-variants.t (-O0, -O2)
+[PASS] C: 064-on-in-interpolated-string.t (-O0, -O2)
+[PASS] C: 065-enum-payloads.t (-O0, -O2)
+[PASS] C: 066-generalised-on.t (-O0, -O2)
+[PASS] C: 067-ffi-functions.t (-O0, -O2)
+[PASS] C: 068-std-print-module.t (-O0, -O2)
+[FAIL] 069-ffi-varargs.t: C:\Users\matt\nerd\_bin\nerd.exe build -o C:\Users\matt\nerd\_tmp\cgen-ng276aln\069-ffi-varargs\program.exe C:\Users\matt\nerd\_tmp\cgen-ng276aln\069-ffi-varargs\069-ffi-varargs.n
+[1;31mruntime-error:[0m LLVM linker reported an undefined symbol (exit code 1)
+               Symbol: fcntl
+               Referenced by:
+               
+Generated LLVM: C:\Users\matt\nerd\_tmp\cgen-ng276aln\069-ffi-va
+               rargs\program.exe.link.ll
+               Runtime object:
+               C:\Users\matt\nerd\_tmp\cgen-ng276aln\069-ffi-varargs\program.exe
+               .nrt.o
+               Command: lld-link /nologo
+               /out:"C:\Users\matt\nerd\_tmp\cgen-ng276aln\069-ffi-varargs\progr
+               am.exe"  /debug:dwarf /subsystem:console
+               "C:\Users\matt\nerd\_tmp\cgen-ng276aln\069-ffi-varargs\program.ex
+               e.obj.o"
+               "C:\Users\matt\nerd\_tmp\cgen-ng276aln\069-ffi-varargs\program.ex
+               e.nrt.o" /defaultlib:libcmt /defaultlib:libvcruntime
+               /defaultlib:libucrt /defaultlib:oldnames /defaultlib:kernel32
+               "kernel32.lib" "synchronization.lib" "user32.lib" "gdi32.lib"
+               "opengl32.lib"
+
+[PASS] C: 070-ffi-library-linking.t (-O0, -O2)
+[PASS] C: 071-use-modules.t (-O0, -O2)
+[PASS] C: 072-top-level-on.t (-O0, -O2)
+[PASS] C: 073-module-pub-reexport.t (-O0, -O2)
+[PASS] C: 074-qualified-enum-patterns.t (-O0, -O2)
+[PASS] C: 075-packed-integer-literals.t (-O0, -O2)
+[PASS] C: 076-for-in-and-deref.t (-O0, -O2)
+[PASS] C: 077-enum-discriminants.t (-O0, -O2)
+[PASS] C: 078-deref-lvalue.t (-O0, -O2)
+[PASS] C: 079-contextual-plex-and-slice.t (-O0, -O2)
+[PASS] C: 080-dynamic-slice-bounds.t (-O0, -O2)
+[PASS] C: 081-nested-array-literals.t (-O0, -O2)
+[PASS] C: 082-assignment-expressions.t (-O0, -O2)
+[PASS] C: 083-explicit-return-enum-context.t (-O0, -O2)
+[PASS] C: 084-nested-local-fn-in-block-body.t (-O0, -O2)
+[PASS] C: 085-undefined.t (-O0, -O2)
+[PASS] C: 086-c-strings-and-escapes.t (-O0, -O2)
+[PASS] C: 087-grouped-use.t (-O0, -O2)
+[PASS] C: 088-ffi-consolidation.t (-O0, -O2)
+[PASS] C: 089-field-lvalues.t (-O0, -O2)
+[PASS] C: 090-nil-pointers.t (-O0, -O2)
+[PASS] C: 091-imported-plex-field-interpolation.t (-O0, -O2)
+[PASS] C: 093-slice-casts-and-nil.t (-O0, -O2)
+[PASS] C: 094-ffi-wrapper-bindings.t (-O0, -O2)
+[PASS] C: 095-void-pointer-compat.t (-O0, -O2)
+[PASS] C: 096-nil-slice-equality.t (-O0, -O2)
+[PASS] C: 097-return-nil-slice.t (-O0, -O2)
+[PASS] C: 098-on-branch-loop-control.t (-O0, -O2)
+[PASS] C: 099-dynamic-arrays.t (-O0, -O2)
+[PASS] C: 100-on-short-block-expr.t (-O0, -O2)
+[PASS] C: 101-dynarray-typed-locals.t (-O0, -O2)
+[PASS] C: 102-io-input-lines.t (-O0, -O2)
+[PASS] C: 103-defer.t (-O0, -O2)
+[PASS] C: 104-location-macros.t (-O0, -O2)
+[PASS] C: 104-public-type-alias-binding.t (-O0, -O2)
+[PASS] C: 105-float-integer-casts.t (-O0, -O2)
+[PASS] C: 106-prefixed-integer-literals.t (-O0, -O2)
+[PASS] C: 107-assert-statements.t (-O0, -O2)
+[PASS] C: 108-size-operator.t (-O0, -O2)
+[PASS] C: 109-definite-assignment.t (-O0, -O2)
+[PASS] C: 110-unused-underscore.t (-O0, -O2)
+[PASS] C: 111-assert-failure-exit.t (-O0, -O2)
+[PASS] C: 112-integer-separators.t (-O0, -O2)
+[PASS] C: 113-ffi-blocks.t (-O0, -O2)
+[PASS] C: 114-shift-operators.t (-O0, -O2)
+[PASS] C: 115-float-separators.t (-O0, -O2)
+[PASS] C: 116-indexed-for-in.t (-O0, -O2)
+[PASS] C: 117-interpolated-for-field.t (-O0, -O2)
+[PASS] C: 118-nested-on-branch.t (-O0, -O2)
+[PASS] C: 119-slice-element-pointers.t (-O0, -O2)
+[PASS] C: 120-plex-literal-default-missing.t (-O0, -O2)
+[PASS] C: 121-self-referential-slice-literal.t (-O0, -O2)
+[PASS] C: 122-pointer-alias-cycle.t (-O0, -O2)
+[PASS] C: 123-mutual-pointer-plex-types.t (-O0, -O2)
+[PASS] C: 124-fixed-array-pointer-cycles.t (-O0, -O2)
+[PASS] C: 125-top-level-interpolated-strings.t (-O0, -O2)
+[PASS] C: 126-default-parameters.t (-O0, -O2)
+[PASS] C: 127-generic-types.t (-O0, -O2)
+[PASS] C: 128-generic-functions.t (-O0, -O2)
+[PASS] C: 129-cross-module-generics.t (-O0, -O2)
+[PASS] C: 130-inherent-impl-methods.t (-O0, -O2)
+[PASS] C: 131-module-folder-imports.t (-O0, -O2)
+[PASS] C: 132-public-use-reexports.t (-O0, -O2)
+[PASS] C: 133-std-io-error-output.t (-O0, -O2)
+[PASS] C: 134-platform-on-use.t (-O0, -O2)
+[PASS] C: 135-module-parts.t (-O0, -O2)
+[PASS] C: 136-interpolated-assert-messages.t (-O0, -O2)
+[PASS] C: 137-plex-field-shorthand.t (-O0, -O2)
+[PASS] C: 138-named-call-arguments.t (-O0, -O2)
+[PASS] C: 139-size-field-name.t (-O0, -O2)
+[PASS] C: 140-term-window-api.t (-O0, -O2)
+[PASS] C: 141-method-regressions.t (-O0, -O2)
+[PASS] C: 142-associated-functions-and-type-aliases.t (-O0, -O2)
+[PASS] C: 142-lvalue-and-plex-regressions.t (-O0, -O2)
+[PASS] C: 143-dynarray-runtime-capacity-and-resize.t (-O0, -O2)
+[PASS] C: 143-enum-call-context.t (-O0, -O2)
+[PASS] C: 144-local-type-declarations.t (-O0, -O2)
+[PASS] C: 144-pointer-equality-and-nil-on.t (-O0, -O2)
+[PASS] C: 145-module-symbol-namespaces.t (-O0, -O2)
+[PASS] C: 145-public-mutable-globals.t (-O0, -O2)
+[PASS] C: 146-ffi-block-forward-use.t (-O0, -O2)
+[PASS] C: 147-qualified-module-types.t (-O0, -O2)
+[PASS] C: 148-untyped-integer-pointer-casts.t (-O0, -O2)
+[PASS] C: 149-imported-ffi-functions.t (-O0, -O2)
+[PASS] C: 150-qualified-plex-literal.t (-O0, -O2)
+[PASS] C: 151-typed-plex-patterns.t (-O0, -O2)
+[PASS] C: 152-on-break-for-expression.t (-O0, -O2)
+[PASS] C: 153-break-on.t (-O0, -O2)
+[PASS] C: 153-unsigned-byte-comparisons.t (-O0, -O2)
+[PASS] C: 154-string-continuations.t (-O0, -O2)
+[PASS] C: 155-plex-literal-default-missing.t (-O0, -O2)
+[PASS] C: 157-for-in-ranges.t (-O0, -O2)
+[PASS] C: 158-local-const-typed-plex-ellipsis.t (-O0, -O2)
+[PASS] C: 159-return-context-local-inference.t (-O0, -O2)
+[PASS] C: 160-underscore-unused-assignment.t (-O0, -O2)
+[PASS] C: 161-trait-declaration.t (-O0, -O2)
+[PASS] C: 162-trait-impl.t (-O0, -O2)
+[PASS] C: 163-std-traits.t (-O0, -O2)
+[PASS] C: 164-trait-primitive-impl.t (-O0, -O2)
+[PASS] C: 165-trait-resolution.t (-O0, -O2)
+[PASS] C: 166-trait-self-alias.t (-O0, -O2)
+[PASS] C: 167-explicit-trait-call.t (-O0, -O2)
+[PASS] C: 168-explicit-trait-impl-call.t (-O0, -O2)
+[PASS] C: 169-generic-trait-declaration.t (-O0, -O2)
+[PASS] C: 170-where-constraints.t (-O0, -O2)
+[PASS] C: 171-generic-trait-impl.t (-O0, -O2)
+[PASS] C: 172-display-interpolation.t (-O0, -O2)
+[PASS] C: 173-core-option-result.t (-O0, -O2)
+[PASS] C: 174-eq-operator-trait.t (-O0, -O2)
+[PASS] C: 175-default-typed-binding.t (-O0, -O2)
+[PASS] C: 176-default-zero-init-fallback.t (-O0, -O2)
+[PASS] C: 177-default-undefined-opt-out.t (-O0, -O2)
+[PASS] C: 178-order-operator-trait.t (-O0, -O2)
+[PASS] C: 179-iterator-for-in.t (-O0, -O2)
+[PASS] C: 180-void-function-type-shorthand.t (-O0, -O2)
+[PASS] C: 181-bare-use-imported-types.t (-O0, -O2)
+[PASS] C: 181-default-location-macros.t (-O0, -O2)
+[PASS] C: 182-for-in-postfix-deref-body.t (-O0, -O2)
+[PASS] C: 183-for-in-fixed-array.t (-O0, -O2)
+[PASS] C: 183-implicit-array-slices.t (-O0, -O2)
+[PASS] C: 183-pattern-binds-and-for-values.t (-O0, -O2)
+[PASS] C: 184-on-postfix-deref-scrutinee.t (-O0, -O2)
+[PASS] C: 185-unused-method-receiver.t (-O0, -O2)
+[PASS] C: 186-unqualified-enum-comma-patterns.t (-O0, -O2)
+[PASS] C: 187-associated-function-return-containing-self.t (-O0, -O2)
+[PASS] C: 188-imported-associated-call-target.t (-O0, -O2)
+[PASS] C: 189-generic-enum-impl-methods.t (-O0, -O2)
+[PASS] C: 190-generic-implicit-array-slice.t (-O0, -O2)
+[PASS] C: 190-optional-result-types.t (-O0, -O2)
+[PASS] C: 191-compound-functions.t (-O0, -O2)
+[PASS] C: 192-explicit-generic-impls.t (-O0, -O2)
+[PASS] C: 196-plex-use.t (-O0, -O2)
+[PASS] C: 197-single-branch-extract-binder-method.t (-O0, -O2)
+[PASS] C: 198-loop-dynamic-array-count.t (-O0, -O2)
+[PASS] C: 199-pointer-ordering.t (-O0, -O2)
+[PASS] C: 310-run-return-after-iteration.cmd (-O0, -O2)
+[PASS] C: 309-run-on-implicit-binder-mutation.cmd (-O0, -O2)
+[PASS] C: 210-run-fixed-array-implicit-slice.cmd (-O0, -O2)
+[PASS] C: 211-run-implicit-integer-comparison-width.cmd (-O0, -O2)
+[PASS] C: 212-run-large-array-field-index.cmd (-O0, -O2)
+[PASS] C: 213-run-llvm-function-field-call.cmd (-O0, -O2)
+[PASS] C: 214-run-counted-box-allocation.cmd (-O0, -O2)
+[PASS] C: 215-run-box-field-return-ownership.cmd (-O0, -O2)
+[PASS] C: 217-run-enum-braced-payload-aliased-binders.cmd (-O0, -O2)
+[PASS] C: 217-run-string-bytes.cmd (-O0, -O2)
+[PASS] C: 218-run-core-abort.cmd (-O0, -O2)
+[PASS] C: 220-run-byte-arrays-to-string.cmd (-O0, -O2)
+[PASS] C: 221-run-on-expression-return-option-variant.cmd (-O0, -O2)
+[PASS] C: 222-run-on-expression-assignment-binder-read.cmd (-O0, -O2)
+[PASS] C: 223-run-never-on-expression.cmd (-O0, -O2)
+[PASS] C: 227-run-on-expression-block-break-option.cmd (-O0, -O2)
+[PASS] C: 228-run-core-option-expect.cmd (-O0, -O2)
+[PASS] C: 229-run-core-option-expect-abort.cmd (-O0, -O2)
+[PASS] C: 231-run-on-pattern-same-name-different-payload.cmd (-O0, -O2)
+[PASS] C: 232-run-on-pattern-binder-read-in-condition.cmd (-O0, -O2)
+[PASS] C: 233-run-generic-on-pattern-binder-read-in-condition.cmd (-O0, -O2)
+[PASS] C: 234-run-on-expression-branch-binder-result.cmd (-O0, -O2)
+[PASS] C: 235-run-pointer-dynarray-count-logical.cmd (-O0, -O2)
+[PASS] C: 238-run-dynarray-result-pattern.cmd (-O0, -O2)
+[PASS] C: 242-run-atomic-operators.cmd (-O0, -O2)
+[PASS] C: 243-run-compile-time-parameter.cmd (-O0, -O2)
+[PASS] C: 244-run-compound-functions.cmd (-O0, -O2)
+[PASS] C: 251-run-atomic-method-name-is-not-intrinsic.cmd (-O0, -O2)
+[PASS] C: 252-run-nested-partial-on-statement.cmd (-O0, -O2)
+[PASS] C: 254-run-core-done-reports-leaks.cmd (-O0, -O2)
+[PASS] C: 255-run-llvm-on-value-intermediate-expressions.cmd (-O0, -O2)
+[PASS] C: 258-run-dynamic-array-leak-location.cmd (-O0, -O2)
+[PASS] C: 259-run-lazy-arena-leak-location.cmd (-O0, -O2)
+[PASS] C: 260-run-direct-recursive-function.cmd (-O0, -O2)
+[PASS] C: 261-run-typed-plex-shorthand-before-ellipsis.cmd (-O0, -O2)
+[PASS] C: 262-run-addressed-local-in-skipped-on.cmd (-O0, -O2)
+[PASS] C: 265-run-byte-slice-equality.cmd (-O0, -O2)
+[PASS] C: 266-run-mutable-slice-literal.cmd (-O0, -O2)
+[PASS] C: 267-run-fixed-array-equality.cmd (-O0, -O2)
+[PASS] C: 270-run-condition-on-in-expression-block.cmd (-O0, -O2)
+[PASS] C: 271-run-void-result-success.cmd (-O0, -O2)
+[PASS] C: 272-run-core-arena-pr.cmd (-O0, -O2)
+[PASS] C: 272-run-negate-optional-result.cmd (-O0, -O2)
+[PASS] C: 274-run-assignment-context-local-inference.cmd (-O0, -O2)
+[PASS] C: 275-run-imported-default-arena.cmd (-O0, -O2)
+[PASS] C: 275-run-range-item-used-in-nested-local.cmd (-O0, -O2)
+[PASS] C: 276-run-propagate-call-once.cmd (-O0, -O2)
+[PASS] C: 277-run-unused-default-once.cmd (-O0, -O2)
+[PASS] C: 278-run-implicit-on-result-binders.cmd (-O0, -O2)
+[PASS] C: 281-run-plex-bit-fields.cmd (-O0, -O2)
+[PASS] C: 282-run-range-membership.cmd (-O0, -O2)
+[PASS] C: 283-run-compound-assignment-inference.cmd (-O0, -O2)
+[PASS] C: 284-run-bitfield-enum-display.cmd (-O0, -O2)
+[PASS] C: 285-run-pointer-ordering.cmd (-O0, -O2)
+[PASS] C: 287-run-inferred-expression-propagation.cmd (-O0, -O2)
+[PASS] C: 288-run-usage-context-inference.cmd (-O0, -O2)
+[PASS] C: 291-run-nested-tuple-items.cmd (-O0, -O2)
+[PASS] C: 292-run-plex-usage-context.cmd (-O0, -O2)
+[PASS] C: 294-run-content-equality.cmd (-O0, -O2)
+[PASS] C: 294-run-named-trait-parameters.cmd (-O0, -O2)
+[PASS] C: 295-run-imported-content-equality.cmd (-O0, -O2)
+[PASS] C: 296-run-merged-standard-library.cmd (-O0, -O2)
+[PASS] C: 298-run-variadic-promotions.cmd (-O0, -O2)
+[FAIL] 299-run-variadic-forwarding.cmd: C:\Users\matt\nerd\_bin\nerd.exe build -o C:\Users\matt\nerd\_tmp\cgen-ng276aln\299-run-variadic-forwarding\program.exe C:\Users\matt\nerd\_tmp\cgen-ng276aln\299-run-variadic-forwarding\299-run-variadic-forwarding.n
+[1;31mruntime-error:[0m LLVM linker reported an undefined symbol (exit code 1)
+               Symbol: vprintf
+               Referenced by:
+               
+Generated LLVM: C:\Users\matt\nerd\_tmp\cgen-ng276aln\299-run-va
+               riadic-forwarding\program.exe.link.ll
+               Runtime object:
+               C:\Users\matt\nerd\_tmp\cgen-ng276aln\299-run-variadic-forwarding
+               \program.exe.nrt.o
+               Command: lld-link /nologo
+               /out:"C:\Users\matt\nerd\_tmp\cgen-ng276aln\299-run-variadic-forw
+               arding\program.exe"  /debug:dwarf /subsystem:console
+               "C:\Users\matt\nerd\_tmp\cgen-ng276aln\299-run-variadic-forwardin
+               g\program.exe.obj.o"
+               "C:\Users\matt\nerd\_tmp\cgen-ng276aln\299-run-variadic-forwardin
+               g\program.exe.nrt.o" /defaultlib:libcmt /defaultlib:libvcruntime
+               /defaultlib:libucrt /defaultlib:oldnames /defaultlib:kernel32
+
+[PASS] C: 302-run-public-main.cmd (-O0, -O2)
+[PASS] C: 304-run-named-function-table.cmd (-O0, -O2)
+[PASS] C: 305-run-format-c-string.cmd (-O0, -O2)
+[PASS] C: 306-run-void-result-propagation.cmd (-O0, -O2)
+[PASS] C: 307-run-imported-display-interpolation.cmd (-O0, -O2)
+[PASS] C: 308-run-shutdown-watcher.cmd (-O0, -O2)
+[PASS] C: array-borrows.n (-O0, -O2)
+[PASS] C: assertion.n (-O0, -O2)
+[PASS] C: integer-wrapping.n (-O0, -O2)
+[PASS] C: mutable-function-pointers.n (-O0, -O2)
+[PASS] C: optional-defaults.n (-O0, -O2)
+Traceback (most recent call last):
+  File "C:\Users\matt\nerd\build\test_cgen.py", line 388, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\matt\nerd\build\test_cgen.py", line 375, in main
+    assert not failures, "\n".join(failures)
+           ^^^^^^^^^^^^
+AssertionError: 016-type-alias-and-cast.t: 016-type-alias-and-cast.t -O0: C and LLVM behaviour differs
+C: (232, b'', b'')
+LLVM: (177865704, b'', b'')
+069-ffi-varargs.t: C:\Users\matt\nerd\_bin\nerd.exe build -o C:\Users\matt\nerd\_tmp\cgen-ng276aln\069-ffi-varargs\program.exe C:\Users\matt\nerd\_tmp\cgen-ng276aln\069-ffi-varargs\069-ffi-varargs.n
+[1;31mruntime-error:[0m LLVM linker reported an undefined symbol (exit code 1)
+               Symbol: fcntl
+               Referenced by:
+               
+Generated LLVM: C:\Users\matt\nerd\_tmp\cgen-ng276aln\069-ffi-va
+               rargs\program.exe.link.ll
+               Runtime object:
+               C:\Users\matt\nerd\_tmp\cgen-ng276aln\069-ffi-varargs\program.exe
+               .nrt.o
+               Command: lld-link /nologo
+               /out:"C:\Users\matt\nerd\_tmp\cgen-ng276aln\069-ffi-varargs\progr
+               am.exe"  /debug:dwarf /subsystem:console
+               "C:\Users\matt\nerd\_tmp\cgen-ng276aln\069-ffi-varargs\program.ex
+               e.obj.o"
+               "C:\Users\matt\nerd\_tmp\cgen-ng276aln\069-ffi-varargs\program.ex
+               e.nrt.o" /defaultlib:libcmt /defaultlib:libvcruntime
+               /defaultlib:libucrt /defaultlib:oldnames /defaultlib:kernel32
+               "kernel32.lib" "synchronization.lib" "user32.lib" "gdi32.lib"
+               "opengl32.lib"
+
+299-run-variadic-forwarding.cmd: C:\Users\matt\nerd\_bin\nerd.exe build -o C:\Users\matt\nerd\_tmp\cgen-ng276aln\299-run-variadic-forwarding\program.exe C:\Users\matt\nerd\_tmp\cgen-ng276aln\299-run-variadic-forwarding\299-run-variadic-forwarding.n
+[1;31mruntime-error:[0m LLVM linker reported an undefined symbol (exit code 1)
+               Symbol: vprintf
+               Referenced by:
+               
+Generated LLVM: C:\Users\matt\nerd\_tmp\cgen-ng276aln\299-run-va
+               riadic-forwarding\program.exe.link.ll
+               Runtime object:
+               C:\Users\matt\nerd\_tmp\cgen-ng276aln\299-run-variadic-forwarding
+               \program.exe.nrt.o
+               Command: lld-link /nologo
+               /out:"C:\Users\matt\nerd\_tmp\cgen-ng276aln\299-run-variadic-forw
+               arding\program.exe"  /debug:dwarf /subsystem:console
+               "C:\Users\matt\nerd\_tmp\cgen-ng276aln\299-run-variadic-forwardin
+               g\program.exe.obj.o"
+               "C:\Users\matt\nerd\_tmp\cgen-ng276aln\299-run-variadic-forwardin
+               g\program.exe.nrt.o" /defaultlib:libcmt /defaultlib:libvcruntime
+               /defaultlib:libucrt /defaultlib:oldnames /defaultlib:kernel32
+

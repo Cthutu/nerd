@@ -1,0 +1,18 @@
+[PASS] --jobs LLVM identity and execution: tiny
+[PASS] --jobs LLVM identity and execution: wide
+[PASS] --jobs LLVM identity and execution: deep
+[PASS] --jobs LLVM identity and execution: large
+[PASS] --jobs LLVM identity and execution: scratch-growth
+Traceback (most recent call last):
+  File "C:\Users\matt\nerd\build\test_jobs.py", line 136, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\matt\nerd\build\test_jobs.py", line 126, in main
+    serial = output.read_bytes()
+  File "C:\Users\matt\scoop\apps\python\current\Lib\pathlib\__init__.py", line 777, in read_bytes
+    with self.open(mode='rb', buffering=0) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\matt\scoop\apps\python\current\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T072410Z-d0e26691\\scratch\\nerd-jobs-xn14m6r0\\program.c'

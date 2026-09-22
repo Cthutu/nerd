@@ -74,6 +74,33 @@ back_end_llvm_runtime_root_main_info(const FrontEndState* root)
                             (sema->types[return_type].kind == STK_Void ||
                              sema->types[return_type].kind == STK_Never);
         info.takes_args   = fn_type->param_count == 1;
+        // The host entry point returns i32, but Nerd main may return any
+        // integer width. Calling a narrow main as i32 reads undefined bits.
+        if (return_type < array_count(sema->types)) {
+            switch (sema->types[return_type].kind) {
+            case STK_I8:
+            case STK_U8:
+                info.return_bits = 8;
+                break;
+            case STK_I16:
+            case STK_U16:
+                info.return_bits = 16;
+                break;
+            case STK_I64:
+            case STK_U64:
+            case STK_Isize:
+            case STK_Usize:
+                info.return_bits = 64;
+                break;
+            default:
+                info.return_bits = 32;
+                break;
+            }
+            SemaTypeKind kind  = sema->types[return_type].kind;
+            info.return_signed = kind == STK_I8 || kind == STK_I16 ||
+                                 kind == STK_I32 || kind == STK_I64 ||
+                                 kind == STK_Isize;
+        }
         return info;
     }
     return info;
@@ -169,16 +196,44 @@ internal void back_end_append_core_lifecycle_call(StringBuilder*           sb,
     sb_append_cstr(sb, "()\n");
 }
 
+internal void back_end_append_main_return_type(StringBuilder*      sb,
+                                               BackEndRootMainInfo info)
+{
+    if (info.returns_void) {
+        sb_append_cstr(sb, "void");
+    } else {
+        sb_format(sb, "i%u", info.return_bits);
+    }
+}
+
+internal void back_end_append_typed_main_call(StringBuilder*      sb,
+                                              BackEndRootMainInfo info)
+{
+    sb_append_cstr(sb, "  ");
+    if (!info.returns_void) {
+        sb_append_cstr(
+            sb, info.return_bits == 32 ? "%result = " : "%main.result = ");
+    }
+    sb_append_cstr(sb, "call ");
+    back_end_append_main_return_type(sb, info);
+    sb_append_cstr(sb,
+                   info.takes_args ? " @$main({ ptr, i64 } %arg.slice.1)\n"
+                                   : " @$main()\n");
+    if (!info.returns_void && info.return_bits != 32) {
+        sb_format(sb,
+                  "  %%result = %s i%u %%main.result to i32\n",
+                  info.return_bits > 32 ? "trunc"
+                  : info.return_signed  ? "sext"
+                                        : "zext",
+                  info.return_bits);
+    }
+}
+
 internal void back_end_append_main_call(StringBuilder*      sb,
                                         BackEndRootMainInfo main_info)
 {
-    cstr return_type = main_info.returns_void ? "void" : "i32";
     if (!main_info.takes_args) {
-        if (main_info.returns_void) {
-            sb_append_cstr(sb, "  call void @$main()\n");
-        } else {
-            sb_format(sb, "  %%result = call %s @$main()\n", return_type);
-        }
+        back_end_append_typed_main_call(sb, main_info);
         return;
     }
 
@@ -212,12 +267,7 @@ internal void back_end_append_main_call(StringBuilder*      sb,
                    "ptr %args, 0\n"
                    "  %arg.slice.1 = insertvalue { ptr, i64 } %arg.slice, "
                    "i64 %argc64, 1\n");
-    if (main_info.returns_void) {
-        sb_append_cstr(sb, "  call void @$main({ ptr, i64 } %arg.slice.1)\n");
-    } else {
-        sb_append_cstr(
-            sb, "  %result = call i32 @$main({ ptr, i64 } %arg.slice.1)\n");
-    }
+    back_end_append_typed_main_call(sb, main_info);
 }
 
 internal string
@@ -233,7 +283,7 @@ back_end_llvm_runtime_console_epilogue(Arena*                   arena,
         sb_append_cstr(&sb, "declare i64 @strlen(ptr)\n");
     }
     sb_append_cstr(&sb, "declare ");
-    sb_append_cstr(&sb, main_info.returns_void ? "void" : "i32");
+    back_end_append_main_return_type(&sb, main_info);
     sb_append_cstr(&sb, " @$main(");
     if (main_info.takes_args) {
         sb_append_cstr(&sb, "{ ptr, i64 }");
@@ -269,7 +319,7 @@ back_end_llvm_runtime_windowed_epilogue(Arena*                   arena,
         sb_append_cstr(&sb, "declare i64 @strlen(ptr)\n");
     }
     sb_append_cstr(&sb, "declare ");
-    sb_append_cstr(&sb, main_info.returns_void ? "void" : "i32");
+    back_end_append_main_return_type(&sb, main_info);
     sb_append_cstr(&sb, " @$main(");
     if (main_info.takes_args) {
         sb_append_cstr(&sb, "{ ptr, i64 }");
@@ -284,23 +334,11 @@ back_end_llvm_runtime_windowed_epilogue(Arena*                   arena,
                    "  %argv = inttoptr i64 0 to ptr\n"
                    "  call void @init()\n");
     back_end_append_core_lifecycle_call(&sb, core_lifecycle, true);
-    if (main_info.takes_args) {
-        back_end_append_main_call(&sb, main_info);
-        back_end_append_core_lifecycle_call(&sb, core_lifecycle, false);
-        if (main_info.returns_void) {
-            sb_append_cstr(&sb, "  ret i32 0\n}\n");
-        } else {
-            sb_append_cstr(&sb, "  ret i32 %result\n}\n");
-        }
-        return sb_to_string(&sb);
-    }
+    back_end_append_main_call(&sb, main_info);
+    back_end_append_core_lifecycle_call(&sb, core_lifecycle, false);
     if (main_info.returns_void) {
-        sb_append_cstr(&sb, "  call void @$main()\n");
-        back_end_append_core_lifecycle_call(&sb, core_lifecycle, false);
         sb_append_cstr(&sb, "  ret i32 0\n}\n");
     } else {
-        sb_append_cstr(&sb, "  %result = call i32 @$main()\n");
-        back_end_append_core_lifecycle_call(&sb, core_lifecycle, false);
         sb_append_cstr(&sb, "  ret i32 %result\n}\n");
     }
     return sb_to_string(&sb);

@@ -1051,7 +1051,8 @@ internal bool back_end_link_native(Arena*                    arena,
               program->windowed ? "windows" : "console");
     sb_format(&command,
               "\"%s\" \"%s\" /defaultlib:libcmt /defaultlib:libvcruntime "
-              "/defaultlib:libucrt /defaultlib:oldnames /defaultlib:kernel32",
+              "/defaultlib:libucrt /defaultlib:oldnames /defaultlib:kernel32 "
+              "/defaultlib:legacy_stdio_definitions",
               object,
               runtime);
     // lld-link reads SDK/VC library paths from the developer environment's LIB.

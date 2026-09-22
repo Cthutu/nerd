@@ -1,0 +1,13 @@
+[PASS] --jobs LLVM identity and execution: tiny
+[PASS] --jobs LLVM identity and execution: wide
+[PASS] --jobs LLVM identity and execution: deep
+[PASS] --jobs LLVM identity and execution: large
+[PASS] --jobs LLVM identity and execution: scratch-growth
+Traceback (most recent call last):
+  File "C:\Users\matt\nerd\build\test_jobs.py", line 136, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\matt\nerd\build\test_jobs.py", line 108, in main
+    assert str(obstruction) in result.stderr and 'internal compiler error' not in result.stderr
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError

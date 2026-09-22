@@ -1,0 +1,13 @@
+Traceback (most recent call last):
+  File "C:\Users\matt\nerd\build\test_profile.py", line 134, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\matt\nerd\build\test_profile.py", line 111, in main
+    profiled_c = output.read_bytes()
+  File "C:\Users\matt\scoop\apps\python\current\Lib\pathlib\__init__.py", line 777, in read_bytes
+    with self.open(mode='rb', buffering=0) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\matt\scoop\apps\python\current\Lib\pathlib\__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T072410Z-d0e26691\\scratch\\nerd-profile-1c6zc7qf\\program.c'

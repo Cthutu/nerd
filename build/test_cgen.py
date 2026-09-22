@@ -7,6 +7,8 @@ from pathlib import Path
 import subprocess
 import tempfile
 
+from test import case_platforms, current_platform
+
 ROOT = Path(__file__).resolve().parents[1]
 # Runtime regressions beyond the language suite: defaults, ABI, ownership,
 # atomics, allocator diagnostics, formatting and generic dispatch.
@@ -360,6 +362,11 @@ def main():
     fixtures = sorted((ROOT / "tests/language").glob("*.t"))
     fixtures += [ROOT / "tests/commands" / (name + ".cmd") for name in COMMANDS]
     fixtures += sorted((ROOT / "tests/cgen").glob("*.n"))
+    skipped = [fixture for fixture in fixtures
+               if case_platforms(fixture) and current_platform() not in case_platforms(fixture)]
+    for fixture in skipped:
+        print(f"[SKIP] C: {fixture.name} (declared platforms: {', '.join(sorted(case_platforms(fixture)))})", flush=True)
+    fixtures = [fixture for fixture in fixtures if fixture not in skipped]
     (ROOT / "_tmp").mkdir(exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="cgen-", dir=ROOT / "_tmp") as directory:
         tmp = Path(directory)
@@ -381,7 +388,7 @@ def main():
             for cflag in ("--cgen", "--copts"):
                 result = run([nerd, "build", cflag, *flags, "main :: fn () {}"], env, check=False)
                 assert result.returncode and not result.stdout, f"{cflag} must reject {flags}"
-    print(f"C generation: {len(fixtures)} differential fixtures at two optimisation levels and CLI conflicts passed")
+    print(f"C generation: {len(fixtures)} differential fixtures at two optimisation levels and CLI conflicts passed; {len(skipped)} platform skips")
 
 
 if __name__ == "__main__":

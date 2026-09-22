@@ -24,7 +24,7 @@ def main():
         nerd = (sanitized_compiler(work / 'compiler', args.sanitize)
                 if args.sanitize else args.nerd.resolve())
         env = dict(os.environ, NERD_LIB_PATH=str(ROOT / 'mods'), NERD_PROFILE='1',
-                   NERD_DEBUG_KEEP_LINK_LLVM='1')
+                   NERD_DEBUG_KEEP_LINK_LLVM='1', COLUMNS='32768')
         env.pop('NERD_MEMORY_PROFILE', None)
         env.pop('NERD_PROFILE_LOCKS', None)
         env.pop('NERD_DEBUG_LLVM_SIDECARS', None)
@@ -105,7 +105,7 @@ def main():
         obstruction = Path(str(output) + '.m1.ll')
         obstruction.mkdir()
         result, records = run('--jobs', 4, '--llvm', source, '-o', output, success=False)
-        assert str(obstruction) in result.stderr and 'internal compiler error' not in result.stderr
+        assert str(obstruction) in result.stderr and 'internal compiler error' not in result.stderr, result.stderr
         assert not any(r.get('stage') == 'tool' for r in records)
         assert sum(r.get('phase') == 'render module LLVM' for r in records) == 2
         assert (work / '_blocked.ll').is_file()

@@ -32,7 +32,41 @@ ignored `_tmp/clang23-objects` before a fresh LLVM 22.1.8 build.
 - [Build repair verification](20260922T072250Z-0648ef15/SUMMARY.md): both builds
   passed with Clang 23. Explicitly cast the test mode back to ErrorRenderMode;
   include timing.h before CRT headers to apply the existing portability policy.
-- [Fresh LLVM 22 full run](20260922T072410Z-d0e26691/SUMMARY.md): in progress.
+- [Fresh LLVM 22 full run](20260922T072410Z-d0e26691/SUMMARY.md): 1,114 fixture
+  passes, one failure (`vprintf` link), 15 declared platform skips. Both debugger
+  stepping probes passed. Original auxiliary failures remain in their logs.
+- Build portability fixes were committed and pushed as `66ad592e`.
+- [Focused repair run](20260922T073444Z-2a8ab0b9/SUMMARY.md): both compiler builds,
+  profiling, jobs, toolchain and installation passed. Both C differential runs
+  passed 277 fixtures at O0/O2; two declared Linux fixture exclusions are now
+  honoured. The separate Linux PTY Dungeon check remains skipped on Windows;
+  native Dungeon desktop observations are required instead.
+- Release front-end runs intermittently encountered WinError 32 while reopening
+  generated `program.c`. [Isolated rerun](20260922T073919Z-3ae286a6/SUMMARY.md)
+  passed all 15 successful source shapes, five ordered diagnostic cases and six
+  randomized independent-closure iterations. The transient sharing failure's
+  external owner was not established; keep it visible pending the final full run.
+
+Repair details (focused verification passed; final full run still pending):
+
+- Link `legacy_stdio_definitions.lib` for direct Windows C FFI such as `vprintf`.
+- Call the real integer return type of Nerd main, then explicitly convert to
+  i32. The original C/LLVM differential exposed garbage upper Windows exit bits
+  for u8 main. New toolchain regressions exercise signed/unsigned 8/16/64-bit
+  returns, arguments, console/windowed paths and debug/release targets.
+- Derive C output paths from the requested root, preventing `program.c.c` on
+  Windows. Existing C CLI regressions cover suffixes and spaces.
+- Fix auxiliary diagnostic assertions' terminal width, retaining full paths.
+- Inspect embedded DWARF source lines instead of requiring an obsolete PDB.
+- Native toolchain tests now isolate PATH without Clang and exercise individual
+  missing LLVM tools, absent SDK libraries and tool-independent check/C output.
+
+The official archive SHA-256 matches GitHub's published digest:
+`d96c2cc1736f4eb7fa43cb9bbdf56d93551a9ae0a9aadb9c99c3c3b2b712a234`.
+Python 3.14.7; Visual Studio Professional 2022/MSVC 14.44.35207; SDK 10.0.26100.0.
+The 48-cell desktop build matrix is stored in
+[desktop.json](20260922T073444Z-2a8ab0b9/desktop.json). All builds succeeded;
+human observations are pending. The helper records exact argv and compiler hashes.
 
 Reproduce: `. ./_tmp/windows-env.ps1; python validation/windows/run.py`.
 `nerd-debug.exe doctor` passed with LLVM 22 and the SDK/CRT paths above.

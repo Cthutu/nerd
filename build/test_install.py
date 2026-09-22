@@ -210,10 +210,14 @@ def main() -> int:
         check(build_proc, "build --hir --llvm")
         if not (temp / f"build_smoke{EXE_SUFFIX}").exists():
             raise AssertionError("build did not produce executable")
-        # Windows builds retain symbols for the executable. Run/test cleanup
-        # still rejects all PDB outputs in assert_no_run_outputs below.
-        if EXE_SUFFIX and not (temp / "build_smoke.pdb").exists():
-            raise AssertionError("Windows build did not produce debug symbols")
+        # Direct LLVM Windows builds embed DWARF, consumed by CodeLLDB, rather
+        # than producing the PDB from the previous Clang-driver path. Check
+        # actual source line information instead of a sidecar's existence.
+        if EXE_SUFFIX:
+            symbols = run(["llvm-dwarfdump", "--debug-line", str(temp / "build_smoke.exe")], temp, env)
+            check(symbols, "Windows DWARF line information")
+            if 'build_smoke.n' not in symbols.stdout or '0x000000' not in symbols.stdout:
+                raise AssertionError("Windows build did not produce source line information\n" + symbols.stdout)
         if not any(temp.glob("_build_smoke*.hir")):
             raise AssertionError("build --hir did not produce a HIR sidecar")
         if not any(temp.glob("_build_smoke*.ll")):

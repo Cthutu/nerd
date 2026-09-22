@@ -1,0 +1,58 @@
+[PASS] front-end output identity: diamond-generic-ffi main.n
+[PASS] front-end output identity: conditional-parts main.n
+[PASS] front-end output identity: diamond-explicit main.n
+[PASS] front-end output identity: diamond-inferred main.n
+[PASS] front-end output identity: diamond-function-value main.n
+[PASS] front-end output identity: tiny main.n
+[PASS] front-end output identity: wide main.n
+[PASS] front-end output identity: deep main.n
+[PASS] front-end output identity: large main.n
+[PASS] front-end output identity: nerd-front-threads-ovelb802 128-generic-functions.n
+[PASS] front-end output identity: nerd-front-threads-ovelb802 196-plex-use.n
+[PASS] front-end output identity: nerd-front-threads-ovelb802 077-enum-discriminants.n
+[PASS] front-end output identity: dungeon dungeon.n
+[PASS] front-end output identity: pixels pixels.n
+Traceback (most recent call last):
+  File "C:\Users\matt\nerd\build\test_front_threads.py", line 106, in main
+    assert reference[0] == 0, reference[2]
+           ^^^^^^^^^^^^^^^^^
+AssertionError: [1;31mruntime-error:[0m Failed to open C output:
+               C:\Users\matt\nerd\validation\windows\results\20260922T072410Z-d0
+               e26691\scratch\nerd-front-threads-ovelb802\program.c
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\matt\scoop\apps\python\current\Lib\shutil.py", line 701, in _rmtree_unsafe
+    os.unlink(fullname)
+    ~~~~~~~~~^^^^^^^^^^
+PermissionError: [WinError 32] The process cannot access the file because it is being used by another process: 'C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T072410Z-d0e26691\\scratch\\nerd-front-threads-ovelb802\\program.c'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\matt\nerd\build\test_front_threads.py", line 183, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\matt\nerd\build\test_front_threads.py", line 31, in main
+    with tempfile.TemporaryDirectory(prefix='nerd-front-threads-') as directory:
+         ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\matt\scoop\apps\python\current\Lib\tempfile.py", line 972, in __exit__
+    self.cleanup()
+    ~~~~~~~~~~~~^^
+  File "C:\Users\matt\scoop\apps\python\current\Lib\tempfile.py", line 976, in cleanup
+    self._rmtree(self.name, ignore_errors=self._ignore_cleanup_errors)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\matt\scoop\apps\python\current\Lib\tempfile.py", line 956, in _rmtree
+    _shutil.rmtree(name, onexc=onexc)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\matt\scoop\apps\python\current\Lib\shutil.py", line 852, in rmtree
+    _rmtree_impl(path, dir_fd, onexc)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\matt\scoop\apps\python\current\Lib\shutil.py", line 705, in _rmtree_unsafe
+    onexc(os.unlink, fullname, err)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\matt\scoop\apps\python\current\Lib\tempfile.py", line 931, in onexc
+    _os.unlink(path)
+    ~~~~~~~~~~^^^^^^
+PermissionError: [WinError 32] The process cannot access the file because it is being used by another process: 'C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260922T072410Z-d0e26691\\scratch\\nerd-front-threads-ovelb802\\program.c'

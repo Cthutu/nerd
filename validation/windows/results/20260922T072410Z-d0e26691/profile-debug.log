@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "C:\Users\matt\nerd\build\test_profile.py", line 133, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\matt\nerd\build\test_profile.py", line 100, in main
+    assert str(blocked_sidecar) in failure.stderr
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError

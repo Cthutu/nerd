@@ -1,5 +1,24 @@
 # Internals
 
+On Windows the direct LLVM linker includes `legacy_stdio_definitions.lib` with
+the SDK/CRT libraries. Nerd FFI declarations call symbols such as `vprintf`
+directly, so they need the out-of-line definitions normally supplied through
+the C headers. No C compiler driver is involved in native Nerd linking.
+
+The generated host entry wrapper calls Nerd `main` with its actual semantic
+integer return width, then sign-extends, zero-extends or truncates to the host
+32-bit process status. Calling an i8/i16 main as i32 leaves upper return-register
+bits undefined on Windows; POSIX's low-byte exit status can hide this bug.
+Both console and windowed entry wrappers use the same conversion, including
+entry points accepting command-line arguments.
+
+Windows direct LLVM debug builds embed DWARF in the executable via
+`lld-link /debug:dwarf`. Installation checks inspect source line tables with
+`llvm-dwarfdump`; CodeLLDB stepping checks validate their usability.
+C output names replace the requested output root's extension directly, before
+any Windows executable suffix is appended, so `--cgen -o program.c` stays
+`program.c` rather than becoming `program.c.c`.
+
 This document is the high-level map of the current codebase. It points at the
 main subsystems and tells you where to read next.
 

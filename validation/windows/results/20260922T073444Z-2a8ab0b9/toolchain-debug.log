@@ -1,0 +1,2 @@
+[PASS] entry-point integer widths, signedness, arguments and target modes
+Direct LLVM outputs, no-Clang execution, and doctor dependency checks passed
