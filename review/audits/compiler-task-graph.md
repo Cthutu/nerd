@@ -59,5 +59,6 @@ and native handoff evidence so future decisions are reproducible.
   A forced fan-out test requires stealing to make progress. Native checks pending.
 - G2 implemented: dependent file lex/parse nodes and a reused front-end pool,
   with capacity growth at drained boundaries and per-graph callback budgets.
-  Final release output/runtime/diagnostic parity passes; full suite and
-  sanitizers are in progress. G3–G6 remain open.
+  Final release output/runtime/diagnostic parity, full suite, ASan and TSan
+  pass on Linux. [Validation evidence](../measurements/compiler-task-graph.md)
+  records the exact scope. Native checks pending; G3–G6 remain open.
