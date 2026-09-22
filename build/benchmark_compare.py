@@ -25,15 +25,17 @@ def main():
     parser.add_argument('--samples', type=int, default=5)
     parser.add_argument('--cpu', type=int)
     parser.add_argument('--cpus', nargs='+', type=int)
-    parser.add_argument('--jobs', type=int, help='Pass this worker count to both compilers')
+    parser.add_argument('--jobs', help='Pass 1-256 or auto to both compilers')
+    parser.add_argument('--profile-samples', type=int, default=1,
+                        help='Separate instrumented samples for source-to-IR spans')
     parser.add_argument('--scenarios', nargs='+', default=['tiny', 'dungeon', 'pixels', 'quill', 'wide', 'deep', 'large'])
     args = parser.parse_args()
-    if args.samples < 1:
-        parser.error('--samples must be positive')
+    if args.samples < 1 or args.profile_samples < 1:
+        parser.error('sample counts must be positive')
     if args.cpu is not None and args.cpus:
         parser.error('choose --cpu or --cpus')
-    if args.jobs is not None and not 1 <= args.jobs <= 256:
-        parser.error('--jobs must be 1-256')
+    if args.jobs is not None and args.jobs != 'auto' and (not args.jobs.isdecimal() or not 1 <= int(args.jobs) <= 256):
+        parser.error('--jobs must be 1-256 or auto')
     if args.cpu is not None or args.cpus:
         if not hasattr(os, 'sched_setaffinity'):
             parser.error('CPU affinity requires Linux support')
@@ -48,7 +50,7 @@ def main():
         'platform': platform.platform(),
         'affinity': sorted(os.sched_getaffinity(0)) if hasattr(os, 'sched_getaffinity') else None,
         'compilers': {key: {'path': str(path), 'sha256': digest(path)} for key, path in compilers.items()},
-        'samples': args.samples, 'warmups_per_compiler': 1, 'order': 'alternating',
+        'samples': args.samples, 'profile_samples': args.profile_samples, 'warmups_per_compiler': 1, 'order': 'alternating',
         'keep_combined_llvm': True, 'jobs': args.jobs,
     }, 'runs': []}
     args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -80,10 +82,21 @@ def main():
                         if iteration:
                             row[key]['samples'].append(sample)
                 for key in compilers:
-                    sample, records = invoke([str(compilers[key]), *tail], dict(env, NERD_PROFILE='1'))
-                    assert records, 'Both compilers must support NERD_PROFILE'
-                    assert digest(ir) == reference
-                    row[key].update(profile_sample=sample, profile=records,
+                    profiles = []
+                    for _ in range(args.profile_samples):
+                        sample, records = invoke([str(compilers[key]), *tail], dict(env, NERD_PROFILE='1'))
+                        assert records, 'Both compilers must support NERD_PROFILE'
+                        assert digest(ir) == reference
+                        phases = [r for r in records if r.get('kind') == 'phase']
+                        front = [r for r in phases if r.get('stage') == 'front-end']
+                        first = min(r['start_ns'] for r in front)
+                        combined = [r for r in phases if r.get('phase') == 'combine LLVM text']
+                        profiles.append(dict(sample=sample, records=records,
+                            front_span_ns=max(r['start_ns'] + r['wall_ns'] for r in front) - first,
+                            source_to_ir_span_ns=max(r['start_ns'] + r['wall_ns'] for r in combined) - first))
+                    row[key].update(profile_sample=sample, profile=records, profiles=profiles,
+                                    median_source_to_ir_ns=statistics.median(p['source_to_ir_span_ns'] for p in profiles),
+                                    median_front_span_ns=statistics.median(p['front_span_ns'] for p in profiles),
                                     median_wall_ns=statistics.median(x['wall_ns'] for x in row[key]['samples']))
                 row.update(combined_sha256=reference, combined_bytes=ir.stat().st_size)
                 results['runs'].append(row)
