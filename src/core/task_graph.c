@@ -33,7 +33,7 @@ struct TaskPool {
     TaskDeque  queues[TASK_MAX_JOBS];
     TaskGraph* graph;
     u64        generation;
-    u32        jobs, started, finished;
+    u32        jobs, graph_jobs, started, finished;
     bool       closing;
 };
 
@@ -80,9 +80,10 @@ internal void task_graph_work(TaskPool* pool, u32 worker)
     TaskGraph* graph = pool->graph;
     while (!graph->failed && graph->remaining != 0) {
         usize node = task_deque_take(pool, worker, false);
-        for (u32 offset = 1; node == TASK_NONE && offset < pool->jobs;
+        for (u32 offset = 1; node == TASK_NONE && offset < pool->graph_jobs;
              ++offset) {
-            node = task_deque_take(pool, (worker + offset) % pool->jobs, true);
+            node = task_deque_take(
+                pool, (worker + offset) % pool->graph_jobs, true);
         }
         if (node == TASK_NONE) {
             if (!condition_wait(&pool->changed, &pool->mutex)) {
@@ -127,7 +128,9 @@ internal void task_pool_worker(void* argument)
             break;
         }
         seen = pool->generation;
-        task_graph_work(pool, worker->index);
+        if (worker->index < pool->graph_jobs) {
+            task_graph_work(pool, worker->index);
+        }
         pool->finished++;
         condition_broadcast(&pool->changed);
     }
@@ -254,13 +257,14 @@ done:
     return status;
 }
 
-TaskRunStatus task_pool_run(TaskPool*       pool,
-                            const TaskNode* nodes,
-                            usize           count,
-                            const TaskEdge* edges,
-                            usize           edge_count)
+TaskRunStatus task_pool_run_jobs(TaskPool*       pool,
+                                 u32             jobs,
+                                 const TaskNode* nodes,
+                                 usize           count,
+                                 const TaskEdge* edges,
+                                 usize           edge_count)
 {
-    if (pool == NULL) {
+    if (pool == NULL || jobs == 0 || jobs > pool->jobs) {
         return TASK_RUN_START_FAILED;
     }
     TaskGraph     graph = {0};
@@ -275,15 +279,16 @@ TaskRunStatus task_pool_run(TaskPool*       pool,
         status = TASK_RUN_START_FAILED;
         goto done;
     }
-    pool->graph    = &graph;
-    pool->finished = 0;
+    pool->graph_jobs = jobs;
+    pool->graph      = &graph;
+    pool->finished   = 0;
     for (u32 i = 0; i < pool->jobs; ++i) {
         pool->queues[i] = (TaskDeque){TASK_NONE, TASK_NONE};
     }
     u32 destination = 0;
     for (usize i = 0; i < count; ++i) {
         if (graph.states[i].pending == 0) {
-            task_deque_push(pool, destination++ % pool->jobs, i);
+            task_deque_push(pool, destination++ % pool->graph_jobs, i);
         }
     }
     pool->generation++;
@@ -301,4 +306,14 @@ done:
     free(graph.states);
     free(graph.edges);
     return status;
+}
+
+TaskRunStatus task_pool_run(TaskPool*       pool,
+                            const TaskNode* nodes,
+                            usize           count,
+                            const TaskEdge* edges,
+                            usize           edge_count)
+{
+    return task_pool_run_jobs(
+        pool, pool ? pool->jobs : 0, nodes, count, edges, edge_count);
 }

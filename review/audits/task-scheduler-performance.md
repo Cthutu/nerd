@@ -14,6 +14,11 @@ See [M5 results and limits](../measurements/compiler-m5-front-end.md).
 Audit date: 2026-09-19. Source baseline: `a15e965dcfd4c554cc7691a82786142f74031eab`.
 Branch: `experiment/task-scheduler-performance`.
 
+The subsequent [dependency-driven compiler plan](compiler-task-graph.md) introduces
+a persistent work-stealing scheduler and finer pipeline tasks. The module-level
+M12 result above does not bound that new graph, particularly a future split
+between signature preparation and function-body checking.
+
 ## Recommendation and scope
 
 Follow-up: [M1 measurements and revised priorities](../measurements/compiler-m1.md).

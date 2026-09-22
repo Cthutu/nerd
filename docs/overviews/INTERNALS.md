@@ -880,5 +880,20 @@ wait for queued work, recursively submit work to the same pool, or destroy it.
 The initial implementation uses checked calloc/free for scheduler infrastructure;
 these allocations appear in OS process memory, not Nerd's tracked arena counters.
 Graph storage is O(nodes + edges); the pool is bounded by TASK_MAX_JOBS. This is
-the G1 foundation in `review/audits/compiler-task-graph.md`, not yet a dynamic
-compiler graph. Existing compilation still uses the original batch scheduler.
+the G1 foundation in `review/audits/compiler-task-graph.md`.
+
+G2 uses one lazily created pool in `ProgramLoadState` for sibling parsing, semantic
+closure batches and HIR. The pool grows only at drained boundaries when a larger
+ready batch needs more workers; smaller batches reuse it with a reduced callback
+budget through `task_pool_run_jobs`. Parked workers still acknowledge graph
+completion, protecting graph lifetimes. One-job and singleton batches retain
+inline execution. Source reading/capture and module adoption remain coordinator
+operations. Each eligible sibling file has a lex node and a dependent parse node;
+its private front-end state and diagnostic context pass between those tasks.
+Folder expansion may re-lex/re-parse combined source inside the parse node.
+Failed file stages retain their diagnostics while independent siblings finish,
+then stable DFS adoption/serial fallback chooses the observable error. The pool
+is destroyed before load-state storage is freed. LLVM rendering still uses the
+existing batch runner; semantic tasks retain exclusive import-closure ownership.
+Discovery still has batch boundaries until G3; this is not yet the fully dynamic
+compiler graph.

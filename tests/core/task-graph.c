@@ -25,7 +25,7 @@ static bool evaluate(void* opaque, usize node)
     return true;
 }
 
-static void exercise(TaskPool* pool)
+static void exercise(TaskPool* pool, u32 jobs)
 {
     Context  context = {0};
     TaskNode nodes[NODES];
@@ -50,7 +50,7 @@ static void exercise(TaskPool* pool)
             }
         }
     }
-    assert(task_pool_run(pool, nodes, NODES, context.edges, EDGES) ==
+    assert(task_pool_run_jobs(pool, jobs, nodes, NODES, context.edges, EDGES) ==
            TASK_RUN_OK);
     for (usize i = 0; i < NODES; ++i) {
         assert(atomic_load(&context.visits[i]) == 1);
@@ -99,8 +99,15 @@ int main(void)
         TaskPool* pool = task_pool_create(jobs);
         assert(pool != NULL);
         for (usize iteration = 0; iteration < 30; ++iteration) {
-            exercise(pool);
+            exercise(pool, jobs);
         }
+        for (u32 budget = 1; budget <= jobs; ++budget) {
+            exercise(pool, budget);
+        }
+        assert(task_pool_run_jobs(pool, 0, NULL, 0, NULL, 0) ==
+               TASK_RUN_START_FAILED);
+        assert(task_pool_run_jobs(pool, jobs + 1, NULL, 0, NULL, 0) ==
+               TASK_RUN_START_FAILED);
         assert(task_pool_run(pool, NULL, 0, NULL, 0) == TASK_RUN_OK);
         atomic_uint calls   = 0;
         TaskNode    nodes[] = {{fail, &calls, 0}, {fail, &calls, 1}};
@@ -126,7 +133,7 @@ int main(void)
         assert(task_pool_run(pool, nodes, 2, NULL, 1) ==
                TASK_RUN_INVALID_GRAPH);
         assert(atomic_load(&calls) == 0);
-        exercise(pool);
+        exercise(pool, jobs);
         if (jobs > 1) {
             Drain state = {0};
             assert(mutex_init_checked(&state.mutex));
@@ -136,17 +143,18 @@ int main(void)
                                        {drain, &state, 2},
                                        {drain, &state, 3}};
             TaskEdge dependencies[] = {{3, 0}, {3, 1}, {0, 2}, {1, 2}};
-            assert(task_pool_run(pool, pair, 4, dependencies, 4) ==
+            assert(task_pool_run_jobs(pool, 2, pair, 4, dependencies, 4) ==
                    TASK_RUN_FAILED);
             assert(state.entered == 2 && state.exited == 2);
             condition_done(&state.changed);
             mutex_done(&state.mutex);
-            exercise(pool);
+            exercise(pool, jobs);
         }
 #ifdef NERD_TEST_START_FAILURE
         extern void thread_test_fail_after(int count);
         thread_test_fail_after(0);
-        exercise(pool); // Reusing a pool must not create another native thread.
+        exercise(pool,
+                 jobs); // Reusing a pool must not create another native thread.
         assert(task_pool_create(2) == NULL);
         thread_test_fail_after(-1);
 #endif

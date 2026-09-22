@@ -128,6 +128,17 @@ def main():
                     check_start = min(r['start_ns'] for r in actual[5]
                                       if r.get('phase') == 'analyse AST semantics')
                     assert check_start >= parse_end, (source, 'unexpected serial retry')
+                    # Explicit file-stage edges must publish tokens before any
+                    # parse starts, including re-parsing expanded folder modules.
+                    modules = {r['module'] for r in actual[5]
+                               if r.get('phase') == 'parse tokens into AST'}
+                    for module in modules:
+                        lexed = sorted(r['start_ns'] + r['wall_ns'] for r in actual[5]
+                                       if r.get('module') == module and r.get('phase') == 'tokenise source text')
+                        parsed = sorted(r['start_ns'] for r in actual[5]
+                                        if r.get('module') == module and r.get('phase') == 'parse tokens into AST')
+                        assert len(lexed) == len(parsed) and all(a <= b for a, b in zip(lexed, parsed)), module
+
             print('[PASS] front-end output identity:', source.parent.name, source.name, flush=True)
 
         failures = [

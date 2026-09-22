@@ -628,6 +628,11 @@ void task_pool_destroy(TaskPool* pool);
 TaskRunStatus task_pool_run(TaskPool* pool, const TaskNode* nodes, usize count,
                             const TaskEdge* edges, usize edge_count);
 
+// Run with a smaller callback budget while retaining the pool's native workers.
+TaskRunStatus task_pool_run_jobs(TaskPool* pool, u32 jobs,
+                                 const TaskNode* nodes, usize count,
+                                 const TaskEdge* edges, usize edge_count);
+
 //------------------------------------------------------------------------------[Output]
 
 void prv(const char* format, va_list args);
