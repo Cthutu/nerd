@@ -1,0 +1,56 @@
+uv run build/build.py -r nerd --skip-mod-sync
+[36m================================================[0m
+[1m[36m build :: clang :: release [0m
+[1m[36m projects :: nerd[0m
+[36m================================================[0m
+[90m[skip][0m 2 run directive(s) up to date
+[32m[1m[ cc ][0m nerd.c
+[32m[1m[ cc ][0m compiler/ast/dump.c
+[32m[1m[ cc ][0m compiler/ast/expr.c
+[32m[1m[ cc ][0m compiler/ast/parse.c
+[32m[1m[ cc ][0m compiler/ast/query.c
+[32m[1m[ cc ][0m compiler/ast/utils.c
+[32m[1m[ cc ][0m compiler/build/back/back.c
+[32m[1m[ cc ][0m compiler/build/back/llvm_runtime.c
+[32m[1m[ cc ][0m compiler/build/back/llvm_text.c
+[32m[1m[ cc ][0m compiler/build/front/front.c
+[32m[1m[ cc ][0m compiler/build/front/program.c
+[32m[1m[ cc ][0m compiler/cgen/cgen.c
+[32m[1m[ cc ][0m compiler/cmd_build.c
+[32m[1m[ cc ][0m compiler/cmd_check.c
+[32m[1m[ cc ][0m compiler/cmd_common.c
+[32m[1m[ cc ][0m compiler/cmd_format.c
+[32m[1m[ cc ][0m compiler/cmd_run.c
+[32m[1m[ cc ][0m compiler/cmd_test.c
+[32m[1m[ cc ][0m compiler/cst/cst.c
+[32m[1m[ cc ][0m compiler/error/ast_errors.c
+[32m[1m[ cc ][0m compiler/error/error.c
+[32m[1m[ cc ][0m compiler/error/lex_errors.c
+[32m[1m[ cc ][0m compiler/error/render.c
+[32m[1m[ cc ][0m compiler/error/sema_errors.c
+[32m[1m[ cc ][0m compiler/format/format.c
+[32m[1m[ cc ][0m compiler/hir/dump.c
+[32m[1m[ cc ][0m compiler/hir/gen.c
+[32m[1m[ cc ][0m compiler/lexer/dump.c
+[32m[1m[ cc ][0m compiler/lexer/interner.c
+[32m[1m[ cc ][0m compiler/lexer/lexer.c
+[32m[1m[ cc ][0m compiler/llvm/llvm.c
+[32m[1m[ cc ][0m compiler/modules/modules.c
+[32m[1m[ cc ][0m compiler/sema/sema.c
+[32m[1m[ cc ][0m timing/timing.c
+[32m[1m[ cc ][0m lsp/builtin.c
+[32m[1m[ cc ][0m lsp/code_action.c
+[32m[1m[ cc ][0m lsp/completion.c
+[32m[1m[ cc ][0m lsp/document.c
+[32m[1m[ cc ][0m lsp/document_link.c
+[32m[1m[ cc ][0m lsp/hover.c
+[32m[1m[ cc ][0m lsp/lsp.c
+[32m[1m[ cc ][0m lsp/rename.c
+[32m[1m[ cc ][0m lsp/semantic_tokens.c
+[32m[1m[ cc ][0m lsp/signature.c
+[32m[1m[ cc ][0m lsp/utils.c
+[33m[1m[link][0m _bin/nerd
+[90m[skip][0m 23 source file(s) up to date
+[32m================================================[0m
+[1m[32m>> Build complete. Go be nerdy! \o/ <<[0m
+[32m================================================[0m

@@ -1,0 +1,1549 @@
+python3 build/test_clean.py
+Clean recipe preserves source fixtures and removes generated artifacts
+python3 build/test_memory.py
+Concurrent allocator counters, cross-thread ownership and debug tracking passed
+python3 build/test_threads.py
+Thread startup, joins, predicate wakeups and partial-start cleanup passed
+just build nerd --skip-mod-sync
+uv run build/build.py nerd --skip-mod-sync
+[36m================================================[0m
+[1m[36m build :: clang :: debug [0m
+[1m[36m projects :: nerd[0m
+[36m================================================[0m
+[90m[skip][0m 2 run directive(s) up to date
+[32m[1m[ cc ][0m nerd.c
+[32m[1m[ cc ][0m compiler/ast/dump.c
+[32m[1m[ cc ][0m compiler/ast/expr.c
+[32m[1m[ cc ][0m compiler/ast/parse.c
+[32m[1m[ cc ][0m compiler/ast/query.c
+[32m[1m[ cc ][0m compiler/ast/utils.c
+[32m[1m[ cc ][0m compiler/build/back/back.c
+[32m[1m[ cc ][0m compiler/build/back/llvm_runtime.c
+[32m[1m[ cc ][0m compiler/build/back/llvm_text.c
+[32m[1m[ cc ][0m compiler/build/front/front.c
+[32m[1m[ cc ][0m compiler/build/front/program.c
+[32m[1m[ cc ][0m compiler/cgen/cgen.c
+[32m[1m[ cc ][0m compiler/cmd_build.c
+[32m[1m[ cc ][0m compiler/cmd_check.c
+[32m[1m[ cc ][0m compiler/cmd_common.c
+[32m[1m[ cc ][0m compiler/cmd_format.c
+[32m[1m[ cc ][0m compiler/cmd_run.c
+[32m[1m[ cc ][0m compiler/cmd_test.c
+[32m[1m[ cc ][0m compiler/cst/cst.c
+[32m[1m[ cc ][0m compiler/error/ast_errors.c
+[32m[1m[ cc ][0m compiler/error/error.c
+[32m[1m[ cc ][0m compiler/error/lex_errors.c
+[32m[1m[ cc ][0m compiler/error/render.c
+[32m[1m[ cc ][0m compiler/error/sema_errors.c
+[32m[1m[ cc ][0m compiler/format/format.c
+[32m[1m[ cc ][0m compiler/hir/dump.c
+[32m[1m[ cc ][0m compiler/hir/gen.c
+[32m[1m[ cc ][0m compiler/lexer/dump.c
+[32m[1m[ cc ][0m compiler/lexer/interner.c
+[32m[1m[ cc ][0m compiler/lexer/lexer.c
+[32m[1m[ cc ][0m compiler/llvm/llvm.c
+[32m[1m[ cc ][0m compiler/modules/modules.c
+[32m[1m[ cc ][0m compiler/sema/sema.c
+[32m[1m[ cc ][0m timing/timing.c
+[32m[1m[ cc ][0m lsp/builtin.c
+[32m[1m[ cc ][0m lsp/code_action.c
+[32m[1m[ cc ][0m lsp/completion.c
+[32m[1m[ cc ][0m lsp/document.c
+[32m[1m[ cc ][0m lsp/document_link.c
+[32m[1m[ cc ][0m lsp/hover.c
+[32m[1m[ cc ][0m lsp/lsp.c
+[32m[1m[ cc ][0m lsp/rename.c
+[32m[1m[ cc ][0m lsp/semantic_tokens.c
+[32m[1m[ cc ][0m lsp/signature.c
+[32m[1m[ cc ][0m lsp/utils.c
+[33m[1m[link][0m _bin/nerd-debug
+[90m[skip][0m 23 source file(s) up to date
+[32m================================================[0m
+[1m[32m>> Build complete. Go be nerdy! \o/ <<[0m
+[32m================================================[0m
+python3 build/test.py 
+[32m[PASS][0m language: tests/language/001-number.t
+[32m[PASS][0m language: tests/language/002-add-2-numbers.t
+[32m[PASS][0m language: tests/language/003-precedence.t
+[32m[PASS][0m language: tests/language/004-unary-and-grouping.t
+[32m[PASS][0m language: tests/language/005-muldivmod-assoc.t
+[32m[PASS][0m language: tests/language/006-global-vars.t
+[32m[PASS][0m language: tests/language/007-forward-refs.t
+[32m[PASS][0m language: tests/language/008-folded-bind-chain.t
+[32m[PASS][0m language: tests/language/009-folded-const-tree.t
+[32m[PASS][0m language: tests/language/010-hello-world.t
+[32m[PASS][0m language: tests/language/011-adjacent-strings.t
+[32m[PASS][0m language: tests/language/012-block-return.t
+[32m[PASS][0m language: tests/language/013-typed-binding.t
+[32m[PASS][0m language: tests/language/014-annotated-function-type.t
+[32m[PASS][0m language: tests/language/015-variables.t
+[32m[PASS][0m language: tests/language/016-type-alias-and-cast.t
+[32m[PASS][0m language: tests/language/017-function-type-alias.t
+[32m[PASS][0m language: tests/language/018-primitive-variables.t
+[32m[PASS][0m language: tests/language/019-interpolated-strings.t
+[32m[PASS][0m language: tests/language/020-nested-blocks.t
+[32m[PASS][0m language: tests/language/021-function-parameters.t
+[32m[PASS][0m language: tests/language/022-void-main.t
+[32m[PASS][0m language: tests/language/023-function-values.t
+[32m[PASS][0m language: tests/language/024-nested-functions.t
+[32m[PASS][0m language: tests/language/025-block-forward-function.t
+[32m[PASS][0m language: tests/language/026-local-function-forward-ref.t
+[32m[PASS][0m language: tests/language/027-on-bool.t
+[32m[PASS][0m language: tests/language/028-on-value-branches.t
+[32m[PASS][0m language: tests/language/029-on-comma-patterns.t
+[32m[PASS][0m language: tests/language/030-on-ranges.t
+[32m[PASS][0m language: tests/language/031-primitive-operators.t
+[32m[PASS][0m language: tests/language/032-unannotated-float-literal.t
+[32m[PASS][0m language: tests/language/033-binding-expression-starts.t
+[32m[PASS][0m language: tests/language/034-local-const-interpolation.t
+[32m[PASS][0m language: tests/language/035-on-pattern-binders.t
+[32m[PASS][0m language: tests/language/036-on-untyped-local.t
+[32m[PASS][0m language: tests/language/037-on-statement-partial.t
+[32m[PASS][0m language: tests/language/038-for-infinite.t
+[32m[PASS][0m language: tests/language/039-5-prints.t
+[32m[PASS][0m language: tests/language/040-compound-assignments.t
+[32m[PASS][0m language: tests/language/041-for-while.t
+[32m[PASS][0m language: tests/language/042-for-c-style.t
+[32m[PASS][0m language: tests/language/043-for-c-style-empty-init.t
+[32m[PASS][0m language: tests/language/044-for-break-again.t
+[32m[PASS][0m language: tests/language/045-expression-block.t
+[32m[PASS][0m language: tests/language/046-on-string-patterns.t
+[32m[PASS][0m language: tests/language/047-expression-block-bindings.t
+[32m[PASS][0m language: tests/language/048-labelled-expression-block.t
+[32m[PASS][0m language: tests/language/049-labelled-loop-expressions.t
+[32m[PASS][0m language: tests/language/050-for-else.t
+[32m[PASS][0m language: tests/language/051-tuples.t
+[32m[PASS][0m language: tests/language/052-fixed-arrays.t
+[32m[PASS][0m language: tests/language/053-pointers.t
+[32m[PASS][0m language: tests/language/054-slices.t
+[32m[PASS][0m language: tests/language/055-string-slices.t
+[32m[PASS][0m language: tests/language/056-plexes.t
+[32m[PASS][0m language: tests/language/057-plex-newline-fields.t
+[32m[PASS][0m language: tests/language/058-plex-ergonomics.t
+[32m[PASS][0m language: tests/language/059-destructuring-bindings.t
+[32m[PASS][0m language: tests/language/060-on-pattern-guards.t
+[32m[PASS][0m language: tests/language/061-on-structural-patterns.t
+[32m[PASS][0m language: tests/language/062-raw-unions.t
+[32m[PASS][0m language: tests/language/063-enum-unit-variants.t
+[32m[PASS][0m language: tests/language/064-on-in-interpolated-string.t
+[32m[PASS][0m language: tests/language/065-enum-payloads.t
+[32m[PASS][0m language: tests/language/066-generalised-on.t
+[32m[PASS][0m language: tests/language/067-ffi-functions.t
+[32m[PASS][0m language: tests/language/068-std-print-module.t
+[32m[PASS][0m language: tests/language/069-ffi-varargs.t
+[32m[PASS][0m language: tests/language/070-ffi-library-linking.t
+[32m[PASS][0m language: tests/language/071-use-modules.t
+[32m[PASS][0m language: tests/language/072-top-level-on.t
+[32m[PASS][0m language: tests/language/073-module-pub-reexport.t
+[32m[PASS][0m language: tests/language/074-qualified-enum-patterns.t
+[32m[PASS][0m language: tests/language/075-packed-integer-literals.t
+[32m[PASS][0m language: tests/language/076-for-in-and-deref.t
+[32m[PASS][0m language: tests/language/077-enum-discriminants.t
+[32m[PASS][0m language: tests/language/078-deref-lvalue.t
+[32m[PASS][0m language: tests/language/079-contextual-plex-and-slice.t
+[32m[PASS][0m language: tests/language/080-dynamic-slice-bounds.t
+[32m[PASS][0m language: tests/language/081-nested-array-literals.t
+[32m[PASS][0m language: tests/language/082-assignment-expressions.t
+[32m[PASS][0m language: tests/language/083-explicit-return-enum-context.t
+[32m[PASS][0m language: tests/language/084-nested-local-fn-in-block-body.t
+[32m[PASS][0m language: tests/language/085-undefined.t
+[32m[PASS][0m language: tests/language/086-c-strings-and-escapes.t
+[32m[PASS][0m language: tests/language/087-grouped-use.t
+[32m[PASS][0m language: tests/language/088-ffi-consolidation.t
+[32m[PASS][0m language: tests/language/089-field-lvalues.t
+[32m[PASS][0m language: tests/language/090-nil-pointers.t
+[32m[PASS][0m language: tests/language/091-imported-plex-field-interpolation.t
+[32m[PASS][0m language: tests/language/093-slice-casts-and-nil.t
+[32m[PASS][0m language: tests/language/094-ffi-wrapper-bindings.t
+[32m[PASS][0m language: tests/language/095-void-pointer-compat.t
+[32m[PASS][0m language: tests/language/096-nil-slice-equality.t
+[32m[PASS][0m language: tests/language/097-return-nil-slice.t
+[32m[PASS][0m language: tests/language/098-on-branch-loop-control.t
+[32m[PASS][0m language: tests/language/099-dynamic-arrays.t
+[32m[PASS][0m language: tests/language/100-on-short-block-expr.t
+[32m[PASS][0m language: tests/language/101-dynarray-typed-locals.t
+[32m[PASS][0m language: tests/language/102-io-input-lines.t
+[32m[PASS][0m language: tests/language/103-defer.t
+[32m[PASS][0m language: tests/language/104-location-macros.t
+[32m[PASS][0m language: tests/language/104-public-type-alias-binding.t
+[32m[PASS][0m language: tests/language/105-float-integer-casts.t
+[32m[PASS][0m language: tests/language/106-prefixed-integer-literals.t
+[32m[PASS][0m language: tests/language/107-assert-statements.t
+[32m[PASS][0m language: tests/language/108-size-operator.t
+[32m[PASS][0m language: tests/language/109-definite-assignment.t
+[32m[PASS][0m language: tests/language/110-unused-underscore.t
+[32m[PASS][0m language: tests/language/111-assert-failure-exit.t
+[32m[PASS][0m language: tests/language/112-integer-separators.t
+[32m[PASS][0m language: tests/language/113-ffi-blocks.t
+[32m[PASS][0m language: tests/language/114-shift-operators.t
+[32m[PASS][0m language: tests/language/115-float-separators.t
+[32m[PASS][0m language: tests/language/116-indexed-for-in.t
+[32m[PASS][0m language: tests/language/117-interpolated-for-field.t
+[32m[PASS][0m language: tests/language/118-nested-on-branch.t
+[32m[PASS][0m language: tests/language/119-slice-element-pointers.t
+[32m[PASS][0m language: tests/language/120-plex-literal-default-missing.t
+[32m[PASS][0m language: tests/language/121-self-referential-slice-literal.t
+[32m[PASS][0m language: tests/language/122-pointer-alias-cycle.t
+[32m[PASS][0m language: tests/language/123-mutual-pointer-plex-types.t
+[32m[PASS][0m language: tests/language/124-fixed-array-pointer-cycles.t
+[32m[PASS][0m language: tests/language/125-top-level-interpolated-strings.t
+[32m[PASS][0m language: tests/language/126-default-parameters.t
+[32m[PASS][0m language: tests/language/127-generic-types.t
+[32m[PASS][0m language: tests/language/128-generic-functions.t
+[32m[PASS][0m language: tests/language/129-cross-module-generics.t
+[32m[PASS][0m language: tests/language/130-inherent-impl-methods.t
+[32m[PASS][0m language: tests/language/131-module-folder-imports.t
+[32m[PASS][0m language: tests/language/132-public-use-reexports.t
+[32m[PASS][0m language: tests/language/133-std-io-error-output.t
+[32m[PASS][0m language: tests/language/134-platform-on-use.t
+[32m[PASS][0m language: tests/language/135-module-parts.t
+[32m[PASS][0m language: tests/language/136-interpolated-assert-messages.t
+[32m[PASS][0m language: tests/language/137-plex-field-shorthand.t
+[32m[PASS][0m language: tests/language/138-named-call-arguments.t
+[32m[PASS][0m language: tests/language/139-size-field-name.t
+[32m[PASS][0m language: tests/language/140-term-window-api.t
+[32m[PASS][0m language: tests/language/141-method-regressions.t
+[32m[PASS][0m language: tests/language/142-associated-functions-and-type-aliases.t
+[32m[PASS][0m language: tests/language/142-lvalue-and-plex-regressions.t
+[32m[PASS][0m language: tests/language/143-dynarray-runtime-capacity-and-resize.t
+[32m[PASS][0m language: tests/language/143-enum-call-context.t
+[32m[PASS][0m language: tests/language/144-local-type-declarations.t
+[32m[PASS][0m language: tests/language/144-pointer-equality-and-nil-on.t
+[32m[PASS][0m language: tests/language/145-module-symbol-namespaces.t
+[32m[PASS][0m language: tests/language/145-public-mutable-globals.t
+[32m[PASS][0m language: tests/language/146-ffi-block-forward-use.t
+[32m[PASS][0m language: tests/language/147-qualified-module-types.t
+[32m[PASS][0m language: tests/language/148-untyped-integer-pointer-casts.t
+[32m[PASS][0m language: tests/language/149-imported-ffi-functions.t
+[32m[PASS][0m language: tests/language/150-qualified-plex-literal.t
+[32m[PASS][0m language: tests/language/151-typed-plex-patterns.t
+[32m[PASS][0m language: tests/language/152-on-break-for-expression.t
+[32m[PASS][0m language: tests/language/153-break-on.t
+[32m[PASS][0m language: tests/language/153-unsigned-byte-comparisons.t
+[32m[PASS][0m language: tests/language/154-string-continuations.t
+[32m[PASS][0m language: tests/language/155-plex-literal-default-missing.t
+[32m[PASS][0m language: tests/language/157-for-in-ranges.t
+[32m[PASS][0m language: tests/language/158-local-const-typed-plex-ellipsis.t
+[32m[PASS][0m language: tests/language/159-return-context-local-inference.t
+[32m[PASS][0m language: tests/language/160-underscore-unused-assignment.t
+[32m[PASS][0m language: tests/language/161-trait-declaration.t
+[32m[PASS][0m language: tests/language/162-trait-impl.t
+[32m[PASS][0m language: tests/language/163-std-traits.t
+[32m[PASS][0m language: tests/language/164-trait-primitive-impl.t
+[32m[PASS][0m language: tests/language/165-trait-resolution.t
+[32m[PASS][0m language: tests/language/166-trait-self-alias.t
+[32m[PASS][0m language: tests/language/167-explicit-trait-call.t
+[32m[PASS][0m language: tests/language/168-explicit-trait-impl-call.t
+[32m[PASS][0m language: tests/language/169-generic-trait-declaration.t
+[32m[PASS][0m language: tests/language/170-where-constraints.t
+[32m[PASS][0m language: tests/language/171-generic-trait-impl.t
+[32m[PASS][0m language: tests/language/172-display-interpolation.t
+[32m[PASS][0m language: tests/language/173-core-option-result.t
+[32m[PASS][0m language: tests/language/174-eq-operator-trait.t
+[32m[PASS][0m language: tests/language/175-default-typed-binding.t
+[32m[PASS][0m language: tests/language/176-default-zero-init-fallback.t
+[32m[PASS][0m language: tests/language/177-default-undefined-opt-out.t
+[32m[PASS][0m language: tests/language/178-order-operator-trait.t
+[32m[PASS][0m language: tests/language/179-iterator-for-in.t
+[32m[PASS][0m language: tests/language/180-void-function-type-shorthand.t
+[32m[PASS][0m language: tests/language/181-bare-use-imported-types.t
+[32m[PASS][0m language: tests/language/181-default-location-macros.t
+[32m[PASS][0m language: tests/language/182-for-in-postfix-deref-body.t
+[32m[PASS][0m language: tests/language/183-for-in-fixed-array.t
+[32m[PASS][0m language: tests/language/183-implicit-array-slices.t
+[32m[PASS][0m language: tests/language/183-pattern-binds-and-for-values.t
+[32m[PASS][0m language: tests/language/184-on-postfix-deref-scrutinee.t
+[32m[PASS][0m language: tests/language/185-unused-method-receiver.t
+[32m[PASS][0m language: tests/language/186-unqualified-enum-comma-patterns.t
+[32m[PASS][0m language: tests/language/187-associated-function-return-containing-self.t
+[32m[PASS][0m language: tests/language/188-imported-associated-call-target.t
+[32m[PASS][0m language: tests/language/189-generic-enum-impl-methods.t
+[32m[PASS][0m language: tests/language/190-generic-implicit-array-slice.t
+[32m[PASS][0m language: tests/language/190-optional-result-types.t
+[32m[PASS][0m language: tests/language/191-compound-functions.t
+[32m[PASS][0m language: tests/language/192-explicit-generic-impls.t
+[32m[PASS][0m language: tests/language/196-plex-use.t
+[32m[PASS][0m language: tests/language/197-single-branch-extract-binder-method.t
+[32m[PASS][0m language: tests/language/198-loop-dynamic-array-count.t
+[32m[PASS][0m language: tests/language/199-pointer-ordering.t
+[32m[PASS][0m error: tests/errors/001-unknown-characters.e
+[32m[PASS][0m error: tests/errors/002-missing-values.e
+[32m[PASS][0m error: tests/errors/003-delimiters.e
+[32m[PASS][0m error: tests/errors/004-semantics.e
+[32m[PASS][0m error: tests/errors/005-dependency-cycles.e
+[32m[PASS][0m error: tests/errors/006-unterminated-strings.e
+[32m[PASS][0m error: tests/errors/008-interpolated-strings.e
+[32m[PASS][0m error: tests/errors/009-coverage-gaps.e
+[32m[PASS][0m error: tests/errors/010-scoped-locals.e
+[32m[PASS][0m error: tests/errors/011-function-calls.e
+[32m[PASS][0m error: tests/errors/012-missing-function-return.e
+[32m[PASS][0m error: tests/errors/013-entry-point.e
+[32m[PASS][0m error: tests/errors/014-invalid-function-forms.e
+[32m[PASS][0m error: tests/errors/015-on-short-form.e
+[32m[PASS][0m error: tests/errors/016-on-value-branches.e
+[32m[PASS][0m error: tests/errors/017-on-ranges.e
+[32m[PASS][0m error: tests/errors/018-primitive-operators.e
+[32m[PASS][0m error: tests/errors/019-on-exhaustiveness.e
+[32m[PASS][0m error: tests/errors/020-for-loops.e
+[32m[PASS][0m error: tests/errors/021-expression-blocks.e
+[32m[PASS][0m error: tests/errors/022-loop-expressions.e
+[32m[PASS][0m error: tests/errors/023-tuples.e
+[32m[PASS][0m error: tests/errors/024-fixed-arrays.e
+[32m[PASS][0m error: tests/errors/025-pointers.e
+[32m[PASS][0m error: tests/errors/026-slices.e
+[32m[PASS][0m error: tests/errors/027-string-slices.e
+[32m[PASS][0m error: tests/errors/028-plexes.e
+[32m[PASS][0m error: tests/errors/029-plex-ergonomics.e
+[32m[PASS][0m error: tests/errors/030-destructuring.e
+[32m[PASS][0m error: tests/errors/031-on-pattern-guards.e
+[32m[PASS][0m error: tests/errors/032-on-structural-patterns.e
+[32m[PASS][0m error: tests/errors/033-raw-unions.e
+[32m[PASS][0m error: tests/errors/034-enum-unit-variants.e
+[32m[PASS][0m error: tests/errors/035-enum-payloads.e
+[32m[PASS][0m error: tests/errors/036-generalised-on.e
+[32m[PASS][0m error: tests/errors/036-named-record-type-mismatch.e
+[32m[PASS][0m error: tests/errors/037-direct-recursive-record-type.e
+[32m[PASS][0m error: tests/errors/037-ffi-functions.e
+[32m[PASS][0m error: tests/errors/038-modules.e
+[32m[PASS][0m error: tests/errors/039-use-modules.e
+[32m[PASS][0m error: tests/errors/040-top-level-on.e
+[32m[PASS][0m error: tests/errors/041-module-privacy.e
+[32m[PASS][0m error: tests/errors/042-packed-integer-literals.e
+[32m[PASS][0m error: tests/errors/043-array-length-constants.e
+[32m[PASS][0m error: tests/errors/044-contextual-plex-literal.e
+[32m[PASS][0m error: tests/errors/045-ffi-consolidation.e
+[32m[PASS][0m error: tests/errors/046-nil-pointers.e
+[32m[PASS][0m error: tests/errors/047-dynamic-arrays.e
+[32m[PASS][0m error: tests/errors/048-defer.e
+[32m[PASS][0m error: tests/errors/049-prefixed-integer-literals.e
+[32m[PASS][0m error: tests/errors/050-assert.e
+[32m[PASS][0m error: tests/errors/051-size.e
+[32m[PASS][0m error: tests/errors/052-definite-assignment.e
+[32m[PASS][0m error: tests/errors/053-unused-locals.e
+[32m[PASS][0m error: tests/errors/054-integer-separators.e
+[32m[PASS][0m error: tests/errors/055-function-definition-type-annotation.e
+[32m[PASS][0m error: tests/errors/056-default-parameters.e
+[32m[PASS][0m error: tests/errors/057-generics.e
+[32m[PASS][0m error: tests/errors/058-inherent-impl-methods.e
+[32m[PASS][0m error: tests/errors/060-source-tests.e
+[32m[PASS][0m error: tests/errors/061-ffi-block-syntax.e
+[32m[PASS][0m error: tests/errors/062-type-declarations.e
+[32m[PASS][0m error: tests/errors/063-obsolete-part.e
+[32m[PASS][0m error: tests/errors/064-named-call-arguments.e
+[32m[PASS][0m error: tests/errors/065-missing-function-keyword.e
+[32m[PASS][0m error: tests/errors/066-plex-field-types.e
+[32m[PASS][0m error: tests/errors/067-public-plex-private-fields.e
+[32m[PASS][0m error: tests/errors/068-enum-discriminants.e
+[32m[PASS][0m error: tests/errors/069-associated-functions.e
+[32m[PASS][0m error: tests/errors/070-discarded-value.e
+[32m[PASS][0m error: tests/errors/071-pointer-integer-casts.e
+[36m[SKIP][0m error: tests/errors/072-windows-ffi-symbols.e
+[32m[PASS][0m error: tests/errors/073-used-underscore-local.e
+[32m[PASS][0m error: tests/errors/074-platform-assertions.e
+[32m[PASS][0m error: tests/errors/075-trait-impls.e
+[32m[PASS][0m error: tests/errors/076-trait-signatures.e
+[32m[PASS][0m error: tests/errors/077-trait-impl-resolution.e
+[32m[PASS][0m error: tests/errors/078-arena.e
+[32m[PASS][0m error: tests/errors/079-unexpected-return-value.e
+[32m[PASS][0m error: tests/errors/080-loop-else-infinite.e
+[32m[PASS][0m error: tests/errors/081-parameter-immutability.e
+[32m[PASS][0m error: tests/errors/082-unknown-member-suggestions.e
+[32m[PASS][0m error: tests/errors/083-private-methods.e
+[32m[PASS][0m error: tests/errors/084-folder-module-boundary.e
+[32m[PASS][0m error: tests/errors/085-bare-tuple-destructuring.e
+[32m[PASS][0m error: tests/errors/086-trait-generic-constraints.e
+[32m[PASS][0m error: tests/errors/087-never-type.e
+[32m[PASS][0m error: tests/errors/088-reserved-keyword-binding-name.e
+[32m[PASS][0m error: tests/errors/089-optional-result.e
+[32m[PASS][0m error: tests/errors/090-compound-functions.e
+[32m[PASS][0m error: tests/errors/091-detached-bang-is-logical-not.e
+[32m[PASS][0m error: tests/errors/092-typed-variable-double-colon.e
+[32m[PASS][0m error: tests/errors/093-missing-call-parameter-help.e
+[32m[PASS][0m error: tests/errors/094-braced-enum-payload-call-syntax.e
+[32m[PASS][0m error: tests/errors/095-plex-use-conflict.e
+[32m[PASS][0m error: tests/errors/096-duplicate-generic-plex-use.e
+[32m[PASS][0m error: tests/errors/097-incompatible-propagation.e
+[32m[PASS][0m error: tests/errors/098-missing-on-extract-arrow.e
+[32m[PASS][0m error: tests/errors/099-result-type-rendering.e
+[32m[PASS][0m error: tests/errors/100-unused-single-branch-extract-binder.e
+[32m[PASS][0m error: tests/errors/101-receiver-method-through-type.e
+[32m[PASS][0m error: tests/errors/102-deferred-receiver-method-through-type.e
+[32m[PASS][0m error: tests/errors/103-on-branch-block-has-no-value.e
+[32m[PASS][0m error: tests/errors/104-ffi-parameter-names.e
+[32m[PASS][0m error: tests/errors/105-missing-on-condition-arrow.e
+[32m[PASS][0m error: tests/errors/106-unbracketed-for-range.e
+[32m[PASS][0m error: tests/errors/107-misspelled-on.e
+[32m[PASS][0m error: tests/errors/108-invalid-on-extraction-type.e
+[32m[PASS][0m error: tests/errors/109-plex-bit-fields.e
+[32m[PASS][0m error: tests/errors/109-plex-literal-parse-cleanup.e
+[32m[PASS][0m error: tests/errors/110-bitfield-type-context.e
+[32m[PASS][0m error: tests/errors/111-imported-trait-impl-members.e
+[32m[PASS][0m error: tests/errors/112-required-parameter-names.e
+[32m[PASS][0m error: tests/errors/113-unused-method-parameters.e
+[32m[PASS][0m error: tests/errors/129-content-equality.e
+[32m[PASS][0m error: tests/errors/130-private-import-hints.e
+[32m[PASS][0m error: tests/errors/131-variadic-cursors.e
+[32m[PASS][0m hir: tests/hir/001-functions.hir
+[32m[PASS][0m hir: tests/hir/002-parameters.hir
+[32m[PASS][0m hir: tests/hir/003-extern-functions.hir
+[32m[PASS][0m hir: tests/hir/004-locals.hir
+[32m[PASS][0m hir: tests/hir/005-binary-ops.hir
+[32m[PASS][0m hir: tests/hir/006-comparisons-and-bools.hir
+[32m[PASS][0m hir: tests/hir/007-unary-expressions.hir
+[32m[PASS][0m hir: tests/hir/008-literals-and-casts.hir
+[32m[PASS][0m hir: tests/hir/009-assignments.hir
+[32m[PASS][0m hir: tests/hir/010-address-index-deref.hir
+[32m[PASS][0m hir: tests/hir/011-aggregates.hir
+[32m[PASS][0m hir: tests/hir/012-plex-fields.hir
+[32m[PASS][0m hir: tests/hir/013-slices.hir
+[32m[PASS][0m hir: tests/hir/014-control-statements.hir
+[32m[PASS][0m hir: tests/hir/015-expression-blocks.hir
+[32m[PASS][0m hir: tests/hir/016-on-forms.hir
+[32m[PASS][0m hir: tests/hir/017-for-forms.hir
+[32m[PASS][0m hir: tests/hir/017-nested-call-args.hir
+[32m[PASS][0m hir: tests/hir/018-top-level-records.hir
+[32m[PASS][0m hir: tests/hir/019-function-literals.hir
+[32m[PASS][0m hir: tests/hir/020-module-bindings.hir
+[32m[PASS][0m hir: tests/hir/021-expression-bodied-functions.hir
+[32m[PASS][0m hir: tests/hir/022-address-of-array-and-slice.hir
+[32m[PASS][0m hir: tests/hir/022-entity-bindings.hir
+[32m[PASS][0m hir: tests/hir/023-expression-control-values.hir
+[32m[PASS][0m hir: tests/hir/024-aggregate-pointer-cases.hir
+[32m[PASS][0m hir: tests/hir/027-compound-functions.hir
+[32m[PASS][0m hir: tests/hir/028-variadic-cursors.hir
+[32m[PASS][0m llvm: tests/llvm/001-functions.ll
+[32m[PASS][0m llvm: tests/llvm/002-imports-and-exports.ll
+[32m[PASS][0m llvm: tests/llvm/003-expressions.ll
+[32m[PASS][0m llvm: tests/llvm/004-locals.ll
+[32m[PASS][0m llvm: tests/llvm/005-assignments.ll
+[32m[PASS][0m llvm: tests/llvm/006-comparisons.ll
+[32m[PASS][0m llvm: tests/llvm/007-unary-expressions.ll
+[32m[PASS][0m llvm: tests/llvm/008-literals-and-casts.ll
+[32m[PASS][0m llvm: tests/llvm/010-address-index-deref.ll
+[32m[PASS][0m llvm: tests/llvm/011-aggregates.ll
+[32m[PASS][0m llvm: tests/llvm/012-plex-fields.ll
+[32m[PASS][0m llvm: tests/llvm/013-slices.ll
+[32m[PASS][0m llvm: tests/llvm/014-control-statements.ll
+[32m[PASS][0m llvm: tests/llvm/015-expression-blocks.ll
+[32m[PASS][0m llvm: tests/llvm/016-on-condition.ll
+[32m[PASS][0m llvm: tests/llvm/017-for-basic.ll
+[32m[PASS][0m llvm: tests/llvm/018-for-break-values.ll
+[32m[PASS][0m llvm: tests/llvm/019-for-in.ll
+[32m[PASS][0m llvm: tests/llvm/020-for-in-break.ll
+[32m[PASS][0m llvm: tests/llvm/021-on-value-patterns.ll
+[32m[PASS][0m llvm: tests/llvm/022-constant-slice-literals.ll
+[32m[PASS][0m llvm: tests/llvm/022-on-plex-patterns.ll
+[32m[PASS][0m llvm: tests/llvm/023-on-statement-return.ll
+[32m[PASS][0m llvm: tests/llvm/024-enums.ll
+[32m[PASS][0m llvm: tests/llvm/025-expression-bodied-functions.ll
+[32m[PASS][0m llvm: tests/llvm/026-void-calls.ll
+[32m[PASS][0m llvm: tests/llvm/027-top-level-constants.ll
+[32m[PASS][0m llvm: tests/llvm/028-global-variables.ll
+[32m[PASS][0m llvm: tests/llvm/029-abi-layout-runtime.ll
+[32m[PASS][0m llvm: tests/llvm/030-debug-line-tables.ll
+[32m[PASS][0m llvm: tests/llvm/031-debug-parameters.ll
+[32m[PASS][0m llvm: tests/llvm/032-debug-stack-locals.ll
+[32m[PASS][0m llvm: tests/llvm/033-debug-record-types.ll
+[32m[PASS][0m llvm: tests/llvm/034-debug-array-types.ll
+[32m[PASS][0m llvm: tests/llvm/035-debug-dynamic-array-types.ll
+[32m[PASS][0m llvm: tests/llvm/036-debug-globals.ll
+[32m[PASS][0m llvm: tests/llvm/037-debug-union-types.ll
+[32m[PASS][0m llvm: tests/llvm/038-debug-lexical-scopes.ll
+[32m[PASS][0m llvm: tests/llvm/039-debug-for-loop-scopes.ll
+[32m[PASS][0m llvm: tests/llvm/040-debug-for-in-step-lines.ll
+[32m[PASS][0m llvm: tests/llvm/041-debug-implicit-exit-braces.ll
+[32m[PASS][0m llvm: tests/llvm/042-debug-on-assignment-line.ll
+[32m[PASS][0m llvm: tests/llvm/043-atomics.ll
+[32m[PASS][0m llvm: tests/llvm/044-compile-time-specialization.ll
+[32m[PASS][0m llvm: tests/llvm/045-compound-functions.ll
+[32m[PASS][0m llvm: tests/llvm/046-fixed-array-literal-equality.ll
+[32m[PASS][0m llvm: tests/llvm/047-debug-plex-bit-fields.ll
+[32m[PASS][0m llvm: tests/llvm/048-variadic-cursors.ll
+[32m[PASS][0m format: tests/format/001-comment-wrap.f
+[32m[PASS][0m format: tests/format/002-blank-lines.f
+[32m[PASS][0m format: tests/format/003-expression-layout.f
+[32m[PASS][0m format: tests/format/004-multiple-bindings.f
+[32m[PASS][0m format: tests/format/005-grouping-preserved.f
+[32m[PASS][0m format: tests/format/006-block-and-strings.f
+[32m[PASS][0m format: tests/format/007-adjacent-strings.f
+[32m[PASS][0m format: tests/format/008-block-return.f
+[32m[PASS][0m format: tests/format/009-typed-bindings.f
+[32m[PASS][0m format: tests/format/010-variables.f
+[32m[PASS][0m format: tests/format/011-type-alias-and-cast.f
+[32m[PASS][0m format: tests/format/012-primitive-variables.f
+[32m[PASS][0m format: tests/format/013-interpolated-strings.f
+[32m[PASS][0m format: tests/format/014-nested-blocks.f
+[32m[PASS][0m format: tests/format/015-function-parameters.f
+[32m[PASS][0m format: tests/format/016-function-values.f
+[32m[PASS][0m format: tests/format/017-block-functions.f
+[32m[PASS][0m format: tests/format/018-on-short-form.f
+[32m[PASS][0m format: tests/format/019-on-value-branches.f
+[32m[PASS][0m format: tests/format/020-on-comma-patterns.f
+[32m[PASS][0m format: tests/format/021-on-ranges.f
+[32m[PASS][0m format: tests/format/022-function-statement-blank-lines.f
+[32m[PASS][0m format: tests/format/023-primitive-operators.f
+[32m[PASS][0m format: tests/format/024-aligned-assignment.f
+[32m[PASS][0m format: tests/format/025-on-pattern-binders.f
+[32m[PASS][0m format: tests/format/026-on-inside-func-call.f
+[32m[PASS][0m format: tests/format/027-on-statement-partial.f
+[32m[PASS][0m format: tests/format/028-for-infinite.f
+[32m[PASS][0m format: tests/format/029-for-while.f
+[32m[PASS][0m format: tests/format/030-for-c-style.f
+[32m[PASS][0m format: tests/format/031-for-break-again.f
+[32m[PASS][0m format: tests/format/032-expression-block.f
+[32m[PASS][0m format: tests/format/033-labelled-expression-block.f
+[32m[PASS][0m format: tests/format/034-labelled-loop-expressions.f
+[32m[PASS][0m format: tests/format/035-for-else.f
+[32m[PASS][0m format: tests/format/036-tuples.f
+[32m[PASS][0m format: tests/format/037-fixed-arrays.f
+[32m[PASS][0m format: tests/format/038-pointers.f
+[32m[PASS][0m format: tests/format/039-slices.f
+[32m[PASS][0m format: tests/format/040-string-slices.f
+[32m[PASS][0m format: tests/format/041-plexes.f
+[32m[PASS][0m format: tests/format/042-plex-newline-fields.f
+[32m[PASS][0m format: tests/format/043-plex-ergonomics.f
+[32m[PASS][0m format: tests/format/044-destructuring-bindings.f
+[32m[PASS][0m format: tests/format/045-on-pattern-guards.f
+[32m[PASS][0m format: tests/format/046-on-structural-patterns.f
+[32m[PASS][0m format: tests/format/047-raw-unions.f
+[32m[PASS][0m format: tests/format/048-enum-unit-variants.f
+[32m[PASS][0m format: tests/format/049-on-in-interpolated-string.f
+[32m[PASS][0m format: tests/format/050-enum-payloads.f
+[32m[PASS][0m format: tests/format/051-generalised-on.f
+[32m[PASS][0m format: tests/format/052-ffi-functions.f
+[32m[PASS][0m format: tests/format/053-modules.f
+[32m[PASS][0m format: tests/format/054-use-modules.f
+[32m[PASS][0m format: tests/format/055-top-level-on.f
+[32m[PASS][0m format: tests/format/056-packed-integer-literals.f
+[32m[PASS][0m format: tests/format/057-for-in-and-deref.f
+[32m[PASS][0m format: tests/format/058-contextual-plex-and-slice.f
+[32m[PASS][0m format: tests/format/059-undefined.f
+[32m[PASS][0m format: tests/format/060-assignment-and-for-in.f
+[32m[PASS][0m format: tests/format/061-multiline-plex-literals.f
+[32m[PASS][0m format: tests/format/062-c-strings-and-escapes.f
+[32m[PASS][0m format: tests/format/063-plex-literal-alignment.f
+[32m[PASS][0m format: tests/format/064-grouped-use.f
+[32m[PASS][0m format: tests/format/065-nil-pointers.f
+[32m[PASS][0m format: tests/format/066-slice-casts-and-nil.f
+[32m[PASS][0m format: tests/format/067-field-compound-assign.f
+[32m[PASS][0m format: tests/format/068-top-level-comment-spacing.f
+[32m[PASS][0m format: tests/format/069-dynamic-arrays.f
+[32m[PASS][0m format: tests/format/070-on-short-block-expr.f
+[32m[PASS][0m format: tests/format/071-defer.f
+[32m[PASS][0m format: tests/format/072-prefixed-integer-literals.f
+[32m[PASS][0m format: tests/format/073-assert.f
+[32m[PASS][0m format: tests/format/074-size.f
+[32m[PASS][0m format: tests/format/075-indexed-for-in.f
+[32m[PASS][0m format: tests/format/076-nested-on-and-plex-literals.f
+[32m[PASS][0m format: tests/format/077-plex-literal-ellipsis.f
+[32m[PASS][0m format: tests/format/078-string-reflow.f
+[32m[PASS][0m format: tests/format/079-default-parameters.f
+[32m[PASS][0m format: tests/format/080-generics-syntax.f
+[32m[PASS][0m format: tests/format/081-inherent-impl-methods.f
+[32m[PASS][0m format: tests/format/081-location-macros.f
+[32m[PASS][0m format: tests/format/081-trait-declaration.f
+[32m[PASS][0m format: tests/format/082-source-tests.f
+[32m[PASS][0m format: tests/format/083-public-use.f
+[32m[PASS][0m format: tests/format/084-sorted-use-groups.f
+[32m[PASS][0m format: tests/format/085-comments-inside-blocks.f
+[32m[PASS][0m format: tests/format/086-statement-blank-lines.f
+[32m[PASS][0m format: tests/format/087-module-parts.f
+[32m[PASS][0m format: tests/format/088-top-level-variable-groups.f
+[32m[PASS][0m format: tests/format/089-assignment-groups.f
+[32m[PASS][0m format: tests/format/090-long-function-signatures.f
+[32m[PASS][0m format: tests/format/091-string-control-escapes.f
+[32m[PASS][0m format: tests/format/092-single-line-plex-literals.f
+[32m[PASS][0m format: tests/format/093-trailing-comments.f
+[32m[PASS][0m format: tests/format/094-trailing-comment-continuations.f
+[32m[PASS][0m format: tests/format/095-plex-standalone-comments.f
+[32m[PASS][0m format: tests/format/096-comments-break-groups.f
+[32m[PASS][0m format: tests/format/097-enum-and-union-trailing-comments.f
+[32m[PASS][0m format: tests/format/098-enum-variant-gaps.f
+[32m[PASS][0m format: tests/format/099-enum-discriminant-alignment.f
+[32m[PASS][0m format: tests/format/100-plex-field-gaps.f
+[32m[PASS][0m format: tests/format/101-plex-literal-comments.f
+[32m[PASS][0m format: tests/format/102-qualified-type-and-plex-literal-alignment.f
+[32m[PASS][0m format: tests/format/103-typed-plex-patterns.f
+[32m[PASS][0m format: tests/format/104-return-for-expression.f
+[32m[PASS][0m format: tests/format/105-break-on.f
+[32m[PASS][0m format: tests/format/106-token-trivia-partial-block.f
+[32m[PASS][0m format: tests/format/107-token-trivia-partial-edge-cases.f
+[32m[PASS][0m format: tests/format/108-token-trivia-unterminated-forms.f
+[32m[PASS][0m format: tests/format/109-token-trivia-partial-signature-and-for.f
+[32m[PASS][0m format: tests/format/110-token-trivia-adjacent-atoms.f
+[32m[PASS][0m format: tests/format/111-empty-lines-in-plex.f
+[32m[PASS][0m format: tests/format/112-token-trivia-interpolated-string.f
+[32m[PASS][0m format: tests/format/113-on-string-pattern-branches.f
+[32m[PASS][0m format: tests/format/114-for-in-ranges.f
+[32m[PASS][0m format: tests/format/115-plex-usage.f
+[32m[PASS][0m format: tests/format/116-comment-blank-lines.f
+[32m[PASS][0m format: tests/format/117-pragmas.f
+[32m[PASS][0m format: tests/format/118-partial-pragmas.f
+[32m[PASS][0m format: tests/format/119-local-const-typed-plex-ellipsis.f
+[32m[PASS][0m format: tests/format/120-plex-literal-no-commas.f
+[32m[PASS][0m format: tests/format/121-aligned-long-values.f
+[32m[PASS][0m format: tests/format/121-for-in-items.f
+[32m[PASS][0m format: tests/format/122-long-call-statement.f
+[32m[PASS][0m format: tests/format/123-top-level-assert-intrinsic.f
+[32m[PASS][0m format: tests/format/124-trait-impl.f
+[32m[PASS][0m format: tests/format/125-generic-traits.f
+[32m[PASS][0m format: tests/format/126-where-constraints.f
+[32m[PASS][0m format: tests/format/127-trait-calls.f
+[32m[PASS][0m format: tests/format/128-interpolated-string-brace-escapes.f
+[32m[PASS][0m format: tests/format/129-plex-literal-align-single-line-runs.f
+[32m[PASS][0m format: tests/format/130-void-function-type-shorthand.f
+[32m[PASS][0m format: tests/format/131-postfix-deref-before-branch-and-block.f
+[32m[PASS][0m format: tests/format/132-return-on-branches-with-existing-indent.f
+[32m[PASS][0m format: tests/format/133-token-trivia-pointer-param.f
+[32m[PASS][0m format: tests/format/134-ffi-block-alignment.f
+[32m[PASS][0m format: tests/format/134-top-level-on-test.f
+[32m[PASS][0m format: tests/format/135-trailing-comment-spacing.f
+[32m[PASS][0m format: tests/format/135-trait-fn-type-param-alignment.f
+[32m[PASS][0m format: tests/format/135-triple-strings.f
+[32m[PASS][0m format: tests/format/136-protected-line-comments.f
+[32m[PASS][0m format: tests/format/136-wrapped-trailing-comment-next-line.f
+[32m[PASS][0m format: tests/format/137-trait-stub-and-return-spacing.f
+[32m[PASS][0m format: tests/format/138-public-impl.f
+[32m[PASS][0m format: tests/format/139-bitwise-not.f
+[32m[PASS][0m format: tests/format/142-long-bool-on-chain.f
+[32m[PASS][0m format: tests/format/147-on-postfix-deref-scrutinee.f
+[32m[PASS][0m format: tests/format/148-destructure-on-branches.f
+[32m[PASS][0m format: tests/format/149-box-types.f
+[32m[PASS][0m format: tests/format/150-token-stream-preserves-user-space.f
+[32m[PASS][0m format: tests/format/151-token-stream-on-header-lines.f
+[32m[PASS][0m format: tests/format/152-enum-braced-payload.f
+[32m[PASS][0m format: tests/format/153-on-branch-arrow-alignment.f
+[32m[PASS][0m format: tests/format/154-long-bool-on-branch-body.f
+[32m[PASS][0m format: tests/format/155-nested-braced-enum-plex-field.f
+[32m[PASS][0m format: tests/format/156-multiline-typed-array-variable.f
+[32m[PASS][0m format: tests/format/157-call-with-fn-block-argument.f
+[32m[PASS][0m format: tests/format/158-on-comma-enum-patterns.f
+[32m[PASS][0m format: tests/format/159-nested-on-branch-expressions.f
+[32m[PASS][0m format: tests/format/160-protected-array-regions.f
+[32m[PASS][0m format: tests/format/161-multiline-call-arg-comments.f
+[32m[PASS][0m format: tests/format/162-impl-function-call-plex-layout.f
+[32m[PASS][0m format: tests/format/163-short-return-value-on.f
+[32m[PASS][0m format: tests/format/164-multiline-call-alignment.f
+[32m[PASS][0m format: tests/format/165-method-call-chain-wrap.f
+[32m[PASS][0m format: tests/format/166-token-stream-invalid-on-chain.f
+[32m[PASS][0m format: tests/format/167-compress-style-regressions.f
+[32m[PASS][0m format: tests/format/168-compile-time-params-and-atomics.f
+[32m[PASS][0m format: tests/format/169-compound-functions.f
+[32m[PASS][0m format: tests/format/170-multiline-string-continuations.f
+[32m[PASS][0m format: tests/format/171-while-logical-not-header.f
+[32m[PASS][0m format: tests/format/172-public-variable-alignment.f
+[32m[PASS][0m format: tests/format/173-multiline-on-branch-spacing.f
+[32m[PASS][0m format: tests/format/174-mixed-on-branch-spacing.f
+[32m[PASS][0m format: tests/format/175-plex-use.f
+[32m[PASS][0m format: tests/format/176-gfx-layer-handle-api.f
+[32m[PASS][0m format: tests/format/177-pixels-frame-literal.f
+[32m[PASS][0m format: tests/format/178-commented-logical-chain-operand.f
+[32m[PASS][0m format: tests/format/180-reversed-arena-declaration.f
+[32m[PASS][0m format: tests/format/181-multiline-plex-final-call-argument.f
+[32m[PASS][0m format: tests/format/182-array-trailing-comments.f
+[32m[PASS][0m format: tests/format/182-deferred-variable.f
+[32m[PASS][0m format: tests/format/183-array-comments-before-error.f
+[32m[PASS][0m format: tests/format/184-long-bool-on-initialiser.f
+[32m[PASS][0m format: tests/format/185-local-define-on.f
+[32m[PASS][0m format: tests/format/186-collapse-single-return-blocks.f
+[32m[PASS][0m format: tests/format/186-on-extract-binder-brace.f
+[32m[PASS][0m format: tests/format/187-expression-function-typed-plex.f
+[32m[PASS][0m format: tests/format/187-implicit-on-binder.f
+[32m[PASS][0m format: tests/format/188-call-extract-after-multiline-array.f
+[32m[PASS][0m format: tests/format/189-plex-bit-fields.f
+[32m[PASS][0m format: tests/format/191-range-membership.f
+[32m[PASS][0m format: tests/format/192-call-multiline-plex-close.f
+[32m[PASS][0m format: tests/format/193-for-condition-wrap.f
+[32m[PASS][0m format: tests/format/194-fallback-for-condition-wrap.f
+[32m[PASS][0m format: tests/format/195-variadic-cursors.f
+[32m[PASS][0m format: tests/format/196-variadic-callback-parameters.f
+[32m[PASS][0m lsp: tests/lsp/001-hover-and-definition.lsp
+[32m[PASS][0m lsp: tests/lsp/002-document-symbols.lsp
+[32m[PASS][0m lsp: tests/lsp/003-semantic-tokens.lsp
+[32m[PASS][0m lsp: tests/lsp/004-diagnostics.lsp
+[32m[PASS][0m lsp: tests/lsp/005-strings-and-builtins.lsp
+[32m[PASS][0m lsp: tests/lsp/006-block-main-signature.lsp
+[32m[PASS][0m lsp: tests/lsp/007-block-return.lsp
+[32m[PASS][0m lsp: tests/lsp/008-typed-bindings.lsp
+[32m[PASS][0m lsp: tests/lsp/009-type-aliases.lsp
+[32m[PASS][0m lsp: tests/lsp/010-primitive-variables.lsp
+[32m[PASS][0m lsp: tests/lsp/011-type-alias-cycle.lsp
+[32m[PASS][0m lsp: tests/lsp/012-interpolated-strings.lsp
+[32m[PASS][0m lsp: tests/lsp/013-scoped-locals.lsp
+[32m[PASS][0m lsp: tests/lsp/014-function-parameters.lsp
+[32m[PASS][0m lsp: tests/lsp/015-function-values.lsp
+[32m[PASS][0m lsp: tests/lsp/016-local-function-forward-ref.lsp
+[32m[PASS][0m lsp: tests/lsp/017-on-semantic-tokens.lsp
+[32m[PASS][0m lsp: tests/lsp/018-on-value-branches.lsp
+[32m[PASS][0m lsp: tests/lsp/019-primitive-operators.lsp
+[32m[PASS][0m lsp: tests/lsp/020-on-pattern-binders.lsp
+[32m[PASS][0m lsp: tests/lsp/021-on-untyped-local.lsp
+[32m[PASS][0m lsp: tests/lsp/022-on-statement-partial.lsp
+[32m[PASS][0m lsp: tests/lsp/023-on-exhaustiveness.lsp
+[32m[PASS][0m lsp: tests/lsp/024-for-infinite.lsp
+[32m[PASS][0m lsp: tests/lsp/025-for-while.lsp
+[32m[PASS][0m lsp: tests/lsp/026-for-c-style.lsp
+[32m[PASS][0m lsp: tests/lsp/027-for-break-again.lsp
+[32m[PASS][0m lsp: tests/lsp/028-expression-block.lsp
+[32m[PASS][0m lsp: tests/lsp/029-labelled-loop-expressions.lsp
+[32m[PASS][0m lsp: tests/lsp/030-for-else.lsp
+[32m[PASS][0m lsp: tests/lsp/031-tuples.lsp
+[32m[PASS][0m lsp: tests/lsp/032-fixed-arrays.lsp
+[32m[PASS][0m lsp: tests/lsp/033-pointers.lsp
+[32m[PASS][0m lsp: tests/lsp/034-slices.lsp
+[32m[PASS][0m lsp: tests/lsp/035-string-slices.lsp
+[32m[PASS][0m lsp: tests/lsp/036-plexes.lsp
+[32m[PASS][0m lsp: tests/lsp/037-plex-ergonomics.lsp
+[32m[PASS][0m lsp: tests/lsp/038-destructuring-bindings.lsp
+[32m[PASS][0m lsp: tests/lsp/039-on-pattern-guards.lsp
+[32m[PASS][0m lsp: tests/lsp/040-on-structural-patterns.lsp
+[32m[PASS][0m lsp: tests/lsp/041-raw-unions.lsp
+[32m[PASS][0m lsp: tests/lsp/042-enum-unit-variants.lsp
+[32m[PASS][0m lsp: tests/lsp/043-enum-payloads.lsp
+[32m[PASS][0m lsp: tests/lsp/044-generalised-on.lsp
+[32m[PASS][0m lsp: tests/lsp/045-ffi-functions.lsp
+[32m[PASS][0m lsp: tests/lsp/046-std-print-module.lsp
+[32m[PASS][0m lsp: tests/lsp/047-ffi-varargs.lsp
+[32m[PASS][0m lsp: tests/lsp/048-use-modules.lsp
+[32m[PASS][0m lsp: tests/lsp/049-top-level-on.lsp
+[32m[PASS][0m lsp: tests/lsp/050-imported-types.lsp
+[32m[PASS][0m lsp: tests/lsp/051-contextual-plex-and-slice.lsp
+[32m[PASS][0m lsp: tests/lsp/052-stale-analysis-definition.lsp
+[32m[PASS][0m lsp: tests/lsp/053-grouped-use.lsp
+[32m[PASS][0m lsp: tests/lsp/054-dynamic-arrays.lsp
+[32m[PASS][0m lsp: tests/lsp/055-unused-local-diagnostics.lsp
+[32m[PASS][0m lsp: tests/lsp/056-condition-on-interpolation.lsp
+[32m[PASS][0m lsp: tests/lsp/057-no-entry-point-diagnostic.lsp
+[32m[PASS][0m lsp: tests/lsp/058-default-parameters.lsp
+[32m[PASS][0m lsp: tests/lsp/059-generics.lsp
+[32m[PASS][0m lsp: tests/lsp/060-module-parts.lsp
+[32m[PASS][0m lsp: tests/lsp/061-completion.lsp
+[32m[PASS][0m lsp: tests/lsp/062-incremental-sync.lsp
+[32m[PASS][0m lsp: tests/lsp/063-field-and-method-completion.lsp
+[32m[PASS][0m lsp: tests/lsp/064-module-completion.lsp
+[32m[PASS][0m lsp: tests/lsp/065-signature-help.lsp
+[32m[PASS][0m lsp: tests/lsp/066-module-symbol-completion.lsp
+[32m[PASS][0m lsp: tests/lsp/067-named-call-arguments.lsp
+[32m[PASS][0m lsp: tests/lsp/068-size-field-definition.lsp
+[32m[PASS][0m lsp: tests/lsp/069-module-part-definition.lsp
+[32m[PASS][0m lsp: tests/lsp/070-partial-member-completion.lsp
+[32m[PASS][0m lsp: tests/lsp/071-module-part-diagnostics.lsp
+[32m[PASS][0m lsp: tests/lsp/072-case-sensitive-completion.lsp
+[32m[PASS][0m lsp: tests/lsp/073-definition-fallbacks.lsp
+[32m[PASS][0m lsp: tests/lsp/074-qualified-module-types.lsp
+[32m[PASS][0m lsp: tests/lsp/075-module-binding-completion-fallback.lsp
+[32m[PASS][0m lsp: tests/lsp/076-module-completion-syntax-exports.lsp
+[32m[PASS][0m lsp: tests/lsp/077-module-completion-failed-import.lsp
+[32m[PASS][0m lsp: tests/lsp/078-current-module-completion.lsp
+[32m[PASS][0m lsp: tests/lsp/079-imported-diagnostic-uri.lsp
+[32m[PASS][0m lsp: tests/lsp/080-plex-literal-code-action.lsp
+[32m[PASS][0m lsp: tests/lsp/081-qualified-plex-literal-code-action.lsp
+[32m[PASS][0m lsp: tests/lsp/082-empty-plex-literal-code-action.lsp
+[32m[PASS][0m lsp: tests/lsp/083-module-part-completion-fallback.lsp
+[32m[PASS][0m lsp: tests/lsp/084-rename.lsp
+[32m[PASS][0m lsp: tests/lsp/085-rename-bindings-with-errors.lsp
+[32m[PASS][0m lsp: tests/lsp/086-rename-with-import-error.lsp
+[32m[PASS][0m lsp: tests/lsp/087-on-payload-member-completion.lsp
+[32m[PASS][0m lsp: tests/lsp/088-imported-on-payload-member-completion.lsp
+[32m[PASS][0m lsp: tests/lsp/089-param-member-completion-with-errors.lsp
+[32m[PASS][0m lsp: tests/lsp/090-symbol-completion-with-errors.lsp
+[32m[PASS][0m lsp: tests/lsp/091-param-field-hover-definition.lsp
+[32m[PASS][0m lsp: tests/lsp/092-for-item-member-completion.lsp
+[32m[PASS][0m lsp: tests/lsp/093-return-for-item-member-completion.lsp
+[32m[PASS][0m lsp: tests/lsp/094-dotted-dynarray-member-completion.lsp
+[32m[PASS][0m lsp: tests/lsp/095-core-arena-method-completion.lsp
+[32m[PASS][0m lsp: tests/lsp/095-pointer-field-completion-during-type-edit.lsp
+[32m[PASS][0m lsp: tests/lsp/096-incremental-member-completion-after-edit.lsp
+[32m[PASS][0m lsp: tests/lsp/097-incremental-hover-after-partial-edit.lsp
+[32m[PASS][0m lsp: tests/lsp/098-incremental-document-symbols-after-partial-edit.lsp
+[32m[PASS][0m lsp: tests/lsp/099-incremental-rename-after-partial-edit.lsp
+[32m[PASS][0m lsp: tests/lsp/100-source-param-completion-with-broken-function.lsp
+[32m[PASS][0m lsp: tests/lsp/101-incremental-definition-after-partial-edit.lsp
+[32m[PASS][0m lsp: tests/lsp/102-completion-in-unterminated-call.lsp
+[32m[PASS][0m lsp: tests/lsp/103-document-symbols-syntax-bindings.lsp
+[32m[PASS][0m lsp: tests/lsp/104-collection-and-tuple-member-completion.lsp
+[32m[PASS][0m lsp: tests/lsp/105-top-on-document-symbols.lsp
+[32m[PASS][0m lsp: tests/lsp/106-pragmas.lsp
+[36m[SKIP][0m lsp: tests/lsp/107-windows-ffi-symbols.lsp
+[32m[PASS][0m lsp: tests/lsp/108-imported-type-completion-with-errors.lsp
+[36m[SKIP][0m lsp: tests/lsp/109-top-on-import-completion-with-errors.lsp
+[32m[PASS][0m lsp: tests/lsp/110-signature-help-in-unterminated-call.lsp
+[32m[PASS][0m lsp: tests/lsp/111-imported-ffi-signature-help.lsp
+[32m[PASS][0m lsp: tests/lsp/112-plex-literal-field-completion.lsp
+[32m[PASS][0m lsp: tests/lsp/113-signature-help-after-newline.lsp
+[32m[PASS][0m lsp: tests/lsp/114-document-symbols-with-use.lsp
+[32m[PASS][0m lsp: tests/lsp/115-trait-symbols.lsp
+[32m[PASS][0m lsp: tests/lsp/116-core-arena-hover.lsp
+[32m[PASS][0m lsp: tests/lsp/117-os-module-completion.lsp
+[32m[PASS][0m lsp: tests/lsp/118-trait-impl-navigation.lsp
+[32m[PASS][0m lsp: tests/lsp/119-unused-use-semantic-token.lsp
+[32m[PASS][0m lsp: tests/lsp/120-add-use-code-action.lsp
+[32m[PASS][0m lsp: tests/lsp/121-local-add-use-code-action.lsp
+[32m[PASS][0m lsp: tests/lsp/122-no-brace-keyword-completion.lsp
+[32m[PASS][0m lsp: tests/lsp/123-add-use-after-import-group.lsp
+[32m[PASS][0m lsp: tests/lsp/124-add-use-after-header-comments.lsp
+[32m[PASS][0m lsp: tests/lsp/125-add-use-after-import-group-with-preamble.lsp
+[32m[PASS][0m lsp: tests/lsp/126-add-use-method-code-action.lsp
+[32m[PASS][0m lsp: tests/lsp/127-unused-local-rename-code-action.lsp
+[32m[PASS][0m lsp: tests/lsp/128-used-underscore-rename-code-action.lsp
+[32m[PASS][0m lsp: tests/lsp/129-stub-trait-impl-code-action.lsp
+[32m[PASS][0m lsp: tests/lsp/130-workspace-root-add-use.lsp
+[32m[PASS][0m lsp: tests/lsp/131-open-module-reanalysis.lsp
+[32m[PASS][0m lsp: tests/lsp/132-unknown-member-suggestion-code-action.lsp
+[32m[PASS][0m lsp: tests/lsp/133-add-use-skips-nested-mod-roots.lsp
+[32m[PASS][0m lsp: tests/lsp/134-hover-function-docs-and-params.lsp
+[32m[PASS][0m lsp: tests/lsp/135-imported-hover-doc-comment.lsp
+[32m[PASS][0m lsp: tests/lsp/136-std-term-import-definition-with-errors.lsp
+[32m[PASS][0m lsp: tests/lsp/137-std-term-param-completion-with-errors.lsp
+[32m[PASS][0m lsp: tests/lsp/138-std-term-import-hover-with-errors.lsp
+[32m[PASS][0m lsp: tests/lsp/139-std-term-import-signature-with-errors.lsp
+[32m[PASS][0m lsp: tests/lsp/140-add-use-env-lib-path-code-action.lsp
+[32m[PASS][0m lsp: tests/lsp/141-contextual-enum-variant-completion-definition.lsp
+[32m[PASS][0m lsp: tests/lsp/142-unused-param-rename-code-action-scope.lsp
+[32m[PASS][0m lsp: tests/lsp/143-qualified-enum-variant-completion.lsp
+[32m[PASS][0m lsp: tests/lsp/144-add-use-skips-core-method.lsp
+[32m[PASS][0m lsp: tests/lsp/145-document-links.lsp
+[32m[PASS][0m lsp: tests/lsp/146-source-test-hover.lsp
+[32m[PASS][0m lsp: tests/lsp/147-references.lsp
+[32m[PASS][0m lsp: tests/lsp/148-cross-module-references-rename.lsp
+[32m[PASS][0m lsp: tests/lsp/149-function-definition-colon-code-action.lsp
+[32m[PASS][0m lsp: tests/lsp/150-qualified-enum-variant-definition.lsp
+[32m[PASS][0m lsp: tests/lsp/151-enum-pattern-payload-definition.lsp
+[32m[PASS][0m lsp: tests/lsp/152-ffi-block-definition-preserves-alias-types.lsp
+[32m[PASS][0m lsp: tests/lsp/153-imported-method-completion.lsp
+[32m[PASS][0m lsp: tests/lsp/154-workspace-symbols.lsp
+[32m[PASS][0m lsp: tests/lsp/155-folder-module-imported-part-definition.lsp
+[32m[PASS][0m lsp: tests/lsp/156-folder-module-associated-completion.lsp
+[32m[PASS][0m lsp: tests/lsp/157-inferred-associated-method-completion.lsp
+[32m[PASS][0m lsp: tests/lsp/158-on-enum-variant-completion.lsp
+[32m[PASS][0m lsp: tests/lsp/159-missing-enum-variants-code-action.lsp
+[32m[PASS][0m lsp: tests/lsp/160-hover-literals-locals-methods-patterns.lsp
+[32m[PASS][0m lsp: tests/lsp/161-imported-method-hover.lsp
+[32m[PASS][0m lsp: tests/lsp/162-array-synthetic-member-completion.lsp
+[32m[PASS][0m lsp: tests/lsp/163-later-string-binding-completion.lsp
+[32m[PASS][0m lsp: tests/lsp/164-later-string-binding-member-completion.lsp
+[32m[PASS][0m lsp: tests/lsp/165-add-use-local-type-code-action.lsp
+[32m[PASS][0m lsp: tests/lsp/166-source-root-add-use.lsp
+[32m[PASS][0m lsp: tests/lsp/167-expression-call-member-completion.lsp
+[32m[PASS][0m lsp: tests/lsp/168-expression-call-unwrapped-member-completion.lsp
+[32m[PASS][0m lsp: tests/lsp/169-associated-option-self-completion.lsp
+[32m[PASS][0m lsp: tests/lsp/170-source-root-associated-option-self-completion.lsp
+[32m[PASS][0m lsp: tests/lsp/171-embed-source-relative-uri.lsp
+[32m[PASS][0m lsp: tests/lsp/172-associated-method-hover.lsp
+[32m[PASS][0m lsp: tests/lsp/173-atomic-compile-time-methods.lsp
+[32m[PASS][0m lsp: tests/lsp/174-nested-enum-pattern-completion.lsp
+[32m[PASS][0m lsp: tests/lsp/175-plex-declaration-completion.lsp
+[32m[PASS][0m lsp: tests/lsp/176-gfx-layer-handle-api.lsp
+[32m[PASS][0m lsp: tests/lsp/177-std-term-method-hover.lsp
+[32m[PASS][0m lsp: tests/lsp/179-completion-before-later-method-error.lsp
+[32m[PASS][0m lsp: tests/lsp/180-range-item-hover.lsp
+[32m[PASS][0m lsp: tests/lsp/181-result-binder-hover-before-later-error.lsp
+[32m[PASS][0m lsp: tests/lsp/182-assigned-empty-plex-literal-code-action.lsp
+[32m[PASS][0m lsp: tests/lsp/183-enum-variant-doc-hover.lsp
+[32m[PASS][0m lsp: tests/lsp/184-imported-enum-variant-doc-hover.lsp
+[32m[PASS][0m lsp: tests/lsp/185-implicit-result-binder-hover.lsp
+[32m[PASS][0m lsp: tests/lsp/186-imported-plex-field-doc-hover.lsp
+[32m[PASS][0m lsp: tests/lsp/187-for-condition-parameter-member-completion.lsp
+[32m[PASS][0m lsp: tests/lsp/188-plex-bit-field-members.lsp
+[32m[PASS][0m lsp: tests/lsp/189-plex-bit-field-code-action.lsp
+[32m[PASS][0m lsp: tests/lsp/190-generic-impl-missing-eq-constraint.lsp
+[32m[PASS][0m lsp: tests/lsp/191-generic-slice-pointer-receiver.lsp
+[32m[PASS][0m lsp: tests/lsp/192-usage-context-inference.lsp
+[32m[PASS][0m lsp: tests/lsp/193-plex-usage-context.lsp
+[32m[PASS][0m lsp: tests/lsp/194-pointer-slice-missing-eq-constraint.lsp
+[32m[PASS][0m lsp: tests/lsp/194-unused-method-receiver.lsp
+[32m[PASS][0m lsp: tests/lsp/196-private-import-hints.lsp
+[32m[PASS][0m lsp: tests/lsp/197-import-definition-after-error.lsp
+[32m[PASS][0m lsp: tests/lsp/197-variadic-cursors.lsp
+[32m[PASS][0m command: tests/commands/001-run-relative-source.cmd
+[32m[PASS][0m command: tests/commands/002-run-deletes-executable.cmd
+[32m[PASS][0m command: tests/commands/003-run-keep-executable.cmd
+[32m[PASS][0m command: tests/commands/004-run-cli-keyword.cmd
+[32m[PASS][0m command: tests/commands/005-run-cli-release-debug.cmd
+[32m[PASS][0m command: tests/commands/006-run-alias.cmd
+[32m[PASS][0m command: tests/commands/007-build-alias.cmd
+[32m[PASS][0m command: tests/commands/009-source-test-run.cmd
+[32m[PASS][0m command: tests/commands/010-source-test-filter.cmd
+[32m[PASS][0m command: tests/commands/011-source-test-list.cmd
+[32m[PASS][0m command: tests/commands/012-source-test-keyword.cmd
+[32m[PASS][0m command: tests/commands/013-source-test-with-main.cmd
+[32m[PASS][0m command: tests/commands/014-source-test-alias.cmd
+[32m[PASS][0m command: tests/commands/015-format-alias.cmd
+[32m[PASS][0m command: tests/commands/016-source-test-module-parts.cmd
+[32m[PASS][0m command: tests/commands/017-source-test-assert-path.cmd
+[32m[PASS][0m command: tests/commands/018-source-test-verbose.cmd
+[32m[PASS][0m command: tests/commands/019-source-test-verbose-failure.cmd
+[32m[PASS][0m command: tests/commands/020-run-llvm.cmd
+[32m[PASS][0m command: tests/commands/021-run-llvm-module.cmd
+[32m[PASS][0m command: tests/commands/022-run-llvm-stdio.cmd
+[32m[PASS][0m command: tests/commands/023-run-llvm-adjacent-strings.cmd
+[32m[PASS][0m command: tests/commands/024-run-llvm-primitive-operators.cmd
+[32m[PASS][0m command: tests/commands/025-run-llvm-interpolation.cmd
+[32m[PASS][0m command: tests/commands/026-run-llvm-partial-on.cmd
+[32m[PASS][0m command: tests/commands/027-run-llvm-for-break-again.cmd
+[32m[PASS][0m command: tests/commands/028-run-llvm-string-patterns.cmd
+[32m[PASS][0m command: tests/commands/029-run-llvm-nested-interpolation.cmd
+[32m[PASS][0m command: tests/commands/030-run-llvm-bool-cast.cmd
+[32m[PASS][0m command: tests/commands/031-run-llvm-tuple-interpolation.cmd
+[32m[PASS][0m command: tests/commands/032-run-llvm-array-interpolation.cmd
+[32m[PASS][0m command: tests/commands/033-run-llvm-pointer-fields.cmd
+[32m[PASS][0m command: tests/commands/034-run-llvm-string-slices.cmd
+[32m[PASS][0m command: tests/commands/035-run-llvm-address-of-index.cmd
+[32m[PASS][0m command: tests/commands/036-run-llvm-slices.cmd
+[32m[PASS][0m command: tests/commands/037-run-llvm-nested-blocks.cmd
+[32m[PASS][0m command: tests/commands/038-run-llvm-function-values.cmd
+[32m[PASS][0m command: tests/commands/039-run-llvm-for-return.cmd
+[32m[PASS][0m command: tests/commands/040-run-llvm-labelled-blocks.cmd
+[32m[PASS][0m command: tests/commands/041-run-llvm-labelled-loops.cmd
+[32m[PASS][0m command: tests/commands/042-run-llvm-on-pattern-binders.cmd
+[32m[PASS][0m command: tests/commands/043-run-llvm-enum-on-values.cmd
+[32m[PASS][0m command: tests/commands/044-run-llvm-raw-unions.cmd
+[32m[PASS][0m command: tests/commands/045-run-llvm-unit-enums.cmd
+[32m[PASS][0m command: tests/commands/046-run-llvm-enum-payloads.cmd
+[32m[PASS][0m command: tests/commands/047-run-llvm-condition-on.cmd
+[32m[PASS][0m command: tests/commands/048-run-llvm-destructuring.cmd
+[32m[PASS][0m command: tests/commands/049-run-llvm-module-function-fields.cmd
+[32m[PASS][0m command: tests/commands/050-run-llvm-for-in-string.cmd
+[36m[SKIP][0m command: tests/commands/050-run-top-on-trailing-plex-type.cmd
+[32m[PASS][0m command: tests/commands/051-run-llvm-dynamic-slice-bounds.cmd
+[32m[PASS][0m command: tests/commands/052-run-llvm-contextual-slice-literals.cmd
+[32m[PASS][0m command: tests/commands/053-run-llvm-nested-array-literals.cmd
+[32m[PASS][0m command: tests/commands/054-run-llvm-assignment-expressions.cmd
+[32m[PASS][0m command: tests/commands/055-run-llvm-nil-pointers-and-slices.cmd
+[32m[PASS][0m command: tests/commands/056-run-llvm-nil-slice-equality-and-return.cmd
+[32m[PASS][0m command: tests/commands/057-run-llvm-float-casts.cmd
+[32m[PASS][0m command: tests/commands/058-run-llvm-underscore-parameters.cmd
+[32m[PASS][0m command: tests/commands/059-run-llvm-assert-failure.cmd
+[32m[PASS][0m command: tests/commands/060-run-llvm-field-assignment.cmd
+[32m[PASS][0m command: tests/commands/061-run-llvm-global-slice-literal.cmd
+[32m[PASS][0m command: tests/commands/062-run-llvm-nested-on-branch.cmd
+[32m[PASS][0m command: tests/commands/063-run-llvm-default-parameters.cmd
+[32m[PASS][0m command: tests/commands/064-run-llvm-pointer-to-slice-cast.cmd
+[32m[PASS][0m command: tests/commands/065-run-llvm-index-addresses.cmd
+[32m[PASS][0m command: tests/commands/066-run-llvm-integer-pointer-casts.cmd
+[32m[PASS][0m command: tests/commands/067-run-llvm-typed-plex-patterns.cmd
+[32m[PASS][0m command: tests/commands/068-run-llvm-dynarray-plex-default.cmd
+[32m[PASS][0m command: tests/commands/069-run-llvm-dynarray-push.cmd
+[32m[PASS][0m command: tests/commands/070-run-llvm-dynarray-lifecycle.cmd
+[32m[PASS][0m command: tests/commands/071-run-llvm-dynarray-remove.cmd
+[32m[PASS][0m command: tests/commands/072-run-llvm-dynarray-append.cmd
+[32m[PASS][0m command: tests/commands/073-run-llvm-dynarray-literal.cmd
+[32m[PASS][0m command: tests/commands/074-run-llvm-dynarray-min-capacity.cmd
+[32m[PASS][0m command: tests/commands/075-run-llvm-dynarray-for-in.cmd
+[32m[PASS][0m command: tests/commands/076-run-llvm-dynarray-resize.cmd
+[32m[PASS][0m command: tests/commands/077-run-llvm-dynarray-relative-capacity-and-size.cmd
+[32m[PASS][0m command: tests/commands/077-run-llvm-size-operator.cmd
+[32m[PASS][0m command: tests/commands/078-run-llvm-string-equality.cmd
+[32m[PASS][0m command: tests/commands/079-run-llvm-indexed-for-in.cmd
+[32m[PASS][0m command: tests/commands/080-run-llvm-on-short-block-expr.cmd
+[32m[PASS][0m command: tests/commands/081-run-llvm-dynarray-typed-locals.cmd
+[32m[PASS][0m command: tests/commands/082-run-llvm-on-break-for-expression.cmd
+[32m[PASS][0m command: tests/commands/083-run-llvm-break-on.cmd
+[32m[PASS][0m command: tests/commands/084-run-llvm-named-method-arguments.cmd
+[32m[PASS][0m command: tests/commands/085-run-llvm-method-receivers.cmd
+[32m[PASS][0m command: tests/commands/086-run-llvm-field-lvalues.cmd
+[32m[PASS][0m command: tests/commands/087-run-llvm-index-lvalues.cmd
+[32m[PASS][0m command: tests/commands/088-run-llvm-ffi-linking.cmd
+[32m[PASS][0m command: tests/commands/090-run-llvm-cleans-temps.cmd
+[32m[PASS][0m command: tests/commands/091-run-llvm-combined-symbol-conflicts.cmd
+[32m[PASS][0m command: tests/commands/092-internal-llvm-text-combiner.cmd
+[32m[PASS][0m command: tests/commands/092-run-llvm-generic-numeric-instantiations.cmd
+[32m[PASS][0m command: tests/commands/093-run-llvm-nested-tuple-array.cmd
+[32m[PASS][0m command: tests/commands/094-run-llvm-imported-default-parameters.cmd
+[32m[PASS][0m command: tests/commands/095-run-llvm-member-autoderef-and-array-count.cmd
+[32m[PASS][0m command: tests/commands/096-run-llvm-returned-plex-slice-literals.cmd
+[32m[PASS][0m command: tests/commands/097-run-llvm-std-random.cmd
+[32m[PASS][0m command: tests/commands/098-run-llvm-for-in-ranges.cmd
+[32m[PASS][0m command: tests/commands/099-run-llvm-runtime-pattern-values.cmd
+[32m[PASS][0m command: tests/commands/100-run-unknown-pragmas.cmd
+[36m[SKIP][0m command: tests/commands/101-build-windowed-pragma.cmd
+[32m[PASS][0m command: tests/commands/102-run-imported-const-plex-field.cmd
+[32m[PASS][0m command: tests/commands/102-run-link-failure-cleans-temps.cmd
+[32m[PASS][0m command: tests/commands/103-run-sema-failure-cleans-temps.cmd
+[32m[PASS][0m command: tests/commands/104-run-llvm-ffi-alias-bindings.cmd
+[32m[PASS][0m command: tests/commands/105-run-cli-release-platform-key.cmd
+[32m[PASS][0m command: tests/commands/106-run-top-level-platform-assertion.cmd
+[32m[PASS][0m command: tests/commands/107-run-intrinsic-declaration.cmd
+[32m[PASS][0m command: tests/commands/108-run-core-arena.cmd
+[32m[PASS][0m command: tests/commands/109-run-temp-arena-interpolation.cmd
+[32m[PASS][0m command: tests/commands/110-run-core-arena-mark-restore.cmd
+[32m[PASS][0m command: tests/commands/111-run-core-arena-capacity-limit.cmd
+[32m[PASS][0m command: tests/commands/112-run-std-memory-tracking.cmd
+[32m[PASS][0m command: tests/commands/112-run-sys-linux-import.cmd
+[32m[PASS][0m command: tests/commands/113-check-success.cmd
+[32m[PASS][0m command: tests/commands/114-check-sema-failure.cmd
+[32m[PASS][0m command: tests/commands/115-run-interpolated-string-brace-escapes.cmd
+[32m[PASS][0m command: tests/commands/116-internal-module-filemap-release.cmd
+[32m[PASS][0m command: tests/commands/117-run-break-in-on-branch.cmd
+[32m[PASS][0m command: tests/commands/118-run-llvm-effect-for-else.cmd
+[32m[PASS][0m command: tests/commands/119-run-llvm-parameter-indirect-mutation.cmd
+[32m[PASS][0m command: tests/commands/120-check-public-impl.cmd
+[32m[PASS][0m command: tests/commands/120-run-pointer-arithmetic.cmd
+[32m[PASS][0m command: tests/commands/121-run-pointer-to-integer-cast.cmd
+[32m[PASS][0m command: tests/commands/122-internal-module-cwd-root.cmd
+[32m[PASS][0m command: tests/commands/123-run-dynamic-array-interpolation.cmd
+[32m[PASS][0m command: tests/commands/124-run-dynamic-array-to-string-cast.cmd
+[36m[SKIP][0m command: tests/commands/125-run-windows-std-os.cmd
+[32m[PASS][0m command: tests/commands/126-run-bitwise-not.cmd
+[32m[PASS][0m command: tests/commands/126-run-imported-constant-codegen.cmd
+[32m[PASS][0m command: tests/commands/127-run-enum-integer-casts.cmd
+[32m[PASS][0m command: tests/commands/128-run-pattern-binder-typed-local.cmd
+[32m[PASS][0m command: tests/commands/129-run-on-expression-return-branches.cmd
+[32m[PASS][0m command: tests/commands/130-build-reexported-ffi-name-collision.cmd
+[32m[PASS][0m command: tests/commands/131-internal-llvm-tool-output.cmd
+[32m[PASS][0m command: tests/commands/132-build-global-dynamic-array-enum.cmd
+[32m[PASS][0m command: tests/commands/133-build-on-payload-nested-enum-context.cmd
+[32m[PASS][0m command: tests/commands/134-build-return-on-inside-discarded-on.cmd
+[32m[PASS][0m command: tests/commands/135-run-llvm-addressed-local-plex-literal.cmd
+[32m[PASS][0m command: tests/commands/136-run-llvm-index-assigned-local-array.cmd
+[32m[PASS][0m command: tests/commands/137-run-llvm-dynarray-global-enum-stress.cmd
+[32m[PASS][0m command: tests/commands/138-run-llvm-unsigned-arithmetic.cmd
+[32m[PASS][0m command: tests/commands/139-run-default-main.cmd
+[32m[PASS][0m command: tests/commands/139-run-llvm-dynarray-padded-plex-resize.cmd
+[32m[PASS][0m command: tests/commands/140-run-default-folder.cmd
+[32m[PASS][0m command: tests/commands/141-check-default-main.cmd
+[32m[PASS][0m command: tests/commands/142-check-default-folder.cmd
+[32m[PASS][0m command: tests/commands/143-build-default-main.cmd
+[32m[PASS][0m command: tests/commands/144-build-default-folder.cmd
+[32m[PASS][0m command: tests/commands/145-run-release-runtime-u8-interpolation.cmd
+[32m[PASS][0m command: tests/commands/146-check-std-term-unknown-member.cmd
+[32m[PASS][0m command: tests/commands/147-build-debug-info-linux.cmd
+[32m[PASS][0m command: tests/commands/148-build-release-no-debug-info-linux.cmd
+[32m[PASS][0m command: tests/commands/149-build-imported-debug-info-linux.cmd
+[32m[PASS][0m command: tests/commands/150-run-for-init-infers-from-condition-bound.cmd
+[32m[PASS][0m command: tests/commands/151-check-destructured-on-tuple-field-infers-from-call.cmd
+[32m[PASS][0m command: tests/commands/152-run-character-literal-contextual-u32.cmd
+[32m[PASS][0m command: tests/commands/153-run-box-allocation.cmd
+[32m[PASS][0m command: tests/commands/154-run-range-infers-untyped-bound-from-u32.cmd
+[32m[PASS][0m command: tests/commands/155-build-box-dynarray-count-in-nested-range.cmd
+[32m[PASS][0m command: tests/commands/156-run-box-implicit-bool.cmd
+[32m[PASS][0m command: tests/commands/157-run-box-move-and-cleanup.cmd
+[32m[PASS][0m command: tests/commands/158-build-cleans-stale-sidecars.cmd
+[32m[PASS][0m command: tests/commands/159-run-main-args.cmd
+[32m[PASS][0m command: tests/commands/160-run-main-args-zero.cmd
+[32m[PASS][0m command: tests/commands/161-build-object-output.cmd
+[32m[PASS][0m command: tests/commands/162-build-static-library-output.cmd
+[32m[PASS][0m command: tests/commands/163-build-shared-library-output-linux.cmd
+[32m[PASS][0m command: tests/commands/164-build-output-flags-exclusive.cmd
+[32m[PASS][0m command: tests/commands/165-build-root-pub-use-export-linux.cmd
+[32m[PASS][0m command: tests/commands/166-build-private-import-not-exported-linux.cmd
+[32m[PASS][0m command: tests/commands/167-source-test-imported-modules.cmd
+[32m[PASS][0m command: tests/commands/168-source-test-decl-block.cmd
+[32m[PASS][0m command: tests/commands/169-run-enum-braced-plex-payload.cmd
+[32m[PASS][0m command: tests/commands/170-check-file-module-child-import.cmd
+[32m[PASS][0m command: tests/commands/171-run-default-nil-pointer-argument.cmd
+[32m[PASS][0m command: tests/commands/172-run-on-enum-payload-branch-return.cmd
+[32m[PASS][0m command: tests/commands/173-run-nested-braced-enum-plex-field.cmd
+[32m[PASS][0m command: tests/commands/178-run-method-returns-pointer-to-pushed-resized-layer.cmd
+[32m[PASS][0m command: tests/commands/180-run-tuple-call-expression-items.cmd
+[32m[PASS][0m command: tests/commands/181-run-generic-method-user-type-arg.cmd
+[32m[PASS][0m command: tests/commands/182-run-nested-on-expression-in-enum-branch.cmd
+[32m[PASS][0m command: tests/commands/183-run-return-untyped-tuple-coercion.cmd
+[32m[PASS][0m command: tests/commands/184-run-associated-functions-with-same-name.cmd
+[32m[PASS][0m command: tests/commands/185-run-llvm-for-in-again-advances.cmd
+[32m[PASS][0m command: tests/commands/186-run-address-of-pointer-field.cmd
+[32m[PASS][0m command: tests/commands/187-run-triple-string.cmd
+[32m[PASS][0m command: tests/commands/188-run-function-pointer-cast.cmd
+[32m[PASS][0m command: tests/commands/189-run-disabled-top-on-declarations.cmd
+[32m[PASS][0m command: tests/commands/190-build-output-executable-suffix.cmd
+[32m[PASS][0m command: tests/commands/190-release-embedded-png-image.cmd
+[32m[PASS][0m command: tests/commands/191-run-pointer-to-pointer-cast.cmd
+[32m[PASS][0m command: tests/commands/192-check-inline-fn-for-in-unused-locals.cmd
+[32m[PASS][0m command: tests/commands/193-format-verbose-stdout.cmd
+[32m[PASS][0m command: tests/commands/194-run-llvm-logical-short-circuit.cmd
+[32m[PASS][0m command: tests/commands/195-run-pattern-binder-qualified-enum-constructor.cmd
+[32m[PASS][0m command: tests/commands/196-check-enum-payload-as-binder-rejected.cmd
+[32m[PASS][0m command: tests/commands/197-run-imported-generic-option-payload-binder.cmd
+[32m[PASS][0m command: tests/commands/200-run-enum-payload-binder-to-local.cmd
+[32m[PASS][0m command: tests/commands/204-run-enum-payload-binder-to-enum-constructor.cmd
+[32m[PASS][0m command: tests/commands/205-build-folder-module-imported-global.cmd
+[32m[PASS][0m command: tests/commands/206-run-imported-function-callback.cmd
+[32m[PASS][0m command: tests/commands/207-run-embed-static-slice.cmd
+[32m[PASS][0m command: tests/commands/208-run-embed-inferred-slice.cmd
+[32m[PASS][0m command: tests/commands/209-run-embed-source-relative.cmd
+[32m[PASS][0m command: tests/commands/210-run-fixed-array-implicit-slice.cmd
+[32m[PASS][0m command: tests/commands/211-run-implicit-integer-comparison-width.cmd
+[32m[PASS][0m command: tests/commands/212-run-large-array-field-index.cmd
+[32m[PASS][0m command: tests/commands/213-run-llvm-function-field-call.cmd
+[32m[PASS][0m command: tests/commands/214-run-counted-box-allocation.cmd
+[32m[PASS][0m command: tests/commands/215-run-box-field-return-ownership.cmd
+[32m[PASS][0m command: tests/commands/216-check-method-call-contextual-plex-local.cmd
+[32m[PASS][0m command: tests/commands/217-run-enum-braced-payload-aliased-binders.cmd
+[32m[PASS][0m command: tests/commands/217-run-string-bytes.cmd
+[32m[PASS][0m command: tests/commands/218-run-core-abort.cmd
+[32m[PASS][0m command: tests/commands/219-init-project.cmd
+[32m[PASS][0m command: tests/commands/220-init-current.cmd
+[32m[PASS][0m command: tests/commands/220-run-byte-arrays-to-string.cmd
+[32m[PASS][0m command: tests/commands/221-run-on-expression-return-option-variant.cmd
+[32m[PASS][0m command: tests/commands/222-run-on-expression-assignment-binder-read.cmd
+[32m[PASS][0m command: tests/commands/223-run-never-on-expression.cmd
+[32m[PASS][0m command: tests/commands/224-check-on-branch-shadowed-local.cmd
+[32m[PASS][0m command: tests/commands/225-check-private-imported-method-no-duplicate.cmd
+[32m[PASS][0m command: tests/commands/226-check-private-imported-public-method-no-duplicate.cmd
+[32m[PASS][0m command: tests/commands/227-run-on-expression-block-break-option.cmd
+[32m[PASS][0m command: tests/commands/228-run-core-option-expect.cmd
+[32m[PASS][0m command: tests/commands/229-run-core-option-expect-abort.cmd
+[32m[PASS][0m command: tests/commands/230-check-std-opengl-texture-enums.cmd
+[32m[PASS][0m command: tests/commands/231-run-on-pattern-same-name-different-payload.cmd
+[32m[PASS][0m command: tests/commands/232-run-on-pattern-binder-read-in-condition.cmd
+[32m[PASS][0m command: tests/commands/233-run-generic-on-pattern-binder-read-in-condition.cmd
+[32m[PASS][0m command: tests/commands/234-run-on-expression-branch-binder-result.cmd
+[32m[PASS][0m command: tests/commands/235-run-pointer-dynarray-count-logical.cmd
+[32m[PASS][0m command: tests/commands/236-check-imported-stdlib-part-slice-method.cmd
+[32m[PASS][0m command: tests/commands/237-check-pattern-bound-dynarray-slice-method.cmd
+[32m[PASS][0m command: tests/commands/238-run-dynarray-result-pattern.cmd
+[32m[PASS][0m command: tests/commands/239-source-test-directory.cmd
+[32m[PASS][0m command: tests/commands/240-source-test-directory-module-label.cmd
+[32m[PASS][0m command: tests/commands/241-release-embedded-jpeg-image.cmd
+[32m[PASS][0m command: tests/commands/242-run-atomic-operators.cmd
+[32m[PASS][0m command: tests/commands/243-run-compile-time-parameter.cmd
+[32m[PASS][0m command: tests/commands/244-check-invalid-atomic-element.cmd
+[32m[PASS][0m command: tests/commands/244-run-compound-functions.cmd
+[32m[PASS][0m command: tests/commands/245-check-atomic-by-value.cmd
+[32m[PASS][0m command: tests/commands/246-check-runtime-compile-time-argument.cmd
+[32m[PASS][0m command: tests/commands/247-check-invalid-compare-exchange-order.cmd
+[32m[PASS][0m command: tests/commands/248-check-atomic-pointer-dereference.cmd
+[32m[PASS][0m command: tests/commands/249-check-atomic-pointer-arithmetic.cmd
+[32m[PASS][0m command: tests/commands/250-check-atomic-ffi-type.cmd
+[32m[PASS][0m command: tests/commands/251-run-atomic-method-name-is-not-intrinsic.cmd
+[32m[PASS][0m command: tests/commands/252-run-nested-partial-on-statement.cmd
+[32m[PASS][0m command: tests/commands/253-check-std-opengl-3-surface.cmd
+[32m[PASS][0m command: tests/commands/254-run-core-done-reports-leaks.cmd
+[32m[PASS][0m command: tests/commands/255-run-llvm-on-value-intermediate-expressions.cmd
+[32m[PASS][0m command: tests/commands/256-run-module-part-leak-location.cmd
+[36m[SKIP][0m command: tests/commands/257-run-windows-fixed-frame-style.cmd
+[32m[PASS][0m command: tests/commands/258-run-dynamic-array-leak-location.cmd
+[32m[PASS][0m command: tests/commands/259-run-lazy-arena-leak-location.cmd
+[32m[PASS][0m command: tests/commands/260-run-direct-recursive-function.cmd
+[32m[PASS][0m command: tests/commands/261-run-typed-plex-shorthand-before-ellipsis.cmd
+[32m[PASS][0m command: tests/commands/262-run-addressed-local-in-skipped-on.cmd
+[32m[PASS][0m command: tests/commands/263-run-local-define-on.cmd
+[32m[PASS][0m command: tests/commands/263-run-std-process-linux.cmd
+[32m[PASS][0m command: tests/commands/264-run-json-config.cmd
+[36m[SKIP][0m command: tests/commands/264-run-std-process-windows.cmd
+[32m[PASS][0m command: tests/commands/265-run-byte-slice-equality.cmd
+[32m[PASS][0m command: tests/commands/266-run-mutable-slice-literal.cmd
+[32m[PASS][0m command: tests/commands/267-run-fixed-array-equality.cmd
+[32m[PASS][0m command: tests/commands/268-test-reports-generated-error-once.cmd
+[32m[PASS][0m command: tests/commands/269-test-reports-probe-error-without-tests.cmd
+[32m[PASS][0m command: tests/commands/270-run-condition-on-in-expression-block.cmd
+[32m[PASS][0m command: tests/commands/271-run-void-result-success.cmd
+[32m[PASS][0m command: tests/commands/272-run-core-arena-pr.cmd
+[32m[PASS][0m command: tests/commands/272-run-negate-optional-result.cmd
+[32m[PASS][0m command: tests/commands/273-run-std-files-linux.cmd
+[32m[PASS][0m command: tests/commands/273-run-string-parameter-index.cmd
+[32m[PASS][0m command: tests/commands/274-run-assignment-context-local-inference.cmd
+[36m[SKIP][0m command: tests/commands/274-run-std-files-windows.cmd
+[32m[PASS][0m command: tests/commands/275-run-imported-default-arena.cmd
+[32m[PASS][0m command: tests/commands/275-run-range-item-used-in-nested-local.cmd
+[32m[PASS][0m command: tests/commands/276-run-propagate-call-once.cmd
+[32m[PASS][0m command: tests/commands/277-run-unused-default-once.cmd
+[32m[PASS][0m command: tests/commands/278-run-implicit-on-result-binders.cmd
+[32m[PASS][0m command: tests/commands/279-run-llvm-nested-string-index.cmd
+[32m[PASS][0m command: tests/commands/280-run-prior-local-infers-from-for-condition.cmd
+[32m[PASS][0m command: tests/commands/281-run-plex-bit-fields.cmd
+[32m[PASS][0m command: tests/commands/282-run-range-membership.cmd
+[32m[PASS][0m command: tests/commands/283-run-compound-assignment-inference.cmd
+[32m[PASS][0m command: tests/commands/284-run-bitfield-enum-display.cmd
+[32m[PASS][0m command: tests/commands/285-run-pointer-ordering.cmd
+[32m[PASS][0m command: tests/commands/286-test-active-top-on.cmd
+[32m[PASS][0m command: tests/commands/287-run-inferred-expression-propagation.cmd
+[32m[PASS][0m command: tests/commands/288-run-usage-context-inference.cmd
+[32m[PASS][0m command: tests/commands/289-check-conflicting-usage-context.cmd
+[32m[PASS][0m command: tests/commands/290-check-explicit-type-usage-context.cmd
+[32m[PASS][0m command: tests/commands/291-run-nested-tuple-items.cmd
+[32m[PASS][0m command: tests/commands/292-run-plex-usage-context.cmd
+[32m[PASS][0m command: tests/commands/293-check-conflicting-plex-context.cmd
+[32m[PASS][0m command: tests/commands/294-run-content-equality.cmd
+[32m[PASS][0m command: tests/commands/294-run-named-trait-parameters.cmd
+[32m[PASS][0m command: tests/commands/295-check-nested-signature-parameters.cmd
+[32m[PASS][0m command: tests/commands/295-run-imported-content-equality.cmd
+[32m[PASS][0m command: tests/commands/296-run-merged-standard-library.cmd
+[32m[PASS][0m command: tests/commands/297-build-variadic-host.cmd
+[32m[PASS][0m command: tests/commands/298-run-variadic-promotions.cmd
+[32m[PASS][0m command: tests/commands/299-run-variadic-forwarding.cmd
+[32m[PASS][0m command: tests/commands/300-reject-variadic-export-aggregate.cmd
+[32m[PASS][0m command: tests/commands/301-reject-variadic-export-collision.cmd
+[32m[PASS][0m command: tests/commands/302-run-public-main.cmd
+[32m[PASS][0m command: tests/commands/303-reject-c-export-callback-signature.cmd
+[32m[PASS][0m command: tests/commands/304-run-named-function-table.cmd
+[32m[PASS][0m command: tests/commands/305-run-format-c-string.cmd
+[32m[PASS][0m command: tests/commands/306-run-void-result-propagation.cmd
+[32m[PASS][0m command: tests/commands/307-run-imported-display-interpolation.cmd
+[32m[PASS][0m command: tests/commands/308-run-shutdown-watcher.cmd
+[32m[PASS][0m command: tests/commands/309-run-on-implicit-binder-mutation.cmd
+[32m[PASS][0m command: tests/commands/310-run-return-after-iteration.cmd
+[32m[PASS][0m command: tests/commands/311-internal-llvm-function-names.cmd
+[32m[PASS][0m command: tests/commands/312-internal-lexer-line-index.cmd
+[32m[PASS][0m command: tests/commands/313-internal-llvm-result-lifetime.cmd
+[32m[PASS][0m command: tests/commands/314-internal-error-context.cmd
+[32m[PASS][0m command: tests/commands/315-internal-llvm-render-sema.cmd
+[32m[PASS][0m command: tests/commands/316-run-pixel-layer-layout.cmd
+[32m[PASS][0m command: tests/commands/317-run-dynamic-enum-alignment.cmd
+[32m[PASS][0m stdlib: mods/std
+[32m[PASS][0m example: examples/debug/debug.n
+[32m[PASS][0m example: examples/dungeon/dungeon.n
+[32m[PASS][0m example: examples/image_viewer/image_viewer.n
+[32m[PASS][0m example: examples/matrix/matrix.n
+[32m[PASS][0m example: examples/pixels/pixels.n
+[32m[PASS][0m example: examples/pixels_fit/pixels_fit.n
+[32m[PASS][0m example: examples/pixels_layers/pixels_layers.n
+[32m[PASS][0m example: examples/shutdown/shutdown.n
+[32m[PASS][0m example: examples/simple_window/simple_window.n
+[32m[PASS][0m example: examples/term_mouse/term_mouse.n
+[32m[PASS][0m example: examples/text-adventure/quill.n
+[32m[PASS][0m example: examples/triangle/triangle.n
+
+[2;37m┌──────────────────────────────────────┐[0m
+[2;37m│[0m[44m[1;37m Test Summary                         [0m[2;37m│[0m
+[2;37m├──────────┬────────┬────────┬─────────┤[0m
+[2;37m│[0m [1;37mType[0m     [2;37m│[0m [1;37mPassed[0m [2;37m│[0m [1;37mFailed[0m [2;37m│[0m [1;37mSkipped[0m [2;37m│[0m
+[2;37m├──────────┼────────┼────────┼─────────┤[0m
+[2;37m│[0m [36mlanguage[0m [2;37m│[0m [32m204[0m    [2;37m│[0m [31m0[0m      [2;37m│[0m [36m0[0m       [2;37m│[0m
+[2;37m│[0m [36merror[0m    [2;37m│[0m [32m116[0m    [2;37m│[0m [31m0[0m      [2;37m│[0m [36m1[0m       [2;37m│[0m
+[2;37m│[0m [36mhir[0m      [2;37m│[0m [32m28[0m     [2;37m│[0m [31m0[0m      [2;37m│[0m [36m0[0m       [2;37m│[0m
+[2;37m│[0m [36mllvm[0m     [2;37m│[0m [32m48[0m     [2;37m│[0m [31m0[0m      [2;37m│[0m [36m0[0m       [2;37m│[0m
+[2;37m│[0m [36mformat[0m   [2;37m│[0m [32m198[0m    [2;37m│[0m [31m0[0m      [2;37m│[0m [36m0[0m       [2;37m│[0m
+[2;37m│[0m [36mlsp[0m      [2;37m│[0m [32m196[0m    [2;37m│[0m [31m0[0m      [2;37m│[0m [36m2[0m       [2;37m│[0m
+[2;37m│[0m [36mcommand[0m  [2;37m│[0m [32m319[0m    [2;37m│[0m [31m0[0m      [2;37m│[0m [36m6[0m       [2;37m│[0m
+[2;37m│[0m [36mstdlib[0m   [2;37m│[0m [32m1[0m      [2;37m│[0m [31m0[0m      [2;37m│[0m [36m0[0m       [2;37m│[0m
+[2;37m│[0m [36mexample[0m  [2;37m│[0m [32m12[0m     [2;37m│[0m [31m0[0m      [2;37m│[0m [36m0[0m       [2;37m│[0m
+[2;37m├──────────┼────────┼────────┼─────────┤[0m
+[2;37m│[0m [36mtotal[0m    [2;37m│[0m [32m1122[0m   [2;37m│[0m [31m0[0m      [2;37m│[0m [36m9[0m       [2;37m│[0m
+[2;37m└──────────┴────────┴────────┴─────────┘[0m
+python3 build/test_profile.py --nerd _bin/nerd-debug
+Profiling labels, graph, CPU/memory counters, failures and output parity passed
+python3 build/test_render_threads.py --nerd _bin/nerd-debug
+[PASS] concurrent LLVM: tiny
+[PASS] concurrent LLVM: wide
+[PASS] concurrent LLVM: deep
+[PASS] concurrent LLVM: large
+[PASS] concurrent LLVM: dungeon
+[PASS] concurrent LLVM: pixels
+[PASS] concurrent LLVM: quill
+[PASS] concurrent LLVM: 196-plex-use
+[PASS] concurrent LLVM: 128-generic-functions
+[PASS] concurrent LLVM: 077-enum-discriminants
+[PASS] concurrent LLVM: imported-values-defaults
+Serial/concurrent LLVM identity, repeated input reuse and cleanup passed
+python3 build/test_jobs.py --nerd _bin/nerd-debug
+[PASS] --jobs LLVM identity and execution: tiny
+[PASS] --jobs LLVM identity and execution: wide
+[PASS] --jobs LLVM identity and execution: deep
+[PASS] --jobs LLVM identity and execution: large
+[PASS] --jobs LLVM identity and execution: scratch-growth
+LLVM scheduler CLI, ordered output, artifacts and failure recovery passed
+python3 build/test_front_threads.py --nerd _bin/nerd-debug
+[PASS] front-end output identity: diamond-generic-ffi main.n
+[PASS] front-end output identity: conditional-parts main.n
+[PASS] front-end output identity: diamond-explicit main.n
+[PASS] front-end output identity: diamond-inferred main.n
+[PASS] front-end output identity: diamond-function-value main.n
+[PASS] front-end output identity: tiny main.n
+[PASS] front-end output identity: wide main.n
+[PASS] front-end output identity: deep main.n
+[PASS] front-end output identity: large main.n
+[PASS] front-end output identity: nerd-front-threads-v0_wo82t 128-generic-functions.n
+[PASS] front-end output identity: nerd-front-threads-v0_wo82t 196-plex-use.n
+[PASS] front-end output identity: nerd-front-threads-v0_wo82t 077-enum-discriminants.n
+[PASS] front-end output identity: dungeon dungeon.n
+[PASS] front-end output identity: pixels pixels.n
+[PASS] front-end output identity: text-adventure quill.n
+[PASS] ordered diagnostics and cleanup: semantic-before-parse
+[PASS] ordered diagnostics and cleanup: cycle
+[PASS] ordered diagnostics and cleanup: missing
+[PASS] ordered diagnostics and cleanup: private-method
+[PASS] ordered diagnostics and cleanup: assert
+[PASS] randomized completion; overlapping phases: ['analyse AST semantics', 'generate HIR from sema', 'parse tokens into AST', 'tokenise source text']
+Scheduled front-end graph, diagnostics, FFI, generics and runtime checks passed
+python3 build/test_toolchain.py --nerd _bin/nerd-debug
+[PASS] entry-point integer widths, signedness, arguments and target modes
+[PASS] dynamic enum allocation, growth and reserve alignment at debug/release jobs 1/4
+Direct LLVM outputs, no-Clang execution, and doctor dependency checks passed
+python3 build/test_install.py --nerd _bin/nerd-debug
+installed compiler smoke tests passed
+python3 build/test_cgen.py --nerd _bin/nerd-debug
+[PASS] C: 001-number.t (-O0, -O2)
+[PASS] C: 002-add-2-numbers.t (-O0, -O2)
+[PASS] C: 003-precedence.t (-O0, -O2)
+[PASS] C: 004-unary-and-grouping.t (-O0, -O2)
+[PASS] C: 005-muldivmod-assoc.t (-O0, -O2)
+[PASS] C: 006-global-vars.t (-O0, -O2)
+[PASS] C: 007-forward-refs.t (-O0, -O2)
+[PASS] C: 008-folded-bind-chain.t (-O0, -O2)
+[PASS] C: 009-folded-const-tree.t (-O0, -O2)
+[PASS] C: 010-hello-world.t (-O0, -O2)
+[PASS] C: 011-adjacent-strings.t (-O0, -O2)
+[PASS] C: 012-block-return.t (-O0, -O2)
+[PASS] C: 013-typed-binding.t (-O0, -O2)
+[PASS] C: 014-annotated-function-type.t (-O0, -O2)
+[PASS] C: 015-variables.t (-O0, -O2)
+[PASS] C: 016-type-alias-and-cast.t (-O0, -O2)
+[PASS] C: 017-function-type-alias.t (-O0, -O2)
+[PASS] C: 018-primitive-variables.t (-O0, -O2)
+[PASS] C: 019-interpolated-strings.t (-O0, -O2)
+[PASS] C: 020-nested-blocks.t (-O0, -O2)
+[PASS] C: 021-function-parameters.t (-O0, -O2)
+[PASS] C: 022-void-main.t (-O0, -O2)
+[PASS] C: 023-function-values.t (-O0, -O2)
+[PASS] C: 024-nested-functions.t (-O0, -O2)
+[PASS] C: 025-block-forward-function.t (-O0, -O2)
+[PASS] C: 026-local-function-forward-ref.t (-O0, -O2)
+[PASS] C: 027-on-bool.t (-O0, -O2)
+[PASS] C: 028-on-value-branches.t (-O0, -O2)
+[PASS] C: 029-on-comma-patterns.t (-O0, -O2)
+[PASS] C: 030-on-ranges.t (-O0, -O2)
+[PASS] C: 031-primitive-operators.t (-O0, -O2)
+[PASS] C: 032-unannotated-float-literal.t (-O0, -O2)
+[PASS] C: 033-binding-expression-starts.t (-O0, -O2)
+[PASS] C: 034-local-const-interpolation.t (-O0, -O2)
+[PASS] C: 035-on-pattern-binders.t (-O0, -O2)
+[PASS] C: 036-on-untyped-local.t (-O0, -O2)
+[PASS] C: 037-on-statement-partial.t (-O0, -O2)
+[PASS] C: 038-for-infinite.t (-O0, -O2)
+[PASS] C: 039-5-prints.t (-O0, -O2)
+[PASS] C: 040-compound-assignments.t (-O0, -O2)
+[PASS] C: 041-for-while.t (-O0, -O2)
+[PASS] C: 042-for-c-style.t (-O0, -O2)
+[PASS] C: 043-for-c-style-empty-init.t (-O0, -O2)
+[PASS] C: 044-for-break-again.t (-O0, -O2)
+[PASS] C: 045-expression-block.t (-O0, -O2)
+[PASS] C: 046-on-string-patterns.t (-O0, -O2)
+[PASS] C: 047-expression-block-bindings.t (-O0, -O2)
+[PASS] C: 048-labelled-expression-block.t (-O0, -O2)
+[PASS] C: 049-labelled-loop-expressions.t (-O0, -O2)
+[PASS] C: 050-for-else.t (-O0, -O2)
+[PASS] C: 051-tuples.t (-O0, -O2)
+[PASS] C: 052-fixed-arrays.t (-O0, -O2)
+[PASS] C: 053-pointers.t (-O0, -O2)
+[PASS] C: 054-slices.t (-O0, -O2)
+[PASS] C: 055-string-slices.t (-O0, -O2)
+[PASS] C: 056-plexes.t (-O0, -O2)
+[PASS] C: 057-plex-newline-fields.t (-O0, -O2)
+[PASS] C: 058-plex-ergonomics.t (-O0, -O2)
+[PASS] C: 059-destructuring-bindings.t (-O0, -O2)
+[PASS] C: 060-on-pattern-guards.t (-O0, -O2)
+[PASS] C: 061-on-structural-patterns.t (-O0, -O2)
+[PASS] C: 062-raw-unions.t (-O0, -O2)
+[PASS] C: 063-enum-unit-variants.t (-O0, -O2)
+[PASS] C: 064-on-in-interpolated-string.t (-O0, -O2)
+[PASS] C: 065-enum-payloads.t (-O0, -O2)
+[PASS] C: 066-generalised-on.t (-O0, -O2)
+[PASS] C: 067-ffi-functions.t (-O0, -O2)
+[PASS] C: 068-std-print-module.t (-O0, -O2)
+[PASS] C: 069-ffi-varargs.t (-O0, -O2)
+[PASS] C: 070-ffi-library-linking.t (-O0, -O2)
+[PASS] C: 071-use-modules.t (-O0, -O2)
+[PASS] C: 072-top-level-on.t (-O0, -O2)
+[PASS] C: 073-module-pub-reexport.t (-O0, -O2)
+[PASS] C: 074-qualified-enum-patterns.t (-O0, -O2)
+[PASS] C: 075-packed-integer-literals.t (-O0, -O2)
+[PASS] C: 076-for-in-and-deref.t (-O0, -O2)
+[PASS] C: 077-enum-discriminants.t (-O0, -O2)
+[PASS] C: 078-deref-lvalue.t (-O0, -O2)
+[PASS] C: 079-contextual-plex-and-slice.t (-O0, -O2)
+[PASS] C: 080-dynamic-slice-bounds.t (-O0, -O2)
+[PASS] C: 081-nested-array-literals.t (-O0, -O2)
+[PASS] C: 082-assignment-expressions.t (-O0, -O2)
+[PASS] C: 083-explicit-return-enum-context.t (-O0, -O2)
+[PASS] C: 084-nested-local-fn-in-block-body.t (-O0, -O2)
+[PASS] C: 085-undefined.t (-O0, -O2)
+[PASS] C: 086-c-strings-and-escapes.t (-O0, -O2)
+[PASS] C: 087-grouped-use.t (-O0, -O2)
+[PASS] C: 088-ffi-consolidation.t (-O0, -O2)
+[PASS] C: 089-field-lvalues.t (-O0, -O2)
+[PASS] C: 090-nil-pointers.t (-O0, -O2)
+[PASS] C: 091-imported-plex-field-interpolation.t (-O0, -O2)
+[PASS] C: 093-slice-casts-and-nil.t (-O0, -O2)
+[PASS] C: 094-ffi-wrapper-bindings.t (-O0, -O2)
+[PASS] C: 095-void-pointer-compat.t (-O0, -O2)
+[PASS] C: 096-nil-slice-equality.t (-O0, -O2)
+[PASS] C: 097-return-nil-slice.t (-O0, -O2)
+[PASS] C: 098-on-branch-loop-control.t (-O0, -O2)
+[PASS] C: 099-dynamic-arrays.t (-O0, -O2)
+[PASS] C: 100-on-short-block-expr.t (-O0, -O2)
+[PASS] C: 101-dynarray-typed-locals.t (-O0, -O2)
+[PASS] C: 102-io-input-lines.t (-O0, -O2)
+[PASS] C: 103-defer.t (-O0, -O2)
+[PASS] C: 104-location-macros.t (-O0, -O2)
+[PASS] C: 104-public-type-alias-binding.t (-O0, -O2)
+[PASS] C: 105-float-integer-casts.t (-O0, -O2)
+[PASS] C: 106-prefixed-integer-literals.t (-O0, -O2)
+[PASS] C: 107-assert-statements.t (-O0, -O2)
+[PASS] C: 108-size-operator.t (-O0, -O2)
+[PASS] C: 109-definite-assignment.t (-O0, -O2)
+[PASS] C: 110-unused-underscore.t (-O0, -O2)
+[PASS] C: 111-assert-failure-exit.t (-O0, -O2)
+[PASS] C: 112-integer-separators.t (-O0, -O2)
+[PASS] C: 113-ffi-blocks.t (-O0, -O2)
+[PASS] C: 114-shift-operators.t (-O0, -O2)
+[PASS] C: 115-float-separators.t (-O0, -O2)
+[PASS] C: 116-indexed-for-in.t (-O0, -O2)
+[PASS] C: 117-interpolated-for-field.t (-O0, -O2)
+[PASS] C: 118-nested-on-branch.t (-O0, -O2)
+[PASS] C: 119-slice-element-pointers.t (-O0, -O2)
+[PASS] C: 120-plex-literal-default-missing.t (-O0, -O2)
+[PASS] C: 121-self-referential-slice-literal.t (-O0, -O2)
+[PASS] C: 122-pointer-alias-cycle.t (-O0, -O2)
+[PASS] C: 123-mutual-pointer-plex-types.t (-O0, -O2)
+[PASS] C: 124-fixed-array-pointer-cycles.t (-O0, -O2)
+[PASS] C: 125-top-level-interpolated-strings.t (-O0, -O2)
+[PASS] C: 126-default-parameters.t (-O0, -O2)
+[PASS] C: 127-generic-types.t (-O0, -O2)
+[PASS] C: 128-generic-functions.t (-O0, -O2)
+[PASS] C: 129-cross-module-generics.t (-O0, -O2)
+[PASS] C: 130-inherent-impl-methods.t (-O0, -O2)
+[PASS] C: 131-module-folder-imports.t (-O0, -O2)
+[PASS] C: 132-public-use-reexports.t (-O0, -O2)
+[PASS] C: 133-std-io-error-output.t (-O0, -O2)
+[PASS] C: 134-platform-on-use.t (-O0, -O2)
+[PASS] C: 135-module-parts.t (-O0, -O2)
+[PASS] C: 136-interpolated-assert-messages.t (-O0, -O2)
+[PASS] C: 137-plex-field-shorthand.t (-O0, -O2)
+[PASS] C: 138-named-call-arguments.t (-O0, -O2)
+[PASS] C: 139-size-field-name.t (-O0, -O2)
+[PASS] C: 140-term-window-api.t (-O0, -O2)
+[PASS] C: 141-method-regressions.t (-O0, -O2)
+[PASS] C: 142-associated-functions-and-type-aliases.t (-O0, -O2)
+[PASS] C: 142-lvalue-and-plex-regressions.t (-O0, -O2)
+[PASS] C: 143-dynarray-runtime-capacity-and-resize.t (-O0, -O2)
+[PASS] C: 143-enum-call-context.t (-O0, -O2)
+[PASS] C: 144-local-type-declarations.t (-O0, -O2)
+[PASS] C: 144-pointer-equality-and-nil-on.t (-O0, -O2)
+[PASS] C: 145-module-symbol-namespaces.t (-O0, -O2)
+[PASS] C: 145-public-mutable-globals.t (-O0, -O2)
+[PASS] C: 146-ffi-block-forward-use.t (-O0, -O2)
+[PASS] C: 147-qualified-module-types.t (-O0, -O2)
+[PASS] C: 148-untyped-integer-pointer-casts.t (-O0, -O2)
+[PASS] C: 149-imported-ffi-functions.t (-O0, -O2)
+[PASS] C: 150-qualified-plex-literal.t (-O0, -O2)
+[PASS] C: 151-typed-plex-patterns.t (-O0, -O2)
+[PASS] C: 152-on-break-for-expression.t (-O0, -O2)
+[PASS] C: 153-break-on.t (-O0, -O2)
+[PASS] C: 153-unsigned-byte-comparisons.t (-O0, -O2)
+[PASS] C: 154-string-continuations.t (-O0, -O2)
+[PASS] C: 155-plex-literal-default-missing.t (-O0, -O2)
+[PASS] C: 157-for-in-ranges.t (-O0, -O2)
+[PASS] C: 158-local-const-typed-plex-ellipsis.t (-O0, -O2)
+[PASS] C: 159-return-context-local-inference.t (-O0, -O2)
+[PASS] C: 160-underscore-unused-assignment.t (-O0, -O2)
+[PASS] C: 161-trait-declaration.t (-O0, -O2)
+[PASS] C: 162-trait-impl.t (-O0, -O2)
+[PASS] C: 163-std-traits.t (-O0, -O2)
+[PASS] C: 164-trait-primitive-impl.t (-O0, -O2)
+[PASS] C: 165-trait-resolution.t (-O0, -O2)
+[PASS] C: 166-trait-self-alias.t (-O0, -O2)
+[PASS] C: 167-explicit-trait-call.t (-O0, -O2)
+[PASS] C: 168-explicit-trait-impl-call.t (-O0, -O2)
+[PASS] C: 169-generic-trait-declaration.t (-O0, -O2)
+[PASS] C: 170-where-constraints.t (-O0, -O2)
+[PASS] C: 171-generic-trait-impl.t (-O0, -O2)
+[PASS] C: 172-display-interpolation.t (-O0, -O2)
+[PASS] C: 173-core-option-result.t (-O0, -O2)
+[PASS] C: 174-eq-operator-trait.t (-O0, -O2)
+[PASS] C: 175-default-typed-binding.t (-O0, -O2)
+[PASS] C: 176-default-zero-init-fallback.t (-O0, -O2)
+[PASS] C: 177-default-undefined-opt-out.t (-O0, -O2)
+[PASS] C: 178-order-operator-trait.t (-O0, -O2)
+[PASS] C: 179-iterator-for-in.t (-O0, -O2)
+[PASS] C: 180-void-function-type-shorthand.t (-O0, -O2)
+[PASS] C: 181-bare-use-imported-types.t (-O0, -O2)
+[PASS] C: 181-default-location-macros.t (-O0, -O2)
+[PASS] C: 182-for-in-postfix-deref-body.t (-O0, -O2)
+[PASS] C: 183-for-in-fixed-array.t (-O0, -O2)
+[PASS] C: 183-implicit-array-slices.t (-O0, -O2)
+[PASS] C: 183-pattern-binds-and-for-values.t (-O0, -O2)
+[PASS] C: 184-on-postfix-deref-scrutinee.t (-O0, -O2)
+[PASS] C: 185-unused-method-receiver.t (-O0, -O2)
+[PASS] C: 186-unqualified-enum-comma-patterns.t (-O0, -O2)
+[PASS] C: 187-associated-function-return-containing-self.t (-O0, -O2)
+[PASS] C: 188-imported-associated-call-target.t (-O0, -O2)
+[PASS] C: 189-generic-enum-impl-methods.t (-O0, -O2)
+[PASS] C: 190-generic-implicit-array-slice.t (-O0, -O2)
+[PASS] C: 190-optional-result-types.t (-O0, -O2)
+[PASS] C: 191-compound-functions.t (-O0, -O2)
+[PASS] C: 192-explicit-generic-impls.t (-O0, -O2)
+[PASS] C: 196-plex-use.t (-O0, -O2)
+[PASS] C: 197-single-branch-extract-binder-method.t (-O0, -O2)
+[PASS] C: 198-loop-dynamic-array-count.t (-O0, -O2)
+[PASS] C: 199-pointer-ordering.t (-O0, -O2)
+[PASS] C: 317-run-dynamic-enum-alignment.cmd (-O0, -O2)
+[PASS] C: 310-run-return-after-iteration.cmd (-O0, -O2)
+[PASS] C: 309-run-on-implicit-binder-mutation.cmd (-O0, -O2)
+[PASS] C: 210-run-fixed-array-implicit-slice.cmd (-O0, -O2)
+[PASS] C: 211-run-implicit-integer-comparison-width.cmd (-O0, -O2)
+[PASS] C: 212-run-large-array-field-index.cmd (-O0, -O2)
+[PASS] C: 213-run-llvm-function-field-call.cmd (-O0, -O2)
+[PASS] C: 214-run-counted-box-allocation.cmd (-O0, -O2)
+[PASS] C: 215-run-box-field-return-ownership.cmd (-O0, -O2)
+[PASS] C: 217-run-enum-braced-payload-aliased-binders.cmd (-O0, -O2)
+[PASS] C: 217-run-string-bytes.cmd (-O0, -O2)
+[PASS] C: 218-run-core-abort.cmd (-O0, -O2)
+[PASS] C: 220-run-byte-arrays-to-string.cmd (-O0, -O2)
+[PASS] C: 221-run-on-expression-return-option-variant.cmd (-O0, -O2)
+[PASS] C: 222-run-on-expression-assignment-binder-read.cmd (-O0, -O2)
+[PASS] C: 223-run-never-on-expression.cmd (-O0, -O2)
+[PASS] C: 227-run-on-expression-block-break-option.cmd (-O0, -O2)
+[PASS] C: 228-run-core-option-expect.cmd (-O0, -O2)
+[PASS] C: 229-run-core-option-expect-abort.cmd (-O0, -O2)
+[PASS] C: 231-run-on-pattern-same-name-different-payload.cmd (-O0, -O2)
+[PASS] C: 232-run-on-pattern-binder-read-in-condition.cmd (-O0, -O2)
+[PASS] C: 233-run-generic-on-pattern-binder-read-in-condition.cmd (-O0, -O2)
+[PASS] C: 234-run-on-expression-branch-binder-result.cmd (-O0, -O2)
+[PASS] C: 235-run-pointer-dynarray-count-logical.cmd (-O0, -O2)
+[PASS] C: 238-run-dynarray-result-pattern.cmd (-O0, -O2)
+[PASS] C: 242-run-atomic-operators.cmd (-O0, -O2)
+[PASS] C: 243-run-compile-time-parameter.cmd (-O0, -O2)
+[PASS] C: 244-run-compound-functions.cmd (-O0, -O2)
+[PASS] C: 251-run-atomic-method-name-is-not-intrinsic.cmd (-O0, -O2)
+[PASS] C: 252-run-nested-partial-on-statement.cmd (-O0, -O2)
+[PASS] C: 254-run-core-done-reports-leaks.cmd (-O0, -O2)
+[PASS] C: 255-run-llvm-on-value-intermediate-expressions.cmd (-O0, -O2)
+[PASS] C: 258-run-dynamic-array-leak-location.cmd (-O0, -O2)
+[PASS] C: 259-run-lazy-arena-leak-location.cmd (-O0, -O2)
+[PASS] C: 260-run-direct-recursive-function.cmd (-O0, -O2)
+[PASS] C: 261-run-typed-plex-shorthand-before-ellipsis.cmd (-O0, -O2)
+[PASS] C: 262-run-addressed-local-in-skipped-on.cmd (-O0, -O2)
+[PASS] C: 265-run-byte-slice-equality.cmd (-O0, -O2)
+[PASS] C: 266-run-mutable-slice-literal.cmd (-O0, -O2)
+[PASS] C: 267-run-fixed-array-equality.cmd (-O0, -O2)
+[PASS] C: 270-run-condition-on-in-expression-block.cmd (-O0, -O2)
+[PASS] C: 271-run-void-result-success.cmd (-O0, -O2)
+[PASS] C: 272-run-core-arena-pr.cmd (-O0, -O2)
+[PASS] C: 272-run-negate-optional-result.cmd (-O0, -O2)
+[PASS] C: 274-run-assignment-context-local-inference.cmd (-O0, -O2)
+[PASS] C: 275-run-imported-default-arena.cmd (-O0, -O2)
+[PASS] C: 275-run-range-item-used-in-nested-local.cmd (-O0, -O2)
+[PASS] C: 276-run-propagate-call-once.cmd (-O0, -O2)
+[PASS] C: 277-run-unused-default-once.cmd (-O0, -O2)
+[PASS] C: 278-run-implicit-on-result-binders.cmd (-O0, -O2)
+[PASS] C: 281-run-plex-bit-fields.cmd (-O0, -O2)
+[PASS] C: 282-run-range-membership.cmd (-O0, -O2)
+[PASS] C: 283-run-compound-assignment-inference.cmd (-O0, -O2)
+[PASS] C: 284-run-bitfield-enum-display.cmd (-O0, -O2)
+[PASS] C: 285-run-pointer-ordering.cmd (-O0, -O2)
+[PASS] C: 287-run-inferred-expression-propagation.cmd (-O0, -O2)
+[PASS] C: 288-run-usage-context-inference.cmd (-O0, -O2)
+[PASS] C: 291-run-nested-tuple-items.cmd (-O0, -O2)
+[PASS] C: 292-run-plex-usage-context.cmd (-O0, -O2)
+[PASS] C: 294-run-content-equality.cmd (-O0, -O2)
+[PASS] C: 294-run-named-trait-parameters.cmd (-O0, -O2)
+[PASS] C: 295-run-imported-content-equality.cmd (-O0, -O2)
+[PASS] C: 296-run-merged-standard-library.cmd (-O0, -O2)
+[PASS] C: 298-run-variadic-promotions.cmd (-O0, -O2)
+[PASS] C: 299-run-variadic-forwarding.cmd (-O0, -O2)
+[PASS] C: 302-run-public-main.cmd (-O0, -O2)
+[PASS] C: 304-run-named-function-table.cmd (-O0, -O2)
+[PASS] C: 305-run-format-c-string.cmd (-O0, -O2)
+[PASS] C: 306-run-void-result-propagation.cmd (-O0, -O2)
+[PASS] C: 307-run-imported-display-interpolation.cmd (-O0, -O2)
+[PASS] C: 308-run-shutdown-watcher.cmd (-O0, -O2)
+[PASS] C: array-borrows.n (-O0, -O2)
+[PASS] C: assertion.n (-O0, -O2)
+[PASS] C: integer-wrapping.n (-O0, -O2)
+[PASS] C: mutable-function-pointers.n (-O0, -O2)
+[PASS] C: optional-defaults.n (-O0, -O2)
+[PASS] --copts queries, external libraries, release, object, archive and shared-library host calls
+[PASS] Pixels examples: default source discovery and standalone C compilation
+[PASS] Dungeon renders before input, matches LLVM and quits on Q (-O0, -O2)
+C generation: 280 differential fixtures at two optimisation levels and CLI conflicts passed; 0 platform skips

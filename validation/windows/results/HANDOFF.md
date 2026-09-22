@@ -158,3 +158,15 @@ generic regressions. Rerun front-end AddressSanitizer/ThreadSanitizer checks and
 native Linux PTY Dungeon interaction. The alignment change affects Linux too;
 the Windows-only controlled sharing test is intentionally OS guarded.
 Review adoption only with the missing native/memory evidence; retain jobs 1.
+
+## Linux return completed — 2026-09-22
+
+Pulled through `da00ffae`, reviewed the returned fixes and rebuilt both compilers.
+The [Linux return validation](linux-return-20260922/SUMMARY.md) passed: 1,122
+fixtures, all auxiliary checks, ASan/TSan front-end suites, release toolchain
+checks, 280 C differential fixtures per compiler at O0/O2, Linux PTY Dungeon
+interaction and debugger stepping with both compilers. No additional Linux fix
+was needed. Logs and compiler hashes are retained alongside that summary.
+Native macOS and Windows CPU/RSS evidence remain outstanding; jobs 1 remains
+the default. The next step is to decide on merging the validated fixes or arrange
+the remaining platform/measurement work; no merge into main was performed here.

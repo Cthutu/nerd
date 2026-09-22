@@ -1,0 +1,10 @@
+{
+  "platform": "Linux-7.2.6-1-cachyos-x86_64-with-glibc2.44",
+  "tested_commit": "da00ffae6ed845d860ce6029be1326cac1a742f0",
+  "compilers": {
+    "nerd-debug": "55ebf7ea9e1d1519a64602338057419fa3d10e2d21d460653db247b9aa7b8a2d",
+    "nerd": "59324655e9d09bc43009ea89e0b251b466765d88829f7890bb94ddb032cf42e4"
+  },
+  "clang_version": "clang version 22.1.8\nTarget: x86_64-pc-linux-gnu\nThread model: posix\nInstalledDir: /usr/bin\n",
+  "scope": "Linux correctness return validation; tests ran concurrently; no timing benchmark or new graphical capture"
+}
