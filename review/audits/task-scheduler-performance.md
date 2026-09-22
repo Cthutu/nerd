@@ -17,9 +17,10 @@ Branch: `experiment/task-scheduler-performance`.
 The subsequent [dependency-driven compiler experiment](compiler-task-graph.md)
 implemented G1/G2, but was withdrawn after paired measurements failed to show a
 consistent benefit over the simpler batch implementation. G3–G6 are deferred.
-Earlier optimisations and batch parallelism remain. Next candidates are LLVM
-symbol lookup, semantic-analysis costs and the expression-depth crash discovered
-in the temporary large-project benchmark.
+Earlier optimisations and batch parallelism remain. The
+[single-core follow-up](compiler-single-core-follow-up.md) implements hash-based
+LLVM symbol lookup, measured semantic scope-query improvements and fixes for
+the arithmetic-depth crashes discovered in the temporary large-project benchmark.
 
 ## Recommendation and scope
 

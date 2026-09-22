@@ -245,3 +245,14 @@ and generic implementations; function-body queries search backwards. Run the
 full current runner to cover platform keyword/negation, nested declarations,
 generics and diagnostics. Linux output parity and tests pass; native evidence
 for this change is still required. Scheduling defaults are unchanged.
+
+## Linux single-core completion and next native gate (2026-09-22)
+
+S1–S5 are complete on Linux at implementation `6dd4b36e`; see the
+[final report](../../../review/measurements/compiler-single-core-final.md).
+Full fixtures/integrations, ASan and TSan pass, including the 6,000-term source
+with jobs=1/4. All twelve scaled cases match LLVM and runtime results.
+Run the current Windows validation prompt/runner after pulling, retain results
+here and commit/push fixes and evidence as its instructions specify. Native
+Windows/macOS success is not implied by the Linux report. Keep omitted jobs=1;
+the worker sweep does not meet the automatic-default adoption gate.
