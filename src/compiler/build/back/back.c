@@ -786,8 +786,8 @@ internal bool back_end_render_llvm_modules(Arena*                    arena,
                 &work, array_count(hir->exprs) + array_count(hir->stmts));
         }
         jobs = compiler_task_jobs(jobs, work, COMPILER_RENDER_GRAIN);
-        compiler_task_policy_emit("LLVM render", artifacts->jobs, jobs,
-                                  work, COMPILER_RENDER_GRAIN);
+        compiler_task_policy_emit(
+            "LLVM render", artifacts->jobs, jobs, work, COMPILER_RENDER_GRAIN);
     }
     if (jobs > 1) {
         TimingProbe dispatch = timing_probe_begin();

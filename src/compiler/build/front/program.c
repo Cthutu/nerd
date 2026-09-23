@@ -94,9 +94,12 @@ internal void program_task_policy(
     }
     if (program_task_result != NULL) {
         array_push(program_task_result->phases,
-                   ((ProgramPhaseResult){.phase = phase, .policy = true,
-                       .ceiling = ceiling, .jobs = jobs, .grain = grain,
-                       .work = work}));
+                   ((ProgramPhaseResult){.phase   = phase,
+                                         .policy  = true,
+                                         .ceiling = ceiling,
+                                         .jobs    = jobs,
+                                         .grain   = grain,
+                                         .work    = work}));
     } else {
         compiler_task_policy_emit(phase, ceiling, jobs, work, grain);
     }
@@ -113,8 +116,11 @@ internal void program_task_publish(ProgramTaskResult* result, Timing* timing)
             continue;
         }
         if (phase->policy) {
-            compiler_task_policy_emit(phase->phase, phase->ceiling, phase->jobs,
-                                      phase->work, phase->grain);
+            compiler_task_policy_emit(phase->phase,
+                                      phase->ceiling,
+                                      phase->jobs,
+                                      phase->work,
+                                      phase->grain);
             continue;
         }
         if (phase->dependency.data != NULL) {
@@ -377,8 +383,11 @@ internal bool program_front_end_generate_hir(ProgramInfo*           program,
         }
         effective_options.jobs = compiler_task_jobs(
             effective_options.jobs, work, COMPILER_HIR_GRAIN);
-        program_task_policy("HIR", options->jobs, effective_options.jobs,
-                            work, COMPILER_HIR_GRAIN);
+        program_task_policy("HIR",
+                            options->jobs,
+                            effective_options.jobs,
+                            work,
+                            COMPILER_HIR_GRAIN);
     }
 
     if (effective_options.jobs > 1 && !effective_options.verbose &&
@@ -1520,8 +1529,8 @@ program_collect_module_dependencies(ProgramInfo*           program,
                 compiler_task_work_add(&work, pending[i]->source.source.count);
             }
             jobs = compiler_task_jobs(jobs, work, COMPILER_PARSE_GRAIN);
-            program_task_policy("parse", options->jobs, jobs,
-                                work, COMPILER_PARSE_GRAIN);
+            program_task_policy(
+                "parse", options->jobs, jobs, work, COMPILER_PARSE_GRAIN);
         }
         TaskRunStatus status =
             task_run(array_count(pending), jobs, program_parse_task, pending);

@@ -44,8 +44,12 @@ static inline void compiler_task_policy_emit(
                 "nerd-profile\t{\"kind\":\"scheduler-policy\",\"phase\":\"%s\","
                 "\"ceiling\":%u,\"jobs\":%u,\"modules\":%zu,\"work\":%llu,"
                 "\"largest\":%llu,\"grain\":%llu}\n",
-                phase, ceiling, jobs, work.count,
+                phase,
+                ceiling,
+                jobs,
+                work.count,
                 (unsigned long long)work.total,
-                (unsigned long long)work.largest, (unsigned long long)grain);
+                (unsigned long long)work.largest,
+                (unsigned long long)grain);
     }
 }
