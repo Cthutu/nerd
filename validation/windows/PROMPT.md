@@ -6,6 +6,36 @@ results in this folder, and commit and push the fixes and evidence as you go.
 Carry the work through to a final full run where possible. Do not stop at an
 audit, plan, first failure, or a request to approve routine fixes or commits.
 
+## Current validation round — 2026-09-23
+
+Validate the completed single-core follow-up, not just the older M8 build.
+Linux implementation is `6dd4b36e`; its final evidence is `9db6822a`. Pull the
+latest branch, including this prompt, and record the exact HEAD you actually
+build. The earlier Windows pass at `828d4b56` does not cover these changes.
+
+Read `review/audits/compiler-single-core-follow-up.md`,
+`review/measurements/compiler-single-core-final.md`, and the latest additions in
+`validation/windows/results/HANDOFF.md`. This round specifically covers:
+
+- Hash membership during LLVM combination, preserving emission order.
+- Explicit arithmetic traversal in semantic inference, HIR lowering and LLVM
+  emission. Both `expression-depth-debug` and `expression-depth-release` must
+  run the default **6,000 terms**, including jobs=1/4, exact LLVM comparison,
+  runtime values, operand counts and evaluation order. Do not lower the term
+  count, enlarge the stack, or skip the case to mask a failure.
+- Semantic scope queries using parser side tables and backwards function-body
+  searches. Exercise the full frontend suite: Windows conditionals/negation,
+  nested declarations, traits, generics, diagnostics and deterministic output.
+- Existing batch parallelism and adaptive `--jobs auto`. The dependency
+  scheduler G1/G2 was withdrawn; G3–G6 remain deferred. Do not restore that
+  scheduler or run its removed task-graph suite.
+
+Linux has passed fixtures, C differential checks, ASan/TSan and scaled runtime/
+LLVM comparisons. Those are background evidence, not native Windows results.
+Use the full existing Windows runner; native sanitizers may be added if the
+installed toolchain supports them, but distinguish unsupported from passed.
+Retain the existing one-worker default regardless of this validation's outcome.
+
 ## Context and non-negotiable behavior
 
 - Work on `experiment/task-scheduler-performance`. Do not merge into `main`,
@@ -78,12 +108,14 @@ audit, plan, first failure, or a request to approve routine fixes or commits.
    correctly merely because its process stays alive. Graphical regressions
    merit fixes and reruns just like automated failures.
 8. Run benchmarks only after correctness and with no concurrent builds/tests.
-   The full runner includes five-sample jobs 1/2/4/8 measurements and LLVM hash
+   The full runner includes five-sample jobs 1/2/4/8/16/auto measurements and LLVM hash
    checks. Record hardware and power mode; if practical also exercise the
    physical-core count (identify it explicitly, do not confuse it with logical
-   CPU count). Windows CPU/RSS data is currently unavailable in the benchmark
-   helper: leave it null unless you implement and validate native measurement.
-   Document the limitation; it is not evidence that the memory gate passed.
+   CPU count). The `benchmark-accounting` stage validates Windows process
+   CPU/peak-working-set counters. Investigate API failures or zero peaks. These
+   counters cover Nerd only, excluding LLVM/linker children; wall time covers
+   the full build. Preserve `accounting_scope` and do not equate these counters
+   with Linux waited-child accounting or a whole-process-tree memory gate.
    Keep raw results in this folder. No performance claim from a single sample.
 
 ## Required return package
@@ -100,9 +132,13 @@ Maintain `validation/windows/results/HANDOFF.md` containing:
   rerun after Windows fixes. Do not mark M8 fully validated while native checks
   or memory evidence are still missing; macOS remains a separate gate.
 
-Update `review/audits/compiler-m8-adoption.md` with the actual Windows outcome
-and link to the handoff. Do not rewrite earlier Linux measurements as Windows
-results. Commit and push all intended fixes, harness updates and evidence.
+Update `review/audits/compiler-single-core-follow-up.md` with the actual Windows
+S2/S4 outcome and link to the handoff. Update `review/audits/compiler-m8-adoption.md`
+only for gates this run actually covers. Put the new outcome and tested commit at
+the top of `results/HANDOFF.md`, keeping earlier runs as dated history. Include
+the two expression-depth outcomes, scope-query regressions, accounting sanity
+check, worker sweep and any desktop/editor blockers in the return summary.
+Do not rewrite earlier Linux measurements as Windows results. Commit and push all intended fixes, harness updates and evidence.
 If upstream advanced, fetch and reconcile without overwriting others or forcing
 history; rerun checks affected by that reconciliation before the final push.
 Verify HEAD is pushed and report the branch, final pushed commit, working-tree

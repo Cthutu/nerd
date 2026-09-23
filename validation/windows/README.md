@@ -34,7 +34,7 @@ separate command logs, tool versions, and a manual checklist. Tests run serially
 continue after independent failures, and block dependents of failed builds.
 The full run covers both compiler configurations, the fixture suite (which is
 hardwired to the debug compiler), all auxiliary `just test` checks, debugger
-probes, and finally a jobs 1/2/4/8 timing sweep if correctness checks pass.
+probes, and finally a jobs 1/2/4/8/16/auto timing sweep if correctness checks pass.
 The runner does not install Nerd globally, modify Git, or run `just clean` in
 this checkout. The clean test uses an isolated temporary copy.
 
@@ -44,11 +44,12 @@ Codex can inspect these logs while a stage runs. A targeted run is labelled with
 its selection and never substitutes for a final full run. A full automated pass
 still requires completing or explicitly blocking the manual checklist.
 
-The benchmark runner measures wall time on Windows; CPU/RSS fields currently
-remain null there. Do not interpret missing memory metrics as zero or claim the
-memory adoption gate passed. Native memory observations and physical-core-count
-runs can be collected separately, recording the method and hardware. Do not run
-benchmarks alongside builds/tests. Keep the one-job default pending evidence.
+The benchmark runner records wall time and Windows compiler-process CPU/peak
+working set, with a preceding `benchmark-accounting` sanity check. These counters
+exclude LLVM/linker children; see the accounting details below. Do not claim
+whole-tree memory evidence from them. Record hardware, power mode and any
+physical-core-count runs separately. Do not benchmark alongside builds/tests.
+Keep the one-job default pending the established adoption gates.
 
 For repeatable desktop evidence, prepare the matrix after building both compilers
 and before benchmarks, then observe it from an interactive Windows terminal:
@@ -94,3 +95,17 @@ Review `scheduler-policy` records and the source-to-IR/front-end elapsed spans
 alongside whole-build latency. Policy profiles are separate intrusive runs, not
 latency samples. Report repeated noisy results and failures of the acceptance
 gate; do not enable automatic defaults merely because correctness tests pass.
+
+## Current round: single-core completion (2026-09-23)
+
+The prompt now targets the completed S1–S5 Linux implementation (`6dd4b36e`),
+with benchmarks at `9db6822a`. The previous Windows pass does not validate the
+subsequent hash lookup, arithmetic traversal or semantic scope changes. The
+full runner already includes `expression-depth-debug` and
+`expression-depth-release`, each using the default 6,000 terms with jobs=1/4.
+Do not reduce this regression to the old 512-term debug case.
+
+Follow `PROMPT.md` through fixes, a final full run, desktop observations and
+committing/pushing the return package. Record native outcomes in the
+[single-core plan](../../review/audits/compiler-single-core-follow-up.md) and
+put the latest tested revision at the top of `results/HANDOFF.md`.

@@ -1,5 +1,17 @@
 # Windows return handoff
 
+## Pending new Windows round — 2026-09-23
+
+Follow `validation/windows/PROMPT.md` after pulling the branch. Validate the
+single-core changes through `6dd4b36e` and the current runner; Linux evidence is
+at `9db6822a`. The Windows result below predates these changes. In particular,
+run both 6,000-term expression-depth stages, full semantic/frontend checks and
+the updated benchmark accounting/worker sweep. Replace this pending notice with
+the actual tested HEAD, result links, fix commits and Linux return instructions
+when finished. Preserve the earlier results as history.
+
+## Previous native result — 2026-09-22
+
 Native Windows correctness validation completed on 2026-09-22. Work is on
 `experiment/task-scheduler-performance`, remote `hub` at
 `git@github.com:Cthutu/nerd.git`. Starting commit was
