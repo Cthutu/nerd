@@ -1,14 +1,107 @@
 # Windows return handoff
 
-## Pending new Windows round — 2026-09-23
+## Native single-core follow-up — 2026-09-23
 
-Follow `validation/windows/PROMPT.md` after pulling the branch. Validate the
-single-core changes through `6dd4b36e` and the current runner; Linux evidence is
-at `9db6822a`. The Windows result below predates these changes. In particular,
-run both 6,000-term expression-depth stages, full semantic/frontend checks and
-the updated benchmark accounting/worker sweep. Replace this pending notice with
-the actual tested HEAD, result links, fix commits and Linux return instructions
-when finished. Preserve the earlier results as history.
+Tested implementation: **`c32eb92dfccbfc64e337b84440d9f906c33fc675`** on
+`experiment/task-scheduler-performance`. Started clean at `da00ffae6ed845d860ce6029be1326cac1a742f0`,
+fetched `hub` (`git@github.com:Cthutu/nerd.git`) and fast-forwarded 21 commits.
+This covers the single-core implementation `6dd4b36e`, Linux evidence `9db6822a`
+and the updated native runner. **No compiler, runtime or harness fix was needed.**
+This return commit contains evidence/documentation only.
+
+Read the [full run](20260923T084624Z-7d394bf0/SUMMARY.md),
+[suite counts and individual skips](20260923T084624Z-7d394bf0/suite-counts.json),
+[desktop/editor observations](20260923T084624Z-7d394bf0/MANUAL.md),
+[worker measurements](20260923T084624Z-7d394bf0/BENCHMARKS.md) and
+[raw benchmark](20260923T084624Z-7d394bf0/benchmark.json).
+
+### Host and reproduction
+
+Windows 11 Pro 10.0.26200 x64; Threadripper PRO 5955WX, **16 physical cores /
+32 logical processors**, Balanced power plan. LLVM/Clang 22.1.8 builds Nerd;
+MSVC 14.44.35207 supplies headers/CRT and Windows SDK 10.0.26100.0 supplies SDK
+headers/libraries. Nerd's binary pipeline uses opt/llc/linker directly.
+Python 3.14.7, Git 2.51.1.windows.1, Node 26.8.1/npm 11.10.0;
+CodeLLDB 1.12.2 / LLDB 22.1.4-codelldb. See
+[environment](20260923T084624Z-7d394bf0/environment.json) for compiler hashes and
+[tool probes](20260923T084624Z-7d394bf0/tools.log).
+
+Reused the prior official full LLVM archive under ignored `_tmp/llvm-tools`;
+no installation, local Scoop manifest, global compiler/extension replacement or
+machine-policy change. The process-local environment sets explicit LLVM PATH,
+MSVC/SDK INCLUDE and LIB, avoiding prior Clang header autodiscovery trouble.
+From the repository root in PowerShell:
+
+```powershell
+. ./validation/windows/results/20260923T084624Z-7d394bf0/environment.ps1
+python validation/windows/test_runner.py
+python validation/windows/run.py
+python validation/windows/manual.py validation/windows/results/<new-run> --prepare
+```
+
+The archived [desktop capture helper](20260923T084624Z-7d394bf0/capture-desktop.ps1)
+and [isolated editor launcher](20260923T084624Z-7d394bf0/launch-editor.ps1) are
+reproducible alongside the recorded commands. Generated executables, objects,
+PDBs and editor scratch state remain ignored. This round has no failed run;
+previous failures and repairs remain in the dated history below.
+
+### Correctness and observations
+
+- Runner self-tests: **4 passed**. Full fixture suite: **1,116 passed, 0 failed,
+  15 declared platform skips** (202 language, 117 errors, 28 HIR, 48 LLVM,
+  198 formatter, 198 LSP, 312 command, 1 stdlib and 12 example passes).
+- **expression-depth-debug PASS; expression-depth-release PASS**, each at the
+  unchanged **6,000 terms**, jobs 1 and 4, exact LLVM comparison, runtime values,
+  operand counts and evaluation order. No increased stack, lowered count or skip.
+- Both compilers pass all auxiliary checks: doctor, profile, render workers,
+  jobs/auto, frontend, toolchain/output modes, install, C, debugger and editor.
+  Each frontend suite prints 21 passing check groups, render 11, jobs 6 and
+  toolchain 2; these are printed groups, not underlying assertion counts.
+  Scope-query regressions include Windows platform conditionals/negation,
+  nested declarations, traits, explicit/inferred/function-value generics,
+  ordered diagnostics and deterministic LLVM. Clean/memory/threads also pass.
+- C parity: **278 fixtures per compiler at both O0/O2**, plus CLI/output-mode
+  groups. Each log has two Linux-only fixture skips (varargs and terminal API)
+  and a separate Linux-PTY Dungeon skip. Native Dungeon was checked below.
+  The 15 main-suite skips are fixture-declared platform exclusions, including
+  Linux-specific process/files/ELF/debug-info/terminal/FFI cases; names are retained
+  in suite-counts.json. No new exclusions were added.
+- **48/48 desktop cases PASS**: Pixels, Dungeon and Triangle, both compilers,
+  both target modes, jobs 1/4 and LLVM/C. Agent-reviewed native captures confirm
+  rendering, Pixels animation, graphic resizing and Dungeon regeneration; all
+  exit 0, including Dungeon Q. Exact commands/hashes and six contact sheets retained.
+- Automated LLDB stepping and editor probes pass for both compilers, as do
+  adapter transforms and TypeScript extension compilation. **Fresh human VS Code
+  workflow observation is BLOCKED (no fresh user result received)**; the isolated
+  launcher was supplied.
+  Earlier dated user feedback is not reused for this revision.
+
+### Performance, limits and Linux return
+
+The accounting sanity check passed: 0.125 CPU seconds and 45,002,752 bytes peak
+working set for a known 0.1-second CPU workload with a 32 MiB allocation.
+Worker sweep: jobs **1/2/4/8/16/auto**, one warmup and five rotating unprofiled
+samples per cell, seven scenarios and both target modes; separate profiles and
+identical combined LLVM hashes. Jobs 16 is the physical-core count; auto's
+half-logical-CPU ceiling is also 16, with workload-dependent phase budgets.
+Best measured gain is 6.3% for Pixels debug at four workers; auto ranges from
+5.9% faster to 4.1% slower. No row reaches the 15% adoption improvement threshold.
+See the measurement report for medians and interpretation.
+
+**Accounting scope is compiler-process-only**: CPU/peak working set exclude
+LLVM/linker children, while wall time covers the full build. This does not close
+the whole-process-tree memory gate, equal Linux waited-child accounting or
+establish a paired before/after Windows serial speedup. Native Windows sanitizers
+were not run (optional); macOS remains a separate native gate. M8 is not fully
+validated and **jobs=1 remains the default**. G1/G2 remain withdrawn and G3–G6
+deferred.
+
+Linux next action: pull this branch and read this section plus the linked run.
+There are no new implementation changes requiring Linux repair regressions;
+retain the existing Linux results without re-labelling them as Windows evidence.
+The remaining work is fresh Windows editor observation, native macOS validation
+and any whole-tree memory/paired-baseline adoption work. Continue only the agreed
+follow-up scope; do not restore the withdrawn scheduler or change the default.
 
 ## Previous native result — 2026-09-22
 

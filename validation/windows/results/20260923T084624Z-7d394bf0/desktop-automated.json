@@ -1,0 +1,1570 @@
+{
+  "release-dungeon-debug-j1-llvm": {
+    "jobs": 1,
+    "after_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 31,
+      "height": 480,
+      "width": 960,
+      "image": "desktop-captures/release-dungeon-debug-j1-llvm-regenerated.png",
+      "sha256": "075F548892C69D1F64092C0D9EFF6B4E3129EB473FDA59F32B4F92BEE45A607B"
+    },
+    "observed_utc": "2026-09-23T08:49:52.5652676Z",
+    "program_sha256": "5FA71A5D8C2BEB4311D0E9988AAA9EDEFCBE9863E3E51BE5B76A8D1F503E1443",
+    "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 31,
+      "height": 480,
+      "width": 960,
+      "image": "desktop-captures/release-dungeon-debug-j1-llvm-before.png",
+      "sha256": "AADA9DCA51511A72DB8D933BBBA09A0CBAA5DCD194F1980A04BCE5D2D978802A"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "llvm",
+    "example": "dungeon",
+    "compiler": "release",
+    "target": "debug",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured rooms/corridors visible before input; Space regenerates a visibly different map; Q exits with code 0."
+  },
+  "release-pixels-release-j1-c": {
+    "jobs": 1,
+    "observed_utc": "2026-09-23T08:50:10.8593092Z",
+    "program_sha256": "7178F411F16870481D5D7F2A26F731A44048423D8CF1049348043223A6334F8C",
+    "animated": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881,
+      "height": 480,
+      "width": 640,
+      "image": "desktop-captures/release-pixels-release-j1-c-animated.png",
+      "sha256": "06B09FB6BE613FE470216D99AB827B0D1B9044427B1ABC97E05DA0F2B953E6DC"
+    },
+    "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881,
+      "height": 480,
+      "width": 640,
+      "image": "desktop-captures/release-pixels-release-j1-c-before.png",
+      "sha256": "31095A937A17462F9D952CC2579074813AC1CAD1FDEA1A3B6546F4914623EFC7"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "c",
+    "example": "pixels",
+    "compiler": "release",
+    "resized": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 7881,
+      "height": 720,
+      "width": 960,
+      "image": "desktop-captures/release-pixels-release-j1-c-resized.png",
+      "sha256": "7BA0E52741CE5B64C82F2793DC170B41BAADAB5C852F66578310E2314570A7FA"
+    },
+    "target": "release",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured colourful framebuffer and white bar render correctly; successive frame hashes differ; resized client redraws at 960x720; normal exit 0."
+  },
+  "release-dungeon-debug-j1-c": {
+    "jobs": 1,
+    "after_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 31,
+      "height": 480,
+      "width": 960,
+      "image": "desktop-captures/release-dungeon-debug-j1-c-regenerated.png",
+      "sha256": "271D33C65D0B6243185E599FD044F43D3B8F7E969FF616FDA05CF42D3FC96EAD"
+    },
+    "observed_utc": "2026-09-23T08:49:51.0237159Z",
+    "program_sha256": "73439BCC5BDCAFDAD28F64026ED5EA842EE9BB95ECD9EE27B839D0C13EB911F8",
+    "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 31,
+      "height": 480,
+      "width": 960,
+      "image": "desktop-captures/release-dungeon-debug-j1-c-before.png",
+      "sha256": "760F305A8C82D6468D722CBBBEA47A87A548E8A1564530A57E4257EBD29F41AD"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "c",
+    "example": "dungeon",
+    "compiler": "release",
+    "target": "debug",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured rooms/corridors visible before input; Space regenerates a visibly different map; Q exits with code 0."
+  },
+  "debug-pixels-release-j4-c": {
+    "jobs": 4,
+    "observed_utc": "2026-09-23T08:49:35.2674174Z",
+    "program_sha256": "BF99D95AA5AFF2F308E5546212FC6E9334D494ED83A7A15D87E50883B7642998",
+    "animated": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881,
+      "height": 480,
+      "width": 640,
+      "image": "desktop-captures/debug-pixels-release-j4-c-animated.png",
+      "sha256": "BB448F7C8FCFB0F3E586EB80571A318D1EDFB92034C93D5A3F03CD3A95C5684D"
+    },
+    "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881,
+      "height": 480,
+      "width": 640,
+      "image": "desktop-captures/debug-pixels-release-j4-c-before.png",
+      "sha256": "31095A937A17462F9D952CC2579074813AC1CAD1FDEA1A3B6546F4914623EFC7"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "c",
+    "example": "pixels",
+    "compiler": "debug",
+    "resized": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 7879,
+      "height": 720,
+      "width": 960,
+      "image": "desktop-captures/debug-pixels-release-j4-c-resized.png",
+      "sha256": "912E681E8CCF605FFFC374FF7DEA0C8861DD69EF8F833FCB75D48E80A511CD3E"
+    },
+    "target": "release",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured colourful framebuffer and white bar render correctly; successive frame hashes differ; resized client redraws at 960x720; normal exit 0."
+  },
+  "release-triangle-release-j4-c": {
+    "jobs": 4,
+    "observed_utc": "2026-09-23T08:50:27.2938124Z",
+    "program_sha256": "DA3E0ADE64445BAE8B42E5B7E64811A36F9AC9BAFE2FD8505DEE7B0B408B93CB",
+    "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1257,
+      "height": 600,
+      "width": 800,
+      "image": "desktop-captures/release-triangle-release-j4-c-before.png",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "c",
+    "example": "triangle",
+    "compiler": "release",
+    "resized": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1787,
+      "height": 720,
+      "width": 960,
+      "image": "desktop-captures/release-triangle-release-j4-c-resized.png",
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6"
+    },
+    "target": "release",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured interpolated RGB triangle on dark background; resized client redraws at 960x720; normal exit 0."
+  },
+  "debug-triangle-release-j1-c": {
+    "jobs": 1,
+    "observed_utc": "2026-09-23T08:49:44.9541643Z",
+    "program_sha256": "E9A747C23C86F43E8F9F7DAD8DCDC595DE4CF696269F37047F4F74E776075557",
+    "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1257,
+      "height": 600,
+      "width": 800,
+      "image": "desktop-captures/debug-triangle-release-j1-c-before.png",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "c",
+    "example": "triangle",
+    "compiler": "debug",
+    "resized": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1787,
+      "height": 720,
+      "width": 960,
+      "image": "desktop-captures/debug-triangle-release-j1-c-resized.png",
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6"
+    },
+    "target": "release",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured interpolated RGB triangle on dark background; resized client redraws at 960x720; normal exit 0."
+  },
+  "debug-pixels-debug-j1-llvm": {
+    "jobs": 1,
+    "observed_utc": "2026-09-23T08:49:25.8482444Z",
+    "program_sha256": "393C9D4EC060E9D4CF9A6E733E8139343532DD319920D634CAC4EA12A3FE04EC",
+    "animated": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881,
+      "height": 480,
+      "width": 640,
+      "image": "desktop-captures/debug-pixels-debug-j1-llvm-animated.png",
+      "sha256": "9EC55C4BB8A476CCEA1BE9881032EFF10AE54353080FAFEE8FC4C5EFFDF1BCD2"
+    },
+    "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881,
+      "height": 480,
+      "width": 640,
+      "image": "desktop-captures/debug-pixels-debug-j1-llvm-before.png",
+      "sha256": "31095A937A17462F9D952CC2579074813AC1CAD1FDEA1A3B6546F4914623EFC7"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "llvm",
+    "example": "pixels",
+    "compiler": "debug",
+    "resized": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 7879,
+      "height": 720,
+      "width": 960,
+      "image": "desktop-captures/debug-pixels-debug-j1-llvm-resized.png",
+      "sha256": "DCC1C2AC372946B74BAB73BD4CD80AEA8684DAD7200B8F5DB63747C98DD071CC"
+    },
+    "target": "debug",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured colourful framebuffer and white bar render correctly; successive frame hashes differ; resized client redraws at 960x720; normal exit 0."
+  },
+  "debug-pixels-debug-j1-c": {
+    "jobs": 1,
+    "observed_utc": "2026-09-23T08:49:23.9051606Z",
+    "program_sha256": "06AD1AC4E485A5078AE942CFC87834F34D326FC2D69441864F6CA0D024437EBC",
+    "animated": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881,
+      "height": 480,
+      "width": 640,
+      "image": "desktop-captures/debug-pixels-debug-j1-c-animated.png",
+      "sha256": "06B09FB6BE613FE470216D99AB827B0D1B9044427B1ABC97E05DA0F2B953E6DC"
+    },
+    "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881,
+      "height": 480,
+      "width": 640,
+      "image": "desktop-captures/debug-pixels-debug-j1-c-before.png",
+      "sha256": "CC6ED942A824731FDBB119ABAF9ED2F1AF1F4A5636A621064D1735AB53E582AA"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "c",
+    "example": "pixels",
+    "compiler": "debug",
+    "resized": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 7881,
+      "height": 720,
+      "width": 960,
+      "image": "desktop-captures/debug-pixels-debug-j1-c-resized.png",
+      "sha256": "7BA0E52741CE5B64C82F2793DC170B41BAADAB5C852F66578310E2314570A7FA"
+    },
+    "target": "debug",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured colourful framebuffer and white bar render correctly; successive frame hashes differ; resized client redraws at 960x720; normal exit 0."
+  },
+  "debug-triangle-release-j4-llvm": {
+    "jobs": 4,
+    "observed_utc": "2026-09-23T08:49:49.5533137Z",
+    "program_sha256": "8D748EB78FDF7DDF5A4D7961CECF9C83D705848A73AA844C7D81904A78263A63",
+    "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1257,
+      "height": 600,
+      "width": 800,
+      "image": "desktop-captures/debug-triangle-release-j4-llvm-before.png",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "llvm",
+    "example": "triangle",
+    "compiler": "debug",
+    "resized": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1787,
+      "height": 720,
+      "width": 960,
+      "image": "desktop-captures/debug-triangle-release-j4-llvm-resized.png",
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6"
+    },
+    "target": "release",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured interpolated RGB triangle on dark background; resized client redraws at 960x720; normal exit 0."
+  },
+  "debug-pixels-debug-j4-c": {
+    "jobs": 4,
+    "observed_utc": "2026-09-23T08:49:27.7727612Z",
+    "program_sha256": "023C6CC3C804AB612EBFF98B0F5652ADA38FDD9E30F9EB7826B04A447FA93992",
+    "animated": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881,
+      "height": 480,
+      "width": 640,
+      "image": "desktop-captures/debug-pixels-debug-j4-c-animated.png",
+      "sha256": "06B09FB6BE613FE470216D99AB827B0D1B9044427B1ABC97E05DA0F2B953E6DC"
+    },
+    "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881,
+      "height": 480,
+      "width": 640,
+      "image": "desktop-captures/debug-pixels-debug-j4-c-before.png",
+      "sha256": "CC6ED942A824731FDBB119ABAF9ED2F1AF1F4A5636A621064D1735AB53E582AA"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "c",
+    "example": "pixels",
+    "compiler": "debug",
+    "resized": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 7881,
+      "height": 720,
+      "width": 960,
+      "image": "desktop-captures/debug-pixels-debug-j4-c-resized.png",
+      "sha256": "7BA0E52741CE5B64C82F2793DC170B41BAADAB5C852F66578310E2314570A7FA"
+    },
+    "target": "debug",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured colourful framebuffer and white bar render correctly; successive frame hashes differ; resized client redraws at 960x720; normal exit 0."
+  },
+  "release-pixels-release-j4-c": {
+    "jobs": 4,
+    "observed_utc": "2026-09-23T08:50:14.5447744Z",
+    "program_sha256": "0C6B2FE4F0C59554AC4D790DE0644DB06FC49AEAEFA2C790CCFFB92655C1C278",
+    "animated": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881,
+      "height": 480,
+      "width": 640,
+      "image": "desktop-captures/release-pixels-release-j4-c-animated.png",
+      "sha256": "BB448F7C8FCFB0F3E586EB80571A318D1EDFB92034C93D5A3F03CD3A95C5684D"
+    },
+    "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881,
+      "height": 480,
+      "width": 640,
+      "image": "desktop-captures/release-pixels-release-j4-c-before.png",
+      "sha256": "31095A937A17462F9D952CC2579074813AC1CAD1FDEA1A3B6546F4914623EFC7"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "c",
+    "example": "pixels",
+    "compiler": "release",
+    "resized": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 7879,
+      "height": 720,
+      "width": 960,
+      "image": "desktop-captures/release-pixels-release-j4-c-resized.png",
+      "sha256": "912E681E8CCF605FFFC374FF7DEA0C8861DD69EF8F833FCB75D48E80A511CD3E"
+    },
+    "target": "release",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured colourful framebuffer and white bar render correctly; successive frame hashes differ; resized client redraws at 960x720; normal exit 0."
+  },
+  "debug-dungeon-debug-j4-llvm": {
+    "jobs": 4,
+    "after_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 31,
+      "height": 480,
+      "width": 960,
+      "image": "desktop-captures/debug-dungeon-debug-j4-llvm-regenerated.png",
+      "sha256": "0091A7D79D7DE33DF2691A795BEB81684ED3006297A0138FAD4874753D4DD09C"
+    },
+    "observed_utc": "2026-09-23T08:49:16.1832937Z",
+    "program_sha256": "EA1CCB7486F72A8BBF666A17BE116B4A118B26B298085FB7ED4C714981A4725F",
+    "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 31,
+      "height": 480,
+      "width": 960,
+      "image": "desktop-captures/debug-dungeon-debug-j4-llvm-before.png",
+      "sha256": "DD44B1DDCEE7C71310327CD1A0B637E679AC9A6B1CF8410494B234191CC3CD68"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "llvm",
+    "example": "dungeon",
+    "compiler": "debug",
+    "target": "debug",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured rooms/corridors visible before input; Space regenerates a visibly different map; Q exits with code 0."
+  },
+  "debug-triangle-debug-j4-c": {
+    "jobs": 4,
+    "observed_utc": "2026-09-23T08:49:42.0450715Z",
+    "program_sha256": "F65AD7F5D427A57145AD06D0203FD25496EDE831E161AF4D4B0EADF1AF6EE259",
+    "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1257,
+      "height": 600,
+      "width": 800,
+      "image": "desktop-captures/debug-triangle-debug-j4-c-before.png",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "c",
+    "example": "triangle",
+    "compiler": "debug",
+    "resized": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1787,
+      "height": 720,
+      "width": 960,
+      "image": "desktop-captures/debug-triangle-debug-j4-c-resized.png",
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6"
+    },
+    "target": "debug",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured interpolated RGB triangle on dark background; resized client redraws at 960x720; normal exit 0."
+  },
+  "release-dungeon-debug-j4-c": {
+    "jobs": 4,
+    "after_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 31,
+      "height": 480,
+      "width": 960,
+      "image": "desktop-captures/release-dungeon-debug-j4-c-regenerated.png",
+      "sha256": "CA39839BEDC1BA5E8CB545A8978A9CA928962EC58D2CE51A09B197945DC66CFC"
+    },
+    "observed_utc": "2026-09-23T08:49:54.1437958Z",
+    "program_sha256": "772666E0A1EC245DB9D369FF482C57D17230B8FA5DD0D1F54AFBE25B9064A734",
+    "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 31,
+      "height": 480,
+      "width": 960,
+      "image": "desktop-captures/release-dungeon-debug-j4-c-before.png",
+      "sha256": "7F128D9ED8F04002B6D2FEA793A9A35DBC06F8E6F8ED2DB8732BE9CE642DCD19"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "c",
+    "example": "dungeon",
+    "compiler": "release",
+    "target": "debug",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured rooms/corridors visible before input; Space regenerates a visibly different map; Q exits with code 0."
+  },
+  "release-triangle-debug-j4-llvm": {
+    "jobs": 4,
+    "observed_utc": "2026-09-23T08:50:22.7523001Z",
+    "program_sha256": "6BF685826F758424BBE0706C7D81DB8AE4140DB9773585FD257DC729B8CCE53C",
+    "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1257,
+      "height": 600,
+      "width": 800,
+      "image": "desktop-captures/release-triangle-debug-j4-llvm-before.png",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "llvm",
+    "example": "triangle",
+    "compiler": "release",
+    "resized": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1787,
+      "height": 720,
+      "width": 960,
+      "image": "desktop-captures/release-triangle-debug-j4-llvm-resized.png",
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6"
+    },
+    "target": "debug",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured interpolated RGB triangle on dark background; resized client redraws at 960x720; normal exit 0."
+  },
+  "debug-dungeon-release-j1-llvm": {
+    "jobs": 1,
+    "after_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 31,
+      "height": 480,
+      "width": 960,
+      "image": "desktop-captures/debug-dungeon-release-j1-llvm-regenerated.png",
+      "sha256": "9C1E6F5CB46199811F056D03C9CCD2F7BB8A2264769AC103B7F2199FF47A4C01"
+    },
+    "observed_utc": "2026-09-23T08:49:19.2755087Z",
+    "program_sha256": "4C1B02C24B7055087E27F718E1B38330BF1E12B99DDFED0CC7C2C52699C1418D",
+    "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 31,
+      "height": 480,
+      "width": 960,
+      "image": "desktop-captures/debug-dungeon-release-j1-llvm-before.png",
+      "sha256": "2551CE1490A362AD55CA56EB0D8F315C032E87D2321BFFF5CDDDC1A574032219"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "llvm",
+    "example": "dungeon",
+    "compiler": "debug",
+    "target": "release",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured rooms/corridors visible before input; Space regenerates a visibly different map; Q exits with code 0."
+  },
+  "debug-dungeon-release-j4-llvm": {
+    "jobs": 4,
+    "after_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 31,
+      "height": 480,
+      "width": 960,
+      "image": "desktop-captures/debug-dungeon-release-j4-llvm-regenerated.png",
+      "sha256": "5ABD1BC0CFC4D6B79778F1E999943BD077744901086B327874F2EE655DCA99B1"
+    },
+    "observed_utc": "2026-09-23T08:49:22.3630568Z",
+    "program_sha256": "406ACECA167A76F7580EEF907AA469A95750806C98802EBC8F24EF0D4FA34334",
+    "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 31,
+      "height": 480,
+      "width": 960,
+      "image": "desktop-captures/debug-dungeon-release-j4-llvm-before.png",
+      "sha256": "C0A1150115C9A808AA784DE7C9171AAD0F262246694887C80A66B3C0EBE609E9"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "llvm",
+    "example": "dungeon",
+    "compiler": "debug",
+    "target": "release",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured rooms/corridors visible before input; Space regenerates a visibly different map; Q exits with code 0."
+  },
+  "release-triangle-release-j4-llvm": {
+    "jobs": 4,
+    "observed_utc": "2026-09-23T08:50:28.8083706Z",
+    "program_sha256": "253C4CA06A1AF706A19ED6193CCA92C17456F1380CFADE8B7228CBCAFAEBA316",
+    "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1257,
+      "height": 600,
+      "width": 800,
+      "image": "desktop-captures/release-triangle-release-j4-llvm-before.png",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "llvm",
+    "example": "triangle",
+    "compiler": "release",
+    "resized": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1787,
+      "height": 720,
+      "width": 960,
+      "image": "desktop-captures/release-triangle-release-j4-llvm-resized.png",
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6"
+    },
+    "target": "release",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured interpolated RGB triangle on dark background; resized client redraws at 960x720; normal exit 0."
+  },
+  "release-dungeon-debug-j4-llvm": {
+    "jobs": 4,
+    "after_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 31,
+      "height": 480,
+      "width": 960,
+      "image": "desktop-captures/release-dungeon-debug-j4-llvm-regenerated.png",
+      "sha256": "FC3A0D7F56582BD649148D460EEF533D9F66E89AE50AA2AECB52F198D87B4294"
+    },
+    "observed_utc": "2026-09-23T08:49:55.6770436Z",
+    "program_sha256": "1C0043F5988CA5B33DDB333467B72DC32DAA7AF7827E4586BBB60FEBA0A1D350",
+    "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 31,
+      "height": 480,
+      "width": 960,
+      "image": "desktop-captures/release-dungeon-debug-j4-llvm-before.png",
+      "sha256": "7B1A82E13CD4F15A8BE132C50B6F19775C211CA27B264EE0B9A44D0079DAFC4A"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "llvm",
+    "example": "dungeon",
+    "compiler": "release",
+    "target": "debug",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured rooms/corridors visible before input; Space regenerates a visibly different map; Q exits with code 0."
+  },
+  "release-pixels-debug-j1-c": {
+    "jobs": 1,
+    "observed_utc": "2026-09-23T08:50:03.2836057Z",
+    "program_sha256": "7719DEAEB5F3877AC355C95E0AEC287771DD475E5F62C7321CFC709B3CB533D8",
+    "animated": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881,
+      "height": 480,
+      "width": 640,
+      "image": "desktop-captures/release-pixels-debug-j1-c-animated.png",
+      "sha256": "BB448F7C8FCFB0F3E586EB80571A318D1EDFB92034C93D5A3F03CD3A95C5684D"
+    },
+    "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881,
+      "height": 480,
+      "width": 640,
+      "image": "desktop-captures/release-pixels-debug-j1-c-before.png",
+      "sha256": "31095A937A17462F9D952CC2579074813AC1CAD1FDEA1A3B6546F4914623EFC7"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "c",
+    "example": "pixels",
+    "compiler": "release",
+    "resized": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 7881,
+      "height": 720,
+      "width": 960,
+      "image": "desktop-captures/release-pixels-debug-j1-c-resized.png",
+      "sha256": "7BA0E52741CE5B64C82F2793DC170B41BAADAB5C852F66578310E2314570A7FA"
+    },
+    "target": "debug",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured colourful framebuffer and white bar render correctly; successive frame hashes differ; resized client redraws at 960x720; normal exit 0."
+  },
+  "debug-triangle-release-j1-llvm": {
+    "jobs": 1,
+    "observed_utc": "2026-09-23T08:49:46.5642002Z",
+    "program_sha256": "52540F9289E9A868220E02429807EA160B8FE1F277175C783F508EB31347D8CA",
+    "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1257,
+      "height": 600,
+      "width": 800,
+      "image": "desktop-captures/debug-triangle-release-j1-llvm-before.png",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "llvm",
+    "example": "triangle",
+    "compiler": "debug",
+    "resized": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1787,
+      "height": 720,
+      "width": 960,
+      "image": "desktop-captures/debug-triangle-release-j1-llvm-resized.png",
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6"
+    },
+    "target": "release",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured interpolated RGB triangle on dark background; resized client redraws at 960x720; normal exit 0."
+  },
+  "release-dungeon-release-j4-llvm": {
+    "jobs": 4,
+    "after_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 31,
+      "height": 480,
+      "width": 960,
+      "image": "desktop-captures/release-dungeon-release-j4-llvm-regenerated.png",
+      "sha256": "967791F62611A1E011E3D49AD03BA3D17213747CF85F4770AB76B2FDDC0EBC42"
+    },
+    "observed_utc": "2026-09-23T08:50:01.7614832Z",
+    "program_sha256": "6E19C53D95BFFD1EF0762E5663D246B9ABD1450DC4AE36C610362FB2B393EBF2",
+    "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 31,
+      "height": 480,
+      "width": 960,
+      "image": "desktop-captures/release-dungeon-release-j4-llvm-before.png",
+      "sha256": "265E7A27FB4FA2026AF9F0E425A08958A9B67A03314319A5AE05485539D3CE85"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "llvm",
+    "example": "dungeon",
+    "compiler": "release",
+    "target": "release",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured rooms/corridors visible before input; Space regenerates a visibly different map; Q exits with code 0."
+  },
+  "release-pixels-release-j4-llvm": {
+    "jobs": 4,
+    "observed_utc": "2026-09-23T08:50:16.4619898Z",
+    "program_sha256": "CE15791176C1CA1BF34E8394D64BC63222303B39F10B02CF3E41BDF8FF693F06",
+    "animated": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881,
+      "height": 480,
+      "width": 640,
+      "image": "desktop-captures/release-pixels-release-j4-llvm-animated.png",
+      "sha256": "BB448F7C8FCFB0F3E586EB80571A318D1EDFB92034C93D5A3F03CD3A95C5684D"
+    },
+    "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881,
+      "height": 480,
+      "width": 640,
+      "image": "desktop-captures/release-pixels-release-j4-llvm-before.png",
+      "sha256": "31095A937A17462F9D952CC2579074813AC1CAD1FDEA1A3B6546F4914623EFC7"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "llvm",
+    "example": "pixels",
+    "compiler": "release",
+    "resized": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 7879,
+      "height": 720,
+      "width": 960,
+      "image": "desktop-captures/release-pixels-release-j4-llvm-resized.png",
+      "sha256": "912E681E8CCF605FFFC374FF7DEA0C8861DD69EF8F833FCB75D48E80A511CD3E"
+    },
+    "target": "release",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured colourful framebuffer and white bar render correctly; successive frame hashes differ; resized client redraws at 960x720; normal exit 0."
+  },
+  "release-pixels-debug-j4-llvm": {
+    "jobs": 4,
+    "observed_utc": "2026-09-23T08:50:08.9687117Z",
+    "program_sha256": "9400B35D26DB6206512D6E5F43261D466E5F32FEEF83DD900E4C879EB5EC7C4E",
+    "animated": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881,
+      "height": 480,
+      "width": 640,
+      "image": "desktop-captures/release-pixels-debug-j4-llvm-animated.png",
+      "sha256": "BB448F7C8FCFB0F3E586EB80571A318D1EDFB92034C93D5A3F03CD3A95C5684D"
+    },
+    "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881,
+      "height": 480,
+      "width": 640,
+      "image": "desktop-captures/release-pixels-debug-j4-llvm-before.png",
+      "sha256": "31095A937A17462F9D952CC2579074813AC1CAD1FDEA1A3B6546F4914623EFC7"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "llvm",
+    "example": "pixels",
+    "compiler": "release",
+    "resized": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 7879,
+      "height": 720,
+      "width": 960,
+      "image": "desktop-captures/release-pixels-debug-j4-llvm-resized.png",
+      "sha256": "912E681E8CCF605FFFC374FF7DEA0C8861DD69EF8F833FCB75D48E80A511CD3E"
+    },
+    "target": "debug",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured colourful framebuffer and white bar render correctly; successive frame hashes differ; resized client redraws at 960x720; normal exit 0."
+  },
+  "release-pixels-debug-j1-llvm": {
+    "jobs": 1,
+    "observed_utc": "2026-09-23T08:50:05.1473280Z",
+    "program_sha256": "0A644D1A18E197C04E755572537FAB964804D62082CB88E7A2477AEFB37F9D9A",
+    "animated": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881,
+      "height": 480,
+      "width": 640,
+      "image": "desktop-captures/release-pixels-debug-j1-llvm-animated.png",
+      "sha256": "34E6CB7E44386E911CF4123E487C144CAF25F0DFEC96AD615D2094BB90D48DD3"
+    },
+    "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881,
+      "height": 480,
+      "width": 640,
+      "image": "desktop-captures/release-pixels-debug-j1-llvm-before.png",
+      "sha256": "03D9DB85AF68BFFB3E038CBCB70DCBEF20142429E78FC5F6DFB40212E4F025A1"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "llvm",
+    "example": "pixels",
+    "compiler": "release",
+    "resized": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 7877,
+      "height": 720,
+      "width": 960,
+      "image": "desktop-captures/release-pixels-debug-j1-llvm-resized.png",
+      "sha256": "36D46F37602A1830A26C0F55F01C7631EAA60C76B68D0200A69A2EBF1BCD0AF8"
+    },
+    "target": "debug",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured colourful framebuffer and white bar render correctly; successive frame hashes differ; resized client redraws at 960x720; normal exit 0."
+  },
+  "release-triangle-debug-j1-c": {
+    "jobs": 1,
+    "observed_utc": "2026-09-23T08:50:18.3226636Z",
+    "program_sha256": "A2E743612181F4845EEF111C514CE31F5232B3A6D687AAC2D0778B20972BA68B",
+    "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1257,
+      "height": 600,
+      "width": 800,
+      "image": "desktop-captures/release-triangle-debug-j1-c-before.png",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "c",
+    "example": "triangle",
+    "compiler": "release",
+    "resized": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1787,
+      "height": 720,
+      "width": 960,
+      "image": "desktop-captures/release-triangle-debug-j1-c-resized.png",
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6"
+    },
+    "target": "debug",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured interpolated RGB triangle on dark background; resized client redraws at 960x720; normal exit 0."
+  },
+  "debug-dungeon-release-j4-c": {
+    "jobs": 4,
+    "after_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 31,
+      "height": 480,
+      "width": 960,
+      "image": "desktop-captures/debug-dungeon-release-j4-c-regenerated.png",
+      "sha256": "0004596B3FD5F6419886ED74F9C8C3915925A7DD538D190C439C96BCD18BA7BC"
+    },
+    "observed_utc": "2026-09-23T08:49:20.8396841Z",
+    "program_sha256": "610A268A257F0C3C8FDE2192114FE6120A36960A29876CD55DCCFF1B8FBB8B90",
+    "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 31,
+      "height": 480,
+      "width": 960,
+      "image": "desktop-captures/debug-dungeon-release-j4-c-before.png",
+      "sha256": "37804D447543B271B6FF92CFAAD83B377FD484EAD09E16BBF0C7FDBCDE8A22E3"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "c",
+    "example": "dungeon",
+    "compiler": "debug",
+    "target": "release",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured rooms/corridors visible before input; Space regenerates a visibly different map; Q exits with code 0."
+  },
+  "release-triangle-debug-j4-c": {
+    "jobs": 4,
+    "observed_utc": "2026-09-23T08:50:21.2837405Z",
+    "program_sha256": "566533FA57EAFC7D95844F396AA1856038D5A98D87AAC8D53C690669ACD96495",
+    "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1257,
+      "height": 600,
+      "width": 800,
+      "image": "desktop-captures/release-triangle-debug-j4-c-before.png",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "c",
+    "example": "triangle",
+    "compiler": "release",
+    "resized": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1787,
+      "height": 720,
+      "width": 960,
+      "image": "desktop-captures/release-triangle-debug-j4-c-resized.png",
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6"
+    },
+    "target": "debug",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured interpolated RGB triangle on dark background; resized client redraws at 960x720; normal exit 0."
+  },
+  "release-dungeon-release-j1-llvm": {
+    "jobs": 1,
+    "after_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 31,
+      "height": 480,
+      "width": 960,
+      "image": "desktop-captures/release-dungeon-release-j1-llvm-regenerated.png",
+      "sha256": "4F3A9EDC50E7B4204F2F2C2052398746E7111E2AE2FE8A6CA68AE5B039CB0E2F"
+    },
+    "observed_utc": "2026-09-23T08:49:58.7340802Z",
+    "program_sha256": "E1ECEA27049A0511FA88F673DD832FF2F8C58145BDE7CAD6CE73C9A0447E797F",
+    "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 31,
+      "height": 480,
+      "width": 960,
+      "image": "desktop-captures/release-dungeon-release-j1-llvm-before.png",
+      "sha256": "25239AFF2DD7A4B830C6D2661866617E469B31DA2BCB98C4EDE512573D08FE87"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "llvm",
+    "example": "dungeon",
+    "compiler": "release",
+    "target": "release",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured rooms/corridors visible before input; Space regenerates a visibly different map; Q exits with code 0."
+  },
+  "release-pixels-debug-j4-c": {
+    "jobs": 4,
+    "observed_utc": "2026-09-23T08:50:07.0843165Z",
+    "program_sha256": "87C2009C5BFEDA00522113BE6834A7A9B40EA05E8D0C623D63FD07C174BF289D",
+    "animated": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881,
+      "height": 480,
+      "width": 640,
+      "image": "desktop-captures/release-pixels-debug-j4-c-animated.png",
+      "sha256": "BB448F7C8FCFB0F3E586EB80571A318D1EDFB92034C93D5A3F03CD3A95C5684D"
+    },
+    "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881,
+      "height": 480,
+      "width": 640,
+      "image": "desktop-captures/release-pixels-debug-j4-c-before.png",
+      "sha256": "31095A937A17462F9D952CC2579074813AC1CAD1FDEA1A3B6546F4914623EFC7"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "c",
+    "example": "pixels",
+    "compiler": "release",
+    "resized": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 7879,
+      "height": 720,
+      "width": 960,
+      "image": "desktop-captures/release-pixels-debug-j4-c-resized.png",
+      "sha256": "912E681E8CCF605FFFC374FF7DEA0C8861DD69EF8F833FCB75D48E80A511CD3E"
+    },
+    "target": "debug",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured colourful framebuffer and white bar render correctly; successive frame hashes differ; resized client redraws at 960x720; normal exit 0."
+  },
+  "debug-dungeon-release-j1-c": {
+    "jobs": 1,
+    "after_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 31,
+      "height": 480,
+      "width": 960,
+      "image": "desktop-captures/debug-dungeon-release-j1-c-regenerated.png",
+      "sha256": "60033C755E949D7A7CF7C7B3A3617A3426DF059FFB2659B22B7E54C9B1DCBFC0"
+    },
+    "observed_utc": "2026-09-23T08:49:17.7454714Z",
+    "program_sha256": "6D50C8A6CF2A1EF76878BE25BA33757E77E7688B753125D56E5D2C06AAD0DDC9",
+    "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 31,
+      "height": 480,
+      "width": 960,
+      "image": "desktop-captures/debug-dungeon-release-j1-c-before.png",
+      "sha256": "A644FB7E439DF8F0A02663FF4EE975C8A94BDB9EC531E1F93210BBA5CC0F14CD"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "c",
+    "example": "dungeon",
+    "compiler": "debug",
+    "target": "release",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured rooms/corridors visible before input; Space regenerates a visibly different map; Q exits with code 0."
+  },
+  "debug-dungeon-debug-j1-c": {
+    "jobs": 1,
+    "after_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 31,
+      "height": 480,
+      "width": 960,
+      "image": "desktop-captures/debug-dungeon-debug-j1-c-regenerated.png",
+      "sha256": "A0515B11EEF91BD9AC23F5D2488C1226375325DC914B7C5A92D3BCC6F4354479"
+    },
+    "observed_utc": "2026-09-23T08:49:11.3512983Z",
+    "program_sha256": "2FEE76A9E76269847A4CF04127D36F57B554DAF876990B940F8A8FEE92843F19",
+    "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 31,
+      "height": 480,
+      "width": 960,
+      "image": "desktop-captures/debug-dungeon-debug-j1-c-before.png",
+      "sha256": "7E70479937CA22E869CC670D8D18E9C885E93F70A08579BBFE51B1B04E630820"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "c",
+    "example": "dungeon",
+    "compiler": "debug",
+    "target": "debug",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured rooms/corridors visible before input; Space regenerates a visibly different map; Q exits with code 0."
+  },
+  "release-pixels-release-j1-llvm": {
+    "jobs": 1,
+    "observed_utc": "2026-09-23T08:50:12.6711159Z",
+    "program_sha256": "C9F5BB8F7D4CCCD1B9F8FF8F7DD311E241BDD097B087D884B3A59C04F32EA466",
+    "animated": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881,
+      "height": 480,
+      "width": 640,
+      "image": "desktop-captures/release-pixels-release-j1-llvm-animated.png",
+      "sha256": "BB448F7C8FCFB0F3E586EB80571A318D1EDFB92034C93D5A3F03CD3A95C5684D"
+    },
+    "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881,
+      "height": 480,
+      "width": 640,
+      "image": "desktop-captures/release-pixels-release-j1-llvm-before.png",
+      "sha256": "31095A937A17462F9D952CC2579074813AC1CAD1FDEA1A3B6546F4914623EFC7"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "llvm",
+    "example": "pixels",
+    "compiler": "release",
+    "resized": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 7879,
+      "height": 720,
+      "width": 960,
+      "image": "desktop-captures/release-pixels-release-j1-llvm-resized.png",
+      "sha256": "912E681E8CCF605FFFC374FF7DEA0C8861DD69EF8F833FCB75D48E80A511CD3E"
+    },
+    "target": "release",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured colourful framebuffer and white bar render correctly; successive frame hashes differ; resized client redraws at 960x720; normal exit 0."
+  },
+  "debug-pixels-release-j1-c": {
+    "jobs": 1,
+    "observed_utc": "2026-09-23T08:49:31.5468648Z",
+    "program_sha256": "58B91D62ECA7C432C494217A9CA753407A82AA70BAF8D7255E84D2CAD64A4692",
+    "animated": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881,
+      "height": 480,
+      "width": 640,
+      "image": "desktop-captures/debug-pixels-release-j1-c-animated.png",
+      "sha256": "9EC55C4BB8A476CCEA1BE9881032EFF10AE54353080FAFEE8FC4C5EFFDF1BCD2"
+    },
+    "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881,
+      "height": 480,
+      "width": 640,
+      "image": "desktop-captures/debug-pixels-release-j1-c-before.png",
+      "sha256": "03D9DB85AF68BFFB3E038CBCB70DCBEF20142429E78FC5F6DFB40212E4F025A1"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "c",
+    "example": "pixels",
+    "compiler": "debug",
+    "resized": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 7879,
+      "height": 720,
+      "width": 960,
+      "image": "desktop-captures/debug-pixels-release-j1-c-resized.png",
+      "sha256": "DCC1C2AC372946B74BAB73BD4CD80AEA8684DAD7200B8F5DB63747C98DD071CC"
+    },
+    "target": "release",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured colourful framebuffer and white bar render correctly; successive frame hashes differ; resized client redraws at 960x720; normal exit 0."
+  },
+  "release-dungeon-release-j1-c": {
+    "jobs": 1,
+    "after_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 31,
+      "height": 480,
+      "width": 960,
+      "image": "desktop-captures/release-dungeon-release-j1-c-regenerated.png",
+      "sha256": "5A0E30EA90158A47F92D6D4CDCE0467D8F5D3E487C5A6D1DEF24FC07DC43E0EA"
+    },
+    "observed_utc": "2026-09-23T08:49:57.2303736Z",
+    "program_sha256": "62FC0E091DEE1FCE4682A7DFECF83EF1751432B311BC275E94F418CAA54E872C",
+    "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 31,
+      "height": 480,
+      "width": 960,
+      "image": "desktop-captures/release-dungeon-release-j1-c-before.png",
+      "sha256": "1110EBDCDD6C676183E47D6B6C7753EC67F4190752CBE8471C1299F43266623D"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "c",
+    "example": "dungeon",
+    "compiler": "release",
+    "target": "release",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured rooms/corridors visible before input; Space regenerates a visibly different map; Q exits with code 0."
+  },
+  "release-dungeon-release-j4-c": {
+    "jobs": 4,
+    "after_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 31,
+      "height": 480,
+      "width": 960,
+      "image": "desktop-captures/release-dungeon-release-j4-c-regenerated.png",
+      "sha256": "3FA541866170770D1E55630D77C11DDFEEE6B889E17E6A5A877736D2B02EC5ED"
+    },
+    "observed_utc": "2026-09-23T08:50:00.2443496Z",
+    "program_sha256": "3524186EDB7D787394CF0DA84A1474D87E2810BE3203FA6DD75E49FA95E33278",
+    "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 31,
+      "height": 480,
+      "width": 960,
+      "image": "desktop-captures/release-dungeon-release-j4-c-before.png",
+      "sha256": "F9264FCE5797D1A633AF0465FFF9231F11D51A9FB7E32B70FD029D1D03812D7B"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "c",
+    "example": "dungeon",
+    "compiler": "release",
+    "target": "release",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured rooms/corridors visible before input; Space regenerates a visibly different map; Q exits with code 0."
+  },
+  "debug-triangle-debug-j1-c": {
+    "jobs": 1,
+    "observed_utc": "2026-09-23T08:49:39.0104308Z",
+    "program_sha256": "30FCC3596DC23E3B7D377CD8DF97D6891D492B75ECD6B5ACDFE0103A145F209E",
+    "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1257,
+      "height": 600,
+      "width": 800,
+      "image": "desktop-captures/debug-triangle-debug-j1-c-before.png",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "c",
+    "example": "triangle",
+    "compiler": "debug",
+    "resized": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1787,
+      "height": 720,
+      "width": 960,
+      "image": "desktop-captures/debug-triangle-debug-j1-c-resized.png",
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6"
+    },
+    "target": "debug",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured interpolated RGB triangle on dark background; resized client redraws at 960x720; normal exit 0."
+  },
+  "debug-pixels-debug-j4-llvm": {
+    "jobs": 4,
+    "observed_utc": "2026-09-23T08:49:29.6868518Z",
+    "program_sha256": "A86D3483A8F3EE0C2EA8E4AD14D44A72053D15E6FD1A96EB06909A34F49FEC0D",
+    "animated": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881,
+      "height": 480,
+      "width": 640,
+      "image": "desktop-captures/debug-pixels-debug-j4-llvm-animated.png",
+      "sha256": "06B09FB6BE613FE470216D99AB827B0D1B9044427B1ABC97E05DA0F2B953E6DC"
+    },
+    "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881,
+      "height": 480,
+      "width": 640,
+      "image": "desktop-captures/debug-pixels-debug-j4-llvm-before.png",
+      "sha256": "CC6ED942A824731FDBB119ABAF9ED2F1AF1F4A5636A621064D1735AB53E582AA"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "llvm",
+    "example": "pixels",
+    "compiler": "debug",
+    "resized": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 7881,
+      "height": 720,
+      "width": 960,
+      "image": "desktop-captures/debug-pixels-debug-j4-llvm-resized.png",
+      "sha256": "7BA0E52741CE5B64C82F2793DC170B41BAADAB5C852F66578310E2314570A7FA"
+    },
+    "target": "debug",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured colourful framebuffer and white bar render correctly; successive frame hashes differ; resized client redraws at 960x720; normal exit 0."
+  },
+  "debug-pixels-release-j4-llvm": {
+    "jobs": 4,
+    "observed_utc": "2026-09-23T08:49:37.1267735Z",
+    "program_sha256": "57D997E1A87E4D86C5E475C2A3C37B43688CF2AD7BB827B52072F443AED3E11B",
+    "animated": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881,
+      "height": 480,
+      "width": 640,
+      "image": "desktop-captures/debug-pixels-release-j4-llvm-animated.png",
+      "sha256": "BB448F7C8FCFB0F3E586EB80571A318D1EDFB92034C93D5A3F03CD3A95C5684D"
+    },
+    "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881,
+      "height": 480,
+      "width": 640,
+      "image": "desktop-captures/debug-pixels-release-j4-llvm-before.png",
+      "sha256": "31095A937A17462F9D952CC2579074813AC1CAD1FDEA1A3B6546F4914623EFC7"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "llvm",
+    "example": "pixels",
+    "compiler": "debug",
+    "resized": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 7881,
+      "height": 720,
+      "width": 960,
+      "image": "desktop-captures/debug-pixels-release-j4-llvm-resized.png",
+      "sha256": "7BA0E52741CE5B64C82F2793DC170B41BAADAB5C852F66578310E2314570A7FA"
+    },
+    "target": "release",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured colourful framebuffer and white bar render correctly; successive frame hashes differ; resized client redraws at 960x720; normal exit 0."
+  },
+  "release-triangle-release-j1-c": {
+    "jobs": 1,
+    "observed_utc": "2026-09-23T08:50:24.2151853Z",
+    "program_sha256": "783B267C8A0D7CC5034B5C3E0D47566A716D73C81C4FED5DE714D91736E43B59",
+    "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1257,
+      "height": 600,
+      "width": 800,
+      "image": "desktop-captures/release-triangle-release-j1-c-before.png",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "c",
+    "example": "triangle",
+    "compiler": "release",
+    "resized": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1787,
+      "height": 720,
+      "width": 960,
+      "image": "desktop-captures/release-triangle-release-j1-c-resized.png",
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6"
+    },
+    "target": "release",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured interpolated RGB triangle on dark background; resized client redraws at 960x720; normal exit 0."
+  },
+  "debug-triangle-debug-j1-llvm": {
+    "jobs": 1,
+    "observed_utc": "2026-09-23T08:49:40.5270105Z",
+    "program_sha256": "3CE929D1155BF4696F176FAF8D6D93A09F9123B302FC150B56CB078C7585A43C",
+    "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1257,
+      "height": 600,
+      "width": 800,
+      "image": "desktop-captures/debug-triangle-debug-j1-llvm-before.png",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "llvm",
+    "example": "triangle",
+    "compiler": "debug",
+    "resized": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1787,
+      "height": 720,
+      "width": 960,
+      "image": "desktop-captures/debug-triangle-debug-j1-llvm-resized.png",
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6"
+    },
+    "target": "debug",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured interpolated RGB triangle on dark background; resized client redraws at 960x720; normal exit 0."
+  },
+  "release-triangle-release-j1-llvm": {
+    "jobs": 1,
+    "observed_utc": "2026-09-23T08:50:25.7632351Z",
+    "program_sha256": "8FF18BEFEE92836D961527DE5826622EB5889E880C4DDAB1EEE4031B44FE7111",
+    "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1257,
+      "height": 600,
+      "width": 800,
+      "image": "desktop-captures/release-triangle-release-j1-llvm-before.png",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "llvm",
+    "example": "triangle",
+    "compiler": "release",
+    "resized": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1787,
+      "height": 720,
+      "width": 960,
+      "image": "desktop-captures/release-triangle-release-j1-llvm-resized.png",
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6"
+    },
+    "target": "release",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured interpolated RGB triangle on dark background; resized client redraws at 960x720; normal exit 0."
+  },
+  "debug-triangle-debug-j4-llvm": {
+    "jobs": 4,
+    "observed_utc": "2026-09-23T08:49:43.4676309Z",
+    "program_sha256": "371C0261A592FEC7B77A21C1F4D4DAB09853175082080DDACF505D33087F3619",
+    "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1257,
+      "height": 600,
+      "width": 800,
+      "image": "desktop-captures/debug-triangle-debug-j4-llvm-before.png",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "llvm",
+    "example": "triangle",
+    "compiler": "debug",
+    "resized": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1787,
+      "height": 720,
+      "width": 960,
+      "image": "desktop-captures/debug-triangle-debug-j4-llvm-resized.png",
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6"
+    },
+    "target": "debug",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured interpolated RGB triangle on dark background; resized client redraws at 960x720; normal exit 0."
+  },
+  "debug-dungeon-debug-j4-c": {
+    "jobs": 4,
+    "after_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 31,
+      "height": 480,
+      "width": 960,
+      "image": "desktop-captures/debug-dungeon-debug-j4-c-regenerated.png",
+      "sha256": "7943784630B762C023EA4C878D17A0E4E72EDD0EF995819314DAF5E2E42DB6CE"
+    },
+    "observed_utc": "2026-09-23T08:49:14.6242838Z",
+    "program_sha256": "4B24CBD29F677FD2BEC471EF7C1E342B209FFDB833BF83611BE95841C34B8385",
+    "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 31,
+      "height": 480,
+      "width": 960,
+      "image": "desktop-captures/debug-dungeon-debug-j4-c-before.png",
+      "sha256": "485F4BC5D78ADF1FFF82CA30B53DC18D36872442BAF6FA125833695142C8A22E"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "c",
+    "example": "dungeon",
+    "compiler": "debug",
+    "target": "debug",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured rooms/corridors visible before input; Space regenerates a visibly different map; Q exits with code 0."
+  },
+  "debug-pixels-release-j1-llvm": {
+    "jobs": 1,
+    "observed_utc": "2026-09-23T08:49:33.4236405Z",
+    "program_sha256": "CD2804DBB7C2417A6BCB8FC7B3B23E742F892E3E54D54F2CC724C7F8B52FD9C4",
+    "animated": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881,
+      "height": 480,
+      "width": 640,
+      "image": "desktop-captures/debug-pixels-release-j1-llvm-animated.png",
+      "sha256": "BB448F7C8FCFB0F3E586EB80571A318D1EDFB92034C93D5A3F03CD3A95C5684D"
+    },
+    "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 2881,
+      "height": 480,
+      "width": 640,
+      "image": "desktop-captures/debug-pixels-release-j1-llvm-before.png",
+      "sha256": "31095A937A17462F9D952CC2579074813AC1CAD1FDEA1A3B6546F4914623EFC7"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "llvm",
+    "example": "pixels",
+    "compiler": "debug",
+    "resized": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 7881,
+      "height": 720,
+      "width": 960,
+      "image": "desktop-captures/debug-pixels-release-j1-llvm-resized.png",
+      "sha256": "7BA0E52741CE5B64C82F2793DC170B41BAADAB5C852F66578310E2314570A7FA"
+    },
+    "target": "release",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured colourful framebuffer and white bar render correctly; successive frame hashes differ; resized client redraws at 960x720; normal exit 0."
+  },
+  "release-triangle-debug-j1-llvm": {
+    "jobs": 1,
+    "observed_utc": "2026-09-23T08:50:19.8237414Z",
+    "program_sha256": "EE160F273F567DE8076860A3A9B959D9A99525A8C8448EF4A44F7FC44CD2DC9D",
+    "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1257,
+      "height": 600,
+      "width": 800,
+      "image": "desktop-captures/release-triangle-debug-j1-llvm-before.png",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "llvm",
+    "example": "triangle",
+    "compiler": "release",
+    "resized": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1787,
+      "height": 720,
+      "width": 960,
+      "image": "desktop-captures/release-triangle-debug-j1-llvm-resized.png",
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6"
+    },
+    "target": "debug",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured interpolated RGB triangle on dark background; resized client redraws at 960x720; normal exit 0."
+  },
+  "debug-triangle-release-j4-c": {
+    "jobs": 4,
+    "observed_utc": "2026-09-23T08:49:48.0830001Z",
+    "program_sha256": "BB8E67A1317CCEC1A5884399AFB663DE136E4CB0B4475720AE63FA2B0D3EA745",
+    "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1257,
+      "height": 600,
+      "width": 800,
+      "image": "desktop-captures/debug-triangle-release-j4-c-before.png",
+      "sha256": "F54ABF38FDAD3C38B07086626E9A5BF5257A60436BCB5FE0B79BF1B29C91A65B"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "c",
+    "example": "triangle",
+    "compiler": "debug",
+    "resized": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 1787,
+      "height": 720,
+      "width": 960,
+      "image": "desktop-captures/debug-triangle-release-j4-c-resized.png",
+      "sha256": "93484F0EF5F71685236AB2845D15BA537CC75F1FBF53FB371A068A9C9F5AC3A6"
+    },
+    "target": "release",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured interpolated RGB triangle on dark background; resized client redraws at 960x720; normal exit 0."
+  },
+  "debug-dungeon-debug-j1-llvm": {
+    "jobs": 1,
+    "after_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 31,
+      "height": 480,
+      "width": 960,
+      "image": "desktop-captures/debug-dungeon-debug-j1-llvm-regenerated.png",
+      "sha256": "2D8D523048C7692C1FEA31807A5EBC7E768D559494B2C3C9B741F50861DE49CF"
+    },
+    "observed_utc": "2026-09-23T08:49:13.0675654Z",
+    "program_sha256": "F5146243BC05C2388F08908D46D01E5EFB8AAACBF86C269813E2FC20F4BF4A26",
+    "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+    "before_input": {
+      "method": "PrintWindow client capture",
+      "sampled_colours": 31,
+      "height": 480,
+      "width": 960,
+      "image": "desktop-captures/debug-dungeon-debug-j1-llvm-before.png",
+      "sha256": "F1C33F1599A8C918F20EC7D036358F90D2DAE790717D5E469AFFCF6B9DD887D7"
+    },
+    "exit_code": 0,
+    "status": "PASS",
+    "backend": "llvm",
+    "example": "dungeon",
+    "compiler": "debug",
+    "target": "debug",
+    "visual_review": "Agent inspected all six labelled contact sheets from the native client captures on 2026-09-23.",
+    "observation": "Captured rooms/corridors visible before input; Space regenerates a visibly different map; Q exits with code 0."
+  }
+}

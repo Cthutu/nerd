@@ -1,0 +1,1628 @@
+{
+  "cases": {
+    "debug-pixels-debug-j1-llvm": {
+      "compiler": "debug",
+      "example": "pixels",
+      "target": "debug",
+      "jobs": 1,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "1",
+          "C:\\Users\\matt\\nerd\\examples\\pixels\\pixels.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-pixels-debug-j1-llvm.exe"
+        ]
+      ],
+      "log": "debug-pixels-debug-j1-llvm.log",
+      "build_exit": 0,
+      "observation": "Captured colourful framebuffer and white bar render correctly; successive frame hashes differ; resized client redraws at 960x720; normal exit 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "debug-pixels-debug-j1-c": {
+      "compiler": "debug",
+      "example": "pixels",
+      "target": "debug",
+      "jobs": 1,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "1",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\pixels\\pixels.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-pixels-debug-j1-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-pixels-debug-j1-c.c",
+          "-std=gnu11",
+          "-g",
+          "-O0",
+          "-Wl,/SUBSYSTEM:WINDOWS",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-lopengl32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-pixels-debug-j1-c.exe"
+        ]
+      ],
+      "log": "debug-pixels-debug-j1-c.log",
+      "build_exit": 0,
+      "observation": "Captured colourful framebuffer and white bar render correctly; successive frame hashes differ; resized client redraws at 960x720; normal exit 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "debug-pixels-debug-j4-llvm": {
+      "compiler": "debug",
+      "example": "pixels",
+      "target": "debug",
+      "jobs": 4,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "4",
+          "C:\\Users\\matt\\nerd\\examples\\pixels\\pixels.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-pixels-debug-j4-llvm.exe"
+        ]
+      ],
+      "log": "debug-pixels-debug-j4-llvm.log",
+      "build_exit": 0,
+      "observation": "Captured colourful framebuffer and white bar render correctly; successive frame hashes differ; resized client redraws at 960x720; normal exit 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "debug-pixels-debug-j4-c": {
+      "compiler": "debug",
+      "example": "pixels",
+      "target": "debug",
+      "jobs": 4,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "4",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\pixels\\pixels.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-pixels-debug-j4-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-pixels-debug-j4-c.c",
+          "-std=gnu11",
+          "-g",
+          "-O0",
+          "-Wl,/SUBSYSTEM:WINDOWS",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-lopengl32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-pixels-debug-j4-c.exe"
+        ]
+      ],
+      "log": "debug-pixels-debug-j4-c.log",
+      "build_exit": 0,
+      "observation": "Captured colourful framebuffer and white bar render correctly; successive frame hashes differ; resized client redraws at 960x720; normal exit 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "debug-pixels-release-j1-llvm": {
+      "compiler": "debug",
+      "example": "pixels",
+      "target": "release",
+      "jobs": 1,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "1",
+          "-r",
+          "C:\\Users\\matt\\nerd\\examples\\pixels\\pixels.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-pixels-release-j1-llvm.exe"
+        ]
+      ],
+      "log": "debug-pixels-release-j1-llvm.log",
+      "build_exit": 0,
+      "observation": "Captured colourful framebuffer and white bar render correctly; successive frame hashes differ; resized client redraws at 960x720; normal exit 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "debug-pixels-release-j1-c": {
+      "compiler": "debug",
+      "example": "pixels",
+      "target": "release",
+      "jobs": 1,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "1",
+          "-r",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\pixels\\pixels.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-pixels-release-j1-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-pixels-release-j1-c.c",
+          "-std=gnu11",
+          "-O2",
+          "-DNDEBUG",
+          "-Wl,/SUBSYSTEM:WINDOWS",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-lopengl32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-pixels-release-j1-c.exe"
+        ]
+      ],
+      "log": "debug-pixels-release-j1-c.log",
+      "build_exit": 0,
+      "observation": "Captured colourful framebuffer and white bar render correctly; successive frame hashes differ; resized client redraws at 960x720; normal exit 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "debug-pixels-release-j4-llvm": {
+      "compiler": "debug",
+      "example": "pixels",
+      "target": "release",
+      "jobs": 4,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "4",
+          "-r",
+          "C:\\Users\\matt\\nerd\\examples\\pixels\\pixels.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-pixels-release-j4-llvm.exe"
+        ]
+      ],
+      "log": "debug-pixels-release-j4-llvm.log",
+      "build_exit": 0,
+      "observation": "Captured colourful framebuffer and white bar render correctly; successive frame hashes differ; resized client redraws at 960x720; normal exit 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "debug-pixels-release-j4-c": {
+      "compiler": "debug",
+      "example": "pixels",
+      "target": "release",
+      "jobs": 4,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "4",
+          "-r",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\pixels\\pixels.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-pixels-release-j4-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-pixels-release-j4-c.c",
+          "-std=gnu11",
+          "-O2",
+          "-DNDEBUG",
+          "-Wl,/SUBSYSTEM:WINDOWS",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-lopengl32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-pixels-release-j4-c.exe"
+        ]
+      ],
+      "log": "debug-pixels-release-j4-c.log",
+      "build_exit": 0,
+      "observation": "Captured colourful framebuffer and white bar render correctly; successive frame hashes differ; resized client redraws at 960x720; normal exit 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "debug-dungeon-debug-j1-llvm": {
+      "compiler": "debug",
+      "example": "dungeon",
+      "target": "debug",
+      "jobs": 1,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "1",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-dungeon-debug-j1-llvm.exe"
+        ]
+      ],
+      "log": "debug-dungeon-debug-j1-llvm.log",
+      "build_exit": 0,
+      "observation": "Captured rooms/corridors visible before input; Space regenerates a visibly different map; Q exits with code 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "debug-dungeon-debug-j1-c": {
+      "compiler": "debug",
+      "example": "dungeon",
+      "target": "debug",
+      "jobs": 1,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "1",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-dungeon-debug-j1-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-dungeon-debug-j1-c.c",
+          "-std=gnu11",
+          "-g",
+          "-O0",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-lopengl32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-dungeon-debug-j1-c.exe"
+        ]
+      ],
+      "log": "debug-dungeon-debug-j1-c.log",
+      "build_exit": 0,
+      "observation": "Captured rooms/corridors visible before input; Space regenerates a visibly different map; Q exits with code 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "debug-dungeon-debug-j4-llvm": {
+      "compiler": "debug",
+      "example": "dungeon",
+      "target": "debug",
+      "jobs": 4,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "4",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-dungeon-debug-j4-llvm.exe"
+        ]
+      ],
+      "log": "debug-dungeon-debug-j4-llvm.log",
+      "build_exit": 0,
+      "observation": "Captured rooms/corridors visible before input; Space regenerates a visibly different map; Q exits with code 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "debug-dungeon-debug-j4-c": {
+      "compiler": "debug",
+      "example": "dungeon",
+      "target": "debug",
+      "jobs": 4,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "4",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-dungeon-debug-j4-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-dungeon-debug-j4-c.c",
+          "-std=gnu11",
+          "-g",
+          "-O0",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-lopengl32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-dungeon-debug-j4-c.exe"
+        ]
+      ],
+      "log": "debug-dungeon-debug-j4-c.log",
+      "build_exit": 0,
+      "observation": "Captured rooms/corridors visible before input; Space regenerates a visibly different map; Q exits with code 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "debug-dungeon-release-j1-llvm": {
+      "compiler": "debug",
+      "example": "dungeon",
+      "target": "release",
+      "jobs": 1,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "1",
+          "-r",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-dungeon-release-j1-llvm.exe"
+        ]
+      ],
+      "log": "debug-dungeon-release-j1-llvm.log",
+      "build_exit": 0,
+      "observation": "Captured rooms/corridors visible before input; Space regenerates a visibly different map; Q exits with code 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "debug-dungeon-release-j1-c": {
+      "compiler": "debug",
+      "example": "dungeon",
+      "target": "release",
+      "jobs": 1,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "1",
+          "-r",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-dungeon-release-j1-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-dungeon-release-j1-c.c",
+          "-std=gnu11",
+          "-O2",
+          "-DNDEBUG",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-lopengl32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-dungeon-release-j1-c.exe"
+        ]
+      ],
+      "log": "debug-dungeon-release-j1-c.log",
+      "build_exit": 0,
+      "observation": "Captured rooms/corridors visible before input; Space regenerates a visibly different map; Q exits with code 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "debug-dungeon-release-j4-llvm": {
+      "compiler": "debug",
+      "example": "dungeon",
+      "target": "release",
+      "jobs": 4,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "4",
+          "-r",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-dungeon-release-j4-llvm.exe"
+        ]
+      ],
+      "log": "debug-dungeon-release-j4-llvm.log",
+      "build_exit": 0,
+      "observation": "Captured rooms/corridors visible before input; Space regenerates a visibly different map; Q exits with code 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "debug-dungeon-release-j4-c": {
+      "compiler": "debug",
+      "example": "dungeon",
+      "target": "release",
+      "jobs": 4,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "4",
+          "-r",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-dungeon-release-j4-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-dungeon-release-j4-c.c",
+          "-std=gnu11",
+          "-O2",
+          "-DNDEBUG",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-lopengl32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-dungeon-release-j4-c.exe"
+        ]
+      ],
+      "log": "debug-dungeon-release-j4-c.log",
+      "build_exit": 0,
+      "observation": "Captured rooms/corridors visible before input; Space regenerates a visibly different map; Q exits with code 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "debug-triangle-debug-j1-llvm": {
+      "compiler": "debug",
+      "example": "triangle",
+      "target": "debug",
+      "jobs": 1,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "1",
+          "C:\\Users\\matt\\nerd\\examples\\triangle\\triangle.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-triangle-debug-j1-llvm.exe"
+        ]
+      ],
+      "log": "debug-triangle-debug-j1-llvm.log",
+      "build_exit": 0,
+      "observation": "Captured interpolated RGB triangle on dark background; resized client redraws at 960x720; normal exit 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "debug-triangle-debug-j1-c": {
+      "compiler": "debug",
+      "example": "triangle",
+      "target": "debug",
+      "jobs": 1,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "1",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\triangle\\triangle.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-triangle-debug-j1-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-triangle-debug-j1-c.c",
+          "-std=gnu11",
+          "-g",
+          "-O0",
+          "-Wl,/SUBSYSTEM:WINDOWS",
+          "-lopengl32",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-triangle-debug-j1-c.exe"
+        ]
+      ],
+      "log": "debug-triangle-debug-j1-c.log",
+      "build_exit": 0,
+      "observation": "Captured interpolated RGB triangle on dark background; resized client redraws at 960x720; normal exit 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "debug-triangle-debug-j4-llvm": {
+      "compiler": "debug",
+      "example": "triangle",
+      "target": "debug",
+      "jobs": 4,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "4",
+          "C:\\Users\\matt\\nerd\\examples\\triangle\\triangle.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-triangle-debug-j4-llvm.exe"
+        ]
+      ],
+      "log": "debug-triangle-debug-j4-llvm.log",
+      "build_exit": 0,
+      "observation": "Captured interpolated RGB triangle on dark background; resized client redraws at 960x720; normal exit 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "debug-triangle-debug-j4-c": {
+      "compiler": "debug",
+      "example": "triangle",
+      "target": "debug",
+      "jobs": 4,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "4",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\triangle\\triangle.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-triangle-debug-j4-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-triangle-debug-j4-c.c",
+          "-std=gnu11",
+          "-g",
+          "-O0",
+          "-Wl,/SUBSYSTEM:WINDOWS",
+          "-lopengl32",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-triangle-debug-j4-c.exe"
+        ]
+      ],
+      "log": "debug-triangle-debug-j4-c.log",
+      "build_exit": 0,
+      "observation": "Captured interpolated RGB triangle on dark background; resized client redraws at 960x720; normal exit 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "debug-triangle-release-j1-llvm": {
+      "compiler": "debug",
+      "example": "triangle",
+      "target": "release",
+      "jobs": 1,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "1",
+          "-r",
+          "C:\\Users\\matt\\nerd\\examples\\triangle\\triangle.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-triangle-release-j1-llvm.exe"
+        ]
+      ],
+      "log": "debug-triangle-release-j1-llvm.log",
+      "build_exit": 0,
+      "observation": "Captured interpolated RGB triangle on dark background; resized client redraws at 960x720; normal exit 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "debug-triangle-release-j1-c": {
+      "compiler": "debug",
+      "example": "triangle",
+      "target": "release",
+      "jobs": 1,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "1",
+          "-r",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\triangle\\triangle.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-triangle-release-j1-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-triangle-release-j1-c.c",
+          "-std=gnu11",
+          "-O2",
+          "-DNDEBUG",
+          "-Wl,/SUBSYSTEM:WINDOWS",
+          "-lopengl32",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-triangle-release-j1-c.exe"
+        ]
+      ],
+      "log": "debug-triangle-release-j1-c.log",
+      "build_exit": 0,
+      "observation": "Captured interpolated RGB triangle on dark background; resized client redraws at 960x720; normal exit 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "debug-triangle-release-j4-llvm": {
+      "compiler": "debug",
+      "example": "triangle",
+      "target": "release",
+      "jobs": 4,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "4",
+          "-r",
+          "C:\\Users\\matt\\nerd\\examples\\triangle\\triangle.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-triangle-release-j4-llvm.exe"
+        ]
+      ],
+      "log": "debug-triangle-release-j4-llvm.log",
+      "build_exit": 0,
+      "observation": "Captured interpolated RGB triangle on dark background; resized client redraws at 960x720; normal exit 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "debug-triangle-release-j4-c": {
+      "compiler": "debug",
+      "example": "triangle",
+      "target": "release",
+      "jobs": 4,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "7c4e85b70a95c5a76867062e96fa0d27e93a6429b18fae9ba7fad3897c577870",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd-debug.exe",
+          "build",
+          "--jobs",
+          "4",
+          "-r",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\triangle\\triangle.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-triangle-release-j4-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-triangle-release-j4-c.c",
+          "-std=gnu11",
+          "-O2",
+          "-DNDEBUG",
+          "-Wl,/SUBSYSTEM:WINDOWS",
+          "-lopengl32",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\debug-triangle-release-j4-c.exe"
+        ]
+      ],
+      "log": "debug-triangle-release-j4-c.log",
+      "build_exit": 0,
+      "observation": "Captured interpolated RGB triangle on dark background; resized client redraws at 960x720; normal exit 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "release-pixels-debug-j1-llvm": {
+      "compiler": "release",
+      "example": "pixels",
+      "target": "debug",
+      "jobs": 1,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "1",
+          "C:\\Users\\matt\\nerd\\examples\\pixels\\pixels.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-pixels-debug-j1-llvm.exe"
+        ]
+      ],
+      "log": "release-pixels-debug-j1-llvm.log",
+      "build_exit": 0,
+      "observation": "Captured colourful framebuffer and white bar render correctly; successive frame hashes differ; resized client redraws at 960x720; normal exit 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "release-pixels-debug-j1-c": {
+      "compiler": "release",
+      "example": "pixels",
+      "target": "debug",
+      "jobs": 1,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "1",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\pixels\\pixels.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-pixels-debug-j1-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-pixels-debug-j1-c.c",
+          "-std=gnu11",
+          "-g",
+          "-O0",
+          "-Wl,/SUBSYSTEM:WINDOWS",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-lopengl32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-pixels-debug-j1-c.exe"
+        ]
+      ],
+      "log": "release-pixels-debug-j1-c.log",
+      "build_exit": 0,
+      "observation": "Captured colourful framebuffer and white bar render correctly; successive frame hashes differ; resized client redraws at 960x720; normal exit 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "release-pixels-debug-j4-llvm": {
+      "compiler": "release",
+      "example": "pixels",
+      "target": "debug",
+      "jobs": 4,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "4",
+          "C:\\Users\\matt\\nerd\\examples\\pixels\\pixels.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-pixels-debug-j4-llvm.exe"
+        ]
+      ],
+      "log": "release-pixels-debug-j4-llvm.log",
+      "build_exit": 0,
+      "observation": "Captured colourful framebuffer and white bar render correctly; successive frame hashes differ; resized client redraws at 960x720; normal exit 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "release-pixels-debug-j4-c": {
+      "compiler": "release",
+      "example": "pixels",
+      "target": "debug",
+      "jobs": 4,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "4",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\pixels\\pixels.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-pixels-debug-j4-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-pixels-debug-j4-c.c",
+          "-std=gnu11",
+          "-g",
+          "-O0",
+          "-Wl,/SUBSYSTEM:WINDOWS",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-lopengl32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-pixels-debug-j4-c.exe"
+        ]
+      ],
+      "log": "release-pixels-debug-j4-c.log",
+      "build_exit": 0,
+      "observation": "Captured colourful framebuffer and white bar render correctly; successive frame hashes differ; resized client redraws at 960x720; normal exit 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "release-pixels-release-j1-llvm": {
+      "compiler": "release",
+      "example": "pixels",
+      "target": "release",
+      "jobs": 1,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "1",
+          "-r",
+          "C:\\Users\\matt\\nerd\\examples\\pixels\\pixels.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-pixels-release-j1-llvm.exe"
+        ]
+      ],
+      "log": "release-pixels-release-j1-llvm.log",
+      "build_exit": 0,
+      "observation": "Captured colourful framebuffer and white bar render correctly; successive frame hashes differ; resized client redraws at 960x720; normal exit 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "release-pixels-release-j1-c": {
+      "compiler": "release",
+      "example": "pixels",
+      "target": "release",
+      "jobs": 1,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "1",
+          "-r",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\pixels\\pixels.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-pixels-release-j1-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-pixels-release-j1-c.c",
+          "-std=gnu11",
+          "-O2",
+          "-DNDEBUG",
+          "-Wl,/SUBSYSTEM:WINDOWS",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-lopengl32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-pixels-release-j1-c.exe"
+        ]
+      ],
+      "log": "release-pixels-release-j1-c.log",
+      "build_exit": 0,
+      "observation": "Captured colourful framebuffer and white bar render correctly; successive frame hashes differ; resized client redraws at 960x720; normal exit 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "release-pixels-release-j4-llvm": {
+      "compiler": "release",
+      "example": "pixels",
+      "target": "release",
+      "jobs": 4,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "4",
+          "-r",
+          "C:\\Users\\matt\\nerd\\examples\\pixels\\pixels.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-pixels-release-j4-llvm.exe"
+        ]
+      ],
+      "log": "release-pixels-release-j4-llvm.log",
+      "build_exit": 0,
+      "observation": "Captured colourful framebuffer and white bar render correctly; successive frame hashes differ; resized client redraws at 960x720; normal exit 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "release-pixels-release-j4-c": {
+      "compiler": "release",
+      "example": "pixels",
+      "target": "release",
+      "jobs": 4,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "4",
+          "-r",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\pixels\\pixels.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-pixels-release-j4-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-pixels-release-j4-c.c",
+          "-std=gnu11",
+          "-O2",
+          "-DNDEBUG",
+          "-Wl,/SUBSYSTEM:WINDOWS",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-lopengl32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-pixels-release-j4-c.exe"
+        ]
+      ],
+      "log": "release-pixels-release-j4-c.log",
+      "build_exit": 0,
+      "observation": "Captured colourful framebuffer and white bar render correctly; successive frame hashes differ; resized client redraws at 960x720; normal exit 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "release-dungeon-debug-j1-llvm": {
+      "compiler": "release",
+      "example": "dungeon",
+      "target": "debug",
+      "jobs": 1,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "1",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-dungeon-debug-j1-llvm.exe"
+        ]
+      ],
+      "log": "release-dungeon-debug-j1-llvm.log",
+      "build_exit": 0,
+      "observation": "Captured rooms/corridors visible before input; Space regenerates a visibly different map; Q exits with code 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "release-dungeon-debug-j1-c": {
+      "compiler": "release",
+      "example": "dungeon",
+      "target": "debug",
+      "jobs": 1,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "1",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-dungeon-debug-j1-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-dungeon-debug-j1-c.c",
+          "-std=gnu11",
+          "-g",
+          "-O0",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-lopengl32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-dungeon-debug-j1-c.exe"
+        ]
+      ],
+      "log": "release-dungeon-debug-j1-c.log",
+      "build_exit": 0,
+      "observation": "Captured rooms/corridors visible before input; Space regenerates a visibly different map; Q exits with code 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "release-dungeon-debug-j4-llvm": {
+      "compiler": "release",
+      "example": "dungeon",
+      "target": "debug",
+      "jobs": 4,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "4",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-dungeon-debug-j4-llvm.exe"
+        ]
+      ],
+      "log": "release-dungeon-debug-j4-llvm.log",
+      "build_exit": 0,
+      "observation": "Captured rooms/corridors visible before input; Space regenerates a visibly different map; Q exits with code 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "release-dungeon-debug-j4-c": {
+      "compiler": "release",
+      "example": "dungeon",
+      "target": "debug",
+      "jobs": 4,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "4",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-dungeon-debug-j4-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-dungeon-debug-j4-c.c",
+          "-std=gnu11",
+          "-g",
+          "-O0",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-lopengl32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-dungeon-debug-j4-c.exe"
+        ]
+      ],
+      "log": "release-dungeon-debug-j4-c.log",
+      "build_exit": 0,
+      "observation": "Captured rooms/corridors visible before input; Space regenerates a visibly different map; Q exits with code 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "release-dungeon-release-j1-llvm": {
+      "compiler": "release",
+      "example": "dungeon",
+      "target": "release",
+      "jobs": 1,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "1",
+          "-r",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-dungeon-release-j1-llvm.exe"
+        ]
+      ],
+      "log": "release-dungeon-release-j1-llvm.log",
+      "build_exit": 0,
+      "observation": "Captured rooms/corridors visible before input; Space regenerates a visibly different map; Q exits with code 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "release-dungeon-release-j1-c": {
+      "compiler": "release",
+      "example": "dungeon",
+      "target": "release",
+      "jobs": 1,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "1",
+          "-r",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-dungeon-release-j1-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-dungeon-release-j1-c.c",
+          "-std=gnu11",
+          "-O2",
+          "-DNDEBUG",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-lopengl32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-dungeon-release-j1-c.exe"
+        ]
+      ],
+      "log": "release-dungeon-release-j1-c.log",
+      "build_exit": 0,
+      "observation": "Captured rooms/corridors visible before input; Space regenerates a visibly different map; Q exits with code 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "release-dungeon-release-j4-llvm": {
+      "compiler": "release",
+      "example": "dungeon",
+      "target": "release",
+      "jobs": 4,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "4",
+          "-r",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-dungeon-release-j4-llvm.exe"
+        ]
+      ],
+      "log": "release-dungeon-release-j4-llvm.log",
+      "build_exit": 0,
+      "observation": "Captured rooms/corridors visible before input; Space regenerates a visibly different map; Q exits with code 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "release-dungeon-release-j4-c": {
+      "compiler": "release",
+      "example": "dungeon",
+      "target": "release",
+      "jobs": 4,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "4",
+          "-r",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\dungeon\\dungeon.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-dungeon-release-j4-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-dungeon-release-j4-c.c",
+          "-std=gnu11",
+          "-O2",
+          "-DNDEBUG",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-lopengl32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-dungeon-release-j4-c.exe"
+        ]
+      ],
+      "log": "release-dungeon-release-j4-c.log",
+      "build_exit": 0,
+      "observation": "Captured rooms/corridors visible before input; Space regenerates a visibly different map; Q exits with code 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "release-triangle-debug-j1-llvm": {
+      "compiler": "release",
+      "example": "triangle",
+      "target": "debug",
+      "jobs": 1,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "1",
+          "C:\\Users\\matt\\nerd\\examples\\triangle\\triangle.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-triangle-debug-j1-llvm.exe"
+        ]
+      ],
+      "log": "release-triangle-debug-j1-llvm.log",
+      "build_exit": 0,
+      "observation": "Captured interpolated RGB triangle on dark background; resized client redraws at 960x720; normal exit 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "release-triangle-debug-j1-c": {
+      "compiler": "release",
+      "example": "triangle",
+      "target": "debug",
+      "jobs": 1,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "1",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\triangle\\triangle.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-triangle-debug-j1-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-triangle-debug-j1-c.c",
+          "-std=gnu11",
+          "-g",
+          "-O0",
+          "-Wl,/SUBSYSTEM:WINDOWS",
+          "-lopengl32",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-triangle-debug-j1-c.exe"
+        ]
+      ],
+      "log": "release-triangle-debug-j1-c.log",
+      "build_exit": 0,
+      "observation": "Captured interpolated RGB triangle on dark background; resized client redraws at 960x720; normal exit 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "release-triangle-debug-j4-llvm": {
+      "compiler": "release",
+      "example": "triangle",
+      "target": "debug",
+      "jobs": 4,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "4",
+          "C:\\Users\\matt\\nerd\\examples\\triangle\\triangle.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-triangle-debug-j4-llvm.exe"
+        ]
+      ],
+      "log": "release-triangle-debug-j4-llvm.log",
+      "build_exit": 0,
+      "observation": "Captured interpolated RGB triangle on dark background; resized client redraws at 960x720; normal exit 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "release-triangle-debug-j4-c": {
+      "compiler": "release",
+      "example": "triangle",
+      "target": "debug",
+      "jobs": 4,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "4",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\triangle\\triangle.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-triangle-debug-j4-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-triangle-debug-j4-c.c",
+          "-std=gnu11",
+          "-g",
+          "-O0",
+          "-Wl,/SUBSYSTEM:WINDOWS",
+          "-lopengl32",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-triangle-debug-j4-c.exe"
+        ]
+      ],
+      "log": "release-triangle-debug-j4-c.log",
+      "build_exit": 0,
+      "observation": "Captured interpolated RGB triangle on dark background; resized client redraws at 960x720; normal exit 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "release-triangle-release-j1-llvm": {
+      "compiler": "release",
+      "example": "triangle",
+      "target": "release",
+      "jobs": 1,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "1",
+          "-r",
+          "C:\\Users\\matt\\nerd\\examples\\triangle\\triangle.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-triangle-release-j1-llvm.exe"
+        ]
+      ],
+      "log": "release-triangle-release-j1-llvm.log",
+      "build_exit": 0,
+      "observation": "Captured interpolated RGB triangle on dark background; resized client redraws at 960x720; normal exit 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "release-triangle-release-j1-c": {
+      "compiler": "release",
+      "example": "triangle",
+      "target": "release",
+      "jobs": 1,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "1",
+          "-r",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\triangle\\triangle.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-triangle-release-j1-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-triangle-release-j1-c.c",
+          "-std=gnu11",
+          "-O2",
+          "-DNDEBUG",
+          "-Wl,/SUBSYSTEM:WINDOWS",
+          "-lopengl32",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-triangle-release-j1-c.exe"
+        ]
+      ],
+      "log": "release-triangle-release-j1-c.log",
+      "build_exit": 0,
+      "observation": "Captured interpolated RGB triangle on dark background; resized client redraws at 960x720; normal exit 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "release-triangle-release-j4-llvm": {
+      "compiler": "release",
+      "example": "triangle",
+      "target": "release",
+      "jobs": 4,
+      "backend": "llvm",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "4",
+          "-r",
+          "C:\\Users\\matt\\nerd\\examples\\triangle\\triangle.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-triangle-release-j4-llvm.exe"
+        ]
+      ],
+      "log": "release-triangle-release-j4-llvm.log",
+      "build_exit": 0,
+      "observation": "Captured interpolated RGB triangle on dark background; resized client redraws at 960x720; normal exit 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    },
+    "release-triangle-release-j4-c": {
+      "compiler": "release",
+      "example": "triangle",
+      "target": "release",
+      "jobs": 4,
+      "backend": "c",
+      "status": "PASS",
+      "commit": "c32eb92dfccbfc64e337b84440d9f906c33fc675",
+      "compiler_sha256": "34d33da508d2ba3a314ae912e5cc308132f425e9243cfd773d6f1f8db165014d",
+      "commands": [
+        [
+          "C:\\Users\\matt\\nerd\\_bin\\nerd.exe",
+          "build",
+          "--jobs",
+          "4",
+          "-r",
+          "--cgen",
+          "--copts",
+          "C:\\Users\\matt\\nerd\\examples\\triangle\\triangle.n",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-triangle-release-j4-c.exe"
+        ],
+        [
+          "clang",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-triangle-release-j4-c.c",
+          "-std=gnu11",
+          "-O2",
+          "-DNDEBUG",
+          "-Wl,/SUBSYSTEM:WINDOWS",
+          "-lopengl32",
+          "-lkernel32",
+          "-lsynchronization",
+          "-luser32",
+          "-lgdi32",
+          "-o",
+          "C:\\Users\\matt\\nerd\\validation\\windows\\results\\20260923T084624Z-7d394bf0\\scratch\\manual\\release-triangle-release-j4-c.exe"
+        ]
+      ],
+      "log": "release-triangle-release-j4-c.log",
+      "build_exit": 0,
+      "observation": "Captured interpolated RGB triangle on dark background; resized client redraws at 960x720; normal exit 0.",
+      "evidence": "desktop-automated.json; desktop-captures/"
+    }
+  }
+}

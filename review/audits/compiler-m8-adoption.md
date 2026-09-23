@@ -244,3 +244,22 @@ for the half-logical-CPU ceiling. M10 will measure workload thresholds and worke
 reuse, and M11 will evaluate enabling automatic behavior by default. This does
 not change M8's measured conclusions or the current one-job default. Semantic
 ownership redesign remains a separate M12 experiment.
+
+## Native Windows single-core follow-up — 2026-09-23
+
+The [new Windows handoff](../../validation/windows/results/HANDOFF.md) tests
+`c32eb92dfccbfc64e337b84440d9f906c33fc675`. Both fresh Clang-built compilers pass
+the 6,000-term jobs 1/4 regression and full auxiliary suites; fixtures pass
+1,116/0/15 (pass/fail/platform-skip). The 48-case LLVM/C desktop matrix passes.
+Automated debugger/editor checks pass; fresh human VS Code observation is still
+outstanding. The previous dated user smoke report is not applied to this build.
+
+The [current worker sweep](../../validation/windows/results/20260923T084624Z-7d394bf0/BENCHMARKS.md)
+covers jobs 1/2/4/8/16/auto with five unprofiled samples and LLVM identity.
+New Windows process accounting passes its known CPU/memory sanity check and
+records positive compiler peak working sets. **Compiler-process-only** counters
+exclude LLVM/linker children; full-build wall time includes them. This improves
+on the September 22 null counters without satisfying whole-process-tree memory
+or paired Windows baseline gates. Earlier Linux/Windows measurements remain
+dated evidence; no native macOS or Windows sanitizer pass is claimed. Retain
+jobs=1 by default; M8 is not declared fully validated.

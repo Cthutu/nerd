@@ -1,0 +1,14 @@
+tiny     debug  : j1=91.83ms, j2=90.49ms, j4=92.96ms, j8=91.80ms, j16=92.23ms, jauto=92.03ms
+tiny     release: j1=114.22ms, j2=114.59ms, j4=115.10ms, j8=116.83ms, j16=115.48ms, jauto=114.39ms
+dungeon  debug  : j1=2505.36ms, j2=2510.29ms, j4=2525.15ms, j8=2527.00ms, j16=2500.14ms, jauto=2522.05ms
+dungeon  release: j1=4864.92ms, j2=4869.17ms, j4=4920.43ms, j8=4894.52ms, j16=4918.33ms, jauto=4893.60ms
+pixels   debug  : j1=323.51ms, j2=310.06ms, j4=303.22ms, j8=305.17ms, j16=306.99ms, jauto=304.37ms
+pixels   release: j1=504.90ms, j2=502.19ms, j4=495.62ms, j8=499.73ms, j16=502.85ms, jauto=499.50ms
+quill    debug  : j1=159.67ms, j2=157.79ms, j4=155.11ms, j8=155.72ms, j16=155.26ms, jauto=157.68ms
+quill    release: j1=189.95ms, j2=190.08ms, j4=190.03ms, j8=191.43ms, j16=194.13ms, jauto=191.46ms
+wide     debug  : j1=195.20ms, j2=192.99ms, j4=191.76ms, j8=194.00ms, j16=195.58ms, jauto=192.10ms
+wide     release: j1=268.58ms, j2=271.12ms, j4=267.02ms, j8=263.66ms, j16=271.22ms, jauto=266.73ms
+deep     debug  : j1=194.97ms, j2=197.96ms, j4=195.88ms, j8=195.86ms, j16=196.09ms, jauto=196.42ms
+deep     release: j1=285.63ms, j2=312.33ms, j4=291.55ms, j8=300.05ms, j16=296.03ms, jauto=297.24ms
+large    debug  : j1=193.10ms, j2=190.98ms, j4=191.65ms, j8=196.36ms, j16=194.70ms, jauto=193.74ms
+large    release: j1=128.64ms, j2=128.74ms, j4=130.12ms, j8=129.84ms, j16=130.52ms, jauto=129.58ms

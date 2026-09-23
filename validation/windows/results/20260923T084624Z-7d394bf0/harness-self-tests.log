@@ -1,0 +1,12 @@
+Results: C:\Users\matt\AppData\Local\Temp\tmps2j99te4\results\20260923T084623Z-e4ebf7be
+Running build-debug (output streams to its log)
+build-debug: failed
+dependent: blocked
+Running independent (output streams to its log)
+independent: passed
+Report: C:\Users\matt\AppData\Local\Temp\tmps2j99te4\results\20260923T084623Z-e4ebf7be\SUMMARY.md
+....
+----------------------------------------------------------------------
+Ran 4 tests in 0.660s
+
+OK
