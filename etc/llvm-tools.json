@@ -1,0 +1,16 @@
+{
+    "version": "20.1.8",
+    "homepage": "https://llvm.org/",
+    "license": "Apache-2.0 WITH LLVM-exception",
+    "architecture": {
+        "64bit": {
+            "url": "https://github.com/llvm/llvm-project/releases/download/llvmorg-20.1.8/clang+llvm-20.1.8-x86_64-pc-windows-msvc.tar.xz",
+            "hash": "f229769f11d6a6edc8ada599c0cda964b7dee6ab1a08c6cf9dd7f513e85b107f",
+            "extract_dir": "clang+llvm-20.1.8-x86_64-pc-windows-msvc"
+        }
+    },
+    "bin": [
+        "bin\\opt.exe",
+        "bin\\llc.exe"
+    ]
+}
