@@ -1,45 +1,34 @@
 # Execute the Nerd Windows validation and repair handoff
 
-You are working on the user's native Windows machine. The user authorizes you
-to run this validation, fix compiler/build/test/harness problems, store the
-results in this folder, and commit and push the fixes and evidence as you go.
-Carry the work through to a final full run where possible. Do not stop at an
-audit, plan, first failure, or a request to approve routine fixes or commits.
+Use this procedure for a requested full native Windows validation and repair
+run. Complete tests, fix failures and preserve a return handoff. Commit and push
+fixes/evidence when requested or already authorized in the session; respect
+narrower instructions such as diagnosis only or no push. Preparing this prompt
+or reading historical results does not itself request execution.
 
-## Current validation round — 2026-09-23
+## Select the current validation scope
 
-Validate the completed single-core follow-up, not just the older M8 build.
-Linux implementation is `6dd4b36e`; its final evidence is `9db6822a`. Pull the
-latest branch, including this prompt, and record the exact HEAD you actually
-build. The earlier Windows pass at `828d4b56` does not cover these changes.
+Read the latest section of `validation/windows/results/HANDOFF.md` and the
+user's requested branch/revision. Record the exact starting HEAD and compare it
+with the last tested Windows revision. Historical commit IDs and old branch
+names in evidence are context, not checkout instructions. Read the relevant
+active audit when a change has additional gates; the completed single-core
+work is documented in `review/audits/compiler-single-core-follow-up.md`.
 
-Read `review/audits/compiler-single-core-follow-up.md`,
-`review/measurements/compiler-single-core-final.md`, and the latest additions in
-`validation/windows/results/HANDOFF.md`. This round specifically covers:
-
-- Hash membership during LLVM combination, preserving emission order.
-- Explicit arithmetic traversal in semantic inference, HIR lowering and LLVM
-  emission. Both `expression-depth-debug` and `expression-depth-release` must
-  run the default **6,000 terms**, including jobs=1/4, exact LLVM comparison,
-  runtime values, operand counts and evaluation order. Do not lower the term
-  count, enlarge the stack, or skip the case to mask a failure.
-- Semantic scope queries using parser side tables and backwards function-body
-  searches. Exercise the full frontend suite: Windows conditionals/negation,
-  nested declarations, traits, generics, diagnostics and deterministic output.
-- Existing batch parallelism and adaptive `--jobs auto`. The dependency
-  scheduler G1/G2 was withdrawn; G3–G6 remain deferred. Do not restore that
-  scheduler or run its removed task-graph suite.
-
-Linux has passed fixtures, C differential checks, ASan/TSan and scaled runtime/
-LLVM comparisons. Those are background evidence, not native Windows results.
-Use the full existing Windows runner; native sanitizers may be added if the
-installed toolchain supports them, but distinguish unsupported from passed.
-Retain the existing one-worker default regardless of this validation's outcome.
+The full runner includes `expression-depth-debug` and
+`expression-depth-release`: keep the default **6,000 terms**, jobs=1/4, exact
+LLVM comparison and runtime/order checks. Do not lower the count or enlarge
+the stack to mask a failure. Full frontend checks cover platform conditionals,
+nested declarations, traits, generics and deterministic diagnostics/output.
+The dependency scheduler G1/G2 was withdrawn; do not restore it as part of
+validation. Native sanitizers are optional when supported; distinguish unrun
+or unsupported checks from passed ones. Linux evidence is not a Windows pass.
 
 ## Context and non-negotiable behavior
 
-- Work on `experiment/task-scheduler-performance`. Do not merge into `main`,
-  delete branches, force-push, or overwrite unrelated user changes.
+- Work on the user-selected branch, otherwise the current branch and verified
+  upstream. Do not merge, delete branches, force-push, or overwrite unrelated
+  user changes as part of validation. The old experiment is already merged.
 - Read the repository's applicable `AGENTS.md` instructions if any, `CODEX.md`,
   `validation/windows/README.md`, `review/audits/compiler-m8-adoption.md`, and
   the follow-up milestones in `review/audits/task-scheduler-performance.md`.
@@ -86,7 +75,8 @@ Retain the existing one-worker default regardless of this validation's outcome.
    assumes Linux behavior, make the check genuinely portable without discarding
    the behavior it was intended to verify. Preserve baseline failure evidence
    and document each changed expectation or justified platform-specific skip.
-5. Commit each coherent tested fix and push it to this branch as you go. Stage
+5. Within the authorized commit/push scope, publish each coherent tested fix
+   to the selected branch as you go. Stage
    only intended changes; include relevant results and update a human-readable
    `validation/windows/results/HANDOFF.md`. Review generated artifacts before
    staging. Do not commit binaries, objects, PDBs, SDKs, core dumps, or ignored
@@ -132,13 +122,14 @@ Maintain `validation/windows/results/HANDOFF.md` containing:
   rerun after Windows fixes. Do not mark M8 fully validated while native checks
   or memory evidence are still missing; macOS remains a separate gate.
 
-Update `review/audits/compiler-single-core-follow-up.md` with the actual Windows
-S2/S4 outcome and link to the handoff. Update `review/audits/compiler-m8-adoption.md`
-only for gates this run actually covers. Put the new outcome and tested commit at
+Update applicable audit milestones only for gates this run actually covers
+and link to the handoff; do not reopen completed historical milestones solely
+because this procedure references them. Put the new outcome and tested commit at
 the top of `results/HANDOFF.md`, keeping earlier runs as dated history. Include
 the two expression-depth outcomes, scope-query regressions, accounting sanity
 check, worker sweep and any desktop/editor blockers in the return summary.
-Do not rewrite earlier Linux measurements as Windows results. Commit and push all intended fixes, harness updates and evidence.
+Do not rewrite earlier Linux measurements as Windows results. Within the
+authorized scope, commit and push intended fixes, harness updates and evidence.
 If upstream advanced, fetch and reconcile without overwriting others or forcing
 history; rerun checks affected by that reconciliation before the final push.
 Verify HEAD is pushed and report the branch, final pushed commit, working-tree

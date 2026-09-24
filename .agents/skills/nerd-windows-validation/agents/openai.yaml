@@ -1,0 +1,4 @@
+interface:
+  display_name: "Nerd Windows Validation"
+  short_description: "Validate Nerd on Windows and return tested fixes"
+  default_prompt: "Use $nerd-windows-validation to run native Windows checks, fix failures, and commit/push the results and return handoff."

@@ -1,8 +1,17 @@
 # Windows validation handoff
 
-On Windows, pull `experiment/task-scheduler-performance`, then tell Codex:
+On Windows, pull the branch being validated (`main` after the experiment merge),
+then tell Codex:
 
-> Read `validation/windows/PROMPT.md` and execute it.
+> Use $nerd-windows-validation to run the full Windows validation, fix failures,
+> and commit/push the results and return handoff.
+
+The project skill lives in
+[`.agents/skills/nerd-windows-validation`](../../.agents/skills/nerd-windows-validation/SKILL.md).
+If the current session has not discovered it, start a new session or tell Codex:
+
+> Read `.agents/skills/nerd-windows-validation/SKILL.md` and execute the Windows
+> validation workflow, committing and pushing fixes and evidence.
 
 Codex should run the validation, fix failures, preserve results here, and push
 fixes and evidence to the same branch. Back on Linux, ask Codex to pull that
@@ -96,11 +105,11 @@ alongside whole-build latency. Policy profiles are separate intrusive runs, not
 latency samples. Report repeated noisy results and failures of the acceptance
 gate; do not enable automatic defaults merely because correctness tests pass.
 
-## Current round: single-core completion (2026-09-23)
+## Previous round: single-core completion (2026-09-23)
 
-The prompt now targets the completed S1–S5 Linux implementation (`6dd4b36e`),
-with benchmarks at `9db6822a`. The previous Windows pass does not validate the
-subsequent hash lookup, arithmetic traversal or semantic scope changes. The
+The Windows round tested the completed S1–S5 implementation at `c32eb92d`,
+including `6dd4b36e`; results are in `results/HANDOFF.md`. Use the latest handoff
+and requested revision to select future rounds. The
 full runner already includes `expression-depth-debug` and
 `expression-depth-release`, each using the default 6,000 terms with jobs=1/4.
 Do not reduce this regression to the old 512-term debug case.
