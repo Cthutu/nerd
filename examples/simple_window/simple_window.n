@@ -28,8 +28,8 @@ main :: fn () {
 
             KeyPress { scan_code } => {
                 on scan_code {
-                    Escape  => system.destroy(^frame)
-                    Q       => system.destroy(^frame)
+                    Escape  => system.close(^frame)
+                    Q       => system.close(^frame)
 
                     Enter => {
                         on system.is_alt_down() => {

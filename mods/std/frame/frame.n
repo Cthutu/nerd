@@ -22,7 +22,7 @@
 -- `FrameSystem.update(^frame)` copies current platform reality back into a
 -- user's `Frame`, for example after the OS or user moves, resizes, closes, or
 -- changes fullscreen state. When the user is finished with a window, they can
--- call `FrameSystem.destroy(^frame)`. Call `FrameSystem.done()` when the whole
+-- call `FrameSystem.close(^frame)`. Call `FrameSystem.done()` when the whole
 -- system is no longer needed to destroy any remaining windows and release its
 -- frame and event storage.
 --
@@ -385,7 +385,7 @@ impl FrameSystem {
         return frame_poll_impl(system, frame)
     }
 
-    pub destroy :: fn (system: ^Self, frame: ^Frame) {
+    pub close :: fn (system: ^Self, frame: ^Frame) {
         frame_destroy_impl(system, frame)
     }
 
@@ -533,7 +533,7 @@ test "FrameSystem loop returns no after destroying final frame" {
         ...
     }
 
-    system.destroy(^frame)
+    system.close(^frame)
     assert frame.id == CLOSED_FRAME
     assert system.frames.count == 0
     assert !system.loop()

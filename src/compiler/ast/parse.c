@@ -2304,6 +2304,12 @@ ast_parse_plex_pattern(AstParseState* state, u32 type_node, u32* out_pattern)
                        .pattern_index = field_pattern,
                    });
         ++field_count;
+        // A nested pattern can leave the closing brace as the current
+        // token. Any following comma belongs to the enclosing pattern list,
+        // not to this plex's fields.
+        if (state->token.kind == TK_RBrace) {
+            break;
+        }
         if (state->token.kind == TK_Comma) {
             while (state->token.kind == TK_Comma) {
                 if (!ast_next_token(state)) {

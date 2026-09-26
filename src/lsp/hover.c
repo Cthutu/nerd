@@ -2607,6 +2607,23 @@ internal bool lsp_imported_method_for_field(const LspDocument* doc,
     return false;
 }
 
+internal string lsp_receiver_method_hover_text(const LspDocument* doc,
+                                               Arena*             arena,
+                                               u32                field_index)
+{
+    LspModuleView module = {0};
+    u32           decl   = sema_no_decl();
+    if (!lsp_find_field_receiver_method(doc, field_index, &module, &decl)) {
+        return s("");
+    }
+    LspDocument module_doc     = *doc;
+    module_doc.source          = module.lexer->source.source;
+    module_doc.front_end.lexer = *module.lexer;
+    module_doc.front_end.ast   = *module.ast;
+    module_doc.front_end.sema  = *module.sema;
+    return lsp_method_hover_text(&module_doc, arena, decl);
+}
+
 internal string lsp_imported_method_hover_text(const LspDocument* doc,
                                                Arena*             arena,
                                                u32 field_node_index)
@@ -2969,7 +2986,8 @@ internal bool lsp_pattern_expected_type(const LspDocument* doc,
         if (node->kind == AK_On && node->b < array_count(ast->ons)) {
             u32 scrutinee_type = sema_no_type();
             if (!lsp_sema_node_type(
-                    &doc->front_end.sema, node->a, &scrutinee_type)) {
+                    &doc->front_end.sema, node->a, &scrutinee_type) &&
+                !lsp_expression_enum_type(doc, node->a, &scrutinee_type)) {
                 continue;
             }
             const AstOnInfo* on = &ast->ons[node->b];
@@ -4453,6 +4471,12 @@ internal string lsp_field_hover_text(const LspDocument* doc,
             if (hover.count != 0) {
                 return hover;
             }
+        }
+
+        string receiver_hover =
+            lsp_receiver_method_hover_text(doc, arena, field_node_index);
+        if (receiver_hover.count != 0) {
+            return receiver_hover;
         }
 
         u32 associated_decl =

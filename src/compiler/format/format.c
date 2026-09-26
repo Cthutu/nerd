@@ -2381,17 +2381,35 @@ internal void format_emit_value_with_indent(StringBuilder* sb,
 internal string format_render_on_branch_head(Arena*             arena,
                                              const Cst*         cst,
                                              const Lexer*       lexer,
-                                             const CstOnBranch* branch)
+                                             const CstOnBranch* branch,
+                                             u32                indent_level)
 {
     StringBuilder sb = {0};
     sb_init(&sb, arena);
+
+    bool split_patterns = false;
+    if (branch->pattern_count > 1) {
+        for (u32 i = 0; i < branch->pattern_count; ++i) {
+            const CstPattern* pattern =
+                &cst->patterns[cst->pattern_items[branch->pattern_index + i]];
+            if (pattern->kind == CPK_EnumVariant &&
+                cst->enum_patterns[pattern->a].braced_payload) {
+                split_patterns = true;
+            }
+        }
+    }
 
     if (branch->flags & COBF_Else) {
         sb_append_cstr(&sb, "else");
     } else {
         for (u32 pattern = 0; pattern < branch->pattern_count; ++pattern) {
             if (pattern > 0) {
-                sb_append_cstr(&sb, ", ");
+                if (split_patterns) {
+                    sb_append_cstr(&sb, ",\n");
+                    format_emit_indent(&sb, indent_level);
+                } else {
+                    sb_append_cstr(&sb, ", ");
+                }
             }
             format_emit_pattern(
                 &sb,
@@ -2441,8 +2459,8 @@ internal void format_emit_on_block_multiline(StringBuilder* sb,
             head = format_render_expr_to_string(
                 &branch_arena, cst, lexer, branch->guard_node_index);
         } else {
-            head =
-                format_render_on_branch_head(&branch_arena, cst, lexer, branch);
+            head = format_render_on_branch_head(
+                &branch_arena, cst, lexer, branch, indent_level + 1);
         }
         array_push(heads, head);
         array_push(branch_align_widths, head.count);
@@ -2467,6 +2485,12 @@ internal void format_emit_on_block_multiline(StringBuilder* sb,
               cst->ons[expr_node->b].kind == COK_Bool) &&
             !format_node_renders_multiline_on_expr(cst,
                                                    branch->expr_node_index);
+        for (usize j = 0; j < head.count; ++j) {
+            if (head.data[j] == '\n') {
+                alignable = false;
+                break;
+            }
+        }
         array_push(branch_alignable, alignable);
 
         array_push(branch_expr_starts,

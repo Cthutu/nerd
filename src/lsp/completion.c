@@ -1143,6 +1143,95 @@ match_source_type:
         sema, target_type, receiver_type, member_type);
 }
 
+// Reuse completion's receiver matching for calls not reached by inference.
+// Do not guess when several visible methods match.
+bool lsp_find_receiver_method(const LspDocument* doc,
+                              u32                receiver_type,
+                              string             name,
+                              LspModuleView*     out_module,
+                              u32*               out_decl)
+{
+    const Sema*     sema = &doc->front_end.sema;
+    const SemaType* type = NULL;
+    if (!lsp_sema_type(sema, receiver_type, &type)) {
+        return false;
+    }
+    u32 member_type =
+        type->kind == STK_Pointer ? type->first_param_type : receiver_type;
+    bool found = false;
+    for (u32 i = 0; i < array_count(doc->program.modules); ++i) {
+        LspModuleView module = {0};
+        if (!lsp_program_module_view(&doc->program, i, &module)) {
+            continue;
+        }
+        for (u32 j = 0; j < array_count(module.sema->methods); ++j) {
+            const SemaMethod* method = &module.sema->methods[j];
+            if (method->symbol_handle == U32_MAX ||
+                !string_eq(lex_symbol(module.lexer, method->symbol_handle),
+                           name)) {
+                continue;
+            }
+            // Imported aliases also appear in the owning module below.
+            if (method->decl_index >= array_count(module.sema->decls) ||
+                module.sema->decls[method->decl_index].import_module_index !=
+                    sema_no_decl()) {
+                continue;
+            }
+            bool matches =
+                i == doc->program.root_module_index
+                    ? lsp_completion_method_matches_receiver(
+                          doc, method, receiver_type, member_type)
+                    : lsp_completion_module_method_matches_receiver(
+                          doc, &module, method, receiver_type, member_type);
+            if (!matches) {
+                continue;
+            }
+            if (found) {
+                return false;
+            }
+            found       = true;
+            *out_module = module;
+            *out_decl   = method->decl_index;
+        }
+    }
+    return found;
+}
+
+bool lsp_find_field_receiver_method(const LspDocument* doc,
+                                    u32                field_index,
+                                    LspModuleView*     out_module,
+                                    u32*               out_decl)
+{
+    const Ast*  ast  = &doc->front_end.ast;
+    const Sema* sema = &doc->front_end.sema;
+    if (field_index >= array_count(ast->nodes) ||
+        ast->nodes[field_index].kind != AK_Field) {
+        return false;
+    }
+    const AstNode* field    = &ast->nodes[field_index];
+    u32            receiver = field->a;
+    while (receiver < array_count(ast->nodes) &&
+           ast->nodes[receiver].kind == AK_Expression) {
+        receiver = ast->nodes[receiver].a;
+    }
+    u32 type = sema_no_type();
+    if (!lsp_sema_node_type(sema, receiver, &type)) {
+        if (receiver >= array_count(sema->node_local_indices)) {
+            return false;
+        }
+        u32 local = sema->node_local_indices[receiver];
+        if (local >= array_count(sema->locals)) {
+            return false;
+        }
+        type = sema->locals[local].type_index;
+    }
+    return lsp_find_receiver_method(doc,
+                                    type,
+                                    lex_symbol(&doc->front_end.lexer, field->b),
+                                    out_module,
+                                    out_decl);
+}
+
 internal void lsp_completion_add_members(Arena*             arena,
                                          JsonValue*         items,
                                          const LspDocument* doc,

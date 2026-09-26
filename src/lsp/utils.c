@@ -548,3 +548,95 @@ bool lsp_on_branch_local_type(const LspDocument* doc,
     }
     return false;
 }
+
+// Recover enum scrutinee types consistently for editor features.
+bool lsp_expression_enum_type(const LspDocument* doc,
+                              u32                expression_node,
+                              u32*               out_enum_type)
+{
+    const Ast*  ast  = &doc->front_end.ast;
+    const Sema* sema = &doc->front_end.sema;
+    if (expression_node >= array_count(ast->nodes)) {
+        return false;
+    }
+
+    u32 type_index = sema_no_type();
+    if (lsp_sema_node_type(sema, expression_node, &type_index)) {
+        type_index           = sema_materialise_type(sema, type_index);
+        const SemaType* type = NULL;
+        if (lsp_sema_type(sema, type_index, &type) && type->kind == STK_Enum) {
+            *out_enum_type = type_index;
+            return true;
+        }
+    }
+
+    const AstNode* expression = &ast->nodes[expression_node];
+    while ((expression->kind == AK_Expression ||
+            expression->kind == AK_Statement) &&
+           expression->a < array_count(ast->nodes)) {
+        expression_node = expression->a;
+        expression      = &ast->nodes[expression_node];
+    }
+    if (lsp_sema_node_type(sema, expression_node, &type_index)) {
+        type_index           = sema_materialise_type(sema, type_index);
+        const SemaType* type = NULL;
+        if (lsp_sema_type(sema, type_index, &type) && type->kind == STK_Enum) {
+            *out_enum_type = type_index;
+            return true;
+        }
+    }
+    if (expression->kind != AK_Call ||
+        expression->a >= array_count(ast->nodes)) {
+        return false;
+    }
+
+    bool found_callable_type =
+        lsp_sema_node_type(sema, expression->a, &type_index);
+    if (!found_callable_type &&
+        expression_node < array_count(sema->node_method_call_decl_indices)) {
+        u32 decl_index = sema->node_method_call_decl_indices[expression_node];
+        const SemaDecl* decl = NULL;
+        if (lsp_sema_decl(sema, decl_index, &decl)) {
+            type_index          = decl->type_index;
+            found_callable_type = type_index != sema_no_type();
+        }
+    }
+    if (!found_callable_type) {
+        // A diagnostic earlier in the function may prevent this call from
+        // being analysed. A concrete method's return type does not depend on
+        // successful validation of its arguments.
+        LspModuleView module     = {0};
+        u32           decl_index = sema_no_decl();
+        if (!lsp_find_field_receiver_method(
+                doc, expression->a, &module, &decl_index)) {
+            return false;
+        }
+        const SemaDecl* decl = NULL;
+        if (!lsp_sema_decl(module.sema, decl_index, &decl) ||
+            decl->kind == SK_GenericFunction) {
+            return false;
+        }
+        type_index = sema_import_type((Lexer*)&doc->front_end.lexer,
+                                      (Sema*)sema,
+                                      module.lexer,
+                                      module.sema,
+                                      decl->type_index);
+    }
+
+    type_index               = sema_materialise_type(sema, type_index);
+    const SemaType* callable = NULL;
+    if (!lsp_sema_type(sema, type_index, &callable) ||
+        callable->kind != STK_Function ||
+        callable->return_type == sema_no_type()) {
+        return false;
+    }
+
+    type_index           = sema_materialise_type(sema, callable->return_type);
+    const SemaType* type = NULL;
+    if (!lsp_sema_type(sema, type_index, &type) || type->kind != STK_Enum) {
+        return false;
+    }
+
+    *out_enum_type = type_index;
+    return true;
+}

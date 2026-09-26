@@ -189,8 +189,8 @@ main :: fn () {
 
                 KeyPress { scan_code } => {
                     on scan_code {
-                        Escape  => frame_system.destroy(^frame)
-                        Q       => frame_system.destroy(^frame)
+                        Escape  => frame_system.close(^frame)
+                        Q       => frame_system.close(^frame)
 
                         Enter => {
                             on frame_system.is_alt_down() => {
@@ -208,5 +208,5 @@ main :: fn () {
         sleep_ms(16)
     }
 
-    frame_system.destroy(^frame)
+    frame_system.close(^frame)
 }

@@ -186,3 +186,9 @@ pub Iterator :: trait [Item] for Iter {
     -- Returns the next item, or `None` when iteration is complete.
     next :: fn (self: ^Iter) -> ?Item
 }
+
+--
+-- C interaction
+--
+
+pub c_string :: ^i8

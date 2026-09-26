@@ -88,6 +88,16 @@ module independently. This keeps hover available for public functions and types
 from healthy imported modules such as the standard library while the active file
 is incomplete or has later errors.
 
+Errors during early contextual inference preserve known bindings and types.
+For example, `window := {}; system.apply(^window)` retains the inferred `Frame`
+type despite the missing-fields diagnostic, so variable hovers and `Fill missing
+plex fields` remain available. Method hover can also use a known receiver type
+when analysis stopped before resolving that particular call; ambiguous matches
+are not guessed.
+Enum payload-field hover uses the same enum-expression type recovery as branch
+generation. Fields such as `KeyPress { scan_code: _ }` retain their declared types
+even when an earlier error prevents analysis from reaching the `on` statement.
+
 For field access hover and definition, the server falls back to AST type
 annotations when semantic analysis stops before attaching receiver type data.
 This keeps `param.field` useful while code is mid-edit, including cases where
@@ -224,7 +234,10 @@ branches for uncovered variants and payload shapes. The action is available
 with the cursor anywhere from the `on` keyword through the closing brace,
 including on an imported method call such as `on system.poll(^frame) { ... }`.
 For a concrete method, the action can use the known enum return type even when
-the call has an argument-count error.
+the call has an argument-count error. If an earlier diagnostic prevents analysis
+from reaching the call, it resolves the method from the receiver's retained type,
+using the same matching as hover and completion. Existing branches are still
+excluded while the earlier error is present.
 
 For unused locals, the server offers both a rename quick fix that toggles the
 leading underscore convention and a removal quick fix for simple local

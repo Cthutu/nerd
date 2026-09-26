@@ -15321,6 +15321,19 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
                 if (seed_arg_contexts) {
                     if (!sema_seed_local_from_call_arg_expected(
                             lexer, ast, sema, arg_node, expected_dst)) {
+                        sema_preserve_concrete_method_call_type(
+                            lexer,
+                            sema,
+                            call_node_index,
+                            call_node->a,
+                            source_lexer,
+                            source_ast,
+                            source_sema,
+                            source_decl,
+                            method->decl_index,
+                            imported,
+                            receiver_ref,
+                            receiver_deref);
                         array_free(source_arg_types);
                         return false;
                     }
@@ -16616,6 +16629,44 @@ internal bool sema_check_on_pattern_type(const Lexer* lexer,
     return true;
 }
 
+internal bool sema_pattern_has_binder(const Ast* ast, u32 index)
+{
+    const AstPattern* pattern = &ast->patterns[index];
+    switch (pattern->kind) {
+    case APK_Bind:
+        return true;
+    case APK_Plex:
+        for (u32 i = 0; i < pattern->b; ++i) {
+            if (sema_pattern_has_binder(
+                    ast, ast->pattern_fields[pattern->a + i].pattern_index)) {
+                return true;
+            }
+        }
+        return false;
+    case APK_Tuple:
+        for (u32 i = 0; i < pattern->b; ++i) {
+            if (sema_pattern_has_binder(ast,
+                                        ast->pattern_items[pattern->a + i])) {
+                return true;
+            }
+        }
+        return false;
+    case APK_EnumVariant:
+        {
+            const AstEnumPattern* variant = &ast->enum_patterns[pattern->a];
+            for (u32 i = 0; i < variant->pattern_count; ++i) {
+                if (sema_pattern_has_binder(
+                        ast, ast->pattern_items[variant->first_pattern + i])) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    default:
+        return false;
+    }
+}
+
 internal bool sema_check_multi_on_pattern_payload_variant(const Lexer* lexer,
                                                           const Ast*   ast,
                                                           Sema*        sema,
@@ -16632,7 +16683,13 @@ internal bool sema_check_multi_on_pattern_payload_variant(const Lexer* lexer,
     u32               variant_symbol = U32_MAX;
     if (pattern->kind == APK_EnumVariant) {
         const AstEnumPattern* enum_pattern = &ast->enum_patterns[pattern->a];
-        variant_symbol                     = enum_pattern->symbol_handle;
+        // Explicit payload tests can share a body when they introduce no
+        // bindings that would be absent on another alternative.
+        if (enum_pattern->pattern_count > 0 &&
+            !sema_pattern_has_binder(ast, pattern_index)) {
+            return true;
+        }
+        variant_symbol = enum_pattern->symbol_handle;
     } else if (pattern->kind == APK_Value &&
                pattern->a < array_count(ast->nodes)) {
         const AstNode* node = &ast->nodes[pattern->a];
@@ -16682,6 +16739,14 @@ sema_node_is_addressable(const Ast* ast, Sema* sema, u32 node_index)
                    decl->kind == SK_Function || decl->kind == SK_FfiFunction;
         }
         return false;
+    case AK_Expression:
+        return sema_node_is_addressable(ast, sema, node->a);
+    case AK_Plex:
+        {
+            u32 type = sema->node_type_indices[node_index];
+            return type < array_count(sema->types) &&
+                   sema->types[type].kind == STK_Plex;
+        }
     case AK_Array:
         return true;
     case AK_Index:
@@ -17140,6 +17205,12 @@ internal bool sema_seed_local_type_from_expected(const Lexer* lexer,
                               local->value_node_index,
                               expected_type,
                               &contextual_type)) {
+        u32 value = sema_unwrap_expr_node(ast, local->value_node_index);
+        if (value < array_count(sema->node_type_indices) &&
+            sema->node_type_indices[value] == expected_type) {
+            local->type_index                               = expected_type;
+            sema->node_type_indices[local->decl_node_index] = expected_type;
+        }
         return false;
     }
     if (!sema_type_matches(sema, expected_type, contextual_type)) {
@@ -18607,7 +18678,9 @@ sema_seed_usage_context_local_types(const Lexer*           lexer,
         u32 actual = sema_no_type();
         ctx.ok     = sema_infer_node_type(
             lexer, ast, sema, local.value_node_index, expected, &actual);
-        if (ctx.ok) {
+        u32 value = sema_unwrap_expr_node(ast, local.value_node_index);
+        if (ctx.ok || (value < array_count(sema->node_type_indices) &&
+                       sema->node_type_indices[value] == expected)) {
             sema->locals[i].type_index                     = expected;
             sema->node_type_indices[local.decl_node_index] = expected;
         }
@@ -21187,8 +21260,12 @@ validate_type:
             bool compound_operand =
                 operand_decl != sema_no_decl() &&
                 sema->decls[operand_decl].kind == SK_CompoundFunction;
-            u32 expected_pointee =
-                compound_operand && expected_type != sema_no_type() &&
+            u32  operand      = sema_unwrap_expr_node(ast, node->a);
+            bool plex_operand = operand < array_count(ast->nodes) &&
+                                ast->nodes[operand].kind == AK_Plex;
+            u32  expected_pointee =
+                (compound_operand || plex_operand) &&
+                        expected_type != sema_no_type() &&
                         sema->types[expected_type].kind == STK_Pointer
                     ? sema->types[expected_type].first_param_type
                     : sema_no_type();
@@ -21531,6 +21608,9 @@ validate_type:
                 }
 
                 if (missing_count > 0) {
+                    // The nominal type is known even though the value is
+                    // incomplete. Keep it available to editor consumers.
+                    sema->node_type_indices[node_index] = target_type;
                     return error_0304_missing_plex_fields(
                         lexer->source,
                         sema_node_span(lexer, node),
@@ -28241,30 +28321,22 @@ bool sema_analyse(const Lexer*           lexer,
         sema_done(&sema);
         return false;
     }
-    if (!sema_seed_usage_context_local_types(lexer, ast, options, &sema)) {
-        sema_done(&sema);
-        return false;
-    }
-    if (!sema_seed_return_context_local_types(lexer, ast, options, &sema)) {
-        sema_done(&sema);
-        return false;
-    }
-    if (!sema_seed_call_arg_context_local_types(lexer, ast, options, &sema)) {
-        sema_done(&sema);
-        return false;
-    }
-    if (!sema_seed_for_condition_context_local_types(
-            lexer, ast, options, &sema)) {
-        sema_done(&sema);
-        return false;
-    }
-    if (!sema_seed_compound_assignment_local_types(
-            lexer, ast, options, &sema)) {
-        sema_done(&sema);
-        return false;
-    }
-    if (!sema_seed_assignment_context_local_types(lexer, ast, options, &sema)) {
-        sema_done(&sema);
+    // Seeding can diagnose an incomplete initializer before declaration
+    // inference runs. Tooling still needs the bindings and type facts already
+    // collected, just as it does after a declaration-inference failure.
+    if (!sema_seed_usage_context_local_types(lexer, ast, options, &sema) ||
+        !sema_seed_return_context_local_types(lexer, ast, options, &sema) ||
+        !sema_seed_call_arg_context_local_types(lexer, ast, options, &sema) ||
+        !sema_seed_for_condition_context_local_types(
+            lexer, ast, options, &sema) ||
+        !sema_seed_compound_assignment_local_types(
+            lexer, ast, options, &sema) ||
+        !sema_seed_assignment_context_local_types(lexer, ast, options, &sema)) {
+        if (effective_options.keep_partial_results) {
+            *out_sema = sema;
+        } else {
+            sema_done(&sema);
+        }
         return false;
     }
     if (!sema_assign_decl_types(lexer, ast, &sema)) {

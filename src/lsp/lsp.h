@@ -261,6 +261,22 @@ void lsp_handle_did_open(LspState* state, const LspMessage* message);
 void lsp_handle_did_change(LspState* state, const LspMessage* message);
 void lsp_handle_did_close(LspState* state, const LspMessage* message);
 void lsp_handle_hover(LspState* state, const LspMessage* message);
+
+bool lsp_expression_enum_type(const LspDocument* doc,
+                              u32                expression_node,
+                              u32*               out_enum_type);
+
+bool lsp_find_field_receiver_method(const LspDocument* doc,
+                                    u32                field_index,
+                                    LspModuleView*     out_module,
+                                    u32*               out_decl);
+
+bool lsp_find_receiver_method(const LspDocument* doc,
+                              u32                receiver_type,
+                              string             name,
+                              LspModuleView*     out_module,
+                              u32*               out_decl);
+
 void lsp_handle_definition(LspState* state, const LspMessage* message);
 void lsp_handle_document_link(LspState* state, const LspMessage* message);
 void lsp_handle_document_symbol(LspState* state, const LspMessage* message);

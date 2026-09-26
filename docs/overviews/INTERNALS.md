@@ -240,6 +240,23 @@ use the receiver facts established at the cursor, so an unrelated error later
 in the same function does not hide members whose receiver type was already
 known. Other LSP analyses retain their normal partial-result policy.
 
+Context-seeding failures also retain semantic products when tooling requests
+partial results. A missing-field diagnostic records the known nominal plex type
+on the literal and its inferred local, and a failing method-argument seed keeps
+the concrete method selection. The analysis still fails: these facts support
+hover and field-generation actions, not successful code generation. This keeps
+`window := {}; system.apply(^window)` useful while the literal is incomplete.
+For methods not reached before the error, hover reuses completion's receiver
+matching against retained local types. It skips imported declaration aliases
+and declines ambiguous matches instead of choosing a method by name alone. Enum
+branch generation uses the same receiver lookup when its scrutinee call has no
+semantic facts yet, importing the concrete method signature's return type from
+the defining module. This avoids making branch generation depend on successful
+validation of unrelated earlier initializers. This enum-expression query
+lives in the shared LSP utilities and is also used by pattern-field hover before
+walking variant payloads and nested patterns. Branch generation and payload
+hover therefore recover their types from the same semantic facts.
+
 If ordinary symbol hover has no semantic result, hover performs a private
 analysis that retains facts established before a later declaration-type error.
 This recovers local and imported member hover without publishing diagnostics
@@ -893,3 +910,19 @@ crossover claims or a memory budget. `NERD_PROFILE=1` reports
 Front-end decisions are buffered with phase results so a discarded speculative
 load does not leak profile records. Workers still join before publication;
 there is no persistent pool. Omitted jobs remains one pending the adoption gate.
+
+Grouped enum payload patterns stop parsing their field list at the current
+closing brace before considering a following comma. That comma belongs to the
+enclosing alternative list. Explicit payload patterns without binders may share
+one branch body; alternatives that introduce payload bindings retain the existing
+restriction, since another alternative may not initialize those bindings. The
+formatter splits grouped braced payload patterns onto separate lines in block
+`on` expressions and excludes these multiline heads from arrow alignment.
+
+Address-of accepts plex literals and forwards an expected pointer's pointee type
+into literal inference, allowing both `^Info { ... }` and contextual `^{ ... }`.
+Parenthesized addressable operands retain their addressability. HIR uses the
+existing address-of operation: LLVM materializes the aggregate into local stack
+storage, and C generation takes the address of its generated aggregate temporary.
+The lifetime guarantee is the enclosing scope; taking the address does not make
+the value heap-owned or safe to return from the function.

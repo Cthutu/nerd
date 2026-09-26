@@ -98,7 +98,7 @@ main :: fn () {
     frame_system.apply(^frame)
     on !gl_init(^frame) => {
         eprn("OpenGL could not be initialised for this frame.")
-        frame_system.destroy(^frame)
+        frame_system.close(^frame)
         return
     }
 
@@ -106,7 +106,7 @@ main :: fn () {
     on program == 0 => {
         eprn("OpenGL triangle shader program could not be created.")
         gl_done(^frame)
-        frame_system.destroy(^frame)
+        frame_system.close(^frame)
         return
     }
 
@@ -172,7 +172,7 @@ main :: fn () {
                 KeyPress { scan_code } => {
                     on scan_code {
                         Escape, Q => {
-                            frame_system.destroy(^frame)
+                            frame_system.close(^frame)
                         }
                     }
                 }
@@ -180,7 +180,7 @@ main :: fn () {
         }
 
         on !gl_make_current(^frame) => {
-            frame_system.destroy(^frame)
+            frame_system.close(^frame)
         }
 
         glViewport(0, 0, frame.width.as(GLsizei), frame.height.as(GLsizei))
@@ -202,5 +202,5 @@ main :: fn () {
         glDeleteProgram(program)
     }
     gl_done(^frame)
-    frame_system.destroy(^frame)
+    frame_system.close(^frame)
 }

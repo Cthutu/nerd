@@ -463,6 +463,14 @@ runtime symbols, fixed-array element indexes, pointer indexes, and array
 literals. Taking the address of an array literal produces a pointer to the whole
 fixed array, not a slice.
 
+Plex literals are also addressable. `^Info { value: 1, ... }` creates an
+anonymous local value and returns `^Info`. When an expected pointer type is
+available, `^{ value: 1, ... }` infers the plex type from its pointee. This works
+in pointer-valued fields and function arguments. Each evaluation initializes
+an anonymous mutable value; no heap allocation is performed. The pointer remains
+valid within the enclosing scope and must not escape that scope, just like a
+pointer to a named local variable.
+
 Pointer indexing uses the same `value[index]` syntax as fixed arrays:
 
 - `item_ptr[0]`
