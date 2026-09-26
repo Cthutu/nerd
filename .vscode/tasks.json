@@ -6,7 +6,8 @@
             "type": "process",
             "command": "just",
             "args": [
-                "run-example"
+                "run-example",
+                "vktriangle"
             ],
             "group": {
                 "kind": "build",

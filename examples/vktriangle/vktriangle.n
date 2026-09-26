@@ -1,0 +1,35 @@
+use std.frame
+
+main :: fn () {
+    frame_system := FrameSystem.init()
+    defer frame_system.done()
+
+    main_window := {
+        system      : ^frame_system
+        id          : NEW_FRAME
+        width       : 800
+        height      : 600
+        title       : "Vulkan Triangle"
+        full_screen : no
+        resizable   : yes
+    }
+
+    frame_system.apply(^main_window)
+
+    -- Main loop
+    for frame_system.loop() {
+        frame_system.update(^main_window)
+        on frame_system.poll(^main_window) {
+            None => {
+            }
+
+            Resized { width: _, height: _ } => {
+            }
+
+            KeyPress { scan_code: Q },
+            KeyPress { scan_code: Escape } => {
+                frame_system.destroy(^main_window)
+            }
+        }
+    }
+}
