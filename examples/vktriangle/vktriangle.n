@@ -18,8 +18,8 @@ main :: fn () {
     frame_system.apply(^main_window)
 
     vk_context := vk_init(^main_window)
+    defer vk_done(vk_context)
     on vk_context.instance == nil => return
-    defer vkDestroyInstance(vk_context.instance, nil)
 
     -- Main loop
     for frame_system.loop() {
@@ -54,6 +54,13 @@ vk_init :: fn (_frame: ^Frame) -> VulkanContext {
 
     result := vkCreateInstance(^{
         sType: VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO
+        pNext: ^VkDebugUtilsMessengerCreateInfoEXT {
+            sType           : VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT
+            messageSeverity : VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT
+            messageType     : VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT
+            pfnUserCallback : debug_callback
+            ...
+        }
         pApplicationInfo: ^{
             sType            : VK_STRUCTURE_TYPE_APPLICATION_INFO
             pApplicationName : c"Vulkan Example"
@@ -80,4 +87,20 @@ vk_init :: fn (_frame: ^Frame) -> VulkanContext {
     }
 
     return context
+}
+
+vk_done :: fn (context: VulkanContext) {
+    on context.instance != nil => {
+        vkDestroyInstance(context.instance, nil)
+    }
+}
+
+debug_callback :: fn (messageSeverity : VkDebugUtilsMessageSeverityFlagBitsEXT,
+                      _messageType    : VkDebugUtilsMessageTypeFlagsEXT,
+                      callbackData    : ^VkDebugUtilsMessengerCallbackDataEXT,
+                      _userData       : ^void) -> VkBool32 {
+    on messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT => {
+        prn($"Vulkan Debug: {callbackData.pMessage}")
+    }
+    return VK_FALSE
 }

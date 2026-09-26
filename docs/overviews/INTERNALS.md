@@ -415,6 +415,10 @@ The missing-plex-fields code action resolves an empty literal from either its
 inline type annotation or the type of an assignment target. This allows the
 action at the cursor in both `value: Type = { }` and a later `value = { }`
 assignment.
+Function-typed fields use `nil` as their generated default, just like pointer
+fields. Both AST-based generation (including callback type aliases) and the
+semantic fallback support them, so a missing callback does not suppress the
+entire action for an imported FFI plex.
 
 Deferred variable and constant declarations reuse the formatter's compact
 header-item rendering. This preserves declaration syntax after `defer` without
@@ -598,6 +602,17 @@ Interpolation imports the canonical `core.Display` trait on demand when a
 non-primitive value needs it. Imported `show` methods are resolved using the
 implementation AST from their defining module, and lowered through their HIR
 import; their AST indices are not indices into the caller's module.
+Checking a `core.Display` constraint also discovers core's public `show`
+methods lazily, covering interpolation and generic bounds without `use core`.
+The core implementation for `c_string` scans to the first NUL and returns a
+borrowed string view; a null pointer produces an empty string.
+
+Data pointers implicitly satisfy an expected `^void` type, but the reverse
+requires an explicit cast. Address-of inference and call-argument context
+seeding do not propagate the erased `void` pointee into the operand. A typed
+literal such as `^Info { ... }` retains its concrete plex type when used in
+a `^void` field or argument. Other typed pointers, function values, and slices
+do not gain implicit conversions from this rule.
 
 ## Compiler performance instrumentation
 

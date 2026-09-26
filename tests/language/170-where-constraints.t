@@ -48,6 +48,9 @@ main :: fn () -> i32 {
 
 ¬
 hir 0
+module module.170-where-constraints.input(170-where-constraints.input)
+import import.0 __trait_Display_for_c_string_show from module.core(core).decl.N: fn (^i8) -> string
+bind __trait_Display_for_c_string_show = import.0
 bind Point = type.0
 bind __trait_Display_for_Point_show = fn.0
 bind Box = type.1
@@ -65,9 +68,9 @@ inst func fn.2(value: Point) -> Point {
   return Point local.2(value)
 }
 inst func fn.3(value: Point) -> string {
-  return string call bind.1(__trait_Display_for_Point_show)(Point local.3(value))
+  return string call bind.2(__trait_Display_for_Point_show)(Point local.3(value))
 }
 inst func fn.4(value: Point) -> string {
-  return string call bind.1(__trait_Display_for_Point_show)(Point local.4(value))
+  return string call bind.2(__trait_Display_for_Point_show)(Point local.4(value))
 }
 ¬

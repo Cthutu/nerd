@@ -13863,6 +13863,16 @@ internal bool sema_type_satisfies_trait_constraint(const Lexer* lexer,
 {
     actual_type = sema_materialise_type(sema, actual_type);
 
+    // Interpolation and generic bounds can require Display without an
+    // explicit .show() call to trigger lazy core method discovery.
+    if (trait_symbol == sema_find_core_trait_symbol(lexer, sema, s("Display"))) {
+        InternAddResult ignored = {0};
+        u32 show_symbol = lex_add_symbol((Lexer*)lexer, s("show"), &ignored);
+        if (!sema_import_implicit_core_method((Lexer*)lexer, sema, show_symbol)) {
+            return false;
+        }
+    }
+
     u32 core_eq = sema_find_core_trait_symbol(lexer, sema, s("Eq"));
     if (trait_symbol == core_eq &&
         sema_type_has_value_eq(lexer, ast, sema, actual_type)) {
@@ -17891,6 +17901,10 @@ internal bool sema_seed_local_from_call_arg_expected(const Lexer* lexer,
         arg_node_index = sema_unwrap_expr_node(ast, node->a);
         node           = &ast->nodes[arg_node_index];
         local_expected = sema->types[expected_type].first_param_type;
+        // An erased pointer provides no information about the local's type.
+        if (sema->types[local_expected].kind == STK_Void) {
+            return true;
+        }
     }
 
     if (node->kind != AK_SymbolRef) {
@@ -21273,10 +21287,14 @@ validate_type:
             u32  operand      = sema_unwrap_expr_node(ast, node->a);
             bool plex_operand = operand < array_count(ast->nodes) &&
                                 ast->nodes[operand].kind == AK_Plex;
+            // Infer the concrete operand before erasing its pointer type.
+            // Passing void down would reject explicitly typed plex literals.
             u32  expected_pointee =
                 (compound_operand || plex_operand) &&
                         expected_type != sema_no_type() &&
-                        sema->types[expected_type].kind == STK_Pointer
+                        sema->types[expected_type].kind == STK_Pointer &&
+                        sema->types[sema->types[expected_type].first_param_type]
+                                .kind != STK_Void
                     ? sema->types[expected_type].first_param_type
                     : sema_no_type();
             if (!sema_infer_node_type(lexer,

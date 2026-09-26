@@ -2016,11 +2016,16 @@ internal bool lsp_code_action_ast_default_value(Arena*       arena,
                 return lsp_code_action_ast_default_enum(
                     ast, lexer, alias->a, out_value);
             }
+            if (alias->kind == AK_TypeFn) {
+                *out_value = s("nil");
+                return true;
+            }
             return false;
         }
     case AK_TypePointer:
     case AK_TypeSlice:
     case AK_TypeDynamicArray:
+    case AK_TypeFn:
         *out_value = s("nil");
         return true;
     case AK_TypeTuple:
@@ -2091,6 +2096,7 @@ internal bool lsp_code_action_default_value(Arena*       arena,
     case STK_Pointer:
     case STK_Slice:
     case STK_DynamicArray:
+    case STK_Function:
         *out_value = s("nil");
         return true;
     case STK_Tuple:

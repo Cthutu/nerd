@@ -13,6 +13,8 @@ ROOT = Path(__file__).resolve().parents[1]
 # Runtime regressions beyond the language suite: defaults, ABI, ownership,
 # atomics, allocator diagnostics, formatting and generic dispatch.
 COMMANDS = (
+    "323-run-implicit-void-pointer",
+    "322-run-c-string-display",
     "320-named-default-parameters",
     "319-address-of-plex-literal",
     "317-run-dynamic-enum-alignment",

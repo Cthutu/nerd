@@ -246,3 +246,16 @@ pub Iterator :: trait [Item] for Iter {
 --
 
 pub c_string :: ^i8
+
+pub impl Display for c_string {
+    -- Borrows bytes up to the first NUL; nil displays as an empty string.
+    -- Non-nil pointers must refer to valid null-terminated storage.
+    show :: fn (self: Self) -> string {
+        on self == nil => return ""
+        count: usize = 0
+        for self[count] != 0 {
+            count += 1
+        }
+        return self.as(^u8).as([]u8, count).as(string)
+    }
+}

@@ -31,10 +31,12 @@ import import.0 prn from module.core(core).decl.N: <unknown>
 import import.1 input from module.std.io(std.io).decl.N: fn (string) -> [..]u8
 import import.2 prn_text from module.core(core).decl.N: fn (string) -> void
 import import.3 prn_empty from module.core(core).decl.N: fn () -> void
+import import.4 __trait_Display_for_c_string_show from module.core(core).decl.N: fn (^i8) -> string
 bind prn = import.0
 bind input = import.1
 bind prn_text = import.2
 bind prn_empty = import.3
+bind __trait_Display_for_c_string_show = import.4
 bind Point = type.0
 bind __trait_Display_for_Point_show = fn.0
 bind main = fn.1
@@ -44,7 +46,7 @@ func fn.0(self: Point) -> string {
 }
 func fn.1() -> i32 {
   let point: Point = Point plex(x: i32 3, y: i32 4)
-  expr void call bind.2(prn_text)(string call bind.5(__trait_Display_for_Point_show)(Point local.1(point)))
+  expr void call bind.2(prn_text)(string call bind.6(__trait_Display_for_Point_show)(Point local.1(point)))
   return i32 add(i32 field(Point local.1(point), x), i32 field(Point local.1(point), y))
 }
 ¬
