@@ -58,12 +58,16 @@ point name named
 
 ¬
 hir 0
-module module.0(061-on-structural-patterns.input)
-import module.1(std.io)
-import import.0 prn from module.3(core).decl.13: fn (string) -> void
-import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
+module module.061-on-structural-patterns.input(061-on-structural-patterns.input)
+import module.std.io(std.io)
+import import.0 prn from module.core(core).decl.N: <unknown>
+import import.1 input from module.std.io(std.io).decl.N: fn (string) -> [..]u8
+import import.2 prn_text from module.core(core).decl.N: fn (string) -> void
+import import.3 prn_empty from module.core(core).decl.N: fn () -> void
 bind prn = import.0
 bind input = import.1
+bind prn_text = import.2
+bind prn_empty = import.3
 bind Point = type.0
 bind score_pair = fn.0
 bind score_point = fn.1
@@ -115,14 +119,14 @@ func fn.2(point: Point) -> string {
   }
 }
 func fn.3() -> i32 {
-  expr void call bind.0(prn)(string interpolate(<unknown> "pair zero ", i32 call bind.3(score_pair)((i32, i32) tuple(i32 0, i32 7))))
-  expr void call bind.0(prn)(string interpolate(<unknown> "pair one ", i32 call bind.3(score_pair)((i32, i32) tuple(i32 1, i32 8))))
-  expr void call bind.0(prn)(string interpolate(<unknown> "pair nine ", i32 call bind.3(score_pair)((i32, i32) tuple(i32 4, i32 9))))
-  expr void call bind.0(prn)(string interpolate(<unknown> "pair else ", i32 call bind.3(score_pair)((i32, i32) tuple(i32 2, i32 3))))
-  expr void call bind.0(prn)(string interpolate(<unknown> "point origin ", i32 call bind.4(score_point)(Point plex(x: i32 2, y: i32 3, name: string "origin"))))
-  expr void call bind.0(prn)(string interpolate(<unknown> "point x ", i32 call bind.4(score_point)(Point plex(x: i32 3, y: i32 4, name: string "other"))))
-  expr void call bind.0(prn)(string interpolate(<unknown> "point fallback ", i32 call bind.4(score_point)(Point plex(x: i32 5, y: i32 6, name: string "fallback"))))
-  expr void call bind.0(prn)(string interpolate(<unknown> "point name ", string call bind.5(name_of)(Point plex(x: i32 9, y: i32 10, name: string "named"))))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "pair zero ", i32 call bind.5(score_pair)((i32, i32) tuple(i32 0, i32 7))))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "pair one ", i32 call bind.5(score_pair)((i32, i32) tuple(i32 1, i32 8))))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "pair nine ", i32 call bind.5(score_pair)((i32, i32) tuple(i32 4, i32 9))))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "pair else ", i32 call bind.5(score_pair)((i32, i32) tuple(i32 2, i32 3))))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "point origin ", i32 call bind.6(score_point)(Point plex(x: i32 2, y: i32 3, name: string "origin"))))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "point x ", i32 call bind.6(score_point)(Point plex(x: i32 3, y: i32 4, name: string "other"))))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "point fallback ", i32 call bind.6(score_point)(Point plex(x: i32 5, y: i32 6, name: string "fallback"))))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "point name ", string call bind.7(name_of)(Point plex(x: i32 9, y: i32 10, name: string "named"))))
   return i32 0
 }
 ¬
@@ -152,6 +156,7 @@ declare i64 @nrt_string_builder_mark()
 declare void @nrt_string_builder_append_string(ptr)
 declare void @nrt_string_builder_append_byte(i8)
 declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_string_builder_finish_in(ptr, i64, ptr)
 declare void @nrt_to_string_string(ptr, ptr)
 declare void @nrt_to_string_bool(ptr, i1)
 declare void @nrt_to_string_i8(ptr, i8)
@@ -167,8 +172,9 @@ declare void @nrt_to_string_usize(ptr, i64)
 declare void @nrt_to_string_f32(ptr, float)
 declare void @nrt_to_string_f64(ptr, double)
 
-declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
+declare void @$prn_text({ ptr, i64 })
+declare void @$prn_empty()
 
 define internal i32 @fn.0({ i32, i32 } %pair) {
   %t0 = extractvalue { i32, i32 } %pair, 0
@@ -302,7 +308,7 @@ define internal i32 @fn.3() {
   %t7 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t7, i64 %t0)
   %t8 = load { ptr, i64 }, ptr %t7
-  call void @$prn({ ptr, i64 } %t8)
+  call void @$prn_text({ ptr, i64 } %t8)
   %t9 = call i64 @nrt_string_builder_mark()
   %t10 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.4, i64 9 }, ptr %t11
@@ -317,7 +323,7 @@ define internal i32 @fn.3() {
   %t16 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t16, i64 %t9)
   %t17 = load { ptr, i64 }, ptr %t16
-  call void @$prn({ ptr, i64 } %t17)
+  call void @$prn_text({ ptr, i64 } %t17)
   %t18 = call i64 @nrt_string_builder_mark()
   %t19 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.5, i64 10 }, ptr %t20
@@ -332,7 +338,7 @@ define internal i32 @fn.3() {
   %t25 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t25, i64 %t18)
   %t26 = load { ptr, i64 }, ptr %t25
-  call void @$prn({ ptr, i64 } %t26)
+  call void @$prn_text({ ptr, i64 } %t26)
   %t27 = call i64 @nrt_string_builder_mark()
   %t28 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.6, i64 10 }, ptr %t29
@@ -347,7 +353,7 @@ define internal i32 @fn.3() {
   %t34 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t34, i64 %t27)
   %t35 = load { ptr, i64 }, ptr %t34
-  call void @$prn({ ptr, i64 } %t35)
+  call void @$prn_text({ ptr, i64 } %t35)
   %t36 = call i64 @nrt_string_builder_mark()
   %t37 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.7, i64 13 }, ptr %t38
@@ -363,7 +369,7 @@ define internal i32 @fn.3() {
   %t44 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t44, i64 %t36)
   %t45 = load { ptr, i64 }, ptr %t44
-  call void @$prn({ ptr, i64 } %t45)
+  call void @$prn_text({ ptr, i64 } %t45)
   %t46 = call i64 @nrt_string_builder_mark()
   %t47 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.9, i64 8 }, ptr %t48
@@ -379,7 +385,7 @@ define internal i32 @fn.3() {
   %t54 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t54, i64 %t46)
   %t55 = load { ptr, i64 }, ptr %t54
-  call void @$prn({ ptr, i64 } %t55)
+  call void @$prn_text({ ptr, i64 } %t55)
   %t56 = call i64 @nrt_string_builder_mark()
   %t57 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.11, i64 15 }, ptr %t58
@@ -395,7 +401,7 @@ define internal i32 @fn.3() {
   %t64 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t64, i64 %t56)
   %t65 = load { ptr, i64 }, ptr %t64
-  call void @$prn({ ptr, i64 } %t65)
+  call void @$prn_text({ ptr, i64 } %t65)
   %t66 = call i64 @nrt_string_builder_mark()
   %t67 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.13, i64 11 }, ptr %t68
@@ -412,7 +418,7 @@ define internal i32 @fn.3() {
   %t75 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t75, i64 %t66)
   %t76 = load { ptr, i64 }, ptr %t75
-  call void @$prn({ ptr, i64 } %t76)
+  call void @$prn_text({ ptr, i64 } %t76)
   ret i32 0
 }
 
@@ -420,3 +426,5 @@ define internal i32 @fn.3() {
 @$score_point = internal alias i32 ({ i32, i32, { ptr, i64 } }), ptr @fn.1
 @$name_of = internal alias { ptr, i64 } ({ i32, i32, { ptr, i64 } }), ptr @fn.2
 @$main = hidden alias i32 (), ptr @fn.3
+
+declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

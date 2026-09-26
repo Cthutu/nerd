@@ -1,13 +1,42 @@
-use std.io
-
+choose :: fn (debug: bool = no) => debug
 main :: fn () {
-    prn("Hello")
+    enabled := choose(yes)
+    _ := enabled
 }
 ¬
 [
     {
         "jsonrpc": "2.0",
         "id": 2,
+        "method": "textDocument/signatureHelp",
+        "params": {
+            "textDocument": {
+                "uri": "file:///test.n"
+            },
+            "position": {
+                "line": 2,
+                "character": 25
+            }
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "method": "textDocument/didChange",
+        "params": {
+            "textDocument": {
+                "uri": "file:///test.n",
+                "version": 2
+            },
+            "contentChanges": [
+                {
+                    "text": "choose :: fn (debug: bool = no) => debug\nmain :: fn () {\n    enabled := choose(debug = yes)\n    _ := enabled\n}\n"
+                }
+            ]
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 3,
         "method": "textDocument/hover",
         "params": {
             "textDocument": {
@@ -15,35 +44,7 @@ main :: fn () {
             },
             "position": {
                 "line": 3,
-                "character": 4
-            }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 3,
-        "method": "textDocument/definition",
-        "params": {
-            "textDocument": {
-                "uri": "file:///test.n"
-            },
-            "position": {
-                "line": 3,
-                "character": 4
-            }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 4,
-        "method": "textDocument/definition",
-        "params": {
-            "textDocument": {
-                "uri": "file:///test.n"
-            },
-            "position": {
-                "line": 0,
-                "character": 4
+                "character": 10
             }
         }
     }
@@ -111,19 +112,34 @@ main :: fn () {
                 {
                     "range": {
                         "start": {
-                            "line": 0,
-                            "character": 4
+                            "line": 2,
+                            "character": 22
                         },
                         "end": {
-                            "line": 0,
-                            "character": 10
+                            "line": 2,
+                            "character": 25
                         }
                     },
-                    "severity": 4,
+                    "severity": 1,
                     "source": "nerd",
-                    "message": "Unused use `std.io`",
-                    "tags": [
-                        1
+                    "message": "Defaulted parameter `debug` requires a named argument",
+                    "relatedInformation": [
+                        {
+                            "location": {
+                                "uri": "file:///test.n",
+                                "range": {
+                                    "start": {
+                                        "line": 2,
+                                        "character": 22
+                                    },
+                                    "end": {
+                                        "line": 2,
+                                        "character": 25
+                                    }
+                                }
+                            },
+                            "message": "help: Write `debug = ...` or omit the argument to use its default."
+                        }
                     ]
                 }
             ]
@@ -133,43 +149,39 @@ main :: fn () {
         "jsonrpc": "2.0",
         "id": 2,
         "result": {
-            "contents": {
-                "kind": "markdown",
-                "value": "```nerd\nprn_text :: fn (text: string) -> void\n```\n\n- Kind: function\n\nPrints text to standard output and appends a newline."
-            }
+            "signatures": [
+                {
+                    "label": "choose(debug: bool = no) -> bool",
+                    "documentation": "Named arguments use `name = value`; omitted parameters use declared defaults when available.",
+                    "parameters": [
+                        {
+                            "label": [
+                                7,
+                                23
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "activeSignature": 0,
+            "activeParameter": 0
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "method": "textDocument/publishDiagnostics",
+        "params": {
+            "uri": "file:///test.n",
+            "diagnostics": []
         }
     },
     {
         "jsonrpc": "2.0",
         "id": 3,
         "result": {
-            "uri": "__REPO_URI__/mods/core.n",
-            "range": {
-                "start": {
-                    "line": 106,
-                    "character": 0
-                },
-                "end": {
-                    "line": 106,
-                    "character": 8
-                }
-            }
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 4,
-        "result": {
-            "uri": "__REPO_URI__/mods/std/io.n",
-            "range": {
-                "start": {
-                    "line": 0,
-                    "character": 0
-                },
-                "end": {
-                    "line": 0,
-                    "character": 0
-                }
+            "contents": {
+                "kind": "markdown",
+                "value": "```nerd\nenabled\n```\n\n- Kind: local variable\n- Type: `bool`"
             }
         }
     },

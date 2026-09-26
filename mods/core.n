@@ -59,31 +59,85 @@ core_done :: fn () {
 }
 
 -- Prints text to standard output without appending a newline.
-pub pr :: fn (text: string = "") -> void {
+pub pr :: fn {
+    pr_text
+    pr_empty
+}
+
+pr_empty :: fn () -> void {
+    pr_text("")
+    return
+}
+
+-- Prints text to standard output without appending a newline.
+pr_text :: fn (text: string) -> void {
     nrt_pr(text.data, text.count)
     return
 }
 
 -- Prints text to standard error without appending a newline.
-pub epr :: fn (text: string = "") -> void {
+pub epr :: fn {
+    epr_text
+    epr_empty
+}
+
+epr_empty :: fn () -> void {
+    epr_text("")
+    return
+}
+
+-- Prints text to standard error without appending a newline.
+epr_text :: fn (text: string) -> void {
     nrt_epr(text.data, text.count)
     return
 }
 
 -- Prints text to standard output and appends a newline.
-pub prn :: fn (text: string = "") -> void {
+pub prn :: fn {
+    prn_text
+    prn_empty
+}
+
+prn_empty :: fn () -> void {
+    prn_text("")
+    return
+}
+
+-- Prints text to standard output and appends a newline.
+prn_text :: fn (text: string) -> void {
     nrt_prn(text.data, text.count)
     return
 }
 
 -- Prints text to standard error and appends a newline.
-pub eprn :: fn (text: string = "") -> void {
+pub eprn :: fn {
+    eprn_text
+    eprn_empty
+}
+
+eprn_empty :: fn () -> void {
+    eprn_text("")
+    return
+}
+
+-- Prints text to standard error and appends a newline.
+eprn_text :: fn (text: string) -> void {
     nrt_eprn(text.data, text.count)
     return
 }
 
 -- Prints text to standard error and terminates the process.
-pub abort :: fn (text: string = "aborted") -> ! {
+pub abort :: fn {
+    abort_text
+    abort_empty
+}
+
+abort_empty :: fn () -> ! {
+    abort_text("aborted")
+}
+
+-- Prints text to standard error and terminates the process.
+abort_text :: fn (text: string) -> ! {
     nrt_abort(text.data, text.count)
 }
 

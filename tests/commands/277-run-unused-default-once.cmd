@@ -9,7 +9,7 @@ select :: fn (calls: ^i32, value: i32 = default_value(calls)) -> i32 {
 
 main :: fn () -> i32 {
     calls : i32 = 0
-    explicit := select(^calls, 4)
+    explicit := select(^calls, value = 4)
     on explicit != 4 || calls != 0 => return 1
     implicit := select(^calls)
     return on implicit == 9 && calls == 1 { yes => 0 else => 2 }

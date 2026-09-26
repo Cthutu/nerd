@@ -25,12 +25,16 @@ main :: fn () {
 
 ¬
 hir 0
-module module.0(060-on-pattern-guards.input)
-import module.1(std.io)
-import import.0 prn from module.3(core).decl.13: fn (string) -> void
-import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
+module module.060-on-pattern-guards.input(060-on-pattern-guards.input)
+import module.std.io(std.io)
+import import.0 prn from module.core(core).decl.N: <unknown>
+import import.1 input from module.std.io(std.io).decl.N: fn (string) -> [..]u8
+import import.2 prn_text from module.core(core).decl.N: fn (string) -> void
+import import.3 prn_empty from module.core(core).decl.N: fn () -> void
 bind prn = import.0
 bind input = import.1
+bind prn_text = import.2
+bind prn_empty = import.3
 bind score = fn.0
 bind main = fn.1
 func fn.0(size: u32) -> u32 {
@@ -50,10 +54,10 @@ func fn.0(size: u32) -> u32 {
   }
 }
 func fn.1() -> void {
-  expr void call bind.0(prn)(string interpolate(<unknown> "1: ", u32 call bind.2(score)(u32 1)))
-  expr void call bind.0(prn)(string interpolate(<unknown> "2: ", u32 call bind.2(score)(u32 2)))
-  expr void call bind.0(prn)(string interpolate(<unknown> "10: ", u32 call bind.2(score)(u32 10)))
-  expr void call bind.0(prn)(string interpolate(<unknown> "50: ", u32 call bind.2(score)(u32 50)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "1: ", u32 call bind.4(score)(u32 1)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "2: ", u32 call bind.4(score)(u32 2)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "10: ", u32 call bind.4(score)(u32 10)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "50: ", u32 call bind.4(score)(u32 50)))
 }
 ¬
 ; nerd llvm-ir 0
@@ -71,6 +75,7 @@ declare i64 @nrt_string_builder_mark()
 declare void @nrt_string_builder_append_string(ptr)
 declare void @nrt_string_builder_append_byte(i8)
 declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_string_builder_finish_in(ptr, i64, ptr)
 declare void @nrt_to_string_string(ptr, ptr)
 declare void @nrt_to_string_bool(ptr, i1)
 declare void @nrt_to_string_i8(ptr, i8)
@@ -86,8 +91,9 @@ declare void @nrt_to_string_usize(ptr, i64)
 declare void @nrt_to_string_f32(ptr, float)
 declare void @nrt_to_string_f64(ptr, double)
 
-declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
+declare void @$prn_text({ ptr, i64 })
+declare void @$prn_empty()
 
 define internal i32 @fn.0(i32 %size) {
   %t0 = icmp sge i32 %size, 0
@@ -151,7 +157,7 @@ define internal void @fn.1() {
   %t5 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t5, i64 %t0)
   %t6 = load { ptr, i64 }, ptr %t5
-  call void @$prn({ ptr, i64 } %t6)
+  call void @$prn_text({ ptr, i64 } %t6)
   %t7 = call i64 @nrt_string_builder_mark()
   %t8 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.1, i64 3 }, ptr %t9
@@ -164,7 +170,7 @@ define internal void @fn.1() {
   %t12 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t12, i64 %t7)
   %t13 = load { ptr, i64 }, ptr %t12
-  call void @$prn({ ptr, i64 } %t13)
+  call void @$prn_text({ ptr, i64 } %t13)
   %t14 = call i64 @nrt_string_builder_mark()
   %t15 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.2, i64 4 }, ptr %t16
@@ -177,7 +183,7 @@ define internal void @fn.1() {
   %t19 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t19, i64 %t14)
   %t20 = load { ptr, i64 }, ptr %t19
-  call void @$prn({ ptr, i64 } %t20)
+  call void @$prn_text({ ptr, i64 } %t20)
   %t21 = call i64 @nrt_string_builder_mark()
   %t22 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.3, i64 4 }, ptr %t23
@@ -190,9 +196,11 @@ define internal void @fn.1() {
   %t26 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t26, i64 %t21)
   %t27 = load { ptr, i64 }, ptr %t26
-  call void @$prn({ ptr, i64 } %t27)
+  call void @$prn_text({ ptr, i64 } %t27)
   ret void
 }
 
 @$score = internal alias i32 (i32), ptr @fn.0
 @$main = hidden alias void (), ptr @fn.1
+
+declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

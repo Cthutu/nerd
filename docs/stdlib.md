@@ -189,10 +189,10 @@ The trigonometric functions take radians and return `f64` values.
 - `arena.restore(mark: u32)`
 - `arena.done()`
 - `temp_arena.reset()`
-- `pr(text: string = "") -> void`
-- `prn(text: string = "") -> void`
-- `epr(text: string = "") -> void`
-- `eprn(text: string = "") -> void`
+- `pr(text: string) -> void` and `pr() -> void`
+- `prn(text: string) -> void` and `prn() -> void`
+- `epr(text: string) -> void` and `epr() -> void`
+- `eprn(text: string) -> void` and `eprn() -> void`
 - `Display`
   Requires `show :: fn (self: Self) -> string`.
 - `Eq`

@@ -11,8 +11,8 @@ local_call :: fn (a: i32) {
 
 main :: fn () {
     prn($"one {add(2)}")
-    prn($"two {add(2, 3)}")
-    prn($"three {add(2, 3, 4)}")
+    prn($"two {add(2, b = 3)}")
+    prn($"three {add(2, b = 3, c = 4)}")
     prn($"call {with_call_default()}")
     local_call(4)
 }
@@ -27,12 +27,16 @@ inner 28
 
 ¬
 hir 0
-module module.0(126-default-parameters.input)
-import module.1(std.io)
-import import.0 prn from module.3(core).decl.13: fn (string) -> void
-import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
+module module.126-default-parameters.input(126-default-parameters.input)
+import module.std.io(std.io)
+import import.0 prn from module.core(core).decl.N: <unknown>
+import import.1 input from module.std.io(std.io).decl.N: fn (string) -> [..]u8
+import import.2 prn_text from module.core(core).decl.N: fn (string) -> void
+import import.3 prn_empty from module.core(core).decl.N: fn () -> void
 bind prn = import.0
 bind input = import.1
+bind prn_text = import.2
+bind prn_empty = import.3
 bind add = fn.0
 bind scale = fn.1
 bind with_call_default = fn.2
@@ -49,17 +53,17 @@ func fn.2(value: i32) -> i32 {
 }
 func fn.3(a: i32) -> void {
   let inner: fn (i32, i32) -> i32 = fn (i32, i32) -> i32 fn.4
-  expr void call bind.0(prn)(string interpolate(<unknown> "inner ", i32 call local.6(inner)(i32 local.5(a))))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "inner ", i32 call local.6(inner)(i32 local.5(a))))
 }
 func fn.4(x: i32, y: i32) -> i32 {
   return i32 multiply(i32 local.7(x), i32 local.8(y))
 }
 func fn.5() -> void {
-  expr void call bind.0(prn)(string interpolate(<unknown> "one ", i32 call bind.2(add)(i32 2)))
-  expr void call bind.0(prn)(string interpolate(<unknown> "two ", i32 call bind.2(add)(i32 2, i32 3)))
-  expr void call bind.0(prn)(string interpolate(<unknown> "three ", i32 call bind.2(add)(i32 2, i32 3, i32 4)))
-  expr void call bind.0(prn)(string interpolate(<unknown> "call ", i32 call bind.4(with_call_default)()))
-  expr void call bind.5(local_call)(i32 4)
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "one ", i32 call bind.4(add)(i32 2)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "two ", i32 call bind.4(add)(i32 2, i32 3)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "three ", i32 call bind.4(add)(i32 2, i32 3, i32 4)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "call ", i32 call bind.6(with_call_default)()))
+  expr void call bind.7(local_call)(i32 4)
 }
 ¬
 ; nerd llvm-ir 0
@@ -94,8 +98,9 @@ declare void @nrt_to_string_usize(ptr, i64)
 declare void @nrt_to_string_f32(ptr, float)
 declare void @nrt_to_string_f64(ptr, double)
 
-declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
+declare void @$prn_text({ ptr, i64 })
+declare void @$prn_empty()
 
 define internal i32 @fn.0(i32 %a, i32 %b, i32 %c) {
   %t0 = add i32 %a, %b
@@ -128,7 +133,7 @@ define internal void @fn.3(i32 %a) {
   %t6 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t6, i64 %t0)
   %t7 = load { ptr, i64 }, ptr %t6
-  call void @$prn({ ptr, i64 } %t7)
+  call void @$prn_text({ ptr, i64 } %t7)
   ret void
 }
 
@@ -155,7 +160,7 @@ define internal void @fn.5() {
   %t6 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t6, i64 %t0)
   %t7 = load { ptr, i64 }, ptr %t6
-  call void @$prn({ ptr, i64 } %t7)
+  call void @$prn_text({ ptr, i64 } %t7)
   %t8 = call i64 @nrt_string_builder_mark()
   %t9 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.2, i64 4 }, ptr %t10
@@ -169,7 +174,7 @@ define internal void @fn.5() {
   %t14 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t14, i64 %t8)
   %t15 = load { ptr, i64 }, ptr %t14
-  call void @$prn({ ptr, i64 } %t15)
+  call void @$prn_text({ ptr, i64 } %t15)
   %t16 = call i64 @nrt_string_builder_mark()
   %t17 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.3, i64 6 }, ptr %t18
@@ -182,7 +187,7 @@ define internal void @fn.5() {
   %t21 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t21, i64 %t16)
   %t22 = load { ptr, i64 }, ptr %t21
-  call void @$prn({ ptr, i64 } %t22)
+  call void @$prn_text({ ptr, i64 } %t22)
   %t23 = call i64 @nrt_string_builder_mark()
   %t24 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.4, i64 5 }, ptr %t25
@@ -196,7 +201,7 @@ define internal void @fn.5() {
   %t29 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t29, i64 %t23)
   %t30 = load { ptr, i64 }, ptr %t29
-  call void @$prn({ ptr, i64 } %t30)
+  call void @$prn_text({ ptr, i64 } %t30)
   call void @fn.3(i32 4)
   ret void
 }

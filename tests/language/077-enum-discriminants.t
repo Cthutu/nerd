@@ -67,12 +67,16 @@ string
 
 ¬
 hir 0
-module module.0(077-enum-discriminants.input)
-import module.1(std.io)
-import import.0 prn from module.3(core).decl.13: fn (string) -> void
-import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
+module module.077-enum-discriminants.input(077-enum-discriminants.input)
+import module.std.io(std.io)
+import import.0 prn from module.core(core).decl.N: <unknown>
+import import.1 input from module.std.io(std.io).decl.N: fn (string) -> [..]u8
+import import.2 prn_text from module.core(core).decl.N: fn (string) -> void
+import import.3 prn_empty from module.core(core).decl.N: fn () -> void
 bind prn = import.0
 bind input = import.1
+bind prn_text = import.2
+bind prn_empty = import.3
 bind Direction = type.0
 bind Token = type.1
 bind labels = value.0
@@ -118,12 +122,12 @@ func fn.1(token: Token) -> string {
   }
 }
 func fn.2() -> i32 {
-  let south: Direction = Direction field(Direction bind.2(Direction), SOUTH)
-  let string_token: Token = Token field(Token bind.3(Token), STRING)
-  expr void call bind.0(prn)(string index([12]string bind.4(labels), untyped integer 0))
-  expr void call bind.0(prn)(string index([12]string bind.4(labels), untyped integer 11))
-  expr void call bind.0(prn)(string call bind.5(describe_direction)(Direction local.2(south)))
-  expr void call bind.0(prn)(string call bind.6(describe_token)(Token local.3(string_token)))
+  let south: Direction = Direction field(Direction bind.4(Direction), SOUTH)
+  let string_token: Token = Token field(Token bind.5(Token), STRING)
+  expr void call bind.2(prn_text)(string index([12]string bind.6(labels), untyped integer 0))
+  expr void call bind.2(prn_text)(string index([12]string bind.6(labels), untyped integer 11))
+  expr void call bind.2(prn_text)(string call bind.7(describe_direction)(Direction local.2(south)))
+  expr void call bind.2(prn_text)(string call bind.8(describe_token)(Token local.3(string_token)))
   let ok: bool = bool logical_and(bool on Direction local.2(south) {
     value(Direction SOUTH) => {
       expr bool yes
@@ -176,8 +180,9 @@ func fn.2() -> i32 {
 @.str.m0.20 = private unnamed_addr constant [7 x i8] c"string\00"
 @.slice.const.m0.12 = private unnamed_addr constant [12 x { ptr, i64 }] [{ ptr, i64 } { ptr @.str.m0.0, i64 1 }, { ptr, i64 } { ptr @.str.m0.1, i64 1 }, { ptr, i64 } { ptr @.str.m0.2, i64 1 }, { ptr, i64 } { ptr @.str.m0.3, i64 1 }, { ptr, i64 } { ptr @.str.m0.4, i64 1 }, { ptr, i64 } { ptr @.str.m0.5, i64 1 }, { ptr, i64 } { ptr @.str.m0.6, i64 1 }, { ptr, i64 } { ptr @.str.m0.7, i64 1 }, { ptr, i64 } { ptr @.str.m0.8, i64 1 }, { ptr, i64 } { ptr @.str.m0.9, i64 1 }, { ptr, i64 } { ptr @.str.m0.10, i64 2 }, { ptr, i64 } { ptr @.str.m0.11, i64 2 }]
 
-declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
+declare void @$prn_text({ ptr, i64 })
+declare void @$prn_empty()
 
 @$labels = internal global [12 x { ptr, i64 }] zeroinitializer
 
@@ -322,16 +327,16 @@ define internal i32 @fn.2() {
   store { i64, i8 } %t3, ptr %local.3
   %t4 = load [12 x { ptr, i64 }], ptr @$labels
   %t5 = extractvalue [12 x { ptr, i64 }] %t4, 0
-  call void @$prn({ ptr, i64 } %t5)
+  call void @$prn_text({ ptr, i64 } %t5)
   %t6 = load [12 x { ptr, i64 }], ptr @$labels
   %t7 = extractvalue [12 x { ptr, i64 }] %t6, 11
-  call void @$prn({ ptr, i64 } %t7)
+  call void @$prn_text({ ptr, i64 } %t7)
   %t8 = load { i64, i8 }, ptr %local.2
   %t9 = call { ptr, i64 } @fn.0({ i64, i8 } %t8)
-  call void @$prn({ ptr, i64 } %t9)
+  call void @$prn_text({ ptr, i64 } %t9)
   %t10 = load { i64, i8 }, ptr %local.3
   %t11 = call { ptr, i64 } @fn.1({ i64, i8 } %t10)
-  call void @$prn({ ptr, i64 } %t11)
+  call void @$prn_text({ ptr, i64 } %t11)
   %t12 = load { i64, i8 }, ptr %local.2
   %t13 = insertvalue { i64, i8 } poison, i64 10, 0
   %t14 = insertvalue { i64, i8 } %t13, i8 0, 1

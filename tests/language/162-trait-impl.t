@@ -25,12 +25,16 @@ Point(3, 4)
 
 ¬
 hir 0
-module module.0(162-trait-impl.input)
-import module.1(std.io)
-import import.0 prn from module.3(core).decl.13: fn (string) -> void
-import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
+module module.162-trait-impl.input(162-trait-impl.input)
+import module.std.io(std.io)
+import import.0 prn from module.core(core).decl.N: <unknown>
+import import.1 input from module.std.io(std.io).decl.N: fn (string) -> [..]u8
+import import.2 prn_text from module.core(core).decl.N: fn (string) -> void
+import import.3 prn_empty from module.core(core).decl.N: fn () -> void
 bind prn = import.0
 bind input = import.1
+bind prn_text = import.2
+bind prn_empty = import.3
 bind Point = type.0
 bind __trait_Display_for_Point_show = fn.0
 bind main = fn.1
@@ -40,7 +44,7 @@ func fn.0(self: Point) -> string {
 }
 func fn.1() -> i32 {
   let point: Point = Point plex(x: i32 3, y: i32 4)
-  expr void call bind.0(prn)(string call bind.3(__trait_Display_for_Point_show)(Point local.1(point)))
+  expr void call bind.2(prn_text)(string call bind.5(__trait_Display_for_Point_show)(Point local.1(point)))
   return i32 add(i32 field(Point local.1(point), x), i32 field(Point local.1(point), y))
 }
 ¬
@@ -58,6 +62,7 @@ declare i64 @nrt_string_builder_mark()
 declare void @nrt_string_builder_append_string(ptr)
 declare void @nrt_string_builder_append_byte(i8)
 declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_string_builder_finish_in(ptr, i64, ptr)
 declare void @nrt_to_string_string(ptr, ptr)
 declare void @nrt_to_string_bool(ptr, i1)
 declare void @nrt_to_string_i8(ptr, i8)
@@ -73,8 +78,9 @@ declare void @nrt_to_string_usize(ptr, i64)
 declare void @nrt_to_string_f32(ptr, float)
 declare void @nrt_to_string_f64(ptr, double)
 
-declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
+declare void @$prn_text({ ptr, i64 })
+declare void @$prn_empty()
 
 define internal { ptr, i64 } @fn.0({ i32, i32 } %self) {
   %t2 = alloca { ptr, i64 }
@@ -111,7 +117,7 @@ define internal i32 @fn.1() {
   %t0 = insertvalue { i32, i32 } poison, i32 3, 0
   %t1 = insertvalue { i32, i32 } %t0, i32 4, 1
   %t2 = call { ptr, i64 } @fn.0({ i32, i32 } %t1)
-  call void @$prn({ ptr, i64 } %t2)
+  call void @$prn_text({ ptr, i64 } %t2)
   %t3 = extractvalue { i32, i32 } %t1, 0
   %t4 = extractvalue { i32, i32 } %t1, 1
   %t5 = add i32 %t3, %t4
@@ -120,3 +126,5 @@ define internal i32 @fn.1() {
 
 @$__trait_Display_for_Point_show = internal alias { ptr, i64 } ({ i32, i32 }), ptr @fn.0
 @$main = hidden alias i32 (), ptr @fn.1
+
+declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

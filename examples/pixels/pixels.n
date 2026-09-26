@@ -25,7 +25,7 @@ pixels_draw :: fn (layer: ^PixelLayer, frame: u32) {
                 pixels[y * stride + x] = colour
             }
         }
-    }, ^frame)
+    }, user = ^frame)
 
     bar_width := (frame % layer.pixel_width()) + 1
     layer.fill(PixelRect {

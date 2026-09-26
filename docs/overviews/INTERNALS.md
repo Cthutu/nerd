@@ -234,11 +234,20 @@ general symbol fallback, while field-type positions retain only type
 declarations; source scanning keeps this distinction available before a closing
 brace has been entered and semantic analysis can finish.
 
-For repaired member completion, Sema retains the declarations, locals, and type
-facts established before a later declaration-type error. Completion can then
-use the receiver facts established at the cursor, so an unrelated error later
-in the same function does not hide members whose receiver type was already
-known. Other LSP analyses retain their normal partial-result policy.
+LSP document analysis retains declarations, locals, and type facts established
+before a declaration-type error. Completion can then use receiver facts already
+established at the cursor. Unused-import diagnostics require complete semantic
+analysis, since incomplete reference information cannot establish that an import
+is unused.
+
+Plex literal completion uses the literal's semantic type before falling back to
+an explicit type name in source. This supports contextual `{ ... }` and
+`^{ ... }` initializers, including nested imported records. Sema records their
+known nominal type before checking fields, so a partially typed field name does
+not erase completion context. Existing fields are excluded from suggestions.
+Enum-pattern completion restricts its brace search to the block containing that
+`on` expression's first branch, preventing an earlier match from supplying enum
+variants inside an unrelated initializer.
 
 Context-seeding failures also retain semantic products when tooling requests
 partial results. A missing-field diagnostic records the known nominal plex type
@@ -477,6 +486,23 @@ Arena allocation methods carry call-site `@file` and `@line` defaults into
 that metadata while lazily initialising its storage, so leak reports identify
 the allocation method call. An arena created explicitly with `arena(...)`
 retains the constructor's source location instead.
+
+### Named default arguments
+
+`sema_call_arg_value_node` validates explicit arguments against their source
+`AstParam` before unwrapping named assignments. A parameter with a default
+requires `name = value` when supplied; positional overrides produce diagnostic
+0367. The shared check covers ordinary, imported, generic, and method calls.
+Direct aliases retain declaration metadata, while arbitrary function values
+without a known declaration retain their full positional function type.
+Omitted-default expansion and declaration-order matching are unchanged. Atomic
+compare-exchange validation unwraps named arguments before evaluating ordering
+constants. Core printing helpers use compound functions with zero-argument and
+required-text members to preserve positional printing calls. LLVM import
+resolution reads import symbol handles only with the importing lexer, then uses
+the source declaration to recover a source-module name. C emission recovers
+default metadata from a direct mutable alias initializer while keeping the
+actual call indirect, so earlier arguments remain available to omitted defaults.
 
 ### Compound functions
 

@@ -28,12 +28,16 @@ second 1 7
 
 ¬
 hir 0
-module module.0(058-plex-ergonomics.input)
-import module.1(std.io)
-import import.0 prn from module.3(core).decl.13: fn (string) -> void
-import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
+module module.058-plex-ergonomics.input(058-plex-ergonomics.input)
+import module.std.io(std.io)
+import import.0 prn from module.core(core).decl.N: <unknown>
+import import.1 input from module.std.io(std.io).decl.N: fn (string) -> [..]u8
+import import.2 prn_text from module.core(core).decl.N: fn (string) -> void
+import import.3 prn_empty from module.core(core).decl.N: fn () -> void
 bind prn = import.0
 bind input = import.1
+bind prn_text = import.2
+bind prn_empty = import.3
 bind Point = type.0
 bind Packed = type.1
 bind main = fn.0
@@ -43,8 +47,8 @@ func fn.0() -> i32 {
   let p: Point = Point plex(x: i32 1, y: i32 2, name: string "first")
   let q: Point = Point plex_update(Point local.0(p), y: i32 7, name: string "second")
   let pp: ^Point = ^Point address_of(Point local.1(q))
-  expr void call bind.0(prn)(string interpolate(string field(Point local.0(p), name), <unknown> " ", i32 field(Point local.0(p), x), <unknown> " ", i32 field(Point local.0(p), y)))
-  expr void call bind.0(prn)(string interpolate(string field(^Point local.2(pp), name), <unknown> " ", i32 field(^Point local.2(pp), x), <unknown> " ", i32 field(^Point local.2(pp), y)))
+  expr void call bind.2(prn_text)(string interpolate(string field(Point local.0(p), name), <unknown> " ", i32 field(Point local.0(p), x), <unknown> " ", i32 field(Point local.0(p), y)))
+  expr void call bind.2(prn_text)(string interpolate(string field(^Point local.2(pp), name), <unknown> " ", i32 field(^Point local.2(pp), x), <unknown> " ", i32 field(^Point local.2(pp), y)))
   let packed: Packed = Packed plex(a: u8 1, b: i32 2)
   return i32 add(i32 add(i32 field(Point local.1(q), x), i32 field(Point local.1(q), y)), i32 field(Packed local.3(packed), b))
 }
@@ -66,6 +70,7 @@ declare i64 @nrt_string_builder_mark()
 declare void @nrt_string_builder_append_string(ptr)
 declare void @nrt_string_builder_append_byte(i8)
 declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_string_builder_finish_in(ptr, i64, ptr)
 declare void @nrt_to_string_string(ptr, ptr)
 declare void @nrt_to_string_bool(ptr, i1)
 declare void @nrt_to_string_i8(ptr, i8)
@@ -81,8 +86,9 @@ declare void @nrt_to_string_usize(ptr, i64)
 declare void @nrt_to_string_f32(ptr, float)
 declare void @nrt_to_string_f64(ptr, double)
 
-declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
+declare void @$prn_text({ ptr, i64 })
+declare void @$prn_empty()
 
 define internal i32 @fn.0() {
   %local.1 = alloca { i32, i32, { ptr, i64 } }
@@ -123,7 +129,7 @@ define internal i32 @fn.0() {
   %t17 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t17, i64 %t5)
   %t18 = load { ptr, i64 }, ptr %t17
-  call void @$prn({ ptr, i64 } %t18)
+  call void @$prn_text({ ptr, i64 } %t18)
   %t19 = call i64 @nrt_string_builder_mark()
   %t20 = load { i32, i32, { ptr, i64 } }, ptr %local.1
   %t21 = extractvalue { i32, i32, { ptr, i64 } } %t20, 2
@@ -152,7 +158,7 @@ define internal i32 @fn.0() {
   %t34 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t34, i64 %t19)
   %t35 = load { ptr, i64 }, ptr %t34
-  call void @$prn({ ptr, i64 } %t35)
+  call void @$prn_text({ ptr, i64 } %t35)
   %t36 = insertvalue { i8, i32 } poison, i8 1, 0
   %t37 = insertvalue { i8, i32 } %t36, i32 2, 1
   %t38 = load { i32, i32, { ptr, i64 } }, ptr %local.1
@@ -166,3 +172,5 @@ define internal i32 @fn.0() {
 }
 
 @$main = hidden alias i32 (), ptr @fn.0
+
+declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

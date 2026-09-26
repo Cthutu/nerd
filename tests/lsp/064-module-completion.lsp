@@ -216,6 +216,10 @@ main :: fn () {}
                 "kind": 9
             },
             {
+                "label": "named_defaults",
+                "kind": 9
+            },
+            {
                 "label": "namespaced_a",
                 "kind": 9
             },

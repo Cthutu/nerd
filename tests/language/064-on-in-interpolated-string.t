@@ -14,18 +14,22 @@ Colour = red
 
 ¬
 hir 0
-module module.0(064-on-in-interpolated-string.input)
-import module.1(std.io)
-import import.0 prn from module.3(core).decl.13: fn (string) -> void
-import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
+module module.064-on-in-interpolated-string.input(064-on-in-interpolated-string.input)
+import module.std.io(std.io)
+import import.0 prn from module.core(core).decl.N: <unknown>
+import import.1 input from module.std.io(std.io).decl.N: fn (string) -> [..]u8
+import import.2 prn_text from module.core(core).decl.N: fn (string) -> void
+import import.3 prn_empty from module.core(core).decl.N: fn () -> void
 bind prn = import.0
 bind input = import.1
+bind prn_text = import.2
+bind prn_empty = import.3
 bind Colour = type.0
 bind main = fn.0
 type type.0 = Colour
 func fn.0() -> void {
   let colour: Colour = Colour RED
-  expr void call bind.0(prn)(string interpolate(<unknown> "Colour = ", string on Colour local.0(colour) {
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "Colour = ", string on Colour local.0(colour) {
     value(Colour RED) => {
       expr string "red"
     }
@@ -53,6 +57,7 @@ declare i64 @nrt_string_builder_mark()
 declare void @nrt_string_builder_append_string(ptr)
 declare void @nrt_string_builder_append_byte(i8)
 declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_string_builder_finish_in(ptr, i64, ptr)
 declare void @nrt_to_string_string(ptr, ptr)
 declare void @nrt_to_string_bool(ptr, i1)
 declare void @nrt_to_string_i8(ptr, i8)
@@ -68,8 +73,9 @@ declare void @nrt_to_string_usize(ptr, i64)
 declare void @nrt_to_string_f32(ptr, float)
 declare void @nrt_to_string_f64(ptr, double)
 
-declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
+declare void @$prn_text({ ptr, i64 })
+declare void @$prn_empty()
 
 define internal void @fn.0() {
   %local.0 = alloca { i64, i8 }
@@ -127,7 +133,7 @@ on.end.0:
   %t24 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t24, i64 %t2)
   %t25 = load { ptr, i64 }, ptr %t24
-  call void @$prn({ ptr, i64 } %t25)
+  call void @$prn_text({ ptr, i64 } %t25)
   ret void
 }
 

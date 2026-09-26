@@ -2,7 +2,7 @@ use std.image
 
 main :: fn () -> i32 {
     bytes := @embed("../../examples/image_viewer/assets/demo.jpg")
-    result := Image.load_bytes(bytes, 4)
+    result := Image.load_bytes(bytes, desired_channels = 4)
 
     on result {
         image => {

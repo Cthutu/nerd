@@ -24,9 +24,13 @@ You go to field.
 
 ¬
 hir 0
-module module.0(117-interpolated-for-field.input)
-import import.0 prn from module.1(core).decl.13: fn (string) -> void
+module module.117-interpolated-for-field.input(117-interpolated-for-field.input)
+import import.0 prn from module.core(core).decl.N: <unknown>
+import import.1 prn_text from module.core(core).decl.N: fn (string) -> void
+import import.2 prn_empty from module.core(core).decl.N: fn () -> void
 bind prn = import.0
+bind prn_text = import.1
+bind prn_empty = import.2
 bind Location = type.0
 bind locs = value.0
 bind main = fn.0
@@ -34,14 +38,14 @@ type type.0 = Location
 global value.0: []Location = []Location array(Location plex(description: string "field"))
 func fn.0() -> void {
   let player_loc: usize = usize 1
-  expr void for in i: usize, loc: ^Location in []Location bind.2(locs) {
+  expr void for in i: usize, loc: ^Location in []Location bind.4(locs) {
     body {
       expr void on condition {
     bool equal(usize local.1(i), usize local.0(player_loc)) => {
-      expr void call bind.0(prn)(string "same")
+      expr void call bind.1(prn_text)(string "same")
     }
     else => {
-      expr void call bind.0(prn)(string interpolate(<unknown> "You go to ", string field(^Location local.2(loc), description), <unknown> "."))
+      expr void call bind.1(prn_text)(string interpolate(<unknown> "You go to ", string field(^Location local.2(loc), description), <unknown> "."))
     }
   }
     }
@@ -64,6 +68,7 @@ declare i64 @nrt_string_builder_mark()
 declare void @nrt_string_builder_append_string(ptr)
 declare void @nrt_string_builder_append_byte(i8)
 declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_string_builder_finish_in(ptr, i64, ptr)
 declare void @nrt_to_string_string(ptr, ptr)
 declare void @nrt_to_string_bool(ptr, i1)
 declare void @nrt_to_string_i8(ptr, i8)
@@ -79,7 +84,8 @@ declare void @nrt_to_string_usize(ptr, i64)
 declare void @nrt_to_string_f32(ptr, float)
 declare void @nrt_to_string_f64(ptr, double)
 
-declare void @$prn({ ptr, i64 })
+declare void @$prn_text({ ptr, i64 })
+declare void @$prn_empty()
 
 @$locs = internal global { ptr, i64 } zeroinitializer
 
@@ -110,7 +116,7 @@ for.in.body.1:
   %t7 = icmp eq i64 %t6, 1
   br i1 %t7, label %on.body.5, label %on.next.6
 on.body.5:
-  call void @$prn({ ptr, i64 } { ptr @.str.m0.1, i64 4 })
+  call void @$prn_text({ ptr, i64 } { ptr @.str.m0.1, i64 4 })
   br label %on.end.4
 on.next.6:
   br label %on.body.7
@@ -134,7 +140,7 @@ on.body.7:
   %t18 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t18, i64 %t8)
   %t19 = load { ptr, i64 }, ptr %t18
-  call void @$prn({ ptr, i64 } %t19)
+  call void @$prn_text({ ptr, i64 } %t19)
   br label %on.end.4
 on.end.4:
   br label %for.in.update.2
@@ -148,3 +154,5 @@ for.in.end.3:
 }
 
 @$main = hidden alias void (), ptr @fn.0
+
+declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

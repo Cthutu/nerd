@@ -1549,10 +1549,8 @@ internal bool llvm_import_source_function_depth(const Sema*      sema,
         import->symbol_handle != U32_MAX && import_lexer != NULL
             ? lex_symbol(import_lexer, import->symbol_handle)
             : (string){0};
-    string source_wanted_name =
-        import->symbol_handle != U32_MAX
-            ? lex_symbol(source_lexer, import->symbol_handle)
-            : (string){0};
+    // Import handles belong to the importing lexer, not the source module.
+    string source_wanted_name = import_wanted_name;
     if (import->decl_index < array_count(source_sema->decls)) {
         u32 decl_symbol = source_sema->decls[import->decl_index].symbol_handle;
         if (decl_symbol != U32_MAX) {

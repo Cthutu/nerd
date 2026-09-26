@@ -2,7 +2,7 @@ use std.atomics
 
 main :: fn () {
     value : atomic[i32] = 0
-    value.store(1, Release)
+    value.store(1, order = Release)
     scratch := arena(4096, 1024)
     _bytes := scratch.alloc_array[u8](32)
     values : [..]i32
@@ -25,7 +25,7 @@ main :: fn () {
         "method": "textDocument/signatureHelp",
         "params": {
             "textDocument": { "uri": "file:///test.n" },
-            "position": { "line": 4, "character": 26 }
+            "position": { "line": 4, "character": 34 }
         }
     },
     {
@@ -34,7 +34,7 @@ main :: fn () {
         "method": "textDocument/definition",
         "params": {
             "textDocument": { "uri": "file:///test.n" },
-            "position": { "line": 4, "character": 22 }
+            "position": { "line": 4, "character": 30 }
         }
     },
     {

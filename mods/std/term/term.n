@@ -477,10 +477,10 @@ term_scan_code_from_codepoint :: fn (codepoint: u32) -> TermScanCode {
 term_input_event_from_codepoint :: fn (codepoint : u32,
                                        modifiers : u32 = 0) -> TermInputEvent {
     return term_key_event(term_scan_code_from_codepoint(codepoint),
-                          TermKeyAction.Press,
-                          modifiers,
-                          codepoint,
-                          codepoint)
+                          action = TermKeyAction.Press,
+                          modifiers = modifiers,
+                          character = codepoint,
+                          label = codepoint)
 }
 
 term_read_utf8_codepoint :: fn (first: u8) -> u32 {
@@ -1041,9 +1041,9 @@ pub term_fb_clear :: fn () {
                       0,
                       term_fb_view.w.as(u32),
                       term_fb_view.h.as(u32),
-                      ' '.as(u32),
-                      TERM_DEFAULT_INK,
-                      TERM_DEFAULT_PAPER)
+                      ch = ' '.as(u32),
+                      ink = TERM_DEFAULT_INK,
+                      paper = TERM_DEFAULT_PAPER)
 }
 
 -- Draws UTF-8 text into the framebuffer from the supplied cell position.
@@ -1091,7 +1091,7 @@ term_fb_text_centered :: fn (y: i32, text: string, ink: Colour, paper: Colour) {
     width := term_text_display_width(text)
     x     := (term_fb_width.as(i32) - width) / 2
 
-    term_fb_text(x, y, text, ink, paper)
+    term_fb_text(x, y, text, ink = ink, paper = paper)
 }
 
 term_box_string_char :: fn (chars: string, cell_index: usize) -> u32 {
@@ -1474,7 +1474,7 @@ term_input_event_from_modified_key :: fn (key      : ?TermScanCode,
     return on key {
         code => {
             flags := term_csi_modifier_flags(modifier)
-            return term_key_event(code, TermKeyAction.Press, flags)
+            return term_key_event(code, action = TermKeyAction.Press, modifiers = flags)
         }
 
         else => TermInputEvent.None
@@ -1622,9 +1622,9 @@ term_input_event_from_kitty :: fn (parameters: TermCsiParameters) -> TermInputEv
 
     on base_layout_key == 0 => base_layout_key = key
 
-    modifier_parameter := term_csi_parameter(parameters, 1, 0, 1)
+    modifier_parameter := term_csi_parameter(parameters, 1, 0, fallback = 1)
     modifiers          := on modifier_parameter > 0 => modifier_parameter - 1 else 0
-    event_type         := term_csi_parameter(parameters, 1, 1, 1)
+    event_type         := term_csi_parameter(parameters, 1, 1, fallback = 1)
 
     action := on event_type == 2
         =>   TermKeyAction.Repeat
@@ -1637,7 +1637,7 @@ term_input_event_from_kitty :: fn (parameters: TermCsiParameters) -> TermInputEv
     on text > 0 => character = text
     subfield : u32 = 1
     for {
-        extra := term_csi_parameter(parameters, 2, subfield, 0xffffffff.as(u32))
+        extra := term_csi_parameter(parameters, 2, subfield, fallback = 0xffffffff.as(u32))
         on extra == 0xffffffff.as(u32) => break
         on extra > 0 => {
             term_pending_events.push(TermInputEvent.Character(extra))
@@ -1648,17 +1648,17 @@ term_input_event_from_kitty :: fn (parameters: TermCsiParameters) -> TermInputEv
     label : ?u32 = nil
     on key > 0 && key < 0xe000 => label = key
     return term_key_event(term_scan_code_from_kitty_key(base_layout_key),
-                          action,
-                          modifiers,
-                          character,
-                          label)
+                          action = action,
+                          modifiers = modifiers,
+                          character = character,
+                          label = label)
 }
 
 term_input_event_from_csi_parameters :: fn (parameters: TermCsiParameters) -> TermInputEvent {
     on parameters.final == 'u' => return term_input_event_from_kitty(parameters)
 
     number   := term_csi_parameter(parameters, 0, 0)
-    modifier := term_csi_parameter(parameters, 1, 0, 1)
+    modifier := term_csi_parameter(parameters, 1, 0, fallback = 1)
 
     key := on parameters.final == '~'
         =>   term_csi_tilde_key(number)
@@ -1797,7 +1797,7 @@ term_read_escape_input_sequence :: fn () -> TermInputEvent {
         =>   term_read_csi_input_sequence()
         else on (second == 'O')
         =>   term_read_ss3_input_sequence()
-        else term_input_event_from_codepoint(term_read_utf8_codepoint(second), TERM_MOD_ALT)
+        else term_input_event_from_codepoint(term_read_utf8_codepoint(second), modifiers = TERM_MOD_ALT)
 }
 
 term_read_escape_sequence :: fn () -> ?TermScanCode {

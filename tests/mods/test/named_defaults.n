@@ -1,0 +1,2 @@
+pub imported :: fn (value: i32, increment: i32 = 1) => value + increment
+pub imported_generic :: fn [T] (value: T, enabled: bool = yes) => value

@@ -3,7 +3,7 @@ choose :: fn (enabled :: bool = yes) -> i32 {
 }
 
 main :: fn () -> i32 {
-    return choose() + choose(no) - 16
+    return choose() + choose(enabled = no) - 16
 }
 ¬
 0

@@ -33,12 +33,16 @@ first byte = 101
 
 ¬
 hir 0
-module module.0(055-string-slices.input)
-import module.1(std.io)
-import import.0 prn from module.3(core).decl.13: fn (string) -> void
-import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
+module module.055-string-slices.input(055-string-slices.input)
+import module.std.io(std.io)
+import import.0 prn from module.core(core).decl.N: <unknown>
+import import.1 input from module.std.io(std.io).decl.N: fn (string) -> [..]u8
+import import.2 prn_text from module.core(core).decl.N: fn (string) -> void
+import import.3 prn_empty from module.core(core).decl.N: fn () -> void
 bind prn = import.0
 bind input = import.1
+bind prn_text = import.2
+bind prn_empty = import.3
 bind main = fn.0
 func fn.0() -> i32 {
   let text: string = string "hello"
@@ -46,12 +50,12 @@ func fn.0() -> i32 {
   let ell: string = string slice(string local.0(text), untyped integer 1, untyped integer 4)
   let tail: string = string slice(string local.0(text), untyped integer 2, <none>)
   let head: string = string slice(string local.0(text), <none>, untyped integer 2)
-  expr void call bind.0(prn)(string interpolate(<unknown> "whole = ", string local.2(whole)))
-  expr void call bind.0(prn)(string interpolate(<unknown> "ell = ", string local.3(ell)))
-  expr void call bind.0(prn)(string interpolate(<unknown> "tail = ", string local.4(tail)))
-  expr void call bind.0(prn)(string interpolate(<unknown> "head = ", string local.5(head)))
-  expr void call bind.0(prn)(string interpolate(<unknown> "count = ", usize field(string local.3(ell), count)))
-  expr void call bind.0(prn)(string interpolate(<unknown> "first byte = ", u8 index(^u8 field(string local.3(ell), data), untyped integer 0)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "whole = ", string local.2(whole)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "ell = ", string local.3(ell)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "tail = ", string local.4(tail)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "head = ", string local.5(head)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "count = ", usize field(string local.3(ell), count)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "first byte = ", u8 index(^u8 field(string local.3(ell), data), untyped integer 0)))
   let result: untyped integer = untyped integer on string local.3(ell) {
     value(string "ell") => {
       expr untyped integer 7
@@ -82,6 +86,7 @@ declare i64 @nrt_string_builder_mark()
 declare void @nrt_string_builder_append_string(ptr)
 declare void @nrt_string_builder_append_byte(i8)
 declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_string_builder_finish_in(ptr, i64, ptr)
 declare void @nrt_to_string_string(ptr, ptr)
 declare void @nrt_to_string_bool(ptr, i1)
 declare void @nrt_to_string_i8(ptr, i8)
@@ -97,8 +102,9 @@ declare void @nrt_to_string_usize(ptr, i64)
 declare void @nrt_to_string_f32(ptr, float)
 declare void @nrt_to_string_f64(ptr, double)
 
-declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
+declare void @$prn_text({ ptr, i64 })
+declare void @$prn_empty()
 
 define internal i32 @fn.0() {
   %t23 = alloca { ptr, i64 }
@@ -146,7 +152,7 @@ define internal i32 @fn.0() {
   %t26 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t26, i64 %t21)
   %t27 = load { ptr, i64 }, ptr %t26
-  call void @$prn({ ptr, i64 } %t27)
+  call void @$prn_text({ ptr, i64 } %t27)
   %t28 = call i64 @nrt_string_builder_mark()
   %t29 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.2, i64 6 }, ptr %t30
@@ -159,7 +165,7 @@ define internal i32 @fn.0() {
   %t33 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t33, i64 %t28)
   %t34 = load { ptr, i64 }, ptr %t33
-  call void @$prn({ ptr, i64 } %t34)
+  call void @$prn_text({ ptr, i64 } %t34)
   %t35 = call i64 @nrt_string_builder_mark()
   %t36 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.3, i64 7 }, ptr %t37
@@ -172,7 +178,7 @@ define internal i32 @fn.0() {
   %t40 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t40, i64 %t35)
   %t41 = load { ptr, i64 }, ptr %t40
-  call void @$prn({ ptr, i64 } %t41)
+  call void @$prn_text({ ptr, i64 } %t41)
   %t42 = call i64 @nrt_string_builder_mark()
   %t43 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.4, i64 7 }, ptr %t44
@@ -185,7 +191,7 @@ define internal i32 @fn.0() {
   %t47 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t47, i64 %t42)
   %t48 = load { ptr, i64 }, ptr %t47
-  call void @$prn({ ptr, i64 } %t48)
+  call void @$prn_text({ ptr, i64 } %t48)
   %t49 = call i64 @nrt_string_builder_mark()
   %t50 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.5, i64 8 }, ptr %t51
@@ -198,7 +204,7 @@ define internal i32 @fn.0() {
   %t54 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t54, i64 %t49)
   %t55 = load { ptr, i64 }, ptr %t54
-  call void @$prn({ ptr, i64 } %t55)
+  call void @$prn_text({ ptr, i64 } %t55)
   %t56 = call i64 @nrt_string_builder_mark()
   %t57 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.6, i64 13 }, ptr %t58
@@ -213,7 +219,7 @@ define internal i32 @fn.0() {
   %t63 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t63, i64 %t56)
   %t64 = load { ptr, i64 }, ptr %t63
-  call void @$prn({ ptr, i64 } %t64)
+  call void @$prn_text({ ptr, i64 } %t64)
   store { ptr, i64 } %t9, ptr %t65
   store { ptr, i64 } { ptr @.str.m0.7, i64 3 }, ptr %t66
   %t67 = call i1 @nrt_string_eq(ptr %t65, ptr %t66)
@@ -239,3 +245,5 @@ on.end.0:
 }
 
 @$main = hidden alias i32 (), ptr @fn.0
+
+declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

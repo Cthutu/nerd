@@ -88,9 +88,9 @@ matrix_draw :: fn (width: u32, height: u32) {
                       0,
                       width,
                       height,
-                      ' ',
-                      matrix_green_faint,
-                      rgb(0, 0, 0))
+                      ch = ' ',
+                      ink = matrix_green_faint,
+                      paper = rgb(0, 0, 0))
 
     for x: u32 = 0; x < width; x += 1 {
         column := columns[x.as(usize)]
@@ -102,13 +102,13 @@ matrix_draw :: fn (width: u32, height: u32) {
                 colour := matrix_trail_colour(distance, column.length)
                 glyph  := matrix_glyph(x, y.as(u32), frame + distance.as(u64))
 
-                term_fb_put(x.as(i32), y, glyph, colour, rgb(0, 0, 0))
+                term_fb_put(x.as(i32), y, glyph, ink = colour, paper = rgb(0, 0, 0))
             }
         }
     }
 
-    term_fb_text(2, 1, "MATRIX", matrix_green_bright, rgb(0, 0, 0))
-    term_fb_text(2, 2, "q / Esc exits", matrix_green_dim, rgb(0, 0, 0))
+    term_fb_text(2, 1, "MATRIX", ink = matrix_green_bright, paper = rgb(0, 0, 0))
+    term_fb_text(2, 2, "q / Esc exits", ink = matrix_green_dim, paper = rgb(0, 0, 0))
 }
 
 matrix_simulate :: fn (sim: TermSimulate) {

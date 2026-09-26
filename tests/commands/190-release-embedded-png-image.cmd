@@ -2,7 +2,7 @@ use std.image
 
 main :: fn () -> i32 {
     bytes := @embed("release-demo.png")
-    result := Image.load_bytes(bytes, 4)
+    result := Image.load_bytes(bytes, desired_channels = 4)
 
     on result => [image] {
         on image.width != 320 => return 1

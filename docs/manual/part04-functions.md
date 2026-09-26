@@ -83,9 +83,14 @@ add :: fn (left: i32, right: i32 = 1) -> i32 {
 }
 
 main :: fn () -> i32 {
-    return add(20)  -- same as add(20, 1)
+    return add(20)  -- same as add(20, right = 1)
 }
 ```
+
+When supplying a defaulted parameter, name it: `add(20, right = 2)`.
+`add(20, 2)` is an error. Named arguments use `=` and must appear in
+declaration order; they cannot skip an earlier parameter. Required parameters
+can still be supplied positionally.
 
 All parameters after the first defaulted parameter must also have defaults. A
 default expression is checked against the parameter type, and it can use

@@ -24,12 +24,16 @@ main :: fn () -> i32 {
 
 ¬
 hir 0
-module module.0(080-dynamic-slice-bounds.input)
-import module.1(std.io)
-import import.0 prn from module.3(core).decl.13: fn (string) -> void
-import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
+module module.080-dynamic-slice-bounds.input(080-dynamic-slice-bounds.input)
+import module.std.io(std.io)
+import import.0 prn from module.core(core).decl.N: <unknown>
+import import.1 input from module.std.io(std.io).decl.N: fn (string) -> [..]u8
+import import.2 prn_text from module.core(core).decl.N: fn (string) -> void
+import import.3 prn_empty from module.core(core).decl.N: fn () -> void
 bind prn = import.0
 bind input = import.1
+bind prn_text = import.2
+bind prn_empty = import.3
 bind main = fn.0
 func fn.0() -> i32 {
   let values: [5]i32 = [5]i32 array(i32 10, i32 20, i32 30, i32 40, i32 50)
@@ -38,9 +42,9 @@ func fn.0() -> i32 {
   let prefix: []i32 = []i32 slice([5]i32 local.1(values), <none>, usize local.0(end))
   let middle: []i32 = []i32 slice([5]i32 local.1(values), untyped integer 1, usize local.0(end))
   let nested: []i32 = []i32 slice([5]i32 local.1(values), <none>, usize subtract(usize field([]i32 local.2(all), count), usize 2))
-  expr void call bind.0(prn)(string interpolate([]i32 local.3(prefix)))
-  expr void call bind.0(prn)(string interpolate([]i32 local.4(middle)))
-  expr void call bind.0(prn)(string interpolate([]i32 local.5(nested)))
+  expr void call bind.2(prn_text)(string interpolate([]i32 local.3(prefix)))
+  expr void call bind.2(prn_text)(string interpolate([]i32 local.4(middle)))
+  expr void call bind.2(prn_text)(string interpolate([]i32 local.5(nested)))
   return i32 add(i32 add(i32 index([]i32 local.3(prefix), untyped integer 3), i32 index([]i32 local.4(middle), untyped integer 2)), i32 index([]i32 local.5(nested), untyped integer 2))
 }
 ¬
@@ -48,6 +52,7 @@ func fn.0() -> i32 {
 ; generated from HIR
 
 @.macro.file.m0 = private unnamed_addr constant [42 x i8] c"tests/language/080-dynamic-slice-bounds.t\00"
+@.slice.const.m0.5 = private unnamed_addr constant [5 x i32] [i32 10, i32 20, i32 30, i32 40, i32 50]
 
 declare i1 @nrt_string_eq(ptr, ptr)
 declare void @nrt_string_builder_reset()
@@ -55,6 +60,7 @@ declare i64 @nrt_string_builder_mark()
 declare void @nrt_string_builder_append_string(ptr)
 declare void @nrt_string_builder_append_byte(i8)
 declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_string_builder_finish_in(ptr, i64, ptr)
 declare void @nrt_to_string_string(ptr, ptr)
 declare void @nrt_to_string_bool(ptr, i1)
 declare void @nrt_to_string_i8(ptr, i8)
@@ -70,8 +76,9 @@ declare void @nrt_to_string_usize(ptr, i64)
 declare void @nrt_to_string_f32(ptr, float)
 declare void @nrt_to_string_f64(ptr, double)
 
-declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
+declare void @$prn_text({ ptr, i64 })
+declare void @$prn_empty()
 
 define internal i32 @fn.0() {
   %local.1 = alloca [5 x i32]
@@ -130,7 +137,7 @@ slice.string.end.4:
   %t33 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t33, i64 %t22)
   %t34 = load { ptr, i64 }, ptr %t33
-  call void @$prn({ ptr, i64 } %t34)
+  call void @$prn_text({ ptr, i64 } %t34)
   %t35 = call i64 @nrt_string_builder_mark()
   call void @nrt_string_builder_append_byte(i8 91)
   %t36 = extractvalue { ptr, i64 } %t16, 0
@@ -163,7 +170,7 @@ slice.string.end.9:
   %t46 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t46, i64 %t35)
   %t47 = load { ptr, i64 }, ptr %t46
-  call void @$prn({ ptr, i64 } %t47)
+  call void @$prn_text({ ptr, i64 } %t47)
   %t48 = call i64 @nrt_string_builder_mark()
   call void @nrt_string_builder_append_byte(i8 91)
   %t49 = extractvalue { ptr, i64 } %t21, 0
@@ -196,7 +203,7 @@ slice.string.end.14:
   %t59 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t59, i64 %t48)
   %t60 = load { ptr, i64 }, ptr %t59
-  call void @$prn({ ptr, i64 } %t60)
+  call void @$prn_text({ ptr, i64 } %t60)
   %t61 = extractvalue { ptr, i64 } %t12, 0
   %t62 = getelementptr inbounds i32, ptr %t61, i32 3
   %t63 = load i32, ptr %t62
@@ -212,3 +219,5 @@ slice.string.end.14:
 }
 
 @$main = hidden alias i32 (), ptr @fn.0
+
+declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

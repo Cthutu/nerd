@@ -1105,7 +1105,7 @@ test "jpeg parses baseline demo headers" {
 
 test "jpeg decodes baseline demo to rgba" {
     bytes := @embed("../../../examples/image_viewer/assets/demo.jpg")
-    result := Image.load_bytes(bytes, 4)
+    result := Image.load_bytes(bytes, desired_channels = 4)
 
     on result {
         image => {

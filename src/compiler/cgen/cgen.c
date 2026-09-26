@@ -1879,8 +1879,25 @@ internal CValue cgen_call(CGen* c, const HirExpr* e)
     }
     const HirFunction* function =
         direct ? &c->program->modules[fm].front_end.hir.functions[ff] : NULL;
-    const SemaType* ft           = cgen_type(c, fn.type);
-    bool            arena_format = false;
+    const SemaType* ft = cgen_type(c, fn.type);
+    // A mutable direct alias still carries declaration defaults. Recover only
+    // that metadata here; the call must continue through the function value.
+    if (function == NULL && e->arg_count < ft->param_count &&
+        callee->kind == HIR_EXPR_LocalRef &&
+        callee->ref_kind == HIR_REF_Local) {
+        const Hir* hir = cgen_hir(c);
+        for (u32 i = 0; i < array_count(hir->stmts); ++i) {
+            const HirStmt* stmt = &hir->stmts[i];
+            if (stmt->kind == HIR_STMT_Let &&
+                stmt->local_index == callee->ref_index &&
+                cgen_resolve(
+                    c, c->module, stmt->expr_index, U32_MAX, &fm, &ff, 0)) {
+                function = &c->program->modules[fm].front_end.hir.functions[ff];
+                break;
+            }
+        }
+    }
+    bool arena_format = false;
     if (function && ft->param_count == 2) {
         u32 pt = cgen_field_type(c, fn.type, 0);
         if (cgen_kind(c, pt) == STK_Pointer &&

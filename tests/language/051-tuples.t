@@ -31,12 +31,16 @@ nested tuple = ((7, seven), (8,), yes)
 
 ¬
 hir 0
-module module.0(051-tuples.input)
-import module.1(std.io)
-import import.0 prn from module.3(core).decl.13: fn (string) -> void
-import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
+module module.051-tuples.input(051-tuples.input)
+import module.std.io(std.io)
+import import.0 prn from module.core(core).decl.N: <unknown>
+import import.1 input from module.std.io(std.io).decl.N: fn (string) -> [..]u8
+import import.2 prn_text from module.core(core).decl.N: fn (string) -> void
+import import.3 prn_empty from module.core(core).decl.N: fn () -> void
 bind prn = import.0
 bind input = import.1
+bind prn_text = import.2
+bind prn_empty = import.3
 bind make_pair = fn.0
 bind main = fn.1
 func fn.0(a: i32, b: string) -> (i32, string) {
@@ -45,14 +49,14 @@ func fn.0(a: i32, b: string) -> (i32, string) {
 func fn.1() -> i32 {
   let pair: (i32, string) = (i32, string) tuple(untyped integer 7, string "seven")
   let single: (i32,) = (i32,) tuple(i32 add(i32 tuple_field((i32, string) local.2(pair), 0), i32 1))
-  let from_fn: (i32, string) = (i32, string) call bind.2(make_pair)(i32 3, string "three")
+  let from_fn: (i32, string) = (i32, string) call bind.4(make_pair)(i32 3, string "three")
   let nested: ((i32, string), (i32,), bool) = ((i32, string), (i32,), bool) tuple((i32, string) local.2(pair), (i32,) local.3(single), bool yes)
-  expr void call bind.0(prn)(string interpolate(<unknown> "pair = ", i32 tuple_field((i32, string) local.2(pair), 0), <unknown> ", ", string tuple_field((i32, string) local.2(pair), 1)))
-  expr void call bind.0(prn)(string interpolate(<unknown> "pair tuple = ", (i32, string) local.2(pair)))
-  expr void call bind.0(prn)(string interpolate(<unknown> "single = ", i32 tuple_field((i32,) local.3(single), 0)))
-  expr void call bind.0(prn)(string interpolate(<unknown> "single tuple = ", (i32,) local.3(single)))
-  expr void call bind.0(prn)(string interpolate(<unknown> "from_fn = ", i32 tuple_field((i32, string) local.4(from_fn), 0), <unknown> ", ", string tuple_field((i32, string) local.4(from_fn), 1)))
-  expr void call bind.0(prn)(string interpolate(<unknown> "nested tuple = ", ((i32, string), (i32,), bool) local.5(nested)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "pair = ", i32 tuple_field((i32, string) local.2(pair), 0), <unknown> ", ", string tuple_field((i32, string) local.2(pair), 1)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "pair tuple = ", (i32, string) local.2(pair)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "single = ", i32 tuple_field((i32,) local.3(single), 0)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "single tuple = ", (i32,) local.3(single)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "from_fn = ", i32 tuple_field((i32, string) local.4(from_fn), 0), <unknown> ", ", string tuple_field((i32, string) local.4(from_fn), 1)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "nested tuple = ", ((i32, string), (i32,), bool) local.5(nested)))
   return i32 add(i32 add(i32 tuple_field((i32, string) local.2(pair), 0), i32 tuple_field((i32,) local.3(single), 0)), i32 tuple_field((i32, string) local.4(from_fn), 0))
 }
 ¬
@@ -77,6 +81,7 @@ declare i64 @nrt_string_builder_mark()
 declare void @nrt_string_builder_append_string(ptr)
 declare void @nrt_string_builder_append_byte(i8)
 declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_string_builder_finish_in(ptr, i64, ptr)
 declare void @nrt_to_string_string(ptr, ptr)
 declare void @nrt_to_string_bool(ptr, i1)
 declare void @nrt_to_string_i8(ptr, i8)
@@ -92,8 +97,9 @@ declare void @nrt_to_string_usize(ptr, i64)
 declare void @nrt_to_string_f32(ptr, float)
 declare void @nrt_to_string_f64(ptr, double)
 
-declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
+declare void @$prn_text({ ptr, i64 })
+declare void @$prn_empty()
 
 define internal { i32, { ptr, i64 } } @fn.0(i32 %a, { ptr, i64 } %b) {
   %t0 = insertvalue { i32, { ptr, i64 } } poison, i32 %a, 0
@@ -144,7 +150,7 @@ define internal i32 @fn.1() {
   %t19 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t19, i64 %t9)
   %t20 = load { ptr, i64 }, ptr %t19
-  call void @$prn({ ptr, i64 } %t20)
+  call void @$prn_text({ ptr, i64 } %t20)
   %t21 = call i64 @nrt_string_builder_mark()
   %t22 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.4, i64 13 }, ptr %t23
@@ -166,7 +172,7 @@ define internal i32 @fn.1() {
   %t29 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t29, i64 %t21)
   %t30 = load { ptr, i64 }, ptr %t29
-  call void @$prn({ ptr, i64 } %t30)
+  call void @$prn_text({ ptr, i64 } %t30)
   %t31 = call i64 @nrt_string_builder_mark()
   %t32 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.5, i64 9 }, ptr %t33
@@ -179,7 +185,7 @@ define internal i32 @fn.1() {
   %t36 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t36, i64 %t31)
   %t37 = load { ptr, i64 }, ptr %t36
-  call void @$prn({ ptr, i64 } %t37)
+  call void @$prn_text({ ptr, i64 } %t37)
   %t38 = call i64 @nrt_string_builder_mark()
   %t39 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.6, i64 15 }, ptr %t40
@@ -195,7 +201,7 @@ define internal i32 @fn.1() {
   %t43 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t43, i64 %t38)
   %t44 = load { ptr, i64 }, ptr %t43
-  call void @$prn({ ptr, i64 } %t44)
+  call void @$prn_text({ ptr, i64 } %t44)
   %t45 = call i64 @nrt_string_builder_mark()
   %t46 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.7, i64 10 }, ptr %t47
@@ -217,7 +223,7 @@ define internal i32 @fn.1() {
   %t55 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t55, i64 %t45)
   %t56 = load { ptr, i64 }, ptr %t55
-  call void @$prn({ ptr, i64 } %t56)
+  call void @$prn_text({ ptr, i64 } %t56)
   %t57 = call i64 @nrt_string_builder_mark()
   %t58 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.9, i64 15 }, ptr %t59
@@ -258,7 +264,7 @@ define internal i32 @fn.1() {
   %t71 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t71, i64 %t57)
   %t72 = load { ptr, i64 }, ptr %t71
-  call void @$prn({ ptr, i64 } %t72)
+  call void @$prn_text({ ptr, i64 } %t72)
   %t73 = extractvalue { i32, { ptr, i64 } } %t1, 0
   %t74 = extractvalue { i32 } %t4, 0
   %t75 = add i32 %t73, %t74
@@ -269,3 +275,5 @@ define internal i32 @fn.1() {
 
 @$make_pair = internal alias { i32, { ptr, i64 } } (i32, { ptr, i64 }), ptr @fn.0
 @$main = hidden alias i32 (), ptr @fn.1
+
+declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

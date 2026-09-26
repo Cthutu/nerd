@@ -32,12 +32,16 @@ data first = 20
 
 ¬
 hir 0
-module module.0(054-slices.input)
-import module.1(std.io)
-import import.0 prn from module.3(core).decl.13: fn (string) -> void
-import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
+module module.054-slices.input(054-slices.input)
+import module.std.io(std.io)
+import import.0 prn from module.core(core).decl.N: <unknown>
+import import.1 input from module.std.io(std.io).decl.N: fn (string) -> [..]u8
+import import.2 prn_text from module.core(core).decl.N: fn (string) -> void
+import import.3 prn_empty from module.core(core).decl.N: fn () -> void
 bind prn = import.0
 bind input = import.1
+bind prn_text = import.2
+bind prn_empty = import.3
 bind main = fn.0
 func fn.0() -> i32 {
   let values: [5]i32 = [5]i32 array(i32 10, i32 20, i32 30, i32 40, i32 50)
@@ -47,13 +51,13 @@ func fn.0() -> i32 {
   let to_end: []i32 = []i32 slice([5]i32 local.0(values), untyped integer 2, <none>)
   let literal: []i32 = []i32 slice([3]i32 array(untyped integer 1, i32 2, i32 3), <none>, <none>)
   let reslice: []i32 = []i32 slice([]i32 local.1(all), untyped integer 1, untyped integer 3)
-  expr void call bind.0(prn)(string interpolate(<unknown> "all = ", []i32 local.1(all)))
-  expr void call bind.0(prn)(string interpolate(<unknown> "middle = ", []i32 local.2(middle)))
-  expr void call bind.0(prn)(string interpolate(<unknown> "from_start = ", []i32 local.3(from_start)))
-  expr void call bind.0(prn)(string interpolate(<unknown> "to_end = ", []i32 local.4(to_end)))
-  expr void call bind.0(prn)(string interpolate(<unknown> "literal = ", []i32 local.5(literal)))
-  expr void call bind.0(prn)(string interpolate(<unknown> "reslice count = ", usize field([]i32 local.6(reslice), count)))
-  expr void call bind.0(prn)(string interpolate(<unknown> "data first = ", i32 index(^i32 field([]i32 local.2(middle), data), untyped integer 0)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "all = ", []i32 local.1(all)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "middle = ", []i32 local.2(middle)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "from_start = ", []i32 local.3(from_start)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "to_end = ", []i32 local.4(to_end)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "literal = ", []i32 local.5(literal)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "reslice count = ", usize field([]i32 local.6(reslice), count)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "data first = ", i32 index(^i32 field([]i32 local.2(middle), data), untyped integer 0)))
   return i32 add(i32 add(i32 add(i32 index([]i32 local.2(middle), untyped integer 1), i32 index([]i32 local.3(from_start), untyped integer 2)), i32 index([]i32 local.4(to_end), untyped integer 0)), i32 index([]i32 local.5(literal), untyped integer 2))
 }
 ¬
@@ -68,6 +72,8 @@ func fn.0() -> i32 {
 @.str.m0.4 = private unnamed_addr constant [11 x i8] c"literal = \00"
 @.str.m0.5 = private unnamed_addr constant [17 x i8] c"reslice count = \00"
 @.str.m0.6 = private unnamed_addr constant [14 x i8] c"data first = \00"
+@.slice.const.m0.5 = private unnamed_addr constant [5 x i32] [i32 10, i32 20, i32 30, i32 40, i32 50]
+@.slice.const.m0.21 = private unnamed_addr constant [3 x i32] [i32 1, i32 2, i32 3]
 
 declare i1 @nrt_string_eq(ptr, ptr)
 declare void @nrt_string_builder_reset()
@@ -75,6 +81,7 @@ declare i64 @nrt_string_builder_mark()
 declare void @nrt_string_builder_append_string(ptr)
 declare void @nrt_string_builder_append_byte(i8)
 declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_string_builder_finish_in(ptr, i64, ptr)
 declare void @nrt_to_string_string(ptr, ptr)
 declare void @nrt_to_string_bool(ptr, i1)
 declare void @nrt_to_string_i8(ptr, i8)
@@ -90,8 +97,9 @@ declare void @nrt_to_string_usize(ptr, i64)
 declare void @nrt_to_string_f32(ptr, float)
 declare void @nrt_to_string_f64(ptr, double)
 
-declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
+declare void @$prn_text({ ptr, i64 })
+declare void @$prn_empty()
 
 define internal i32 @fn.0() {
   %local.0 = alloca [5 x i32]
@@ -169,7 +177,7 @@ slice.string.end.4:
   %t42 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t42, i64 %t29)
   %t43 = load { ptr, i64 }, ptr %t42
-  call void @$prn({ ptr, i64 } %t43)
+  call void @$prn_text({ ptr, i64 } %t43)
   %t44 = call i64 @nrt_string_builder_mark()
   %t45 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.1, i64 9 }, ptr %t46
@@ -206,7 +214,7 @@ slice.string.end.9:
   %t57 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t57, i64 %t44)
   %t58 = load { ptr, i64 }, ptr %t57
-  call void @$prn({ ptr, i64 } %t58)
+  call void @$prn_text({ ptr, i64 } %t58)
   %t59 = call i64 @nrt_string_builder_mark()
   %t60 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.2, i64 13 }, ptr %t61
@@ -243,7 +251,7 @@ slice.string.end.14:
   %t72 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t72, i64 %t59)
   %t73 = load { ptr, i64 }, ptr %t72
-  call void @$prn({ ptr, i64 } %t73)
+  call void @$prn_text({ ptr, i64 } %t73)
   %t74 = call i64 @nrt_string_builder_mark()
   %t75 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.3, i64 9 }, ptr %t76
@@ -280,7 +288,7 @@ slice.string.end.19:
   %t87 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t87, i64 %t74)
   %t88 = load { ptr, i64 }, ptr %t87
-  call void @$prn({ ptr, i64 } %t88)
+  call void @$prn_text({ ptr, i64 } %t88)
   %t89 = call i64 @nrt_string_builder_mark()
   %t90 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.4, i64 10 }, ptr %t91
@@ -317,7 +325,7 @@ slice.string.end.24:
   %t102 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t102, i64 %t89)
   %t103 = load { ptr, i64 }, ptr %t102
-  call void @$prn({ ptr, i64 } %t103)
+  call void @$prn_text({ ptr, i64 } %t103)
   %t104 = call i64 @nrt_string_builder_mark()
   %t105 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.5, i64 16 }, ptr %t106
@@ -330,7 +338,7 @@ slice.string.end.24:
   %t109 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t109, i64 %t104)
   %t110 = load { ptr, i64 }, ptr %t109
-  call void @$prn({ ptr, i64 } %t110)
+  call void @$prn_text({ ptr, i64 } %t110)
   %t111 = call i64 @nrt_string_builder_mark()
   %t112 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.6, i64 13 }, ptr %t113
@@ -345,7 +353,7 @@ slice.string.end.24:
   %t118 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t118, i64 %t111)
   %t119 = load { ptr, i64 }, ptr %t118
-  call void @$prn({ ptr, i64 } %t119)
+  call void @$prn_text({ ptr, i64 } %t119)
   %t120 = extractvalue { ptr, i64 } %t10, 0
   %t121 = getelementptr inbounds i32, ptr %t120, i32 1
   %t122 = load i32, ptr %t121
@@ -365,3 +373,5 @@ slice.string.end.24:
 }
 
 @$main = hidden alias i32 (), ptr @fn.0
+
+declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

@@ -2,7 +2,7 @@ use std.image
 
 main :: fn () {
     bytes: []u8 = nil
-    _result := Image.load_bytes(bytes, 4)
+    _result := Image.load_bytes(bytes, desired_channels = 4)
 }
 ¬
 [

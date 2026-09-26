@@ -2267,13 +2267,13 @@ test {
 
 test "OpenGL command loading fails atomically when an address is missing" {
     gl_reset_commands()
-    assert !gl_load_commands(gl_test_missing_proc)
+    assert !gl_load_commands(resolve = gl_test_missing_proc)
     assert !gl_commands_loaded
 }
 
 test "OpenGL command loading and reset need no window with an injected resolver" {
     gl_reset_commands()
-    assert gl_load_commands(gl_test_present_proc)
+    assert gl_load_commands(resolve = gl_test_present_proc)
     assert gl_commands_loaded
     gl_reset_commands()
     assert !gl_commands_loaded

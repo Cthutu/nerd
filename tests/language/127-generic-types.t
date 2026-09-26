@@ -29,9 +29,13 @@ generic 8
 
 ¬
 hir 0
-module module.0(127-generic-types.input)
-import import.0 prn from module.1(core).decl.13: fn (string) -> void
+module module.127-generic-types.input(127-generic-types.input)
+import import.0 prn from module.core(core).decl.N: <unknown>
+import import.1 prn_text from module.core(core).decl.N: fn (string) -> void
+import import.2 prn_empty from module.core(core).decl.N: fn () -> void
 bind prn = import.0
+bind prn_text = import.1
+bind prn_empty = import.2
 bind Box = type.0
 bind Cell = type.1
 bind Maybe = type.2
@@ -49,10 +53,10 @@ func fn.0() -> void {
   let m: enum { None, Some(i32) } = enum { None, Some(i32) } call Some(i32 field(union { i32 number, string text } local.1(c), number))
   expr void on enum { None, Some(i32) } local.2(m) {
     enum_variant(Some, as value) => {
-      expr void call bind.0(prn)(string interpolate(<unknown> "generic ", i32 local.3(value)))
+      expr void call bind.1(prn_text)(string interpolate(<unknown> "generic ", i32 local.3(value)))
     }
     value(enum { None, Some(i32) } None) => {
-      expr void call bind.0(prn)(string "none")
+      expr void call bind.1(prn_text)(string "none")
     }
   }
 }
@@ -70,6 +74,7 @@ declare i64 @nrt_string_builder_mark()
 declare void @nrt_string_builder_append_string(ptr)
 declare void @nrt_string_builder_append_byte(i8)
 declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_string_builder_finish_in(ptr, i64, ptr)
 declare void @nrt_to_string_string(ptr, ptr)
 declare void @nrt_to_string_bool(ptr, i1)
 declare void @nrt_to_string_i8(ptr, i8)
@@ -85,7 +90,8 @@ declare void @nrt_to_string_usize(ptr, i64)
 declare void @nrt_to_string_f32(ptr, float)
 declare void @nrt_to_string_f64(ptr, double)
 
-declare void @$prn({ ptr, i64 })
+declare void @$prn_text({ ptr, i64 })
+declare void @$prn_empty()
 
 define internal void @fn.0() {
   %local.0 = alloca { i32 }
@@ -125,7 +131,7 @@ on.body.1:
   %t19 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t19, i64 %t15)
   %t20 = load { ptr, i64 }, ptr %t19
-  call void @$prn({ ptr, i64 } %t20)
+  call void @$prn_text({ ptr, i64 } %t20)
   br label %on.end.0
 on.next.2:
   %t21 = insertvalue { i64, i32 } poison, i64 0, 0
@@ -135,7 +141,7 @@ on.next.2:
   %t25 = icmp eq i64 %t23, %t24
   br i1 %t25, label %on.body.3, label %on.end.0
 on.body.3:
-  call void @$prn({ ptr, i64 } { ptr @.str.m0.1, i64 4 })
+  call void @$prn_text({ ptr, i64 } { ptr @.str.m0.1, i64 4 })
   br label %on.end.0
 on.end.0:
   ret void

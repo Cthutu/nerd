@@ -423,7 +423,7 @@ internal void lsp_add_unused_use_diagnostics(Arena*             arena,
                                              JsonValue*         diagnostics)
 {
     if (diagnostics == NULL || diagnostics->kind != JSON_ARRAY ||
-        !doc->sema_partial) {
+        !doc->sema_complete) {
         return;
     }
 
@@ -598,6 +598,7 @@ internal bool lsp_stage_document(LspState*    state,
         .require_entry_point       = false,
         .skip_hir_generation       = true,
         .keep_partial_results      = true,
+        .keep_decl_error_results   = true,
         .keywords                  = state->keywords,
         .module_root_source_path   = {0},
         .module_source_loader      = lsp_load_open_module_source,

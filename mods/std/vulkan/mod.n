@@ -10,6 +10,87 @@ pub VK_API_VERSION_1_2 : u32 = (1 << 22) | (2 << 12) | 0
 pub VK_API_VERSION_1_3 : u32 = (1 << 22) | (3 << 12) | 0
 pub VK_API_VERSION_1_4 : u32 = (1 << 22) | (4 << 12) | 0
 
+-- Common Vulkan extension names and specification revisions. Source: Khronos
+-- Vulkan-Headers v1.4.357 registry/vk.xml. Names are null-terminated strings
+-- for ppEnabledExtensionNames. Declarations do not imply runtime availability;
+-- query support before enabling.
+
+-- Debugging and validation (instance extensions)
+pub VK_EXT_DEBUG_UTILS_SPEC_VERSION         : u32 : 2
+pub VK_EXT_DEBUG_REPORT_SPEC_VERSION        : u32 : 10
+pub VK_EXT_VALIDATION_FEATURES_SPEC_VERSION : u32 : 6
+pub VK_EXT_VALIDATION_FLAGS_SPEC_VERSION    : u32 : 3
+pub VK_EXT_LAYER_SETTINGS_SPEC_VERSION      : u32 : 2
+
+pub VK_EXT_DEBUG_UTILS_EXTENSION_NAME         :: c"VK_EXT_debug_utils"
+pub VK_EXT_DEBUG_REPORT_EXTENSION_NAME        :: c"VK_EXT_debug_report"
+pub VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME :: c"VK_EXT_validation_features"
+pub VK_EXT_VALIDATION_FLAGS_EXTENSION_NAME    :: c"VK_EXT_validation_flags"
+pub VK_EXT_LAYER_SETTINGS_EXTENSION_NAME      :: c"VK_EXT_layer_settings"
+
+-- Presentation (instance extensions)
+pub VK_EXT_SWAPCHAIN_COLOR_SPACE_SPEC_VERSION   : u32 : 5
+pub VK_EXT_HEADLESS_SURFACE_SPEC_VERSION        : u32 : 1
+pub VK_KHR_SURFACE_SPEC_VERSION                 : u32 : 25
+pub VK_KHR_XLIB_SURFACE_SPEC_VERSION            : u32 : 6
+pub VK_KHR_XCB_SURFACE_SPEC_VERSION             : u32 : 6
+pub VK_KHR_WAYLAND_SURFACE_SPEC_VERSION         : u32 : 6
+pub VK_KHR_WIN32_SURFACE_SPEC_VERSION           : u32 : 6
+pub VK_KHR_PORTABILITY_ENUMERATION_SPEC_VERSION : u32 : 1
+
+pub VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME   ::
+                                                     c"VK_EXT_swapchain_colorspace"
+pub VK_EXT_HEADLESS_SURFACE_EXTENSION_NAME        :: c"VK_EXT_headless_surface"
+pub VK_KHR_SURFACE_EXTENSION_NAME                 :: c"VK_KHR_surface"
+pub VK_KHR_XLIB_SURFACE_EXTENSION_NAME            :: c"VK_KHR_xlib_surface"
+pub VK_KHR_XCB_SURFACE_EXTENSION_NAME             :: c"VK_KHR_xcb_surface"
+pub VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME         :: c"VK_KHR_wayland_surface"
+pub VK_KHR_WIN32_SURFACE_EXTENSION_NAME           :: c"VK_KHR_win32_surface"
+pub VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME ::
+                                                     c"VK_KHR_portability_enumeration"
+
+-- Common device extensions
+pub VK_KHR_SWAPCHAIN_SPEC_VERSION              : u32 : 70
+pub VK_EXT_MEMORY_BUDGET_SPEC_VERSION          : u32 : 1
+pub VK_EXT_DESCRIPTOR_INDEXING_SPEC_VERSION    : u32 : 2
+pub VK_EXT_EXTENDED_DYNAMIC_STATE_SPEC_VERSION : u32 : 1
+
+pub VK_KHR_SWAPCHAIN_EXTENSION_NAME              :: c"VK_KHR_swapchain"
+pub VK_EXT_MEMORY_BUDGET_EXTENSION_NAME          :: c"VK_EXT_memory_budget"
+pub VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME    ::
+                                                    c"VK_EXT_descriptor_indexing"
+pub VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME ::
+                                                    c"VK_EXT_extended_dynamic_state"
+
+-- Common development layer names for ppEnabledLayerNames. These are Nerd
+-- convenience constants for the names published by Khronos and LunarG.
+pub VK_LAYER_KHRONOS_VALIDATION_LAYER_NAME :: c"VK_LAYER_KHRONOS_validation"
+pub VK_LAYER_KHRONOS_PROFILES_LAYER_NAME   :: c"VK_LAYER_KHRONOS_profiles"
+pub VK_LAYER_LUNARG_API_DUMP_LAYER_NAME    :: c"VK_LAYER_LUNARG_api_dump"
+pub VK_LAYER_LUNARG_MONITOR_LAYER_NAME     :: c"VK_LAYER_LUNARG_monitor"
+pub VK_LAYER_LUNARG_SCREENSHOT_LAYER_NAME  :: c"VK_LAYER_LUNARG_screenshot"
+
+-- Returns the instance extensions required by std.frame's window backend. The
+-- pointer list uses temp_arena and remains valid until it is reset or restored
+-- past this allocation. The names themselves are static C strings. Pass the
+-- result to vkCreateInstance before FrameSystem.loop() resets the arena.
+pub vk_get_extensions :: fn (debug: bool = no) -> []c_string {
+    count : usize = 2
+    on debug => count += 1
+    extensions := temp_arena.alloc_array[c_string](count)
+    extensions[0] = VK_KHR_SURFACE_EXTENSION_NAME
+    on "linux" {
+        extensions[1] = VK_KHR_XLIB_SURFACE_EXTENSION_NAME
+    }
+
+    on "windows" {
+        extensions[1] = VK_KHR_WIN32_SURFACE_EXTENSION_NAME
+    }
+
+    on debug => extensions[2] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME
+    return extensions
+}
+
 pub VkResult :: i32
 
 pub VK_SUCCESS                        : VkResult = 0
@@ -34,6 +115,54 @@ pub VK_ERROR_SURFACE_LOST_KHR         : VkResult = -1000000000
 pub VK_ERROR_NATIVE_WINDOW_IN_USE_KHR : VkResult = -1000000001
 pub VK_SUBOPTIMAL_KHR                 : VkResult = 1000001003
 pub VK_ERROR_OUT_OF_DATE_KHR          : VkResult = -1000001004
+
+-- Returns a human-readable description of a Vulkan result. Unknown results
+-- include their numeric code in temp_arena storage, valid until the arena is
+-- reset or restored past this allocation. Known descriptions are static
+-- strings.
+pub vk_result_to_string :: fn (result: VkResult) -> string {
+    return on result {
+        VK_SUCCESS                         => "Operation completed successfully"
+        VK_NOT_READY                       => "Operation has not completed yet"
+        VK_TIMEOUT                         => "Timed out waiting for the "
+            +"operation"
+        VK_EVENT_SET                       => "Event is signalled"
+        VK_EVENT_RESET                     => "Event is not signalled"
+        VK_INCOMPLETE                      => "Output array is too small for "
+            +"all results"
+        VK_ERROR_OUT_OF_HOST_MEMORY        => "Unable to allocate host memory"
+        VK_ERROR_OUT_OF_DEVICE_MEMORY      => "Unable to allocate device memory"
+        VK_ERROR_INITIALIZATION_FAILED     => "Vulkan object initialisation "
+            +"failed"
+        VK_ERROR_DEVICE_LOST               => "Connection to the Vulkan device "
+            +"was lost"
+        VK_ERROR_MEMORY_MAP_FAILED         => "Unable to map memory for host "
+            +"access"
+        VK_ERROR_LAYER_NOT_PRESENT         => "A requested layer is missing or "
+            +"could not be loaded"
+        VK_ERROR_EXTENSION_NOT_PRESENT     => "A requested extension is not "
+            +"supported"
+        VK_ERROR_FEATURE_NOT_PRESENT       => "A requested device feature is "
+            +"not supported"
+        VK_ERROR_INCOMPATIBLE_DRIVER       => "The driver is incompatible with "
+            +"the requested Vulkan configuration"
+        VK_ERROR_TOO_MANY_OBJECTS          => "The limit for objects of this "
+            +"type has been reached"
+        VK_ERROR_FORMAT_NOT_SUPPORTED      => "The device does not support the "
+            +"requested format"
+        VK_ERROR_FRAGMENTED_POOL           => "Memory pool fragmentation "
+            +"prevented allocation"
+        VK_ERROR_SURFACE_LOST_KHR          => "The presentation surface is no "
+            +"longer available"
+        VK_ERROR_NATIVE_WINDOW_IN_USE_KHR  => "The window is already in use by "
+            +"another surface or graphics API"
+        VK_SUBOPTIMAL_KHR                  => "The swapchain still works but "
+            +"no longer fully matches the surface"
+        VK_ERROR_OUT_OF_DATE_KHR           => "The surface has changed; "
+            +"recreate the swapchain"
+        else                               => temp_arena.pr(text = $"Unknown Vulkan result ({result})")
+    }
+}
 
 -- Vulkan structure that contains your application information.
 pub VkApplicationInfo :: plex #c {

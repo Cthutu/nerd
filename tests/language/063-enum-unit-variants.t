@@ -40,12 +40,16 @@ total 60
 
 ¬
 hir 0
-module module.0(063-enum-unit-variants.input)
-import module.1(std.io)
-import import.0 prn from module.3(core).decl.13: fn (string) -> void
-import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
+module module.063-enum-unit-variants.input(063-enum-unit-variants.input)
+import module.std.io(std.io)
+import import.0 prn from module.core(core).decl.N: <unknown>
+import import.1 input from module.std.io(std.io).decl.N: fn (string) -> [..]u8
+import import.2 prn_text from module.core(core).decl.N: fn (string) -> void
+import import.3 prn_empty from module.core(core).decl.N: fn () -> void
 bind prn = import.0
 bind input = import.1
+bind prn_text = import.2
+bind prn_empty = import.3
 bind Colour = type.0
 bind score = fn.0
 bind pick_shadowed = fn.1
@@ -72,12 +76,12 @@ func fn.1() -> Colour {
 func fn.2() -> i32 {
   let red: Colour = Colour Red
   let green: Colour = Colour Green
-  let blue: Colour = Colour field(Colour bind.2(Colour), Blue)
-  expr void call bind.0(prn)(string interpolate(<unknown> "red ", i32 call bind.3(score)(Colour local.3(red))))
-  expr void call bind.0(prn)(string interpolate(<unknown> "green ", i32 call bind.3(score)(Colour local.4(green))))
-  expr void call bind.0(prn)(string interpolate(<unknown> "blue ", i32 call bind.3(score)(Colour local.5(blue))))
-  expr void call bind.0(prn)(string interpolate(<unknown> "shadowed ", i32 call bind.3(score)(Colour call bind.4(pick_shadowed)())))
-  expr void call bind.0(prn)(string interpolate(<unknown> "total ", i32 add(i32 add(i32 call bind.3(score)(Colour local.3(red)), i32 call bind.3(score)(Colour local.4(green))), i32 call bind.3(score)(Colour local.5(blue)))))
+  let blue: Colour = Colour field(Colour bind.4(Colour), Blue)
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "red ", i32 call bind.5(score)(Colour local.3(red))))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "green ", i32 call bind.5(score)(Colour local.4(green))))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "blue ", i32 call bind.5(score)(Colour local.5(blue))))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "shadowed ", i32 call bind.5(score)(Colour call bind.6(pick_shadowed)())))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "total ", i32 add(i32 add(i32 call bind.5(score)(Colour local.3(red)), i32 call bind.5(score)(Colour local.4(green))), i32 call bind.5(score)(Colour local.5(blue)))))
   return i32 0
 }
 ¬
@@ -97,6 +101,7 @@ declare i64 @nrt_string_builder_mark()
 declare void @nrt_string_builder_append_string(ptr)
 declare void @nrt_string_builder_append_byte(i8)
 declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_string_builder_finish_in(ptr, i64, ptr)
 declare void @nrt_to_string_string(ptr, ptr)
 declare void @nrt_to_string_bool(ptr, i1)
 declare void @nrt_to_string_i8(ptr, i8)
@@ -112,8 +117,9 @@ declare void @nrt_to_string_usize(ptr, i64)
 declare void @nrt_to_string_f32(ptr, float)
 declare void @nrt_to_string_f64(ptr, double)
 
-declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
+declare void @$prn_text({ ptr, i64 })
+declare void @$prn_empty()
 
 define internal i32 @fn.0({ i64, i8 } %colour) {
   %t0 = insertvalue { i64, i8 } poison, i64 0, 0
@@ -199,7 +205,7 @@ define internal i32 @fn.2() {
   %t12 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t12, i64 %t6)
   %t13 = load { ptr, i64 }, ptr %t12
-  call void @$prn({ ptr, i64 } %t13)
+  call void @$prn_text({ ptr, i64 } %t13)
   %t14 = call i64 @nrt_string_builder_mark()
   %t15 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.1, i64 6 }, ptr %t16
@@ -213,7 +219,7 @@ define internal i32 @fn.2() {
   %t20 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t20, i64 %t14)
   %t21 = load { ptr, i64 }, ptr %t20
-  call void @$prn({ ptr, i64 } %t21)
+  call void @$prn_text({ ptr, i64 } %t21)
   %t22 = call i64 @nrt_string_builder_mark()
   %t23 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.2, i64 5 }, ptr %t24
@@ -227,7 +233,7 @@ define internal i32 @fn.2() {
   %t28 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t28, i64 %t22)
   %t29 = load { ptr, i64 }, ptr %t28
-  call void @$prn({ ptr, i64 } %t29)
+  call void @$prn_text({ ptr, i64 } %t29)
   %t30 = call i64 @nrt_string_builder_mark()
   %t31 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.3, i64 9 }, ptr %t32
@@ -241,7 +247,7 @@ define internal i32 @fn.2() {
   %t36 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t36, i64 %t30)
   %t37 = load { ptr, i64 }, ptr %t36
-  call void @$prn({ ptr, i64 } %t37)
+  call void @$prn_text({ ptr, i64 } %t37)
   %t38 = call i64 @nrt_string_builder_mark()
   %t39 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.4, i64 6 }, ptr %t40
@@ -261,7 +267,7 @@ define internal i32 @fn.2() {
   %t50 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t50, i64 %t38)
   %t51 = load { ptr, i64 }, ptr %t50
-  call void @$prn({ ptr, i64 } %t51)
+  call void @$prn_text({ ptr, i64 } %t51)
   ret i32 0
 }
 

@@ -6,6 +6,6 @@ present :: fn (value: ?u32) {
 }
 main :: fn () {
     absent()
-    absent(nil)
+    absent(value = nil)
     present(7)
 }

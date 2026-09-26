@@ -59,8 +59,8 @@ impl Image {
     pub load_bytes :: fn (bytes            : []u8,
                           desired_channels : i32 = 0) -> Self\ImageError {
         return on image_format(bytes) {
-            PNG   => png_decode(bytes, desired_channels)
-            JPEG  => jpeg_decode(bytes, desired_channels)
+            PNG   => png_decode(bytes, desired_channels = desired_channels)
+            JPEG  => jpeg_decode(bytes, desired_channels = desired_channels)
             else  => UnsupportedFormat!
         }
     }

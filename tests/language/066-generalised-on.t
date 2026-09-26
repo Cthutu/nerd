@@ -41,12 +41,16 @@ not-five 1 0
 
 ¬
 hir 0
-module module.0(066-generalised-on.input)
-import module.1(std.io)
-import import.0 prn from module.3(core).decl.13: fn (string) -> void
-import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
+module module.066-generalised-on.input(066-generalised-on.input)
+import module.std.io(std.io)
+import import.0 prn from module.core(core).decl.N: <unknown>
+import import.1 input from module.std.io(std.io).decl.N: fn (string) -> [..]u8
+import import.2 prn_text from module.core(core).decl.N: fn (string) -> void
+import import.3 prn_empty from module.core(core).decl.N: fn () -> void
 bind prn = import.0
 bind input = import.1
+bind prn_text = import.2
+bind prn_empty = import.3
 bind score = fn.0
 bind describe = fn.1
 bind not_five = fn.2
@@ -97,10 +101,10 @@ func fn.2(value: i32) -> i32 {
   }
 }
 func fn.3() -> i32 {
-  expr void call bind.0(prn)(string interpolate(<unknown> "scores ", i32 call bind.2(score)(i32 negate(i32 2)), <unknown> " ", i32 call bind.2(score)(i32 0), <unknown> " ", i32 call bind.2(score)(i32 2), <unknown> " ", i32 call bind.2(score)(i32 7), <unknown> " ", i32 call bind.2(score)(i32 12)))
-  expr void call bind.0(prn)(string interpolate(<unknown> "descriptions ", string call bind.3(describe)(i32 negate(i32 2)), <unknown> " ", string call bind.3(describe)(i32 0), <unknown> " ", string call bind.3(describe)(i32 7), <unknown> " ", string call bind.3(describe)(i32 12)))
-  expr void call bind.0(prn)(string interpolate(<unknown> "not-five ", i32 call bind.4(not_five)(i32 4), <unknown> " ", i32 call bind.4(not_five)(i32 5)))
-  return i32 call bind.2(score)(i32 12)
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "scores ", i32 call bind.4(score)(i32 negate(i32 2)), <unknown> " ", i32 call bind.4(score)(i32 0), <unknown> " ", i32 call bind.4(score)(i32 2), <unknown> " ", i32 call bind.4(score)(i32 7), <unknown> " ", i32 call bind.4(score)(i32 12)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "descriptions ", string call bind.5(describe)(i32 negate(i32 2)), <unknown> " ", string call bind.5(describe)(i32 0), <unknown> " ", string call bind.5(describe)(i32 7), <unknown> " ", string call bind.5(describe)(i32 12)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "not-five ", i32 call bind.6(not_five)(i32 4), <unknown> " ", i32 call bind.6(not_five)(i32 5)))
+  return i32 call bind.4(score)(i32 12)
 }
 ¬
 ; nerd llvm-ir 0
@@ -129,6 +133,7 @@ declare i64 @nrt_string_builder_mark()
 declare void @nrt_string_builder_append_string(ptr)
 declare void @nrt_string_builder_append_byte(i8)
 declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_string_builder_finish_in(ptr, i64, ptr)
 declare void @nrt_to_string_string(ptr, ptr)
 declare void @nrt_to_string_bool(ptr, i1)
 declare void @nrt_to_string_i8(ptr, i8)
@@ -144,8 +149,9 @@ declare void @nrt_to_string_usize(ptr, i64)
 declare void @nrt_to_string_f32(ptr, float)
 declare void @nrt_to_string_f64(ptr, double)
 
-declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
+declare void @$prn_text({ ptr, i64 })
+declare void @$prn_empty()
 
 define internal i32 @fn.0(i32 %value) {
   %t0 = icmp slt i32 %value, 0
@@ -300,7 +306,7 @@ define internal i32 @fn.3() {
   %t22 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t22, i64 %t0)
   %t23 = load { ptr, i64 }, ptr %t22
-  call void @$prn({ ptr, i64 } %t23)
+  call void @$prn_text({ ptr, i64 } %t23)
   %t24 = call i64 @nrt_string_builder_mark()
   %t25 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.9, i64 13 }, ptr %t26
@@ -342,7 +348,7 @@ define internal i32 @fn.3() {
   %t46 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t46, i64 %t24)
   %t47 = load { ptr, i64 }, ptr %t46
-  call void @$prn({ ptr, i64 } %t47)
+  call void @$prn_text({ ptr, i64 } %t47)
   %t48 = call i64 @nrt_string_builder_mark()
   %t49 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.13, i64 9 }, ptr %t50
@@ -363,7 +369,7 @@ define internal i32 @fn.3() {
   %t57 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t57, i64 %t48)
   %t58 = load { ptr, i64 }, ptr %t57
-  call void @$prn({ ptr, i64 } %t58)
+  call void @$prn_text({ ptr, i64 } %t58)
   %t59 = call i32 @fn.0(i32 12)
   ret i32 %t59
 }
@@ -372,3 +378,5 @@ define internal i32 @fn.3() {
 @$describe = internal alias { ptr, i64 } (i32), ptr @fn.1
 @$not_five = internal alias i32 (i32), ptr @fn.2
 @$main = hidden alias i32 (), ptr @fn.3
+
+declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

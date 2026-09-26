@@ -75,12 +75,16 @@ look north
 
 ¬
 hir 0
-module module.0(099-dynamic-arrays.input)
-import module.1(std.io)
-import import.0 prn from module.3(core).decl.13: fn (string) -> void
-import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
+module module.099-dynamic-arrays.input(099-dynamic-arrays.input)
+import module.std.io(std.io)
+import import.0 prn from module.core(core).decl.N: <unknown>
+import import.1 input from module.std.io(std.io).decl.N: fn (string) -> [..]u8
+import import.2 prn_text from module.core(core).decl.N: fn (string) -> void
+import import.3 prn_empty from module.core(core).decl.N: fn () -> void
 bind prn = import.0
 bind input = import.1
+bind prn_text = import.2
+bind prn_empty = import.3
 bind make_words = fn.0
 bind main = fn.1
 func fn.0() -> [..]string {
@@ -150,20 +154,20 @@ func fn.1() -> i32 {
       return i32 10
     }
   }
-  expr void call bind.0(prn)(string interpolate(string index([]string local.5(view), untyped integer 0), <unknown> " ", string index([]string local.5(view), untyped integer 1), <unknown> " ", string index([]string local.5(view), untyped integer 2), <unknown> " ", string index([]string local.5(view), untyped integer 3), <unknown> " ", string index([]string local.5(view), untyped integer 4)))
+  expr void call bind.2(prn_text)(string interpolate(string index([]string local.5(view), untyped integer 0), <unknown> " ", string index([]string local.5(view), untyped integer 1), <unknown> " ", string index([]string local.5(view), untyped integer 2), <unknown> " ", string index([]string local.5(view), untyped integer 3), <unknown> " ", string index([]string local.5(view), untyped integer 4)))
   expr void call fn (usize) -> void field([..]string local.3(names), reserve_to)(usize 10)
   expr void on bool less(usize field([..]string local.3(names), capacity), usize 10) {
     value(bool yes) => {
       return i32 11
     }
   }
-  let words: [..]string = [..]string call bind.2(make_words)()
+  let words: [..]string = [..]string call bind.4(make_words)()
   expr void on bool not_equal(usize field([..]string local.6(words), count), usize 2) {
     value(bool yes) => {
       return i32 12
     }
   }
-  expr void call bind.0(prn)(string interpolate(string index([..]string local.6(words), untyped integer 0), <unknown> " ", string index([..]string local.6(words), untyped integer 1)))
+  expr void call bind.2(prn_text)(string interpolate(string index([..]string local.6(words), untyped integer 0), <unknown> " ", string index([..]string local.6(words), untyped integer 1)))
   expr void call fn () -> void field([..]string local.6(words), free)()
   expr <unknown> default
   let nums: [..]i32 = <unknown> default
@@ -238,7 +242,7 @@ func fn.1() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [61 x i8] c"C:\5CUsers\5Cmatt\5Cnerd\5Ctests\5Clanguage\5C\30\39\39-dynamic-arrays.input.n\00"
+@.macro.file.m0 = private unnamed_addr constant [36 x i8] c"tests/language/099-dynamic-arrays.t\00"
 @.str.m0.0 = private unnamed_addr constant [5 x i8] c"look\00"
 @.str.m0.1 = private unnamed_addr constant [6 x i8] c"north\00"
 @.str.m0.2 = private unnamed_addr constant [6 x i8] c"north\00"
@@ -260,6 +264,7 @@ declare i64 @nrt_string_builder_mark()
 declare void @nrt_string_builder_append_string(ptr)
 declare void @nrt_string_builder_append_byte(i8)
 declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_string_builder_finish_in(ptr, i64, ptr)
 declare void @nrt_to_string_string(ptr, ptr)
 declare void @nrt_to_string_bool(ptr, i1)
 declare void @nrt_to_string_i8(ptr, i8)
@@ -279,8 +284,9 @@ declare ptr @nrt_mem_realloc(ptr, i64, i64, ptr, i32)
 declare void @nrt_mem_free(ptr)
 declare i64 @nrt_mem_size(ptr)
 
-declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
+declare void @$prn_text({ ptr, i64 })
+declare void @$prn_empty()
 
 define internal ptr @fn.0() {
   %local.0 = alloca ptr
@@ -851,7 +857,7 @@ on.end.57:
   %t246 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t246, i64 %t212)
   %t247 = load { ptr, i64 }, ptr %t246
-  call void @$prn({ ptr, i64 } %t247)
+  call void @$prn_text({ ptr, i64 } %t247)
   %t248 = load ptr, ptr %local.3
   %t249 = icmp eq ptr %t248, null
   br i1 %t249, label %dynarray.alloc.59, label %dynarray.ready.60
@@ -956,7 +962,7 @@ on.end.71:
   %t305 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t305, i64 %t286)
   %t306 = load { ptr, i64 }, ptr %t305
-  call void @$prn({ ptr, i64 } %t306)
+  call void @$prn_text({ ptr, i64 } %t306)
   %t307 = load ptr, ptr %local.6
   %t308 = icmp eq ptr %t307, null
   br i1 %t308, label %dynarray.free.done.74, label %dynarray.free.73

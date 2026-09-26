@@ -26,12 +26,16 @@ missing = 42
 
 ¬
 hir 0
-module module.0(050-for-else.input)
-import module.1(std.io)
-import import.0 prn from module.3(core).decl.13: fn (string) -> void
-import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
+module module.050-for-else.input(050-for-else.input)
+import module.std.io(std.io)
+import import.0 prn from module.core(core).decl.N: <unknown>
+import import.1 input from module.std.io(std.io).decl.N: fn (string) -> [..]u8
+import import.2 prn_text from module.core(core).decl.N: fn (string) -> void
+import import.3 prn_empty from module.core(core).decl.N: fn () -> void
 bind prn = import.0
 bind input = import.1
+bind prn_text = import.2
+bind prn_empty = import.3
 bind main = fn.0
 func fn.0() -> i32 {
   let total: i32 = untyped integer 0
@@ -66,8 +70,8 @@ func fn.0() -> i32 {
       break i32 42
     }
   }
-  expr void call bind.0(prn)(string interpolate(<unknown> "found = ", i32 local.0(found)))
-  expr void call bind.0(prn)(string interpolate(<unknown> "missing = ", i32 local.1(missing)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "found = ", i32 local.0(found)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "missing = ", i32 local.1(missing)))
   return i32 add(i32 local.0(found), i32 local.1(missing))
 }
 ¬
@@ -84,6 +88,7 @@ declare i64 @nrt_string_builder_mark()
 declare void @nrt_string_builder_append_string(ptr)
 declare void @nrt_string_builder_append_byte(i8)
 declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_string_builder_finish_in(ptr, i64, ptr)
 declare void @nrt_to_string_string(ptr, ptr)
 declare void @nrt_to_string_bool(ptr, i1)
 declare void @nrt_to_string_i8(ptr, i8)
@@ -99,8 +104,9 @@ declare void @nrt_to_string_usize(ptr, i64)
 declare void @nrt_to_string_f32(ptr, float)
 declare void @nrt_to_string_f64(ptr, double)
 
-declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
+declare void @$prn_text({ ptr, i64 })
+declare void @$prn_empty()
 
 define internal i32 @fn.0() {
   %local.2 = alloca i32
@@ -164,7 +170,7 @@ for.end.9:
   %t19 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t19, i64 %t15)
   %t20 = load { ptr, i64 }, ptr %t19
-  call void @$prn({ ptr, i64 } %t20)
+  call void @$prn_text({ ptr, i64 } %t20)
   %t21 = call i64 @nrt_string_builder_mark()
   %t22 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.1, i64 10 }, ptr %t23
@@ -176,9 +182,11 @@ for.end.9:
   %t25 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t25, i64 %t21)
   %t26 = load { ptr, i64 }, ptr %t25
-  call void @$prn({ ptr, i64 } %t26)
+  call void @$prn_text({ ptr, i64 } %t26)
   %t27 = add i32 %t9, %t14
   ret i32 %t27
 }
 
 @$main = hidden alias i32 (), ptr @fn.0
+
+declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

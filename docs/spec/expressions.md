@@ -80,8 +80,15 @@ tuple-field ::= expression '.' INT
 cast        ::= expression '.as' '(' type [ ',' expression ] ')'
 ```
 
-Named call arguments are parser-supported and checked against the resolved
-function signature. Tuple fields use integer selectors. Generic functions and
+Named call arguments are checked against the resolved function signature in
+declaration order. Explicit arguments for parameters with defaults must use
+`name = expression`; positional overrides are errors. Omitted trailing arguments
+still use their defaults. This rule applies whenever the compiler knows the
+declaration, including direct aliases, methods, and generic calls. Defaults do
+not belong to arbitrary function types, so calls through values without a known
+declaration use the full positional signature.
+
+Tuple fields use integer selectors. Generic functions and
 methods can provide explicit type arguments before the call parentheses, as in
 `id[i32](value)` or `arena.alloc[i32]()`.
 

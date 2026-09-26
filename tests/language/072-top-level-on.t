@@ -31,12 +31,16 @@ fallback=9
 
 ¬
 hir 0
-module module.0(072-top-level-on.input)
-import module.1(std.io)
-import import.0 prn from module.3(core).decl.13: fn (string) -> void
-import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
+module module.072-top-level-on.input(072-top-level-on.input)
+import module.std.io(std.io)
+import import.0 prn from module.core(core).decl.N: <unknown>
+import import.1 input from module.std.io(std.io).decl.N: fn (string) -> [..]u8
+import import.2 prn_text from module.core(core).decl.N: fn (string) -> void
+import import.3 prn_empty from module.core(core).decl.N: fn () -> void
 bind prn = import.0
 bind input = import.1
+bind prn_text = import.2
+bind prn_empty = import.3
 bind answer = value.0
 bind mode_answer = value.1
 bind arch_answer = value.2
@@ -47,10 +51,10 @@ const value.1: untyped integer = untyped integer 11
 const value.2: untyped integer = untyped integer 13
 const value.3: untyped integer = untyped integer 9
 func fn.0() -> void {
-  expr void call bind.0(prn)(string interpolate(<unknown> "answer=", untyped integer bind.2(answer)))
-  expr void call bind.0(prn)(string interpolate(<unknown> "mode=", untyped integer bind.3(mode_answer)))
-  expr void call bind.0(prn)(string interpolate(<unknown> "arch=", untyped integer bind.4(arch_answer)))
-  expr void call bind.0(prn)(string interpolate(<unknown> "fallback=", untyped integer bind.5(fallback)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "answer=", untyped integer bind.4(answer)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "mode=", untyped integer bind.5(mode_answer)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "arch=", untyped integer bind.6(arch_answer)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "fallback=", untyped integer bind.7(fallback)))
 }
 ¬
 ; nerd llvm-ir 0
@@ -72,6 +76,7 @@ declare i64 @nrt_string_builder_mark()
 declare void @nrt_string_builder_append_string(ptr)
 declare void @nrt_string_builder_append_byte(i8)
 declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_string_builder_finish_in(ptr, i64, ptr)
 declare void @nrt_to_string_string(ptr, ptr)
 declare void @nrt_to_string_bool(ptr, i1)
 declare void @nrt_to_string_i8(ptr, i8)
@@ -87,8 +92,9 @@ declare void @nrt_to_string_usize(ptr, i64)
 declare void @nrt_to_string_f32(ptr, float)
 declare void @nrt_to_string_f64(ptr, double)
 
-declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
+declare void @$prn_text({ ptr, i64 })
+declare void @$prn_empty()
 
 define internal void @fn.0() {
   %t2 = alloca { ptr, i64 }
@@ -106,7 +112,7 @@ define internal void @fn.0() {
   %t4 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t4, i64 %t0)
   %t5 = load { ptr, i64 }, ptr %t4
-  call void @$prn({ ptr, i64 } %t5)
+  call void @$prn_text({ ptr, i64 } %t5)
   %t6 = call i64 @nrt_string_builder_mark()
   %t7 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.5, i64 5 }, ptr %t8
@@ -118,7 +124,7 @@ define internal void @fn.0() {
   %t10 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t10, i64 %t6)
   %t11 = load { ptr, i64 }, ptr %t10
-  call void @$prn({ ptr, i64 } %t11)
+  call void @$prn_text({ ptr, i64 } %t11)
   %t12 = call i64 @nrt_string_builder_mark()
   %t13 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.6, i64 5 }, ptr %t14
@@ -130,7 +136,7 @@ define internal void @fn.0() {
   %t16 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t16, i64 %t12)
   %t17 = load { ptr, i64 }, ptr %t16
-  call void @$prn({ ptr, i64 } %t17)
+  call void @$prn_text({ ptr, i64 } %t17)
   %t18 = call i64 @nrt_string_builder_mark()
   %t19 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.7, i64 9 }, ptr %t20
@@ -142,8 +148,10 @@ define internal void @fn.0() {
   %t22 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t22, i64 %t18)
   %t23 = load { ptr, i64 }, ptr %t22
-  call void @$prn({ ptr, i64 } %t23)
+  call void @$prn_text({ ptr, i64 } %t23)
   ret void
 }
 
 @$main = hidden alias void (), ptr @fn.0
+
+declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

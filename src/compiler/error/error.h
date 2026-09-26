@@ -387,6 +387,9 @@ bool error_0340_named_argument_position(NerdSource source,
                                         ErrorSpan  span,
                                         string     expected,
                                         string     found);
+bool error_0367_default_argument_requires_name(NerdSource source,
+                                               ErrorSpan  span,
+                                               string     parameter);
 bool error_0341_private_type_in_public_field(NerdSource source,
                                              ErrorSpan  span,
                                              string     public_type,

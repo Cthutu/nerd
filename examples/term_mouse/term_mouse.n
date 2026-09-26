@@ -48,67 +48,67 @@ mouse_present :: fn (present: TermPresent) {
                       0,
                       present.width,
                       present.height,
-                      ' ',
-                      rgb(220, 230, 245),
-                      rgb(10, 16, 24))
+                      ch = ' ',
+                      ink = rgb(220, 230, 245),
+                      paper = rgb(10, 16, 24))
     term_fb_box(0,
                 0,
                 present.width,
                 present.height,
-                BoxStyle.Rounded,
-                rgb(110, 190, 255),
-                rgb(10, 16, 24))
+                style = BoxStyle.Rounded,
+                ink = rgb(110, 190, 255),
+                paper = rgb(10, 16, 24))
 
-    term_fb_text(2, 1, "std.term mouse", rgb(255, 245, 180), rgb(10, 16, 24))
+    term_fb_text(2, 1, "std.term mouse", ink = rgb(255, 245, 180), paper = rgb(10, 16, 24))
     term_fb_text(2,
                  3,
                  $"cell {mouse.x}, {mouse.y}",
-                 rgb(220, 230, 245),
-                 rgb(10, 16, 24))
+                 ink = rgb(220, 230, 245),
+                 paper = rgb(10, 16, 24))
     term_fb_text(2,
                  4,
                  $"movement {move_count}  previous {last_x}, {last_y}",
-                 rgb(220, 230, 245),
-                 rgb(10, 16, 24))
+                 ink = rgb(220, 230, 245),
+                 paper = rgb(10, 16, 24))
     term_fb_text(2,
                  5,
                  $"buttons {mouse.buttons}  pressed {mouse.pressed}  released {mouse.released}",
-                 rgb(190, 225, 205),
-                 rgb(10, 16, 24))
+                 ink = rgb(190, 225, 205),
+                 paper = rgb(10, 16, 24))
     term_fb_text(2,
                  6,
                  $"clicks {click_count}  releases {release_count}",
-                 rgb(190, 225, 205),
-                 rgb(10, 16, 24))
+                 ink = rgb(190, 225, 205),
+                 paper = rgb(10, 16, 24))
     term_fb_text(2,
                  7,
                  $"wheel x {wheel_x}  y {wheel_y}",
-                 rgb(235, 200, 255),
-                 rgb(10, 16, 24))
+                 ink = rgb(235, 200, 255),
+                 paper = rgb(10, 16, 24))
     term_fb_text(2,
                  present.height.as(i32) - 2,
                  "q / Esc exits",
-                 rgb(150, 170, 190),
-                 rgb(10, 16, 24))
+                 ink = rgb(150, 170, 190),
+                 paper = rgb(10, 16, 24))
 
     on (mouse.x != last_x || mouse.y != last_y) &&
         last_x >= 0 &&
         last_y >= 0 &&
         last_x < present.width.as(i32) &&
         last_y < present.height.as(i32) => {
-        term_fb_put(last_x, last_y, '.', rgb(110, 190, 255), rgb(10, 16, 24))
+        term_fb_put(last_x, last_y, '.', ink = rgb(110, 190, 255), paper = rgb(10, 16, 24))
     }
 
     on mouse.x >= 0 &&
         mouse.y >= 0 &&
         mouse.x < present.width.as(i32) &&
         mouse.y < present.height.as(i32) => {
-        term_fb_put(mouse.x, mouse.y, '+', rgb(10, 16, 24), rgb(255, 245, 180))
+        term_fb_put(mouse.x, mouse.y, '+', ink = rgb(10, 16, 24), paper = rgb(255, 245, 180))
     }
 }
 
 main :: fn () {
-    term_init(54, 13)
+    term_init(min_width = 54, min_height = 13)
     term_cursor_enable(no)
     defer term_cursor_enable(yes)
 

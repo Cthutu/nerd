@@ -12,19 +12,23 @@ hello world
 
 ¬
 hir 0
-module module.0(102-io-input-lines.input)
-import module.1(std.io)
-import import.0 prn from module.3(core).decl.13: fn (string) -> void
-import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
+module module.102-io-input-lines.input(102-io-input-lines.input)
+import module.std.io(std.io)
+import import.0 prn from module.core(core).decl.N: <unknown>
+import import.1 input from module.std.io(std.io).decl.N: fn (string) -> [..]u8
+import import.2 prn_text from module.core(core).decl.N: fn (string) -> void
+import import.3 prn_empty from module.core(core).decl.N: fn () -> void
 bind prn = import.0
 bind input = import.1
+bind prn_text = import.2
+bind prn_empty = import.3
 bind main = fn.0
 func fn.0() -> void {
   let line: [..]u8 = [..]u8 call bind.1(input)(string "")
   defer {
     expr void call fn () -> void field([..]u8 local.0(line), free)()
   }
-  expr void call bind.0(prn)(string cast([..]u8 local.0(line) as string))
+  expr void call bind.2(prn_text)(string cast([..]u8 local.0(line) as string))
 }
 ¬
 ; nerd llvm-ir 0
@@ -36,9 +40,11 @@ func fn.0() -> void {
 declare ptr @nrt_mem_alloc(i64, i64, ptr, i32)
 declare ptr @nrt_mem_realloc(ptr, i64, i64, ptr, i32)
 declare void @nrt_mem_free(ptr)
+declare i64 @nrt_mem_size(ptr)
 
-declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
+declare void @$prn_text({ ptr, i64 })
+declare void @$prn_empty()
 
 define internal void @fn.0() {
   %local.0 = alloca ptr
@@ -64,7 +70,7 @@ dynarray.string.load.1:
   br label %dynarray.string.done.2
 dynarray.string.done.2:
   %t12 = load { ptr, i64 }, ptr %t2
-  call void @$prn({ ptr, i64 } %t12)
+  call void @$prn_text({ ptr, i64 } %t12)
   %t13 = load ptr, ptr %local.0
   %t14 = icmp eq ptr %t13, null
   br i1 %t14, label %dynarray.free.done.4, label %dynarray.free.3
@@ -78,5 +84,7 @@ dynarray.free.done.4:
 }
 
 @$main = hidden alias void (), ptr @fn.0
+
+declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)
 ¬
 hello world

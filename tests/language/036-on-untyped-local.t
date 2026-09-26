@@ -16,16 +16,20 @@ non-zero: 2
 
 ¬
 hir 0
-module module.0(036-on-untyped-local.input)
-import module.1(std.io)
-import import.0 prn from module.3(core).decl.13: fn (string) -> void
-import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
+module module.036-on-untyped-local.input(036-on-untyped-local.input)
+import module.std.io(std.io)
+import import.0 prn from module.core(core).decl.N: <unknown>
+import import.1 input from module.std.io(std.io).decl.N: fn (string) -> [..]u8
+import import.2 prn_text from module.core(core).decl.N: fn (string) -> void
+import import.3 prn_empty from module.core(core).decl.N: fn () -> void
 bind prn = import.0
 bind input = import.1
+bind prn_text = import.2
+bind prn_empty = import.3
 bind main = fn.0
 func fn.0() -> void {
   let i: untyped integer = untyped integer 2
-  expr void call bind.0(prn)(string on i32 local.0(i) {
+  expr void call bind.2(prn_text)(string on i32 local.0(i) {
     value(i32 0) => {
       expr string "zero"
     }
@@ -48,6 +52,7 @@ declare i64 @nrt_string_builder_mark()
 declare void @nrt_string_builder_append_string(ptr)
 declare void @nrt_string_builder_append_byte(i8)
 declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_string_builder_finish_in(ptr, i64, ptr)
 declare void @nrt_to_string_string(ptr, ptr)
 declare void @nrt_to_string_bool(ptr, i1)
 declare void @nrt_to_string_i8(ptr, i8)
@@ -63,8 +68,9 @@ declare void @nrt_to_string_usize(ptr, i64)
 declare void @nrt_to_string_f32(ptr, float)
 declare void @nrt_to_string_f64(ptr, double)
 
-declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
+declare void @$prn_text({ ptr, i64 })
+declare void @$prn_empty()
 
 define internal void @fn.0() {
   %t3 = alloca { ptr, i64 }
@@ -93,8 +99,10 @@ on.value.6:
   br label %on.end.0
 on.end.0:
   %t7 = phi { ptr, i64 } [{ ptr @.str.m0.0, i64 4 }, %on.value.3], [%t6, %on.value.6]
-  call void @$prn({ ptr, i64 } %t7)
+  call void @$prn_text({ ptr, i64 } %t7)
   ret void
 }
 
 @$main = hidden alias void (), ptr @fn.0
+
+declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

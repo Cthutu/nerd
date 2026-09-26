@@ -5782,9 +5782,10 @@ internal bool lsp_completion_matching_close(const Lexer* lexer,
 
 internal bool lsp_completion_find_on_block_range(const Lexer* lexer,
                                                  u32          on_token_index,
-                                                 usize        offset,
-                                                 u32*         out_open_token,
-                                                 u32*         out_close_token)
+                                                 u32   branch_token_index,
+                                                 usize offset,
+                                                 u32*  out_open_token,
+                                                 u32*  out_close_token)
 {
     if (on_token_index >= array_count(lexer->tokens)) {
         return false;
@@ -5793,7 +5794,8 @@ internal bool lsp_completion_find_on_block_range(const Lexer* lexer,
     usize best_span = SIZE_MAX;
     for (u32 i = 0; i < array_count(lexer->tokens); ++i) {
         const Token* token = &lexer->tokens[i];
-        if (token->kind != TK_LBrace) {
+        if (token->kind != TK_LBrace || i <= on_token_index ||
+            i >= branch_token_index) {
             continue;
         }
         u32 close_token = U32_MAX;
@@ -5802,8 +5804,8 @@ internal bool lsp_completion_find_on_block_range(const Lexer* lexer,
         }
         usize start = token->offset;
         usize end   = lex_token_end_offset(lexer, &lexer->tokens[close_token]);
-        if (offset >= start && offset <= end && close_token > on_token_index &&
-            end - start < best_span) {
+        if (offset >= start && offset <= end &&
+            close_token > branch_token_index && end - start < best_span) {
             *out_open_token  = i;
             *out_close_token = close_token;
             best_span        = end - start;
@@ -5888,15 +5890,24 @@ internal bool lsp_completion_expected_enum_on_pattern_at_offset(
             continue;
         }
 
+        const AstOnInfo* on = &ast->ons[node->b];
+        if (on->branch_count == 0 ||
+            on->first_branch >= array_count(ast->on_branches)) {
+            continue;
+        }
         u32 open_token  = U32_MAX;
         u32 close_token = U32_MAX;
         if (!lsp_completion_find_on_block_range(
-                lexer, node->token_index, offset, &open_token, &close_token)) {
+                lexer,
+                node->token_index,
+                ast->on_branches[on->first_branch].token_index,
+                offset,
+                &open_token,
+                &close_token)) {
             continue;
         }
 
-        const AstOnInfo* on         = &ast->ons[node->b];
-        bool             in_pattern = true;
+        bool in_pattern = true;
         for (u32 branch_index = 0; branch_index < on->branch_count;
              ++branch_index) {
             const AstOnBranch* branch =
@@ -6163,6 +6174,43 @@ internal bool lsp_completion_add_plex_literal_fields(Arena*             arena,
     if (!lsp_completion_plex_literal_field_position(
             doc->source, offset, open_end, prefix)) {
         return false;
+    }
+
+    const Ast*  ast  = &doc->front_end.ast;
+    const Sema* sema = &doc->front_end.sema;
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (node->kind != AK_Plex || node->token_index != open_token) {
+            continue;
+        }
+        u32             type_index = sema_no_type();
+        const SemaType* type       = NULL;
+        if (!lsp_sema_node_type(sema, i, &type_index) ||
+            !lsp_sema_type(
+                sema, sema_materialise_type(sema, type_index), &type) ||
+            type->kind != STK_Plex) {
+            break;
+        }
+        Array(string) seen = NULL;
+        lsp_completion_plex_literal_seen_fields(lexer, open_token, &seen);
+        for (u32 field = 0; field < type->param_count; ++field) {
+            u32 symbol = U32_MAX;
+            if (!lsp_sema_type_param(
+                    sema, type->first_param_type + field, &symbol, NULL) ||
+                symbol == U32_MAX) {
+                continue;
+            }
+            string name    = lex_symbol(lexer, symbol);
+            bool   present = false;
+            for (usize j = 0; j < array_count(seen); ++j) {
+                present |= string_eq(seen[j], name);
+            }
+            if (!present) {
+                lsp_completion_add_plex_literal_field(arena, items, name);
+            }
+        }
+        array_free(seen);
+        return true;
     }
 
     string module_name = {0};

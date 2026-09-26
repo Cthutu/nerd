@@ -1317,6 +1317,31 @@ bool error_0339_generics_not_implemented(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
+// Report a positional override of a defaulted parameter.
+
+bool error_0367_default_argument_requires_name(NerdSource source,
+                                               ErrorSpan  span,
+                                               string     parameter)
+{
+    ErrorInfo error = error_init(source,
+                                 span,
+                                 "Defaulted parameter `" STRINGP
+                                 "` requires a named argument",
+                                 STRINGV(parameter));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This argument must be named `" STRINGP "`",
+                        STRINGV(parameter));
+    error_add_help(&error,
+                   "Write `" STRINGP
+                   " = ...` or omit the argument to use its default.",
+                   STRINGV(parameter));
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------
 // Report a named call argument that does not match the parameter at this
 // position.
 

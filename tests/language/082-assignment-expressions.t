@@ -19,12 +19,16 @@ main :: fn () -> i32 {
 
 ¬
 hir 0
-module module.0(082-assignment-expressions.input)
-import module.1(std.io)
-import import.0 prn from module.3(core).decl.13: fn (string) -> void
-import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
+module module.082-assignment-expressions.input(082-assignment-expressions.input)
+import module.std.io(std.io)
+import import.0 prn from module.core(core).decl.N: <unknown>
+import import.1 input from module.std.io(std.io).decl.N: fn (string) -> [..]u8
+import import.2 prn_text from module.core(core).decl.N: fn (string) -> void
+import import.3 prn_empty from module.core(core).decl.N: fn () -> void
 bind prn = import.0
 bind input = import.1
+bind prn_text = import.2
+bind prn_empty = import.3
 bind main = fn.0
 func fn.0() -> i32 {
   let value: i32 = i32 1
@@ -33,9 +37,9 @@ func fn.0() -> i32 {
       assign i32 local.0(value) = i32 7
     }
   }
-  expr void call bind.0(prn)(string interpolate(i32 local.0(value)))
+  expr void call bind.2(prn_text)(string interpolate(i32 local.0(value)))
   let copy: i32 = i32 assign(i32 local.0(value) = i32 9)
-  expr void call bind.0(prn)(string interpolate(i32 local.0(value), <unknown> " ", i32 local.1(copy)))
+  expr void call bind.2(prn_text)(string interpolate(i32 local.0(value), <unknown> " ", i32 local.1(copy)))
   return i32 local.1(copy)
 }
 ¬
@@ -51,6 +55,7 @@ declare i64 @nrt_string_builder_mark()
 declare void @nrt_string_builder_append_string(ptr)
 declare void @nrt_string_builder_append_byte(i8)
 declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_string_builder_finish_in(ptr, i64, ptr)
 declare void @nrt_to_string_string(ptr, ptr)
 declare void @nrt_to_string_bool(ptr, i1)
 declare void @nrt_to_string_i8(ptr, i8)
@@ -66,8 +71,9 @@ declare void @nrt_to_string_usize(ptr, i64)
 declare void @nrt_to_string_f32(ptr, float)
 declare void @nrt_to_string_f64(ptr, double)
 
-declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
+declare void @$prn_text({ ptr, i64 })
+declare void @$prn_empty()
 
 define internal i32 @fn.0() {
   %local.0 = alloca i32
@@ -87,7 +93,7 @@ on.end.0:
   %t4 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t4, i64 %t1)
   %t5 = load { ptr, i64 }, ptr %t4
-  call void @$prn({ ptr, i64 } %t5)
+  call void @$prn_text({ ptr, i64 } %t5)
   store i32 9, ptr %local.0
   %t6 = call i64 @nrt_string_builder_mark()
   %t7 = load i32, ptr %local.0
@@ -104,8 +110,10 @@ on.end.0:
   %t12 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t12, i64 %t6)
   %t13 = load { ptr, i64 }, ptr %t12
-  call void @$prn({ ptr, i64 } %t13)
+  call void @$prn_text({ ptr, i64 } %t13)
   ret i32 9
 }
 
 @$main = hidden alias i32 (), ptr @fn.0
+
+declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

@@ -23,12 +23,16 @@ bits
 
 ¬
 hir 0
-module module.0(031-primitive-operators.input)
-import module.1(std.io)
-import import.0 prn from module.3(core).decl.13: fn (string) -> void
-import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
+module module.031-primitive-operators.input(031-primitive-operators.input)
+import module.std.io(std.io)
+import import.0 prn from module.core(core).decl.N: <unknown>
+import import.1 input from module.std.io(std.io).decl.N: fn (string) -> [..]u8
+import import.2 prn_text from module.core(core).decl.N: fn (string) -> void
+import import.3 prn_empty from module.core(core).decl.N: fn () -> void
 bind prn = import.0
 bind input = import.1
+bind prn_text = import.2
+bind prn_empty = import.3
 bind half = value.0
 bind limit = value.1
 bind main = fn.0
@@ -37,7 +41,7 @@ global value.1: f64 = f64 2
 func fn.0() -> i32 {
   let mask: u32 = u32 14
   let ordered: bool = bool logical_and(bool logical_and(bool logical_and(bool less(untyped integer 3, untyped integer 4), bool less_equal(untyped integer 4, untyped integer 4)), bool greater(untyped integer 5, untyped integer 4)), bool greater_equal(untyped integer 5, untyped integer 5))
-  expr void call bind.0(prn)(string on bool logical_and(bool less(untyped float 1.5, f64 bind.3(limit)), bool logical_not(bool no)) {
+  expr void call bind.2(prn_text)(string on bool logical_and(bool less(untyped float 1.5, f64 bind.5(limit)), bool logical_not(bool no)) {
     value(bool yes) => {
       expr string "float"
     }
@@ -45,7 +49,7 @@ func fn.0() -> i32 {
       expr string "bad"
     }
   })
-  expr void call bind.0(prn)(string on bool local.1(ordered) {
+  expr void call bind.2(prn_text)(string on bool local.1(ordered) {
     value(bool yes) => {
       expr string "cmp"
     }
@@ -53,7 +57,7 @@ func fn.0() -> i32 {
       expr string "bad"
     }
   })
-  expr void call bind.0(prn)(string on bool equal(untyped integer modulo(untyped integer 5, untyped integer 2), untyped integer 1) {
+  expr void call bind.2(prn_text)(string on bool equal(untyped integer modulo(untyped integer 5, untyped integer 2), untyped integer 1) {
     value(bool yes) => {
       expr string "mod"
     }
@@ -61,7 +65,7 @@ func fn.0() -> i32 {
       expr string "bad"
     }
   })
-  expr void call bind.0(prn)(string on bool logical_or(bool equal(u32 bitwise_xor(u32 bitwise_and(u32 local.0(mask), u32 11), u32 3), u32 9), bool no) {
+  expr void call bind.2(prn_text)(string on bool logical_or(bool equal(u32 bitwise_xor(u32 bitwise_and(u32 local.0(mask), u32 11), u32 3), u32 9), bool no) {
     value(bool yes) => {
       expr string "bits"
     }
@@ -69,7 +73,7 @@ func fn.0() -> i32 {
       expr string "bad"
     }
   })
-  return untyped integer on bool logical_and(bool less_equal(f32 bind.2(half), f32 0.5), bool not_equal(untyped integer 3, untyped integer 4)) {
+  return untyped integer on bool logical_and(bool less_equal(f32 bind.4(half), f32 0.5), bool not_equal(untyped integer 3, untyped integer 4)) {
     value(bool yes) => {
       expr untyped integer 1
     }
@@ -92,8 +96,9 @@ func fn.0() -> i32 {
 @.str.m0.6 = private unnamed_addr constant [5 x i8] c"bits\00"
 @.str.m0.7 = private unnamed_addr constant [4 x i8] c"bad\00"
 
-declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
+declare void @$prn_text({ ptr, i64 })
+declare void @$prn_empty()
 
 @$half = internal global float 0.000000e+00
 @$limit = internal global double 0.000000e+00
@@ -166,7 +171,7 @@ on.value.18:
   br label %on.end.12
 on.end.12:
   %t16 = phi { ptr, i64 } [{ ptr @.str.m0.0, i64 5 }, %on.value.15], [{ ptr @.str.m0.1, i64 3 }, %on.value.18]
-  call void @$prn({ ptr, i64 } %t16)
+  call void @$prn_text({ ptr, i64 } %t16)
   %t17 = icmp eq i1 %t8, 1
   br i1 %t17, label %on.body.20, label %on.next.21
 on.body.20:
@@ -181,7 +186,7 @@ on.value.25:
   br label %on.end.19
 on.end.19:
   %t18 = phi { ptr, i64 } [{ ptr @.str.m0.2, i64 3 }, %on.value.22], [{ ptr @.str.m0.3, i64 3 }, %on.value.25]
-  call void @$prn({ ptr, i64 } %t18)
+  call void @$prn_text({ ptr, i64 } %t18)
   %t19 = srem i32 5, 2
   %t20 = icmp eq i32 %t19, 1
   %t21 = icmp eq i1 %t20, 1
@@ -198,7 +203,7 @@ on.value.32:
   br label %on.end.26
 on.end.26:
   %t22 = phi { ptr, i64 } [{ ptr @.str.m0.4, i64 3 }, %on.value.29], [{ ptr @.str.m0.5, i64 3 }, %on.value.32]
-  call void @$prn({ ptr, i64 } %t22)
+  call void @$prn_text({ ptr, i64 } %t22)
   %t23 = and i32 14, 11
   %t24 = xor i32 %t23, 3
   %t25 = icmp eq i32 %t24, 9
@@ -226,7 +231,7 @@ on.value.42:
   br label %on.end.36
 on.end.36:
   %t29 = phi { ptr, i64 } [{ ptr @.str.m0.6, i64 4 }, %on.value.39], [{ ptr @.str.m0.7, i64 3 }, %on.value.42]
-  call void @$prn({ ptr, i64 } %t29)
+  call void @$prn_text({ ptr, i64 } %t29)
   %t30 = load float, ptr @$half
   %t31 = fcmp ole float %t30, 0x3FE0000000000000
   %t32 = alloca i1
@@ -259,3 +264,4 @@ on.end.46:
 
 @$main = hidden alias i32 (), ptr @fn.0
 
+declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

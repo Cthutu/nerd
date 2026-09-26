@@ -46,12 +46,16 @@ main :: fn () {
 
 ¬
 hir 0
-module module.0(130-inherent-impl-methods.input)
-import module.1(std.io)
-import import.0 prn from module.3(core).decl.13: fn (string) -> void
-import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
+module module.130-inherent-impl-methods.input(130-inherent-impl-methods.input)
+import module.std.io(std.io)
+import import.0 prn from module.core(core).decl.N: <unknown>
+import import.1 input from module.std.io(std.io).decl.N: fn (string) -> [..]u8
+import import.2 prn_text from module.core(core).decl.N: fn (string) -> void
+import import.3 prn_empty from module.core(core).decl.N: fn () -> void
 bind prn = import.0
 bind input = import.1
+bind prn_text = import.2
+bind prn_empty = import.3
 bind Stack = type.0
 bind Counter = type.1
 bind __impl_Counter_inc = fn.0
@@ -68,13 +72,13 @@ func fn.1(self: Counter) -> i32 {
 func fn.2() -> void {
   expr <unknown> default
   let counter: Counter = <unknown> default
-  expr void call bind.4(__impl_Counter_inc)(^Counter address_of(Counter local.3(counter)), i32 7)
-  expr void call bind.4(__impl_Counter_inc)(^Counter address_of(Counter local.3(counter)), i32 5)
+  expr void call bind.6(__impl_Counter_inc)(^Counter address_of(Counter local.3(counter)), i32 7)
+  expr void call bind.6(__impl_Counter_inc)(^Counter address_of(Counter local.3(counter)), i32 5)
   expr <unknown> default
   let stack: plex { [..]i32 data } = <unknown> default
-  expr void call decl.1(__impl_Stack_T_push_g_2ffac2fa)(^plex { [..]i32 data } address_of(plex { [..]i32 data } local.4(stack)), i32 call bind.5(__impl_Counter_get)(Counter local.3(counter)))
+  expr void call decl.1(__impl_Stack_T_push_g_2ffac2fa)(^plex { [..]i32 data } address_of(plex { [..]i32 data } local.4(stack)), i32 call bind.7(__impl_Counter_get)(Counter local.3(counter)))
   expr void call decl.1(__impl_Stack_T_push_g_2ffac2fa)(^plex { [..]i32 data } address_of(plex { [..]i32 data } local.4(stack)), i32 30)
-  expr void call bind.0(prn)(string interpolate(i32 call decl.2(__impl_Stack_T_pop_g_2c164aaa)(^plex { [..]i32 data } address_of(plex { [..]i32 data } local.4(stack))), <unknown> " ", i32 call decl.2(__impl_Stack_T_pop_g_2c164aaa)(^plex { [..]i32 data } address_of(plex { [..]i32 data } local.4(stack))), <unknown> " ", i32 call bind.5(__impl_Counter_get)(Counter local.3(counter))))
+  expr void call bind.2(prn_text)(string interpolate(i32 call decl.2(__impl_Stack_T_pop_g_2c164aaa)(^plex { [..]i32 data } address_of(plex { [..]i32 data } local.4(stack))), <unknown> " ", i32 call decl.2(__impl_Stack_T_pop_g_2c164aaa)(^plex { [..]i32 data } address_of(plex { [..]i32 data } local.4(stack))), <unknown> " ", i32 call bind.7(__impl_Counter_get)(Counter local.3(counter))))
 }
 inst func fn.3(self: ^plex { [..]i32 data }, elem: i32) -> void {
   expr void call fn (i32) -> void field([..]i32 field(^plex { [..]i32 data } local.5(self), data), push)(i32 local.6(elem))
@@ -96,6 +100,7 @@ declare i64 @nrt_string_builder_mark()
 declare void @nrt_string_builder_append_string(ptr)
 declare void @nrt_string_builder_append_byte(i8)
 declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_string_builder_finish_in(ptr, i64, ptr)
 declare void @nrt_to_string_string(ptr, ptr)
 declare void @nrt_to_string_bool(ptr, i1)
 declare void @nrt_to_string_i8(ptr, i8)
@@ -113,9 +118,11 @@ declare void @nrt_to_string_f64(ptr, double)
 declare ptr @nrt_mem_alloc(i64, i64, ptr, i32)
 declare ptr @nrt_mem_realloc(ptr, i64, i64, ptr, i32)
 declare void @nrt_mem_free(ptr)
+declare i64 @nrt_mem_size(ptr)
 
-declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
+declare void @$prn_text({ ptr, i64 })
+declare void @$prn_empty()
 
 define internal void @fn.0(ptr %self, i32 %amount) {
   %t0 = load { i32 }, ptr %self
@@ -169,7 +176,7 @@ define internal void @fn.2() {
   %t14 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t14, i64 %t2)
   %t15 = load { ptr, i64 }, ptr %t14
-  call void @$prn({ ptr, i64 } %t15)
+  call void @$prn_text({ ptr, i64 } %t15)
   ret void
 }
 
@@ -243,3 +250,5 @@ define internal i32 @fn.4(ptr %self) {
 @$__impl_Counter_inc = internal alias void (ptr, i32), ptr @fn.0
 @$__impl_Counter_get = internal alias i32 ({ i32 }), ptr @fn.1
 @$main = hidden alias void (), ptr @fn.2
+
+declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

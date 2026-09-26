@@ -18,19 +18,23 @@ While 4
 
 ¬
 hir 0
-module module.0(041-for-while.input)
-import module.1(std.io)
-import import.0 prn from module.3(core).decl.13: fn (string) -> void
-import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
+module module.041-for-while.input(041-for-while.input)
+import module.std.io(std.io)
+import import.0 prn from module.core(core).decl.N: <unknown>
+import import.1 input from module.std.io(std.io).decl.N: fn (string) -> [..]u8
+import import.2 prn_text from module.core(core).decl.N: fn (string) -> void
+import import.3 prn_empty from module.core(core).decl.N: fn () -> void
 bind prn = import.0
 bind input = import.1
+bind prn_text = import.2
+bind prn_empty = import.3
 bind main = fn.0
 func fn.0() -> void {
   let i: i32 = untyped integer 0
   expr void for condition {
     condition bool less(i32 local.0(i), i32 5)
     body {
-      expr void call bind.0(prn)(string interpolate(<unknown> "While ", i32 local.0(i)))
+      expr void call bind.2(prn_text)(string interpolate(<unknown> "While ", i32 local.0(i)))
       assign i32 local.0(i) = i32 add(i32 local.0(i), i32 1)
     }
   }
@@ -48,6 +52,7 @@ declare i64 @nrt_string_builder_mark()
 declare void @nrt_string_builder_append_string(ptr)
 declare void @nrt_string_builder_append_byte(i8)
 declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_string_builder_finish_in(ptr, i64, ptr)
 declare void @nrt_to_string_string(ptr, ptr)
 declare void @nrt_to_string_bool(ptr, i1)
 declare void @nrt_to_string_i8(ptr, i8)
@@ -63,8 +68,9 @@ declare void @nrt_to_string_usize(ptr, i64)
 declare void @nrt_to_string_f32(ptr, float)
 declare void @nrt_to_string_f64(ptr, double)
 
-declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
+declare void @$prn_text({ ptr, i64 })
+declare void @$prn_empty()
 
 define internal void @fn.0() {
   %local.0 = alloca i32
@@ -88,7 +94,7 @@ for.body.1:
   %t7 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t7, i64 %t2)
   %t8 = load { ptr, i64 }, ptr %t7
-  call void @$prn({ ptr, i64 } %t8)
+  call void @$prn_text({ ptr, i64 } %t8)
   %t9 = load i32, ptr %local.0
   %t10 = add i32 %t9, 1
   store i32 %t10, ptr %local.0
@@ -98,3 +104,5 @@ for.end.3:
 }
 
 @$main = hidden alias void (), ptr @fn.0
+
+declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

@@ -54,7 +54,7 @@ main :: fn () {
         }
     }
 
-    print_leaks(yes)
+    print_leaks(show_message_on_no_leaks = yes)
 }
 
 show_location :: fn (state: ^State) {

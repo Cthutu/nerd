@@ -24,24 +24,28 @@ main :: fn () -> i32 {
 
 ¬
 hir 0
-module module.0(059-destructuring-bindings.input)
-import module.1(std.io)
-import import.0 prn from module.3(core).decl.13: fn (string) -> void
-import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
+module module.059-destructuring-bindings.input(059-destructuring-bindings.input)
+import module.std.io(std.io)
+import import.0 prn from module.core(core).decl.N: <unknown>
+import import.1 input from module.std.io(std.io).decl.N: fn (string) -> [..]u8
+import import.2 prn_text from module.core(core).decl.N: fn (string) -> void
+import import.3 prn_empty from module.core(core).decl.N: fn () -> void
 bind prn = import.0
 bind input = import.1
+bind prn_text = import.2
+bind prn_empty = import.3
 bind main = fn.0
 func fn.0() -> i32 {
   destructure let (i32, i32) tuple(untyped integer 2, untyped integer 3) { .0 -> a: i32, .1 -> b: i32 }
-  expr void call bind.0(prn)(string interpolate(i32 local.0(a), <unknown> " ", i32 local.1(b)))
+  expr void call bind.2(prn_text)(string interpolate(i32 local.0(a), <unknown> " ", i32 local.1(b)))
   destructure assign (i32, i32) tuple(i32 local.1(b), i32 local.0(a)) { .0 -> a: i32, .1 -> b: i32 }
-  expr void call bind.0(prn)(string interpolate(i32 local.0(a), <unknown> " ", i32 local.1(b)))
+  expr void call bind.2(prn_text)(string interpolate(i32 local.0(a), <unknown> " ", i32 local.1(b)))
   destructure assign (i32, i32) tuple(untyped integer 7, untyped integer 8) { .0 -> a: i32 }
-  expr void call bind.0(prn)(string interpolate(i32 local.0(a), <unknown> " ", i32 local.1(b)))
+  expr void call bind.2(prn_text)(string interpolate(i32 local.0(a), <unknown> " ", i32 local.1(b)))
   destructure let (i32, string) tuple(untyped integer 4, string "four") { .0 -> c: i32, .1 -> d: string }
-  expr void call bind.0(prn)(string interpolate(i32 local.2(c), <unknown> " ", string local.3(d)))
+  expr void call bind.2(prn_text)(string interpolate(i32 local.2(c), <unknown> " ", string local.3(d)))
   destructure let (i32, string) tuple(i32 5, string "five") { .0 -> e: i32, .1 -> f: string }
-  expr void call bind.0(prn)(string interpolate(i32 local.4(e), <unknown> " ", string local.5(f)))
+  expr void call bind.2(prn_text)(string interpolate(i32 local.4(e), <unknown> " ", string local.5(f)))
   return i32 0
 }
 ¬
@@ -63,6 +67,7 @@ declare i64 @nrt_string_builder_mark()
 declare void @nrt_string_builder_append_string(ptr)
 declare void @nrt_string_builder_append_byte(i8)
 declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_string_builder_finish_in(ptr, i64, ptr)
 declare void @nrt_to_string_string(ptr, ptr)
 declare void @nrt_to_string_bool(ptr, i1)
 declare void @nrt_to_string_i8(ptr, i8)
@@ -78,8 +83,9 @@ declare void @nrt_to_string_usize(ptr, i64)
 declare void @nrt_to_string_f32(ptr, float)
 declare void @nrt_to_string_f64(ptr, double)
 
-declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
+declare void @$prn_text({ ptr, i64 })
+declare void @$prn_empty()
 
 define internal i32 @fn.0() {
   %local.0 = alloca i32
@@ -113,7 +119,7 @@ define internal i32 @fn.0() {
   %t11 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t11, i64 %t4)
   %t12 = load { ptr, i64 }, ptr %t11
-  call void @$prn({ ptr, i64 } %t12)
+  call void @$prn_text({ ptr, i64 } %t12)
   %t13 = load i32, ptr %local.1
   %t14 = load i32, ptr %local.0
   %t15 = insertvalue { i32, i32 } poison, i32 %t13, 0
@@ -138,7 +144,7 @@ define internal i32 @fn.0() {
   %t26 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t26, i64 %t19)
   %t27 = load { ptr, i64 }, ptr %t26
-  call void @$prn({ ptr, i64 } %t27)
+  call void @$prn_text({ ptr, i64 } %t27)
   %t28 = insertvalue { i32, i32 } poison, i32 7, 0
   %t29 = insertvalue { i32, i32 } %t28, i32 8, 1
   %t30 = extractvalue { i32, i32 } %t29, 0
@@ -159,7 +165,7 @@ define internal i32 @fn.0() {
   %t38 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t38, i64 %t31)
   %t39 = load { ptr, i64 }, ptr %t38
-  call void @$prn({ ptr, i64 } %t39)
+  call void @$prn_text({ ptr, i64 } %t39)
   %t40 = insertvalue { i32, { ptr, i64 } } poison, i32 4, 0
   %t41 = insertvalue { i32, { ptr, i64 } } %t40, { ptr, i64 } { ptr @.str.m0.3, i64 4 }, 1
   %t42 = extractvalue { i32, { ptr, i64 } } %t41, 0
@@ -179,7 +185,7 @@ define internal i32 @fn.0() {
   %t50 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t50, i64 %t44)
   %t51 = load { ptr, i64 }, ptr %t50
-  call void @$prn({ ptr, i64 } %t51)
+  call void @$prn_text({ ptr, i64 } %t51)
   %t52 = insertvalue { i32, { ptr, i64 } } poison, i32 5, 0
   %t53 = insertvalue { i32, { ptr, i64 } } %t52, { ptr, i64 } { ptr @.str.m0.5, i64 4 }, 1
   %t54 = extractvalue { i32, { ptr, i64 } } %t53, 0
@@ -199,8 +205,10 @@ define internal i32 @fn.0() {
   %t62 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t62, i64 %t56)
   %t63 = load { ptr, i64 }, ptr %t62
-  call void @$prn({ ptr, i64 } %t63)
+  call void @$prn_text({ ptr, i64 } %t63)
   ret i32 0
 }
 
 @$main = hidden alias i32 (), ptr @fn.0
+
+declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

@@ -42,9 +42,13 @@ after-loop=233
 
 ¬
 hir 0
-module module.0(103-defer.input)
-import import.0 prn from module.1(core).decl.13: fn (string) -> void
+module module.103-defer.input(103-defer.input)
+import import.0 prn from module.core(core).decl.N: <unknown>
+import import.1 prn_text from module.core(core).decl.N: fn (string) -> void
+import import.2 prn_empty from module.core(core).decl.N: fn () -> void
 bind prn = import.0
+bind prn_text = import.1
+bind prn_empty = import.2
 bind cleanup_return = fn.0
 bind main = fn.1
 func fn.0() -> i32 {
@@ -55,7 +59,7 @@ func fn.0() -> i32 {
   return i32 local.0(value)
 }
 func fn.1() -> i32 {
-  let total: i32 = i32 call bind.1(cleanup_return)()
+  let total: i32 = i32 call bind.3(cleanup_return)()
   let order: i32 = untyped integer 0
   {
     defer {
@@ -66,19 +70,19 @@ func fn.1() -> i32 {
     }
   }
   assign i32 local.1(total) = i32 add(i32 local.1(total), i32 local.2(order))
-  expr void call bind.0(prn)(string interpolate(<unknown> "order=", i32 local.2(order)))
+  expr void call bind.1(prn_text)(string interpolate(<unknown> "order=", i32 local.2(order)))
   {
     defer {
       assign i32 local.1(total) = i32 add(i32 local.1(total), i32 10)
     }
     defer {
       {
-        expr void call bind.0(prn)(string "deferred-module-call")
+        expr void call bind.1(prn_text)(string "deferred-module-call")
       }
     }
     assign i32 local.1(total) = i32 add(i32 local.1(total), i32 1)
   }
-  expr void call bind.0(prn)(string interpolate(<unknown> "after-block=", i32 local.1(total)))
+  expr void call bind.1(prn_text)(string interpolate(<unknown> "after-block=", i32 local.1(total)))
   expr void for c_style {
     init {
       let i: i32 = untyped integer 0
@@ -104,7 +108,7 @@ func fn.1() -> i32 {
       assign i32 local.3(i) = i32 add(i32 local.3(i), i32 1)
     }
   }
-  expr void call bind.0(prn)(string interpolate(<unknown> "after-loop=", i32 local.1(total)))
+  expr void call bind.1(prn_text)(string interpolate(<unknown> "after-loop=", i32 local.1(total)))
   return i32 local.1(total)
 }
 ¬
@@ -123,6 +127,7 @@ declare i64 @nrt_string_builder_mark()
 declare void @nrt_string_builder_append_string(ptr)
 declare void @nrt_string_builder_append_byte(i8)
 declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_string_builder_finish_in(ptr, i64, ptr)
 declare void @nrt_to_string_string(ptr, ptr)
 declare void @nrt_to_string_bool(ptr, i1)
 declare void @nrt_to_string_i8(ptr, i8)
@@ -138,7 +143,8 @@ declare void @nrt_to_string_usize(ptr, i64)
 declare void @nrt_to_string_f32(ptr, float)
 declare void @nrt_to_string_f64(ptr, double)
 
-declare void @$prn({ ptr, i64 })
+declare void @$prn_text({ ptr, i64 })
+declare void @$prn_empty()
 
 define internal i32 @fn.0() {
   %local.0 = alloca i32
@@ -178,11 +184,11 @@ define internal i32 @fn.1() {
   %t14 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t14, i64 %t9)
   %t15 = load { ptr, i64 }, ptr %t14
-  call void @$prn({ ptr, i64 } %t15)
+  call void @$prn_text({ ptr, i64 } %t15)
   %t16 = load i32, ptr %local.1
   %t17 = add i32 %t16, 1
   store i32 %t17, ptr %local.1
-  call void @$prn({ ptr, i64 } { ptr @.str.m0.1, i64 20 })
+  call void @$prn_text({ ptr, i64 } { ptr @.str.m0.1, i64 20 })
   %t18 = load i32, ptr %local.1
   %t19 = add i32 %t18, 10
   store i32 %t19, ptr %local.1
@@ -198,7 +204,7 @@ define internal i32 @fn.1() {
   %t25 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t25, i64 %t20)
   %t26 = load { ptr, i64 }, ptr %t25
-  call void @$prn({ ptr, i64 } %t26)
+  call void @$prn_text({ ptr, i64 } %t26)
   store i32 0, ptr %local.3
   br label %for.cond.0
 for.cond.0:
@@ -251,10 +257,12 @@ for.end.3:
   %t50 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t50, i64 %t45)
   %t51 = load { ptr, i64 }, ptr %t50
-  call void @$prn({ ptr, i64 } %t51)
+  call void @$prn_text({ ptr, i64 } %t51)
   %t52 = load i32, ptr %local.1
   ret i32 %t52
 }
 
 @$cleanup_return = internal alias i32 (), ptr @fn.0
 @$main = hidden alias i32 (), ptr @fn.1
+
+declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

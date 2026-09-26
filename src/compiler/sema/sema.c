@@ -1866,6 +1866,12 @@ internal bool sema_call_arg_value_node(const Lexer*    arg_lexer,
 {
     const AstNode* arg = &ast->nodes[arg_node];
     if (arg->kind != AK_Assign) {
+        if (param != NULL && param->default_node_index != U32_MAX) {
+            return error_0367_default_argument_requires_name(
+                arg_lexer->source,
+                sema_node_span(arg_lexer, arg),
+                lex_symbol(param_lexer, param->symbol_handle));
+        }
         *out_value_node = arg_node;
         return true;
     }
@@ -3878,6 +3884,10 @@ internal bool sema_try_eval_atomic_order(const Lexer* lexer,
                                          bool         load_order,
                                          i64*         out_value)
 {
+    if (ast->nodes[node_index].kind == AK_Assign &&
+        sema_node_is_named_call_arg(ast, node_index)) {
+        node_index = ast->nodes[node_index].b;
+    }
     if (sema_try_eval_integer_constant(
             lexer, ast, sema, node_index, out_value)) {
         return true;
@@ -21530,6 +21540,11 @@ validate_type:
             }
             // Inferring field expressions may append types and relocate the
             // table. Preserve this record's layout across recursive inference.
+            // Keep the known record type even if a partially typed field fails
+            // validation, so editor consumers can offer the remaining fields.
+            if (node->kind == AK_Plex && !enum_variant_constructor) {
+                sema->node_type_indices[node_index] = target_type;
+            }
             SemaType        record_storage = sema->types[target_type];
             const SemaType* record         = &record_storage;
             if (target_is_union && literal->field_count != 1) {

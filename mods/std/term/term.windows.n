@@ -429,9 +429,9 @@ on "windows" {
                         character = record.UnicodeChar.as(u32)
                     }
                     return term_key_event(code,
-                                          action,
-                                          term_windows_modifiers(record.dwControlKeyState),
-                                          character)
+                                          action = action,
+                                          modifiers = term_windows_modifiers(record.dwControlKeyState),
+                                          character = character)
                 }
 
                 else => {

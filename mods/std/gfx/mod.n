@@ -1131,7 +1131,7 @@ test "pixel layer paint forwards user data and full stride" {
         y      : 1
         width  : 5
         height : 5
-    }, gfx_paint_with_user, ^state)
+    }, gfx_paint_with_user, user = ^state)
 
     assert layer.pixels()[0] == 0
     assert layer.pixels()[4] == 0

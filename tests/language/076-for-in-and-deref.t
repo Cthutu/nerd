@@ -30,12 +30,16 @@ main :: fn () -> i32 {
 
 ¬
 hir 0
-module module.0(076-for-in-and-deref.input)
-import module.1(std.io)
-import import.0 prn from module.3(core).decl.13: fn (string) -> void
-import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
+module module.076-for-in-and-deref.input(076-for-in-and-deref.input)
+import module.std.io(std.io)
+import import.0 prn from module.core(core).decl.N: <unknown>
+import import.1 input from module.std.io(std.io).decl.N: fn (string) -> [..]u8
+import import.2 prn_text from module.core(core).decl.N: fn (string) -> void
+import import.3 prn_empty from module.core(core).decl.N: fn () -> void
 bind prn = import.0
 bind input = import.1
+bind prn_text = import.2
+bind prn_empty = import.3
 bind main = fn.0
 func fn.0() -> i32 {
   let values: [3]i32 = [3]i32 array(i32 1, i32 2, i32 3)
@@ -59,7 +63,7 @@ func fn.0() -> i32 {
     }
   }
   let ptr: ^i32 = ^i32 address_of(i32 index([3]i32 local.0(values), untyped integer 1))
-  expr void call bind.0(prn)(string interpolate(i32 deref(^i32 local.8(ptr)), <unknown> " ", i32 local.2(total), <unknown> " ", i32 local.5(count), <unknown> " ", i32 local.6(sum)))
+  expr void call bind.2(prn_text)(string interpolate(i32 deref(^i32 local.8(ptr)), <unknown> " ", i32 local.2(total), <unknown> " ", i32 local.5(count), <unknown> " ", i32 local.6(sum)))
   return i32 add(i32 add(i32 deref(^i32 local.8(ptr)), i32 local.2(total)), i32 local.5(count))
 }
 ¬
@@ -71,6 +75,7 @@ func fn.0() -> i32 {
 @.str.m0.1 = private unnamed_addr constant [2 x i8] c" \00"
 @.str.m0.2 = private unnamed_addr constant [2 x i8] c" \00"
 @.str.m0.3 = private unnamed_addr constant [2 x i8] c" \00"
+@.slice.const.m0.3 = private unnamed_addr constant [3 x i32] [i32 1, i32 2, i32 3]
 
 declare i1 @nrt_string_eq(ptr, ptr)
 declare void @nrt_string_builder_reset()
@@ -78,6 +83,7 @@ declare i64 @nrt_string_builder_mark()
 declare void @nrt_string_builder_append_string(ptr)
 declare void @nrt_string_builder_append_byte(i8)
 declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_string_builder_finish_in(ptr, i64, ptr)
 declare void @nrt_to_string_string(ptr, ptr)
 declare void @nrt_to_string_bool(ptr, i1)
 declare void @nrt_to_string_i8(ptr, i8)
@@ -93,8 +99,9 @@ declare void @nrt_to_string_usize(ptr, i64)
 declare void @nrt_to_string_f32(ptr, float)
 declare void @nrt_to_string_f64(ptr, double)
 
-declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
+declare void @$prn_text({ ptr, i64 })
+declare void @$prn_empty()
 
 define internal i32 @fn.0() {
   %local.0 = alloca [3 x i32]
@@ -224,7 +231,7 @@ for.in.end.11:
   %t60 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t60, i64 %t45)
   %t61 = load { ptr, i64 }, ptr %t60
-  call void @$prn({ ptr, i64 } %t61)
+  call void @$prn_text({ ptr, i64 } %t61)
   %t62 = load i32, ptr %t44
   %t63 = load i32, ptr %local.2
   %t64 = add i32 %t62, %t63
@@ -234,3 +241,5 @@ for.in.end.11:
 }
 
 @$main = hidden alias i32 (), ptr @fn.0
+
+declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

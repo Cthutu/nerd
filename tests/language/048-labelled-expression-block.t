@@ -35,12 +35,16 @@ hits = 1
 
 ¬
 hir 0
-module module.0(048-labelled-expression-block.input)
-import module.1(std.io)
-import import.0 prn from module.3(core).decl.13: fn (string) -> void
-import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
+module module.048-labelled-expression-block.input(048-labelled-expression-block.input)
+import module.std.io(std.io)
+import import.0 prn from module.core(core).decl.N: <unknown>
+import import.1 input from module.std.io(std.io).decl.N: fn (string) -> [..]u8
+import import.2 prn_text from module.core(core).decl.N: fn (string) -> void
+import import.3 prn_empty from module.core(core).decl.N: fn () -> void
 bind prn = import.0
 bind input = import.1
+bind prn_text = import.2
+bind prn_empty = import.3
 bind main = fn.0
 func fn.0() -> i32 {
   let answer: untyped integer = untyped integer block $answer {
@@ -60,10 +64,10 @@ func fn.0() -> i32 {
     assign i32 local.3(hits) = i32 add(i32 local.3(hits), i32 1)
     break $void
   }
-  expr void call bind.0(prn)(string interpolate(<unknown> "answer = ", untyped integer local.0(answer)))
-  expr void call bind.0(prn)(string interpolate(<unknown> "word = ", string local.1(word)))
-  expr void call bind.0(prn)(string interpolate(<unknown> "outer = ", untyped integer local.2(outer)))
-  expr void call bind.0(prn)(string interpolate(<unknown> "hits = ", i32 local.3(hits)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "answer = ", untyped integer local.0(answer)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "word = ", string local.1(word)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "outer = ", untyped integer local.2(outer)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "hits = ", i32 local.3(hits)))
   return untyped integer local.2(outer)
 }
 ¬
@@ -83,6 +87,7 @@ declare i64 @nrt_string_builder_mark()
 declare void @nrt_string_builder_append_string(ptr)
 declare void @nrt_string_builder_append_byte(i8)
 declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_string_builder_finish_in(ptr, i64, ptr)
 declare void @nrt_to_string_string(ptr, ptr)
 declare void @nrt_to_string_bool(ptr, i1)
 declare void @nrt_to_string_i8(ptr, i8)
@@ -98,8 +103,9 @@ declare void @nrt_to_string_usize(ptr, i64)
 declare void @nrt_to_string_f32(ptr, float)
 declare void @nrt_to_string_f64(ptr, double)
 
-declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
+declare void @$prn_text({ ptr, i64 })
+declare void @$prn_empty()
 
 define internal i32 @fn.0() {
   %local.3 = alloca i32
@@ -125,6 +131,8 @@ block.end.1:
   store i32 0, ptr %t5, align 4
   store i32 99, ptr %t5, align 4
   br label %block.end.2
+  store i32 0, ptr %t5, align 4
+  br label %block.end.2
 block.end.2:
   %t6 = load i32, ptr %t5, align 4
   store i32 0, ptr %local.3
@@ -144,7 +152,7 @@ block.end.4:
   %t13 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t13, i64 %t9)
   %t14 = load { ptr, i64 }, ptr %t13
-  call void @$prn({ ptr, i64 } %t14)
+  call void @$prn_text({ ptr, i64 } %t14)
   %t15 = call i64 @nrt_string_builder_mark()
   %t16 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.2, i64 7 }, ptr %t17
@@ -157,7 +165,7 @@ block.end.4:
   %t20 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t20, i64 %t15)
   %t21 = load { ptr, i64 }, ptr %t20
-  call void @$prn({ ptr, i64 } %t21)
+  call void @$prn_text({ ptr, i64 } %t21)
   %t22 = call i64 @nrt_string_builder_mark()
   %t23 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.3, i64 8 }, ptr %t24
@@ -169,7 +177,7 @@ block.end.4:
   %t26 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t26, i64 %t22)
   %t27 = load { ptr, i64 }, ptr %t26
-  call void @$prn({ ptr, i64 } %t27)
+  call void @$prn_text({ ptr, i64 } %t27)
   %t28 = call i64 @nrt_string_builder_mark()
   %t29 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.4, i64 7 }, ptr %t30
@@ -182,8 +190,10 @@ block.end.4:
   %t33 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t33, i64 %t28)
   %t34 = load { ptr, i64 }, ptr %t33
-  call void @$prn({ ptr, i64 } %t34)
+  call void @$prn_text({ ptr, i64 } %t34)
   ret i32 %t6
 }
 
 @$main = hidden alias i32 (), ptr @fn.0
+
+declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

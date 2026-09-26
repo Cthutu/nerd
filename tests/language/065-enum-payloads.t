@@ -28,12 +28,16 @@ scores 0 5 30 100
 
 ¬
 hir 0
-module module.0(065-enum-payloads.input)
-import module.1(std.io)
-import import.0 prn from module.3(core).decl.13: fn (string) -> void
-import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
+module module.065-enum-payloads.input(065-enum-payloads.input)
+import module.std.io(std.io)
+import import.0 prn from module.core(core).decl.N: <unknown>
+import import.1 input from module.std.io(std.io).decl.N: fn (string) -> [..]u8
+import import.2 prn_text from module.core(core).decl.N: fn (string) -> void
+import import.3 prn_empty from module.core(core).decl.N: fn () -> void
 bind prn = import.0
 bind input = import.1
+bind prn_text = import.2
+bind prn_empty = import.3
 bind Maybe = type.0
 bind score = fn.0
 bind main = fn.1
@@ -57,10 +61,10 @@ func fn.0(value: Maybe) -> i32 {
 func fn.1() -> i32 {
   let a: Maybe = Maybe None
   let b: Maybe = Maybe call Some(i32 5)
-  let c: Maybe = Maybe call Maybe field(Maybe bind.2(Maybe), Pair)(i32 10, i32 20)
+  let c: Maybe = Maybe call Maybe field(Maybe bind.4(Maybe), Pair)(i32 10, i32 20)
   let d: Maybe = Maybe call Text(string "hello")
-  expr void call bind.0(prn)(string interpolate(<unknown> "scores ", i32 call bind.3(score)(Maybe local.4(a)), <unknown> " ", i32 call bind.3(score)(Maybe local.5(b)), <unknown> " ", i32 call bind.3(score)(Maybe local.6(c)), <unknown> " ", i32 call bind.3(score)(Maybe local.7(d))))
-  return i32 call bind.3(score)(Maybe local.6(c))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "scores ", i32 call bind.5(score)(Maybe local.4(a)), <unknown> " ", i32 call bind.5(score)(Maybe local.5(b)), <unknown> " ", i32 call bind.5(score)(Maybe local.6(c)), <unknown> " ", i32 call bind.5(score)(Maybe local.7(d))))
+  return i32 call bind.5(score)(Maybe local.6(c))
 }
 ¬
 ; nerd llvm-ir 0
@@ -79,6 +83,7 @@ declare i64 @nrt_string_builder_mark()
 declare void @nrt_string_builder_append_string(ptr)
 declare void @nrt_string_builder_append_byte(i8)
 declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_string_builder_finish_in(ptr, i64, ptr)
 declare void @nrt_to_string_string(ptr, ptr)
 declare void @nrt_to_string_bool(ptr, i1)
 declare void @nrt_to_string_i8(ptr, i8)
@@ -94,8 +99,9 @@ declare void @nrt_to_string_usize(ptr, i64)
 declare void @nrt_to_string_f32(ptr, float)
 declare void @nrt_to_string_f64(ptr, double)
 
-declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
+declare void @$prn_text({ ptr, i64 })
+declare void @$prn_empty()
 
 define internal i32 @fn.0({ i64, i128 } %value) {
   %t14 = alloca i128
@@ -228,7 +234,7 @@ define internal i32 @fn.1() {
   %t36 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t36, i64 %t15)
   %t37 = load { ptr, i64 }, ptr %t36
-  call void @$prn({ ptr, i64 } %t37)
+  call void @$prn_text({ ptr, i64 } %t37)
   %t38 = load { i64, i128 }, ptr %local.6
   %t39 = call i32 @fn.0({ i64, i128 } %t38)
   ret i32 %t39

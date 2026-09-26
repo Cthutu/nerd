@@ -31,12 +31,16 @@ main :: fn () -> i32 {
 
 ¬
 hir 0
-module module.0(119-slice-element-pointers.input)
-import module.1(std.io)
-import import.0 prn from module.3(core).decl.13: fn (string) -> void
-import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
+module module.119-slice-element-pointers.input(119-slice-element-pointers.input)
+import module.std.io(std.io)
+import import.0 prn from module.core(core).decl.N: <unknown>
+import import.1 input from module.std.io(std.io).decl.N: fn (string) -> [..]u8
+import import.2 prn_text from module.core(core).decl.N: fn (string) -> void
+import import.3 prn_empty from module.core(core).decl.N: fn () -> void
 bind prn = import.0
 bind input = import.1
+bind prn_text = import.2
+bind prn_empty = import.3
 bind main = fn.0
 func fn.0() -> i32 {
   let fixed: [3]i32 = [3]i32 array(i32 10, i32 20, i32 30)
@@ -53,7 +57,7 @@ func fn.0() -> i32 {
   assign i32 deref(^i32 local.5(dyn_ptr)) = i32 7
   let text: string = string "abc"
   let char_ptr: ^u8 = ^u8 address_of(u8 index(string local.6(text), untyped integer 1))
-  expr void call bind.0(prn)(string interpolate(i32 index([3]i32 local.0(fixed), untyped integer 1), <unknown> " ", i32 index([]i32 local.2(slice), untyped integer 2), <unknown> " ", i32 index([..]i32 local.4(dyn), untyped integer 1), <unknown> " ", u8 deref(^u8 local.7(char_ptr))))
+  expr void call bind.2(prn_text)(string interpolate(i32 index([3]i32 local.0(fixed), untyped integer 1), <unknown> " ", i32 index([]i32 local.2(slice), untyped integer 2), <unknown> " ", i32 index([..]i32 local.4(dyn), untyped integer 1), <unknown> " ", u8 deref(^u8 local.7(char_ptr))))
   let result: i32 = i32 add(i32 add(i32 add(i32 index([3]i32 local.0(fixed), untyped integer 1), i32 index([]i32 local.2(slice), untyped integer 2)), i32 index([..]i32 local.4(dyn), untyped integer 1)), i32 cast(u8 deref(^u8 local.7(char_ptr)) as i32))
   expr void call fn () -> void field([..]i32 local.4(dyn), free)()
   return i32 local.8(result)
@@ -67,6 +71,7 @@ func fn.0() -> i32 {
 @.str.m0.1 = private unnamed_addr constant [2 x i8] c" \00"
 @.str.m0.2 = private unnamed_addr constant [2 x i8] c" \00"
 @.str.m0.3 = private unnamed_addr constant [2 x i8] c" \00"
+@.slice.const.m0.3 = private unnamed_addr constant [3 x i32] [i32 10, i32 20, i32 30]
 
 declare i1 @nrt_string_eq(ptr, ptr)
 declare void @nrt_string_builder_reset()
@@ -74,6 +79,7 @@ declare i64 @nrt_string_builder_mark()
 declare void @nrt_string_builder_append_string(ptr)
 declare void @nrt_string_builder_append_byte(i8)
 declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_string_builder_finish_in(ptr, i64, ptr)
 declare void @nrt_to_string_string(ptr, ptr)
 declare void @nrt_to_string_bool(ptr, i1)
 declare void @nrt_to_string_i8(ptr, i8)
@@ -91,9 +97,11 @@ declare void @nrt_to_string_f64(ptr, double)
 declare ptr @nrt_mem_alloc(i64, i64, ptr, i32)
 declare ptr @nrt_mem_realloc(ptr, i64, i64, ptr, i32)
 declare void @nrt_mem_free(ptr)
+declare i64 @nrt_mem_size(ptr)
 
-declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
+declare void @$prn_text({ ptr, i64 })
+declare void @$prn_empty()
 
 define internal i32 @fn.0() {
   %local.0 = alloca [3 x i32]
@@ -267,7 +275,7 @@ dynarray.store.7:
   %t106 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t106, i64 %t82)
   %t107 = load { ptr, i64 }, ptr %t106
-  call void @$prn({ ptr, i64 } %t107)
+  call void @$prn_text({ ptr, i64 } %t107)
   %t108 = load [3 x i32], ptr %local.0
   %t109 = extractvalue [3 x i32] %t108, 1
   %t110 = load { ptr, i64 }, ptr %local.2
@@ -298,3 +306,5 @@ dynarray.free.done.9:
 }
 
 @$main = hidden alias i32 (), ptr @fn.0
+
+declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

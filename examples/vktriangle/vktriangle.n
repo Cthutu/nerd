@@ -47,6 +47,11 @@ vk_init :: fn (_frame: ^Frame) -> VulkanContext {
     -- Initialize Vulkan context here
     context : VulkanContext
 
+    extensions := vk_get_extensions(debug = yes)
+    layers := [
+        VK_LAYER_KHRONOS_VALIDATION_LAYER_NAME,
+    ]
+
     result := vkCreateInstance(^{
         sType: VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO
         pApplicationInfo: ^{
@@ -55,6 +60,10 @@ vk_init :: fn (_frame: ^Frame) -> VulkanContext {
             apiVersion       : VK_API_VERSION_1_4
             ...
         }
+        ppEnabledExtensionNames : extensions.data
+        enabledExtensionCount   : extensions.count.as(u32)
+        ppEnabledLayerNames     : layers.data
+        enabledLayerCount       : layers.count.as(u32)
         ...
     }, nil, ^context.instance)
 
@@ -65,6 +74,7 @@ vk_init :: fn (_frame: ^Frame) -> VulkanContext {
 
         else => {
             prn($"Failed to create Vulkan instance: {result}")
+            prn($"Error: {vk_result_to_string(result)}")
             context.instance = nil
         }
     }

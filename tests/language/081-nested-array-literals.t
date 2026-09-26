@@ -28,12 +28,16 @@ yes
 
 ¬
 hir 0
-module module.0(081-nested-array-literals.input)
-import module.1(std.io)
-import import.0 prn from module.3(core).decl.13: fn (string) -> void
-import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
+module module.081-nested-array-literals.input(081-nested-array-literals.input)
+import module.std.io(std.io)
+import import.0 prn from module.core(core).decl.N: <unknown>
+import import.1 input from module.std.io(std.io).decl.N: fn (string) -> [..]u8
+import import.2 prn_text from module.core(core).decl.N: fn (string) -> void
+import import.3 prn_empty from module.core(core).decl.N: fn () -> void
 bind prn = import.0
 bind input = import.1
+bind prn_text = import.2
+bind prn_empty = import.3
 bind RoomType = type.0
 bind Room = type.1
 bind rooms = value.0
@@ -42,10 +46,10 @@ type type.0 = RoomType
 type type.1 = Room
 const value.0: [2]Room = [2]Room array(Room plex(exits: [2]RoomType array(RoomType NONE, RoomType HALL)), Room plex(exits: [2]RoomType array(RoomType KITCHEN, RoomType NONE)))
 func fn.0() -> i32 {
-  expr void call bind.0(prn)(string interpolate(bool equal(RoomType index([2]RoomType field(Room index([2]Room bind.4(rooms), untyped integer 0), exits), untyped integer 0), RoomType NONE)))
-  expr void call bind.0(prn)(string interpolate(bool equal(RoomType index([2]RoomType field(Room index([2]Room bind.4(rooms), untyped integer 0), exits), untyped integer 1), RoomType HALL)))
-  expr void call bind.0(prn)(string interpolate(bool equal(RoomType index([2]RoomType field(Room index([2]Room bind.4(rooms), untyped integer 1), exits), untyped integer 0), RoomType KITCHEN)))
-  expr void call bind.0(prn)(string interpolate(bool equal(RoomType index([2]RoomType field(Room index([2]Room bind.4(rooms), untyped integer 1), exits), untyped integer 1), RoomType NONE)))
+  expr void call bind.2(prn_text)(string interpolate(bool equal(RoomType index([2]RoomType field(Room index([2]Room bind.6(rooms), untyped integer 0), exits), untyped integer 0), RoomType NONE)))
+  expr void call bind.2(prn_text)(string interpolate(bool equal(RoomType index([2]RoomType field(Room index([2]Room bind.6(rooms), untyped integer 0), exits), untyped integer 1), RoomType HALL)))
+  expr void call bind.2(prn_text)(string interpolate(bool equal(RoomType index([2]RoomType field(Room index([2]Room bind.6(rooms), untyped integer 1), exits), untyped integer 0), RoomType KITCHEN)))
+  expr void call bind.2(prn_text)(string interpolate(bool equal(RoomType index([2]RoomType field(Room index([2]Room bind.6(rooms), untyped integer 1), exits), untyped integer 1), RoomType NONE)))
   return i32 0
 }
 ¬
@@ -60,6 +64,7 @@ declare i64 @nrt_string_builder_mark()
 declare void @nrt_string_builder_append_string(ptr)
 declare void @nrt_string_builder_append_byte(i8)
 declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_string_builder_finish_in(ptr, i64, ptr)
 declare void @nrt_to_string_string(ptr, ptr)
 declare void @nrt_to_string_bool(ptr, i1)
 declare void @nrt_to_string_i8(ptr, i8)
@@ -75,8 +80,9 @@ declare void @nrt_to_string_usize(ptr, i64)
 declare void @nrt_to_string_f32(ptr, float)
 declare void @nrt_to_string_f64(ptr, double)
 
-declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
+declare void @$prn_text({ ptr, i64 })
+declare void @$prn_empty()
 
 define internal i32 @fn.0() {
   %t0 = call i64 @nrt_string_builder_mark()
@@ -110,7 +116,7 @@ define internal i32 @fn.0() {
   %t26 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t26, i64 %t0)
   %t27 = load { ptr, i64 }, ptr %t26
-  call void @$prn({ ptr, i64 } %t27)
+  call void @$prn_text({ ptr, i64 } %t27)
   %t28 = call i64 @nrt_string_builder_mark()
   %t29 = insertvalue { i64, i8 } poison, i64 0, 0
   %t30 = insertvalue { i64, i8 } %t29, i8 0, 1
@@ -142,7 +148,7 @@ define internal i32 @fn.0() {
   %t54 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t54, i64 %t28)
   %t55 = load { ptr, i64 }, ptr %t54
-  call void @$prn({ ptr, i64 } %t55)
+  call void @$prn_text({ ptr, i64 } %t55)
   %t56 = call i64 @nrt_string_builder_mark()
   %t57 = insertvalue { i64, i8 } poison, i64 0, 0
   %t58 = insertvalue { i64, i8 } %t57, i8 0, 1
@@ -174,7 +180,7 @@ define internal i32 @fn.0() {
   %t82 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t82, i64 %t56)
   %t83 = load { ptr, i64 }, ptr %t82
-  call void @$prn({ ptr, i64 } %t83)
+  call void @$prn_text({ ptr, i64 } %t83)
   %t84 = call i64 @nrt_string_builder_mark()
   %t85 = insertvalue { i64, i8 } poison, i64 0, 0
   %t86 = insertvalue { i64, i8 } %t85, i8 0, 1
@@ -206,7 +212,7 @@ define internal i32 @fn.0() {
   %t110 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t110, i64 %t84)
   %t111 = load { ptr, i64 }, ptr %t110
-  call void @$prn({ ptr, i64 } %t111)
+  call void @$prn_text({ ptr, i64 } %t111)
   ret i32 0
 }
 

@@ -145,7 +145,7 @@ main :: fn () {
         "result": {
             "contents": {
                 "kind": "markdown",
-                "value": "```nerd\nprn :: fn (string) -> void\n```\n\n- Kind: function\n\nPrints text to standard output and appends a newline."
+                "value": "```nerd\nprn_text :: fn (text: string) -> void\n```\n\n- Kind: function\n\nPrints text to standard output and appends a newline."
             }
         }
     },

@@ -13,15 +13,19 @@ Charlie
 
 ¬
 hir 0
-module module.0(183-for-in-fixed-array.input)
-import import.0 prn from module.1(core).decl.13: fn (string) -> void
+module module.183-for-in-fixed-array.input(183-for-in-fixed-array.input)
+import import.0 prn from module.core(core).decl.N: <unknown>
+import import.1 prn_text from module.core(core).decl.N: fn (string) -> void
+import import.2 prn_empty from module.core(core).decl.N: fn () -> void
 bind prn = import.0
+bind prn_text = import.1
+bind prn_empty = import.2
 bind main = fn.0
 func fn.0() -> void {
   let names: [3]string = [3]string array(string "Alice", string "Bob", string "Charlie")
   expr void for in name: ^string in [3]string local.0(names) {
     body {
-      expr void call bind.0(prn)(string deref(^string local.1(name)))
+      expr void call bind.1(prn_text)(string deref(^string local.1(name)))
     }
   }
 }
@@ -33,8 +37,10 @@ func fn.0() -> void {
 @.str.m0.0 = private unnamed_addr constant [6 x i8] c"Alice\00"
 @.str.m0.1 = private unnamed_addr constant [4 x i8] c"Bob\00"
 @.str.m0.2 = private unnamed_addr constant [8 x i8] c"Charlie\00"
+@.slice.const.m0.3 = private unnamed_addr constant [3 x { ptr, i64 }] [{ ptr, i64 } { ptr @.str.m0.0, i64 5 }, { ptr, i64 } { ptr @.str.m0.1, i64 3 }, { ptr, i64 } { ptr @.str.m0.2, i64 7 }]
 
-declare void @$prn({ ptr, i64 })
+declare void @$prn_text({ ptr, i64 })
+declare void @$prn_empty()
 
 define internal void @fn.0() {
   %local.0 = alloca [3 x { ptr, i64 }]
@@ -57,7 +63,7 @@ for.in.body.1:
   store ptr %t8, ptr %local.1
   %t9 = load ptr, ptr %local.1
   %t10 = load { ptr, i64 }, ptr %t9
-  call void @$prn({ ptr, i64 } %t10)
+  call void @$prn_text({ ptr, i64 } %t10)
   br label %for.in.update.2
 for.in.update.2:
   %t11 = load i64, ptr %t5
@@ -69,3 +75,5 @@ for.in.end.3:
 }
 
 @$main = hidden alias void (), ptr @fn.0
+
+declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

@@ -24,12 +24,16 @@ Hello, world! count=3
 
 ¬
 hir 0
-module module.0(019-interpolated-strings.input)
-import module.1(std.io)
-import import.0 prn from module.3(core).decl.13: fn (string) -> void
-import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
+module module.019-interpolated-strings.input(019-interpolated-strings.input)
+import module.std.io(std.io)
+import import.0 prn from module.core(core).decl.N: <unknown>
+import import.1 input from module.std.io(std.io).decl.N: fn (string) -> [..]u8
+import import.2 prn_text from module.core(core).decl.N: fn (string) -> void
+import import.3 prn_empty from module.core(core).decl.N: fn () -> void
 bind prn = import.0
 bind input = import.1
+bind prn_text = import.2
+bind prn_empty = import.3
 bind name = value.0
 bind count = value.1
 bind check_escape = fn.0
@@ -65,8 +69,8 @@ func fn.0(escape: string) -> bool {
   return bool yes
 }
 func fn.1() -> void {
-  expr void call bind.0(prn)(string interpolate(<unknown> "Hello, ", string bind.2(name), <unknown> "! count=", i32 bind.3(count)))
-  expr void on bool logical_not(bool call bind.4(check_escape)(string interpolate(<unknown> "[", i32 bind.3(count), <unknown> "m"))) {
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "Hello, ", string bind.4(name), <unknown> "! count=", i32 bind.5(count)))
+  expr void on bool logical_not(bool call bind.6(check_escape)(string interpolate(<unknown> "[", i32 bind.5(count), <unknown> "m"))) {
     value(bool yes) => {
       return <none>
     }
@@ -89,6 +93,7 @@ declare i64 @nrt_string_builder_mark()
 declare void @nrt_string_builder_append_string(ptr)
 declare void @nrt_string_builder_append_byte(i8)
 declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_string_builder_finish_in(ptr, i64, ptr)
 declare void @nrt_to_string_string(ptr, ptr)
 declare void @nrt_to_string_bool(ptr, i1)
 declare void @nrt_to_string_i8(ptr, i8)
@@ -104,8 +109,9 @@ declare void @nrt_to_string_usize(ptr, i64)
 declare void @nrt_to_string_f32(ptr, float)
 declare void @nrt_to_string_f64(ptr, double)
 
-declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
+declare void @$prn_text({ ptr, i64 })
+declare void @$prn_empty()
 
 @$count = internal global i32 0
 
@@ -187,7 +193,7 @@ define internal void @fn.1() {
   %t9 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t9, i64 %t0)
   %t10 = load { ptr, i64 }, ptr %t9
-  call void @$prn({ ptr, i64 } %t10)
+  call void @$prn_text({ ptr, i64 } %t10)
   %t11 = call i64 @nrt_string_builder_mark()
   %t12 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.3, i64 2 }, ptr %t13
@@ -216,3 +222,5 @@ on.end.0:
 
 @$check_escape = internal alias i1 ({ ptr, i64 }), ptr @fn.0
 @$main = hidden alias void (), ptr @fn.1
+
+declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

@@ -21,20 +21,24 @@ ys array = [4, 5]
 
 ¬
 hir 0
-module module.0(052-fixed-arrays.input)
-import module.1(std.io)
-import import.0 prn from module.3(core).decl.13: fn (string) -> void
-import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
+module module.052-fixed-arrays.input(052-fixed-arrays.input)
+import module.std.io(std.io)
+import import.0 prn from module.core(core).decl.N: <unknown>
+import import.1 input from module.std.io(std.io).decl.N: fn (string) -> [..]u8
+import import.2 prn_text from module.core(core).decl.N: fn (string) -> void
+import import.3 prn_empty from module.core(core).decl.N: fn () -> void
 bind prn = import.0
 bind input = import.1
+bind prn_text = import.2
+bind prn_empty = import.3
 bind main = fn.0
 func fn.0() -> i32 {
   let xs: [3]i32 = [3]i32 array(untyped integer 1, i32 2, i32 3)
   let ys: [2]i32 = [2]i32 array(i32 4, i32 5)
-  expr void call bind.0(prn)(string interpolate(<unknown> "xs = ", i32 index([3]i32 local.0(xs), untyped integer 0), <unknown> ", ", i32 index([3]i32 local.0(xs), untyped integer 2)))
-  expr void call bind.0(prn)(string interpolate(<unknown> "xs array = ", [3]i32 local.0(xs)))
-  expr void call bind.0(prn)(string interpolate(<unknown> "ys = ", i32 index([2]i32 local.1(ys), untyped integer 1)))
-  expr void call bind.0(prn)(string interpolate(<unknown> "ys array = ", [2]i32 local.1(ys)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "xs = ", i32 index([3]i32 local.0(xs), untyped integer 0), <unknown> ", ", i32 index([3]i32 local.0(xs), untyped integer 2)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "xs array = ", [3]i32 local.0(xs)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "ys = ", i32 index([2]i32 local.1(ys), untyped integer 1)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "ys array = ", [2]i32 local.1(ys)))
   return i32 add(i32 add(i32 index([3]i32 local.0(xs), untyped integer 1), i32 index([2]i32 local.1(ys), untyped integer 0)), i32 index([2]i32 local.1(ys), untyped integer 1))
 }
 ¬
@@ -47,6 +51,8 @@ func fn.0() -> i32 {
 @.str.m0.2 = private unnamed_addr constant [12 x i8] c"xs array = \00"
 @.str.m0.3 = private unnamed_addr constant [6 x i8] c"ys = \00"
 @.str.m0.4 = private unnamed_addr constant [12 x i8] c"ys array = \00"
+@.slice.const.m0.3 = private unnamed_addr constant [3 x i32] [i32 1, i32 2, i32 3]
+@.slice.const.m0.6 = private unnamed_addr constant [2 x i32] [i32 4, i32 5]
 
 declare i1 @nrt_string_eq(ptr, ptr)
 declare void @nrt_string_builder_reset()
@@ -54,6 +60,7 @@ declare i64 @nrt_string_builder_mark()
 declare void @nrt_string_builder_append_string(ptr)
 declare void @nrt_string_builder_append_byte(i8)
 declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_string_builder_finish_in(ptr, i64, ptr)
 declare void @nrt_to_string_string(ptr, ptr)
 declare void @nrt_to_string_bool(ptr, i1)
 declare void @nrt_to_string_i8(ptr, i8)
@@ -69,8 +76,9 @@ declare void @nrt_to_string_usize(ptr, i64)
 declare void @nrt_to_string_f32(ptr, float)
 declare void @nrt_to_string_f64(ptr, double)
 
-declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
+declare void @$prn_text({ ptr, i64 })
+declare void @$prn_empty()
 
 define internal i32 @fn.0() {
   %t7 = alloca { ptr, i64 }
@@ -103,7 +111,7 @@ define internal i32 @fn.0() {
   %t14 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t14, i64 %t5)
   %t15 = load { ptr, i64 }, ptr %t14
-  call void @$prn({ ptr, i64 } %t15)
+  call void @$prn_text({ ptr, i64 } %t15)
   %t16 = call i64 @nrt_string_builder_mark()
   %t17 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.2, i64 11 }, ptr %t18
@@ -130,7 +138,7 @@ define internal i32 @fn.0() {
   %t25 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t25, i64 %t16)
   %t26 = load { ptr, i64 }, ptr %t25
-  call void @$prn({ ptr, i64 } %t26)
+  call void @$prn_text({ ptr, i64 } %t26)
   %t27 = call i64 @nrt_string_builder_mark()
   %t28 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.3, i64 5 }, ptr %t29
@@ -143,7 +151,7 @@ define internal i32 @fn.0() {
   %t32 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t32, i64 %t27)
   %t33 = load { ptr, i64 }, ptr %t32
-  call void @$prn({ ptr, i64 } %t33)
+  call void @$prn_text({ ptr, i64 } %t33)
   %t34 = call i64 @nrt_string_builder_mark()
   %t35 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.4, i64 11 }, ptr %t36
@@ -164,7 +172,7 @@ define internal i32 @fn.0() {
   %t41 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t41, i64 %t34)
   %t42 = load { ptr, i64 }, ptr %t41
-  call void @$prn({ ptr, i64 } %t42)
+  call void @$prn_text({ ptr, i64 } %t42)
   %t43 = extractvalue [3 x i32] %t2, 1
   %t44 = extractvalue [2 x i32] %t4, 0
   %t45 = add i32 %t43, %t44
@@ -174,3 +182,5 @@ define internal i32 @fn.0() {
 }
 
 @$main = hidden alias i32 (), ptr @fn.0
+
+declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

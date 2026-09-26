@@ -20,7 +20,7 @@ run_checks :: fn () -> i32\FileError {
     output_path := "_std_files_round_trip.tmp"
     defer _ := remove(output_path)
     write_text(output_path, "first")?
-    output := open(output_path, FileMode.Append)?
+    output := open(output_path, mode = FileMode.Append)?
     output.write_all("-second".as([]u8))?
     output.close()?
     on output.close() {

@@ -467,9 +467,9 @@ term_draw_too_small :: fn () {
                       0,
                       term_fb_width,
                       term_fb_height,
-                      ' '.as(u32),
-                      ink,
-                      paper)
+                      ch = ' '.as(u32),
+                      ink = ink,
+                      paper = paper)
 
     message := "Terminal too small"
     detail  := $"Need at least {term_min_width}x{term_min_height}"
@@ -920,7 +920,7 @@ test "kitty keyboard reports physical key modifiers and text" {
 
 test "terminal input records ordered key and character events" {
     term_keyboard_clear()
-    term_event_record(term_key_event(TermScanCode.Q, TermKeyAction.Press, TERM_MOD_SHIFT, 'Q'.as(u32), 'q'.as(u32)))
+    term_event_record(term_key_event(TermScanCode.Q, action = TermKeyAction.Press, modifiers = TERM_MOD_SHIFT, character = 'Q'.as(u32), label = 'q'.as(u32)))
 
     assert term_input_events.count == 2
     on term_input_events[0] {
@@ -1032,7 +1032,7 @@ test "framebuffer text stores ascii codepoints" {
     term_fb_release()
     assert term_fb_resize(8, 3)
 
-    term_fb_text(0, 0, "AB", COLOUR_TRANSPARENT, COLOUR_TRANSPARENT)
+    term_fb_text(0, 0, "AB", ink = COLOUR_TRANSPARENT, paper = COLOUR_TRANSPARENT)
 
     assert term_fb_cells[term_fb_index(0, 0)].ch == 'A'.as(u32)
     assert term_fb_cells[term_fb_index(1, 0)].ch == 'B'.as(u32)
@@ -1191,27 +1191,27 @@ test "framebuffer resize and clipped drawing stay within bounds" {
                           -2,
                           width + 6,
                           height + 4,
-                          '.'.as(u32),
-                          rgb(20, 200, 80),
-                          rgb(0, 12, 0))
+                          ch = '.'.as(u32),
+                          ink = rgb(20, 200, 80),
+                          paper = rgb(0, 12, 0))
         term_fb_paint_rect(-2,
                            0,
                            width + 4,
                            height,
-                           rgb(160, 255, 160),
-                           COLOUR_TRANSPARENT)
+                           ink = rgb(160, 255, 160),
+                           paper = COLOUR_TRANSPARENT)
         term_fb_text(-4,
                      0,
                      "resize clipping regression",
-                     rgb(230, 255, 230),
-                     COLOUR_TRANSPARENT)
+                     ink = rgb(230, 255, 230),
+                     paper = COLOUR_TRANSPARENT)
         term_fb_box(-2,
                     -1,
                     width + 4,
                     height + 2,
-                    BoxStyle.Custom("abcdefghi"),
-                    rgb(80, 220, 120),
-                    COLOUR_TRANSPARENT)
+                    style = BoxStyle.Custom("abcdefghi"),
+                    ink = rgb(80, 220, 120),
+                    paper = COLOUR_TRANSPARENT)
 
         assert term_fb_cells.count == width.as(usize) * height.as(usize)
         assert term_fb_index_valid(width - 1, height - 1)
@@ -1273,7 +1273,7 @@ test "framebuffer text clips through view using source offsets" {
     assert term_fb_resize(4, 2)
     term_view(1, 0, 2, 1)
 
-    term_fb_text(-1, 0, "ABCD", COLOUR_TRANSPARENT, COLOUR_TRANSPARENT)
+    term_fb_text(-1, 0, "ABCD", ink = COLOUR_TRANSPARENT, paper = COLOUR_TRANSPARENT)
 
     assert term_fb_cell_ch(0, 0) == ' '.as(u32)
     assert term_fb_cell_ch(1, 0) == 'B'.as(u32)
@@ -1292,7 +1292,7 @@ test "framebuffer wide glyphs do not spill outside clipped view" {
     bytes.push(0xe7)
     bytes.push(0x95)
     bytes.push(0x8c)
-    term_fb_text(0, 0, bytes.as(string), COLOUR_TRANSPARENT, COLOUR_TRANSPARENT)
+    term_fb_text(0, 0, bytes.as(string), ink = COLOUR_TRANSPARENT, paper = COLOUR_TRANSPARENT)
 
     assert term_fb_cell_ch(1, 0) == ' '.as(u32)
     assert term_fb_cell_ch(2, 0) == ' '.as(u32)
@@ -1366,7 +1366,7 @@ test "terminal keyboard state records edges" {
     assert !keyboard.pressed[index]
     assert !keyboard.released[index]
 
-    term_event_record(term_key_event(TermScanCode.Q, TermKeyAction.Release))
+    term_event_record(term_key_event(TermScanCode.Q, action = TermKeyAction.Release))
     keyboard = term_keyboard_snapshot()
     assert !keyboard.down[index]
     assert !keyboard.pressed[index]
@@ -1426,7 +1426,7 @@ test "terminal modifier helpers report alt state" {
 test "terminal modified key presses report key and modifiers together" {
     term_keyboard_clear()
 
-    term_event_record(term_key_event(TermScanCode.ArrowLeft, TermKeyAction.Press, TERM_MOD_ALT))
+    term_event_record(term_key_event(TermScanCode.ArrowLeft, action = TermKeyAction.Press, modifiers = TERM_MOD_ALT))
     keyboard := term_keyboard_snapshot()
     assert term_alt_down(keyboard)
     assert term_mod_down(keyboard)
@@ -1681,10 +1681,10 @@ test "terminal run wait sleeps until next hook deadline" {
 test "terminal hooks clear resets registered callbacks" {
     term_hook_simulation(50.as(Duration),
                          term_noop_simulate,
-                         (^term_test_payload).as(^void))
+                         user_data = (^term_test_payload).as(^void))
     term_hook_presentation(50.as(Duration),
                            term_noop_present,
-                           (^term_test_payload).as(^void))
+                           user_data = (^term_test_payload).as(^void))
 
     assert term_simulate_hook_set
     assert term_present_hook_set
@@ -1710,8 +1710,8 @@ test "terminal hooks relay user data" {
     term_last_rows                   = 25
 
     payload := (^term_test_payload).as(^void)
-    term_hook_simulation(50.as(Duration), term_capture_simulate, payload)
-    term_hook_presentation(50.as(Duration), term_capture_present, payload)
+    term_hook_simulation(50.as(Duration), term_capture_simulate, user_data = payload)
+    term_hook_presentation(50.as(Duration), term_capture_present, user_data = payload)
 
     term_run_simulation_hook(100.as(Instant))
     term_run_presentation_hook(100.as(Instant))

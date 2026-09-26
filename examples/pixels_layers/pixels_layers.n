@@ -40,7 +40,7 @@ draw_background :: fn (layer: ^PixelLayer, tick: u32) {
                 pixels[y * stride + x] = background_colour(x, y, tick)
             }
         }
-    }, ^tick)
+    }, user = ^tick)
 }
 
 draw_foreground :: fn (layer: ^PixelLayer, tick: u32) {
@@ -68,7 +68,7 @@ draw_foreground :: fn (layer: ^PixelLayer, tick: u32) {
                 pixels[index] = foreground_colour(x, y, tick)
             }
         }
-    }, ^tick)
+    }, user = ^tick)
 
     layer.fill(PixelRect {
         x : 0

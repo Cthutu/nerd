@@ -713,7 +713,7 @@ desired_channels : i32 = 0) -> Image\ImageError {
 
                     row_bytes := png.ihdr.width.as(usize) * channels.as(usize)
                     expected_bytes := png.ihdr.height.as(usize) * (row_bytes + 1)
-                    decompressed := compressed[..].deflate_zlib(expected_bytes)
+                    decompressed := compressed[..].deflate_zlib(max_output_bytes = expected_bytes)
                     on decompressed {
                         error! => {
                             png.free()
@@ -1439,7 +1439,7 @@ test "png decodes embedded 2x2 RGB fixture to RGBA" {
         }
     }
 
-    rgb3_result := Image.load_bytes(bytes[..], 3)
+    rgb3_result := Image.load_bytes(bytes[..], desired_channels = 3)
 
     on rgb3_result {
         image => {
@@ -1452,7 +1452,7 @@ test "png decodes embedded 2x2 RGB fixture to RGBA" {
         }
     }
 
-    rgba_result := Image.load_bytes(bytes[..], 4)
+    rgba_result := Image.load_bytes(bytes[..], desired_channels = 4)
 
     on rgba_result {
         image => {
@@ -2178,7 +2178,7 @@ test "png converts to desired greyscale channels" {
         130,
     ]
 
-    grey_result := Image.load_bytes(bytes[..], 1)
+    grey_result := Image.load_bytes(bytes[..], desired_channels = 1)
     on grey_result {
         image => {
             assert image.channels == 1
@@ -2194,7 +2194,7 @@ test "png converts to desired greyscale channels" {
         }
     }
 
-    grey_alpha_result := Image.load_bytes(bytes[..], 2)
+    grey_alpha_result := Image.load_bytes(bytes[..], desired_channels = 2)
     on grey_alpha_result {
         image => {
             assert image.channels == 2

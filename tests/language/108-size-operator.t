@@ -30,12 +30,16 @@ i32=4 literal=4 array=12 slice=16 string=16 ptr=8 nil=0 fn=8 void=0
 
 ¬
 hir 0
-module module.0(108-size-operator.input)
-import module.1(std.io)
-import import.0 prn from module.3(core).decl.13: fn (string) -> void
-import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
+module module.108-size-operator.input(108-size-operator.input)
+import module.std.io(std.io)
+import import.0 prn from module.core(core).decl.N: <unknown>
+import import.1 input from module.std.io(std.io).decl.N: fn (string) -> [..]u8
+import import.2 prn_text from module.core(core).decl.N: fn (string) -> void
+import import.3 prn_empty from module.core(core).decl.N: fn () -> void
 bind prn = import.0
 bind input = import.1
+bind prn_text = import.2
+bind prn_empty = import.3
 bind helper = fn.0
 bind main = fn.1
 func fn.0() -> i32 {
@@ -53,9 +57,9 @@ func fn.1() -> i32 {
   let string_size: usize = usize field(string local.0(text), size)
   let ptr_size: usize = usize field(^i32 local.3(ptr), size)
   let nil_size: usize = usize field(nil nil, size)
-  let fn_size: usize = usize field(fn () -> i32 bind.2(helper), size)
+  let fn_size: usize = usize field(fn () -> i32 bind.4(helper), size)
   let void_size: usize = usize field(void void, size)
-  expr void call bind.0(prn)(string interpolate(<unknown> "i32=", usize local.4(i32_size), <unknown> " literal=", usize local.5(literal_size), <unknown> " array=", usize local.6(array_size), <unknown> " slice=", usize local.7(slice_size), <unknown> " string=", usize local.8(string_size), <unknown> " ptr=", usize local.9(ptr_size), <unknown> " nil=", usize local.10(nil_size), <unknown> " fn=", usize local.11(fn_size), <unknown> " void=", usize local.12(void_size)))
+  expr void call bind.2(prn_text)(string interpolate(<unknown> "i32=", usize local.4(i32_size), <unknown> " literal=", usize local.5(literal_size), <unknown> " array=", usize local.6(array_size), <unknown> " slice=", usize local.7(slice_size), <unknown> " string=", usize local.8(string_size), <unknown> " ptr=", usize local.9(ptr_size), <unknown> " nil=", usize local.10(nil_size), <unknown> " fn=", usize local.11(fn_size), <unknown> " void=", usize local.12(void_size)))
   let total: usize = usize add(usize add(usize add(usize add(usize add(usize add(usize add(usize add(usize local.4(i32_size), usize local.5(literal_size)), usize local.6(array_size)), usize local.7(slice_size)), usize local.8(string_size)), usize local.9(ptr_size)), usize local.10(nil_size)), usize local.11(fn_size)), usize local.12(void_size))
   return i32 cast(usize local.13(total) as i32)
 }
@@ -74,6 +78,7 @@ func fn.1() -> i32 {
 @.str.m0.7 = private unnamed_addr constant [6 x i8] c" nil=\00"
 @.str.m0.8 = private unnamed_addr constant [5 x i8] c" fn=\00"
 @.str.m0.9 = private unnamed_addr constant [7 x i8] c" void=\00"
+@.slice.const.m0.4 = private unnamed_addr constant [3 x i32] [i32 1, i32 2, i32 3]
 
 declare i1 @nrt_string_eq(ptr, ptr)
 declare void @nrt_string_builder_reset()
@@ -81,6 +86,7 @@ declare i64 @nrt_string_builder_mark()
 declare void @nrt_string_builder_append_string(ptr)
 declare void @nrt_string_builder_append_byte(i8)
 declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_string_builder_finish_in(ptr, i64, ptr)
 declare void @nrt_to_string_string(ptr, ptr)
 declare void @nrt_to_string_bool(ptr, i1)
 declare void @nrt_to_string_i8(ptr, i8)
@@ -96,8 +102,9 @@ declare void @nrt_to_string_usize(ptr, i64)
 declare void @nrt_to_string_f32(ptr, float)
 declare void @nrt_to_string_f64(ptr, double)
 
-declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
+declare void @$prn_text({ ptr, i64 })
+declare void @$prn_empty()
 
 define internal i32 @fn.0() {
   ret i32 0
@@ -188,7 +195,7 @@ define internal i32 @fn.1() {
   %t34 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t34, i64 %t6)
   %t35 = load { ptr, i64 }, ptr %t34
-  call void @$prn({ ptr, i64 } %t35)
+  call void @$prn_text({ ptr, i64 } %t35)
   %t36 = add i64 4, 4
   %t37 = add i64 %t36, 12
   %t38 = add i64 %t37, 16
@@ -203,3 +210,5 @@ define internal i32 @fn.1() {
 
 @$helper = internal alias i32 (), ptr @fn.0
 @$main = hidden alias i32 (), ptr @fn.1
+
+declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

@@ -1,5 +1,5 @@
 add :: fn (a: i32, b: i32 = 1, c: i32 = a + b) => a + b + c
-main :: fn () => add(20, 2)
+main :: fn () => add(20, b = 2)
 ¬
 [
     {

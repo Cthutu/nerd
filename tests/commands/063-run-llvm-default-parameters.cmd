@@ -16,8 +16,8 @@ function_value_call :: fn (a: i32) {
 
 main :: fn () {
     prn($"one {add(2)}")
-    prn($"two {add(2, 3)}")
-    prn($"three {add(2, 3, 4)}")
+    prn($"two {add(2, b = 3)}")
+    prn($"three {add(2, b = 3, c = 4)}")
     prn($"call {with_call_default()}")
     local_call(4)
     function_value_call(2)

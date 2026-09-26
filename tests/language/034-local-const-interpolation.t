@@ -14,18 +14,22 @@ Hello, world!  i = 2 and f = 3.14!
 
 ¬
 hir 0
-module module.0(034-local-const-interpolation.input)
-import module.1(std.io)
-import import.0 prn from module.3(core).decl.13: fn (string) -> void
-import import.1 input from module.1(std.io).decl.7: fn (string) -> [..]u8
+module module.034-local-const-interpolation.input(034-local-const-interpolation.input)
+import module.std.io(std.io)
+import import.0 prn from module.core(core).decl.N: <unknown>
+import import.1 input from module.std.io(std.io).decl.N: fn (string) -> [..]u8
+import import.2 prn_text from module.core(core).decl.N: fn (string) -> void
+import import.3 prn_empty from module.core(core).decl.N: fn () -> void
 bind prn = import.0
 bind input = import.1
+bind prn_text = import.2
+bind prn_empty = import.3
 bind main = fn.0
 func fn.0() -> void {
   let i: untyped integer = untyped integer 2
   let f: untyped float = untyped float 3.1400000000000001
   let s: string = string "Hello, world!"
-  expr void call bind.0(prn)(string interpolate(string local.2(s), <unknown> "  i = ", untyped integer local.0(i), <unknown> " and f = ", untyped float local.1(f), <unknown> "!"))
+  expr void call bind.2(prn_text)(string interpolate(string local.2(s), <unknown> "  i = ", untyped integer local.0(i), <unknown> " and f = ", untyped float local.1(f), <unknown> "!"))
 }
 ¬
 ; nerd llvm-ir 0
@@ -43,6 +47,7 @@ declare i64 @nrt_string_builder_mark()
 declare void @nrt_string_builder_append_string(ptr)
 declare void @nrt_string_builder_append_byte(i8)
 declare void @nrt_string_builder_finish(ptr, i64)
+declare void @nrt_string_builder_finish_in(ptr, i64, ptr)
 declare void @nrt_to_string_string(ptr, ptr)
 declare void @nrt_to_string_bool(ptr, i1)
 declare void @nrt_to_string_i8(ptr, i8)
@@ -58,8 +63,9 @@ declare void @nrt_to_string_usize(ptr, i64)
 declare void @nrt_to_string_f32(ptr, float)
 declare void @nrt_to_string_f64(ptr, double)
 
-declare void @$prn({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
+declare void @$prn_text({ ptr, i64 })
+declare void @$prn_empty()
 
 define internal void @fn.0() {
   %t2 = alloca { ptr, i64 }
@@ -92,8 +98,10 @@ define internal void @fn.0() {
   %t11 = alloca { ptr, i64 }
   call void @nrt_string_builder_finish(ptr %t11, i64 %t0)
   %t12 = load { ptr, i64 }, ptr %t11
-  call void @$prn({ ptr, i64 } %t12)
+  call void @$prn_text({ ptr, i64 } %t12)
   ret void
 }
 
 @$main = hidden alias void (), ptr @fn.0
+
+declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)
