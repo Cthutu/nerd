@@ -19,7 +19,7 @@ main :: fn () {
 
     vk_context := vk_init(^main_window)
     defer vk_done(vk_context)
-    on vk_context.instance == nil => return
+    on vk_context.surface == nil => return
 
     -- Main loop
     for frame_system.loop() {
@@ -33,7 +33,8 @@ main :: fn () {
 
             KeyPress { scan_code: Q },
             KeyPress { scan_code: Escape } => {
-                frame_system.close(^main_window)
+                -- Deferred cleanup releases Vulkan before the native window.
+                return
             }
         }
     }
@@ -41,9 +42,10 @@ main :: fn () {
 
 VulkanContext :: plex {
     instance VkInstance
+    surface  VkSurfaceKHR
 }
 
-vk_init :: fn (_frame: ^Frame) -> VulkanContext {
+vk_init :: fn (frame: ^Frame) -> VulkanContext {
     -- Initialize Vulkan context here
     context : VulkanContext
 
@@ -83,13 +85,24 @@ vk_init :: fn (_frame: ^Frame) -> VulkanContext {
             prn($"Failed to create Vulkan instance: {result}")
             prn($"Error: {vk_result_to_string(result)}")
             context.instance = nil
+            return context
         }
+    }
+
+    result = vk_create_surface(context.instance, frame, ^context.surface)
+    on result != VK_SUCCESS => {
+        prn($"Failed to create Vulkan surface: {vk_result_to_string(result)}")
+    } else {
+        prn("Vulkan surface created successfully")
     }
 
     return context
 }
 
 vk_done :: fn (context: VulkanContext) {
+    on context.surface != nil => {
+        vkDestroySurfaceKHR(context.instance, context.surface, nil)
+    }
     on context.instance != nil => {
         vkDestroyInstance(context.instance, nil)
     }

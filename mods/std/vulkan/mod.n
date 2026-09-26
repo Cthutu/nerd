@@ -4,6 +4,8 @@
 --
 -- Provides thin FFI bindings to the Vulkan API.
 
+use std.frame
+
 -- Common Vulkan types
 pub VkBool32              :: u32
 pub VkFlags               :: u32
@@ -12,6 +14,7 @@ pub VkObjectType          :: i32
 pub vkStructureType       :: i32
 pub vkInstanceCreateFlags :: u32
 pub VkInstance            :: ^void
+pub VkSurfaceKHR          :: ^void
 
 pub VK_FALSE : VkBool32 : 0
 pub VK_TRUE  : VkBool32 : 1
@@ -312,4 +315,94 @@ ffi "vulkan" {
                            pAllocator  : ^void,
                            pInstance   : ^VkInstance) -> VkResult
     pub vkDestroyInstance (instance: VkInstance, pAllocator: ^void)
+    pub vkDestroySurfaceKHR (instance: VkInstance, surface: VkSurfaceKHR,
+                             pAllocator: ^void)
+}
+
+-- Creates a surface for an applied Frame, using Vulkan's default allocator.
+-- Enable the extensions from vk_get_extensions() when creating the instance.
+-- pSurface must point to unused handle storage; it is cleared on failure.
+-- Destroy the surface with vkDestroySurfaceKHR(instance, surface, nil) before
+-- destroying the instance, and keep the Frame alive while using the surface.
+pub vk_create_surface :: fn (instance : VkInstance,
+                             frame    : ^Frame,
+                             pSurface : ^VkSurfaceKHR) -> VkResult {
+    on pSurface == nil => return VK_ERROR_INITIALIZATION_FAILED
+    pSurface^ = nil
+    on instance == nil || frame == nil => return VK_ERROR_INITIALIZATION_FAILED
+    native := on frame.context() => [context] {
+        break context
+    } else return VK_ERROR_INITIALIZATION_FAILED
+
+    result : VkResult
+    on "linux" {
+        result = vkCreateXlibSurfaceKHR(instance, ^{
+            sType  : VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR
+            dpy    : native.display
+            window : native.window
+            ...
+        }, nil, pSurface)
+    }
+
+    on "windows" {
+        result = vkCreateWin32SurfaceKHR(instance, ^{
+            sType     : VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR
+            hinstance : GetWindowLongPtr(native.window, GWLP_HINSTANCE).as(HINSTANCE)
+            hwnd      : native.window
+            ...
+        }, nil, pSurface)
+    }
+
+    on result != VK_SUCCESS => pSurface^ = nil
+    return result
+}
+
+on "linux" {
+
+    use os.linux
+
+    pub VkXlibSurfaceCreateFlagsKHR :: VkFlags
+
+    pub VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR : vkStructureType : 1000004000
+
+    pub VkXlibSurfaceCreateInfoKHR :: plex #c {
+        sType  vkStructureType
+        pNext  ^void
+        flags  VkXlibSurfaceCreateFlagsKHR
+        dpy    XDisplay
+        window XWindow
+    }
+
+    ffi "vulkan" {
+        pub vkCreateXlibSurfaceKHR (instance    : VkInstance,
+                                    pCreateInfo : ^VkXlibSurfaceCreateInfoKHR,
+                                    pAllocator  : ^void,
+                                    pSurface    : ^VkSurfaceKHR) -> VkResult
+    }
+
+}
+
+on "windows" {
+
+    use os.windows
+
+    pub VkWin32SurfaceCreateFlagsKHR :: VkFlags
+
+    pub VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR : vkStructureType : 1000009000
+
+    pub VkWin32SurfaceCreateInfoKHR :: plex #c {
+        sType     vkStructureType
+        pNext     ^void
+        flags     VkWin32SurfaceCreateFlagsKHR
+        hinstance HINSTANCE
+        hwnd      HWND
+    }
+
+    ffi "vulkan" {
+        pub vkCreateWin32SurfaceKHR (instance    : VkInstance,
+                                     pCreateInfo : ^VkWin32SurfaceCreateInfoKHR,
+                                     pAllocator  : ^void,
+                                     pSurface    : ^VkSurfaceKHR) -> VkResult
+    }
+
 }
