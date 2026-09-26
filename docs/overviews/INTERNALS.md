@@ -614,6 +614,12 @@ literal such as `^Info { ... }` retains its concrete plex type when used in
 a `^void` field or argument. Other typed pointers, function values, and slices
 do not gain implicit conversions from this rule.
 
+LLVM emission for statement-form `on` always places its continuation block
+after the branch bodies. A return in the final enum branch does not make that
+continuation unreachable: earlier branches may complete normally, and a
+partial match may select no branch. Emitting `unreachable` there incorrectly
+allows optimisation to redirect those paths into the returning branch.
+
 ## Compiler performance instrumentation
 
 `NERD_PROFILE=1` emits JSON records on stderr for whole-program front-end module

@@ -3012,24 +3012,6 @@ internal cstr llvm_debug_cstr(Arena* arena, string text)
     return copy;
 }
 
-internal bool llvm_block_has_direct_return(const Hir* hir, u32 block_index)
-{
-    if (block_index >= array_count(hir->blocks)) {
-        return false;
-    }
-
-    const HirBlock* block = &hir->blocks[block_index];
-    for (u32 i = 0; i < block->stmt_count; ++i) {
-        u32 stmt_index = block->stmt_indices[i];
-        if (stmt_index < array_count(hir->stmts) &&
-            hir->stmts[stmt_index].kind == HIR_STMT_Return) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
 internal string llvm_debug_canonical_source_path(Arena* arena, string path)
 {
     if (path.count == 0) {
@@ -12190,7 +12172,6 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 if (llvm_type_is_void(ctx->sema, expr->type_index) ||
                     ctx->discard_expr_value) {
                     string end_label         = llvm_label(ctx, "on.end");
-                    bool   end_label_emitted = false;
                     for (u32 i = 0; i < expr->branch_count; ++i) {
                         const HirOnBranch* branch =
                             &ctx->hir->on_branches[expr->first_branch + i];
@@ -12198,14 +12179,6 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                         string next_label = i + 1 < expr->branch_count
                                                 ? llvm_label(ctx, "on.next")
                                                 : end_label;
-                        bool   final_enum_direct_return =
-                            i + 1 == expr->branch_count &&
-                            llvm_type_kind(ctx->sema, scrutinee.type_index) ==
-                                STK_Enum &&
-                            !branch->is_else &&
-                            branch->guard_expr_index == U32_MAX &&
-                            llvm_block_has_direct_return(
-                                ctx->hir, branch->body_block_index);
                         if (branch->is_else) {
                             sb_format(ctx->sb,
                                       "  br label %%" STRINGP "\n",
@@ -12223,13 +12196,6 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                                       STRINGV(condition.value),
                                       STRINGV(body_label),
                                       STRINGV(next_label));
-                        }
-
-                        if (final_enum_direct_return) {
-                            sb_format(ctx->sb,
-                                      STRINGP ":\n  unreachable\n",
-                                      STRINGV(end_label));
-                            end_label_emitted = true;
                         }
 
                         sb_format(ctx->sb, STRINGP ":\n", STRINGV(body_label));
@@ -12257,9 +12223,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                                 ctx->sb, STRINGP ":\n", STRINGV(next_label));
                         }
                     }
-                    if (!end_label_emitted) {
-                        sb_format(ctx->sb, STRINGP ":\n", STRINGV(end_label));
-                    }
+                    sb_format(ctx->sb, STRINGP ":\n", STRINGV(end_label));
                     ctx->block_terminated = false;
                     return (LlvmValue){
                         .ok         = true,
