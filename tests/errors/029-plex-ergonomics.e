@@ -12,7 +12,7 @@ main :: fn () {
 }
 ¬
 {
-    "message": "Unknown field `z` in plex literal",
+    "message": "Unknown field `z` in plex literal of type `Point`",
     "source_file": "tests/errors/029-plex-ergonomics.e",
     "primary_location": {
         "line": 10,

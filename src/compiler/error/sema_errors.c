@@ -298,15 +298,17 @@ bool error_0304_missing_plex_fields(NerdSource source,
 bool error_0304_unknown_record_literal_field(NerdSource source,
                                              ErrorSpan  span,
                                              string     record_kind,
+                                             string     expected_type,
                                              string     field_name,
                                              string     suggested_field_name)
 {
     ErrorInfo error =
         error_init(source,
                    span,
-                   "Unknown field `" STRINGP "` in " STRINGP " literal",
+                   "Unknown field `" STRINGP "` in " STRINGP " literal of type `" STRINGP "`",
                    STRINGV(field_name),
-                   STRINGV(record_kind));
+                   STRINGV(record_kind),
+                   STRINGV(expected_type));
     error_add_reference(&error,
                         ERROR_REF_PRIMARY,
                         span,

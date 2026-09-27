@@ -21765,6 +21765,7 @@ validate_type:
                         lexer->source,
                         sema_token_span(lexer, field->token_index),
                         target_is_union ? s("union") : s("plex"),
+                        sema_type_name(lexer, sema, &temp_arena, target_type),
                         field_name,
                         suggested_field_name);
                 }

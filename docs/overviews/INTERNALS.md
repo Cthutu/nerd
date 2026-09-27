@@ -1055,3 +1055,8 @@ so selecting solely by declaration can call a function for the wrong type.
 The C backend borrows the original fixed-array storage when lowering an
 array-to-slice cast, including a synthesized slice method receiver. Copying
 the array before creating that slice would discard mutations made by methods.
+
+Unknown-field diagnostics for plex and union literals include the resolved
+target type in the primary message. Semantic analysis supplies the type after
+contextual and generic inference, so editor diagnostics also identify the
+expected type for anonymous literals and pointer-to-literal arguments.

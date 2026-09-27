@@ -203,7 +203,7 @@ main :: fn () {
                     },
                     "severity": 1,
                     "source": "nerd",
-                    "message": "Unknown field `v` in plex literal",
+                    "message": "Unknown field `v` in plex literal of type `Point`",
                     "relatedInformation": [
                         {
                             "location": {

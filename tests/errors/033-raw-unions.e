@@ -81,7 +81,7 @@ main :: fn () {
     v: Value = Value { text: "bad" }
 }¬
 {
-    "message": "Unknown field `text` in union literal",
+    "message": "Unknown field `text` in union literal of type `Value`",
     "source_file": "tests/errors/033-raw-unions.e",
     "primary_location": {
         "line": 3,

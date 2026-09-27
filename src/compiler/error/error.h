@@ -256,6 +256,7 @@ bool error_0304_missing_plex_fields(NerdSource source,
 bool error_0304_unknown_record_literal_field(NerdSource source,
                                              ErrorSpan  span,
                                              string     record_kind,
+                                             string     expected_type,
                                              string     field_name,
                                              string     suggested_field_name);
 bool error_0304_enum_payload_pattern_field_names(NerdSource source,

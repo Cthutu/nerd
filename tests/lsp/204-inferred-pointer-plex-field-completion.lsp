@@ -307,7 +307,7 @@ main :: fn () {
                     },
                     "severity": 1,
                     "source": "nerd",
-                    "message": "Unknown field `p` in plex literal",
+                    "message": "Unknown field `p` in plex literal of type `VkInstanceCreateInfo`",
                     "relatedInformation": [
                         {
                             "location": {
@@ -370,7 +370,7 @@ main :: fn () {
                     },
                     "severity": 1,
                     "source": "nerd",
-                    "message": "Unknown field `pE` in plex literal",
+                    "message": "Unknown field `pE` in plex literal of type `VkApplicationInfo`",
                     "relatedInformation": [
                         {
                             "location": {
