@@ -6,13 +6,13 @@ main :: fn () -> ?void {
     defer frame_system.done()
 
     main_window := {
-        system      : ^frame_system
-        id          : NEW_FRAME
-        width       : 800
-        height      : 600
-        title       : "Vulkan Triangle"
+        system : ^frame_system
+        id : NEW_FRAME
+        width : 800
+        height : 600
+        title : "Vulkan Triangle"
         full_screen : no
-        resizable   : yes
+        resizable : yes
     }
 
     frame_system.apply(^main_window)
@@ -27,11 +27,20 @@ main :: fn () -> ?void {
             None => {
             }
 
-            Resized { width: _, height: _ } => {
+            Resized {
+                width: _, height: _
+            }
+            => {
             }
 
-            KeyPress { scan_code: Q },
-            KeyPress { scan_code: Escape } => {
+            KeyPress {
+                scan_code: Q
+            }
+            ,
+            KeyPress {
+                scan_code: Escape
+            }
+            => {
                 -- Deferred cleanup releases Vulkan before the native window.
                 return
             }
@@ -40,9 +49,9 @@ main :: fn () -> ?void {
 }
 
 VulkanContext :: plex {
-    frame           ^Frame
-    instance        VkInstance
-    surface         VkSurfaceKHR
+    frame ^Frame
+    instance VkInstance
+    surface VkSurfaceKHR
     physical_device VkPhysicalDevice
 }
 
@@ -68,9 +77,9 @@ vk_done :: fn (ctx: ^VulkanContext) {
 }
 
 debug_callback :: fn (messageSeverity : VkDebugUtilsMessageSeverityFlagBitsEXT,
-                      _messageType    : VkDebugUtilsMessageTypeFlagsEXT,
-                      callbackData    : ^VkDebugUtilsMessengerCallbackDataEXT,
-                      _userData       : ^void) -> VkBool32 {
+_messageType : VkDebugUtilsMessageTypeFlagsEXT,
+callbackData : ^VkDebugUtilsMessengerCallbackDataEXT,
+_userData : ^void) -> VkBool32 {
     on messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT => {
         prn($"Vulkan Debug: {callbackData.pMessage}")
     }
@@ -85,27 +94,28 @@ create_vk_instance :: fn (ctx: ^VulkanContext) -> ?void {
         VK_LAYER_KHRONOS_VALIDATION_LAYER_NAME,
     ]
 
-    result := vkCreateInstance(^{
+    result := vkCreateInstance(^ {
         sType: VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO
         pNext: ^VkDebugUtilsMessengerCreateInfoEXT {
-            sType           : VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT
+            sType : VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT
             messageSeverity : VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT
-            messageType     : VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT
+            messageType : VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT
             pfnUserCallback : debug_callback
             ...
         }
-        pApplicationInfo: ^{
-            sType            : VK_STRUCTURE_TYPE_APPLICATION_INFO
+        pApplicationInfo: ^ {
+            sType : VK_STRUCTURE_TYPE_APPLICATION_INFO
             pApplicationName : c"Vulkan Example"
-            apiVersion       : VK_API_VERSION_1_4
+            apiVersion : VK_API_VERSION_1_4
             ...
         }
         ppEnabledExtensionNames : extensions.data
-        enabledExtensionCount   : extensions.count.as(u32)
-        ppEnabledLayerNames     : layers.data
-        enabledLayerCount       : layers.count.as(u32)
+        enabledExtensionCount : extensions.count.as(u32)
+        ppEnabledLayerNames : layers.data
+        enabledLayerCount : layers.count.as(u32)
         ...
-    }, nil, ^ctx.instance)
+    }
+    , nil, ^ctx.instance)
 
     on result {
         VK_SUCCESS => {
@@ -152,7 +162,7 @@ create_vk_physical_device :: fn (ctx: ^VulkanContext) -> ?void {
 
     -- Physical devices are borrowed from the instance; no separate cleanup.
     num_devices : u32
-    result            := vkEnumeratePhysicalDevices(ctx.instance, ^num_devices, nil)
+    result := vkEnumeratePhysicalDevices(ctx.instance, ^num_devices, nil)
 
     on {
         result != VK_SUCCESS => {
@@ -165,13 +175,10 @@ create_vk_physical_device :: fn (ctx: ^VulkanContext) -> ?void {
         }
     }
 
-    devices : [num_devices..]VkPhysicalDevice
-    devices.resize_undefined_to(num_devices.as(usize))
-    defer devices.free()
-
+    devices : [num_devices]VkPhysicalDevice
     result = vkEnumeratePhysicalDevices(ctx.instance,
-                                        ^num_devices,
-                                        devices.data)
+    ^num_devices,
+    devices.data)
 
     -- Search the returned devices, including a partial enumeration.
     on {
@@ -185,7 +192,6 @@ create_vk_physical_device :: fn (ctx: ^VulkanContext) -> ?void {
         }
     }
 
-    devices.resize_undefined_to(num_devices.as(usize))
     for device in devices {
         prn($"Found Vulkan physical device: {device^}")
     }
