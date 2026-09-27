@@ -18,8 +18,7 @@ main :: fn () -> ?void {
     frame_system.apply(^main_window)
 
     vk_context := vk_init(^main_window)?
-    defer destroy_vk_instance(^vk_context)
-    defer destroy_vk_surface(^vk_context)
+    defer vk_done(^vk_context)
 
     -- Main loop
     for frame_system.loop() {
@@ -59,6 +58,11 @@ vk_init :: fn (frame: ^Frame) -> ?VulkanContext {
     undo destroy_vk_surface(^ctx)
 
     return ctx
+}
+
+vk_done :: fn (ctx: ^VulkanContext) {
+    destroy_vk_surface(ctx)
+    destroy_vk_instance(ctx)
 }
 
 destroy_vk_surface :: fn (ctx: ^VulkanContext) {
