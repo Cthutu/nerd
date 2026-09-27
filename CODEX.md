@@ -16,3 +16,5 @@ reliable reference for anyone who wants to understand how the compiler works.
 
 Commit and push all standard-library and compiler changes after verification.
 Whenever creating any commit, push it so the remote has a backup.
+
+Treat compiler bugs as highest priority.

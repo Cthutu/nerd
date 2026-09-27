@@ -1033,3 +1033,18 @@ and loop-body emission. The local-slot table can reallocate when locals are
 added, so pointers into that table must not survive those operations. This
 applies to range, iterator, and collection loops, including release builds
 whose slot allocation differs from debug builds.
+
+Generic function calls propagate resolved type arguments from earlier call
+arguments into the expected types of later arguments, for both local and
+imported functions. Once all generic parameters are bound, the parameter
+type is substituted before inferring the next expression. This allows
+contextual literals such as `fill(items, ^{ field: value, ... })` to obtain
+their pointee type from the element type of `items`.
+
+LLVM declaration-based generic calls also match the instantiated function
+signature: different specializations share the same template declaration,
+so selecting solely by declaration can call a function for the wrong type.
+
+The C backend borrows the original fixed-array storage when lowering an
+array-to-slice cast, including a synthesized slice method receiver. Copying
+the array before creating that slice would discard mutations made by methods.

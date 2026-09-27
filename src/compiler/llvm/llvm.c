@@ -8430,6 +8430,12 @@ internal bool llvm_callee_name(LlvmFunctionContext* ctx,
         const SemaDecl* decl = &ctx->sema->decls[callee->ref_index];
         for (u32 i = 0; i < array_count(ctx->hir->functions); ++i) {
             const HirFunction* candidate = &ctx->hir->functions[i];
+            // Instantiations share their template declaration. Select the
+            // concrete signature rather than the first template match.
+            if (decl->kind == SK_GenericFunction &&
+                candidate->type_index != callee->type_index) {
+                continue;
+            }
             if (candidate->decl_index == callee->ref_index ||
                 candidate->fn_node_index == decl->value_node_index) {
                 *out = llvm_function_name_string(

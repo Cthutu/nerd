@@ -1,0 +1,9 @@
+pub fill :: fn [T] (items: []T, value: ^T) {
+    for item in items { item^ = value^ }
+}
+
+impl [T] []T {
+    pub fill_context :: fn (s: ^Self, value: ^T) {
+        for i in [0 .. s.count] { s^[i] = value^ }
+    }
+}

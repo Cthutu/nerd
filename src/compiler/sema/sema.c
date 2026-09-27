@@ -14384,6 +14384,17 @@ internal bool sema_require_trait_constraint_for_generic_receiver(
         lex_symbol(lexer, param_symbol));
 }
 
+// Earlier call arguments can establish the context for later literals.
+internal bool sema_generic_arguments_resolved(Array(u32) arg_types)
+{
+    for (u32 i = 0; i < array_count(arg_types); ++i) {
+        if (arg_types[i] == sema_no_type()) {
+            return false;
+        }
+    }
+    return true;
+}
+
 internal bool sema_emit_generic_function_instantiation(const Lexer* lexer,
                                                        const Ast*   ast,
                                                        Sema*        sema,
@@ -14592,7 +14603,8 @@ sema_instantiate_imported_generic_function(const Lexer*    lexer,
         u32 expected_src = sema_no_type();
         u32 expected_dst = sema_no_type();
 
-        if (explicit_arg_count != 0) {
+        if (explicit_arg_count != 0 ||
+            sema_generic_arguments_resolved(source_arg_types)) {
             SemaTypeSubstitution source_subst = {
                 .param_symbols =
                     &source_ast
@@ -14830,7 +14842,8 @@ internal bool sema_instantiate_generic_function(const Lexer* lexer,
         }
         u32 expected_arg = sema_no_type();
 
-        if (explicit_arg_count != 0) {
+        if (explicit_arg_count != 0 ||
+            sema_generic_arguments_resolved(arg_types)) {
             SemaTypeSubstitution subst = {
                 .param_symbols =
                     &ast->generic_param_symbols[generic->first_symbol],

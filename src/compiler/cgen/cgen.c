@@ -2482,7 +2482,13 @@ internal CValue cgen_expr(CGen* c, u32 index)
         }
     case HIR_EXPR_Cast:
         {
-            CValue v = cgen_expr(c, e->operand_expr_index);
+            // A slice borrows the original fixed array, including when the
+            // slice is synthesized as a method receiver.
+            bool array_to_slice = cgen_kind(c, t) == STK_Slice &&
+                cgen_kind(c, cgen_hir(c)->exprs[e->operand_expr_index].type_index) == STK_Array;
+            CValue v = array_to_slice
+                           ? cgen_lvalue(c, e->operand_expr_index)
+                           : cgen_expr(c, e->operand_expr_index);
             if (cgen_kind(c, t) == STK_Slice &&
                 cgen_kind(c, v.type) == STK_Pointer &&
                 e->extra_expr_index != U32_MAX) {
