@@ -83,7 +83,7 @@
 // | AK_Expression          | Ast index of root                 | 0                               |
 // | AK_Statement           | Ast index of expr                 | 0                               |
 // | AK_Return              | Ast index of expr                 | 0                               |
-// | AK_Defer               | Ast index of deferred statement   | 0                               |
+// | AK_Defer               | Ast index of deferred statement   | Failure-only flag               |
 // | AK_Assert              | Ast index of condition            | Ast message expr or U32_MAX     |
 // | AK_ReturnExpr          | Ast index of expr or U32_MAX      | 0                               |
 // | AK_BreakExpr           | Ast index of expr or U32_MAX      | Symbol or U32_MAX               |

@@ -628,6 +628,21 @@ continuation unreachable: earlier branches may complete normally, and a
 partial match may select no branch. Emitting `unreachable` there incorrectly
 allows optimisation to redirect those paths into the returning branch.
 
+The `undo` keyword reuses the defer CST/AST nodes with a failure-only bit in
+`b`, copied to `HirStmt.failure_only`. This preserves the existing statement
+ownership and scope traversal rules. Both backends maintain one ordered cleanup
+stack. Ordinary scope exits skip undo entries; return emission tests the returned
+optional/result tag, and propagation emits undo actions on the failure path
+before returning. The return value is evaluated before cleanup. Undo actions
+cannot escape the function or an outer loop, propagate failures, or register
+other undo actions. Normal lexical scope exit discards undo registrations.
+
+The host wrappers accept `main -> ?void` (with zero arguments or `[]string`):
+they call the aggregate-returning Nerd function and convert absent tag 0 to
+status 1 and present tag 1 to status 0. LLVM console/windowed wrappers and the
+C executable wrapper share this convention; ordinary integer/void entry points
+keep their existing ABI.
+
 ## Compiler performance instrumentation
 
 `NERD_PROFILE=1` emits JSON records on stderr for whole-program front-end module

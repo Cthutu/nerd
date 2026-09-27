@@ -12462,6 +12462,54 @@ internal u32 sema_ast_enclosing_function_return_type(const Lexer* lexer,
     return sema_no_type();
 }
 
+internal bool sema_validate_undo(const Lexer* lexer,
+                                 const Ast*   ast,
+                                 Sema*        sema,
+                                 u32          node_index)
+{
+    if (!ast->nodes[node_index].b) {
+        return true;
+    }
+    u32 result =
+        sema_ast_enclosing_function_return_type(lexer, ast, sema, node_index);
+    if (result == sema_no_type() || sema->types[result].kind != STK_Enum ||
+        !(sema->types[result].flags & (STF_Optional | STF_Result))) {
+        return error_0368_invalid_undo(
+            lexer->source,
+            sema_node_span(lexer, &ast->nodes[node_index]),
+            "The enclosing function must return an optional or result");
+    }
+    u32 owner = sema_ast_enclosing_function_start_node(ast, node_index);
+    for (u32 i = owner; i < node_index; ++i) {
+        if (ast->nodes[i].kind == AK_Defer &&
+            sema_ast_enclosing_function_start_node(ast, i) == owner &&
+            ast_block_statement_end_exclusive(ast, i) > node_index) {
+            return error_0368_invalid_undo(
+                lexer->source,
+                sema_node_span(lexer, &ast->nodes[node_index]),
+                "An undo action cannot be registered from another cleanup "
+                "action");
+        }
+    }
+    u32 end = ast_block_statement_end_exclusive(ast, node_index);
+    for (u32 i = node_index + 1; i < end; ++i) {
+        if (sema_ast_enclosing_function_start_node(ast, i) != owner) {
+            continue;
+        }
+        if (ast->nodes[i].kind == AK_Return ||
+            ast->nodes[i].kind == AK_ReturnExpr ||
+            ast->nodes[i].kind == AK_Propagate ||
+            (ast->nodes[i].kind == AK_Defer && ast->nodes[i].b)) {
+            return error_0368_invalid_undo(
+                lexer->source,
+                sema_node_span(lexer, &ast->nodes[i]),
+                "An undo action cannot return, propagate failure, or register "
+                "another undo");
+        }
+    }
+    return true;
+}
+
 internal bool sema_type_is_variable_storage(const Sema* sema, u32 type_index)
 {
     if (type_index == sema_no_type()) {
@@ -19290,6 +19338,9 @@ internal bool sema_infer_block_statements(const Lexer* lexer,
         }
 
         if (stmt->kind == AK_Defer) {
+            if (!sema_validate_undo(lexer, ast, sema, i)) {
+                return false;
+            }
             u32 ignored = sema_no_type();
             if (!sema_infer_node_type(
                     lexer, ast, sema, stmt->a, sema_no_type(), &ignored)) {
@@ -22248,6 +22299,9 @@ validate_type:
 
     case AK_Defer:
         {
+            if (!sema_validate_undo(lexer, ast, sema, node_index)) {
+                return false;
+            }
             u32 ignored = sema_no_type();
             if (!sema_infer_node_type(
                     lexer, ast, sema, node->a, sema_no_type(), &ignored)) {
@@ -26944,8 +26998,11 @@ sema_validate_entry_point(const Lexer* lexer, const Ast* ast, Sema* sema)
             sema, args_type, sema->type_param_types[fn_type->first_param_type]);
     }
 
-    if (!valid_params || (!sema_type_is_integer(sema, fn_type->return_type) &&
-                          sema->types[fn_type->return_type].kind != STK_Void)) {
+    if (!valid_params ||
+        (!sema_type_is_integer(sema, fn_type->return_type) &&
+         sema->types[fn_type->return_type].kind != STK_Void &&
+         !(sema_type_is_void_success(sema, fn_type->return_type) &&
+           (sema->types[fn_type->return_type].flags & STF_Optional)))) {
         return error_0316_invalid_entry_point(
             lexer->source,
             sema_decl_span(lexer, ast, decl),
@@ -27077,10 +27134,10 @@ internal bool sema_validate_loop_control(const Lexer* lexer,
             return sema_validate_loop_control(lexer,
                                               ast,
                                               node->a,
-                                              loop_depth,
-                                              expr_block_depth,
+                                              node->b ? 0 : loop_depth,
+                                              node->b ? 0 : expr_block_depth,
                                               expr_labels,
-                                              expr_label_count);
+                                              node->b ? 0 : expr_label_count);
         }
         for (u32 i = node->a; i < node->b; ++i) {
             if (ast->nodes[i].kind == AK_Block &&

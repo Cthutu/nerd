@@ -183,3 +183,34 @@ main :: fn () {
 This example uses a dynamic array, which is introduced in Part 9. The important
 point here is the cleanup shape: write the cleanup next to the acquisition.
 Later `return`, `break`, or `again` paths still run it.
+
+## Failure Cleanup With `undo`
+
+Use `undo` while constructing a resource that will be returned to the caller:
+
+```nerd
+create :: fn () -> ?Context {
+    ctx: Context
+    create_instance(^ctx)?
+    undo destroy_instance(^ctx)
+    create_surface(^ctx)?
+    undo {
+        destroy_surface(^ctx)
+    }
+    return ctx
+}
+```
+
+A failed operation propagates before its following undo is registered. If a
+later operation fails, active undo actions run in reverse order. A successful
+return skips them and transfers cleanup responsibility to the caller. Ordinary
+`defer` still runs on both success and failure. Both forms are scoped: leaving
+an inner block normally discards its undo actions.
+
+Undo reads locals when cleanup runs, so it sees updated handles. It accepts the
+same single-statement and block forms as `defer`; line breaks between an
+operation and its undo are optional.
+
+A `main :: fn () -> ?void` can use `?` to propagate initialisation failure.
+Reaching its end or using bare `return` succeeds with process status 0;
+`return nil` or propagating absence exits with status 1, after cleanup.

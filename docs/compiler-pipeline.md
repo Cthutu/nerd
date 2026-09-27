@@ -243,6 +243,8 @@ The runtime `main` wrapper accepts the host `argc`/`argv`, constructs a
 `[]string` view when the Nerd entry point is `main :: fn (args: []string)`, and
 passes the operating-system executable path as `args[0]`. `nerd run` forwards
 program arguments written after `--` to that generated executable.
+A `main` returning `?void` maps presence to exit status 0 and absence to status
+1, after normal function cleanup.
 
 `nerd build --obj` combines module LLVM without the executable `main` wrapper
 and uses `llc` to produce a relocatable object. `nerd build --lib` compiles the

@@ -29,6 +29,7 @@ typedef struct {
 typedef struct {
     bool block;
     u32  index;
+    bool failure_only;
 } CCleanup;
 typedef struct {
     cstr text;
@@ -817,10 +818,16 @@ internal CValue cgen_expr_as(CGen* c, u32 index, u32 type)
     c->expected_type = saved;
     return cgen_coerce(c, value, type);
 }
-internal void cgen_cleanup_to(CGen* c, u32 base)
+internal void cgen_cleanup_to(CGen* c, u32 base, cstr failure)
 {
     for (u32 n = array_count(c->cleanups); n > base; --n) {
         CCleanup cl                = c->cleanups[n - 1];
+        if (cl.failure_only && failure == NULL) {
+            continue;
+        }
+        if (cl.failure_only) {
+            CGEN_OUT("if(%s) {\n", failure);
+        }
         u32      save              = array_count(c->cleanups);
         __array_count(c->cleanups) = n - 1;
         if (cl.block) {
@@ -830,6 +837,9 @@ internal void cgen_cleanup_to(CGen* c, u32 base)
                 "nrt_mem_free(ncg_l%u); ncg_l%u = NULL;\n", cl.index, cl.index);
         }
         __array_count(c->cleanups) = save;
+        if (cl.failure_only) {
+            CGEN_OUT("}\n");
+        }
     }
 }
 internal void cgen_consume(CGen* c, u32 index, u32 t)
@@ -847,7 +857,14 @@ internal void cgen_return(CGen* c, CValue v)
     if (!cgen_void(c, c->return_type)) {
         v = cgen_coerce(c, v, c->return_type);
     }
-    cgen_cleanup_to(c, 0);
+    cstr            failure = NULL;
+    const SemaType* result  = cgen_type(c, c->return_type);
+    if (result != NULL && result->kind == STK_Enum &&
+        (result->flags & (STF_Optional | STF_Result))) {
+        failure =
+            CF("%s.tag != %u", v.text, (result->flags & STF_Optional) ? 1 : 0);
+    }
+    cgen_cleanup_to(c, 0, failure);
     if (c->va_local != U32_MAX) {
         CGEN_OUT("nrt_va_done(ncg_l%u);\n", c->va_local);
     }
@@ -2823,7 +2840,8 @@ internal void cgen_stmt(CGen* c, u32 index)
             CGEN_OUT("ncg_l%u=%s;\n", st->local_index, v.text);
             cgen_consume(c, st->expr_index, st->type_index);
             if (cgen_kind(c, st->type_index) == STK_Box) {
-                array_push(c->cleanups, ((CCleanup){false, st->local_index}));
+                array_push(c->cleanups,
+                           ((CCleanup){false, st->local_index, false}));
             }
             break;
         }
@@ -2880,7 +2898,8 @@ internal void cgen_stmt(CGen* c, u32 index)
             break;
         }
     case HIR_STMT_Defer:
-        array_push(c->cleanups, ((CCleanup){true, st->body_block_index}));
+        array_push(c->cleanups,
+                   ((CCleanup){true, st->body_block_index, st->failure_only}));
         break;
     case HIR_STMT_Block:
         cgen_block(c, st->body_block_index);
@@ -2908,7 +2927,7 @@ internal void cgen_stmt(CGen* c, u32 index)
                     cgen_coerce(c, cgen_expr(c, st->expr_index), saved.type);
                 CGEN_OUT("%s=%s;\n", saved.result, v.text);
             }
-            cgen_cleanup_to(c, saved.cleanup);
+            cgen_cleanup_to(c, saved.cleanup, NULL);
             CGEN_OUT("goto ncg_%s%u;\n",
                      st->kind == HIR_STMT_Break ? "end" : "continue",
                      saved.id);
@@ -2951,7 +2970,7 @@ internal void cgen_value_block(CGen* c, u32 index, CValue result)
             cgen_stmt(c, si);
         }
     }
-    cgen_cleanup_to(c, base);
+    cgen_cleanup_to(c, base, NULL);
     if (c->cleanups) {
         __array_count(c->cleanups) = base;
     }
@@ -3196,7 +3215,7 @@ bool cgen_save_program(const ProgramInfo*        program,
                     cgen_field_type(c, fn->type_index, j);
                 if (cgen_kind(c, p->type_index) == STK_Box) {
                     array_push(c->cleanups,
-                               ((CCleanup){false, p->local_index}));
+                               ((CCleanup){false, p->local_index, false}));
                 }
             }
             if (fn->varargs_local_index != U32_MAX) {
@@ -3336,6 +3355,12 @@ bool cgen_save_program(const ProgramInfo*        program,
         if (cgen_void(c, ft->return_type)) {
             sb_format(&c->out,
                       "%s(%s); int result=0;\n",
+                      cgen_function(c, c->module, main_fn),
+                      args);
+        } else if (cgen_type(c, ft->return_type)->kind == STK_Enum &&
+                   (cgen_type(c, ft->return_type)->flags & STF_Optional)) {
+            sb_format(&c->out,
+                      "int result=%s(%s).tag == 0 ? 1 : 0;\n",
                       cgen_function(c, c->module, main_fn),
                       args);
         } else {

@@ -4829,11 +4829,13 @@ internal bool cst_parse_block_statement(CstParseState* state)
         return cst_parse_block_on(state, NULL);
     }
 
-    if (cst_current_token(state).kind == TK_defer) {
+    if (cst_current_token(state).kind == TK_defer ||
+        cst_current_token(state).kind == TK_undo) {
         u32 defer_node = 0;
         if (!cst_emit_node(state,
                            (CstNode){
-                               .kind        = CK_Defer,
+                               .kind = CK_Defer,
+                               .b    = cst_current_token(state).kind == TK_undo,
                                .token_index = token_index,
                                .a           = U32_MAX,
                            },

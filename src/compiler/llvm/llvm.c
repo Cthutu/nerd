@@ -2901,6 +2901,11 @@ typedef struct {
 } LlvmValue;
 
 typedef struct {
+    u32  block_index;
+    bool failure_only;
+} LlvmDefer;
+
+typedef struct {
     u32       local_index;
     LlvmValue value;
 } LlvmLocalValue;
@@ -3012,7 +3017,7 @@ typedef struct {
     Array(LlvmLocalValue) locals;
     Array(LlvmLocalSlot) slots;
     Array(u32) assigned_locals;
-    Array(u32) defer_block_indices;
+    Array(LlvmDefer) defer_block_indices;
     string va_root;
     Array(LlvmControlTarget) control_targets;
 } LlvmFunctionContext;
@@ -8294,7 +8299,8 @@ internal bool llvm_emit_effect_block(LlvmFunctionContext* ctx,
 internal bool llvm_emit_defers_to(LlvmFunctionContext* ctx,
                                   const HirFunction*   function,
                                   u32                  defer_count,
-                                  bool                 pop)
+                                  bool                 pop,
+                                  string               failure)
 {
     if (defer_count > array_count(ctx->defer_block_indices)) {
         return false;
@@ -8302,12 +8308,33 @@ internal bool llvm_emit_defers_to(LlvmFunctionContext* ctx,
 
     u32 old_count = array_count(ctx->defer_block_indices);
     for (u32 i = old_count; i > defer_count; --i) {
-        u32 block_index = ctx->defer_block_indices[i - 1];
-        if (!llvm_emit_effect_block(ctx, function, block_index)) {
+        LlvmDefer action = ctx->defer_block_indices[i - 1];
+        if (action.failure_only && failure.count == 0) {
+            continue;
+        }
+        string done = {0};
+        if (action.failure_only) {
+            string body = llvm_label(ctx, "undo.body");
+            done        = llvm_label(ctx, "undo.end");
+            sb_format(ctx->sb,
+                      "  br i1 " STRINGP ", label %%" STRINGP
+                      ", label %%" STRINGP "\n" STRINGP ":\n",
+                      STRINGV(failure),
+                      STRINGV(body),
+                      STRINGV(done),
+                      STRINGV(body));
+        }
+        if (!llvm_emit_effect_block(ctx, function, action.block_index)) {
             return false;
         }
         if (ctx->block_terminated) {
             return false;
+        }
+        if (action.failure_only) {
+            sb_format(ctx->sb,
+                      "  br label %%" STRINGP "\n" STRINGP ":\n",
+                      STRINGV(done),
+                      STRINGV(done));
         }
     }
 
@@ -9503,7 +9530,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     .value      = with_payload,
                 };
             }
-            if (!failure.ok || !llvm_emit_defers_to(ctx, function, 0, false) ||
+            if (!failure.ok ||
+                !llvm_emit_defers_to(ctx, function, 0, false, s("true")) ||
                 !llvm_emit_box_cleanup_all(ctx)) {
                 return (LlvmValue){0};
             }
@@ -15302,7 +15330,7 @@ internal bool llvm_emit_effect_block(LlvmFunctionContext* ctx,
         llvm_debug_emit_block_end_anchor(ctx, block);
     }
     if (!ctx->block_terminated &&
-        !llvm_emit_defers_to(ctx, function, defer_base, true)) {
+        !llvm_emit_defers_to(ctx, function, defer_base, true, (string){0})) {
         ctx->debug_scope_id = old_scope;
         return false;
     }
@@ -15380,7 +15408,8 @@ internal bool llvm_emit_effect_stmt(LlvmFunctionContext* ctx,
         if (stmt->body_block_index == U32_MAX) {
             return false;
         }
-        array_push(ctx->defer_block_indices, stmt->body_block_index);
+        array_push(ctx->defer_block_indices,
+                   ((LlvmDefer){stmt->body_block_index, stmt->failure_only}));
         return true;
     case HIR_STMT_Break:
         {
@@ -15414,7 +15443,8 @@ internal bool llvm_emit_effect_stmt(LlvmFunctionContext* ctx,
                           STRINGV(value.value),
                           STRINGV(break_value_ptr));
             }
-            if (!llvm_emit_defers_to(ctx, function, break_defer_count, false)) {
+            if (!llvm_emit_defers_to(
+                    ctx, function, break_defer_count, false, (string){0})) {
                 return false;
             }
             sb_format(
@@ -15439,7 +15469,7 @@ internal bool llvm_emit_effect_stmt(LlvmFunctionContext* ctx,
                 return false;
             }
             if (!llvm_emit_defers_to(
-                    ctx, function, continue_defer_count, false)) {
+                    ctx, function, continue_defer_count, false, (string){0})) {
                 return false;
             }
             sb_format(
@@ -15461,7 +15491,7 @@ internal bool llvm_emit_return(LlvmFunctionContext* ctx,
     u32 return_type =
         llvm_function_return_type(ctx->sema, function->type_index);
     if (stmt->expr_index == U32_MAX) {
-        if (!llvm_emit_defers_to(ctx, function, 0, false)) {
+        if (!llvm_emit_defers_to(ctx, function, 0, false, (string){0})) {
             return false;
         }
         if (!llvm_emit_box_cleanup_all(ctx)) {
@@ -15476,7 +15506,7 @@ internal bool llvm_emit_return(LlvmFunctionContext* ctx,
         return true;
     }
     if (llvm_type_is_void(ctx->sema, return_type)) {
-        if (!llvm_emit_defers_to(ctx, function, 0, false)) {
+        if (!llvm_emit_defers_to(ctx, function, 0, false, (string){0})) {
             return false;
         }
         if (!llvm_emit_box_cleanup_all(ctx)) {
@@ -15501,7 +15531,26 @@ internal bool llvm_emit_return(LlvmFunctionContext* ctx,
     if (!llvm_consume_box_expr(ctx, stmt->expr_index, return_type, U32_MAX)) {
         return false;
     }
-    if (!llvm_emit_defers_to(ctx, function, 0, false)) {
+    string failure  = {0};
+    bool   has_undo = false;
+    for (u32 i = 0; i < array_count(ctx->defer_block_indices); ++i) {
+        has_undo |= ctx->defer_block_indices[i].failure_only;
+    }
+    if (has_undo) {
+        string tag = llvm_temp(ctx);
+        failure    = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = extractvalue " STRINGP " " STRINGP ", 0\n",
+                  STRINGV(tag),
+                  STRINGV(llvm_type_string(ctx, return_type)),
+                  STRINGV(value.value));
+        sb_format(ctx->sb,
+                  "  " STRINGP " = icmp ne i64 " STRINGP ", %u\n",
+                  STRINGV(failure),
+                  STRINGV(tag),
+                  (ctx->sema->types[return_type].flags & STF_Optional) ? 1 : 0);
+    }
+    if (!llvm_emit_defers_to(ctx, function, 0, false, failure)) {
         return false;
     }
     if (!llvm_emit_box_cleanup_all(ctx)) {
@@ -16038,7 +16087,9 @@ internal bool llvm_emit_block(LlvmFunctionContext* ctx,
             if (stmt->body_block_index == U32_MAX) {
                 return false;
             }
-            array_push(ctx->defer_block_indices, stmt->body_block_index);
+            array_push(
+                ctx->defer_block_indices,
+                ((LlvmDefer){stmt->body_block_index, stmt->failure_only}));
             continue;
         } else if (stmt->kind == HIR_STMT_Break) {
             if (!llvm_emit_effect_stmt(ctx, function, stmt)) {
@@ -16070,7 +16121,7 @@ internal bool llvm_emit_block(LlvmFunctionContext* ctx,
         llvm_debug_emit_block_end_anchor(ctx, block);
     }
     if (!ctx->block_terminated &&
-        !llvm_emit_defers_to(ctx, function, defer_base, true)) {
+        !llvm_emit_defers_to(ctx, function, defer_base, true, (string){0})) {
         return false;
     }
     if (!ctx->block_terminated &&

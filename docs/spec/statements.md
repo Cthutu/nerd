@@ -11,6 +11,7 @@ statement ::= pragma
             | ffi-declaration
             | use-declaration
             | 'defer' statement
+            | 'undo' statement
             | assert-statement
             | 'break' [ label ] [ expression ]
             | 'break' [ label ] 'on' expression '=>' expression
@@ -127,11 +128,30 @@ move :: fn (state: ^State) {
 The parameter binding itself remains immutable, so assigning a new pointer value
 to `state` is still rejected.
 
-## Defer And Assert
+## Defer, Undo And Assert
 
 `defer` stores a statement to run when leaving the current scope. Deferred
 statements still undergo the same semantic validity checks as if they appeared
 normally.
+
+`undo` registers failure-only cleanup in the current lexical scope. Like
+`defer`, it accepts one statement or a block, and may follow a preceding
+statement on the same line or a new line. Registration happens only when
+execution reaches the statement: `acquire()? undo release()` does not register
+`release()` if `acquire()` fails.
+
+A return carrying absence or a result error runs active undo actions. This
+includes explicit returns and failure propagation through `?`. Ordinary defers
+run on every exit. Actions that run are executed together in reverse
+registration order. Undo actions are discarded on normal scope exit, success
+returns, `break`, and `again`; an undo in an already completed inner scope does
+not run for a later failure outside that scope. Cleanup reads the latest local
+values, after the return value has been evaluated.
+
+`undo` requires an enclosing optional- or result-returning function. Its action
+cannot return, propagate failure, register another undo, or break/continue a
+loop outside the cleanup action. Undo cannot be registered from another cleanup
+action. Process termination and panics do not constitute failure returns.
 
 ```bnf
 assert-statement ::= 'assert' expression [ ',' expression ]

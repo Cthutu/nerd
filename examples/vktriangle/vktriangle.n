@@ -1,7 +1,7 @@
 use std.frame
 use std.vulkan
 
-main :: fn () {
+main :: fn () -> ?void {
     frame_system := FrameSystem.init()
     defer frame_system.done()
 
@@ -17,9 +17,9 @@ main :: fn () {
 
     frame_system.apply(^main_window)
 
-    vk_context := vk_init(^main_window)
-    defer vk_done(vk_context)
-    on vk_context.surface == nil => return
+    vk_context := vk_init(^main_window)?
+    defer destroy_vk_instance(^vk_context)
+    defer destroy_vk_surface(^vk_context)
 
     -- Main loop
     for frame_system.loop() {
@@ -41,13 +41,52 @@ main :: fn () {
 }
 
 VulkanContext :: plex {
+    frame    ^Frame
     instance VkInstance
     surface  VkSurfaceKHR
 }
 
-vk_init :: fn (frame: ^Frame) -> VulkanContext {
+vk_init :: fn (frame: ^Frame) -> ?VulkanContext {
     -- Initialize Vulkan context here
-    context : VulkanContext
+    ctx: VulkanContext = {
+        frame
+        ...
+    }
+
+    create_vk_instance(^ctx)?
+    undo destroy_vk_instance(^ctx)
+    create_vk_surface(^ctx)?
+    undo destroy_vk_surface(^ctx)
+
+    return ctx
+}
+
+destroy_vk_surface :: fn (ctx: ^VulkanContext) {
+    on ctx.surface != nil => {
+        vkDestroySurfaceKHR(ctx.instance, ctx.surface, nil)
+        ctx.surface = nil
+    }
+}
+
+destroy_vk_instance :: fn (ctx: ^VulkanContext) {
+    on ctx.instance != nil => {
+        vkDestroyInstance(ctx.instance, nil)
+        ctx.instance = nil
+    }
+}
+
+debug_callback :: fn (messageSeverity : VkDebugUtilsMessageSeverityFlagBitsEXT,
+                      _messageType    : VkDebugUtilsMessageTypeFlagsEXT,
+                      callbackData    : ^VkDebugUtilsMessengerCallbackDataEXT,
+                      _userData       : ^void) -> VkBool32 {
+    on messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT => {
+        prn($"Vulkan Debug: {callbackData.pMessage}")
+    }
+    return VK_FALSE
+}
+
+create_vk_instance :: fn (ctx: ^VulkanContext) -> ?void {
+    assert ctx != nil, "Vulkan context must not be nil"
 
     extensions := vk_get_extensions(debug = yes)
     layers := [
@@ -74,7 +113,7 @@ vk_init :: fn (frame: ^Frame) -> VulkanContext {
         ppEnabledLayerNames     : layers.data
         enabledLayerCount       : layers.count.as(u32)
         ...
-    }, nil, ^context.instance)
+    }, nil, ^ctx.instance)
 
     on result {
         VK_SUCCESS => {
@@ -84,36 +123,20 @@ vk_init :: fn (frame: ^Frame) -> VulkanContext {
         else => {
             prn($"Failed to create Vulkan instance: {result}")
             prn($"Error: {vk_result_to_string(result)}")
-            context.instance = nil
-            return context
+            ctx.instance = nil
+            return nil
         }
     }
+}
 
-    result = vk_create_surface(context.instance, frame, ^context.surface)
+create_vk_surface :: fn (ctx: ^VulkanContext) -> ?void {
+    assert ctx != nil, "Vulkan context must not be nil"
+
+    result := vk_create_surface(ctx.instance, ctx.frame, ^ctx.surface)
     on result != VK_SUCCESS => {
-        prn($"Failed to create Vulkan surface: {vk_result_to_string(result)}")
-    } else {
-        prn("Vulkan surface created successfully")
+        prn($"Failed to create Vulkan surface: {result}")
+        prn($"Error: {vk_result_to_string(result)}")
+        ctx.surface = nil
+        return nil
     }
-
-    return context
-}
-
-vk_done :: fn (context: VulkanContext) {
-    on context.surface != nil => {
-        vkDestroySurfaceKHR(context.instance, context.surface, nil)
-    }
-    on context.instance != nil => {
-        vkDestroyInstance(context.instance, nil)
-    }
-}
-
-debug_callback :: fn (messageSeverity : VkDebugUtilsMessageSeverityFlagBitsEXT,
-                      _messageType    : VkDebugUtilsMessageTypeFlagsEXT,
-                      callbackData    : ^VkDebugUtilsMessengerCallbackDataEXT,
-                      _userData       : ^void) -> VkBool32 {
-    on messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT => {
-        prn($"Vulkan Debug: {callbackData.pMessage}")
-    }
-    return VK_FALSE
 }

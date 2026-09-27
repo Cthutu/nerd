@@ -229,7 +229,7 @@ export function unsupportedNerdWatchReason(expression: string): string | undefin
     if (!text) {
         return "empty watch expressions are not supported";
     }
-    if (/\b(on|for|return|break|continue|defer|assert)\b/.test(text)) {
+    if (/\b(on|for|return|break|continue|defer|undo|assert)\b/.test(text)) {
         return "statement forms are not supported in watches yet";
     }
     if (/:=/.test(text) || /^\s*(let|var)\b/.test(text)) {

@@ -664,7 +664,8 @@ bool error_0315_missing_entry_point(NerdSource source, ErrorSpan span)
     error_add_help(
         &error,
         "Add `main :: fn () => 0`, `main :: fn (args: []string) => 0`, or "
-        "another supported function bound to main returning `i32` or no type "
+        "another supported function bound to main returning an integer, "
+        "`?void`, or no type "
         "at all.");
     error_render(&error);
     return false;
@@ -687,7 +688,7 @@ bool error_0316_invalid_entry_point(NerdSource source,
         ERROR_REF_PRIMARY,
         span,
         "`main` must be a function with no parameters or one `[]string` "
-        "parameter, returning `i32` or no value");
+        "parameter, returning an integer, `?void`, or no value");
     error_add_help(&error,
                    "Change `main` to `fn ()`, or to `fn (args: []string)` if "
                    "the program needs command-line arguments.");
@@ -2049,3 +2050,15 @@ bool error_0366_invalid_on_extraction_type(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
+
+bool error_0368_invalid_undo(NerdSource source, ErrorSpan span, cstr reason)
+{
+    ErrorInfo error = error_init(source, span, "Invalid `undo` statement");
+    error_add_reference(&error, ERROR_REF_PRIMARY, span, "%s", reason);
+    error_add_help(
+        &error,
+        "Use `undo` inside an optional- or result-returning function, "
+        "with cleanup that does not return or propagate failure.");
+    error_render(&error);
+    return false;
+}

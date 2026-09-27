@@ -3603,6 +3603,7 @@ internal u32 hir_lower_stmt(Hir*         hir,
         return hir_add_stmt(hir,
                             (HirStmt){
                                 .kind              = HIR_STMT_Defer,
+                                .failure_only      = node->b != 0,
                                 .expr_index        = hir_no_index(),
                                 .target_expr_index = hir_no_index(),
                                 .symbol_handle     = U32_MAX,

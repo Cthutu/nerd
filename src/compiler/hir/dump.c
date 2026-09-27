@@ -1009,7 +1009,7 @@ internal void hir_render_stmt_at_indent(StringBuilder* sb,
         break;
     case HIR_STMT_Defer:
         hir_append_indent(sb, indent);
-        sb_append_cstr(sb, "defer {\n");
+        sb_append_cstr(sb, stmt->failure_only ? "undo {\n" : "defer {\n");
         hir_render_block_at_indent(
             sb, hir, lexer, sema, arena, stmt->body_block_index, indent + 1);
         hir_append_indent(sb, indent);

@@ -144,6 +144,8 @@ string token_kind_to_string(TokenKind kind)
         return string_from_cstr("Keyword `on`");
     case TK_else:
         return string_from_cstr("Keyword `else`");
+    case TK_undo:
+        return string_from_cstr("Keyword `undo`");
     case TK_defer:
         return string_from_cstr("Keyword `defer`");
     case TK_assert:

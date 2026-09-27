@@ -8501,7 +8501,7 @@ internal void format_emit_block_statement(StringBuilder* sb,
 
     if (stmt->kind == CK_Defer) {
         const CstNode* deferred = &cst->nodes[stmt->a];
-        sb_append_cstr(sb, "defer");
+        sb_append_cstr(sb, stmt->b ? "undo" : "defer");
         if (deferred->kind == CK_Block) {
             sb_append_cstr(sb, " {\n");
             format_emit_block_contents(
@@ -9679,6 +9679,7 @@ internal bool format_token_needs_space_between(TokenKind previous,
     case TK_on:
     case TK_else:
     case TK_defer:
+    case TK_undo:
     case TK_assert:
     case TK_break:
     case TK_again:
@@ -9706,6 +9707,7 @@ internal bool format_token_needs_space_between(TokenKind previous,
     case TK_on:
     case TK_else:
     case TK_defer:
+    case TK_undo:
     case TK_assert:
     case TK_break:
     case TK_again:

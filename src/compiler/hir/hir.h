@@ -240,6 +240,7 @@ typedef struct {
 
 typedef struct {
     HirStmtKind kind;
+    bool        failure_only;
     u32         expr_index;
     u32         target_expr_index;
     u32         symbol_handle;

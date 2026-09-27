@@ -185,6 +185,7 @@ statement       ::= pragma
                   | use-declaration
                   | local-on
                   | 'defer' statement
+                  | 'undo' statement
                   | 'assert' expression [ ',' expression ]
                   | break-statement
                   | again-statement

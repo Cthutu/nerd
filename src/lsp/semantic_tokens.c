@@ -498,6 +498,7 @@ internal bool lsp_semantic_token_type(const LspDeclarationView* view,
     case TK_on:
     case TK_else:
     case TK_defer:
+    case TK_undo:
     case TK_assert:
     case TK_break:
     case TK_again:
