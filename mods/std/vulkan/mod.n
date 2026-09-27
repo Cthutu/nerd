@@ -14,7 +14,17 @@ pub VkObjectType          :: i32
 pub vkStructureType       :: i32
 pub vkInstanceCreateFlags :: u32
 pub VkInstance            :: ^void
+pub VkPhysicalDevice      :: ^VkPhysicalDevice_T
+pub VkDevice              :: ^void
 pub VkSurfaceKHR          :: ^void
+pub VkDeviceSize          :: u64
+pub VkPhysicalDeviceType  :: i32
+pub VkSampleCountFlags    :: VkFlags
+pub VkSampleCountFlagBits :: i32
+
+-- Opaque dispatchable handle. Never dereference or allocate this placeholder.
+pub VkPhysicalDevice_T :: plex #c {
+}
 
 pub VK_FALSE : VkBool32 : 0
 pub VK_TRUE  : VkBool32 : 1
@@ -173,7 +183,7 @@ pub vk_result_to_string :: fn (result: VkResult) -> string {
             +"no longer fully matches the surface"
         VK_ERROR_OUT_OF_DATE_KHR  => "The surface has changed; "
             +"recreate the swapchain"
-        else                      => temp_arena.pr(text = $"Unknown Vulkan result ({result})")
+        else                      => temp_arena.pr($"Unknown Vulkan result ({result})")
     }
 }
 
@@ -307,16 +317,185 @@ pub VkDebugUtilsMessengerCreateInfoEXT :: plex #c {
 }
 
 --
+-- Physical-device properties (Vulkan-Headers v1.4.357).
+pub VK_MAX_PHYSICAL_DEVICE_NAME_SIZE :: 256
+pub VK_UUID_SIZE                     :: 16
+
+pub VK_PHYSICAL_DEVICE_TYPE_OTHER          : VkPhysicalDeviceType : 0
+pub VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU : VkPhysicalDeviceType : 1
+pub VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU   : VkPhysicalDeviceType : 2
+pub VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU    : VkPhysicalDeviceType : 3
+pub VK_PHYSICAL_DEVICE_TYPE_CPU            : VkPhysicalDeviceType : 4
+pub VK_PHYSICAL_DEVICE_TYPE_MAX_ENUM       : VkPhysicalDeviceType : 0x7FFFFFFF
+
+pub VK_SAMPLE_COUNT_1_BIT              : VkSampleCountFlagBits : 0x00000001
+pub VK_SAMPLE_COUNT_2_BIT              : VkSampleCountFlagBits : 0x00000002
+pub VK_SAMPLE_COUNT_4_BIT              : VkSampleCountFlagBits : 0x00000004
+pub VK_SAMPLE_COUNT_8_BIT              : VkSampleCountFlagBits : 0x00000008
+pub VK_SAMPLE_COUNT_16_BIT             : VkSampleCountFlagBits : 0x00000010
+pub VK_SAMPLE_COUNT_32_BIT             : VkSampleCountFlagBits : 0x00000020
+pub VK_SAMPLE_COUNT_64_BIT             : VkSampleCountFlagBits : 0x00000040
+pub VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM : VkSampleCountFlagBits : 0x7FFFFFFF
+
+pub VkPhysicalDeviceLimits :: plex #c {
+    maxImageDimension1D                             u32
+    maxImageDimension2D                             u32
+    maxImageDimension3D                             u32
+    maxImageDimensionCube                           u32
+    maxImageArrayLayers                             u32
+    maxTexelBufferElements                          u32
+    maxUniformBufferRange                           u32
+    maxStorageBufferRange                           u32
+    maxPushConstantsSize                            u32
+    maxMemoryAllocationCount                        u32
+    maxSamplerAllocationCount                       u32
+    bufferImageGranularity                          VkDeviceSize
+    sparseAddressSpaceSize                          VkDeviceSize
+    maxBoundDescriptorSets                          u32
+    maxPerStageDescriptorSamplers                   u32
+    maxPerStageDescriptorUniformBuffers             u32
+    maxPerStageDescriptorStorageBuffers             u32
+    maxPerStageDescriptorSampledImages              u32
+    maxPerStageDescriptorStorageImages              u32
+    maxPerStageDescriptorInputAttachments           u32
+    maxPerStageResources                            u32
+    maxDescriptorSetSamplers                        u32
+    maxDescriptorSetUniformBuffers                  u32
+    maxDescriptorSetUniformBuffersDynamic           u32
+    maxDescriptorSetStorageBuffers                  u32
+    maxDescriptorSetStorageBuffersDynamic           u32
+    maxDescriptorSetSampledImages                   u32
+    maxDescriptorSetStorageImages                   u32
+    maxDescriptorSetInputAttachments                u32
+    maxVertexInputAttributes                        u32
+    maxVertexInputBindings                          u32
+    maxVertexInputAttributeOffset                   u32
+    maxVertexInputBindingStride                     u32
+    maxVertexOutputComponents                       u32
+    maxTessellationGenerationLevel                  u32
+    maxTessellationPatchSize                        u32
+    maxTessellationControlPerVertexInputComponents  u32
+    maxTessellationControlPerVertexOutputComponents u32
+    maxTessellationControlPerPatchOutputComponents  u32
+    maxTessellationControlTotalOutputComponents     u32
+    maxTessellationEvaluationInputComponents        u32
+    maxTessellationEvaluationOutputComponents       u32
+    maxGeometryShaderInvocations                    u32
+    maxGeometryInputComponents                      u32
+    maxGeometryOutputComponents                     u32
+    maxGeometryOutputVertices                       u32
+    maxGeometryTotalOutputComponents                u32
+    maxFragmentInputComponents                      u32
+    maxFragmentOutputAttachments                    u32
+    maxFragmentDualSrcAttachments                   u32
+    maxFragmentCombinedOutputResources              u32
+    maxComputeSharedMemorySize                      u32
+    maxComputeWorkGroupCount                        [3]u32
+    maxComputeWorkGroupInvocations                  u32
+    maxComputeWorkGroupSize                         [3]u32
+    subPixelPrecisionBits                           u32
+    subTexelPrecisionBits                           u32
+    mipmapPrecisionBits                             u32
+    maxDrawIndexedIndexValue                        u32
+    maxDrawIndirectCount                            u32
+    maxSamplerLodBias                               f32
+    maxSamplerAnisotropy                            f32
+    maxViewports                                    u32
+    maxViewportDimensions                           [2]u32
+    viewportBoundsRange                             [2]f32
+    viewportSubPixelBits                            u32
+    minMemoryMapAlignment                           usize
+    minTexelBufferOffsetAlignment                   VkDeviceSize
+    minUniformBufferOffsetAlignment                 VkDeviceSize
+    minStorageBufferOffsetAlignment                 VkDeviceSize
+    minTexelOffset                                  i32
+    maxTexelOffset                                  u32
+    minTexelGatherOffset                            i32
+    maxTexelGatherOffset                            u32
+    minInterpolationOffset                          f32
+    maxInterpolationOffset                          f32
+    subPixelInterpolationOffsetBits                 u32
+    maxFramebufferWidth                             u32
+    maxFramebufferHeight                            u32
+    maxFramebufferLayers                            u32
+    framebufferColorSampleCounts                    VkSampleCountFlags
+    framebufferDepthSampleCounts                    VkSampleCountFlags
+    framebufferStencilSampleCounts                  VkSampleCountFlags
+    framebufferNoAttachmentsSampleCounts            VkSampleCountFlags
+    maxColorAttachments                             u32
+    sampledImageColorSampleCounts                   VkSampleCountFlags
+    sampledImageIntegerSampleCounts                 VkSampleCountFlags
+    sampledImageDepthSampleCounts                   VkSampleCountFlags
+    sampledImageStencilSampleCounts                 VkSampleCountFlags
+    storageImageSampleCounts                        VkSampleCountFlags
+    maxSampleMaskWords                              u32
+    timestampComputeAndGraphics                     VkBool32
+    timestampPeriod                                 f32
+    maxClipDistances                                u32
+    maxCullDistances                                u32
+    maxCombinedClipAndCullDistances                 u32
+    discreteQueuePriorities                         u32
+    pointSizeRange                                  [2]f32
+    lineWidthRange                                  [2]f32
+    pointSizeGranularity                            f32
+    lineWidthGranularity                            f32
+    strictLines                                     VkBool32
+    standardSampleLocations                         VkBool32
+    optimalBufferCopyOffsetAlignment                VkDeviceSize
+    optimalBufferCopyRowPitchAlignment              VkDeviceSize
+    nonCoherentAtomSize                             VkDeviceSize
+}
+
+pub VkPhysicalDeviceSparseProperties :: plex #c {
+    residencyStandard2DBlockShape            VkBool32
+    residencyStandard2DMultisampleBlockShape VkBool32
+    residencyStandard3DBlockShape            VkBool32
+    residencyAlignedMipSize                  VkBool32
+    residencyNonResidentStrict               VkBool32
+}
+
+pub VkPhysicalDeviceProperties :: plex #c {
+    apiVersion        u32
+    driverVersion     u32
+    vendorID          u32
+    deviceID          u32
+    deviceType        VkPhysicalDeviceType
+    deviceName        [VK_MAX_PHYSICAL_DEVICE_NAME_SIZE]i8
+    pipelineCacheUUID [VK_UUID_SIZE]u8
+    limits            VkPhysicalDeviceLimits
+    sparseProperties  VkPhysicalDeviceSparseProperties
+}
+
+pub impl Display for VkPhysicalDevice {
+
+    -- The name is copied into temp_arena; no stack-backed string escapes.
+    show :: fn (self: Self) -> string {
+        on self == nil => return "nil"
+        properties : VkPhysicalDeviceProperties
+        vkGetPhysicalDeviceProperties(self, ^properties)
+        return temp_arena.pr(properties.deviceName.data.as(c_string).show())
+    }
+
+}
+
 -- FFI API to Vulkan
 --
 
 ffi "vulkan" {
-    pub vkCreateInstance  (pCreateInfo : ^VkInstanceCreateInfo,
-                           pAllocator  : ^void,
-                           pInstance   : ^VkInstance) -> VkResult
+    pub vkCreateInstance (pCreateInfo : ^VkInstanceCreateInfo,
+    pAllocator : ^void,
+    pInstance : ^VkInstance) -> VkResult
     pub vkDestroyInstance (instance: VkInstance, pAllocator: ^void)
+    pub vkEnumeratePhysicalDevices (instance : VkInstance,
+    pPhysicalDeviceCount : ^u32,
+    pPhysicalDevices : ^VkPhysicalDevice) -> VkResult
+    -- Only logical devices created by vkCreateDevice are destroyed here.
+    -- Physical devices remain owned by their instance.
+    pub vkDestroyDevice (device: VkDevice, pAllocator: ^void)
+    pub vkGetPhysicalDeviceProperties (physicalDevice: VkPhysicalDevice,
+    pProperties: ^VkPhysicalDeviceProperties)
     pub vkDestroySurfaceKHR (instance: VkInstance, surface: VkSurfaceKHR,
-                             pAllocator: ^void)
+    pAllocator: ^void)
 }
 
 -- Creates a surface for an applied Frame, using Vulkan's default allocator.
@@ -363,7 +542,8 @@ on "linux" {
 
     pub VkXlibSurfaceCreateFlagsKHR :: VkFlags
 
-    pub VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR : vkStructureType : 1000004000
+    pub VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR : vkStructureType :
+                                                                           1000004000
 
     pub VkXlibSurfaceCreateInfoKHR :: plex #c {
         sType  vkStructureType
@@ -388,7 +568,8 @@ on "windows" {
 
     pub VkWin32SurfaceCreateFlagsKHR :: VkFlags
 
-    pub VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR : vkStructureType : 1000009000
+    pub VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR : vkStructureType :
+                                                                            1000009000
 
     pub VkWin32SurfaceCreateInfoKHR :: plex #c {
         sType     vkStructureType

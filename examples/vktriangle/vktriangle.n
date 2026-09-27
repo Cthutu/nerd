@@ -40,9 +40,10 @@ main :: fn () -> ?void {
 }
 
 VulkanContext :: plex {
-    frame    ^Frame
-    instance VkInstance
-    surface  VkSurfaceKHR
+    frame           ^Frame
+    instance        VkInstance
+    surface         VkSurfaceKHR
+    physical_device VkPhysicalDevice
 }
 
 vk_init :: fn (frame: ^Frame) -> ?VulkanContext {
@@ -56,6 +57,7 @@ vk_init :: fn (frame: ^Frame) -> ?VulkanContext {
     undo destroy_vk_instance(^ctx)
     create_vk_surface(^ctx)?
     undo destroy_vk_surface(^ctx)
+    create_vk_physical_device(^ctx)?
 
     return ctx
 }
@@ -63,20 +65,6 @@ vk_init :: fn (frame: ^Frame) -> ?VulkanContext {
 vk_done :: fn (ctx: ^VulkanContext) {
     destroy_vk_surface(ctx)
     destroy_vk_instance(ctx)
-}
-
-destroy_vk_surface :: fn (ctx: ^VulkanContext) {
-    on ctx.surface != nil => {
-        vkDestroySurfaceKHR(ctx.instance, ctx.surface, nil)
-        ctx.surface = nil
-    }
-}
-
-destroy_vk_instance :: fn (ctx: ^VulkanContext) {
-    on ctx.instance != nil => {
-        vkDestroyInstance(ctx.instance, nil)
-        ctx.instance = nil
-    }
 }
 
 debug_callback :: fn (messageSeverity : VkDebugUtilsMessageSeverityFlagBitsEXT,
@@ -133,6 +121,13 @@ create_vk_instance :: fn (ctx: ^VulkanContext) -> ?void {
     }
 }
 
+destroy_vk_instance :: fn (ctx: ^VulkanContext) {
+    on ctx.instance != nil => {
+        vkDestroyInstance(ctx.instance, nil)
+        ctx.instance = nil
+    }
+}
+
 create_vk_surface :: fn (ctx: ^VulkanContext) -> ?void {
     assert ctx != nil, "Vulkan context must not be nil"
 
@@ -143,4 +138,68 @@ create_vk_surface :: fn (ctx: ^VulkanContext) -> ?void {
         ctx.surface = nil
         return nil
     }
+}
+
+destroy_vk_surface :: fn (ctx: ^VulkanContext) {
+    on ctx.surface != nil => {
+        vkDestroySurfaceKHR(ctx.instance, ctx.surface, nil)
+        ctx.surface = nil
+    }
+}
+
+create_vk_physical_device :: fn (ctx: ^VulkanContext) -> ?void {
+    assert ctx != nil, "Vulkan context must not be nil"
+
+    -- Physical devices are borrowed from the instance; no separate cleanup.
+    num_devices : u32
+    result            := vkEnumeratePhysicalDevices(ctx.instance, ^num_devices, nil)
+
+    on {
+        result != VK_SUCCESS => {
+            prn($"Failed to enumerate Vulkan physical devices: {vk_result_to_string(result)}")
+            return nil
+        }
+        num_devices == 0 => {
+            prn("No Vulkan physical devices found")
+            return nil
+        }
+    }
+
+    devices : [num_devices..]VkPhysicalDevice
+    devices.resize_undefined_to(num_devices.as(usize))
+    defer devices.free()
+
+    result = vkEnumeratePhysicalDevices(ctx.instance,
+                                        ^num_devices,
+                                        devices.data)
+
+    -- Search the returned devices, including a partial enumeration.
+    on {
+        result != VK_SUCCESS && result != VK_INCOMPLETE => {
+            prn($"Failed to enumerate Vulkan physical devices: {vk_result_to_string(result)}")
+            return nil
+        }
+        num_devices == 0 => {
+            prn("No Vulkan physical devices found")
+            return nil
+        }
+    }
+
+    devices.resize_undefined_to(num_devices.as(usize))
+    for device in devices {
+        prn($"Found Vulkan physical device: {device^}")
+    }
+
+    for device in devices {
+        properties: VkPhysicalDeviceProperties
+        vkGetPhysicalDeviceProperties(device^, ^properties)
+        on properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU => {
+            ctx.physical_device = device^
+            prn($"Selected Vulkan physical device: {device^}")
+            return
+        }
+    }
+
+    prn("No discrete Vulkan GPU found")
+    return nil
 }

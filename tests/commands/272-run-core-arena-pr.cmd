@@ -6,11 +6,11 @@ main :: fn () -> i32 {
 
     temporary_mark := temp_arena.mark()
     storage_mark := storage.mark()
-    first := storage.pr(text = "value")
-    second := storage.prn(text = $"-{41 + 1}")
+    first := storage.pr("value")
+    second := storage.prn($"-{41 + 1}")
     after_generated := storage.mark()
-    empty := storage.pr()
-    newline := storage.prn()
+    empty := storage.pr("")
+    newline := storage.prn("")
 
     pr(first)
     pr(second)

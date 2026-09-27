@@ -13,3 +13,6 @@ the internal workings of the compiler. It should also be updated when bugs are
 fixed that require changes to the internal workings of the compiler. The goal is
 to keep this document up-to-date and accurate, so that it can serve as a
 reliable reference for anyone who wants to understand how the compiler works.
+
+Commit and push all standard-library and compiler changes after verification.
+Whenever creating any commit, push it so the remote has a backup.

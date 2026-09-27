@@ -59,35 +59,13 @@ core_done :: fn () {
 }
 
 -- Prints text to standard output without appending a newline.
-pub pr :: fn {
-    pr_text
-    pr_empty
-}
-
-pr_empty :: fn () -> void {
-    pr_text("")
-    return
-}
-
--- Prints text to standard output without appending a newline.
-pr_text :: fn (text: string) -> void {
+pub pr :: fn (text: string) -> void {
     nrt_pr(text.data, text.count)
     return
 }
 
 -- Prints text to standard error without appending a newline.
-pub epr :: fn {
-    epr_text
-    epr_empty
-}
-
-epr_empty :: fn () -> void {
-    epr_text("")
-    return
-}
-
--- Prints text to standard error without appending a newline.
-epr_text :: fn (text: string) -> void {
+pub epr :: fn (text: string) -> void {
     nrt_epr(text.data, text.count)
     return
 }
@@ -154,7 +132,7 @@ arena_alignment :: fn [T] () -> usize {
 impl arena {
 
     -- Places text in the arena and returns the arena-backed string.
-    pub pr :: fn (self: ^Self, text: string = "") -> string {
+    pub pr :: fn (self: ^Self, text: string) -> string {
         output : string
         nrt_arena_pr(^output, self, ^text)
         return output
@@ -162,7 +140,7 @@ impl arena {
 
     -- Places text followed by a newline in the arena and returns the
     -- arena-backed string.
-    pub prn :: fn (self: ^Self, text: string = "") -> string {
+    pub prn :: fn (self: ^Self, text: string) -> string {
         output : string
         nrt_arena_prn(^output, self, ^text)
         return output

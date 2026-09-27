@@ -1,12 +1,12 @@
 main :: fn () {
     pr("a")
-    pr()
+    pr("")
     prn("b")
     prn()
     prn(text = "named")
     output: fn (text: string) -> void = prn
     output("alias")
-    epr()
+    epr("")
     eprn("error")
     eprn()
 }

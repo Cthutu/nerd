@@ -33,20 +33,16 @@ flag = yes
 hir 0
 module module.045-expression-block.input(045-expression-block.input)
 import module.std.io(std.io)
-import import.0 pr from module.core(core).decl.N: <unknown>
+import import.0 pr from module.core(core).decl.N: fn (string) -> void
 import import.1 prn from module.core(core).decl.N: <unknown>
 import import.2 input from module.std.io(std.io).decl.N: fn (string) -> [..]u8
-import import.3 pr_text from module.core(core).decl.N: fn (string) -> void
-import import.4 pr_empty from module.core(core).decl.N: fn () -> void
-import import.5 prn_text from module.core(core).decl.N: fn (string) -> void
-import import.6 prn_empty from module.core(core).decl.N: fn () -> void
+import import.3 prn_text from module.core(core).decl.N: fn (string) -> void
+import import.4 prn_empty from module.core(core).decl.N: fn () -> void
 bind pr = import.0
 bind prn = import.1
 bind input = import.2
-bind pr_text = import.3
-bind pr_empty = import.4
-bind prn_text = import.5
-bind prn_empty = import.6
+bind prn_text = import.3
+bind prn_empty = import.4
 bind main = fn.0
 func fn.0() -> i32 {
   let first: untyped integer = untyped integer block {
@@ -61,11 +57,11 @@ func fn.0() -> i32 {
   let flag: bool = bool block {
     break bool yes
   }
-  expr void call bind.3(pr_text)(string "first = ")
-  expr void call bind.5(prn_text)(string interpolate(untyped integer local.0(first)))
-  expr void call bind.5(prn_text)(string interpolate(<unknown> "second = ", untyped integer local.1(second)))
-  expr void call bind.5(prn_text)(string interpolate(<unknown> "word = ", string local.2(word)))
-  expr void call bind.5(prn_text)(string interpolate(<unknown> "flag = ", bool local.3(flag)))
+  expr void call bind.0(pr)(string "first = ")
+  expr void call bind.3(prn_text)(string interpolate(untyped integer local.0(first)))
+  expr void call bind.3(prn_text)(string interpolate(<unknown> "second = ", untyped integer local.1(second)))
+  expr void call bind.3(prn_text)(string interpolate(<unknown> "word = ", string local.2(word)))
+  expr void call bind.3(prn_text)(string interpolate(<unknown> "flag = ", bool local.3(flag)))
   return untyped integer local.1(second)
 }
 ¬
@@ -101,9 +97,8 @@ declare void @nrt_to_string_usize(ptr, i64)
 declare void @nrt_to_string_f32(ptr, float)
 declare void @nrt_to_string_f64(ptr, double)
 
+declare void @$pr({ ptr, i64 })
 declare ptr @$input({ ptr, i64 })
-declare void @$pr_text({ ptr, i64 })
-declare void @$pr_empty()
 declare void @$prn_text({ ptr, i64 })
 declare void @$prn_empty()
 
@@ -137,7 +132,7 @@ block.end.2:
   br label %block.end.3
 block.end.3:
   %t8 = load i1, ptr %t7, align 4
-  call void @$pr_text({ ptr, i64 } { ptr @.str.m0.1, i64 8 })
+  call void @$pr({ ptr, i64 } { ptr @.str.m0.1, i64 8 })
   %t9 = call i64 @nrt_string_builder_mark()
   %t10 = alloca { ptr, i64 }
   call void @nrt_to_string_i32(ptr %t10, i32 %t1)

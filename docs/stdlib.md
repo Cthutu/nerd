@@ -182,16 +182,16 @@ The trigonometric functions take radians and return `f64` values.
 - `arena.alloc[T]() -> ^T`
 - `arena.alloc_array[T](count: usize) -> []T`
 - `arena.alloc_bytes(count: usize) -> []u8`
-- `arena.pr(text: string = "") -> string`
-- `arena.prn(text: string = "") -> string`
+- `arena.pr(text: string) -> string`
+- `arena.prn(text: string) -> string`
 - `arena.reset()`
 - `arena.mark() -> u32`
 - `arena.restore(mark: u32)`
 - `arena.done()`
 - `temp_arena.reset()`
-- `pr(text: string) -> void` and `pr() -> void`
+- `pr(text: string) -> void`
 - `prn(text: string) -> void` and `prn() -> void`
-- `epr(text: string) -> void` and `epr() -> void`
+- `epr(text: string) -> void`
 - `eprn(text: string) -> void` and `eprn() -> void`
 - `Display`
   Requires `show :: fn (self: Self) -> string`.
