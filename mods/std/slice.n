@@ -18,6 +18,17 @@ where T: Eq {
 
 }
 
+impl [T] []T {
+
+    -- Fills the whole slice with a single value, passed by reference.
+    pub fill :: fn (s: ^Self, value: ^T) {
+        for i in [0 .. s.count] {
+            s^[i] = value^
+        }
+    }
+
+}
+
 test "contains" {
     assert [1, 2, 3].contains(2) == yes, "Expected 2 to be in the slice"
     assert [1, 2, 3].contains(4) == no, "Expected 4 to not be in the slice"
@@ -35,4 +46,27 @@ test "contains" {
 
     assert slices.contains(matching[..]),
         "Expected slice contents to determine equality"
+}
+
+test "fill" {
+    arr   := [1, 2, 3]
+    value := 2
+
+    arr.fill(^value)
+    assert arr == [2, 2, 2], "Expected all elements to be filled with 2"
+}
+
+test "fill infers a plex literal without equality" {
+    Item :: plex {
+        value i32
+        other i32
+    }
+    count               := 3
+    items : [count]Item
+
+    items.fill(^{ value: 7 ... })
+    for item in items {
+        assert item.value == 7
+        assert item.other == 0
+    }
 }
