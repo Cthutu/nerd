@@ -681,6 +681,10 @@ internal void hir_render_expr(StringBuilder* sb,
         hir_render_expr(sb, hir, lexer, sema, arena, expr->extra_expr_index);
         sb_append_char(sb, ')');
         break;
+    case HIR_EXPR_RuntimeArray:
+        sb_append_cstr(sb, "runtime-array ");
+        hir_render_expr(sb, hir, lexer, sema, arena, expr->operand_expr_index);
+        break;
     case HIR_EXPR_Tuple:
     case HIR_EXPR_Array:
         sb_append_cstr(sb, expr->kind == HIR_EXPR_Tuple ? "tuple(" : "array(");

@@ -112,8 +112,8 @@ define internal i32 @fn.0() {
   %local.2 = alloca i32
   %local.3 = alloca i32
   %local.4 = alloca i32
-  %t17 = alloca { ptr, i64 }
-  %t23 = alloca { ptr, i64 }
+  %t21 = alloca { ptr, i64 }
+  %t27 = alloca { ptr, i64 }
   store i32 0, ptr %local.2
   store i32 0, ptr %local.3
   %t0 = alloca i32, align 4
@@ -133,58 +133,64 @@ for.body.1:
   store i32 %t7, ptr %t0, align 4
   br label %for.end.4
 for.update.2:
+  %t8 = load i32, ptr %local.3
+  %t9 = add i32 %t8, 1
+  store i32 %t9, ptr %local.3
   br label %for.cond.0
 for.else.3:
-  %t8 = sub i32 0, 1
-  store i32 %t8, ptr %t0, align 4
+  %t10 = sub i32 0, 1
+  store i32 %t10, ptr %t0, align 4
   br label %for.end.4
 for.end.4:
-  %t9 = load i32, ptr %t0, align 4
+  %t11 = load i32, ptr %t0, align 4
   store i32 0, ptr %local.4
-  %t10 = alloca i32, align 4
-  store i32 0, ptr %t10, align 4
+  %t12 = alloca i32, align 4
+  store i32 0, ptr %t12, align 4
   br label %for.cond.5
 for.cond.5:
-  %t11 = load i32, ptr %local.4
-  %t12 = icmp slt i32 %t11, 0
-  br i1 %t12, label %for.body.6, label %for.else.8
-for.body.6:
   %t13 = load i32, ptr %local.4
-  store i32 %t13, ptr %t10, align 4
+  %t14 = icmp slt i32 %t13, 0
+  br i1 %t14, label %for.body.6, label %for.else.8
+for.body.6:
+  %t15 = load i32, ptr %local.4
+  store i32 %t15, ptr %t12, align 4
   br label %for.end.9
 for.update.7:
+  %t16 = load i32, ptr %local.4
+  %t17 = add i32 %t16, 1
+  store i32 %t17, ptr %local.4
   br label %for.cond.5
 for.else.8:
-  store i32 42, ptr %t10, align 4
+  store i32 42, ptr %t12, align 4
   br label %for.end.9
 for.end.9:
-  %t14 = load i32, ptr %t10, align 4
-  %t15 = call i64 @nrt_string_builder_mark()
-  %t16 = alloca { ptr, i64 }
-  store { ptr, i64 } { ptr @.str.m0.0, i64 8 }, ptr %t17
-  call void @nrt_to_string_string(ptr %t16, ptr %t17)
-  call void @nrt_string_builder_append_string(ptr %t16)
-  %t18 = alloca { ptr, i64 }
-  call void @nrt_to_string_i32(ptr %t18, i32 %t9)
-  call void @nrt_string_builder_append_string(ptr %t18)
-  %t19 = alloca { ptr, i64 }
-  call void @nrt_string_builder_finish(ptr %t19, i64 %t15)
-  %t20 = load { ptr, i64 }, ptr %t19
-  call void @$prn_text({ ptr, i64 } %t20)
-  %t21 = call i64 @nrt_string_builder_mark()
+  %t18 = load i32, ptr %t12, align 4
+  %t19 = call i64 @nrt_string_builder_mark()
+  %t20 = alloca { ptr, i64 }
+  store { ptr, i64 } { ptr @.str.m0.0, i64 8 }, ptr %t21
+  call void @nrt_to_string_string(ptr %t20, ptr %t21)
+  call void @nrt_string_builder_append_string(ptr %t20)
   %t22 = alloca { ptr, i64 }
-  store { ptr, i64 } { ptr @.str.m0.1, i64 10 }, ptr %t23
-  call void @nrt_to_string_string(ptr %t22, ptr %t23)
+  call void @nrt_to_string_i32(ptr %t22, i32 %t11)
   call void @nrt_string_builder_append_string(ptr %t22)
-  %t24 = alloca { ptr, i64 }
-  call void @nrt_to_string_i32(ptr %t24, i32 %t14)
-  call void @nrt_string_builder_append_string(ptr %t24)
-  %t25 = alloca { ptr, i64 }
-  call void @nrt_string_builder_finish(ptr %t25, i64 %t21)
-  %t26 = load { ptr, i64 }, ptr %t25
-  call void @$prn_text({ ptr, i64 } %t26)
-  %t27 = add i32 %t9, %t14
-  ret i32 %t27
+  %t23 = alloca { ptr, i64 }
+  call void @nrt_string_builder_finish(ptr %t23, i64 %t19)
+  %t24 = load { ptr, i64 }, ptr %t23
+  call void @$prn_text({ ptr, i64 } %t24)
+  %t25 = call i64 @nrt_string_builder_mark()
+  %t26 = alloca { ptr, i64 }
+  store { ptr, i64 } { ptr @.str.m0.1, i64 10 }, ptr %t27
+  call void @nrt_to_string_string(ptr %t26, ptr %t27)
+  call void @nrt_string_builder_append_string(ptr %t26)
+  %t28 = alloca { ptr, i64 }
+  call void @nrt_to_string_i32(ptr %t28, i32 %t18)
+  call void @nrt_string_builder_append_string(ptr %t28)
+  %t29 = alloca { ptr, i64 }
+  call void @nrt_string_builder_finish(ptr %t29, i64 %t25)
+  %t30 = load { ptr, i64 }, ptr %t29
+  call void @$prn_text({ ptr, i64 } %t30)
+  %t31 = add i32 %t11, %t18
+  ret i32 %t31
 }
 
 @$main = hidden alias i32 (), ptr @fn.0

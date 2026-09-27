@@ -1002,3 +1002,21 @@ comments through the structured formatter's trivia helpers. This keeps comments
 accounted for without falling back to token formatting, which cannot align FFI
 parameter continuations. Alignment groups detect blank lines from the previous
 signature's end, including when the next declaration starts with `pub`.
+
+Runtime-sized local fixed arrays use `STK_Slice | STF_RuntimeArray` internally.
+The flag survives materialisation/import and distinguishes immutable array
+shape from ordinary borrowed slices, while retaining collection indexing and
+iteration. Type resolution permits runtime lengths only for direct local array
+declarations; the bound participates in reference resolution and definite
+assignment as a value expression. HIR lowers creation to `HIR_EXPR_RuntimeArray`
+with one bound operand. Its `.size` is computed from the captured count rather
+than the internal header size.
+
+Both backends call `nrt_local_array_alloc`, which checks the signed address range
+and multiplication overflow before allocating zeroed storage. The allocation
+is registered in the ordered cleanup stack independently of the local binding,
+so all lexical exits release it after subsequently registered defers/undos.
+Slices and raw pointers borrow this storage without transferring ownership.
+LLVM's C-style loop update block resets `block_terminated` on entry: an
+unconditional `again` or `break` in the body must not suppress update code in a
+separate control-flow block.

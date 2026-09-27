@@ -345,3 +345,30 @@ also accepted). The cursor name does not affect type identity. x86-64 FFI declar
 `VaList` parameters; `STF_FunctionCVaList` distinguishes their C parameter
 adjustment from Nerd's borrowed cursor representation. `VaList` is not an FFI
 return type or a value that may be passed in the variadic tail.
+
+## Runtime-Sized Local Fixed Arrays
+
+A local declaration `values: [count]T` may use an integer runtime expression
+for `count`. The expression is evaluated once when the declaration executes;
+changing its inputs later does not change the array length. Elements initially
+have zeroed storage. Zero lengths are valid. Negative lengths and lengths whose
+allocation size exceeds the supported address range terminate with a runtime
+error before allocation.
+
+These arrays expose `.data`, `.count`, `.bytes`, and `.size`. Count is the
+captured length, and both byte-size fields are `count * T.size`, all of type
+`usize`. Indexing, element mutation, iteration, and slicing work as for other
+arrays. The whole array cannot be reassigned, resized, or explicitly freed.
+Runtime lengths are supported on direct local declarations without an explicit
+value initializer (the `undefined` opt-out is also accepted), not in fields,
+function signatures, aliases, or global storage. Constant lengths keep their
+existing fixed-array representation and behaviour.
+
+Storage is automatically heap-allocated and released on leaving its lexical
+scope, including `return`, `break`, `again`, and failure propagation. Cleanup is
+ordered with `defer` and `undo`, so later cleanup statements run before the
+array's allocation is released. A direct return of a runtime-sized local array
+is rejected. It can be borrowed as `[]T` or through `.data`; as with other raw
+pointers and slices, borrowed views must not outlive the owning scope. Nerd does
+not track the lifetimes of such views. The runtime array's internal pointer/count
+representation is not an inline C array; use `.data` at FFI boundaries.

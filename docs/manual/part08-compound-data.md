@@ -656,3 +656,25 @@ unique after implicit values are filled in.
 
 Use enums when a value has one active case and the program should track that
 case safely.
+
+## Fixed Lengths Chosen At Runtime
+
+Local fixed arrays can use a runtime length:
+
+```nerd
+process :: fn (count: usize) {
+    values: [count]i32
+    for value in values {
+        value^ = 42
+    }
+    consume(values[..])
+}
+```
+
+The length is captured once. All elements start zeroed; `.count` is immediately
+`count`, and `.size` and `.bytes` report the element storage size. The compiler
+allocates and releases storage automatically when the scope exits. There is no
+`.free()` or resize operation. Use slices to pass a view to another function,
+and keep any borrowed view within the array's lifetime. Runtime lengths are for
+local declarations; fields and function signatures still require constant array
+lengths or slice types.

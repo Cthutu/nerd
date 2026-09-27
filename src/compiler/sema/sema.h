@@ -83,6 +83,7 @@ typedef enum : u16 {
     STF_Result          = 1 << 4,
     STF_PlexEmbedded    = 1 << 5,
     STF_FunctionCVaList = 1 << 6,
+    STF_RuntimeArray    = 1 << 7,
 } SemaTypeFlag;
 
 typedef struct {

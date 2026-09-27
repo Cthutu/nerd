@@ -30,6 +30,7 @@ typedef struct {
     bool block;
     u32  index;
     bool failure_only;
+    cstr allocation;
 } CCleanup;
 typedef struct {
     cstr text;
@@ -613,6 +614,13 @@ internal CValue cgen_coerce(CGen* c, CValue v, u32 t)
                         cgen_canonical(c, t) == cgen_canonical(c, v.type))) {
         return (CValue){v.text, t, false};
     }
+    if (to == STK_Slice && from == STK_Slice &&
+        (cgen_type(c, v.type)->flags & STF_RuntimeArray)) {
+        return cgen_temp(
+            c,
+            t,
+            CF("(%s){%s.data,%s.count}", cgen_ctype(c, t), v.text, v.text));
+    }
     if (to == STK_Bool) {
         return cgen_temp(c, t, cgen_truth(c, v));
     }
@@ -830,7 +838,9 @@ internal void cgen_cleanup_to(CGen* c, u32 base, cstr failure)
         }
         u32      save              = array_count(c->cleanups);
         __array_count(c->cleanups) = n - 1;
-        if (cl.block) {
+        if (cl.allocation != NULL) {
+            CGEN_OUT("nrt_mem_free(%s);\n", cl.allocation);
+        } else if (cl.block) {
             cgen_block(c, cl.index);
         } else {
             CGEN_OUT(
@@ -2088,6 +2098,25 @@ internal CValue cgen_expr(CGen* c, u32 index)
                          CF("__atomic_load_n(&(%s),__ATOMIC_SEQ_CST)", v.text));
     }
     switch (e->kind) {
+    case HIR_EXPR_RuntimeArray:
+        {
+            CValue count  = cgen_expr(c, e->operand_expr_index);
+            CValue result = cgen_temp(c, t, NULL);
+            u32    item   = cgen_type(c, t)->first_param_type;
+            CGEN_OUT("%s.data = "
+                     "nrt_local_array_alloc((uint64_t)%s,sizeof(%s),%s,%u);\n%"
+                     "s.count=(size_t)%s;\n",
+                     result.text,
+                     count.text,
+                     cgen_ctype(c, item),
+                     cgen_quote(c, e->source_path),
+                     e->source_line,
+                     result.text,
+                     count.text);
+            array_push(c->cleanups,
+                       ((CCleanup){.allocation = CF("%s.data", result.text)}));
+            return result;
+        }
     case HIR_EXPR_DefaultValue:
     case HIR_EXPR_NilLiteral:
         return cgen_temp(c, t, NULL);
@@ -2577,6 +2606,10 @@ internal CValue cgen_expr(CGen* c, u32 index)
             cstr name = cgen_symbol(c, e->symbol_handle);
             u32  bt   = cgen_hir(c)->exprs[e->operand_expr_index].type_index;
             if (strcmp(name, "size") == 0 &&
+                (cgen_type(c, bt)->flags & STF_RuntimeArray)) {
+                name = "bytes";
+            }
+            if (strcmp(name, "size") == 0 &&
                 cgen_field_index(c, bt, e->symbol_handle) == U32_MAX) {
                 return cgen_temp(
                     c,
@@ -2840,8 +2873,7 @@ internal void cgen_stmt(CGen* c, u32 index)
             CGEN_OUT("ncg_l%u=%s;\n", st->local_index, v.text);
             cgen_consume(c, st->expr_index, st->type_index);
             if (cgen_kind(c, st->type_index) == STK_Box) {
-                array_push(c->cleanups,
-                           ((CCleanup){false, st->local_index, false}));
+                array_push(c->cleanups, ((CCleanup){.index = st->local_index}));
             }
             break;
         }
@@ -2899,7 +2931,9 @@ internal void cgen_stmt(CGen* c, u32 index)
         }
     case HIR_STMT_Defer:
         array_push(c->cleanups,
-                   ((CCleanup){true, st->body_block_index, st->failure_only}));
+                   ((CCleanup){.block        = true,
+                               .index        = st->body_block_index,
+                               .failure_only = st->failure_only}));
         break;
     case HIR_STMT_Block:
         cgen_block(c, st->body_block_index);
@@ -3215,7 +3249,7 @@ bool cgen_save_program(const ProgramInfo*        program,
                     cgen_field_type(c, fn->type_index, j);
                 if (cgen_kind(c, p->type_index) == STK_Box) {
                     array_push(c->cleanups,
-                               ((CCleanup){false, p->local_index, false}));
+                               ((CCleanup){.index = p->local_index}));
                 }
             }
             if (fn->varargs_local_index != U32_MAX) {

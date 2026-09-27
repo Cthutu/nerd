@@ -84,6 +84,7 @@ typedef enum : u8 {
     HIR_EXPR_Tuple,
     HIR_EXPR_TupleField,
     HIR_EXPR_Array,
+    HIR_EXPR_RuntimeArray,
     HIR_EXPR_Field,
     HIR_EXPR_Plex,
     HIR_EXPR_PlexUpdate,

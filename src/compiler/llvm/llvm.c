@@ -2903,6 +2903,7 @@ typedef struct {
 typedef struct {
     u32  block_index;
     bool failure_only;
+    string allocation;
 } LlvmDefer;
 
 typedef struct {
@@ -8309,6 +8310,12 @@ internal bool llvm_emit_defers_to(LlvmFunctionContext* ctx,
     u32 old_count = array_count(ctx->defer_block_indices);
     for (u32 i = old_count; i > defer_count; --i) {
         LlvmDefer action = ctx->defer_block_indices[i - 1];
+        if (action.allocation.count > 0) {
+            sb_format(ctx->sb,
+                      "  call void @nrt_mem_free(ptr " STRINGP ")\n",
+                      STRINGV(action.allocation));
+            continue;
+        }
         if (action.failure_only && failure.count == 0) {
             continue;
         }
@@ -9671,6 +9678,47 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             .value      = llvm_function_name_string(
                 ctx->hir, ctx->lexer, ctx->arena, expr->ref_index),
         };
+    case HIR_EXPR_RuntimeArray:
+        {
+            LlvmValue count =
+                llvm_emit_expr(ctx, function, expr->operand_expr_index);
+            count = llvm_coerce_value_to_type(
+                ctx, count, llvm_builtin_type(ctx->sema, STK_Usize));
+            if (!count.ok) {
+                return (LlvmValue){0};
+            }
+            u32 item_type = ctx->sema->types[expr->type_index].first_param_type;
+            string data = llvm_temp(ctx), partial = llvm_temp(ctx),
+                   value = llvm_temp(ctx);
+            string path  = llvm_allocation_source_path_global_name(
+                ctx->hir, ctx->lexer, ctx->arena, expr);
+            sb_format(ctx->sb,
+                      "  " STRINGP
+                      " = call ptr @nrt_local_array_alloc(i64 " STRINGP
+                      ", i64 %llu, ptr " STRINGP ", i32 %u)\n",
+                      STRINGV(data),
+                      STRINGV(count.value),
+                      (unsigned long long)llvm_type_storage_bytes(ctx->sema,
+                                                                  item_type),
+                      STRINGV(path),
+                      expr->source_line);
+            sb_format(
+                ctx->sb,
+                "  " STRINGP
+                " = insertvalue { ptr, i64 } zeroinitializer, ptr " STRINGP
+                ", 0\n"
+                "  " STRINGP " = insertvalue { ptr, i64 } " STRINGP
+                ", i64 " STRINGP ", 1\n",
+                STRINGV(partial),
+                STRINGV(data),
+                STRINGV(value),
+                STRINGV(partial),
+                STRINGV(count.value));
+            array_push(ctx->defer_block_indices,
+                       ((LlvmDefer){.allocation = data}));
+            return (LlvmValue){
+                .ok = true, .type_index = expr->type_index, .value = value};
+        }
     case HIR_EXPR_Array:
         {
             if (llvm_type_kind(ctx->sema, expr->type_index) == STK_Slice) {
@@ -11737,6 +11785,29 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 u32 source_type =
                     ctx->hir->exprs[expr->operand_expr_index].type_index;
                 source_type = sema_materialise_type(ctx->sema, source_type);
+                if (ctx->sema->types[source_type].flags & STF_RuntimeArray) {
+                    LlvmValue array =
+                        llvm_emit_expr(ctx, function, expr->operand_expr_index);
+                    if (!array.ok) {
+                        return array;
+                    }
+                    string count = llvm_temp(ctx), bytes = llvm_temp(ctx);
+                    sb_format(
+                        ctx->sb,
+                        "  " STRINGP " = extractvalue { ptr, i64 } " STRINGP
+                        ", 1\n"
+                        "  " STRINGP " = mul i64 " STRINGP ", %llu\n",
+                        STRINGV(count),
+                        STRINGV(array.value),
+                        STRINGV(bytes),
+                        STRINGV(count),
+                        (unsigned long long)llvm_type_storage_bytes(
+                            ctx->sema,
+                            ctx->sema->types[source_type].first_param_type));
+                    return (LlvmValue){.ok         = true,
+                                       .type_index = expr->type_index,
+                                       .value      = bytes};
+                }
                 return (LlvmValue){
                     .ok         = true,
                     .type_index = llvm_builtin_type(ctx->sema, STK_Usize),
@@ -13747,6 +13818,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
 
                 if (loop->kind == HIR_FOR_CStyle) {
                     sb_format(ctx->sb, STRINGP ":\n", STRINGV(update_label));
+                    ctx->block_terminated = false;
                     if (!llvm_emit_effect_stmt_indices(
                             ctx,
                             function,
@@ -13935,6 +14007,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
 
             if (loop->kind == HIR_FOR_CStyle) {
                 sb_format(ctx->sb, STRINGP ":\n", STRINGV(update_label));
+                ctx->block_terminated = false;
                 if (!llvm_emit_effect_stmt_indices(ctx,
                                                    function,
                                                    ctx->hir->for_update_stmts,
@@ -15409,7 +15482,8 @@ internal bool llvm_emit_effect_stmt(LlvmFunctionContext* ctx,
             return false;
         }
         array_push(ctx->defer_block_indices,
-                   ((LlvmDefer){stmt->body_block_index, stmt->failure_only}));
+                   ((LlvmDefer){.block_index  = stmt->body_block_index,
+                                .failure_only = stmt->failure_only}));
         return true;
     case HIR_STMT_Break:
         {
@@ -16087,9 +16161,9 @@ internal bool llvm_emit_block(LlvmFunctionContext* ctx,
             if (stmt->body_block_index == U32_MAX) {
                 return false;
             }
-            array_push(
-                ctx->defer_block_indices,
-                ((LlvmDefer){stmt->body_block_index, stmt->failure_only}));
+            array_push(ctx->defer_block_indices,
+                       ((LlvmDefer){.block_index  = stmt->body_block_index,
+                                    .failure_only = stmt->failure_only}));
             continue;
         } else if (stmt->kind == HIR_STMT_Break) {
             if (!llvm_emit_effect_stmt(ctx, function, stmt)) {
@@ -17909,7 +17983,8 @@ internal bool llvm_hir_uses_dynamic_array_runtime(const Hir*  hir,
         if (kind == STK_DynamicArray ||
             llvm_equality_contains_kind(
                 sema, hir->exprs[i].type_index, STK_Box) ||
-            hir->exprs[i].kind == HIR_EXPR_Box) {
+            hir->exprs[i].kind == HIR_EXPR_Box ||
+            hir->exprs[i].kind == HIR_EXPR_RuntimeArray) {
             return true;
         }
     }
@@ -17926,6 +18001,7 @@ internal void llvm_render_dynamic_array_runtime_declarations(StringBuilder* sb)
 {
     static const LlvmRuntimeDecl decls[] = {
         {"ptr", "nrt_mem_alloc", "i64, i64, ptr, i32"},
+        {"ptr", "nrt_local_array_alloc", "i64, i64, ptr, i32"},
         {"ptr", "nrt_mem_realloc", "ptr, i64, i64, ptr, i32"},
         {"void", "nrt_mem_free", "ptr"},
         {"i64", "nrt_mem_size", "ptr"},

@@ -13,6 +13,9 @@ ROOT = Path(__file__).resolve().parents[1]
 # Runtime regressions beyond the language suite: defaults, ABI, ownership,
 # atomics, allocator diagnostics, formatting and generic dispatch.
 COMMANDS = (
+    "330-runtime-fixed-arrays",
+    "331-runtime-array-negative",
+    "332-runtime-array-overflow",
     "327-undo-cleanup",
     "328-optional-main-failure",
     "329-optional-main-args",

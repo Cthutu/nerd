@@ -3496,6 +3496,22 @@ internal u32 hir_lower_stmt(Hir*         hir,
                     }
                 }
             }
+            if (local_type < array_count(sema->types) &&
+                (sema->types[local_type].flags & STF_RuntimeArray) &&
+                sema->locals[local_index].type_node_index <
+                    array_count(ast->nodes)) {
+                u32 type_node = sema->locals[local_index].type_node_index;
+                u32 length    = hir_lower_expr(
+                    hir, lexer, ast, sema, ast->nodes[type_node].a);
+                expr_index = hir_add_expr(hir,
+                                          (HirExpr){
+                                              .kind = HIR_EXPR_RuntimeArray,
+                                              .type_index         = local_type,
+                                              .operand_expr_index = length,
+                                              .source_line = stmt_source_line,
+                                              .source_path = stmt_source_path,
+                                          });
+            }
             return hir_add_stmt(hir,
                                 (HirStmt){
                                     .kind             = HIR_STMT_Let,

@@ -19,6 +19,8 @@ main :: fn() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
+@.macro.file.m0 = private unnamed_addr constant [40 x i8] c"tests/llvm/018-for-break-values.input.n\00"
+
 define internal i32 @fn.0(i32 %limit) {
   %local.1 = alloca i32
   store i32 0, ptr %local.1
@@ -34,14 +36,17 @@ for.body.1:
   store i32 %t3, ptr %t0, align 4
   br label %for.end.4
 for.update.2:
+  %t4 = load i32, ptr %local.1
+  %t5 = add i32 %t4, 1
+  store i32 %t5, ptr %local.1
   br label %for.cond.0
 for.else.3:
-  %t4 = sub i32 0, 1
-  store i32 %t4, ptr %t0, align 4
+  %t6 = sub i32 0, 1
+  store i32 %t6, ptr %t0, align 4
   br label %for.end.4
 for.end.4:
-  %t5 = load i32, ptr %t0, align 4
-  ret i32 %t5
+  %t7 = load i32, ptr %t0, align 4
+  ret i32 %t7
 }
 
 define internal i32 @fn.1() {
@@ -68,3 +73,5 @@ define internal i32 @fn.2() {
 @$with_else = internal alias i32 (i32), ptr @fn.0
 @$labelled_value = internal alias i32 (), ptr @fn.1
 @$main = hidden alias i32 (), ptr @fn.2
+
+declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)
