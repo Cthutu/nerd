@@ -589,11 +589,24 @@ internal cstr cgen_truth(CGen* c, CValue v)
         return CF("(%s != 0)", v.text);
     }
 }
+internal CValue cgen_void_default(CGen* c, u32 t)
+{
+    CValue result = cgen_temp(c, t, NULL);
+    const SemaType* type = cgen_type(c, t);
+    if (type != NULL && type->kind == STK_Enum &&
+        (type->flags & STF_Optional) &&
+        cgen_kind(c, cgen_field_type(c, t, 1)) == STK_Void) {
+        CGEN_OUT("%s.tag = 1;\n", result.text);
+    }
+    return result;
+}
+
 internal CValue cgen_coerce(CGen* c, CValue v, u32 t)
 {
     SemaTypeKind from = cgen_kind(c, v.type), to = cgen_kind(c, t);
     if (cgen_void(c, v.type)) {
-        return cgen_temp(c, t, NULL);
+        return v.type == U32_MAX ? cgen_temp(c, t, NULL)
+                                : cgen_void_default(c, t);
     }
     if (t == v.type || (to != STK_Pointer &&
                         cgen_canonical(c, t) == cgen_canonical(c, v.type))) {
@@ -2841,7 +2854,9 @@ internal void cgen_stmt(CGen* c, u32 index)
         {
             bool old     = c->returning;
             c->returning = true;
-            CValue v     = cgen_expr_as(c, st->expr_index, c->return_type);
+            CValue v     = st->expr_index == U32_MAX
+                               ? cgen_void_default(c, c->return_type)
+                               : cgen_expr_as(c, st->expr_index, c->return_type);
             c->returning = old;
             cgen_consume(c, st->expr_index, c->return_type);
             cgen_return(c, v);
@@ -3199,7 +3214,7 @@ bool cgen_save_program(const ProgramInfo*        program,
                         .local_index);
             }
             cgen_block(c, fn->body_block_index);
-            cgen_return(c, cgen_temp(c, c->return_type, NULL));
+            cgen_return(c, cgen_void_default(c, c->return_type));
             cgen_signature(c, &c->out, i, false, NULL);
             sb_append_cstr(&c->out, " {\n");
             sb_append_string(&c->out, sb_to_string(&c->declarations));

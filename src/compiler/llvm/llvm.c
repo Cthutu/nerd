@@ -88,18 +88,23 @@ internal bool llvm_type_is_void(const Sema* sema, u32 type_index)
             sema->types[type_index].kind == STK_Never);
 }
 
-internal bool llvm_type_is_void_result(const Sema* sema, u32 type_index)
+internal bool llvm_type_is_void_success(const Sema* sema, u32 type_index)
 {
     if (sema == NULL || type_index >= array_count(sema->types)) {
         return false;
     }
     const SemaType* type = &sema->types[type_index];
-    if (type->kind != STK_Enum || !(type->flags & STF_Result) ||
+    if (type->kind != STK_Enum || !(type->flags & (STF_Optional | STF_Result)) ||
         type->param_count < 2 ||
         type->first_param_type >= array_count(sema->type_param_types)) {
         return false;
     }
-    u32 success_type = sema->type_param_types[type->first_param_type];
+    u32 success_index =
+        type->first_param_type + ((type->flags & STF_Optional) ? 1 : 0);
+    if (success_index >= array_count(sema->type_param_types)) {
+        return false;
+    }
+    u32 success_type = sema->type_param_types[success_index];
     return success_type < array_count(sema->types) &&
            sema->types[success_type].kind == STK_Void;
 }
@@ -2877,7 +2882,15 @@ llvm_append_default_return(StringBuilder* sb, const Sema* sema, u32 return_type)
         return;
     }
 
-    llvm_append_zero_value(sb, sema, return_type);
+    if (llvm_type_is_void_success(sema, return_type) &&
+        (sema->types[return_type].flags & STF_Optional)) {
+        sb_format(sb,
+                  "{ " STRINGP " 1, i%u 0 }",
+                  STRINGV(s(llvm_default_layout()->enum_tag_type)),
+                  llvm_enum_storage_payload_bits(sema, return_type));
+    } else {
+        llvm_append_zero_value(sb, sema, return_type);
+    }
     sb_append_char(sb, '\n');
 }
 
@@ -15454,7 +15467,7 @@ internal bool llvm_emit_return(LlvmFunctionContext* ctx,
         if (!llvm_emit_box_cleanup_all(ctx)) {
             return false;
         }
-        if (llvm_type_is_void_result(ctx->sema, return_type)) {
+        if (llvm_type_is_void_success(ctx->sema, return_type)) {
             llvm_append_default_return(ctx->sb, ctx->sema, return_type);
         } else {
             sb_append_cstr(ctx->sb, "  ret void\n");

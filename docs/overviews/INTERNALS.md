@@ -598,6 +598,14 @@ valueless expression. Propagating `void\Error` must continue the success path,
 including later statements and deferred cleanup. It must not abort block
 emission because the payload has zero storage bits.
 
+Functions returning `?void` use the same valueless-success convention as
+`void\Error`: bare `return`, a returned void expression, and falling through
+the body produce success. `return nil` produces absence, and `?` propagates
+absence while continuing after success. Semantic return checking accepts the
+void payload in either wrapper. LLVM and C emit the present tag (1) for an
+optional void success; ordinary default-initialised `?void` values remain
+absent (tag 0).
+
 Interpolation imports the canonical `core.Display` trait on demand when a
 non-primitive value needs it. Imported `show` methods are resolved using the
 implementation AST from their defining module, and lowered through their HIR

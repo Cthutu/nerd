@@ -887,18 +887,23 @@ internal u32 sema_add_result_type(const Lexer* lexer,
     return type_index;
 }
 
-internal bool sema_type_is_void_result(const Sema* sema, u32 type_index)
+internal bool sema_type_is_void_success(const Sema* sema, u32 type_index)
 {
     if (type_index >= array_count(sema->types)) {
         return false;
     }
     const SemaType* type = &sema->types[type_index];
-    if (type->kind != STK_Enum || !(type->flags & STF_Result) ||
+    if (type->kind != STK_Enum || !(type->flags & (STF_Optional | STF_Result)) ||
         type->param_count < 2 ||
         type->first_param_type >= array_count(sema->type_param_types)) {
         return false;
     }
-    u32 success_type = sema->type_param_types[type->first_param_type];
+    u32 success_index =
+        type->first_param_type + ((type->flags & STF_Optional) ? 1 : 0);
+    if (success_index >= array_count(sema->type_param_types)) {
+        return false;
+    }
+    u32 success_type = sema->type_param_types[success_index];
     return success_type < array_count(sema->types) &&
            sema->types[success_type].kind == STK_Void;
 }
@@ -25192,7 +25197,7 @@ validate_type:
                     return false;
                 }
                 if (has_explicit_return_type && !has_return &&
-                    !sema_type_is_void_result(sema, declared_return_type)) {
+                    !sema_type_is_void_success(sema, declared_return_type)) {
                     return error_0314_missing_return(
                         lexer->source,
                         sema_node_span(lexer, node),
