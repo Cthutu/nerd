@@ -482,20 +482,22 @@ pub impl Display for VkPhysicalDevice {
 --
 
 ffi "vulkan" {
-    pub vkCreateInstance (pCreateInfo : ^VkInstanceCreateInfo,
-    pAllocator : ^void,
-    pInstance : ^VkInstance) -> VkResult
-    pub vkDestroyInstance (instance: VkInstance, pAllocator: ^void)
-    pub vkEnumeratePhysicalDevices (instance : VkInstance,
-    pPhysicalDeviceCount : ^u32,
-    pPhysicalDevices : ^VkPhysicalDevice) -> VkResult
+    pub vkCreateInstance           (pCreateInfo : ^VkInstanceCreateInfo,
+                                    pAllocator  : ^void,
+                                    pInstance   : ^VkInstance) -> VkResult
+    pub vkDestroyInstance          (instance: VkInstance, pAllocator: ^void)
+    pub vkEnumeratePhysicalDevices (instance             : VkInstance,
+                                    pPhysicalDeviceCount : ^u32,
+                                    pPhysicalDevices     : ^VkPhysicalDevice) -> VkResult
+
     -- Only logical devices created by vkCreateDevice are destroyed here.
     -- Physical devices remain owned by their instance.
-    pub vkDestroyDevice (device: VkDevice, pAllocator: ^void)
-    pub vkGetPhysicalDeviceProperties (physicalDevice: VkPhysicalDevice,
-    pProperties: ^VkPhysicalDeviceProperties)
-    pub vkDestroySurfaceKHR (instance: VkInstance, surface: VkSurfaceKHR,
-    pAllocator: ^void)
+    pub vkDestroyDevice               (device: VkDevice, pAllocator: ^void)
+    pub vkGetPhysicalDeviceProperties (physicalDevice : VkPhysicalDevice,
+                                       pProperties    : ^VkPhysicalDeviceProperties)
+    pub vkDestroySurfaceKHR           (instance   : VkInstance,
+                                       surface    : VkSurfaceKHR,
+                                       pAllocator : ^void)
 }
 
 -- Creates a surface for an applied Frame, using Vulkan's default allocator.

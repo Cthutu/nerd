@@ -996,3 +996,9 @@ existing address-of operation: LLVM materializes the aggregate into local stack
 storage, and C generation takes the address of its generated aggregate temporary.
 The lifetime guarantee is the enclosing scope; taking the address does not make
 the value heap-owned or safe to return from the function.
+
+FFI block formatting emits leading, inter-declaration, trailing and closing
+comments through the structured formatter's trivia helpers. This keeps comments
+accounted for without falling back to token formatting, which cannot align FFI
+parameter continuations. Alignment groups detect blank lines from the previous
+signature's end, including when the next declaration starts with `pub`.
