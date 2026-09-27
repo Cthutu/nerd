@@ -494,7 +494,50 @@ pub VkQueueFamilyProperties :: plex #c {
 
 pub impl Display for VkQueueFamilyProperties {
 
-    show :: fn (self: Self) => temp_arena.pr($"flags={self.queueFlags}, queues={self.queueCount}, timestamp bits={self.timestampValidBits}, transfer granularity={self.minImageTransferGranularity.width}x{self.minImageTransferGranularity.height}x{self.minImageTransferGranularity.depth}")
+    show :: fn (self: Self) -> string {
+        flags := [
+            VK_QUEUE_GRAPHICS_BIT,
+            VK_QUEUE_COMPUTE_BIT,
+            VK_QUEUE_TRANSFER_BIT,
+            VK_QUEUE_SPARSE_BINDING_BIT,
+            VK_QUEUE_PROTECTED_BIT,
+            VK_QUEUE_VIDEO_DECODE_BIT_KHR,
+            VK_QUEUE_VIDEO_ENCODE_BIT_KHR,
+            VK_QUEUE_OPTICAL_FLOW_BIT_NV,
+            VK_QUEUE_DATA_GRAPH_BIT_ARM,
+        ]
+        names := [
+            "graphics",
+            "compute",
+            "transfer",
+            "sparse binding",
+            "protected",
+            "video decode",
+            "video encode",
+            "optical flow",
+            "data graph",
+        ]
+        capabilities := ""
+        remaining    := self.queueFlags
+
+        for i, flag in flags {
+            bit := flag^.as(VkQueueFlags)
+            on (remaining & bit) != 0 => {
+                separator := on capabilities.count == 0 => "" else ", "
+
+                capabilities = temp_arena.pr($"{capabilities}{separator}{names[i]}")
+                remaining    = remaining ^ bit
+            }
+        }
+        on remaining != 0 => {
+            separator := on capabilities.count == 0 => "" else ", "
+
+            capabilities = temp_arena.pr($"{capabilities}{separator}unknown flags ({remaining})")
+        }
+        on capabilities.count == 0 => capabilities = "no capabilities"
+        plural := on self.queueCount == 1 => "" else "s"
+        return temp_arena.pr($"{self.queueCount} queue{plural}: {capabilities}")
+    }
 
 }
 
