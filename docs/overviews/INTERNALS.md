@@ -1027,3 +1027,9 @@ label) terminates the iterable even when the body starts with a typed local
 declaration that resembles a plex literal field. This prevents valid loops
 from forcing the surrounding file through token-only formatting and losing
 field alignment.
+
+LLVM loop lowering retains index slots by value across creation of item slots
+and loop-body emission. The local-slot table can reallocate when locals are
+added, so pointers into that table must not survive those operations. This
+applies to range, iterator, and collection loops, including release builds
+whose slot allocation differs from debug builds.

@@ -12791,6 +12791,11 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                               "  store i64 0, ptr " STRINGP "\n",
                               STRINGV(index_slot->ptr));
 
+                    // Adding locals (including the item or body locals) may
+                    // relocate ctx->slots. Retain the index slot by value.
+                    LlvmLocalSlot stable_index_slot = *index_slot;
+                    index_slot = &stable_index_slot;
+
                     u32 item_type =
                         llvm_local_type(ctx, loop->item_local_index);
                     LlvmLocalSlot* item_slot = NULL;
@@ -13072,6 +13077,11 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     sb_format(ctx->sb,
                               "  store i64 0, ptr " STRINGP "\n",
                               STRINGV(index_slot->ptr));
+
+                    // Adding locals (including the item or body locals) may
+                    // relocate ctx->slots. Retain the index slot by value.
+                    LlvmLocalSlot stable_index_slot = *index_slot;
+                    index_slot = &stable_index_slot;
 
                     u32 item_type =
                         llvm_local_type(ctx, loop->item_local_index);
@@ -13471,6 +13481,10 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                                               .value      = s("0"),
                                           });
                 }
+
+                // Creating the item slot may relocate ctx->slots.
+                LlvmLocalSlot stable_index_slot = *index_slot;
+                index_slot = &stable_index_slot;
 
                 u32 item_type = llvm_local_type(ctx, loop->item_local_index);
                 LlvmLocalSlot* item_slot = NULL;
