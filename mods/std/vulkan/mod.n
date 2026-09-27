@@ -492,6 +492,21 @@ pub VkQueueFamilyProperties :: plex #c {
     minImageTransferGranularity VkExtent3D
 }
 
+pub VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2 : vkStructureType : 1000059005
+
+-- Vulkan 1.1: initialize sType and pNext before querying.
+pub VkQueueFamilyProperties2 :: plex #c {
+    sType                 vkStructureType
+    pNext                 ^void
+    queueFamilyProperties VkQueueFamilyProperties
+}
+
+pub impl Display for VkQueueFamilyProperties2 {
+
+    show :: fn (self: Self) => self.queueFamilyProperties.show()
+
+}
+
 pub impl Display for VkQueueFamilyProperties {
 
     show :: fn (self: Self) -> string {
@@ -575,6 +590,12 @@ ffi "vulkan" {
     pub vkGetPhysicalDeviceQueueFamilyProperties (physicalDevice            : VkPhysicalDevice,
                                                   pQueueFamilyPropertyCount : ^u32,
                                                   pQueueFamilyProperties    : ^VkQueueFamilyProperties)
+
+    -- Vulkan 1.1. Pass nil to query the count; otherwise initialize each
+    -- entry's sType to VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2 and pNext.
+    pub vkGetPhysicalDeviceQueueFamilyProperties2 (physicalDevice            : VkPhysicalDevice,
+                                                   pQueueFamilyPropertyCount : ^u32,
+                                                   pQueueFamilyProperties    : ^VkQueueFamilyProperties2)
 
     -- Query presentation support for a queue family and surface.
     -- Read pSupported only after VK_SUCCESS.
