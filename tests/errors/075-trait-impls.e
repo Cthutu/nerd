@@ -27,6 +27,14 @@ main :: fn () => 0
             "column": 1,
             "length": 4,
             "message": "This implementation does not define every member required by `Display`"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "tests/errors/075-trait-impls.e",
+            "line": 1,
+            "column": 1,
+            "length": 7,
+            "message": "Type `Display` is defined here"
         }
     ],
     "notes": [

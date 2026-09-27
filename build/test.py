@@ -620,7 +620,14 @@ def test_llvm(path: pathlib.Path) -> list[Failure]:
 
 def normalize_error_json(text: str, source_file: str) -> str:
     parsed = json.loads(text)
+    original_source = parsed["source_file"]
     parsed["source_file"] = source_file
+    for reference in parsed.get("references", []):
+        if "source_file" in reference:
+            reference["source_file"] = (
+                source_file if reference["source_file"] == original_source
+                else normalize_repo_paths(reference["source_file"])
+            )
     return json.dumps(parsed, indent=4, sort_keys=False) + "\n"
 
 

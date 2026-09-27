@@ -120,6 +120,22 @@ main :: fn () {
                                 "uri": "file:///test.n",
                                 "range": {
                                     "start": {
+                                        "line": 2,
+                                        "character": 0
+                                    },
+                                    "end": {
+                                        "line": 2,
+                                        "character": 3
+                                    }
+                                }
+                            },
+                            "message": "Type `VAO` is defined here"
+                        },
+                        {
+                            "location": {
+                                "uri": "file:///test.n",
+                                "range": {
+                                    "start": {
                                         "line": 18,
                                         "character": 12
                                     },

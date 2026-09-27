@@ -116,6 +116,14 @@ main :: fn () {
             "column": 25,
             "length": 5,
             "message": "This expression has type `T`"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "tests/errors/077-trait-impl-resolution.e",
+            "line": 1,
+            "column": 1,
+            "length": 7,
+            "message": "Type `Display` is defined here"
         }
     ],
     "notes": [],
@@ -159,6 +167,14 @@ main :: fn () {
             "column": 12,
             "length": 5,
             "message": "This expression has type `T`"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "tests/errors/077-trait-impl-resolution.e",
+            "line": 1,
+            "column": 1,
+            "length": 7,
+            "message": "Type `Display` is defined here"
         }
     ],
     "notes": [],
@@ -324,6 +340,14 @@ main :: fn () {
             "column": 10,
             "length": 4,
             "message": "`show` is a member of trait `Display`"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "tests/errors/077-trait-impl-resolution.e",
+            "line": 1,
+            "column": 1,
+            "length": 7,
+            "message": "Type `Display` is defined here"
         }
     ],
     "notes": [],
@@ -425,6 +449,22 @@ main :: fn () {
             "column": 16,
             "length": 5,
             "message": "This expression has type `Plain`"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "tests/errors/077-trait-impl-resolution.e",
+            "line": 1,
+            "column": 1,
+            "length": 7,
+            "message": "Type `Display` is defined here"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "tests/errors/077-trait-impl-resolution.e",
+            "line": 5,
+            "column": 1,
+            "length": 5,
+            "message": "Type `Plain` is defined here"
         }
     ],
     "notes": [],

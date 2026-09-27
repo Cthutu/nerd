@@ -22,6 +22,14 @@ main :: fn () {}
             "column": 11,
             "length": 7,
             "message": "`Private` is private to this module"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "tests/errors/067-public-plex-private-fields.e",
+            "line": 1,
+            "column": 1,
+            "length": 7,
+            "message": "Type `Private` is defined here"
         }
     ],
     "notes": [
@@ -56,6 +64,14 @@ main :: fn () {}
             "column": 12,
             "length": 7,
             "message": "`Private` is private to this module"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "tests/errors/067-public-plex-private-fields.e",
+            "line": 1,
+            "column": 1,
+            "length": 7,
+            "message": "Type `Private` is defined here"
         }
     ],
     "notes": [

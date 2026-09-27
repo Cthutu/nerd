@@ -115,6 +115,22 @@ impl Display for Point {
                                 "uri": "file:///test.n",
                                 "range": {
                                     "start": {
+                                        "line": 0,
+                                        "character": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "character": 7
+                                    }
+                                }
+                            },
+                            "message": "Type `Display` is defined here"
+                        },
+                        {
+                            "location": {
+                                "uri": "file:///test.n",
+                                "range": {
+                                    "start": {
                                         "line": 9,
                                         "character": 0
                                     },

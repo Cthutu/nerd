@@ -203,6 +203,14 @@ main :: fn () {
             "column": 16,
             "length": 2,
             "message": "These operands have types `Bits` and `Bits`"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "tests/errors/129-content-equality.e",
+            "line": 1,
+            "column": 1,
+            "length": 4,
+            "message": "Type `Bits` is defined here"
         }
     ],
     "notes": [],
@@ -257,6 +265,14 @@ main :: fn () {
             "column": 16,
             "length": 2,
             "message": "These operands have types `[]Value` and `[]Value`"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "tests/errors/129-content-equality.e",
+            "line": 1,
+            "column": 1,
+            "length": 5,
+            "message": "Type `Value` is defined here"
         }
     ],
     "notes": [],
@@ -314,6 +330,14 @@ main :: fn () {
             "column": 16,
             "length": 2,
             "message": "These operands have types `[]Bits` and `[]Bits`"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "tests/errors/129-content-equality.e",
+            "line": 1,
+            "column": 1,
+            "length": 4,
+            "message": "Type `Bits` is defined here"
         }
     ],
     "notes": [],
@@ -400,6 +424,14 @@ main :: fn () {
             "column": 16,
             "length": 2,
             "message": "These operands have types `box[Bits]` and `box[Bits]`"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "tests/errors/129-content-equality.e",
+            "line": 1,
+            "column": 1,
+            "length": 4,
+            "message": "Type `Bits` is defined here"
         }
     ],
     "notes": [],
@@ -459,6 +491,14 @@ main :: fn () {
             "column": 17,
             "length": 3,
             "message": "This expression has type `[]arena`"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "__REPO__/mods/core.n",
+            "line": 199,
+            "column": 5,
+            "length": 2,
+            "message": "Type `Eq` is defined here"
         }
     ],
     "notes": [],
@@ -489,6 +529,14 @@ main :: fn () {
             "column": 17,
             "length": 3,
             "message": "This expression has type `box[arena]`"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "__REPO__/mods/core.n",
+            "line": 199,
+            "column": 5,
+            "length": 2,
+            "message": "Type `Eq` is defined here"
         }
     ],
     "notes": [],

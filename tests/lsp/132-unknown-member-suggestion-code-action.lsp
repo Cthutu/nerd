@@ -146,6 +146,22 @@ main :: fn () {
                                 "uri": "file:///test.n",
                                 "range": {
                                     "start": {
+                                        "line": 0,
+                                        "character": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "character": 7
+                                    }
+                                }
+                            },
+                            "message": "Type `Counter` is defined here"
+                        },
+                        {
+                            "location": {
+                                "uri": "file:///test.n",
+                                "range": {
+                                    "start": {
                                         "line": 6,
                                         "character": 11
                                     },

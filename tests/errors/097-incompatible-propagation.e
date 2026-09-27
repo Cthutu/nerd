@@ -24,6 +24,14 @@ main :: fn () {
             "column": 22,
             "length": 1,
             "message": "This `?` can return `Failure` to the caller"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "tests/errors/097-incompatible-propagation.e",
+            "line": 1,
+            "column": 1,
+            "length": 7,
+            "message": "Type `Failure` is defined here"
         }
     ],
     "notes": [

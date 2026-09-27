@@ -27,6 +27,22 @@ objs: []Object = [
             "column": 45,
             "length": 1,
             "message": "This expression has type `^Object`"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "tests/errors/036-named-record-type-mismatch.e",
+            "line": 1,
+            "column": 1,
+            "length": 8,
+            "message": "Type `Location` is defined here"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "tests/errors/036-named-record-type-mismatch.e",
+            "line": 6,
+            "column": 1,
+            "length": 6,
+            "message": "Type `Object` is defined here"
         }
     ],
     "notes": [],

@@ -19,6 +19,14 @@ main :: fn() {}¬
             "column": 46,
             "length": 5,
             "message": "This expression has type `Point`"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "tests/errors/045-ffi-consolidation.e",
+            "line": 1,
+            "column": 1,
+            "length": 5,
+            "message": "Type `Point` is defined here"
         }
     ],
     "notes": [],
@@ -48,6 +56,14 @@ main :: fn() {}¬
             "column": 42,
             "length": 4,
             "message": "This expression has type `Mode`"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "tests/errors/045-ffi-consolidation.e",
+            "line": 1,
+            "column": 1,
+            "length": 4,
+            "message": "Type `Mode` is defined here"
         }
     ],
     "notes": [],

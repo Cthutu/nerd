@@ -25,6 +25,14 @@ main :: fn () {
             "column": 19,
             "length": 1,
             "message": "The target plex type has no field named `z`"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "tests/errors/029-plex-ergonomics.e",
+            "line": 3,
+            "column": 1,
+            "length": 5,
+            "message": "Type `Point` is defined here"
         }
     ],
     "notes": [],

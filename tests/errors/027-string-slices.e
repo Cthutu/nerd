@@ -19,6 +19,14 @@ main :: fn () {
             "column": 17,
             "length": 8,
             "message": "This expression has type `c_string`"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "__REPO__/mods/core.n",
+            "line": 226,
+            "column": 5,
+            "length": 8,
+            "message": "Type `c_string` is defined here"
         }
     ],
     "notes": [],

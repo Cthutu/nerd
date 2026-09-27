@@ -25,6 +25,49 @@ internal Arena* error_message_arena(void)
     return arena;
 }
 
+ErrorTypeResolver error_type_resolver_select(ErrorTypeResolver resolver)
+{
+    ErrorContext*     context  = error_context_current();
+    ErrorTypeResolver previous = context->type_resolver;
+    context->type_resolver     = resolver;
+    return previous;
+}
+
+void error_add_type_definitions(ErrorInfo* info, string type_text)
+{
+    ErrorTypeResolver resolver = error_context_current()->type_resolver;
+    if (resolver.resolve != NULL) {
+        resolver.resolve(resolver.context, info, type_text);
+    }
+}
+
+void error_add_type_definition(ErrorInfo* info,
+                               string     name,
+                               NerdSource source,
+                               ErrorSpan  span)
+{
+    NerdSource mapped_source;
+    ErrorSpan  mapped_span;
+    error_source_for_span(source, span, &mapped_source, &mapped_span);
+    for (usize i = 0; i < array_count(info->definitions); ++i) {
+        const ErrorDefinition* def = &info->definitions[i];
+        if (string_eq(def->source.source_path, mapped_source.source_path) &&
+            def->span.start == mapped_span.start &&
+            def->span.end == mapped_span.end) {
+            return;
+        }
+    }
+    array_push(
+        info->definitions,
+        ((ErrorDefinition){
+            .source  = mapped_source,
+            .span    = mapped_span,
+            .message = string_format(error_message_arena(),
+                                     "Type `" STRINGP "` is defined here",
+                                     STRINGV(name)),
+        }));
+}
+
 ErrorContext* error_context_select(ErrorContext* context)
 {
     ErrorContext* previous = g_error_current;
@@ -45,6 +88,7 @@ internal void error_context_clear_pending(ErrorContext* context)
     for (usize i = 0; i < array_count(context->pending); ++i) {
         ErrorInfo* info = &context->pending[i];
         array_free(info->references);
+        array_free(info->definitions);
         array_free(info->notes);
         array_free(info->help_messages);
         array_free(info->source.fragments);
@@ -97,6 +141,7 @@ bool error_context_capture(const ErrorInfo* info)
         error_context_copy_string(arena, info->source.source_path);
     copy.source.fragments = NULL;
     copy.references       = NULL;
+    copy.definitions      = NULL;
     copy.notes            = NULL;
     copy.help_messages    = NULL;
     for (usize i = 0; i < array_count(info->source.fragments); ++i) {
@@ -110,6 +155,15 @@ bool error_context_capture(const ErrorInfo* info)
         ErrorRef ref = info->references[i];
         ref.message  = error_context_copy_string(arena, ref.message);
         array_push(copy.references, ref);
+    }
+    for (usize i = 0; i < array_count(info->definitions); ++i) {
+        ErrorDefinition def = info->definitions[i];
+        def.message         = error_context_copy_string(arena, def.message);
+        def.source.source = error_context_copy_string(arena, def.source.source);
+        def.source.source_path =
+            error_context_copy_string(arena, def.source.source_path);
+        def.source.fragments = NULL; // Definition sources are already mapped.
+        array_push(copy.definitions, def);
     }
     for (usize i = 0; i < array_count(info->notes); ++i) {
         array_push(copy.notes,
@@ -132,6 +186,7 @@ void error_context_replay(ErrorContext* context)
         error_render(&info);
         // Rendering consumes these arrays; source snapshots remain queue-owned.
         context->pending[i].references    = NULL;
+        context->pending[i].definitions   = NULL;
         context->pending[i].notes         = NULL;
         context->pending[i].help_messages = NULL;
     }
@@ -319,6 +374,7 @@ internal void error_context_test_diagnostic(NerdSource source, u32 number)
             : warning_init(source, (ErrorSpan){0, 1}, "message %u", number);
     error_add_reference(
         &info, ERROR_REF_PRIMARY, (ErrorSpan){0, 1}, "reference %u", number);
+    error_add_type_definition(&info, s("Example"), source, (ErrorSpan){0, 1});
     error_add_note(&info, "note %u", number);
     error_add_help(&info, "help %u", number);
     error_render(&info);
@@ -388,6 +444,7 @@ bool error_context_self_test(void)
         ErrorInfo one = ordered.pending[0];
         error_render(&one);
         ordered.pending[0].references    = NULL;
+        ordered.pending[0].definitions   = NULL;
         ordered.pending[0].notes         = NULL;
         ordered.pending[0].help_messages = NULL;
         ok = ok && string_eq(expected, error_system_last_rendered());

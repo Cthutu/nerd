@@ -44,6 +44,14 @@ main :: fn () {
             "column": 19,
             "length": 6,
             "message": "This expression has type `fn () -> i32`"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "__REPO__/mods/core.n",
+            "line": 193,
+            "column": 5,
+            "length": 7,
+            "message": "Type `Display` is defined here"
         }
     ],
     "notes": [],

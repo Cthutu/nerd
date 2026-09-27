@@ -28432,12 +28432,74 @@ sema_validate_va_lists(const Lexer* lexer, const Ast* ast, Sema* sema)
     return true;
 }
 
+typedef struct {
+    const Lexer* lexer;
+    const Ast*   ast;
+    Sema*        sema;
+} SemaErrorTypes;
+
+internal bool sema_type_name_character(u8 c)
+{
+    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+           (c >= '0' && c <= '9') || c == '_' || c >= 128;
+}
+
+internal void
+sema_error_type_definitions(void* context, ErrorInfo* info, string type_text)
+{
+    SemaErrorTypes* types = context;
+    for (usize start = 0; start < type_text.count;) {
+        if (!sema_type_name_character(type_text.data[start])) {
+            ++start;
+            continue;
+        }
+        usize end = start + 1;
+        while (end < type_text.count &&
+               sema_type_name_character(type_text.data[end])) {
+            ++end;
+        }
+        string name = string_from(type_text.data + start, end - start);
+        start       = end;
+        for (u32 i = 0; i < array_count(types->sema->decls); ++i) {
+            const SemaDecl* decl = &types->sema->decls[i];
+            if ((decl->kind != SK_TypeAlias &&
+                 decl->kind != SK_GenericTypeAlias && decl->kind != SK_Trait) ||
+                !string_eq(name,
+                           lex_symbol(types->lexer, decl->symbol_handle))) {
+                continue;
+            }
+            const Lexer* lexer = types->lexer;
+            const Ast*   ast   = types->ast;
+            Sema*        sema  = types->sema;
+            u32          index = i;
+            // Follow re-exports to the owning source declaration.
+            for (u32 depth = 0; depth < 64; ++depth) {
+                if (!sema_imported_decl_source(
+                        sema, decl, &lexer, &ast, &sema, &index)) {
+                    break;
+                }
+                decl = &sema->decls[index];
+            }
+            if (decl->bind_node_index != sema_no_decl()) {
+                error_add_type_definition(info,
+                                          name,
+                                          lexer->source,
+                                          sema_decl_span(lexer, ast, decl));
+            }
+            break;
+        }
+    }
+}
+
 bool sema_analyse(const Lexer*           lexer,
                   Ast*                   ast,
                   const FrontEndOptions* options,
                   Sema*                  out_sema)
 {
-    Sema            sema = {0};
+    Sema              sema              = {0};
+    SemaErrorTypes    error_types       = {lexer, ast, &sema};
+    ErrorTypeResolver previous_resolver = error_type_resolver_select(
+        (ErrorTypeResolver){sema_error_type_definitions, &error_types});
     FrontEndOptions effective_options =
         options ? *options : (FrontEndOptions){0};
     if (options == NULL) {
@@ -28484,23 +28546,28 @@ bool sema_analyse(const Lexer*           lexer,
 
     if (!sema_collect_decls(lexer, ast, &effective_options, &sema)) {
         sema_done(&sema);
+        error_type_resolver_select(previous_resolver);
         return false;
     }
     sema_register_compound_decls(ast, &sema);
     if (!sema_import_implicit_core_decls(lexer, &sema)) {
         sema_done(&sema);
+        error_type_resolver_select(previous_resolver);
         return false;
     }
     if (!sema_validate_where_constraints(lexer, ast, &sema)) {
         sema_done(&sema);
+        error_type_resolver_select(previous_resolver);
         return false;
     }
     if (!sema_collect_top_level_uses(lexer, ast, &effective_options, &sema)) {
         sema_done(&sema);
+        error_type_resolver_select(previous_resolver);
         return false;
     }
     if (!sema_classify_type_aliases(lexer, ast, &sema)) {
         sema_done(&sema);
+        error_type_resolver_select(previous_resolver);
         return false;
     }
     for (u32 i = 0; i < array_count(ast->nodes); ++i) {
@@ -28526,31 +28593,38 @@ bool sema_analyse(const Lexer*           lexer,
     }
     if (!sema_validate_trait_impls(lexer, ast, &sema)) {
         sema_done(&sema);
+        error_type_resolver_select(previous_resolver);
         return false;
     }
     if (!sema_resolve_symbol_refs(lexer, ast, &sema)) {
         sema_done(&sema);
+        error_type_resolver_select(previous_resolver);
         return false;
     }
     if (!sema_resolve_compounds(lexer, ast, &sema)) {
         sema_done(&sema);
+        error_type_resolver_select(previous_resolver);
         return false;
     }
     if (!sema_validate_compound_signatures(lexer, ast, &sema)) {
         sema_done(&sema);
+        error_type_resolver_select(previous_resolver);
         return false;
     }
     if (!sema_validate_generic_body_refs(lexer, ast, &sema)) {
         sema_done(&sema);
+        error_type_resolver_select(previous_resolver);
         return false;
     }
     if (!sema_validate_all_loop_control(lexer, ast, options)) {
         sema_done(&sema);
+        error_type_resolver_select(previous_resolver);
         return false;
     }
     sema_collect_deps(ast, &sema, &sema);
     if (!sema_order_decls(lexer, ast, &sema)) {
         sema_done(&sema);
+        error_type_resolver_select(previous_resolver);
         return false;
     }
     // Seeding can diagnose an incomplete initializer before declaration
@@ -28569,6 +28643,7 @@ bool sema_analyse(const Lexer*           lexer,
         } else {
             sema_done(&sema);
         }
+        error_type_resolver_select(previous_resolver);
         return false;
     }
     if (!sema_assign_decl_types(lexer, ast, &sema)) {
@@ -28576,40 +28651,49 @@ bool sema_analyse(const Lexer*           lexer,
             (effective_options.keep_decl_error_results ||
              sema.recoverable_method_call_error)) {
             *out_sema = sema;
+            error_type_resolver_select(previous_resolver);
             return false;
         }
         sema_done(&sema);
+        error_type_resolver_select(previous_resolver);
         return false;
     }
     if (!sema_validate_trait_impl_signatures(lexer, ast, &sema)) {
         sema_done(&sema);
+        error_type_resolver_select(previous_resolver);
         return false;
     }
     if (!sema_assign_local_types(lexer, ast, &sema)) {
         sema_done(&sema);
+        error_type_resolver_select(previous_resolver);
         return false;
     }
     if (!sema_validate_va_lists(lexer, ast, &sema)) {
         sema_done(&sema);
+        error_type_resolver_select(previous_resolver);
         return false;
     }
     if (!sema_validate_definite_assignment(lexer, ast, options, &sema)) {
         sema_done(&sema);
+        error_type_resolver_select(previous_resolver);
         return false;
     }
     if (!sema_validate_unused_locals(lexer, ast, &sema)) {
         *out_sema = sema;
+        error_type_resolver_select(previous_resolver);
         return false;
     }
     if (effective_options.require_entry_point &&
         !sema_validate_entry_point(lexer, ast, &sema)) {
         sema_done(&sema);
+        error_type_resolver_select(previous_resolver);
         return false;
     }
 
     sema_fold_constants(lexer, ast, &sema);
 
     *out_sema = sema;
+    error_type_resolver_select(previous_resolver);
     return true;
 }
 

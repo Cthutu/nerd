@@ -311,6 +311,22 @@ main :: fn () {
                     "relatedInformation": [
                         {
                             "location": {
+                                "uri": "__REPO_URI__/mods/std/vulkan/mod.n",
+                                "range": {
+                                    "start": {
+                                        "line": 212,
+                                        "character": 4
+                                    },
+                                    "end": {
+                                        "line": 212,
+                                        "character": 24
+                                    }
+                                }
+                            },
+                            "message": "Type `VkInstanceCreateInfo` is defined here"
+                        },
+                        {
+                            "location": {
                                 "uri": "file:///test.n",
                                 "range": {
                                     "start": {
@@ -372,6 +388,22 @@ main :: fn () {
                     "source": "nerd",
                     "message": "Unknown field `pE` in plex literal of type `VkApplicationInfo`",
                     "relatedInformation": [
+                        {
+                            "location": {
+                                "uri": "__REPO_URI__/mods/std/vulkan/mod.n",
+                                "range": {
+                                    "start": {
+                                        "line": 192,
+                                        "character": 4
+                                    },
+                                    "end": {
+                                        "line": 192,
+                                        "character": 21
+                                    }
+                                }
+                            },
+                            "message": "Type `VkApplicationInfo` is defined here"
+                        },
                         {
                             "location": {
                                 "uri": "file:///test.n",

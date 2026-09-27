@@ -28,4 +28,6 @@ error: Type mismatch: expected `First`, found `Second`
 7 |     first(^value)
 8 |     second(^value)
   |
+note: Type `First` is defined here (293-check-conflicting-plex-context.input.n:1:1)
+note: Type `Second` is defined here (293-check-conflicting-plex-context.input.n:2:1)
 help: Change the expression or annotation so both sides use the same type.

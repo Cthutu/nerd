@@ -21,6 +21,14 @@ main :: fn () {
             "column": 12,
             "length": 13,
             "message": "`Counter` has no field or method named `windows_count`"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "tests/errors/082-unknown-member-suggestions.e",
+            "line": 1,
+            "column": 1,
+            "length": 7,
+            "message": "Type `Counter` is defined here"
         }
     ],
     "notes": [],
@@ -56,6 +64,14 @@ main :: fn () {
             "column": 12,
             "length": 7,
             "message": "`Point` has no field or method named `describ`"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "tests/errors/082-unknown-member-suggestions.e",
+            "line": 1,
+            "column": 1,
+            "length": 5,
+            "message": "Type `Point` is defined here"
         }
     ],
     "notes": [],

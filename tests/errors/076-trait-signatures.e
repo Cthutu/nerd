@@ -28,6 +28,14 @@ main :: fn () => 0
             "column": 5,
             "length": 4,
             "message": "This expression has type `fn (Point) -> i32`"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "tests/errors/076-trait-signatures.e",
+            "line": 5,
+            "column": 1,
+            "length": 5,
+            "message": "Type `Point` is defined here"
         }
     ],
     "notes": [],

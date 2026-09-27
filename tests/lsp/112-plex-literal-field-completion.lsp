@@ -210,6 +210,22 @@ main :: fn () {
                                 "uri": "__REPO_URI__/tests/lsp/112-plex-literal-field-completion/main.n",
                                 "range": {
                                     "start": {
+                                        "line": 3,
+                                        "character": 0
+                                    },
+                                    "end": {
+                                        "line": 3,
+                                        "character": 5
+                                    }
+                                }
+                            },
+                            "message": "Type `Point` is defined here"
+                        },
+                        {
+                            "location": {
+                                "uri": "__REPO_URI__/tests/lsp/112-plex-literal-field-completion/main.n",
+                                "range": {
+                                    "start": {
                                         "line": 12,
                                         "character": 8
                                     },

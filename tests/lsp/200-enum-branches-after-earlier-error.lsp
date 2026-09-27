@@ -268,6 +268,22 @@ main :: fn () {
                     "relatedInformation": [
                         {
                             "location": {
+                                "uri": "__REPO_URI__/mods/std/frame/frame.n",
+                                "range": {
+                                    "start": {
+                                        "line": 147,
+                                        "character": 4
+                                    },
+                                    "end": {
+                                        "line": 147,
+                                        "character": 15
+                                    }
+                                }
+                            },
+                            "message": "Type `FrameSystem` is defined here"
+                        },
+                        {
+                            "location": {
                                 "uri": "file:///test.n",
                                 "range": {
                                     "start": {
@@ -395,6 +411,22 @@ main :: fn () {
                     "source": "nerd",
                     "message": "Type mismatch: expected `^FrameSystem`, found `FrameSystem`",
                     "relatedInformation": [
+                        {
+                            "location": {
+                                "uri": "__REPO_URI__/mods/std/frame/frame.n",
+                                "range": {
+                                    "start": {
+                                        "line": 147,
+                                        "character": 4
+                                    },
+                                    "end": {
+                                        "line": 147,
+                                        "character": 15
+                                    }
+                                }
+                            },
+                            "message": "Type `FrameSystem` is defined here"
+                        },
                         {
                             "location": {
                                 "uri": "file:///test.n",

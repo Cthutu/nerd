@@ -1060,3 +1060,15 @@ Unknown-field diagnostics for plex and union literals include the resolved
 target type in the primary message. Semantic analysis supplies the type after
 contextual and generic inference, so editor diagnostics also identify the
 expected type for anonymous literals and pointer-to-literal arguments.
+
+Type-bearing semantic diagnostics explicitly pass their type text to the active
+`ErrorTypeResolver`. Semantic analysis binds this resolver to its declaration
+tables and restores the previous binding on every exit (including nested module
+analysis). Named types inside compound type text resolve to their original
+declaration, following imports and re-exports. Non-type diagnostic arguments
+such as field names are not resolved. Each declaration appears only once per
+diagnostic. Definition locations are mapped through source fragments before
+being stored separately from the primary-source references. Console output
+prints a `note` with `path:line:column`; LSP output uses `relatedInformation` with
+the declaration's URI and range. Captured diagnostics own copies of definition
+sources and messages, so deferred replay does not borrow semantic state.

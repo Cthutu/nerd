@@ -509,25 +509,50 @@ typedef struct {
 } ErrorRef;
 
 typedef struct {
+    NerdSource source;
+    ErrorSpan  span;
+    string     message;
+} ErrorDefinition;
+
+typedef struct {
     ErrorKind  kind;
     string     error_message;
     NerdSource source;
     ErrorSpan  span;
     Array(ErrorRef) references;
+    Array(ErrorDefinition) definitions;
     Array(string) notes;
     Array(string) help_messages;
 } ErrorInfo;
 
+// Resolve only explicitly supplied type text, never arbitrary diagnostic prose.
+typedef struct {
+    void (*resolve)(void* context, ErrorInfo* info, string type_text);
+    void* context;
+} ErrorTypeResolver;
+
+ErrorTypeResolver error_type_resolver_select(ErrorTypeResolver resolver);
+void              error_add_type_definitions(ErrorInfo* info, string type_text);
+void              error_add_type_definition(ErrorInfo* info,
+                                            string     name,
+                                            NerdSource source,
+                                            ErrorSpan  span);
+bool              error_source_for_span(NerdSource  source,
+                                        ErrorSpan   span,
+                                        NerdSource* out_source,
+                                        ErrorSpan*  out_span);
+
 // A context is owned by one task. Binding is thread-local, but the allocator
 // must also be made concurrency-safe before contexts can run in parallel.
 typedef struct {
-    ErrorRenderMode mode;
-    bool            emit_output;
-    bool            capture;
-    Arena           arena;
-    Arena           rendered_arena;
-    Arena           captured_arena;
-    string          last_rendered;
+    ErrorTypeResolver type_resolver;
+    ErrorRenderMode   mode;
+    bool              emit_output;
+    bool              capture;
+    Arena             arena;
+    Arena             rendered_arena;
+    Arena             captured_arena;
+    string            last_rendered;
     Array(ErrorInfo) pending;
 } ErrorContext;
 

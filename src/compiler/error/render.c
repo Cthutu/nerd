@@ -20,6 +20,7 @@
 internal void error_info_done(ErrorInfo* error_info)
 {
     array_free(error_info->references);
+    array_free(error_info->definitions);
     array_free(error_info->notes);
     array_free(error_info->help_messages);
     *error_info = (ErrorInfo){0};
@@ -288,10 +289,10 @@ internal bool error_reference_touches_line(const ErrorRef* ref,
     return ref_start < line_end && ref_end > line_start;
 }
 
-internal bool error_source_for_span(NerdSource  source,
-                                    ErrorSpan   span,
-                                    NerdSource* out_source,
-                                    ErrorSpan*  out_span)
+bool error_source_for_span(NerdSource  source,
+                           ErrorSpan   span,
+                           NerdSource* out_source,
+                           ErrorSpan*  out_span)
 {
     for (u32 i = 0; i < array_count(source.fragments); ++i) {
         NerdSourceFragment fragment = source.fragments[i];
@@ -621,6 +622,17 @@ internal void error_normal_render(const ErrorInfo* error_info)
     // Output notes
     //
 
+    for (usize i = 0; i < array_count(error_info->definitions); ++i) {
+        const ErrorDefinition* def  = &error_info->definitions[i];
+        u32                    line = 0, column = 0;
+        lex_offset_to_line_col(def->source, def->span.start, &line, &column);
+        eprn("note: " STRINGP " (" STRINGP ":%u:%u)",
+             STRINGV(def->message),
+             STRINGV(def->source.source_path),
+             line + 1,
+             column + 1);
+    }
+
     for (usize i = 0; i < array_count(error_info->notes); i++) {
         error_print_wrapped(
             s("note: "),
@@ -696,6 +708,21 @@ internal void error_test_render(const ErrorInfo* error_info)
         json_object_set_number(
             obj, &temp_arena, "length", (f64)(ref->span.end - ref->span.start));
         json_object_set_string(obj, &temp_arena, "message", ref->message);
+        json_array_push(refs, obj);
+    }
+    for (usize i = 0; i < array_count(error_info->definitions); ++i) {
+        const ErrorDefinition* def  = &error_info->definitions[i];
+        JsonValue*             obj  = json_new_object(&temp_arena);
+        u32                    line = 0, column = 0;
+        lex_offset_to_line_col(def->source, def->span.start, &line, &column);
+        json_object_set_cstr(obj, &temp_arena, "kind", "secondary");
+        json_object_set_string(
+            obj, &temp_arena, "source_file", def->source.source_path);
+        json_object_set_number(obj, &temp_arena, "line", line + 1);
+        json_object_set_number(obj, &temp_arena, "column", column + 1);
+        json_object_set_number(
+            obj, &temp_arena, "length", def->span.end - def->span.start);
+        json_object_set_string(obj, &temp_arena, "message", def->message);
         json_array_push(refs, obj);
     }
     json_object_set_array(root, "references", refs);
@@ -799,6 +826,21 @@ internal void error_diagnostics_render(const ErrorInfo* error_info)
             error_make_lsp_range(&temp_arena, error_info->source, ref->span));
         json_object_set_object(info, "location", location);
         json_object_set_string(info, &temp_arena, "message", ref->message);
+        json_array_push(related, info);
+    }
+
+    for (usize i = 0; i < array_count(error_info->definitions); ++i) {
+        const ErrorDefinition* def      = &error_info->definitions[i];
+        JsonValue*             info     = json_new_object(&temp_arena);
+        JsonValue*             location = json_new_object(&temp_arena);
+        json_object_set_string(
+            location, &temp_arena, "uri", def->source.source_path);
+        json_object_set_object(
+            location,
+            "range",
+            error_make_lsp_range(&temp_arena, def->source, def->span));
+        json_object_set_object(info, "location", location);
+        json_object_set_string(info, &temp_arena, "message", def->message);
         json_array_push(related, info);
     }
 

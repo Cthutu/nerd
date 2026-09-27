@@ -176,6 +176,14 @@ main :: fn () => Price
             "column": 18,
             "length": 5,
             "message": "This name refers to a type"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "tests/errors/004-semantics.e",
+            "line": 1,
+            "column": 1,
+            "length": 5,
+            "message": "Type `Price` is defined here"
         }
     ],
     "notes": [],

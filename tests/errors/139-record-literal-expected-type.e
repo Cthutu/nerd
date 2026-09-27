@@ -20,6 +20,14 @@ main :: fn () {
             "column": 27,
             "length": 7,
             "message": "The target plex type has no field named `missing`"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "__REPO__/tests/mods/structural_eq.n",
+            "line": 1,
+            "column": 5,
+            "length": 4,
+            "message": "Type `Item` is defined here"
         }
     ],
     "notes": [],
@@ -49,6 +57,14 @@ main :: fn () {
             "column": 20,
             "length": 7,
             "message": "The target plex type has no field named `missing`"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "tests/errors/139-record-literal-expected-type.e",
+            "line": 2,
+            "column": 1,
+            "length": 6,
+            "message": "Type `Record` is defined here"
         }
     ],
     "notes": [],

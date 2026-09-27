@@ -24,6 +24,14 @@ main :: fn () {
             "column": 14,
             "length": 1,
             "message": "`Point` has no field or method named `z`"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "tests/errors/028-plexes.e",
+            "line": 3,
+            "column": 1,
+            "length": 5,
+            "message": "Type `Point` is defined here"
         }
     ],
     "notes": [],

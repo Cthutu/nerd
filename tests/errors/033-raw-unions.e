@@ -44,6 +44,14 @@ main :: fn () -> i32 {
             "column": 15,
             "length": 1,
             "message": "This matched value type is unsupported"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "tests/errors/033-raw-unions.e",
+            "line": 1,
+            "column": 1,
+            "length": 5,
+            "message": "Type `Value` is defined here"
         }
     ],
     "notes": [],
@@ -94,6 +102,14 @@ main :: fn () {
             "column": 24,
             "length": 4,
             "message": "The target union type has no field named `text`"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "tests/errors/033-raw-unions.e",
+            "line": 1,
+            "column": 1,
+            "length": 5,
+            "message": "Type `Value` is defined here"
         }
     ],
     "notes": [],
@@ -120,6 +136,14 @@ main :: fn () {
             "column": 12,
             "length": 4,
             "message": "This expression has type `Value`"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "tests/errors/033-raw-unions.e",
+            "line": 1,
+            "column": 1,
+            "length": 5,
+            "message": "Type `Value` is defined here"
         }
     ],
     "notes": [],

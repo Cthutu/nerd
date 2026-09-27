@@ -19,6 +19,14 @@ main :: fn () {
             "column": 9,
             "length": 4,
             "message": "`bump` exists for `Box`, but it is not visible from this module"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "__REPO__/tests/mods/test/private_method.n",
+            "line": 1,
+            "column": 5,
+            "length": 3,
+            "message": "Type `Box` is defined here"
         }
     ],
     "notes": [

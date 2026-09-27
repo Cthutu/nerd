@@ -28,6 +28,22 @@ main :: fn () {
             "column": 19,
             "length": 1,
             "message": "This expression has type `^PixelLayer\\GfxError`"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "tests/errors/099-result-type-rendering.e",
+            "line": 1,
+            "column": 1,
+            "length": 10,
+            "message": "Type `PixelLayer` is defined here"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "tests/errors/099-result-type-rendering.e",
+            "line": 4,
+            "column": 1,
+            "length": 8,
+            "message": "Type `GfxError` is defined here"
         }
     ],
     "notes": [],

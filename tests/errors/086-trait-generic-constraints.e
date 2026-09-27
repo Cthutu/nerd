@@ -23,6 +23,14 @@ main :: fn () => 0
             "column": 10,
             "length": 8,
             "message": "Trait generic parameter `Item` cannot be inferred from this constraint"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "tests/errors/086-trait-generic-constraints.e",
+            "line": 1,
+            "column": 1,
+            "length": 8,
+            "message": "Type `Iterator` is defined here"
         }
     ],
     "notes": [],
@@ -56,6 +64,14 @@ main :: fn () => 0
             "column": 10,
             "length": 8,
             "message": "This trait constraint has the wrong number of type arguments"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "tests/errors/086-trait-generic-constraints.e",
+            "line": 1,
+            "column": 1,
+            "length": 8,
+            "message": "Type `Iterator` is defined here"
         }
     ],
     "notes": [],

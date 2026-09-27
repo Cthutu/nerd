@@ -131,6 +131,7 @@ bool error_0303_unknown_type_with_private_modules(NerdSource    source,
                    "Use a defined type name, or one of the built-in primitive "
                    "types.");
     error_add_private_module_help(&error, type_name, modules, module_count);
+    error_add_type_definitions(&error, type_name);
     error_render(&error);
     return false;
 }
@@ -157,6 +158,8 @@ bool error_0304_type_mismatch(NerdSource source,
     error_add_help(&error,
                    "Change the expression or annotation so both sides use the "
                    "same type.");
+    error_add_type_definitions(&error, expected_type);
+    error_add_type_definitions(&error, actual_type);
     error_render(&error);
     return false;
 }
@@ -184,6 +187,7 @@ bool error_0304_missing_trait_constraint(NerdSource source,
                    "` to the generic function or impl.",
                    STRINGV(param),
                    STRINGV(trait));
+    error_add_type_definitions(&error, trait);
     error_render(&error);
     return false;
 }
@@ -213,6 +217,8 @@ bool error_0304_type_mismatch_with_note(NerdSource source,
     error_add_help(&error,
                    "Change the expression or annotation so both sides use the "
                    "same type.");
+    error_add_type_definitions(&error, expected_type);
+    error_add_type_definitions(&error, actual_type);
     error_render(&error);
     return false;
 }
@@ -240,6 +246,7 @@ bool error_0304_address_of_constant_binding(NerdSource source,
     error_add_help(&error,
                    "Use `:=` or `name: Type = ...` to create a variable before "
                    "taking its address.");
+    error_add_type_definitions(&error, actual_type);
     error_render(&error);
     return false;
 }
@@ -262,6 +269,8 @@ bool error_0304_integer_used_as_pointer(NerdSource source,
     error_add_help(&error,
                    "Use `nil` for a null pointer, or use `.as(^T)` when an "
                    "integer address is intentional.");
+    error_add_type_definitions(&error, expected_type);
+    error_add_type_definitions(&error, actual_type);
     error_render(&error);
     return false;
 }
@@ -302,13 +311,13 @@ bool error_0304_unknown_record_literal_field(NerdSource source,
                                              string     field_name,
                                              string     suggested_field_name)
 {
-    ErrorInfo error =
-        error_init(source,
-                   span,
-                   "Unknown field `" STRINGP "` in " STRINGP " literal of type `" STRINGP "`",
-                   STRINGV(field_name),
-                   STRINGV(record_kind),
-                   STRINGV(expected_type));
+    ErrorInfo error = error_init(source,
+                                 span,
+                                 "Unknown field `" STRINGP "` in " STRINGP
+                                 " literal of type `" STRINGP "`",
+                                 STRINGV(field_name),
+                                 STRINGV(record_kind),
+                                 STRINGV(expected_type));
     error_add_reference(&error,
                         ERROR_REF_PRIMARY,
                         span,
@@ -325,6 +334,7 @@ bool error_0304_unknown_record_literal_field(NerdSource source,
                        "Use a field declared by the target " STRINGP " type.",
                        STRINGV(record_kind));
     }
+    error_add_type_definitions(&error, expected_type);
     error_render(&error);
     return false;
 }
@@ -454,6 +464,7 @@ bool error_0306_invalid_variable_type(NerdSource source,
     error_add_help(&error,
                    "Variables may use concrete integer, `bool`, `string`, "
                    "`f32`, or `f64` types.");
+    error_add_type_definitions(&error, type_name);
     error_render(&error);
     return false;
 }
@@ -476,6 +487,8 @@ bool error_0307_invalid_cast(NerdSource source,
     error_add_help(&error,
                    "Use explicit casts only between compatible primitive "
                    "types.");
+    error_add_type_definitions(&error, source_type);
+    error_add_type_definitions(&error, target_type);
     error_render(&error);
     return false;
 }
@@ -497,6 +510,7 @@ bool error_0308_type_used_as_value(NerdSource source,
                    "Use `" STRINGP "` in a type annotation or bind a runtime "
                    "value instead.",
                    STRINGV(type_name));
+    error_add_type_definitions(&error, type_name);
     error_render(&error);
     return false;
 }
@@ -570,6 +584,7 @@ bool error_0311_invalid_interpolation_type(NerdSource source,
     error_add_help(&error,
                    "Use a built-in primitive or `string`, or cast the value "
                    "to a supported type first.");
+    error_add_type_definitions(&error, type_name);
     error_render(&error);
     return false;
 }
@@ -650,6 +665,7 @@ bool error_0314_missing_return(NerdSource source,
                    "Add `return <expr>` to the function body or remove the "
                    "explicit return type if the function should not produce a "
                    "value.");
+    error_add_type_definitions(&error, return_type);
     error_render(&error);
     return false;
 }
@@ -694,6 +710,7 @@ bool error_0316_invalid_entry_point(NerdSource source,
     error_add_help(&error,
                    "Change `main` to `fn ()`, or to `fn (args: []string)` if "
                    "the program needs command-line arguments.");
+    error_add_type_definitions(&error, actual_type);
     error_render(&error);
     return false;
 }
@@ -766,6 +783,7 @@ bool error_0319_invalid_on_condition(NerdSource source,
     error_add_help(&error,
                    "Use a `bool` expression here, or use block-form `on` for "
                    "value matching.");
+    error_add_type_definitions(&error, actual_type);
     error_render(&error);
     return false;
 }
@@ -824,6 +842,8 @@ bool error_0320_on_branch_type_mismatch(NerdSource source,
                         "The other branch has type `" STRINGP "`",
                         STRINGV(true_type));
     error_add_help(&error, "Make both branches produce exactly the same type.");
+    error_add_type_definitions(&error, true_type);
+    error_add_type_definitions(&error, false_type);
     error_render(&error);
     return false;
 }
@@ -847,6 +867,7 @@ bool error_0321_invalid_on_match_type(NerdSource source,
     error_add_help(&error,
                    "Block-form `on` supports `bool` and `string` scrutinees, "
                    "plus concrete integer scrutinees.");
+    error_add_type_definitions(&error, actual_type);
     error_render(&error);
     return false;
 }
@@ -888,6 +909,7 @@ bool error_0323_negative_unsigned_inference(NerdSource source,
     error_add_help(&error,
                    "Use a non-negative value here, or change the destination "
                    "type to a signed integer.");
+    error_add_type_definitions(&error, target_type);
     error_render(&error);
     return false;
 }
@@ -938,6 +960,8 @@ bool error_0325_invalid_unary_operand(NerdSource source,
                    "Apply `" STRINGP "` only to `" STRINGP "` values.",
                    STRINGV(operator_name),
                    STRINGV(expected_type));
+    error_add_type_definitions(&error, expected_type);
+    error_add_type_definitions(&error, actual_type);
     error_render(&error);
     return false;
 }
@@ -971,6 +995,8 @@ bool error_0326_invalid_binary_operands(NerdSource source,
                    "Use `" STRINGP "` only with " STRINGP ".",
                    STRINGV(operator_name),
                    STRINGV(expected_rule));
+    error_add_type_definitions(&error, left_type);
+    error_add_type_definitions(&error, right_type);
     error_render(&error);
     return false;
 }
@@ -1052,6 +1078,7 @@ bool error_0329_missing_expression_block_break(NerdSource source,
     error_add_help(&error,
                    "Add `break <expr>` before the block ends or use a void "
                    "context if the block should not produce a value.");
+    error_add_type_definitions(&error, type_name);
     error_render(&error);
     return false;
 }
@@ -1127,6 +1154,7 @@ bool error_0332_missing_loop_else(NerdSource source,
         &error,
         "Add an `else` block that breaks with the loop result, or "
         "make the loop infinite if normal exhaustion is impossible.");
+    error_add_type_definitions(&error, type_name);
     error_render(&error);
     return false;
 }
@@ -1404,6 +1432,8 @@ bool error_0341_private_type_in_public_field(NerdSource source,
                    "` public or hide it behind a private implementation "
                    "detail that is not stored in the public field list.",
                    STRINGV(private_type));
+    error_add_type_definitions(&error, public_type);
+    error_add_type_definitions(&error, private_type);
     error_render(&error);
     return false;
 }
@@ -1514,6 +1544,7 @@ bool error_0345_discarded_value(NerdSource source,
     error_add_help(&error,
                    "Bind the result to `_` when the value is intentionally "
                    "ignored.");
+    error_add_type_definitions(&error, type_name);
     error_render(&error);
     return false;
 }
@@ -1631,6 +1662,7 @@ bool error_0349_unqualified_trait_member_call(NerdSource source,
                    STRINGV(member),
                    STRINGV(trait),
                    STRINGV(member));
+    error_add_type_definitions(&error, trait);
     error_render(&error);
     return false;
 }
@@ -1708,6 +1740,7 @@ bool error_0352_missing_trait_impl_members(NerdSource source,
     error_add_help(&error,
                    "Add the missing member%s to this `impl` block.",
                    missing_member_count == 1 ? "" : "s");
+    error_add_type_definitions(&error, trait);
     error_render(&error);
     return false;
 }
@@ -1739,6 +1772,7 @@ bool error_0353_unknown_member(NerdSource source,
                        "Use a field or method that exists on `" STRINGP "`.",
                        STRINGV(receiver_type));
     }
+    error_add_type_definitions(&error, receiver_type);
     error_render(&error);
     return false;
 }
@@ -1770,6 +1804,7 @@ bool error_0354_private_method(NerdSource source,
                    "` as `pub` in that module, or call it from inside the "
                    "module.",
                    STRINGV(method));
+    error_add_type_definitions(&error, receiver_type);
     error_render(&error);
     return false;
 }
@@ -1810,6 +1845,7 @@ bool error_0355_trait_generic_argument_count(NerdSource source,
                    expected_count,
                    expected_count == 1 ? "" : "s",
                    STRINGV(trait));
+    error_add_type_definitions(&error, trait);
     error_render(&error);
     return false;
 }
@@ -1896,6 +1932,7 @@ bool error_0359_typed_binding_uses_const_operator(NerdSource source,
                    "Use `name : " STRINGP
                    " = value` for a typed variable declaration",
                    STRINGV(type_name));
+    error_add_type_definitions(&error, type_name);
     error_render(&error);
     return false;
 }
@@ -1911,6 +1948,7 @@ bool error_0360_plex_use_requires_plex(NerdSource source,
                    STRINGV(actual_type));
     error_add_help(&error,
                    "Use `use T` only when `T` resolves to a plex type.");
+    error_add_type_definitions(&error, actual_type);
     error_render(&error);
     return false;
 }
@@ -1926,6 +1964,7 @@ bool error_0361_duplicate_plex_use(NerdSource source,
                    STRINGV(type_name));
     error_add_help(&error,
                    "Each plex may use a generic type declaration only once.");
+    error_add_type_definitions(&error, type_name);
     error_render(&error);
     return false;
 }
@@ -1968,6 +2007,9 @@ bool error_0363_incompatible_propagation(NerdSource source,
                    "Handle the failure here, or change the function return "
                    "type to `" STRINGP "`",
                    STRINGV(suggested_return_type));
+    error_add_type_definitions(&error, failure_type);
+    error_add_type_definitions(&error, return_type);
+    error_add_type_definitions(&error, suggested_return_type);
     error_render(&error);
     return false;
 }
@@ -2047,6 +2089,7 @@ bool error_0366_invalid_on_extraction_type(NerdSource source,
     error_add_help(&error,
                    "Remove the extraction binder to branch on this value, or "
                    "match an optional or result value that carries a payload.");
+    error_add_type_definitions(&error, actual_type);
     error_render(&error);
     return false;
 }

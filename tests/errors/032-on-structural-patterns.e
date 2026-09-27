@@ -105,6 +105,22 @@ main :: fn () -> i32 {
             "column": 9,
             "length": 5,
             "message": "This expression has type `Other`"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "tests/errors/032-on-structural-patterns.e",
+            "line": 1,
+            "column": 1,
+            "length": 5,
+            "message": "Type `Point` is defined here"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "tests/errors/032-on-structural-patterns.e",
+            "line": 2,
+            "column": 1,
+            "length": 5,
+            "message": "Type `Other` is defined here"
         }
     ],
     "notes": [],

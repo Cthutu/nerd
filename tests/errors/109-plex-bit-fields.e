@@ -48,6 +48,14 @@ Header :: plex {
             "column": 9,
             "length": 4,
             "message": "This expression has type `TokenType`"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "tests/errors/109-plex-bit-fields.e",
+            "line": 1,
+            "column": 1,
+            "length": 9,
+            "message": "Type `TokenType` is defined here"
         }
     ],
     "notes": [],
@@ -78,6 +86,14 @@ Header :: plex {
             "column": 9,
             "length": 4,
             "message": "This expression has type `TokenType`"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "tests/errors/109-plex-bit-fields.e",
+            "line": 1,
+            "column": 1,
+            "length": 9,
+            "message": "Type `TokenType` is defined here"
         }
     ],
     "notes": [],
@@ -262,6 +278,14 @@ main :: fn () {
             "column": 19,
             "length": 1,
             "message": "This expression has type `untyped integer`"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "tests/errors/109-plex-bit-fields.e",
+            "line": 1,
+            "column": 1,
+            "length": 9,
+            "message": "Type `TokenType` is defined here"
         }
     ],
     "notes": [
