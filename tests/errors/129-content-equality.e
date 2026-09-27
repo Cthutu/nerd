@@ -236,7 +236,7 @@ main :: fn () { assert one == one }
     ]
 }
 ¬
-Value :: plex { x i32 }
+Value :: plex { x arena }
 main :: fn () {
     lhs: []Value
     rhs: []Value

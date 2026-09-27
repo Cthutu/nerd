@@ -286,6 +286,8 @@ typedef struct {
     HirOnKind   on_kind;
     HirUnaryOp  unary_op;
     HirBinaryOp binary_op;
+    bool equality_presence_only; // Literal nil comparison, even after option
+                                 // coercion.
     HirAtomicOp atomic_op;
     u8          atomic_order;
     u8          atomic_failure_order;

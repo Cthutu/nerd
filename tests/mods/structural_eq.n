@@ -1,0 +1,9 @@
+pub Item :: plex { value i32 ignored i32 }
+pub impl Eq for Item {
+ eq :: fn (lhs:Self, rhs:Self) -> bool { return lhs.value == rhs.value }
+}
+pub Choice :: enum { First(i32) Second }
+pub impl Eq for Choice {
+ eq :: fn (_lhs:Self, _rhs:Self) -> bool { return yes }
+}
+pub Holder :: plex { item Item choice Choice }

@@ -930,12 +930,54 @@ internal cstr cgen_equal(CGen* c, CValue a, CValue b, u32 depth)
         cgen_error(c, "recursive equality", a.type);
         return "false";
     }
+    for (u32 j = 0; j < array_count(cgen_hir(c)->equality_methods); ++j) {
+        const HirEqualityMethod* method = &cgen_hir(c)->equality_methods[j];
+        if (method->type_index == a.type) {
+            CValue fn = cgen_expr(c, method->callee_expr_index);
+            return CF("%s(%s,%s)", fn.text, a.text, b.text);
+        }
+    }
     SemaTypeKind k = cgen_kind(c, a.type);
     if (k == STK_String) {
         return CF("nrt_string_eq(&%s,&%s)", a.text, b.text);
     }
-    if (k == STK_Enum) {
-        return CF("(%s.tag==%s.tag)", a.text, b.text);
+    if (k == STK_Plex || k == STK_Tuple || k == STK_Enum) {
+        cstr r = CF("ncg_eq%u", c->next++);
+        CGEN_OUT("bool %s = %s;\n",
+                 r,
+                 k == STK_Enum ? CF("%s.tag==%s.tag", a.text, b.text) : "true");
+        SemaType st = *cgen_type(c, a.type);
+        for (u32 i = 0; i < st.param_count; ++i) {
+            u32 ft = cgen_field_type(c, a.type, i);
+            if (cgen_void(c, ft)) {
+                continue;
+            }
+            if (k == STK_Enum) {
+                CGEN_OUT("if (%s && %s.tag == %lld) {\n",
+                         r,
+                         a.text,
+                         (long long)cgen_sema(c)
+                             ->type_param_values[st.first_param_type + i]);
+            } else {
+                CGEN_OUT("if (%s) {\n", r);
+            }
+            CValue x = cgen_temp(
+                c,
+                ft,
+                k == STK_Enum ? CF("%s.payload.f%u", a.text, i)
+                : cgen_bitfield(c, a.type, i) && cgen_kind(c, ft) == STK_Enum
+                    ? CF("(%s){.tag=%s.f%u}", cgen_ctype(c, ft), a.text, i)
+                    : CF("%s.f%u", a.text, i));
+            CValue y = cgen_temp(
+                c,
+                ft,
+                k == STK_Enum ? CF("%s.payload.f%u", b.text, i)
+                : cgen_bitfield(c, b.type, i) && cgen_kind(c, ft) == STK_Enum
+                    ? CF("(%s){.tag=%s.f%u}", cgen_ctype(c, ft), b.text, i)
+                    : CF("%s.f%u", b.text, i));
+            CGEN_OUT("%s = %s;\n}\n", r, cgen_equal(c, x, y, depth + 1));
+        }
+        return r;
     }
     if (k == STK_Array || k == STK_Slice || k == STK_DynamicArray) {
         u32  item = cgen_type(c, a.type)->first_param_type;
@@ -974,7 +1016,7 @@ internal cstr cgen_equal(CGen* c, CValue a, CValue b, u32 depth)
     if (k == STK_Box) {
         u32          item = cgen_type(c, a.type)->first_param_type;
         SemaTypeKind ik   = cgen_kind(c, item);
-        bool supported = ik != STK_Plex && ik != STK_Union && ik != STK_Arena;
+        bool         supported = ik != STK_Union && ik != STK_Arena;
         for (u32 i = 0; i < array_count(cgen_hir(c)->equality_methods); ++i) {
             if (cgen_hir(c)->equality_methods[i].type_index == item) {
                 supported = true;
@@ -1013,13 +1055,6 @@ internal cstr cgen_equal(CGen* c, CValue a, CValue b, u32 depth)
             c, item, CF("((%s*)%s)[%s]", cgen_ctype(c, item), b.text, i));
         CGEN_OUT("%s=%s; }}\n", r, cgen_equal(c, x, y, depth + 1));
         return r;
-    }
-    for (u32 j = 0; j < array_count(cgen_hir(c)->equality_methods); ++j) {
-        const HirEqualityMethod* method = &cgen_hir(c)->equality_methods[j];
-        if (method->type_index == a.type) {
-            CValue fn = cgen_expr(c, method->callee_expr_index);
-            return CF("%s(%s,%s)", fn.text, a.text, b.text);
-        }
     }
     return CF("(%s==%s)", a.text, b.text);
 }
@@ -2311,6 +2346,20 @@ internal CValue cgen_expr(CGen* c, u32 index)
                            b.text));
                 }
 
+                if (cgen_kind(c, a.type) == STK_Enum &&
+                    (e->equality_presence_only ||
+                     cgen_hir(c)->exprs[e->lhs_expr_index].kind ==
+                         HIR_EXPR_NilLiteral ||
+                     cgen_hir(c)->exprs[e->rhs_expr_index].kind ==
+                         HIR_EXPR_NilLiteral)) {
+                    return cgen_temp(
+                        c,
+                        t,
+                        CF("(%s.tag %s %s.tag)",
+                           a.text,
+                           e->binary_op == HIR_BINARY_NotEqual ? "!=" : "==",
+                           b.text));
+                }
                 if (cgen_kind(c, a.type) == STK_UntypedInteger) {
                     a = cgen_coerce(c, a, b.type);
                 } else {

@@ -965,6 +965,16 @@ internal u32 llvm_enum_variant_payload_type(const Sema* sema,
                                   variant_index];
 }
 
+internal bool llvm_enum_has_payload(const Sema* sema, u32 type)
+{
+    const SemaType* st = &sema->types[type];
+    for (u32 i = 0; i < st->param_count; ++i) {
+        u32 payload = llvm_enum_variant_payload_type(sema, type, i);
+        if (payload != sema_no_type() && llvm_type_kind(sema, payload) != STK_Void) return true;
+    }
+    return false;
+}
+
 internal i64 llvm_enum_variant_discriminant(const Sema* sema,
                                             u32         enum_type,
                                             u32         variant_index)
@@ -9078,20 +9088,141 @@ internal string llvm_emit_element_equality(LlvmFunctionContext* ctx,
                   STRINGV(rhs_value));
         return result;
     }
+    if (kind == STK_Plex || kind == STK_Tuple) {
+        string combined = s("1");
+        string slot = llvm_temp(ctx), done = llvm_label(ctx, "eq.record.end");
+        llvm_emit_alloca(ctx, slot, s("i1"));
+        sb_format(ctx->sb, "  store i1 1, ptr " STRINGP "\n", STRINGV(slot));
+        u32 count = ctx->sema->types[element_type].param_count;
+        for (u32 i = 0; i < count; ++i) {
+            string body = llvm_label(ctx, "eq.record.field");
+            sb_format(ctx->sb,
+                      "  br i1 " STRINGP ", label %%" STRINGP
+                      ", label %%" STRINGP "\n" STRINGP ":\n",
+                      STRINGV(combined),
+                      STRINGV(body),
+                      STRINGV(done),
+                      STRINGV(body));
+            LlvmValue lv = llvm_extract_record_field(
+                ctx,
+                (LlvmValue){
+                    .ok = true, .type_index = element_type, .value = lhs_value},
+                i);
+            LlvmValue rv = llvm_extract_record_field(
+                ctx,
+                (LlvmValue){
+                    .ok = true, .type_index = element_type, .value = rhs_value},
+                i);
+            string ft = llvm_type_string(ctx, lv.type_index);
+            string lp = llvm_temp(ctx), rp = llvm_temp(ctx);
+            llvm_emit_alloca(ctx, lp, ft);
+            llvm_emit_alloca(ctx, rp, ft);
+            sb_format(ctx->sb,
+                      "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n"
+                      "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n",
+                      STRINGV(ft),
+                      STRINGV(lv.value),
+                      STRINGV(lp),
+                      STRINGV(ft),
+                      STRINGV(rv.value),
+                      STRINGV(rp));
+            string eq = llvm_emit_element_equality(
+                ctx, function, lv.type_index, lp, rp);
+            sb_format(ctx->sb,
+                      "  store i1 " STRINGP ", ptr " STRINGP "\n",
+                      STRINGV(eq),
+                      STRINGV(slot));
+            combined = eq;
+        }
+        combined = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  br label %%" STRINGP "\n" STRINGP ":\n"
+                  "  " STRINGP " = load i1, ptr " STRINGP "\n",
+                  STRINGV(done),
+                  STRINGV(done),
+                  STRINGV(combined),
+                  STRINGV(slot));
+        return combined;
+    }
     if (kind == STK_Enum) {
-        string lhs_tag = llvm_temp(ctx), rhs_tag = llvm_temp(ctx);
+        string lt = llvm_temp(ctx), rt = llvm_temp(ctx);
+        string slot = llvm_temp(ctx), done = llvm_label(ctx, "eq.enum.end");
+        string dispatch = llvm_label(ctx, "eq.enum.payload");
+        llvm_emit_alloca(ctx, slot, s("i1"));
         sb_format(ctx->sb,
                   "  " STRINGP " = extractvalue " STRINGP " " STRINGP ", 0\n"
-                  "  " STRINGP " = extractvalue " STRINGP " " STRINGP ", 0\n",
-                  STRINGV(lhs_tag),
+                  "  " STRINGP " = extractvalue " STRINGP " " STRINGP ", 0\n"
+                  "  " STRINGP " = icmp eq i64 " STRINGP ", " STRINGP "\n"
+                  "  store i1 " STRINGP ", ptr " STRINGP "\n"
+                  "  br i1 " STRINGP ", label %%" STRINGP ", label %%" STRINGP
+                  "\n" STRINGP ":\n",
+                  STRINGV(lt),
                   STRINGV(type),
                   STRINGV(lhs_value),
-                  STRINGV(rhs_tag),
+                  STRINGV(rt),
                   STRINGV(type),
-                  STRINGV(rhs_value));
-        lhs_value = lhs_tag;
-        rhs_value = rhs_tag;
-        type      = s("i64");
+                  STRINGV(rhs_value),
+                  STRINGV(result),
+                  STRINGV(lt),
+                  STRINGV(rt),
+                  STRINGV(result),
+                  STRINGV(slot),
+                  STRINGV(result),
+                  STRINGV(dispatch),
+                  STRINGV(done),
+                  STRINGV(dispatch));
+        u32 count = ctx->sema->types[element_type].param_count;
+        for (u32 i = 0; i < count; ++i) {
+            u32 pt = llvm_enum_variant_payload_type(ctx->sema, element_type, i);
+            if (pt == sema_no_type() ||
+                llvm_type_kind(ctx->sema, pt) == STK_Void) {
+                continue;
+            }
+            string body = llvm_label(ctx, "eq.enum.variant");
+            string next = llvm_label(ctx, "eq.enum.next");
+            string test = llvm_temp(ctx);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = icmp eq i64 " STRINGP ", %lld\n"
+                      "  br i1 " STRINGP ", label %%" STRINGP
+                      ", label %%" STRINGP "\n" STRINGP ":\n",
+                      STRINGV(test),
+                      STRINGV(lt),
+                      (long long)llvm_enum_variant_discriminant(
+                          ctx->sema, element_type, i),
+                      STRINGV(test),
+                      STRINGV(body),
+                      STRINGV(next),
+                      STRINGV(body));
+            string lp = llvm_temp(ctx), rp = llvm_temp(ctx);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = getelementptr inbounds " STRINGP
+                      ", ptr " STRINGP ", i32 0, i32 1\n"
+                      "  " STRINGP " = getelementptr inbounds " STRINGP
+                      ", ptr " STRINGP ", i32 0, i32 1\n",
+                      STRINGV(lp),
+                      STRINGV(type),
+                      STRINGV(lhs),
+                      STRINGV(rp),
+                      STRINGV(type),
+                      STRINGV(rhs));
+            string eq = llvm_emit_element_equality(ctx, function, pt, lp, rp);
+            sb_format(ctx->sb,
+                      "  store i1 " STRINGP ", ptr " STRINGP "\n"
+                      "  br label %%" STRINGP "\n" STRINGP ":\n",
+                      STRINGV(eq),
+                      STRINGV(slot),
+                      STRINGV(done),
+                      STRINGV(next));
+        }
+        result = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  br label %%" STRINGP "\n" STRINGP ":\n"
+                  "  " STRINGP " = load i1, ptr " STRINGP "\n",
+                  STRINGV(done),
+                  STRINGV(done),
+                  STRINGV(result),
+                  STRINGV(slot));
+        return result;
     }
     sb_format(ctx->sb,
               "  " STRINGP " = " STRINGP " " STRINGP " " STRINGP ", " STRINGP
@@ -10421,7 +10552,40 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     llvm_type_kind(ctx->sema, lhs.type_index);
                 SemaTypeKind rhs_kind =
                     llvm_type_kind(ctx->sema, rhs.type_index);
-                if (lhs_kind == STK_String && rhs_kind == STK_String) {
+                if ((lhs_kind == STK_Plex || lhs_kind == STK_Tuple ||
+                     (lhs_kind == STK_Enum &&
+                      llvm_enum_has_payload(ctx->sema, lhs.type_index))) &&
+                    (expr->binary_op == HIR_BINARY_Equal ||
+                     expr->binary_op == HIR_BINARY_NotEqual) &&
+                    !expr->equality_presence_only &&
+                    ctx->hir->exprs[expr->lhs_expr_index].kind !=
+                        HIR_EXPR_NilLiteral &&
+                    ctx->hir->exprs[expr->rhs_expr_index].kind !=
+                        HIR_EXPR_NilLiteral) {
+                    string lp = llvm_temp(ctx), rp = llvm_temp(ctx);
+                    llvm_emit_alloca(ctx, lp, type);
+                    llvm_emit_alloca(ctx, rp, type);
+                    sb_format(
+                        ctx->sb,
+                        "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n"
+                        "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n",
+                        STRINGV(type),
+                        STRINGV(lhs.value),
+                        STRINGV(lp),
+                        STRINGV(type),
+                        STRINGV(rhs.value),
+                        STRINGV(rp));
+                    temp = llvm_emit_element_equality(
+                        ctx, function, lhs.type_index, lp, rp);
+                    if (expr->binary_op == HIR_BINARY_NotEqual) {
+                        string inverse = llvm_temp(ctx);
+                        sb_format(ctx->sb,
+                                  "  " STRINGP " = xor i1 " STRINGP ", 1\n",
+                                  STRINGV(inverse),
+                                  STRINGV(temp));
+                        temp = inverse;
+                    }
+                } else if (lhs_kind == STK_String && rhs_kind == STK_String) {
                     string lhs_ptr =
                         llvm_emit_string_value_pointer(ctx, lhs.value);
                     string rhs_ptr =
@@ -17980,19 +18144,41 @@ internal void llvm_render_assert_runtime_declarations(StringBuilder* sb)
         sb, decls, (u32)(sizeof(decls) / sizeof(decls[0])));
 }
 
-// Collection equality may require runtime support for nested elements.
-internal bool
-llvm_equality_contains_kind(const Sema* sema, u32 type, SemaTypeKind wanted)
+// Equality may require runtime support for nested fields and payloads.
+internal bool llvm_equality_contains_kind_depth(const Sema*  sema,
+                                                u32          type,
+                                                SemaTypeKind wanted,
+                                                u32          depth)
 {
+    if (depth > 64) {
+        return false;
+    }
     SemaTypeKind kind = llvm_type_kind(sema, type);
     if (kind == wanted) {
         return true;
     }
     if (kind == STK_Array || kind == STK_Slice || kind == STK_Box) {
-        return llvm_equality_contains_kind(
-            sema, sema->types[type].first_param_type, wanted);
+        return llvm_equality_contains_kind_depth(
+            sema, sema->types[type].first_param_type, wanted, depth + 1);
+    }
+    if (kind == STK_Plex || kind == STK_Tuple || kind == STK_Enum) {
+        SemaType st = sema->types[type];
+        for (u32 i = 0; i < st.param_count; ++i) {
+            if (llvm_equality_contains_kind_depth(
+                    sema,
+                    sema->type_param_types[st.first_param_type + i],
+                    wanted,
+                    depth + 1)) {
+                return true;
+            }
+        }
     }
     return false;
+}
+internal bool
+llvm_equality_contains_kind(const Sema* sema, u32 type, SemaTypeKind wanted)
+{
+    return llvm_equality_contains_kind_depth(sema, type, wanted, 0);
 }
 
 internal bool llvm_hir_uses_dynamic_array_runtime(const Hir*  hir,

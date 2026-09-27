@@ -524,10 +524,17 @@ source-module provenance and private implementation visibility. HIR generation
 therefore receives only concrete function types and symbols. There is no HIR or
 LLVM compound entity, symbol, wrapper, or dispatcher.
 
-### Collection equality
+### Structural and collection equality
 
-Semantic analysis checks element equality recursively for arrays, slices, and
-boxes. Selected custom element methods live in `Sema.equality_methods`, a
+Semantic analysis checks equality recursively for plex fields, tuple members,
+enum payloads, arrays, slices, and boxes. Explicit `Eq` methods take precedence
+and the same recursive check satisfies generic `T: Eq` constraints. Enum tags
+alone do not establish equality when a variant carries a payload. Both backends
+compare tags first, then only the active payload, and stop record comparisons
+at the first unequal field. HIR marks literal-nil comparisons as presence-only
+tests before optional/result coercion so non-comparable payloads remain usable
+with `== nil`. LLVM runtime dependency discovery includes aggregate fields and
+payloads (for example, nested strings and boxes). Selected custom element methods live in `Sema.equality_methods`, a
 compact type/declaration side table. HIR converts these to typed callee
 references in `Hir.equality_methods`, so LLVM does not resolve traits itself.
 Imported methods are resolved against their source module and imported types.

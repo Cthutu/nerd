@@ -1794,16 +1794,24 @@ internal u32 hir_lower_expr_impl(Hir*         hir,
                 ? hir_lower_expr_with_expected(
                       hir, lexer, ast, sema, node->b, rhs_expected)
                 : hir_lower_expr(hir, lexer, ast, sema, node->b);
-        return hir_add_expr(hir,
-                            (HirExpr){
-                                .kind       = HIR_EXPR_Binary,
-                                .type_index = hir_node_type(sema, node_index),
-                                .symbol_handle  = U32_MAX,
-                                .local_index    = sema_no_local(),
-                                .lhs_expr_index = lhs_expr_index,
-                                .rhs_expr_index = rhs_expr_index,
-                                .binary_op      = binary_op,
-                            });
+        return hir_add_expr(
+            hir,
+            (HirExpr){
+                .kind           = HIR_EXPR_Binary,
+                .type_index     = hir_node_type(sema, node_index),
+                .symbol_handle  = U32_MAX,
+                .local_index    = sema_no_local(),
+                .lhs_expr_index = lhs_expr_index,
+                .rhs_expr_index = rhs_expr_index,
+                .binary_op      = binary_op,
+                .equality_presence_only =
+                    (binary_op == HIR_BINARY_Equal ||
+                     binary_op == HIR_BINARY_NotEqual) &&
+                    (ast->nodes[hir_unwrap_node(ast, node->a)].kind ==
+                         AK_NilLiteral ||
+                     ast->nodes[hir_unwrap_node(ast, node->b)].kind ==
+                         AK_NilLiteral),
+            });
     }
 
     switch (node->kind) {

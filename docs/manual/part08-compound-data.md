@@ -559,8 +559,10 @@ language-known traits and result types:
   this trait for non-built-in values.
 - `Eq` supplies `eq :: fn (self: Self, other: Self) -> bool`. The `==` and `!=` operators
   use this trait for non-built-in values. Arrays, slices, and boxes support
-  content equality when their elements support `Eq`. Arenas, raw unions, and
-  function values are not comparable.
+  content equality when their elements support `Eq`. Plexes and enums
+  automatically satisfy `Eq` when all fields or variant payloads support it.
+  Explicit implementations take precedence. Arenas, raw unions, and function
+  values are not comparable.
 - `Order` supplies `compare :: fn (self: Self, other: Self) -> i32`. The `<`, `<=`, `>`,
   and `>=` operators use this trait for non-built-in values.
 - `Default` supplies `default :: fn () -> Self`. Local typed variables without

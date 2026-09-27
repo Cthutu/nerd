@@ -139,7 +139,11 @@ The first form is equivalent to `ch >= '0' && ch <= '9'`. The tested expression
 is evaluated once.
 
 For non-built-in values, `==` and `!=` use the canonical `core.Eq`
-implementation when one exists for the value type.
+implementation when one exists for the value type. Otherwise, plexes compare
+all fields and enums compare the variant and active payload. This structural
+`Eq` support requires every field or variant payload to support `Eq`, and also
+satisfies generic `where T: Eq` constraints. Explicit implementations take
+precedence.
 
 Slices compare their contents: their counts must match and each pair of elements
 must compare equal. Fixed arrays of the same type follow the same element rule.

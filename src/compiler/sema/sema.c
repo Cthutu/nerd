@@ -12667,7 +12667,6 @@ internal bool sema_type_is_equality_comparable(const Sema* sema, u32 type_index)
     switch (sema->types[type_index].kind) {
     case STK_String:
     case STK_Bool:
-    case STK_Enum:
         return true;
     default:
         return sema_type_is_numeric(sema, type_index);
@@ -12679,13 +12678,11 @@ internal u32 sema_find_core_eq_method_decl(
 
 // Check value equality recursively and retain custom element methods for HIR.
 // Pointers keep identity equality; owning boxes and borrowed slices use values.
-internal bool sema_type_has_value_eq(const Lexer* lexer,
-                                     const Ast*   ast,
-                                     Sema*        sema,
-                                     u32          type_index)
+internal bool sema_type_has_value_eq_depth(
+    const Lexer* lexer, const Ast* ast, Sema* sema, u32 type_index, u32 depth)
 {
     type_index = sema_materialise_type(sema, type_index);
-    if (type_index == sema_no_type()) {
+    if (type_index == sema_no_type() || depth > 64) {
         return false;
     }
     if (sema_type_is_equality_comparable(sema, type_index) ||
@@ -12694,26 +12691,53 @@ internal bool sema_type_has_value_eq(const Lexer* lexer,
     }
     SemaTypeKind kind = sema->types[type_index].kind;
     if (kind == STK_Array || kind == STK_Slice || kind == STK_Box) {
-        return sema_type_has_value_eq(
-            lexer, ast, sema, sema->types[type_index].first_param_type);
+        return sema_type_has_value_eq_depth(
+            lexer,
+            ast,
+            sema,
+            sema->types[type_index].first_param_type,
+            depth + 1);
     }
     if (kind == STK_Arena || kind == STK_Union || kind == STK_Function) {
         return false;
     }
     u32 method =
         sema_find_core_eq_method_decl(lexer, ast, sema, type_index, type_index);
-    if (method == sema_no_decl()) {
-        return false;
-    }
-    for (u32 i = 0; i < array_count(sema->equality_methods); ++i) {
-        if (sema->equality_methods[i].type_index == type_index) {
-            return true;
+    if (method != sema_no_decl()) {
+        for (u32 i = 0; i < array_count(sema->equality_methods); ++i) {
+            if (sema->equality_methods[i].type_index == type_index) {
+                return true;
+            }
         }
+        array_push(sema->equality_methods,
+                   ((SemaEqualityMethod){.type_index = type_index,
+                                         .decl_index = method}));
+        return true;
     }
-    array_push(
-        sema->equality_methods,
-        ((SemaEqualityMethod){.type_index = type_index, .decl_index = method}));
-    return true;
+    if (kind == STK_Plex || kind == STK_Tuple || kind == STK_Enum) {
+        SemaType type = sema->types[type_index];
+        for (u32 i = 0; i < type.param_count; ++i) {
+            u32 member = sema->type_param_types[type.first_param_type + i];
+            if (kind == STK_Enum && (member == sema_no_type() ||
+                                     sema->types[member].kind == STK_Void)) {
+                continue;
+            }
+            if (!sema_type_has_value_eq_depth(
+                    lexer, ast, sema, member, depth + 1)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    return false;
+}
+
+internal bool sema_type_has_value_eq(const Lexer* lexer,
+                                     const Ast*   ast,
+                                     Sema*        sema,
+                                     u32          type_index)
+{
+    return sema_type_has_value_eq_depth(lexer, ast, sema, type_index, 0);
 }
 
 internal bool
@@ -12788,10 +12812,21 @@ internal u32 sema_find_core_eq_method_decl(
         kind == STK_Arena || kind == STK_Union || kind == STK_Function) {
         return sema_no_decl();
     }
+    bool has_eq_method = false;
+    if (kind == STK_Enum) {
+        for (u32 i = 0; i < array_count(sema->methods); ++i) {
+            const SemaMethod* method = &sema->methods[i];
+            if (method->is_trait_impl && method->symbol_handle != U32_MAX &&
+                string_eq_cstr(lex_symbol(lexer, method->symbol_handle), "eq")) {
+                has_eq_method = true;
+                break;
+            }
+        }
+    }
     // An imported element implementation need not mention Eq in this module.
     if (sema_find_core_trait_symbol(lexer, sema, s("Eq")) == sema_no_decl() &&
         !sema_type_is_equality_comparable(sema, lhs_type) &&
-        kind != STK_Pointer) {
+        kind != STK_Pointer && (kind != STK_Enum || has_eq_method)) {
         InternAddResult ignored = {0};
         u32 symbol = lex_add_symbol((Lexer*)lexer, s("Eq"), &ignored);
         if (sema_find_symbol_handle_by_name(lexer, s("Eq")) == sema_no_decl()) {
@@ -21019,7 +21054,9 @@ internal bool sema_binary_result_type(const Lexer* lexer,
              ast->nodes[sema_unwrap_expr_node(ast, node->b)].kind ==
                  AK_NilLiteral) &&
             lhs_type != sema_no_type() &&
-            (sema->types[lhs_type].kind == STK_Box ||
+            ((sema->types[lhs_type].kind == STK_Enum &&
+              (sema->types[lhs_type].flags & (STF_Optional | STF_Result))) ||
+             sema->types[lhs_type].kind == STK_Box ||
              sema->types[lhs_type].kind == STK_Slice ||
              sema->types[lhs_type].kind == STK_DynamicArray)) {
             type_index = sema_builtin_type(sema, STK_Bool);
