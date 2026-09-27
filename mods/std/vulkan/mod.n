@@ -20,9 +20,9 @@ pub VkSurfaceKHR          :: ^void
 pub VkDeviceSize          :: u64
 pub VkPhysicalDeviceType  :: i32
 pub VkSampleCountFlags    :: VkFlags
-pub VkSampleCountFlagBits :: i32
+pub VkSampleCountFlagBits :: u32
 pub VkQueueFlags          :: VkFlags
-pub VkQueueFlagBits       :: i32
+pub VkQueueFlagBits       :: u32
 
 -- Opaque dispatchable handle. Never dereference or allocate this placeholder.
 pub VkPhysicalDevice_T :: plex #c {
@@ -521,7 +521,7 @@ pub impl Display for VkQueueFamilyProperties {
         remaining    := self.queueFlags
 
         for i, flag in flags {
-            bit := flag^.as(VkQueueFlags)
+            bit := flag^
             on (remaining & bit) != 0 => {
                 separator := on capabilities.count == 0 => "" else ", "
 
