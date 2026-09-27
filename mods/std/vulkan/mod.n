@@ -575,9 +575,16 @@ ffi "vulkan" {
     pub vkGetPhysicalDeviceQueueFamilyProperties (physicalDevice            : VkPhysicalDevice,
                                                   pQueueFamilyPropertyCount : ^u32,
                                                   pQueueFamilyProperties    : ^VkQueueFamilyProperties)
-    pub vkDestroySurfaceKHR                      (instance   : VkInstance,
-                                                  surface    : VkSurfaceKHR,
-                                                  pAllocator : ^void)
+
+    -- Query presentation support for a queue family and surface.
+    -- Read pSupported only after VK_SUCCESS.
+    pub vkGetPhysicalDeviceSurfaceSupportKHR (physicalDevice   : VkPhysicalDevice,
+                                              queueFamilyIndex : u32,
+                                              surface          : VkSurfaceKHR,
+                                              pSupported       : ^VkBool32) -> VkResult
+    pub vkDestroySurfaceKHR                  (instance   : VkInstance,
+                                              surface    : VkSurfaceKHR,
+                                              pAllocator : ^void)
 }
 
 -- Creates a surface for an applied Frame, using Vulkan's default allocator.
