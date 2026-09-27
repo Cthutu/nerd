@@ -1020,3 +1020,10 @@ Slices and raw pointers borrow this storage without transferring ownership.
 LLVM's C-style loop update block resets `block_terminated` on entry: an
 unconditional `again` or `break` in the body must not suppress update code in a
 separate control-flow block.
+
+The formatter CST parser uses a dedicated loop-body boundary when parsing a
+`for ... in` iterable, matching the AST parser. The opening brace (or body
+label) terminates the iterable even when the body starts with a typed local
+declaration that resembles a plex literal field. This prevents valid loops
+from forcing the surrounding file through token-only formatting and losing
+field alignment.

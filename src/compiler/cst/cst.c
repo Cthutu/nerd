@@ -33,6 +33,7 @@ typedef struct {
     bool stop_before_call;
     bool stop_before_ffi_name;
     bool stop_before_block_lbrace;
+    bool stop_before_for_body;
     Cst  cst;
 } CstParseState;
 
@@ -1005,7 +1006,7 @@ internal bool cst_caret_is_postfix_deref(const CstParseState* state)
         cst_token_has_newline_before(state, state->token_index + 1)) {
         return true;
     }
-    if (state->stop_before_block_lbrace &&
+    if ((state->stop_before_block_lbrace || state->stop_before_for_body) &&
         cst_peek_kind_at(state, 1) == TK_LBrace) {
         return true;
     }
@@ -1025,7 +1026,7 @@ internal bool cst_consumed_caret_is_postfix_deref(const CstParseState* state)
     if (cst_token_has_newline_before(state, state->token_index)) {
         return true;
     }
-    if (state->stop_before_block_lbrace &&
+    if ((state->stop_before_block_lbrace || state->stop_before_for_body) &&
         cst_current_token(state).kind == TK_LBrace) {
         return true;
     }
@@ -3874,6 +3875,11 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
             break;
         }
 
+        if (state->stop_before_for_body &&
+            (token.kind == TK_LBrace || token.kind == TK_Dollar)) {
+            break;
+        }
+
         if (state->stop_before_block_lbrace && token.kind == TK_LBrace &&
             cst_lbrace_starts_on_value_branch_block(state)) {
             break;
@@ -4665,12 +4671,11 @@ internal bool cst_parse_for(CstParseState* state, u32* out_node)
         if (!cst_consume(state, TK_in)) {
             return false;
         }
-        bool previous_stop_before_block_lbrace =
-            state->stop_before_block_lbrace;
-        state->stop_before_block_lbrace = true;
+        bool previous_stop_before_for_body = state->stop_before_for_body;
+        state->stop_before_for_body = true;
         bool parsed_iterable =
             cst_parse_expr_bp(state, 0, &for_info.iterable_node_index);
-        state->stop_before_block_lbrace = previous_stop_before_block_lbrace;
+        state->stop_before_for_body = previous_stop_before_for_body;
         if (!parsed_iterable) {
             return false;
         }
