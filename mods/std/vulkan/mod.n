@@ -21,6 +21,8 @@ pub VkDeviceSize          :: u64
 pub VkPhysicalDeviceType  :: i32
 pub VkSampleCountFlags    :: VkFlags
 pub VkSampleCountFlagBits :: i32
+pub VkQueueFlags          :: VkFlags
+pub VkQueueFlagBits       :: i32
 
 -- Opaque dispatchable handle. Never dereference or allocate this placeholder.
 pub VkPhysicalDevice_T :: plex #c {
@@ -466,6 +468,36 @@ pub VkPhysicalDeviceProperties :: plex #c {
     sparseProperties  VkPhysicalDeviceSparseProperties
 }
 
+-- Queue capabilities (Vulkan-Headers v1.4.357).
+pub VK_QUEUE_GRAPHICS_BIT         : VkQueueFlagBits : 0x00000001
+pub VK_QUEUE_COMPUTE_BIT          : VkQueueFlagBits : 0x00000002
+pub VK_QUEUE_TRANSFER_BIT         : VkQueueFlagBits : 0x00000004
+pub VK_QUEUE_SPARSE_BINDING_BIT   : VkQueueFlagBits : 0x00000008
+pub VK_QUEUE_PROTECTED_BIT        : VkQueueFlagBits : 0x00000010
+pub VK_QUEUE_VIDEO_DECODE_BIT_KHR : VkQueueFlagBits : 0x00000020
+pub VK_QUEUE_VIDEO_ENCODE_BIT_KHR : VkQueueFlagBits : 0x00000040
+pub VK_QUEUE_OPTICAL_FLOW_BIT_NV  : VkQueueFlagBits : 0x00000100
+pub VK_QUEUE_DATA_GRAPH_BIT_ARM   : VkQueueFlagBits : 0x00000400
+
+pub VkExtent3D :: plex #c {
+    width  u32
+    height u32
+    depth  u32
+}
+
+pub VkQueueFamilyProperties :: plex #c {
+    queueFlags                  VkQueueFlags
+    queueCount                  u32
+    timestampValidBits          u32
+    minImageTransferGranularity VkExtent3D
+}
+
+pub impl Display for VkQueueFamilyProperties {
+
+    show :: fn (self: Self) => temp_arena.pr($"flags={self.queueFlags}, queues={self.queueCount}, timestamp bits={self.timestampValidBits}, transfer granularity={self.minImageTransferGranularity.width}x{self.minImageTransferGranularity.height}x{self.minImageTransferGranularity.depth}")
+
+}
+
 pub impl Display for VkPhysicalDevice {
 
     -- The name is copied into temp_arena; no stack-backed string escapes.
@@ -495,9 +527,14 @@ ffi "vulkan" {
     pub vkDestroyDevice               (device: VkDevice, pAllocator: ^void)
     pub vkGetPhysicalDeviceProperties (physicalDevice : VkPhysicalDevice,
                                        pProperties    : ^VkPhysicalDeviceProperties)
-    pub vkDestroySurfaceKHR           (instance   : VkInstance,
-                                       surface    : VkSurfaceKHR,
-                                       pAllocator : ^void)
+
+    -- Pass nil for pQueueFamilyProperties to query the count first.
+    pub vkGetPhysicalDeviceQueueFamilyProperties (physicalDevice            : VkPhysicalDevice,
+                                                  pQueueFamilyPropertyCount : ^u32,
+                                                  pQueueFamilyProperties    : ^VkQueueFamilyProperties)
+    pub vkDestroySurfaceKHR                      (instance   : VkInstance,
+                                                  surface    : VkSurfaceKHR,
+                                                  pAllocator : ^void)
 }
 
 -- Creates a surface for an applied Frame, using Vulkan's default allocator.
