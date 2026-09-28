@@ -28,7 +28,7 @@ main :: fn () {
 
 State :: plex {
     -- Database
-    locations []string
+    locations  []string
 
     -- Game state
     player_loc usize

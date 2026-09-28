@@ -1,5 +1,18 @@
 # Windows return handoff
 
+## Formatter error isolation — 2026-09-28
+
+On `vulkan`, a syntax error in one top-level declaration no longer forces valid
+neighbouring functions through token-based formatting. Healthy functions retain
+parameter alignment. Four regression fixtures cover surrounding errors,
+continuation boundaries, comments and idempotence. The user's example edits
+remain separate. See [implementation and checks](20260928-formatter-recovery/README.md).
+
+Final formatter suites: **206 passed each with debug and release**; final LSP:
+**211 passed**. The broader run had 1,163 passes, the same two baseline failures,
+and 15 platform skips; the final continuation refinement was checked with the
+complete formatter/LSP suites. No green full-suite result is claimed.
+
 ## Vulkan FFI approach correction — 2026-09-28
 
 The user selected ordinary platform conditionals and a compile-time FFI library

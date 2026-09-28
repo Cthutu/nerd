@@ -6792,7 +6792,7 @@ internal bool format_ffi_infos_have_blank_line_between(const Cst*   cst,
         return false;
     }
 
-    const CstFfiInfo* previous = &cst->ffi_infos[previous_ffi_info];
+    const CstFfiInfo* previous   = &cst->ffi_infos[previous_ffi_info];
     u32 previous_end_token_index = format_fn_signature_end_token_index(
         cst, lexer, previous->token_index, previous->signature_index);
     if (previous_end_token_index >= array_count(lexer->tokens)) {
@@ -10167,6 +10167,119 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
 }
 
 //------------------------------------------------------------------------------
+// Recover at balanced, line-leading top-level declarations. A syntax error in
+// one declaration must not send its valid neighbours through token formatting.
+internal bool format_token_starts_top_level_item(const Lexer* lexer, u32 index)
+{
+    TokenKind kind = lexer->tokens[index].kind;
+    switch (kind) {
+    case TK_pub:
+    case TK_use:
+    case TK_ffi:
+    case TK_intrinsic:
+    case TK_on:
+    case TK_assert:
+    case TK_pragma:
+    case TK_impl:
+        return true;
+    case TK_Symbol:
+        return index + 1 < array_count(lexer->tokens) &&
+               (lexer->tokens[index + 1].kind == TK_Colon ||
+                (lexer->tokens[index + 1].kind == TK_String &&
+                 string_eq(format_token_text(lexer, index), s("test"))));
+    default:
+        return false;
+    }
+}
+
+internal bool format_emit_recovered_code_block(StringBuilder* sb,
+                                               NerdSource     source)
+{
+    Lexer lexer = {0};
+    if (!lex_with_config(
+            source, &(LexerConfig){.mode = LEXER_MODE_FORMAT}, &lexer)) {
+        return false;
+    }
+    Array(usize) boundaries = NULL;
+    array_push(boundaries, 0);
+    u32 cursor = 0;
+    i32 depth  = 0;
+    for (u32 i = 0; i < array_count(lexer.tokens); ++i) {
+        Token token = lexer.tokens[i];
+        format_advance_delimiter_depth(&lexer, &cursor, token.offset, &depth);
+        if (i == 0 || depth != 0 ||
+            !format_token_starts_top_level_item(&lexer, i)) {
+            continue;
+        }
+        TokenKind previous = lexer.tokens[i - 1].kind;
+        if (previous == TK_pub || previous == TK_Colon || previous == TK_else ||
+            format_token_kind_is_binary_operator(previous)) {
+            continue;
+        }
+        usize line_start = token.offset;
+        while (line_start > 0 && (source.source.data[line_start - 1] == ' ' ||
+                                  source.source.data[line_start - 1] == '\t' ||
+                                  source.source.data[line_start - 1] == '\r')) {
+            --line_start;
+        }
+        if (line_start > 0 && source.source.data[line_start - 1] == '\n') {
+            array_push(boundaries, line_start);
+        }
+    }
+    array_push(boundaries, source.source.count);
+    lex_done(&lexer);
+    if (array_count(boundaries) == 2) {
+        array_free(boundaries);
+        return format_emit_token_stream_block(sb, source);
+    }
+
+    // Keep consecutive valid declarations together: import sorting and column
+    // alignment must still operate across an unaffected group of declarations.
+    usize run_start = 0;
+    bool  ok        = true;
+    for (usize i = 0; i + 1 < array_count(boundaries); ++i) {
+        usize      start = boundaries[i];
+        usize      end   = boundaries[i + 1];
+        NerdSource part  = source;
+        part.source      = string_from(source.source.data + start, end - start);
+        Arena probe_arena = {0};
+        arena_init(&probe_arena);
+        StringBuilder probe = {0};
+        sb_init(&probe, &probe_arena);
+        bool valid = format_emit_code_block(&probe, part);
+        arena_done(&probe_arena);
+        if (valid && i + 2 < array_count(boundaries)) {
+            continue;
+        }
+        usize run_end = valid ? end : start;
+        if (run_end > run_start) {
+            NerdSource run = source;
+            run.source     = string_from(source.source.data + run_start,
+                                         run_end - run_start);
+            ok             = format_emit_code_block(sb, run);
+            if (!ok) {
+                ok = format_emit_token_stream_block(sb, run);
+            }
+        }
+        if (ok && !valid) {
+            if (run_end > run_start) {
+                sb_append_char(sb, '\n');
+            }
+            ok = format_emit_token_stream_block(sb, part);
+        }
+        if (!ok) {
+            break;
+        }
+        if (end < source.source.count) {
+            sb_append_char(sb, '\n');
+        }
+        run_start = end;
+    }
+    array_free(boundaries);
+    return ok;
+}
+
+//------------------------------------------------------------------------------
 // Format source text, reflowing comments and normalising code blocks.
 
 bool format_source(NerdSource source, Arena* arena, string* out_text)
@@ -10260,7 +10373,7 @@ bool format_source(NerdSource source, Arena* arena, string* out_text)
                                            .source_path = source.source_path,
                                        });
             if (!ok) {
-                ok = format_emit_token_stream_block(
+                ok = format_emit_recovered_code_block(
                     &sb,
                     (NerdSource){
                         .source      = block_text,

@@ -213,6 +213,15 @@ block so the formatter can remove it while retaining structured layout for the
 rest of the block. The compiler AST remains authoritative for rejecting that
 semicolon as invalid Nerd syntax.
 
+When a code block cannot be parsed as CST, the formatter retries regions at
+line-leading top-level declaration boundaries with balanced delimiters. Valid
+neighbouring declarations still use structured formatting, including function
+parameter alignment; consecutive valid regions stay together for declaration
+alignment and import sorting. Only the damaged regions use token-stream
+formatting. Recovery does not guess declaration boundaries inside unclosed
+delimiters. Comments and malformed tokens remain present, and error-recovery
+fixtures check that formatting is idempotent.
+
 Sema records the expected type of each checked `on` pattern in an
 AST-pattern-indexed side table. Nested payload patterns therefore retain their
 own contextual type independently of the outer scrutinee, which editor features
