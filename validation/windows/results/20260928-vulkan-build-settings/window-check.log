@@ -1,0 +1,3 @@
+Launched process 74796 matching windows: [(3479236, True)]
+Sent WM_KEYDOWN Q to the launched example window only.
+Complete just run-example vktriangle command exited 0 after Q.

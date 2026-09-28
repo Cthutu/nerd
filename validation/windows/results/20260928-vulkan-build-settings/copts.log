@@ -1,0 +1,1 @@
+-std=gnu11 -g -O0 -Wl,/SUBSYSTEM:WINDOWS -L"C:/Users/matt/scoop/apps/vulkan/current/Lib" -lvulkan-1 -lkernel32 -lsynchronization -luser32 -lgdi32 -lopengl32

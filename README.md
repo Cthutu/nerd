@@ -144,8 +144,13 @@ conditionals and a compile-time string constant: `vulkan` on Linux and
 launcher or new FFI syntax is required.
 
 The native development environment must provide the external libraries. On
-Windows, configure the SDK/CRT environment described in [toolchain setup](docs/toolchain.md),
-then add `$env:VULKAN_SDK/Lib` to `LIB`. If the SDK's validation layer is not
-registered, add `$env:VULKAN_SDK/Bin` to `VK_ADD_LAYER_PATH`. Launch VS Code from
-that configured environment so its tasks inherit the settings. These are
-library-discovery prerequisites, separate from choosing the FFI library name.
+Windows, configure the SDK/CRT environment described in [toolchain setup](docs/toolchain.md)
+and install the Vulkan SDK. `std.vulkan` declares
+`build { on "windows" { library_path: $VULKAN_SDK/Lib } }`, so importing it
+automatically supplies the link search path. No Vulkan-specific `LIB` or command
+line option is needed. See [source build settings](docs/configuration.md).
+
+Runtime validation layers are separate from linking. For a Scoop SDK install,
+run its `install-vk-layers.ps1` script once to register the layers for your user,
+or set `VK_ADD_LAYER_PATH` to `$env:VULKAN_SDK/Bin` in the launch environment.
+Restart VS Code if it was opened before the SDK's environment variables existed.

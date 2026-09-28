@@ -1,0 +1,14 @@
+C:\Users\matt\scoop\apps\vulkan\current\Bin\VkLayer_api_dump.json                 : 0
+C:\Users\matt\scoop\apps\vulkan\current\Bin\VkLayer_crash_diagnostic.json         : 0
+C:\Users\matt\scoop\apps\vulkan\current\Bin\VkLayer_gfxreconstruct.json           : 0
+C:\Users\matt\scoop\apps\vulkan\current\Bin\VkLayer_khronos_profiles.json         : 0
+C:\Users\matt\scoop\apps\vulkan\current\Bin\VkLayer_khronos_shader_object.json    : 0
+C:\Users\matt\scoop\apps\vulkan\current\Bin\VkLayer_khronos_synchronization2.json : 0
+C:\Users\matt\scoop\apps\vulkan\current\Bin\VkLayer_khronos_validation.json       : 0
+C:\Users\matt\scoop\apps\vulkan\current\Bin\VkLayer_monitor.json                  : 0
+C:\Users\matt\scoop\apps\vulkan\current\Bin\VkLayer_screenshot.json               : 0
+PSPath                                                                            : Microsoft.PowerShell.Core\Registry::HKEY_CURRENT_USER\SOFTWARE\Khronos\Vulkan\ExplicitLayers
+PSParentPath                                                                      : Microsoft.PowerShell.Core\Registry::HKEY_CURRENT_USER\SOFTWARE\Khronos\Vulkan
+PSChildName                                                                       : ExplicitLayers
+PSDrive                                                                           : HKCU
+PSProvider                                                                        : Microsoft.PowerShell.Core\Registry

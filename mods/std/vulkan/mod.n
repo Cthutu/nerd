@@ -4,6 +4,12 @@
 --
 -- Provides thin FFI bindings to the Vulkan API.
 
+build {
+    on "windows" {
+        library_path: $VULKAN_SDK/Lib
+    }
+}
+
 use std.frame
 
 -- Common Vulkan types

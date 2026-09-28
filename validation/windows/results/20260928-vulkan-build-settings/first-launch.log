@@ -1,0 +1,17 @@
+uv run build/build.py -r nerd
+[36m================================================[0m
+[1m[36m build :: clang :: release [0m
+[1m[36m projects :: nerd[0m
+[36m================================================[0m
+[90m[skip][0m 2 run directive(s) up to date
+[90m[skip][0m _bin\nerd.exe (up to date)
+[90m[skip][0m 68 source file(s) up to date
+[32m================================================[0m
+[1m[32m>> Build complete. Go be nerdy! \o/ <<[0m
+[32m================================================[0m
+mkdir -p _bin/examples
+NERD_LIB_PATH="C:\Users\matt\nerd/mods" ./_bin/nerd.exe build -r -o "_bin/examples/vktriangle.exe" "examples/vktriangle/vktriangle.n"
+cd "examples/vktriangle" && "../../_bin/examples/vktriangle.exe"
+Failed to create Vulkan instance: -6
+Error: A requested layer is missing or could not be loaded
+error: Recipe `run-example` failed on line 134 with exit code 1

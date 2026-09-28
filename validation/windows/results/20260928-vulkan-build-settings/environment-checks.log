@@ -1,0 +1,14 @@
+LIB present: False
+LIBPATH present: False
+VULKAN_SDK: C:\Users\matt\scoop\apps\vulkan\current
+VK_ADD_LAYER_PATH present: False
+Without VULKAN_SDK: check examples/vktriangle/vktriangle.n
+exit=0
+
+
+Without VULKAN_SDK: build --copts examples/vktriangle/vktriangle.n
+exit=1
+
+[1;31mruntime-error:[0m Build library_path in
+               C:\Users\matt\nerd\_bin\mods\std\vulkan\mod.n: environment
+               variable VULKAN_SDK is not set

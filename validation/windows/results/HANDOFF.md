@@ -1,5 +1,17 @@
 # Windows return handoff
 
+## Vulkan module SDK path — 2026-09-28
+
+After `7c1cd3e9`, `std.vulkan` now contributes `$VULKAN_SDK/Lib` on Windows.
+The unchanged `just run-example vktriangle` builds, opens its native window,
+initializes Vulkan, selects the RTX 4070 SUPER and exits 0 after an automated
+Q key event. Neither `LIB` nor `VK_ADD_LAYER_PATH` was set. Scoop’s supplied
+per-user layer-registration script repaired the separate missing validation
+layer installation. No command wrapper or global Nerd/editor replacement.
+See [launch evidence and environment change](20260928-vulkan-build-settings/README.md).
+The user’s Vulkan example edits remain uncommitted. Manual F7 observation and
+Linux execution have not been claimed.
+
 ## Source build settings — 2026-09-28
 
 Implemented contextual `build` blocks with repeated `library_path`, `windowed`
