@@ -570,8 +570,20 @@ pub impl Display for VkPhysicalDevice {
 
 -- FFI API to Vulkan
 --
+-- The Windows loader uses vulkan-1.dll; Linux uses libvulkan.so.
+on "windows" {
 
-ffi "vulkan" {
+    VULKAN_LIBRARY :: "vulkan-1"
+
+}
+
+on "linux" {
+
+    VULKAN_LIBRARY :: "vulkan"
+
+}
+
+ffi VULKAN_LIBRARY {
     pub vkCreateInstance           (pCreateInfo : ^VkInstanceCreateInfo,
                                     pAllocator  : ^void,
                                     pInstance   : ^VkInstance) -> VkResult
@@ -663,7 +675,7 @@ on "linux" {
         window XWindow
     }
 
-    ffi "vulkan" {
+    ffi VULKAN_LIBRARY {
         pub vkCreateXlibSurfaceKHR (instance    : VkInstance,
                                     pCreateInfo : ^VkXlibSurfaceCreateInfoKHR,
                                     pAllocator  : ^void,
@@ -689,7 +701,7 @@ on "windows" {
         hwnd      HWND
     }
 
-    ffi "vulkan" {
+    ffi VULKAN_LIBRARY {
         pub vkCreateWin32SurfaceKHR (instance    : VkInstance,
                                      pCreateInfo : ^VkWin32SurfaceCreateInfoKHR,
                                      pAllocator  : ^void,

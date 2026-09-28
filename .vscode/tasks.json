@@ -9,6 +9,16 @@
                 "run-example",
                 "vktriangle"
             ],
+            "windows": {
+                "command": "powershell.exe",
+                "args": [
+                    "-NoProfile",
+                    "-File",
+                    "${workspaceFolder}/build/run-example-windows.ps1",
+                    "-Example",
+                    "vktriangle"
+                ]
+            },
             "group": {
                 "kind": "build",
                 "isDefault": true

@@ -1,5 +1,21 @@
 # Windows return handoff
 
+## Focused Vulkan F7 repair — 2026-09-28
+
+Branch `vulkan`, starting at `06c17eec610b227f41ae26239904a264aab096c2`.
+Windows F7 now uses the correct `vulkan-1` loader import library, initializes
+SDK/CRT search paths and discovers the SDK validation layer. The actual task
+creates a Vulkan instance, selects the RTX 4070 SUPER and exits 0 after Q.
+Linux retains `vulkan` linkage. No compiler internals or global settings changed.
+
+See [repair, reproduction and evidence](20260928-vktriangle/README.md).
+Focused Vulkan regression passes. Full `just test` stops with **1,160 passes,
+2 unrelated failures, 15 platform skips**: runtime-array error case 7 embeds a
+Linux-only invalid-IR diagnostic, and the Windows files fixture uses obsolete
+positional syntax for a defaulted argument. These remain explicit follow-up
+work; this repair does not claim a green full suite. Earlier results below
+remain dated history.
+
 ## Native single-core follow-up — 2026-09-23
 
 Tested implementation: **`c32eb92dfccbfc64e337b84440d9f906c33fc675`** on

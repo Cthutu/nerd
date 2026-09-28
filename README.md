@@ -136,3 +136,19 @@ LLVM backend status:
 The recipe accepts all directories listed by `just list-examples`, including
 `text-adventure` (whose entry point is `quill.n`). `just run-example triangle`
 or `just re triangle` runs from the example directory so relative assets work.
+
+On Windows, the repository's default VS Code build task (F7) uses
+`build/run-example-windows.ps1` to initialize the Visual Studio x64 SDK/CRT
+environment while keeping Clang and the LLVM tools on PATH. From PowerShell:
+
+```powershell
+powershell.exe -NoProfile -File build/run-example-windows.ps1 -Example vktriangle
+```
+
+Add `-BuildOnly` to compile without opening the window. Vulkan examples require
+the Windows Vulkan SDK with `VULKAN_SDK` pointing to its root. Restart VS Code
+after installing the SDK or changing that variable. The wrapper adds its `Lib`
+directory and validation-layer manifests for this process only. `std.vulkan`
+links `vulkan-1` on Windows and `vulkan` on Linux. The current `vktriangle`
+example creates a window, instance and surface and selects a physical device;
+it does not yet draw a triangle. Press Q or Escape to exit.

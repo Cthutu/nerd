@@ -1,0 +1,25 @@
+uv run build/build.py -r nerd
+[36m================================================[0m
+[1m[36m build :: clang :: release [0m
+[1m[36m projects :: nerd[0m
+[36m================================================[0m
+[90m[skip][0m 2 run directive(s) up to date
+[90m[skip][0m _bin\nerd.exe (up to date)
+[90m[skip][0m 68 source file(s) up to date
+[32m================================================[0m
+[1m[32m>> Build complete. Go be nerdy! \o/ <<[0m
+[32m================================================[0m
+mkdir -p _bin/examples
+NERD_LIB_PATH="C:\Users\matt\nerd/mods" ./_bin/nerd.exe build -r -o "_bin/examples/vktriangle.exe" "examples/vktriangle/vktriangle.n"
+runtime-error: LLVM linker could not open a required file (exit code 1)
+               File: vulkan.lib
+               Generated LLVM: _bin/examples/vktriangle.exe.link.ll
+               Runtime object: _bin/examples/vktriangle.exe.nrt.o
+               Command: lld-link /nologo /out:"_bin/examples/vktriangle.exe"
+               /subsystem:windows "_bin/examples/vktriangle.exe.obj.o"
+               "_bin/examples/vktriangle.exe.nrt.o" /defaultlib:libcmt
+               /defaultlib:libvcruntime /defaultlib:libucrt /defaultlib:oldnames
+               /defaultlib:kernel32 /defaultlib:legacy_stdio_definitions
+               "vulkan.lib" "kernel32.lib" "synchronization.lib" "user32.lib"
+               "gdi32.lib" "opengl32.lib"
+error: Recipe `build-example` failed on line 130 with exit code 1
