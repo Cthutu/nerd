@@ -53,7 +53,9 @@
 --|     }
 --| }
 
-pragma windowed
+build {
+    windowed: yes
+}
 
 text :: use std.text
 

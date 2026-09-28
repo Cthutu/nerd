@@ -332,7 +332,7 @@ def copts_checks(nerd, tmp, env):
         run([executable], env)
     invalid = run([nerd, "build", "--copts", "main :: fn () { missing() }"], env, check=False)
     assert invalid.returncode and not invalid.stdout
-    windowed = options('pragma windowed\nmain :: fn () {}')
+    windowed = options('build { windowed: yes }\nmain :: fn () {}')
     assert ("-Wl,/SUBSYSTEM:WINDOWS" in windowed) == (os.name == "nt")
 
     library = work / "library.n"

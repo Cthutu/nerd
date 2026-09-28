@@ -101,7 +101,7 @@ def main():
             for parameters in ['', 'args: []string']:
                 body = ('assert args.count >= 1\n' if parameters else '') + f'return {value}.as({kind})'
                 for windowed in ([False, True] if os.name == 'nt' and not parameters else [False]):
-                    source.write_text(('pragma windowed\n' if windowed else '') +
+                    source.write_text(('build { windowed: yes }\n' if windowed else '') +
                                       f'main :: fn ({parameters}) {{ {body} }}\n')
                     for release in [[], ['-r']]:
                         run('build', *release, '--jobs', 4 if parameters else 1, source, '-o', executable)

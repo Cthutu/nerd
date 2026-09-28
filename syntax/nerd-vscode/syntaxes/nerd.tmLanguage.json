@@ -58,6 +58,10 @@
         "keywords": {
             "patterns": [
                 {
+                    "name": "keyword.control.nerd",
+                    "match": "\\bbuild\\b(?=\\s*\\{)"
+                },
+                {
                     "name": "keyword.control.function.nerd",
                     "match": "\\b(fn|return|break|again|for|on|else|defer|undo|assert|as|plex|union|enum|ffi|mod|use|pub|impl|trait|where|with|in|test)\\b"
                 },

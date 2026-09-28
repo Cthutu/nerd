@@ -3504,6 +3504,9 @@ internal u32 format_node_end_token_index(const Cst*   cst,
                                          u32          node_index)
 {
     const CstNode* node = &cst->nodes[node_index];
+    if (node->kind == CK_Build) {
+        return node->b - 1;
+    }
 
     switch (node->kind) {
     case CK_IntegerLiteral:
@@ -6960,6 +6963,112 @@ internal void format_emit_top_on(StringBuilder* sb,
     sb_append_char(sb, '}');
 }
 
+internal void format_emit_build(StringBuilder* sb,
+                                const Lexer*   lexer,
+                                const CstNode* node,
+                                u32            indent_level)
+{
+    u32 depth   = indent_level;
+    u32 comment = 0;
+    while (comment < array_count(lexer->comments) &&
+           lexer->comments[comment].offset < lexer->tokens[node->a].offset) {
+        ++comment;
+    }
+    for (u32 i = node->a; i < node->b;) {
+        const Token* token = &lexer->tokens[i];
+        bool         close = token->kind == TK_RBrace;
+        if (close && depth > indent_level) {
+            --depth;
+        }
+        // Comments between a header/key and its delimiter move immediately
+        // before that line; never fall back to expression spacing for paths.
+        u32 comment_limit = i;
+        if (!close) {
+            while (comment_limit < node->b &&
+                   lexer->tokens[comment_limit].kind != TK_Colon &&
+                   lexer->tokens[comment_limit].kind != TK_LBrace) {
+                ++comment_limit;
+            }
+            if (comment_limit < node->b &&
+                lexer->tokens[comment_limit].kind == TK_Colon) {
+                ++comment_limit;
+            }
+        }
+        format_emit_block_comments_before_offset(
+            sb,
+            lexer,
+            &comment,
+            lexer->tokens[comment_limit].offset,
+            depth,
+            NULL);
+        if (i != node->a) {
+            format_emit_indent(sb, depth);
+        }
+        u32 end = i;
+        if (close) {
+            sb_append_char(sb, '}');
+            ++i;
+        } else {
+            // A header ends at '{'; an entry ends after its single value.
+            while (end < node->b && lexer->tokens[end].kind != TK_Colon &&
+                   lexer->tokens[end].kind != TK_LBrace) {
+                ++end;
+            }
+            if (end == node->b) {
+                return;
+            }
+            bool header = lexer->tokens[end].kind == TK_LBrace;
+            if (header) {
+                for (u32 j = i; j < end; ++j) {
+                    const Token* part = &lexer->tokens[j];
+                    usize        stop = lex_token_end_offset(lexer, part);
+                    if (j > i && lexer->tokens[j - 1].kind != TK_Bang) {
+                        sb_append_char(sb, ' ');
+                    }
+                    sb_append_string(
+                        sb,
+                        (string){.data =
+                                     lexer->source.source.data + part->offset,
+                                 .count = stop - part->offset});
+                }
+                sb_append_cstr(sb, " {");
+                ++depth;
+                i = end + 1;
+            } else {
+                usize key_end = lex_token_end_offset(lexer, token);
+                sb_append_string(
+                    sb,
+                    (string){.data  = lexer->source.source.data + token->offset,
+                             .count = key_end - token->offset});
+                sb_append_cstr(sb, ": ");
+                i = end + 1;
+                if (i >= node->b) {
+                    return;
+                }
+                usize start = lexer->tokens[i].offset;
+                usize stop  = lex_token_end_offset(lexer, &lexer->tokens[i]);
+                bool  environment = lexer->tokens[i].kind == TK_Dollar;
+                ++i;
+                while (environment && i < node->b &&
+                       lexer->tokens[i].offset == stop &&
+                       lexer->tokens[i].kind != TK_RBrace) {
+                    stop = lex_token_end_offset(lexer, &lexer->tokens[i++]);
+                }
+                sb_append_string(
+                    sb,
+                    (string){.data  = lexer->source.source.data + start,
+                             .count = stop - start});
+            }
+        }
+        if (i < node->b) {
+            if (!format_emit_trailing_comment_after_token(
+                    sb, lexer, &comment, i - 1)) {
+                sb_append_char(sb, '\n');
+            }
+        }
+    }
+}
+
 internal void format_emit_pragma(StringBuilder* sb,
                                  const Cst*     cst,
                                  const Lexer*   lexer,
@@ -8797,6 +8906,12 @@ internal void format_emit_block_statement(StringBuilder* sb,
         return;
     }
 
+    if (stmt->kind == CK_Build) {
+        format_emit_build(sb, lexer, stmt, indent_level);
+        sb_append_char(sb, '\n');
+        return;
+    }
+
     if (stmt->kind == CK_Pragma) {
         format_emit_pragma(sb, cst, lexer, stmt->a);
         sb_append_char(sb, '\n');
@@ -9230,6 +9345,16 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
 
         if (node->kind == CK_TopOn) {
             format_emit_top_on(sb, &cst, &lexer, node->a, 0);
+            sb_append_char(sb, '\n');
+            format_emit_trailing_comment_for_node(
+                sb, &cst, &lexer, node_index, &comment_index);
+            first_binding          = false;
+            previous_binding_index = node_index;
+            continue;
+        }
+
+        if (node->kind == CK_Build) {
+            format_emit_build(sb, &lexer, node, 0);
             sb_append_char(sb, '\n');
             format_emit_trailing_comment_for_node(
                 sb, &cst, &lexer, node_index, &comment_index);
@@ -10185,6 +10310,8 @@ internal bool format_token_starts_top_level_item(const Lexer* lexer, u32 index)
     case TK_Symbol:
         return index + 1 < array_count(lexer->tokens) &&
                (lexer->tokens[index + 1].kind == TK_Colon ||
+                (lexer->tokens[index + 1].kind == TK_LBrace &&
+                 string_eq(format_token_text(lexer, index), s("build"))) ||
                 (lexer->tokens[index + 1].kind == TK_String &&
                  string_eq(format_token_text(lexer, index), s("test"))));
     default:

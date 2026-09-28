@@ -34,6 +34,8 @@ internal bool front_end_parse(FrontEndContext* ctx)
         ctx->results.readiness.ast = FRONT_END_PRODUCT_Missing;
         return false;
     }
+    front_end_collect_build_settings(&ctx->results, &ctx->options);
+    ctx->options.keywords      = ctx->results.keywords;
     ctx->results.readiness.ast = FRONT_END_PRODUCT_Complete;
     return true;
 }
@@ -199,6 +201,8 @@ bool front_end(NerdSource             source,
 
 void front_end_results_done(FrontEndState* results)
 {
+    array_free(results->keywords);
+    array_free(results->library_paths);
     hir_done(&results->hir);
     results->hir = (Hir){0};
 

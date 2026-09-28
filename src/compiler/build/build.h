@@ -34,7 +34,17 @@ typedef struct FrontEndReadiness {
     FrontEndProductState      hir;
 } FrontEndReadiness;
 
+typedef struct BuildLibraryPath {
+    string value;
+    string source_path;
+    bool   environment;
+} BuildLibraryPath;
+
 typedef struct FrontEndState {
+    Array(string) keywords;
+    Array(BuildLibraryPath) library_paths;
+    bool              windowed_defined;
+    bool              windowed;
     Lexer             lexer;
     Ast               ast;
     Sema              sema;
@@ -69,6 +79,7 @@ typedef struct ProgramInfo {
     Array(ModuleInfo) modules;
     u32  root_module_index;
     bool windowed;
+    Array(BuildLibraryPath) library_paths;
     // Prepared after checking; immutable throughout HIR/LLVM generation.
     Array(LexerLineIndex) line_indexes;
 } ProgramInfo;

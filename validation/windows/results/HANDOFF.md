@@ -1,5 +1,19 @@
 # Windows return handoff
 
+## Source build settings — 2026-09-28
+
+Implemented contextual `build` blocks with repeated `library_path`, `windowed`
+and module-local `define` settings. Importers precede dependencies for library
+lookup and override scalar settings. `std.frame`, documentation, highlighting,
+a runnable example and regression coverage are migrated. Legacy pragmas remain
+compatible. The user’s existing Vulkan example edits remain uncommitted.
+
+Native Windows: fresh Clang debug/release builds; integration tests, 210
+formatter tests on both binaries, 212 LSP tests, direct LLVM toolchain checks
+and 294 C differential fixtures pass. Final complete fixture run: **1,170 pass,
+2 pre-existing failures, 15 skips**. See [evidence and Linux follow-up](20260928-build-settings/README.md). No global installation was changed.
+
+
 ## Formatter error isolation — 2026-09-28
 
 On `vulkan`, a syntax error in one top-level declaration no longer forces valid

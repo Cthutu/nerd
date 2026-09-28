@@ -182,6 +182,7 @@ typedef enum {
     CK_Trait,
     CK_TopOn,
     CK_Pragma,
+    CK_Build, // a/b: first/end-exclusive tokens, including braces
     CK_Test,
     CK_Statement,
     CK_Return,

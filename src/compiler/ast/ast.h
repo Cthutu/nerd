@@ -469,9 +469,11 @@ typedef struct {
 } AstPragmaParam;
 
 typedef struct {
-    u32 symbol_handle;
-    u32 first_param;
-    u32 param_count;
+    u32  symbol_handle;
+    u32  first_param;
+    u32  param_count;
+    bool build_entry;
+    bool environment_path;
 } AstPragmaInfo;
 
 typedef struct {

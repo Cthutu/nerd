@@ -34,7 +34,7 @@ library on Linux.
 The output goes where the executable would normally go, with its extension
 replaced by `.c`. For example, `nerd build --cgen -o output/game adventure.n`
 writes `output/game.c`. The output directory must already exist.
-On Windows, `pragma windowed` also emits `WinMain`; choose the Windows subsystem
+On Windows, `build { windowed: yes }` also emits `WinMain`; choose the Windows subsystem
 when linking that program with Clang.
 
 `--copts` prints the Clang arguments for the selected source, including its
@@ -75,17 +75,27 @@ Combine `--cgen` with `--hir` to inspect HIR too. `--llvm` cannot be combined
 with `--cgen` or `--copts`. Generated C targets the host platform used to check
 the program.
 
-## Build Pragmas
+## Source Build Settings
 
-Pragmas are optional compiler controls:
+Keep stable build requirements with the program or module that needs them:
 
 ```nerd
-pragma windowed
+build {
+    windowed: yes
+    define: validation
+    on "windows" {
+        library_path: $VULKAN_SDK/Lib
+    }
+}
 ```
 
-Unknown pragmas are ignored. `pragma windowed` changes Windows executable builds
-to use a windowed subsystem and a generated `WinMain` wrapper instead of the
-normal console `main` wrapper. It has no effect on non-Windows builds.
+`windowed` selects the Windows GUI subsystem and generated entry wrapper.
+Importers override imported settings, so a console root can specify
+`windowed: no` even when importing `std.frame`. Library paths accumulate with
+importer paths searched first. `define` adds a module-local feature for later
+build guards and the module's code; command-line `-D` remains useful for
+per-build selection. See [configuration](../configuration.md) for complete
+rules. `pragma windowed` is retained for compatibility.
 
 ## Start With A Loop
 

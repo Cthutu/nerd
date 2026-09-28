@@ -214,6 +214,8 @@ internal bool program_front_end_parse(void* data)
         ctx->front_end->readiness.ast = FRONT_END_PRODUCT_Missing;
         return false;
     }
+    front_end_collect_build_settings(ctx->front_end, &ctx->options);
+    ctx->options.keywords = ctx->front_end->keywords;
     program_select_local_on_blocks(
         &ctx->options, &ctx->front_end->lexer, &ctx->front_end->ast);
     ctx->front_end->readiness.ast = FRONT_END_PRODUCT_Complete;
@@ -289,6 +291,7 @@ internal bool program_front_end_finish(ProgramInfo*           program,
 {
     ModuleInfo*     module         = &program->modules[module_index];
     FrontEndOptions module_options = options ? *options : (FrontEndOptions){0};
+    module_options.keywords        = module->front_end.keywords;
     module_options.program         = program;
     module_options.current_module_index = module_index;
     module_options.require_entry_point  = require_entry_point;
@@ -554,40 +557,162 @@ internal bool program_validate_top_on_assertion(const FrontEndOptions* options,
         info->is_negated);
 }
 
-internal void program_apply_pragmas(ProgramInfo*           program,
-                                    const FrontEndOptions* options,
-                                    const Lexer*           lexer,
-                                    const Ast*             ast,
-                                    u32                    first_node,
-                                    u32                    end_node)
+internal void program_collect_build_entries(FrontEndState*   state,
+                                            FrontEndOptions* options,
+                                            u32              first,
+                                            u32              end)
 {
-    for (u32 i = first_node; i < end_node; ++i) {
+    const Lexer* lexer = &state->lexer;
+    const Ast*   ast   = &state->ast;
+    for (u32 i = first; i < end; ++i) {
         const AstNode* node = &ast->nodes[i];
         if (node->kind == AK_TopOn) {
             const AstTopOnInfo* info = &ast->top_ons[node->a];
-            if (info->is_assert) {
+            if (info->is_assert || info->is_statement) {
                 continue;
             }
             const AstNode* body = &ast->nodes[info->body_node_index];
-            ASSERT(body->kind == AK_Block, "Expected top-level on body block");
             if (program_top_on_is_enabled(options, lexer, ast, node)) {
-                program_apply_pragmas(
-                    program, options, lexer, ast, body->a, body->b);
+                program_collect_build_entries(state, options, body->a, body->b);
             }
             i = body->b - 1;
             continue;
         }
-
-        if (node->kind != AK_Pragma || node->a >= array_count(ast->pragmas)) {
+        if (node->kind != AK_Pragma) {
             continue;
         }
-        const AstPragmaInfo* pragma = &ast->pragmas[node->a];
-        if (pragma->param_count == 0 &&
-            string_eq_cstr(lex_symbol(lexer, pragma->symbol_handle),
-                           "windowed")) {
-            program->windowed = true;
+        const AstPragmaInfo* entry = &ast->pragmas[node->a];
+        string               key   = lex_symbol(lexer, entry->symbol_handle);
+        if (!entry->build_entry) {
+            if (!entry->param_count && string_eq_cstr(key, "windowed")) {
+                state->windowed_defined = true;
+                state->windowed         = true;
+            }
+            continue;
+        }
+        if (!entry->param_count) {
+            continue;
+        }
+        const AstPragmaParam* value = &ast->pragma_params[entry->first_param];
+        if (string_eq_cstr(key, "define")) {
+            string name = lexer->strings[value->value_index];
+            if (!program_keyword_is_defined(options, name)) {
+                array_push(state->keywords, name);
+            }
+            options->keywords = state->keywords;
+        } else if (string_eq_cstr(key, "windowed")) {
+            state->windowed_defined = true;
+            state->windowed         = value->bool_value;
+        } else if (string_eq_cstr(key, "library_path")) {
+            string source_path = lexer->source.source_path;
+            usize  offset      = lexer->tokens[node->token_index].offset;
+            for (usize j = 0; j < array_count(lexer->source.fragments); ++j) {
+                const NerdSourceFragment* fragment =
+                    &lexer->source.fragments[j];
+                if (offset >= fragment->start && offset < fragment->end) {
+                    source_path = fragment->source_path;
+                    break;
+                }
+            }
+            array_push(
+                state->library_paths,
+                ((BuildLibraryPath){.value = lexer->strings[value->value_index],
+                                    .source_path = source_path,
+                                    .environment = entry->environment_path}));
         }
     }
+}
+
+void front_end_collect_build_settings(FrontEndState*         state,
+                                      const FrontEndOptions* options)
+{
+    FrontEndOptions local = options ? *options : (FrontEndOptions){0};
+    for (usize i = 0; i < array_count(local.keywords); ++i) {
+        array_push(state->keywords, local.keywords[i]);
+    }
+    local.keywords = state->keywords;
+    program_collect_build_entries(
+        state, &local, 0, (u32)array_count(state->ast.nodes));
+}
+
+// Stable topological order keeps importers ahead of shared dependencies too.
+internal bool program_compose_build_settings(ProgramInfo* program)
+{
+    usize count         = array_count(program->modules);
+    Array(u32) incoming = NULL;
+    Array(bool) emitted = NULL;
+    Array(u32) order    = NULL;
+    Array(u8) windowed  = NULL;
+    for (usize i = 0; i < count; ++i) {
+        array_push(incoming, 0);
+        array_push(emitted, false);
+        array_push(windowed, 0);
+    }
+    for (usize i = 0; i < count; ++i) {
+        const ModuleInfo* module = &program->modules[i];
+        for (usize j = 0; j < array_count(module->imported_module_indices);
+             ++j) {
+            ++incoming[module->imported_module_indices[j]];
+        }
+    }
+    for (usize step = 0; step < count; ++step) {
+        u32 selected = U32_MAX;
+        for (u32 i = 0; i < count; ++i) {
+            if (!emitted[i] && !incoming[i]) {
+                selected = i;
+                break;
+            }
+        }
+        if (selected == U32_MAX) {
+            array_free(incoming);
+            array_free(emitted);
+            array_free(order);
+            array_free(windowed);
+            return error_runtime("Cyclic module build configuration");
+        }
+        emitted[selected] = true;
+        array_push(order, selected);
+        const ModuleInfo*    module = &program->modules[selected];
+        const FrontEndState* state  = &module->front_end;
+        for (usize j = 0; j < array_count(state->library_paths); ++j) {
+            array_push(program->library_paths, state->library_paths[j]);
+        }
+        for (usize j = 0; j < array_count(module->imported_module_indices);
+             ++j) {
+            --incoming[module->imported_module_indices[j]];
+        }
+    }
+    // 0 unset, 1 console, 2 windowed, 3 unresolved sibling conflict.
+    for (usize i = count; i > 0; --i) {
+        u32               index  = order[i - 1];
+        const ModuleInfo* module = &program->modules[index];
+        if (module->front_end.windowed_defined) {
+            windowed[index] = module->front_end.windowed ? 2 : 1;
+            continue;
+        }
+        for (usize j = 0; j < array_count(module->imported_module_indices);
+             ++j) {
+            u8 inherited = windowed[module->imported_module_indices[j]];
+            if (!inherited) {
+                continue;
+            }
+            if (windowed[index] && windowed[index] != inherited) {
+                windowed[index] = 3;
+            } else {
+                windowed[index] = inherited;
+            }
+        }
+    }
+    u8 result         = windowed[program->root_module_index];
+    program->windowed = result == 2;
+    array_free(incoming);
+    array_free(emitted);
+    array_free(order);
+    array_free(windowed);
+    return result != 3 ||
+           error_runtime(
+               "Conflicting imported windowed settings; specify windowed: "
+               "yes/no in the importing root's build block");
 }
 
 internal u32 program_find_module_by_path(const ProgramInfo* program,
@@ -1410,12 +1535,6 @@ internal bool program_load_module_by_path(ProgramInfo*           program,
 
     Lexer module_lexer = current->front_end.lexer;
     Ast   module_ast   = current->front_end.ast;
-    program_apply_pragmas(program,
-                          options,
-                          &module_lexer,
-                          &module_ast,
-                          0,
-                          (u32)array_count(module_ast.nodes));
     if (!program_collect_module_dependencies(
             program,
             options,
@@ -1518,6 +1637,9 @@ program_collect_module_dependencies(ProgramInfo*           program,
                                     u32                    first_node,
                                     u32                    end_node)
 {
+    FrontEndOptions guard_options = options ? *options : (FrontEndOptions){0};
+    guard_options.keywords =
+        program->modules[owner_module_index].front_end.keywords;
     if (program->load_state != NULL) {
         Array(ProgramParseEntry*) pending = NULL;
         program_prefetch_imports(
@@ -1545,14 +1667,14 @@ program_collect_module_dependencies(ProgramInfo*           program,
             const AstTopOnInfo* info = &ast->top_ons[node->a];
             if (info->is_assert) {
                 if (!program_validate_top_on_assertion(
-                        options, lexer, ast, node)) {
+                        &guard_options, lexer, ast, node)) {
                     return false;
                 }
                 continue;
             }
             const AstNode* body = &ast->nodes[info->body_node_index];
             ASSERT(body->kind == AK_Block, "Expected top-level on body block");
-            if (program_top_on_is_enabled(options, lexer, ast, node) &&
+            if (program_top_on_is_enabled(&guard_options, lexer, ast, node) &&
                 !program_collect_module_dependencies(program,
                                                      options,
                                                      timing,
@@ -1664,12 +1786,6 @@ internal bool program_front_end_attempt(NerdSource             source,
     Lexer root_lexer =
         program.modules[program.root_module_index].front_end.lexer;
     Ast root_ast = program.modules[program.root_module_index].front_end.ast;
-    program_apply_pragmas(&program,
-                          &effective_options,
-                          &root_lexer,
-                          &root_ast,
-                          0,
-                          (u32)array_count(root_ast.nodes));
 
     if (!program_collect_module_dependencies(
             &program,
@@ -1721,7 +1837,8 @@ internal bool program_front_end_attempt(NerdSource             source,
         program.modules[program.root_module_index].state = MODULE_Loaded;
     }
 
-    if (!program_front_end_generate_hir(&program, &effective_options, timing)) {
+    if (!program_compose_build_settings(&program) ||
+        !program_front_end_generate_hir(&program, &effective_options, timing)) {
         program.modules[program.root_module_index].state = MODULE_Failed;
         program_info_done(&program);
         return false;
@@ -1797,6 +1914,7 @@ void program_info_done(ProgramInfo* program)
             filemap_unload(&module->source_map);
         }
     }
+    array_free(program->library_paths);
     array_free(program->modules);
     arena_done(&program->arena);
     *program = (ProgramInfo){0};

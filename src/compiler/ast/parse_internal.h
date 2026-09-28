@@ -47,6 +47,7 @@ typedef struct {
     u32    float_index;
     u32    string_index;
     u32    symbol_index;
+    bool   in_build_config;
     bool   allow_statement_boundary;
     bool   stop_before_on_branch_head;
     bool   stop_before_call;

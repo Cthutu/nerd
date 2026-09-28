@@ -4672,7 +4672,7 @@ internal bool cst_parse_for(CstParseState* state, u32* out_node)
             return false;
         }
         bool previous_stop_before_for_body = state->stop_before_for_body;
-        state->stop_before_for_body = true;
+        state->stop_before_for_body        = true;
         bool parsed_iterable =
             cst_parse_expr_bp(state, 0, &for_info.iterable_node_index);
         state->stop_before_for_body = previous_stop_before_for_body;
@@ -6282,6 +6282,64 @@ internal bool cst_parse_pragma(CstParseState* state, u32* out_node)
 
 internal bool cst_parse_top_level_item(CstParseState* state, u32* out_node)
 {
+    if (cst_current_symbol_is_cstr(state, "build") &&
+        cst_peek_kind_at(state, 1) == TK_LBrace) {
+        u32 first = state->token_index;
+        cst_advance(state);
+        cst_advance(state);
+        u32 depth = 1;
+        while (depth) {
+            TokenKind kind = cst_current_token(state).kind;
+            if (kind == TK_RBrace) {
+                --depth;
+                cst_advance(state);
+            } else if (kind == TK_on) {
+                cst_advance(state);
+                if (cst_current_token(state).kind == TK_Bang) {
+                    cst_advance(state);
+                }
+                if (!cst_consume(state, TK_String) ||
+                    !cst_consume(state, TK_LBrace)) {
+                    return false;
+                }
+                ++depth;
+            } else {
+                if (!cst_consume(state, TK_Symbol) ||
+                    !cst_consume(state, TK_Colon)) {
+                    return false;
+                }
+                Token value       = cst_current_token(state);
+                bool  environment = value.kind == TK_Dollar;
+                if (!environment && value.kind != TK_String &&
+                    value.kind != TK_Symbol && value.kind != TK_yes &&
+                    value.kind != TK_no) {
+                    return false;
+                }
+                usize end = lex_token_end_offset(state->lexer, &value);
+                cst_advance(state);
+                if (environment) {
+                    if (cst_current_token(state).kind != TK_Symbol ||
+                        cst_current_token(state).offset != end) {
+                        return false;
+                    }
+                    while (cst_current_token(state).offset == end &&
+                           cst_current_token(state).kind != TK_RBrace &&
+                           cst_current_token(state).kind != TK_EOF) {
+                        Token part = cst_current_token(state);
+                        end        = lex_token_end_offset(state->lexer, &part);
+                        cst_advance(state);
+                    }
+                }
+            }
+        }
+        return cst_emit_node(state,
+                             (CstNode){.kind        = CK_Build,
+                                       .token_index = first,
+                                       .a           = first,
+                                       .b           = state->token_index},
+                             out_node);
+    }
+
     bool is_public = false;
     if (cst_current_token(state).kind == TK_pub) {
         is_public = true;
@@ -6551,7 +6609,8 @@ bool cst_node_is_block_statement(const CstNode* node)
            node->kind == CK_DestructureAssign || node->kind == CK_Assign ||
            node->kind == CK_Use || node->kind == CK_FfiDef ||
            node->kind == CK_FfiBlock || node->kind == CK_TopOn ||
-           node->kind == CK_Pragma || node->kind == CK_Test;
+           node->kind == CK_Pragma || node->kind == CK_Build ||
+           node->kind == CK_Test;
 }
 
 u32 cst_block_statement_end_exclusive(const Cst* cst, u32 node_index)

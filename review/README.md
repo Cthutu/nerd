@@ -4,7 +4,7 @@ This folder holds detailed architecture review material.
 
 - `decisions/`: accepted, rejected, or superseded decision records.
 - `audits/`: evidence gathered before decisions.
-  - `audits/source-build-configuration.md`: draft source-owned build syntax and
+  - `audits/source-build-configuration.md`: accepted source-owned build syntax and
     audit of CLI, JSON and environment configuration.
   - `audits/task-scheduler-performance.md`: compiler concurrency audit,
     single-core opportunities, and proposed experiment milestones.

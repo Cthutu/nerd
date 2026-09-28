@@ -1081,3 +1081,35 @@ being stored separately from the primary-source references. Console output
 prints a `note` with `path:line:column`; LSP output uses `relatedInformation` with
 the declaration's URI and range. Captured diagnostics own copies of definition
 sources and messages, so deferred replay does not borrow semantic state.
+
+## Source build configuration
+
+The AST parser recognizes contextual `build { ... }` declarations and lowers
+validated entries into `AK_Pragma` metadata tagged `build_entry`. Nested guards
+reuse `AK_TopOn`; entries have no runtime representation. Each parsed
+`FrontEndState` owns a keyword array initialized from invocation defines and
+collects active build entries in source order before local conditional
+selection. Semantic checks and dependency discovery use the owner's local
+keywords; child module loads retain invocation options so defines cannot leak.
+Build guards are evaluated once while collecting settings, preventing later
+defines from retroactively enabling earlier configuration entries.
+
+After module discovery, stable topological composition orders native library
+paths with every importer before its dependencies, including diamonds. Scalar
+`windowed` settings compose in reverse order: local values override inherited
+ones, and unresolved sibling conflicts propagate to the root for diagnosis.
+An explicit ancestor setting resolves those conflicts. Source fragments retain
+the declaring file for paths contributed by folder-module parts.
+
+The backend resolves environment paths only when linking or printing linker
+options, deduplicates paths, and quotes platform linker arguments without
+mutating ambient toolchain variables. Its temporary path arena is separate
+from the command StringBuilder arena. `--cgen`, analysis, object and archive
+output do not require link SDK variables. The CST retains a validated build
+block token range; its formatter preserves path spelling and comments, and
+error recovery recognizes `build {` as a declaration boundary.
+
+`build/test_build_settings.py` checks module isolation, guards, diamond path
+order, sibling conflicts, folder parts, lazy environment resolution and actual
+native library precedence. Formatter fixtures cover valid blocks and recovery
+beside a malformed function. Legacy pragma fixtures remain compatibility tests.

@@ -42,6 +42,7 @@ test *args:
     python3 build/test_toolchain.py --nerd _bin/nerd-debug{{exe_suffix}}
     python3 build/test_install.py --nerd _bin/nerd-debug{{exe_suffix}}
     python3 build/test_cgen.py --nerd _bin/nerd-debug{{exe_suffix}}
+    python3 build/test_build_settings.py --nerd _bin/nerd-debug{{exe_suffix}}
 
 test-release *args:
     just build-release nerd --skip-mod-sync

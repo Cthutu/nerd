@@ -4938,8 +4938,135 @@ internal bool ast_parse_test_decl(AstParseState* state)
                                      TK_EOF);
 }
 
+// Build entries use pragma metadata: they have no runtime representation.
+internal bool ast_parse_build_entry(AstParseState* state)
+{
+    if (state->token.kind == TK_on) {
+        return ast_parse_top_level_on(state, NULL);
+    }
+    AstToken key      = state->token;
+    bool     path     = ast_current_symbol_is_cstr(state, "library_path");
+    bool     define   = ast_current_symbol_is_cstr(state, "define");
+    bool     windowed = ast_current_symbol_is_cstr(state, "windowed");
+    if (!path && !define && !windowed) {
+        return error_0204_unexpected_token(state->lexer->source,
+                                           ast_token_span(state, &key),
+                                           key.kind,
+                                           "Unknown build setting");
+    }
+    if (!ast_expect_token(state, TK_Colon) || !ast_next_token(state)) {
+        return false;
+    }
+    AstPragmaParam param       = {.token_index = state->token.token_index};
+    bool           environment = path && state->token.kind == TK_Dollar;
+    if (windowed &&
+        (state->token.kind == TK_yes || state->token.kind == TK_no)) {
+        param.kind       = APPK_Bool;
+        param.bool_value = state->token.kind == TK_yes;
+    } else if (path && state->token.kind == TK_String) {
+        param.kind        = APPK_String;
+        param.value_index = state->token.value.string_index;
+    } else if (define && state->token.kind == TK_Symbol) {
+        param.kind        = APPK_String;
+        param.value_index = (u32)array_count(state->lexer->strings);
+        array_push(state->lexer->strings,
+                   lex_symbol(state->lexer, state->token.value.symbol_handle));
+    } else if (environment) {
+        usize start = state->token.offset;
+        usize end   = start + 1;
+        if (!ast_expect_token(state, TK_Symbol) || state->token.offset != end) {
+            return error_0204_unexpected_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                state->token.kind,
+                "Expected an environment variable immediately after '$'");
+        }
+        end = lex_token_end_offset(
+            state->lexer, &state->lexer->tokens[state->token.token_index]);
+        while (state->token.token_index + 1 <
+               array_count(state->lexer->tokens)) {
+            const Token* next =
+                &state->lexer->tokens[state->token.token_index + 1];
+            if (next->offset != end || next->kind == TK_RBrace ||
+                next->kind == TK_EOF) {
+                break;
+            }
+            if (!ast_next_token(state)) {
+                break;
+            }
+            end = lex_token_end_offset(
+                state->lexer, &state->lexer->tokens[state->token.token_index]);
+        }
+        param.kind        = APPK_String;
+        param.value_index = (u32)array_count(state->lexer->strings);
+        array_push(state->lexer->strings,
+                   ((string){.data  = state->lexer->source.source.data + start,
+                             .count = end - start}));
+    } else {
+        return error_0204_unexpected_token(
+            state->lexer->source,
+            ast_token_span(state, &state->token),
+            state->token.kind,
+            "Expected a build value: library_path takes a quoted path or "
+            "$ENV/path, define takes a name, windowed takes yes/no");
+    }
+    u32 index = (u32)array_count(state->pragmas);
+    array_push(
+        state->pragmas,
+        ((AstPragmaInfo){.symbol_handle = key.value.symbol_handle,
+                         .first_param = (u32)array_count(state->pragma_params),
+                         .param_count = 1,
+                         .build_entry = true,
+                         .environment_path = environment}));
+    array_push(state->pragma_params, param);
+    return ast_emit_node(state,
+                         (AstNode){.kind        = AK_Pragma,
+                                   .token_index = key.token_index,
+                                   .a           = index},
+                         NULL);
+}
+
+internal bool ast_parse_build(AstParseState* state)
+{
+    // Retain an empty block as a declaration too.
+    u32 index = (u32)array_count(state->pragmas);
+    array_push(
+        state->pragmas,
+        ((AstPragmaInfo){.symbol_handle = state->token.value.symbol_handle,
+                         .build_entry   = true}));
+    ast_emit_node(state,
+                  (AstNode){.kind        = AK_Pragma,
+                            .token_index = state->token.token_index,
+                            .a           = index},
+                  NULL);
+    if (!ast_expect_token(state, TK_LBrace)) {
+        return false;
+    }
+    state->in_build_config = true;
+    while (ast_next_token(state)) {
+        if (state->token.kind == TK_RBrace) {
+            state->in_build_config = false;
+            return true;
+        }
+        if (!ast_parse_build_entry(state)) {
+            return false;
+        }
+    }
+    return error_0203_expected_token(state->lexer->source,
+                                     ast_token_span(state, &state->token),
+                                     TK_RBrace,
+                                     TK_EOF);
+}
+
 internal bool ast_parse_top_level_item(AstParseState* state)
 {
+    if (state->in_build_config) {
+        return ast_parse_build_entry(state);
+    }
+    if (ast_current_symbol_is_cstr(state, "build") &&
+        ast_peek_kind_at(state, 0) == TK_LBrace) {
+        return ast_parse_build(state);
+    }
     bool is_public = false;
     if (state->token.kind == TK_pub) {
         is_public = true;

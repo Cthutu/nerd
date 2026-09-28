@@ -10,6 +10,9 @@
 
 //------------------------------------------------------------------------------
 
+void front_end_collect_build_settings(FrontEndState*         state,
+                                      const FrontEndOptions* options);
+
 bool front_end(NerdSource             source,
                const FrontEndOptions* options,
                Timing*                timing,

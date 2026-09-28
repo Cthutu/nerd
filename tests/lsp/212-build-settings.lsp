@@ -1,26 +1,13 @@
-use std.frame
-
-main :: fn () {
-    event := FrameEvent.Character { codepoint: 65 }
-    _ := event
+build {
+    define: editor_feature
+    library_path: $NERD_TEST_UNINSTALLED_SDK/Lib
 }
+on "editor_feature" {
+    answer :: 42
+}
+main :: fn () => answer
 ¬
-[
-    {
-        "jsonrpc": "2.0",
-        "id": 2,
-        "method": "textDocument/definition",
-        "params": {
-            "textDocument": {
-                "uri": "file:///test.n"
-            },
-            "position": {
-                "line": 3,
-                "character": 25
-            }
-        }
-    }
-]
+[]
 ¬
 [
     {
@@ -81,23 +68,6 @@ main :: fn () {
         "params": {
             "uri": "file:///test.n",
             "diagnostics": []
-        }
-    },
-    {
-        "jsonrpc": "2.0",
-        "id": 2,
-        "result": {
-            "uri": "__REPO_URI__/mods/std/frame/frame.n",
-            "range": {
-                "start": {
-                    "line": 212,
-                    "character": 4
-                },
-                "end": {
-                    "line": 212,
-                    "character": 13
-                }
-            }
         }
     },
     {

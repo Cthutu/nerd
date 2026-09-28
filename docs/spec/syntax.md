@@ -38,6 +38,7 @@ top-level-private-item
                 ::= top-level-public-item
                   | top-level-on
                   | top-level-assert-on
+                  | build-config
                   | pragma
                   | impl-block
                   | source-test
@@ -165,6 +166,13 @@ ffi-param-list  ::= ffi-param { ',' ffi-param } [ ',' '...' ]
 
 intrinsic-declaration
                 ::= 'intrinsic' STRING '(' ffi-param-list? ')' [ '->' type ]
+
+build-config    ::= 'build' '{' build-item* '}'
+build-item      ::= 'library_path' ':' ( STRING | ENV-PATH )
+                  | 'windowed' ':' ( 'yes' | 'no' )
+                  | 'define' ':' IDENT
+                  | 'on' [ '!' ] STRING '{' build-item* '}'
+ENV-PATH        ::= '$' IDENT [ '/' PATH-SUFFIX ]
 
 pragma          ::= 'pragma' IDENT [ '(' pragma-param-list? ')' ]
 pragma-param    ::= INT | FLOAT | STRING | 'yes' | 'no'
@@ -615,3 +623,7 @@ compile-time, and defaulted parameters. Imported FFI declarations continue to
 use an unnamed marker. Generic cursor reads use `args.next[Type]()`; copying
 uses `args.copy()`. Explicit export naming uses existing public bindings, such
 as `pub myapp_log :: log_impl`.
+
+Build blocks are contextual top-level declarations. See
+[configuration](../configuration.md#source-build-settings) for ordered guard
+evaluation, module-local defines, imported settings and path resolution.

@@ -24,3 +24,6 @@ hi def link nerdCString String
 hi def link nerdString String
 
 let b:current_syntax = "nerd"
+
+" Source-owned build configuration (contextual keyword).
+syn match nerdKeyword "\<build\>\ze\s*{"

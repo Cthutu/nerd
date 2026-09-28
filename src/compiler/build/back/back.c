@@ -1035,6 +1035,96 @@ internal cstr back_end_linux_loader(void)
 }
 #endif
 
+// Resolve source-owned search paths only when producing linker arguments.
+internal bool back_end_append_library_paths(StringBuilder*     command,
+                                            const ProgramInfo* program,
+                                            bool               coff)
+{
+    Arena storage = {0};
+    arena_init(&storage);
+    Arena* arena     = &storage;
+    Array(cstr) seen = NULL;
+    for (usize i = 0; i < array_count(program->library_paths); ++i) {
+        const BuildLibraryPath* entry = &program->library_paths[i];
+        cstr                    path  = back_end_cstr(arena, entry->value);
+        if (entry->environment) {
+            usize end = 1;
+            while (path[end] && path[end] != '/' && path[end] != '\\') {
+                ++end;
+            }
+            cstr name = back_end_cstr(
+                arena, (string){.data = (u8*)path + 1, .count = end - 1});
+            cstr value = getenv(name);
+            if (!value || !*value) {
+                array_free(seen);
+                bool result =
+                    error_runtime("Build library_path in " STRINGP
+                                  ": environment variable %s is not set",
+                                  STRINGV(entry->source_path),
+                                  name);
+                arena_done(&storage);
+                return result;
+            }
+            path = back_end_cstr(
+                arena, string_format(arena, "%s%s", value, path + end));
+        } else if (path[0] != '/' && path[0] != '\\' &&
+                   !(path[0] && path[1] == ':')) {
+            cstr source = back_end_cstr(arena, entry->source_path);
+            path        = path_join(arena, path_dirname(arena, source), path);
+        }
+#if OS_WINDOWS
+        // Forward slashes also prevent a trailing backslash escaping the quote.
+        char* normalized = (char*)back_end_cstr(arena, s(path));
+        for (char* c = normalized; *c; ++c) {
+            if (*c == '\\') {
+                *c = '/';
+            }
+        }
+        path = normalized;
+#endif
+        bool duplicate = false;
+        for (usize j = 0; j < array_count(seen); ++j) {
+#if OS_WINDOWS
+            if (_stricmp(path, seen[j]) == 0) {
+                duplicate = true;
+            }
+#else
+            if (strcmp(path, seen[j]) == 0) {
+                duplicate = true;
+            }
+#endif
+        }
+        if (duplicate) {
+            continue;
+        }
+        array_push(seen, path);
+#if OS_WINDOWS
+        // Quotes and expansion characters cannot safely pass through cmd.exe.
+        if (strpbrk(path, "\"\r\n%!") != NULL) {
+            array_free(seen);
+            arena_done(&storage);
+            return error_runtime(
+                "Build library_path contains unsupported shell characters");
+        }
+        sb_format(command, coff ? " /libpath:\"%s\"" : " -L\"%s\"", path);
+#else
+        (void)coff;
+        sb_append_cstr(command, " -L'");
+        for (cstr c = path; *c; ++c) {
+            if (*c == '\'') {
+                sb_append_cstr(command, "'\\''");
+            } else {
+                sb_append_char(command, *c);
+            }
+        }
+        sb_append_char(command, '\'');
+#endif
+    }
+    array_free(seen);
+    arena_done(&storage);
+    return true;
+}
+
 internal bool back_end_link_native(Arena*                    arena,
                                    const ProgramInfo*        program,
                                    const NerdArtifactConfig* artifacts,
@@ -1067,6 +1157,9 @@ internal bool back_end_link_native(Arena*                    arena,
               "/defaultlib:legacy_stdio_definitions",
               object,
               runtime);
+    if (!back_end_append_library_paths(&command, program, true)) {
+        return false;
+    }
     // lld-link reads SDK/VC library paths from the developer environment's LIB.
     // Translate the existing deduplicated library list to COFF import names.
     for (usize i = 0; i + 3 <= flags.count;) {
@@ -1094,10 +1187,13 @@ internal bool back_end_link_native(Arena*                    arena,
     cstr fini  = path_join(arena, crt, "crtn.o");
     sb_init(&command, arena);
     sb_format(&command,
-              "ld.lld %s -o \"%s\" -L\"%s\" -L/usr/lib -L/lib",
+              "ld.lld %s -o \"%s\"",
               shared ? "-shared" : "-pie",
-              artifacts->binary_path,
-              crt);
+              artifacts->binary_path);
+    if (!back_end_append_library_paths(&command, program, false)) {
+        return false;
+    }
+    sb_format(&command, " -L\"%s\" -L/usr/lib -L/lib", crt);
 #    if ARCH_X86_64
     sb_append_cstr(&command,
                    " -L/usr/lib/x86_64-linux-gnu -L/lib/x86_64-linux-gnu "
@@ -1139,6 +1235,9 @@ internal bool back_end_link_native(Arena*                    arena,
               artifacts->binary_path,
               object,
               runtime);
+    if (!back_end_append_library_paths(&command, program, false)) {
+        return false;
+    }
     back_end_append_hir_extern_link_flags(&command, program, " ");
 #else
     return error_runtime("Direct LLVM linking is not configured for this host");
@@ -1678,6 +1777,10 @@ internal bool back_end_print_c_options(const ProgramInfo*        program,
     }
 #endif
     if (link) {
+        if (!back_end_append_library_paths(&flags, program, false)) {
+            arena_done(&arena);
+            return false;
+        }
         back_end_append_hir_extern_link_flags(&flags, program, " ");
     }
     string output = sb_to_string(&flags);

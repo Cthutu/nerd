@@ -1,0 +1,13 @@
+-- Stable executable settings and a module-local development feature.
+build {
+    windowed: no
+    define: development
+}
+
+use std.io
+
+main :: fn () {
+    on "development" {
+        prn("Source build settings are active.")
+    }
+}
