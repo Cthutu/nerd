@@ -1,5 +1,21 @@
 # Windows return handoff
 
+## Vulkan FFI approach correction — 2026-09-28
+
+The user selected ordinary platform conditionals and a compile-time FFI library
+constant. `std.vulkan` retains `VULKAN_LIBRARY` (`vulkan-1` on Windows, `vulkan`
+on Linux) and shared declarations. The Windows task override and
+`build/run-example-windows.ps1` have been removed: F7 again runs exactly
+`just run-example vktriangle` on both platforms. SDK/CRT, Vulkan library and
+validation-layer discovery remain development-environment prerequisites; see
+README.md. No compiler syntax or machine environment was changed.
+
+The user reported that the earlier wrapper failed in VS Code and rejected that
+launch approach. Its automated launch evidence below is historical and does not
+establish successful user F7 execution. The two unrelated full-suite failures
+remain outstanding. This correction changes task wiring/documentation only;
+the platform-specific binding was already implemented and verified.
+
 ## Focused Vulkan F7 repair — 2026-09-28
 
 Branch `vulkan`, starting at `06c17eec610b227f41ae26239904a264aab096c2`.

@@ -137,18 +137,15 @@ The recipe accepts all directories listed by `just list-examples`, including
 `text-adventure` (whose entry point is `quill.n`). `just run-example triangle`
 or `just re triangle` runs from the example directory so relative assets work.
 
-On Windows, the repository's default VS Code build task (F7) uses
-`build/run-example-windows.ps1` to initialize the Visual Studio x64 SDK/CRT
-environment while keeping Clang and the LLVM tools on PATH. From PowerShell:
+The default VS Code build task (F7) runs `just run-example vktriangle` on both
+Linux and Windows. `std.vulkan` selects its FFI library with ordinary platform
+conditionals and a compile-time string constant: `vulkan` on Linux and
+`vulkan-1` on Windows. The function declarations are shared; no platform-specific
+launcher or new FFI syntax is required.
 
-```powershell
-powershell.exe -NoProfile -File build/run-example-windows.ps1 -Example vktriangle
-```
-
-Add `-BuildOnly` to compile without opening the window. Vulkan examples require
-the Windows Vulkan SDK with `VULKAN_SDK` pointing to its root. Restart VS Code
-after installing the SDK or changing that variable. The wrapper adds its `Lib`
-directory and validation-layer manifests for this process only. `std.vulkan`
-links `vulkan-1` on Windows and `vulkan` on Linux. The current `vktriangle`
-example creates a window, instance and surface and selects a physical device;
-it does not yet draw a triangle. Press Q or Escape to exit.
+The native development environment must provide the external libraries. On
+Windows, configure the SDK/CRT environment described in [toolchain setup](docs/toolchain.md),
+then add `$env:VULKAN_SDK/Lib` to `LIB`. If the SDK's validation layer is not
+registered, add `$env:VULKAN_SDK/Bin` to `VK_ADD_LAYER_PATH`. Launch VS Code from
+that configured environment so its tasks inherit the settings. These are
+library-discovery prerequisites, separate from choosing the FFI library name.
