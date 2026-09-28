@@ -1,4 +1,5 @@
 use std.frame
+use std.slice
 use std.vulkan
 
 main :: fn () -> ?void {
@@ -44,6 +45,7 @@ VulkanContext :: plex {
     instance           VkInstance
     surface            VkSurfaceKHR
     physical_device    VkPhysicalDevice
+    queue_family_index u32
 }
 
 vk_init :: fn (frame: ^Frame) -> ?VulkanContext {
@@ -58,11 +60,16 @@ vk_init :: fn (frame: ^Frame) -> ?VulkanContext {
     create_vk_surface(^ctx)?
     undo destroy_vk_surface(^ctx)
     create_vk_physical_device(^ctx)?
+    undo destroy_vk_physical_device(^ctx)
+    create_vk_queue(^ctx)?
+    undo destroy_vk_queue(^ctx)
 
     return ctx
 }
 
 vk_done :: fn (ctx: ^VulkanContext) {
+    destroy_vk_queue(ctx)
+    destroy_vk_physical_device(ctx)
     destroy_vk_surface(ctx)
     destroy_vk_instance(ctx)
 }
@@ -198,4 +205,46 @@ create_vk_physical_device :: fn (ctx: ^VulkanContext) -> ?void {
 
     prn("No discrete Vulkan GPU found")
     return nil
+}
+
+destroy_vk_physical_device :: fn (ctx: ^VulkanContext) {
+    -- Physical devices are borrowed from the instance; no separate cleanup.
+    ctx.physical_device = nil
+}
+
+create_vk_queue :: fn (ctx: ^VulkanContext) -> ?void {
+    assert ctx != nil, "Vulkan context must not be nil"
+
+    -- Queue creation logic goes here.
+    queue_family_count : u32
+    vkGetPhysicalDeviceQueueFamilyProperties2(ctx.physical_device,
+                                              ^queue_family_count,
+                                              nil)
+
+    queue_families : [queue_family_count]VkQueueFamilyProperties
+    queue_families.fill(^{
+        sType: VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2
+        ...
+    })
+    vkGetPhysicalDeviceQueueFamilyProperties2(ctx.physical_device,
+                                              ^queue_family_count,
+                                              queue_families.data)
+
+    for i, queue_family in queue_families {
+        has_present_support : VkBool32
+        _ := vkGetPhysicalDeviceSurfaceSupportKHR(ctx.physical_device,
+                                                  i.as(u32),
+                                                  ctx.surface,
+                                                  ^has_present_support)
+
+        on ((queue_family.queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0) &&
+            (has_present_support != 0) => {
+            prn($"Found Vulkan queue family: {queue_family^} at index {i}")
+            ctx.queue_family_index = i.as(u32)
+            return
+        }
+    }
+}
+
+destroy_vk_queue :: fn (_ctx: ^VulkanContext) {
 }
