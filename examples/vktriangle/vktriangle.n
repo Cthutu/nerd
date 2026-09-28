@@ -221,7 +221,7 @@ create_vk_queue :: fn (ctx: ^VulkanContext) -> ?void {
                                               ^queue_family_count,
                                               nil)
 
-    queue_families : [queue_family_count]VkQueueFamilyProperties
+    queue_families : [queue_family_count]VkQueueFamilyProperties2
     queue_families.fill(^{
         sType: VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2
         ...
@@ -237,7 +237,7 @@ create_vk_queue :: fn (ctx: ^VulkanContext) -> ?void {
                                                   ctx.surface,
                                                   ^has_present_support)
 
-        on ((queue_family.queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0) &&
+        on ((queue_family.queueFamilyProperties.queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0) &&
             (has_present_support != 0) => {
             prn($"Found Vulkan queue family: {queue_family^} at index {i}")
             ctx.queue_family_index = i.as(u32)
