@@ -1,0 +1,4 @@
+[PASS] llvm-debug: parent console live output, mixed handles, detached, pipes/stdin, files
+[PASS] llvm-release: parent console live output, mixed handles, detached, pipes/stdin, files
+[PASS] cgen-debug: parent console live output, mixed handles, detached, pipes/stdin, files
+[PASS] cgen-release: parent console live output, mixed handles, detached, pipes/stdin, files

@@ -3466,7 +3466,8 @@ bool cgen_save_program(const ProgramInfo*        program,
             sb_append_cstr(&c->out,
                            "#if defined(_WIN32)\nint WINAPI WinMain(HINSTANCE "
                            "instance,HINSTANCE previous,LPSTR command,int "
-                           "show) { return main(0,NULL); }\n#endif\n");
+                           "show) { nrt_windows_init_stdio(); return main(0,NULL); }\n"
+                           "#endif\n");
         }
     }
     bool ok = !c->failed;

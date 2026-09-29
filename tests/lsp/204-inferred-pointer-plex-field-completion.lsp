@@ -314,11 +314,11 @@ main :: fn () {
                                 "uri": "__REPO_URI__/mods/std/vulkan/mod.n",
                                 "range": {
                                     "start": {
-                                        "line": 212,
+                                        "line": 218,
                                         "character": 4
                                     },
                                     "end": {
-                                        "line": 212,
+                                        "line": 218,
                                         "character": 24
                                     }
                                 }
@@ -393,11 +393,11 @@ main :: fn () {
                                 "uri": "__REPO_URI__/mods/std/vulkan/mod.n",
                                 "range": {
                                     "start": {
-                                        "line": 192,
+                                        "line": 198,
                                         "character": 4
                                     },
                                     "end": {
-                                        "line": 192,
+                                        "line": 198,
                                         "character": 21
                                     }
                                 }

@@ -44,6 +44,14 @@ windowed requirement. On Windows this controls the subsystem and generated
 entry wrapper. Other platforms ignore its executable effect. Legacy
 `pragma windowed` remains supported as a local `windowed: yes` declaration.
 
+Windows windowed executables preserve inherited standard streams and attach to
+an existing parent console when a stream is missing. This lets `prn`/`eprn`
+write to a launching terminal, including VS Code, without opening another
+console window. Launching from Explorer without a parent console stays quiet.
+Redirected pipes and files remain redirected; connected console output is
+unbuffered so messages appear while the application runs. The same startup
+handling is included in native LLVM output and the generated C `WinMain`.
+
 Quoted paths are literal and relative to the declaring source file, including
 module parts. `$ENV/suffix` expands a single environment variable followed by
 a literal suffix; spaces in its value remain part of one path. Use forward

@@ -1,0 +1,8 @@
+Native pseudoterminal: just run-example vktriangle
+Observed live output while process 41272 and window 44635910 remained open:
+Vulkan instance created successfully
+Found Vulkan physical device: NVIDIA GeForce RTX 4070 SUPER
+Selected Vulkan physical device: NVIDIA GeForce RTX 4070 SUPER
+Found Vulkan queue family: 16 queues: graphics, compute, transfer, sparse binding at index 0
+Sent WM_KEYDOWN Escape to this launched window only.
+The complete Just command exited 0 after Escape.

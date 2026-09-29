@@ -1,0 +1,21 @@
+C:\Users\matt\AppData\Local\Temp\nerd windows stdio 2mk3hqjf\parent.c:9:20: warning: 'fopen' is deprecated: This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [-Wdeprecated-declarations]
+    9 |     FILE* report = fopen(argv[3], "w");
+      |                    ^
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\ucrt\stdio.h:212:20: note: 'fopen' has been explicitly marked deprecated here
+  212 |     _Check_return_ _CRT_INSECURE_DEPRECATE(fopen_s)
+      |                    ^
+C:\Program Files\Microsoft Visual Studio\2022\Professional\VC\Tools\MSVC\14.44.35207\include\vcruntime.h:368:55: note: expanded from macro '_CRT_INSECURE_DEPRECATE'
+  368 |         #define _CRT_INSECURE_DEPRECATE(_Replacement) _CRT_DEPRECATE_TEXT(    \
+      |                                                       ^
+C:\Program Files\Microsoft Visual Studio\2022\Professional\VC\Tools\MSVC\14.44.35207\include\vcruntime.h:358:47: note: expanded from macro '_CRT_DEPRECATE_TEXT'
+  358 | #define _CRT_DEPRECATE_TEXT(_Text) __declspec(deprecated(_Text))
+      |                                               ^
+1 warning generated.
+Traceback (most recent call last):
+  File "C:\Users\matt\nerd\build\test_windows_stdio.py", line 182, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\matt\nerd\build\test_windows_stdio.py", line 154, in main
+    assert result.returncode == 0, (label, mode, result.returncode, text)
+           ^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ('llvm-debug', 'console', 16, 'mode=console live=0 exit=0\nconsole stdout=0 stderr=0\n')

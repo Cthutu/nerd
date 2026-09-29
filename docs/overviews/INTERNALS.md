@@ -1113,3 +1113,31 @@ error recovery recognizes `build {` as a declaration boundary.
 order, sibling conflicts, folder parts, lazy environment resolution and actual
 native library precedence. Formatter fixtures cover valid blocks and recovery
 beside a malformed function. Legacy pragma fixtures remain compatibility tests.
+
+## Windows windowed standard streams
+
+The generated native and C `WinMain` wrappers call `nrt_windows_init_stdio`
+before module initialization and the user's entry point. This helper in
+`data/nrt.c` preserves valid inherited stdin/stdout/stderr handles independently.
+If any are missing, it tries `AttachConsole(ATTACH_PARENT_PROCESS)`; it never
+calls `AllocConsole` or detaches from an existing console. Failure to find a
+parent console is normal for Explorer launches and produces no diagnostic.
+
+Attachment can change the Windows standard-handle table, so the helper restores
+inherited redirections before reconnecting missing CRT streams. GUI startup can
+leave `_fileno` at the CRT's special -2 value: guard this before `_get_osfhandle`
+and reopen only unusable streams. Each repaired stream owns a duplicated handle
+through `_open_osfhandle`/`_dup2`, with temporary handles closed after transfer.
+A missing standard handle can be obtained from CONIN$/CONOUT$ only when an
+existing console connection is confirmed. Connected console output uses
+unbuffered stdio because the Windows CRT does not provide terminal line
+buffering; redirected files and pipes retain their normal buffering.
+Console executables, library initialization and non-Windows startup are unchanged.
+
+`build/test_windows_stdio.py` creates a hidden native parent console and checks
+live output before child exit, explicit inherited console handles, mixed
+console/file redirection, all-stream pipe redirection including input, and
+Explorer-style detached launches with no console allocation. It exercises
+native LLVM and generated C output in both debug and release modes, and is
+included in `just test`. The Vulkan Just recipe is also checked in a Windows
+pseudoterminal; redirected capture alone cannot establish console attachment.

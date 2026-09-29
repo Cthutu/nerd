@@ -81,7 +81,7 @@ back_end_llvm_runtime_root_main_info(const FrontEndState* root)
                 sema->types[sema->type_param_types[type->first_param_type + 1]]
                         .kind == STK_Void;
         }
-        info.takes_args   = fn_type->param_count == 1;
+        info.takes_args = fn_type->param_count == 1;
         // The host entry point returns i32, but Nerd main may return any
         // integer width. Calling a narrow main as i32 reads undefined bits.
         if (return_type < array_count(sema->types)) {
@@ -331,7 +331,8 @@ back_end_llvm_runtime_windowed_epilogue(Arena*                   arena,
 {
     StringBuilder sb = {0};
     sb_init(&sb, arena);
-    sb_append_cstr(&sb, "declare void @init()\n");
+    sb_append_cstr(
+        &sb, "declare void @init()\ndeclare void @nrt_windows_init_stdio()\n");
     back_end_append_core_lifecycle_declarations(&sb, core_lifecycle);
     if (main_info.takes_args) {
         sb_append_cstr(&sb, "declare i64 @strlen(ptr)\n");
@@ -350,6 +351,7 @@ back_end_llvm_runtime_windowed_epilogue(Arena*                   arena,
                    "entry:\n"
                    "  %argc64 = add i64 0, 0\n"
                    "  %argv = inttoptr i64 0 to ptr\n"
+                   "  call void @nrt_windows_init_stdio()\n"
                    "  call void @init()\n");
     back_end_append_core_lifecycle_call(&sb, core_lifecycle, true);
     back_end_append_main_call(&sb, main_info);

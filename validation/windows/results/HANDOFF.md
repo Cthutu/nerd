@@ -1,5 +1,27 @@
 # Windows return handoff
 
+## Windowed terminal output — 2026-09-29
+
+On `vulkan`, starting from `26c3982c`, the generated Windows GUI entry point
+connects standard streams before initialization/main. Existing pipes/files stay
+redirected; missing streams can attach to the parent's console. No console is
+allocated, and connected console output appears immediately. Both LLVM and C
+backends use the helper. `windowed: yes` and the Just/F7 command remain unchanged.
+
+Fresh Clang debug/release builds and native stdio integration tests pass,
+including hidden parent consoles, explicit inherited handles, mixed redirection,
+stdin/pipes/files, and detached launches. The previous compiler fails the new
+console regression. The Vulkan example prints live instance/device/queue-family
+messages in a Windows pseudoterminal and exits 0 after Escape. Direct LLVM
+toolchain checks pass. Full fixtures: 1,169 pass, 3 failures, 15 skips; one stale
+Vulkan LSP snapshot is repaired and all 212 LSP tests then pass. The same two
+pre-existing fixture failures remain. See [evidence](20260929-windowed-stdio/README.md).
+
+The user's existing example edit is preserved and excluded from this commit.
+No global compiler/editor installation changed. A repeat manual VS Code F7
+observation was requested but has not been received; Linux execution is not
+claimed. The new native test is wired into `just test` with a non-Windows skip.
+
 ## Vulkan module SDK path — 2026-09-28
 
 After `7c1cd3e9`, `std.vulkan` now contributes `$VULKAN_SDK/Lib` on Windows.

@@ -7,6 +7,8 @@
 #include <string.h>
 #if defined(_WIN32)
 #include <windows.h>
+#include <fcntl.h>
+#include <io.h>
 #else
 #include <sys/mman.h>
 #include <unistd.h>
@@ -73,6 +75,97 @@ void* nrt_arena_alloc(NrtArena*   arena,
                       uint32_t    line);
 void nrt_core_init(void);
 void nrt_core_done(void);
+
+#if defined(_WIN32)
+static bool nrt_windows_valid_handle(HANDLE handle)
+{
+    if (handle == NULL || handle == INVALID_HANDLE_VALUE) return false;
+    SetLastError(NO_ERROR);
+    return GetFileType(handle) != FILE_TYPE_UNKNOWN || GetLastError() == NO_ERROR;
+}
+
+static HANDLE nrt_windows_stream_handle(FILE* stream)
+{
+    // An unattached GUI process can have the special CRT descriptor -2.
+    // Do not pass it to _get_osfhandle, which invokes the invalid-parameter handler.
+    int fd = _fileno(stream);
+    return fd >= 0 ? (HANDLE)_get_osfhandle(fd) : INVALID_HANDLE_VALUE;
+}
+
+static void nrt_windows_connect_stream(FILE* stream, HANDLE handle, bool input)
+{
+    if (nrt_windows_valid_handle(nrt_windows_stream_handle(stream)) ||
+        !nrt_windows_valid_handle(handle)) return;
+
+    HANDLE owned = NULL;
+    if (!DuplicateHandle(GetCurrentProcess(), handle, GetCurrentProcess(),
+                         &owned, 0, FALSE, DUPLICATE_SAME_ACCESS)) return;
+    // Reopen only an unusable FILE. This gives the CRT's -2 placeholder a real
+    // descriptor, then associates it with a separately owned copy of the handle.
+    FILE* reopened = NULL;
+    if (freopen_s(&reopened, "NUL", input ? "r" : "w", stream) != 0) {
+        CloseHandle(owned);
+        return;
+    }
+    int fd = _open_osfhandle((intptr_t)owned,
+                            _O_TEXT | (input ? _O_RDONLY : _O_WRONLY));
+    if (fd < 0) {
+        CloseHandle(owned);
+        return;
+    }
+    if (_dup2(fd, _fileno(stream)) == 0) clearerr(stream);
+    _close(fd);
+}
+
+// Called only by the generated GUI entry point, before module initialization.
+// Never create a console: Explorer launches must remain window-only.
+void nrt_windows_init_stdio(void)
+{
+    const DWORD ids[] = {STD_INPUT_HANDLE, STD_OUTPUT_HANDLE, STD_ERROR_HANDLE};
+    FILE* streams[] = {stdin, stdout, stderr};
+    HANDLE inherited[3];
+    bool missing = false;
+    for (size_t i = 0; i < 3; ++i) {
+        inherited[i] = GetStdHandle(ids[i]);
+        if (!nrt_windows_valid_handle(inherited[i])) {
+            inherited[i] = nrt_windows_stream_handle(streams[i]);
+        }
+        missing |= !nrt_windows_valid_handle(inherited[i]);
+    }
+    if (missing) AttachConsole(ATTACH_PARENT_PROCESS);
+
+    for (size_t i = 0; i < 3; ++i) {
+        HANDLE handle = inherited[i];
+        if (nrt_windows_valid_handle(handle)) {
+            // Attachment may replace the Win32 standard handle table. Preserve
+            // each inherited redirection independently, including mixed output.
+            SetStdHandle(ids[i], handle);
+        } else {
+            handle = GetStdHandle(ids[i]);
+        }
+        // STARTF_USESTDHANDLES can leave a missing entry empty even on attachment.
+        bool opened = false;
+        if (!nrt_windows_valid_handle(handle) && GetConsoleCP() != 0) {
+            handle = CreateFileW(i == 0 ? L"CONIN$" : L"CONOUT$",
+                                 GENERIC_READ | GENERIC_WRITE,
+                                 FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
+                                 OPEN_EXISTING, 0, NULL);
+            opened = nrt_windows_valid_handle(handle);
+        }
+        nrt_windows_connect_stream(streams[i], handle, i == 0);
+        HANDLE connected = nrt_windows_stream_handle(streams[i]);
+        if (nrt_windows_valid_handle(connected)) {
+            SetStdHandle(ids[i], connected);
+            DWORD mode;
+            if (i != 0 && GetConsoleMode(connected, &mode)) {
+                // The Windows CRT does not implement terminal line buffering.
+                setvbuf(streams[i], NULL, _IONBF, 0);
+            }
+        }
+        if (opened) CloseHandle(handle);
+    }
+}
+#endif
 
 static void nrt_eprintf(const char* format, ...)
 {
