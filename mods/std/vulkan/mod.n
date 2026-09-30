@@ -6,7 +6,7 @@
 
 build {
     on "windows" {
-        library_path: $VULKAN_SDK / Lib
+        library_path: $VULKAN_SDK/Lib
     }
 }
 

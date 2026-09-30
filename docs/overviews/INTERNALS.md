@@ -1155,3 +1155,10 @@ Explorer-style detached launches with no console allocation. It exercises
 native LLVM and generated C output in both debug and release modes, and is
 included in `just test`. The Vulkan Just recipe is also checked in a Windows
 pseudoterminal; redirected capture alone cannot establish console attachment.
+
+Repository formatting (`build/format.py`, including `just install`) first builds
+the current release compiler, then uses that exact executable for Nerd files.
+It does not prefer an existing debug compiler or fall back to PATH: either may
+predate syntax in the checkout and silently rewrite it through formatter
+recovery. A failed compiler build stops the workflow before any source file is
+formatted. VS Code also invokes `nerd format`, using its configured executable.

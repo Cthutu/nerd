@@ -3,7 +3,6 @@ from __future__ import annotations
 import subprocess
 import sys
 from pathlib import Path
-from shutil import which
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -47,21 +46,21 @@ def iter_source_files(search_roots: list[Path], suffixes: set[str]) -> list[Path
     return sorted(set(files))
 
 
-def nerd_executable() -> str | None:
-    for candidate in [
-        ROOT
-        / "_bin"
-        / ("nerd-debug.exe" if sys.platform == "win32" else "nerd-debug"),
-        ROOT / "_bin" / ("nerd.exe" if sys.platform == "win32" else "nerd"),
-    ]:
-        if candidate.exists():
-            return str(candidate)
-    return which("nerd")
-
-
 def main() -> int:
     c_files = iter_source_files(C_SEARCH_ROOTS, C_SUFFIXES)
     nerd_files = iter_source_files(NERD_SEARCH_ROOTS, NERD_SUFFIXES)
+
+    # Formatting runs during installation, before the installed executable is
+    # replaced. Never select an old debug build or a compiler from PATH.
+    nerd = ROOT / "_bin" / ("nerd.exe" if sys.platform == "win32" else "nerd")
+    if nerd_files:
+        result = subprocess.run(
+            [sys.executable, str(ROOT / "build" / "build.py"),
+             "-r", "nerd", "--skip-mod-sync"],
+            cwd=ROOT,
+        )
+        if result.returncode != 0:
+            return result.returncode
 
     if c_files:
         result = subprocess.run(
@@ -71,15 +70,8 @@ def main() -> int:
             return result.returncode
 
     if nerd_files:
-        nerd = nerd_executable()
-        if nerd is None:
-            print(
-                "Could not find nerd formatter. Build nerd or install it first.",
-                file=sys.stderr,
-            )
-            return 1
         for path in nerd_files:
-            result = subprocess.run([nerd, "format", "-v", str(path)])
+            result = subprocess.run([str(nerd), "format", "-v", str(path)])
             if result.returncode != 0:
                 return result.returncode
 
