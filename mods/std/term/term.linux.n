@@ -1032,7 +1032,11 @@ test "framebuffer text stores ascii codepoints" {
     term_fb_release()
     assert term_fb_resize(8, 3)
 
-    term_fb_text(0, 0, "AB", ink = COLOUR_TRANSPARENT, paper = COLOUR_TRANSPARENT)
+    term_fb_text(0,
+                 0,
+                 "AB",
+                 ink = COLOUR_TRANSPARENT,
+                 paper = COLOUR_TRANSPARENT)
 
     assert term_fb_cells[term_fb_index(0, 0)].ch == 'A'.as(u32)
     assert term_fb_cells[term_fb_index(1, 0)].ch == 'B'.as(u32)
@@ -1273,7 +1277,11 @@ test "framebuffer text clips through view using source offsets" {
     assert term_fb_resize(4, 2)
     term_view(1, 0, 2, 1)
 
-    term_fb_text(-1, 0, "ABCD", ink = COLOUR_TRANSPARENT, paper = COLOUR_TRANSPARENT)
+    term_fb_text(-1,
+                 0,
+                 "ABCD",
+                 ink = COLOUR_TRANSPARENT,
+                 paper = COLOUR_TRANSPARENT)
 
     assert term_fb_cell_ch(0, 0) == ' '.as(u32)
     assert term_fb_cell_ch(1, 0) == 'B'.as(u32)
@@ -1292,7 +1300,11 @@ test "framebuffer wide glyphs do not spill outside clipped view" {
     bytes.push(0xe7)
     bytes.push(0x95)
     bytes.push(0x8c)
-    term_fb_text(0, 0, bytes.as(string), ink = COLOUR_TRANSPARENT, paper = COLOUR_TRANSPARENT)
+    term_fb_text(0,
+                 0,
+                 bytes.as(string),
+                 ink = COLOUR_TRANSPARENT,
+                 paper = COLOUR_TRANSPARENT)
 
     assert term_fb_cell_ch(1, 0) == ' '.as(u32)
     assert term_fb_cell_ch(2, 0) == ' '.as(u32)
@@ -1710,8 +1722,12 @@ test "terminal hooks relay user data" {
     term_last_rows                   = 25
 
     payload := (^term_test_payload).as(^void)
-    term_hook_simulation(50.as(Duration), term_capture_simulate, user_data = payload)
-    term_hook_presentation(50.as(Duration), term_capture_present, user_data = payload)
+    term_hook_simulation(50.as(Duration),
+                         term_capture_simulate,
+                         user_data = payload)
+    term_hook_presentation(50.as(Duration),
+                           term_capture_present,
+                           user_data = payload)
 
     term_run_simulation_hook(100.as(Instant))
     term_run_presentation_hook(100.as(Instant))

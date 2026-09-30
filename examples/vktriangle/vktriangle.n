@@ -34,7 +34,7 @@ main :: fn () -> ?void {
             KeyPress { scan_code: Q },
             KeyPress { scan_code: Escape } => {
                 -- Deferred cleanup releases Vulkan before the native window.
-                return
+                frame_system.close(^main_window)
             }
         }
     }

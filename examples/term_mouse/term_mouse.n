@@ -59,7 +59,11 @@ mouse_present :: fn (present: TermPresent) {
                 ink = rgb(110, 190, 255),
                 paper = rgb(10, 16, 24))
 
-    term_fb_text(2, 1, "std.term mouse", ink = rgb(255, 245, 180), paper = rgb(10, 16, 24))
+    term_fb_text(2,
+                 1,
+                 "std.term mouse",
+                 ink = rgb(255, 245, 180),
+                 paper = rgb(10, 16, 24))
     term_fb_text(2,
                  3,
                  $"cell {mouse.x}, {mouse.y}",
@@ -96,14 +100,22 @@ mouse_present :: fn (present: TermPresent) {
         last_y >= 0 &&
         last_x < present.width.as(i32) &&
         last_y < present.height.as(i32) => {
-        term_fb_put(last_x, last_y, '.', ink = rgb(110, 190, 255), paper = rgb(10, 16, 24))
+        term_fb_put(last_x,
+                    last_y,
+                    '.',
+                    ink = rgb(110, 190, 255),
+                    paper = rgb(10, 16, 24))
     }
 
     on mouse.x >= 0 &&
         mouse.y >= 0 &&
         mouse.x < present.width.as(i32) &&
         mouse.y < present.height.as(i32) => {
-        term_fb_put(mouse.x, mouse.y, '+', ink = rgb(10, 16, 24), paper = rgb(255, 245, 180))
+        term_fb_put(mouse.x,
+                    mouse.y,
+                    '+',
+                    ink = rgb(10, 16, 24),
+                    paper = rgb(255, 245, 180))
     }
 }
 

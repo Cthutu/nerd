@@ -1474,7 +1474,9 @@ term_input_event_from_modified_key :: fn (key      : ?TermScanCode,
     return on key {
         code => {
             flags := term_csi_modifier_flags(modifier)
-            return term_key_event(code, action = TermKeyAction.Press, modifiers = flags)
+            return term_key_event(code,
+                                  action = TermKeyAction.Press,
+                                  modifiers = flags)
         }
 
         else => TermInputEvent.None
@@ -1637,7 +1639,10 @@ term_input_event_from_kitty :: fn (parameters: TermCsiParameters) -> TermInputEv
     on text > 0 => character = text
     subfield : u32 = 1
     for {
-        extra := term_csi_parameter(parameters, 2, subfield, fallback = 0xffffffff.as(u32))
+        extra := term_csi_parameter(parameters,
+                                    2,
+                                    subfield,
+                                    fallback = 0xffffffff.as(u32))
         on extra == 0xffffffff.as(u32) => break
         on extra > 0 => {
             term_pending_events.push(TermInputEvent.Character(extra))

@@ -404,7 +404,11 @@ dungeon_draw_cell :: fn (x: u32, y: u32) {
 
                 term_fb_put(x.as(i32), y.as(i32), '#', ink = ink, paper = paper)
             } else {
-                term_fb_put(x.as(i32), y.as(i32), ' ', ink = stone_void, paper = rgb(0, 0, 0))
+                term_fb_put(x.as(i32),
+                            y.as(i32),
+                            ' ',
+                            ink = stone_void,
+                            paper = rgb(0, 0, 0))
             }
         }
 
@@ -416,7 +420,11 @@ dungeon_draw_cell :: fn (x: u32, y: u32) {
         }
 
         Tile.Door => {
-            term_fb_put(x.as(i32), y.as(i32), '+', ink = door_ink, paper = door_paper)
+            term_fb_put(x.as(i32),
+                        y.as(i32),
+                        '+',
+                        ink = door_ink,
+                        paper = door_paper)
         }
     }
 }
@@ -427,7 +435,13 @@ dungeon_draw :: fn (width: u32, height: u32) {
         map_height != dungeon_generation_height(height) => dungeon_generate(width, height)
 
     term_fb_clear()
-    term_fb_fill_rect(0, 0, width, height, ch = ' ', ink = text_ink, paper = rgb(0, 0, 0))
+    term_fb_fill_rect(0,
+                      0,
+                      width,
+                      height,
+                      ch = ' ',
+                      ink = text_ink,
+                      paper = rgb(0, 0, 0))
 
     offset_x := ((width - map_width) / 2).as(i32)
     for y: u32 = 0; y < map_height; y += 1 {

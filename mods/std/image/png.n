@@ -864,6 +864,7 @@ test "png parses valid IHDR IDAT and IEND" {
             assert png.idat_chunks[0].count == 0, "empty idat count"
             png.free()
         }
+
         else => {
         }
     }
@@ -908,6 +909,7 @@ test "png reads IHDR chunk" {
             assert value.data.count == 13
             assert value.crc == 914901462.as(u32)
         }
+
         else => {
             assert no
         }
@@ -1010,6 +1012,7 @@ test "png collects IDAT chunks" {
             assert png.idat_chunks[0][1] == 20
             png.free()
         }
+
         else => {
             assert no
         }
@@ -1105,12 +1108,14 @@ test "png IDAT payload can be decompressed" {
                     assert scanline[4] == 255
                     scanline.free()
                 }
+
                 else => {
                     assert no
                 }
             }
             png.free()
         }
+
         else => {
             assert no
         }
@@ -1133,6 +1138,7 @@ test "png unfilters none scanline" {
             assert pixels[5] == 60, "blue 1"
             pixels.free()
         }
+
         else => {
             assert no
         }
@@ -1154,6 +1160,7 @@ test "png unfilters sub scanline" {
             assert pixels[5] == 35
             pixels.free()
         }
+
         else => {
             assert no
         }
@@ -1175,6 +1182,7 @@ test "png unfilters up scanline" {
             assert pixels[5] == 10
             pixels.free()
         }
+
         else => {
             assert no
         }
@@ -1196,6 +1204,7 @@ test "png unfilters average scanline" {
             assert pixels[5] == 25
             pixels.free()
         }
+
         else => {
             assert no
         }
@@ -1232,6 +1241,7 @@ test "png unfilters paeth scanline" {
             assert pixels[11] == 65
             pixels.free()
         }
+
         else => {
             assert no
         }
@@ -1325,6 +1335,7 @@ test "png decodes embedded 1x1 RGBA fixture" {
             assert image.data[3] == 128, "alpha"
             image.free()
         }
+
         else => {
             assert no
         }
@@ -1434,6 +1445,7 @@ test "png decodes embedded 2x2 RGB fixture to RGBA" {
             assert image.data[11] == 255
             image.free()
         }
+
         else => {
             assert no
         }
@@ -1447,6 +1459,7 @@ test "png decodes embedded 2x2 RGB fixture to RGBA" {
             assert image.data.count == 12
             image.free()
         }
+
         else => {
             assert no
         }
@@ -1478,6 +1491,7 @@ test "png decodes embedded 2x2 RGB fixture to RGBA" {
             assert image.data[15] == 255
             image.free()
         }
+
         else => {
             assert no
         }
@@ -1634,6 +1648,7 @@ test "png decodes greyscale and greyscale alpha fixtures" {
             assert image.data[0] == 17
             image.free()
         }
+
         else => {
             assert no
         }
@@ -1649,6 +1664,7 @@ test "png decodes greyscale and greyscale alpha fixtures" {
             assert image.data[1] == 128
             image.free()
         }
+
         else => {
             assert no
         }
@@ -1843,6 +1859,7 @@ test "png applies tRNS transparency" {
             assert image.data[3] == 255
             image.free()
         }
+
         else => {
             assert no
         }
@@ -1862,6 +1879,7 @@ test "png applies tRNS transparency" {
             assert image.data[7] == 255
             image.free()
         }
+
         else => {
             assert no
         }
@@ -2072,6 +2090,7 @@ test "png decodes indexed fixtures" {
             assert image.data[5] == 220
             image.free()
         }
+
         else => {
             assert no
         }
@@ -2091,6 +2110,7 @@ test "png decodes indexed fixtures" {
             assert image.data[7] == 255
             image.free()
         }
+
         else => {
             assert no
         }
@@ -2189,6 +2209,7 @@ test "png converts to desired greyscale channels" {
             assert image.data[3] == 255
             image.free()
         }
+
         else => {
             assert no
         }
@@ -2205,6 +2226,7 @@ test "png converts to desired greyscale channels" {
             assert image.data[3] == 255
             image.free()
         }
+
         else => {
             assert no
         }
@@ -2335,6 +2357,7 @@ test "png rejects unsupported bit depth and interlace" {
     on sixteen_bit_result {
         UnsupportedFormat! => {
         }
+
         else => {
             assert no
         }
@@ -2344,6 +2367,7 @@ test "png rejects unsupported bit depth and interlace" {
     on adam7_result {
         UnsupportedFormat! => {
         }
+
         else => {
             assert no
         }
@@ -2392,6 +2416,7 @@ test "png rejects missing IEND" {
     on parsed {
         UnexpectedEnd! => {
         }
+
         else => {
             assert no
         }
@@ -2427,6 +2452,7 @@ test "png rejects truncated chunk data" {
     on parsed {
         UnexpectedEnd! => {
         }
+
         else => {
             assert no
         }

@@ -345,14 +345,14 @@ impl FrameSystem {
     -- Creates an empty frame system ready to allocate frame IDs.
     pub init :: fn () -> Self {
         return {
-            frames : nil
-            next_id_hint : 1
-            left_shift_down : no
-            right_shift_down : no
-            left_control_down : no
+            frames             : nil
+            next_id_hint       : 1
+            left_shift_down    : no
+            right_shift_down   : no
+            left_control_down  : no
             right_control_down : no
-            left_alt_down : no
-            right_alt_down : no
+            left_alt_down      : no
+            right_alt_down     : no
         }
     }
 
@@ -383,43 +383,37 @@ impl FrameSystem {
         frame_update_impl(system, frame)
     }
 
-    pub poll :: fn (system: ^Self, frame: ^Frame) -> FrameEvent {
-        return frame_poll_impl(system, frame)
-    }
+    pub poll :: fn (system: ^Self, frame: ^Frame) => frame_poll_impl(system, frame)
 
     pub close :: fn (system: ^Self, frame: ^Frame) {
         frame_destroy_impl(system, frame)
     }
 
     pub present_rects :: fn (system : ^Self,
-    frame : ^Frame,
-    rects : []FramePixelRect) {
+                             frame  : ^Frame,
+                             rects  : []FramePixelRect) {
         frame_present_rects_impl(system, frame, rects)
     }
 
     pub present_pixels :: fn (system : ^Self,
-    frame : ^Frame,
-    buffer : FramePixelBuffer) {
+                              frame  : ^Frame,
+                              buffer : FramePixelBuffer) {
         frame_present_pixels_impl(system, frame, buffer)
     }
 
     pub present_scaled_pixels :: fn (system : ^Self,
-    frame : ^Frame,
-    buffer : FrameScaledPixelBuffer) {
+                                     frame  : ^Frame,
+                                     buffer : FrameScaledPixelBuffer) {
         frame_present_scaled_pixels_impl(system, frame, buffer)
     }
 
-    pub opengl_init :: fn (system: ^Self, frame: ^Frame) -> bool {
-        return frame_opengl_init_impl(system, frame)
-    }
+    pub opengl_init :: fn (system: ^Self, frame: ^Frame) => frame_opengl_init_impl(system, frame)
 
     pub opengl_done :: fn (system: ^Self, frame: ^Frame) {
         frame_opengl_done_impl(system, frame)
     }
 
-    pub opengl_make_current :: fn (system: ^Self, frame: ^Frame) -> bool {
-        return frame_opengl_make_current_impl(system, frame)
-    }
+    pub opengl_make_current :: fn (system: ^Self, frame: ^Frame) => frame_opengl_make_current_impl(system, frame)
 
     pub opengl_swap_buffers :: fn (system: ^Self, frame: ^Frame) {
         frame_opengl_swap_buffers_impl(system, frame)
@@ -429,61 +423,39 @@ impl FrameSystem {
         return system.left_shift_down || system.right_shift_down
     }
 
-    pub is_left_shift_down :: fn (system: ^Self) -> bool {
-        return system.left_shift_down
-    }
+    pub is_left_shift_down :: fn (system: ^Self) => system.left_shift_down
 
-    pub is_right_shift_down :: fn (system: ^Self) -> bool {
-        return system.right_shift_down
-    }
+    pub is_right_shift_down :: fn (system: ^Self) => system.right_shift_down
 
     pub is_ctrl_down :: fn (system: ^Self) -> bool {
         return system.left_control_down || system.right_control_down
     }
 
-    pub is_left_ctrl_down :: fn (system: ^Self) -> bool {
-        return system.left_control_down
-    }
+    pub is_left_ctrl_down :: fn (system: ^Self) => system.left_control_down
 
-    pub is_right_ctrl_down :: fn (system: ^Self) -> bool {
-        return system.right_control_down
-    }
+    pub is_right_ctrl_down :: fn (system: ^Self) => system.right_control_down
 
-    pub is_control_down :: fn (system: ^Self) -> bool {
-        return system.is_ctrl_down()
-    }
+    pub is_control_down :: fn (system: ^Self) => system.is_ctrl_down()
 
-    pub is_left_control_down :: fn (system: ^Self) -> bool {
-        return system.is_left_ctrl_down()
-    }
+    pub is_left_control_down :: fn (system: ^Self) => system.is_left_ctrl_down()
 
-    pub is_right_control_down :: fn (system: ^Self) -> bool {
-        return system.is_right_ctrl_down()
-    }
+    pub is_right_control_down :: fn (system: ^Self) => system.is_right_ctrl_down()
 
     pub is_alt_down :: fn (system: ^Self) -> bool {
         return system.left_alt_down || system.right_alt_down
     }
 
-    pub is_left_alt_down :: fn (system: ^Self) -> bool {
-        return system.left_alt_down
-    }
+    pub is_left_alt_down :: fn (system: ^Self) => system.left_alt_down
 
-    pub is_right_alt_down :: fn (system: ^Self) -> bool {
-        return system.right_alt_down
-    }
+    pub is_right_alt_down :: fn (system: ^Self) => system.right_alt_down
 
-    pub is_mod_down :: fn (system: ^Self) -> bool {
-        return system.is_alt_down()
-    }
+    pub is_mod_down :: fn (system: ^Self) => system.is_alt_down()
 
 }
 
 impl Frame {
 
-    pub context :: fn (frame: ^Self) -> FrameContext\FrameError {
-        return frame_context_impl(frame)
-    }
+    pub context :: fn (frame: ^Self) => frame_context_impl(frame)
 
 }
 
@@ -520,18 +492,18 @@ test "FrameSystem loop returns no after destroying final frame" {
     defer system.done()
     platform_info : PlatformFrameInfo
     system.frames.push(FrameInfo {
-        id : 1
+        id     : 1
         events : nil
         platform_info
     })
 
     frame := Frame {
-        id : 1
-        width : 32
-        height : 24
-        title : "test"
+        id          : 1
+        width       : 32
+        height      : 24
+        title       : "test"
         full_screen : no
-        resizable : yes
+        resizable   : yes
         ...
     }
 
@@ -615,12 +587,13 @@ test "Frame context reports invalid platform record" {
 }
 
 test "FrameSystem done releases owned frame and event arrays" {
-    system := FrameSystem.init()
+    system                            := FrameSystem.init()
     platform_info : PlatformFrameInfo
-    events : [..]FrameEvent
+    events        : [..]FrameEvent
+
     events.push(FrameEvent.None)
     system.frames.push(FrameInfo {
-        id : 1
+        id: 1
         events
         platform_info
     })

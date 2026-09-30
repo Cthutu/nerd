@@ -893,8 +893,8 @@ internal bool sema_type_is_void_success(const Sema* sema, u32 type_index)
         return false;
     }
     const SemaType* type = &sema->types[type_index];
-    if (type->kind != STK_Enum || !(type->flags & (STF_Optional | STF_Result)) ||
-        type->param_count < 2 ||
+    if (type->kind != STK_Enum ||
+        !(type->flags & (STF_Optional | STF_Result)) || type->param_count < 2 ||
         type->first_param_type >= array_count(sema->type_param_types)) {
         return false;
     }
@@ -11607,7 +11607,7 @@ internal bool sema_resolve_type_node_ex(const Lexer*         lexer,
 
     case AK_TypeArray:
         {
-            i64 item_count = 0;
+            i64  item_count    = 0;
             bool runtime_count = !sema_try_eval_integer_constant(
                 lexer, ast, sema, node->a, &item_count);
             if (runtime_count) {
@@ -12817,7 +12817,8 @@ internal u32 sema_find_core_eq_method_decl(
         for (u32 i = 0; i < array_count(sema->methods); ++i) {
             const SemaMethod* method = &sema->methods[i];
             if (method->is_trait_impl && method->symbol_handle != U32_MAX &&
-                string_eq_cstr(lex_symbol(lexer, method->symbol_handle), "eq")) {
+                string_eq_cstr(lex_symbol(lexer, method->symbol_handle),
+                               "eq")) {
                 has_eq_method = true;
                 break;
             }
@@ -14010,10 +14011,12 @@ internal bool sema_type_satisfies_trait_constraint(const Lexer* lexer,
 
     // Interpolation and generic bounds can require Display without an
     // explicit .show() call to trigger lazy core method discovery.
-    if (trait_symbol == sema_find_core_trait_symbol(lexer, sema, s("Display"))) {
+    if (trait_symbol ==
+        sema_find_core_trait_symbol(lexer, sema, s("Display"))) {
         InternAddResult ignored = {0};
         u32 show_symbol = lex_add_symbol((Lexer*)lexer, s("show"), &ignored);
-        if (!sema_import_implicit_core_method((Lexer*)lexer, sema, show_symbol)) {
+        if (!sema_import_implicit_core_method(
+                (Lexer*)lexer, sema, show_symbol)) {
             return false;
         }
     }

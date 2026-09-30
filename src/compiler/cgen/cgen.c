@@ -593,8 +593,8 @@ internal cstr cgen_truth(CGen* c, CValue v)
 }
 internal CValue cgen_void_default(CGen* c, u32 t)
 {
-    CValue result = cgen_temp(c, t, NULL);
-    const SemaType* type = cgen_type(c, t);
+    CValue          result = cgen_temp(c, t, NULL);
+    const SemaType* type   = cgen_type(c, t);
     if (type != NULL && type->kind == STK_Enum &&
         (type->flags & STF_Optional) &&
         cgen_kind(c, cgen_field_type(c, t, 1)) == STK_Void) {
@@ -608,7 +608,7 @@ internal CValue cgen_coerce(CGen* c, CValue v, u32 t)
     SemaTypeKind from = cgen_kind(c, v.type), to = cgen_kind(c, t);
     if (cgen_void(c, v.type)) {
         return v.type == U32_MAX ? cgen_temp(c, t, NULL)
-                                : cgen_void_default(c, t);
+                                 : cgen_void_default(c, t);
     }
     if (t == v.type || (to != STK_Pointer &&
                         cgen_canonical(c, t) == cgen_canonical(c, v.type))) {
@@ -829,14 +829,14 @@ internal CValue cgen_expr_as(CGen* c, u32 index, u32 type)
 internal void cgen_cleanup_to(CGen* c, u32 base, cstr failure)
 {
     for (u32 n = array_count(c->cleanups); n > base; --n) {
-        CCleanup cl                = c->cleanups[n - 1];
+        CCleanup cl = c->cleanups[n - 1];
         if (cl.failure_only && failure == NULL) {
             continue;
         }
         if (cl.failure_only) {
             CGEN_OUT("if(%s) {\n", failure);
         }
-        u32      save              = array_count(c->cleanups);
+        u32 save                   = array_count(c->cleanups);
         __array_count(c->cleanups) = n - 1;
         if (cl.allocation != NULL) {
             CGEN_OUT("nrt_mem_free(%s);\n", cl.allocation);
@@ -1014,8 +1014,8 @@ internal cstr cgen_equal(CGen* c, CValue a, CValue b, u32 depth)
         return r;
     }
     if (k == STK_Box) {
-        u32          item = cgen_type(c, a.type)->first_param_type;
-        SemaTypeKind ik   = cgen_kind(c, item);
+        u32          item      = cgen_type(c, a.type)->first_param_type;
+        SemaTypeKind ik        = cgen_kind(c, item);
         bool         supported = ik != STK_Union && ik != STK_Arena;
         for (u32 i = 0; i < array_count(cgen_hir(c)->equality_methods); ++i) {
             if (cgen_hir(c)->equality_methods[i].type_index == item) {
@@ -2533,11 +2533,13 @@ internal CValue cgen_expr(CGen* c, u32 index)
         {
             // A slice borrows the original fixed array, including when the
             // slice is synthesized as a method receiver.
-            bool array_to_slice = cgen_kind(c, t) == STK_Slice &&
-                cgen_kind(c, cgen_hir(c)->exprs[e->operand_expr_index].type_index) == STK_Array;
-            CValue v = array_to_slice
-                           ? cgen_lvalue(c, e->operand_expr_index)
-                           : cgen_expr(c, e->operand_expr_index);
+            bool array_to_slice =
+                cgen_kind(c, t) == STK_Slice &&
+                cgen_kind(
+                    c, cgen_hir(c)->exprs[e->operand_expr_index].type_index) ==
+                    STK_Array;
+            CValue v = array_to_slice ? cgen_lvalue(c, e->operand_expr_index)
+                                      : cgen_expr(c, e->operand_expr_index);
             if (cgen_kind(c, t) == STK_Slice &&
                 cgen_kind(c, v.type) == STK_Pointer &&
                 e->extra_expr_index != U32_MAX) {
@@ -2959,9 +2961,9 @@ internal void cgen_stmt(CGen* c, u32 index)
         {
             bool old     = c->returning;
             c->returning = true;
-            CValue v     = st->expr_index == U32_MAX
-                               ? cgen_void_default(c, c->return_type)
-                               : cgen_expr_as(c, st->expr_index, c->return_type);
+            CValue v = st->expr_index == U32_MAX
+                           ? cgen_void_default(c, c->return_type)
+                           : cgen_expr_as(c, st->expr_index, c->return_type);
             c->returning = old;
             cgen_consume(c, st->expr_index, c->return_type);
             cgen_return(c, v);
@@ -3463,11 +3465,12 @@ bool cgen_save_program(const ProgramInfo*        program,
         }
         sb_append_cstr(&c->out, "nrt_core_done(); return result;\n}\n");
         if (program->windowed) {
-            sb_append_cstr(&c->out,
-                           "#if defined(_WIN32)\nint WINAPI WinMain(HINSTANCE "
-                           "instance,HINSTANCE previous,LPSTR command,int "
-                           "show) { nrt_windows_init_stdio(); return main(0,NULL); }\n"
-                           "#endif\n");
+            sb_append_cstr(
+                &c->out,
+                "#if defined(_WIN32)\nint WINAPI WinMain(HINSTANCE "
+                "instance,HINSTANCE previous,LPSTR command,int "
+                "show) { nrt_windows_init_stdio(); return main(0,NULL); }\n"
+                "#endif\n");
         }
     }
     bool ok = !c->failed;

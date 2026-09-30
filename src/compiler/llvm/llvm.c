@@ -94,8 +94,8 @@ internal bool llvm_type_is_void_success(const Sema* sema, u32 type_index)
         return false;
     }
     const SemaType* type = &sema->types[type_index];
-    if (type->kind != STK_Enum || !(type->flags & (STF_Optional | STF_Result)) ||
-        type->param_count < 2 ||
+    if (type->kind != STK_Enum ||
+        !(type->flags & (STF_Optional | STF_Result)) || type->param_count < 2 ||
         type->first_param_type >= array_count(sema->type_param_types)) {
         return false;
     }
@@ -970,7 +970,10 @@ internal bool llvm_enum_has_payload(const Sema* sema, u32 type)
     const SemaType* st = &sema->types[type];
     for (u32 i = 0; i < st->param_count; ++i) {
         u32 payload = llvm_enum_variant_payload_type(sema, type, i);
-        if (payload != sema_no_type() && llvm_type_kind(sema, payload) != STK_Void) return true;
+        if (payload != sema_no_type() &&
+            llvm_type_kind(sema, payload) != STK_Void) {
+            return true;
+        }
     }
     return false;
 }
@@ -2911,8 +2914,8 @@ typedef struct {
 } LlvmValue;
 
 typedef struct {
-    u32  block_index;
-    bool failure_only;
+    u32    block_index;
+    bool   failure_only;
     string allocation;
 } LlvmDefer;
 
@@ -12453,7 +12456,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
 
                 if (llvm_type_is_void(ctx->sema, expr->type_index) ||
                     ctx->discard_expr_value) {
-                    string end_label         = llvm_label(ctx, "on.end");
+                    string end_label = llvm_label(ctx, "on.end");
                     for (u32 i = 0; i < expr->branch_count; ++i) {
                         const HirOnBranch* branch =
                             &ctx->hir->on_branches[expr->first_branch + i];
@@ -12964,7 +12967,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     // Adding locals (including the item or body locals) may
                     // relocate ctx->slots. Retain the index slot by value.
                     LlvmLocalSlot stable_index_slot = *index_slot;
-                    index_slot = &stable_index_slot;
+                    index_slot                      = &stable_index_slot;
 
                     u32 item_type =
                         llvm_local_type(ctx, loop->item_local_index);
@@ -13251,7 +13254,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     // Adding locals (including the item or body locals) may
                     // relocate ctx->slots. Retain the index slot by value.
                     LlvmLocalSlot stable_index_slot = *index_slot;
-                    index_slot = &stable_index_slot;
+                    index_slot                      = &stable_index_slot;
 
                     u32 item_type =
                         llvm_local_type(ctx, loop->item_local_index);
@@ -13654,7 +13657,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
 
                 // Creating the item slot may relocate ctx->slots.
                 LlvmLocalSlot stable_index_slot = *index_slot;
-                index_slot = &stable_index_slot;
+                index_slot                      = &stable_index_slot;
 
                 u32 item_type = llvm_local_type(ctx, loop->item_local_index);
                 LlvmLocalSlot* item_slot = NULL;

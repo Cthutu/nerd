@@ -66,9 +66,9 @@ on "windows" {
     pub SWP_NOACTIVATE   :: 0x0010
     pub SWP_FRAMECHANGED :: 0x0020
 
-    pub GWLP_USERDATA :: -21
+    pub GWLP_USERDATA  :: -21
     pub GWLP_HINSTANCE :: -6
-    pub GWL_STYLE     :: -16
+    pub GWL_STYLE      :: -16
 
     pub PM_REMOVE :: 0x0001
 
