@@ -5,7 +5,7 @@
 -- Provides byte cursor helpers shared by image decoders.
 
 ImageReader :: plex {
-    bytes  []u8
+    bytes []u8
     offset usize
 }
 
@@ -81,8 +81,8 @@ impl ImageReader {
 }
 
 test "image reader reports initial cursor state" {
-    bytes  : [2]u8 = [10, 20]
-    reader         := ImageReader.new(bytes[..])
+    bytes : [2]u8 = [10, 20]
+    reader := ImageReader.new(bytes[..])
 
     assert reader.position() == 0
     assert reader.remaining() == 2
@@ -90,12 +90,12 @@ test "image reader reports initial cursor state" {
 }
 
 test "image reader reads single bytes and advances" {
-    bytes  : [2]u8 = [10, 20]
-    reader         := ImageReader.new(bytes[..])
+    bytes : [2]u8 = [10, 20]
+    reader := ImageReader.new(bytes[..])
 
-    first  := reader.read_u8()
+    first := reader.read_u8()
     second := reader.read_u8()
-    third  := reader.read_u8()
+    third := reader.read_u8()
 
     on first {
         value => {
@@ -129,8 +129,8 @@ test "image reader reads single bytes and advances" {
 }
 
 test "image reader reads endian integers" {
-    bytes  : [4]u8 = [0x12, 0x34, 0x56, 0x78]
-    reader         := ImageReader.new(bytes[..])
+    bytes : [4]u8 = [0x12, 0x34, 0x56, 0x78]
+    reader := ImageReader.new(bytes[..])
 
     be16 := reader.read_be_u16()
     le16 := reader.read_le_u16()
@@ -181,8 +181,8 @@ test "image reader reads endian integers" {
 }
 
 test "image reader take returns a borrowed slice and advances" {
-    bytes  : [4]u8 = [1, 2, 3, 4]
-    reader         := ImageReader.new(bytes[..])
+    bytes : [4]u8 = [1, 2, 3, 4]
+    reader := ImageReader.new(bytes[..])
 
     taken := reader.take(3)
 
@@ -203,8 +203,8 @@ test "image reader take returns a borrowed slice and advances" {
 }
 
 test "image reader short take does not advance" {
-    bytes  : [2]u8 = [1, 2]
-    reader         := ImageReader.new(bytes[..])
+    bytes : [2]u8 = [1, 2]
+    reader := ImageReader.new(bytes[..])
 
     taken := reader.take(3)
 

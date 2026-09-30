@@ -719,7 +719,7 @@ test "zlib decompresses empty stream" {
 
 test "zlib decompresses stored block" {
     compressed : [14]u8 =
-                          [120, 1, 1, 3, 0, 252, 255, 'a', 'b', 'c', 2, 77, 1, 39]
+    [120, 1, 1, 3, 0, 252, 255, 'a', 'b', 'c', 2, 77, 1, 39]
 
     result := compressed[..].deflate_zlib()
 
@@ -740,7 +740,7 @@ test "zlib decompresses stored block" {
 
 test "zlib decompresses fixed Huffman stream" {
     compressed : [16]u8 =
-                          [120, 1, 203, 72, 205, 201, 201, 87, 200, 64, 144, 0, 58, 46, 6, 125]
+    [120, 1, 203, 72, 205, 201, 201, 87, 200, 64, 144, 0, 58, 46, 6, 125]
 
     result := compressed[..].deflate_zlib()
 
@@ -759,7 +759,7 @@ test "zlib decompresses fixed Huffman stream" {
 
 test "zlib decompresses dynamic Huffman stream" {
     compressed : [17]u8 =
-                          [120, 218, 203, 72, 205, 201, 201, 87, 200, 32, 150, 4, 0, 163, 150, 17, 129]
+    [120, 218, 203, 72, 205, 201, 201, 87, 200, 32, 150, 4, 0, 163, 150, 17, 129]
 
     result := compressed[..].deflate_zlib()
 
@@ -794,7 +794,7 @@ test "zlib rejects invalid checksum" {
 
 test "zlib enforces output limit" {
     compressed : [14]u8 =
-                          [120, 1, 1, 3, 0, 252, 255, 'a', 'b', 'c', 2, 77, 1, 39]
+    [120, 1, 1, 3, 0, 252, 255, 'a', 'b', 'c', 2, 77, 1, 39]
 
     result := compressed[..].deflate_zlib(max_output_bytes = 2)
 

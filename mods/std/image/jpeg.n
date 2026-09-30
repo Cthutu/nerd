@@ -7,20 +7,20 @@
 use std.math
 
 JPEG_MARKER_PREFIX :: 0xff
-JPEG_SOI           :: 0xd8
-JPEG_EOI           :: 0xd9
-JPEG_SOS           :: 0xda
-JPEG_DQT           :: 0xdb
-JPEG_DHT           :: 0xc4
-JPEG_SOF0          :: 0xc0
-JPEG_SOF2          :: 0xc2
-JPEG_DRI           :: 0xdd
+JPEG_SOI :: 0xd8
+JPEG_EOI :: 0xd9
+JPEG_SOS :: 0xda
+JPEG_DQT :: 0xdb
+JPEG_DHT :: 0xc4
+JPEG_SOF0 :: 0xc0
+JPEG_SOF2 :: 0xc2
+JPEG_DRI :: 0xdd
 
-JPEG_BLOCK_SIZE      :: 64
-JPEG_MAX_COMPONENTS  :: 3
-JPEG_MAX_TABLES      :: 4
+JPEG_BLOCK_SIZE :: 64
+JPEG_MAX_COMPONENTS :: 3
+JPEG_MAX_TABLES :: 4
 JPEG_HUFFMAN_CLASSES :: 2
-JPEG_HUFFMAN_LIMIT   :: 256
+JPEG_HUFFMAN_LIMIT :: 256
 
 JPEG_ZIGZAG: [64]u8 = [
     0,
@@ -90,40 +90,40 @@ JPEG_ZIGZAG: [64]u8 = [
 ]
 
 JpegInfo :: plex {
-    width            i32
-    height           i32
-    components       i32
-    max_h            i32
-    max_v            i32
+    width i32
+    height i32
+    components i32
+    max_h i32
+    max_v i32
     restart_interval i32
-    scan_start       usize
-    scan_components  i32
-    saw_sos          bool
+    scan_start usize
+    scan_components i32
+    saw_sos bool
 }
 
 JpegComponent :: plex {
-    id          u8
-    h           i32
-    v           i32
+    id u8
+    h i32
+    v i32
     quant_table i32
-    dc_table    i32
-    ac_table    i32
+    dc_table i32
+    ac_table i32
     previous_dc i32
-    width       i32
-    height      i32
-    pixels      [..]u8
+    width i32
+    height i32
+    pixels [..]u8
 }
 
 JpegDecoder :: plex {
-    info             JpegInfo
-    components       [..]JpegComponent
-    quant            [..]i32
-    quant_present    [..]bool
-    huff_count       [..]i32
-    huff_codes       [..]u16
-    huff_lengths     [..]u8
-    huff_symbols     [..]u8
-    scan             []u8
+    info JpegInfo
+    components [..]JpegComponent
+    quant [..]i32
+    quant_present [..]bool
+    huff_count [..]i32
+    huff_codes [..]u16
+    huff_lengths [..]u8
+    huff_symbols [..]u8
+    scan []u8
     restart_interval i32
 }
 
@@ -145,11 +145,11 @@ impl JpegDecoder {
 }
 
 JpegBits :: plex {
-    bytes     []u8
-    offset    usize
-    bits      u32
+    bytes []u8
+    offset usize
+    bits u32
     bit_count i32
-    marker    u8
+    marker u8
 }
 
 impl JpegBits {
@@ -157,10 +157,10 @@ impl JpegBits {
     new :: fn (bytes: []u8) -> Self {
         return {
             bytes
-            offset    : 0
-            bits      : 0
+            offset : 0
+            bits : 0
             bit_count : 0
-            marker    : 0
+            marker : 0
         }
     }
 
@@ -211,7 +211,7 @@ jpeg_ceil_div :: fn (value: i32, divisor: i32) -> i32 {
 }
 
 jpeg_clamp_i32_to_u8 :: fn (value: i32) -> u8 {
-    on value < 0   => return 0
+    on value < 0 => return 0
     on value > 255 => return 255
     return value.as(u8)
 }
@@ -223,32 +223,32 @@ jpeg_is_standalone_marker :: fn (marker: u8) -> bool {
 jpeg_table_index :: fn (table_class: i32, table_id: i32) => (table_class * JPEG_MAX_TABLES + table_id).as(usize)
 
 jpeg_huffman_entry_index :: fn (table_class : i32,
-                                table_id    : i32,
-                                entry       : i32) -> usize {
+table_id : i32,
+entry : i32) -> usize {
     return jpeg_table_index(table_class, table_id) * JPEG_HUFFMAN_LIMIT + entry.as(usize)
 }
 
 jpeg_decoder_new :: fn () -> JpegDecoder {
     decoder := JpegDecoder {
         info: {
-            width            : 0
-            height           : 0
-            components       : 0
-            max_h            : 0
-            max_v            : 0
+            width : 0
+            height : 0
+            components : 0
+            max_h : 0
+            max_v : 0
             restart_interval : 0
-            scan_start       : 0
-            scan_components  : 0
-            saw_sos          : no
+            scan_start : 0
+            scan_components : 0
+            saw_sos : no
         }
-        components       : nil
-        quant            : nil
-        quant_present    : nil
-        huff_count       : nil
-        huff_codes       : nil
-        huff_lengths     : nil
-        huff_symbols     : nil
-        scan             : []
+        components : nil
+        quant : nil
+        quant_present : nil
+        huff_count : nil
+        huff_codes : nil
+        huff_lengths : nil
+        huff_symbols : nil
+        scan : []
         restart_interval : 0
     }
 
@@ -265,17 +265,16 @@ jpeg_decoder_new :: fn () -> JpegDecoder {
 jpeg_parse_sof0 :: fn (data: []u8, decoder: ^JpegDecoder) -> bool\ImageError {
     on data.count < 6 => return UnexpectedEnd!
 
-    precision  := data[0]
-    height     := jpeg_be_u16_at(data, 1)
-    width      := jpeg_be_u16_at(data, 3)
+    precision := data[0]
+    height := jpeg_be_u16_at(data, 1)
+    width := jpeg_be_u16_at(data, 3)
     components := data[5]
 
     on precision != 8 => return UnsupportedFormat!
-    on width == 0 ||
-        height == 0 => return (ImageError.InvalidData {
+    on width == 0 || height == 0 => return (ImageError.InvalidData {
         message: "JPEG dimensions must be nonzero"
     })!
-    on components != 1 && components != 3        => return UnsupportedFormat!
+    on components != 1 && components != 3 => return UnsupportedFormat!
     on data.count < 6 + components.as(usize) * 3 => return UnexpectedEnd!
 
     decoder.components.free()
@@ -289,10 +288,10 @@ jpeg_parse_sof0 :: fn (data: []u8, decoder: ^JpegDecoder) -> bool\ImageError {
     offset : usize = 6
     for _ in [0 .. components.as(usize)] {
         component_id := data[offset]
-        sampling     := data[offset + 1]
-        quant_table  := data[offset + 2]
-        h            := (sampling >> 4).as(i32)
-        v            := (sampling & 0x0f).as(i32)
+        sampling := data[offset + 1]
+        quant_table := data[offset + 2]
+        h := (sampling >> 4).as(i32)
+        v := (sampling & 0x0f).as(i32)
 
         on h < 1 || h > 4 || v < 1 || v > 4 => return UnsupportedFormat!
         on quant_table >= JPEG_MAX_TABLES.as(u8) => return jpeg_bool_invalid("J"
@@ -306,12 +305,12 @@ jpeg_parse_sof0 :: fn (data: []u8, decoder: ^JpegDecoder) -> bool\ImageError {
             h
             v
             quant_table : quant_table.as(i32)
-            dc_table    : 0
-            ac_table    : 0
+            dc_table : 0
+            ac_table : 0
             previous_dc : 0
-            width       : 0
-            height      : 0
-            pixels      : nil
+            width : 0
+            height : 0
+            pixels : nil
         })
         offset += 3
     }
@@ -320,8 +319,8 @@ jpeg_parse_sof0 :: fn (data: []u8, decoder: ^JpegDecoder) -> bool\ImageError {
 }
 
 jpeg_parse_dqt :: fn (data: []u8, decoder: ^JpegDecoder) -> bool\ImageError {
-    offset      : usize = 0
-    table_count         := 0
+    offset : usize = 0
+    table_count := 0
 
     for offset < data.count {
         table_info := data[offset]
@@ -329,7 +328,7 @@ jpeg_parse_dqt :: fn (data: []u8, decoder: ^JpegDecoder) -> bool\ImageError {
         offset += 1
 
         precision := table_info >> 4
-        table_id  := table_info & 0x0f
+        table_id := table_info & 0x0f
 
         on precision != 0 => return UnsupportedFormat!
         on table_id > 3 => return jpeg_bool_invalid("JPEG DQT table id is "
@@ -338,13 +337,13 @@ jpeg_parse_dqt :: fn (data: []u8, decoder: ^JpegDecoder) -> bool\ImageError {
 
         base := table_id.as(usize) * JPEG_BLOCK_SIZE
         for i in [0 .. JPEG_BLOCK_SIZE] {
-            index   := i.as(usize)
+            index := i.as(usize)
             natural := JPEG_ZIGZAG[index].as(usize)
 
             decoder.quant[base + natural] = data[offset + index].as(i32)
         }
         decoder.quant_present[table_id.as(usize)] = yes
-        offset      += 64
+        offset += 64
         table_count += 1
     }
 
@@ -354,8 +353,8 @@ jpeg_parse_dqt :: fn (data: []u8, decoder: ^JpegDecoder) -> bool\ImageError {
 }
 
 jpeg_parse_dht :: fn (data: []u8, decoder: ^JpegDecoder) -> bool\ImageError {
-    offset      : usize = 0
-    table_count         := 0
+    offset : usize = 0
+    table_count := 0
 
     for offset < data.count {
         on offset + 17 > data.count => return UnexpectedEnd!
@@ -365,7 +364,7 @@ jpeg_parse_dht :: fn (data: []u8, decoder: ^JpegDecoder) -> bool\ImageError {
         offset += 1
 
         table_class := table_info >> 4
-        table_id    := table_info & 0x0f
+        table_id := table_info & 0x0f
 
         on table_class > 1 => return jpeg_bool_invalid("JPEG DHT table class "
             +"is invalid")
@@ -388,21 +387,21 @@ jpeg_parse_dht :: fn (data: []u8, decoder: ^JpegDecoder) -> bool\ImageError {
         table_index := jpeg_table_index(table_class.as(i32), table_id.as(i32))
         decoder.huff_count[table_index] = symbol_count.as(i32)
 
-        code  : u16 = 0
+        code : u16 = 0
         entry : i32 = 0
 
         for length in [1 .. 17] {
             count := data[counts_start + (length - 1).as(usize)]
             for _ in [0 .. count.as(usize)] {
                 index := jpeg_huffman_entry_index(table_class.as(i32),
-                                                  table_id.as(i32),
-                                                  entry)
+                table_id.as(i32),
+                entry)
                 decoder.huff_codes[index] = code
                 decoder.huff_lengths[index] = length.as(u8)
                 decoder.huff_symbols[index] = data[offset]
                 offset += 1
-                entry  += 1
-                code   += 1
+                entry += 1
+                code += 1
             }
             code = code << 1
         }
@@ -427,7 +426,7 @@ jpeg_find_component :: fn (decoder: ^JpegDecoder, id: u8) -> i32 {
     for i in [0 .. decoder.components.count] {
         on decoder.components[i].id == id => return i.as(i32)
     }
-    return -1
+    return - 1
 }
 
 jpeg_parse_sos :: fn (data: []u8, decoder: ^JpegDecoder) -> bool\ImageError {
@@ -435,28 +434,25 @@ jpeg_parse_sos :: fn (data: []u8, decoder: ^JpegDecoder) -> bool\ImageError {
 
     components := data[0]
     on components != 1 && components != 3 => return UnsupportedFormat!
-    on decoder.info.components != 0 &&
-        components.as(i32) != decoder.info.components => return jpeg_bool_invalid("JPEG SOS component count does not match SOF0")
+    on decoder.info.components != 0 && components.as(i32) != decoder.info.components => return jpeg_bool_invalid("JPEG SOS component count does not match SOF0")
     on data.count != 1 + components.as(usize) * 2 + 3 => return jpeg_bool_invalid("JPEG SOS segment length is invalid")
 
     offset : usize = 1
     for _ in [0 .. components.as(usize)] {
-        component_id    := data[offset]
-        table_selector  := data[offset + 1]
-        dc_table        := table_selector >> 4
-        ac_table        := table_selector & 0x0f
+        component_id := data[offset]
+        table_selector := data[offset + 1]
+        dc_table := table_selector >> 4
+        ac_table := table_selector & 0x0f
         component_index := jpeg_find_component(decoder, component_id)
 
         on component_id == 0 => return jpeg_bool_invalid("JPEG SOS component "
             +"id is invalid")
-        on dc_table > 3 ||
-            ac_table > 3 => return jpeg_bool_invalid("JPEG SOS "
+        on dc_table > 3 || ac_table > 3 => return jpeg_bool_invalid("JPEG SOS "
             +"Huffman "
             +"selector is invalid")
         on component_index < 0 => return jpeg_bool_invalid("JPEG SOS component "
             +"is not in SOF0")
-        on decoder.huff_count[jpeg_table_index(0, dc_table.as(i32))] == 0 ||
-            decoder.huff_count[jpeg_table_index(1, ac_table.as(i32))] == 0 => return jpeg_bool_invalid("JPEG SOS references missing Huffman table")
+        on decoder.huff_count[jpeg_table_index(0, dc_table.as(i32))] == 0 || decoder.huff_count[jpeg_table_index(1, ac_table.as(i32))] == 0 => return jpeg_bool_invalid("JPEG SOS references missing Huffman table")
 
         decoder.components[component_index.as(usize)].dc_table = dc_table.as(i32)
         decoder.components[component_index.as(usize)].ac_table = ac_table.as(i32)
@@ -464,12 +460,10 @@ jpeg_parse_sos :: fn (data: []u8, decoder: ^JpegDecoder) -> bool\ImageError {
     }
 
     start_selection := data[offset]
-    end_selection   := data[offset + 1]
-    approx          := data[offset + 2]
+    end_selection := data[offset + 1]
+    approx := data[offset + 2]
 
-    on start_selection != 0 ||
-        end_selection != 63 ||
-        approx != 0 => return UnsupportedFormat!
+    on start_selection != 0 || end_selection != 63 || approx != 0 => return UnsupportedFormat!
 
     decoder.info.scan_components = components.as(i32)
     decoder.info.saw_sos = yes
@@ -627,8 +621,7 @@ jpeg_bits_read_byte :: fn (bits: ^JpegBits) -> u8\ImageError {
     bits.offset += 1
 
     on marker == 0 => return JPEG_MARKER_PREFIX
-    on marker >= 0xd0 &&
-        marker <= 0xd7 => {
+    on marker >= 0xd0 && marker <= 0xd7 => {
         bits.marker = marker
         bits.bit_count = 0
         bits.bits = 0
@@ -821,9 +814,9 @@ jpeg_idct_value :: fn (block: []i32, x: i32, y: i32) -> u8 {
 
     for v in [0 .. 8] {
         for u in [0 .. 8] {
-            coeff   := block[(v * 8 + u).as(usize)].as(f64)
-            cu      := on u == 0 => 0.7071067811865476 else 1.0
-            cv      := on v == 0 => 0.7071067811865476 else 1.0
+            coeff := block[(v * 8 + u).as(usize)].as(f64)
+            cu := on u == 0 => 0.7071067811865476 else 1.0
+            cv := on v == 0 => 0.7071067811865476 else 1.0
             angle_x := ((2 * x + 1) * u).as(f64) * pi / 16.0
             angle_y := ((2 * y + 1) * v).as(f64) * pi / 16.0
 
@@ -836,9 +829,9 @@ jpeg_idct_value :: fn (block: []i32, x: i32, y: i32) -> u8 {
 }
 
 jpeg_store_block :: fn (component : ^JpegComponent,
-                        block     : []i32,
-                        block_x   : i32,
-                        block_y   : i32) {
+block : []i32,
+block_x : i32,
+block_y : i32) {
     for y in [0 .. 8] {
         target_y := block_y + y.as(i32)
         on target_y >= component.height => again
@@ -848,8 +841,8 @@ jpeg_store_block :: fn (component : ^JpegComponent,
             on target_x >= component.width => again
 
             component.pixels[(target_y * component.width + target_x).as(usize)] = jpeg_idct_value(block,
-                                                                                      x.as(i32),
-                                                                                      y.as(i32))
+            x.as(i32),
+            y.as(i32))
         }
     }
 }
@@ -857,9 +850,9 @@ jpeg_store_block :: fn (component : ^JpegComponent,
 jpeg_prepare_component_planes :: fn (decoder: ^JpegDecoder) -> bool\ImageError {
     for i in [0 .. decoder.components.count] {
         width := jpeg_ceil_div(decoder.info.width * decoder.components[i].h,
-                               decoder.info.max_h)
+        decoder.info.max_h)
         height := jpeg_ceil_div(decoder.info.height * decoder.components[i].v,
-                                decoder.info.max_v)
+        decoder.info.max_v)
         decoder.components[i].width = width
         decoder.components[i].height = height
         decoder.components[i].pixels.resize_undefined_to((width * height).as(usize))
@@ -939,10 +932,10 @@ jpeg_decode_entropy :: fn (decoder: ^JpegDecoder) -> bool\ImageError {
 }
 
 jpeg_component_sample :: fn (component : ^JpegComponent,
-                             x         : i32,
-                             y         : i32,
-                             width     : i32,
-                             height    : i32) -> i32 {
+x : i32,
+y : i32,
+width : i32,
+height : i32) -> i32 {
     source_x := x * component.width / width
     source_y := y * component.height / height
 
@@ -953,13 +946,10 @@ jpeg_component_sample :: fn (component : ^JpegComponent,
 
 jpeg_luma :: fn (red: u8, green: u8, blue: u8) => ((red.as(u32) * 77 + green.as(u32) * 150 + blue.as(u32) * 29) >> 8).as(u8)
 
-jpeg_desired_channels :: fn (source_channels  : i32,
-                             desired_channels : i32) -> i32\ImageError {
+jpeg_desired_channels :: fn (source_channels : i32,
+desired_channels : i32) -> i32\ImageError {
     on desired_channels == 0 => return source_channels
-    on desired_channels == 1 ||
-        desired_channels == 2 ||
-        desired_channels == 3 ||
-        desired_channels == 4 => return desired_channels
+    on desired_channels == 1 || desired_channels == 2 || desired_channels == 3 || desired_channels == 4 => return desired_channels
     return UnsupportedFormat!
 }
 
