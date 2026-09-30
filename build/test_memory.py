@@ -31,7 +31,7 @@ def main():
             subprocess.run(command, check=True)
             for _ in range(3):
                 result = subprocess.run([str(output)], capture_output=True,
-                                        text=True, timeout=60)
+                                        text=True, encoding="utf-8", timeout=60)
                 assert result.returncode == 0, result.stderr
                 assert result.stdout == 'memory-concurrency ok\n', result
                 if not release:

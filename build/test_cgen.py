@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 # Runtime regressions beyond the language suite: defaults, ABI, ownership,
 # atomics, allocator diagnostics, formatting and generic dispatch.
 COMMANDS = (
+    "325-runtime-array-i32-length",
     "336-imported-enum-equality",
     "335-structural-equality",
     "334-generic-contextual-pointer-literal",
@@ -276,7 +277,7 @@ def dungeon_check(nerd, tmp, env):
     source = work / "dungeon.n"
     # Keep the actual example and library rendering path, but use a fixed seed
     # so the first frame can be compared byte for byte across backends.
-    source.write_text((ROOT / "examples/dungeon/dungeon.n").read_text().replace(
+    source.write_text((ROOT / "examples/dungeon/dungeon.n").read_text(encoding="utf-8").replace(
         "seed = now()", "seed = 12345"), encoding="utf-8")
     executable = work / "dungeon"
     run([nerd, "build", "-o", executable, source], env)
@@ -320,7 +321,7 @@ def copts_checks(nerd, tmp, env):
     else:
         assert "-lm" not in debug
     for path in sentinels:
-        assert path.read_text() == "preserve me", f"--copts modified {path}"
+        assert path.read_text(encoding="utf-8") == "preserve me", f"--copts modified {path}"
         path.unlink()
     flags = options("--cgen", "-r", source)
     executable = work / ("app.exe" if os.name == "nt" else "app")

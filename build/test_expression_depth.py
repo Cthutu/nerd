@@ -48,7 +48,7 @@ def main():
         for jobs in ['1', '4']:
             result = subprocess.run([str(nerd), 'build', '--jobs', jobs,
                                      '-o', str(binary), str(work / 'main.n')],
-                                    env=env, capture_output=True, text=True, timeout=180)
+                                    env=env, capture_output=True, text=True, encoding="utf-8", timeout=180)
             assert result.returncode == 0, (jobs, result.stdout, result.stderr)
             ir = Path(str(binary) + '.link.ll').read_bytes()
             if reference is None:

@@ -41,8 +41,8 @@ python validation/windows/run.py --only front-threads-debug jobs-release
 Each invocation creates `results/<UTC>-<unique-id>/` with incremental summaries,
 separate command logs, tool versions, and a manual checklist. Tests run serially,
 continue after independent failures, and block dependents of failed builds.
-The full run covers both compiler configurations, the fixture suite (which is
-hardwired to the debug compiler), all auxiliary `just test` checks, debugger
+The full run covers both compiler configurations, the fixture suite (which defaults to the debug compiler;
+`build/test.py --nerd` selects another binary), all auxiliary `just test` checks, debugger
 probes, and finally a jobs 1/2/4/8/16/auto timing sweep if correctness checks pass.
 The runner does not install Nerd globally, modify Git, or run `just clean` in
 this checkout. The clean test uses an isolated temporary copy.

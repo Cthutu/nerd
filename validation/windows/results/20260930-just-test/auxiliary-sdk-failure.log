@@ -1,0 +1,61 @@
+[PASS] concurrent LLVM: tiny
+[PASS] concurrent LLVM: wide
+[PASS] concurrent LLVM: deep
+[PASS] concurrent LLVM: large
+[PASS] concurrent LLVM: dungeon
+[PASS] concurrent LLVM: pixels
+[PASS] concurrent LLVM: quill
+[PASS] concurrent LLVM: 196-plex-use
+[PASS] concurrent LLVM: 128-generic-functions
+[PASS] concurrent LLVM: 077-enum-discriminants
+[PASS] concurrent LLVM: imported-values-defaults
+Serial/concurrent LLVM identity, repeated input reuse and cleanup passed
+[PASS] 6000-term arithmetic, right nesting and operand order: jobs=1
+[PASS] 6000-term arithmetic, right nesting and operand order: jobs=4
+[PASS] --jobs LLVM identity and execution: tiny
+[PASS] --jobs LLVM identity and execution: wide
+[PASS] --jobs LLVM identity and execution: deep
+[PASS] --jobs LLVM identity and execution: large
+[PASS] --jobs LLVM identity and execution: scratch-growth
+[PASS] automatic half-CPU sizing, affinity, numeric overrides and LLVM/C parity
+LLVM scheduler CLI, ordered output, artifacts and failure recovery passed
+[PASS] front-end output identity: diamond-generic-ffi main.n
+[PASS] front-end output identity: conditional-parts main.n
+[PASS] front-end output identity: diamond-explicit main.n
+[PASS] front-end output identity: diamond-inferred main.n
+[PASS] front-end output identity: diamond-function-value main.n
+[PASS] front-end output identity: tiny main.n
+[PASS] front-end output identity: wide main.n
+[PASS] front-end output identity: deep main.n
+[PASS] front-end output identity: large main.n
+[PASS] front-end output identity: nerd-front-threads-wlyh8vo9 128-generic-functions.n
+[PASS] front-end output identity: nerd-front-threads-wlyh8vo9 196-plex-use.n
+[PASS] front-end output identity: nerd-front-threads-wlyh8vo9 077-enum-discriminants.n
+[PASS] front-end output identity: dungeon dungeon.n
+[PASS] front-end output identity: pixels pixels.n
+[PASS] front-end output identity: text-adventure quill.n
+[PASS] ordered diagnostics and cleanup: semantic-before-parse
+[PASS] ordered diagnostics and cleanup: cycle
+[PASS] ordered diagnostics and cleanup: missing
+[PASS] ordered diagnostics and cleanup: private-method
+[PASS] ordered diagnostics and cleanup: assert
+[PASS] randomized completion; overlapping phases: ['analyse AST semantics', 'generate HIR from sema', 'parse tokens into AST', 'tokenise source text']
+Scheduled front-end graph, diagnostics, FFI, generics and runtime checks passed
+Traceback (most recent call last):
+  File "C:\Users\matt\nerd\build\test_toolchain.py", line 187, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\matt\nerd\build\test_toolchain.py", line 57, in main
+    assert 'Toolchain ready' in run('doctor')
+                                ~~~^^^^^^^^^^
+  File "C:\Users\matt\nerd\build\test_toolchain.py", line 53, in run
+    assert (result.returncode == 0) == success, result.stdout + result.stderr
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Nerd binary toolchain
+[OK] opt
+[OK] llc
+[OK] lld-link
+[OK] llvm-lib
+[ERROR] Windows SDK / VC runtime libraries � run in a Visual Studio developer environment
+Toolchain incomplete. Fix the errors above and run nerd doctor again.
+

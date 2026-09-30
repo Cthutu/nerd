@@ -41,7 +41,9 @@ choose :: fn (condition: bool) -> i32 {
     on condition => return 1 else return 2
 }
 
-identity :: fn (value: i32) => value
+identity :: fn (value: i32) -> i32 {
+    return value
+}
 
 contextual :: fn () -> ?i32 {
     return nil

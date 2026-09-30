@@ -42,7 +42,7 @@ def main():
             settings = env if library is None else dict(env, NERD_LIB_PATH=library)
             result = subprocess.run([str(nerd), 'build', '--jobs', str(jobs),
                                      '--hir', *([] if '--cgen' in flags else ['--llvm']), *flags, str(source), '-o', str(output)],
-                                    env=settings, capture_output=True, text=True, timeout=180)
+                                    env=settings, capture_output=True, text=True, encoding="utf-8", timeout=180)
             records = [json.loads(line[len(PREFIX):]) for line in result.stderr.splitlines()
                        if line.startswith(PREFIX)]
             stderr = '\n'.join(line for line in result.stderr.splitlines()
@@ -87,7 +87,7 @@ def main():
             ('inferred', 'x: i64 = 4294967303\n on id(x) != 4294967303 => return 99\n return 7'),
             ('function-value', 'f := id[i64]\n on f(4294967303) != 4294967303 => return 99\n return 7'),
         ]:
-            files = {p.name: p.read_text() for p in diamond.glob('*.n')}
+            files = {p.name: p.read_text(encoding="utf-8") for p in diamond.glob('*.n')}
             files['right.n'] = 'use leaf\npub value :: fn () -> i32 { ' + body + ' }\n'
             source = case('diamond-' + name, files)
             valid.append(source)
@@ -96,7 +96,7 @@ def main():
         valid += list(inputs.values())
         for fixture in ['128-generic-functions', '196-plex-use', '077-enum-discriminants']:
             source = work / (fixture + '.n')
-            source.write_text((ROOT / 'tests/language' / (fixture + '.t')).read_text().split('¬')[0])
+            source.write_text((ROOT / 'tests/language' / (fixture + '.t')).read_text(encoding="utf-8").split('¬')[0], encoding="utf-8")
             valid.append(source)
         valid += [ROOT / 'examples' / name / (name + '.n') for name in ['dungeon', 'pixels']]
         valid.append(ROOT / 'examples/text-adventure/quill.n')
@@ -110,7 +110,7 @@ def main():
                     if '--cgen' in flags:
                         # Clang is only a compatibility-output test driver.
                         opts = subprocess.run([str(nerd), 'build', '--copts', str(source)],
-                                              env=env, capture_output=True, text=True, check=True)
+                                              env=env, capture_output=True, text=True, encoding="utf-8", check=True)
                         subprocess.run(['clang', '-Werror', str(output.with_suffix('.c')),
                                         *shlex.split(opts.stdout), '-o', str(output)],
                                        check=True, timeout=60)

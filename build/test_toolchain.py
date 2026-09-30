@@ -49,7 +49,7 @@ def main():
 
         def run(*args, success=True):
             result = subprocess.run([str(nerd), *map(str, args)], cwd=work,
-                                    env=env, capture_output=True, text=True)
+                                    env=env, capture_output=True, text=True, encoding="utf-8")
             assert (result.returncode == 0) == success, result.stdout + result.stderr
             assert 'forbidden-clang-invocation' not in result.stdout + result.stderr
             return result.stdout + result.stderr
@@ -79,7 +79,7 @@ def main():
         for name in ['242-run-atomic-operators', '298-run-variadic-promotions',
                      '308-run-shutdown-watcher', '316-run-pixel-layer-layout']:
             fixture = ROOT / 'tests/commands' / (name + '.cmd')
-            source.write_text(fixture.read_text().split('¬')[0])
+            source.write_text(fixture.read_text(encoding="utf-8").split('¬')[0])
             behaviors = []
             for release in [[], ['-r']]:
                 run('build', *release, '--jobs', 4, source, '-o', executable)
@@ -110,7 +110,7 @@ def main():
         print('[PASS] entry-point integer widths, signedness, arguments and target modes')
         # Heap enum stores must remain aligned after header placement, growth,
         # and explicit reserve. Optimized Windows code uses aligned SIMD stores.
-        source.write_text((ROOT / 'tests/commands/317-run-dynamic-enum-alignment.cmd').read_text().split('\u00ac')[0])
+        source.write_text((ROOT / 'tests/commands/317-run-dynamic-enum-alignment.cmd').read_text(encoding="utf-8").split('\u00ac')[0], encoding="utf-8")
         for release in [[], ['-r']]:
             for jobs in [1, 4]:
                 run('build', *release, '--jobs', jobs, source, '-o', executable)

@@ -1286,9 +1286,15 @@ def collect(filter_text: str = "") -> list[tuple[str, pathlib.Path]]:
 
 
 def main() -> int:
+    global NERD
     parser = argparse.ArgumentParser(description="Run Nerd compiler regression tests")
     parser.add_argument("--filter", default="", help="Only run test paths containing this text")
+    parser.add_argument("--nerd", type=pathlib.Path, default=NERD,
+                        help="Compiler executable to test (default: checkout debug compiler)")
     args = parser.parse_args()
+    NERD = args.nerd.resolve()
+    if not NERD.is_file():
+        parser.error(f"compiler not found: {NERD}; build it first")
 
     runners = {
         "language": test_language,

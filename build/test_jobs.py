@@ -68,7 +68,7 @@ def main():
         def run(*flags, success=True):
             result = subprocess.run([str(nerd), 'build', *map(str, flags)],
                                     cwd=work, env=env, capture_output=True,
-                                    text=True, timeout=180)
+                                    text=True, encoding="utf-8", timeout=180)
             assert (result.returncode == 0) == success, result.stderr
             records = [json.loads(line[len(PREFIX):]) for line in result.stderr.splitlines()
                        if line.startswith(PREFIX)]

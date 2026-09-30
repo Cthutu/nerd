@@ -51,9 +51,12 @@ directory and dynamic loader path. Executables are linked as PIE; executable and
 runtime object. Additional FFI libraries must be installed
 in the native linker search paths.
 
-Windows requires Visual Studio C++ runtime libraries and the Windows SDK. Run
-Nerd in a developer environment with `LIB` configured for the native target.
-`lld-link` uses those paths; Nerd explicitly selects the static CRT libraries
+Windows requires Visual Studio C++ runtime libraries and the Windows SDK.
+`lld-link` can discover installed SDK/CRT libraries when `LIB` is unset. For a
+custom installation, run in a developer environment with `LIB` configured for
+the native target. `nerd doctor` validates either setup with its actual link/run
+probe rather than rejecting an unset `LIB`. Nerd explicitly selects the static
+CRT libraries
 (`libcmt`, `libvcruntime`, `libucrt`, `oldnames`) and `kernel32`. Console/windowed
 selection remains controlled by the Nerd program. Library exports still produce
 the platform import library through LLD.

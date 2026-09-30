@@ -20,7 +20,7 @@ def run(cmd: list[str], cwd: pathlib.Path, env: dict[str, str]) -> subprocess.Co
         cmd,
         cwd=cwd,
         env=env,
-        text=True,
+        text=True, encoding="utf-8",
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
@@ -172,6 +172,10 @@ def main() -> int:
         help="nerd executable to test",
     )
     args = parser.parse_args()
+
+    if EXE_SUFFIX and shutil.which("llvm-dwarfdump") is None:
+        raise SystemExit("Windows installation smoke tests require llvm-dwarfdump on PATH "
+                         "(from the full LLVM tools distribution).")
 
     nerd = pathlib.Path(args.nerd)
     if nerd.is_absolute():

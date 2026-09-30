@@ -171,6 +171,10 @@ pipeline with a temporary executable. Nerd does not invoke Clang; C emission is
 an independent compatibility output. See [toolchain setup](../toolchain.md) for
 host dependencies and [the pipeline](../compiler-pipeline.md) for artifact policy.
 
+On Windows, `nerd doctor` lets the real LLVM link/run probe validate SDK and
+CRT availability. An unset `LIB` permits linker discovery and is not itself a
+missing-dependency error; an explicitly invalid library path still fails the probe.
+
 Every non-core module receives semantic proxy declarations for every public
 export from `mods/core.n`; there is no symbol-name whitelist and no explicit
 source import. The executable backend locates core's private lifecycle functions
@@ -432,6 +436,11 @@ entire action for an imported FFI plex.
 Deferred variable and constant declarations reuse the formatter's compact
 header-item rendering. This preserves declaration syntax after `defer` without
 routing statement-only CST nodes through expression rendering.
+
+The CST formatter preserves explicit function return annotations and their block
+bodies. An independently typed return expression does not prove that its type
+matches the annotation: returning a scalar may require widening, optional or
+result wrapping. Formatting cannot remove that contract without semantic proof.
 
 Typed plex-literal lookahead recognises a shorthand field followed by `...`,
 matching the prefix-literal parser and the formatter's shorthand field output.
@@ -1027,6 +1036,11 @@ declarations; the bound participates in reference resolution and definite
 assignment as a value expression. HIR lowers creation to `HIR_EXPR_RuntimeArray`
 with one bound operand. Its `.size` is computed from the captured count rather
 than the internal header size.
+
+Block-statement return checking routes through the same return-node inference
+as expression returns, so returning a local runtime-sized array is diagnosed
+before lowering. Resolving a runtime-sized array also interns `usize`, allowing
+LLVM to widen smaller integer lengths even in programs with no imports.
 
 Both backends call `nrt_local_array_alloc`, which checks the signed address range
 and multiplication overflow before allocating zeroed storage. The allocation

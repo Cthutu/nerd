@@ -33,7 +33,7 @@ def sanitized_compiler(directory, sanitizer):
         output = directory / f'{index}.o'
         result = subprocess.run(cc + flags + ['-D' + d for d in defines] +
                                 ['-c', str(source), '-o', str(output)],
-                                cwd=ROOT, capture_output=True, text=True)
+                                cwd=ROOT, capture_output=True, text=True, encoding="utf-8")
         if result.returncode:
             raise RuntimeError(result.stderr)
         return output
@@ -62,7 +62,7 @@ def main():
         for name in ['196-plex-use', '128-generic-functions', '077-enum-discriminants']:
             fixture = ROOT / 'tests/language' / (name + '.t')
             source = work / (name + '.n')
-            source.write_text(fixture.read_text().split('¬')[0])
+            source.write_text(fixture.read_text(encoding="utf-8").split('¬')[0], encoding="utf-8")
             inputs[name] = source
         imports = work / 'imports'
         imports.mkdir()
@@ -75,13 +75,13 @@ def main():
         env = dict(os.environ, NERD_LIB_PATH=str(ROOT / 'mods'), NERD_PROFILE='1')
         env.pop('NERD_MEMORY_PROFILE', None)
         regression = subprocess.run([str(nerd), 'internal-test', 'llvm-render-sema'],
-                                    env=env, capture_output=True, text=True, timeout=60)
+                                    env=env, capture_output=True, text=True, encoding="utf-8", timeout=60)
         assert regression.returncode == 0, regression.stderr
         for name, source in inputs.items():
             result = subprocess.run([str(nerd), 'internal-test', 'llvm-render-concurrent'],
                                     cwd=source.parent,
                                     env=dict(env, NERD_TEST_RENDER_SOURCE=str(source)),
-                                    capture_output=True, text=True, timeout=180)
+                                    capture_output=True, text=True, encoding="utf-8", timeout=180)
             assert result.returncode == 0, (name, result.stdout, result.stderr)
             assert result.stdout == 'llvm-render-concurrent ok\n', result.stdout
             print(f'[PASS] concurrent LLVM: {name}', flush=True)

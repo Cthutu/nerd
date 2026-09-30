@@ -29,7 +29,7 @@ def main():
 
         def run(*command, ok=True):
             result = subprocess.run([nerd, *map(str, command)], cwd=work,
-                                    env=env, capture_output=True, text=True)
+                                    env=env, capture_output=True, text=True, encoding="utf-8")
             assert (result.returncode == 0) == ok, (command, result.stdout, result.stderr)
             return result.stdout + result.stderr
 

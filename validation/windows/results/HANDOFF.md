@@ -1,5 +1,29 @@
 # Windows return handoff
 
+## Windows `just test` repaired — 2026-09-30
+
+On `main`, starting from `b542a13d`, the normal **`just test` recipe passes** in
+this Windows shell without the historical validation environment script:
+**1,174 fixture passes, 0 failures, 15 platform skips**, followed by all auxiliary
+stages, including 6,000-term depth checks, scheduler/front-end tests, direct LLVM
+toolchain, temporary installation smoke, **295 C differential fixtures** at O0/O2
+(2 platform skips), build settings, and all four Windows stdio configurations.
+`just format` also passes and retains JPEG's explicit result type. A focused
+`just test-release` run selects the release compiler correctly; release `doctor`
+also passes with linker SDK discovery.
+
+Fixed Windows UTF-8 subprocess/fixture handling, the files fixture's named default
+argument, runtime-array return validation and i32 length lowering, formatter
+return-type preservation, and doctor's premature rejection of unset `LIB`.
+Installed only the already-downloaded `llvm-dwarfdump` into `~/.local/bin` for the
+debug-info smoke test. No global Nerd compiler/editor installation changed.
+
+See [failure history, environment and final logs](20260930-just-test/README.md).
+This is the requested native Windows test-recipe scope, not a full desktop or
+benchmark validation. **Next: validate `just test` / `just do` on WSL and Linux,
+and the full `just do` install workflow on Windows.** Full release fixtures were
+not rerun in this scoped pass.
+
 ## Windowed terminal output — 2026-09-29
 
 On `vulkan`, starting from `26c3982c`, the generated Windows GUI entry point

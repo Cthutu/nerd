@@ -1334,12 +1334,9 @@ bool back_end_doctor(void)
     }
 #if OS_WINDOWS
     cstr libraries = getenv("LIB");
-    bool sdk_ok    = libraries && libraries[0];
-    prn("[%s] Windows SDK / VC runtime libraries%s",
-        sdk_ok ? "OK" : "ERROR",
-        sdk_ok ? " (LIB configured; link probe will validate)"
-               : " — run in a Visual Studio developer environment");
-    ok = sdk_ok && ok;
+    prn("[INFO] Windows SDK / VC runtime libraries (%s; link probe will "
+        "validate)",
+        libraries && libraries[0] ? "LIB configured" : "linker discovery");
 #elif OS_LINUX
     cstr crt    = back_end_linux_crt_dir(&arena);
     bool crt_ok = crt && path_exists(path_join(&arena, crt, "Scrt1.o")) &&

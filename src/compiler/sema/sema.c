@@ -11663,6 +11663,11 @@ internal bool sema_resolve_type_node_ex(const Lexer*         lexer,
                 return false;
             }
 
+            // LLVM uses a pointer-sized count even when the source length is
+            // i32.
+            if (runtime_count) {
+                sema_builtin_type(sema, STK_Usize);
+            }
             u32 type_index =
                 runtime_count
                     ? sema_add_type(sema,
@@ -19554,12 +19559,8 @@ internal bool sema_infer_block_statements(const Lexer* lexer,
 
         if (stmt->a != U32_MAX) {
             u32 expected_return = expected_return_type;
-            if (!sema_infer_node_type(lexer,
-                                      ast,
-                                      sema,
-                                      stmt->a,
-                                      expected_return,
-                                      in_out_return_type)) {
+            if (!sema_infer_node_type(
+                    lexer, ast, sema, i, expected_return, in_out_return_type)) {
                 return false;
             }
             *in_out_return_type =

@@ -182,15 +182,25 @@ return values }
 main :: fn () {}
 ¬
 {
-    "message": "LLVM tool reported an error while compiling generated IR (exit code 1)\nMessage: '%t0' defined with type 'i32' but expected 'i64'\nLocation: llc: error: llc: /home/matt/nerd/tests/errors/137-runtime-fixed-arrays.7.input.link.ll:19:45\nGenerated LLVM: /home/matt/nerd/tests/errors/137-runtime-fixed-arrays.7.input.link.ll\nRuntime object: (none)\nCommand: llc --mtriple=x86_64-unknown-linux-gnu -filetype=obj -relocation-model=pic -O0 -o \"/home/matt/nerd/tests/errors/137-runtime-fixed-arrays.7.input.obj.o\" \"/home/matt/nerd/tests/errors/137-runtime-fixed-arrays.7.input.link.ll\"\nSource:\n  %t1 = call ptr @nrt_local_array_alloc(i64 %t0, i64 4, ptr @.macro.file.m0, i32 1), !dbg !10\n                                            ^",
+    "message": "Type mismatch: expected `return value with storage that outlives this scope`, found `local runtime-sized array`",
     "source_file": "tests/errors/137-runtime-fixed-arrays.e",
     "primary_location": {
-        "line": 1,
+        "line": 2,
         "column": 1
     },
-    "references": [],
+    "references": [
+        {
+            "kind": "primary",
+            "line": 2,
+            "column": 1,
+            "length": 6,
+            "message": "This expression has type `local runtime-sized array`"
+        }
+    ],
     "notes": [],
-    "help": []
+    "help": [
+        "Change the expression or annotation so both sides use the same type."
+    ]
 }
 ¬
 main :: fn () { n: i32 = undefined

@@ -183,11 +183,11 @@ def main():
                 # All three standard streams redirected, including stdin.
                 compile_program(binary, release, define='input', cgen=cgen)
                 result = subprocess.run([str(binary)], input='x', capture_output=True,
-                                        text=True, env=env)
+                                        text=True, encoding="utf-8", env=env)
                 assert (result.returncode, result.stdout, result.stderr) == (
                     0, 'nerd-stdout-marker\n', 'nerd-stderr-marker\n'), (label, result)
                 with (work / 'out.txt').open('w') as out, (work / 'err.txt').open('w') as err:
-                    result = subprocess.run([str(binary)], input='x', text=True,
+                    result = subprocess.run([str(binary)], input='x', text=True, encoding="utf-8",
                                             stdout=out, stderr=err, env=env)
                 assert result.returncode == 0, label
                 assert (work / 'out.txt').read_text() == 'nerd-stdout-marker\n'

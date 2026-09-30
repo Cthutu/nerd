@@ -5,6 +5,24 @@ The repository regression test runner lives in
 
 `just test` is the main regression gate.
 
+It runs cleanup, allocator and thread checks, builds the checkout's debug compiler,
+runs the fixture suite, then runs the profiling, scheduling, toolchain,
+installation-smoke, C-output, build-settings and Windows-stdio checks. It stops
+at the first failing stage; a fixture failure does not mean the later checks ran.
+Python subprocess output is decoded as UTF-8 on every host, including Windows.
+The Windows installation smoke test also requires `llvm-dwarfdump` on `PATH`
+to verify source-level debug information. Keep LLVM tools outside the checkout
+so `just clean` does not remove them.
+
+`just test-release` builds and selects the release compiler for the fixture suite.
+For a focused run against either binary, use `python3 build/test.py --nerd
+_bin/nerd --filter ...` (append `.exe` on Windows). The default remains the
+checkout's debug compiler. A missing selected compiler fails before running cases.
+
+`just do` runs `clean`, `test`, `test-release`, then `install`. Use a native
+Clang/LLVM toolchain and SDK/CRT environment for each host; see
+[toolchain setup](toolchain.md). WSL uses the Linux tools, not Windows executables.
+
 The `nerd test <root-filename>` command is reserved for unit tests declared in
 Nerd source code. It is not the repository regression harness.
 

@@ -47,7 +47,7 @@ test *args:
 
 test-release *args:
     just build-release nerd --skip-mod-sync
-    python3 build/test.py {{args}}
+    python3 build/test.py --nerd _bin/nerd{{exe_suffix}} {{args}}
 
 test-build:
     just run nerd build -v examples/text-adventure/adv.n

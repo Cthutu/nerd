@@ -28,7 +28,7 @@ def main():
         def run(profile, *args, success=True):
             result = subprocess.run([str(nerd), *map(str, args)], cwd=work,
                                     env=dict(env, NERD_PROFILE=profile),
-                                    capture_output=True, text=True)
+                                    capture_output=True, text=True, encoding="utf-8")
             assert (result.returncode == 0) == success, result.stderr
             records = [json.loads(line[len(PREFIX):]) for line in result.stderr.splitlines()
                        if line.startswith(PREFIX)]

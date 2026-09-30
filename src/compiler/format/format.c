@@ -5689,26 +5689,6 @@ internal u32 format_collapsible_expr_block_index(const Cst*   cst,
     return U32_MAX;
 }
 
-internal bool format_expr_is_independently_typed(const Cst* cst, u32 node_index)
-{
-    if (node_index >= array_count(cst->nodes)) {
-        return false;
-    }
-    switch (cst->nodes[node_index].kind) {
-    case CK_SymbolRef:
-    case CK_MacroRef:
-    case CK_Call:
-    case CK_Cast:
-    case CK_Field:
-    case CK_Index:
-    case CK_Slice:
-    case CK_Deref:
-        return true;
-    default:
-        return false;
-    }
-}
-
 internal bool format_fn_block_shorthand_expr(const Cst*   cst,
                                              const Lexer* lexer,
                                              u32          fn_node_index,
@@ -5732,8 +5712,9 @@ internal bool format_fn_block_shorthand_expr(const Cst*   cst,
     }
 
     const CstFnSignature* signature = &cst->fn_signatures[fn->a];
-    if (signature->return_type_node_index != U32_MAX &&
-        !format_expr_is_independently_typed(cst, return_expr)) {
+    // Formatting has no semantic type information. Even a typed expression
+    // may need widening or wrapping to match the declared return type.
+    if (signature->return_type_node_index != U32_MAX) {
         return false;
     }
 
