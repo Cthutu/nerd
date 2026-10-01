@@ -8,6 +8,12 @@ a working reference rather than a stable contract. The language manual may use
 standard library functions in small examples, but it should not duplicate this
 API reference.
 
+## Planned Expansion
+
+The [standard-library expansion plan](stdlib-expansion-plan.md) covers queues,
+work-stealing tasks, data graphs, raw sockets and Nexus messaging. These are
+proposed modules with milestone gates, not existing public APIs.
+
 ## Current Modules
 
 The current standard modules live under [mods](/home/matt/nerd/mods). The
