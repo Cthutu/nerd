@@ -1183,6 +1183,7 @@ cross-thread frees, arena tracking and per-worker cleanup before process exit.
 Objects allocated in a worker's temporary arena must not outlive worker cleanup.
 Use explicit owned storage when transferring results across threads; do not infer
 whole-library thread safety from runtime bookkeeping locks.
+
 ## Imported constant evaluation in generated C
 
 HIR distinguishes `HIR_VALUE_Constant` expression bindings from mutable
@@ -1208,3 +1209,23 @@ and initializer. Both top-level and guarded statement formatting must emit the
 formatting already does. The regression checks typed, inferred, zero-initialised,
 undefined and guarded declarations alongside constants and private declarations.
 See [the formatter repair note](../formatter-public-globals.md).
+
+## Imported mutable globals in LLVM
+
+Mutable imports resolve through declaration provenance to their defining HIR
+value. Reads, writes, addresses and calls through mutable function pointers use
+that storage; they must not take the constant-expression expansion path.
+Standalone module IR declares imported globals; the textual module combiner
+removes declarations satisfied by definitions and deduplicates unresolved ones.
+Globals whose names collide across modules receive module/value-qualified
+internal names. A public root global retains its exported symbol spelling.
+
+A failed function lowering now emits a module/function diagnostic and rejects
+the rendered module. Only successful unterminated functions receive implicit
+returns. The backend checks rejected primary and sidecar results before writing
+or linking them. The `llvm-lowering-failure` internal test constructs an invalid
+binding reference and requires an empty result plus one diagnostic; command
+fixture 340 runs it in the normal gate. Fixture 339 covers imported and
+re-exported storage, mutation, addresses, aggregate fields, atomics, function
+pointers and two same-named globals from distinct modules. Generated C also
+resolves module-qualified fields to their storage before borrowing them.

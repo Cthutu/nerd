@@ -857,6 +857,9 @@ internal bool back_end_render_llvm_modules(Arena*                    arena,
         }
         string module_llvm = result->llvm;
         error_context_replay(&result->diagnostics);
+        if (module_llvm.count == 0 || result->sidecar.count == 0) {
+            return false;
+        }
         timing_probe_emit(result->primary_metrics,
                           COMPILER_STAGE_BACK_END,
                           COMPILER_PHASE_LLVM_RENDER,

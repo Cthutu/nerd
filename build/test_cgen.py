@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 # Runtime regressions beyond the language suite: defaults, ABI, ownership,
 # atomics, allocator diagnostics, formatting and generic dispatch.
 COMMANDS = (
+    "339-imported-mutable-globals",
     "325-runtime-array-i32-length",
     "336-imported-enum-equality",
     "335-structural-equality",

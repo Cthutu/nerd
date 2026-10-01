@@ -2320,6 +2320,7 @@ internal u32 llvm_value_symbol_handle(const Hir* hir, u32 value_index)
 
 internal string llvm_value_name_string(const Hir*   hir,
                                        const Lexer* lexer,
+                                       const Sema*  sema,
                                        Arena*       arena,
                                        u32          value_index)
 {
@@ -2327,7 +2328,75 @@ internal string llvm_value_name_string(const Hir*   hir,
     if (symbol_handle == U32_MAX) {
         return (string){0};
     }
+    string name = lex_symbol(lexer, symbol_handle);
+    if (sema != NULL && sema->program != NULL &&
+        !(hir->current_module_index == sema->program->root_module_index &&
+          llvm_root_exports_symbol(sema, name))) {
+        for (u32 m = 0; m < array_count(sema->program->modules); ++m) {
+            const FrontEndState* other = &sema->program->modules[m].front_end;
+            if (other->hir.current_module_index == hir->current_module_index) {
+                continue;
+            }
+            for (u32 i = 0; i < array_count(other->hir.values); ++i) {
+                const HirValue* value = &other->hir.values[i];
+                if (value->kind != HIR_VALUE_Global ||
+                    value->decl_index >= array_count(other->sema.decls) ||
+                    other->sema.decls[value->decl_index].import_module_index !=
+                        U32_MAX) {
+                    continue;
+                }
+                u32 symbol = llvm_value_symbol_handle(&other->hir, i);
+                if (symbol != U32_MAX &&
+                    string_eq(name, lex_symbol(&other->lexer, symbol))) {
+                    return string_format(arena,
+                                         "@.global.m%u.v%u",
+                                         hir->current_module_index,
+                                         value_index);
+                }
+            }
+        }
+    }
     return llvm_symbol_name_string(lexer, arena, symbol_handle);
+}
+
+// Follow declaration provenance rather than evaluating a mutable import as a
+// constant. Re-exports retain the defining module's single storage location.
+internal bool llvm_import_source_global(const Sema*      sema,
+                                        const Lexer*     lexer,
+                                        const HirImport* import,
+                                        const Hir**      out_hir,
+                                        const Lexer**    out_lexer,
+                                        const Sema**     out_sema,
+                                        u32*             out_index)
+{
+    HirImport current = *import;
+    for (u32 depth = 0; depth < 16; ++depth) {
+        if (!llvm_import_source_value(sema,
+                                      lexer,
+                                      &current,
+                                      out_hir,
+                                      out_lexer,
+                                      out_sema,
+                                      out_index)) {
+            return false;
+        }
+        const HirValue* value = &(*out_hir)->values[*out_index];
+        if (value->decl_index < array_count((*out_sema)->decls)) {
+            const SemaDecl* decl = &(*out_sema)->decls[value->decl_index];
+            if (decl->import_module_index != U32_MAX) {
+                current = (HirImport){
+                    .module_index  = decl->import_module_index,
+                    .decl_index    = decl->import_decl_index,
+                    .symbol_handle = decl->symbol_handle,
+                    .type_index    = decl->type_index,
+                };
+                lexer = *out_lexer;
+                continue;
+            }
+        }
+        return value->kind == HIR_VALUE_Global;
+    }
+    return false;
 }
 
 internal void llvm_append_function_signature(StringBuilder*     sb,
@@ -4938,7 +5007,7 @@ internal bool llvm_emit_nil_box_binding(LlvmFunctionContext* ctx,
     }
 
     string name = llvm_value_name_string(
-        ctx->hir, ctx->lexer, ctx->arena, binding->target_index);
+        ctx->hir, ctx->lexer, ctx->sema, ctx->arena, binding->target_index);
     if (name.count == 0) {
         return false;
     }
@@ -6060,6 +6129,66 @@ internal LlvmValue llvm_emit_expr_as_type(LlvmFunctionContext* ctx,
     return llvm_coerce_value_to_type(ctx, value, target_type);
 }
 
+internal LlvmValue llvm_imported_global_address(LlvmFunctionContext* ctx,
+                                                const HirExpr*       expr)
+{
+    const HirImport* import        = NULL;
+    HirImport        decl_import   = {0};
+    u32              binding_index = U32_MAX;
+    u32              decl_index    = U32_MAX;
+    if (expr->kind != HIR_EXPR_LocalRef && expr->kind != HIR_EXPR_Field) {
+        return (LlvmValue){0};
+    }
+    if (expr->ref_kind == HIR_REF_Binding) {
+        binding_index = expr->ref_index;
+    } else if (expr->ref_kind == HIR_REF_Decl) {
+        decl_index = expr->ref_index;
+        if (decl_index < array_count(ctx->hir->decl_binding_indices)) {
+            binding_index = ctx->hir->decl_binding_indices[decl_index];
+        }
+    }
+    if (binding_index < array_count(ctx->hir->bindings)) {
+        const HirBinding* binding = &ctx->hir->bindings[binding_index];
+        import = llvm_binding_import(ctx->hir, binding_index);
+        if (binding->kind == HIR_BINDING_Value &&
+            binding->target_index < array_count(ctx->hir->values)) {
+            decl_index = ctx->hir->values[binding->target_index].decl_index;
+        }
+    }
+    if (import == NULL && decl_index < array_count(ctx->sema->decls)) {
+        const SemaDecl* decl = &ctx->sema->decls[decl_index];
+        if (decl->import_module_index != U32_MAX) {
+            decl_import = (HirImport){
+                .module_index  = decl->import_module_index,
+                .decl_index    = decl->import_decl_index,
+                .symbol_handle = decl->symbol_handle,
+                .type_index    = decl->type_index,
+            };
+            import = &decl_import;
+        }
+    }
+    if (import == NULL) {
+        import = llvm_field_import(ctx->sema, ctx->lexer, ctx->hir, expr);
+    }
+    const Hir*   source_hir   = NULL;
+    const Lexer* source_lexer = NULL;
+    const Sema*  source_sema  = NULL;
+    u32          index        = U32_MAX;
+    if (import == NULL || !llvm_import_source_global(ctx->sema,
+                                                     ctx->lexer,
+                                                     import,
+                                                     &source_hir,
+                                                     &source_lexer,
+                                                     &source_sema,
+                                                     &index)) {
+        return (LlvmValue){0};
+    }
+    string name = llvm_value_name_string(
+        source_hir, source_lexer, source_sema, ctx->arena, index);
+    return (LlvmValue){
+        .ok = name.count > 0, .type_index = expr->type_index, .value = name};
+}
+
 internal LlvmValue
 llvm_emit_imported_constant_value(LlvmFunctionContext* ctx,
                                   const HirFunction*   function,
@@ -7028,6 +7157,10 @@ internal LlvmValue llvm_address_of_expr(LlvmFunctionContext* ctx,
     }
 
     const HirExpr* expr = &ctx->hir->exprs[expr_index];
+    LlvmValue      imported = llvm_imported_global_address(ctx, expr);
+    if (imported.ok) {
+        return imported;
+    }
     if (expr->kind == HIR_EXPR_Unary && expr->unary_op == HIR_UNARY_Deref) {
         LlvmValue pointer =
             llvm_emit_expr(ctx, function, expr->operand_expr_index);
@@ -7338,6 +7471,7 @@ internal LlvmValue llvm_address_of_expr(LlvmFunctionContext* ctx,
                 if (value->kind == HIR_VALUE_Global) {
                     string name = llvm_value_name_string(ctx->hir,
                                                          ctx->lexer,
+                                                         ctx->sema,
                                                          ctx->arena,
                                                          binding->target_index);
                     return (LlvmValue){
@@ -8374,6 +8508,11 @@ internal bool llvm_callee_name(LlvmFunctionContext* ctx,
     }
 
     const HirExpr* callee = &ctx->hir->exprs[callee_expr_index];
+    if (llvm_imported_global_address(ctx, callee).ok) {
+        LlvmValue loaded = llvm_emit_expr(ctx, function, callee_expr_index);
+        *out             = loaded.value;
+        return loaded.ok;
+    }
     if (callee->kind == HIR_EXPR_FunctionRef &&
         callee->ref_index < array_count(ctx->hir->functions)) {
         *out = llvm_function_name_string(
@@ -9373,6 +9512,28 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
     }
 
     const HirExpr* expr = &ctx->hir->exprs[expr_index];
+    LlvmValue      imported = llvm_imported_global_address(ctx, expr);
+    if (imported.ok) {
+        string loaded = llvm_temp(ctx);
+        string type   = llvm_type_string(ctx, imported.type_index);
+        if (llvm_type_is_atomic(ctx->sema, imported.type_index)) {
+            sb_format(ctx->sb,
+                      "  " STRINGP " = load atomic " STRINGP ", ptr " STRINGP
+                      " seq_cst, align %u\n",
+                      STRINGV(loaded),
+                      STRINGV(type),
+                      STRINGV(imported.value),
+                      llvm_type_align_bits(ctx->sema, imported.type_index) / 8);
+        } else {
+            sb_format(ctx->sb,
+                      "  " STRINGP " = load " STRINGP ", ptr " STRINGP "\n",
+                      STRINGV(loaded),
+                      STRINGV(type),
+                      STRINGV(imported.value));
+        }
+        imported.value = loaded;
+        return imported;
+    }
     switch (expr->kind) {
     case HIR_EXPR_DefaultValue:
         return llvm_default_value(ctx, expr->type_index);
@@ -10399,7 +10560,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             }
             if (value->kind == HIR_VALUE_Global) {
                 string name = llvm_value_name_string(
-                    ctx->hir, ctx->lexer, ctx->arena, value_index);
+                    ctx->hir, ctx->lexer, ctx->sema, ctx->arena, value_index);
                 if (name.count == 0) {
                     return (LlvmValue){0};
                 }
@@ -15194,6 +15355,30 @@ internal bool llvm_emit_assign(LlvmFunctionContext* ctx,
     }
 
     const HirExpr* target = &ctx->hir->exprs[target_expr_index];
+    LlvmValue      imported = llvm_imported_global_address(ctx, target);
+    if (imported.ok) {
+        value = llvm_coerce_value_to_type(ctx, value, imported.type_index);
+        if (!value.ok) {
+            return false;
+        }
+        string type = llvm_type_string(ctx, imported.type_index);
+        if (llvm_type_is_atomic(ctx->sema, imported.type_index)) {
+            sb_format(ctx->sb,
+                      "  store atomic " STRINGP " " STRINGP ", ptr " STRINGP
+                      " seq_cst, align %u\n",
+                      STRINGV(type),
+                      STRINGV(value.value),
+                      STRINGV(imported.value),
+                      llvm_type_align_bits(ctx->sema, imported.type_index) / 8);
+        } else {
+            sb_format(ctx->sb,
+                      "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n",
+                      STRINGV(type),
+                      STRINGV(value.value),
+                      STRINGV(imported.value));
+        }
+        return true;
+    }
 
     if (target->kind == HIR_EXPR_Index) {
         LlvmValue target_ptr =
@@ -15335,7 +15520,7 @@ internal bool llvm_emit_assign(LlvmFunctionContext* ctx,
         }
 
         string name = llvm_value_name_string(
-            ctx->hir, ctx->lexer, ctx->arena, binding->target_index);
+            ctx->hir, ctx->lexer, ctx->sema, ctx->arena, binding->target_index);
         if (name.count == 0) {
             return false;
         }
@@ -18322,6 +18507,52 @@ internal void llvm_render_import(StringBuilder*   sb,
                                  const Sema*      sema,
                                  const HirImport* import)
 {
+    const Hir*   source_hir   = NULL;
+    const Lexer* source_lexer = NULL;
+    const Sema*  source_sema  = NULL;
+    u32          source_index = U32_MAX;
+    if (llvm_import_source_global(sema,
+                                  lexer,
+                                  import,
+                                  &source_hir,
+                                  &source_lexer,
+                                  &source_sema,
+                                  &source_index)) {
+        if (source_hir == hir) {
+            return;
+        }
+        // Direct imports and re-exports can name the same defining storage.
+        for (u32 i = 0;
+             i < array_count(hir->imports) && &hir->imports[i] != import;
+             ++i) {
+            const Hir*   earlier_hir   = NULL;
+            const Lexer* earlier_lexer = NULL;
+            const Sema*  earlier_sema  = NULL;
+            u32          earlier_index = U32_MAX;
+            if (llvm_import_source_global(sema,
+                                          lexer,
+                                          &hir->imports[i],
+                                          &earlier_hir,
+                                          &earlier_lexer,
+                                          &earlier_sema,
+                                          &earlier_index) &&
+                earlier_hir == source_hir && earlier_index == source_index) {
+                return;
+            }
+        }
+        Arena temp = {0};
+        arena_init(&temp);
+        sb_append_string(
+            sb,
+            llvm_value_name_string(
+                source_hir, source_lexer, source_sema, &temp, source_index));
+        arena_done(&temp);
+        sb_append_cstr(sb, " = external global ");
+        llvm_append_type(
+            sb, source_sema, source_hir->values[source_index].type_index);
+        sb_append_char(sb, '\n');
+        return;
+    }
     if (sema == NULL || import->type_index >= array_count(sema->types) ||
         sema->types[import->type_index].kind != STK_Function) {
         return;
@@ -18518,7 +18749,11 @@ internal void llvm_render_global_values(StringBuilder*   sb,
         u32  binding_index = llvm_hir_value_binding_index(hir, i);
         bool exported = binding_index != U32_MAX &&
                         llvm_hir_binding_is_exported(sema, hir, binding_index);
-        llvm_append_symbol_name(sb, lex_symbol(lexer, symbol_handle));
+        Arena name_arena = {0};
+        arena_init(&name_arena);
+        sb_append_string(
+            sb, llvm_value_name_string(hir, lexer, sema, &name_arena, i));
+        arena_done(&name_arena);
         sb_append_cstr(sb, exported ? " = global " : " = internal global ");
         llvm_append_type(sb, sema, value->type_index);
         sb_append_cstr(sb, " ");
@@ -18638,7 +18873,7 @@ internal void llvm_render_global_init(StringBuilder*     sb,
             continue;
         }
 
-        string name = llvm_value_name_string(hir, lexer, temp, i);
+        string name = llvm_value_name_string(hir, lexer, sema, temp, i);
         if (name.count == 0) {
             continue;
         }
@@ -18672,7 +18907,7 @@ internal void llvm_render_global_init(StringBuilder*     sb,
     (void)arena;
 }
 
-internal void llvm_render_function(StringBuilder*     sb,
+internal bool llvm_render_function(StringBuilder*     sb,
                                    const Hir*         hir,
                                    const Lexer*       lexer,
                                    const Sema*        sema,
@@ -18688,7 +18923,7 @@ internal void llvm_render_function(StringBuilder*     sb,
         llvm_append_function_signature(
             sb, hir, lexer, sema, function, function_index);
         sb_append_char(sb, '\n');
-        return;
+        return true;
     }
 
     u32 debug_scope_id = llvm_debug_add_function(
@@ -18748,7 +18983,14 @@ internal void llvm_render_function(StringBuilder*     sb,
     bool emitted = llvm_initialise_assigned_param_slots(&ctx, function) &&
                    llvm_emit_param_debug_values(&ctx, function) &&
                    llvm_emit_block(&ctx, function, function->body_block_index);
-    if (!emitted || !ctx.block_terminated) {
+    if (!emitted) {
+        error_runtime("LLVM lowering failed in module %u, function %u (%.*s)",
+                      hir->current_module_index,
+                      function_index,
+                      (int)lexer->source.source_path.count,
+                      lexer->source.source_path.data);
+    }
+    if (emitted && !ctx.block_terminated) {
         u32 return_type = llvm_function_return_type(sema, function->type_index);
         if (ctx.va_root.count > 0) {
             sb_format(&body_sb,
@@ -18768,6 +19010,7 @@ internal void llvm_render_function(StringBuilder*     sb,
     array_free(ctx.control_targets);
     sb_append_cstr(sb, "}\n");
     (void)arena;
+    return emitted;
 }
 
 internal void llvm_render_binding_alias(StringBuilder*    sb,
@@ -19051,16 +19294,18 @@ string llvm_render_hir(const Hir*   hir,
         sb_append_char(&sb, '\n');
     }
 
+    bool functions_ok = true;
     for (u32 i = 0; i < array_count(hir->functions); ++i) {
-        llvm_render_function(&sb,
-                             hir,
-                             lexer,
-                             render_sema,
-                             arena,
-                             debug,
-                             &hir->functions[i],
-                             i,
-                             &scratch);
+        bool function_ok = llvm_render_function(&sb,
+                                                hir,
+                                                lexer,
+                                                render_sema,
+                                                arena,
+                                                debug,
+                                                &hir->functions[i],
+                                                i,
+                                                &scratch);
+        functions_ok     = functions_ok && function_ok;
         sb_append_char(&sb, '\n');
     }
 
@@ -19153,7 +19398,65 @@ string llvm_render_hir(const Hir*   hir,
         llvm_debug_done(debug);
     }
     llvm_render_sema_done(&render_sema_storage);
-    return rendered;
+    return functions_ok ? rendered : (string){0};
+}
+
+// Malformed HIR must produce a diagnostic and no apparently successful IR.
+bool llvm_lowering_failure_self_test(void)
+{
+    Hir   hir   = {.current_module_index = 0};
+    Lexer lexer = {.source = {.source_path = s("lowering-probe.n")}};
+    Sema  sema  = {0};
+    array_push(sema.types, ((SemaType){.kind = STK_Void}));
+    array_push(sema.types,
+               ((SemaType){.kind = STK_Function, .return_type = 0}));
+    array_push(hir.exprs,
+               ((HirExpr){.kind               = HIR_EXPR_LocalRef,
+                          .ref_kind           = HIR_REF_Binding,
+                          .ref_index          = U32_MAX,
+                          .symbol_handle      = U32_MAX,
+                          .operand_expr_index = U32_MAX,
+                          .extra_expr_index   = U32_MAX,
+                          .lhs_expr_index     = U32_MAX,
+                          .rhs_expr_index     = U32_MAX,
+                          .callee_expr_index  = U32_MAX,
+                          .body_block_index   = U32_MAX,
+                          .for_index          = U32_MAX,
+                          .type_index         = 0}));
+    array_push(hir.stmts,
+               ((HirStmt){.kind             = HIR_STMT_Expr,
+                          .expr_index       = 0,
+                          .body_block_index = U32_MAX}));
+    HirBlock block = {.stmt_count = 1};
+    array_push(block.stmt_indices, 0);
+    array_push(hir.blocks, block);
+    array_push(hir.functions,
+               ((HirFunction){.kind                = HIR_FUNCTION_Normal,
+                              .decl_index          = U32_MAX,
+                              .varargs_local_index = U32_MAX,
+                              .type_index          = 1,
+                              .body_block_index    = 0}));
+    Arena arena = {0};
+    arena_init(&arena);
+    ErrorContext diagnostics = {0};
+    error_context_init(&diagnostics, ERROR_RENDER_NORMAL, true);
+    ErrorContext* previous = error_context_select(&diagnostics);
+    string result = llvm_render_hir(&hir, &lexer, &sema, &arena, false, false);
+    bool   ok     = result.count == 0 && array_count(diagnostics.pending) == 1;
+    error_context_select(previous);
+    error_context_done(&diagnostics);
+    arena_done(&arena);
+    array_free(hir.blocks[0].stmt_indices);
+    array_free(hir.blocks);
+    array_free(hir.exprs);
+    array_free(hir.stmts);
+    array_free(hir.functions);
+    array_free(sema.types);
+    if (!ok) {
+        return error_runtime("LLVM lowering failure was not propagated");
+    }
+    prn("llvm-lowering-failure ok");
+    return true;
 }
 
 bool llvm_save_hir(const Hir*   hir,
@@ -19164,6 +19467,10 @@ bool llvm_save_hir(const Hir*   hir,
     Arena arena = {0};
     arena_init(&arena);
     string rendered = llvm_render_hir(hir, lexer, sema, &arena, true, false);
+    if (rendered.count == 0) {
+        arena_done(&arena);
+        return false;
+    }
 
     FILE* file      = fopen(path, "wb");
     if (!file) {
