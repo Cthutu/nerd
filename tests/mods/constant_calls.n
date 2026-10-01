@@ -1,0 +1,31 @@
+count: i32 = 0
+
+pub read_count :: fn () -> i32 {
+    return count
+}
+
+pub next :: fn () -> i32 {
+    count += 1
+    return count
+}
+
+pub tick   :: next()
+pub alias  :: tick
+pub once   := next()
+pub unused :: next()
+
+pub Payload :: plex {
+    value i32
+}
+
+pub payload :: Payload { value: tick }
+
+pub read_once :: fn () -> i32 {
+    return once
+}
+
+Selected :: enum {
+    Value(i32)
+}
+
+pub selected :: on Selected.Value(23) { Value(value) => value + 1 }

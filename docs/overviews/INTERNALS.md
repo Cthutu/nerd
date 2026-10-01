@@ -1162,3 +1162,20 @@ It does not prefer an existing debug compiler or fall back to PATH: either may
 predate syntax in the checkout and silently rewrite it through formatter
 recovery. A failed compiler build stops the workflow before any source file is
 formatted. VS Code also invokes `nerd format`, using its configured executable.
+
+## Imported constant evaluation in generated C
+
+HIR distinguishes `HIR_VALUE_Constant` expression bindings from mutable
+`HIR_VALUE_Global` storage. Generated C expands constant expressions at each
+reference, including imported and module-qualified references, matching its
+local-constant path and LLVM. Only mutable globals receive module initialisers;
+unused constant expressions must not introduce startup side effects.
+
+`cgen_binding` evaluates an imported constant in the defining module's type/HIR
+context and restores the caller afterwards. Each expansion receives distinct
+local names and separate local-type, cleanup, target and override bookkeeping,
+so an `on` payload binder cannot overwrite a caller local with the same HIR
+index. Temporaries remain in the enclosing generated function's declaration
+scope. `tests/cgen/imported-constant-calls.n` compares repeated calls, aggregate
+constants, qualified references, one-time mutable initialisation and binder
+isolation against LLVM at both C optimisation levels.
