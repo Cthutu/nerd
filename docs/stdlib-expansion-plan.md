@@ -3,6 +3,9 @@
 Status: proposed, 2026-10-01. Working branch: `std-library`, based on Nerd
 `00e226c2`. This is a plan, not an implementation or a claim of completed ports.
 
+The first implementation batch uses [parallel workstreams](stdlib-workstreams.md)
+with separate branches, ownership boundaries and a later integration gate.
+
 ## Objective
 
 Bring Matt Davies's Raptor scheduler/queues, Kerberos graph/node data graphs,
