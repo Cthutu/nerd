@@ -116,5 +116,6 @@ Native OS resource-exhaustion fault injection, forced spurious wake scheduling,
 timed waits, cancellation, thread identity and broader stress testing remain
 future work. Native Windows evidence and Linux/WSL gaps are recorded in
 [the validation note](../validation/windows/results/20261001-thread-sync/README.md).
-Integration should add this bounded runner to the common test recipe; it does
-not replace the later complete `just test` / `just do` platform gates.
+Both `just test` and `just test-release` execute this runner through LLVM and
+generated C, including the imported temporary-arena alias regression. This does
+not replace the later complete `just do` platform gates.

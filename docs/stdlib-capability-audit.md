@@ -76,8 +76,9 @@ Required separate runtime slice:
 4. Do not treat release-only passes as sufficient: disabling debug bookkeeping
    would hide the shared-state defect. TLS cleanup still matters in release.
 
-This report does not modify the runtime. The separate runtime/thread branches
-must replace these baseline blockers with commit-specific validation evidence.
+This report records the baseline. The runtime/thread repairs are now integrated
+into `std-library`; see the latest [handoff](../validation/windows/results/HANDOFF.md)
+for combined regression evidence replacing these baseline blockers.
 Thread entry ABI, mutex/condition-variable native layout and platform lifecycle
 are owned by the M1 track; socket layouts and networking ABI by the M5 track.
 

@@ -1,8 +1,8 @@
 # Parallel standard-library workstreams
 
 Started 2026-10-01 from `f5d551da` on `std-library`. Each stream has its own
-Git worktree and branch. `main` is unchanged; these are review branches for
-later integration, not completed M0/M1/M5 milestones.
+Git worktree and branch. The first slices are now merged into `std-library` for
+a draft PR. `main` is unchanged; these are not completed M0/M1/M5 milestones.
 
 | Branch | Owner/task | First deliverable | Dependency |
 | --- | --- | --- | --- |
@@ -11,7 +11,9 @@ later integration, not completed M0/M1/M5 milestones.
 | `std-thread-sync` | Threading agent | Owned start/join, mutex/conditions, producer/consumer example and native tests | Runtime branch |
 | `std-network` | Networking agent | IPv4 TCP/UDP socket foundation, echo/datagram examples and native contract tests | Planning base; no scheduler dependency |
 | `std-cgen-imported-constants` | Capability audit agent, follow-up | Correct imported constant evaluation in compatibility C output | Planning base; discovered by worker checks |
-| `std-library` | Coordinator | Scope, cross-stream decisions, review and integration records | Collects reviewed branches later |
+| `std-llvm-imported-globals` | Capability audit agent, follow-up | Correct direct imported mutable-global access through LLVM | C-output repair branch |
+| `std-format-public-globals` | Threading agent, follow-up | Preserve standalone public variable visibility during formatting | C-output repair branch |
+| `std-library` | Coordinator | Integrated changes, common test recipes, draft PR and Linux handoff | Collects reviewed branches |
 
 The first three agent tasks are deliberately independent. Raptor queue algorithms
 and Kerberos semantics cannot be ported faithfully until source access is resolved.
@@ -32,8 +34,8 @@ against an unstable placeholder API.
 - Worker wrappers pair `nrt_thread_init`/`nrt_thread_done`. Both `temp_arena`
   (evaluated at each use) and `current_temp_arena()` borrow caller TLS. Results
   transferred between threads need storage that survives worker cleanup.
-  Compatibility C output currently caches imported constants incorrectly; use
-  the explicit function until the compiler fix is integrated.
+  The integrated C-output repair restores per-use imported constants; both
+  backends now run the worker alias regression in the common test recipe.
 - Diagnostic allocation locks protect bookkeeping, not concurrent access to an
   application's allocation or arena. Join workers before raw leak-list inspection.
 - Socket ownership, native handle width, error capture, partial I/O and EOF/datagram
@@ -87,9 +89,17 @@ against an unstable placeholder API.
   Arch WSL C-output O0/O2 passed; direct LLVM execution lacks `opt`/`llc` there.
   See `docs/std-network-foundation.md` and
   `validation/windows/results/20261001-std-network/` on that branch.
-- Imported-constant compiler repair: validation in progress. Review reproduced
-  a local-variable collision inside imported constant binders, which must also
-  be fixed before the compiler branch is ready. The two completed library
-  slices use explicit function calls and do not depend on this unfinished fix.
+- Imported-constant repair `b0d46a57`: integrated, including isolated imported
+  binder locals. Its independent Windows gate passed 296 differential fixtures
+  at C O0/O2; the combined thread alias regression also passes LLVM/C output.
+
+## Combined review branch
+
+All original workstream commits are preserved by merges without rewriting their
+published histories. The shared OS completion fixture retains both new modules.
+The standard test recipes execute capability, thread/sync and socket contracts,
+including all three runnable examples. Full combined results and Linux pickup
+commands are recorded in the latest
+[Windows return handoff](../validation/windows/results/HANDOFF.md).
 
 See [the milestone plan](stdlib-expansion-plan.md) for feature and example exit gates.

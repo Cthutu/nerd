@@ -71,8 +71,8 @@ python build/test_network.py --cgen --release
 
 `--release` optimises the example/test programs; `--compiler PATH` selects a
 separately built compiler. `--cgen` explicitly tests C output with Clang; it is
-not a fallback for missing native LLVM tools. Integration should add this runner
-to the common test recipe when the independent branches merge. The existing
+not a fallback for missing native LLVM tools. Both `just test` and
+`just test-release` execute this runner on the integrated branch. The existing
 example family checks syntax but does not replace these execution tests.
 
 ## Remaining M5 work
@@ -107,9 +107,9 @@ commands also passed using the freshly built release compiler; the focused
 socket suite passed with that compiler and optimised programs.
 
 [Raw Windows gate logs](../validation/windows/results/20261001-std-network/README.md)
-retain the initial failure and the successful follow-up. The independent thread
-branch also changes the OS completion fixture; retain both `socket` and `thread`
-when merging the branches later.
+retain the initial failure and the successful follow-up. The integrated OS
+completion fixture contains both `socket` and `thread`. See the latest
+[handoff](../validation/windows/results/HANDOFF.md) for combined results.
 
 Native sources consulted: [Winsock startup](https://learn.microsoft.com/en-us/windows/win32/api/winsock/nf-winsock-wsastartup),
 [WSADATA](https://learn.microsoft.com/en-us/windows/win32/api/winsock/ns-winsock-wsadata),
