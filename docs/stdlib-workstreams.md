@@ -15,8 +15,10 @@ a draft PR. `main` is unchanged; these are not completed M0/M1/M5 milestones.
 | `std-format-public-globals` | Threading agent, follow-up | Preserve standalone public variable visibility during formatting | C-output repair branch |
 | `std-library` | Coordinator | Integrated changes, common test recipes, draft PR and Linux handoff | Collects reviewed branches |
 
-The first three agent tasks are deliberately independent. Raptor queue algorithms
-and Kerberos semantics cannot be ported faithfully until source access is resolved.
+The first three agent tasks are deliberately independent. Source access was later
+resolved through the existing owner login; the [inventory](stdlib-source-inventory.md)
+records actual algorithms, test mappings and provenance. No work-stealing
+implementation was found in the available Raptor branch heads.
 Nexus messaging will follow the socket foundation rather than being developed
 against an unstable placeholder API.
 
@@ -92,6 +94,13 @@ against an unstable placeholder API.
 - Imported-constant repair `b0d46a57`: integrated, including isolated imported
   binder locals. Its independent Windows gate passed 296 differential fixtures
   at C O0/O2; the combined thread alias regression also passes LLVM/C output.
+- Public-variable formatter repair `8eb7b5e3`: integrated; 212 formatting and
+  three related command fixtures passed independently, including public typed,
+  inferred, defaulted and guarded variables.
+- Imported mutable-global repair `53fba4cf`: integrated; LLVM/C O0/O2 regressions
+  cover shared storage, mutation, pointers, aggregates, atomics and duplicate
+  module names while preserving the root public ABI. Failed LLVM lowering now
+  reports an error instead of silently producing an incomplete executable.
 
 ## Combined review branch
 

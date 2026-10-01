@@ -84,18 +84,18 @@ are owned by the M1 track; socket layouts and networking ABI by the M5 track.
 
 ## Source inventory boundary and next slices
 
-Raptor and Kerberos remain inaccessible with the available repository access.
-No source revision, exact queue algorithm, graph semantics, licence, test names
-or upstream execution results can be claimed. No queue or graph implementation
-is copied or invented to stand in for those repositories.
+Raptor and Kerberos were inaccessible during this baseline audit. Access has now
+been resolved through the existing owner login; the separate
+[source inventory](stdlib-source-inventory.md) records revisions, actual APIs,
+test mappings and provenance. No queue or graph implementation is copied in
+this tranche, and no upstream execution results are claimed.
 
 Nexus source is available in the review checkout of `cthutu/dev` pinned by the
 [expansion plan](stdlib-expansion-plan.md). Its source/test inventory belongs to
 the independent networking track; this audit adds no parity claims.
 
-Once access is available, M0 must record Raptor/Kerberos revisions and licences,
-map exported APIs and each source test, select exact example scenarios, and
-identify algorithm-specific memory-order/reclamation and graph mutation rules.
+M0 must finish the component disposition and reuse decisions, upstream execution,
+and algorithm-specific memory-order/reclamation and graph mutation contracts.
 After the runtime/M1 prerequisite, queue work can start with the simplest
 inventoried queue and explicit ownership tests. Graph storage/serial evaluation
 can proceed independently once Kerberos semantics are known. Native Linux and

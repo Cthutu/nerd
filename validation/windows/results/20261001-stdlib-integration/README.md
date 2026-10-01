@@ -67,7 +67,11 @@ clean/build/test/global-install workflow on that PC; it intentionally updates th
 installed compiler/modules and editor support. Native Linux/full WSL `just do`
 remain adoption gates and are not implied by the Windows results.
 
-Next feature work still needs accessible Raptor/Kerberos source revisions and
-licence/test inventories. Continue the [milestone plan](../../../../docs/stdlib-expansion-plan.md)
+Source access was resolved during integration. The
+[inventory](../../../../docs/stdlib-source-inventory.md) pins Raptor/Kerberos
+revisions, tests and provenance; upstream execution and reuse decisions remain.
+No work-stealing implementation was found in the available Raptor heads, so
+confirm the intended revision or explicitly choose an algorithm. Continue the
+[milestone plan](../../../../docs/stdlib-expansion-plan.md)
 after reviewing this foundation: queues/scheduler, graph semantics, broader socket
 support and Nexus framing/protocols remain separate work.

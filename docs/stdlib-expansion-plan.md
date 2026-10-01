@@ -1,7 +1,8 @@
 # Standard-library expansion plan
 
-Status: proposed, 2026-10-01. Working branch: `std-library`, based on Nerd
-`00e226c2`. This is a plan, not an implementation or a claim of completed ports.
+Status: first foundations implemented for draft review, 2026-10-01. Working
+branch: `std-library`, based on Nerd `00e226c2`. Later milestones remain planned;
+this is not a claim of completed ports.
 
 The first implementation batch uses [parallel workstreams](stdlib-workstreams.md)
 with separate branches, ownership boundaries and a later integration gate.
@@ -23,9 +24,15 @@ No compiler scheduler replacement is included in this project.
 
 | Source | Evidence | Review status |
 | --- | --- | --- |
-| [Raptor](https://github.com/cthutu/raptor) | User identifies work-stealing scheduler and queues | Repository inaccessible with current credentials; exact algorithms, API, dependencies and tests must be inventoried in M0 |
-| [Kerberos](https://github.com/cthutu/kerberos) | User identifies graph/node data graphs | Repository inaccessible with current credentials; graph semantics and execution model must be inventoried in M0 |
+| [Raptor](https://github.com/cthutu/raptor) | Master `3ae8c14b75d29e751a51d3046bde51c201aa5245`, plus graph/continuations/v2 heads | Source inspected: ASIO scheduling, task/serial queues and experimental graph FIFO; no work-stealing implementation found in these heads |
+| [Kerberos](https://github.com/cthutu/kerberos) | Master `09cae65e37bac03a06ce19862f95546793a723c4` | Source inspected: serial FIFO dataflow, named typed ports and fan-out; scheduler argument unused |
 | [Nexus](https://github.com/cthutu/dev/tree/9ae32dd295241bd3889204537dfa476f222e753c/src/nexus) | `dev` revision `9ae32dd295241bd3889204537dfa476f222e753c` | Public header, implementation structure, README, PLAN, and tests inspected; original tests not executed during planning |
+
+The [source inventory](stdlib-source-inventory.md) records exact branch revisions,
+API/test mappings, ownership hazards and source copyright notices. Raptor and
+Kerberos access was resolved using the existing repository-owner login; original
+suites have not been built or executed. Confirm whether the intended work-stealing
+code is on another revision before describing M3 as a direct algorithm port.
 
 Nexus already separates OS access (`lowlevel.c`), TCP/UDP transports, pipes,
 message framing, request/reply and Telnet protocols. It has reusable message
@@ -43,9 +50,9 @@ behaviour and Telnet. Map every source test to a Nerd test or a documented
 intentional behaviour change before declaring parity.
 
 Nerd already has `std.atomics`, memory/time utilities, and platform FFI modules.
-Its compiler has private C thread/mutex/task implementations, but these are not
-public Nerd threading or scheduling modules. There are no existing public queue,
-graph or socket modules to extend. Follow [NSL standards](../mods/CODING-STANDARDS.md)
+Its compiler has private C thread/mutex/task implementations. This review branch
+now adds public `std.thread`, `std.sync` and initial `std.network` modules; public
+queue, scheduler and graph modules remain future work. Follow [NSL standards](../mods/CODING-STANDARDS.md)
 and the existing `core` / `std` / `os` separation.
 
 ## Proposed module boundaries
@@ -58,7 +65,7 @@ with the source inventory before publishing APIs.
 | `std.thread` | Thread creation, joining and identity; explicit lifetime and callback context contracts |
 | `std.sync` | Mutexes, condition variables and any semaphore/event primitive actually needed by the ports |
 | `std.queue` | Reusable queues from the Raptor inventory; concurrency roles explicit in each type |
-| `std.task` | Raptor-derived work-stealing scheduler, task completion and worker lifecycle |
+| `std.task` | Task completion/lifecycle informed by Raptor; requested work stealing needs a confirmed source or an explicitly selected new algorithm |
 | `std.graph` | Kerberos-derived node/edge storage, data and graph operations, usable without workers |
 | `std.network` | Socket lifecycle, addressing, TCP/UDP byte I/O, readiness and portable errors |
 | `std.nexus` | Message buffers, framing, routes and basic/request/reply/Telnet protocol behaviour |
@@ -108,14 +115,17 @@ checkboxes start unchecked.
 
 ### M0 — Source inventory and language capability checks
 
-- [ ] Obtain Raptor/Kerberos source, record exact commits, API/test inventories,
-  dependencies and required attribution for all imported material.
+- [x] Obtain Raptor/Kerberos source and record exact commits, API/test inventories
+  and dependencies in the source inventory.
+- [ ] Resolve required attribution/reuse terms before copying source material;
+  the inspected headers name company copyright holders and contain no standalone
+  repository licence grant.
 - [ ] Build/run original reference suites where supported; record gaps rather
   than treating an unavailable upstream test as passing.
 - [ ] Map every upstream component to port, internal detail, or explicit deferral.
 - [ ] Select representative upstream tests for the example catalogue and record
-  their repository revision, file and test name. Raptor/Kerberos mappings remain
-  provisional until their sources are accessible.
+  their repository revision, file and test name. Initial Raptor/Kerberos mappings
+  are recorded below; upstream execution and final API choices remain open.
 - [ ] Compile small Nerd probes for atomic compare/exchange and pointer-sized
   state, alignment, generic payload ownership, callback context lifetime, thread
   entry ABI, TLS requirements and platform struct layouts. Avoid aggregate-by-value
@@ -130,7 +140,7 @@ Network design and the already-accessible Nexus review can proceed independently
 
 Depends on M0's relevant capability checks.
 
-- [ ] Implement minimal thread/join, mutex and condition-variable APIs; add other
+- [x] Implement minimal thread/join, mutex and condition-variable APIs; add other
   primitives only where source ports require them.
 - [ ] Define explicit context lifetimes, thread-local allocator behaviour,
   initialisation failures and partial-start cleanup.
@@ -159,8 +169,10 @@ Exit: standalone queues with documented ownership, capacity and progress guarant
 
 Depends on M2.
 
-- [ ] Port worker-local scheduling, external submission and stealing from Raptor;
-  include explicit worker counts and a single-worker mode.
+- [ ] Confirm the intended work-stealing source or select an explicit algorithm:
+  inspected Raptor branches delegate scheduling to ASIO. Implement worker-local
+  scheduling, external submission and stealing with explicit worker counts and
+  a single-worker mode; do not label a new algorithm source parity.
 - [ ] Define task completion, nested submission/waits, errors, drain/cancel and
   self-wait handling. Introduce dependencies only where the source/API requires them.
 - [ ] Test exactly-once execution/completion, nested tasks, contention, idle wake-up,
@@ -176,16 +188,19 @@ behaviour. No change to Nerd compiler concurrency defaults or internals is impli
 Depends on Kerberos inventory and relevant M0 capabilities; M3 is not required
 for graph storage or a serial evaluator.
 
-- [ ] Port the inventoried node, edge and data model with explicit ownership and
-  stable identifiers; detect stale identifiers if storage reuses slots.
-- [ ] Implement the actual source traversal/evaluation/invalidation semantics.
+- [ ] Port named typed ports, FIFO links and dataflow nodes with explicit ownership.
+  Stable identifiers and stale-slot detection would be deliberate improvements
+  over the source's borrowed node pointers, not source-parity requirements.
+- [ ] Implement the source's serial data-availability evaluation semantics.
+  There is no source dirty-cache/invalidation engine or topological traversal.
   Define cycle handling and mutation-during-evaluation behaviour before adding
   a parallel evaluator; do not silently convert general graphs into DAGs.
 - [ ] Test empty/disconnected graphs, fan-in/fan-out, diamonds, cycles, removal,
   stale handles, repeated evaluation and source-defined data propagation.
 
-Exit: source-parity examples and deterministic serial behaviour that can serve
-as the reference for later parallel execution.
+Exit: source-parity dataflow examples and an explicit serial ordering contract
+for later parallel comparisons. Deterministic node ordering would be a deliberate
+Nerd improvement over the source's unordered-set visitation.
 
 ### M5 — Low-level `std.network`
 
@@ -277,16 +292,18 @@ show setup, normal operation, error handling and cleanup using the public API.
 Retain focused regression tests separately; examples should not reproduce the
 upstream test framework or expose private implementation details.
 
-The following directories and scenarios are proposed, not yet implemented.
+The network examples and M1 `thread-pipeline` are implemented in this review;
+the other directories and scenarios remain proposed.
 Nexus test names below refer to the pinned `dev` revision in the source inventory.
-Raptor and Kerberos rows are candidates whose exact source tests must be selected
-in M0; their descriptions are not claims about tests already inspected.
+Raptor and Kerberos rows now reference inspected source tests. They have not yet
+been executed upstream or ported into Nerd.
 
 | Example directory | Milestone | User-visible scenario | Upstream test basis |
 | --- | --- | --- | --- |
-| `queue-pipeline` | M2 | Producers submit numbered work items; consumers process every item once and shut down cleanly | Raptor queue tests, exact mapping pending M0 |
-| `task-parallel` | M3 | Split a calculation into tasks, wait for completion and compare with its serial result | Raptor scheduler/completion tests, exact mapping pending M0 |
-| `graph-pipeline` | M4, extended in M8 | Construct a small data graph, evaluate it serially, then demonstrate the source-supported update/evaluation behaviour; later compare parallel execution | Kerberos node/data-graph tests, exact semantics and mapping pending M0 |
+| `thread-pipeline` | M1 | Producer/consumer transfers 100 integers through a mutex/condition-protected slot and verifies total 5050 | New primitive-level prerequisite example; implemented |
+| `queue-pipeline` | M2 | Producers submit numbered work items; consumers process every item once and shut down cleanly | New contention/ownership tests informed by graph-branch Raptor `DataQueue`; no upstream standalone queue suite found |
+| `task-parallel` | M3 | Split a calculation into tasks, wait for completion and compare with its serial result | Raptor master `src/test_main.cc`: `Wait`, `VoidTasks`, `Serial` |
+| `graph-pipeline` | M4, extended in M8 | Two generators feed a sum node and checker; evaluate serially before any parallel extension | Kerberos `src/test_pipeline.cc`: `Graph.GenKernel`, emits 0,2,...,18 |
 | `network-echo` | M5 | A raw TCP client/server exchanges bytes and handles partial I/O and peer shutdown | New socket-level tests extracted from the transport scenarios behind `framing.c::tcp_message_framing_round_trip`; no Nexus framing in the raw example |
 | `network-datagram` | M5 | Send a UDP datagram and reply to its sender | Socket-level counterpart of `message.c::udp_recv_msg_preserves_reply_route_for_send_msg` |
 | `nexus-message` | M6 | Send structured messages with strings and integers, read them back and reuse the message buffer | `message.c::message_append_and_read_primitives`, `framing.c::tcp_message_framing_round_trip`, `framing.c::zero_length_messages_are_valid` |
@@ -341,8 +358,8 @@ concurrency/graphs, and M5/M6/M7 for networking. M8 joins them; M9 closes adopti
 Do not assign calendar estimates until the Raptor/Kerberos inventories establish
 scope and the language capability probes expose prerequisites.
 
-Outstanding: Raptor/Kerberos access and exact revisions; final public module names;
-source-derived graph semantics; queue reclamation strategy; scheduler cancellation
-contract; and the amount of deliberate API compatibility versus Nerd-specific
-simplification. Proposed defaults above are design recommendations, not settled
-facts about inaccessible source repositories.
+Outstanding: intended work-stealing implementation/revision; source reuse terms;
+remaining public module names; FIFO publication/reclamation strategy; scheduler
+cancellation and draining contracts; and deliberate API improvements versus source
+parity. The inspected queue/lifetime hazards must be fixed through explicit
+contracts and tests, not carried into Nerd unchanged.

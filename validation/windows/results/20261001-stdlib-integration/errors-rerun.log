@@ -1,0 +1,153 @@
+[32m[PASS][0m error: tests/errors/001-unknown-characters.e
+[32m[PASS][0m error: tests/errors/002-missing-values.e
+[32m[PASS][0m error: tests/errors/003-delimiters.e
+[32m[PASS][0m error: tests/errors/004-semantics.e
+[32m[PASS][0m error: tests/errors/005-dependency-cycles.e
+[32m[PASS][0m error: tests/errors/006-unterminated-strings.e
+[32m[PASS][0m error: tests/errors/008-interpolated-strings.e
+[32m[PASS][0m error: tests/errors/009-coverage-gaps.e
+[32m[PASS][0m error: tests/errors/010-scoped-locals.e
+[32m[PASS][0m error: tests/errors/011-function-calls.e
+[32m[PASS][0m error: tests/errors/012-missing-function-return.e
+[32m[PASS][0m error: tests/errors/013-entry-point.e
+[32m[PASS][0m error: tests/errors/014-invalid-function-forms.e
+[32m[PASS][0m error: tests/errors/015-on-short-form.e
+[32m[PASS][0m error: tests/errors/016-on-value-branches.e
+[32m[PASS][0m error: tests/errors/017-on-ranges.e
+[32m[PASS][0m error: tests/errors/018-primitive-operators.e
+[32m[PASS][0m error: tests/errors/019-on-exhaustiveness.e
+[32m[PASS][0m error: tests/errors/020-for-loops.e
+[32m[PASS][0m error: tests/errors/021-expression-blocks.e
+[32m[PASS][0m error: tests/errors/022-loop-expressions.e
+[32m[PASS][0m error: tests/errors/023-tuples.e
+[32m[PASS][0m error: tests/errors/024-fixed-arrays.e
+[32m[PASS][0m error: tests/errors/025-pointers.e
+[32m[PASS][0m error: tests/errors/026-slices.e
+[32m[PASS][0m error: tests/errors/027-string-slices.e
+[32m[PASS][0m error: tests/errors/028-plexes.e
+[32m[PASS][0m error: tests/errors/029-plex-ergonomics.e
+[32m[PASS][0m error: tests/errors/030-destructuring.e
+[32m[PASS][0m error: tests/errors/031-on-pattern-guards.e
+[32m[PASS][0m error: tests/errors/032-on-structural-patterns.e
+[32m[PASS][0m error: tests/errors/033-raw-unions.e
+[32m[PASS][0m error: tests/errors/034-enum-unit-variants.e
+[32m[PASS][0m error: tests/errors/035-enum-payloads.e
+[32m[PASS][0m error: tests/errors/036-generalised-on.e
+[32m[PASS][0m error: tests/errors/036-named-record-type-mismatch.e
+[32m[PASS][0m error: tests/errors/037-direct-recursive-record-type.e
+[32m[PASS][0m error: tests/errors/037-ffi-functions.e
+[32m[PASS][0m error: tests/errors/038-modules.e
+[32m[PASS][0m error: tests/errors/039-use-modules.e
+[32m[PASS][0m error: tests/errors/040-top-level-on.e
+[32m[PASS][0m error: tests/errors/041-module-privacy.e
+[32m[PASS][0m error: tests/errors/042-packed-integer-literals.e
+[32m[PASS][0m error: tests/errors/043-array-length-constants.e
+[32m[PASS][0m error: tests/errors/044-contextual-plex-literal.e
+[32m[PASS][0m error: tests/errors/045-ffi-consolidation.e
+[32m[PASS][0m error: tests/errors/046-nil-pointers.e
+[32m[PASS][0m error: tests/errors/047-dynamic-arrays.e
+[32m[PASS][0m error: tests/errors/048-defer.e
+[32m[PASS][0m error: tests/errors/049-prefixed-integer-literals.e
+[32m[PASS][0m error: tests/errors/050-assert.e
+[32m[PASS][0m error: tests/errors/051-size.e
+[32m[PASS][0m error: tests/errors/052-definite-assignment.e
+[32m[PASS][0m error: tests/errors/053-unused-locals.e
+[32m[PASS][0m error: tests/errors/054-integer-separators.e
+[32m[PASS][0m error: tests/errors/055-function-definition-type-annotation.e
+[32m[PASS][0m error: tests/errors/056-default-parameters.e
+[32m[PASS][0m error: tests/errors/057-generics.e
+[32m[PASS][0m error: tests/errors/058-inherent-impl-methods.e
+[32m[PASS][0m error: tests/errors/060-source-tests.e
+[32m[PASS][0m error: tests/errors/061-ffi-block-syntax.e
+[32m[PASS][0m error: tests/errors/062-type-declarations.e
+[32m[PASS][0m error: tests/errors/063-obsolete-part.e
+[32m[PASS][0m error: tests/errors/064-named-call-arguments.e
+[32m[PASS][0m error: tests/errors/065-missing-function-keyword.e
+[32m[PASS][0m error: tests/errors/066-plex-field-types.e
+[32m[PASS][0m error: tests/errors/067-public-plex-private-fields.e
+[32m[PASS][0m error: tests/errors/068-enum-discriminants.e
+[32m[PASS][0m error: tests/errors/069-associated-functions.e
+[32m[PASS][0m error: tests/errors/070-discarded-value.e
+[32m[PASS][0m error: tests/errors/071-pointer-integer-casts.e
+[32m[PASS][0m error: tests/errors/072-windows-ffi-symbols.e
+[32m[PASS][0m error: tests/errors/073-used-underscore-local.e
+[32m[PASS][0m error: tests/errors/074-platform-assertions.e
+[32m[PASS][0m error: tests/errors/075-trait-impls.e
+[32m[PASS][0m error: tests/errors/076-trait-signatures.e
+[32m[PASS][0m error: tests/errors/077-trait-impl-resolution.e
+[32m[PASS][0m error: tests/errors/078-arena.e
+[32m[PASS][0m error: tests/errors/079-unexpected-return-value.e
+[32m[PASS][0m error: tests/errors/080-loop-else-infinite.e
+[32m[PASS][0m error: tests/errors/081-parameter-immutability.e
+[32m[PASS][0m error: tests/errors/082-unknown-member-suggestions.e
+[32m[PASS][0m error: tests/errors/083-private-methods.e
+[32m[PASS][0m error: tests/errors/084-folder-module-boundary.e
+[32m[PASS][0m error: tests/errors/085-bare-tuple-destructuring.e
+[32m[PASS][0m error: tests/errors/086-trait-generic-constraints.e
+[32m[PASS][0m error: tests/errors/087-never-type.e
+[32m[PASS][0m error: tests/errors/088-reserved-keyword-binding-name.e
+[32m[PASS][0m error: tests/errors/089-optional-result.e
+[32m[PASS][0m error: tests/errors/090-compound-functions.e
+[32m[PASS][0m error: tests/errors/091-detached-bang-is-logical-not.e
+[32m[PASS][0m error: tests/errors/092-typed-variable-double-colon.e
+[32m[PASS][0m error: tests/errors/093-missing-call-parameter-help.e
+[32m[PASS][0m error: tests/errors/094-braced-enum-payload-call-syntax.e
+[32m[PASS][0m error: tests/errors/095-plex-use-conflict.e
+[32m[PASS][0m error: tests/errors/096-duplicate-generic-plex-use.e
+[32m[PASS][0m error: tests/errors/097-incompatible-propagation.e
+[32m[PASS][0m error: tests/errors/098-missing-on-extract-arrow.e
+[32m[PASS][0m error: tests/errors/099-result-type-rendering.e
+[32m[PASS][0m error: tests/errors/100-unused-single-branch-extract-binder.e
+[32m[PASS][0m error: tests/errors/101-receiver-method-through-type.e
+[32m[PASS][0m error: tests/errors/102-deferred-receiver-method-through-type.e
+[32m[PASS][0m error: tests/errors/103-on-branch-block-has-no-value.e
+[32m[PASS][0m error: tests/errors/104-ffi-parameter-names.e
+[32m[PASS][0m error: tests/errors/105-missing-on-condition-arrow.e
+[32m[PASS][0m error: tests/errors/106-unbracketed-for-range.e
+[32m[PASS][0m error: tests/errors/107-misspelled-on.e
+[32m[PASS][0m error: tests/errors/108-invalid-on-extraction-type.e
+[32m[PASS][0m error: tests/errors/109-plex-bit-fields.e
+[32m[PASS][0m error: tests/errors/109-plex-literal-parse-cleanup.e
+[32m[PASS][0m error: tests/errors/110-bitfield-type-context.e
+[32m[PASS][0m error: tests/errors/111-imported-trait-impl-members.e
+[32m[PASS][0m error: tests/errors/112-required-parameter-names.e
+[32m[PASS][0m error: tests/errors/113-unused-method-parameters.e
+[32m[PASS][0m error: tests/errors/129-content-equality.e
+[32m[PASS][0m error: tests/errors/130-private-import-hints.e
+[32m[PASS][0m error: tests/errors/131-variadic-cursors.e
+[32m[PASS][0m error: tests/errors/132-grouped-payload-patterns.e
+[32m[PASS][0m error: tests/errors/133-named-default-parameters.e
+[32m[PASS][0m error: tests/errors/134-implicit-void-pointer.e
+[32m[PASS][0m error: tests/errors/135-undo.e
+[32m[PASS][0m error: tests/errors/136-pr-requires-text.e
+[32m[PASS][0m error: tests/errors/137-runtime-fixed-arrays.e
+[32m[PASS][0m error: tests/errors/138-structural-equality.e
+[32m[PASS][0m error: tests/errors/139-record-literal-expected-type.e
+[32m[PASS][0m error: tests/errors/140-type-definition-notes.e
+[32m[PASS][0m lsp: tests/lsp/085-rename-bindings-with-errors.lsp
+[32m[PASS][0m lsp: tests/lsp/089-param-member-completion-with-errors.lsp
+[32m[PASS][0m lsp: tests/lsp/090-symbol-completion-with-errors.lsp
+[32m[PASS][0m lsp: tests/lsp/108-imported-type-completion-with-errors.lsp
+[32m[PASS][0m lsp: tests/lsp/109-top-on-import-completion-with-errors.lsp
+[32m[PASS][0m lsp: tests/lsp/136-std-term-import-definition-with-errors.lsp
+[32m[PASS][0m lsp: tests/lsp/137-std-term-param-completion-with-errors.lsp
+[32m[PASS][0m lsp: tests/lsp/138-std-term-import-hover-with-errors.lsp
+[32m[PASS][0m lsp: tests/lsp/139-std-term-import-signature-with-errors.lsp
+
+[2;37m┌──────────────────────────────────────┐[0m
+[2;37m│[0m[44m[1;37m Test Summary                         [0m[2;37m│[0m
+[2;37m├──────────┬────────┬────────┬─────────┤[0m
+[2;37m│[0m [1;37mType[0m     [2;37m│[0m [1;37mPassed[0m [2;37m│[0m [1;37mFailed[0m [2;37m│[0m [1;37mSkipped[0m [2;37m│[0m
+[2;37m├──────────┼────────┼────────┼─────────┤[0m
+[2;37m│[0m [36mlanguage[0m [2;37m│[0m [32m0[0m      [2;37m│[0m [31m0[0m      [2;37m│[0m [36m0[0m       [2;37m│[0m
+[2;37m│[0m [36merror[0m    [2;37m│[0m [32m126[0m    [2;37m│[0m [31m0[0m      [2;37m│[0m [36m0[0m       [2;37m│[0m
+[2;37m│[0m [36mhir[0m      [2;37m│[0m [32m0[0m      [2;37m│[0m [31m0[0m      [2;37m│[0m [36m0[0m       [2;37m│[0m
+[2;37m│[0m [36mllvm[0m     [2;37m│[0m [32m0[0m      [2;37m│[0m [31m0[0m      [2;37m│[0m [36m0[0m       [2;37m│[0m
+[2;37m│[0m [36mformat[0m   [2;37m│[0m [32m0[0m      [2;37m│[0m [31m0[0m      [2;37m│[0m [36m0[0m       [2;37m│[0m
+[2;37m│[0m [36mlsp[0m      [2;37m│[0m [32m9[0m      [2;37m│[0m [31m0[0m      [2;37m│[0m [36m0[0m       [2;37m│[0m
+[2;37m│[0m [36mcommand[0m  [2;37m│[0m [32m0[0m      [2;37m│[0m [31m0[0m      [2;37m│[0m [36m0[0m       [2;37m│[0m
+[2;37m│[0m [36mstdlib[0m   [2;37m│[0m [32m0[0m      [2;37m│[0m [31m0[0m      [2;37m│[0m [36m0[0m       [2;37m│[0m
+[2;37m│[0m [36mexample[0m  [2;37m│[0m [32m0[0m      [2;37m│[0m [31m0[0m      [2;37m│[0m [36m0[0m       [2;37m│[0m
+[2;37m├──────────┼────────┼────────┼─────────┤[0m
+[2;37m│[0m [36mtotal[0m    [2;37m│[0m [32m135[0m    [2;37m│[0m [31m0[0m      [2;37m│[0m [36m0[0m       [2;37m│[0m
+[2;37m└──────────┴────────┴────────┴─────────┘[0m
