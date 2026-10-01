@@ -1174,12 +1174,12 @@ and arena cursors still require ownership or application synchronisation.
 Live-list pointers used by `std.memory.print_leaks` require quiescent workers.
 
 `core.current_temp_arena()` returns the calling thread's arena. The existing
-`core.temp_arena` binding remains a main-thread compatibility alias; it must not
-be used from workers. No general data-race or move-safety guarantee is implied.
+`core.temp_arena` binding is evaluated at each use and also returns the calling
+thread's arena; it is not a cached main-thread pointer. No general data-race or
+move-safety guarantee is implied.
 `build/test_runtime_threads.py` exercises native debug/release runtime allocation,
 cross-thread frees, arena tracking and per-worker cleanup before process exit.
 
-This prerequisite does not migrate all standard-library consumers of the legacy
-main-thread arena: helpers in `std.text`, `std.files` and default arena arguments
-must be audited before use in worker callbacks. Use explicit thread-owned arenas
-where supported; do not infer whole-library thread safety from runtime locks.
+Objects allocated in a worker's temporary arena must not outlive worker cleanup.
+Use explicit owned storage when transferring results across threads; do not infer
+whole-library thread safety from runtime bookkeeping locks.

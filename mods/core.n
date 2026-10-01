@@ -43,8 +43,7 @@ ffi "nrt" {
     nrt_core_done ()
 }
 
--- Legacy main-thread temporary arena. Worker threads must use
--- current_temp_arena().
+-- Evaluated at each use, returning the calling thread's temporary arena.
 pub temp_arena :: nrt_temp_arena()
 
 -- Borrows the calling thread's temporary arena; never share it across threads.
