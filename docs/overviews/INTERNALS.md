@@ -1177,6 +1177,10 @@ Live-list pointers used by `std.memory.print_leaks` require quiescent workers.
 `core.temp_arena` binding is evaluated at each use and also returns the calling
 thread's arena; it is not a cached main-thread pointer. No general data-race or
 move-safety guarantee is implied.
+During this branch's validation, compatibility C output was found to cache
+imported constants incorrectly. Until the separate compiler fix is integrated,
+worker code must use `current_temp_arena()` for consistent behaviour across
+backends.
 `build/test_runtime_threads.py` exercises native debug/release runtime allocation,
 cross-thread frees, arena tracking and per-worker cleanup before process exit.
 
