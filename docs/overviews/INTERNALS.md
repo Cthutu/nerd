@@ -1229,3 +1229,12 @@ fixture 340 runs it in the normal gate. Fixture 339 covers imported and
 re-exported storage, mutation, addresses, aggregate fields, atomics, function
 pointers and two same-named globals from distinct modules. Generated C also
 resolves module-qualified fields to their storage before borrowing them.
+
+The stricter failure path exposed two formerly hidden lowering gaps. Optional
+`void` success carries only a presence tag, but a returned void expression must
+still execute exactly once; it must not be packed into nonexistent payload
+storage or omitted by generated C. Packed bit-field assignment through a pointer
+must locate the containing value's storage and evaluate the owner once before
+loading, masking and storing the field. Command fixtures 281 and 326 now assert
+completion and observable side effects, so an implicit early return cannot make
+their success checks disappear.
