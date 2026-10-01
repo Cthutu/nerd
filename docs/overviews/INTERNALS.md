@@ -1199,3 +1199,12 @@ index. Temporaries remain in the enclosing generated function's declaration
 scope. `tests/cgen/imported-constant-calls.n` compares repeated calls, aggregate
 constants, qualified references, one-time mutable initialisation and binder
 isolation against LLVM at both C optimisation levels.
+
+## Public mutable declaration formatting
+
+Standalone mutable declarations carry visibility independently of their type
+and initializer. Both top-level and guarded statement formatting must emit the
+`pub` prefix and include it in wrap-column accounting, just as grouped variable
+formatting already does. The regression checks typed, inferred, zero-initialised,
+undefined and guarded declarations alongside constants and private declarations.
+See [the formatter repair note](../formatter-public-globals.md).

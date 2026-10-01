@@ -2,7 +2,11 @@
 
 Baseline: `f5d551da`; native Windows, freshly built Clang debug compiler.
 These are separate pre-existing compiler defects, not fixed by the imported
-constant C-generation repair. Both deserve focused regressions and repair.
+constant C-generation repair itself. The formatter defect was subsequently
+repaired in `8eb7b5e3`, now integrated into `std-library`; its regression covers
+standalone and guarded public variables. The LLVM defect is being repaired on
+the separate `std-llvm-imported-globals` branch. Reproductions below preserve the
+original failure descriptions.
 
 ## Formatter removes visibility from typed mutable globals
 
