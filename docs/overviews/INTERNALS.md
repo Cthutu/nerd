@@ -1177,13 +1177,25 @@ Live-list pointers used by `std.memory.print_leaks` require quiescent workers.
 `core.temp_arena` binding is evaluated at each use and also returns the calling
 thread's arena; it is not a cached main-thread pointer. No general data-race or
 move-safety guarantee is implied.
-During this branch's validation, compatibility C output was found to cache
-imported constants incorrectly. Until the separate compiler fix is integrated,
-worker code must use `current_temp_arena()` for consistent behaviour across
-backends.
 `build/test_runtime_threads.py` exercises native debug/release runtime allocation,
 cross-thread frees, arena tracking and per-worker cleanup before process exit.
 
 Objects allocated in a worker's temporary arena must not outlive worker cleanup.
 Use explicit owned storage when transferring results across threads; do not infer
 whole-library thread safety from runtime bookkeeping locks.
+## Imported constant evaluation in generated C
+
+HIR distinguishes `HIR_VALUE_Constant` expression bindings from mutable
+`HIR_VALUE_Global` storage. Generated C expands constant expressions at each
+reference, including imported and module-qualified references, matching its
+local-constant path and LLVM. Only mutable globals receive module initialisers;
+unused constant expressions must not introduce startup side effects.
+
+`cgen_binding` evaluates an imported constant in the defining module's type/HIR
+context and restores the caller afterwards. Each expansion receives distinct
+local names and separate local-type, cleanup, target and override bookkeeping,
+so an `on` payload binder cannot overwrite a caller local with the same HIR
+index. Temporaries remain in the enclosing generated function's declaration
+scope. `tests/cgen/imported-constant-calls.n` compares repeated calls, aggregate
+constants, qualified references, one-time mutable initialisation and binder
+isolation against LLVM at both C optimisation levels.

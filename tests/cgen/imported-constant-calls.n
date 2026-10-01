@@ -1,0 +1,21 @@
+use constant_calls
+
+qualified :: use constant_calls
+
+local_tick :: next()
+
+main :: fn () {
+    assert read_count() == 1, "Only the mutable global initialises before main"
+    assert read_once() == 1
+    assert tick == 2
+    assert qualified.tick == 3
+    assert alias == 4
+    assert payload.value == 5
+    assert local_tick == 6
+    assert tick == 7
+    assert read_once() == 1 && read_count() == 7
+    retained : i32 = 91
+    assert selected == 24
+    assert retained == 91
+    prn("constant references preserve evaluation")
+}
