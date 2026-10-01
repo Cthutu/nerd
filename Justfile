@@ -35,6 +35,13 @@ test *args:
     python3 build/test_threads.py
     just build nerd --skip-mod-sync
     python3 build/test.py {{args}}
+    python3 validation/stdlib/check_capabilities.py --compiler _bin/nerd-debug{{exe_suffix}}
+    python3 build/test_std_thread_sync.py --nerd _bin/nerd-debug{{exe_suffix}}
+    python3 build/test_std_thread_sync.py --nerd _bin/nerd-debug{{exe_suffix}} --cgen
+    python3 build/test_network.py --compiler _bin/nerd-debug{{exe_suffix}}
+    python3 build/test_network.py --compiler _bin/nerd-debug{{exe_suffix}} --release
+    python3 build/test_network.py --compiler _bin/nerd-debug{{exe_suffix}} --cgen
+    python3 build/test_network.py --compiler _bin/nerd-debug{{exe_suffix}} --cgen --release
     python3 build/test_profile.py --nerd _bin/nerd-debug{{exe_suffix}}
     python3 build/test_render_threads.py --nerd _bin/nerd-debug{{exe_suffix}}
     python3 build/test_expression_depth.py --nerd _bin/nerd-debug{{exe_suffix}}
@@ -50,6 +57,11 @@ test *args:
 test-release *args:
     just build-release nerd --skip-mod-sync
     python3 build/test.py --nerd _bin/nerd{{exe_suffix}} {{args}}
+    python3 validation/stdlib/check_capabilities.py --compiler _bin/nerd{{exe_suffix}}
+    python3 build/test_std_thread_sync.py --nerd _bin/nerd{{exe_suffix}}
+    python3 build/test_std_thread_sync.py --nerd _bin/nerd{{exe_suffix}} --cgen
+    python3 build/test_network.py --compiler _bin/nerd{{exe_suffix}} --release
+    python3 build/test_network.py --compiler _bin/nerd{{exe_suffix}} --cgen --release
 
 test-build:
     just run nerd build -v examples/text-adventure/adv.n

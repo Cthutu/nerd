@@ -1,6 +1,4 @@
--- Diagnostic only: LLVM prints current, CGen prints cached on this revision.
--- Not part of the passing portable test gate; use current_temp_arena in
--- workers.
+-- Regression: imported constants resolve the worker's arena in both backends.
 use std.thread
 
 compare :: fn (context: ^void) {

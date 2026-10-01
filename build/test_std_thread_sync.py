@@ -49,6 +49,8 @@ def main():
         run([str(native)], env, 10)
         print("Native thread/sync layouts passed")
         sources = [
+            (ROOT / "tests/stdlib-thread-sync/temp-arena-alias-reproducer.n",
+             "current"),
             (ROOT / "tests/stdlib-thread-sync/lifecycle.n",
              "Thread lifecycle and predicate waits passed"),
             (ROOT / "examples/thread-pipeline/thread-pipeline.n",
