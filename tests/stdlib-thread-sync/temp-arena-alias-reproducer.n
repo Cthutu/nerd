@@ -1,0 +1,17 @@
+-- Diagnostic only: LLVM prints current, CGen prints cached on this revision.
+-- Not part of the passing portable test gate; use current_temp_arena in
+-- workers.
+use std.thread
+
+compare :: fn (context: ^void) {
+    context.as(^bool)^ = current_temp_arena() == temp_arena
+}
+
+main :: fn () {
+    same   : bool
+    worker : Thread
+
+    assert worker.start(compare, (^same).as(^void))
+    assert worker.join()
+    on same => prn("current") else prn("cached")
+}
