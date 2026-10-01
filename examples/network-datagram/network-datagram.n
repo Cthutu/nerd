@@ -1,0 +1,38 @@
+use std.network
+
+-- Demonstrates retaining the UDP sender address for a reply, without Nexus
+-- framing.
+run_datagram :: fn () -> void\NetworkError {
+    server := socket(SocketKind.Udp)?
+    defer _ := server.close()
+    server.bind(loopback(0))?
+    destination := server.local_address()?
+    client      := socket(SocketKind.Udp)?
+
+    defer _ := client.close()
+    client.bind(loopback(0))?
+
+    message := "hello datagrams".as([]u8)
+    sent    := client.send_to(message, destination)?
+
+    assert sent == message.count, "Expected one complete datagram"
+    buffer  : [64]u8
+    request          := server.receive_from(buffer[..])?
+    _                := server.send_to(buffer[..request.count], request.sender)?
+    reply            := client.receive_from(buffer[..])?
+
+    assert buffer[..reply.count].as(string) == "hello datagrams",
+        "Expected a routed UDP reply"
+    assert reply.sender.port == destination.port, "Expected the original server"
+    prn("UDP reply: hello datagrams")
+}
+
+main :: fn () -> i32 {
+    return on run_datagram() {
+        _! => {
+            eprn("UDP exchange failed")
+            return 1
+        }
+        else => 0
+    }
+}

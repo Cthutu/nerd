@@ -1,0 +1,63 @@
+use std.network
+
+-- Sends all bytes, accounting for partial TCP writes.
+send_bytes :: fn (stream: ^Socket, bytes: []u8) -> void\NetworkError {
+    offset : usize = 0
+    for offset < bytes.count {
+        count := stream.send(bytes[offset..])?
+        on count == 0 => return NetworkError.Invalid!
+        offset += count
+    }
+}
+
+-- Reads a fixed-size demonstration payload without assuming packet boundaries.
+receive_bytes :: fn (stream: ^Socket, bytes: []u8) -> void\NetworkError {
+    offset : usize = 0
+    for offset < bytes.count {
+        received := stream.receive(bytes[offset..])?
+        on received.eof => return NetworkError.Invalid!
+        offset += received.count
+    }
+}
+
+-- A tiny local exchange fits in socket buffers, so both endpoints can be shown
+-- in one thread. Production servers should use readiness or dedicated I/O
+-- threads.
+run_echo :: fn () -> void\NetworkError {
+    listener := socket(SocketKind.Tcp)?
+    defer _ := listener.close()
+    listener.bind(loopback(0))?
+    listener.listen()?
+    address := listener.local_address()?
+
+    client := socket(SocketKind.Tcp)?
+    defer _ := client.close()
+    client.connect(address)?
+    server := listener.accept()?
+    defer _ := server.close()
+
+    message := "hello sockets".as([]u8)
+    send_bytes(^client, message)?
+    client.shutdown_send()?
+    request : [13]u8
+    receive_bytes(^server, request[..])?
+    end := server.receive(request[..1])?
+    assert end.eof, "Expected EOF after the request"
+    send_bytes(^server, request[..])?
+    server.shutdown_send()?
+    reply : [13]u8
+    receive_bytes(^client, reply[..])?
+    assert reply[..].as(string) == "hello sockets",
+        "Expected exact echoed bytes"
+    prn("TCP echo: hello sockets")
+}
+
+main :: fn () -> i32 {
+    return on run_echo() {
+        _! => {
+            eprn("TCP echo failed")
+            return 1
+        }
+        else => 0
+    }
+}
