@@ -1,0 +1,106 @@
+-- Capability probes, not a queue or graph implementation.
+use std.atomics
+
+Box :: plex [T] {
+    value T
+}
+
+NodeId :: plex {
+    slot       usize
+    generation u32
+}
+
+Node :: plex [T] {
+    generation u32
+    value      T
+    edges      [..]NodeId
+}
+
+Task :: plex {
+    callback fn (context: ^void)
+    context  ^void
+}
+
+increment :: fn (context: ^void) {
+    value := context.as(^i32)
+    value^ += 1
+}
+
+main :: fn () {
+    state : atomic[usize] = 7.as(usize)
+    assert state.size == usize.size
+    assert (^state).as(usize) % usize.size == 0
+    on state.compare_exchange(7, 9, success_order = AcquireRelease, failure_order = Acquire) {
+        Exchanged => {
+        }
+
+        else => {
+            assert no
+        }
+    }
+    on state.compare_exchange(7, 11, success_order = AcquireRelease, failure_order = Acquire) {
+        NotExchanged(observed) => {
+            assert observed == 9
+        }
+
+        else => {
+            assert no
+        }
+    }
+    assert state.fetch_add(2, order = Relaxed) == 9
+    assert state.load(order = Acquire) == 11
+
+    number  : i32          = 41
+    pointer : atomic[^i32] = nil
+
+    on pointer.compare_exchange(nil, ^number, success_order = Release, failure_order = Relaxed) {
+        Exchanged => {
+        }
+
+        else => {
+            assert no
+        }
+    }
+    assert pointer.load(order = Acquire) == ^number
+    task: Task = {
+        callback : increment
+        context  : ^number
+    }
+    task.callback(task.context)
+    assert number == 42
+
+    owner : Box[[..]i32]
+    owner.value.push(17)
+    alias := owner
+    -- This deliberately demonstrates shallow copying, not safe ownership transfer.
+    assert ^alias.value[0] == ^owner.value[0]
+    alias.value[0] = 23
+    assert owner.value[0] == 23
+    -- Free exactly once; neither copy can be used after this point.
+    owner.value.free()
+
+    nodes : [..]Node[i32]
+    nodes.push({
+        generation : 1
+        value      : 12
+        ...
+    })
+    nodes.push({
+        generation : 2
+        value      : 30
+        ...
+    })
+    nodes[0].edges.push(NodeId {
+        slot       : 1
+        generation : 2
+    })
+    id := nodes[0].edges[0]
+    assert nodes[id.slot].generation == id.generation
+    assert nodes[0].value + nodes[id.slot].value == 42
+    nodes[1].generation += 1
+    assert nodes[id.slot].generation != id.generation
+    nodes[0].edges.free()
+    nodes[1].edges.free()
+    nodes.free()
+    prn("stdlib capabilities: passed")
+}
