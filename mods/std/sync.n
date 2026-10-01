@@ -31,9 +31,11 @@ impl Mutex {
         on "windows" {
             native_mutex_init(^self.native)
         }
+
         on "linux" {
             on native_mutex_init(^self.native, nil) != 0 => return no
         }
+
         self.initialised = yes
         return yes
     }
@@ -44,6 +46,7 @@ impl Mutex {
         on "linux" {
             on native_mutex_done(^self.native) != 0 => return no
         }
+
         self^ = Mutex { ... }
         return yes
     }
@@ -54,9 +57,11 @@ impl Mutex {
         on "windows" {
             native_mutex_lock(^self.native)
         }
+
         on "linux" {
             on native_mutex_lock(^self.native) != 0 => return no
         }
+
         return yes
     }
 
@@ -66,9 +71,11 @@ impl Mutex {
         on "windows" {
             native_mutex_unlock(^self.native)
         }
+
         on "linux" {
             on native_mutex_unlock(^self.native) != 0 => return no
         }
+
         return yes
     }
 
@@ -82,9 +89,11 @@ impl Condition {
         on "windows" {
             native_condition_init(^self.native)
         }
+
         on "linux" {
             on native_condition_init(^self.native, nil) != 0 => return no
         }
+
         self.initialised = yes
         return yes
     }
@@ -95,6 +104,7 @@ impl Condition {
         on "linux" {
             on native_condition_done(^self.native) != 0 => return no
         }
+
         self^ = Condition { ... }
         return yes
     }
@@ -107,6 +117,7 @@ impl Condition {
         on "windows" {
             return native_condition_wait(^self.native, ^mutex.native, 0xffffffff, 0) != 0
         }
+
         on "linux" {
             return native_condition_wait(^self.native, ^mutex.native) == 0
         }
@@ -118,9 +129,11 @@ impl Condition {
         on "windows" {
             native_condition_signal(^self.native)
         }
+
         on "linux" {
             on native_condition_signal(^self.native) != 0 => return no
         }
+
         return yes
     }
 
@@ -130,9 +143,11 @@ impl Condition {
         on "windows" {
             native_condition_broadcast(^self.native)
         }
+
         on "linux" {
             on native_condition_broadcast(^self.native) != 0 => return no
         }
+
         return yes
     }
 

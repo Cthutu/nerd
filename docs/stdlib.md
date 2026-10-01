@@ -11,8 +11,10 @@ API reference.
 ## Planned Expansion
 
 The [standard-library expansion plan](stdlib-expansion-plan.md) covers queues,
-work-stealing tasks, data graphs, raw sockets and Nexus messaging. These are
-proposed modules with milestone gates, not existing public APIs.
+work-stealing tasks, data graphs, raw sockets and Nexus messaging. The initial
+thread/synchronisation and IPv4 socket foundations are implemented on the
+`std-library` review branch; queues, scheduler, graphs and Nexus remain planned.
+See the [workstream record](stdlib-workstreams.md) for scope and validation.
 
 ## Current Modules
 
@@ -43,12 +45,19 @@ library is organised into three layers:
   Mathematical constants, scalar functions, and small geometry helper types.
 - `std.memory`
   Low-level allocation wrappers.
+- `std.network`
+  Experimental IPv4 TCP/UDP sockets with explicit ownership, partial I/O,
+  EOF/datagram semantics and native errors. See the
+  [API contracts and examples](std-network-foundation.md).
 - `std.process`
   Portable child-process execution and waiting.
 - `std.signal`
   Owned shutdown notifications with blocking wait and a sticky request flag.
 - `std.text`
   String methods, Unicode scalar operations, and UTF-8 conversion.
+- `std.thread` and `std.sync`
+  Experimental joinable threads, non-recursive mutexes and predicate-based
+  conditions. See [lifetime and synchronisation contracts](stdlib-thread-sync.md).
 - `std.slice`
   Borrowing slice membership with an `Eq` constraint.
 - `std.time`
@@ -63,6 +72,10 @@ library is organised into three layers:
   Windows operating-system bindings re-exported from narrower modules such as
   `os.windows.kernel32`, including Win32 process creation, waiting, exit-code
   inspection, and handle management.
+- `os.thread` and `os.socket`
+  Platform-selected native bindings supporting the initial Windows x64 and
+  Linux x86-64 glibc concurrency/network APIs. Native header layout checks are
+  part of their execution tests.
 
 The repository also contains early `std.random` source work. Treat it as
 experimental until its dependencies and syntax surface are covered by the

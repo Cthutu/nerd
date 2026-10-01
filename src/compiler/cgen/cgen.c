@@ -90,7 +90,7 @@ internal cstr cgen_format(CGen* c, cstr format, ...)
 internal cstr cgen_local_name(CGen* c, u32 index)
 {
     return c->local_scope == 0 ? CF("ncg_l%u", index)
-                              : CF("ncg_const%u_l%u", c->local_scope, index);
+                               : CF("ncg_const%u_l%u", c->local_scope, index);
 }
 internal const FrontEndState* cgen_front(CGen* c)
 {
@@ -547,37 +547,37 @@ internal cstr cgen_binding(CGen* c, u32 m, u32 b, u32 depth)
                 // Constants expand at their use site, including imported and
                 // module-qualified references. Resolve types in the defining
                 // module, but emit temporaries in the current function body.
-                u32              old_module      = c->module;
-                u32              old_expected    = c->expected_type;
-                u32              old_scope       = c->local_scope;
-                Array(bool)      old_locals       = c->locals;
-                Array(u32)       old_local_types  = c->local_types;
-                Array(CCleanup)  old_cleanups     = c->cleanups;
-                Array(CTarget)   old_targets      = c->targets;
-                Array(COverride) old_overrides    = c->overrides;
-                c->module = m;
-                c->expected_type = U32_MAX;
-                c->local_scope = ++c->next;
-                c->locals = NULL;
-                c->local_types = NULL;
-                c->cleanups = NULL;
-                c->targets = NULL;
-                c->overrides = NULL;
-                CValue value = cgen_coerce(
+                u32 old_module                 = c->module;
+                u32 old_expected               = c->expected_type;
+                u32 old_scope                  = c->local_scope;
+                Array(bool) old_locals         = c->locals;
+                Array(u32) old_local_types     = c->local_types;
+                Array(CCleanup) old_cleanups   = c->cleanups;
+                Array(CTarget) old_targets     = c->targets;
+                Array(COverride) old_overrides = c->overrides;
+                c->module                      = m;
+                c->expected_type               = U32_MAX;
+                c->local_scope                 = ++c->next;
+                c->locals                      = NULL;
+                c->local_types                 = NULL;
+                c->cleanups                    = NULL;
+                c->targets                     = NULL;
+                c->overrides                   = NULL;
+                CValue value                   = cgen_coerce(
                     c, cgen_expr(c, v->value_expr_index), v->type_index);
                 array_free(c->locals);
                 array_free(c->local_types);
                 array_free(c->cleanups);
                 array_free(c->targets);
                 array_free(c->overrides);
-                c->locals = old_locals;
-                c->local_types = old_local_types;
-                c->cleanups = old_cleanups;
-                c->targets = old_targets;
-                c->overrides = old_overrides;
-                c->module = old_module;
+                c->locals        = old_locals;
+                c->local_types   = old_local_types;
+                c->cleanups      = old_cleanups;
+                c->targets       = old_targets;
+                c->overrides     = old_overrides;
+                c->module        = old_module;
                 c->expected_type = old_expected;
-                c->local_scope = old_scope;
+                c->local_scope   = old_scope;
                 --c->constant_depth;
                 return value.text;
             }
@@ -893,9 +893,9 @@ internal void cgen_cleanup_to(CGen* c, u32 base, cstr failure)
         } else if (cl.block) {
             cgen_block(c, cl.index);
         } else {
-            CGEN_OUT(
-                "nrt_mem_free(%s); %s = NULL;\n",
-                cgen_local_name(c, cl.index), cgen_local_name(c, cl.index));
+            CGEN_OUT("nrt_mem_free(%s); %s = NULL;\n",
+                     cgen_local_name(c, cl.index),
+                     cgen_local_name(c, cl.index));
         }
         __array_count(c->cleanups) = save;
         if (cl.failure_only) {
@@ -1333,7 +1333,8 @@ internal CValue cgen_control(CGen* c, const HirExpr* e)
         u32 it = cgen_field_type(c, next.type, 1);
         cgen_local(c, loop->item_local_index, it);
         CGEN_OUT("%s=%s.payload.f1;\n",
-                 cgen_local_name(c, loop->item_local_index), next.text);
+                 cgen_local_name(c, loop->item_local_index),
+                 next.text);
     }
     if (loop->kind == HIR_FOR_In && !custom) {
         if (loop->index_local_index != U32_MAX) {
@@ -1348,7 +1349,8 @@ internal CValue cgen_control(CGen* c, const HirExpr* e)
             cgen_local(c, loop->item_local_index, t);
             if (range) {
                 CGEN_OUT("%s=%s;\n",
-                         cgen_local_name(c, loop->item_local_index), counter);
+                         cgen_local_name(c, loop->item_local_index),
+                         counter);
             } else {
                 cstr data = cgen_kind(c, iterable.type) == STK_DynamicArray
                                 ? CF("%s->data", iterable.text)
