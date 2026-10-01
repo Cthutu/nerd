@@ -86,7 +86,7 @@ main :: fn () { a: Bad = Empty assert same(a,a) }
         {
             "kind": "secondary",
             "source_file": "__REPO__/mods/core.n",
-            "line": 199,
+            "line": 204,
             "column": 5,
             "length": 2,
             "message": "Type `Eq` is defined here"

@@ -48,7 +48,7 @@ main :: fn () {
         {
             "kind": "secondary",
             "source_file": "__REPO__/mods/core.n",
-            "line": 193,
+            "line": 198,
             "column": 5,
             "length": 7,
             "message": "Type `Display` is defined here"
