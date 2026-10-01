@@ -8722,7 +8722,11 @@ internal void format_emit_block_statement(StringBuilder* sb,
     }
 
     if (stmt->kind == CK_Variable) {
-        string symbol = lex_symbol(lexer, cst_get_symbol(stmt));
+        string symbol              = lex_symbol(lexer, cst_get_symbol(stmt));
+        usize  public_prefix_width = (stmt->flags & CNF_Public) ? 4 : 0;
+        if (public_prefix_width != 0) {
+            sb_append_cstr(sb, "pub ");
+        }
         sb_append_string(sb, symbol);
         if (cst->nodes[stmt->b].kind == CK_AnnotatedValue ||
             cst->nodes[stmt->b].kind == CK_ZeroInit ||
@@ -8744,6 +8748,7 @@ internal void format_emit_block_statement(StringBuilder* sb,
                                                       lexer,
                                                       stmt->b,
                                                       (usize)indent_level * 4 +
+                                                          public_prefix_width +
                                                           symbol.count + 4,
                                                       indent_level);
             }
@@ -9466,6 +9471,9 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
                 format_emit_value(sb, &cst, &lexer, node->b);
             }
         } else {
+            if (node->flags & CNF_Public) {
+                sb_append_cstr(sb, "pub ");
+            }
             sb_append_string(sb, lex_symbol(&lexer, cst_get_symbol(node)));
             if (cst.nodes[node->b].kind == CK_AnnotatedValue ||
                 cst.nodes[node->b].kind == CK_ZeroInit ||
