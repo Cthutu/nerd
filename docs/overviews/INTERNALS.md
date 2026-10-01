@@ -1162,3 +1162,24 @@ It does not prefer an existing debug compiler or fall back to PATH: either may
 predate syntax in the checkout and silently rewrite it through formatter
 recovery. A failed compiler build stops the workflow before any source file is
 formatted. VS Code also invokes `nerd format`, using its configured executable.
+
+## Runtime worker-thread prerequisite
+
+Worker entry wrappers must pair `nrt_thread_init` and `nrt_thread_done` around
+user callbacks. The latter releases only the current thread's string builder
+and temporary arena and is idempotent. `nrt_core_done` still performs main-thread
+cleanup and process leak reporting after all workers are joined. Debug heap and
+arena list/index mutations are serialised with a runtime atomic flag; payloads
+and arena cursors still require ownership or application synchronisation.
+Live-list pointers used by `std.memory.print_leaks` require quiescent workers.
+
+`core.current_temp_arena()` returns the calling thread's arena. The existing
+`core.temp_arena` binding remains a main-thread compatibility alias; it must not
+be used from workers. No general data-race or move-safety guarantee is implied.
+`build/test_runtime_threads.py` exercises native debug/release runtime allocation,
+cross-thread frees, arena tracking and per-worker cleanup before process exit.
+
+This prerequisite does not migrate all standard-library consumers of the legacy
+main-thread arena: helpers in `std.text`, `std.files` and default arena arguments
+must be audited before use in worker callbacks. Use explicit thread-owned arenas
+where supported; do not infer whole-library thread safety from runtime locks.

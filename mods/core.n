@@ -43,8 +43,14 @@ ffi "nrt" {
     nrt_core_done ()
 }
 
--- Provides the process-wide temporary arena.
+-- Legacy main-thread temporary arena. Worker threads must use
+-- current_temp_arena().
 pub temp_arena :: nrt_temp_arena()
+
+-- Borrows the calling thread's temporary arena; never share it across threads.
+pub current_temp_arena :: fn () -> ^arena {
+    return nrt_temp_arena()
+}
 
 -- Initialises process-wide storage owned by core before the program entry point
 -- runs. The executable backend calls this function automatically.
