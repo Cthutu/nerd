@@ -844,7 +844,7 @@ internal CValue cgen_lvalue(CGen* c, u32 index)
             cgen_error(c, "unresolved module field", index);
             return (CValue){"0", e->type_index, false};
         }
-        CValue         v;
+        CValue v;
         if (cgen_kind(c, bt) == STK_Pointer || cgen_kind(c, bt) == STK_Box) {
             v      = cgen_expr(c, e->operand_expr_index);
             bt     = cgen_type(c, bt)->first_param_type;

@@ -18,6 +18,14 @@ source files. Repository regression tests are run by the Python harness via
 in a temporary workspace. Cleanup removes generated `.host.c` and `.input.c`
 files while preserving C source fixtures, including `tests/ffi/variadic_host.c`.
 
+The standard-library foundation has separate bounded execution runners:
+`build/test_runtime_threads.py`, `build/test_std_thread_sync.py` and
+`build/test_network.py`, plus `validation/stdlib/check_capabilities.py`. The
+common recipes run the thread/network examples as programs, with native ABI
+assertions and LLVM/C-output coverage; syntax-only example fixtures are not
+substitutes for those contract tests. `just test-release` repeats the library
+contracts using the freshly built release compiler.
+
 ## Test Families
 
 - `language`

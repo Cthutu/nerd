@@ -1,5 +1,44 @@
 # Windows return handoff
 
+## Standard-library foundations integrated for draft review — 2026-10-01
+
+Branch **`std-library`**, [draft PR #1](https://github.com/Cthutu/nerd/pull/1),
+targets `main`; all parallel work and repair branches are merged without
+rewriting their published history. `main` is unchanged.
+
+Final implementation `2b540cd9` passes native Windows **`just test` and
+`just test-release`: 1181 fixture passes, 0 failures, 15 platform skips each**.
+All debug auxiliary stages passed, including **298 C differential fixtures at
+O0/O2** (2 platform skips), toolchain/temporary-install smoke, 6000-term depth,
+concurrency, build settings and Windows stdio. Both recipes execute the new
+thread/network contracts and examples. `just format` passed; later formatting
+changes are whitespace-only in touched C files. Unrelated pre-existing module
+formatting drift was excluded.
+
+Includes `std.thread`, `std.sync`, IPv4 `std.network`, runtime worker cleanup,
+allocation bookkeeping protection, capability/source inventories, and runnable
+`thread-pipeline`, `network-echo`, `network-datagram` examples. Compiler repairs
+preserve imported constant/global semantics, public variable formatting, packed
+bit-field writes and void-call effects; failed LLVM lowering now reports errors.
+These are first foundations, not completed Raptor/Kerberos/Nexus ports.
+
+Fresh Arch WSL build and bounded generated-C checks also pass on `2b540cd9`,
+including runtime/thread/network contracts and the strengthened compiler tests.
+Native LLVM there remains blocked by missing `opt`, `llc`, `ld.lld`, `llvm-ar`.
+No global compiler/editor install, desktop validation or benchmark run occurred.
+Full `just do` and native Linux adoption remain for the receiving PC.
+
+See [exact evidence, failure history and Linux commands](20261001-stdlib-integration/README.md).
+On Linux, fetch/check out `std-library`, fast-forward from the configured remote,
+then run `just test`, `just test-release` and the three `just run-example` commands.
+Run `just do` when ready to test its global installation step.
+
+Raptor/Kerberos source access is now resolved; see the
+[pinned inventory](../../../docs/stdlib-source-inventory.md). The inspected Raptor
+heads use ASIO rather than a custom work-stealing implementation; the intended
+revision/algorithm needs clarification. Kerberos is serial FIFO dataflow.
+Upstream execution, reuse/attribution decisions and later milestones remain open.
+
 ## Windows `just test` repaired — 2026-09-30
 
 On `main`, starting from `b542a13d`, the normal **`just test` recipe passes** in

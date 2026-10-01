@@ -1,5 +1,10 @@
 # Thread/sync foundation — 2026-10-01
 
+Integration update: the C-output discrepancy recorded below is fixed in the
+combined `std-library` branch. Its alias reproducer is now a passing regression
+in both common test recipes. See the [final combined evidence](../20261001-stdlib-integration/README.md);
+the original branch-local observations below are retained as history.
+
 Scope: first M1 foundation on `std-thread-sync`, based on `std-runtime-threads`
 `d7bfbf40`; no installation, scheduler or merge into the integration branch.
 

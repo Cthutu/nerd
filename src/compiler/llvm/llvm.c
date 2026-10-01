@@ -7160,7 +7160,7 @@ internal LlvmValue llvm_address_of_expr(LlvmFunctionContext* ctx,
         return (LlvmValue){0};
     }
 
-    const HirExpr* expr = &ctx->hir->exprs[expr_index];
+    const HirExpr* expr     = &ctx->hir->exprs[expr_index];
     LlvmValue      imported = llvm_imported_global_address(ctx, expr);
     if (imported.ok) {
         return imported;
@@ -9515,7 +9515,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
         return (LlvmValue){0};
     }
 
-    const HirExpr* expr = &ctx->hir->exprs[expr_index];
+    const HirExpr* expr     = &ctx->hir->exprs[expr_index];
     LlvmValue      imported = llvm_imported_global_address(ctx, expr);
     if (imported.ok) {
         string loaded = llvm_temp(ctx);
@@ -15358,7 +15358,7 @@ internal bool llvm_emit_assign(LlvmFunctionContext* ctx,
         return false;
     }
 
-    const HirExpr* target = &ctx->hir->exprs[target_expr_index];
+    const HirExpr* target   = &ctx->hir->exprs[target_expr_index];
     LlvmValue      imported = llvm_imported_global_address(ctx, target);
     if (imported.ok) {
         value = llvm_coerce_value_to_type(ctx, value, imported.type_index);
@@ -18813,9 +18813,9 @@ internal void llvm_render_global_values(StringBuilder*   sb,
             continue;
         }
 
-        u32  binding_index = llvm_hir_value_binding_index(hir, i);
-        bool exported = binding_index != U32_MAX &&
-                        llvm_hir_binding_is_exported(sema, hir, binding_index);
+        u32   binding_index = llvm_hir_value_binding_index(hir, i);
+        bool  exported = binding_index != U32_MAX &&
+                         llvm_hir_binding_is_exported(sema, hir, binding_index);
         Arena name_arena = {0};
         arena_init(&name_arena);
         sb_append_string(
@@ -19539,7 +19539,7 @@ bool llvm_save_hir(const Hir*   hir,
         return false;
     }
 
-    FILE* file      = fopen(path, "wb");
+    FILE* file = fopen(path, "wb");
     if (!file) {
         arena_done(&arena);
         return error_runtime("Failed to open LLVM IR file for writing: %s",

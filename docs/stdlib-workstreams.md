@@ -13,6 +13,7 @@ a draft PR. `main` is unchanged; these are not completed M0/M1/M5 milestones.
 | `std-cgen-imported-constants` | Capability audit agent, follow-up | Correct imported constant evaluation in compatibility C output | Planning base; discovered by worker checks |
 | `std-llvm-imported-globals` | Capability audit agent, follow-up | Correct direct imported mutable-global access through LLVM | C-output repair branch |
 | `std-format-public-globals` | Threading agent, follow-up | Preserve standalone public variable visibility during formatting | C-output repair branch |
+| `std-llvm-lowering-regressions` | Threading agent with C-output repair assistance | Packed-field pointer assignment and optional-void side effects exposed by integration tests | Integrated compiler repairs |
 | `std-library` | Coordinator | Integrated changes, common test recipes, draft PR and Linux handoff | Collects reviewed branches |
 
 The first three agent tasks are deliberately independent. Source access was later
@@ -101,6 +102,9 @@ against an unstable placeholder API.
   cover shared storage, mutation, pointers, aggregates, atomics and duplicate
   module names while preserving the root public ABI. Failed LLVM lowering now
   reports an error instead of silently producing an incomplete executable.
+- Lowering follow-up `3e32a7e0`: integrated; fixes packed-field pointer writes and
+  void success constructors in LLVM/C output. Strengthened completion and
+  side-effect regressions pass in both backends, including final Arch WSL C output.
 
 ## Combined review branch
 
