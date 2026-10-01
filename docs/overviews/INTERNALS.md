@@ -1179,3 +1179,23 @@ index. Temporaries remain in the enclosing generated function's declaration
 scope. `tests/cgen/imported-constant-calls.n` compares repeated calls, aggregate
 constants, qualified references, one-time mutable initialisation and binder
 isolation against LLVM at both C optimisation levels.
+
+## Imported mutable globals in LLVM
+
+Mutable imports resolve through declaration provenance to their defining HIR
+value. Reads, writes, addresses and calls through mutable function pointers use
+that storage; they must not take the constant-expression expansion path.
+Standalone module IR declares imported globals; the textual module combiner
+removes declarations satisfied by definitions and deduplicates unresolved ones.
+Globals whose names collide across modules receive module/value-qualified
+internal names. A public root global retains its exported symbol spelling.
+
+A failed function lowering now emits a module/function diagnostic and rejects
+the rendered module. Only successful unterminated functions receive implicit
+returns. The backend checks rejected primary and sidecar results before writing
+or linking them. The `llvm-lowering-failure` internal test constructs an invalid
+binding reference and requires an empty result plus one diagnostic; command
+fixture 340 runs it in the normal gate. Fixture 339 covers imported and
+re-exported storage, mutation, addresses, aggregate fields, atomics, function
+pointers and two same-named globals from distinct modules. Generated C also
+resolves module-qualified fields to their storage before borrowing them.

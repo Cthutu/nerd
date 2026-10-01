@@ -1,8 +1,9 @@
 # Follow-ups discovered while repairing imported C constants
 
 Baseline: `f5d551da`; native Windows, freshly built Clang debug compiler.
-These are separate pre-existing compiler defects, not fixed by the imported
-constant C-generation repair. Both deserve focused regressions and repair.
+These were separate pre-existing compiler defects, not fixed by the imported
+constant C-generation repair. The LLVM imported-global defect is repaired on
+`std-llvm-imported-globals`; formatter repair is tracked separately.
 
 ## Formatter removes visibility from typed mutable globals
 
@@ -63,3 +64,18 @@ and reproduced a caller-local collision with an imported enum payload binder;
 the final regression passes with isolated expansion locals. The source files
 were formatted, and `git diff --check` passed. No Linux/WSL result or combined
 runtime/thread-branch integration result is claimed by this branch.
+
+## Imported-global repair validation
+
+Native Windows, 2026-10-01: fresh Clang debug compiler; imported mutable-global,
+root-export collision and imported-constant fixtures pass LLVM versus generated
+C at O0/O2. Optimised LLVM execution passes with its exact final output. Root IR
+retains `@$number = global i32` when an imported module also exports `number`.
+`internal-test llvm-text` passes external-global merge cases and
+`internal-test llvm-lowering-failure` passes rejected-render diagnostic coverage.
+The root integration run owns the full combined fixture and auxiliary gates.
+
+Module-qualified mutable writes and explicit address-taking are still rejected
+by semantic analysis; this repair does not silently accept them. Direct imported
+writes/addresses work, and qualified reads see the same storage. A defining-module
+accessor supplies an address where qualified address-taking is unavailable.

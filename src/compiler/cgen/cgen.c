@@ -828,6 +828,22 @@ internal CValue cgen_lvalue(CGen* c, u32 index)
     if (e->kind == HIR_EXPR_Field || e->kind == HIR_EXPR_TupleField) {
         const HirExpr* base = &cgen_hir(c)->exprs[e->operand_expr_index];
         u32            bt   = base->type_index;
+        if (cgen_kind(c, bt) == STK_Module) {
+            u32                  module = cgen_type(c, bt)->return_type;
+            const FrontEndState* source =
+                &c->program->modules[module].front_end;
+            cstr name = cgen_symbol(c, e->symbol_handle);
+            for (u32 i = 0; i < array_count(source->hir.bindings); ++i) {
+                string symbol = lex_symbol(
+                    &source->lexer, source->hir.bindings[i].symbol_handle);
+                if (string_eq_cstr(symbol, name)) {
+                    return (CValue){
+                        cgen_binding(c, module, i, 0), e->type_index, false};
+                }
+            }
+            cgen_error(c, "unresolved module field", index);
+            return (CValue){"0", e->type_index, false};
+        }
         CValue         v;
         if (cgen_kind(c, bt) == STK_Pointer || cgen_kind(c, bt) == STK_Box) {
             v      = cgen_expr(c, e->operand_expr_index);

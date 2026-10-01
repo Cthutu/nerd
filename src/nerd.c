@@ -512,6 +512,9 @@ internal int nerd_internal_test(const JsonValue* cli_result)
     if (string_eq_cstr(name, "error-context")) {
         return error_context_self_test() ? 0 : 1;
     }
+    if (string_eq_cstr(name, "llvm-lowering-failure")) {
+        return llvm_lowering_failure_self_test() ? 0 : 1;
+    }
     if (string_eq_cstr(name, "llvm-text")) {
         return back_end_llvm_text_self_test() ? 0 : 1;
     }
