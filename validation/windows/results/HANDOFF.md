@@ -6,6 +6,9 @@ Branch **`std-library`**, [draft PR #1](https://github.com/Cthutu/nerd/pull/1),
 targets `main`; all parallel work and repair branches are merged without
 rewriting their published history. `main` is unchanged.
 
+The [review report](../../../docs/stdlib-review-report.md) summarises additions
+and prioritises language/compiler, library and workflow recommendations.
+
 Final implementation `2b540cd9` passes native Windows **`just test` and
 `just test-release`: 1181 fixture passes, 0 failures, 15 platform skips each**.
 All debug auxiliary stages passed, including **298 C differential fixtures at

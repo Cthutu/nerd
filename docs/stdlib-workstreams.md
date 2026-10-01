@@ -1,5 +1,8 @@
 # Parallel standard-library workstreams
 
+See the [review report](stdlib-review-report.md) for delivered features, compiler
+repairs, validation limits and prioritised language/library recommendations.
+
 Started 2026-10-01 from `f5d551da` on `std-library`. Each stream has its own
 Git worktree and branch. The first slices are now merged into `std-library` for
 a draft PR. `main` is unchanged; these are not completed M0/M1/M5 milestones.
