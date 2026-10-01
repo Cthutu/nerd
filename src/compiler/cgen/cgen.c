@@ -960,7 +960,12 @@ internal CValue cgen_enum(CGen* c, const HirExpr* e, u32 variant)
              (long long)cgen_sema(c)
                  ->type_param_values[st->first_param_type + variant]);
     u32 pt = cgen_field_type(c, e->type_index, variant);
-    if (e->arg_count && !cgen_void(c, pt)) {
+    if (cgen_void(c, pt)) {
+        // A void payload has no storage, but its arguments still have effects.
+        for (u32 i = 0; i < e->arg_count; ++i) {
+            cgen_expr(c, cgen_hir(c)->call_args[e->first_arg + i].expr_index);
+        }
+    } else if (e->arg_count) {
         if ((cgen_kind(c, pt) == STK_Tuple || cgen_kind(c, pt) == STK_Plex) &&
             !(e->arg_count == 1 &&
               cgen_canonical(
