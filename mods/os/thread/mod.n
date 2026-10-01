@@ -1,0 +1,5 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Native thread and synchronisation bindings for std.thread and std.sync.
