@@ -1,0 +1,208 @@
+use os.socket
+use std.network
+
+-- Exercises native layouts and the socket ownership contracts on loopback only.
+checks :: fn () -> void\NetworkError {
+    assert SocketAddress.size == 16, "Expected sockaddr_in layout"
+    on "windows" {
+        assert StartupData.size == 408, "Expected Windows x64 WSADATA layout"
+    }
+    listener := socket(SocketKind.Tcp)?
+    defer _ := listener.close()
+    listener.bind(loopback(0))?
+    listener.listen()?
+    destination := listener.local_address()?
+    assert destination.port != 0 && destination.octets[0] == 127 && destination.octets[3] == 1,
+    "Expected actual ephemeral loopback binding"
+    listener.nonblocking(yes)?
+    on listener.accept() {
+        NetworkError.WouldBlock {
+            code
+        }
+        ! => {
+            assert code != 0, "Expected native WouldBlock code"
+        }
+        else => {
+            assert no, "Empty nonblocking accept must not succeed"
+        }
+    }
+
+    client := socket(SocketKind.Tcp)?
+    defer _ := client.close()
+    client.nonblocking(yes)?
+    on client.connect(destination) {
+        NetworkError.Invalid! => {
+        }
+        else => {
+            assert no, "Nonblocking connect requires the future completion API"
+        }
+    }
+    client.nonblocking(no)?
+    client.connect(destination)?
+    -- A completed blocking loopback connect is queued before accept.
+    listener.nonblocking(no)?
+    server := listener.accept()?
+    defer _ := server.close()
+    local := client.local_address()?
+    peer := server.peer_address()?
+    assert peer.port == local.port && peer.octets[0] == 127, "Expected peer "
+        +"address"
+    -- Accepted ownership must outlive the listener and its Winsock reference.
+    listener.close()?
+    on listener.close() {
+        NetworkError.Invalid! => {
+        }
+        else => {
+            assert no, "Double-close must fail locally"
+        }
+    }
+    server.nonblocking(yes)?
+    buffer: [64]u8
+    on server.receive(buffer[..]) {
+        NetworkError.WouldBlock {
+            code
+        }
+        ! => {
+            assert code != 0, "Expected native WouldBlock code"
+        }
+        else => {
+            assert no, "No TCP bytes must be distinguishable from EOF"
+        }
+    }
+    empty := server.receive(buffer[.. 0])?
+    assert empty.count == 0 && !empty.eof, "Empty output buffer must not "
+        +"report EOF"
+    server.nonblocking(no)?
+    data := "abcdef".as([]u8)
+    offset: usize = 0
+    for offset < data.count {
+        count := client.send(data[offset ..])?
+        assert count > 0 && count <= data.count - offset, "Expected partial "
+            +"send count"
+        offset += count
+    }
+    client.shutdown_send()?
+    offset = 0
+    -- Deliberately use small receives to verify byte counts, never TCP packets.
+    for offset < data.count {
+        read := server.receive(buffer[offset .. offset + 1])?
+        assert read.count == 1 && !read.eof, "Expected one payload byte"
+        offset += read.count
+    }
+    assert buffer[.. data.count].as(string) == "abcdef", "Expected exact "
+        +"stream bytes"
+    end := server.receive(buffer[..])?
+    assert end.count == 0 && end.eof, "Expected orderly TCP EOF"
+    _ := server.send("ok".as([]u8))?
+    server.shutdown_send()?
+    answer := client.receive(buffer[..])?
+    assert answer.count > 0 && !answer.eof, "Half-close must preserve reverse "
+        +"traffic"
+
+    -- No other owner may keep Winsock initialised for the accepted socket.
+    client.close()?
+    after_client_close := server.receive(buffer[..])?
+    assert after_client_close.eof, "Accepted socket must retain its own "
+        +"startup reference"
+    server.close()?
+
+    udp := socket(SocketKind.Udp)?
+    defer _ := udp.close()
+    udp.bind(loopback(0))?
+    udp_address := udp.local_address()?
+    sender := socket(SocketKind.Udp)?
+    defer _ := sender.close()
+    sender.bind(loopback(0))?
+    sender_address := sender.local_address()?
+    udp.nonblocking(yes)?
+    on udp.receive_from(buffer[..]) {
+        NetworkError.WouldBlock {
+            code
+        }
+        ! => {
+            assert code != 0, "Expected UDP WouldBlock"
+        }
+        else => {
+            assert no, "No datagram must not be an empty datagram"
+        }
+    }
+    udp.nonblocking(no)?
+    _ := sender.send_to(buffer[.. 0], udp_address)?
+    datagram := udp.receive_from(buffer[.. 0])?
+    assert datagram.count == 0 && datagram.sender.port == sender_address.port,
+    "Empty datagrams must retain their sender"
+    _ := udp.send_to("reply".as([]u8), datagram.sender)?
+    reply := sender.receive_from(buffer[..])?
+    assert reply.count == 5 && buffer[.. 5].as(string) == "reply", "Expected "
+        +"routed UDP reply"
+    _ := sender.send_to("oversized".as([]u8), udp_address)?
+    on udp.receive_from(buffer[.. 1]) {
+        NetworkError.MessageTooLarge {
+            code
+        }
+        ! => {
+            assert code == 0 || code == 10040, "Expected detected truncation "
+                +"or native WSAEMSGSIZE"
+        }
+        else => {
+            assert no, "Truncated datagrams must not masquerade as complete"
+        }
+    }
+    udp.nonblocking(yes)?
+    on udp.receive_from(buffer[..]) {
+        NetworkError.WouldBlock {
+            code
+        }
+        ! => {
+            assert code != 0, "Expected error detail"
+        }
+        else => {
+            assert no, "Truncated datagram must have been consumed"
+        }
+    }
+    on udp.send("bad".as([]u8)) {
+        NetworkError.Invalid! => {
+        }
+        else => {
+            assert no, "TCP send must reject a datagram socket"
+        }
+    }
+    sender.close()?
+    on sender.bind(loopback(0)) {
+        NetworkError.Invalid! => {
+        }
+        else => {
+            assert no, "Closed socket must not invoke OS operations"
+        }
+    }
+    -- Keep this bound port reserved while exercising connection refusal.
+    reserved := socket(SocketKind.Tcp)?
+    defer _ := reserved.close()
+    reserved.bind(loopback(0))?
+    refused := socket(SocketKind.Tcp)?
+    defer _ := refused.close()
+    reserved_address := reserved.local_address()?
+    on refused.connect(reserved_address) {
+        NetworkError.ConnectionRefused {
+            code
+        }
+        ! => {
+            assert code != 0, "Expected native refusal code"
+        }
+        else => {
+            assert no, "Bound but non-listening TCP socket must refuse "
+                +"connections"
+        }
+    }
+    prn("network contracts passed")
+}
+
+main :: fn () -> i32 {
+    return on checks() {
+        _! => {
+            eprn("network contracts failed")
+            return 1
+        }
+        else => 0
+    }
+}

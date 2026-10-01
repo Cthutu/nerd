@@ -1,0 +1,129 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Native IPv4 socket bindings used by std.network. These declarations mirror
+-- the platform ABI; portable ownership and errors live in std.network.
+
+on "windows" {
+
+    -- Native socket handle; Windows SOCKET is pointer-sized.
+    pub NativeSocket :: usize
+    -- Native address length passed by pointer.
+    pub AddressLength :: i32
+    -- Native transfer length argument.
+    pub TransferLength :: i32
+    -- IPv4 address layout shared by sockaddr_in on both supported hosts.
+    pub SocketAddress :: plex #c {
+        family  u16    -- AF_INET in host order.
+        port    u16    -- Port in network order.
+        address u32    -- IPv4 address in network order.
+        padding [8]u8  -- Required zero padding.
+    }
+    -- Winsock 2 startup data for the supported Windows x64 ABI.
+    pub StartupData :: plex #c {
+        version      u16      -- Negotiated version.
+        high_version u16      -- Maximum supported version.
+        max_sockets  u16      -- Obsolete field.
+        max_datagram u16      -- Obsolete field.
+        vendor       ^u8      -- Obsolete vendor pointer.
+        description  [257]u8  -- Implementation description.
+        status       [129]u8  -- Implementation status.
+    }
+    ffi "ws2_32" {
+        -- Direct socket binding; follows native return and error conventions.
+        pub ns_socket :: socket (family   : i32,
+                                 kind     : i32,
+                                 protocol : i32) -> NativeSocket
+
+        -- Direct bind binding; follows native return and error conventions.
+        pub ns_bind :: bind (socket  : NativeSocket,
+                             address : ^SocketAddress,
+                             length  : AddressLength) -> i32
+
+        -- Direct listen binding; follows native return and error conventions.
+        pub ns_listen :: listen (socket: NativeSocket, backlog: i32) -> i32
+
+        -- Direct accept binding; follows native return and error conventions.
+        pub ns_accept :: accept (socket  : NativeSocket,
+                                 address : ^SocketAddress,
+                                 length  : ^AddressLength) -> NativeSocket
+
+        -- Direct connect binding; follows native return and error conventions.
+        pub ns_connect :: connect (socket  : NativeSocket,
+                                   address : ^SocketAddress,
+                                   length  : AddressLength) -> i32
+
+        -- Direct getsockname binding; follows native return and error conventions.
+        pub ns_local :: getsockname (socket  : NativeSocket,
+                                     address : ^SocketAddress,
+                                     length  : ^AddressLength) -> i32
+
+        -- Direct getpeername binding; follows native return and error conventions.
+        pub ns_peer :: getpeername (socket  : NativeSocket,
+                                    address : ^SocketAddress,
+                                    length  : ^AddressLength) -> i32
+
+        -- Direct send binding; follows native return and error conventions.
+        pub ns_send :: send (socket : NativeSocket,
+                             data   : ^u8,
+                             count  : TransferLength,
+                             flags  : i32) -> i32
+
+        -- Direct recv binding; follows native return and error conventions.
+        pub ns_receive :: recv (socket : NativeSocket,
+                                data   : ^u8,
+                                count  : TransferLength,
+                                flags  : i32) -> i32
+
+        -- Direct sendto binding; follows native return and error conventions.
+        pub ns_send_to :: sendto (socket  : NativeSocket,
+                                  data    : ^u8,
+                                  count   : TransferLength,
+                                  flags   : i32,
+                                  address : ^SocketAddress,
+                                  length  : AddressLength) -> i32
+
+        -- Direct recvfrom binding; follows native return and error conventions.
+        pub ns_receive_from :: recvfrom (socket  : NativeSocket,
+                                         data    : ^u8,
+                                         count   : TransferLength,
+                                         flags   : i32,
+                                         address : ^SocketAddress,
+                                         length  : ^AddressLength) -> i32
+
+        -- Direct shutdown binding; follows native return and error conventions.
+        pub ns_shutdown :: shutdown (socket    : NativeSocket,
+                                     direction : i32) -> i32
+
+        -- Direct closesocket binding; follows native return and error conventions.
+        pub ns_close :: closesocket (socket: NativeSocket) -> i32
+
+        -- Direct htons binding; follows native return and error conventions.
+        pub ns_htons :: htons (value: u16) -> u16
+
+        -- Direct htonl binding; follows native return and error conventions.
+        pub ns_htonl :: htonl (value: u32) -> u32
+
+        -- Direct ntohs binding; follows native return and error conventions.
+        pub ns_ntohs :: ntohs (value: u16) -> u16
+
+        -- Direct ntohl binding; follows native return and error conventions.
+        pub ns_ntohl :: ntohl (value: u32) -> u32
+
+        -- Direct WSAStartup binding; follows native return and error conventions.
+        pub ns_startup :: WSAStartup (version: u16, data: ^StartupData) -> i32
+
+        -- Direct WSACleanup binding; follows native return and error conventions.
+        pub ns_cleanup :: WSACleanup () -> i32
+
+        -- Direct WSAGetLastError binding; follows native return and error conventions.
+        pub ns_last_error :: WSAGetLastError () -> i32
+
+        -- Direct ioctlsocket binding; follows native return and error conventions.
+        pub ns_ioctl :: ioctlsocket (socket   : NativeSocket,
+                                     request  : i32,
+                                     argument : ^u32) -> i32
+    }
+
+}
