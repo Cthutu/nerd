@@ -6577,7 +6577,11 @@ internal LlvmValue llvm_emit_enum_constructor(LlvmFunctionContext* ctx,
 
     u32 variant_payload_type =
         llvm_enum_variant_payload_type(ctx->sema, enum_type, variant_index);
-    if (variant_payload_type != sema_no_type() && expr->arg_count > 0) {
+    // Void arguments still run above for their effects, but carry no bits to
+    // pack into an optional/result success variant.
+    if (variant_payload_type != sema_no_type() &&
+        !llvm_type_is_void(ctx->sema, variant_payload_type) &&
+        expr->arg_count > 0) {
         LlvmValue payload = {0};
         if (expr->arg_count == 1 &&
             args[0].type_index == variant_payload_type) {
@@ -15451,6 +15455,69 @@ internal bool llvm_emit_assign(LlvmFunctionContext* ctx,
     }
 
     if (target->kind == HIR_EXPR_TupleField || target->kind == HIR_EXPR_Field) {
+        const HirExpr* owner = &ctx->hir->exprs[target->operand_expr_index];
+        u32 record_type = llvm_member_target_type(ctx->sema, owner->type_index);
+        u32 bit_field   = target->kind == HIR_EXPR_Field
+                              ? llvm_record_field_index(
+                                    ctx->sema, record_type, target->symbol_handle)
+                              : U32_MAX;
+        if (llvm_record_bit_field(
+                ctx->sema, record_type, bit_field, NULL, NULL)) {
+            // A bit-field has no address of its own. Resolve its containing
+            // record once, including pointer-producing calls, then update the
+            // packed storage without overwriting adjacent fields.
+            bool pointer_owner =
+                llvm_type_kind(ctx->sema, owner->type_index) == STK_Pointer ||
+                llvm_type_kind(ctx->sema, owner->type_index) == STK_Box;
+            LlvmValue address =
+                pointer_owner
+                    ? llvm_emit_expr(ctx, function, target->operand_expr_index)
+                    : llvm_address_of_expr(
+                          ctx, function, target->operand_expr_index);
+            if (!address.ok) {
+                return false;
+            }
+            while (pointer_owner) {
+                u32 pointee =
+                    llvm_type_kind(ctx->sema, address.type_index) == STK_Box
+                        ? ctx->sema->types[address.type_index].first_param_type
+                        : llvm_pointee_type(ctx->sema, address.type_index);
+                if (pointee == record_type) {
+                    break;
+                }
+                if (llvm_type_kind(ctx->sema, pointee) != STK_Pointer &&
+                    llvm_type_kind(ctx->sema, pointee) != STK_Box) {
+                    return false;
+                }
+                string next = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = load ptr, ptr " STRINGP "\n",
+                          STRINGV(next),
+                          STRINGV(address.value));
+                address = (LlvmValue){
+                    .ok = true, .type_index = pointee, .value = next};
+            }
+            string type   = llvm_type_string(ctx, record_type);
+            string loaded = llvm_temp(ctx);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = load " STRINGP ", ptr " STRINGP "\n",
+                      STRINGV(loaded),
+                      STRINGV(type),
+                      STRINGV(address.value));
+            LlvmValue record = {
+                .ok = true, .type_index = record_type, .value = loaded};
+            LlvmValue updated =
+                llvm_insert_record_field(ctx, record, bit_field, value);
+            if (!updated.ok) {
+                return false;
+            }
+            sb_format(ctx->sb,
+                      "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n",
+                      STRINGV(type),
+                      STRINGV(updated.value),
+                      STRINGV(address.value));
+            return true;
+        }
         LlvmValue field_ptr =
             llvm_address_of_expr(ctx, function, target_expr_index);
         if (field_ptr.ok) {
