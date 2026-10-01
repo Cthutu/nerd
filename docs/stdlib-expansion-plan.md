@@ -99,7 +99,9 @@ add consumer-specific command-line flags just to import these modules.
 ## Milestones and exit gates
 
 Each milestone produces a small usable API, tests, an example and documentation.
-Record completion evidence against its commit; the checkboxes start unchecked.
+The example catalogue below is part of the milestone exit gates, not a separate
+cleanup task at the end. Record completion evidence against each commit; the
+checkboxes start unchecked.
 
 ### M0 — Source inventory and language capability checks
 
@@ -108,6 +110,9 @@ Record completion evidence against its commit; the checkboxes start unchecked.
 - [ ] Build/run original reference suites where supported; record gaps rather
   than treating an unavailable upstream test as passing.
 - [ ] Map every upstream component to port, internal detail, or explicit deferral.
+- [ ] Select representative upstream tests for the example catalogue and record
+  their repository revision, file and test name. Raptor/Kerberos mappings remain
+  provisional until their sources are accessible.
 - [ ] Compile small Nerd probes for atomic compare/exchange and pointer-sized
   state, alignment, generic payload ownership, callback context lifetime, thread
   entry ABI, TLS requirements and platform struct layouts. Avoid aggregate-by-value
@@ -261,6 +266,57 @@ Depends on the preceding agreed feature gates.
 
 Exit: complete platform matrix, updated standard-library reference, and reviewed
 merge into `main`. Remove the working branch only after the work is merged.
+
+## Examples derived from upstream tests
+
+Examples should turn a representative test scenario into a small, useful program:
+show setup, normal operation, error handling and cleanup using the public API.
+Retain focused regression tests separately; examples should not reproduce the
+upstream test framework or expose private implementation details.
+
+The following directories and scenarios are proposed, not yet implemented.
+Nexus test names below refer to the pinned `dev` revision in the source inventory.
+Raptor and Kerberos rows are candidates whose exact source tests must be selected
+in M0; their descriptions are not claims about tests already inspected.
+
+| Example directory | Milestone | User-visible scenario | Upstream test basis |
+| --- | --- | --- | --- |
+| `queue-pipeline` | M2 | Producers submit numbered work items; consumers process every item once and shut down cleanly | Raptor queue tests, exact mapping pending M0 |
+| `task-parallel` | M3 | Split a calculation into tasks, wait for completion and compare with its serial result | Raptor scheduler/completion tests, exact mapping pending M0 |
+| `graph-pipeline` | M4, extended in M8 | Construct a small data graph, evaluate it serially, then demonstrate the source-supported update/evaluation behaviour; later compare parallel execution | Kerberos node/data-graph tests, exact semantics and mapping pending M0 |
+| `network-echo` | M5 | A raw TCP client/server exchanges bytes and handles partial I/O and peer shutdown | New socket-level tests extracted from the transport scenarios behind `framing.c::tcp_message_framing_round_trip`; no Nexus framing in the raw example |
+| `network-datagram` | M5 | Send a UDP datagram and reply to its sender | Socket-level counterpart of `message.c::udp_recv_msg_preserves_reply_route_for_send_msg` |
+| `nexus-message` | M6 | Send structured messages with strings and integers, read them back and reuse the message buffer | `message.c::message_append_and_read_primitives`, `framing.c::tcp_message_framing_round_trip`, `framing.c::zero_length_messages_are_valid` |
+| `nexus-multi-client` | M6 | Several clients contact one server; each reply goes to the originating client | `message.c::tcp_server_can_reply_to_multiple_clients_via_message_pipe` |
+| `nexus-request-reply` | M7 | A client sends a request, receives a reply, and repeats with the required protocol order | `reqrep.c::request_reply_round_trip_over_tcp` and the request/reply wrong-state tests |
+| `nexus-timeouts` | M7 | Show a bounded receive timeout, a non-blocking would-block result and recovery when a peer becomes ready | `message.c::recv_times_out_when_client_connects_but_sends_nothing`, `nonblocking_recv_returns_would_block_when_no_client_arrives`, `recv_succeeds_when_message_arrives_before_timeout` |
+| `nexus-telnet` | M7 | A small line-oriented server, with character mode and terminal-size reporting as follow-on modes | `telnet.c::telnet_socket_round_trip_over_tcp`, `telnet_character_mode_receives_one_character_per_message`, `telnet_socket_reports_negotiated_bounds_from_naws` |
+| `task-network-service` | M8 | Receive messages, dispatch bounded CPU work, return replies and drain cleanly on shutdown | Integration of the selected Raptor task tests and Nexus multi-client/reply tests; new overload/shutdown regressions |
+
+### Packaging and acceptance
+
+- [ ] Use the existing `examples/<name>/<name>.n` layout, with a README explaining
+  the concept, the source test references, expected output and ownership rules.
+- [ ] Make `just run-example <name>` work with the same command on Windows,
+  Linux and WSL. Default demonstrations should finish on their own. For networking,
+  a default self-contained run starts a local server and client; optional explicit
+  client/server modes can support two-terminal exploration. Document how to pass
+  arguments and extend the common recipe only if those modes need it.
+- [ ] Give interactive Telnet modes a separate bounded smoke mode using a scripted
+  peer, so automated checks never wait for a user or an installed Telnet client.
+- [ ] Run examples against this checkout's compiler/modules. Put fixed linkage in
+  source build settings, use loopback and dynamically assigned ports, and report
+  errors clearly. Normal examples need neither Internet access nor elevated rights.
+- [ ] Add execution smoke checks to the test workflow: the existing example family
+  only performs `nerd check`, which is insufficient to verify message exchange,
+  task completion or shutdown. Check meaningful results and exit status with a
+  deadline; do not snapshot nondeterministic worker order or allocated port numbers.
+- [ ] Validate debug and release execution on the supported platform matrix and
+  retain regression coverage for failure cases omitted from the teaching example.
+  No pending capability should be disguised by a stub or a silently skipped demo.
+
+M2–M8 are complete only when their corresponding examples and smoke checks pass.
+M9 verifies the common launch commands and documents any genuine platform limits.
 
 ## Test discipline
 
