@@ -28,6 +28,13 @@ contracts using the freshly built release compiler.
 
 ## Test Families
 
+Successful runtime regressions may share a feature fixture with separately named
+scenarios and exact captured output. For example, `language/200-on-regressions.t`
+retains 14 original regression IDs with begin/pass markers and return assertions.
+Missing scenarios must fail the transcript comparison. Keep configuration,
+process-lifetime and HIR/LLVM-specific contracts separate when batching would
+change their meaning. See the [consolidation map](../docs/test-suite-consolidation.md).
+
 - `language`
   End-to-end source tests. `.t` files contain source, expected process return
   value, expected stdout, expected HIR, and expected LLVM IR, separated by

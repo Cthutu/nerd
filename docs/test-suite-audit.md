@@ -4,6 +4,13 @@ Audit baseline: `std-library` at `c861db2187534ced1d8c94e441f22a69d11f3490`,
 2 October 2026. Work is isolated on `test-suite-audit`; no existing fixture,
 default recipe, or compiler implementation was changed.
 
+**Follow-up:** [the first consolidation](test-suite-consolidation.md) implements
+the duplicate removals and a 14-scenario `on` batch on a separate branch, based
+on `std-library` at `6bc00639`. That baseline also fixes the integer destination
+range bug described in this historical audit. The original JSON measurements
+below remain unchanged. Historical command links identify the audited revision;
+the original proof script now reads those fixtures from Git so it remains runnable.
+
 ## Recommendation
 
 Consolidate successful runtime tests by feature and remove demonstrably duplicate
@@ -156,39 +163,39 @@ empty”, so the mapped language oracle is stronger for those cases.
 
 | Command under `tests/commands` | Existing coverage under `tests/language` |
 | --- | --- |
-| [027-run-llvm-for-break-again.cmd](../tests/commands/027-run-llvm-for-break-again.cmd) | [044-for-break-again.t](../tests/language/044-for-break-again.t) |
-| [031-run-llvm-tuple-interpolation.cmd](../tests/commands/031-run-llvm-tuple-interpolation.cmd) | [051-tuples.t](../tests/language/051-tuples.t) |
-| [032-run-llvm-array-interpolation.cmd](../tests/commands/032-run-llvm-array-interpolation.cmd) | [052-fixed-arrays.t](../tests/language/052-fixed-arrays.t) |
-| [033-run-llvm-pointer-fields.cmd](../tests/commands/033-run-llvm-pointer-fields.cmd) | [058-plex-ergonomics.t](../tests/language/058-plex-ergonomics.t) |
-| [034-run-llvm-string-slices.cmd](../tests/commands/034-run-llvm-string-slices.cmd) | [055-string-slices.t](../tests/language/055-string-slices.t) |
-| [035-run-llvm-address-of-index.cmd](../tests/commands/035-run-llvm-address-of-index.cmd) | [053-pointers.t](../tests/language/053-pointers.t) |
-| [036-run-llvm-slices.cmd](../tests/commands/036-run-llvm-slices.cmd) | [054-slices.t](../tests/language/054-slices.t) |
-| [039-run-llvm-for-return.cmd](../tests/commands/039-run-llvm-for-return.cmd) | [038-for-infinite.t](../tests/language/038-for-infinite.t) |
-| [040-run-llvm-labelled-blocks.cmd](../tests/commands/040-run-llvm-labelled-blocks.cmd) | [048-labelled-expression-block.t](../tests/language/048-labelled-expression-block.t) |
-| [044-run-llvm-raw-unions.cmd](../tests/commands/044-run-llvm-raw-unions.cmd) | [062-raw-unions.t](../tests/language/062-raw-unions.t) |
-| [045-run-llvm-unit-enums.cmd](../tests/commands/045-run-llvm-unit-enums.cmd) | [063-enum-unit-variants.t](../tests/language/063-enum-unit-variants.t) |
-| [046-run-llvm-enum-payloads.cmd](../tests/commands/046-run-llvm-enum-payloads.cmd) | [065-enum-payloads.t](../tests/language/065-enum-payloads.t) |
-| [047-run-llvm-condition-on.cmd](../tests/commands/047-run-llvm-condition-on.cmd) | [066-generalised-on.t](../tests/language/066-generalised-on.t) |
-| [048-run-llvm-destructuring.cmd](../tests/commands/048-run-llvm-destructuring.cmd) | [059-destructuring-bindings.t](../tests/language/059-destructuring-bindings.t) |
-| [049-run-llvm-module-function-fields.cmd](../tests/commands/049-run-llvm-module-function-fields.cmd) | [068-std-print-module.t](../tests/language/068-std-print-module.t) |
-| [051-run-llvm-dynamic-slice-bounds.cmd](../tests/commands/051-run-llvm-dynamic-slice-bounds.cmd) | [080-dynamic-slice-bounds.t](../tests/language/080-dynamic-slice-bounds.t) |
-| [052-run-llvm-contextual-slice-literals.cmd](../tests/commands/052-run-llvm-contextual-slice-literals.cmd) | [079-contextual-plex-and-slice.t](../tests/language/079-contextual-plex-and-slice.t) |
-| [053-run-llvm-nested-array-literals.cmd](../tests/commands/053-run-llvm-nested-array-literals.cmd) | [081-nested-array-literals.t](../tests/language/081-nested-array-literals.t) |
-| [054-run-llvm-assignment-expressions.cmd](../tests/commands/054-run-llvm-assignment-expressions.cmd) | [082-assignment-expressions.t](../tests/language/082-assignment-expressions.t) |
-| [055-run-llvm-nil-pointers-and-slices.cmd](../tests/commands/055-run-llvm-nil-pointers-and-slices.cmd) | [090-nil-pointers.t](../tests/language/090-nil-pointers.t) |
-| [058-run-llvm-underscore-parameters.cmd](../tests/commands/058-run-llvm-underscore-parameters.cmd) | [110-unused-underscore.t](../tests/language/110-unused-underscore.t) |
-| [062-run-llvm-nested-on-branch.cmd](../tests/commands/062-run-llvm-nested-on-branch.cmd) | [118-nested-on-branch.t](../tests/language/118-nested-on-branch.t) |
-| [064-run-llvm-pointer-to-slice-cast.cmd](../tests/commands/064-run-llvm-pointer-to-slice-cast.cmd) | [093-slice-casts-and-nil.t](../tests/language/093-slice-casts-and-nil.t) |
-| [066-run-llvm-integer-pointer-casts.cmd](../tests/commands/066-run-llvm-integer-pointer-casts.cmd) | [148-untyped-integer-pointer-casts.t](../tests/language/148-untyped-integer-pointer-casts.t) |
-| [078-run-llvm-string-equality.cmd](../tests/commands/078-run-llvm-string-equality.cmd) | [125-top-level-interpolated-strings.t](../tests/language/125-top-level-interpolated-strings.t) |
-| [080-run-llvm-on-short-block-expr.cmd](../tests/commands/080-run-llvm-on-short-block-expr.cmd) | [100-on-short-block-expr.t](../tests/language/100-on-short-block-expr.t) |
-| [081-run-llvm-dynarray-typed-locals.cmd](../tests/commands/081-run-llvm-dynarray-typed-locals.cmd) | [101-dynarray-typed-locals.t](../tests/language/101-dynarray-typed-locals.t) |
-| [082-run-llvm-on-break-for-expression.cmd](../tests/commands/082-run-llvm-on-break-for-expression.cmd) | [152-on-break-for-expression.t](../tests/language/152-on-break-for-expression.t) |
-| [083-run-llvm-break-on.cmd](../tests/commands/083-run-llvm-break-on.cmd) | [153-break-on.t](../tests/language/153-break-on.t) |
-| [084-run-llvm-named-method-arguments.cmd](../tests/commands/084-run-llvm-named-method-arguments.cmd) | [138-named-call-arguments.t](../tests/language/138-named-call-arguments.t) |
-| [085-run-llvm-method-receivers.cmd](../tests/commands/085-run-llvm-method-receivers.cmd) | [141-method-regressions.t](../tests/language/141-method-regressions.t) |
-| [086-run-llvm-field-lvalues.cmd](../tests/commands/086-run-llvm-field-lvalues.cmd) | [089-field-lvalues.t](../tests/language/089-field-lvalues.t) |
-| [087-run-llvm-index-lvalues.cmd](../tests/commands/087-run-llvm-index-lvalues.cmd) | [142-lvalue-and-plex-regressions.t](../tests/language/142-lvalue-and-plex-regressions.t) |
+| [027-run-llvm-for-break-again.cmd](https://github.com/Cthutu/nerd/blob/c861db2187534ced1d8c94e441f22a69d11f3490/tests/commands/027-run-llvm-for-break-again.cmd) | [044-for-break-again.t](../tests/language/044-for-break-again.t) |
+| [031-run-llvm-tuple-interpolation.cmd](https://github.com/Cthutu/nerd/blob/c861db2187534ced1d8c94e441f22a69d11f3490/tests/commands/031-run-llvm-tuple-interpolation.cmd) | [051-tuples.t](../tests/language/051-tuples.t) |
+| [032-run-llvm-array-interpolation.cmd](https://github.com/Cthutu/nerd/blob/c861db2187534ced1d8c94e441f22a69d11f3490/tests/commands/032-run-llvm-array-interpolation.cmd) | [052-fixed-arrays.t](../tests/language/052-fixed-arrays.t) |
+| [033-run-llvm-pointer-fields.cmd](https://github.com/Cthutu/nerd/blob/c861db2187534ced1d8c94e441f22a69d11f3490/tests/commands/033-run-llvm-pointer-fields.cmd) | [058-plex-ergonomics.t](../tests/language/058-plex-ergonomics.t) |
+| [034-run-llvm-string-slices.cmd](https://github.com/Cthutu/nerd/blob/c861db2187534ced1d8c94e441f22a69d11f3490/tests/commands/034-run-llvm-string-slices.cmd) | [055-string-slices.t](../tests/language/055-string-slices.t) |
+| [035-run-llvm-address-of-index.cmd](https://github.com/Cthutu/nerd/blob/c861db2187534ced1d8c94e441f22a69d11f3490/tests/commands/035-run-llvm-address-of-index.cmd) | [053-pointers.t](../tests/language/053-pointers.t) |
+| [036-run-llvm-slices.cmd](https://github.com/Cthutu/nerd/blob/c861db2187534ced1d8c94e441f22a69d11f3490/tests/commands/036-run-llvm-slices.cmd) | [054-slices.t](../tests/language/054-slices.t) |
+| [039-run-llvm-for-return.cmd](https://github.com/Cthutu/nerd/blob/c861db2187534ced1d8c94e441f22a69d11f3490/tests/commands/039-run-llvm-for-return.cmd) | [038-for-infinite.t](../tests/language/038-for-infinite.t) |
+| [040-run-llvm-labelled-blocks.cmd](https://github.com/Cthutu/nerd/blob/c861db2187534ced1d8c94e441f22a69d11f3490/tests/commands/040-run-llvm-labelled-blocks.cmd) | [048-labelled-expression-block.t](../tests/language/048-labelled-expression-block.t) |
+| [044-run-llvm-raw-unions.cmd](https://github.com/Cthutu/nerd/blob/c861db2187534ced1d8c94e441f22a69d11f3490/tests/commands/044-run-llvm-raw-unions.cmd) | [062-raw-unions.t](../tests/language/062-raw-unions.t) |
+| [045-run-llvm-unit-enums.cmd](https://github.com/Cthutu/nerd/blob/c861db2187534ced1d8c94e441f22a69d11f3490/tests/commands/045-run-llvm-unit-enums.cmd) | [063-enum-unit-variants.t](../tests/language/063-enum-unit-variants.t) |
+| [046-run-llvm-enum-payloads.cmd](https://github.com/Cthutu/nerd/blob/c861db2187534ced1d8c94e441f22a69d11f3490/tests/commands/046-run-llvm-enum-payloads.cmd) | [065-enum-payloads.t](../tests/language/065-enum-payloads.t) |
+| [047-run-llvm-condition-on.cmd](https://github.com/Cthutu/nerd/blob/c861db2187534ced1d8c94e441f22a69d11f3490/tests/commands/047-run-llvm-condition-on.cmd) | [066-generalised-on.t](../tests/language/066-generalised-on.t) |
+| [048-run-llvm-destructuring.cmd](https://github.com/Cthutu/nerd/blob/c861db2187534ced1d8c94e441f22a69d11f3490/tests/commands/048-run-llvm-destructuring.cmd) | [059-destructuring-bindings.t](../tests/language/059-destructuring-bindings.t) |
+| [049-run-llvm-module-function-fields.cmd](https://github.com/Cthutu/nerd/blob/c861db2187534ced1d8c94e441f22a69d11f3490/tests/commands/049-run-llvm-module-function-fields.cmd) | [068-std-print-module.t](../tests/language/068-std-print-module.t) |
+| [051-run-llvm-dynamic-slice-bounds.cmd](https://github.com/Cthutu/nerd/blob/c861db2187534ced1d8c94e441f22a69d11f3490/tests/commands/051-run-llvm-dynamic-slice-bounds.cmd) | [080-dynamic-slice-bounds.t](../tests/language/080-dynamic-slice-bounds.t) |
+| [052-run-llvm-contextual-slice-literals.cmd](https://github.com/Cthutu/nerd/blob/c861db2187534ced1d8c94e441f22a69d11f3490/tests/commands/052-run-llvm-contextual-slice-literals.cmd) | [079-contextual-plex-and-slice.t](../tests/language/079-contextual-plex-and-slice.t) |
+| [053-run-llvm-nested-array-literals.cmd](https://github.com/Cthutu/nerd/blob/c861db2187534ced1d8c94e441f22a69d11f3490/tests/commands/053-run-llvm-nested-array-literals.cmd) | [081-nested-array-literals.t](../tests/language/081-nested-array-literals.t) |
+| [054-run-llvm-assignment-expressions.cmd](https://github.com/Cthutu/nerd/blob/c861db2187534ced1d8c94e441f22a69d11f3490/tests/commands/054-run-llvm-assignment-expressions.cmd) | [082-assignment-expressions.t](../tests/language/082-assignment-expressions.t) |
+| [055-run-llvm-nil-pointers-and-slices.cmd](https://github.com/Cthutu/nerd/blob/c861db2187534ced1d8c94e441f22a69d11f3490/tests/commands/055-run-llvm-nil-pointers-and-slices.cmd) | [090-nil-pointers.t](../tests/language/090-nil-pointers.t) |
+| [058-run-llvm-underscore-parameters.cmd](https://github.com/Cthutu/nerd/blob/c861db2187534ced1d8c94e441f22a69d11f3490/tests/commands/058-run-llvm-underscore-parameters.cmd) | [110-unused-underscore.t](../tests/language/110-unused-underscore.t) |
+| [062-run-llvm-nested-on-branch.cmd](https://github.com/Cthutu/nerd/blob/c861db2187534ced1d8c94e441f22a69d11f3490/tests/commands/062-run-llvm-nested-on-branch.cmd) | [118-nested-on-branch.t](../tests/language/118-nested-on-branch.t) |
+| [064-run-llvm-pointer-to-slice-cast.cmd](https://github.com/Cthutu/nerd/blob/c861db2187534ced1d8c94e441f22a69d11f3490/tests/commands/064-run-llvm-pointer-to-slice-cast.cmd) | [093-slice-casts-and-nil.t](../tests/language/093-slice-casts-and-nil.t) |
+| [066-run-llvm-integer-pointer-casts.cmd](https://github.com/Cthutu/nerd/blob/c861db2187534ced1d8c94e441f22a69d11f3490/tests/commands/066-run-llvm-integer-pointer-casts.cmd) | [148-untyped-integer-pointer-casts.t](../tests/language/148-untyped-integer-pointer-casts.t) |
+| [078-run-llvm-string-equality.cmd](https://github.com/Cthutu/nerd/blob/c861db2187534ced1d8c94e441f22a69d11f3490/tests/commands/078-run-llvm-string-equality.cmd) | [125-top-level-interpolated-strings.t](../tests/language/125-top-level-interpolated-strings.t) |
+| [080-run-llvm-on-short-block-expr.cmd](https://github.com/Cthutu/nerd/blob/c861db2187534ced1d8c94e441f22a69d11f3490/tests/commands/080-run-llvm-on-short-block-expr.cmd) | [100-on-short-block-expr.t](../tests/language/100-on-short-block-expr.t) |
+| [081-run-llvm-dynarray-typed-locals.cmd](https://github.com/Cthutu/nerd/blob/c861db2187534ced1d8c94e441f22a69d11f3490/tests/commands/081-run-llvm-dynarray-typed-locals.cmd) | [101-dynarray-typed-locals.t](../tests/language/101-dynarray-typed-locals.t) |
+| [082-run-llvm-on-break-for-expression.cmd](https://github.com/Cthutu/nerd/blob/c861db2187534ced1d8c94e441f22a69d11f3490/tests/commands/082-run-llvm-on-break-for-expression.cmd) | [152-on-break-for-expression.t](../tests/language/152-on-break-for-expression.t) |
+| [083-run-llvm-break-on.cmd](https://github.com/Cthutu/nerd/blob/c861db2187534ced1d8c94e441f22a69d11f3490/tests/commands/083-run-llvm-break-on.cmd) | [153-break-on.t](../tests/language/153-break-on.t) |
+| [084-run-llvm-named-method-arguments.cmd](https://github.com/Cthutu/nerd/blob/c861db2187534ced1d8c94e441f22a69d11f3490/tests/commands/084-run-llvm-named-method-arguments.cmd) | [138-named-call-arguments.t](../tests/language/138-named-call-arguments.t) |
+| [085-run-llvm-method-receivers.cmd](https://github.com/Cthutu/nerd/blob/c861db2187534ced1d8c94e441f22a69d11f3490/tests/commands/085-run-llvm-method-receivers.cmd) | [141-method-regressions.t](../tests/language/141-method-regressions.t) |
+| [086-run-llvm-field-lvalues.cmd](https://github.com/Cthutu/nerd/blob/c861db2187534ced1d8c94e441f22a69d11f3490/tests/commands/086-run-llvm-field-lvalues.cmd) | [089-field-lvalues.t](../tests/language/089-field-lvalues.t) |
+| [087-run-llvm-index-lvalues.cmd](https://github.com/Cthutu/nerd/blob/c861db2187534ced1d8c94e441f22a69d11f3490/tests/commands/087-run-llvm-index-lvalues.cmd) | [142-lvalue-and-plex-regressions.t](../tests/language/142-lvalue-and-plex-regressions.t) |
 
 The first five mapped pairs were each run four times through their existing
 harness (one warmup, three recorded passes). Median command times were

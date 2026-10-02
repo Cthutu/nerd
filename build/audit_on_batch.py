@@ -25,13 +25,21 @@ def main():
     parser.add_argument("--nerd", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--repeats", type=int, default=3)
+    parser.add_argument("--fixture-revision", default="c861db2187534ced1d8c94e441f22a69d11f3490",
+                        help="Historical fixture revision, retained after consolidation")
     args = parser.parse_args()
     if args.repeats < 1:
         parser.error("--repeats must be positive")
     nerd = args.nerd.resolve()
     env = runner.env()
     suffix = ".exe" if os.name == "nt" else ""
-    originals = [runner.split_sections(ROOT / "tests/commands" / (n + ".cmd")) for n in CASES]
+    originals = []
+    for name in CASES:
+        text = subprocess.check_output([
+            "git", "show", f"{args.fixture_revision}:tests/commands/{name}.cmd"],
+            cwd=ROOT, text=True, encoding="utf-8")
+        originals.append([part.removeprefix("\n").removesuffix("\n")
+                          for part in text.split("¬")])
     declarations, calls, expected = [], [], []
     for index, (name, sections) in enumerate(zip(CASES, originals)):
         source = sections[0]
@@ -109,6 +117,7 @@ def main():
         "revision": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
         "compiler_sha256": hashlib.sha256(nerd.read_bytes()).hexdigest(),
         "platform": runner.current_platform(), "repeats": args.repeats,
+        "fixture_revision": args.fixture_revision,
         "cases": list(CASES), "seconds": samples,
         "median_seconds": {k: statistics.median(v) for k, v in samples.items()},
         "method": "Sequential LLVM build+execution; separate cases then batch; one excluded warmup iteration. C generation/O0/O2 and omitted-case mutation verified but excluded from timing.",

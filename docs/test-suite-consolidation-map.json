@@ -1,0 +1,371 @@
+{
+  "baseline_revision": "007f76a2",
+  "compiler_source_revision": "6bc00639",
+  "duplicate_commands": [
+    {
+      "original": "tests/commands/027-run-llvm-for-break-again.cmd",
+      "replacement": "tests/language/044-for-break-again.t"
+    },
+    {
+      "original": "tests/commands/031-run-llvm-tuple-interpolation.cmd",
+      "replacement": "tests/language/051-tuples.t"
+    },
+    {
+      "original": "tests/commands/032-run-llvm-array-interpolation.cmd",
+      "replacement": "tests/language/052-fixed-arrays.t"
+    },
+    {
+      "original": "tests/commands/033-run-llvm-pointer-fields.cmd",
+      "replacement": "tests/language/058-plex-ergonomics.t"
+    },
+    {
+      "original": "tests/commands/034-run-llvm-string-slices.cmd",
+      "replacement": "tests/language/055-string-slices.t"
+    },
+    {
+      "original": "tests/commands/035-run-llvm-address-of-index.cmd",
+      "replacement": "tests/language/053-pointers.t"
+    },
+    {
+      "original": "tests/commands/036-run-llvm-slices.cmd",
+      "replacement": "tests/language/054-slices.t"
+    },
+    {
+      "original": "tests/commands/039-run-llvm-for-return.cmd",
+      "replacement": "tests/language/038-for-infinite.t"
+    },
+    {
+      "original": "tests/commands/040-run-llvm-labelled-blocks.cmd",
+      "replacement": "tests/language/048-labelled-expression-block.t"
+    },
+    {
+      "original": "tests/commands/044-run-llvm-raw-unions.cmd",
+      "replacement": "tests/language/062-raw-unions.t"
+    },
+    {
+      "original": "tests/commands/045-run-llvm-unit-enums.cmd",
+      "replacement": "tests/language/063-enum-unit-variants.t"
+    },
+    {
+      "original": "tests/commands/046-run-llvm-enum-payloads.cmd",
+      "replacement": "tests/language/065-enum-payloads.t"
+    },
+    {
+      "original": "tests/commands/047-run-llvm-condition-on.cmd",
+      "replacement": "tests/language/066-generalised-on.t"
+    },
+    {
+      "original": "tests/commands/048-run-llvm-destructuring.cmd",
+      "replacement": "tests/language/059-destructuring-bindings.t"
+    },
+    {
+      "original": "tests/commands/049-run-llvm-module-function-fields.cmd",
+      "replacement": "tests/language/068-std-print-module.t"
+    },
+    {
+      "original": "tests/commands/051-run-llvm-dynamic-slice-bounds.cmd",
+      "replacement": "tests/language/080-dynamic-slice-bounds.t"
+    },
+    {
+      "original": "tests/commands/052-run-llvm-contextual-slice-literals.cmd",
+      "replacement": "tests/language/079-contextual-plex-and-slice.t"
+    },
+    {
+      "original": "tests/commands/053-run-llvm-nested-array-literals.cmd",
+      "replacement": "tests/language/081-nested-array-literals.t"
+    },
+    {
+      "original": "tests/commands/054-run-llvm-assignment-expressions.cmd",
+      "replacement": "tests/language/082-assignment-expressions.t"
+    },
+    {
+      "original": "tests/commands/055-run-llvm-nil-pointers-and-slices.cmd",
+      "replacement": "tests/language/090-nil-pointers.t"
+    },
+    {
+      "original": "tests/commands/058-run-llvm-underscore-parameters.cmd",
+      "replacement": "tests/language/110-unused-underscore.t"
+    },
+    {
+      "original": "tests/commands/062-run-llvm-nested-on-branch.cmd",
+      "replacement": "tests/language/118-nested-on-branch.t"
+    },
+    {
+      "original": "tests/commands/064-run-llvm-pointer-to-slice-cast.cmd",
+      "replacement": "tests/language/093-slice-casts-and-nil.t"
+    },
+    {
+      "original": "tests/commands/066-run-llvm-integer-pointer-casts.cmd",
+      "replacement": "tests/language/148-untyped-integer-pointer-casts.t"
+    },
+    {
+      "original": "tests/commands/078-run-llvm-string-equality.cmd",
+      "replacement": "tests/language/125-top-level-interpolated-strings.t"
+    },
+    {
+      "original": "tests/commands/080-run-llvm-on-short-block-expr.cmd",
+      "replacement": "tests/language/100-on-short-block-expr.t"
+    },
+    {
+      "original": "tests/commands/081-run-llvm-dynarray-typed-locals.cmd",
+      "replacement": "tests/language/101-dynarray-typed-locals.t"
+    },
+    {
+      "original": "tests/commands/082-run-llvm-on-break-for-expression.cmd",
+      "replacement": "tests/language/152-on-break-for-expression.t"
+    },
+    {
+      "original": "tests/commands/083-run-llvm-break-on.cmd",
+      "replacement": "tests/language/153-break-on.t"
+    },
+    {
+      "original": "tests/commands/084-run-llvm-named-method-arguments.cmd",
+      "replacement": "tests/language/138-named-call-arguments.t"
+    },
+    {
+      "original": "tests/commands/085-run-llvm-method-receivers.cmd",
+      "replacement": "tests/language/141-method-regressions.t"
+    },
+    {
+      "original": "tests/commands/086-run-llvm-field-lvalues.cmd",
+      "replacement": "tests/language/089-field-lvalues.t"
+    },
+    {
+      "original": "tests/commands/087-run-llvm-index-lvalues.cmd",
+      "replacement": "tests/language/142-lvalue-and-plex-regressions.t"
+    }
+  ],
+  "feature_batch": "tests/language/200-on-regressions.t",
+  "scenarios": [
+    {
+      "original": "tests/commands/129-run-on-expression-return-branches.cmd",
+      "scenario": "129-run-on-expression-return-branches",
+      "helper": "case_129",
+      "expected_exit": 120,
+      "expected_stdout": "120\n",
+      "renamed_types": {},
+      "original_metadata": {
+        "mode": "delete",
+        "flags": "",
+        "command": "run",
+        "stderr": ""
+      },
+      "was_differential": false
+    },
+    {
+      "original": "tests/commands/172-run-on-enum-payload-branch-return.cmd",
+      "scenario": "172-run-on-enum-payload-branch-return",
+      "helper": "case_172",
+      "expected_exit": 0,
+      "expected_stdout": "10x20\n",
+      "renamed_types": {},
+      "original_metadata": {
+        "mode": "",
+        "flags": "",
+        "command": "run",
+        "stderr": ""
+      },
+      "was_differential": false
+    },
+    {
+      "original": "tests/commands/221-run-on-expression-return-option-variant.cmd",
+      "scenario": "221-run-on-expression-return-option-variant",
+      "helper": "case_221",
+      "expected_exit": 0,
+      "expected_stdout": "",
+      "renamed_types": {},
+      "original_metadata": {
+        "mode": "delete",
+        "flags": "",
+        "command": "run",
+        "stderr": ""
+      },
+      "was_differential": true
+    },
+    {
+      "original": "tests/commands/222-run-on-expression-assignment-binder-read.cmd",
+      "scenario": "222-run-on-expression-assignment-binder-read",
+      "helper": "case_222",
+      "expected_exit": 7,
+      "expected_stdout": "7\n",
+      "renamed_types": {},
+      "original_metadata": {
+        "mode": "delete",
+        "flags": "",
+        "command": "run",
+        "stderr": ""
+      },
+      "was_differential": true
+    },
+    {
+      "original": "tests/commands/227-run-on-expression-block-break-option.cmd",
+      "scenario": "227-run-on-expression-block-break-option",
+      "helper": "case_227",
+      "expected_exit": 0,
+      "expected_stdout": "",
+      "renamed_types": {},
+      "original_metadata": {
+        "mode": "delete",
+        "flags": "",
+        "command": "run",
+        "stderr": ""
+      },
+      "was_differential": true
+    },
+    {
+      "original": "tests/commands/231-run-on-pattern-same-name-different-payload.cmd",
+      "scenario": "231-run-on-pattern-same-name-different-payload",
+      "helper": "case_231",
+      "expected_exit": 0,
+      "expected_stdout": "",
+      "renamed_types": {
+        "Payload": "Payload231",
+        "Thing": "Thing231"
+      },
+      "original_metadata": {
+        "mode": "delete",
+        "flags": "",
+        "command": "run",
+        "stderr": ""
+      },
+      "was_differential": true
+    },
+    {
+      "original": "tests/commands/232-run-on-pattern-binder-read-in-condition.cmd",
+      "scenario": "232-run-on-pattern-binder-read-in-condition",
+      "helper": "case_232",
+      "expected_exit": 0,
+      "expected_stdout": "",
+      "renamed_types": {
+        "Payload": "Payload232",
+        "Thing": "Thing232"
+      },
+      "original_metadata": {
+        "mode": "delete",
+        "flags": "",
+        "command": "run",
+        "stderr": ""
+      },
+      "was_differential": true
+    },
+    {
+      "original": "tests/commands/233-run-generic-on-pattern-binder-read-in-condition.cmd",
+      "scenario": "233-run-generic-on-pattern-binder-read-in-condition",
+      "helper": "case_233",
+      "expected_exit": 0,
+      "expected_stdout": "",
+      "renamed_types": {
+        "Payload": "Payload233",
+        "Thing": "Thing233"
+      },
+      "original_metadata": {
+        "mode": "delete",
+        "flags": "",
+        "command": "run",
+        "stderr": ""
+      },
+      "was_differential": true,
+      "added_assertions": "Optional payload canonicalisation following an earlier enum using an equivalent plex; regression for dropped wrapper flags."
+    },
+    {
+      "original": "tests/commands/234-run-on-expression-branch-binder-result.cmd",
+      "scenario": "234-run-on-expression-branch-binder-result",
+      "helper": "case_234",
+      "expected_exit": 0,
+      "expected_stdout": "",
+      "renamed_types": {
+        "Payload": "Payload234",
+        "Thing": "Thing234"
+      },
+      "original_metadata": {
+        "mode": "delete",
+        "flags": "",
+        "command": "run",
+        "stderr": ""
+      },
+      "was_differential": true
+    },
+    {
+      "original": "tests/commands/252-run-nested-partial-on-statement.cmd",
+      "scenario": "252-run-nested-partial-on-statement",
+      "helper": "case_252",
+      "expected_exit": 0,
+      "expected_stdout": "",
+      "renamed_types": {},
+      "original_metadata": {
+        "mode": "delete",
+        "flags": "",
+        "command": "run",
+        "stderr": ""
+      },
+      "was_differential": true
+    },
+    {
+      "original": "tests/commands/255-run-llvm-on-value-intermediate-expressions.cmd",
+      "scenario": "255-run-llvm-on-value-intermediate-expressions",
+      "helper": "case_255",
+      "expected_exit": 0,
+      "expected_stdout": "",
+      "renamed_types": {},
+      "original_metadata": {
+        "mode": "delete",
+        "flags": "--llvm",
+        "command": "run",
+        "stderr": ""
+      },
+      "was_differential": true
+    },
+    {
+      "original": "tests/commands/270-run-condition-on-in-expression-block.cmd",
+      "scenario": "270-run-condition-on-in-expression-block",
+      "helper": "case_270",
+      "expected_exit": 42,
+      "expected_stdout": "",
+      "renamed_types": {},
+      "original_metadata": {
+        "mode": "delete",
+        "flags": "",
+        "command": "run",
+        "stderr": ""
+      },
+      "was_differential": true
+    },
+    {
+      "original": "tests/commands/278-run-implicit-on-result-binders.cmd",
+      "scenario": "278-run-implicit-on-result-binders",
+      "helper": "case_278",
+      "expected_exit": 0,
+      "expected_stdout": "",
+      "renamed_types": {},
+      "original_metadata": {
+        "mode": "delete",
+        "flags": "",
+        "command": "run",
+        "stderr": ""
+      },
+      "was_differential": true
+    },
+    {
+      "original": "tests/commands/309-run-on-implicit-binder-mutation.cmd",
+      "scenario": "309-run-on-implicit-binder-mutation",
+      "helper": "case_309",
+      "expected_exit": 0,
+      "expected_stdout": "",
+      "renamed_types": {},
+      "original_metadata": {
+        "mode": "delete",
+        "flags": "",
+        "command": "run",
+        "stderr": ""
+      },
+      "was_differential": true
+    }
+  ],
+  "preserved_cli_contracts": [
+    "tests/commands/001-run-relative-source.cmd",
+    "tests/commands/002-run-deletes-executable.cmd",
+    "tests/commands/003-run-keep-executable.cmd",
+    "tests/commands/102-run-link-failure-cleans-temps.cmd",
+    "tests/commands/103-run-sema-failure-cleans-temps.cmd"
+  ]
+}
