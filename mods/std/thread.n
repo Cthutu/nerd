@@ -66,17 +66,12 @@ impl Thread {
         self.function = function
         self.context = context
         on "windows" {
-            self.handle = native_thread_start(nil,
-                                  0,
-                                  thread_entry.as(^void),
-                                  self.as(^void),
-                                  0,
-                                  nil)
+            self.handle = native_thread_start(nil, 0, thread_entry, self.as(^void), 0, nil)
             self.started = self.handle != 0
         }
 
         on "linux" {
-            self.started = native_thread_start(^self.handle, nil, thread_entry.as(^void), self.as(^void)) == 0
+            self.started = native_thread_start(^self.handle, nil, thread_entry, self.as(^void)) == 0
         }
 
         on !self.started => self^ = Thread { ... }

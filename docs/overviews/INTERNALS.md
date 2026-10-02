@@ -1163,6 +1163,22 @@ predate syntax in the checkout and silently rewrite it through formatter
 recovery. A failed compiler build stops the workflow before any source file is
 formatted. VS Code also invokes `nerd format`, using its configured executable.
 
+## Typed native callbacks
+
+`sema_type_is_ffi_safe` accepts `STK_Function` through a recursive callback ABI
+check. Callback parameters/results must be scalars, pointers, or compatible
+function types (with `void` allowed for results). Aggregates are excluded because
+Nerd's internal aggregate calling convention is not a general C callback ABI.
+Function pointers nested in signatures are also checked, with bounded recursion.
+Ordinary function-type matching diagnoses incompatible callback arguments.
+
+Existing HIR and backends already represent these function values: LLVM emits
+native pointer values and generated C uses function-pointer typedefs. No new AST,
+HIR instruction, cast, or callback trampoline is required. Windows and Linux
+thread bindings use their existing `NativeThreadEntry` aliases directly.
+`341-run-typed-ffi-callback.cmd` exercises C `qsort` invoking a Nerd callback;
+the C differential suite and thread lifecycle harness cover both backends.
+
 ## Runtime worker-thread prerequisite
 
 Worker entry wrappers must pair `nrt_thread_init` and `nrt_thread_done` around

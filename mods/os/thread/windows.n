@@ -24,7 +24,7 @@ on "windows" {
         -- Starts a CRT-managed thread; the caller owns a nonzero handle.
         pub native_thread_start :: _beginthreadex (security   : ^void,
                                                    stack_size : u32,
-                                                   entry      : ^void,
+                                                   entry      : NativeThreadEntry,
                                                    context    : ^void,
                                                    flags      : u32,
                                                    id         : ^u32) -> usize

@@ -106,7 +106,7 @@ The Windows wrapper already defines a function type:
 NativeThreadEntry :: fn (context: ^void) -> u32
 ```
 
-But the native declaration currently uses `entry: ^void`, and the wrapper passes
+Previously the native declaration used `entry: ^void`, and the wrapper passed
 `thread_entry.as(^void)`. The practical problem is that converting to a raw pointer
 discards the callback signature at the call boundary. For example, a callback
 with the wrong return type can be explicitly cast to the same raw pointer type:
@@ -116,12 +116,15 @@ wrong_entry :: fn (context: ^void) -> u64 { return 0 }
 -- wrong_entry.as(^void) no longer carries the expected u32 callback signature.
 ```
 
-Recommended FFI declaration change, **proposed support**, is to accept
-`entry: NativeThreadEntry` instead of `entry: ^void` in `_beginthreadex`'s binding.
-Then pass `thread_entry` without the cast, and diagnose incompatible signatures.
-This is C-style function-pointer type checking and native ABI correctness, not
-lifetime checking or restrictions on what a callback may access. Validate the
-supported target calling conventions with actual Windows/Linux callback tests.
+**Implemented:** the compiler now accepts existing function types in FFI
+signatures, recursively checking callback parameters and results for native ABI
+compatibility. Windows and Linux thread bindings use `entry: NativeThreadEntry`
+and pass `thread_entry` without the cast. Incompatible signatures are diagnosed.
+Callbacks support scalars, pointers, compatible function types, and void results;
+aggregates passed by value remain unsupported. See [typed callbacks](ffi.md#typed-callbacks).
+This is C-style function-pointer type checking, not lifetime checking or
+restrictions on what a callback may access. The native `qsort` regression and
+thread lifecycle tests exercise calls from native code into Nerd.
 
 ### 2. Contextual typing of atomic initialisers
 

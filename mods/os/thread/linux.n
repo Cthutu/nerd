@@ -24,7 +24,7 @@ on "linux" {
         -- Starts a joinable thread with default attributes.
         pub native_thread_start :: pthread_create (handle     : ^usize,
                                                    attributes : ^void,
-                                                   entry      : ^void,
+                                                   entry      : NativeThreadEntry,
                                                    context    : ^void) -> i32
 
         -- Joins one thread and releases its native resources.

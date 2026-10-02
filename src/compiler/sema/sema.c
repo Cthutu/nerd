@@ -2575,6 +2575,55 @@ internal bool sema_infer_use_module_type(const Lexer* lexer,
         lexer, ast, sema, module_node, sema_no_type(), out_module_type);
 }
 
+// Nerd callbacks use the native scalar/pointer ABI. Aggregates need a separate
+// ABI lowering before they can be passed by value through native callbacks.
+internal bool
+sema_type_is_ffi_callback_safe(const Sema* sema, u32 type_index, u32 depth)
+{
+    if (type_index >= array_count(sema->types) || depth > 64) {
+        return false;
+    }
+    const SemaType* type = &sema->types[type_index];
+    switch (type->kind) {
+    case STK_Void:
+    case STK_Bool:
+    case STK_I8:
+    case STK_I16:
+    case STK_I32:
+    case STK_I64:
+    case STK_U8:
+    case STK_U16:
+    case STK_U32:
+    case STK_U64:
+    case STK_Isize:
+    case STK_Usize:
+    case STK_F32:
+    case STK_F64:
+        return true;
+    case STK_Pointer:
+        return type->first_param_type < array_count(sema->types) &&
+               (sema->types[type->first_param_type].kind != STK_Function ||
+                sema_type_is_ffi_callback_safe(
+                    sema, type->first_param_type, depth + 1));
+    case STK_Function:
+        if (!sema_type_is_ffi_callback_safe(
+                sema, type->return_type, depth + 1)) {
+            return false;
+        }
+        for (u32 i = 0; i < type->param_count; ++i) {
+            if (!sema_type_is_ffi_callback_safe(
+                    sema,
+                    sema->type_param_types[type->first_param_type + i],
+                    depth + 1)) {
+                return false;
+            }
+        }
+        return true;
+    default:
+        return false;
+    }
+}
+
 internal bool sema_type_is_ffi_safe(const Sema* sema, u32 type_index)
 {
     if (type_index == sema_no_type()) {
@@ -2583,6 +2632,8 @@ internal bool sema_type_is_ffi_safe(const Sema* sema, u32 type_index)
 
     const SemaType* type = &sema->types[type_index];
     switch (type->kind) {
+    case STK_Function:
+        return sema_type_is_ffi_callback_safe(sema, type_index, 0);
     case STK_Void:
     case STK_Never:
     case STK_Bool:

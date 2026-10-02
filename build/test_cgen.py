@@ -102,6 +102,7 @@ COMMANDS = (
     "306-run-void-result-propagation",
     "307-run-imported-display-interpolation",
     "308-run-shutdown-watcher",
+    "341-run-typed-ffi-callback",
 )
 
 

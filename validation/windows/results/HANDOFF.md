@@ -1,5 +1,15 @@
 # Windows return handoff
 
+## Typed FFI callbacks — 2026-10-02
+
+`std-library` now accepts ABI-compatible function types in FFI signatures.
+Windows/Linux thread bindings use typed entry callbacks without raw-pointer casts.
+Native Windows compiler suite: 1187 passed, 0 failed, 15 skips; final eight focused
+callback tests pass with debug/release compilers. All 299 C differential fixtures
+pass, as do Windows LLVM/C and Arch WSL C-output thread tests at O0/O2.
+See [evidence and limits](20261002-typed-ffi-callbacks/README.md). WSL native LLVM
+remains unavailable because `opt`/`llc` are missing. No global installation changed.
+
 ## Standard-library foundations integrated for draft review — 2026-10-01
 
 Branch **`std-library`**, [draft PR #1](https://github.com/Cthutu/nerd/pull/1),
