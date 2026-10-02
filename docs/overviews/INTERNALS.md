@@ -616,6 +616,16 @@ callback signatures contain nested parameter lists, including variadic callbacks
 Local aliases of built-in types, including `VaList`, are resolved as types.
 HIR omits local type-alias declarations because they require no runtime storage.
 
+### Optional/result payload materialisation
+
+`sema_materialise_type` recursively canonicalises enum payload types. When an
+earlier enum uses a structurally equivalent plex, this can produce a different
+interned enum entry for an optional or result. The new entry must retain
+`STF_Optional`/`STF_Result`; otherwise implicit payload conversion and pattern
+binding treat the wrapper as an ordinary enum and reject valid initialisers.
+The combined `on` runtime regressions exercise both wrapper forms after an
+earlier equivalent payload declaration, including LLVM/C differential execution.
+
 ### Result propagation and imported display methods
 
 LLVM storage extraction treats a `void` result payload as a successful,

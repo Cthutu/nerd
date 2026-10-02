@@ -1489,6 +1489,10 @@ u32 sema_materialise_type(const Sema* sema, u32 type_index)
                                                   discriminants,
                                                   braced_payloads,
                                                   enum_type.param_count);
+        // Materialising payloads may intern a different enum. Keep the
+        // optional/result coercion semantics on that canonical type.
+        ((Sema*)sema)->types[materialised].flags |=
+            enum_type.flags & (STF_Optional | STF_Result);
         array_free(variants);
         array_free(payload_types);
         array_free(discriminants);
