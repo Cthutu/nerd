@@ -6,6 +6,11 @@ missing repositories. This is source inspection, **not upstream execution**.
 Cached archives are ignored local review inputs under `_tmp/std-library-review`;
 they are not bundled into Nerd. No implementation is copied in this tranche.
 
+User design clarification (2026-10-02): Kerberos is intended as a lightweight
+Grand Central Dispatch-style system. ASIO is an implementation detail and need
+not be retained. The serial graph behaviour below describes the inspected source,
+not a restriction on the intended dispatch design.
+
 ## Pinned revisions
 
 | Repository/branch | Commit | Observed scope |

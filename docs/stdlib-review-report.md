@@ -1,6 +1,6 @@
 # Standard-library foundations: additions and recommendations
 
-Date: 2026-10-01. Review branch: `std-library`.
+Date: 2026-10-01; design clarification: 2026-10-02. Review branch: `std-library`.
 
 This tranche adds usable threading, synchronisation and IPv4 socket foundations,
 three runnable examples, compiler/runtime repairs and source inventories for the
@@ -9,11 +9,24 @@ Nexus protocols. The complete Windows gates pass; native Linux adoption remains
 the next validation step. The recommendations below are proposals, not additional
 features already implemented or approved language syntax.
 
+Nerd's goal is a C replacement with clearer syntax, generics, traits and slices.
+It does not require a Rust-style ownership system, borrow checker, move-only
+types, pinning rules or cross-thread transfer traits. Allocation, aliasing,
+cleanup and synchronisation remain programmer responsibilities. Where earlier
+notes used “ownership”, read that as an API's allocation/cleanup responsibility,
+not a proposed language feature. The recommendations below have been revised
+accordingly.
+
+Kerberos's intended direction is a lightweight Grand Central Dispatch-style
+system. ASIO is an implementation choice in the inspected source, not a goal or
+dependency to preserve. Existing task/queue and dataflow examples inform the
+design; reproducing the old executor's internals is not the acceptance criterion.
+
 ## What was added
 
 | Area | Delivered behaviour | Main reference |
 | --- | --- | --- |
-| `std.thread` | Explicit callback/context ownership, joinable workers, reuse and self-join rejection; Windows CRT and Linux pthread entry wrappers | [Thread/sync contracts](stdlib-thread-sync.md) |
+| `std.thread` | Explicit callback/context lifetime, joinable workers, reuse and self-join rejection; Windows CRT and Linux pthread entry wrappers | [Thread/sync contracts](stdlib-thread-sync.md) |
 | `std.sync` | Non-recursive mutexes and condition variables, with explicit initialisation/destruction and predicate-loop waits | [Thread/sync contracts](stdlib-thread-sync.md) |
 | `std.network` | IPv4 TCP/UDP creation, binding, listening/accepting, connection, partial byte I/O, EOF, datagram sender/truncation handling, nonblocking I/O, send-side shutdown and native error detail | [Network contracts](std-network-foundation.md) |
 | Native bindings | Independent `os.thread` and `os.socket` modules; fixed linkage stays in source build settings | [Module index](stdlib.md) |
@@ -23,8 +36,10 @@ features already implemented or approved language syntax.
 
 The initial native bindings cover Windows x64 and Linux x86-64 glibc. Native
 header layout assertions validate the supported ABI; other architectures/libcs
-are not claimed. Resource handles remain non-copyable and address-stable by
-documented contract, rather than enforced by the language.
+are not claimed. As with C handles and native mutex objects, callers must avoid
+double cleanup, keep callback data alive and keep active thread/sync structures
+at their required addresses. These are API usage rules, not language restrictions
+on copying ordinary values.
 
 The examples are bounded executable tests, not merely syntax demonstrations:
 
@@ -78,23 +93,146 @@ compiler/editor installation changed. Original upstream suites were not executed
 
 ## Language and compiler recommendations
 
-The current APIs can support further bounded work under their documented
-contracts. The following improvements would make them safer or easier to use;
-they should be separate, regression-backed changes rather than an unplanned
-language redesign inside this library PR.
+The main recommendations are ordinary C-replacement capabilities: typed native
+callbacks, predictable layout/atomics and consistent type inference. They should
+be separate, regression-backed changes. Examples labelled “proposed” describe
+desired behaviour, not syntax or support already implemented.
 
-| Priority | Recommendation | Evidence and practical next step |
-| --- | --- | --- |
-| High | Distinguish copying, ownership transfer and address stability | The payload probe shows dynamic-array copies alias storage. Define consuming operations that invalidate the source and return ownership on rejection. Explore non-copyable owners, but also a pinning/address-stability rule: moving an active `Thread`, `Mutex` or `Condition` can be invalid even if copying is forbidden |
-| High | Strengthen typed callbacks at the FFI boundary | Thread entry points currently cross the native boundary through `^void` casts. Investigate typed function-pointer parameters and explicit ABI checking, with Windows/Linux callback execution regressions. Keep callback context lifetime explicit; a typed pointer alone does not prove it outlives a worker |
-| High before queue optimisation | Make layout and atomic guarantees reviewable | Existing probes establish natural pointer-sized alignment, not cache-line separation or lock-free progress. Assess explicit alignment/layout assertions and expose/document supported atomic widths/order guarantees before choosing a queue/reclamation algorithm |
-| Medium | Standardise cleanup and move conventions before adding complex owners | Use existing explicit cleanup/defer facilities consistently now. Specify whether future destructor/drop support should handle partially initialised owners and moved values; do not introduce implicit copies or double destruction through generic containers |
-| Medium | Improve contextual typing for atomic initialisers | `atomic[usize]` currently needs `7.as(usize)` where a bare literal is rejected. Add a focused contextual-inference regression and assess a compiler fix rather than proliferating casts across queue code |
-| Later, after ownership semantics | Consider static restrictions on values crossing threads | A future sharing/transfer contract could reject unsafe captures or payloads. Define its interaction with raw pointers, aliases and synchronisation first; adding marker traits alone would not establish thread safety |
+### 1. Typed callbacks at the FFI boundary
 
-Retain LLVM/C parity checks for imported values, side effects and every new owning
-API. Extend negative tests for backend failure propagation whenever another
-unsupported lowering case is found; do not restore silent fallback returns.
+The Windows wrapper already defines a function type:
+
+```nerd
+NativeThreadEntry :: fn (context: ^void) -> u32
+```
+
+But the native declaration currently uses `entry: ^void`, and the wrapper passes
+`thread_entry.as(^void)`. The practical problem is that converting to a raw pointer
+discards the callback signature at the call boundary. For example, a callback
+with the wrong return type can be explicitly cast to the same raw pointer type:
+
+```nerd
+wrong_entry :: fn (context: ^void) -> u64 { return 0 }
+-- wrong_entry.as(^void) no longer carries the expected u32 callback signature.
+```
+
+Recommended FFI declaration change, **proposed support**, is to accept
+`entry: NativeThreadEntry` instead of `entry: ^void` in `_beginthreadex`'s binding.
+Then pass `thread_entry` without the cast, and diagnose incompatible signatures.
+This is C-style function-pointer type checking and native ABI correctness, not
+lifetime checking or restrictions on what a callback may access. Validate the
+supported target calling conventions with actual Windows/Linux callback tests.
+
+### 2. Contextual typing of atomic initialisers
+
+Current supported code from the capability probe:
+
+```nerd
+use std.atomics
+
+main :: fn () {
+    count : atomic[usize] = 7.as(usize)
+    assert count.load() == 7
+}
+```
+
+The desired convenience is `count : atomic[usize] = 7`. The declared element type
+already supplies `usize`; the bare literal is currently rejected. Investigate
+contextual literal conversion without weakening checks for out-of-range values
+or incompatible typed expressions. This is a compiler ergonomics fix, not an
+atomic algorithm or memory-safety feature.
+
+### 3. Layout/alignment evidence before queue optimisation
+
+The current probe establishes only natural alignment:
+
+```nerd
+state : atomic[usize] = 0.as(usize)
+assert (^state).as(usize) % usize.size == 0
+```
+
+That says nothing about separating frequently written counters onto different
+cache lines. Consider this proposed queue layout, using ordinary existing fields:
+
+```nerd
+QueueCounters :: plex {
+    read_index  atomic[usize]
+    write_index atomic[usize]
+}
+```
+
+The declaration alone does not request cache-line separation. Before optimising
+such a queue, establish how Nerd expresses and verifies alignment/padding,
+including arrays and allocated storage. If existing layout controls cannot express
+what is needed, propose explicit C-style alignment support with a concrete ABI
+test. Do not invent alignment syntax here or treat cache-line separation as a
+correctness requirement. Separately document supported atomic widths and ordering;
+an atomic field does not by itself prove lock-free progress.
+
+### 4. Keep compiler behaviour consistent across backends
+
+This is an already-fixed example of a compiler problem, not a new language proposal:
+
+```nerd
+noop :: fn (calls: ^i32) { calls^ += 1 }
+success :: fn (calls: ^i32) -> ?void { return noop(calls) }
+
+main :: fn () {
+    calls : i32 = 0
+    on success(^calls) => {} else { assert no }
+    assert calls == 1
+}
+```
+
+`?void` has no payload bits for the call result, but `noop` must still execute
+exactly once. The earlier C backend dropped that side effect. Keep differential
+tests with observable results like this, plus diagnostics for failed lowering;
+an executable that silently returns early must not count as successful compilation.
+
+## Resource management: C-style API examples
+
+Shallow copying a dynamic array aliases its allocation. That is behaviour to
+document and use deliberately, not evidence that Nerd needs an ownership system:
+
+```nerd
+main :: fn () {
+    values : [..]i32
+    values.push(17)
+    alias := values
+    alias[0] = 23
+    assert values[0] == 23
+    values.free()
+    -- Do not use either view now, or call alias.free(): the allocation is gone.
+}
+```
+
+Likewise, keeping a thread's context alive is the caller's responsibility:
+
+```nerd
+use std.thread
+
+increment :: fn (context: ^void) { context.as(^i32)^ += 1 }
+
+main :: fn () {
+    value : i32 = 41
+    worker : Thread
+    assert worker.start(increment, (^value).as(^void))
+    assert worker.join()
+    assert value == 42
+}
+```
+
+Joining before the stack variables leave scope makes this use valid. Returning
+while the worker still uses them would be a caller error, just as with C thread
+APIs. Production code must handle start/join failures according to the API contract;
+the assertions keep this example short. No borrow checker or pinning feature is
+proposed. Library-level convenience wrappers can reduce casts and boilerplate
+using existing generics/traits, without changing these responsibilities.
+
+Example verification (2026-10-02): the four complete programs above were built
+and executed with a freshly built native Windows debug compiler. The declaration
+fragments explain specific interfaces/layouts; the typed FFI change and bare
+atomic literal are explicitly proposals, not claimed passing examples.
 
 ## Library and workflow recommendations
 
@@ -112,16 +250,21 @@ unsupported lowering case is found; do not restore silent fallback returns.
 3. **Choose and prove the queue contract before optimising it.** Start with a
    bounded reference implementation and explicit producer/consumer roles. Test
    wraparound, publication, concurrent consumers, rejection ownership, shutdown
-   and payload destruction before claiming lock-free or work-stealing behaviour.
+   and explicit payload cleanup before claiming lock-free or work-stealing behaviour.
    Benchmark granularity, allocation and contention only after correctness passes.
 4. **Add readiness/deadlines before building Nexus atop blocking workers.** Next
    socket slices should cover nonblocking connect completion, readiness, timeout
    semantics, DNS/IPv6 and socket options/inheritance policy. Nexus must handle
    partial I/O, bounded framing/buffering, reply-route lifetime and late replies;
    do not let blocking socket waits exhaust a future worker pool.
-5. **Port a small serial graph example first.** Kerberos's `Graph.GenKernel`
+5. **Design Kerberos around lightweight dispatch.** Define serial/concurrent
+   queues, task submission, completion, waiting and shutdown around the intended
+   GCD-style experience. ASIO is optional, not a required public API, architecture
+   or dependency. Work stealing is one possible scheduling choice, not implied
+   by adopting a dispatch API. Specify these contracts before selecting internals.
+6. **Retain a small dataflow example as a behavioural reference.** Kerberos's `Graph.GenKernel`
    gives a concrete two-generators → sum → sink reference. Specify fan-out payload
-   ownership: C++ value copying cannot be assumed equivalent to Nerd dynamic-array
+   copying/cleanup rules: C++ value copying cannot be assumed equivalent to Nerd dynamic-array
    copying. Avoid serial deadlock on a full FIFO. Stable IDs, deterministic node
    order, invalidation and parallel evaluation are deliberate additions, not
    existing upstream guarantees.
@@ -130,8 +273,10 @@ unsupported lowering case is found; do not restore silent fallback returns.
 
 Repository access is resolved, but the inspected Raptor branch heads use ASIO
 scheduling, not a custom work-stealing scheduler. Confirm the intended newer
-revision/repository or explicitly choose a new algorithm. Kerberos is serial FIFO
-dataflow; its scheduler argument is unused. The [inventory](stdlib-source-inventory.md)
+revision/repository or explicitly choose a new algorithm. The inspected Kerberos
+graph executor is serial FIFO dataflow and leaves its scheduler argument unused;
+that is a source observation, not a limit on its intended lightweight GCD-style
+design. ASIO need not be retained. The [inventory](stdlib-source-inventory.md)
 records exact revisions/tests and concrete lifetime/publication/type-validation
 hazards that should be repaired through contracts and tests, not copied unchanged.
 

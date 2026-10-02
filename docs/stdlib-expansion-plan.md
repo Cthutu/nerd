@@ -20,6 +20,13 @@ Production users should not need to build the original C/C++ libraries. Retain
 small original-language reference programs where useful for comparative tests.
 No compiler scheduler replacement is included in this project.
 
+Design clarification (2026-10-02): Nerd remains a C replacement with generics,
+traits and slices, not a language with enforced ownership/borrowing. Resource
+lifetime, copying, cleanup and synchronisation are caller/API responsibilities.
+Kerberos's intended direction is lightweight GCD-style dispatch; ASIO is an
+implementation detail, not a required dependency or parity goal. The inspected
+serial dataflow executor is evidence about that revision, not the design target.
+
 ## Source review and known starting point
 
 | Source | Evidence | Review status |
