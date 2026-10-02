@@ -94,7 +94,7 @@ compiler/editor installation changed. Original upstream suites were not executed
 ## Language and compiler recommendations
 
 The main recommendations are ordinary C-replacement capabilities: typed native
-callbacks, predictable layout/atomics and consistent type inference. They should
+callbacks, correct alignment/atomics and consistent type inference. They should
 be separate, regression-backed changes. Examples labelled “proposed” describe
 desired behaviour, not syntax or support already implemented.
 
@@ -151,10 +151,20 @@ memory ordering are unchanged.
 
 ### 3. Layout/alignment evidence before queue optimisation
 
-The current probe establishes only natural alignment:
+Ordinary plex layout is compiler-controlled. The compiler may reorder or pad
+fields to reduce wasted space and improve cache behavior; declaration order is
+not a physical-layout contract. `#c` preserves the target C ABI; `#packed`
+already implies `#c` with packed storage. Both backends currently retain source
+order for ordinary plexes, but library code must not depend on that choice.
+
+The [layout probe](../validation/stdlib/layout.n) checks natural alignment and
+atomic field access in stack and nested plexes, fixed arrays, growing dynamic
+arrays, arena arrays (following an odd-sized allocation), and heap arrays. It
+does not assert field order, fixed offsets or total size for ordinary plexes.
+For example:
 
 ```nerd
-state : atomic[usize] = 0.as(usize)
+state : atomic[usize] = 0
 assert (^state).as(usize) % usize.size == 0
 ```
 
@@ -168,13 +178,22 @@ QueueCounters :: plex {
 }
 ```
 
-The declaration alone does not request cache-line separation. Before optimising
-such a queue, establish how Nerd expresses and verifies alignment/padding,
-including arrays and allocated storage. If existing layout controls cannot express
-what is needed, propose explicit C-style alignment support with a concrete ABI
-test. Do not invent alignment syntax here or treat cache-line separation as a
-correctness requirement. Separately document supported atomic widths and ordering;
-an atomic field does not by itself prove lock-free progress.
+The declaration alone does not request cache-line separation, and an ordinary
+padding field would not guarantee separation once fields can be reordered.
+The probe separately compares a `#c` record's size and offsets against native
+Clang C output. LLVM and generated C pass at O0/O2 on Windows x64. Run
+`python validation/stdlib/check_capabilities.py --compiler <compiler>` and repeat
+with `--cgen` for the compatibility backend. Other targets require their own run.
+
+No new annotation is proposed at this stage. Existing arena allocation chooses
+alignment from size, capped at eight bytes; `std.memory.alloc` promises 16-byte
+alignment. Neither is a cache-line alignment contract. If queue benchmarks show
+false sharing, evaluate a compiler layout policy or an explicit alignment/
+separation facility with consistent stack, array and allocator support. Such a
+policy must also keep named field access, initialization, `.size`, debug offsets
+and both code generators consistent. Cache-line separation is a performance
+choice, not a queue correctness requirement; alignment alone does not establish
+lock-free progress or correct publication ordering.
 
 ### 4. Keep compiler behaviour consistent across backends
 
@@ -237,9 +256,10 @@ proposed. Library-level convenience wrappers can reduce casts and boilerplate
 using existing generics/traits, without changing these responsibilities.
 
 Example verification (2026-10-02): the four complete programs above were built
-and executed with a freshly built native Windows debug compiler. The declaration
-fragments explain specific interfaces/layouts; the typed FFI change and bare
-atomic literal are explicitly proposals, not claimed passing examples.
+and executed with a freshly built native Windows debug compiler. Typed FFI
+callbacks and bare atomic literals were subsequently implemented and tested.
+The expanded layout probe passes both backends at O0/O2 on Windows x64; the queue
+declaration remains an illustrative fragment, not an implemented queue.
 
 ## Library and workflow recommendations
 

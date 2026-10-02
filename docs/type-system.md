@@ -360,9 +360,12 @@ Plex layout annotations are written after `plex`:
 - `PackedHeader :: plex #packed { tag u8 length u32 }`
 
 `#c` requests explicit source-order C-compatible layout. `#packed` emits a
-packed storage layout and implies `#c`. Unannotated plexes currently also use
-source-order layout for predictable lowering and debugging; compiler-driven
-field reordering is reserved for a future optimisation milestone.
+packed storage layout and implies `#c`. Ordinary plex layout is compiler-controlled:
+the compiler may reorder fields or insert padding to reduce wasted space, improve
+cache behavior, or optimize access. Field alignment and named access must remain
+correct. Source order, field offsets, and total size are not stable ABI promises.
+Both backends currently use source-order layout; that is an implementation choice,
+not a language guarantee. Use `#c` when native interoperability requires C layout.
 
 ## Fixed Arrays
 
