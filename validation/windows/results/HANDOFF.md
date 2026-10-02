@@ -1,5 +1,14 @@
 # Windows return handoff
 
+## Complete Linux pickup — 2026-10-02
+
+Start with [today's consolidated Linux handoff](../../../docs/linux-handoff-2026-10-02.md).
+It covers every review decision and implementation change on `std-library`
+through `6bc00639`, validation boundaries, Linux commands, branch backups, and
+the independent audit/consolidation work. The consolidation branch also has an
+optional/result enum-materialization fix not yet on `std-library`; fetch its
+latest evidence before integration. Repository `main` has not been changed.
+
 ## Integer literal destination-range checks — 2026-10-02
 
 `std-library` rejects out-of-range integer literals during semantic analysis,
