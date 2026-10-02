@@ -124,8 +124,12 @@ No production harness was redesigned and no new Python gate was added to Justfil
 ## Validation and remaining milestones
 
 Focused debug/release and C O0/O2 batch checks, all 47 old command behaviours,
-exact mappings and omission/wrong-result checks pass. Complete native debug and
-release common gates are being run against the committed consolidation. Final
+exact mappings and omission/wrong-result checks pass. **Native `just test` and
+`just test-release` both passed on `caaef691`: 1,147 fixture passes, zero failures,
+15 platform skips each.** The debug gate's 289 C differential fixtures passed
+at O0/O2, with two platform skips and the Linux PTY check skipped. All common
+auxiliary gates passed, including the unchanged 6,000-term depth checks,
+concurrency, toolchain/install, library contracts and Windows stdio. Final
 counts, logs and scope are recorded in
 [Windows evidence](../validation/windows/results/20261002-test-suite-consolidation/README.md).
 

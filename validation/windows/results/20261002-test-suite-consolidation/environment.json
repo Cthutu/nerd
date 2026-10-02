@@ -1,0 +1,53 @@
+{
+  "platform": "Windows-11-10.0.26200-SP0",
+  "python": "3.14.7 (tags/v3.14.7:823f032, Aug  5 2026, 10:51:32) [MSC v.1944 64 bit (AMD64)]",
+  "tools": {
+    "clang": {
+      "path": "C:\\Users\\matt\\scoop\\apps\\llvm\\current\\bin\\clang.EXE",
+      "version": [
+        "clang version 23.1.0 (https://github.com/llvm/llvm-project ea7d852a70e8bdfaf601d6626a760f9771b2c4b4)",
+        "Target: x86_64-pc-windows-msvc"
+      ]
+    },
+    "opt": {
+      "path": "C:\\Users\\matt\\.local\\bin\\opt.EXE",
+      "version": [
+        "LLVM (http://llvm.org/):",
+        "  LLVM version 22.1.8"
+      ]
+    },
+    "llc": {
+      "path": "C:\\Users\\matt\\.local\\bin\\llc.EXE",
+      "version": [
+        "LLVM (http://llvm.org/):",
+        "  LLVM version 22.1.8"
+      ]
+    },
+    "lld-link": {
+      "path": "C:\\Users\\matt\\scoop\\apps\\llvm\\current\\bin\\lld-link.EXE",
+      "version": [
+        "LLD 23.1.0 (https://github.com/llvm/llvm-project ea7d852a70e8bdfaf601d6626a760f9771b2c4b4)"
+      ]
+    },
+    "llvm-ar": {
+      "path": "C:\\Users\\matt\\scoop\\apps\\llvm\\current\\bin\\llvm-ar.EXE",
+      "version": [
+        "LLVM (http://llvm.org/):",
+        "  LLVM version 23.1.0"
+      ]
+    },
+    "just": {
+      "path": "C:\\Users\\matt\\.cargo\\bin\\just.EXE",
+      "version": [
+        "just 1.48.0"
+      ]
+    },
+    "git": {
+      "path": "C:\\Apps\\Git\\cmd\\git.EXE",
+      "version": [
+        "git version 2.51.1.windows.1"
+      ]
+    }
+  },
+  "tested_revision": "caaef691269aab3dfd09431993e28a75b17924e2"
+}
