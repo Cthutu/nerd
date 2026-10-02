@@ -25,7 +25,7 @@ this result. The source is formatted and passes `nerd check`.
 
 | Capability | Executable evidence | Limit |
 | --- | --- | --- |
-| Pointer-sized atomic state | `atomic[usize]` strong CAS success and observed-value failure, fetch-add and acquire load | Initial literal uses explicit `7.as(usize)`; bare `7` is rejected by current type checking |
+| Pointer-sized atomic state | `atomic[usize]` strong CAS success and observed-value failure, fetch-add and acquire load | Atomic literal inference bug fixed: bare `7` now uses the declared `usize` element type; probe no longer needs a cast |
 | Pointer publication | `atomic[^i32]` release CAS and acquire load preserve the pointer | Single-thread operation only; does not prove a queue algorithm or reclamation scheme |
 | Atomic layout | Pointer-sized atomic storage size and address divisibility by `usize.size` | Checks this stack allocation; no cache-line alignment guarantee, packed structs or foreign ABI assertion |
 | Explicit callback context | A `fn (^void)` field calls a callback with a caller-owned `i32` pointer | Context remains alive for synchronous call; thread ABI/join lifetime belongs to M1 |

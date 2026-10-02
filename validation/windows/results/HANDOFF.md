@@ -1,5 +1,13 @@
 # Windows return handoff
 
+## Atomic literal inference fixed — 2026-10-02
+
+`atomic[usize] = 7` now receives the element type as its inference context;
+the capability probe no longer needs a cast. Native Windows compiler suite:
+1192 passed, zero failures, 15 skips; all 300 C differential fixtures passed.
+Final atomic tests pass with debug/release compilers. See
+[results and the separate existing element-range issue](20261002-atomic-literal-inference/README.md).
+
 ## Typed FFI callbacks — 2026-10-02
 
 `std-library` now accepts ABI-compatible function types in FFI signatures.

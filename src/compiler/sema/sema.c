@@ -21331,6 +21331,12 @@ internal bool sema_infer_node_type(const Lexer* lexer,
                                    u32          expected_type,
                                    u32*         out_type_index)
 {
+    // Atomic storage supplies its element type as the value context. Preserve
+    // untyped literals until this context is applied, just as for plain storage.
+    if (expected_type != sema_no_type() &&
+        sema->types[expected_type].kind == STK_Atomic) {
+        expected_type = sema->types[expected_type].first_param_type;
+    }
     AstKind kind = ast->nodes[node_index].kind;
     if (sema_is_arithmetic_node(kind)) {
         return sema_infer_arithmetic_tree(

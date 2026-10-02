@@ -126,24 +126,28 @@ This is C-style function-pointer type checking, not lifetime checking or
 restrictions on what a callback may access. The native `qsort` regression and
 thread lifecycle tests exercise calls from native code into Nerd.
 
-### 2. Contextual typing of atomic initialisers
+### 2. Atomic literal inference bug — fixed
 
-Current supported code from the capability probe:
+Atomic initialisers now infer untyped literals from the declared element type:
 
 ```nerd
 use std.atomics
 
 main :: fn () {
-    count : atomic[usize] = 7.as(usize)
+    count : atomic[usize] = 7
     assert count.load() == 7
 }
 ```
 
-The desired convenience is `count : atomic[usize] = 7`. The declared element type
-already supplies `usize`; the bare literal is currently rejected. Investigate
-contextual literal conversion without weakening checks for out-of-range values
-or incompatible typed expressions. This is a compiler ergonomics fix, not an
-atomic algorithm or memory-safety feature.
+This was a compiler bug: the atomic wrapper hid `usize` from inference, causing
+the untyped literal to default to `i32` prematurely. Inference now uses the
+element type as its value context, including expressions and assignments.
+Literals exceeding the compiler's integer-literal capacity and incompatible
+explicitly typed values remain rejected. A separate existing issue remains:
+`u8 = 256` is accepted for both plain and atomic storage; this change does not
+introduce element-range validation.
+The capability probe no longer needs the explicit cast; atomic operations and
+memory ordering are unchanged.
 
 ### 3. Layout/alignment evidence before queue optimisation
 

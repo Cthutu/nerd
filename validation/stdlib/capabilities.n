@@ -27,7 +27,7 @@ increment :: fn (context: ^void) {
 }
 
 main :: fn () {
-    state : atomic[usize] = 7.as(usize)
+    state : atomic[usize] = 7
     assert state.size == usize.size
     assert (^state).as(usize) % usize.size == 0
     on state.compare_exchange(7, 9, success_order = AcquireRelease, failure_order = Acquire) {

@@ -1,0 +1,32 @@
+[PASS] llvm: tests/llvm/043-atomics.ll
+[PASS] format: tests/format/168-compile-time-params-and-atomics.f
+[PASS] lsp: tests/lsp/173-atomic-compile-time-methods.lsp
+[PASS] command: tests/commands/242-run-atomic-operators.cmd
+[PASS] command: tests/commands/244-check-invalid-atomic-element.cmd
+[PASS] command: tests/commands/245-check-atomic-by-value.cmd
+[PASS] command: tests/commands/248-check-atomic-pointer-dereference.cmd
+[PASS] command: tests/commands/249-check-atomic-pointer-arithmetic.cmd
+[PASS] command: tests/commands/250-check-atomic-ffi-type.cmd
+[PASS] command: tests/commands/251-run-atomic-method-name-is-not-intrinsic.cmd
+[PASS] command: tests/commands/349-run-atomic-literal-inference.cmd
+[PASS] command: tests/commands/350-check-atomic-literal-range.cmd
+[PASS] command: tests/commands/351-check-atomic-literal-typed.cmd
+[PASS] stdlib: mods/std/atomics.n
+
+┌──────────────────────────────────────┐
+│ Test Summary                         │
+├──────────┬────────┬────────┬─────────┤
+│ Type     │ Passed │ Failed │ Skipped │
+├──────────┼────────┼────────┼─────────┤
+│ language │ 0      │ 0      │ 0       │
+│ error    │ 0      │ 0      │ 0       │
+│ hir      │ 0      │ 0      │ 0       │
+│ llvm     │ 1      │ 0      │ 0       │
+│ format   │ 1      │ 0      │ 0       │
+│ lsp      │ 1      │ 0      │ 0       │
+│ command  │ 10     │ 0      │ 0       │
+│ stdlib   │ 1      │ 0      │ 0       │
+│ example  │ 0      │ 0      │ 0       │
+├──────────┼────────┼────────┼─────────┤
+│ total    │ 14     │ 0      │ 0       │
+└──────────┴────────┴────────┴─────────┘

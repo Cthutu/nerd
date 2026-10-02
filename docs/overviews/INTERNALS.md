@@ -1163,6 +1163,17 @@ predate syntax in the checkout and silently rewrite it through formatter
 recovery. A failed compiler build stops the workflow before any source file is
 formatted. VS Code also invokes `nerd format`, using its configured executable.
 
+## Atomic initializer inference
+
+At the entry to `sema_infer_node_type`, an expected `atomic[T]` supplies `T` as
+the expression's value context before literal or arithmetic inference runs.
+The declared storage type remains atomic. This prevents an untyped initializer
+such as `7` from materialising as `i32` before matching `atomic[usize]`, and
+preserves ordinary literal validation and explicit-type compatibility.
+The same path handles assignments and atomic fields. Regression 349 exercises
+these contexts through LLVM and generated C; 350/351 reject oversized literals
+and incompatible typed values.
+
 ## Typed native callbacks
 
 `sema_type_is_ffi_safe` accepts `STK_Function` through a recursive callback ABI
