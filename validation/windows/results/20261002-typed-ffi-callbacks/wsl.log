@@ -1,7 +1,7 @@
 wsl: Failed to start the systemd user session for 'matt'. See journalctl for more details.
 Validation checkout: /home/matt/.cache/nerd-callback-qg__otf_
 ================================================
- build :: clang :: debug 
+ build :: clang :: debug
  projects :: nerd
 ================================================
 [skip] 2 run directive(s) up to date
