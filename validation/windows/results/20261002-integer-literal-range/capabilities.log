@@ -1,0 +1,4 @@
+PASS LLVM debug capabilities
+PASS LLVM release capabilities
+PASS LLVM debug layout
+PASS LLVM release layout

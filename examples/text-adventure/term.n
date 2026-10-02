@@ -52,9 +52,9 @@ on "windows" {
         dwMaximumWindowSize COORD
     }
 
-    STD_INPUT_HANDLE  : u32 : -10
-    STD_OUTPUT_HANDLE : u32 : -11
-    STD_ERROR_HANDLE  : u32 : -12
+    STD_INPUT_HANDLE  : u32 : (-10).as(u32)
+    STD_OUTPUT_HANDLE : u32 : (-11).as(u32)
+    STD_ERROR_HANDLE  : u32 : (-12).as(u32)
 
     HANDLE :: ^void
 

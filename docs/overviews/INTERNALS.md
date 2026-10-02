@@ -1165,6 +1165,22 @@ formatted. VS Code also invokes `nerd format`, using its configured executable.
 
 ## Atomic initializer inference
 
+Integer literals are range-checked when a concrete integer context is selected.
+`sema_literal_magnitude` follows literal/negation/constant aliases, retaining a
+`u64` magnitude separately from the sign; the existing `i64` constant folder
+cannot distinguish a large positive `u64` from a negative number. Signed minima
+are checked as whole negative expressions, including named literal constants;
+usage inference must not prematurely narrow their positive operands. After
+usage inference, variable initializers are checked against materialised storage
+types too, including default `i32` array/tuple elements. Constants remain
+untyped until used in a concrete context.
+
+Explicit casts preserve large untyped literal operands in `u64`/`i64` storage
+before conversion, avoiding premature `i32` truncation in LLVM. They do not use
+implicit destination-range rules; concrete integer arithmetic still wraps.
+Diagnostic fixture 141 groups the range errors, while existing fixture 349 and
+the C differential integer-wrapping probe cover valid boundaries/conversions.
+
 At the entry to `sema_infer_node_type`, an expected `atomic[T]` supplies `T` as
 the expression's value context before literal or arithmetic inference runs.
 The declared storage type remains atomic. This prevents an untyped initializer

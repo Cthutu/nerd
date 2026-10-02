@@ -1,5 +1,16 @@
 # Windows return handoff
 
+## Integer literal destination-range checks — 2026-10-02
+
+`std-library` rejects out-of-range integer literals during semantic analysis,
+including atomic storage and inferred defaults. Signed minima and full u64
+magnitudes remain valid in the appropriate types; explicit conversions preserve
+large literals before casting. Intentional Windows unsigned handle constants
+now use explicit casts. Native Windows: 1193 fixtures pass, zero failures,
+15 skips; all 300 LLVM/C differential fixtures pass at O0/O2. Release compiler
+range diagnostics, atomic tests and capability/layout probes pass. See
+[evidence and limits](20261002-integer-literal-range/README.md).
+
 ## Atomic literal inference fixed — 2026-10-02
 
 `atomic[usize] = 7` now receives the element type as its inference context;

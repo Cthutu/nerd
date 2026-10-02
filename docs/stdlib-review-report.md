@@ -142,10 +142,10 @@ main :: fn () {
 This was a compiler bug: the atomic wrapper hid `usize` from inference, causing
 the untyped literal to default to `i32` prematurely. Inference now uses the
 element type as its value context, including expressions and assignments.
-Literals exceeding the compiler's integer-literal capacity and incompatible
-explicitly typed values remain rejected. A separate existing issue remains:
-`u8 = 256` is accepted for both plain and atomic storage; this change does not
-introduce element-range validation.
+Literals exceeding the destination type's range and incompatible explicitly
+typed values are rejected. The subsequently discovered range-checking bug is
+also fixed: `u8 = 256` fails for both plain and atomic storage. Explicit casts
+retain their conversion behavior, and large literals survive until conversion.
 The capability probe no longer needs the explicit cast; atomic operations and
 memory ordering are unchanged.
 

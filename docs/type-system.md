@@ -223,6 +223,19 @@ parser mostly sees symbols and type syntax; semantic analysis resolves them.
 Integer literals begin life as `untyped integer`. This lets the semantic pass
 delay commitment until surrounding context is known.
 
+When an integer destination is selected, the literal must fit that type. For
+example, `value: u8 = 256`, `value: i8 = 128`, and `value: u8 = -1` are semantic
+errors; `value: i8 = -128` is valid. The same rules apply to atomic element types,
+arguments, returns, fields, arrays and inferred variable storage. Positive
+literals retain their full unsigned magnitude, so `u64` accepts
+`18446744073709551615` but `i64` does not. Hexadecimal notation does not bypass
+the destination range check.
+
+Explicit `.as(...)` conversions keep their conversion behavior, including integer
+narrowing: `256.as(u8)` yields zero. A large literal is preserved before the
+conversion, rather than truncated through the default `i32` type. Arithmetic on
+concrete integer values retains its existing wrapping behavior.
+
 When a concrete runtime type is required, `sema_materialise_type(...)` currently
 maps `untyped integer` to `i32`.
 
