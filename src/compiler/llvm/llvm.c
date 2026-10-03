@@ -8526,6 +8526,17 @@ internal bool llvm_callee_name(LlvmFunctionContext* ctx,
     if (callee->kind == HIR_EXPR_Field &&
         llvm_type_is_function(ctx->sema, callee->type_index) &&
         callee->symbol_handle != U32_MAX) {
+        if (callee->operand_expr_index < array_count(ctx->hir->exprs) &&
+            llvm_record_type_has_field(
+                ctx->sema,
+                ctx->hir->exprs[callee->operand_expr_index].type_index,
+                callee->symbol_handle)) {
+            // A stored callback must win over an unrelated same-named
+            // declaration. Resolve namespace functions only for non-fields.
+            LlvmValue loaded = llvm_emit_expr(ctx, function, callee_expr_index);
+            *out             = loaded.value;
+            return loaded.ok;
+        }
         const HirImport* import =
             llvm_field_import(ctx->sema, ctx->lexer, ctx->hir, callee);
         if (import != NULL) {
@@ -16245,6 +16256,24 @@ internal void llvm_collect_addressed_expr_locals(LlvmFunctionContext* ctx,
     case HIR_EXPR_Field:
     case HIR_EXPR_TupleField:
         llvm_collect_addressed_expr_locals(ctx, expr->operand_expr_index);
+        break;
+    case HIR_EXPR_Array:
+    case HIR_EXPR_Tuple:
+    case HIR_EXPR_Plex:
+    case HIR_EXPR_PlexUpdate:
+        // Addresses inside aggregate values escape just like call arguments.
+        // Materialise their locals at declaration, rather than first use inside
+        // a loop (which would initialise the same storage on every iteration).
+        if (expr->kind == HIR_EXPR_PlexUpdate) {
+            llvm_collect_addressed_expr_locals(ctx, expr->operand_expr_index);
+        }
+        for (u32 i = 0; i < expr->arg_count; ++i) {
+            u32 arg = expr->first_arg + i;
+            if (arg < array_count(ctx->hir->call_args)) {
+                llvm_collect_addressed_expr_locals(
+                    ctx, ctx->hir->call_args[arg].expr_index);
+            }
+        }
         break;
     case HIR_EXPR_Index:
         llvm_collect_addressed_expr_locals(ctx, expr->operand_expr_index);

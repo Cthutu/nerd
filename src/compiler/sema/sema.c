@@ -13771,6 +13771,66 @@ bool sema_bind_generic_type_node(const Lexer*            lexer,
         return false;
     }
 
+    if (type_node->kind == AK_TypeFn &&
+        sema->types[actual_type].kind == STK_Function) {
+        const AstFnSignature* signature = sema_ast_signature(ast, type_node);
+        SemaType              actual    = sema->types[actual_type];
+        if (signature->param_count != actual.param_count ||
+            signature->is_varargs !=
+                ((actual.flags & STF_FunctionVarargs) != 0)) {
+            return false;
+        }
+        for (u32 i = 0; i < signature->param_count; ++i) {
+            if (!sema_bind_generic_type_node(
+                    lexer,
+                    ast,
+                    sema,
+                    generic,
+                    ast->params[signature->first_param + i].type_node_index,
+                    sema->type_param_types[actual.first_param_type + i],
+                    arg_types)) {
+                return false;
+            }
+        }
+        if (signature->return_type_node_index == U32_MAX) {
+            return sema->types[actual.return_type].kind == STK_Void;
+        }
+        return sema_bind_generic_type_node(lexer,
+                                           ast,
+                                           sema,
+                                           generic,
+                                           signature->return_type_node_index,
+                                           actual.return_type,
+                                           arg_types);
+    }
+
+    if (type_node->kind == AK_TypeOptional &&
+        sema->types[actual_type].kind == STK_Enum &&
+        (sema->types[actual_type].flags & STF_Optional)) {
+        u32 payload =
+            sema->type_param_types[sema->types[actual_type].first_param_type +
+                                   1];
+        return sema_bind_generic_type_node(
+            lexer, ast, sema, generic, type_node->a, payload, arg_types);
+    }
+
+    if (type_node->kind == AK_TypeResult &&
+        sema->types[actual_type].kind == STK_Enum &&
+        (sema->types[actual_type].flags & STF_Result)) {
+        u32 first   = sema->types[actual_type].first_param_type;
+        u32 success = sema->type_param_types[first];
+        u32 error   = sema->type_param_types[first + 1];
+        return sema_bind_generic_type_node(lexer,
+                                           ast,
+                                           sema,
+                                           generic,
+                                           type_node->a,
+                                           success,
+                                           arg_types) &&
+               sema_bind_generic_type_node(
+                   lexer, ast, sema, generic, type_node->b, error, arg_types);
+    }
+
     if (type_node->kind == AK_TypePointer &&
         sema->types[actual_type].kind == STK_Pointer) {
         return sema_bind_generic_type_node(
@@ -24784,12 +24844,12 @@ validate_type:
                     sema->node_decl_indices[node->a] == sema_no_decl()) {
                     variant_symbol = callee->a;
                 } else if (callee->kind == AK_Field) {
-                    u32 qualified_type = sema_no_type();
-                    if (!sema_try_resolve_type_symbol(
-                            lexer, ast, sema, callee->a, &qualified_type)) {
-                        qualified_type = sema_no_type();
-                    }
-                    if (qualified_type != enum_context) {
+                    u32  qualified_type = sema_no_type();
+                    bool enum_constructor =
+                        sema_try_resolve_type_symbol(
+                            lexer, ast, sema, callee->a, &qualified_type) &&
+                        sema->types[qualified_type].kind == STK_Enum;
+                    if (enum_constructor && qualified_type != enum_context) {
                         return error_0304_type_mismatch(
                             lexer->source,
                             sema_node_span(lexer, callee),
@@ -24798,7 +24858,9 @@ validate_type:
                             sema_type_name(
                                 lexer, sema, &temp_arena, qualified_type));
                     }
-                    variant_symbol = callee->b;
+                    if (enum_constructor) {
+                        variant_symbol = callee->b;
+                    }
                 }
                 if (variant_symbol != U32_MAX) {
                     u32 variant = sema_enum_variant_index(
@@ -24957,8 +25019,8 @@ validate_type:
                         decl->type_index == sema_no_type() &&
                         decl->value_node_index != sema_no_decl()) {
                         // Inferring the body may import compound overloads and
-                        // grow decls. Keep the result on the stack, then resolve
-                        // the declaration again before updating it.
+                        // grow decls. Keep the result on the stack, then
+                        // resolve the declaration again before updating it.
                         u32 inferred_type = sema_no_type();
                         if (!sema_infer_node_type(lexer,
                                                   ast,
@@ -24968,7 +25030,7 @@ validate_type:
                                                   &inferred_type)) {
                             return false;
                         }
-                        decl = &sema->decls[decl_index];
+                        decl             = &sema->decls[decl_index];
                         decl->type_index = inferred_type;
                         if (decl->bind_node_index != sema_no_decl()) {
                             sema->node_type_indices[decl->bind_node_index] =
