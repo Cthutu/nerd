@@ -10,7 +10,7 @@ Thread startup, joins, predicate wakeups and partial-start cleanup passed
 just build nerd --skip-mod-sync
 uv run build/build.py nerd --skip-mod-sync
 ================================================
- build :: clang :: debug 
+ build :: clang :: debug
  projects :: nerd
 ================================================
 [skip] 2 run directive(s) up to date
@@ -20,7 +20,7 @@ uv run build/build.py nerd --skip-mod-sync
 ================================================
 >> Build complete. Go be nerdy! \o/ <<
 ================================================
-python3 build/test.py 
+python3 build/test.py
 [PASS] language: tests/language/001-number.t
 [PASS] language: tests/language/002-add-2-numbers.t
 [PASS] language: tests/language/003-precedence.t

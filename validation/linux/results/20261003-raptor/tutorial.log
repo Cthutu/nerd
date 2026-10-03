@@ -1,6 +1,6 @@
 uv run build/build.py -r nerd
 ================================================
- build :: clang :: release 
+ build :: clang :: release
  projects :: nerd
 ================================================
 [skip] 2 run directive(s) up to date

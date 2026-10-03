@@ -1,7 +1,7 @@
 just build-release nerd --skip-mod-sync
 uv run build/build.py -r nerd --skip-mod-sync
 ================================================
- build :: clang :: release 
+ build :: clang :: release
  projects :: nerd
 ================================================
 [skip] 2 run directive(s) up to date
@@ -10,7 +10,7 @@ uv run build/build.py -r nerd --skip-mod-sync
 ================================================
 >> Build complete. Go be nerdy! \o/ <<
 ================================================
-python3 build/test.py --nerd _bin/nerd 
+python3 build/test.py --nerd _bin/nerd
 [PASS] language: tests/language/001-number.t
 [PASS] language: tests/language/002-add-2-numbers.t
 [PASS] language: tests/language/003-precedence.t
