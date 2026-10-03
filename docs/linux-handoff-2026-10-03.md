@@ -1,0 +1,69 @@
+# Standard-library pickup — 3 October 2026
+
+Continue on **`std-library`**. The test audit and first consolidation are now
+integrated, including enum optional/result materialisation fix `58818307`,
+Windows evidence through `87e4567a`, Linux repairs `209e8857` and Linux evidence
+`f0983f96`. Integration preserves the published task histories; `main` is
+unchanged and no task branch or worktree was deleted.
+
+## Branch review
+
+Git ancestry confirms the earlier capability audit, runtime threads,
+thread/sync, networking, imported-constant C fix, public-global formatter fix,
+imported-global LLVM fix and lowering regressions were already integrated.
+The diagnostics/LSP branch is also integrated. `test-suite-consolidation`
+contains `test-suite-audit`, so its merge incorporates both remaining histories.
+Linux uses upstream **`agent/std-library`**; remote names differ by host.
+
+Consolidation removes 33 exact command/language runtime duplicates and batches
+14 additional `on` scenarios into one labelled language fixture. Dedicated
+CLI/cleanup contracts, existing HIR/LLVM assertions and diagnostic cases are
+preserved. See the [report](test-suite-consolidation.md) and
+[migration map](test-suite-consolidation-map.json).
+
+## Linux validation and repairs
+
+Fresh Clang 22.1.8 compilers at `209e8857` pass full **`just test` and
+`just test-release`: 1,153 fixtures, zero failures, nine existing Linux skips
+each**. All debug auxiliary gates pass, including unchanged 6,000-term checks,
+291 LLVM/C differential fixtures at C O0/O2 with zero skips, and Linux PTY
+Dungeon interaction. The full frontend AddressSanitizer suite, explicit C
+capability/layout probes and three `just run-example` commands also pass.
+See [complete evidence and limits](../validation/linux/results/20261003-test-suite-consolidation/README.md).
+
+The first full run exposed a compiler use-after-free: function-body inference
+imported overload proxies, growing the declaration array while the callee type
+output still pointed into its former allocation. The repair keeps inference's
+output on the stack and reacquires the declaration by index. Existing command
+223 and its differential entry remain, plus a new frontend sanitizer case.
+LSP fixture URI expansion also needed a single-pass replacement to avoid
+doubling this worktree's directory suffix. Original failures and the ASan
+diagnosis are retained alongside passing results.
+
+Changed-work timings on Linux at `87e4567a`: old 47 command fixtures **1.485 s**
+median versus **0.0619 s** for the replacement batch, using the same compiler,
+one excluded warmup and three sequential samples. This is a measurement of
+replaced work, not a whole-suite speedup. Migration maps and omission/wrong-result
+mutations were verified again after the repair.
+
+## Next work
+
+1. Continue the audit with structured expected diagnostics for the negative
+   `check` cases that currently assert only failure. Preserve CLI-specific
+   contracts and separate lexer overflow from destination-range errors.
+2. Expand compatible feature batching, then investigate sharing same-run LLVM
+   golden/differential baselines. Measure compiler/toolchain launches and wall
+   time while retaining backend, release, IR, ABI and platform checks.
+3. Native Windows must validate the new inference lifetime repair. Earlier
+   Windows results cover `caaef691` and do not establish success for `209e8857`.
+4. Full `just do` remains unrun here; it cleans local artifacts and installs the
+   global compiler/modules/editor integration. The temporary-install gate passed.
+5. Continue queue/scheduler milestones after resolving the Raptor algorithm/source
+   and upstream reuse/attribution decisions in the
+   [source inventory](stdlib-source-inventory.md). Kerberos remains intended as
+   lightweight GCD-style dispatch; source ASIO is not a required dependency.
+
+The [October 2 handoff](linux-handoff-2026-10-02.md) retains the broader design
+decisions. Nerd remains a C replacement with explicit allocation, aliasing,
+cleanup and synchronization responsibilities. Fix compiler bugs as discovered,
+retain regression coverage, and commit/push verified work.

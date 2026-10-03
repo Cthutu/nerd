@@ -1,5 +1,20 @@
 # Windows return handoff
 
+## Linux integration completed — 2026-10-03
+
+The audit/consolidation history and optional/result fix are now integrated into
+`std-library`, along with Linux repair `209e8857` for a declaration-inference
+use-after-free and LSP fixture path expansion. Native Linux `just test` and
+`just test-release` passed: 1,153 fixtures, zero failures, nine platform skips
+per compiler; 291 C differential fixtures passed at O0/O2 with zero skips.
+The full frontend AddressSanitizer suite and three thread/network examples pass.
+See [current Linux handoff](../../../docs/linux-handoff-2026-10-03.md) and
+[retained evidence](../../linux/results/20261003-test-suite-consolidation/README.md).
+
+Windows results below cover their recorded revisions; the new Linux inference
+repair has not been validated on native Windows. Statements about separate or
+unmerged branches in the October 2 sections describe that day's state.
+
 ## Complete Linux pickup — 2026-10-02
 
 Start with [today's consolidated Linux handoff](../../../docs/linux-handoff-2026-10-02.md).
@@ -8,6 +23,34 @@ through `6bc00639`, validation boundaries, Linux commands, branch backups, and
 the independent audit/consolidation work. The consolidation branch also has an
 optional/result enum-materialization fix not yet on `std-library`; fetch its
 latest evidence before integration. Repository `main` has not been changed.
+
+## First test consolidation — 2026-10-02
+
+Separate branch **`test-suite-consolidation`**, tested implementation **`caaef691`**;
+not merged into `std-library` or `main`. Removed 33 exact command/language runtime
+duplicates and replaced 14 additional `on` command regressions with one labelled
+language batch. Dedicated CLI/cleanup contracts, existing HIR/LLVM assertions,
+all diagnostic cases and inherited integer destination-range fixes remain intact.
+
+Batching exposed a compiler bug: materialising an enum with an equivalent earlier
+plex payload lost optional/result flags. **`58818307`** fixes it and covers both
+wrapper forms in the batch; this prerequisite must accompany the consolidation.
+
+Native Windows **`just test` and `just test-release` passed**: 1,147 fixture passes,
+zero failures, 15 platform skips each. Debug common gate: 289 LLVM/C differential
+fixtures at O0/O2 pass, two platform skips, Linux PTY skipped; all auxiliary gates
+including unchanged 6,000-term depth, concurrency, direct toolchain, temporary
+install, library contracts and four Windows stdio modes pass.
+
+The old changed workload (47 command fixtures) measured 10.273 s median versus
+0.317 s for its replacement batch with the same fixed compiler, excluding
+unchanged language alternatives. This is about ten seconds less repeated work
+per debug fixture pass, **not** a full-gate percentage speedup.
+
+See the [report and exact mapping](../../../docs/test-suite-consolidation.md) and
+[native evidence](20261002-test-suite-consolidation/README.md). Linux/WSL gates
+remain for pickup; no global compiler/editor installation or desktop checks were
+performed. Review/merge this branch independently of ongoing standard-library work.
 
 ## Integer literal destination-range checks — 2026-10-02
 

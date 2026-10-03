@@ -542,6 +542,13 @@ source-module provenance and private implementation visibility. HIR generation
 therefore receives only concrete function types and symbols. There is no HIR or
 LLVM compound entity, symbol, wrapper, or dispatcher.
 
+Inferring a function body can import compound overload proxies and grow
+`sema->decls`. Call-site inference keeps its result in a stack variable and
+reacquires the declaration by index before writing it back. Neither an output
+pointer nor a declaration pointer may survive that recursive inference call.
+The frontend ownership suite exercises an optional-value `on` expression with
+an imported `abort` overload, including AddressSanitizer validation.
+
 ### Structural and collection equality
 
 Semantic analysis checks equality recursively for plex fields, tuple members,
@@ -615,6 +622,16 @@ callback signatures contain nested parameter lists, including variadic callbacks
 
 Local aliases of built-in types, including `VaList`, are resolved as types.
 HIR omits local type-alias declarations because they require no runtime storage.
+
+### Optional/result payload materialisation
+
+`sema_materialise_type` recursively canonicalises enum payload types. When an
+earlier enum uses a structurally equivalent plex, this can produce a different
+interned enum entry for an optional or result. The new entry must retain
+`STF_Optional`/`STF_Result`; otherwise implicit payload conversion and pattern
+binding treat the wrapper as an ordinary enum and reject valid initialisers.
+The combined `on` runtime regressions exercise both wrapper forms after an
+earlier equivalent payload declaration, including LLVM/C differential execution.
 
 ### Result propagation and imported display methods
 

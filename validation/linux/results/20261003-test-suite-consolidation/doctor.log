@@ -1,0 +1,9 @@
+Nerd binary toolchain
+[OK] opt
+[OK] llc
+[OK] ld.lld
+[OK] llvm-ar
+[OK] libc startup objects
+[OK] dynamic loader
+[OK] LLVM optimisation, object generation, host runtime link and execution
+Toolchain ready. C emission does not require these tools.

@@ -1,5 +1,10 @@
 # Linux pickup — 2 October 2026
 
+Update, 3 October: consolidation and its enum fix are integrated into
+`std-library`; full Linux debug/release gates pass after the inference and
+fixture-path repairs. Read the [current handoff](linux-handoff-2026-10-03.md).
+The remaining text records the original October 2 pickup state.
+
 Continue standard-library work on **`std-library`**, whose latest implementation
 commit is **`6bc00639`**. This is the main working branch for this project, not
 the repository's `main`. [Draft PR #1](https://github.com/Cthutu/nerd/pull/1)

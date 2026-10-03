@@ -1,0 +1,36 @@
+{
+  "revision": "c861db2187534ced1d8c94e441f22a69d11f3490",
+  "compiler_sha256": "a54baa8d98cb4cc80961fd3387ebc4ebbf21e401a97ffacbc977bab9b2f20ead",
+  "platform": "windows",
+  "repeats": 3,
+  "cases": [
+    "062-run-llvm-nested-on-branch",
+    "129-run-on-expression-return-branches",
+    "252-run-nested-partial-on-statement"
+  ],
+  "seconds": {
+    "separate": [
+      0.6426461000228301,
+      0.6381746999686584,
+      0.6467919000424445
+    ],
+    "batch": [
+      0.23880039993673563,
+      0.24501299997791648,
+      0.24968909996096045
+    ]
+  },
+  "median_seconds": {
+    "separate": 0.6426461000228301,
+    "batch": 0.24501299997791648
+  },
+  "method": "Sequential LLVM build+execution; separate cases then batch; one excluded warmup iteration. C generation/O0/O2 and omitted-case mutation verified but excluded from timing.",
+  "verified": [
+    "original golden outputs/exits",
+    "batch golden output/exit",
+    "C -O0 and -O2 golden output/exit",
+    "omitted-case mutation rejected"
+  ],
+  "combined_source": "use std.io\n\ncase_0 :: fn () -> i32 {\n    value := 2\n    hit := 0\n\n    on value == 2 => {\n        on {\n            value == 1 => hit = 1\n            else => hit = 2\n        }\n    }\n\n    prn($\"hit {hit}\")\n    return hit\n}\n\nuse std.io\n\nread :: fn (value: ?u8) -> u8 {\n    return on value {\n        byte => {\n            copied : u8 = byte\n            return copied\n        }\n        else => {\n            return 0\n        }\n    }\n}\n\ncase_1 :: fn () -> i32 {\n    result := read('x')\n    prn($\"{result}\")\n    return result.as(i32)\n}\n\ncase_2 :: fn () -> i32 {\n    result := 0\n\n    on yes {\n        yes => {\n            on yes => {\n                result = 42\n            }\n        }\n    }\n\n    return result - 42\n}\n\nmain :: fn () {\n    prn(\"begin 062-run-llvm-nested-on-branch\")\n    result_0 := case_0()\n    assert result_0 == 2\n    prn(\"pass 062-run-llvm-nested-on-branch\")\n    prn(\"begin 129-run-on-expression-return-branches\")\n    result_1 := case_1()\n    assert result_1 == 120\n    prn(\"pass 129-run-on-expression-return-branches\")\n    prn(\"begin 252-run-nested-partial-on-statement\")\n    result_2 := case_2()\n    assert result_2 == 0\n    prn(\"pass 252-run-nested-partial-on-statement\")\n    prn(\"completed 3 cases\")\n}\n",
+  "expected_stdout": "begin 062-run-llvm-nested-on-branch\nhit 2\npass 062-run-llvm-nested-on-branch\nbegin 129-run-on-expression-return-branches\n120\npass 129-run-on-expression-return-branches\nbegin 252-run-nested-partial-on-statement\npass 252-run-nested-partial-on-statement\ncompleted 3 cases\n"
+}
