@@ -1,0 +1,45 @@
+
+This GDB supports auto-downloading debuginfo from the following URLs:
+  <https://debuginfod.archlinux.org>
+  <https://debuginfod.cachyos.org>
+Enable debuginfod for this session? (y or [n]) [answered N; input not from terminal]
+Debuginfod has been disabled.
+To make this setting permanent, add 'set debuginfod enabled off' to .gdbinit.
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/usr/lib/libthread_db.so.1".
+double free or corruption (out)
+
+Program received signal SIGABRT, Aborted.
+0x00007ffff7caf22b in pthread_kill () from /usr/lib/libc.so.6
+#0  0x00007ffff7caf22b in pthread_kill () from /usr/lib/libc.so.6
+#1  0x00007ffff7c44b88 in raise () from /usr/lib/libc.so.6
+#2  0x00007ffff7c257a7 in abort () from /usr/lib/libc.so.6
+#3  0x00007ffff7c269ef in ?? () from /usr/lib/libc.so.6
+#4  0x00007ffff7cba89e in ?? () from /usr/lib/libc.so.6
+#5  0x00007ffff7cbc630 in ?? () from /usr/lib/libc.so.6
+#6  0x0000555555560e9d in mem_free (ptr=0x5555557eb100, file=0x555555786574 "/home/matt/nerd-consolidation-review/src/compiler/sema/sema.c", line=1498) at /home/matt/nerd-consolidation-review/src/core/memory.c:390
+#7  0x000055555569a17d in sema_materialise_type (sema=0x7fffffffbb18, type_index=9) at /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:1498
+#8  0x000055555569c269 in sema_type_matches (sema=0x7fffffffbb18, expected_type=9, actual_type=7) at /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:12024
+#9  0x00005555556cad73 in sema_finish_inferred_type (lexer=0x5555557d1690, ast=0x5555557d17c0, sema=0x7fffffffbb18, node_index=18, expected_type=9, type_index=7, out_type_index=0x7fffffff78b4) at /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:21046
+#10 0x00005555556c9264 in sema_infer_node_type_impl (lexer=0x5555557d1690, ast=0x5555557d17c0, sema=0x7fffffffbb18, node_index=18, expected_type=9, out_type_index=0x7fffffff78b4) at /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:25870
+#11 0x00005555556ac939 in sema_infer_node_type (lexer=0x5555557d1690, ast=0x5555557d17c0, sema=0x7fffffffbb18, node_index=18, expected_type=9, out_type_index=0x7fffffff78b4) at /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:21496
+#12 0x00005555556c50ec in sema_infer_node_type_impl (lexer=0x5555557d1690, ast=0x5555557d17c0, sema=0x7fffffffbb18, node_index=19, expected_type=4294967295, out_type_index=0x7fffffffb418) at /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:25089
+#13 0x00005555556ac939 in sema_infer_node_type (lexer=0x5555557d1690, ast=0x5555557d17c0, sema=0x7fffffffbb18, node_index=19, expected_type=4294967295, out_type_index=0x7fffffffb418) at /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:21496
+#14 0x00005555556b97e4 in sema_infer_node_type_impl (lexer=0x5555557d1690, ast=0x5555557d17c0, sema=0x7fffffffbb18, node_index=20, expected_type=4294967295, out_type_index=0x7fffffffb584) at /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:22596
+#15 0x00005555556ac939 in sema_infer_node_type (lexer=0x5555557d1690, ast=0x5555557d17c0, sema=0x7fffffffbb18, node_index=20, expected_type=4294967295, out_type_index=0x7fffffffb584) at /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:21496
+#16 0x00005555556ef119 in sema_seed_local_type_from_expected (lexer=0x5555557d1690, ast=0x5555557d17c0, sema=0x7fffffffbb18, local_index=2, expected_type=7) at /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:17432
+#17 0x00005555557065a3 in sema_seed_local_type_from_return (lexer=0x5555557d1690, ast=0x5555557d17c0, sema=0x7fffffffbb18, local_index=2, expected_type=7) at /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:17657
+#18 0x0000555555706555 in sema_seed_return_expr_context (lexer=0x5555557d1690, ast=0x5555557d17c0, sema=0x7fffffffbb18, expr_node_index=29, expected_type=7) at /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:17978
+#19 0x0000555555706404 in sema_seed_function_return_contexts (lexer=0x5555557d1690, ast=0x5555557d17c0, sema=0x7fffffffbb18, fn_node_index=33) at /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:18084
+#20 0x00005555556a5f81 in sema_seed_return_context_local_types (lexer=0x5555557d1690, ast=0x5555557d17c0, options=0x7fffffffc218, sema=0x7fffffffbb18) at /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:18106
+#21 0x00005555556a15be in sema_analyse (lexer=0x5555557d1690, ast=0x5555557d17c0, options=0x7fffffffc218, out_sema=0x5555557d18e8) at /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:29000
+#22 0x00005555555a8f3b in program_front_end_sema (data=0x7fffffffc1f0) at /home/matt/nerd-consolidation-review/src/compiler/build/front/program.c:228
+#23 0x00005555555a69b2 in program_run_timed (timing=0x7fffffffd6c0, phase=0x555555779d0c "analyse AST semantics", module=..., run=0x5555555a8ef0 <program_front_end_sema>, data=0x7fffffffc1f0) at /home/matt/nerd-consolidation-review/src/compiler/build/front/program.c:176
+#24 0x00005555555a373d in program_front_end_finish (program=0x7fffffffcb70, module_index=0, options=0x7fffffffcbf8, timing=0x7fffffffd6c0, require_entry_point=true) at /home/matt/nerd-consolidation-review/src/compiler/build/front/program.c:309
+#25 0x00005555555a0142 in program_front_end_attempt (source=..., options=0x7fffffffd3b0, timing=0x7fffffffd6c0, out_program=0x7fffffffd478) at /home/matt/nerd-consolidation-review/src/compiler/build/front/program.c:1820
+#26 0x000055555559f78c in front_end_program (source=..., options=0x7fffffffd500, timing=0x7fffffffd6c0, out_program=0x7fffffffd478) at /home/matt/nerd-consolidation-review/src/compiler/build/front/program.c:1869
+#27 0x00005555555be950 in compile (source=..., artifacts=0x7fffffffd5a0, dump_compiler_state=false, timing=0x7fffffffd6c0) at /home/matt/nerd-consolidation-review/src/compiler/cmd_common.c:229
+#28 0x00005555555bd49e in compiler_cmd_build (config=0x7fffffffd970) at /home/matt/nerd-consolidation-review/src/compiler/cmd_build.c:156
+#29 0x0000555555559085 in nerd_run_with_cli (argc=6, argv=0x7fffffffdbd8) at /home/matt/nerd-consolidation-review/src/nerd.c:1486
+#30 0x000055555555865b in run (argc=6, argv=0x7fffffffdbd8) at /home/matt/nerd-consolidation-review/src/nerd.c:1540
+#31 0x000055555555e63b in main (argc=6, argv=0x7fffffffdbd8) at /home/matt/nerd-consolidation-review/src/core/main.c:30

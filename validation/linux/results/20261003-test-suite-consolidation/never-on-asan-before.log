@@ -1,0 +1,113 @@
+=================================================================
+==91007==ERROR: AddressSanitizer: heap-use-after-free on address 0x7cd569be8f1c at pc 0x558ea2283d9b bp 0x7ffc4d565890 sp 0x7ffc4d565888
+WRITE of size 4 at 0x7cd569be8f1c thread T0
+    #0 0x558ea2283d9a in sema_finish_inferred_type /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:21078:41
+    #1 0x558ea226cd0a in sema_infer_node_type_impl /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:25870:12
+    #2 0x558ea2273788 in sema_infer_node_type_impl /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:24959:30
+    #3 0x558ea225d62e in sema_infer_node_type_impl /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c
+    #4 0x558ea22d032b in sema_infer_node_type /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:21496:12
+    #5 0x558ea22d032b in sema_seed_local_type_from_expected /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:17432:14
+    #6 0x558ea223c93e in sema_seed_local_type_from_return /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:17657:12
+    #7 0x558ea223c93e in sema_seed_return_expr_context /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:17978:12
+    #8 0x558ea223c93e in sema_seed_function_return_contexts /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:18084:14
+    #9 0x558ea223c93e in sema_seed_return_context_local_types /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:18106:14
+    #10 0x558ea2233c27 in sema_analyse /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:29000:10
+    #11 0x558ea2067971 in program_front_end_sema /home/matt/nerd-consolidation-review/src/compiler/build/front/program.c:228:10
+    #12 0x558ea2063cff in program_run_timed /home/matt/nerd-consolidation-review/src/compiler/build/front/program.c:176:30
+    #13 0x558ea205af99 in program_front_end_finish /home/matt/nerd-consolidation-review/src/compiler/build/front/program.c:309:19
+    #14 0x558ea205af99 in program_front_end_attempt /home/matt/nerd-consolidation-review/src/compiler/build/front/program.c:1820:14
+    #15 0x558ea2059f80 in front_end_program /home/matt/nerd-consolidation-review/src/compiler/build/front/program.c:1869:16
+    #16 0x558ea2091bff in compiler_cmd_check /home/matt/nerd-consolidation-review/src/compiler/cmd_check.c:71:22
+    #17 0x558ea1fecf64 in nerd_run_with_cli /home/matt/nerd-consolidation-review/src/nerd.c:1495:24
+    #18 0x558ea1ff25c6 in main /home/matt/nerd-consolidation-review/src/core/main.c:30:18
+    #19 0x7fc56a827c8d in __libc_start_call_main /usr/src/debug/glibc/glibc/csu/../sysdeps/nptl/libc_start_call_main.h:59:16
+    #20 0x7fc56a827dca in __libc_start_main /usr/src/debug/glibc/glibc/csu/../csu/libc-start.c:372:3
+    #21 0x558ea1e4c5c4 in _start (/home/matt/nerd-consolidation-review/_tmp/asan-compiler/nerd+0x7e5c4) (BuildId: 02c164eb61cef39f93023d9f58c7449abf7bd138)
+
+0x7cd569be8f1c is located 92 bytes inside of 200-byte region [0x7cd569be8ec0,0x7cd569be8f88)
+freed by thread T0 here:
+    #0 0x558ea1f8b291 in realloc.part.0 asan_malloc_linux.cpp.o
+    #1 0x558ea1ff719c in mem_realloc /home/matt/nerd-consolidation-review/src/core/memory.c:330:24
+    #2 0x558ea1ff1e24 in array_maybe_grow /home/matt/nerd-consolidation-review/src/core/array.c:49:53
+    #3 0x558ea2258914 in sema_ensure_module_export_decl /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:2209:5
+    #4 0x558ea22d2be2 in sema_materialise_imported_compound /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:28112:25
+    #5 0x558ea22ac235 in sema_select_compound_call /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:28460:9
+    #6 0x558ea22731a5 in sema_infer_node_type_impl /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:24940:22
+    #7 0x558ea2265695 in sema_infer_node_type /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:21496:12
+    #8 0x558ea2265695 in sema_infer_node_type_impl /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:23887:22
+    #9 0x558ea225d62e in sema_infer_node_type_impl /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c
+    #10 0x558ea225a951 in sema_infer_node_type_impl /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:22619:25
+    #11 0x558ea2294f2d in sema_infer_node_type /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:21496:12
+    #12 0x558ea2294f2d in sema_infer_block_statements /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:19636:18
+    #13 0x558ea226f694 in sema_infer_node_type_impl /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:25671:22
+    #14 0x558ea2273788 in sema_infer_node_type_impl /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:24959:30
+    #15 0x558ea225d62e in sema_infer_node_type_impl /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c
+    #16 0x558ea22d032b in sema_infer_node_type /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:21496:12
+    #17 0x558ea22d032b in sema_seed_local_type_from_expected /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:17432:14
+    #18 0x558ea223c93e in sema_seed_local_type_from_return /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:17657:12
+    #19 0x558ea223c93e in sema_seed_return_expr_context /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:17978:12
+    #20 0x558ea223c93e in sema_seed_function_return_contexts /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:18084:14
+    #21 0x558ea223c93e in sema_seed_return_context_local_types /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:18106:14
+    #22 0x558ea2233c27 in sema_analyse /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:29000:10
+    #23 0x558ea2067971 in program_front_end_sema /home/matt/nerd-consolidation-review/src/compiler/build/front/program.c:228:10
+    #24 0x558ea2063cff in program_run_timed /home/matt/nerd-consolidation-review/src/compiler/build/front/program.c:176:30
+    #25 0x558ea205af99 in program_front_end_finish /home/matt/nerd-consolidation-review/src/compiler/build/front/program.c:309:19
+    #26 0x558ea205af99 in program_front_end_attempt /home/matt/nerd-consolidation-review/src/compiler/build/front/program.c:1820:14
+    #27 0x558ea2059f80 in front_end_program /home/matt/nerd-consolidation-review/src/compiler/build/front/program.c:1869:16
+    #28 0x558ea2091bff in compiler_cmd_check /home/matt/nerd-consolidation-review/src/compiler/cmd_check.c:71:22
+    #29 0x558ea1fecf64 in nerd_run_with_cli /home/matt/nerd-consolidation-review/src/nerd.c:1495:24
+    #30 0x558ea1ff25c6 in main /home/matt/nerd-consolidation-review/src/core/main.c:30:18
+    #31 0x7fc56a827c8d in __libc_start_call_main /usr/src/debug/glibc/glibc/csu/../sysdeps/nptl/libc_start_call_main.h:59:16
+    #32 0x7ffc4d568110  (<unknown module>)
+
+previously allocated by thread T0 here:
+    #0 0x558ea1f8c141 in malloc (/home/matt/nerd-consolidation-review/_tmp/asan-compiler/nerd+0x1be141) (BuildId: 02c164eb61cef39f93023d9f58c7449abf7bd138)
+    #1 0x558ea1ff6a6f in mem_alloc /home/matt/nerd-consolidation-review/src/core/memory.c:276:43
+    #2 0x558ea1ff1e49 in array_maybe_grow /home/matt/nerd-consolidation-review/src/core/array.c:24:45
+    #3 0x558ea22d8f13 in sema_collect_decls_in_range /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:6956:9
+    #4 0x558ea2230bbc in sema_collect_decls /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:6976:12
+    #5 0x558ea2230bbc in sema_analyse /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:28913:10
+    #6 0x558ea2067971 in program_front_end_sema /home/matt/nerd-consolidation-review/src/compiler/build/front/program.c:228:10
+    #7 0x558ea2063cff in program_run_timed /home/matt/nerd-consolidation-review/src/compiler/build/front/program.c:176:30
+    #8 0x558ea205af99 in program_front_end_finish /home/matt/nerd-consolidation-review/src/compiler/build/front/program.c:309:19
+    #9 0x558ea205af99 in program_front_end_attempt /home/matt/nerd-consolidation-review/src/compiler/build/front/program.c:1820:14
+    #10 0x558ea2059f80 in front_end_program /home/matt/nerd-consolidation-review/src/compiler/build/front/program.c:1869:16
+    #11 0x558ea2091bff in compiler_cmd_check /home/matt/nerd-consolidation-review/src/compiler/cmd_check.c:71:22
+    #12 0x558ea1fecf64 in nerd_run_with_cli /home/matt/nerd-consolidation-review/src/nerd.c:1495:24
+    #13 0x558ea1ff25c6 in main /home/matt/nerd-consolidation-review/src/core/main.c:30:18
+    #14 0x7fc56a827c8d in __libc_start_call_main /usr/src/debug/glibc/glibc/csu/../sysdeps/nptl/libc_start_call_main.h:59:16
+    #15 0x7ffc4d568110  (<unknown module>)
+
+SUMMARY: AddressSanitizer: heap-use-after-free /home/matt/nerd-consolidation-review/src/compiler/sema/sema.c:21078:41 in sema_finish_inferred_type
+Shadow bytes around the buggy address:
+  0x7cd569be8c80: fd fd fd fd fd fd fd fd fd fd fd fd fd fd fd fd
+  0x7cd569be8d00: fd fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x7cd569be8d80: fd fd fd fd fd fd fd fd fd fd fd fd fd fd fd fd
+  0x7cd569be8e00: fd fd fd fd fd fd fd fd fd fa fa fa fa fa fa fa
+  0x7cd569be8e80: fa fa fa fa fa fa fa fa fd fd fd fd fd fd fd fd
+=>0x7cd569be8f00: fd fd fd[fd]fd fd fd fd fd fd fd fd fd fd fd fd
+  0x7cd569be8f80: fd fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x7cd569be9000: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7cd569be9080: 00 00 00 00 00 00 00 00 00 00 00 00 00 fa fa fa
+  0x7cd569be9100: fa fa fa fa fa fa fa fa fd fd fd fd fd fd fd fd
+  0x7cd569be9180: fd fd fd fd fd fd fd fd fd fd fd fd fd fd fd fd
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07 
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==91007==ABORTING
