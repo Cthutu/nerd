@@ -8631,6 +8631,16 @@ internal void format_emit_block_statement(StringBuilder* sb,
                 format_emit_expr_with_indent(
                     sb, cst, lexer, deferred->a, 0, indent_level);
                 sb_append_char(sb, '\n');
+            } else if (deferred->kind == CK_Assert) {
+                sb_append_cstr(sb, "assert ");
+                format_emit_expr_with_indent(
+                    sb, cst, lexer, deferred->a, 0, indent_level);
+                if (deferred->b != U32_MAX) {
+                    sb_append_cstr(sb, ", ");
+                    format_emit_expr_with_indent(
+                        sb, cst, lexer, deferred->b, 0, indent_level);
+                }
+                sb_append_char(sb, '\n');
             } else if (deferred->kind == CK_Return) {
                 sb_append_cstr(sb, "return");
                 if (deferred->a != U32_MAX) {

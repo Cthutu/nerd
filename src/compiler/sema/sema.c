@@ -15649,8 +15649,20 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
                     continue;
                 }
                 u32 arg_type = sema_no_type();
-                if (!sema_infer_node_type(
-                        lexer, ast, sema, arg_node, expected_dst, &arg_type)) {
+                // A callback signature can contain still-unbound generic
+                // parameters. Infer its concrete signature before binding them.
+                u32 inference_expected =
+                    generic != NULL &&
+                            source_ast->nodes[source_param->type_node_index]
+                                    .kind == AK_TypeFn
+                        ? sema_no_type()
+                        : expected_dst;
+                if (!sema_infer_node_type(lexer,
+                                          ast,
+                                          sema,
+                                          arg_node,
+                                          inference_expected,
+                                          &arg_type)) {
                     array_free(source_arg_types);
                     return false;
                 }
@@ -15677,6 +15689,26 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
                             s("generic parameter-compatible argument"),
                             sema_type_name(lexer, sema, &temp_arena, arg_type));
                     }
+                }
+                if (generic != NULL) {
+                    // Validate against the signature after argument inference;
+                    // the pre-inference function type may contain unknowns.
+                    if (!sema_resolve_type_node_ex(
+                            source_lexer,
+                            source_ast,
+                            source_sema,
+                            source_param->type_node_index,
+                            subst,
+                            &expected_source)) {
+                        array_free(source_arg_types);
+                        return false;
+                    }
+                    expected_dst = imported ? sema_import_type((Lexer*)lexer,
+                                                               sema,
+                                                               source_lexer,
+                                                               source_sema,
+                                                               expected_source)
+                                            : expected_source;
                 }
                 if (!sema_type_matches(sema, expected_dst, arg_type)) {
                     array_free(source_arg_types);

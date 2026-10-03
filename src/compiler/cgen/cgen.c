@@ -1521,6 +1521,29 @@ internal bool cgen_resolve(CGen* c,
     }
     if (e->kind == HIR_EXPR_Index &&
         cgen_kind(c, e->type_index) == STK_Function) {
+        // Explicit generic arguments choose a specialization even when its
+        // erased callable signature is identical to another specialization.
+        if (e->symbol_handle != U32_MAX) {
+            for (u32 i = 0; i < array_count(sema->generic_fn_instantiations);
+                 ++i) {
+                const SemaGenericFnInstantiation* inst =
+                    &sema->generic_fn_instantiations[i];
+                if (inst->symbol_handle != e->symbol_handle) {
+                    continue;
+                }
+                for (u32 f = 0; f < array_count(h->functions); ++f) {
+                    const HirFunction* fn = &h->functions[f];
+                    if (fn->kind == HIR_FUNCTION_GenericInstantiation &&
+                        fn->root_scope_index == inst->root_scope_index &&
+                        fn->fn_node_index == inst->fn_node_index) {
+                        *out_module = module;
+                        *out_fn     = f;
+                        c->module   = saved;
+                        return true;
+                    }
+                }
+            }
+        }
         bool ok   = cgen_resolve(c,
                                  module,
                                  e->operand_expr_index,

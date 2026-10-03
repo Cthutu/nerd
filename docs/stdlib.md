@@ -53,7 +53,8 @@ library is organised into three layers:
   [API contracts and examples](std-network-foundation.md).
 - `std.queue` and `std.raptor`
   Bounded mutex deques and our own work-stealing scheduler with typed tasks and
-  serial/concurrent dispatch queues. See [contracts](stdlib-raptor.md).
+  serial/concurrent dispatch queues. Queues return owned typed task handles;
+  scheduler startup propagates with `?void`. See [contracts](stdlib-raptor.md).
 - `std.process`
   Portable child-process execution and waiting.
 - `std.signal`

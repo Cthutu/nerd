@@ -80,8 +80,10 @@ retain regression coverage, and commit/push verified work.
 The original scheduler has fixed workers, bounded local LIFO/victim FIFO deques,
 serial/concurrent queues, typed/void task results, cooperative nested waits,
 capacity rejection, one-shot admission and draining close. Mutexes establish the
-first correctness reference. Caller storage and contexts stay stable until
-completion; close requires external producers/waiters to have stopped.
+first correctness reference. Its initial API required stable caller task storage;
+the returned-handle API revision below replaces that requirement. Borrowed callback
+arguments still stay alive until completion; close requires external
+producers/waiters to have stopped.
 
 Compiler prerequisites repair generic function/optional/result-field inference,
 function-field calls under optional context, generic optional return wrapping,
@@ -90,3 +92,30 @@ The full Linux gates pass 1,155 fixtures each; debug also passes 292 differentia
 fixtures at O0/O2, all auxiliaries and frontend ASan. The bounded Raptor runners
 exercise both backends in debug/release, including Linux partial-start injection.
 Windows results from earlier revisions do not establish success for this slice.
+
+## Raptor API and method signature revision
+
+`Queue.async[A, T](callback, argument)` now infers typed arguments/results and
+returns `?Task[T]`, preserving upstream queue-owned submission. `Scheduler.init`
+returns `?void` for propagation. User callbacks take pointers such as `^i32` or
+plain values; no erased-pointer cast is needed. Each accepted invocation has
+stable allocated storage, so the returned handle may move while work runs.
+`take()` transfers a handle; `done()` waits and releases its storage. All readers
+must finish before cleanup. Payloads are shallow and require caller-managed
+lifetimes; owning boxes/records containing them are not supported as payloads.
+The revised tutorial registers cleanup before submission to cover early failure.
+
+Compiler inference now binds generic callback signatures before checking them.
+A sanitizer probe also exposed erased generic function values selecting the
+first specialization with a matching signature; LLVM and C generation now honor
+the explicit specialization, with a pointer/integer/floating-point regression.
+The formatter supports `defer assert` and `undo assert`. LSP signature help hides
+implicit receivers and highlights visible arguments correctly for local,
+imported, generic and incomplete method calls, while preserving builtin help.
+
+Full Linux debug/release gates pass 1,160 fixtures each, with zero failures and
+nine existing skips. Debug also passes 294 C differential fixtures at O0/O2.
+Frontend ASan and native task ASan/UBSan/leak checks pass. Evidence is recorded in
+[the API revision results](../validation/linux/results/20261003-raptor-api/README.md).
+Native Windows validation remains pending for this revision. Nexus and Kerberos
+tutorials remain tied to the message/graph APIs still to be implemented.

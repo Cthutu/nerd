@@ -127,3 +127,8 @@ semantics, without an ASIO copy. `std.raptor` and `std.queue` provide the first
 bounded correctness reference; see [contracts](stdlib-raptor.md). Tutorials for
 all three remade APIs are required; [status](tutorials/README.md). The task branches
 above are historical and have since been removed after ancestry review.
+
+The Raptor API revision places generic `async` on `Queue`, returns owned
+`Task[T]` handles, and makes scheduler `init` return `?void`. Typed callbacks
+need no erased-pointer casts. Handles use explicit `take`/`done`; method signature
+help hides implicit receivers. The tutorial and native contracts cover this API.

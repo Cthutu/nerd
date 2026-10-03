@@ -8865,6 +8865,29 @@ internal bool llvm_explicit_generic_function_index(LlvmFunctionContext* ctx,
         return false;
     }
 
+    // Erased signatures can be shared by distinct explicit specializations.
+    // Preserve the semantic selection rather than picking the first matching
+    // type.
+    if (expr->symbol_handle != U32_MAX) {
+        for (u32 i = 0; i < array_count(ctx->sema->generic_fn_instantiations);
+             ++i) {
+            const SemaGenericFnInstantiation* inst =
+                &ctx->sema->generic_fn_instantiations[i];
+            if (inst->symbol_handle != expr->symbol_handle) {
+                continue;
+            }
+            for (u32 f = 0; f < array_count(ctx->hir->functions); ++f) {
+                const HirFunction* fn = &ctx->hir->functions[f];
+                if (fn->kind == HIR_FUNCTION_GenericInstantiation &&
+                    fn->root_scope_index == inst->root_scope_index &&
+                    fn->fn_node_index == inst->fn_node_index) {
+                    *out = f;
+                    return true;
+                }
+            }
+        }
+    }
+
     const HirExpr* target = &ctx->hir->exprs[expr->operand_expr_index];
     if (target->kind == HIR_EXPR_LocalRef && target->ref_kind == HIR_REF_Decl) {
         return llvm_generic_function_for_decl_type(

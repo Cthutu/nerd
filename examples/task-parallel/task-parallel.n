@@ -3,19 +3,25 @@
 use std.io
 use std.raptor
 
-square :: fn (context: ^void) -> i32 {
-    value := context.as(^i32)^
-    return value * value
+square :: fn (value: ^i32) -> i32 {
+    number := value^
+    return number * number
 }
 
-main :: fn () -> i32 {
+main :: fn () -> ?void {
     scheduler : Scheduler
-    on !scheduler.init(4) => return 1
+    scheduler.init(4)?
+    defer assert scheduler.close()
     values : [8]i32       = [1, 2, 3, 4, 5, 6, 7, 8]
     tasks  : [8]Task[i32]
 
+    defer {
+        for i in [0 .. tasks.count] {
+            assert tasks[i].done()
+        }
+    }
     for i in [0 .. values.count] {
-        assert tasks[i].async(scheduler.get_default_queue(), square, (^values[i]).as(^void))
+        tasks[i] = scheduler.get_default_queue().async(square, ^values[i])?
     }
     assert when_all[i32](tasks[..])
     total : i32 = 0
@@ -33,5 +39,5 @@ main :: fn () -> i32 {
     assert scheduler.close()
     assert total == 204
     prn($"Raptor tasks: sum of squares = {total}")
-    return 0
+    return
 }

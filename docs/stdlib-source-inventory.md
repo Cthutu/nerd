@@ -136,3 +136,8 @@ search for an upstream work-stealing revision is closed by this decision; source
 reuse terms still apply to any future copied material. No upstream implementation
 was copied for this slice. Runnable tutorials for Raptor, Kerberos and Nexus are
 required delivery gates; [status and walkthroughs](tutorials/README.md).
+
+The current Nerd mapping preserves queue-owned submission: `Queue.async[A, T]`
+infers a typed callback argument and returns `?Task[T]`. Stable invocation storage
+allows returned handles to move; `take` transfers ownership and `done` releases it.
+`Scheduler.init` returns `?void`. See the contracts for remaining API differences.

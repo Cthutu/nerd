@@ -181,6 +181,8 @@ Depends on M2.
   first `std.raptor` slice uses bounded mutex deques, local LIFO/victim FIFO,
   external submission and explicit worker counts including single-worker mode.
   See [contracts](stdlib-raptor.md); this is not upstream algorithm parity.
+- [x] Preserve queue-owned `async` with inferred typed arguments and returned task
+  handles, explicit handle cleanup/movement, and `?void` scheduler startup.
 - [x] Define typed/void completion, nested cooperative waits, bounded admission,
   drain and self/ancestor/same-serial rejection. Cancellation and general
   cross-worker cycle detection are not supported; caller lifetimes are explicit.
