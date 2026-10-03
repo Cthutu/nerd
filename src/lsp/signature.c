@@ -311,6 +311,8 @@ internal void lsp_signature_add_param_range(Arena*     arena,
 internal bool lsp_signature_decl_label(const LspTypeFactView* view,
                                        Arena*                 arena,
                                        const SemaDecl*        decl,
+                                       u32                    skip_params,
+                                       string                 display_name,
                                        string*                out_label,
                                        JsonValue**            out_params)
 {
@@ -336,6 +338,8 @@ internal bool lsp_signature_decl_label(const LspTypeFactView* view,
                 return lsp_signature_decl_label(&imported_view,
                                                 arena,
                                                 imported_decl,
+                                                skip_params,
+                                                display_name,
                                                 out_label,
                                                 out_params);
             }
@@ -372,7 +376,10 @@ internal bool lsp_signature_decl_label(const LspTypeFactView* view,
     JsonValue*    params = json_new_array(arena);
     StringBuilder sb     = {0};
     sb_init(&sb, &build_arena);
-    sb_append_string(&sb, lex_symbol(view->lexer, decl->symbol_handle));
+    sb_append_string(&sb,
+                     display_name.count > 0
+                         ? display_name
+                         : lex_symbol(view->lexer, decl->symbol_handle));
     if (has_generic) {
         if (signature->generic_params_index >=
             array_count(ast->generic_params)) {
@@ -407,8 +414,8 @@ internal bool lsp_signature_decl_label(const LspTypeFactView* view,
         arena_done(&build_arena);
         return false;
     }
-    for (u32 i = 0; i < signature->param_count; ++i) {
-        if (i > 0) {
+    for (u32 i = skip_params; i < signature->param_count; ++i) {
+        if (i > skip_params) {
             sb_append_cstr(&sb, ", ");
         }
 
@@ -453,7 +460,7 @@ internal bool lsp_signature_decl_label(const LspTypeFactView* view,
         arena_done(&param_arena);
     }
     if (signature->is_varargs) {
-        if (signature->param_count > 0) {
+        if (signature->param_count > skip_params) {
             sb_append_cstr(&sb, ", ");
         }
         usize param_start = sb.size;
@@ -1023,7 +1030,7 @@ internal bool lsp_signature_module_export_label(Arena*      arena,
                 .sema   = module.sema,
             };
             found = lsp_signature_decl_label(
-                &view, arena, decl, out_label, out_params);
+                &view, arena, decl, 0, (string){0}, out_label, out_params);
             break;
         }
     }
@@ -1237,6 +1244,98 @@ internal bool lsp_signature_source_use_decl_label(Arena*             arena,
 
     arena_done(&temp);
     return found;
+}
+
+internal bool lsp_signature_instance_label(const LspTypeFactView* view,
+                                           Arena*                 arena,
+                                           usize                  name_offset,
+                                           string*                label,
+                                           JsonValue**            parameters)
+{
+    u32    token_end = 0;
+    Token* token     = lex_find((Lexer*)view->lexer, name_offset, &token_end);
+    if (token == NULL || token->kind != TK_Symbol) {
+        return false;
+    }
+    u32 token_index = (u32)(token - view->lexer->tokens);
+    for (u32 i = 0; i < array_count(view->ast->nodes); ++i) {
+        const AstNode* field = &view->ast->nodes[i];
+        if (field->kind != AK_Field || field->token_index != token_index) {
+            continue;
+        }
+        u32 receiver = field->a;
+        while (receiver < array_count(view->ast->nodes) &&
+               view->ast->nodes[receiver].kind == AK_Expression) {
+            receiver = view->ast->nodes[receiver].a;
+        }
+        // Type/trait and namespace calls supply their receiver explicitly.
+        if (receiver < array_count(view->sema->node_decl_indices)) {
+            const SemaDecl* receiver_decl = NULL;
+            if (lsp_sema_decl(view->sema,
+                              view->sema->node_decl_indices[receiver],
+                              &receiver_decl) &&
+                (receiver_decl->kind == SK_TypeAlias ||
+                 receiver_decl->kind == SK_GenericTypeAlias ||
+                 receiver_decl->kind == SK_Trait ||
+                 receiver_decl->kind == SK_Module)) {
+                return false;
+            }
+        }
+        for (u32 call_index = 0; call_index < array_count(view->ast->nodes);
+             ++call_index) {
+            const AstNode* call = &view->ast->nodes[call_index];
+            if (call->kind != AK_Call) {
+                continue;
+            }
+            u32 callee = call->a;
+            if (callee < array_count(view->ast->nodes) &&
+                view->ast->nodes[callee].kind == AK_Index) {
+                callee = view->ast->nodes[callee].a;
+            }
+            if (callee != i ||
+                call_index >=
+                    array_count(view->sema->node_method_call_decl_indices)) {
+                continue;
+            }
+            const SemaDecl* resolved = NULL;
+            if (lsp_sema_decl(
+                    view->sema,
+                    view->sema->node_method_call_decl_indices[call_index],
+                    &resolved)) {
+                return lsp_signature_decl_label(
+                    view,
+                    arena,
+                    resolved,
+                    1,
+                    lex_symbol(view->lexer, field->b),
+                    label,
+                    parameters);
+            }
+        }
+        LspModuleView   module     = {0};
+        u32             decl_index = sema_no_decl();
+        const SemaDecl* decl       = NULL;
+        if (!lsp_find_field_receiver_method(
+                view->doc, i, &module, &decl_index) ||
+            !lsp_sema_decl(module.sema, decl_index, &decl)) {
+            return false;
+        }
+        LspTypeFactView method_view = {
+            .doc    = view->doc,
+            .source = module.lexer->source.source,
+            .lexer  = module.lexer,
+            .ast    = module.ast,
+            .sema   = module.sema,
+        };
+        return lsp_signature_decl_label(&method_view,
+                                        arena,
+                                        decl,
+                                        1,
+                                        lex_symbol(view->lexer, field->b),
+                                        label,
+                                        parameters);
+    }
+    return false;
 }
 
 internal bool lsp_signature_builtin_owner(const LspTypeFactView*   view,
@@ -1465,6 +1564,32 @@ void lsp_handle_signature_help(LspState* state, const LspMessage* message)
         return;
     }
 
+    string     instance_label      = {0};
+    JsonValue* instance_parameters = NULL;
+    if (lsp_signature_instance_label(&view,
+                                     message->arena,
+                                     name_offset,
+                                     &instance_label,
+                                     &instance_parameters)) {
+        JsonValue* signature = json_new_object(message->arena);
+        json_object_set_string(
+            signature, message->arena, "label", instance_label);
+        json_object_set_array(signature, "parameters", instance_parameters);
+        JsonValue* signatures = json_new_array(message->arena);
+        json_array_push(signatures, signature);
+        JsonValue* result = json_new_object(message->arena);
+        json_object_set_array(result, "signatures", signatures);
+        json_object_set_number(result, message->arena, "activeSignature", 0);
+        json_object_set_number(
+            result, message->arena, "activeParameter", active_param);
+        json_object_set_object(response, "result", result);
+        lsp_send_response(message->arena, response);
+        if (using_repaired) {
+            program_info_done(&repaired_program);
+        }
+        return;
+    }
+
     const SemaDecl* decl = lsp_signature_find_decl(&view, name);
     if (decl == NULL && !using_repaired) {
         using_repaired =
@@ -1556,6 +1681,8 @@ void lsp_handle_signature_help(LspState* state, const LspMessage* message)
                     !lsp_signature_decl_label(&view,
                                               message->arena,
                                               candidate_decl,
+                                              0,
+                                              (string){0},
                                               &label,
                                               &parameters)) {
                     continue;
@@ -1593,7 +1720,7 @@ void lsp_handle_signature_help(LspState* state, const LspMessage* message)
     string     label      = {0};
     JsonValue* parameters = NULL;
     bool       labelled   = lsp_signature_decl_label(
-        &view, message->arena, decl, &label, &parameters);
+        &view, message->arena, decl, 0, (string){0}, &label, &parameters);
     if (!labelled && !using_repaired) {
         using_repaired =
             lsp_signature_repaired_type_fact_view(message->arena,
@@ -1605,9 +1732,13 @@ void lsp_handle_signature_help(LspState* state, const LspMessage* message)
                                                   &view);
         if (using_repaired) {
             decl     = lsp_signature_find_decl(&view, name);
-            labelled = decl != NULL &&
-                       lsp_signature_decl_label(
-                           &view, message->arena, decl, &label, &parameters);
+            labelled = decl != NULL && lsp_signature_decl_label(&view,
+                                                                message->arena,
+                                                                decl,
+                                                                0,
+                                                                (string){0},
+                                                                &label,
+                                                                &parameters);
         }
     }
     if (!labelled) {

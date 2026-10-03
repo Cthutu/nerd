@@ -76,6 +76,27 @@ Omitting `-> <type>` means the foreign function returns `void`:
 seed_rng :: ffi "c" srand (seed: u32)
 ```
 
+## Typed callbacks
+
+Use an ordinary function type for a native callback parameter:
+
+```nerd
+Compare :: fn (left: ^void, right: ^void) -> i32
+ffi "c" qsort (base: ^void, count: usize, size: usize, compare: Compare)
+```
+
+Pass a function with the matching signature directly, without converting it to
+`^void`. The compiler checks parameter and result types. Function types may also
+be returned from FFI functions or nested within callback signatures.
+
+Callback signatures support scalar values, pointers, compatible function types,
+and `void` results. Aggregates passed by value (including C-layout plexes),
+strings, slices, dynamic arrays, and atomic values are rejected in callback
+signatures. Pass pointers to such data instead. Callbacks use the target's native
+calling convention; no new calling-convention annotation is introduced.
+The caller remains responsible for keeping callback contexts alive and for
+synchronisation when native code invokes callbacks on other threads.
+
 ## Varargs
 
 Imported C functions use an unnamed `...`:

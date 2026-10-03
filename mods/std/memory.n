@@ -430,6 +430,7 @@ on "debug" {
     ANSI_DIM          :: "\x1b[2m"
 
     -- Prints reportable live runtime allocations to stderr.
+    -- Join workers first: traversal requires no concurrent allocation or freeing.
     pub print_leaks :: fn (show_message_on_no_leaks: bool = no) {
         heap_current  := nrt_mem_live_head()
         arena_current := nrt_arena_live_head()

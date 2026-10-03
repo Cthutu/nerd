@@ -1,0 +1,15 @@
+uv run build/build.py -r nerd
+[36m================================================[0m
+[1m[36m build :: clang :: release [0m
+[1m[36m projects :: nerd[0m
+[36m================================================[0m
+[90m[skip][0m 2 run directive(s) up to date
+[90m[skip][0m _bin/nerd (up to date)
+[90m[skip][0m 68 source file(s) up to date
+[32m================================================[0m
+[1m[32m>> Build complete. Go be nerdy! \o/ <<[0m
+[32m================================================[0m
+mkdir -p _bin/examples
+NERD_LIB_PATH="/home/matt/nerd-consolidation-review/mods" ./_bin/nerd build -r -o "_bin/examples/thread-pipeline" "examples/thread-pipeline/thread-pipeline.n"
+cd "examples/thread-pipeline" && "../../_bin/examples/thread-pipeline"
+Consumed 100 values; total = 5050

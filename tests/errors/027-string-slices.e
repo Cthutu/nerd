@@ -23,7 +23,7 @@ main :: fn () {
         {
             "kind": "secondary",
             "source_file": "__REPO__/mods/core.n",
-            "line": 226,
+            "line": 231,
             "column": 5,
             "length": 8,
             "message": "Type `c_string` is defined here"

@@ -3252,10 +3252,18 @@ internal bool hir_append_destructure_tuple_items(Hir*        hir,
     return true;
 }
 
-internal u32 hir_enclosing_return_type(const Ast*  ast,
+internal u32 hir_enclosing_return_type(const Hir*  hir,
+                                       const Ast*  ast,
                                        const Sema* sema,
                                        u32         node_index)
 {
+    if (hir->lowering_function_index < array_count(hir->functions)) {
+        u32 type = hir->functions[hir->lowering_function_index].type_index;
+        if (type < array_count(sema->types) &&
+            sema->types[type].kind == STK_Function) {
+            return sema->types[type].return_type;
+        }
+    }
     u32 scope = hir_node_scope(sema, node_index);
     while (scope != U32_MAX && scope < array_count(sema->scopes)) {
         const SemaScope* current = &sema->scopes[scope];
@@ -3401,17 +3409,17 @@ internal u32 hir_lower_stmt(Hir*         hir,
         return hir_add_stmt(
             hir,
             (HirStmt){
-                .kind = HIR_STMT_Return,
-                .expr_index =
-                    node->a != U32_MAX
-                        ? hir_lower_expr_with_expected(
-                              hir,
-                              lexer,
-                              ast,
-                              sema,
-                              node->a,
-                              hir_enclosing_return_type(ast, sema, node_index))
-                        : hir_no_index(),
+                .kind             = HIR_STMT_Return,
+                .expr_index       = node->a != U32_MAX
+                                        ? hir_lower_expr_with_expected(
+                                              hir,
+                                              lexer,
+                                              ast,
+                                              sema,
+                                              node->a,
+                                              hir_enclosing_return_type(
+                                                  hir, ast, sema, node_index))
+                                        : hir_no_index(),
                 .symbol_handle    = U32_MAX,
                 .local_index      = sema_no_local(),
                 .type_index       = hir_node_type(sema, node_index),
@@ -4205,12 +4213,8 @@ internal u32 hir_lower_function_body(Hir*         hir,
     if (fn_node->b == AFK_Expr) {
         u32 expr_node_index = fn_end > 0 ? fn_end - 1 : hir_no_index();
         if (expr_node_index < array_count(ast->nodes)) {
-            u32 function_type = hir_node_type(sema, fn_node_index);
             u32 return_type =
-                function_type < array_count(sema->types) &&
-                        sema->types[function_type].kind == STK_Function
-                    ? sema->types[function_type].return_type
-                    : sema_no_type();
+                hir_enclosing_return_type(hir, ast, sema, fn_node_index);
             bool return_is_failure_sum =
                 return_type < array_count(sema->types) &&
                 sema->types[return_type].kind == STK_Enum &&
@@ -4530,10 +4534,13 @@ internal void hir_add_function(Hir*            hir,
         hir_set_decl_binding(hir, decl_index, binding_index);
     }
 
+    u32 previous_function        = hir->lowering_function_index;
+    hir->lowering_function_index = function_index;
     u32 body_block_index =
         kind == HIR_FUNCTION_Ffi
             ? hir_no_index()
             : hir_lower_function_body(hir, lexer, ast, sema, fn_node_index);
+    hir->lowering_function_index                    = previous_function;
     hir->functions[function_index].body_block_index = body_block_index;
     hir_add_function_params(
         hir, lexer, ast, sema, function_index, fn_node_index, root_scope_index);
@@ -4744,7 +4751,7 @@ internal u32 hir_decl_fn_node(const Ast* ast, const SemaDecl* decl)
 
 Hir hir_generate(const Lexer* lexer, const Ast* ast, const Sema* sema)
 {
-    Hir hir = {0};
+    Hir hir = {.lowering_function_index = U32_MAX};
     arena_init(&hir.arena);
     hir.current_module_index = hir_find_current_module_index(sema);
 

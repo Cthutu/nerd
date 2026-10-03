@@ -1,0 +1,5 @@
+pub number := 101
+
+pub number_address :: fn () -> ^i32 {
+    return ^number
+}

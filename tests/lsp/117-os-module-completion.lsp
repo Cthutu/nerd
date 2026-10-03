@@ -138,6 +138,14 @@ main :: fn () {}
                 "kind": 9
             },
             {
+                "label": "socket",
+                "kind": 9
+            },
+            {
+                "label": "thread",
+                "kind": 9
+            },
+            {
                 "label": "windows",
                 "kind": 9
             }

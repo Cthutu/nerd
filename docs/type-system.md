@@ -223,6 +223,19 @@ parser mostly sees symbols and type syntax; semantic analysis resolves them.
 Integer literals begin life as `untyped integer`. This lets the semantic pass
 delay commitment until surrounding context is known.
 
+When an integer destination is selected, the literal must fit that type. For
+example, `value: u8 = 256`, `value: i8 = 128`, and `value: u8 = -1` are semantic
+errors; `value: i8 = -128` is valid. The same rules apply to atomic element types,
+arguments, returns, fields, arrays and inferred variable storage. Positive
+literals retain their full unsigned magnitude, so `u64` accepts
+`18446744073709551615` but `i64` does not. Hexadecimal notation does not bypass
+the destination range check.
+
+Explicit `.as(...)` conversions keep their conversion behavior, including integer
+narrowing: `256.as(u8)` yields zero. A large literal is preserved before the
+conversion, rather than truncated through the default `i32` type. Arithmetic on
+concrete integer values retains its existing wrapping behavior.
+
 When a concrete runtime type is required, `sema_materialise_type(...)` currently
 maps `untyped integer` to `i32`.
 
@@ -360,9 +373,12 @@ Plex layout annotations are written after `plex`:
 - `PackedHeader :: plex #packed { tag u8 length u32 }`
 
 `#c` requests explicit source-order C-compatible layout. `#packed` emits a
-packed storage layout and implies `#c`. Unannotated plexes currently also use
-source-order layout for predictable lowering and debugging; compiler-driven
-field reordering is reserved for a future optimisation milestone.
+packed storage layout and implies `#c`. Ordinary plex layout is compiler-controlled:
+the compiler may reorder fields or insert padding to reduce wasted space, improve
+cache behavior, or optimize access. Field alignment and named access must remain
+correct. Source order, field offsets, and total size are not stable ABI promises.
+Both backends currently use source-order layout; that is an implementation choice,
+not a language guarantee. Use `#c` when native interoperability requires C layout.
 
 ## Fixed Arrays
 

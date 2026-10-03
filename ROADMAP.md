@@ -4,6 +4,12 @@ This document records current project guidance and active work. Completed
 milestone plans should live in git history, tests, and documentation rather than
 continuing to grow this file.
 
+## Active Standard-Library Work
+
+The `std-library` branch plans Raptor queues/scheduling, Kerberos graphs, portable
+BSD-style `std.network`, and message-oriented `std.nexus`. See the
+[scope, dependencies and milestone gates](docs/stdlib-expansion-plan.md).
+
 ## Current State
 
 - The compiler pipeline is `lexer -> CST/AST parser -> sema -> HIR -> LLVM IR -> clang`.

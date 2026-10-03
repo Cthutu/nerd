@@ -1,0 +1,20 @@
+wsl: Failed to start the systemd user session for 'matt'. See journalctl for more details.
+Validation checkout: /home/matt/.cache/nerd-callback-qg__otf_
+================================================
+ build :: clang :: debug
+ projects :: nerd
+================================================
+[skip] 2 run directive(s) up to date
+[ cc ] compiler/sema/sema.c
+[link] _bin/nerd-debug
+[skip] 67 source file(s) up to date
+================================================
+>> Build complete. Go be nerdy! \o/ <<
+================================================
+Native thread/sync layouts passed
+CGen debug temp-arena-alias-reproducer.n: passed
+CGen debug lifecycle.n: passed
+CGen debug thread-pipeline.n: passed
+CGen release temp-arena-alias-reproducer.n: passed
+CGen release lifecycle.n: passed
+CGen release thread-pipeline.n: passed

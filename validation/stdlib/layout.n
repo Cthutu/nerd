@@ -1,0 +1,60 @@
+use std.atomics
+use std.memory
+
+-- No assertions about source order, offsets or total size for ordinary plexes.
+Record :: plex {
+    tag u8
+    counter atomic[usize]
+    tail u8
+    wide atomic[u64]
+}
+
+CRecord :: plex #c {
+    tag u8
+    counter usize
+    tail u8
+}
+
+Nested :: plex {
+    prefix u8
+    record Record
+}
+
+verify :: fn (value: ^Record) {
+    assert (^value.counter).as(usize) % usize.size == 0
+    assert (^value.wide).as(usize) % u64.size == 0
+    value.tag = 3
+    value.tail = 5
+    value.counter.store(7)
+    value.wide.store(0x1_0000_0001)
+    assert value.counter.fetch_add(2) == 7
+    assert value.wide.load() == 0x1_0000_0001
+    assert value.tag == 3 && value.tail == 5
+}
+
+main :: fn () {
+    stack: Record
+    verify(^stack)
+    nested: Nested
+    verify(^nested.record)
+    fixed: [8]Record
+    for i := 0; i < 8; i += 1 { verify(^fixed[i]) }
+    dynamic: [..]Record
+    for i := 0; i < 32; i += 1 { dynamic.push(Record { ... }) }
+    for i := 0; i < 32; i += 1 { verify(^dynamic[i]) }
+    dynamic.free()
+    storage: arena
+    _ := storage.alloc_bytes(1)
+    records := storage.alloc_array[Record](8)
+    for i := 0; i < 8; i += 1 { verify(^records[i]) }
+    storage.done()
+    memory := alloc(Record.size * 8)
+    pointer := memory.data.as(^Record)
+    for i := 0; i < 8; i += 1 { verify(^pointer[i]) }
+    free(memory)
+    native: CRecord
+    base := (^native).as(usize)
+    counter_offset := (^native.counter).as(usize) - base
+    tail_offset := (^native.tail).as(usize) - base
+    prn($"C layout: {CRecord.size} {counter_offset} {tail_offset}")
+}

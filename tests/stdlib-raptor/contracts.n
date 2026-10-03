@@ -1,0 +1,537 @@
+use std.io
+use std.queue
+use std.raptor
+use std.sync
+use std.thread
+
+Gate :: plex {
+    mutex    Mutex
+    changed  Condition
+    entered  bool
+    released bool
+}
+
+await_release :: fn (gate: ^Gate) {
+    assert gate.mutex.lock()
+    gate.entered = yes
+    assert gate.changed.broadcast()
+    for !gate.released {
+        assert gate.changed.wait(^gate.mutex)
+    }
+    assert gate.mutex.unlock()
+}
+
+release_gate :: fn (gate: ^Gate) {
+    assert gate.mutex.lock()
+    gate.released = yes
+    assert gate.changed.broadcast()
+    assert gate.mutex.unlock()
+}
+
+gated :: fn (gate: ^Gate) -> i32 {
+    await_release(gate)
+    return 42
+}
+
+value :: fn (number: ^i32) -> i32 {
+    return number^
+}
+
+by_value :: fn (number: i32) -> i32 {
+    return number * number
+}
+
+nothing :: fn (number: ^i32) {
+    number^ += 1
+}
+
+Nested :: plex {
+    queue     ^Queue
+    task      ^Task[i32]
+    serial    ^Task[i32]
+    scheduler ^Scheduler
+    gate      ^Gate
+    number    i32
+}
+
+nested_child :: fn (state: ^Nested) -> i32 {
+    assert !state.task.wait()
+    assert !state.task.done()
+    return 17
+}
+
+nested :: fn (state: ^Nested) -> i32 {
+    await_release(state.gate)
+    assert !state.task.wait()
+    assert !state.scheduler.close()
+    child : Task[i32]
+    on state.queue.async(nested_child, state) {
+        t => {
+            child = t
+        }
+
+        else => return -1
+    }
+    defer assert child.done()
+    on child.get() {
+        result  => return result + 1
+        else    => return -1
+    }
+}
+
+serial_wait :: fn (state: ^Nested) -> i32 {
+    state.number = 8
+    on state.queue.async(value, ^state.number) {
+        child => {
+            state.serial^ = child
+        }
+
+        else => {
+            assert no
+        }
+    }
+    assert !state.serial.wait()
+    assert !state.serial.done()
+    return 1
+}
+
+SerialState :: plex {
+    next   i32
+    active bool
+}
+
+SerialItem :: plex {
+    state ^SerialState
+    index i32
+}
+
+serial_item :: fn (item: ^SerialItem) {
+    assert !item.state.active
+    item.state.active = yes
+    assert item.state.next == item.index
+    item.state.next += 1
+    item.state.active = no
+}
+
+Stealing :: plex {
+    queue ^Queue
+    gate  ^Gate
+    child ^Task[void]
+}
+
+steal_parent :: fn (state: ^Stealing) {
+    assert state.gate.mutex.lock()
+    on state.queue.async(release_gate, state.gate) {
+        child => {
+            state.child^ = child
+        }
+
+        else => {
+            assert no
+        }
+    }
+    for !state.gate.released {
+        assert state.gate.changed.wait(^state.gate.mutex)
+    }
+    assert state.gate.mutex.unlock()
+    assert state.child.wait()
+}
+
+Producer :: plex {
+    queue  ^Queue
+    tasks  [32]Task[i32]
+    values [32]i32
+}
+
+produce :: fn (context: ^void) {
+    producer := context.as(^Producer)
+    for i in [0 .. 32] {
+        producer.values[i] = i.as(i32)
+        on producer.queue.async(value, ^producer.values[i]) {
+            task => {
+                producer.tasks[i] = task
+            }
+
+            else => {
+                assert no
+            }
+        }
+    }
+    assert when_all[i32](producer.tasks[..])
+    for i in [0 .. 32] {
+        on producer.tasks[i].get() {
+            result => {
+                assert result == i.as(i32)
+            }
+
+            else => {
+                assert no
+            }
+        }
+        assert producer.tasks[i].done()
+    }
+}
+
+Removal :: plex {
+    deque   ^void
+    gate    ^Gate
+    thief   bool
+    claimed ^void
+}
+
+remove_one :: fn (context: ^void) {
+    state := context.as(^Removal)
+    assert state.gate.mutex.lock()
+    for !state.gate.released {
+        assert state.gate.changed.wait(^state.gate.mutex)
+    }
+    assert state.gate.mutex.unlock()
+    deque := state.deque.as(^WorkDeque[^void])
+    on state.thief => {
+        on deque.steal() {
+            p => {
+                state.claimed = p
+            }
+
+            else => {
+            }
+        }
+    } else {
+        on deque.pop() {
+            p => {
+                state.claimed = p
+            }
+
+            else => {
+            }
+        }
+    }
+}
+
+main :: fn () -> i32 {
+    slots   : [3]^void
+    deque   : WorkDeque[^void]
+    numbers                    := [1, 2, 3, 4]
+
+    assert deque.init((^slots[0]).as([]^void, 3))
+    assert deque.pop() == nil
+    assert deque.steal() == nil
+    for i in [0 .. 3] {
+        assert deque.push((^numbers[i]))
+    }
+    assert !deque.push((^numbers[3]))
+    on deque.pop() {
+        p => {
+            assert p.as(^i32)^ == 3
+        }
+
+        else => {
+            assert no
+        }
+    }
+    on deque.steal() {
+        p => {
+            assert p.as(^i32)^ == 1
+        }
+
+        else => {
+            assert no
+        }
+    }
+    assert deque.push((^numbers[3]))
+    on deque.steal() {
+        p => {
+            assert p.as(^i32)^ == 2
+        }
+
+        else => {
+            assert no
+        }
+    }
+    on deque.pop() {
+        p => {
+            assert p.as(^i32)^ == 4
+        }
+
+        else => {
+            assert no
+        }
+    }
+    race_gate : Gate
+    assert race_gate.mutex.init()
+    assert race_gate.changed.init()
+    for _iteration in [0 .. 32] {
+        race_gate.released = no
+        assert deque.push((^numbers[0]))
+        owner                 := Removal { deque: (^deque) gate: ^race_gate ... }
+        thief                 := Removal { deque: (^deque) gate: ^race_gate thief: yes ... }
+        owner_thread : Thread
+        thief_thread : Thread
+
+        assert owner_thread.start(remove_one, (^owner))
+        assert thief_thread.start(remove_one, (^thief))
+        assert race_gate.mutex.lock()
+        race_gate.released = yes
+        assert race_gate.changed.broadcast()
+        assert race_gate.mutex.unlock()
+        assert owner_thread.join()
+        assert thief_thread.join()
+        assert (owner.claimed != nil) != (thief.claimed != nil)
+        assert deque.pop() == nil
+    }
+    assert race_gate.changed.done()
+    assert race_gate.mutex.done()
+    assert deque.done()
+
+    scheduler : Scheduler
+    assert scheduler.close()
+    assert scheduler.init(0) == nil
+    assert scheduler.init(1, capacity = 0) == nil
+    assert scheduler.init(1, capacity = 2) != nil
+    assert scheduler.init(1) == nil
+    queue                              := scheduler.get_default_queue()
+    idle    : Task[i32]
+    missing : fn (number: ^i32) -> i32
+
+    assert !idle.wait()
+    assert idle.done()
+    number : i32 = 7
+    assert queue.async(missing, ^number) == nil
+    empty : Queue
+    assert empty.async(value, ^number) == nil
+    gate : Gate
+    assert gate.mutex.init()
+    assert gate.changed.init()
+    parent : Task[i32]
+    state              := Nested { queue task: ^parent scheduler: ^scheduler gate: ^gate ... }
+
+    on queue.async(nested, ^state) {
+        task => {
+            parent = task
+        }
+
+        else => {
+            assert no
+        }
+    }
+    release_gate(^gate)
+    on parent.get() {
+        result => {
+            assert result == 18
+        }
+
+        else => {
+            assert no
+        }
+    }
+    assert parent.has_finished()
+    assert scheduler.close()
+    assert parent.wait()
+    assert parent.done()
+    assert parent.done()
+    assert !parent.has_finished()
+    assert !parent.wait()
+    assert parent.get() == nil
+    assert queue.async(value, ^number) == nil
+
+    gate.entered = no
+    gate.released = no
+    assert scheduler.init(1, capacity = 2) != nil
+    queue = scheduler.get_default_queue()
+    first : Task[i32]
+    on queue.async(gated, ^gate) {
+        task => {
+            first = task
+        }
+
+        else => {
+            assert no
+        }
+    }
+    assert gate.mutex.lock()
+    for !gate.entered {
+        assert gate.changed.wait(^gate.mutex)
+    }
+    -- Move a pending handle: the worker retains the allocation, not this record.
+    moved              := first.take()
+    second : Task[i32]
+
+    on queue.async(value, ^number) {
+        task => {
+            second = task
+        }
+
+        else => {
+            assert no
+        }
+    }
+    assert queue.async(value, ^number) == nil
+    gate.released = yes
+    assert gate.changed.broadcast()
+    assert gate.mutex.unlock()
+    assert moved.wait()
+    assert second.wait()
+    assert first.done()
+    assert moved.done()
+    assert second.done()
+    mixed : [2]Task[i32]
+    on queue.async(by_value, 9) {
+        task => {
+            mixed[1] = task
+        }
+
+        else => {
+            assert no
+        }
+    }
+    assert !when_all[i32](mixed[..])
+    assert mixed[1].has_finished()
+    on mixed[1].get() {
+        result => {
+            assert result == 81
+        }
+
+        else => {
+            assert no
+        }
+    }
+    assert mixed[1].done()
+    after_close : Task[i32]
+    on queue.async(value, ^number) {
+        task => {
+            after_close = task
+        }
+
+        else => {
+            assert no
+        }
+    }
+    assert scheduler.close()
+    on after_close.get() {
+        result => {
+            assert result == 7
+        }
+
+        else => {
+            assert no
+        }
+    }
+    assert after_close.done()
+
+    gate.released = no
+    assert scheduler.init(2, capacity = 8) != nil
+    child    : Task[void]
+    stealing              := Stealing { queue: scheduler.get_default_queue() gate: ^gate child: ^child }
+    root     : Task[void]
+
+    on stealing.queue.async(steal_parent, ^stealing) {
+        task => {
+            root = task
+        }
+
+        else => {
+            assert no
+        }
+    }
+    assert root.wait()
+    assert scheduler.mutex.lock()
+    assert scheduler.steals > 0
+    assert scheduler.mutex.unlock()
+    assert root.done()
+    assert child.done()
+    assert scheduler.close()
+    assert gate.changed.done()
+    assert gate.mutex.done()
+
+    assert scheduler.init(4, capacity = 64) != nil
+    serial : Queue
+    assert scheduler.create_queue(^serial, QueueType.Serial)
+    assert !scheduler.create_queue(^serial, QueueType.Serial)
+    sequence : SerialState
+    items    : [64]SerialItem
+    tasks    : [64]Task[void]
+
+    for i in [0 .. 64] {
+        items[i] = SerialItem { state: ^sequence index: i.as(i32) }
+        on serial.async(serial_item, ^items[i]) {
+            task => {
+                tasks[i] = task
+            }
+
+            else => {
+                assert no
+            }
+        }
+    }
+    assert when_all[void](tasks[..])
+    assert sequence.next == 64
+    for i in [0 .. 64] {
+        assert tasks[i].done()
+    }
+    serial_parent : Task[i32]
+    serial_child  : Task[i32]
+    serial_state              := Nested { queue: ^serial serial: ^serial_child scheduler: ^scheduler ... }
+
+    on serial.async(serial_wait, ^serial_state) {
+        task => {
+            serial_parent = task
+        }
+
+        else => {
+            assert no
+        }
+    }
+    assert serial_parent.wait()
+    on serial_child.get() {
+        result => {
+            assert result == 8
+        }
+
+        else => {
+            assert no
+        }
+    }
+    assert serial_parent.done()
+    assert serial_child.done()
+    count     : i32
+    void_task : Task[void]
+
+    on scheduler.get_default_queue().async(nothing, ^count) {
+        task => {
+            void_task = task
+        }
+
+        else => {
+            assert no
+        }
+    }
+    assert void_task.get() != nil
+    assert count == 1
+    assert void_task.done()
+    -- Cleanup also waits for a task that was never explicitly waited upon.
+    on scheduler.get_default_queue().async(nothing, ^count) {
+        cleanup => {
+            assert cleanup.done()
+        }
+
+        else => {
+            assert no
+        }
+    }
+    assert count == 2
+    producers : [4]Producer
+    threads   : [4]Thread
+
+    for i in [0 .. 4] {
+        producers[i].queue = scheduler.get_default_queue()
+        assert threads[i].start(produce, ^producers[i])
+    }
+    for i in [0 .. 4] {
+        assert threads[i].join()
+    }
+    assert scheduler.close()
+    assert sequence.next == 64
+    assert scheduler.close()
+    prn("Raptor deque, stealing, serial, nested waits, producers and drain passed")
+    return 0
+}

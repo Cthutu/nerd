@@ -65,7 +65,7 @@ typedef struct {
     u32    macro_line;
     bool   global_init;
     bool   returning;
-    u32    constant_depth, expected_type;
+    u32    constant_depth, expected_type, local_scope;
     u32    module, next, return_type, va_local;
     bool   failed;
 } CGen;
@@ -85,6 +85,12 @@ internal cstr cgen_format(CGen* c, cstr format, ...)
     vsnprintf(text, (usize)n + 1, format, args);
     va_end(args);
     return text;
+}
+// Each expanded imported constant has locals independent of its caller.
+internal cstr cgen_local_name(CGen* c, u32 index)
+{
+    return c->local_scope == 0 ? CF("ncg_l%u", index)
+                               : CF("ncg_const%u_l%u", c->local_scope, index);
 }
 internal const FrontEndState* cgen_front(CGen* c)
 {
@@ -476,6 +482,7 @@ internal void cgen_define_type(CGen* c, u32 id)
 
 internal CValue cgen_expr(CGen* c, u32 index);
 internal CValue cgen_lvalue(CGen* c, u32 index);
+internal CValue cgen_coerce(CGen* c, CValue v, u32 t);
 internal void   cgen_block(CGen* c, u32 index);
 internal void   cgen_value_block(CGen* c, u32 index, CValue result);
 internal void   cgen_stmt(CGen* c, u32 index);
@@ -531,6 +538,49 @@ internal cstr cgen_binding(CGen* c, u32 m, u32 b, u32 depth)
                                      depth + 1);
                 }
             }
+            if (v->kind == HIR_VALUE_Constant) {
+                if (++c->constant_depth > 64) {
+                    cgen_error(c, "cyclic constant", b);
+                    --c->constant_depth;
+                    return "0";
+                }
+                // Constants expand at their use site, including imported and
+                // module-qualified references. Resolve types in the defining
+                // module, but emit temporaries in the current function body.
+                u32 old_module                 = c->module;
+                u32 old_expected               = c->expected_type;
+                u32 old_scope                  = c->local_scope;
+                Array(bool) old_locals         = c->locals;
+                Array(u32) old_local_types     = c->local_types;
+                Array(CCleanup) old_cleanups   = c->cleanups;
+                Array(CTarget) old_targets     = c->targets;
+                Array(COverride) old_overrides = c->overrides;
+                c->module                      = m;
+                c->expected_type               = U32_MAX;
+                c->local_scope                 = ++c->next;
+                c->locals                      = NULL;
+                c->local_types                 = NULL;
+                c->cleanups                    = NULL;
+                c->targets                     = NULL;
+                c->overrides                   = NULL;
+                CValue value                   = cgen_coerce(
+                    c, cgen_expr(c, v->value_expr_index), v->type_index);
+                array_free(c->locals);
+                array_free(c->local_types);
+                array_free(c->cleanups);
+                array_free(c->targets);
+                array_free(c->overrides);
+                c->locals        = old_locals;
+                c->local_types   = old_local_types;
+                c->cleanups      = old_cleanups;
+                c->targets       = old_targets;
+                c->overrides     = old_overrides;
+                c->module        = old_module;
+                c->expected_type = old_expected;
+                c->local_scope   = old_scope;
+                --c->constant_depth;
+                return value.text;
+            }
             return CF("ncg_m%u_g%u", m, bind->target_index);
         }
     case HIR_BINDING_Import:
@@ -554,7 +604,7 @@ internal CValue cgen_ref(CGen* c, const HirExpr* e)
                 return o->value;
             }
         }
-        value = CF("ncg_l%u", e->ref_index);
+        value = cgen_local_name(c, e->ref_index);
         break;
     case HIR_REF_Binding:
         value = cgen_binding(c, c->module, e->ref_index, 0);
@@ -756,9 +806,9 @@ internal void cgen_local(CGen* c, u32 i, u32 t)
     }
     c->local_types[i] = t;
     sb_format(&c->declarations,
-              "%s ncg_l%u = %s;\n",
+              "%s %s = %s;\n",
               cgen_ctype(c, t),
-              i,
+              cgen_local_name(c, i),
               cgen_zero(c, t));
 }
 internal CValue cgen_lvalue(CGen* c, u32 index)
@@ -778,7 +828,23 @@ internal CValue cgen_lvalue(CGen* c, u32 index)
     if (e->kind == HIR_EXPR_Field || e->kind == HIR_EXPR_TupleField) {
         const HirExpr* base = &cgen_hir(c)->exprs[e->operand_expr_index];
         u32            bt   = base->type_index;
-        CValue         v;
+        if (cgen_kind(c, bt) == STK_Module) {
+            u32                  module = cgen_type(c, bt)->return_type;
+            const FrontEndState* source =
+                &c->program->modules[module].front_end;
+            cstr name = cgen_symbol(c, e->symbol_handle);
+            for (u32 i = 0; i < array_count(source->hir.bindings); ++i) {
+                string symbol = lex_symbol(
+                    &source->lexer, source->hir.bindings[i].symbol_handle);
+                if (string_eq_cstr(symbol, name)) {
+                    return (CValue){
+                        cgen_binding(c, module, i, 0), e->type_index, false};
+                }
+            }
+            cgen_error(c, "unresolved module field", index);
+            return (CValue){"0", e->type_index, false};
+        }
+        CValue v;
         if (cgen_kind(c, bt) == STK_Pointer || cgen_kind(c, bt) == STK_Box) {
             v      = cgen_expr(c, e->operand_expr_index);
             bt     = cgen_type(c, bt)->first_param_type;
@@ -843,8 +909,9 @@ internal void cgen_cleanup_to(CGen* c, u32 base, cstr failure)
         } else if (cl.block) {
             cgen_block(c, cl.index);
         } else {
-            CGEN_OUT(
-                "nrt_mem_free(ncg_l%u); ncg_l%u = NULL;\n", cl.index, cl.index);
+            CGEN_OUT("nrt_mem_free(%s); %s = NULL;\n",
+                     cgen_local_name(c, cl.index),
+                     cgen_local_name(c, cl.index));
         }
         __array_count(c->cleanups) = save;
         if (cl.failure_only) {
@@ -859,7 +926,7 @@ internal void cgen_consume(CGen* c, u32 index, u32 t)
     }
     const HirExpr* e = &cgen_hir(c)->exprs[index];
     if (e->kind == HIR_EXPR_LocalRef && e->ref_kind == HIR_REF_Local) {
-        CGEN_OUT("ncg_l%u = NULL;\n", e->ref_index);
+        CGEN_OUT("%s = NULL;\n", cgen_local_name(c, e->ref_index));
     }
 }
 internal void cgen_return(CGen* c, CValue v)
@@ -876,7 +943,7 @@ internal void cgen_return(CGen* c, CValue v)
     }
     cgen_cleanup_to(c, 0, failure);
     if (c->va_local != U32_MAX) {
-        CGEN_OUT("nrt_va_done(ncg_l%u);\n", c->va_local);
+        CGEN_OUT("nrt_va_done(%s);\n", cgen_local_name(c, c->va_local));
     }
     if (cgen_void(c, c->return_type)) {
         CGEN_OUT("return;\n");
@@ -893,7 +960,12 @@ internal CValue cgen_enum(CGen* c, const HirExpr* e, u32 variant)
              (long long)cgen_sema(c)
                  ->type_param_values[st->first_param_type + variant]);
     u32 pt = cgen_field_type(c, e->type_index, variant);
-    if (e->arg_count && !cgen_void(c, pt)) {
+    if (cgen_void(c, pt)) {
+        // A void payload has no storage, but its arguments still have effects.
+        for (u32 i = 0; i < e->arg_count; ++i) {
+            cgen_expr(c, cgen_hir(c)->call_args[e->first_arg + i].expr_index);
+        }
+    } else if (e->arg_count) {
         if ((cgen_kind(c, pt) == STK_Tuple || cgen_kind(c, pt) == STK_Plex) &&
             !(e->arg_count == 1 &&
               cgen_canonical(
@@ -1066,7 +1138,7 @@ internal cstr cgen_pattern(CGen* c, u32 index, CValue value)
     }
     if (p->kind == HIR_PATTERN_Bind) {
         cgen_local(c, p->local_index, value.type);
-        CGEN_OUT("ncg_l%u=%s;\n", p->local_index, value.text);
+        CGEN_OUT("%s=%s;\n", cgen_local_name(c, p->local_index), value.text);
         return "true";
     }
     bool braced = false;
@@ -1196,7 +1268,9 @@ internal CValue cgen_control(CGen* c, const HirExpr* e)
             CGEN_OUT("if(%s) {\n", cond);
             if (b->binder_local_index != U32_MAX && subject.text) {
                 cgen_local(c, b->binder_local_index, subject.type);
-                CGEN_OUT("ncg_l%u=%s;\n", b->binder_local_index, subject.text);
+                CGEN_OUT("%s=%s;\n",
+                         cgen_local_name(c, b->binder_local_index),
+                         subject.text);
             }
             if (b->guard_expr_index != U32_MAX) {
                 CValue guard = cgen_expr(c, b->guard_expr_index);
@@ -1279,27 +1353,31 @@ internal CValue cgen_control(CGen* c, const HirExpr* e)
         CGEN_OUT("if(%s.tag!=1)goto ncg_else%u;\n", next.text, id);
         u32 it = cgen_field_type(c, next.type, 1);
         cgen_local(c, loop->item_local_index, it);
-        CGEN_OUT("ncg_l%u=%s.payload.f1;\n", loop->item_local_index, next.text);
+        CGEN_OUT("%s=%s.payload.f1;\n",
+                 cgen_local_name(c, loop->item_local_index),
+                 next.text);
     }
     if (loop->kind == HIR_FOR_In && !custom) {
         if (loop->index_local_index != U32_MAX) {
             u32 t = cgen_sema(c)->locals[loop->index_local_index].type_index;
             cgen_local(c, loop->index_local_index, t);
-            CGEN_OUT("ncg_l%u=%s;\n",
-                     loop->index_local_index,
+            CGEN_OUT("%s=%s;\n",
+                     cgen_local_name(c, loop->index_local_index),
                      range ? CF("%s-%s", counter, range_start) : counter);
         }
         if (loop->item_local_index != U32_MAX) {
             u32 t = cgen_sema(c)->locals[loop->item_local_index].type_index;
             cgen_local(c, loop->item_local_index, t);
             if (range) {
-                CGEN_OUT("ncg_l%u=%s;\n", loop->item_local_index, counter);
+                CGEN_OUT("%s=%s;\n",
+                         cgen_local_name(c, loop->item_local_index),
+                         counter);
             } else {
                 cstr data = cgen_kind(c, iterable.type) == STK_DynamicArray
                                 ? CF("%s->data", iterable.text)
                                 : CF("%s.data", iterable.text);
-                CGEN_OUT("ncg_l%u=&((%s*)%s)[%s];\n",
-                         loop->item_local_index,
+                CGEN_OUT("%s=&((%s*)%s)[%s];\n",
+                         cgen_local_name(c, loop->item_local_index),
                          cgen_ctype(c, cgen_type(c, t)->first_param_type),
                          data,
                          counter);
@@ -1443,6 +1521,29 @@ internal bool cgen_resolve(CGen* c,
     }
     if (e->kind == HIR_EXPR_Index &&
         cgen_kind(c, e->type_index) == STK_Function) {
+        // Explicit generic arguments choose a specialization even when its
+        // erased callable signature is identical to another specialization.
+        if (e->symbol_handle != U32_MAX) {
+            for (u32 i = 0; i < array_count(sema->generic_fn_instantiations);
+                 ++i) {
+                const SemaGenericFnInstantiation* inst =
+                    &sema->generic_fn_instantiations[i];
+                if (inst->symbol_handle != e->symbol_handle) {
+                    continue;
+                }
+                for (u32 f = 0; f < array_count(h->functions); ++f) {
+                    const HirFunction* fn = &h->functions[f];
+                    if (fn->kind == HIR_FUNCTION_GenericInstantiation &&
+                        fn->root_scope_index == inst->root_scope_index &&
+                        fn->fn_node_index == inst->fn_node_index) {
+                        *out_module = module;
+                        *out_fn     = f;
+                        c->module   = saved;
+                        return true;
+                    }
+                }
+            }
+        }
         bool ok   = cgen_resolve(c,
                                  module,
                                  e->operand_expr_index,
@@ -2927,7 +3028,7 @@ internal void cgen_stmt(CGen* c, u32 index)
                            : cgen_coerce(c,
                                          cgen_expr(c, st->expr_index),
                                          st->type_index);
-            CGEN_OUT("ncg_l%u=%s;\n", st->local_index, v.text);
+            CGEN_OUT("%s=%s;\n", cgen_local_name(c, st->local_index), v.text);
             cgen_consume(c, st->expr_index, st->type_index);
             if (cgen_kind(c, st->type_index) == STK_Box) {
                 array_push(c->cleanups, ((CCleanup){.index = st->local_index}));
@@ -2950,8 +3051,8 @@ internal void cgen_stmt(CGen* c, u32 index)
                 const HirDestructureItem* item =
                     &cgen_hir(c)->destructure_items[st->target_expr_index + i];
                 cgen_local(c, item->local_index, item->type_index);
-                CGEN_OUT("ncg_l%u=%s.f%u;\n",
-                         item->local_index,
+                CGEN_OUT("%s=%s.f%u;\n",
+                         cgen_local_name(c, item->local_index),
                          v.text,
                          item->field_index);
             }
@@ -3042,8 +3143,8 @@ internal void cgen_value_block(CGen* c, u32 index, CValue result)
             cgen_hir(c)->exprs[st->expr_index].kind == HIR_EXPR_FunctionRef) {
             cgen_local(c, st->local_index, st->type_index);
             CGEN_OUT(
-                "ncg_l%u=%s;\n",
-                st->local_index,
+                "%s=%s;\n",
+                cgen_local_name(c, st->local_index),
                 cgen_function(c,
                               c->module,
                               cgen_hir(c)->exprs[st->expr_index].ref_index));
@@ -3256,7 +3357,8 @@ bool cgen_save_program(const ProgramInfo*        program,
             }
         }
         for (u32 i = 0; i < array_count(h->values); ++i) {
-            if (!cgen_imported_value(c, &h->values[i]) &&
+            if (h->values[i].kind == HIR_VALUE_Global &&
+                !cgen_imported_value(c, &h->values[i]) &&
                 !cgen_void(c, h->values[i].type_index)) {
                 const HirValue* v = &h->values[i];
                 const HirExpr*  e = v->value_expr_index < array_count(h->exprs)
@@ -3351,7 +3453,8 @@ bool cgen_save_program(const ProgramInfo*        program,
         c->global_init = true;
         for (u32 i = 0; i < array_count(h->values); ++i) {
             const HirValue* v = &h->values[i];
-            if (cgen_imported_value(c, v) || cgen_void(c, v->type_index)) {
+            if (v->kind != HIR_VALUE_Global || cgen_imported_value(c, v) ||
+                cgen_void(c, v->type_index)) {
                 continue;
             }
             CValue value = cgen_coerce(

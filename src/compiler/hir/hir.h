@@ -353,6 +353,8 @@ typedef struct {
 
 typedef struct {
     u32 current_module_index;
+    u32 lowering_function_index; // Scoped signature for generic return
+                                 // coercion.
     Array(HirModuleImport) module_imports;
     Array(HirImport) imports;
     Array(HirExtern) externs;

@@ -1,0 +1,15 @@
+-- Regression: imported constants resolve the worker's arena in both backends.
+use std.thread
+
+compare :: fn (context: ^void) {
+    context.as(^bool)^ = current_temp_arena() == temp_arena
+}
+
+main :: fn () {
+    same   : bool
+    worker : Thread
+
+    assert worker.start(compare, (^same).as(^void))
+    assert worker.join()
+    on same => prn("current") else prn("cached")
+}

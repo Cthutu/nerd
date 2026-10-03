@@ -1,0 +1,361 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- IPv4 TCP and UDP sockets with explicit ownership, partial byte counts and
+-- native error detail. No hidden threads or global initialisation are used.
+
+-- Portable socket failures; native codes are retained when the OS reports one.
+-- A zero MessageTooLarge code denotes truncation detected from a successful
+-- Linux MSG_TRUNC receive; it is not a captured errno value.
+pub NetworkError :: enum {
+    Invalid
+    WouldBlock {
+        code i32
+    }
+    -- Platform error code.
+    Interrupted {
+        code i32
+    }
+    -- Platform error code.
+    ConnectionRefused {
+        code i32
+    }
+    -- Platform error code.
+    ConnectionReset {
+        code i32
+    }
+    -- Platform error code.
+    AddressInUse {
+        code i32
+    }
+    -- Platform error code.
+    MessageTooLarge {
+        code i32
+    }
+    -- Platform code, or zero for library-detected truncation.
+    System {
+        code i32
+    }
+    -- Platform error code.
+}
+
+-- Selects stream or datagram semantics.
+pub SocketKind :: enum {
+    Tcp
+    Udp
+}
+
+-- IPv4 octets and port in host order; port zero requests an ephemeral binding.
+pub Ipv4Address :: plex {
+    octets [4]u8  -- Address bytes in written order.
+    port   u16    -- Host-order port number.
+}
+
+-- Owns one OS socket. Do not copy a live value or race any operation with
+-- close. Each Windows socket owns one matching Winsock startup reference.
+pub Socket :: plex {
+    raw            usize       -- Opaque native handle; never close this field
+                               --     directly.
+    valid          bool        -- True until close releases ownership.
+    kind           SocketKind  -- Transport selected at creation.
+    is_nonblocking bool        -- True after nonblocking mode is enabled.
+}
+
+-- One TCP receive result; EOF is distinct from an empty output buffer.
+pub Received :: plex {
+    count usize  -- Bytes written into the caller's buffer.
+    eof   bool   -- True only when a nonempty TCP receive sees orderly peer
+                 --     shutdown.
+}
+
+-- One received datagram, including zero-length payloads.
+pub Datagram :: plex {
+    count  usize        -- Payload bytes written into the caller's buffer.
+    sender Ipv4Address  -- Source address for a reply.
+}
+
+-- Constructs an address from four octets and a host-order port.
+pub ipv4 :: fn (a: u8, b: u8, c: u8, d: u8, port: u16) -> Ipv4Address {
+    return Ipv4Address { octets: [a, b, c, d] port }
+}
+
+-- Returns the IPv4 loopback address with the supplied port.
+pub loopback :: fn (port: u16) -> Ipv4Address {
+    return ipv4(127, 0, 0, 1, port)
+}
+
+on "windows" {
+
+    use os.socket
+    send_flags     :: 0
+    receive_flags  :: 0
+    invalid_socket :: 0xffffffffffffffff.as(usize)
+
+    -- Acquires a Winsock reference without sharing mutable library state.
+    network_start :: fn () -> void\NetworkError {
+        data : StartupData
+        code               := ns_startup(0x0202, ^data)
+
+        on code != 0 => return network_error(code)!
+        on data.version != 0x0202 => {
+            _ := ns_cleanup()
+            return NetworkError.Invalid!
+        }
+    }
+
+    -- Releases this socket's Winsock reference after closing its native handle.
+    network_stop :: fn () {
+        _ := ns_cleanup()
+    }
+
+    -- Captures the calling thread's Winsock error immediately after failure.
+    network_last_error :: fn () => ns_last_error()
+
+    -- Maps Winsock errors without discarding their native code.
+    network_error :: fn (code: i32) -> NetworkError {
+        return on code {
+            10035  => NetworkError.WouldBlock { code }
+            10004  => NetworkError.Interrupted { code }
+            10061  => NetworkError.ConnectionRefused { code }
+            10054  => NetworkError.ConnectionReset { code }
+            10048  => NetworkError.AddressInUse { code }
+            10040  => NetworkError.MessageTooLarge { code }
+            else   => NetworkError.System { code }
+        }
+    }
+
+    -- Changes socket mode with Winsock's FIONBIO request.
+    network_nonblocking :: fn (socket: NativeSocket, enabled: bool) -> i32 {
+        flag : u32 = on enabled { yes => 1 else => 0 }
+        return ns_ioctl(socket, 0x8004667e.as(i32), ^flag)
+    }
+
+}
+
+on "linux" {
+
+    use os.socket
+    send_flags :: 0x4000  -- MSG_NOSIGNAL prevents process termination on
+    --     broken pipes.
+    receive_flags  :: 0x20  -- MSG_TRUNC reports the full datagram length.
+    invalid_socket :: 0xffffffffffffffff.as(usize)
+
+    -- Linux requires no process-wide socket initialisation.
+    network_start :: fn () -> void\NetworkError {
+    }
+
+    -- Linux requires no matching process-wide socket teardown.
+    network_stop :: fn () {
+    }
+
+    -- Captures the calling thread's libc errno immediately after failure.
+    network_last_error :: fn () => ns_errno()^
+
+    -- Maps Linux errors without discarding their native code.
+    network_error :: fn (code: i32) -> NetworkError {
+        return on code {
+            11    => NetworkError.WouldBlock { code }
+            4     => NetworkError.Interrupted { code }
+            111   => NetworkError.ConnectionRefused { code }
+            104   => NetworkError.ConnectionReset { code }
+            98    => NetworkError.AddressInUse { code }
+            90    => NetworkError.MessageTooLarge { code }
+            else  => NetworkError.System { code }
+        }
+    }
+
+    -- Changes socket mode without overwriting unrelated file status flags.
+    network_nonblocking :: fn (socket: NativeSocket, enabled: bool) -> i32 {
+        flag : u32 = on enabled { yes => 1 else => 0 }
+        return ns_ioctl(socket, 0x5421, ^flag)
+    }
+
+}
+
+-- Converts host-order address fields to the platform's sockaddr_in layout.
+network_address :: fn (address: Ipv4Address) -> SocketAddress {
+    packed := (address.octets[0].as(u32) << 24) | (address.octets[1].as(u32) << 16) | (address.octets[2].as(u32) << 8) | address.octets[3].as(u32)
+    return SocketAddress { family: 2 port: ns_htons(address.port) address: ns_htonl(packed) ... }
+}
+
+-- Converts an IPv4 sockaddr_in back to portable host-order fields.
+network_from_address :: fn (address: SocketAddress) -> Ipv4Address {
+    packed := ns_ntohl(address.address)
+    return ipv4((packed >> 24).as(u8),
+                (packed >> 16).as(u8),
+                (packed >> 8).as(u8),
+                packed.as(u8),
+                ns_ntohs(address.port))
+}
+
+-- Creates one blocking IPv4 socket; the caller must close it exactly once.
+pub socket :: fn (kind: SocketKind) -> Socket\NetworkError {
+    network_start()?
+    native_kind := on kind { SocketKind.Tcp => 1 SocketKind.Udp => 2 }
+    raw         := ns_socket(2, native_kind, 0)
+
+    on raw.as(usize) == invalid_socket => {
+        error := network_error(network_last_error())
+        network_stop()
+        return error!
+    }
+    return Socket { raw: raw.as(usize) valid: yes kind is_nonblocking: no }
+}
+
+impl Socket {
+
+    -- Closes this owner. Linux ownership is consumed even on EINTR; do not retry.
+    pub close :: fn (self: ^Self) -> void\NetworkError {
+        on !self.valid => return NetworkError.Invalid!
+        result := ns_close(self.raw.as(NativeSocket))
+        code   := on result != 0 { yes => network_last_error() else => 0 }
+
+        on "windows" {
+            on result != 0 => return network_error(code)!
+        }
+
+        self.valid = no
+        network_stop()
+        on result != 0 => return network_error(code)!
+    }
+
+    -- Binds an address. Port zero lets the OS select a free port atomically.
+    pub bind :: fn (self: ^Self, address: Ipv4Address) -> void\NetworkError {
+        on !self.valid => return NetworkError.Invalid!
+        native := network_address(address)
+        on ns_bind(self.raw.as(NativeSocket), ^native, SocketAddress.size.as(AddressLength)) != 0 => return network_error(network_last_error())!
+    }
+
+    -- Enables TCP listening with a positive pending-connection limit.
+    pub listen :: fn (self: ^Self, backlog: i32 = 16) -> void\NetworkError {
+        on !self.valid ||
+            self.kind != SocketKind.Tcp ||
+            backlog <= 0 => return NetworkError.Invalid!
+        on ns_listen(self.raw.as(NativeSocket), backlog) != 0 => return network_error(network_last_error())!
+    }
+
+    -- Accepts an owned TCP connection. Accepted sockets are explicitly blocking.
+    pub accept :: fn (self: ^Self) -> Socket\NetworkError {
+        on !self.valid ||
+            self.kind != SocketKind.Tcp => return NetworkError.Invalid!
+        network_start()?
+        raw := ns_accept(self.raw.as(NativeSocket), nil, nil)
+        on raw.as(usize) == invalid_socket => {
+            error := network_error(network_last_error())
+            network_stop()
+            return error!
+        }
+        on network_nonblocking(raw, no) != 0 => {
+            error := network_error(network_last_error())
+            _     := ns_close(raw)
+
+            network_stop()
+            return error!
+        }
+        return Socket { raw: raw.as(usize) valid: yes kind: SocketKind.Tcp is_nonblocking: no }
+    }
+
+    -- Connects a blocking socket. Nonblocking connect completion is not yet exposed.
+    pub connect :: fn (self: ^Self, address: Ipv4Address) -> void\NetworkError {
+        on !self.valid || self.is_nonblocking => return NetworkError.Invalid!
+        native := network_address(address)
+        on ns_connect(self.raw.as(NativeSocket), ^native, SocketAddress.size.as(AddressLength)) != 0 => return network_error(network_last_error())!
+    }
+
+    -- Returns the actual local address, including a port selected by bind(0).
+    pub local_address :: fn (self: ^Self) -> Ipv4Address\NetworkError {
+        on !self.valid => return NetworkError.Invalid!
+        native : SocketAddress
+        length                 := SocketAddress.size.as(AddressLength)
+
+        on ns_local(self.raw.as(NativeSocket), ^native, ^length) != 0 => return network_error(network_last_error())!
+        return network_from_address(native)
+    }
+
+    -- Returns the connected peer's address.
+    pub peer_address :: fn (self: ^Self) -> Ipv4Address\NetworkError {
+        on !self.valid => return NetworkError.Invalid!
+        native : SocketAddress
+        length                 := SocketAddress.size.as(AddressLength)
+
+        on ns_peer(self.raw.as(NativeSocket), ^native, ^length) != 0 => return network_error(network_last_error())!
+        return network_from_address(native)
+    }
+
+    -- Enables immediate WouldBlock results for subsequent I/O and accept calls.
+    pub nonblocking :: fn (self: ^Self, enabled: bool) -> void\NetworkError {
+        on !self.valid => return NetworkError.Invalid!
+        on network_nonblocking(self.raw.as(NativeSocket), enabled) != 0 => return network_error(network_last_error())!
+        self.is_nonblocking = enabled
+    }
+
+    -- Sends TCP bytes once, returning partial progress; the input is borrowed.
+    pub send :: fn (self: ^Self, input: []u8) -> usize\NetworkError {
+        on !self.valid ||
+            self.kind != SocketKind.Tcp ||
+            input.count > 0x7fffffff => return NetworkError.Invalid!
+        on input.count == 0 => return 0
+        result := ns_send(self.raw.as(NativeSocket),
+                          input.data,
+                          input.count.as(TransferLength),
+                          send_flags)
+        on result < 0 => return network_error(network_last_error())!
+        return result.as(usize)
+    }
+
+    -- Receives TCP bytes once. An empty buffer is a no-op, never an EOF probe.
+    pub receive :: fn (self: ^Self, output: []u8) -> Received\NetworkError {
+        on !self.valid ||
+            self.kind != SocketKind.Tcp ||
+            output.count > 0x7fffffff => return NetworkError.Invalid!
+        on output.count == 0 => return Received { count: 0 eof: no }
+        result := ns_receive(self.raw.as(NativeSocket),
+                             output.data,
+                             output.count.as(TransferLength),
+                             0)
+        on result < 0 => return network_error(network_last_error())!
+        return Received { count: result.as(usize) eof: result == 0 }
+    }
+
+    -- Sends one UDP datagram atomically, including a valid empty payload.
+    pub send_to :: fn (self    : ^Self,
+                       input   : []u8,
+                       address : Ipv4Address) -> usize\NetworkError {
+        on !self.valid ||
+            self.kind != SocketKind.Udp ||
+            input.count > 65507 => return NetworkError.Invalid!
+        native      := network_address(address)
+        dummy  : u8
+        data        := on input.count == 0 { yes => ^dummy else => input.data }
+        result      := ns_send_to(self.raw.as(NativeSocket), data, input.count.as(TransferLength), send_flags, ^native, SocketAddress.size.as(AddressLength))
+
+        on result < 0 => return network_error(network_last_error())!
+        return result.as(usize)
+    }
+
+    -- Receives one UDP datagram. Oversized payloads are consumed and reported as
+    -- MessageTooLarge, never silently accepted as complete messages.
+    pub receive_from :: fn (self: ^Self, output: []u8) -> Datagram\NetworkError {
+        on !self.valid ||
+            self.kind != SocketKind.Udp ||
+            output.count > 0x7fffffff => return NetworkError.Invalid!
+        native : SocketAddress
+        length                 := SocketAddress.size.as(AddressLength)
+        dummy  : u8
+        data                   := on output.count == 0 { yes => ^dummy else => output.data }
+        result                 := ns_receive_from(self.raw.as(NativeSocket), data, output.count.as(TransferLength), receive_flags, ^native, ^length)
+
+        on result < 0 => return network_error(network_last_error())!
+        on result.as(usize) > output.count => return NetworkError.MessageTooLarge { code: 0 }!
+        return Datagram { count: result.as(usize) sender: network_from_address(native) }
+    }
+
+    -- Half-closes TCP sending; the peer receives EOF after all queued bytes.
+    pub shutdown_send :: fn (self: ^Self) -> void\NetworkError {
+        on !self.valid ||
+            self.kind != SocketKind.Tcp => return NetworkError.Invalid!
+        on ns_shutdown(self.raw.as(NativeSocket), 1) != 0 => return network_error(network_last_error())!
+    }
+
+}

@@ -1,0 +1,154 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Non-recursive mutexes and predicate-based condition waits. Initialised
+-- objects must stay at a fixed address and must not be copied. Destroy only
+-- after all users have joined. See docs/stdlib-thread-sync.md for the lifecycle
+-- contract.
+
+use os.thread
+
+-- An explicitly initialised exclusive mutex.
+pub Mutex :: plex {
+    native      NativeMutex  -- Platform state; never access directly.
+    initialised bool         -- Lifecycle state, changed only with exclusive
+                             --     ownership.
+}
+
+-- An explicitly initialised condition variable; notifications are not queued.
+pub Condition :: plex {
+    native      NativeCondition  -- Platform state; never access directly.
+    initialised bool             -- Lifecycle state, changed only with exclusive
+                                 --     ownership.
+}
+
+impl Mutex {
+
+    -- Initialises idle storage. A repeated init fails without modifying it.
+    pub init :: fn (self: ^Mutex) -> bool {
+        on self.initialised => return no
+        on "windows" {
+            native_mutex_init(^self.native)
+        }
+
+        on "linux" {
+            on native_mutex_init(^self.native, nil) != 0 => return no
+        }
+
+        self.initialised = yes
+        return yes
+    }
+
+    -- Destroys an unlocked mutex after all users have joined; idle done succeeds.
+    pub done :: fn (self: ^Mutex) -> bool {
+        on !self.initialised => return yes
+        on "linux" {
+            on native_mutex_done(^self.native) != 0 => return no
+        }
+
+        self^ = Mutex { ... }
+        return yes
+    }
+
+    -- Acquires the mutex. Recursive acquisition is forbidden.
+    pub lock :: fn (self: ^Mutex) -> bool {
+        on !self.initialised => return no
+        on "windows" {
+            native_mutex_lock(^self.native)
+        }
+
+        on "linux" {
+            on native_mutex_lock(^self.native) != 0 => return no
+        }
+
+        return yes
+    }
+
+    -- Releases a mutex held by the calling thread; other calls are forbidden.
+    pub unlock :: fn (self: ^Mutex) -> bool {
+        on !self.initialised => return no
+        on "windows" {
+            native_mutex_unlock(^self.native)
+        }
+
+        on "linux" {
+            on native_mutex_unlock(^self.native) != 0 => return no
+        }
+
+        return yes
+    }
+
+}
+
+impl Condition {
+
+    -- Initialises idle storage. A repeated init fails without modifying it.
+    pub init :: fn (self: ^Condition) -> bool {
+        on self.initialised => return no
+        on "windows" {
+            native_condition_init(^self.native)
+        }
+
+        on "linux" {
+            on native_condition_init(^self.native, nil) != 0 => return no
+        }
+
+        self.initialised = yes
+        return yes
+    }
+
+    -- Destroys a condition after all users have joined; idle done succeeds.
+    pub done :: fn (self: ^Condition) -> bool {
+        on !self.initialised => return yes
+        on "linux" {
+            on native_condition_done(^self.native) != 0 => return no
+        }
+
+        self^ = Condition { ... }
+        return yes
+    }
+
+    -- Waits with a locked mutex, atomically releasing it and reacquiring on wake.
+    -- Always loop over a predicate protected by that same mutex: wakes may be
+    -- spurious. Concurrent waiters on this condition must use the same mutex.
+    pub wait :: fn (self: ^Condition, mutex: ^Mutex) -> bool {
+        on !self.initialised || !mutex.initialised => return no
+        on "windows" {
+            return native_condition_wait(^self.native, ^mutex.native, 0xffffffff, 0) != 0
+        }
+
+        on "linux" {
+            return native_condition_wait(^self.native, ^mutex.native) == 0
+        }
+    }
+
+    -- Wakes at least one waiter; publish its predicate under the associated mutex.
+    pub signal :: fn (self: ^Condition) -> bool {
+        on !self.initialised => return no
+        on "windows" {
+            native_condition_signal(^self.native)
+        }
+
+        on "linux" {
+            on native_condition_signal(^self.native) != 0 => return no
+        }
+
+        return yes
+    }
+
+    -- Wakes all current waiters; publish the predicate under their mutex first.
+    pub broadcast :: fn (self: ^Condition) -> bool {
+        on !self.initialised => return no
+        on "windows" {
+            native_condition_broadcast(^self.native)
+        }
+
+        on "linux" {
+            on native_condition_broadcast(^self.native) != 0 => return no
+        }
+
+        return yes
+    }
+
+}

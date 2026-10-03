@@ -1,0 +1,14 @@
+use std.io
+use std.raptor
+
+main :: fn () -> i32 {
+    scheduler : Scheduler
+    -- Linux runner fails the third native thread creation exactly once.
+    assert scheduler.init(4) == nil
+    assert !scheduler.started
+    assert scheduler.close()
+    assert scheduler.init(2) != nil
+    assert scheduler.close()
+    prn("Raptor partial startup cleanup passed")
+    return 0
+}

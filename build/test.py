@@ -78,8 +78,12 @@ def lsp_repo_uri() -> str:
 
 
 def normalize_repo_uris(text: str) -> str:
-    return text.replace("__REPO_URI__", lsp_repo_uri()).replace(
-        "file:///home/matt/nerd", lsp_repo_uri()
+    # Replace both fixture spellings in one pass: the checkout URI may itself
+    # start with the historical root, so chained replacements expand it twice.
+    return re.sub(
+        r"__REPO_URI__|file:///home/matt/nerd(?=[/\"\s]|$)",
+        lambda _match: lsp_repo_uri(),
+        text,
     )
 
 

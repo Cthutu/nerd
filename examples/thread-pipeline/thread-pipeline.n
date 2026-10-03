@@ -1,0 +1,56 @@
+-- A one-slot producer/consumer pipeline with explicit ownership and shutdown.
+use std.sync
+use std.thread
+
+Pipeline :: plex {
+    mutex    Mutex
+    changed  Condition
+    value    i32
+    occupied bool
+    finished bool
+    total    i32
+}
+
+consume :: fn (context: ^void) {
+    pipeline := context.as(^Pipeline)
+    assert pipeline.mutex.lock()
+    for {
+        for !pipeline.occupied && !pipeline.finished {
+            assert pipeline.changed.wait(^pipeline.mutex)
+        }
+        on !pipeline.occupied && pipeline.finished => break
+        pipeline.total += pipeline.value
+        pipeline.occupied = no
+        assert pipeline.changed.broadcast()
+    }
+    assert pipeline.mutex.unlock()
+}
+
+main :: fn () -> i32 {
+    pipeline : Pipeline
+    on !pipeline.mutex.init() => return 1
+    defer _ := pipeline.mutex.done()
+    on !pipeline.changed.init() => return 2
+    defer _ := pipeline.changed.done()
+
+    consumer : Thread
+    on !consumer.start(consume, (^pipeline).as(^void)) => return 3
+    for value: i32 = 1; value <= 100; value += 1 {
+        assert pipeline.mutex.lock()
+        for pipeline.occupied {
+            assert pipeline.changed.wait(^pipeline.mutex)
+        }
+        pipeline.value = value
+        pipeline.occupied = yes
+        assert pipeline.changed.broadcast()
+        assert pipeline.mutex.unlock()
+    }
+    assert pipeline.mutex.lock()
+    pipeline.finished = yes
+    assert pipeline.changed.broadcast()
+    assert pipeline.mutex.unlock()
+    assert consumer.join()
+    assert pipeline.total == 5050
+    prn($"Consumed 100 values; total = {pipeline.total}")
+    return 0
+}

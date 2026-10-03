@@ -1,0 +1,15 @@
+uv run build/build.py -r nerd
+================================================
+ build :: clang :: release
+ projects :: nerd
+================================================
+[skip] 2 run directive(s) up to date
+[skip] _bin/nerd (up to date)
+[skip] 68 source file(s) up to date
+================================================
+>> Build complete. Go be nerdy! \o/ <<
+================================================
+mkdir -p _bin/examples
+NERD_LIB_PATH="/home/matt/nerd/mods" ./_bin/nerd build -r -o "_bin/examples/task-parallel" "examples/task-parallel/task-parallel.n"
+cd "examples/task-parallel" && "../../_bin/examples/task-parallel"
+Raptor tasks: sum of squares = 204

@@ -542,6 +542,13 @@ source-module provenance and private implementation visibility. HIR generation
 therefore receives only concrete function types and symbols. There is no HIR or
 LLVM compound entity, symbol, wrapper, or dispatcher.
 
+Inferring a function body can import compound overload proxies and grow
+`sema->decls`. Call-site inference keeps its result in a stack variable and
+reacquires the declaration by index before writing it back. Neither an output
+pointer nor a declaration pointer may survive that recursive inference call.
+The frontend ownership suite exercises an optional-value `on` expression with
+an imported `abort` overload, including AddressSanitizer validation.
+
 ### Structural and collection equality
 
 Semantic analysis checks equality recursively for plex fields, tuple members,
@@ -615,6 +622,16 @@ callback signatures contain nested parameter lists, including variadic callbacks
 
 Local aliases of built-in types, including `VaList`, are resolved as types.
 HIR omits local type-alias declarations because they require no runtime storage.
+
+### Optional/result payload materialisation
+
+`sema_materialise_type` recursively canonicalises enum payload types. When an
+earlier enum uses a structurally equivalent plex, this can produce a different
+interned enum entry for an optional or result. The new entry must retain
+`STF_Optional`/`STF_Result`; otherwise implicit payload conversion and pattern
+binding treat the wrapper as an ordinary enum and reject valid initialisers.
+The combined `on` runtime regressions exercise both wrapper forms after an
+earlier equivalent payload declaration, including LLVM/C differential execution.
 
 ### Result propagation and imported display methods
 
@@ -1162,3 +1179,122 @@ It does not prefer an existing debug compiler or fall back to PATH: either may
 predate syntax in the checkout and silently rewrite it through formatter
 recovery. A failed compiler build stops the workflow before any source file is
 formatted. VS Code also invokes `nerd format`, using its configured executable.
+
+## Atomic initializer inference
+
+Integer literals are range-checked when a concrete integer context is selected.
+`sema_literal_magnitude` follows literal/negation/constant aliases, retaining a
+`u64` magnitude separately from the sign; the existing `i64` constant folder
+cannot distinguish a large positive `u64` from a negative number. Signed minima
+are checked as whole negative expressions, including named literal constants;
+usage inference must not prematurely narrow their positive operands. After
+usage inference, variable initializers are checked against materialised storage
+types too, including default `i32` array/tuple elements. Constants remain
+untyped until used in a concrete context.
+
+Explicit casts preserve large untyped literal operands in `u64`/`i64` storage
+before conversion, avoiding premature `i32` truncation in LLVM. They do not use
+implicit destination-range rules; concrete integer arithmetic still wraps.
+Diagnostic fixture 141 groups the range errors, while existing fixture 349 and
+the C differential integer-wrapping probe cover valid boundaries/conversions.
+
+At the entry to `sema_infer_node_type`, an expected `atomic[T]` supplies `T` as
+the expression's value context before literal or arithmetic inference runs.
+The declared storage type remains atomic. This prevents an untyped initializer
+such as `7` from materialising as `i32` before matching `atomic[usize]`, and
+preserves ordinary literal validation and explicit-type compatibility.
+The same path handles assignments and atomic fields. Regression 349 exercises
+these contexts through LLVM and generated C; 350/351 reject oversized literals
+and incompatible typed values.
+
+## Typed native callbacks
+
+`sema_type_is_ffi_safe` accepts `STK_Function` through a recursive callback ABI
+check. Callback parameters/results must be scalars, pointers, or compatible
+function types (with `void` allowed for results). Aggregates are excluded because
+Nerd's internal aggregate calling convention is not a general C callback ABI.
+Function pointers nested in signatures are also checked, with bounded recursion.
+Ordinary function-type matching diagnoses incompatible callback arguments.
+
+Existing HIR and backends already represent these function values: LLVM emits
+native pointer values and generated C uses function-pointer typedefs. No new AST,
+HIR instruction, cast, or callback trampoline is required. Windows and Linux
+thread bindings use their existing `NativeThreadEntry` aliases directly.
+`341-run-typed-ffi-callback.cmd` exercises C `qsort` invoking a Nerd callback;
+the C differential suite and thread lifecycle harness cover both backends.
+
+## Runtime worker-thread prerequisite
+
+Worker entry wrappers must pair `nrt_thread_init` and `nrt_thread_done` around
+user callbacks. The latter releases only the current thread's string builder
+and temporary arena and is idempotent. `nrt_core_done` still performs main-thread
+cleanup and process leak reporting after all workers are joined. Debug heap and
+arena list/index mutations are serialised with a runtime atomic flag; payloads
+and arena cursors still require ownership or application synchronisation.
+Live-list pointers used by `std.memory.print_leaks` require quiescent workers.
+
+`core.current_temp_arena()` returns the calling thread's arena. The existing
+`core.temp_arena` binding is evaluated at each use and also returns the calling
+thread's arena; it is not a cached main-thread pointer. No general data-race or
+move-safety guarantee is implied.
+`build/test_runtime_threads.py` exercises native debug/release runtime allocation,
+cross-thread frees, arena tracking and per-worker cleanup before process exit.
+
+Objects allocated in a worker's temporary arena must not outlive worker cleanup.
+Use explicit owned storage when transferring results across threads; do not infer
+whole-library thread safety from runtime bookkeeping locks.
+
+## Imported constant evaluation in generated C
+
+HIR distinguishes `HIR_VALUE_Constant` expression bindings from mutable
+`HIR_VALUE_Global` storage. Generated C expands constant expressions at each
+reference, including imported and module-qualified references, matching its
+local-constant path and LLVM. Only mutable globals receive module initialisers;
+unused constant expressions must not introduce startup side effects.
+
+`cgen_binding` evaluates an imported constant in the defining module's type/HIR
+context and restores the caller afterwards. Each expansion receives distinct
+local names and separate local-type, cleanup, target and override bookkeeping,
+so an `on` payload binder cannot overwrite a caller local with the same HIR
+index. Temporaries remain in the enclosing generated function's declaration
+scope. `tests/cgen/imported-constant-calls.n` compares repeated calls, aggregate
+constants, qualified references, one-time mutable initialisation and binder
+isolation against LLVM at both C optimisation levels.
+
+## Public mutable declaration formatting
+
+Standalone mutable declarations carry visibility independently of their type
+and initializer. Both top-level and guarded statement formatting must emit the
+`pub` prefix and include it in wrap-column accounting, just as grouped variable
+formatting already does. The regression checks typed, inferred, zero-initialised,
+undefined and guarded declarations alongside constants and private declarations.
+See [the formatter repair note](../formatter-public-globals.md).
+
+## Imported mutable globals in LLVM
+
+Mutable imports resolve through declaration provenance to their defining HIR
+value. Reads, writes, addresses and calls through mutable function pointers use
+that storage; they must not take the constant-expression expansion path.
+Standalone module IR declares imported globals; the textual module combiner
+removes declarations satisfied by definitions and deduplicates unresolved ones.
+Globals whose names collide across modules receive module/value-qualified
+internal names. A public root global retains its exported symbol spelling.
+
+A failed function lowering now emits a module/function diagnostic and rejects
+the rendered module. Only successful unterminated functions receive implicit
+returns. The backend checks rejected primary and sidecar results before writing
+or linking them. The `llvm-lowering-failure` internal test constructs an invalid
+binding reference and requires an empty result plus one diagnostic; command
+fixture 340 runs it in the normal gate. Fixture 339 covers imported and
+re-exported storage, mutation, addresses, aggregate fields, atomics, function
+pointers and two same-named globals from distinct modules. Generated C also
+resolves module-qualified fields to their storage before borrowing them.
+
+The stricter failure path exposed two formerly hidden lowering gaps. Optional
+`void` success carries only a presence tag, but a returned void expression must
+still execute exactly once; it must not be packed into nonexistent payload
+storage or omitted by generated C. Packed bit-field assignment through a pointer
+must locate the containing value's storage and evaluate the owner once before
+loading, masking and storing the field. Command fixtures 281 and 326 now assert
+completion and observable side effects, so an implicit early return cannot make
+their success checks disappear.
