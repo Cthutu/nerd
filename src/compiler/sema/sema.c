@@ -24956,14 +24956,20 @@ validate_type:
                     if (decl->kind == SK_Function &&
                         decl->type_index == sema_no_type() &&
                         decl->value_node_index != sema_no_decl()) {
+                        // Inferring the body may import compound overloads and
+                        // grow decls. Keep the result on the stack, then resolve
+                        // the declaration again before updating it.
+                        u32 inferred_type = sema_no_type();
                         if (!sema_infer_node_type(lexer,
                                                   ast,
                                                   sema,
                                                   decl->value_node_index,
                                                   sema_no_type(),
-                                                  &decl->type_index)) {
+                                                  &inferred_type)) {
                             return false;
                         }
+                        decl = &sema->decls[decl_index];
+                        decl->type_index = inferred_type;
                         if (decl->bind_node_index != sema_no_decl()) {
                             sema->node_type_indices[decl->bind_node_index] =
                                 decl->type_index;

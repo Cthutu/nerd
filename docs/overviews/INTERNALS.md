@@ -542,6 +542,13 @@ source-module provenance and private implementation visibility. HIR generation
 therefore receives only concrete function types and symbols. There is no HIR or
 LLVM compound entity, symbol, wrapper, or dispatcher.
 
+Inferring a function body can import compound overload proxies and grow
+`sema->decls`. Call-site inference keeps its result in a stack variable and
+reacquires the declaration by index before writing it back. Neither an output
+pointer nor a declaration pointer may survive that recursive inference call.
+The frontend ownership suite exercises an optional-value `on` expression with
+an imported `abort` overload, including AddressSanitizer validation.
+
 ### Structural and collection equality
 
 Semantic analysis checks equality recursively for plex fields, tuple members,

@@ -81,6 +81,17 @@ def main():
                       'main :: fn () -> i32 { return pack.first() }\n',
         }))
         runtime_cases = valid[:]
+        # Imported abort overloads can grow the declaration array while choose
+        # is inferred through main's return context. ASan checks that inference
+        # does not retain a pointer into the old declaration allocation.
+        source = case('never-on-imported-overloads', {
+            'main.n': 'choose :: fn (value: ?i32) -> i32 {\n'
+                      ' return on value { found => found else => abort("missing") }\n'
+                      '}\nmain :: fn () -> i32 {\n'
+                      ' result := choose(7)\n assert result == 7\n return result - 7\n}\n',
+        })
+        valid.append(source)
+        runtime_cases.append(source)
         diamond = valid[0].parent
         for name, body in [
             ('explicit', 'on id[i64](4294967303) != 4294967303 => return 99\n return 7'),
