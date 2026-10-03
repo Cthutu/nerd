@@ -124,3 +124,15 @@ M0 still needs upstream builds/execution, a complete component disposition matri
 and reuse decisions. M2/M3 should explicitly resolve queue correctness and the
 intended work-stealing implementation. M4 can start with serial FIFO dataflow;
 stable handles, cached invalidation and parallel scheduling are additions.
+
+## Selected Nerd scheduler direction — 3 October 2026
+
+The user selected an original Nerd work-stealing implementation retaining the
+Raptor queue/task model, with no ASIO copy or dependency. The first implementation
+is `std.queue` plus `std.raptor`: bounded mutex deques, local LIFO/victim FIFO,
+serial/concurrent dispatch, typed/void completion, cooperative waits and drain.
+See [contracts and deliberate API differences](stdlib-raptor.md). The earlier
+search for an upstream work-stealing revision is closed by this decision; source
+reuse terms still apply to any future copied material. No upstream implementation
+was copied for this slice. Runnable tutorials for Raptor, Kerberos and Nexus are
+required delivery gates; [status and walkthroughs](tutorials/README.md).

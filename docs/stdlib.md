@@ -13,7 +13,9 @@ API reference.
 The [standard-library expansion plan](stdlib-expansion-plan.md) covers queues,
 work-stealing tasks, data graphs, raw sockets and Nexus messaging. The initial
 thread/synchronisation and IPv4 socket foundations are implemented on the
-`std-library` review branch; queues, scheduler, graphs and Nexus remain planned.
+`std-library` review branch. Bounded deques and the first Raptor scheduler are
+implemented; graphs and Nexus remain planned. See the
+[Raptor contracts](stdlib-raptor.md) and [API tutorials](tutorials/README.md).
 See the [workstream record](stdlib-workstreams.md) for scope and validation.
 
 ## Current Modules
@@ -49,6 +51,9 @@ library is organised into three layers:
   Experimental IPv4 TCP/UDP sockets with explicit ownership, partial I/O,
   EOF/datagram semantics and native errors. See the
   [API contracts and examples](std-network-foundation.md).
+- `std.queue` and `std.raptor`
+  Bounded mutex deques and our own work-stealing scheduler with typed tasks and
+  serial/concurrent dispatch queues. See [contracts](stdlib-raptor.md).
 - `std.process`
   Portable child-process execution and waiting.
 - `std.signal`

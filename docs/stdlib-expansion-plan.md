@@ -38,8 +38,8 @@ serial dataflow executor is evidence about that revision, not the design target.
 The [source inventory](stdlib-source-inventory.md) records exact branch revisions,
 API/test mappings, ownership hazards and source copyright notices. Raptor and
 Kerberos access was resolved using the existing repository-owner login; original
-suites have not been built or executed. Confirm whether the intended work-stealing
-code is on another revision before describing M3 as a direct algorithm port.
+suites have not been built or executed. The 3 October decision is an original Nerd work-stealing scheduler built around
+Raptor API semantics; M3 is not a direct algorithm port.
 
 Nexus already separates OS access (`lowlevel.c`), TCP/UDP transports, pipes,
 message framing, request/reply and Telnet protocols. It has reusable message
@@ -72,13 +72,13 @@ with the source inventory before publishing APIs.
 | `std.thread` | Thread creation, joining and identity; explicit lifetime and callback context contracts |
 | `std.sync` | Mutexes, condition variables and any semaphore/event primitive actually needed by the ports |
 | `std.queue` | Reusable queues from the Raptor inventory; concurrency roles explicit in each type |
-| `std.task` | Task completion/lifecycle informed by Raptor; requested work stealing needs a confirmed source or an explicitly selected new algorithm |
+| `std.raptor` | Our own bounded work-stealing scheduler with Raptor queue/task semantics and explicit Nerd ownership |
 | `std.graph` | Kerberos-derived node/edge storage, data and graph operations, usable without workers |
 | `std.network` | Socket lifecycle, addressing, TCP/UDP byte I/O, readiness and portable errors |
 | `std.nexus` | Message buffers, framing, routes and basic/request/reply/Telnet protocol behaviour |
 | Platform bindings under `os` | Winsock/native Windows calls and Linux sockets/thread bindings |
 
-Graph execution can depend on `std.task` through a separate adapter or child
+Graph execution can depend on `std.raptor` through a separate adapter or child
 module; graph storage must not start threads. Nexus uses `std.network` directly
 and does not require a scheduler for synchronous or non-blocking use. Scheduler
 integration must not turn blocking socket waits into worker-pool starvation.
@@ -163,9 +163,10 @@ Depends on M1 and Raptor inventory.
 - [ ] Port the inventoried queue types in increasing complexity. Explicitly
   distinguish SPSC/MPSC/MPMC roles where present; do not promise all variants
   merely because the scheduler needs one.
-- [ ] Implement the owner/thief deque contract needed by work stealing. Preserve
-  the reviewed algorithm and its memory-order reasoning, including the last-item
-  race, wraparound, growth and reclamation if applicable.
+- [x] Implement our bounded owner/thief deque correctness reference: mutex
+  publication/removal, local LIFO/victim FIFO, last-item exclusion and wraparound.
+  Storage is borrowed, fixed and shallow; no growth or reclamation algorithm is
+  claimed. See [contracts](stdlib-raptor.md).
 - [ ] Provide bounded model/reference tests and stress tests with unique item IDs:
   no loss, duplication, premature reads or double destruction; exercise empty/full
   transitions and shutdown. Add latency/throughput measurements separately.
@@ -176,18 +177,19 @@ Exit: standalone queues with documented ownership, capacity and progress guarant
 
 Depends on M2.
 
-- [ ] Confirm the intended work-stealing source or select an explicit algorithm:
-  inspected Raptor branches delegate scheduling to ASIO. Implement worker-local
-  scheduling, external submission and stealing with explicit worker counts and
-  a single-worker mode; do not label a new algorithm source parity.
-- [ ] Define task completion, nested submission/waits, errors, drain/cancel and
-  self-wait handling. Introduce dependencies only where the source/API requires them.
+- [x] Select our own Nerd work-stealing implementation around Raptor API semantics:
+  first `std.raptor` slice uses bounded mutex deques, local LIFO/victim FIFO,
+  external submission and explicit worker counts including single-worker mode.
+  See [contracts](stdlib-raptor.md); this is not upstream algorithm parity.
+- [x] Define typed/void completion, nested cooperative waits, bounded admission,
+  drain and self/ancestor/same-serial rejection. Cancellation and general
+  cross-worker cycle detection are not supported; caller lifetimes are explicit.
 - [ ] Test exactly-once execution/completion, nested tasks, contention, idle wake-up,
   shutdown during submission and partial worker startup failure.
 - [ ] Compare serial, one-worker and multi-worker results and performance using
   reproducible workloads, with task granularity and allocations reported.
 
-Exit: usable `std.task` example, clean lifecycle tests and evidence for scheduler
+Exit: usable `std.raptor` example, clean lifecycle tests and evidence for scheduler
 behaviour. No change to Nerd compiler concurrency defaults or internals is implied.
 
 ### M4 — Kerberos graph/node data model and serial evaluation
@@ -242,7 +244,7 @@ Depends on M5's IPv4 TCP/UDP/readiness subset; full M5 closure may proceed along
 - [ ] Run C-to-Nerd and Nerd-to-C TCP/UDP interoperability checks against the
   pinned source. Specify any intentional wire-format differences before release.
 
-Exit: message echo and multi-client reply examples, standalone from `std.task`.
+Exit: message echo and multi-client reply examples, standalone from `std.raptor`.
 
 ### M7 — Nexus protocol parity
 
@@ -365,8 +367,17 @@ concurrency/graphs, and M5/M6/M7 for networking. M8 joins them; M9 closes adopti
 Do not assign calendar estimates until the Raptor/Kerberos inventories establish
 scope and the language capability probes expose prerequisites.
 
-Outstanding: intended work-stealing implementation/revision; source reuse terms;
+Outstanding: source reuse terms for any future copied material;
 remaining public module names; FIFO publication/reclamation strategy; scheduler
 cancellation and draining contracts; and deliberate API improvements versus source
 parity. The inspected queue/lifetime hazards must be fixed through explicit
 contracts and tests, not carried into Nerd unchanged.
+
+## Required API tutorials — 3 October 2026
+
+Deliver runnable tutorials for every remade Raptor, Kerberos and Nexus API after
+implementation. Cover practical usage, ownership, error/backpressure behaviour
+and shutdown; run examples through native gates. The first
+[Raptor tutorial](tutorials/raptor.md) accompanies `std.raptor`.
+[Remaining tutorial requirements](tutorials/README.md) are completion gates for
+M4, M6 and M7, rather than documentation of hypothetical APIs.

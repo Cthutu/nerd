@@ -1,0 +1,69 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- A bounded, mutex-protected deque. Storage is borrowed and must stay alive
+-- until done; payloads are shallow copies with caller-defined cleanup.
+
+use std.sync
+
+-- A stable-address deque with local LIFO and thief FIFO removal.
+pub WorkDeque :: plex [T] {
+    mutex   Mutex  -- Serialises publication, removal and the last-item race.
+    storage []T    -- Borrowed fixed-capacity slots; never resized.
+    head    usize  -- Index of the oldest occupied slot.
+    count   usize  -- Occupied slots, protected by mutex.
+}
+
+impl [T] WorkDeque[T] {
+
+    -- Initialises an idle deque over nonempty borrowed storage.
+    pub init :: fn (self: ^Self, storage: []T) -> bool {
+        on storage.count == 0 || self.mutex.initialised => return no
+        on !self.mutex.init()                           => return no
+        self.storage = storage
+        self.head = 0
+        self.count = 0
+        return yes
+    }
+
+    -- Releases the mutex after every caller has stopped; payload cleanup is external.
+    pub done :: fn (self: ^Self) -> bool {
+        on !self.mutex.done() => return no
+        self.storage = nil
+        self.head = 0
+        self.count = 0
+        return yes
+    }
+
+    -- Copies an item to the newest end; a full deque leaves caller ownership intact.
+    pub push :: fn (self: ^Self, value: T) -> bool {
+        assert self.mutex.lock()
+        defer _ := self.mutex.unlock()
+        on self.count == self.storage.count => return no
+        self.storage[(self.head + self.count) % self.storage.count] = value
+        self.count += 1
+        return yes
+    }
+
+    -- Removes the newest item for local execution; an empty deque returns nil.
+    pub pop :: fn (self: ^Self) -> ?T {
+        assert self.mutex.lock()
+        defer _ := self.mutex.unlock()
+        on self.count == 0 => return nil
+        self.count -= 1
+        return self.storage[(self.head + self.count) % self.storage.count]
+    }
+
+    -- Removes the oldest item for a thief; an empty deque returns nil.
+    pub steal :: fn (self: ^Self) -> ?T {
+        assert self.mutex.lock()
+        defer _ := self.mutex.unlock()
+        on self.count == 0 => return nil
+        value := self.storage[self.head]
+        self.head = (self.head + 1) % self.storage.count
+        self.count -= 1
+        return value
+    }
+
+}

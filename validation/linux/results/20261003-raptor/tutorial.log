@@ -1,0 +1,59 @@
+uv run build/build.py -r nerd
+================================================
+ build :: clang :: release 
+ projects :: nerd
+================================================
+[skip] 2 run directive(s) up to date
+[ cc ] nerd.c
+[ cc ] compiler/ast/dump.c
+[ cc ] compiler/ast/expr.c
+[ cc ] compiler/ast/parse.c
+[ cc ] compiler/ast/query.c
+[ cc ] compiler/ast/utils.c
+[ cc ] compiler/build/back/back.c
+[ cc ] compiler/build/back/llvm_runtime.c
+[ cc ] compiler/build/back/llvm_text.c
+[ cc ] compiler/build/front/front.c
+[ cc ] compiler/build/front/program.c
+[ cc ] compiler/cgen/cgen.c
+[ cc ] compiler/cmd_build.c
+[ cc ] compiler/cmd_check.c
+[ cc ] compiler/cmd_common.c
+[ cc ] compiler/cmd_format.c
+[ cc ] compiler/cmd_run.c
+[ cc ] compiler/cmd_test.c
+[ cc ] compiler/cst/cst.c
+[ cc ] compiler/error/ast_errors.c
+[ cc ] compiler/error/error.c
+[ cc ] compiler/error/lex_errors.c
+[ cc ] compiler/error/render.c
+[ cc ] compiler/error/sema_errors.c
+[ cc ] compiler/format/format.c
+[ cc ] compiler/hir/dump.c
+[ cc ] compiler/hir/gen.c
+[ cc ] compiler/lexer/dump.c
+[ cc ] compiler/lexer/interner.c
+[ cc ] compiler/lexer/lexer.c
+[ cc ] compiler/llvm/llvm.c
+[ cc ] compiler/modules/modules.c
+[ cc ] compiler/sema/sema.c
+[ cc ] lsp/builtin.c
+[ cc ] lsp/code_action.c
+[ cc ] lsp/completion.c
+[ cc ] lsp/document.c
+[ cc ] lsp/document_link.c
+[ cc ] lsp/hover.c
+[ cc ] lsp/lsp.c
+[ cc ] lsp/rename.c
+[ cc ] lsp/semantic_tokens.c
+[ cc ] lsp/signature.c
+[ cc ] lsp/utils.c
+[link] _bin/nerd
+[skip] 24 source file(s) up to date
+================================================
+>> Build complete. Go be nerdy! \o/ <<
+================================================
+mkdir -p _bin/examples
+NERD_LIB_PATH="/home/matt/nerd/mods" ./_bin/nerd build -r -o "_bin/examples/task-parallel" "examples/task-parallel/task-parallel.n"
+cd "examples/task-parallel" && "../../_bin/examples/task-parallel"
+Raptor tasks: sum of squares = 204

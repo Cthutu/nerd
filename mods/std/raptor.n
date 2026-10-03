@@ -1,0 +1,387 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Original Nerd work stealing with Raptor-style serial/concurrent queues and
+-- typed tasks. Owners, queues, tasks and callback contexts have explicit
+-- lifetimes.
+
+use os.thread
+use std.atomics
+use std.memory
+use std.queue
+use std.sync
+use std.thread
+
+-- Chooses FIFO serial execution or independent concurrent execution.
+pub QueueType :: enum {
+    Concurrent
+    Serial
+}
+
+-- Internal borrowed task record; scheduler state is protected by its mutex.
+pub Job :: plex {
+    scheduler ^void           -- Owner, valid until completion.
+    queue     ^void           -- Borrowed dispatch queue.
+    execute   ThreadFunction  -- Typed trampoline for the caller's task.
+    context   ^void           -- Stable task address passed to execute.
+    next      ^void           -- Next waiting job in a serial queue.
+    parent    ^void           -- Active ancestor during cooperative waits.
+    accepted  bool            -- One-shot admission flag; protected by scheduler
+                              --     mutex.
+    complete  atomic[bool]    -- Publishes callback result with release/acquire
+                              --     ordering.
+}
+
+-- A caller-owned dispatch queue; keep it alive through all accepted tasks.
+pub Queue :: plex {
+    scheduler ^void      -- Borrowed scheduler; fixed for the queue lifetime.
+    kind      QueueType  -- Serial or concurrent behaviour.
+    head      ^void      -- Oldest waiting serial job, excluding the active
+    --     job.
+    tail      ^void      -- Newest waiting serial job.
+    busy      bool       -- Serial queue has one ready or executing job.
+}
+
+-- Stable worker storage, allocated once before any thread starts.
+pub Worker :: plex {
+    thread     Thread            -- Owned joinable native worker.
+    scheduler  ^void             -- Fixed scheduler address.
+    index      usize             -- Local deque index.
+    identity   usize             -- Native identifier, published under scheduler
+                                 --     mutex.
+    current    ^void             -- Innermost executing callback, protected by
+                                 --     scheduler mutex.
+    deque      WorkDeque[^void]  -- Bounded ready jobs; owns its mutex.
+    allocation []u8              -- Owned backing allocation for deque slots.
+}
+
+-- Explicitly owned scheduler; initialise and close from its owner thread only.
+pub Scheduler :: plex {
+    mutex         Mutex      -- Protects admission, completion, queues and
+                             --     worker metadata.
+    changed       Condition  -- Predicate wake-ups for workers and external
+                             --     waiters.
+    workers       []Worker   -- Stable worker storage, never moved while active.
+    allocation    []u8       -- Owns workers and their Thread objects.
+    default_queue Queue      -- Default concurrent dispatch queue.
+    pending       usize      -- Accepted but incomplete jobs, including serial
+                             --     backlogs.
+    limit         usize      -- Global admission bound, worker count times deque
+                             --     capacity.
+    cursor        usize      -- Round-robin external submission target.
+    stopping      bool       -- Rejects new tasks and drains accepted tasks.
+    started       bool       -- Owner lifecycle state.
+    steals        usize      -- Successful victim-deque removals; protected by
+                             --     mutex.
+}
+
+-- A typed one-shot task, including Task[void]; result cleanup belongs to the
+-- caller.
+pub Task :: plex [T] {
+    job      Job                       -- Borrowed by the scheduler until
+                                       --     completion; do not copy or move.
+    callback fn (context: ^void) -> T  -- User callback; arguments live in
+                                       --     context.
+    context  ^void                     -- Borrowed user context, valid until
+                                       --     completion.
+    result   ?T
+    -- Published result; supports valueless successful completion.
+}
+
+-- Returns the current native identifier through platform-specific bindings.
+identity :: fn () -> usize {
+    on "linux" {
+        return native_thread_self()
+    }
+
+    on "windows" {
+        return native_thread_self().as(usize)
+    }
+}
+
+-- Finds the calling worker while the scheduler mutex is held.
+current_worker :: fn (scheduler: ^Scheduler) -> usize {
+    id := identity()
+    for i in [0 .. scheduler.workers.count] {
+        on scheduler.workers[i].identity == id => return i
+    }
+    return scheduler.workers.count
+}
+
+-- Publishes ready work under the scheduler mutex, preferring a local deque.
+enqueue :: fn (scheduler: ^Scheduler, job: ^Job, preferred: usize) -> bool {
+    for offset in [0 .. scheduler.workers.count] {
+        index := (preferred + offset) % scheduler.workers.count
+        on scheduler.workers[index].deque.push(job.as(^void)) => return yes
+    }
+    return no
+}
+
+-- Claims local newest work, then steals oldest work; scheduler mutex is held.
+claim :: fn (scheduler: ^Scheduler, index: usize) -> ^Job {
+    on scheduler.workers[index].deque.pop() {
+        job => return job.as(^Job)
+
+        else => {
+        }
+    }
+    for offset: usize = 1; offset < scheduler.workers.count; offset += 1 {
+        victim := (index + offset) % scheduler.workers.count
+        on scheduler.workers[victim].deque.steal() {
+            job => {
+                scheduler.steals += 1
+                return job.as(^Job)
+            }
+
+            else => {
+            }
+        }
+    }
+    return nil
+}
+
+-- Executes without the scheduler lock, then publishes completion and serial
+-- succession.
+run_job :: fn (scheduler: ^Scheduler, index: usize, job: ^Job) {
+    previous := scheduler.workers[index].current
+    job.parent = previous
+    scheduler.workers[index].current = job.as(^void)
+    assert scheduler.mutex.unlock()
+    job.execute(job.context)
+    assert scheduler.mutex.lock()
+    scheduler.workers[index].current = previous
+    queue := job.queue.as(^Queue)
+    on queue.kind == QueueType.Serial => {
+        on queue.head != nil => {
+            next := queue.head.as(^Job)
+            queue.head = next.next
+            on queue.head == nil => queue.tail = nil
+            next.next = nil
+            assert enqueue(scheduler, next, index)
+        } else queue.busy = no
+    }
+    scheduler.pending -= 1
+    job.complete.store(yes)
+    assert scheduler.changed.broadcast()
+}
+
+-- Worker entry: claim work or wait on the shared pending/shutdown predicate.
+worker_entry :: fn (context: ^void) {
+    worker    := context.as(^Worker)
+    scheduler := worker.scheduler.as(^Scheduler)
+    index     := worker.index
+
+    assert scheduler.mutex.lock()
+    worker.identity = identity()
+    for {
+        job := claim(scheduler, index)
+        on job != nil => {
+            run_job(scheduler, index, job)
+            again
+        }
+        on scheduler.stopping && scheduler.pending == 0 => break
+        assert scheduler.changed.wait(^scheduler.mutex)
+    }
+    assert scheduler.mutex.unlock()
+}
+
+-- Waits with worker assistance; rejects self/ancestor and same-serial-queue
+-- waits.
+wait_job :: fn (job: ^Job) -> bool {
+    on job.complete.load() => return yes
+    scheduler := job.scheduler.as(^Scheduler)
+    on scheduler == nil || !scheduler.started => return no
+    assert scheduler.mutex.lock()
+    defer _ := scheduler.mutex.unlock()
+    index := current_worker(scheduler)
+    on index < scheduler.workers.count => {
+        ancestor := scheduler.workers[index].current.as(^Job)
+        for ancestor != nil {
+            on ancestor == job => return no
+            on ancestor.queue == job.queue &&
+                job.queue.as(^Queue).kind == QueueType.Serial => return no
+            ancestor = ancestor.parent.as(^Job)
+        }
+    }
+    for !job.complete.load() {
+        on index < scheduler.workers.count => {
+            next := claim(scheduler, index)
+            on next != nil => {
+                run_job(scheduler, index, next)
+                again
+            }
+        }
+        assert scheduler.changed.wait(^scheduler.mutex)
+    }
+    return yes
+}
+
+-- Calls the typed user callback, including a void-returning callback.
+execute_task :: fn [T] (context: ^void) {
+    task := context.as(^Task[T])
+    task.result = task.callback(task.context)
+}
+
+impl [T] Task[T] {
+
+    -- Submits once. Rejection leaves the task idle and caller-owned.
+    pub async :: fn (self     : ^Self,
+                     queue    : ^Queue,
+                     callback : fn (context: ^void) -> T,
+                     context  : ^void) -> bool {
+        on callback.as(^void) == nil => return no
+        scheduler := queue.scheduler.as(^Scheduler)
+        on scheduler == nil || !scheduler.started => return no
+        assert scheduler.mutex.lock()
+        defer _ := scheduler.mutex.unlock()
+        on scheduler.stopping ||
+            self.job.accepted ||
+            scheduler.pending == scheduler.limit => return no
+        index := current_worker(scheduler)
+        on index == scheduler.workers.count => {
+            index = scheduler.cursor
+            scheduler.cursor = (scheduler.cursor + 1) % scheduler.workers.count
+        }
+        self.callback = callback
+        self.context = context
+        self.job.scheduler = scheduler.as(^void)
+        self.job.queue = queue.as(^void)
+        self.job.execute = execute_task[T]
+        self.job.context = self.as(^void)
+        on queue.kind == QueueType.Serial &&
+            queue.busy => {
+            on queue.tail == nil
+                =>   queue.head = (^self.job).as(^void)
+                else queue.tail.as(^Job).next = (^self.job).as(^void)
+            queue.tail = (^self.job).as(^void)
+        } else {
+            on !enqueue(scheduler, ^self.job, index) => {
+                self.job.scheduler = nil
+                return no
+            }
+            on queue.kind == QueueType.Serial => queue.busy = yes
+        }
+        self.job.accepted = yes
+        scheduler.pending += 1
+        assert scheduler.changed.broadcast()
+        return yes
+    }
+
+    -- Returns whether callback execution and result publication have completed.
+    pub has_finished :: fn (self: ^Self) -> bool {
+        return self.job.complete.load()
+    }
+
+    -- Waits for an accepted task; a worker helps execute eligible ready tasks.
+    pub wait :: fn (self: ^Self) -> bool {
+        return wait_job(^self.job)
+    }
+
+    -- Returns the result after waiting; nil reports rejection or an invalid dependency.
+    pub get :: fn (self: ^Self) -> ?T {
+        on !self.wait() => return nil
+        return self.result
+    }
+
+}
+
+impl Scheduler {
+
+    -- Starts fixed workers and bounded storage. Failures join all started workers.
+    pub init :: fn (self     : ^Scheduler,
+                    workers  : usize,
+                    capacity : usize = 256) -> bool {
+        on self.started || workers == 0 || capacity == 0 => return no
+        on workers > 65536 || capacity > 1048576         => return no
+        on !self.mutex.init()                            => return no
+        on !self.changed.init() => {
+            assert self.mutex.done()
+            return no
+        }
+        self.allocation = alloc(workers * Worker.size)
+        self.workers = self.allocation.data.as(^Worker).as([]Worker, workers)
+        self.limit = workers * capacity
+        self.default_queue = Queue { scheduler: self.as(^void) kind: QueueType.Concurrent ... }
+        self.started = yes
+        for i in [0 .. workers] {
+            self.workers[i] = Worker { scheduler: self.as(^void) index: i ... }
+            self.workers[i].allocation = alloc(capacity * usize.size)
+            slots := self.workers[i].allocation.data.as(^^void).as([]^void, capacity)
+            on !self.workers[i].deque.init(slots) => {
+                -- Earlier workers have not started yet; owner cleanup is sufficient.
+                for j in [0 .. i] {
+                    assert self.workers[j].deque.done()
+                    free(self.workers[j].allocation)
+                }
+                free(self.workers[i].allocation)
+                free(self.allocation)
+                assert self.changed.done()
+                assert self.mutex.done()
+                self^ = Scheduler { ... }
+                return no
+            }
+        }
+        for i in [0 .. workers] {
+            on !self.workers[i].thread.start(worker_entry, (^self.workers[i]).as(^void)) => {
+                assert self.close()
+                return no
+            }
+        }
+        return yes
+    }
+
+    -- Initialises caller-owned queue storage; repeated creation is rejected.
+    pub create_queue :: fn (self  : ^Scheduler,
+                            queue : ^Queue,
+                            kind  : QueueType) -> bool {
+        on !self.started || queue.scheduler != nil => return no
+        assert self.mutex.lock()
+        defer _ := self.mutex.unlock()
+        on self.stopping => return no
+        queue^ = Queue { scheduler: self.as(^void) kind ... }
+        return yes
+    }
+
+    -- Borrows the default concurrent queue while the scheduler remains active.
+    pub get_default_queue :: fn (self: ^Scheduler) -> ^Queue {
+        return ^self.default_queue
+    }
+
+    -- Rejects new submissions, drains accepted work, joins workers and frees storage.
+    -- Only the owner may close, after external submitters and waiters have stopped.
+    pub close :: fn (self: ^Scheduler) -> bool {
+        on !self.started => return yes
+        assert self.mutex.lock()
+        on current_worker(self) < self.workers.count => {
+            assert self.mutex.unlock()
+            return no
+        }
+        self.stopping = yes
+        assert self.changed.broadcast()
+        assert self.mutex.unlock()
+        for i in [0 .. self.workers.count] {
+            on !self.workers[i].thread.join() => return no
+        }
+        for i in [0 .. self.workers.count] {
+            assert self.workers[i].deque.done()
+            free(self.workers[i].allocation)
+        }
+        free(self.allocation)
+        assert self.changed.done()
+        assert self.mutex.done()
+        self^ = Scheduler { ... }
+        return yes
+    }
+
+}
+
+-- Attempts every wait, returning no for any idle/invalid dependency. The slice
+-- is borrowed and no helper task is allocated.
+pub when_all :: fn [T] (tasks: []Task[T]) -> bool {
+    success := yes
+    for i in [0 .. tasks.count] {
+        on !tasks[i].wait() => success = no
+    }
+    return success
+}

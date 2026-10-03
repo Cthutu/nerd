@@ -4,7 +4,8 @@ Continue on **`std-library`**. The test audit and first consolidation are now
 integrated, including enum optional/result materialisation fix `58818307`,
 Windows evidence through `87e4567a`, Linux repairs `209e8857` and Linux evidence
 `f0983f96`. Integration preserves the published task histories; `main` is
-unchanged and no task branch or worktree was deleted.
+unchanged. Merged task branches were subsequently removed locally and remotely
+after ancestry review; detached review worktrees were retained.
 
 ## Branch review
 
@@ -58,12 +59,34 @@ mutations were verified again after the repair.
    Windows results cover `caaef691` and do not establish success for `209e8857`.
 4. Full `just do` remains unrun here; it cleans local artifacts and installs the
    global compiler/modules/editor integration. The temporary-install gate passed.
-5. Continue queue/scheduler milestones after resolving the Raptor algorithm/source
-   and upstream reuse/attribution decisions in the
-   [source inventory](stdlib-source-inventory.md). Kerberos remains intended as
-   lightweight GCD-style dispatch; source ASIO is not a required dependency.
+5. The scheduler direction is resolved: our own Nerd work stealing around the
+   Raptor API, without an ASIO copy. The first `std.queue`/`std.raptor` slice is
+   implemented; see [contracts](stdlib-raptor.md),
+   [tutorial](tutorials/raptor.md) and
+   [Linux evidence](../validation/linux/results/20261003-raptor/README.md).
+6. Next: native Windows Raptor/compiler checks, async aggregation design and
+   performance measurements, then Kerberos graph dataflow (M4) and Nexus message
+   framing/readiness (M6/M7). Complete runnable tutorials for all three remade
+   APIs; [tutorial requirements](tutorials/README.md). Compiler follow-ups include
+   imported recursive record type identity and binding optional void payloads.
 
 The [October 2 handoff](linux-handoff-2026-10-02.md) retains the broader design
 decisions. Nerd remains a C replacement with explicit allocation, aliasing,
 cleanup and synchronization responsibilities. Fix compiler bugs as discovered,
 retain regression coverage, and commit/push verified work.
+
+## Raptor slice added after consolidation
+
+The original scheduler has fixed workers, bounded local LIFO/victim FIFO deques,
+serial/concurrent queues, typed/void task results, cooperative nested waits,
+capacity rejection, one-shot admission and draining close. Mutexes establish the
+first correctness reference. Caller storage and contexts stay stable until
+completion; close requires external producers/waiters to have stopped.
+
+Compiler prerequisites repair generic function/optional/result-field inference,
+function-field calls under optional context, generic optional return wrapping,
+LLVM constructor address tracking and callback/declaration name collisions.
+The full Linux gates pass 1,155 fixtures each; debug also passes 292 differential
+fixtures at O0/O2, all auxiliaries and frontend ASan. The bounded Raptor runners
+exercise both backends in debug/release, including Linux partial-start injection.
+Windows results from earlier revisions do not establish success for this slice.

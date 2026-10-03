@@ -1,0 +1,37 @@
+-- Sum a calculation through Raptor-style typed tasks and our work-stealing
+-- scheduler.
+use std.io
+use std.raptor
+
+square :: fn (context: ^void) -> i32 {
+    value := context.as(^i32)^
+    return value * value
+}
+
+main :: fn () -> i32 {
+    scheduler : Scheduler
+    on !scheduler.init(4) => return 1
+    values : [8]i32       = [1, 2, 3, 4, 5, 6, 7, 8]
+    tasks  : [8]Task[i32]
+
+    for i in [0 .. values.count] {
+        assert tasks[i].async(scheduler.get_default_queue(), square, (^values[i]).as(^void))
+    }
+    assert when_all[i32](tasks[..])
+    total : i32 = 0
+    for i in [0 .. tasks.count] {
+        on tasks[i].get() {
+            value => {
+                total += value
+            }
+
+            else => {
+                assert no
+            }
+        }
+    }
+    assert scheduler.close()
+    assert total == 204
+    prn($"Raptor tasks: sum of squares = {total}")
+    return 0
+}

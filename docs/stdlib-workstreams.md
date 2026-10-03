@@ -119,3 +119,11 @@ commands are recorded in the latest
 [Windows return handoff](../validation/windows/results/HANDOFF.md).
 
 See [the milestone plan](stdlib-expansion-plan.md) for feature and example exit gates.
+
+## Subsequent scheduler work — 3 October 2026
+
+The user selected an original work-stealing implementation around Raptor's API
+semantics, without an ASIO copy. `std.raptor` and `std.queue` provide the first
+bounded correctness reference; see [contracts](stdlib-raptor.md). Tutorials for
+all three remade APIs are required; [status](tutorials/README.md). The task branches
+above are historical and have since been removed after ancestry review.

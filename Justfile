@@ -38,6 +38,8 @@ test *args:
     python3 validation/stdlib/check_capabilities.py --compiler _bin/nerd-debug{{exe_suffix}}
     python3 build/test_std_thread_sync.py --nerd _bin/nerd-debug{{exe_suffix}}
     python3 build/test_std_thread_sync.py --nerd _bin/nerd-debug{{exe_suffix}} --cgen
+    python3 build/test_raptor.py --nerd _bin/nerd-debug{{exe_suffix}}
+    python3 build/test_raptor.py --nerd _bin/nerd-debug{{exe_suffix}} --cgen
     python3 build/test_network.py --compiler _bin/nerd-debug{{exe_suffix}}
     python3 build/test_network.py --compiler _bin/nerd-debug{{exe_suffix}} --release
     python3 build/test_network.py --compiler _bin/nerd-debug{{exe_suffix}} --cgen
@@ -60,6 +62,8 @@ test-release *args:
     python3 validation/stdlib/check_capabilities.py --compiler _bin/nerd{{exe_suffix}}
     python3 build/test_std_thread_sync.py --nerd _bin/nerd{{exe_suffix}}
     python3 build/test_std_thread_sync.py --nerd _bin/nerd{{exe_suffix}} --cgen
+    python3 build/test_raptor.py --nerd _bin/nerd{{exe_suffix}}
+    python3 build/test_raptor.py --nerd _bin/nerd{{exe_suffix}} --cgen
     python3 build/test_network.py --compiler _bin/nerd{{exe_suffix}} --release
     python3 build/test_network.py --compiler _bin/nerd{{exe_suffix}} --cgen --release
 
