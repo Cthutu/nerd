@@ -236,6 +236,12 @@ Sema diagnoses the void branch at the `on` expression instead of allowing the
 later variable-storage check to report a void local. Value-bearing braced
 branches must use the `${ ... }` expression-block form with `break <value>`.
 
+Token-stream recovery keeps error injection (`!`) and propagation (`?`) attached
+to a preceding closing payload brace. Inserting a newline there can turn a
+returned error payload into a success expression followed by a different
+statement. The payload-postfix formatter regression checks the recovery path
+and idempotence; the bounded networking example checks formatted execution.
+
 The formatter keeps short boolean `on` expressions on one line. When the full
 expression exceeds the wrap width, it places the `=>` and `else` branches on
 separate lines, indented once from the line containing `on`, and aligns their
@@ -638,6 +644,19 @@ interned enum entry for an optional or result. The new entry must retain
 binding treat the wrapper as an ordinary enum and reject valid initialisers.
 The combined `on` runtime regressions exercise both wrapper forms after an
 earlier equivalent payload declaration, including LLVM/C differential execution.
+
+Imported default arguments are emitted and coerced using the declaring module's
+parameter type before their type indices are mapped into the caller. In
+particular, an optional `nil` default must become a zero-initialised tagged value
+before that mapping; retagging an unconverted pointer null would produce invalid
+LLVM aggregate arguments. The imported optional-default regression covers
+functions, methods, scalar aliases and floating payloads.
+
+Signature help finds the leftmost return-type token through result payloads and
+applied-type targets, matching hover's source-label handling. This preserves
+`bool\Error` and `Container[T]` rather than displaying only `\Error` or `[T]`.
+The network readiness signature fixture checks imported function and method
+result payloads alongside optional defaulted deadline parameters.
 
 ### Result propagation and imported display methods
 

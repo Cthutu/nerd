@@ -45,8 +45,8 @@ against an unstable placeholder API.
 - Diagnostic allocation locks protect bookkeeping, not concurrent access to an
   application's allocation or arena. Join workers before raw leak-list inspection.
 - Socket ownership, native handle width, error capture, partial I/O and EOF/datagram
-  semantics must be tested before building Nexus on top. IPv6, DNS, readiness and
-  non-blocking connect completion remain later network slices.
+  semantics must be tested before building Nexus on top. IPv6 and DNS remain
+  later network slices; readiness/connect progress is recorded below.
 - No global compiler/editor installs or benchmark comparisons during parallel
   work. Record native Windows, individual WSL distributions and Linux separately.
 
@@ -137,3 +137,19 @@ The tutorial and native contracts cover this API. Main-thread queues execute
 serially on the scheduler's initialising thread through explicit, bounded
 `run_main_tasks` batches. The runnable examples demonstrate main-thread dispatch
 and concurrent calculations submitting output tasks to a serial worker queue.
+
+## Socket readiness and deadlines — 11 October 2026
+
+`std.network.poll` waits on caller-owned entries against an optional absolute
+monotonic deadline. It retries interrupted waits without restarting the timeout,
+counts each ready entry once and allocates no per-call storage. This bounded
+`select` reference supports at most 64 distinct sockets, with Linux descriptors
+below 1024. `start_connect` and `finish_connect` expose nonblocking TCP connection
+establishment, `SO_ERROR` failure checking and retry after deadline expiry.
+The [contracts and example](std-network-foundation.md) document ownership,
+readiness hints, timeout limits and connection state. Linux native LLVM/C checks
+pass in debug/release, including deterministic interrupted waits and connect
+retry. Native Windows validation of this new slice remains pending. The original
+Windows IPv4 socket results do not validate these additions. Nexus messages,
+framing and protocols are still unimplemented; this slice supplies their
+IPv4 readiness prerequisite, without completing all of M5.

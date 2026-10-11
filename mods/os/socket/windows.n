@@ -30,7 +30,33 @@ on "windows" {
         description  [257]u8  -- Implementation description.
         status       [129]u8  -- Implementation status.
     }
+    -- Native select descriptor set for the supported x64 ABI.
+    pub NativeSocketSet :: plex #c {
+        count   u32
+        sockets [64]usize
+    }
+    -- Native timeval component width differs between Linux and Windows.
+    pub NativeTimeValue :: i32
+    -- Native select timeout; no language-level duration ownership.
+    pub SocketTimeout :: plex #c {
+        seconds      NativeTimeValue
+        microseconds NativeTimeValue
+    }
     ffi "ws2_32" {
+        -- Native select; sets are overwritten with readiness results.
+        pub ns_select :: select (count       : i32,
+                                 read        : ^NativeSocketSet,
+                                 write       : ^NativeSocketSet,
+                                 exceptional : ^NativeSocketSet,
+                                 timeout     : ^SocketTimeout) -> i32
+
+        -- Reads SO_ERROR to complete a nonblocking TCP connection.
+        pub ns_socket_error :: getsockopt (socket : NativeSocket,
+                                           level  : i32,
+                                           option : i32,
+                                           value  : ^i32,
+                                           length : ^AddressLength) -> i32
+
         -- Direct socket binding; follows native return and error conventions.
         pub ns_socket :: socket (family   : i32,
                                  kind     : i32,

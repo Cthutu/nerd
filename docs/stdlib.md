@@ -49,7 +49,8 @@ library is organised into three layers:
   Low-level allocation wrappers.
 - `std.network`
   Experimental IPv4 TCP/UDP sockets with explicit ownership, partial I/O,
-  EOF/datagram semantics and native errors. See the
+  EOF/datagram semantics, bounded readiness polling, monotonic deadlines,
+  nonblocking TCP connection completion and native errors. See the
   [API contracts and examples](std-network-foundation.md).
 - `std.queue` and `std.raptor`
   Bounded mutex deques and our own work-stealing scheduler with typed tasks and

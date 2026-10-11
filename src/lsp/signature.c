@@ -169,6 +169,25 @@ internal string lsp_signature_type_source(const LspTypeFactView* view,
     return lsp_signature_trim_source(view, start, end);
 }
 
+// Result nodes point at the backslash; applied types point at the brackets.
+// Source labels must start at the leftmost payload/target type token.
+internal u32 lsp_signature_type_start_token(const Ast* ast, u32 index)
+{
+    if (index >= array_count(ast->nodes)) {
+        return U32_MAX;
+    }
+    const AstNode* node = &ast->nodes[index];
+    if (node->kind == AK_TypeResult) {
+        return lsp_signature_type_start_token(ast, node->a);
+    }
+    if (node->kind == AK_TypeApply &&
+        node->a < array_count(ast->type_applications)) {
+        return lsp_signature_type_start_token(
+            ast, ast->type_applications[node->a].target_node_index);
+    }
+    return node->token_index;
+}
+
 internal string lsp_signature_return_type_source(const LspTypeFactView* view,
                                                  u32 return_type_node_index)
 {
@@ -177,17 +196,18 @@ internal string lsp_signature_return_type_source(const LspTypeFactView* view,
         return s("");
     }
 
-    const Lexer*   lexer = view->lexer;
-    const AstNode* node  = &view->ast->nodes[return_type_node_index];
-    if (node->token_index >= array_count(lexer->tokens)) {
+    const Lexer* lexer = view->lexer;
+    u32          start_token =
+        lsp_signature_type_start_token(view->ast, return_type_node_index);
+    if (start_token >= array_count(lexer->tokens)) {
         return s("");
     }
-    usize start = lexer->tokens[node->token_index].offset;
+    usize start = lexer->tokens[start_token].offset;
     usize end   = start;
     u32   depth = 0;
-    for (u32 i = node->token_index; i < array_count(lexer->tokens); ++i) {
+    for (u32 i = start_token; i < array_count(lexer->tokens); ++i) {
         TokenKind kind = lexer->tokens[i].kind;
-        if (depth == 0 && i > node->token_index) {
+        if (depth == 0 && i > start_token) {
             usize previous_end =
                 lex_token_end_offset(lexer, &lexer->tokens[i - 1]);
             for (usize j = previous_end; j < lexer->tokens[i].offset; ++j) {

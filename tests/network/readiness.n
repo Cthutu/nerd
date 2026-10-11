@@ -1,0 +1,255 @@
+use os.socket
+use std.network
+use std.time
+
+checks :: fn () -> void\NetworkError {
+    on "linux" {
+        assert NativeSocketSet.size == 128
+        assert SocketTimeout.size == 16
+    }
+    on "windows" {
+        assert NativeSocketSet.size == 520
+        assert SocketTimeout.size == 8
+    }
+    receiver := socket(SocketKind.Udp)?
+    defer _ := receiver.close()
+    receiver.bind(loopback(0))?
+    receiver.nonblocking(yes)?
+    sender := socket(SocketKind.Udp)?
+    defer _ := sender.close()
+    sender.bind(loopback(0))?
+    address := receiver.local_address()?
+    entries := [PollEntry {
+        socket: ^receiver read: yes write: no ...
+    }
+    ,
+    PollEntry {
+        socket: ^sender read: yes write: no ...
+    }
+    ]
+    assert poll(entries[..], deadline = now())? == 0
+    assert !entries[0].readable && !entries[1].readable
+    started := now()
+    limit := started.add(from_ms(30))
+    assert poll(entries[..], deadline = limit)? == 0
+    assert now() >= limit
+    assert elapsed(started, now()) < from_secs(2)
+    -- Reusing the same absolute deadline never starts another full timeout.
+    assert poll(entries[..], deadline = limit)? == 0
+    _ := sender.send_to("one".as([]u8), address)?
+    assert poll(entries[..])? == 1
+    assert entries[0].readable && !entries[1].readable
+    buffer : [16]u8
+    received := receiver.receive_from(buffer[..])?
+    assert received.count == 3 && buffer[.. 3].as(string) == "one"
+    -- Two sockets can be readable in one call, with results by entry index.
+    _ := sender.send_to("three".as([]u8), address)?
+    sender_address := sender.local_address()?
+    _ := receiver.send_to("reply".as([]u8), sender_address)?
+    assert poll(entries[..], deadline = now().add(from_secs(2)))? == 2
+    assert entries[0].readable && entries[1].readable
+    _ := receiver.receive_from(buffer[..])?
+    _ := sender.receive_from(buffer[..])?
+    -- A later call clears stale result flags; no datagrams remain.
+    assert poll(entries[..], deadline = now())? == 0
+    assert !entries[0].readable && !entries[0].writable && !entries[0].exceptional
+    _ := sender.send_to(buffer[.. 0], address)?
+    assert poll(entries[..], deadline = now().add(from_secs(2)))? == 1
+    empty := receiver.receive_from(buffer[..])?
+    assert empty.count == 0
+    -- Each ready entry is counted once even if both read and write are ready.
+    _ := sender.send_to("two".as([]u8), address)?
+    entries[0].write = yes
+    assert poll(entries[..], deadline = now().add(from_secs(2)))? == 1
+    assert entries[0].readable && entries[0].writable
+    _ := receiver.receive_from(buffer[..])?
+    entries[0].write = no
+    duplicate := [entries[0], entries[0]]
+    on poll(duplicate[..], deadline = now()) {
+        NetworkError.Invalid! => {
+        }
+        else => {
+            assert no
+        }
+    }
+    on poll(entries[.. 0], deadline = now()) {
+        NetworkError.Invalid! => {
+        }
+        else => {
+            assert no
+        }
+    }
+    invalid := [PollEntry {
+        socket: nil read: yes ...
+    }
+    ]
+    on poll(invalid[..], deadline = now()) {
+        NetworkError.Invalid! => {
+        }
+        else => {
+            assert no
+        }
+    }
+    invalid[0].socket = ^receiver
+    invalid[0].read = no
+    on poll(invalid[..], deadline = now()) {
+        NetworkError.Invalid! => {
+        }
+        else => {
+            assert no
+        }
+    }
+    too_many : [65]PollEntry
+    on poll(too_many[..], deadline = now()) {
+        NetworkError.Invalid! => {
+        }
+        else => {
+            assert no
+        }
+    }
+    on "linux" {
+        -- Reject a descriptor beyond FD_SETSIZE before touching any native set.
+        unsupported := Socket {
+            raw: 1024 valid: yes kind: SocketKind.Tcp ...
+        }
+        invalid[0] = PollEntry {
+            socket: ^unsupported read: yes ...
+        }
+        on poll(invalid[..], deadline = now()) {
+            NetworkError.Invalid! => {
+            }
+            else => {
+                assert no
+            }
+        }
+    }
+    receiver.close()?
+    entries[0].readable = yes
+    on poll(entries[..], deadline = now()) {
+        NetworkError.Invalid! => {
+        }
+        else => {
+            assert no
+        }
+    }
+    assert !entries[0].readable
+
+    listener := socket(SocketKind.Tcp)?
+    defer _ := listener.close()
+    listener.bind(loopback(0))?
+    listener.listen()?
+    listener.nonblocking(yes)?
+    destination := listener.local_address()?
+    client := socket(SocketKind.Tcp)?
+    defer _ := client.close()
+    on client.start_connect(destination) {
+        NetworkError.Invalid! => {
+        }
+        else => {
+            assert no
+        }
+    }
+    on client.finish_connect(deadline = now()) {
+        NetworkError.Invalid! => {
+        }
+        else => {
+            assert no
+        }
+    }
+    client.nonblocking(yes)?
+    _ := client.start_connect(destination)?
+    on client.start_connect(destination) {
+        NetworkError.Invalid! => {
+        }
+        else => {
+            assert no
+        }
+    }
+    assert client.finish_connect(deadline = now().add(from_secs(2)))?
+    assert client.finish_connect(deadline = now())?
+    assert client.connection == ConnectState.Connected
+    assert client.is_nonblocking
+    accept_entries := [PollEntry {
+        socket: ^listener read: yes ...
+    }
+    ]
+    assert poll(accept_entries[..], deadline = now().add(from_secs(2)))? == 1
+    assert accept_entries[0].readable
+    server := listener.accept()?
+    defer _ := server.close()
+    assert !server.is_nonblocking && server.connection == ConnectState.Connected
+    server.nonblocking(yes)?
+    tcp_entries := [PollEntry {
+        socket: ^server read: yes ...
+    }
+    ,
+    PollEntry {
+        socket: ^sender read: yes ...
+    }
+    ]
+    assert poll(tcp_entries[..], deadline = now())? == 0
+    _ := client.send("abc".as([]u8))?
+    limit = now().add(from_secs(2))
+    for i in [0 .. 3] {
+        assert poll(tcp_entries[..], deadline = limit)? == 1
+        assert tcp_entries[0].readable && !tcp_entries[1].readable
+        part := server.receive(buffer[i .. i + 1])?
+        assert part.count == 1 && !part.eof
+    }
+    assert buffer[.. 3].as(string) == "abc"
+    client.shutdown_send()?
+    assert poll(tcp_entries[..], deadline = limit)? == 1
+    end := server.receive(buffer[..])?
+    assert end.eof
+    -- Connect refusal must be reported from SO_ERROR, never writable == success.
+    reserved := socket(SocketKind.Tcp)?
+    defer _ := reserved.close()
+    reserved.bind(loopback(0))?
+    reserved_address := reserved.local_address()?
+    refused := socket(SocketKind.Tcp)?
+    defer _ := refused.close()
+    refused.nonblocking(yes)?
+    on refused.start_connect(reserved_address) {
+        NetworkError.ConnectionRefused {
+            code
+        }
+        ! => {
+            assert code != 0
+        }
+        _! => {
+            assert no
+        }
+        else => {
+            on refused.finish_connect(deadline = now().add(from_secs(2))) {
+                NetworkError.ConnectionRefused {
+                    code
+                }
+                ! => {
+                    assert code != 0
+                }
+                else => {
+                    assert no
+                }
+            }
+        }
+    }
+    assert refused.connection == ConnectState.Failed
+    on refused.finish_connect(deadline = now()) {
+        NetworkError.Invalid! => {
+        }
+        else => {
+            assert no
+        }
+    }
+    prn("network readiness, deadlines and connect contracts passed")
+}
+
+main :: fn () -> i32 {
+    return on checks() {
+        _! => {
+            eprn("network readiness contracts failed")
+            return 1
+        }
+        else => 0
+    }
+}

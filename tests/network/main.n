@@ -34,7 +34,7 @@ checks :: fn () -> void\NetworkError {
         NetworkError.Invalid! => {
         }
         else => {
-            assert no, "Nonblocking connect requires the future completion API"
+            assert no, "Nonblocking connect uses start_connect instead"
         }
     }
     client.nonblocking(no)?

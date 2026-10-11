@@ -10240,7 +10240,8 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
             format_token_state_newline(&state);
         } else if (!in_interpolated_string &&
                    ((kind == TK_RBrace && next_kind != TK_else &&
-                     next_kind != TK_RParen) ||
+                     next_kind != TK_RParen && next_kind != TK_Bang &&
+                     next_kind != TK_Question) ||
                     kind == TK_Semicolon)) {
             format_token_state_newline(&state);
         } else if (kind == TK_RBracket && multiline_bracket_depth == 0 &&

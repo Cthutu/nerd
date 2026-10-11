@@ -308,6 +308,29 @@ main :: fn () {
         "id": 2,
         "result": [
             {
+                "title": "Add use std.network",
+                "kind": "quickfix",
+                "edit": {
+                    "changes": {
+                        "file:///test.n": [
+                            {
+                                "range": {
+                                    "start": {
+                                        "line": 1,
+                                        "character": 0
+                                    },
+                                    "end": {
+                                        "line": 1,
+                                        "character": 0
+                                    }
+                                },
+                                "newText": "use std.network\n"
+                            }
+                        ]
+                    }
+                }
+            },
+            {
                 "title": "Add missing enum variants",
                 "kind": "quickfix",
                 "edit": {
@@ -452,6 +475,29 @@ main :: fn () {
         "jsonrpc": "2.0",
         "id": 5,
         "result": [
+            {
+                "title": "Add use std.network",
+                "kind": "quickfix",
+                "edit": {
+                    "changes": {
+                        "file:///test.n": [
+                            {
+                                "range": {
+                                    "start": {
+                                        "line": 1,
+                                        "character": 0
+                                    },
+                                    "end": {
+                                        "line": 1,
+                                        "character": 0
+                                    }
+                                },
+                                "newText": "use std.network\n"
+                            }
+                        ]
+                    }
+                }
+            },
             {
                 "title": "Add missing enum variants",
                 "kind": "quickfix",

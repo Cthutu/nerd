@@ -15128,9 +15128,10 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                         default_emit_ctx->macro_source_hir  = ctx->hir;
                         default_emit_ctx->macro_source_lexer = ctx->lexer;
                         context_value =
-                            llvm_emit_expr(default_emit_ctx,
-                                           function,
-                                           param->default_expr_index);
+                            llvm_emit_expr_as_type(default_emit_ctx,
+                                                   function,
+                                                   param->default_expr_index,
+                                                   param->type_index);
                         default_emit_ctx->macro_source_path  = (string){0};
                         default_emit_ctx->macro_source_line  = 0;
                         default_emit_ctx->macro_source_hir   = NULL;

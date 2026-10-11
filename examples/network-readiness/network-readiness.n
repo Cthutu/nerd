@@ -1,0 +1,103 @@
+use std.network
+use std.time
+
+-- One absolute deadline covers every partial write and readiness retry.
+send_bytes :: fn (stream: ^Socket, bytes: []u8, deadline: Instant) -> void\NetworkError {
+    offset : usize = 0
+    entries := [PollEntry {
+        socket: stream write: yes ...
+    }
+    ]
+    for offset < bytes.count {
+        on now() >= deadline => return NetworkError.TimedOut {
+            code: 0
+        }!
+        on poll(entries[..], deadline = deadline)? == 0 => return NetworkError.TimedOut {
+            code: 0
+        }!
+        on stream.send(bytes[offset ..]) {
+            count => {
+                on count == 0 => return NetworkError.Invalid!
+                offset += count
+            }
+            NetworkError.WouldBlock {
+                code
+            }
+            ! => {
+                _ := code
+            }
+            error! => return error!
+        }
+    }
+}
+
+-- Readiness is a hint; nonblocking receive may still report WouldBlock.
+receive_bytes :: fn (stream: ^Socket, bytes: []u8, deadline: Instant) -> void\NetworkError {
+    offset : usize = 0
+    entries := [PollEntry {
+        socket: stream read: yes ...
+    }
+    ]
+    for offset < bytes.count {
+        on now() >= deadline => return NetworkError.TimedOut {
+            code: 0
+        }!
+        on poll(entries[..], deadline = deadline)? == 0 => return NetworkError.TimedOut {
+            code: 0
+        }!
+        on stream.receive(bytes[offset ..]) {
+            received => {
+                on received.eof => return NetworkError.Invalid!
+                offset += received.count
+            }
+            NetworkError.WouldBlock {
+                code
+            }
+            ! => {
+                _ := code
+            }
+            error! => return error!
+        }
+    }
+}
+
+run_echo :: fn () -> void\NetworkError {
+    listener := socket(SocketKind.Tcp)?
+    defer _ := listener.close()
+    listener.bind(loopback(0))?
+    listener.listen()?
+    listener.nonblocking(yes)?
+    address  := listener.local_address()?
+    deadline := now().add(from_secs(2))
+
+    client := socket(SocketKind.Tcp)?
+    defer _ := client.close()
+    client.nonblocking(yes)?
+    _ := client.start_connect(address)?
+    on !client.finish_connect(deadline = deadline)? => return NetworkError.TimedOut { code: 0 }!
+    entries := [PollEntry { socket: ^listener read: yes ... }]
+    on poll(entries[..], deadline = deadline)? == 0 => return NetworkError.TimedOut { code: 0 }!
+    server := listener.accept()?
+    defer _ := server.close()
+    server.nonblocking(yes)?
+
+    message := "hello deadlines".as([]u8)
+    send_bytes(^client, message, deadline)?
+    request : [15]u8
+    receive_bytes(^server, request[..], deadline)?
+    send_bytes(^server, request[..], deadline)?
+    reply : [15]u8
+    receive_bytes(^client, reply[..], deadline)?
+    assert reply[..].as(string) == "hello deadlines"
+    prn("TCP readiness: hello deadlines")
+}
+
+main :: fn () -> i32 {
+    return on run_echo() {
+        _! => {
+            eprn("TCP readiness failed")
+            return 1
+        }
+        else => 0
+    }
+}

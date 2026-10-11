@@ -1,4 +1,4 @@
-# IPv4 socket foundation
+# IPv4 sockets, readiness and deadlines
 
 `std.network` is the first M5 slice. Importing it needs no consumer linker flags:
 `os.socket` selects Winsock (`ws2_32`) on Windows and libc on Linux. This slice
@@ -35,12 +35,92 @@ supports the repository's Windows x64 and Linux x64 targets.
   and IPv4 UDP sends over 65507 bytes return `Invalid` before invoking the OS.
 - `nonblocking(yes)` makes empty accept/receive and blocked send calls report
   `WouldBlock`; errors retain native codes. `Interrupted` is returned without
-  retrying or losing progress. Nonblocking connect is deliberately rejected
-  until a completion/readiness contract exists. Blocking calls have no implicit
-  deadline or cancellation in this slice.
+  retrying or losing progress. `connect` remains blocking-only; nonblocking TCP
+  uses `start_connect` and `finish_connect`. Ordinary I/O calls have no implicit
+  deadline or cancellation.
 - Linux close consumes the owner even on EINTR; retrying could close a reused
   descriptor. Windows close retains ownership on failure so the caller can
   inspect or retry it. No nondefault linger option is exposed.
+
+## Readiness and deadlines
+
+`PollEntry` borrows a `^Socket`, with `read` and `write` interests. Initialise
+unused fields with `...`. `poll(entries[..], deadline = limit)` updates each
+entry's `readable`, `writable` and `exceptional` flags and returns the number of
+ready **entries**, counting an entry once even when multiple flags are set.
+Outputs are cleared on every call, including a failed call. It never accepts or
+transfers bytes on the caller's behalf.
+
+The deadline is an optional absolute `std.time.Instant`, normally created with
+`now().add(from_ms(2000))`. Omit it to wait indefinitely. Zero ready entries means
+the deadline expired; an already expired deadline performs one immediate poll
+and can still report readiness. Interrupted native waits and early timeout
+returns retry against the same deadline, with fresh descriptor sets and timeout
+storage. Nanoseconds are rounded up to native microseconds; OS scheduling can
+make a wait overrun its deadline. Native waits longer than one day are split into
+bounded waits without changing the deadline.
+
+```nerd
+use std.network
+use std.time
+-- stream is a live, nonblocking Socket.
+entries := [PollEntry { socket: ^stream read: yes ... }]
+limit := now().add(from_ms(2000))
+on poll(entries[..], deadline = limit) {
+    count => {
+        on count == 0 => prn("Deadline expired")
+        -- When entries[0].readable, attempt receive and handle WouldBlock.
+    }
+    error! => {
+        _ := error -- Handle the socket failure here.
+    }
+}
+```
+
+Readiness is a hint. Use nonblocking sockets and handle `WouldBlock` on the
+subsequent operation. Readability can mean TCP EOF or reset, and UDP readability
+includes empty datagrams. Writability does not promise room for an entire slice.
+`exceptional` covers native exceptional conditions, including urgent data and
+Windows connect failure; it does not itself mean EOF or supply an error code.
+Socket operations and connection completion retrieve the actual errors.
+
+One call accepts 1–64 distinct live sockets, with at least one read/write interest
+per entry. Empty lists, nil/closed owners, duplicate native handles, missing
+interests and oversized lists return `NetworkError.Invalid`. Linux additionally
+rejects descriptors numbered 1024 or higher because this first implementation
+uses native `select` descriptor sets; Windows has no equivalent numeric handle
+restriction. The bound is exposed as `max_poll_sockets`. There is no per-call
+allocation or hidden worker. All borrowed sockets, entries and their native
+handles must remain valid and unchanged through the call; do not concurrently
+close or mutate them. Waiting on a slice does not transfer ownership.
+
+A higher-level operation must check its absolute deadline between partial
+transfers even when sockets remain continuously ready. Reuse that deadline on
+every retry; creating a fresh deadline after each byte would allow an operation
+to run indefinitely. `NetworkError.TimedOut { code: 0 }` represents a
+caller-detected deadline expiry; native timeout failures retain their OS code.
+The [bounded TCP example](../examples/network-readiness/network-readiness.n)
+shows these loops.
+
+## Nonblocking TCP connection establishment
+
+For a fresh TCP socket, enable `nonblocking(yes)`, then call
+`start_connect(address) -> bool\NetworkError`. True means immediate success;
+false means a pending attempt. `finish_connect(deadline = limit)` waits for
+writability or exceptional readiness and reads `SO_ERROR` to determine whether
+the attempt succeeded or failed. True means connected; false means deadline
+expiry, leaving the attempt pending for a later call. Omit the deadline to wait
+indefinitely. Polling a connecting socket yourself never completes its library
+state: call `finish_connect`, optionally with an immediate deadline after polling.
+
+`Socket.connection` records `Idle`, `Pending`, `Connected` or `Failed`; callers
+must not mutate it. Repeated `start_connect`, completion on an idle/failed/closed
+socket, and disabling nonblocking mode while pending return `Invalid`.
+Completion on a connected socket returns true repeatedly without consuming
+`SO_ERROR` again. Accepted TCP sockets start connected and blocking, as before.
+Both failed attempts and abandoned pending attempts require explicit close;
+create a new owner to try another connection. Timeout does not cancel or close
+the native socket. Ownership and Winsock references remain with the caller.
 
 ## Examples and tests
 
@@ -51,12 +131,19 @@ external service, startup sleep, worker or fixed port. Run with:
 ```sh
 just run-example network-echo
 just run-example network-datagram
+just run-example network-readiness
 ```
 
 The bounded runner checks native SDK/header layouts, byte-order/address round
 trips, partial receive counts, TCP EOF and half-close, accepted-socket startup
 ownership after all other TCP owners close, would-block versus empty UDP,
 truncation consumption, reply routing, refused connection and invalid ownership.
+The readiness contracts additionally check multiple ready sockets, stale-output
+clearing, immediate/finite deadlines, empty datagrams, partial stream reads, EOF,
+connection completion/refusal, invalid entries and native descriptor-set bounds.
+Linux injects interrupted waits and early native timeout returns to verify that
+remaining time decreases, and a connect timeout to verify pending-state retry.
+The runner repeats readiness contracts and the bounded example in every mode.
 Every executable has a 20-second process deadline; compilation has 60 seconds.
 A timeout terminates the process tree. It always overrides NERD_LIB_PATH with
 this checkout's modules and never silently uses an installed standard library.
@@ -77,9 +164,8 @@ example family checks syntax but does not replace these execution tests.
 
 ## Remaining M5 work
 
-IPv6, DNS/resolver ownership, readiness with monotonic deadlines, nonblocking
-connect completion, receive/both-direction shutdown, socket options (including
-reuse and close-on-exec/inheritance policy), cancellation and stress testing
+IPv6, DNS/resolver ownership, receive/both-direction shutdown, socket options
+(including reuse and close-on-exec/inheritance policy), cancellation and stress testing
 remain followups. There is no Nexus framing, wire-format change, protocol or
 scheduler dependency here. Do not declare M5 or cross-platform adoption complete.
 
@@ -110,6 +196,14 @@ socket suite passed with that compiler and optimised programs.
 retain the initial failure and the successful follow-up. The integrated OS
 completion fixture contains both `socket` and `thread`. See the latest
 [handoff](../validation/windows/results/HANDOFF.md) for combined results.
+
+Readiness sources: [Winsock select](https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-select),
+[Winsock getsockopt](https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-getsockopt),
+[Linux select](https://man7.org/linux/man-pages/man2/select.2.html) and
+[Linux connect](https://man7.org/linux/man-pages/man2/connect.2.html). The new
+readiness/connect slice passes native Linux LLVM and C output in debug/release;
+its native Windows execution is still pending. The Windows results below describe
+the earlier IPv4 socket slice.
 
 Native sources consulted: [Winsock startup](https://learn.microsoft.com/en-us/windows/win32/api/winsock/nf-winsock-wsastartup),
 [WSADATA](https://learn.microsoft.com/en-us/windows/win32/api/winsock/ns-winsock-wsadata),

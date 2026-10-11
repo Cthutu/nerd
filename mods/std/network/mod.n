@@ -18,6 +18,10 @@ pub NetworkError :: enum {
         code i32
     }
     -- Platform error code.
+    TimedOut {
+        code i32
+    }
+    -- Native timeout code, or zero for a caller-detected deadline.
     ConnectionRefused {
         code i32
     }
@@ -52,14 +56,24 @@ pub Ipv4Address :: plex {
     port   u16    -- Host-order port number.
 }
 
+-- Tracks TCP connection establishment; failed sockets must be closed.
+pub ConnectState :: enum {
+    Idle
+    Pending
+    Connected
+    Failed
+}
+
 -- Owns one OS socket. Do not copy a live value or race any operation with
 -- close. Each Windows socket owns one matching Winsock startup reference.
 pub Socket :: plex {
-    raw            usize       -- Opaque native handle; never close this field
-                               --     directly.
-    valid          bool        -- True until close releases ownership.
-    kind           SocketKind  -- Transport selected at creation.
-    is_nonblocking bool        -- True after nonblocking mode is enabled.
+    raw            usize         -- Opaque native handle; never close this field
+    --     directly.
+    valid          bool          -- True until close releases ownership.
+    kind           SocketKind    -- Transport selected at creation.
+    connection     ConnectState  -- Connection establishment state; do not
+                                 --     mutate.
+    is_nonblocking bool          -- True after nonblocking mode is enabled.
 }
 
 -- One TCP receive result; EOF is distinct from an empty output buffer.
@@ -117,6 +131,7 @@ on "windows" {
         return on code {
             10035  => NetworkError.WouldBlock { code }
             10004  => NetworkError.Interrupted { code }
+            10060  => NetworkError.TimedOut { code }
             10061  => NetworkError.ConnectionRefused { code }
             10054  => NetworkError.ConnectionReset { code }
             10048  => NetworkError.AddressInUse { code }
@@ -157,6 +172,7 @@ on "linux" {
         return on code {
             11    => NetworkError.WouldBlock { code }
             4     => NetworkError.Interrupted { code }
+            110   => NetworkError.TimedOut { code }
             111   => NetworkError.ConnectionRefused { code }
             104   => NetworkError.ConnectionReset { code }
             98    => NetworkError.AddressInUse { code }
@@ -200,7 +216,7 @@ pub socket :: fn (kind: SocketKind) -> Socket\NetworkError {
         network_stop()
         return error!
     }
-    return Socket { raw: raw.as(usize) valid: yes kind is_nonblocking: no }
+    return Socket { raw: raw.as(usize) valid: yes kind connection: ConnectState.Idle is_nonblocking: no }
 }
 
 impl Socket {
@@ -253,14 +269,21 @@ impl Socket {
             network_stop()
             return error!
         }
-        return Socket { raw: raw.as(usize) valid: yes kind: SocketKind.Tcp is_nonblocking: no }
+        return Socket { raw: raw.as(usize) valid: yes kind: SocketKind.Tcp connection: ConnectState.Connected is_nonblocking: no }
     }
 
-    -- Connects a blocking socket. Nonblocking connect completion is not yet exposed.
+    -- Connects a blocking socket; nonblocking TCP uses start_connect/finish_connect.
     pub connect :: fn (self: ^Self, address: Ipv4Address) -> void\NetworkError {
         on !self.valid || self.is_nonblocking => return NetworkError.Invalid!
+        on self.kind == SocketKind.Tcp &&
+            self.connection != ConnectState.Idle => return NetworkError.Invalid!
         native := network_address(address)
-        on ns_connect(self.raw.as(NativeSocket), ^native, SocketAddress.size.as(AddressLength)) != 0 => return network_error(network_last_error())!
+        on ns_connect(self.raw.as(NativeSocket), ^native, SocketAddress.size.as(AddressLength)) != 0 => {
+            code := network_last_error()
+            self.connection = ConnectState.Failed
+            return network_error(code)!
+        }
+        self.connection = ConnectState.Connected
     }
 
     -- Returns the actual local address, including a port selected by bind(0).
@@ -285,7 +308,8 @@ impl Socket {
 
     -- Enables immediate WouldBlock results for subsequent I/O and accept calls.
     pub nonblocking :: fn (self: ^Self, enabled: bool) -> void\NetworkError {
-        on !self.valid => return NetworkError.Invalid!
+        on !self.valid ||
+            (!enabled && self.connection == ConnectState.Pending) => return NetworkError.Invalid!
         on network_nonblocking(self.raw.as(NativeSocket), enabled) != 0 => return network_error(network_last_error())!
         self.is_nonblocking = enabled
     }

@@ -9,6 +9,7 @@ import signal
 import shlex
 import subprocess
 import tempfile
+import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -45,6 +46,8 @@ def main() -> None:
         parser.error(f"Build the compiler first: {compiler}")
     env = dict(os.environ, NERD_LIB_PATH=str(ROOT / "mods"))
     cases = [("tests/network/main.n", "network contracts passed"),
+             ("tests/network/readiness.n", "network readiness, deadlines and connect contracts passed"),
+             ("examples/network-readiness/network-readiness.n", "TCP readiness: hello deadlines"),
              ("examples/network-echo/network-echo.n", "TCP echo: hello sockets"),
              ("examples/network-datagram/network-datagram.n", "UDP reply: hello datagrams")]
     with tempfile.TemporaryDirectory(prefix="nerd-network-") as temporary:
@@ -54,6 +57,15 @@ def main() -> None:
         run(["clang", "-std=c11", str(ROOT / "tests/network/layout.c"), "-o", str(layout)], env)
         run([str(layout)], env, timeout=20)
         print("PASS native socket layout")
+        preload = None
+        if sys.platform.startswith("linux"):
+            preload = directory / "interrupted.so"
+            run(["clang", "-shared", "-fPIC", "-Wall", "-Wextra", "-Werror",
+                 "tests/network/interrupted.c", "-ldl", "-o", str(preload)], env)
+            cases.append(("tests/network/interrupted.n",
+                          "network interrupted waits and pending connect retry passed"))
+        else:
+            print("SKIP deterministic select interruption injection requires Linux")
         for index, (source, expected) in enumerate(cases):
             executable = directory / (f"case-{index}" + suffix)
             command = [compiler, "build", source, "-o", str(executable)]
@@ -65,9 +77,11 @@ def main() -> None:
             if args.cgen:
                 flags = shlex.split(run(command + ["--copts"], env))
                 run(["clang", str(executable.with_suffix(".c")), *flags, "-o", str(executable)], env)
-            output = run([str(executable)], env, timeout=20)
-            if output.strip() != expected:
-                raise RuntimeError(f"Unexpected {source} output: {output!r}")
+            runtime_env = dict(env, LD_PRELOAD=str(preload)) if source.endswith("interrupted.n") else env
+            for _ in range(8 if source.endswith("readiness.n") else 1):
+                output = run([str(executable)], runtime_env, timeout=20)
+                if output.strip() != expected:
+                    raise RuntimeError(f"Unexpected {source} output: {output!r}")
             print(f"PASS {source}")
 
 

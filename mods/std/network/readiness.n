@@ -1,0 +1,236 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Bounded socket readiness and absolute monotonic deadlines, without
+-- allocation.
+
+use std.time
+
+-- Maximum entries accepted by one poll, matching the default Winsock fd_set.
+pub max_poll_sockets :: 64
+
+-- Borrows a socket and requests read/write readiness. Results are cleared at
+-- entry, including on failure. Exceptional readiness also covers urgent data;
+-- it is not itself a portable socket error or an EOF indication.
+pub PollEntry :: plex {
+    socket      ^Socket
+    read        bool
+    write       bool
+    readable    bool
+    writable    bool
+    exceptional bool
+}
+
+on "linux" {
+
+    socket_level        :: 1
+    socket_error_option :: 4
+    interrupted_code    :: 4
+
+    network_connect_pending :: fn (code: i32) -> bool {
+        return code == 115 || code == 114 || code == 4
+    }
+
+    network_set_add :: fn (set: ^NativeSocketSet, socket: usize) {
+        index := socket / 64
+        set.words[index] = set.words[index] | (1.as(u64) << (socket % 64).as(u64))
+    }
+
+    network_set_has :: fn (set: ^NativeSocketSet, socket: usize) -> bool {
+        return (set.words[socket / 64] & (1.as(u64) << (socket % 64).as(u64))) != 0
+    }
+
+}
+
+on "windows" {
+
+    socket_level        :: 0xffff
+    socket_error_option :: 0x1007
+    interrupted_code    :: 10004
+
+    network_connect_pending :: fn (code: i32) -> bool {
+        return code == 10035 || code == 10036 || code == 10037
+    }
+
+    network_set_add :: fn (set: ^NativeSocketSet, socket: usize) {
+        set.sockets[set.count.as(usize)] = socket
+        set.count += 1
+    }
+
+    network_set_has :: fn (set: ^NativeSocketSet, socket: usize) -> bool {
+        for i in [0 .. set.count.as(usize)] {
+            on set.sockets[i] == socket => return yes
+        }
+        return no
+    }
+
+}
+
+-- Waits for read/write/exceptional readiness and returns the number of ready
+-- entries, not the number of ready flags. Zero means deadline expiry. A nil
+-- deadline waits indefinitely; an expired deadline performs one immediate poll.
+-- Interrupted native waits retry against the same absolute deadline.
+pub poll :: fn (entries  : []PollEntry,
+                deadline : ?Instant = nil) -> usize\NetworkError {
+    for i in [0 .. entries.count] {
+        entries[i].readable = no
+        entries[i].writable = no
+        entries[i].exceptional = no
+    }
+    on entries.count == 0 ||
+        entries.count > max_poll_sockets => return NetworkError.Invalid!
+    count : i32 = 0
+    for i in [0 .. entries.count] {
+        entry := ^entries[i]
+        on entry.socket == nil ||
+            (!entry.read && !entry.write) => return NetworkError.Invalid!
+        on !entry.socket.valid => return NetworkError.Invalid!
+        on "linux" {
+            on entry.socket.raw >= 1024 => return NetworkError.Invalid!
+            on entry.socket.raw.as(i32) >= count => count = entry.socket.raw.as(i32) + 1
+        }
+
+        for previous in [0 .. i] {
+            on entries[previous].socket.raw == entry.socket.raw => return NetworkError.Invalid!
+        }
+    }
+    for {
+        reads      : NativeSocketSet
+        writes     : NativeSocketSet
+        exceptions : NativeSocketSet
+        read_set   : ^NativeSocketSet
+        write_set  : ^NativeSocketSet
+
+        for i in [0 .. entries.count] {
+            entry := ^entries[i]
+            on entry.read => {
+                network_set_add(^reads, entry.socket.raw)
+                read_set = ^reads
+            }
+            on entry.write => {
+                network_set_add(^writes, entry.socket.raw)
+                write_set = ^writes
+            }
+            network_set_add(^exceptions, entry.socket.raw)
+        }
+        timeout     : SocketTimeout
+        timeout_ptr : ^SocketTimeout
+
+        on deadline {
+            limit => {
+                current         := now()
+                remaining : u64
+
+                on limit > current => remaining = limit - current
+                -- Bound each native wait to one day, preserving longer deadlines.
+                on remaining > 86_400_000_000_000 => remaining = 86_400_000_000_000
+                micros := (remaining + 999) / 1000
+                timeout.seconds = (micros / 1_000_000).as(NativeTimeValue)
+                timeout.microseconds = (micros % 1_000_000).as(NativeTimeValue)
+                timeout_ptr = ^timeout
+            }
+
+            else => {
+            }
+        }
+        result := ns_select(count,
+                            read_set,
+                            write_set,
+                            ^exceptions,
+                            timeout_ptr)
+        on result < 0 => {
+            code := network_last_error()
+            on code != interrupted_code => return network_error(code)!
+            on deadline {
+                limit => {
+                    on now() >= limit => return 0
+                }
+
+                else => {
+                }
+            }
+            again
+        }
+        on result == 0 => {
+            on deadline {
+                limit => {
+                    on now() >= limit => return 0
+                }
+
+                else => {
+                }
+            }
+            again
+        }
+        ready : usize = 0
+        for i in [0 .. entries.count] {
+            entry := ^entries[i]
+            entry.readable = entry.read && network_set_has(^reads, entry.socket.raw)
+            entry.writable = entry.write && network_set_has(^writes, entry.socket.raw)
+            entry.exceptional = network_set_has(^exceptions, entry.socket.raw)
+            on entry.readable ||
+                entry.writable ||
+                entry.exceptional => ready += 1
+        }
+        return ready
+    }
+}
+
+impl Socket {
+
+    -- Starts one nonblocking TCP connection. True means connected immediately;
+    -- false means pending. Failure leaves ownership intact but requires close.
+    pub start_connect :: fn (self    : ^Self,
+                             address : Ipv4Address) -> bool\NetworkError {
+        on !self.valid ||
+            !self.is_nonblocking ||
+            self.kind != SocketKind.Tcp ||
+            self.connection != ConnectState.Idle => return NetworkError.Invalid!
+        native := network_address(address)
+        on ns_connect(self.raw.as(NativeSocket), ^native, SocketAddress.size.as(AddressLength)) == 0 => {
+            self.connection = ConnectState.Connected
+            return yes
+        }
+        code := network_last_error()
+        on network_connect_pending(code) => {
+            self.connection = ConnectState.Pending
+            return no
+        }
+        self.connection = ConnectState.Failed
+        return network_error(code)!
+    }
+
+    -- Finishes a started connection; false means deadline expiry, leaving it
+    -- pending for a later call. A failed connection must be closed and recreated.
+    -- Successful repeated calls return true, without consuming SO_ERROR again.
+    pub finish_connect :: fn (self     : ^Self,
+                              deadline : ?Instant = nil) -> bool\NetworkError {
+        on !self.valid ||
+            self.kind != SocketKind.Tcp => return NetworkError.Invalid!
+        on self.connection == ConnectState.Connected => return yes
+        on self.connection != ConnectState.Pending ||
+            !self.is_nonblocking => return NetworkError.Invalid!
+        entries := [PollEntry { socket: self read: no write: yes ... }]
+        on poll(entries[..], deadline = deadline)? == 0 => return no
+        code   : i32
+        length       := i32.size.as(AddressLength)
+
+        on ns_socket_error(self.raw.as(NativeSocket), socket_level, socket_error_option, ^code, ^length) != 0 => {
+            error := network_error(network_last_error())
+            self.connection = ConnectState.Failed
+            return error!
+        }
+        on length != i32.size.as(AddressLength) => {
+            self.connection = ConnectState.Failed
+            return NetworkError.Invalid!
+        }
+        on code != 0 => {
+            self.connection = ConnectState.Failed
+            return network_error(code)!
+        }
+        self.connection = ConnectState.Connected
+        return yes
+    }
+
+}

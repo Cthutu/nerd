@@ -230,6 +230,13 @@ Depends on relevant M0/M1 foundations; independent of M2–M4.
 - [ ] Document that synchronous resolution may block; define resolver errors and
   ownership separately from socket I/O. Keep platform-only options explicit.
 
+Current slice: IPv4 TCP/UDP plus bounded readiness and monotonic deadlines,
+nonblocking TCP connection completion and a runnable deadline-bounded exchange
+are implemented. Readiness/connect LLVM/C debug/release checks pass on Linux;
+new native Windows checks remain pending. See the
+[contracts and remaining M5 work](std-network-foundation.md). M5 remains open for
+IPv6, resolution, remaining options/lifecycle contracts and broader validation.
+
 Exit: TCP echo and UDP examples with IPv4/IPv6 loopback, local name resolution,
 partial I/O, refused connection, timeout, half-close and cleanup tests. IPv6
 unavailability must be an explicit capability result, not an unexplained pass.
@@ -317,6 +324,7 @@ been executed upstream or ported into Nerd.
 | `task-parallel` | M3 | Split a calculation into tasks, wait for completion and compare with its serial result | Raptor master `src/test_main.cc`: `Wait`, `VoidTasks`, `Serial` |
 | `graph-pipeline` | M4, extended in M8 | Two generators feed a sum node and checker; evaluate serially before any parallel extension | Kerberos `src/test_pipeline.cc`: `Graph.GenKernel`, emits 0,2,...,18 |
 | `network-echo` | M5 | A raw TCP client/server exchanges bytes and handles partial I/O and peer shutdown | New socket-level tests extracted from the transport scenarios behind `framing.c::tcp_message_framing_round_trip`; no Nexus framing in the raw example |
+| `network-readiness` | M5 | Nonblocking TCP connect and echo using one absolute deadline across partial I/O | New readiness, deadline, interrupted-wait and connect completion/refusal contracts |
 | `network-datagram` | M5 | Send a UDP datagram and reply to its sender | Socket-level counterpart of `message.c::udp_recv_msg_preserves_reply_route_for_send_msg` |
 | `nexus-message` | M6 | Send structured messages with strings and integers, read them back and reuse the message buffer | `message.c::message_append_and_read_primitives`, `framing.c::tcp_message_framing_round_trip`, `framing.c::zero_length_messages_are_valid` |
 | `nexus-multi-client` | M6 | Several clients contact one server; each reply goes to the originating client | `message.c::tcp_server_can_reply_to_multiple_clients_via_message_pipe` |
