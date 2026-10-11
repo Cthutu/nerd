@@ -2,7 +2,7 @@
 --
 -- Copyright (c) 2026 Matt Davies
 --
--- Original Nerd work stealing with Raptor-style serial/concurrent queues and
+-- Original Nerd work stealing with Raptor-style worker/main-thread queues and
 -- typed tasks. Owners, queues, tasks and callback contexts have explicit
 -- lifetimes; completed tasks have no execution resources to release.
 
@@ -13,10 +13,12 @@ use std.queue
 use std.sync
 use std.thread
 
--- Chooses FIFO serial execution or independent concurrent execution.
+-- Chooses worker concurrency, serial worker execution or explicit owner
+-- execution.
 pub QueueType :: enum {
     Concurrent
     Serial
+    MainThread
 }
 
 -- Internal borrowed task record; scheduler state is protected by its mutex.
@@ -35,9 +37,8 @@ pub Job :: plex {
 -- A caller-owned dispatch queue; keep it alive through all accepted tasks.
 pub Queue :: plex {
     scheduler ^void      -- Borrowed scheduler; fixed for the queue lifetime.
-    kind      QueueType  -- Serial or concurrent behaviour.
-    head      ^void      -- Oldest waiting serial job, excluding the active
-    --     job.
+    kind      QueueType  -- Worker or owner-thread execution.
+    head      ^void      -- Oldest waiting job; excludes the active callback.
     tail      ^void      -- Newest waiting serial job.
     busy      bool       -- Serial queue has one ready or executing job.
 }
@@ -64,6 +65,13 @@ pub Scheduler :: plex {
     workers       []Worker   -- Stable worker storage, never moved while active.
     allocation    []u8       -- Owns workers and their Thread objects.
     default_queue Queue      -- Default concurrent dispatch queue.
+    main_queue    Queue      -- Main queue and shared FIFO for all main-thread
+                             --     jobs.
+    owner         usize      -- Native identity of the initialising thread.
+    main_current  ^void      -- Active main callback; guarded by the scheduler
+                             --     mutex.
+    main_pending  usize      -- Waiting/active main jobs; guarded by the
+                             --     scheduler mutex.
     pending       usize      -- Accepted but incomplete jobs, including serial
                              --     backlogs.
     limit         usize      -- Global admission bound, worker count times deque
@@ -142,13 +150,21 @@ claim :: fn (scheduler: ^Scheduler, index: usize) -> ^Job {
 -- Executes without the scheduler lock, then publishes completion and serial
 -- succession.
 run_job :: fn (scheduler: ^Scheduler, index: usize, job: ^Job) {
-    previous := scheduler.workers[index].current
+    previous : ^void
+    on index == scheduler.workers.count => {
+        previous = scheduler.main_current
+        scheduler.main_current = job
+    } else {
+        previous = scheduler.workers[index].current
+        scheduler.workers[index].current = job
+    }
     job.parent = previous
-    scheduler.workers[index].current = job
     assert scheduler.mutex.unlock()
     job.execute(job.context)
     assert scheduler.mutex.lock()
-    scheduler.workers[index].current = previous
+    on index == scheduler.workers.count
+        =>   scheduler.main_current = previous
+        else scheduler.workers[index].current = previous
     queue := job.queue.as(^Queue)
     on queue.kind == QueueType.Serial => {
         on queue.head != nil => {
@@ -159,8 +175,9 @@ run_job :: fn (scheduler: ^Scheduler, index: usize, job: ^Job) {
             assert enqueue(scheduler, next, index)
         } else queue.busy = no
     }
+    on queue.kind == QueueType.MainThread => scheduler.main_pending -= 1
     scheduler.pending -= 1
-    -- No worker may touch this task after publishing completion.
+    -- No executor may touch this task after publishing completion.
     job.complete.store(yes)
     assert scheduler.changed.broadcast()
 }
@@ -185,17 +202,26 @@ worker_entry :: fn (context: ^void) {
     assert scheduler.mutex.unlock()
 }
 
--- Waits with worker assistance; rejects self/ancestor and same-serial-queue
--- waits.
+-- Waits with worker assistance; rejects self/ancestor, same-serial-queue and
+-- owner waits for unfinished main-thread tasks.
 wait_job :: fn (job: ^Job) -> bool {
     on job.complete.load() => return yes
     scheduler := job.scheduler.as(^Scheduler)
     on scheduler == nil || !scheduler.started => return no
     assert scheduler.mutex.lock()
     defer _ := scheduler.mutex.unlock()
-    index := current_worker(scheduler)
+    index           := current_worker(scheduler)
+    ancestor : ^Job
+
     on index < scheduler.workers.count => {
-        ancestor := scheduler.workers[index].current.as(^Job)
+        ancestor = scheduler.workers[index].current.as(^Job)
+    }
+        else on identity() == scheduler.owner => {
+        -- The owner must explicitly pump main work; waiting cannot drive it.
+        on job.queue.as(^Queue).kind == QueueType.MainThread => return no
+        ancestor = scheduler.main_current.as(^Job)
+    }
+    on ancestor != nil => {
         for ancestor != nil {
             on ancestor == job => return no
             on ancestor.queue == job.queue &&
@@ -242,7 +268,15 @@ impl Queue {
             index = scheduler.cursor
             scheduler.cursor = (scheduler.cursor + 1) % scheduler.workers.count
         }
-        on self.kind == QueueType.Serial &&
+        on self.kind == QueueType.MainThread => {
+            main := ^scheduler.main_queue
+            on main.tail == nil
+                =>   main.head = ^task.job
+                else main.tail.as(^Job).next = ^task.job
+            main.tail = ^task.job
+            scheduler.main_pending += 1
+        }
+            else on self.kind == QueueType.Serial &&
             self.busy => {
             on self.tail == nil
                 =>   self.head = ^task.job
@@ -313,6 +347,8 @@ impl Scheduler {
         self.workers = self.allocation.data.as(^Worker).as([]Worker, workers)
         self.limit = workers * capacity
         self.default_queue = Queue { scheduler: self kind: QueueType.Concurrent ... }
+        self.main_queue = Queue { scheduler: self kind: QueueType.MainThread ... }
+        self.owner = identity()
         self.started = yes
         for i in [0 .. workers] {
             self.workers[i] = Worker { scheduler: self index: i ... }
@@ -356,12 +392,39 @@ impl Scheduler {
         return ^self.default_queue
     }
 
+    -- Borrows the serial main-thread queue; workers never claim its tasks.
+    pub get_main_queue :: fn (self: ^Self) -> ^Queue {
+        return ^self.main_queue
+    }
+
+    -- Executes only main jobs queued at entry, in admission order on the owner.
+    -- Returns the count; nil rejects inactive, non-owner or reentrant calls.
+    pub run_main_tasks :: fn (self: ^Self) -> ?usize {
+        on !self.started || identity() != self.owner => return nil
+        assert self.mutex.lock()
+        defer _ := self.mutex.unlock()
+        on self.main_current != nil => return nil
+        count := self.main_pending
+        for _i in [0 .. count] {
+            job := self.main_queue.head.as(^Job)
+            assert job != nil
+            self.main_queue.head = job.next
+            on self.main_queue.head == nil => self.main_queue.tail = nil
+            job.next = nil
+            run_job(self, self.workers.count, job)
+        }
+        return count
+    }
+
     -- Rejects new submissions, drains accepted work, joins workers and frees storage.
     -- Only the owner may close, after external submitters and waiters have stopped.
+    -- Unpumped main work or an active main callback rejects close without stopping.
     pub close :: fn (self: ^Self) -> bool {
         on !self.started => return yes
         assert self.mutex.lock()
-        on current_worker(self) < self.workers.count => {
+        on identity() != self.owner ||
+            self.main_current != nil ||
+            self.main_pending != 0 => {
             assert self.mutex.unlock()
             return no
         }

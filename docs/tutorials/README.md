@@ -7,7 +7,7 @@ completion requirement for the remakes, selected on 3 October 2026.
 
 | API | Tutorial status | Required walkthroughs |
 | --- | --- | --- |
-| Raptor | [First tutorial available](raptor.md) | Queue-owned typed submission, stable caller-owned task storage and completion, serial/concurrent queues, nested waits and drain; async aggregation when implemented |
+| Raptor | [Available](raptor.md) | Separate typed preparation and submission, stable caller-owned task storage and completion, serial/concurrent worker queues, explicitly pumped main-thread work, concurrent-to-serial output, nested waits and drain; async aggregation when implemented |
 | Kerberos | Pending graph API (M4) | Two generators → sum → sink checking 0,2,…,18; typed ports, connections, fan-out, graph/node ownership, errors and shutdown; loader after implementation |
 | Nexus | Pending message API (M6/M7) | Framed message echo, multiple clients and reply routes, request/reply with deadlines and reconnect, UDP boundaries and separate Telnet tutorial |
 

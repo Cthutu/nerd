@@ -1,7 +1,7 @@
 # Raptor queues and work stealing in Nerd
 
-`std.raptor` implements our own scheduler around Raptor's concurrent/serial
-queues and typed task API. The implementation was written for Nerd; it does not
+`std.raptor` implements our own scheduler around Raptor's concurrent, serial and
+main-thread queues and typed task API. The implementation was written for Nerd; it does not
 embed ASIO or copy the upstream scheduler/deque implementation. The user selected
 this direction on 3 October 2026. [Source inventory](stdlib-source-inventory.md)
 records the API reference revision; [tutorial](tutorials/raptor.md) starts with an
@@ -16,6 +16,10 @@ submitters rotate their preferred worker; callback submissions prefer their
 current worker. Concurrent queues promise independent execution, without a FIFO
 ordering guarantee. Serial queues admit in mutex acquisition order and execute
 one callback at a time in that order, across whichever workers claim their jobs.
+Main-thread queues are also serial, but execute only on the thread that called
+`init`, when it explicitly calls `run_main_tasks`. Initialise on the program's
+main thread to give callbacks main-thread affinity. Workers never claim these
+jobs. All `MainThread` queues share a single FIFO in admission order.
 
 This first version is a correctness reference using mutexes. A scheduler mutex
 serialises admission, ready-work claims, serial succession and completion
@@ -27,9 +31,8 @@ and starvation freedom are not guaranteed under continuous local submissions.
 
 `init(workers, capacity = 256) -> ?void` allocates all worker/deque storage
 before starting threads. At most `workers * capacity` tasks may remain incomplete,
-including executing tasks and serial backlogs. `async` rejects excess admission
-immediately;
-it does not wait for capacity. Preparation and submission allocate no per-task
+including executing tasks, serial backlogs and unpumped main-thread tasks. `async`
+rejects excess admission immediately; it does not wait for capacity. Preparation and submission allocate no per-task
 storage: the callback, borrowed argument pointer, dispatch links and result live
 in caller-owned `Task[T]`. Serial backlogs link these tasks. Completed tasks
 consume no admission capacity and require no cleanup.
@@ -45,6 +48,8 @@ native Windows execution remains validation work.
 | `Scheduler(n)` | `scheduler.init(n)` / `close()` | Explicit owner lifetime; drain accepted work |
 | `createQueue(kind)` | `create_queue(^queue, kind)` | Caller supplies stable queue storage |
 | `getDefaultQueue()` | `get_default_queue()` | Borrowed concurrent queue |
+| Main-thread dispatch | `get_main_queue()` / `QueueType.MainThread` | Borrowed default main queue, or caller-owned queue sharing its FIFO |
+| Explicit main-thread execution | `run_main_tasks() -> ?usize` | Owner executes the batch queued at entry; returns its size |
 | `Queue::async(callback)` | `task.create(callback, ^argument)` then `queue.async(^task)` | Prepare borrowed inputs, then schedule; admission returns `?void` |
 | `Task<T>` / `Task<void>` | `Task[T]` / `Task[void]` | Caller-owned typed completion, including void; reusable after completion |
 | `hasFinished()` / `wait()` / `get()` | `has_finished()` / `wait()` / `get()` | Completion query; wait success; optional result |
@@ -87,6 +92,25 @@ callback also occupies a worker. Use these workers for finite CPU work rather
 than blocking socket operations. Completion is published atomically, currently
 with sequentially consistent operations (stronger than release/acquire).
 
+## Main-thread pumping
+
+`run_main_tasks()` returns the number of tasks it executed, including zero for
+an empty queue. It returns `nil` for an inactive scheduler, a call from another
+thread, or a recursive call inside a main-thread callback. Tasks submitted during
+the batch remain queued for the next call, so callback submissions cannot extend
+one pump indefinitely. A callback itself must still terminate. Call this method
+from the application's main loop or another explicit owner-thread progress point.
+
+The owner cannot wait for an unfinished main-thread task: `wait` returns false,
+`get` returns `nil`, and `when_all` reports failure for such entries. Pump first,
+then collect results. Workers and other external threads can wait for main tasks;
+the owner must keep pumping while they wait. A main callback can wait for ordinary
+worker tasks, but a worker that then waits for main work creates an invalid cycle.
+Waiting never implicitly pumps the main queue.
+
+See the [main-thread example](../examples/task-main-thread/task-main-thread.n) and
+[concurrent-to-serial output example](../examples/task-serial-output/task-serial-output.n).
+
 ## Ownership and shutdown
 
 Zero-initialise owned objects. Keep schedulers, queues and borrowed callback
@@ -105,8 +129,8 @@ Nerd's public member-type rules; callers must not mutate scheduler bookkeeping
 or task state.
 
 Completion is published only after callback execution and scheduler bookkeeping
-finish. Workers never access that task again after publication. The completed task retains its result directly and has no execution
-allocation to release: there is no `done()` or `take()`. Completed tasks can be
+finish. Executors never access that task again after publication. The completed
+task retains its result directly and has no execution allocation to release: there is no `done()` or `take()`. Completed tasks can be
 copied, moved or discarded after previous readers finish, or prepared again with
 `create` for a later submission. Copying a result remains shallow.
 
@@ -114,7 +138,9 @@ Before an early return, wait for previously accepted tasks while their storage
 and borrowed arguments remain alive. For an array with some rejected or
 never-submitted entries, `defer _ := when_all(tasks[..])` attempts every wait;
 its false return for idle entries does not prevent waiting for accepted ones.
-A successful scheduler close also provides this lifetime boundary. Failed
+A successful scheduler close also provides this lifetime boundary for worker
+work. Main-thread work must be pumped explicitly before its storage leaves scope;
+a deferred `when_all` on the owner cannot complete it. Failed
 self/ancestor/serial waits do not permit destroying pending storage.
 
 `get` and `wait` may be called repeatedly until the task is reprepared or
@@ -128,8 +154,12 @@ discarding the task does not release them.
 
 Only the owning external thread initialises/closes the scheduler. Stop external
 submitters and waiters before `close`; callbacks must terminate and their borrowed
-storage must remain alive. Close rejects callback attempts to close their own
-scheduler, stops admission, drains accepted jobs, joins workers and frees storage.
+storage must remain alive. Close rejects non-owner calls, active main callbacks
+and unpumped main work, without stopping admission. Finish producers of main-thread work and explicitly
+pump their accepted tasks before closing; if callbacks enqueue more main work,
+repeat pumping until the queue is empty. Otherwise close stops admission, drains
+accepted worker jobs, joins workers and frees storage. Worker callbacks that
+submit during that drain must handle rejected admission.
 It is idempotent. Completed tasks remain readable after close, with their results
 in caller storage. Queues expire at close: discard/reinitialise them before a
 later scheduler lifetime, and never reuse a stale queue after reinitialising its scheduler.
@@ -144,6 +174,11 @@ serial-dependency rejection, external producers, capacity/retry, typed borrowed
 callbacks, mismatched callback/argument diagnostics, prepared relocation,
 duplicate submission rejection, pending recreation/nil-callback assertion checks,
 completed reuse/copies, inferred aggregation, discard without result reads,
-post-close results, partial-start cleanup/reinitialisation and draining close. Both common test recipes
-include it. The executable tutorial's result is checked against 204. Native
-Windows and performance measurements remain pending.
+post-close results, partial-start cleanup/reinitialisation and draining close.
+Main-queue contracts check thread affinity, FIFO across multiple main queues,
+worker submission and waiting, explicit progress, bounded batches, non-reentrant
+pumping, owner wait rejection, capacity/retry and shutdown rejection without
+stopping. Both common test recipes include these contracts and all three tutorial
+programs. Serial-output lines are checked independently of concurrent calculation
+order, with the total required last. Native Windows and performance measurements
+remain pending.

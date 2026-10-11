@@ -1,0 +1,235 @@
+use os.thread
+use std.io
+use std.raptor
+use std.sync
+
+thread_id :: fn () -> usize {
+    on "linux" {
+        return native_thread_self()
+    }
+    on "windows" {
+        return native_thread_self().as(usize)
+    }
+}
+
+State :: plex {
+    scheduler ^Scheduler
+    owner     usize
+    sequence  i32
+    active    bool
+    child     ^Task[void]
+    successor ^Task[void]
+}
+
+Item :: plex {
+    state ^State
+    index i32
+}
+
+child :: fn (state: ^State) {
+    assert thread_id() == state.owner
+    assert !state.active
+    assert state.sequence == 3
+    state.sequence += 1
+}
+
+record :: fn (item: ^Item) {
+    state := item.state
+    assert thread_id() == state.owner
+    assert !state.active
+    state.active = yes
+    assert state.sequence == item.index
+    state.sequence += 1
+    assert state.scheduler.run_main_tasks() == nil
+    assert !state.scheduler.close()
+    on item.index == 0 => {
+        assert !state.successor.wait()
+        state.child.create(child, state)
+        assert state.scheduler.get_main_queue().async(state.child) != nil
+    }
+    state.active = no
+}
+
+Submission :: plex {
+    scheduler ^Scheduler
+    queue     ^Queue
+    task      ^Task[void]
+}
+
+submit :: fn (submission: ^Submission) {
+    assert submission.scheduler.run_main_tasks() == nil
+    assert !submission.scheduler.close()
+    assert submission.queue.async(submission.task) != nil
+}
+
+Waiter :: plex {
+    mutex   Mutex
+    changed Condition
+    entered bool
+    task    ^Task[i32]
+}
+
+answer :: fn (value: ^i32) -> i32 {
+    return value^
+}
+
+wait_on_main :: fn (waiter: ^Waiter) -> i32 {
+    assert waiter.mutex.lock()
+    waiter.entered = yes
+    assert waiter.changed.broadcast()
+    assert waiter.mutex.unlock()
+    on waiter.task.get() {
+        result  => return result + 1
+        else    => return -1
+    }
+}
+
+Nested :: plex {
+    scheduler ^Scheduler
+    value     i32
+}
+
+wait_on_worker :: fn (nested: ^Nested) -> i32 {
+    task : Task[i32]
+    task.create(answer, ^nested.value)
+    assert nested.scheduler.get_default_queue().async(^task) != nil
+    on task.get() {
+        result  => return result
+        else    => return -1
+    }
+}
+
+main :: fn () -> i32 {
+    scheduler : Scheduler
+    assert scheduler.run_main_tasks() == nil
+    assert scheduler.init(2, capacity = 8) != nil
+    queue                      := scheduler.get_main_queue()
+    state                      := State { scheduler: ^scheduler owner: thread_id() ... }
+    tasks      : [3]Task[void]
+    items      : [3]Item
+    next_batch : Task[void]
+
+    state.child = ^next_batch
+    state.successor = ^tasks[1]
+    for i in [0 .. 3] {
+        items[i] = Item { state: ^state index: i.as(i32) }
+        tasks[i].create(record, ^items[i])
+    }
+    assert queue.async(^tasks[0]) != nil
+    assert queue.async(^tasks[1]) != nil
+    other : Queue
+    assert scheduler.create_queue(^other, QueueType.MainThread)
+    submission              := Submission { scheduler: ^scheduler queue: ^other task: ^tasks[2] }
+    producer   : Task[void]
+
+    producer.create(submit, ^submission)
+    assert scheduler.get_default_queue().async(^producer) != nil
+    assert producer.wait()
+    -- Even after pool work executes, main jobs have not been stolen or run.
+    assert state.sequence == 0
+    assert !tasks[0].wait()
+    assert tasks[0].get() == nil
+    assert !when_all(tasks[..])
+    assert !scheduler.close()
+    assert scheduler.started && !scheduler.stopping
+    on scheduler.run_main_tasks() {
+        count => {
+            assert count == 3
+        }
+
+        else => {
+            assert no
+        }
+    }
+    assert when_all(tasks[..])
+    assert state.sequence == 3
+    assert !next_batch.has_finished()
+    assert !next_batch.wait()
+    on scheduler.run_main_tasks() {
+        count => {
+            assert count == 1
+        }
+
+        else => {
+            assert no
+        }
+    }
+    assert next_batch.wait()
+    assert state.sequence == 4
+    on scheduler.run_main_tasks() {
+        count => {
+            assert count == 0
+        }
+
+        else => {
+            assert no
+        }
+    }
+    value     : i32       = 42
+    main_task : Task[i32]
+
+    main_task.create(answer, ^value)
+    assert queue.async(^main_task) != nil
+    waiter := Waiter { task: ^main_task ... }
+    assert waiter.mutex.init()
+    assert waiter.changed.init()
+    reader : Task[i32]
+    reader.create(wait_on_main, ^waiter)
+    assert scheduler.get_default_queue().async(^reader) != nil
+    assert waiter.mutex.lock()
+    for !waiter.entered {
+        assert waiter.changed.wait(^waiter.mutex)
+    }
+    assert waiter.mutex.unlock()
+    assert !reader.has_finished()
+    assert !main_task.wait()
+    assert scheduler.run_main_tasks() != nil
+    on reader.get() {
+        result => {
+            assert result == 43
+        }
+
+        else => {
+            assert no
+        }
+    }
+    assert waiter.changed.done()
+    assert waiter.mutex.done()
+    nested                  := Nested { scheduler: ^scheduler value: 77 }
+    nested_task : Task[i32]
+
+    nested_task.create(wait_on_worker, ^nested)
+    assert queue.async(^nested_task) != nil
+    assert scheduler.run_main_tasks() != nil
+    on nested_task.get() {
+        result => {
+            assert result == 77
+        }
+
+        else => {
+            assert no
+        }
+    }
+    assert scheduler.close()
+    assert scheduler.run_main_tasks() == nil
+    assert main_task.get() != nil
+    -- Main jobs consume the same admission bound, and rejection can be retried.
+    assert scheduler.init(1, capacity = 2) != nil
+    queue = scheduler.get_main_queue()
+    bounded : [3]Task[i32]
+    for i in [0 .. 3] {
+        bounded[i].create(answer, ^value)
+    }
+    assert queue.async(^bounded[0]) != nil
+    assert queue.async(^bounded[1]) != nil
+    assert queue.async(^bounded[2]) == nil
+    assert !scheduler.close()
+    assert scheduler.run_main_tasks() != nil
+    assert queue.async(^bounded[2]) != nil
+    assert scheduler.run_main_tasks() != nil
+    assert when_all(bounded[..])
+    assert scheduler.close()
+    assert scheduler.close()
+    prn("Raptor main queue FIFO, affinity, snapshot, waits and shutdown passed")
+    return 0
+}

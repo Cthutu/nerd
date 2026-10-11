@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bounded native Raptor contract tests, including deterministic stealing."""
+"""Bounded native Raptor contract tests, including owner-thread pumping and serial output."""
 import argparse
 import os
 from pathlib import Path
@@ -19,6 +19,13 @@ def main():
     sources = [
         ("tests/stdlib-raptor/contracts.n",
          "Raptor deque, stealing, serial, nested waits, producers and drain passed"),
+        ("tests/stdlib-raptor/main-queue.n",
+         "Raptor main queue FIFO, affinity, snapshot, waits and shutdown passed"),
+        ("examples/task-main-thread/task-main-thread.n",
+         "Main thread: 10\nMain thread: 20\nMain thread: 30"),
+        ("examples/task-serial-output/task-serial-output.n",
+         tuple([f"Serial output: {number} squared = {number * number}"
+                for number in range(1, 9)] + ["Serial output: total = 204"])),
         ("examples/task-parallel/task-parallel.n",
          "Raptor tasks: sum of squares = 204"),
     ]
@@ -67,9 +74,19 @@ def main():
                     print(f"{'CGen' if args.cgen else 'LLVM'} "
                           f"{'release' if release else 'debug'} {source}: rejected")
                     continue
-                for _ in range(16 if index == 0 else 1):
+                repeated = source in ("tests/stdlib-raptor/contracts.n",
+                                      "tests/stdlib-raptor/main-queue.n",
+                                      "examples/task-serial-output/task-serial-output.n")
+                for _ in range(16 if repeated else 1):
                     actual = run([str(executable)], runtime_env, 15)
-                    if actual != expected:
+                    if isinstance(expected, tuple):
+                        lines = actual.splitlines()
+                        valid = (len(lines) == len(expected)
+                                 and lines[-1] == expected[-1]
+                                 and sorted(lines[:-1]) == sorted(expected[:-1]))
+                    else:
+                        valid = actual == expected
+                    if not valid:
                         raise AssertionError(f"Unexpected output: {actual!r}")
                 print(f"{'CGen' if args.cgen else 'LLVM'} "
                       f"{'release' if release else 'debug'} {source}: passed")

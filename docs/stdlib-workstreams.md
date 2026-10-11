@@ -133,4 +133,7 @@ submission and borrows caller-owned `Task[T]` storage. Both operations allocate
 no per-task storage. Scheduler startup and submission return `?void`; aggregation
 infers the task result type. Pending tasks must remain at stable addresses;
 completed tasks need no cleanup. Method signature help hides implicit receivers.
-The tutorial and native contracts cover this API.
+The tutorial and native contracts cover this API. Main-thread queues execute
+serially on the scheduler's initialising thread through explicit, bounded
+`run_main_tasks` batches. The runnable examples demonstrate main-thread dispatch
+and concurrent calculations submitting output tasks to a serial worker queue.

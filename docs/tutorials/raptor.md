@@ -1,4 +1,4 @@
-# Tutorial: typed tasks and serial queues with Raptor
+# Tutorial: typed tasks, serial output and main-thread queues with Raptor
 
 Use `std.raptor` to run finite calculations on an explicitly owned worker pool.
 This is Nerd's own work-stealing implementation of the Raptor queue/task model.
@@ -120,6 +120,51 @@ order. They may update shared state without an extra mutex **only if all accesse
 use that queue**, or the owner waits before reading. Another queue can run
 concurrently. `Task[void]` carries completion without a result payload.
 
+### Concurrent calculations feeding serial output
+
+Run the [complete program](../../examples/task-serial-output/task-serial-output.n):
+
+```sh
+just run-example task-serial-output
+```
+
+Eight callbacks on the default concurrent queue square their inputs. Each owns a
+separate output task inside its stable `Work` context:
+
+```nerd
+Work :: plex {
+    number       i32
+    result       i32
+    output_queue ^Queue
+    output_task  Task[void]
+    summary      ^Summary
+}
+
+calculate :: fn (work: ^Work) {
+    work.result = work.number * work.number
+    work.output_task.create(print_result, work)
+    assert work.output_queue.async(^work.output_task) != nil
+}
+```
+
+`Summary` holds a count and total. `print_result` adds the result to that summary
+and prints one line. Only the serial output queue updates the summary. The pool
+uses four workers with capacity 64 per worker, enough to admit all eight
+calculation tasks and eight output tasks; this finite example therefore asserts
+output admission. A larger producer must handle capacity rejection.
+
+The owner first waits for every calculation, ensuring all output tasks have been
+prepared and submitted, then waits for the output tasks before reading the
+summary. The deferred cleanup uses that same order on an early return. An output
+callback may complete before its calculation callback returns, so both task sets
+must finish before discarding their shared contexts.
+
+Individual lines appear in output admission order, which depends on when the
+concurrent calculations finish. Serial execution prevents overlap; it does not
+sort by input index. The program checks that eight outputs ran and prints
+`Serial output: total = 204` last. Serial callbacks can run on different workers;
+use a main-thread queue when thread affinity matters.
+
 The [executable contracts](../../tests/stdlib-raptor/contracts.n) submit 64 ordered
 updates, check their sequence and non-overlap, and exercise void completion,
 stable completion storage, preparation, reuse and inferred aggregation. Run them and
@@ -129,6 +174,67 @@ the calculation through both backends:
 python3 build/test_raptor.py --nerd _bin/nerd-debug
 python3 build/test_raptor.py --nerd _bin/nerd-debug --cgen
 ```
+
+## Explicit main-thread work
+
+Every main-thread queue is serial. The thread that calls `scheduler.init` owns
+execution, so initialise the scheduler on the main thread. Its workers keep
+running concurrently, but cannot execute main-thread tasks.
+
+Run the [complete program](../../examples/task-main-thread/task-main-thread.n):
+
+```sh
+just run-example task-main-thread
+```
+
+It prepares three `Task[void]` entries with a `print_number` callback, then uses
+the main queue instead of the default worker queue:
+
+```nerd
+queue := scheduler.get_main_queue()
+-- These callbacks enqueue no additional work, so one deferred batch covers
+-- accepted submissions if a later submission fails.
+defer assert scheduler.run_main_tasks() != nil
+for i in [0 .. values.count] {
+    tasks[i].create(print_number, ^values[i])
+    queue.async(^tasks[i])?
+}
+on scheduler.run_main_tasks() {
+    count => {
+        assert count == 3
+    }
+    else => {
+        assert no
+    }
+}
+assert when_all(tasks[..])
+```
+
+The output is always:
+
+```text
+Main thread: 10
+Main thread: 20
+Main thread: 30
+```
+
+`run_main_tasks` executes the FIFO batch queued when the call begins and returns
+its size as `?usize`. Zero means an empty queue; `nil` means the scheduler is
+inactive, the caller is not its owner, or a main callback tried to pump recursively.
+Tasks submitted during a batch wait for the next pump. An application usually
+calls this method from its main loop.
+
+Owner-thread `wait` and `get` fail for unfinished main tasks: explicitly pump
+before collecting them. Other threads can submit and wait for main-thread work,
+but depend on the owner pumping it. Keep pumping while such producers run rather
+than blocking the owner waiting for them. Stop producers before final cleanup.
+If callbacks enqueue further main work, drain with repeated batches before
+leaving scope. Scheduler close rejects queued main work without stopping the
+scheduler; it never pumps it for you. The example registers its deferred pump
+after the deferred close, so pumping runs first on every exit.
+
+You can also create caller-owned queues with `QueueType.MainThread`. All such
+queues share the scheduler's owner and FIFO; they do not create additional threads.
 
 ## Nested work and bounds
 

@@ -1,0 +1,62 @@
+use std.io
+use std.raptor
+
+Summary :: plex {
+    count i32
+    total i32
+}
+
+Work :: plex {
+    number       i32
+    result       i32
+    output_queue ^Queue
+    output_task  Task[void]
+    summary      ^Summary
+}
+
+print_result :: fn (work: ^Work) {
+    -- Only callbacks on this serial queue access the summary until main waits.
+    work.summary.count += 1
+    work.summary.total += work.result
+    prn($"Serial output: {work.number} squared = {work.result}")
+}
+
+calculate :: fn (work: ^Work) {
+    work.result = work.number * work.number
+    work.output_task.create(print_result, work)
+    -- Capacity covers all calculation and output tasks in this finite example.
+    assert work.output_queue.async(^work.output_task) != nil
+}
+
+main :: fn () -> ?void {
+    scheduler : Scheduler
+    scheduler.init(4, capacity = 64)?
+    defer assert scheduler.close()
+    output : Queue
+    assert scheduler.create_queue(^output, QueueType.Serial)
+    summary      : Summary
+    work         : [8]Work
+    calculations : [8]Task[void]
+
+    defer {
+        _ := when_all(calculations[..])
+        for i in [0 .. work.count] {
+            _ := work[i].output_task.wait()
+        }
+    }
+    for i in [0 .. work.count] {
+        work[i].number = i.as(i32) + 1
+        work[i].output_queue = ^output
+        work[i].summary = ^summary
+        calculations[i].create(calculate, ^work[i])
+        scheduler.get_default_queue().async(^calculations[i])?
+    }
+    assert when_all(calculations[..])
+    for i in [0 .. work.count] {
+        assert work[i].output_task.wait()
+    }
+    assert summary.count == 8
+    assert summary.total == 204
+    prn($"Serial output: total = {summary.total}")
+    return
+}
