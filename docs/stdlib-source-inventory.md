@@ -143,3 +143,20 @@ returns `?void`. Both operations allocate no per-task storage. Pending tasks nee
 stable addresses; completed tasks need no `done()` or `take()`. Startup also
 returns `?void`, and `when_all(tasks[..])` infers the result type. See the contracts
 for remaining API differences.
+
+
+## Nexus message and framing reference — 11 October 2026
+
+Fetched `cthutu/dev` main remains at
+`9ae32dd295241bd3889204537dfa476f222e753c`. Inspected `src/nexus/README.md`,
+`PLAN.md`, `nexus.h`, `message.c`, `transport_tcp.c`, `internal.h`, the basic-client
+and timeout how-to guides, and the message/framing
+test scenarios. The 1 MiB maximum, unsigned network-order values, u32 string
+lengths and u32 TCP payload lengths are retained by `std.nexus`. The C peer in
+`tests/nexus/peer.c`, built with `UPSTREAM_NEXUS` against clean pinned core/Nexus
+sources, exchanged typed messages and empty frames with the Nerd stream on
+Linux in LLVM/C debug/release configurations. This is an executed compatibility
+check, not execution of the complete upstream test suite.
+
+The [Nerd contracts](stdlib-nexus.md) distinguish deliberate API differences
+and the remaining UDP, pipe, reply-route and protocol parity work.

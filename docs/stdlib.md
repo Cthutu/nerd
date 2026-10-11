@@ -14,7 +14,8 @@ The [standard-library expansion plan](stdlib-expansion-plan.md) covers queues,
 work-stealing tasks, data graphs, raw sockets and Nexus messaging. The initial
 thread/synchronisation and IPv4 socket foundations are implemented on the
 `std-library` review branch. Bounded deques and the first Raptor scheduler are
-implemented; graphs and Nexus remain planned. See the
+implemented, as are Nexus message buffers and connected TCP framing. Graphs
+and the remaining Nexus transport/protocol layers are planned. See the
 [Raptor contracts](stdlib-raptor.md) and [API tutorials](tutorials/README.md).
 See the [workstream record](stdlib-workstreams.md) for scope and validation.
 
@@ -52,6 +53,11 @@ library is organised into three layers:
   EOF/datagram semantics, bounded readiness polling, monotonic deadlines,
   nonblocking TCP connection completion and native errors. See the
   [API contracts and examples](std-network-foundation.md).
+- `std.nexus`
+  Bounded reusable messages with network-order unsigned integer/string encoding,
+  cursor reads and resumable connected TCP framing. Explicit single-slot queuing,
+  partial-I/O state, absolute deadlines and borrowed socket ownership. See the
+  [contracts](stdlib-nexus.md) and [tutorial](tutorials/nexus.md).
 - `std.queue` and `std.raptor`
   Bounded mutex deques and our own work-stealing scheduler with typed tasks and
   serial/concurrent worker queues and explicitly pumped serial main-thread queues. `Task.create` borrows typed input; queues

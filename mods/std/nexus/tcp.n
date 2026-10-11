@@ -1,0 +1,226 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Incremental TCP framing with one bounded pending message per direction. No
+-- tasks, threads or implicit socket ownership are involved.
+
+use std.network
+use std.time
+
+-- Borrows a stable, connected nonblocking TCP socket until done. Owns send and
+-- receive buffers; do not copy a live stream or interleave raw I/O on its
+-- socket. Fields are implementation state and must not be modified by callers.
+pub TcpStream :: plex {
+    socket         ^Socket  -- Borrowed socket; the caller closes it after
+                            --     stream.done.
+    outgoing       Message  -- Owned snapshot of one queued payload.
+    incoming       Message  -- Owned partial receive payload.
+    send_header    [4]u8    -- Network-order outgoing length prefix.
+    receive_header [4]u8    -- Partially received network-order length prefix.
+    sent           usize    -- Bytes sent, including the prefix.
+    header_count   usize    -- Prefix bytes received so far.
+    expected       usize    -- Expected payload size after a complete prefix.
+    received       usize    -- Payload bytes received so far.
+    pending        bool     -- True until the outgoing frame has been flushed.
+    failed         bool     -- Terminal framing or I/O failure; dispose of this
+                            --     stream.
+}
+
+impl TcpStream {
+    -- Creates framing state without taking socket ownership or allocating.
+    pub new :: fn (socket: ^Socket) -> Self\NexusError {
+        on socket == nil => return NexusError.Invalid!
+        on !socket.valid || socket.kind != SocketKind.Tcp || !socket.is_nonblocking || socket.connection != ConnectState.Connected => return NexusError.Invalid!
+        return Self {
+            socket ...
+        }
+    }
+
+    -- Releases both buffers, leaving the borrowed socket open.
+    pub done :: fn (self: ^Self) {
+        self.outgoing.done()
+        self.incoming.done()
+        self.socket = nil
+        self.failed = yes
+    }
+
+    -- Validates the borrowed socket on every operation to prevent blocking I/O.
+    valid :: fn (self: ^Self) -> bool {
+        on self.failed || self.socket == nil => return no
+        return self.socket.valid && self.socket.kind == SocketKind.Tcp && self.socket.is_nonblocking && self.socket.connection == ConnectState.Connected
+    }
+
+    -- Copies unread payload into the single outgoing slot. A pending frame
+    -- rejects replacement; the caller may immediately reuse the input message.
+    pub queue :: fn (self: ^Self, message: ^Message) -> void\NexusError {
+        on !self.valid() || message == nil || self.pending => return NexusError.Invalid!
+        self.outgoing.clear()
+        self.outgoing.append(message.payload())?
+        size := self.outgoing.length.as(u32)
+        for i in [0 .. 4] {
+            self.send_header[i] = (size >> ((3 - i) * 8).as(u32)).as(u8)
+        }
+        self.sent = 0
+        self.pending = yes
+    }
+
+    -- Makes immediate progress without waiting; false retains a partial frame.
+    -- Fatal socket errors poison the stream because its wire position is unknown.
+    pub try_flush :: fn (self: ^Self) -> bool\NexusError {
+        on !self.valid() => return NexusError.Invalid!
+        for self.pending {
+            bytes := self.outgoing.payload()
+            on self.sent < 4 => {
+                bytes = self.send_header[self.sent ..]
+            } else {
+                bytes = bytes[self.sent - 4 ..]
+            }
+            on self.socket.send(bytes) {
+                count => {
+                    on count == 0 && bytes.count != 0 => {
+                        self.failed = yes
+                        return NexusError.Closed!
+                    }
+                    self.sent += count
+                    on self.sent == self.outgoing.length + 4 => self.pending = no
+                }
+                NetworkError.WouldBlock {
+                    code
+                }! => {
+                    _ := code
+                    return no
+                }
+                NetworkError.Interrupted {
+                    code
+                }! => {
+                    _ := code
+                    return no
+                }
+                error! => {
+                    self.failed = yes
+                    return NexusError.Network {
+                        error
+                    }!
+                }
+            }
+        }
+        return yes
+    }
+
+    -- Receives exactly one frame without reading into the following frame.
+    -- False retains parser state and leaves output unchanged. True replaces
+    -- output atomically, including empty messages. EOF between frames is Closed;
+    -- EOF inside a frame is Truncated. Oversized lengths poison the stream.
+    pub try_receive :: fn (self: ^Self, output: ^Message) -> bool\NexusError {
+        on !self.valid() || output == nil => return NexusError.Invalid!
+        for {
+            on self.header_count == 4 && self.received == self.expected => {
+                output.clear()
+                output.append(self.incoming.storage[.. self.expected])?
+                self.header_count = 0
+                self.received = 0
+                self.expected = 0
+                return yes
+            }
+            bytes := self.receive_header[self.header_count ..]
+            on self.header_count == 4 => bytes = self.incoming.storage[self.received .. self.expected]
+            on self.socket.receive(bytes) {
+                result => {
+                    on result.eof => {
+                        self.failed = yes
+                        on self.header_count == 0 => return NexusError.Closed!
+                        return NexusError.Truncated!
+                    }
+                    on self.header_count < 4 => {
+                        self.header_count += result.count
+                        on self.header_count == 4 => {
+                            size : u32 = 0
+                            for i in [0 .. 4] {
+                                size = (size << 8) | self.receive_header[i].as(u32)
+                            }
+                            self.expected = size.as(usize)
+                            on self.expected > max_message_size => {
+                                self.failed = yes
+                                return NexusError.TooLarge!
+                            }
+                            self.incoming.reserve(self.expected)?
+                        }
+                    } else {
+                        self.received += result.count
+                    }
+                }
+                NetworkError.WouldBlock {
+                    code
+                }! => {
+                    _ := code
+                    return no
+                }
+                NetworkError.Interrupted {
+                    code
+                }! => {
+                    _ := code
+                    return no
+                }
+                error! => {
+                    self.failed = yes
+                    return NexusError.Network {
+                        error
+                    }!
+                }
+            }
+        }
+        return NexusError.Invalid!
+    }
+
+    -- Waits for readiness against one absolute deadline; false means expiry.
+    -- Readiness failures preserve parser state; fatal I/O errors do not.
+    wait :: fn (self: ^Self, writing: bool, deadline: ?Instant) -> bool\NexusError {
+        entries := [PollEntry {
+            socket: self.socket read: !writing write: writing ...
+        }
+        ]
+        on poll(entries[..], deadline = deadline) {
+            count => {
+                return count != 0
+            }
+            error! => {
+                return NexusError.Network {
+                    error
+                }!
+            }
+        }
+    }
+
+    -- Flushes a queued frame; nil waits indefinitely. False means deadline
+    -- expiry and allows a later flush with a new deadline to resume the frame.
+    pub flush :: fn (self: ^Self, deadline: ?Instant = nil) -> bool\NexusError {
+        for {
+            on self.try_flush()? => return yes
+            on deadline {
+                limit => {
+                    on now() >= limit => return no
+                } else => {
+                }
+            }
+            on !self.wait(yes, deadline)? => return no
+        }
+        return NexusError.Invalid!
+    }
+
+    -- Receives one message; nil waits indefinitely. False means deadline expiry
+    -- with partial state retained and output unchanged. Use try_receive to poll.
+    pub receive :: fn (self: ^Self, output: ^Message, deadline: ?Instant = nil) -> bool\NexusError {
+        for {
+            on self.try_receive(output)? => return yes
+            on deadline {
+                limit => {
+                    on now() >= limit => return no
+                } else => {
+                }
+            }
+            on !self.wait(no, deadline)? => return no
+        }
+        return NexusError.Invalid!
+    }
+}

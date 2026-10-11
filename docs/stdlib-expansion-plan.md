@@ -256,6 +256,15 @@ Depends on M5's IPv4 TCP/UDP/readiness subset; full M5 closure may proceed along
 
 Exit: message echo and multi-client reply examples, standalone from `std.raptor`.
 
+Implemented first M6 slice (11 October 2026): reusable bounded `Message`,
+network-order unsigned integers/strings and resumable `TcpStream` framing.
+The [contracts](stdlib-nexus.md) and [tutorial](tutorials/nexus.md) cover the
+`nexus-message` example. LLVM/C debug/release contracts and bidirectional TCP
+checks against the pinned C source pass on Linux, including empty frames and
+forced partial I/O. UDP/pipes, multi-client reply routes and their tests remain;
+native Windows validation is pending. The milestone checkboxes stay open until
+those remaining requirements pass.
+
 ### M7 — Nexus protocol parity
 
 Depends on M6.

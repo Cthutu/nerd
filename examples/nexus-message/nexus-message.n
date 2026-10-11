@@ -1,0 +1,79 @@
+use std.network
+use std.nexus
+use std.time
+
+exchange :: fn (client   : ^Socket,
+                server   : ^Socket,
+                deadline : Instant) -> void\NexusError {
+    client_stream := TcpStream.new(client)?
+    defer client_stream.done()
+    server_stream := TcpStream.new(server)?
+    defer server_stream.done()
+    request : Message
+    defer request.done()
+    reply : Message
+    defer reply.done()
+    request.append_string("hello nexus")?
+    request.append_u32(42)?
+    client_stream.queue(^request)?
+    request.clear()
+    assert client_stream.flush(deadline = deadline)?
+    assert server_stream.receive(^request, deadline = deadline)?
+    assert request.read_string()? == "hello nexus"
+    number := request.read_u32()?
+    request.clear()
+    request.append_string("reply")?
+    request.append_u32(number + 1)?
+    server_stream.queue(^request)?
+    assert server_stream.flush(deadline = deadline)?
+    assert client_stream.receive(^reply, deadline = deadline)?
+    assert reply.read_string()? == "reply"
+    assert reply.read_u32()? == 43
+    prn("Nexus message: hello nexus, reply 43")
+}
+
+run_message :: fn () -> void\NetworkError {
+    listener := socket(SocketKind.Tcp)?
+    defer _ := listener.close()
+    listener.bind(loopback(0))?
+    listener.listen()?
+    listener.nonblocking(yes)?
+    address := listener.local_address()?
+    deadline := now().add(from_secs(2))
+
+    client := socket(SocketKind.Tcp)?
+    defer _ := client.close()
+    client.nonblocking(yes)?
+    _ := client.start_connect(address)?
+    on !client.finish_connect(deadline = deadline)? => return NetworkError.TimedOut {
+        code: 0
+    }!
+    entries := [PollEntry {
+        socket: ^listener read: yes ...
+    }
+    ]
+    on poll(entries[..], deadline = deadline)? == 0 => return NetworkError.TimedOut {
+        code: 0
+    }!
+    server := listener.accept()?
+    defer _ := server.close()
+    server.nonblocking(yes)?
+
+    on exchange(^client, ^server, deadline) {
+        _! => {
+            return NetworkError.Invalid!
+        }
+        else => {
+        }
+    }
+}
+
+main :: fn () -> i32 {
+    return on run_message() {
+        _! => {
+            eprn("Nexus message failed")
+            return 1
+        }
+        else => 0
+    }
+}

@@ -1,0 +1,86 @@
+use std.network
+use std.nexus
+use std.time
+
+on "linux" {
+
+    ffi "c" {
+        fflush (stream: ^void) -> i32
+    }
+
+}
+
+on "windows" {
+
+    ffi "msvcrt" {
+        fflush (stream: ^void) -> i32
+    }
+
+}
+
+exchange :: fn (socket: ^Socket) -> void\NexusError {
+    stream := TcpStream.new(socket)?
+    defer stream.done()
+    message : Message
+    defer message.done()
+    deadline := now().add(from_secs(5))
+    assert stream.receive(^message, deadline = deadline)?
+    assert message.read_u8()? == 0x12
+    assert message.read_u16()? == 0x3456
+    assert message.read_u32()? == 0x789abcde
+    assert message.read_u64()? == 0xfedcba9876543210
+    assert message.read_string()? == "nexus"
+    assert message.read_string()? == ""
+    assert message.payload().count == 0
+    message.clear()
+    message.append_u8(0x12)?
+    message.append_u16(0x3456)?
+    message.append_u32(0x789abcde)?
+    message.append_u64(0xfedcba9876543210)?
+    message.append_string("nexus")?
+    message.append_string("")?
+    stream.queue(^message)?
+    assert stream.flush(deadline = deadline)?
+    assert stream.receive(^message, deadline = deadline)?
+    assert message.payload().count == 0
+    stream.queue(^message)?
+    assert stream.flush(deadline = deadline)?
+}
+
+serve :: fn () -> void\NetworkError {
+    listener := socket(SocketKind.Tcp)?
+    defer _ := listener.close()
+    listener.bind(loopback(0))?
+    listener.listen()?
+    address := listener.local_address()?
+    prn($"{address.port}")
+    _ := fflush(nil)
+    listener.nonblocking(yes)?
+    entries := [PollEntry {
+        socket: ^listener read: yes ...
+    }
+    ]
+    on poll(entries[..], deadline = now().add(from_secs(5)))? == 0 => return NetworkError.TimedOut {
+        code: 0
+    }!
+    socket := listener.accept()?
+    defer _ := socket.close()
+    socket.nonblocking(yes)?
+    on exchange(^socket) {
+        _! => {
+            return NetworkError.Invalid!
+        } else => {
+        }
+    }
+}
+
+main :: fn () -> i32 {
+    on serve() {
+        _! => {
+            return 1
+        } else => {
+        }
+    }
+    prn("Nexus TCP C interoperability passed")
+    return 0
+}

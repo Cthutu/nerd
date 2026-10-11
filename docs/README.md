@@ -58,6 +58,10 @@ validating the language against the implementation, use
   Interpolated-string lowering, HIR/LLVM string ops, and runtime helper model.
 - [stdlib.md](/home/matt/nerd/docs/stdlib.md)
   Working notes for the evolving standard library surface.
+- [stdlib-nexus.md](stdlib-nexus.md)
+  Reusable messages, TCP framing, ownership and source wire compatibility.
+- [tutorials/README.md](tutorials/README.md)
+  Runnable Raptor and Nexus API walkthroughs and remaining tutorial work.
 - [lsp.md](/home/matt/nerd/docs/lsp.md)
   Document lifecycle, analysis flow, and editor-facing features.
 - [editor-support.md](/home/matt/nerd/docs/editor-support.md)

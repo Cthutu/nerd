@@ -153,3 +153,15 @@ retry. Native Windows validation of this new slice remains pending. The original
 Windows IPv4 socket results do not validate these additions. Nexus messages,
 framing and protocols are still unimplemented; this slice supplies their
 IPv4 readiness prerequisite, without completing all of M5.
+
+
+## Nexus message foundation — 11 October 2026
+
+`std.nexus` now owns bounded reusable messages and frames connected TCP streams
+without a scheduler. The [contracts](stdlib-nexus.md) cover unsigned integer
+and string encoding, borrowing, single-slot backpressure, atomic failed reads,
+partial-I/O/deadline recovery and terminal framing errors. The
+[tutorial](tutorials/nexus.md) walks through the runnable `nexus-message` example.
+Linux LLVM/C debug/release checks pass, including deterministic short I/O and
+would-block injection and bidirectional TCP exchange with the unmodified pinned
+C implementation. Windows validation and the remainder of M6/M7 are pending.

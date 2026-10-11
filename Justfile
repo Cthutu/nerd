@@ -44,6 +44,10 @@ test *args:
     python3 build/test_network.py --compiler _bin/nerd-debug{{exe_suffix}} --release
     python3 build/test_network.py --compiler _bin/nerd-debug{{exe_suffix}} --cgen
     python3 build/test_network.py --compiler _bin/nerd-debug{{exe_suffix}} --cgen --release
+    python3 build/test_nexus.py --compiler _bin/nerd-debug{{exe_suffix}}
+    python3 build/test_nexus.py --compiler _bin/nerd-debug{{exe_suffix}} --release
+    python3 build/test_nexus.py --compiler _bin/nerd-debug{{exe_suffix}} --cgen
+    python3 build/test_nexus.py --compiler _bin/nerd-debug{{exe_suffix}} --cgen --release
     python3 build/test_profile.py --nerd _bin/nerd-debug{{exe_suffix}}
     python3 build/test_render_threads.py --nerd _bin/nerd-debug{{exe_suffix}}
     python3 build/test_expression_depth.py --nerd _bin/nerd-debug{{exe_suffix}}
@@ -66,6 +70,8 @@ test-release *args:
     python3 build/test_raptor.py --nerd _bin/nerd{{exe_suffix}} --cgen
     python3 build/test_network.py --compiler _bin/nerd{{exe_suffix}} --release
     python3 build/test_network.py --compiler _bin/nerd{{exe_suffix}} --cgen --release
+    python3 build/test_nexus.py --compiler _bin/nerd{{exe_suffix}} --release
+    python3 build/test_nexus.py --compiler _bin/nerd{{exe_suffix}} --cgen --release
 
 test-build:
     just run nerd build -v examples/text-adventure/adv.n

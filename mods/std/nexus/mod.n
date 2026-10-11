@@ -1,0 +1,198 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Reusable bounded Nexus messages. Integers and string lengths use big-endian
+-- byte order, compatible with cthutu/dev revision 9ae32dd.
+
+use std.memory
+use std.network
+
+pub max_message_size :: 1_048_576  -- Maximum payload size, excluding framing.
+
+-- Message and framing failures; Network retains the original socket error.
+pub NexusError :: enum {
+    Invalid
+    TooLarge
+    IncompletePayload
+    Closed
+    Truncated
+    Network {
+        error NetworkError
+    }
+    -- Original socket or readiness failure.
+}
+
+-- Owns reusable payload storage. Zero initialisation creates an empty message.
+-- Do not copy an allocated message; call done once after its last use.
+pub Message :: plex {
+    storage []u8   -- Owned allocation; do not mutate fields directly.
+    length  usize  -- Payload end, at most max_message_size.
+    offset  usize  -- Read cursor; successful reads consume the front logically.
+}
+
+impl Message {
+
+    -- Frees owned storage and resets the message; safe on an empty value.
+    pub done :: fn (self: ^Self) {
+        free(self.storage)
+        self.storage = nil
+        self.length = 0
+        self.offset = 0
+    }
+
+    -- Clears payload and cursor, retaining allocated capacity for reuse.
+    pub clear :: fn (self: ^Self) {
+        self.length = 0
+        self.offset = 0
+    }
+
+    -- Returns unread payload borrowed until append, clear, receive or done.
+    pub payload :: fn (self: Self) -> []u8 {
+        return self.storage[self.offset..self.length]
+    }
+
+    -- Grows storage geometrically, bounded by the wire payload limit.
+    reserve :: fn (self: ^Self, required: usize) -> void\NexusError {
+        on required > max_message_size => return NexusError.TooLarge!
+        on required <= self.storage.count => return
+        capacity := self.storage.count
+        on capacity < 64 => capacity = 64
+        for capacity < required {
+            capacity *= 2
+        }
+        on capacity > max_message_size => capacity = max_message_size
+        self.storage = realloc(self.storage, capacity)
+    }
+
+    -- Appends raw bytes atomically; permits a borrowed slice of this message.
+    pub append :: fn (self: ^Self, bytes: []u8) -> void\NexusError {
+        on bytes.count > max_message_size - self.length => return NexusError.TooLarge!
+        on bytes.count == 0 => return
+        base             := self.storage.data.as(usize)
+        address          := bytes.data.as(usize)
+        aliases          := base != 0 && address >= base && address - base < self.storage.count
+        relative : usize = 0
+
+        on aliases => relative = address - base
+        self.reserve(self.length + bytes.count)?
+        source := bytes
+        on aliases => source = self.storage[relative..relative + bytes.count]
+        for i in [0 .. bytes.count] {
+            self.storage[self.length + i] = source[i]
+        }
+        self.length += bytes.count
+    }
+
+    -- Appends a byte in network order.
+    pub append_u8 :: fn (self: ^Self, value: u8) -> void\NexusError {
+        self.append([value])?
+    }
+
+    -- Appends an unsigned 16-bit integer in network order.
+    pub append_u16 :: fn (self: ^Self, value: u16) -> void\NexusError {
+        bytes : [2]u8
+        for i in [0 .. bytes.count] {
+            bytes[i] = (value >> ((bytes.count - 1 - i) * 8).as(u16)).as(u8)
+        }
+        self.append(bytes[..])?
+    }
+
+    -- Appends an unsigned 32-bit integer in network order.
+    pub append_u32 :: fn (self: ^Self, value: u32) -> void\NexusError {
+        bytes : [4]u8
+        for i in [0 .. bytes.count] {
+            bytes[i] = (value >> ((bytes.count - 1 - i) * 8).as(u32)).as(u8)
+        }
+        self.append(bytes[..])?
+    }
+
+    -- Appends an unsigned 64-bit integer in network order.
+    pub append_u64 :: fn (self: ^Self, value: u64) -> void\NexusError {
+        bytes : [8]u8
+        for i in [0 .. bytes.count] {
+            bytes[i] = (value >> ((bytes.count - 1 - i) * 8).as(u64)).as(u8)
+        }
+        self.append(bytes[..])?
+    }
+
+    -- Appends a u32 byte count and raw string bytes; no UTF-8 validation.
+    -- A failed size check leaves the payload unchanged, including its prefix.
+    pub append_string :: fn (self: ^Self, value: string) -> void\NexusError {
+        on self.length > max_message_size - 4 => return NexusError.TooLarge!
+        on value.count > max_message_size - self.length - 4 => return NexusError.TooLarge!
+        base             := self.storage.data.as(usize)
+        address          := value.data.as(usize)
+        aliases          := base != 0 && address >= base && address - base < self.storage.count
+        relative : usize = 0
+
+        on aliases => relative = address - base
+        self.reserve(self.length + 4 + value.count)?
+        bytes := value.as([]u8)
+        on aliases => bytes = self.storage[relative..relative + value.count]
+        self.append_u32(value.count.as(u32))?
+        self.append(bytes)?
+    }
+
+    -- Consumes count bytes as a borrowed view; short reads leave the cursor.
+    pub read :: fn (self: ^Self, count: usize) -> []u8\NexusError {
+        on count > self.length - self.offset => return NexusError.IncompletePayload!
+        start := self.offset
+        self.offset += count
+        return self.storage[start..self.offset]
+    }
+
+    -- Consumes one byte, leaving the cursor unchanged if missing.
+    pub read_u8 :: fn (self: ^Self) -> u8\NexusError {
+        bytes := self.read(1)?
+        return bytes[0]
+    }
+
+    -- Consumes a network-order unsigned 16-bit integer atomically.
+    pub read_u16 :: fn (self: ^Self) -> u16\NexusError {
+        bytes       := self.read(2)?
+        value : u16 = 0
+
+        for i in [0 .. bytes.count] {
+            value = (value << 8) | bytes[i].as(u16)
+        }
+        return value
+    }
+
+    -- Consumes a network-order unsigned 32-bit integer atomically.
+    pub read_u32 :: fn (self: ^Self) -> u32\NexusError {
+        bytes       := self.read(4)?
+        value : u32 = 0
+
+        for i in [0 .. bytes.count] {
+            value = (value << 8) | bytes[i].as(u32)
+        }
+        return value
+    }
+
+    -- Consumes a network-order unsigned 64-bit integer atomically.
+    pub read_u64 :: fn (self: ^Self) -> u64\NexusError {
+        bytes       := self.read(8)?
+        value : u64 = 0
+
+        for i in [0 .. bytes.count] {
+            value = (value << 8) | bytes[i].as(u64)
+        }
+        return value
+    }
+
+    -- Reads a length-prefixed string without copying. All returned views remain
+    -- valid through other reads, until append, clear, receive or done.
+    -- A short prefix or body leaves the cursor unchanged.
+    pub read_string :: fn (self: ^Self) -> string\NexusError {
+        start := self.offset
+        count := self.read_u32()?
+
+        on count.as(usize) > self.length - self.offset => {
+            self.offset = start
+            return NexusError.IncompletePayload!
+        }
+        return self.read(count.as(usize))?.as(string)
+    }
+
+}
