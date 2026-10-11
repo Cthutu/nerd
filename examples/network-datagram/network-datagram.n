@@ -1,8 +1,15 @@
+-- UDP request and reply: send one datagram to a loopback server, retain its
+-- sender address and use that address for the reply. UDP preserves datagram
+-- boundaries, unlike TCP, but does not promise delivery or ordering. There is
+-- no connection handshake or Nexus length prefix in this example.
+
 use std.network
 
 -- Demonstrates retaining the UDP sender address for a reply, without Nexus
 -- framing.
 run_datagram :: fn () -> void\NetworkError {
+    -- Bind each endpoint to an ephemeral local port. A UDP socket can exchange
+    -- datagrams with different peers without creating a stream for each peer.
     server := socket(SocketKind.Udp)?
     defer _ := server.close()
     server.bind(loopback(0))?
@@ -12,21 +19,28 @@ run_datagram :: fn () -> void\NetworkError {
     defer _ := client.close()
     client.bind(loopback(0))?
 
+    -- Send one complete message as one datagram. The receiving buffer is larger
+    -- than this demonstration payload so it can hold that datagram in full.
     message := "hello datagrams".as([]u8)
     sent    := client.send_to(message, destination)?
 
     assert sent == message.count, "Expected one complete datagram"
-    buffer  : [64]u8
-    request          := server.receive_from(buffer[..])?
-    _                := server.send_to(buffer[..request.count], request.sender)?
-    reply            := client.receive_from(buffer[..])?
+    buffer : [64]u8
+    -- receive_from reports both the byte count and source address. Send only
+    -- those received bytes back to that source, rather than to a remembered client.
+    request := server.receive_from(buffer[..])?
+    _       := server.send_to(buffer[..request.count], request.sender)?
+    reply   := client.receive_from(buffer[..])?
 
     assert buffer[..reply.count].as(string) == "hello datagrams",
         "Expected a routed UDP reply"
+    -- Check the reply's source as well as its contents to demonstrate routing.
+    -- The small local exchange assumes delivery; it does not implement UDP retries.
     assert reply.sender.port == destination.port, "Expected the original server"
     prn("UDP reply: hello datagrams")
 }
 
+-- Report socket errors at the application boundary after endpoint cleanup.
 main :: fn () -> i32 {
     return on run_datagram() {
         _! => {

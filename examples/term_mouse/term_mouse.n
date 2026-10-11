@@ -1,6 +1,14 @@
+-- Terminal mouse input: display pointer position, button transitions, wheel
+-- movement and accumulated counts. Coordinates refer to terminal cells, not
+-- image pixels. The simulation callback collects input and presentation draws a
+-- dashboard. Q or Escape leaves the terminal loop and restores the visible
+-- cursor.
+
 use std.term
 use std.time
 
+-- Keep the most recent snapshot and running totals between callbacks.
+-- pressed/released are transitions; buttons describes which buttons are held.
 mouse         : TermMouse
 click_count   : u32
 release_count : u32
@@ -10,6 +18,8 @@ last_y        : i32       = -1
 wheel_x       : i32
 wheel_y       : i32
 
+-- Button flags form a bit mask: several flags may be set in one snapshot. Count
+-- recognised bits rather than treating the mask as one button number.
 mouse_button_count :: fn (buttons: u32) -> u32 {
     count : u32 = 0
     on (buttons & TERM_MOUSE_LEFT) != 0 => count += 1
@@ -20,6 +30,8 @@ mouse_button_count :: fn (buttons: u32) -> u32 {
     return count
 }
 
+-- Process the latest simulation input, preserving the old position so the
+-- presentation callback can show movement as well as the current pointer.
 mouse_simulate :: fn (sim: TermSimulate) {
     on sim.key_pressed(Q) ||
         sim.key_pressed(Escape) => {
@@ -36,12 +48,16 @@ mouse_simulate :: fn (sim: TermSimulate) {
         move_count += 1
     }
 
+    -- Accumulate transitions and wheel deltas once per simulation callback,
+    -- rather than once per redraw, which may run at a different cadence.
     click_count   += mouse_button_count(sim.mouse.pressed)
     release_count += mouse_button_count(sim.mouse.released)
     wheel_x       += sim.mouse.wheel_x
     wheel_y       += sim.mouse.wheel_y
 }
 
+-- Rebuild a cell framebuffer from the saved input state. The presentation
+-- callback does not consume input or change the accumulated counters.
 mouse_present :: fn (present: TermPresent) {
     term_fb_clear()
     term_fb_fill_rect(0,
@@ -95,6 +111,8 @@ mouse_present :: fn (present: TermPresent) {
                  ink = rgb(150, 170, 190),
                  paper = rgb(10, 16, 24))
 
+    -- Draw the old and current positions only when they lie inside the terminal;
+    -- negative coordinates can represent a pointer position that is not available.
     on (mouse.x != last_x || mouse.y != last_y) &&
         last_x >= 0 &&
         last_y >= 0 &&
@@ -119,11 +137,15 @@ mouse_present :: fn (present: TermPresent) {
     }
 }
 
+-- Request enough terminal cells for the dashboard and hide the text cursor
+-- while our own pointer markers are drawn.
 main :: fn () {
     term_init(min_width = 54, min_height = 13)
     term_cursor_enable(no)
     defer term_cursor_enable(yes)
 
+    -- Collect input every 16 ms but redraw every 33 ms. Separating these cadences
+    -- keeps input accounting independent of rendering frequency.
     term_hook_simulation(from_ms(16), mouse_simulate)
     term_hook_presentation(from_ms(33), mouse_present)
     term_run()

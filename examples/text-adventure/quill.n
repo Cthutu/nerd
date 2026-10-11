@@ -1,14 +1,24 @@
+-- Small text adventure: describe the current room, read a command, normalise
+-- its verb and follow a direction-labelled exit to another room. Locations and
+-- exits form a tiny graph stored as data, while player_loc records the current
+-- node. Only movement and quitting are handled; the synonym table also sketches
+-- future verbs.
+
 use std.io
 use std.memory
 use std.text
 use term
 
+-- Create the world description, then repeat input and dispatch until quit.
 main :: fn () {
     state := init()
 
     show_location(^state)
 
     for {
+        -- The input buffer owns the command text. Splitting creates an owned list
+        -- of borrowed string views; both are freed at this iteration's end in reverse
+        -- order, after command processing has finished using those views.
         player_input := input("> ")
         defer player_input.free()
 
@@ -33,6 +43,8 @@ main :: fn () {
             }
         }
 
+        -- A synonym group maps several spellings to its first, canonical verb.
+        -- Movement handling can then use a short list of direction codes.
         -- Normalise verb
         for i, verb_group in state.verbs {
             for verb_synonym in verb_group^ {
@@ -40,6 +52,8 @@ main :: fn () {
             }
         }
 
+        -- Dispatch implemented actions. Parsed nouns are reserved for future commands;
+        -- a recognised synonym alone does not mean its action has been implemented.
         on verb {
             "q", "quit" => {
                 prn("Goodbye!")
@@ -54,15 +68,21 @@ main :: fn () {
         }
     }
 
+    -- The loop's input allocations have been released before this diagnostic.
+    -- The static world tables are borrowed data, not per-command allocations.
     print_leaks(show_message_on_no_leaks = yes)
 }
 
+-- Display the room text wrapped to terminal width, then list its outgoing
+-- edges.
 show_location :: fn (state: ^State) {
     prn_wrap($"{state.locations[state.player_loc]}")
     prn()
     show_exits(state)
 }
 
+-- Search only the current room's exits. A matching edge updates the room index;
+-- the loop's else handles the case where no direction matched.
 move :: fn (state: ^State, direction: string) {
     for exit in state.exits[state.player_loc] {
         on exit.0 == direction => {
@@ -76,6 +96,8 @@ move :: fn (state: ^State, direction: string) {
     }
 }
 
+-- The world tables are read-only views of literal data. Only player_loc changes
+-- during play; integer room indices connect the exit table to descriptions.
 State :: plex {
     -- Database
     locations  []string    -- location descriptions
@@ -86,6 +108,7 @@ State :: plex {
     player_loc usize
 }
 
+-- Translate compact direction codes to friendly labels when presenting choices.
 show_exits :: fn (state: ^State) {
     pr("Exits: ")
     for i, exit in state.exits[state.player_loc] {
@@ -96,6 +119,8 @@ show_exits :: fn (state: ^State) {
     prn()
 }
 
+-- Describe each room once and list its (direction, destination-index) edges.
+-- Changing these tables extends the world without changing the command loop.
 init :: fn () -> State {
     return {
         locations: [
@@ -152,6 +177,7 @@ init :: fn () -> State {
     }
 }
 
+-- Keep display names separate from the compact codes used by the game logic.
 exit_strings :: fn (exit: string) -> string {
     return on exit {
         "n"   => "North"

@@ -1,10 +1,19 @@
+-- Embedded image viewer: decode a bundled JPEG to RGBA pixels, fit it into a
+-- logical pixel layer without changing its aspect ratio and present it in a
+-- window. Image decoding produces owned CPU memory; std.gfx supplies the
+-- display layer. A checkerboard supports transparent images too, although the
+-- selected JPEG is opaque.
+
 use std.frame
 use std.gfx
 use std.image
 use std.time
 
+-- Changing this constant reverses source rows when the image is drawn.
 IMAGE_VIEWER_FLIP_VERTICALLY :: no
 
+-- Find the largest centred rectangle that fits the view while preserving the
+-- image's width-to-height ratio. The remaining area becomes a letterbox border.
 image_view_rect :: fn (view_width   : u32,
                        view_height  : u32,
                        image_width  : u32,
@@ -34,11 +43,14 @@ image_view_rect :: fn (view_width   : u32,
     }
 }
 
+-- Alternating dark tiles make transparency visible when loading an alpha image.
 image_checkerboard :: fn (x: u32, y: u32) -> u32 {
     tile := ((x / 8) + (y / 8)) & 1
     return on tile == 0 => 0xff2a2a2a else 0xff3a3a3a
 }
 
+-- Alpha expresses opacity from 0 to 255. Mix each source colour channel with
+-- the background using that opacity, then produce an opaque display colour.
 image_blend_over :: fn (red        : u32,
                         green      : u32,
                         blue       : u32,
@@ -57,6 +69,8 @@ image_blend_over :: fn (red        : u32,
     return 0xff000000 | (out_red << 16) | (out_green << 8) | out_blue
 }
 
+-- The decoder was asked for four channels per pixel, so RGBA pixels occupy four
+-- consecutive bytes. Clamp sample coordinates to stay inside the image.
 image_pixel :: fn (image: ^Image, x: u32, y: u32, background: u32) -> u32 {
     on image.width == 0 || image.height == 0 => return background
 
@@ -71,6 +85,9 @@ image_pixel :: fn (image: ^Image, x: u32, y: u32, background: u32) -> u32 {
                             background)
 }
 
+-- @embed includes asset bytes in the executable at compile time. Decoding
+-- creates a separate owned Image, so the executable needs no runtime asset
+-- path.
 load_demo_image :: fn () -> Image {
     bytes  := @embed("assets/demo.jpg")
     result := Image.load_bytes(bytes, desired_channels = 4)
@@ -81,6 +98,8 @@ load_demo_image :: fn () -> Image {
     }
 }
 
+-- Clear the layer, calculate the image rectangle and resample into it. Integer
+-- coordinate mapping chooses a nearest source pixel rather than interpolating.
 draw_image_viewer :: fn (layer: ^PixelLayer, image: ^Image) {
     layer.clear(0xff181818)
 
@@ -94,6 +113,8 @@ draw_image_viewer :: fn (layer: ^PixelLayer, image: ^Image) {
 
     on rect.width == 0 || rect.height == 0 => return
 
+    -- Map destination positions back to source coordinates. This scales the image
+    -- without allocating another resized image buffer.
     for y: u32 = 0; y < rect.height; y += 1 {
         source_y := (y * image.height.as(u32)) / rect.height
         on IMAGE_VIEWER_FLIP_VERTICALLY => {
@@ -111,6 +132,7 @@ draw_image_viewer :: fn (layer: ^PixelLayer, image: ^Image) {
         }
     }
 
+    -- Outline the fitted image rectangle so its boundary and letterboxing are visible.
     layer.fill(PixelRect {
         x      : rect.x
         y      : rect.y
@@ -137,6 +159,7 @@ draw_image_viewer :: fn (layer: ^PixelLayer, image: ^Image) {
     }, 0xffffffff)
 }
 
+-- Resolve the layer handle and present the freshly drawn image.
 render_image_viewer :: fn (gfx    : ^GfxSystem,
                            handle : GfxLayerHandle,
                            frame  : ^Frame,
@@ -147,6 +170,8 @@ render_image_viewer :: fn (gfx    : ^GfxSystem,
     return yes
 }
 
+-- Construct owners in dependency order: frame system, graphics, then image.
+-- Their defers release image memory and graphics before disposing of windows.
 main :: fn () {
     frame_system := FrameSystem.init()
     defer frame_system.done()
@@ -169,11 +194,15 @@ main :: fn () {
     image := load_demo_image()
     defer image.free()
 
+    -- Draw into a fixed 320 by 200 logical surface. Window resizing scales that
+    -- surface; fitting the source image happens within these logical dimensions.
     layer_handle := gfx.create_pixel_layer(^frame, PixelLayerMode.FixedSizeAutoScale {
         width  : 320
         height : 200
     })
 
+    -- Drain input, redraw and present while the window is active. Q/Escape closes
+    -- it and Alt+Enter reapplies full-screen state.
     for frame_system.loop() {
         frame_system.update(^frame)
 
@@ -205,6 +234,8 @@ main :: fn () {
 
         _ := render_image_viewer(^gfx, layer_handle, ^frame, ^image)
 
+        -- A short pause provides simple loop pacing instead of repeatedly redrawing
+        -- as quickly as the CPU can run.
         sleep_ms(16)
     }
 

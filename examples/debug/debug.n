@@ -1,3 +1,11 @@
+-- Debugger inspection example: construct a selection of Nerd values and keep
+-- them live together at a checkpoint. Set a breakpoint in debugger_values to
+-- inspect records, pointers, unions, enum payloads, tuples, arrays and slices.
+-- The final calculation ensures the values contribute to observable behaviour;
+-- this is a debugging exercise rather than an application algorithm.
+
+-- A plex groups named fields in one value; a pointer lets the debugger also
+-- show a reference to that value and the fields reached through it.
 DebugPoint :: plex {
     x i32
     y i32
@@ -10,11 +18,16 @@ DebugCell :: plex {
     flags u32
 }
 
+-- A union shares storage between its alternatives and has no active-case tag.
+-- Here the i field is written and read; the f interpretation is only for
+-- inspection.
 DebugRaw :: union {
     i i32
     f f32
 }
 
+-- An enum records which case is active. Payload cases carry values that an on
+-- branch can bind only when that case matches.
 DebugEvent :: enum {
     None
     Move(DebugPoint)
@@ -22,10 +35,13 @@ DebugEvent :: enum {
     Count(i32)
 }
 
+-- Module-level values exercise global inspection alongside local variables. The
+-- dynamic array owns storage and must be freed before the program ends.
 global_counter : i32
 global_cells   : [..]DebugCell
 global_event   : DebugEvent
 
+-- Give globals recognisable contents before entering the local-value exercise.
 debugger_seed_globals :: fn () {
     global_counter = 41
     global_cells.push(DebugCell { ch: 'G' ink: 1 paper: 2 flags: 3 })
@@ -33,6 +49,8 @@ debugger_seed_globals :: fn () {
     global_event = DebugEvent.Count(global_cells.count.as(i32))
 }
 
+-- Pattern matching selects the active enum case and exposes its payload. Every
+-- case produces a number so each branch can be checked in the debugger.
 debugger_branch_value :: fn (event: DebugEvent) -> i32 {
     result := 0
 
@@ -57,6 +75,7 @@ debugger_branch_value :: fn (event: DebugEvent) -> i32 {
     return result
 }
 
+-- Create varied locals, then inspect them before the cleanup at the end.
 debugger_values :: fn (scale: i32) -> i32 {
     label                    := "debugger"
     point                    := DebugPoint { x: 3 y: 4 }
@@ -65,6 +84,8 @@ debugger_values :: fn (scale: i32) -> i32 {
     fixed_numbers            := [10, 20, 30]
     pair                     := ("east", 7)
 
+    -- Dynamic arrays own growable storage. A slice is a borrowed view of that
+    -- storage, so these views are created after the pushes and used before free.
     bytes : [..]u8
     bytes.push('A')
     bytes.push('B')
@@ -83,6 +104,7 @@ debugger_values :: fn (scale: i32) -> i32 {
     cells.push(DebugCell { ch: 'b' ink: 11 paper: 21 flags: 2 })
     cells.push(DebugCell { ch: 'c' ink: 12 paper: 22 flags: 3 })
 
+    -- Keep one value of each enum case live to compare empty and payload cases.
     none_event           : DebugEvent = DebugEvent.None
     local_event                       := DebugEvent.Move(point)
     message_event                     := DebugEvent.Message(label)
@@ -93,10 +115,14 @@ debugger_values :: fn (scale: i32) -> i32 {
     count_branch_value                := debugger_branch_value(count_event)
     global_branch_value               := debugger_branch_value(global_event)
 
+    -- This line is a useful breakpoint: all the data above is still live.
+    -- The expression reads through both aggregate values and borrowed pointers.
     checkpoint := label.count.as(i32) + point_ptr.x + raw_value.i + fixed_numbers[1] + pair.1.as(i32) + byte_slice.data[1].as(i32) + number_slice.data[0] + tail_slice.data[0] + cells[1].flags.as(i32) + none_branch_value + branch_value + message_branch_value + count_branch_value + global_branch_value + scale
 
     on checkpoint > 0 => prn($"debug checkpoint {checkpoint}")
 
+    -- Release owners after the last use of their slices; freeing an owner would
+    -- invalidate any debugger view or program reference to its storage.
     cells.free()
     numbers.free()
     bytes.free()
@@ -104,6 +130,7 @@ debugger_values :: fn (scale: i32) -> i32 {
     return checkpoint
 }
 
+-- Seed globals, run the checkpoint and release the remaining global owner.
 main :: fn () {
     debugger_seed_globals()
 

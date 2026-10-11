@@ -1,9 +1,18 @@
+-- Window lifecycle and input: create a resizable native window, process events
+-- and close it on Q or Escape. Alt+Enter changes the desired full-screen state
+-- and reapplies that state through FrameSystem. This example draws no graphics;
+-- it introduces window creation, event handling and cleanup.
+
 use std.frame
 
 main :: fn () {
+    -- FrameSystem owns native window resources. defer releases the system when
+    -- main leaves its scope, including any still-owned windows.
     system := FrameSystem.init()
     defer system.done()
 
+    -- Frame describes the requested window state. NEW_FRAME asks apply to create
+    -- a native window and update the description with its assigned identity.
     frame := {
         id          : NEW_FRAME
         width       : 800
@@ -16,9 +25,13 @@ main :: fn () {
 
     system.apply(^frame)
 
+    -- The system pumps native events while windows remain active. update refreshes
+    -- the frame description; poll retrieves an event for application handling.
     for system.loop() {
         system.update(^frame)
 
+        -- Respond to input rather than continuously testing key state. The close
+        -- request changes the window lifecycle so the outer loop can eventually finish.
         on system.poll(^frame) {
             None => {
             }
@@ -33,6 +46,8 @@ main :: fn () {
 
                     Enter => {
                         on system.is_alt_down() => {
+                            -- Changing a field alone only edits the description. apply sends the new
+                            -- full-screen request to the platform window implementation.
                             frame.full_screen = !frame.full_screen
                             system.apply(^frame)
                         }

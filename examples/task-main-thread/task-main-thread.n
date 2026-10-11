@@ -1,6 +1,13 @@
+-- Main-thread dispatch: queue three print callbacks, then explicitly run them
+-- on the thread that initialised the scheduler. Main-thread queues are serial:
+-- callbacks run one at a time and workers do not execute this queue's work.
+-- This pattern is useful when callbacks must run on an application's owning
+-- thread.
+
 use std.io
 use std.raptor
 
+-- This callback runs during the explicit pump, not during queue submission.
 print_number :: fn (number: ^i32) {
     prn($"Main thread: {number^}")
 }
@@ -9,17 +16,25 @@ main :: fn () -> ?void {
     scheduler : Scheduler
     scheduler.init(4)?
     defer assert scheduler.close()
+    -- Keep the borrowed inputs and caller-owned tasks stable until the pump has
+    -- finished executing them. Task[void] records completion without a result value.
     values                 := [10, 20, 30]
     tasks  : [3]Task[void]
-    queue                  := scheduler.get_main_queue()
+    -- Getting the main queue does not start an event loop. The owner must call
+    -- run_main_tasks to make this queue progress.
+    queue := scheduler.get_main_queue()
 
     -- This example's callbacks submit no further work: one batch also covers
     -- accepted tasks if a later submission propagates failure.
     defer assert scheduler.run_main_tasks() != nil
+    -- Queueing records pending work; it does not call print_number immediately.
     for i in [0 .. values.count] {
         tasks[i].create(print_number, ^values[i])
         queue.async(^tasks[i])?
     }
+    -- Run the batch that was pending when the pump began. This example submits
+    -- all three tasks first, so one batch executes them all. Waiting on unpumped
+    -- main-queue tasks from the owner would not make those callbacks run.
     on scheduler.run_main_tasks() {
         count => {
             assert count == 3
@@ -29,6 +44,8 @@ main :: fn () -> ?void {
             assert no
         }
     }
+    -- All callbacks have already completed on the owner. The wait now confirms
+    -- completion before the task and input arrays leave scope.
     assert when_all(tasks[..])
     return
 }

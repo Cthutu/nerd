@@ -1,10 +1,22 @@
+-- Calling Nerd from C: export a logging function with a C-compatible interface.
+-- The companion main.c is the host executable; this module supplies the
+-- exported symbol and adapts a C format string and variadic arguments to Nerd
+-- output.
+
 use std.io
 use std.text
 
+-- C callers pass pointers to zero-terminated strings, not Nerd string values.
+-- The variadic argument types must agree with the format string, just as in
+-- printf.
 log_impl :: fn (channel: ^i8, format: ^i8, args: ...) {
+    -- Formatting may use the temporary arena. A mark and deferred restore bound
+    -- that scratch storage to this call, without retaining it after returning to C.
     mark := temp_arena.mark()
     defer temp_arena.restore(mark)
     assert channel != nil
+    -- Convert the C formatting request to text while the variadic arguments are
+    -- still valid. The channel is checked but is not printed by this small adapter.
     prn(format_c(format, args))
 }
 

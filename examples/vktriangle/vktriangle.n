@@ -1,7 +1,16 @@
+-- Vulkan setup walkthrough: create an instance and window surface, choose a
+-- discrete GPU and find a queue family that supports graphics and presentation.
+-- Despite the example name, this currently stops at setup: it does not create a
+-- logical device, swapchain or graphics pipeline, and does not render a
+-- triangle. It illustrates explicit resource construction and rollback when
+-- setup fails.
+
 use std.frame
 use std.slice
 use std.vulkan
 
+-- The frame system owns the window; the returned Vulkan context owns instance
+-- and surface resources. Reverse-order defers keep those dependencies alive.
 main :: fn () -> ?void {
     frame_system := FrameSystem.init()
     defer frame_system.done()
@@ -18,10 +27,13 @@ main :: fn () -> ?void {
 
     frame_system.apply(^main_window)
 
+    -- Optional returns signal setup failure with nil; ? propagates that failure
+    -- after cleanup. Successful setup keeps its resources until vk_done.
     vk_context := vk_init(^main_window)?
     defer vk_done(^vk_context)
 
-    -- Main loop
+    -- This loop handles window events only. Rendering and swapchain resize
+    -- handling would be additional stages beyond the setup shown here.
     for frame_system.loop() {
         frame_system.update(^main_window)
         on frame_system.poll(^main_window) {
@@ -40,6 +52,9 @@ main :: fn () -> ?void {
     }
 }
 
+-- Group handles by ownership: instance and surface need destruction; the
+-- physical device and queue-family index identify capabilities borrowed from
+-- Vulkan.
 VulkanContext :: plex {
     frame              ^Frame
     instance           VkInstance
@@ -48,8 +63,11 @@ VulkanContext :: plex {
     queue_family_index u32
 }
 
+-- Build resources in dependency order. Register undo after each successful
+-- step: later failure runs rollback in reverse order, while success retains the
+-- resources for the caller to release with vk_done.
 vk_init :: fn (frame: ^Frame) -> ?VulkanContext {
-    -- Initialize Vulkan context here
+    -- Begin with empty handles; each successful step fills its owned state.
     ctx: VulkanContext = {
         frame
         ...
@@ -67,6 +85,8 @@ vk_init :: fn (frame: ^Frame) -> ?VulkanContext {
     return ctx
 }
 
+-- Tear down dependants before their owners. Queue-family and physical-device
+-- selection have no separately owned object to destroy in this example.
 vk_done :: fn (ctx: ^VulkanContext) {
     destroy_vk_queue(ctx)
     destroy_vk_physical_device(ctx)
@@ -74,6 +94,8 @@ vk_done :: fn (ctx: ^VulkanContext) {
     destroy_vk_instance(ctx)
 }
 
+-- Vulkan calls this C-compatible callback with borrowed diagnostic data. Report
+-- warnings/errors and return VK_FALSE to let Vulkan continue the call.
 debug_callback :: fn (messageSeverity : VkDebugUtilsMessageSeverityFlagBitsEXT,
                       _messageType    : VkDebugUtilsMessageTypeFlagsEXT,
                       callbackData    : ^VkDebugUtilsMessengerCallbackDataEXT,
@@ -84,6 +106,9 @@ debug_callback :: fn (messageSeverity : VkDebugUtilsMessageSeverityFlagBitsEXT,
     return VK_FALSE
 }
 
+-- The instance is the entry point for Vulkan discovery. Enable the window
+-- surface extensions and validation layer requested by this development
+-- example.
 create_vk_instance :: fn (ctx: ^VulkanContext) -> ?void {
     assert ctx != nil, "Vulkan context must not be nil"
 
@@ -94,6 +119,8 @@ create_vk_instance :: fn (ctx: ^VulkanContext) -> ?void {
 
     result := vkCreateInstance(^{
         sType: VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO
+        -- pNext chains an additional configuration record onto the instance request.
+        -- This registers diagnostics for instance creation and destruction.
         pNext: ^VkDebugUtilsMessengerCreateInfoEXT {
             sType           : VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT
             messageSeverity : VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT
@@ -128,6 +155,7 @@ create_vk_instance :: fn (ctx: ^VulkanContext) -> ?void {
     }
 }
 
+-- Destroy only an existing instance and clear its handle afterwards.
 destroy_vk_instance :: fn (ctx: ^VulkanContext) {
     on ctx.instance != nil => {
         vkDestroyInstance(ctx.instance, nil)
@@ -135,6 +163,8 @@ destroy_vk_instance :: fn (ctx: ^VulkanContext) {
     }
 }
 
+-- A surface connects Vulkan to the platform window; it is not an image buffer
+-- and does not itself present rendered pixels.
 create_vk_surface :: fn (ctx: ^VulkanContext) -> ?void {
     assert ctx != nil, "Vulkan context must not be nil"
 
@@ -147,6 +177,7 @@ create_vk_surface :: fn (ctx: ^VulkanContext) -> ?void {
     }
 }
 
+-- Release the surface before its parent instance is destroyed.
 destroy_vk_surface :: fn (ctx: ^VulkanContext) {
     on ctx.surface != nil => {
         vkDestroySurfaceKHR(ctx.instance, ctx.surface, nil)
@@ -154,6 +185,8 @@ destroy_vk_surface :: fn (ctx: ^VulkanContext) {
     }
 }
 
+-- Use Vulkan's two-call enumeration pattern: first obtain a count, then provide
+-- storage for the returned handles. This example requires a discrete GPU.
 create_vk_physical_device :: fn (ctx: ^VulkanContext) -> ?void {
     assert ctx != nil, "Vulkan context must not be nil"
 
@@ -207,21 +240,24 @@ create_vk_physical_device :: fn (ctx: ^VulkanContext) -> ?void {
     return nil
 }
 
+-- Forget the selected borrowed handle; the instance controls its lifetime.
 destroy_vk_physical_device :: fn (ctx: ^VulkanContext) {
     -- Physical devices are borrowed from the instance; no separate cleanup.
     ctx.physical_device = nil
 }
 
+-- Discover a queue family, not an actual queue. A family describes supported
+-- work; a logical device would later create queues from the chosen family.
 create_vk_queue :: fn (ctx: ^VulkanContext) -> ?void {
     assert ctx != nil, "Vulkan context must not be nil"
 
-    -- Queue creation logic goes here.
     queue_family_count : u32
     vkGetPhysicalDeviceQueueFamilyProperties2(ctx.physical_device,
                                               ^queue_family_count,
                                               nil)
 
     queue_families : [queue_family_count]VkQueueFamilyProperties2
+    -- Initialise the required sType tag on each output record before enumeration.
     queue_families.fill(^{
         sType: VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2
         ...
@@ -237,6 +273,8 @@ create_vk_queue :: fn (ctx: ^VulkanContext) -> ?void {
                                                   ctx.surface,
                                                   ^has_present_support)
 
+        -- Require both graphics commands and presentation to this window surface.
+        -- The stored index would be used in later logical-device setup.
         on ((queue_family.queueFamilyProperties.queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0) &&
             (has_present_support != 0) => {
             prn($"Found Vulkan queue family: {queue_family^} at index {i}")
@@ -246,5 +284,7 @@ create_vk_queue :: fn (ctx: ^VulkanContext) -> ?void {
     }
 }
 
+-- No queue or logical device has been created, so this placeholder owns nothing
+-- to release yet.
 destroy_vk_queue :: fn (_ctx: ^VulkanContext) {
 }

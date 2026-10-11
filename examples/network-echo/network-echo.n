@@ -1,7 +1,15 @@
+-- Raw TCP echo: connect two loopback sockets, send a fixed-size request and
+-- return the same bytes. TCP is an ordered byte stream; individual send calls
+-- are not message boundaries, and a read or write may transfer only part of a
+-- buffer. This tiny blocking exchange runs in one thread because the payload is
+-- small.
+
 use std.network
 
 -- Sends all bytes, accounting for partial TCP writes.
 send_bytes :: fn (stream: ^Socket, bytes: []u8) -> void\NetworkError {
+    -- Keep the unsent suffix until every byte has been accepted. Starting again
+    -- from the beginning after a partial write would duplicate data on the wire.
     offset : usize = 0
     for offset < bytes.count {
         count := stream.send(bytes[offset..])?
@@ -24,12 +32,16 @@ receive_bytes :: fn (stream: ^Socket, bytes: []u8) -> void\NetworkError {
 -- in one thread. Production servers should use readiness or dedicated I/O
 -- threads.
 run_echo :: fn () -> void\NetworkError {
+    -- A listening socket accepts connections but is not itself the connected
+    -- stream. Port zero asks the OS for a free port; loopback stays on this machine.
     listener := socket(SocketKind.Tcp)?
     defer _ := listener.close()
     listener.bind(loopback(0))?
     listener.listen()?
     address := listener.local_address()?
 
+    -- Connect a client, then accept its server-side stream. Each socket is an
+    -- independent owner and has its own deferred close.
     client := socket(SocketKind.Tcp)?
     defer _ := client.close()
     client.connect(address)?
@@ -38,9 +50,15 @@ run_echo :: fn () -> void\NetworkError {
 
     message := "hello sockets".as([]u8)
     send_bytes(^client, message)?
+    -- Half-close the request direction: the peer sees EOF after buffered request
+    -- bytes, but this client can still receive the response.
     client.shutdown_send()?
+    -- The demonstration already knows the request size. A real protocol needs
+    -- its own framing or another rule for deciding where a message ends.
     request : [13]u8
     receive_bytes(^server, request[..])?
+    -- EOF marks the end of the peer's sending direction, not an empty message.
+    -- The server can still echo on the opposite direction before half-closing it.
     end := server.receive(request[..1])?
     assert end.eof, "Expected EOF after the request"
     send_bytes(^server, request[..])?
@@ -52,6 +70,8 @@ run_echo :: fn () -> void\NetworkError {
     prn("TCP echo: hello sockets")
 }
 
+-- Convert propagated socket errors into a nonzero process exit status. Each
+-- deferred close still runs if any operation returns early.
 main :: fn () -> i32 {
     return on run_echo() {
         _! => {

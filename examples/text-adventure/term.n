@@ -1,9 +1,16 @@
+-- Terminal helpers for the text adventure: ask the native console for its size,
+-- then wrap prose to the available width. Platform guards select the
+-- appropriate FFI declarations. Returned wrapped lines borrow the original
+-- string; only the dynamic list of line views is owned and needs freeing.
+
 --
 -- Terminal control
 --
 
 use std.io
 
+-- Match the native winsize layout for ioctl. #c requests C-compatible record
+-- layout, which matters when the OS writes fields into this structure.
 on "linux" {
 
     winsize :: plex #c {
@@ -21,6 +28,8 @@ on "linux" {
 
     ffi "c" ioctl (fd: i32, request: i32, ...) -> i32
 
+    -- Ask the output terminal for rows and columns, returning (height, width).
+    -- The zero-initialised record also provides a zero-size fallback on failure.
     pub term_get_size :: fn () -> (i32, i32) {
         ws : winsize
         _            := ioctl(STDOUT_FILENO, TIOCGWINSZ, ^ws)
@@ -30,6 +39,8 @@ on "linux" {
 
 }
 
+-- Mirror the Windows console records and query the visible window rectangle,
+-- whose dimensions may differ from the whole console screen buffer.
 on "windows" {
 
     COORD :: plex #c {
@@ -76,6 +87,8 @@ on "windows" {
 
 }
 
+-- Own the array of wrapped views just for this print operation. The source
+-- string must remain valid while those borrowed line views are used.
 pub prn_wrap :: fn (s: string) {
     lines := wrap(s, term_get_size().1)
     defer lines.free()
@@ -85,11 +98,16 @@ pub prn_wrap :: fn (s: string) {
     }
 }
 
+-- Walk the string by byte offsets, preferring whitespace boundaries and
+-- honouring explicit newlines. Width here is a byte limit, not a Unicode
+-- display-cell calculation; long unbroken words are split at that limit.
 pub wrap :: fn (s: string, width: i32) -> [..]string {
     start  : usize      = 0
     end    : usize      = 0
     result : [..]string
 
+    -- If no usable terminal width is available, return the original text as one
+    -- line rather than attempting a zero-width wrapping loop.
     on width <= 0 ||
         s.count == 0 => {
         result.push(s)
@@ -98,6 +116,8 @@ pub wrap :: fn (s: string, width: i32) -> [..]string {
 
     limit := width.as(usize)
 
+    -- Scan the next candidate line, remembering its last whitespace. After
+    -- emitting a borrowed slice, advance start to guarantee progress.
     for start < s.count {
         end = start
         last_space    := start
@@ -121,6 +141,7 @@ pub wrap :: fn (s: string, width: i32) -> [..]string {
             end += 1
         }
 
+        -- An explicit newline ends the line without including the newline byte.
         on found_newline => {
             result.push(s[start..end])
             start = end + 1
@@ -129,6 +150,8 @@ pub wrap :: fn (s: string, width: i32) -> [..]string {
                 result.push(s[start..])
                 start = s.count
             } else {
+                -- Prefer a whole-word break and skip the separator whitespace. If there is
+                -- no whitespace before the width limit, emit a hard break inside the word.
                 on found_space => {
                     result.push(s[start..last_space])
                     start = last_space + 1

@@ -1,7 +1,15 @@
+-- OpenGL triangle: create a native window and graphics context, compile
+-- shaders, upload three coloured vertices and draw them until Q or Escape
+-- closes the window. The vertex shader supplies position and colour; the
+-- fragment shader colours the pixels inside the triangle by interpolating
+-- colour across its vertices.
+
 use std.frame
 use std.opengl
 use std.time
 
+-- Compile one GPU shader stage from source text. A zero handle indicates
+-- failure; delete failed objects rather than leaving partially built resources.
 compile_shader :: fn (type: GLenum, source: string) -> GLuint {
     shader := glCreateShader(type)
     on shader == 0 => return 0
@@ -9,6 +17,8 @@ compile_shader :: fn (type: GLenum, source: string) -> GLuint {
     source_data   := source.data.as(^i8)
     source_length := source.count.as(GLint)
 
+    -- Pass both the source pointer and byte length. A Nerd string is not required
+    -- to end in a zero byte when OpenGL is given an explicit length.
     glShaderSource(shader, 1, ^source_data, ^source_length)
     glCompileShader(shader)
 
@@ -22,7 +32,12 @@ compile_shader :: fn (type: GLenum, source: string) -> GLuint {
     return shader
 }
 
+-- Link vertex and fragment stages into one executable GPU program. Shader
+-- objects can be deleted after linking; the linked program retains what it
+-- needs.
 create_program :: fn () -> GLuint {
+    -- These shader strings are GLSL, a separate language executed by the graphics
+    -- pipeline. The varying colour is passed from vertices to interpolated fragments.
     vertex_source :=
         """
         #version 120
@@ -66,6 +81,8 @@ create_program :: fn () -> GLuint {
 
     glAttachShader(program, vertex_shader)
     glAttachShader(program, fragment_shader)
+    -- Bind stable attribute indices before linking. The vertex layout below uses
+    -- index 0 for a two-component position and index 1 for a three-component colour.
     glBindAttribLocation(program, 0, c"position")
     glBindAttribLocation(program, 1, c"colour")
     glLinkProgram(program)
@@ -82,6 +99,8 @@ create_program :: fn () -> GLuint {
     return program
 }
 
+-- A native window must exist before attaching its OpenGL context. GPU objects
+-- are created and later deleted while that context is current.
 main :: fn () {
     frame_system := FrameSystem.init()
     defer frame_system.done()
@@ -110,6 +129,8 @@ main :: fn () {
         return
     }
 
+    -- Interleave x, y, red, green, blue for each vertex. Positions are in clip-space
+    -- coordinates, where the visible range is roughly -1 to +1 on each axis.
     vertices: []GLfloat = [
         0.0,
         0.6,
@@ -128,6 +149,8 @@ main :: fn () {
         1.0,
     ]
 
+    -- The buffer owns uploaded GPU data. The vertex array records how attributes
+    -- read that buffer, including component counts, byte stride and byte offsets.
     vertex_buffer : GLuint
     glGenBuffers(1, ^vertex_buffer)
     vertex_array : GLuint
@@ -140,6 +163,8 @@ main :: fn () {
                  ^vertices[0],
                  GL_STATIC_DRAW)
     glEnableVertexAttribArray(0)
+    -- Each vertex takes five floats. Position starts at byte offset zero; colour
+    -- starts two floats later. These offsets address the bound buffer, not CPU memory.
     glVertexAttribPointer(0,
                           2,
                           GL_FLOAT,
@@ -156,6 +181,8 @@ main :: fn () {
     glBindBuffer(GL_ARRAY_BUFFER, 0)
     glBindVertexArray(0)
 
+    -- Drain window events before drawing, so input and resizing are handled
+    -- while the triangle remains visible.
     for frame_system.loop() {
         frame_system.update(^frame)
 
@@ -183,6 +210,8 @@ main :: fn () {
             frame_system.close(^frame)
         }
 
+        -- Match the viewport to the latest window dimensions and clear the background.
+        -- This flat example does not need depth testing.
         glViewport(0, 0, frame.width.as(GLsizei), frame.height.as(GLsizei))
         glDisable(GL_DEPTH_TEST)
         glClearColor(0.06, 0.07, 0.09, 1.0)
@@ -191,11 +220,15 @@ main :: fn () {
         glBindVertexArray(vertex_array)
         glDrawArrays(GL_TRIANGLES, 0, 3)
         glBindVertexArray(0)
+        -- Drawing targets the back buffer. Swapping presents the completed image
+        -- instead of exposing intermediate drawing to the user.
         gl_swap_buffers(^frame)
 
         sleep_ms(16)
     }
 
+    -- GPU deletion requires a current context. Release GPU objects before ending
+    -- the context and finally disposing of the native window.
     on gl_make_current(^frame) => {
         glDeleteVertexArrays(1, ^vertex_array)
         glDeleteBuffers(1, ^vertex_buffer)
