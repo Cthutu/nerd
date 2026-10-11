@@ -471,7 +471,13 @@ after `impl`, for example
 separate from target matching permits parameters used only in member signatures
 or bodies, such as `impl [T] Stack[i32]`. Method resolution first binds any
 parameters present in the receiver target, then binds remaining parameters from
-method arguments before instantiating the member.
+method arguments before instantiating the member. Callback signatures and pointer
+arguments with unbound method parameters are inferred without an expected type
+first, then checked against the substituted signature. This permits
+`queue.async(^task)` to infer the result parameter through `^Task[T]` rather than
+rejecting the concrete pointer against `^Task[<unknown>]`. Concrete parameters
+still supply expected types, including integer literals before a generic pointer
+argument.
 
 ## Related Documents
 

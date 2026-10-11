@@ -15649,12 +15649,17 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
                     continue;
                 }
                 u32 arg_type = sema_no_type();
-                // A callback signature can contain still-unbound generic
-                // parameters. Infer its concrete signature before binding them.
+                // Unbound generic arguments need their concrete type inferred
+                // first. Supplying a pointer/record type containing unknowns
+                // prematurely rejects the concrete argument before binding it.
                 u32 inference_expected =
                     generic != NULL &&
-                            source_ast->nodes[source_param->type_node_index]
-                                    .kind == AK_TypeFn
+                            (source_ast->nodes[source_param->type_node_index]
+                                     .kind == AK_TypeFn ||
+                             (!sema_generic_arguments_resolved(
+                                  source_arg_types) &&
+                              source_ast->nodes[source_param->type_node_index]
+                                      .kind == AK_TypePointer))
                         ? sema_no_type()
                         : expected_dst;
                 if (!sema_infer_node_type(lexer,
