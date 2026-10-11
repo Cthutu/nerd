@@ -418,10 +418,7 @@ pub file_info :: fn (path: string) => files_native_file_info(path)
 
 -- Returns true when metadata can be read for a path.
 pub exists :: fn (path: string) -> bool {
-    return on file_info(path) {
-        _! => no
-        else => yes
-    }
+    return on file_info(path) { _! => no else => yes }
 }
 
 -- Returns true when a path names a regular file and false when lookup fails.

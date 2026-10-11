@@ -69,9 +69,12 @@ run_message :: fn () -> void\NetworkError {
     on !client.finish_connect(deadline = deadline)? => return NetworkError.TimedOut {
         code: 0
     }!
-    entries := [PollEntry {
-        socket: ^listener read: yes ...
-    }
+    entries := [
+        PollEntry {
+            socket : ^listener
+            read   : yes
+            ...
+        },
     ]
     on poll(entries[..], deadline = deadline)? == 0 => return NetworkError.TimedOut {
         code: 0
@@ -83,9 +86,8 @@ run_message :: fn () -> void\NetworkError {
     -- The exchange uses NexusError while setup uses NetworkError. This small
     -- example maps exchange failure to a single setup-level failure at the boundary.
     on exchange(^client, ^server, deadline) {
-        _! => {
-            return NetworkError.Invalid!
-        }
+        _! => return NetworkError.Invalid!
+
         else => {
         }
     }
@@ -98,6 +100,7 @@ main :: fn () -> i32 {
             eprn("Nexus message failed")
             return 1
         }
+
         else => 0
     }
 }

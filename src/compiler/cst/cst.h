@@ -386,6 +386,7 @@ typedef struct {
     u32            a;
     u32            b;
     u32            c;
+    bool error_postfix; // Branch pattern followed by a result-error !.
 } CstPattern;
 
 typedef struct {

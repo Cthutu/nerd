@@ -217,6 +217,10 @@ block so the formatter can remove it while retaining structured layout for the
 rest of the block. The compiler AST remains authoritative for rejecting that
 semicolon as invalid Nerd syntax.
 
+The CST retains the error postfix (`!`) on branch patterns, including error
+binders, wildcards, and braced enum payloads. These valid result matches use
+structured formatting, preserving normal array layout elsewhere in the function.
+
 When a code block cannot be parsed as CST, the formatter retries regions at
 line-leading top-level declaration boundaries with balanced delimiters. Valid
 neighbouring declarations still use structured formatting, including function

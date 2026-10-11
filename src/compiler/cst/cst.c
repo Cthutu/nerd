@@ -2694,6 +2694,14 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
                         array_free(branches);
                         return false;
                     }
+                    // Result-error binders and braced enum payload patterns
+                    // leave their postfix outside the parsed payload. Retain it
+                    // here so valid branches do not fall back to token
+                    // recovery.
+                    if (cst_current_token(state).kind == TK_Bang) {
+                        state->cst.patterns[pattern_root].error_postfix = true;
+                        cst_advance(state);
+                    }
                     array_push(branch_patterns, pattern_root);
                     if (cst_current_token(state).kind != TK_Comma) {
                         break;

@@ -78,6 +78,7 @@ main :: fn () -> i32 {
             eprn("TCP echo failed")
             return 1
         }
+
         else => 0
     }
 }

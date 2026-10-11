@@ -1091,6 +1091,9 @@ internal void format_emit_pattern(StringBuilder* sb,
         }
         break;
     }
+    if (pattern->error_postfix) {
+        sb_append_char(sb, '!');
+    }
 }
 
 internal void format_emit_expr(StringBuilder* sb,

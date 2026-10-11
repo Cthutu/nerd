@@ -8,13 +8,18 @@ use std.network
 use std.time
 
 -- One absolute deadline covers every partial write and readiness retry.
-send_bytes :: fn (stream: ^Socket, bytes: []u8, deadline: Instant) -> void\NetworkError {
+send_bytes :: fn (stream   : ^Socket,
+                  bytes    : []u8,
+                  deadline : Instant) -> void\NetworkError {
     offset : usize = 0
     -- A writable readiness entry permits a send attempt; it does not promise
     -- that the whole remaining buffer fits. Reuse the same absolute deadline.
-    entries := [PollEntry {
-        socket: stream write: yes ...
-    }
+    entries := [
+        PollEntry {
+            socket : stream
+            write  : yes
+            ...
+        },
     ]
     for offset < bytes.count {
         on now() >= deadline => return NetworkError.TimedOut {
@@ -25,28 +30,32 @@ send_bytes :: fn (stream: ^Socket, bytes: []u8, deadline: Instant) -> void\Netwo
         }!
         -- Advance only by bytes actually sent. If readiness became stale and send
         -- reports WouldBlock, wait again without duplicating the accepted prefix.
-        on stream.send(bytes[offset ..]) {
+        on stream.send(bytes[offset..]) {
             count => {
                 on count == 0 => return NetworkError.Invalid!
                 offset += count
             }
-            NetworkError.WouldBlock {
-                code
-            }
-            ! => {
+
+            NetworkError.WouldBlock { code }! => {
                 _ := code
             }
+
             error! => return error!
         }
     }
 }
 
 -- Readiness is a hint; nonblocking receive may still report WouldBlock.
-receive_bytes :: fn (stream: ^Socket, bytes: []u8, deadline: Instant) -> void\NetworkError {
+receive_bytes :: fn (stream   : ^Socket,
+                     bytes    : []u8,
+                     deadline : Instant) -> void\NetworkError {
     offset : usize = 0
-    entries := [PollEntry {
-        socket: stream read: yes ...
-    }
+    entries := [
+        PollEntry {
+            socket : stream
+            read   : yes
+            ...
+        },
     ]
     for offset < bytes.count {
         on now() >= deadline => return NetworkError.TimedOut {
@@ -57,17 +66,16 @@ receive_bytes :: fn (stream: ^Socket, bytes: []u8, deadline: Instant) -> void\Ne
         }!
         -- A readable socket may contain data or report EOF. This fixed-size protocol
         -- expects more bytes, so EOF before the buffer is filled is an error.
-        on stream.receive(bytes[offset ..]) {
+        on stream.receive(bytes[offset..]) {
             received => {
                 on received.eof => return NetworkError.Invalid!
                 offset += received.count
             }
-            NetworkError.WouldBlock {
-                code
-            }
-            ! => {
+
+            NetworkError.WouldBlock { code }! => {
                 _ := code
             }
+
             error! => return error!
         }
     }
@@ -122,6 +130,7 @@ main :: fn () -> i32 {
             eprn("TCP readiness failed")
             return 1
         }
+
         else => 0
     }
 }

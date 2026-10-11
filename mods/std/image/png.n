@@ -217,27 +217,29 @@ png_read_chunk :: fn (reader: ^ImageReader) -> PngChunk\ImageError {
 png_parse :: fn (bytes: []u8) -> PngContainer\ImageError {
     on !image_is_png(bytes) => return png_error(UnsupportedFormat)
 
-    reader := ImageReader.new(bytes)
+    reader    := ImageReader.new(bytes)
     signature := reader.take(PNG_SIGNATURE_SIZE)
+
     on signature {
         error! => return png_error(error)
+
         value => {
             on !png_signature_matches(value) => return png_error(UnsupportedFormat)
         }
     }
 
     ihdr := PngIhdr {
-        width : 0
-        height : 0
-        bit_depth : 0
-        color_type : 0
+        width       : 0
+        height      : 0
+        bit_depth   : 0
+        color_type  : 0
         compression : 0
-        filter : 0
-        interlace : 0
+        filter      : 0
+        interlace   : 0
     }
-    idat_chunks : [..][]u8 = nil
-    palette : []u8 = []
-    transparency : []u8 = []
+    idat_chunks  : [..][]u8 = nil
+    palette      : []u8     = []
+    transparency : []u8     = []
 
     seen_ihdr := no
     seen_plte := no
@@ -265,7 +267,8 @@ png_parse :: fn (bytes: []u8) -> PngContainer\ImageError {
                     }
                     header := png_parse_ihdr(value)
 
-                    on header.width == 0 || header.height == 0 => {
+                    on header.width == 0 ||
+                        header.height == 0 => {
                         idat_chunks.free()
                         return png_invalid("PNG IHDR width and height must be "
                             +"nonzero")
@@ -302,11 +305,13 @@ png_parse :: fn (bytes: []u8) -> PngContainer\ImageError {
                         return png_invalid("PNG contains more than one PLTE "
                             +"chunk")
                     }
-                    on value.length == 0 ||(value.length % 3) != 0 || value.length > 768 => {
+                    on value.length == 0 ||
+                        (value.length % 3) != 0 ||
+                        value.length > 768 => {
                         idat_chunks.free()
                         return png_invalid("PNG PLTE chunk has invalid length")
                     }
-                    palette = value.data
+                    palette   = value.data
                     seen_plte = yes
                 }
                 on (value.kind == PNG_CHUNK_tRNS) => {
@@ -348,6 +353,7 @@ png_parse :: fn (bytes: []u8) -> PngContainer\ImageError {
                 }
                 again
             }
+
             error! => {
                 idat_chunks.free()
                 return png_error(error)
@@ -694,12 +700,12 @@ png_convert_channels :: fn (pixels           : []u8,
 }
 
 -- Loads, decompresses, unfilters, and converts a PNG byte slice.
-png_decode :: fn (bytes : []u8,
-desired_channels : i32 = 0) -> Image\ImageError {
+png_decode :: fn (bytes: []u8, desired_channels: i32 = 0) -> Image\ImageError {
     parsed := png_parse(bytes)
 
     on parsed {
         error! => return png_image_error(error)
+
         png => {
             scanline_channels := png_validate_ihdr_for_decode(png.ihdr)
             on scanline_channels {
@@ -707,75 +713,73 @@ desired_channels : i32 = 0) -> Image\ImageError {
                     png.free()
                     return png_image_error(error)
                 }
+
                 channels => {
                     compressed := png_idat_bytes(^png)
                     defer compressed.free()
 
-                    row_bytes := png.ihdr.width.as(usize) * channels.as(usize)
+                    row_bytes      := png.ihdr.width.as(usize) * channels.as(usize)
                     expected_bytes := png.ihdr.height.as(usize) * (row_bytes + 1)
-                    decompressed := compressed[..].deflate_zlib(max_output_bytes = expected_bytes)
+                    decompressed   := compressed[..].deflate_zlib(max_output_bytes = expected_bytes)
+
                     on decompressed {
                         error! => {
                             png.free()
                             return on error {
-                                CompressionError.UnsupportedFormat => png_image_error(UnsupportedFormat)
-                                CompressionError.UnexpectedEnd => png_image_error(UnexpectedEnd)
-                                CompressionError.OutputLimitExceeded => png_image_invalid("PNG decompressed data exceeded expected size")
-                                CompressionError.InvalidData {
-                                    message
-                                }
-                                => png_image_invalid(message)
+                                CompressionError.UnsupportedFormat        => png_image_error(UnsupportedFormat)
+                                CompressionError.UnexpectedEnd            => png_image_error(UnexpectedEnd)
+                                CompressionError.OutputLimitExceeded      => png_image_invalid("PNG decompressed data exceeded expected size")
+                                CompressionError.InvalidData { message }  => png_image_invalid(message)
                             }
                         }
+
                         scanlines => {
                             unfiltered := png_unfilter(scanlines[..],
-                            png.ihdr.width,
-                            png.ihdr.height,
-                            channels)
+                                                       png.ihdr.width,
+                                                       png.ihdr.height,
+                                                       channels)
                             scanlines.free()
                             on unfiltered {
                                 error! => {
                                     png.free()
                                     return png_image_error(error)
                                 }
+
                                 raw_samples => {
                                     expanded := png_expand_pixels(raw_samples[..],
-                                    png.ihdr,
-                                    png.palette,
-                                    png.transparency)
+                                                                  png.ihdr,
+                                                                  png.palette,
+                                                                  png.transparency)
                                     raw_samples.free()
                                     png.free()
                                     on expanded {
-                                        error! => {
-                                            return png_image_error(error)
-                                        }
+                                        error! => return png_image_error(error)
+
                                         pixels => {
                                             output_channels := png_desired_channels(pixels.channels,
-                                            desired_channels)
+                                                                                    desired_channels)
                                             on output_channels {
                                                 error! => {
                                                     pixels.free()
                                                     return png_image_error(error)
                                                 }
+
                                                 final_channels => {
                                                     converted := png_convert_channels(pixels.data[..],
-                                                    png.ihdr.width,
-                                                    png.ihdr.height,
-                                                    pixels.channels,
-                                                    final_channels)
+                                                                                      png.ihdr.width,
+                                                                                      png.ihdr.height,
+                                                                                      pixels.channels,
+                                                                                      final_channels)
                                                     pixels.free()
                                                     on converted {
-                                                        error! => {
-                                                            return png_image_error(error)
-                                                        }
-                                                        data => {
-                                                            return png_image_ok({
-                                                                width : png.ihdr.width.as(i32)
-                                                                height : png.ihdr.height.as(i32)
-                                                                channels : final_channels
-                                                                data
-                                                            })
-                                                        }
+                                                        error! => return png_image_error(error)
+
+                                                        data => return png_image_ok({
+                                                            width    : png.ihdr.width.as(i32)
+                                                            height   : png.ihdr.height.as(i32)
+                                                            channels : final_channels
+                                                            data
+                                                        })
                                                     }
                                                 }
                                             }
@@ -2500,6 +2504,7 @@ test "png rejects IDAT before IHDR" {
     on parsed {
         _! => {
         }
+
         else => {
             assert no
         }
@@ -2572,6 +2577,7 @@ test "png rejects invalid CRC" {
     on parsed {
         _! => {
         }
+
         else => {
             assert no
         }

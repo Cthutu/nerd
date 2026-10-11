@@ -478,7 +478,7 @@ jpeg_parse_sos :: fn (data: []u8, decoder: ^JpegDecoder) -> bool\ImageError {
 
 jpeg_parse_headers :: fn (bytes: []u8) -> JpegDecoder\ImageError {
     on !image_is_jpeg(bytes) => return jpeg_decoder_error(UnsupportedFormat)
-    on bytes.count < 4 => return UnexpectedEnd!
+    on bytes.count < 4       => return UnexpectedEnd!
 
     decoder := jpeg_decoder_new()
 
@@ -500,6 +500,7 @@ jpeg_parse_headers :: fn (bytes: []u8) -> JpegDecoder\ImageError {
         }
 
         marker := bytes[offset]
+
         offset += 1
 
         on marker == 0 => {
@@ -531,7 +532,8 @@ jpeg_parse_headers :: fn (bytes: []u8) -> JpegDecoder\ImageError {
             return UnexpectedEnd!
         }
 
-        data := bytes[offset .. offset + data_length]
+        data := bytes[offset..offset + data_length]
+
         offset += data_length
 
         on marker == JPEG_DQT => {
@@ -541,6 +543,7 @@ jpeg_parse_headers :: fn (bytes: []u8) -> JpegDecoder\ImageError {
                     decoder.free()
                     return error!
                 }
+
                 else => {
                 }
             }
@@ -552,6 +555,7 @@ jpeg_parse_headers :: fn (bytes: []u8) -> JpegDecoder\ImageError {
                     decoder.free()
                     return error!
                 }
+
                 else => {
                 }
             }
@@ -563,6 +567,7 @@ jpeg_parse_headers :: fn (bytes: []u8) -> JpegDecoder\ImageError {
                     decoder.free()
                     return error!
                 }
+
                 else => {
                 }
             }
@@ -574,12 +579,14 @@ jpeg_parse_headers :: fn (bytes: []u8) -> JpegDecoder\ImageError {
                     decoder.free()
                     return error!
                 }
+
                 else => {
                 }
             }
         }
         on marker == JPEG_SOS => {
-            on decoder.info.width == 0 || decoder.info.height == 0 => {
+            on decoder.info.width == 0 ||
+                decoder.info.height == 0 => {
                 decoder.free()
                 return jpeg_invalid("JPEG SOS appeared before SOF0")
             }
@@ -596,11 +603,12 @@ jpeg_parse_headers :: fn (bytes: []u8) -> JpegDecoder\ImageError {
                     decoder.free()
                     return error!
                 }
+
                 else => {
                 }
             }
             decoder.info.scan_start = offset
-            decoder.scan = bytes[offset .. bytes.count]
+            decoder.scan = bytes[offset..bytes.count]
             return decoder
         }
     }
@@ -674,6 +682,7 @@ jpeg_bits_read_bit :: fn (bits: ^JpegBits) -> u8\ImageError {
         byte := jpeg_bits_read_byte(bits)
         on byte {
             error! => return error!
+
             value => {
                 bits.bits = value.as(u32)
                 bits.bit_count = 8
@@ -685,14 +694,14 @@ jpeg_bits_read_bit :: fn (bits: ^JpegBits) -> u8\ImageError {
     return ((bits.bits >> bits.bit_count.as(u32)) & 1).as(u8)
 }
 
-jpeg_bits_read_bits :: fn (bits : ^JpegBits,
-count : i32) -> u32\ImageError {
+jpeg_bits_read_bits :: fn (bits: ^JpegBits, count: i32) -> u32\ImageError {
     value : u32 = 0
 
     for _ in [0 .. count.as(usize)] {
         bit := jpeg_bits_read_bit(bits)
         on bit {
             error! => return error!
+
             next => {
                 value = (value << 1) | next.as(u32)
             }
@@ -713,18 +722,19 @@ jpeg_extend_value :: fn (value: u32, count: i32) -> i32 {
     return value.as(i32)
 }
 
-jpeg_decode_huffman :: fn (decoder : ^JpegDecoder,
-bits : ^JpegBits,
-table_class : i32,
-table_id : i32) -> u8\ImageError {
-    table_index := jpeg_table_index(table_class, table_id)
-    count := decoder.huff_count[table_index]
-    code : u16 = 0
+jpeg_decode_huffman :: fn (decoder     : ^JpegDecoder,
+                           bits        : ^JpegBits,
+                           table_class : i32,
+                           table_id    : i32) -> u8\ImageError {
+    table_index       := jpeg_table_index(table_class, table_id)
+    count             := decoder.huff_count[table_index]
+    code        : u16 = 0
 
     for length in [1 .. 17] {
         bit := jpeg_bits_read_bit(bits)
         on bit {
             error! => return error!
+
             value => {
                 code = (code << 1) | value.as(u16)
             }
@@ -732,9 +742,10 @@ table_id : i32) -> u8\ImageError {
 
         for entry in [0 .. count.as(usize)] {
             index := jpeg_huffman_entry_index(table_class,
-            table_id,
-            entry.as(i32))
-            on decoder.huff_lengths[index] == length.as(u8) && decoder.huff_codes[index] == code => return decoder.huff_symbols[index]
+                                              table_id,
+                                              entry.as(i32))
+            on decoder.huff_lengths[index] == length.as(u8) &&
+                decoder.huff_codes[index] == code => return decoder.huff_symbols[index]
         }
     }
 
@@ -749,23 +760,25 @@ jpeg_clear_block :: fn (block: []i32) {
     }
 }
 
-jpeg_decode_block :: fn (decoder : ^JpegDecoder,
-bits : ^JpegBits,
-component_index : usize,
-block : []i32) -> bool\ImageError {
+jpeg_decode_block :: fn (decoder         : ^JpegDecoder,
+                         bits            : ^JpegBits,
+                         component_index : usize,
+                         block           : []i32) -> bool\ImageError {
     jpeg_clear_block(block)
 
-    component := decoder.components[component_index]
+    component  := decoder.components[component_index]
     quant_base := component.quant_table.as(usize) * JPEG_BLOCK_SIZE
 
     dc_symbol := jpeg_decode_huffman(decoder, bits, 0, component.dc_table)
     on dc_symbol {
         error! => return error!
+
         size => {
             on size > 15 => return jpeg_bool_invalid("JPEG invalid DC symbol")
             bits_value := jpeg_bits_read_bits(bits, size.as(i32))
             on bits_value {
                 error! => return error!
+
                 value => {
                     diff := jpeg_extend_value(value, size.as(i32))
                     decoder.components[component_index].previous_dc += diff
@@ -778,11 +791,12 @@ block : []i32) -> bool\ImageError {
     k := 1
     for k < JPEG_BLOCK_SIZE {
         symbol_result := jpeg_decode_huffman(decoder,
-        bits,
-        1,
-        component.ac_table)
+                                             bits,
+                                             1,
+                                             component.ac_table)
         on symbol_result {
             error! => return error!
+
             symbol => {
                 on symbol == 0 => break
                 on symbol == 0xf0 => {
@@ -790,9 +804,11 @@ block : []i32) -> bool\ImageError {
                     again
                 }
 
-                run := (symbol >> 4).as(i32)
+                run  := (symbol >> 4).as(i32)
                 size := (symbol & 0x0f).as(i32)
-                on size == 0 || size > 10 => return jpeg_bool_invalid("JPEG "
+
+                on size == 0 ||
+                    size > 10 => return jpeg_bool_invalid("JPEG "
                     +"invalid AC "
                     +"symbol")
 
@@ -803,6 +819,7 @@ block : []i32) -> bool\ImageError {
                 bits_value := jpeg_bits_read_bits(bits, size)
                 on bits_value {
                     error! => return error!
+
                     value => {
                         natural := JPEG_ZIGZAG[k.as(usize)].as(usize)
                         block[natural] = jpeg_extend_value(value, size) * decoder.quant[quant_base + natural]
@@ -878,20 +895,22 @@ jpeg_decode_entropy :: fn (decoder: ^JpegDecoder) -> bool\ImageError {
     prepared := jpeg_prepare_component_planes(decoder)
     on prepared {
         error! => return error!
+
         else => {
         }
     }
 
-    bits := JpegBits.new(decoder.scan)
+    bits            := JpegBits.new(decoder.scan)
     block : [..]i32 = nil
+
     block.resize_undefined_to(JPEG_BLOCK_SIZE)
     defer block.free()
 
-    mcu_width := decoder.info.max_h * 8
-    mcu_height := decoder.info.max_v * 8
-    mcu_cols := jpeg_ceil_div(decoder.info.width, mcu_width)
-    mcu_rows := jpeg_ceil_div(decoder.info.height, mcu_height)
-    mcu_count := 0
+    mcu_width                := decoder.info.max_h * 8
+    mcu_height               := decoder.info.max_v * 8
+    mcu_cols                 := jpeg_ceil_div(decoder.info.width, mcu_width)
+    mcu_rows                 := jpeg_ceil_div(decoder.info.height, mcu_height)
+    mcu_count                := 0
     next_restart_marker : u8 = 0xd0
 
     for mcu_y in [0 .. mcu_rows.as(usize)] {
@@ -903,18 +922,20 @@ jpeg_decode_entropy :: fn (decoder: ^JpegDecoder) -> bool\ImageError {
                 for block_v in [0 .. component_v.as(usize)] {
                     for block_h in [0 .. component_h.as(usize)] {
                         decoded := jpeg_decode_block(decoder,
-                        ^bits,
-                        component_index,
-                        block[..])
+                                                     ^bits,
+                                                     component_index,
+                                                     block[..])
                         on decoded {
                             error! => return error!
+
                             else => {
                                 block_x := (mcu_x.as(i32) * component_h + block_h.as(i32)) * 8
                                 block_y := (mcu_y.as(i32) * component_v + block_v.as(i32)) * 8
+
                                 jpeg_store_block(^decoder.components[component_index],
-                                block[..],
-                                block_x,
-                                block_y)
+                                                 block[..],
+                                                 block_x,
+                                                 block_y)
                             }
                         }
                     }
@@ -922,13 +943,18 @@ jpeg_decode_entropy :: fn (decoder: ^JpegDecoder) -> bool\ImageError {
             }
 
             mcu_count += 1
-            on decoder.info.restart_interval > 0 && mcu_count < mcu_cols * mcu_rows &&(mcu_count % decoder.info.restart_interval) == 0 => {
+            on decoder.info.restart_interval > 0 &&
+                mcu_count < mcu_cols * mcu_rows &&
+                (mcu_count % decoder.info.restart_interval) == 0 => {
                 restart := jpeg_consume_restart(^bits, next_restart_marker)
                 on restart {
                     error! => return error!
+
                     else => {
                         jpeg_reset_predictors(decoder)
-                        next_restart_marker = on next_restart_marker == 0xd7 => 0xd0 else next_restart_marker + 1
+                        next_restart_marker = on next_restart_marker == 0xd7
+                            =>   0xd0
+                            else next_restart_marker + 1
                     }
                 }
             }
@@ -963,20 +989,22 @@ jpeg_desired_channels :: fn (source_channels  : i32,
     return UnsupportedFormat!
 }
 
-jpeg_convert_to_image :: fn (decoder : ^JpegDecoder,
-desired_channels : i32) -> Image\ImageError {
+jpeg_convert_to_image :: fn (decoder          : ^JpegDecoder,
+                             desired_channels : i32) -> Image\ImageError {
     output_channels := jpeg_desired_channels(decoder.info.components,
-    desired_channels)
+                                             desired_channels)
     channels : i32 = 0
     on output_channels {
         error! => return jpeg_image_error(error)
+
         value => {
             channels = value
         }
     }
 
-    count := (decoder.info.width * decoder.info.height).as(usize)
+    count           := (decoder.info.width * decoder.info.height).as(usize)
     output : [..]u8 = nil
+
     output.resize_undefined_to(count * channels.as(usize))
 
     for y in [0 .. decoder.info.height.as(usize)] {
@@ -1004,20 +1032,20 @@ desired_channels : i32) -> Image\ImageError {
             }
             on decoder.info.components == 3 => {
                 y_sample := jpeg_component_sample(^decoder.components[0],
-                x.as(i32),
-                y.as(i32),
-                decoder.info.width,
-                decoder.info.height)
+                                                  x.as(i32),
+                                                  y.as(i32),
+                                                  decoder.info.width,
+                                                  decoder.info.height)
                 cb_sample := jpeg_component_sample(^decoder.components[1], x.as(i32), y.as(i32), decoder.info.width, decoder.info.height) - 128
                 cr_sample := jpeg_component_sample(^decoder.components[2], x.as(i32), y.as(i32), decoder.info.width, decoder.info.height) - 128
-                red := y_sample + ((91881 * cr_sample) >> 16)
-                green := y_sample - ((22554 * cb_sample + 46802 * cr_sample) >> 16)
-                blue := y_sample + ((116130 * cb_sample) >> 16)
+                red       := y_sample + ((91881 * cr_sample) >> 16)
+                green     := y_sample - ((22554 * cb_sample + 46802 * cr_sample) >> 16)
+                blue      := y_sample + ((116130 * cb_sample) >> 16)
 
-                red_byte := jpeg_clamp_i32_to_u8(red)
+                red_byte   := jpeg_clamp_i32_to_u8(red)
                 green_byte := jpeg_clamp_i32_to_u8(green)
-                blue_byte := jpeg_clamp_i32_to_u8(blue)
-                grey := jpeg_luma(red_byte, green_byte, blue_byte)
+                blue_byte  := jpeg_clamp_i32_to_u8(blue)
+                grey       := jpeg_luma(red_byte, green_byte, blue_byte)
 
                 on channels == 1 => output[target] = grey
                 on channels == 2 => {
@@ -1040,27 +1068,29 @@ desired_channels : i32) -> Image\ImageError {
     }
 
     return jpeg_image_ok({
-        width : decoder.info.width
+        width  : decoder.info.width
         height : decoder.info.height
         channels
         data: output
     })
 }
 
-jpeg_decode :: fn (bytes : []u8,
-desired_channels : i32 = 0) -> Image\ImageError {
+jpeg_decode :: fn (bytes: []u8, desired_channels: i32 = 0) -> Image\ImageError {
     parsed := jpeg_parse_headers(bytes)
 
     on parsed {
         error! => return error!
+
         value => {
             decoder : JpegDecoder = value
-            decoded := jpeg_decode_entropy(^decoder)
+            decoded               := jpeg_decode_entropy(^decoder)
+
             on decoded {
                 error! => {
                     decoder.free()
                     return jpeg_image_error(error)
                 }
+
                 else => {
                     image := jpeg_convert_to_image(^decoder, desired_channels)
                     decoder.free()
@@ -1072,7 +1102,7 @@ desired_channels : i32 = 0) -> Image\ImageError {
 }
 
 test "jpeg parses baseline demo headers" {
-    bytes := @embed("../../../examples/image_viewer/assets/demo.jpg")
+    bytes  := @embed("../../../examples/image_viewer/assets/demo.jpg")
     result := jpeg_parse_headers(bytes)
 
     on result {
@@ -1088,20 +1118,21 @@ test "jpeg parses baseline demo headers" {
             assert decoder.info.saw_sos
             decoder.free()
         }
+
         error! => {
             on error {
                 UnsupportedFormat => {
                     assert no, "unsupported"
                 }
+
                 UnexpectedEnd => {
                     assert no, "unexpected end"
                 }
-                InvalidData {
-                    message
-                }
-                => {
+
+                InvalidData { message } => {
                     assert no, message
                 }
+
                 OutOfMemory => {
                     assert no, "out of memory"
                 }
@@ -1111,7 +1142,7 @@ test "jpeg parses baseline demo headers" {
 }
 
 test "jpeg decodes baseline demo to rgba" {
-    bytes := @embed("../../../examples/image_viewer/assets/demo.jpg")
+    bytes  := @embed("../../../examples/image_viewer/assets/demo.jpg")
     result := Image.load_bytes(bytes, desired_channels = 4)
 
     on result {
@@ -1122,20 +1153,21 @@ test "jpeg decodes baseline demo to rgba" {
             assert image.data.count == 320 * 200 * 4
             image.free()
         }
+
         error! => {
             on error {
                 UnsupportedFormat => {
                     assert no, "unsupported"
                 }
+
                 UnexpectedEnd => {
                     assert no, "unexpected end"
                 }
-                InvalidData {
-                    message
-                }
-                => {
+
+                InvalidData { message } => {
                     assert no, message
                 }
+
                 OutOfMemory => {
                     assert no, "out of memory"
                 }
@@ -1152,6 +1184,7 @@ test "jpeg rejects progressive SOF2" {
     on result {
         _! => {
         }
+
         decoder => {
             decoder.free()
             assert no, "accepted progressive"

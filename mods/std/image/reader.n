@@ -13,7 +13,8 @@ impl ImageReader {
 
     new :: fn (bytes: []u8) -> Self {
         return {
-            bytes offset: 0
+            bytes
+            offset: 0
         }
     }
 
@@ -41,32 +42,32 @@ impl ImageReader {
     read_be_u16 :: fn (reader: ^Self) -> u16\ImageError {
         bytes := reader.take(2)
         return on bytes {
-            value => (value[0].as(u16) << 8) | value[1].as(u16)
-            error! => error!
+            value   => (value[0].as(u16) << 8) | value[1].as(u16)
+            error!  => error!
         }
     }
 
     read_be_u32 :: fn (reader: ^Self) -> u32\ImageError {
         bytes := reader.take(4)
         return on bytes {
-            value => (value[0].as(u32) << 24) | (value[1].as(u32) << 16) | (value[2].as(u32) << 8) | value[3].as(u32)
-            error! => error!
+            value   => (value[0].as(u32) << 24) | (value[1].as(u32) << 16) | (value[2].as(u32) << 8) | value[3].as(u32)
+            error!  => error!
         }
     }
 
     read_le_u16 :: fn (reader: ^Self) -> u16\ImageError {
         bytes := reader.take(2)
         return on bytes {
-            value => value[0].as(u16) | (value[1].as(u16) << 8)
-            error! => error!
+            value   => value[0].as(u16) | (value[1].as(u16) << 8)
+            error!  => error!
         }
     }
 
     read_le_u32 :: fn (reader: ^Self) -> u32\ImageError {
         bytes := reader.take(4)
         return on bytes {
-            value => value[0].as(u32) | (value[1].as(u32) << 8) | (value[2].as(u32) << 16) | (value[3].as(u32) << 24)
-            error! => error!
+            value   => value[0].as(u32) | (value[1].as(u32) << 8) | (value[2].as(u32) << 16) | (value[3].as(u32) << 24)
+            error!  => error!
         }
     }
 
@@ -75,7 +76,7 @@ impl ImageReader {
 
         start := reader.offset
         reader.offset += count
-        return reader.bytes[start .. reader.offset]
+        return reader.bytes[start..reader.offset]
     }
 
 }

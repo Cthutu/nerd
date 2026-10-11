@@ -515,12 +515,12 @@ test "FrameSystem loop returns no after destroying final frame" {
 
 test "Frame context reports missing system" {
     frame := Frame {
-        id : 1
-        width : 32
-        height : 24
-        title : "test"
+        id          : 1
+        width       : 32
+        height      : 24
+        title       : "test"
         full_screen : no
-        resizable : yes
+        resizable   : yes
         ...
     }
 
@@ -528,6 +528,7 @@ test "Frame context reports missing system" {
         error! => {
             assert error == FrameError.NoSystem
         }
+
         else => {
             assert no
         }
@@ -537,19 +538,20 @@ test "Frame context reports missing system" {
 test "Frame context reports closed frame" {
     system := FrameSystem.init()
     frame := Frame {
-        system : ^system
-        id : CLOSED_FRAME
-        width : 32
-        height : 24
-        title : "test"
+        system      : ^system
+        id          : CLOSED_FRAME
+        width       : 32
+        height      : 24
+        title       : "test"
         full_screen : no
-        resizable : yes
+        resizable   : yes
     }
 
     on frame.context() {
         error! => {
             assert error == FrameError.Closed
         }
+
         else => {
             assert no
         }
@@ -561,25 +563,26 @@ test "Frame context reports invalid platform record" {
     defer system.done()
     platform_info : PlatformFrameInfo
     system.frames.push(FrameInfo {
-        id : 1
+        id     : 1
         events : nil
         platform_info
     })
 
     frame := Frame {
-        system : ^system
-        id : 1
-        width : 32
-        height : 24
-        title : "test"
+        system      : ^system
+        id          : 1
+        width       : 32
+        height      : 24
+        title       : "test"
         full_screen : no
-        resizable : yes
+        resizable   : yes
     }
 
     on frame.context() {
         error! => {
             assert error == FrameError.Invalid
         }
+
         else => {
             assert no
         }

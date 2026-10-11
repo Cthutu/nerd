@@ -4,6 +4,7 @@ run :: fn (enabled: bool) -> void\Error {
         value => { _ := value }
         error! => return error!
     }
+    broken(&value)
 }
 ¬
 run :: fn (enabled: bool) -> void\Error {
@@ -16,4 +17,5 @@ run :: fn (enabled: bool) -> void\Error {
         }
         error! => return error!
     }
+    broken(& value)
 }
