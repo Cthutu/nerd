@@ -22,6 +22,8 @@ def main():
         ("examples/task-parallel/task-parallel.n",
          "Raptor tasks: sum of squares = 204"),
     ]
+    failures = ["tests/stdlib-raptor/pending-create.n",
+                "tests/stdlib-raptor/nil-callback.n"]
     suffix = ".exe" if os.name == "nt" else ""
     with tempfile.TemporaryDirectory(prefix="nerd-raptor-") as temporary:
         preload = None
@@ -35,7 +37,8 @@ def main():
         else:
             print("[SKIP] Partial native startup injection requires Linux")
         for release in (False, True):
-            for index, (source, expected) in enumerate(sources):
+            cases = sources + [(source, None) for source in failures]
+            for index, (source, expected) in enumerate(cases):
                 executable = Path(temporary) / (f"test-{index}-{release}" + suffix)
                 output = executable.with_suffix(".c") if args.cgen else executable
                 command = [str(args.nerd.resolve()), "build", source, "-o", str(output)]
@@ -53,6 +56,17 @@ def main():
                 runtime_env = env
                 if source.endswith("start-failure.n"):
                     runtime_env = dict(env, LD_PRELOAD=str(preload))
+                if expected is None:
+                    try:
+                        run([str(executable)], runtime_env, 15)
+                    except AssertionError as failure:
+                        if "assertion failed" not in str(failure).lower():
+                            raise
+                    else:
+                        raise AssertionError(f"Invalid preparation succeeded: {source}")
+                    print(f"{'CGen' if args.cgen else 'LLVM'} "
+                          f"{'release' if release else 'debug'} {source}: rejected")
+                    continue
                 for _ in range(16 if index == 0 else 1):
                     actual = run([str(executable)], runtime_env, 15)
                     if actual != expected:

@@ -59,8 +59,8 @@ intentional behaviour change before declaring parity.
 Nerd already has `std.atomics`, memory/time utilities, and platform FFI modules.
 Its compiler has private C thread/mutex/task implementations. This review branch
 now adds public `std.thread`, `std.sync` and initial `std.network` modules; public
-queue, scheduler and graph modules remain future work. Follow [NSL standards](../mods/CODING-STANDARDS.md)
-and the existing `core` / `std` / `os` separation.
+queue and scheduler foundations are implemented, while graph modules remain
+future work. Follow [NSL standards](../mods/CODING-STANDARDS.md) and the existing `core` / `std` / `os` separation.
 
 ## Proposed module boundaries
 
@@ -181,8 +181,9 @@ Depends on M2.
   first `std.raptor` slice uses bounded mutex deques, local LIFO/victim FIFO,
   external submission and explicit worker counts including single-worker mode.
   See [contracts](stdlib-raptor.md); this is not upstream algorithm parity.
-- [x] Preserve queue-owned `async` with inferred typed arguments and returned task
-  handles, explicit handle cleanup/movement, and `?void` scheduler startup.
+- [x] Preserve queue-owned `async` over caller-owned task storage, with separate
+  typed borrowed preparation, no per-task allocations, inferred aggregation, and
+  `?void` startup/submission.
 - [x] Define typed/void completion, nested cooperative waits, bounded admission,
   drain and self/ancestor/same-serial rejection. Cancellation and general
   cross-worker cycle detection are not supported; caller lifetimes are explicit.

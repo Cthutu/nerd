@@ -5,8 +5,9 @@ main :: fn () -> ?void {
     scheduler.init(2)?
     queue := scheduler.get_default_queue()
     number : i32 = 4
-    task := queue.async(square, ^number)?
-    defer assert task.done()
+    task : Task[i32]
+    task.create(square, ^number)
+    queue.async(^task)?
     _ := task.get()
     assert scheduler.close()
     return
@@ -36,8 +37,8 @@ main :: fn () -> ?void {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 7,
-                "character": 24
+                "line": 8,
+                "character": 18
             }
         }
     },
@@ -50,8 +51,8 @@ main :: fn () -> ?void {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 7,
-                "character": 32
+                "line": 8,
+                "character": 30
             }
         }
     },
@@ -64,8 +65,22 @@ main :: fn () -> ?void {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 9,
+                "line": 10,
                 "character": 18
+            }
+        }
+    },
+    {
+        "jsonrpc": "2.0",
+        "id": 7,
+        "method": "textDocument/signatureHelp",
+        "params": {
+            "textDocument": {
+                "uri": "file:///test.n"
+            },
+            "position": {
+                "line": 9,
+                "character": 19
             }
         }
     },
@@ -79,7 +94,7 @@ main :: fn () -> ?void {
             },
             "contentChanges": [
                 {
-                    "text": "use std.raptor\nsquare :: fn (number: ^i32) -> i32 { return number^ * number^ }\nmain :: fn () -> ?void {\n    scheduler : Scheduler\n    scheduler.init(2)?\n    queue := scheduler.get_default_queue()\n    number : i32 = 4\n    task := queue.async(square,\n    defer assert task.done()\n    _ := task.get()\n    assert scheduler.close()\n    return\n}\n"
+                    "text": "use std.raptor\nsquare :: fn (number: ^i32) -> i32 { return number^ * number^ }\nmain :: fn () -> ?void {\n    scheduler : Scheduler\n    scheduler.init(2)?\n    queue := scheduler.get_default_queue()\n    number : i32 = 4\n    task : Task[i32]\n    task.create(square,\n    defer assert task.wait()\n    queue.async(^task)?\n    _ := task.get()\n    assert scheduler.close()\n    return\n}\n"
                 }
             ]
         }
@@ -93,8 +108,8 @@ main :: fn () -> ?void {
                 "uri": "file:///test.n"
             },
             "position": {
-                "line": 7,
-                "character": 31
+                "line": 8,
+                "character": 23
             }
         }
     }
@@ -194,17 +209,17 @@ main :: fn () -> ?void {
         "result": {
             "signatures": [
                 {
-                    "label": "async[A, T](callback: fn (argument: A) -> T, argument: A) -> ?Task[T]",
+                    "label": "create[U, T](callback: fn (value: ^U) -> T, argument: ^U)",
                     "parameters": [
                         {
                             "label": [
-                                12,
-                                43
+                                13,
+                                42
                             ]
                         },
                         {
                             "label": [
-                                45,
+                                44,
                                 56
                             ]
                         }
@@ -221,17 +236,17 @@ main :: fn () -> ?void {
         "result": {
             "signatures": [
                 {
-                    "label": "async[A, T](callback: fn (argument: A) -> T, argument: A) -> ?Task[T]",
+                    "label": "create[U, T](callback: fn (value: ^U) -> T, argument: ^U)",
                     "parameters": [
                         {
                             "label": [
-                                12,
-                                43
+                                13,
+                                42
                             ]
                         },
                         {
                             "label": [
-                                45,
+                                44,
                                 56
                             ]
                         }
@@ -258,6 +273,27 @@ main :: fn () -> ?void {
     },
     {
         "jsonrpc": "2.0",
+        "id": 7,
+        "result": {
+            "signatures": [
+                {
+                    "label": "async[T](task: ^Task[T]) -> ?void",
+                    "parameters": [
+                        {
+                            "label": [
+                                9,
+                                23
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "activeSignature": 0,
+            "activeParameter": 0
+        }
+    },
+    {
+        "jsonrpc": "2.0",
         "method": "textDocument/publishDiagnostics",
         "params": {
             "uri": "file:///test.n",
@@ -265,11 +301,11 @@ main :: fn () -> ?void {
                 {
                     "range": {
                         "start": {
-                            "line": 8,
+                            "line": 9,
                             "character": 4
                         },
                         "end": {
-                            "line": 8,
+                            "line": 9,
                             "character": 9
                         }
                     },
@@ -282,11 +318,11 @@ main :: fn () -> ?void {
                                 "uri": "file:///test.n",
                                 "range": {
                                     "start": {
-                                        "line": 8,
+                                        "line": 9,
                                         "character": 4
                                     },
                                     "end": {
-                                        "line": 8,
+                                        "line": 9,
                                         "character": 9
                                     }
                                 }
@@ -304,17 +340,17 @@ main :: fn () -> ?void {
         "result": {
             "signatures": [
                 {
-                    "label": "async[A, T](callback: fn (argument: A) -> T, argument: A) -> ?Task[T]",
+                    "label": "create[U, T](callback: fn (value: ^U) -> T, argument: ^U)",
                     "parameters": [
                         {
                             "label": [
-                                12,
-                                43
+                                13,
+                                42
                             ]
                         },
                         {
                             "label": [
-                                45,
+                                44,
                                 56
                             ]
                         }

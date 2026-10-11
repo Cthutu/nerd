@@ -26,11 +26,13 @@ loop, lock-free claim, queue growth, reclamation or performance claim. Fairness
 and starvation freedom are not guaranteed under continuous local submissions.
 
 `init(workers, capacity = 256) -> ?void` allocates all worker/deque storage
-before starting threads. At most `workers * capacity` tasks may remain incomplete, including
-executing tasks and serial backlogs. `async` rejects excess admission immediately;
-it does not wait for capacity. Each accepted task allocates one stable typed
-invocation; serial backlogs link these records. Completed but unreleased task
-handles no longer consume admission capacity, but still retain their allocations.
+before starting threads. At most `workers * capacity` tasks may remain incomplete,
+including executing tasks and serial backlogs. `async` rejects excess admission
+immediately;
+it does not wait for capacity. Preparation and submission allocate no per-task
+storage: the callback, borrowed argument pointer, dispatch links and result live
+in caller-owned `Task[T]`. Serial backlogs link these tasks. Completed tasks
+consume no admission capacity and require no cleanup.
 All native-start failures join previously started workers and free storage;
 allocation uses the existing allocator's fatal out-of-memory policy. Linux failure
 injection verifies partial-start cleanup and reinitialisation;
@@ -43,25 +45,38 @@ native Windows execution remains validation work.
 | `Scheduler(n)` | `scheduler.init(n)` / `close()` | Explicit owner lifetime; drain accepted work |
 | `createQueue(kind)` | `create_queue(^queue, kind)` | Caller supplies stable queue storage |
 | `getDefaultQueue()` | `get_default_queue()` | Borrowed concurrent queue |
-| `Queue::async(callback)` | `queue.async(callback, argument)` | Infers argument/result types; returns an owned `?Task[T]` |
-| `Task<T>` / `Task<void>` | `Task[T]` / `Task[void]` | One-shot typed completion, including void |
+| `Queue::async(callback)` | `task.create(callback, ^argument)` then `queue.async(^task)` | Prepare borrowed inputs, then schedule; admission returns `?void` |
+| `Task<T>` / `Task<void>` | `Task[T]` / `Task[void]` | Caller-owned typed completion, including void; reusable after completion |
 | `hasFinished()` / `wait()` / `get()` | `has_finished()` / `wait()` / `get()` | Completion query; wait success; optional result |
-| `when_all` | `when_all[T](tasks[..])` | Attempts every wait, returning overall success; no aggregate task yet |
+| `when_all` | `when_all(tasks[..])` | Attempts every wait, returning overall success; no aggregate task yet |
 | `Result<T>` | `Task[T].get()` | Result publication belongs to the task; no separately mutable result object |
 
-Callbacks use `fn (argument: A) -> T`; `Queue.async[A, T]` infers both types
-from the callback and its argument. A callback can take `^i32`, another borrowed
-pointer, or a plain value such as `i32`. No erased-pointer cast is needed in user
-code; Nerd also allows implicit conversion of any pointer to `^void` when a
-callback explicitly accepts it. Void callbacks return `Task[void]`;
-`get() != nil` means successful completion. A task's result may itself be an
-optional or result type. `init` uses `?void`, so callers can propagate failure
-with `scheduler.init(4)?`, just as they can propagate rejected submission with
-`queue.async(callback, argument)?`.
+Callbacks use `fn (value: ^U) -> T`, where `T` is the task's result type and
+`U` is inferred from the callback and argument pointer. `task.create(callback,
+^argument)` stores that callback and borrows the argument without allocating or
+starting work. The callback's result must match `Task[T]`; mismatched callbacks
+and argument pointers are compiler errors. Multiple inputs belong in a
+caller-owned context record passed by pointer. Nil arguments are allowed if the
+callback handles them; a nil callback is a programming error.
+
+Zero-initialised tasks start idle. `create` prepares an idle, prepared or completed
+task and clears any previous result. Calling it on a pending task asserts, and
+must not race with submission or readers/waiters. `async(^task)` accepts a
+prepared task once; idle, already-submitted, nil and closed-queue submissions
+return `nil`. Rejection leaves the task unchanged, so capacity rejection can be
+retried without recreating it. Reusing a completed task requires another `create`
+after previous readers finish. Serialise preparation and submission for each
+task, including submissions to different queues or schedulers.
+
+Void callbacks use `Task[void]`; `get() != nil` means successful completion.
+Results may themselves be optional or result types. Both startup and submission
+use `?void`, permitting `scheduler.init(4)?` and `queue.async(^task)?`.
+`when_all(tasks[..])` infers `T` from the slice and attempts every wait, returning
+false for idle/prepared entries or invalid dependencies.
 
 There is no exception transport, cancellation, continuation, timer queue, ASIO
 service accessor, or graph API in this slice. `when_all` is a synchronous boolean
-wait over handles, rather than a returned aggregate task. These remain deliberate
+wait over tasks, rather than a returned aggregate task. These remain deliberate
 scope limits rather than requirements of the work-stealing algorithm.
 
 External waiters sleep on a condition predicate. A waiting worker cooperatively
@@ -79,38 +94,45 @@ argument targets at stable addresses until their accepted work completes.
 Initialise and finish standalone deques before/after their users. Do not copy
 active schedulers, queues or deques.
 
-`async` returns a handle whose invocation and completion state have stable heap
-addresses. The returned handle may move before completion. Transfer an existing
-handle with `task.take()`, which leaves the source idle; do not duplicate ownership
-by ordinary assignment, and do not overwrite a live handle. Rejected submission
-returns `nil` without transferring any argument payload ownership. Public internal
-record fields exist to satisfy Nerd's public member-type rules; callers must not
-mutate task state, invocation records or scheduler bookkeeping.
+`async` borrows the prepared task at its final address. Prepared tasks can move
+before submission because `create` retains no pointer to the task itself. Keep
+each task alive at the same address until `wait()` succeeds, `get()` succeeds, `has_finished()` reports
+completion, or its scheduler's `close()` has drained the work. Do not copy, move,
+overwrite or discard pending tasks; growable containers must not relocate them.
+Submission may begin executing before `async` returns, so the storage must
+already be stable when passed to it. Public internal fields exist to satisfy
+Nerd's public member-type rules; callers must not mutate scheduler bookkeeping
+or task state.
 
-Every accepted handle must eventually call `done()`. It waits for completion,
-releases the invocation allocation and resets the handle. Idle/released cleanup
-succeeds, making deferred cleanup safe for partially filled arrays. Invalid
-self/ancestor/serial waits cause `done` to return failure and retain ownership.
-Register cleanup before submitting tasks so propagated admission failure also
-releases earlier accepted handles. Stop all readers/waiters before releasing a
-handle; concurrent cleanup or cleanup while another thread observes it is invalid.
+Completion is published only after callback execution and scheduler bookkeeping
+finish. Workers never access that task again after publication. The completed task retains its result directly and has no execution
+allocation to release: there is no `done()` or `take()`. Completed tasks can be
+copied, moved or discarded after previous readers finish, or prepared again with
+`create` for a later submission. Copying a result remains shallow.
 
-`get` and `wait` may be called repeatedly before cleanup. Arguments and results
-are shallow values: pointer/slice targets remain caller-owned. Owning boxes, or
-records containing them, are not supported as argument/result payloads because
-this storage has no payload destruction hooks; pass borrowed pointers to
-caller-owned objects instead. Never return a pointer or slice into callback local
-storage or a worker temporary arena. Release any caller-owned result payloads
-separately, after all readers finish; `done` only frees invocation storage.
+Before an early return, wait for previously accepted tasks while their storage
+and borrowed arguments remain alive. For an array with some rejected or
+never-submitted entries, `defer _ := when_all(tasks[..])` attempts every wait;
+its false return for idle entries does not prevent waiting for accepted ones.
+A successful scheduler close also provides this lifetime boundary. Failed
+self/ancestor/serial waits do not permit destroying pending storage.
+
+`get` and `wait` may be called repeatedly until the task is reprepared or
+discarded. Arguments are borrowed; their targets may contain caller-owned data,
+including owning boxes. Results are shallow values: pointer/slice targets remain
+caller-owned. Owning boxes, or records containing them, are not supported as
+result payloads because task storage has no payload destruction hooks. Never
+return a pointer or slice into callback local storage or a worker temporary
+arena. Release caller-owned result payloads separately after all readers finish;
+discarding the task does not release them.
 
 Only the owning external thread initialises/closes the scheduler. Stop external
 submitters and waiters before `close`; callbacks must terminate and their borrowed
 storage must remain alive. Close rejects callback attempts to close their own
 scheduler, stops admission, drains accepted jobs, joins workers and frees storage.
-It is idempotent. Completed task handles remain readable after close until their
-own `done()`; closing the scheduler does not release handle allocations. Queues expire at
-close: discard/reinitialise them before a later scheduler lifetime, and never
-reuse a stale queue after reinitialising its scheduler.
+It is idempotent. Completed tasks remain readable after close, with their results
+in caller storage. Queues expire at close: discard/reinitialise them before a
+later scheduler lifetime, and never reuse a stale queue after reinitialising its scheduler.
 
 ## Validation
 
@@ -118,7 +140,10 @@ reuse a stale queue after reinitialising its scheduler.
 modes, with process-tree timeouts. Repeated contracts check deque wrap/full/empty,
 competing owner/thief removal of one item, forced cross-worker stealing, serial
 FIFO/non-overlap, void/result publication, nested single-worker waits, self and
-serial-dependency rejection, external producers, capacity/retry, typed pointer/value
-callbacks, handle moves, explicit/idempotent cleanup, post-close results,
-partial-start cleanup/reinitialisation and draining close. Both common test recipes
-include it. The executable tutorial's result is checked against 204. Native Windows and performance measurements remain pending.
+serial-dependency rejection, external producers, capacity/retry, typed borrowed
+callbacks, mismatched callback/argument diagnostics, prepared relocation,
+duplicate submission rejection, pending recreation/nil-callback assertion checks,
+completed reuse/copies, inferred aggregation, discard without result reads,
+post-close results, partial-start cleanup/reinitialisation and draining close. Both common test recipes
+include it. The executable tutorial's result is checked against 204. Native
+Windows and performance measurements remain pending.

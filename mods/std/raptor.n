@@ -4,7 +4,7 @@
 --
 -- Original Nerd work stealing with Raptor-style serial/concurrent queues and
 -- typed tasks. Owners, queues, tasks and callback contexts have explicit
--- lifetimes.
+-- lifetimes; completed tasks have no execution resources to release.
 
 use os.thread
 use std.atomics
@@ -27,10 +27,9 @@ pub Job :: plex {
     context   ^void           -- Stable task address passed to execute.
     next      ^void           -- Next waiting job in a serial queue.
     parent    ^void           -- Active ancestor during cooperative waits.
-    accepted  bool            -- One-shot admission flag; protected by scheduler
-                              --     mutex.
+    accepted  bool            -- Submission flag; remains set until task reuse.
     complete  atomic[bool]    -- Publishes callback result with release/acquire
-                              --     ordering.
+    --     ordering.
 }
 
 -- A caller-owned dispatch queue; keep it alive through all accepted tasks.
@@ -76,30 +75,16 @@ pub Scheduler :: plex {
                              --     mutex.
 }
 
--- Stable completion state shared by a returned handle and its scheduled job.
-pub TaskState :: plex [T] {
-    job    Job  -- Scheduler-owned link while work is pending.
-    result ?T
-    -- Published result, including successful void completion.
-}
-
--- Stable typed invocation storage; argument payload lifetimes belong to
--- callers.
-pub Invocation :: plex [A, T] {
-    state    TaskState[T]           -- Completion storage, retained until task
-                                    --     cleanup.
-    callback fn (argument: A) -> T  -- Typed user callback.
-    argument A                      -- Shallow argument value; pointers borrow
-                                    --     their targets.
-}
-
--- An owned task handle. It may move before completion; do not duplicate
--- ownership.
+-- Caller-owned task storage; keep its address stable until completion.
+-- Preparation and completion own no allocation and need no cleanup.
 pub Task :: plex [T] {
-    state      ^TaskState[T]  -- Stable completion address, independent of this
-                              --     handle.
-    allocation []u8           -- Owned invocation storage, released explicitly
-                              --     by done.
+    job      Job    -- Dispatch and completion state; do not modify while
+                    --     pending.
+    callback ^void  -- Erased typed callback restored by the trampoline.
+    argument ^void  -- Borrowed argument; keep its target alive through
+                    --     completion.
+    result   ?T
+    -- Published shallow result; payload storage belongs to the caller.
 }
 
 -- Returns the current native identifier through platform-specific bindings.
@@ -175,6 +160,7 @@ run_job :: fn (scheduler: ^Scheduler, index: usize, job: ^Job) {
         } else queue.busy = no
     }
     scheduler.pending -= 1
+    -- No worker may touch this task after publishing completion.
     job.complete.store(yes)
     assert scheduler.changed.broadcast()
 }
@@ -230,38 +216,27 @@ wait_job :: fn (job: ^Job) -> bool {
     return yes
 }
 
--- Executes the stored typed callback without exposing erased pointers to users.
-execute_task :: fn [A, T] (context: ^void) {
-    invocation := context.as(^Invocation[A, T])
-    invocation.state.result = invocation.callback(invocation.argument)
+-- Restores the callback signature selected by create and publishes its result.
+execute_task :: fn [U, T] (context: ^void) {
+    task     := context.as(^Task[T])
+    callback := task.callback.as(fn (value: ^U) -> T)
+
+    task.result = callback(task.argument.as(^U))
 }
 
 impl Queue {
 
-    -- Returns an owned handle, or nil for invalid callbacks, closed queues or capacity.
-    -- Argument values are shallow copies; borrowed targets must survive completion.
-    pub async :: fn [A, T] (self     : ^Self,
-                            callback : fn (argument: A) -> T,
-                            argument : A) -> ?Task[T] {
-        on callback.as(^void) == nil => return nil
+    -- Schedules a prepared task; rejection leaves its preparation unchanged.
+    -- Each preparation may be submitted once; keep pending storage stable.
+    pub async :: fn [T] (self: ^Self, task: ^Task[T]) -> ?void {
+        on task == nil || task.job.execute.as(^void) == nil => return nil
         scheduler := self.scheduler.as(^Scheduler)
         on scheduler == nil || !scheduler.started => return nil
         assert scheduler.mutex.lock()
         defer _ := scheduler.mutex.unlock()
         on scheduler.stopping ||
-            scheduler.pending == scheduler.limit => return nil
-        prototype  : Invocation[A, T]
-        allocation                    := alloc(prototype.size)
-        invocation                    := allocation.data.as(^Invocation[A, T])
-
-        invocation^ = prototype
-        invocation.callback = callback
-        invocation.argument = argument
-        job := ^invocation.state.job
-        job.scheduler = scheduler
-        job.queue = self
-        job.execute = execute_task[(A, T)]
-        job.context = invocation
+            scheduler.pending == scheduler.limit ||
+            task.job.accepted => return nil
         index := current_worker(scheduler)
         on index == scheduler.workers.count => {
             index = scheduler.cursor
@@ -270,62 +245,55 @@ impl Queue {
         on self.kind == QueueType.Serial &&
             self.busy => {
             on self.tail == nil
-                =>   self.head = job
-                else self.tail.as(^Job).next = job
-            self.tail = job
+                =>   self.head = ^task.job
+                else self.tail.as(^Job).next = ^task.job
+            self.tail = ^task.job
         } else {
-            on !enqueue(scheduler, job, index) => {
-                free(allocation)
-                return nil
-            }
+            on !enqueue(scheduler, ^task.job, index) => return nil
             on self.kind == QueueType.Serial => self.busy = yes
         }
-        job.accepted = yes
+        task.job.scheduler = scheduler
+        task.job.queue = self
+        task.job.context = task
+        task.job.accepted = yes
         scheduler.pending += 1
         assert scheduler.changed.broadcast()
-        handle : Task[T]
-        handle.state = ^invocation.state
-        handle.allocation = allocation
-        return handle
+        return
     }
 
 }
 
 impl [T] Task[T] {
 
-    -- Transfers ownership to a new handle and leaves this handle idle.
-    pub take :: fn (self: ^Self) -> Self {
-        moved := self^
-        self^ = Self { ... }
-        return moved
+    -- Prepares a typed callback with borrowed argument storage, without allocating.
+    -- Repreparing pending work or supplying a nil callback is a programming error.
+    pub create :: fn [U, T] (self     : ^Self,
+                             callback : fn (value: ^U) -> T,
+                             argument : ^U) {
+        assert !self.job.accepted || self.job.complete.load()
+        assert callback.as(^void) != nil
+        empty : Self
+        self^ = empty
+        self.callback = callback.as(^void)
+        self.argument = argument
+        self.job.execute = execute_task[(U, T)]
     }
 
-    -- Queries result publication. An idle or released handle is unfinished.
+    -- Queries completion; never-submitted tasks are unfinished.
     pub has_finished :: fn (self: ^Self) -> bool {
-        on self.state == nil => return no
-        return self.state.job.complete.load()
+        return self.job.complete.load()
     }
 
-    -- Cooperatively waits; idle handles and invalid dependencies return failure.
+    -- Cooperatively waits; idle tasks and invalid dependencies return failure.
     pub wait :: fn (self: ^Self) -> bool {
-        on self.state == nil => return no
-        return wait_job(^self.state.job)
+        on !self.job.accepted => return no
+        return wait_job(^self.job)
     }
 
-    -- Waits for the typed result; nil reports an idle handle or invalid dependency.
+    -- Waits for the shallow result; repeated reads remain valid after close.
     pub get :: fn (self: ^Self) -> ?T {
         on !self.wait() => return nil
-        return self.state.result
-    }
-
-    -- Waits before releasing stable invocation storage; invalid waits retain ownership.
-    -- Result payload cleanup is separate and belongs to callers. Idle cleanup succeeds.
-    pub done :: fn (self: ^Self) -> bool {
-        on self.state == nil => return yes
-        on !self.wait()      => return no
-        free(self.allocation)
-        self^ = Self { ... }
-        return yes
+        return self.result
     }
 
 }

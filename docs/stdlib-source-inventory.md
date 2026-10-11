@@ -137,7 +137,9 @@ reuse terms still apply to any future copied material. No upstream implementatio
 was copied for this slice. Runnable tutorials for Raptor, Kerberos and Nexus are
 required delivery gates; [status and walkthroughs](tutorials/README.md).
 
-The current Nerd mapping preserves queue-owned submission: `Queue.async[A, T]`
-infers a typed callback argument and returns `?Task[T]`. Stable invocation storage
-allows returned handles to move; `take` transfers ownership and `done` releases it.
-`Scheduler.init` returns `?void`. See the contracts for remaining API differences.
+The current Nerd mapping separates preparation from queue-owned submission:
+`Task[T].create(callback, ^argument)` borrows typed input and `Queue.async(^task)`
+returns `?void`. Both operations allocate no per-task storage. Pending tasks need
+stable addresses; completed tasks need no `done()` or `take()`. Startup also
+returns `?void`, and `when_all(tasks[..])` infers the result type. See the contracts
+for remaining API differences.

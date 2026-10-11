@@ -1,0 +1,18 @@
+use std.raptor
+
+recreate :: fn (task: ^Task[i32]) -> i32 {
+    -- This callback is still executing: preparation must reject changing its job.
+    task.create(recreate, task)
+    return 0
+}
+
+main :: fn () -> ?void {
+    scheduler : Scheduler
+    scheduler.init(1)?
+    task : Task[i32]
+    task.create(recreate, ^task)
+    scheduler.get_default_queue().async(^task)?
+    _ := task.wait()
+    assert scheduler.close()
+    return
+}
