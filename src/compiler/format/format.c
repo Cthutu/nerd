@@ -729,6 +729,7 @@ internal void format_emit_triple_string_text(StringBuilder* sb, string text)
             sb_append_cstr(sb, "\\\\");
             break;
         case '\r':
+            sb_append_cstr(sb, "\\r");
             break;
         default:
             if (text.data[i] < 0x20 || text.data[i] == 0x7f) {
@@ -3059,7 +3060,12 @@ internal bool format_string_should_use_triple_literal(string text)
     bool has_newline = false;
     bool has_content = false;
     for (usize i = 0; i < text.count; ++i) {
-        if (text.data[i] == '\n' || text.data[i] == '\r') {
+        // Physical triple-quoted lines normalise CRLF. Keep carriage returns
+        // escaped in ordinary literals so formatting preserves terminal bytes.
+        if (text.data[i] == '\r') {
+            return false;
+        }
+        if (text.data[i] == '\n') {
             has_newline = true;
         } else {
             has_content = true;

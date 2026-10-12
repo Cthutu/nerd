@@ -224,6 +224,11 @@ The CST retains the error postfix (`!`) on branch patterns, including error
 binders, wildcards, and braced enum payloads. These valid result matches use
 structured formatting, preserving normal array layout elsewhere in the function.
 
+String formatting preserves decoded bytes. Literals containing carriage returns
+stay escaped rather than being converted to physical triple-quoted lines, whose
+CRLF is normalised by the lexer. This matters for protocol strings such as
+Telnet's CRLF terminator, including a standalone CR without LF.
+
 When a code block cannot be parsed as CST, the formatter retries regions at
 line-leading top-level declaration boundaries with balanced delimiters. Valid
 neighbouring declarations still use structured formatting, including function
