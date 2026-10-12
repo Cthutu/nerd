@@ -1,0 +1,2 @@
+pub fetch :: fn () -> Value\Failure { return Value { number: 1 } }
+pub other :: fn () -> Value\OtherFailure { return Value { number: 2 } }

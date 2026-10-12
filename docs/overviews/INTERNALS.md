@@ -637,6 +637,12 @@ navigation to another resolvable module (including folder-module `mod.n`).
 If that failure discarded the root AST, the request parses the open buffer
 without loading its imports and resolves the module path from that scratch AST.
 
+Definition requests for declarations in the open module map both URI and range
+through the declaration's source fragment. Folder-module parts share semantic
+declarations, but a result type's error declaration can live in `mod.n` or a
+sibling file rather than the part under the cursor. In-memory fragment URIs are
+preserved; filesystem paths are converted to file URIs only once.
+
 ## Receiving Variadic C Calls
 
 AST/CST function signatures retain the final named variadic binder separately
