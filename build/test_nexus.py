@@ -79,67 +79,115 @@ def read_exact(peer: socket.socket, count: int) -> bytes:
 
 
 def telnet_echo_server(server: Path, env: dict[str, str], *, blocked_send: bool = False) -> None:
-    # Test the actual long-running example with independent terminal wire bytes.
-    # Separate process groups permit targeted Windows console shutdown events.
+    # Collect all console output on one reader: wait for lifecycle messages even
+    # when clients send no data, and avoid competing buffered stdout readers.
     for connected in (False, True):
-        process, ready = start_timing([str(server), "tcp://127.0.0.1:0"], env, shutdown_group=True)
+        flags = subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0
+        process = subprocess.Popen([str(server), "tcp://127.0.0.1:0"], cwd=ROOT, env=env,
+                                   stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                   text=True, creationflags=flags)
+        assert process.stdout is not None
+        lines: queue.Queue[str] = queue.Queue()
+        captured: list[str] = []
+
+        def capture():
+            for line in process.stdout:
+                captured.append(line.rstrip("\n"))
+                lines.put(line.rstrip("\n"))
+
+        reader = threading.Thread(target=capture, daemon=True)
+        reader.start()
+
+        def expect_log(expected: str) -> None:
+            end = time.monotonic() + 5
+            while True:
+                line = lines.get(timeout=max(0.001, end - time.monotonic()))
+                if line == expected:
+                    return
+                if time.monotonic() >= end:
+                    raise RuntimeError(f"Missing log {expected!r}: {captured!r}")
+
         peers = []
         try:
-            line = ready.get(timeout=5).strip()
+            line = lines.get(timeout=5)
             prefix = "Listening on tcp://127.0.0.1:"
             if not line.startswith(prefix) or not line[len(prefix):].isdecimal():
                 raise RuntimeError(f"Invalid echo server readiness: {line!r}")
             port = int(line[len(prefix):])
+
+            def connect(client_id: int):
+                # The very first attempt must succeed: no application retry.
+                peer = socket.create_connection(("127.0.0.1", port), timeout=5)
+                peers.append(peer)
+                peer.settimeout(5)
+                if read_exact(peer, 3) != b"\xff\xfd\x1f":
+                    raise RuntimeError("Echo server did not negotiate Telnet")
+                expect_log(f"[Client {client_id}] connected")
+                return peer
+
             if connected:
-                for _ in range(1 if blocked_send else 2):
-                    peer = socket.create_connection(("127.0.0.1", port), timeout=5)
-                    peers.append(peer)
-                    peer.settimeout(5)
-                    if read_exact(peer, 3) != b"\xff\xfd\x1f":
-                        raise RuntimeError("Echo server did not negotiate Telnet")
+                first = connect(1)
+                second = connect(2)
                 if blocked_send:
-                    peers[0].sendall(b"stall\r\n")
-                    # The shim announces the first blocked application write,
-                    # after Nexus has queued its snapshot. Avoid timing sleeps.
-                    assert process.stdout is not None
-                    blocked_line: queue.Queue[str] = queue.Queue()
-
-                    def capture_block(stream=process.stdout):
-                        for line in stream:
-                            if line.strip() == "Nexus text send blocked":
-                                blocked_line.put(line)
-                                return
-                        blocked_line.put("")
-
-                    threading.Thread(target=capture_block, daemon=True).start()
-                    if blocked_line.get(timeout=5).strip() != "Nexus text send blocked":
-                        raise RuntimeError("Echo server did not queue its stalled send")
+                    first.sendall(b"stall\r\n")
+                    expect_log("Nexus text send blocked")
+                    # The shim blocks only the first client's application send.
+                    # Its pending echo must not stop a different client's reply.
+                    second.sendall(b"second\r\n")
+                    if read_exact(second, 8) != b"second\r\n":
+                        raise RuntimeError("Stalled echo blocked another client")
+                    expect_log("[Client 2] second")
                 else:
                     coalesced = b"first\r\n\r\nliteral\xff\xffIAC\r\n"
-                    peers[0].sendall(coalesced)
-                    if read_exact(peers[0], len(coalesced)) != coalesced:
+                    first.sendall(coalesced)
+                    if read_exact(first, len(coalesced)) != coalesced:
                         raise RuntimeError("Echo lost a line, empty payload or escaped IAC")
-                    # An unfinished line on the first peer must not prevent the
-                    # second peer receiving its own reply or Ctrl+C being polled.
-                    peers[0].sendall(b"unfinished")
-                    peers[1].sendall(b"second\r\n")
-                    if read_exact(peers[1], 8) != b"second\r\n":
+                    expect_log("[Client 1] first")
+                    expect_log("[Client 1] ")
+                    expect_log("[Client 1] literal\\xffIAC")
+                    first.sendall(b"unfinished")
+                    second.sendall(b"second\r\n")
+                    if read_exact(second, 8) != b"second\r\n":
                         raise RuntimeError("Echo went to the wrong client")
+                    expect_log("[Client 2] second")
+                    # A reset must remove only this peer, and IDs cannot be
+                    # recycled when the newly freed connection slot is reused.
+                    reset = connect(3)
+                    reset.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER,
+                                     struct.pack("hh" if os.name == "nt" else "ii", 1, 0))
+                    reset.close()
+                    expect_log("[Client 3] disconnected")
+                    fourth = connect(4)
+                    fourth.sendall(b"after reset\r\n")
+                    if read_exact(fourth, 13) != b"after reset\r\n":
+                        raise RuntimeError("Client reset stopped the listener")
+                    expect_log("[Client 4] after reset")
+                    first.close()
+                    expect_log("[Client 1] disconnected")
             process.send_signal(signal.CTRL_BREAK_EVENT if os.name == "nt" else signal.SIGINT)
-            output, _ = process.communicate(timeout=5)
-            if process.returncode or not output.strip().endswith("Shutdown requested.\nTelnet server stopped."):
-                raise RuntimeError(f"Echo shutdown failed ({process.returncode}): {output!r}")
+            process.wait(timeout=5)
+            reader.join(timeout=5)
+            if reader.is_alive() or process.returncode or not captured or captured[-1] != "Telnet server stopped.":
+                raise RuntimeError(f"Echo shutdown failed ({process.returncode}): {captured!r}")
+            if "Shutdown requested." not in captured:
+                raise RuntimeError("Echo server missed shutdown notification")
             for peer in peers:
+                if peer.fileno() == -1:
+                    continue
                 try:
                     if peer.recv(1) != b"":
                         raise RuntimeError("Echo peer remained open after shutdown")
                 except ConnectionResetError:
-                    # Closing with unread partial input can reset rather than FIN.
                     pass
+            if connected:
+                for client_id in range(1, 3 if blocked_send else 5):
+                    if captured.count(f"[Client {client_id}] connected") != 1 or captured.count(f"[Client {client_id}] disconnected") != 1:
+                        raise RuntimeError(f"Missing or duplicate client lifecycle log: {captured!r}")
         finally:
             for peer in peers:
                 peer.close()
             stop_timing(process)
+            reader.join(timeout=5)
 
 
 def telnet_original(driver: Path, peer: Path, env: dict[str, str]) -> None:
@@ -385,7 +433,7 @@ def main() -> None:
         if run([str(echo_server), "--smoke"], env, timeout=10).strip() != "Nexus Telnet echo smoke passed":
             raise RuntimeError("Telnet echo smoke failed")
         telnet_echo_server(echo_server, env)
-        print("PASS Telnet echo server routes, line escaping and idle/connected shutdown")
+        print("PASS Telnet echo server client lifecycle, reset recovery, routes and shutdown")
         telnet_wire(telnet, env)
         print("PASS Telnet raw line/character wire, negotiation, NAWS and EOF")
         delayed_connect(timing, env)

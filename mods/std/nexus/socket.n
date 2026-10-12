@@ -44,27 +44,28 @@ pub NexusPeer :: plex {
 -- Owns the listener/datagram socket and accepted TCP peers. Keep this owner
 -- stable after connect/bind or Message.create; do not copy or race live values.
 pub NetSocket :: plex {
-    raw           Socket
-    peers         [max_nexus_clients]^NexusPeer
-    udp_addresses [max_nexus_clients]Ipv4Address
-    udp_ids       [max_nexus_clients]u64
-    server        bool
-    active        bool
-    udp           bool
-    remote        Ipv4Address
-    next_id       u64
-    cursor        usize
-    generation    u64
-    kind          NetKind
-    telnet_mode   u64
-    send_next     bool
-    immediate     bool
-    send_ms       u64
-    receive_ms    u64
-    reconnect_ms  u64
-    connect_ms    u64
-    url_storage   [32]u8
-    datagram      Message
+    raw                Socket
+    peers              [max_nexus_clients]^NexusPeer
+    udp_addresses      [max_nexus_clients]Ipv4Address
+    udp_ids            [max_nexus_clients]u64
+    server             bool
+    active             bool
+    udp                bool
+    remote             Ipv4Address
+    next_id            u64
+    cursor             usize
+    generation         u64
+    kind               NetKind
+    telnet_mode        u64
+    send_next          bool
+    immediate          bool
+    send_ms            u64
+    receive_ms         u64
+    reconnect_ms       u64
+    connect_ms         u64
+    url_storage        [32]u8
+    datagram           Message
+    connection_handler fn (id: u64, connected: bool)
 }
 
 -- Creating a disconnected handle opens no OS socket and allocates no buffers.
@@ -208,9 +209,25 @@ impl NetSocket {
         self.send_next = self.kind == NetKind.Request
     }
 
+    -- Called synchronously on the socket's owning thread after TCP peers are
+    -- added/removed, including close. IDs are never reused by this owner.
+    -- The handler must not re-enter or modify the socket. UDP has no connections.
+    -- A zero/nil function pointer disables notifications.
+    pub set_connection_handler :: fn (self    : ^Self,
+                                      handler : fn (id: u64, connected: bool)) {
+        self.connection_handler = handler
+    }
+
+    notify_connection :: fn (self: ^Self, id: u64, connected: bool) {
+        on self.connection_handler.as(^void) != nil => {
+            self.connection_handler(id, connected)
+        }
+    }
+
     drop :: fn (self: ^Self, index: usize) {
         peer := self.peers[index]
         on peer == nil => return
+        id := peer.id
         peer.telnet.done()
         peer.stream.done()
         on peer.raw.valid => {
@@ -218,6 +235,7 @@ impl NetSocket {
         }
         free(peer.as(^u8).as([]u8, NexusPeer.size))
         self.peers[index] = nil
+        self.notify_connection(id, no)
     }
 
     add :: fn (self: ^Self, index: usize, raw: Socket) -> void\NexusError {
@@ -264,6 +282,7 @@ impl NetSocket {
                 return error!
             }
         }
+        self.notify_connection(peer.id, yes)
     }
 
     -- Bind includes TCP listen. recv accepts clients internally; UDP already
@@ -484,6 +503,12 @@ impl NetSocket {
                 peer  := self.peers[index]
 
                 on peer == nil => again
+                -- Do not consume another request while this Telnet client's
+                -- previous reply still borrows a pending Message. Other peers
+                -- and the listener can continue independently.
+                on self.server &&
+                    self.kind == NetKind.Telnet &&
+                    peer.sending != nil => again
                 received := on self.kind == NetKind.Telnet
                     =>   peer.telnet.receive(^peer.stream, message, character_mode)
                     else peer.stream.try_receive(message)
@@ -635,17 +660,27 @@ impl NetSocket {
                     }
                 }
             }
-            on peer.stream.pending &&
+            on peer.sending != nil &&
                 peer.sending != message => return NexusError.Invalid!
             on !peer.stream.pending => {
                 on self.kind == NetKind.Telnet => {
+                    -- Reserve the sender even if negotiation must finish first.
+                    peer.sending = message
                     for !peer.telnet.flush(^peer.stream)? {
                         entries := [PollEntry { socket: ^peer.raw write: yes ... }]
                         self.wait_ready(entries[..], limit)?
                     }
                     peer.stream.line = self.telnet_mode == net_telnet_line_mode
                 }
-                peer.stream.queue(message)?
+                on peer.stream.queue(message) {
+                    error! => {
+                        peer.sending = nil
+                        return error!
+                    }
+
+                    else => {
+                    }
+                }
                 peer.sending = message
             }
             on peer.stream.flush(deadline = limit) {

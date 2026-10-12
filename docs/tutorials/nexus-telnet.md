@@ -27,20 +27,30 @@ just build-example nexus-telnet-server
 
 From another terminal, run `telnet 127.0.0.1 2323`, then type a line and press
 Enter. Empty lines work too. Several clients can connect, and a partial line
-from one does not stall complete lines from the others. Echoes contain raw text,
+or stalled echo from one does not stall replies to the others. The server prints
+`[Client 1] connected`, logs decoded lines as `[Client 1] hello`, and reports
+`[Client 1] disconnected` when that connection closes. Numbers increase for each
+new connection; echoes contain only the text, without the console prefix.
+Control/non-ASCII bytes are escaped as `\xHH` in the log. Echoes contain raw text,
 with outgoing literal IAC bytes doubled and CRLF supplied by line mode.
 
 Press Ctrl+C in the server terminal to stop. The example opens a
 `std.signal.watch_shutdown()` watcher on its main thread and polls `requested()`
-between bounded network waits. It retries an unfinished send with the same
-stable Message. Shutdown closes the socket before disposing of that message,
+between nonblocking network operations. Fixed message slots keep unfinished
+replies stable while other clients make progress; a short sleep avoids busy
+waiting. It retries each unfinished send with the same Message. Shutdown closes
+the socket before disposing of those messages,
 then closes the watcher; all cleanup runs in ordinary code. Running the built
 binary directly avoids also interrupting the `just` recipe runner.
 
 `./_bin/examples/nexus-telnet-server --smoke` performs a bounded local echo
 without a separate terminal or installed Telnet client. The automated tests
-also deliver a shutdown event to the real server while idle, while a client has
-partial input, and while an outgoing echo is stalled.
+also check connection/disconnection logs, numbering across reconnects, recovery
+from a client reset, and progress while another client's outgoing echo is stalled.
+Shutdown is tested while idle, with partial input and with a pending echo.
+
+Use `127.0.0.1` when connecting to this IPv4 listener. Some clients try IPv6
+`::1` first for `localhost`, reporting a refused attempt before trying IPv4.
 
 ## Receiving and replying to a line
 

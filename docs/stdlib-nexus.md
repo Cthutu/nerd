@@ -83,6 +83,22 @@ clients; disconnected client sockets need `close()` before reconnecting.
 Available I/O is attempted before waiting, so deadlines do not guarantee strict
 wall-clock pre-emption of immediately available operations.
 
+### Connection notifications
+
+`socket.set_connection_handler(handler)` registers an optional synchronous
+`fn (id: u64, connected: bool)` callback. TCP connection creation reports `yes`;
+removal (EOF, fatal peer error or socket close) reports `no`. IDs match
+`message.id()` and are never reused by the socket owner. UDP has no connection
+notifications. Register before bind/connect to observe every connection;
+registering later does not replay existing peers. Pass a nil function pointer
+to disable the handler. Registration survives `close()` and reopening.
+
+Callbacks run on the thread performing the socket operation, including during
+`recv()` and `close()`. They must not re-enter, close or modify the socket.
+No background thread or event queue is created: idle connection/disconnection
+notifications require the application to keep receiving. The Telnet server
+example uses this callback for console logging.
+
 ## Message ownership and encoding
 
 A zero-initialised `Message` is ready to use. It owns a geometrically grown byte
@@ -115,6 +131,11 @@ ownership, routes, bounded peers and timeout model above. See the
 `TelnetMode` defaults to `net_telnet_line_mode`; set it before bind/connect.
 `net_telnet_character_mode` selects one decoded byte per receive and raw sends.
 Input mode is captured per connection; later changes affect sends and new peers.
+A server receive skips clients with an unfinished send, including pending
+negotiation before the text write. Retry those sends with their original stable
+messages while continuing to receive/reply for other clients. Nonblocking
+operations make this possible in one thread; the echo server demonstrates
+bounded caller-owned message slots.
 
 Line sends append CRLF, and line receives discard CR and finish on LF. Empty
 lines are valid. Character receives map CR to LF and suppress the following LF.

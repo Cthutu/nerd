@@ -4,6 +4,9 @@ use std.nexus
 
 signal :: use std.signal
 
+use std.network
+use std.time
+
 -- Flush readiness/log lines even when stdout is captured by the smoke runner.
 -- Shutdown itself uses std.signal, not an application OS signal handler.
 on "linux" {
@@ -23,8 +26,8 @@ on "windows" {
 }
 
 listen :: fn (server: ^NetSocket, url: string) -> void\NexusError {
-    -- Finite waits let the main loop inspect Ctrl+C between network attempts.
-    -- A timeout retains partial input or an outgoing snapshot inside Nexus.
+    -- Bounded waits are useful for the local smoke exchange. The long-running
+    -- server switches to nonblocking operations before entering its main loop.
     server.set_option(NetOption.RecvTimeoutMs, 100)?
     server.set_option(NetOption.SendTimeoutMs, 100)?
     server.bind(url)?
@@ -43,6 +46,44 @@ prepare_echo :: fn (message: ^Message, escaped: ^Message) -> void\NexusError {
     -- even when other clients are connected. Line mode adds CRLF automatically.
     message.clear()
     message.append(escaped.payload())?
+}
+
+-- Lifecycle callbacks run on this thread, without allocating an event queue.
+-- The identity is assigned on accept, even if the client never sends a line.
+connection_changed :: fn (id: u64, connected: bool) {
+    on connected {
+        yes   => prn($"[Client {id}] connected")
+        else  => prn($"[Client {id}] disconnected")
+    }
+    _ := fflush(nil)
+}
+
+log_line :: fn (message: ^Message) {
+    on message.id() {
+        id    => pr($"[Client {id}] ")
+        else  => return
+    }
+    -- Escape controls/non-ASCII bytes for readable, valid console output.
+    -- Logging never changes the payload sent back to the client.
+    bytes := message.payload()
+    hex   := "0123456789abcdef"
+
+    for i in [0.as(usize) .. bytes.count] {
+        byte := bytes[i]
+        on byte >= 32 &&
+            byte < 127 => {
+            pr(bytes[i..i + 1].as(string))
+        } else {
+            pr("\\x")
+            high := (byte / 16).as(usize)
+            low  := (byte % 16).as(usize)
+
+            pr(hex[high..high + 1])
+            pr(hex[low..low + 1])
+        }
+    }
+    prn("")
+    _ := fflush(nil)
 }
 
 smoke :: fn (server  : ^NetSocket,
@@ -93,12 +134,25 @@ main :: fn (args: []string) -> i32 {
         }
     }
     defer _ := shutdown.close()
-    server            := net_telnet_socket()
-    message           := Message.create(^server)
+    server  := net_telnet_socket()
+    message := Message.create(^server)
+    -- Caller-owned slots stay at fixed addresses. One blocked echo may hold a
+    -- slot while other slots receive and send replies for different clients.
+    replies : [max_nexus_clients]Message
+    pending : [max_nexus_clients]bool
+
+    for reply in replies {
+        reply^ = Message.create(^server)
+    }
     escaped : Message
     -- Defers run in reverse order. Close cancels any partial outgoing snapshot
     -- before disposing of its associated Message; keep both owners stable.
     defer message.done()
+    defer {
+        for reply in replies {
+            reply.done()
+        }
+    }
     defer escaped.done()
     defer server.close()
     on listen(^server, url) {
@@ -127,8 +181,16 @@ main :: fn (args: []string) -> i32 {
     }
     prn($"Listening on {bound}")
     prn("Connect with telnet, type a line, and press Enter. Ctrl+C stops the server.")
-    _       := fflush(nil)
-    sending := no
+    _ := fflush(nil)
+    server.set_connection_handler(connection_changed)
+    -- Immediate operations let us visit every pending client each turn. Sleep
+    -- briefly between turns to avoid spinning while idle, and poll shutdown.
+    on server.set_option(NetOption.Nonblocking, 1) {
+        _! => return 1
+
+        else => {
+        }
+    }
 
     for {
         on shutdown.requested() {
@@ -139,29 +201,42 @@ main :: fn (args: []string) -> i32 {
                 return 1
             }
         }
-        on sending => {
-            -- Retrying the same stable Message resumes its snapshot. Do not
-            -- receive another line or rebuild the payload while send is pending.
-            on message.send() {
-                NexusError.TimedOut! => again
+        for i in [0.as(usize) .. max_nexus_clients.as(usize)] {
+            on !pending[i] => again
+            on replies[i].send() {
+                NexusError.WouldBlock! => again
 
                 _! => {
-                    -- A fatal peer write removes its route. A client disconnect
-                    -- leaves the listener available for the next connection.
-                    on message.id() != nil => {
+                    on replies[i].id() != nil => {
                         eprn("Telnet echo send failed")
                         return 1
                     }
-                    prn("Client disconnected before its echo completed.")
                 }
 
                 else => {
                 }
             }
-            sending = no
-        } else {
-            on message.recv() {
-                NexusError.TimedOut! => again
+            pending[i] = no
+        }
+        -- recv skips peers with pending echoes, so it cannot overwrite a reply
+        -- still being sent. It also accepts clients and detects idle disconnects.
+        for i in [0.as(usize) .. max_nexus_clients.as(usize)] {
+            on pending[i] => again
+            on replies[i].recv() {
+                NexusError.WouldBlock! => break
+
+                NexusError.Network { error }! => {
+                    -- A reset affects this client only. Nexus already removed
+                    -- its route and reported its disconnection to the handler.
+                    on error {
+                        NetworkError.ConnectionReset { code: _ } => break
+
+                        else => {
+                            eprn("Telnet receive failed")
+                            return 1
+                        }
+                    }
+                }
 
                 _! => {
                     eprn("Telnet receive failed")
@@ -171,7 +246,8 @@ main :: fn (args: []string) -> i32 {
                 else => {
                 }
             }
-            on prepare_echo(^message, ^escaped) {
+            log_line(^replies[i])
+            on prepare_echo(^replies[i], ^escaped) {
                 _! => {
                     eprn("Encoded echo exceeds the message limit")
                     return 1
@@ -180,11 +256,20 @@ main :: fn (args: []string) -> i32 {
                 else => {
                 }
             }
-            prn($"Echoing {message.payload().count} bytes.")
-            _ := fflush(nil)
+            -- Queue immediately before receiving again: the library knows to
+            -- defer more input from this peer until its reply has completed.
+            on replies[i].send() {
+                NexusError.WouldBlock! => pending[i] = yes
 
-            sending = yes
+                _! => {
+                    on replies[i].id() != nil => return 1
+                }
+
+                else => {
+                }
+            }
         }
+        sleep_ms(1)
     }
     prn("Shutdown requested.")
     -- Explicitly finish before reporting completion. Deferred close is also
