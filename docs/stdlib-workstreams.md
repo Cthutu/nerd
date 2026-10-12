@@ -171,3 +171,11 @@ and associated Message API, numeric IPv4 TCP/UDP URLs, automatic server replies,
 fair multi-client TCP receive and timing/retry options. Tutorials and runnable
 examples use complete-message send/recv. Native Windows and the full source
 scenario audit remain pending; Telnet and DNS/IPv6 URLs remain later work.
+
+The core parity audit now maps all 33 pinned source scenarios: 22 core equivalents
+are covered, with 11 Telnet cases explicitly pending. Added TCP saturation and
+admission after disconnect, reconnect/session-route checks, malformed-peer
+isolation, delayed connection/arrival, and ready-but-would-block deadline tests.
+The audit exposed and fixed indefinite readiness retries and LLVM loop temporary
+stack growth. See [the parity inventory](nexus-parity.md). Native Windows and
+Telnet remain pending.

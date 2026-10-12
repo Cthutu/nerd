@@ -1,0 +1,341 @@
+{
+  "source_revision": "9ae32dd295241bd3889204537dfa476f222e753c",
+  "cases": [
+    {
+      "source": "framing.c::tcp_message_framing_round_trip",
+      "status": "covered",
+      "coverage": [
+        {
+          "file": "tests/nexus/main.n",
+          "function": "stream_contracts"
+        },
+        {
+          "file": "tests/nexus/interop.n",
+          "function": "exchange"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "source": "framing.c::default_socket_constructor_works_for_message_sockets",
+      "status": "covered",
+      "coverage": [
+        {
+          "file": "tests/nexus/socket-api.n",
+          "function": "tcp_routes"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "source": "framing.c::zero_length_messages_are_valid",
+      "status": "covered",
+      "coverage": [
+        {
+          "file": "tests/nexus/main.n",
+          "function": "stream_contracts"
+        },
+        {
+          "file": "tests/nexus/socket-api.n",
+          "function": "udp_routes"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "source": "framing.c::send_rejects_messages_larger_than_maximum",
+      "status": "covered",
+      "coverage": [
+        {
+          "file": "tests/nexus/main.n",
+          "function": "buffer_contracts"
+        },
+        {
+          "file": "tests/nexus/main.n",
+          "function": "stream_contracts"
+        }
+      ],
+      "note": "Checked append/peer-prefix rejection replaces mutation of private message fields."
+    },
+    {
+      "source": "message.c::message_append_and_read_primitives",
+      "status": "covered",
+      "coverage": [
+        {
+          "file": "tests/nexus/main.n",
+          "function": "buffer_contracts"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "source": "message.c::recv_msg_and_send_msg_round_trip",
+      "status": "covered",
+      "coverage": [
+        {
+          "file": "tests/nexus/interop.n",
+          "function": "exchange"
+        },
+        {
+          "file": "tests/nexus/parity.n",
+          "function": "metadata"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "source": "message.c::udp_recv_msg_preserves_reply_route_for_send_msg",
+      "status": "covered",
+      "coverage": [
+        {
+          "file": "tests/nexus/socket-api.n",
+          "function": "udp_routes"
+        },
+        {
+          "file": "tests/nexus/parity.n",
+          "function": "metadata"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "source": "message.c::tcp_server_can_reply_to_multiple_clients_via_message_pipe",
+      "status": "covered",
+      "coverage": [
+        {
+          "file": "tests/nexus/socket-api.n",
+          "function": "tcp_routes"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "source": "message.c::socket_options_can_be_set_and_read_back",
+      "status": "covered",
+      "coverage": [
+        {
+          "file": "tests/nexus/parity.n",
+          "function": "options"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "source": "message.c::connect_can_retry_until_server_binds",
+      "status": "covered",
+      "coverage": [
+        {
+          "file": "build/test_nexus.py",
+          "function": "delayed_connect"
+        },
+        {
+          "file": "tests/nexus/timing-driver.n",
+          "function": "retry_connect"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "source": "message.c::connect_times_out_when_server_never_binds",
+      "status": "covered",
+      "coverage": [
+        {
+          "file": "tests/nexus/socket-api.n",
+          "function": "connect_failures"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "source": "message.c::recv_times_out_when_no_client_arrives",
+      "status": "covered",
+      "coverage": [
+        {
+          "file": "tests/nexus/parity.n",
+          "function": "idle_receive"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "source": "message.c::recv_times_out_when_client_connects_but_sends_nothing",
+      "status": "covered",
+      "coverage": [
+        {
+          "file": "tests/nexus/parity.n",
+          "function": "idle_receive"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "source": "message.c::recv_succeeds_when_message_arrives_before_timeout",
+      "status": "covered",
+      "coverage": [
+        {
+          "file": "build/test_nexus.py",
+          "function": "delayed_receive"
+        },
+        {
+          "file": "tests/nexus/timing-driver.n",
+          "function": "arrival"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "source": "message.c::nonblocking_connect_returns_would_block_when_server_is_absent",
+      "status": "covered",
+      "coverage": [
+        {
+          "file": "tests/nexus/socket-api.n",
+          "function": "connect_failures"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "source": "message.c::nonblocking_recv_returns_would_block_when_no_client_arrives",
+      "status": "covered",
+      "coverage": [
+        {
+          "file": "tests/nexus/parity.n",
+          "function": "idle_receive"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "source": "message.c::nonblocking_recv_returns_would_block_when_client_sends_nothing",
+      "status": "covered",
+      "coverage": [
+        {
+          "file": "tests/nexus/parity.n",
+          "function": "idle_receive"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "source": "message.c::nonblocking_udp_recv_returns_would_block_without_datagram",
+      "status": "covered",
+      "coverage": [
+        {
+          "file": "tests/nexus/parity.n",
+          "function": "idle_receive"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "source": "reqrep.c::request_reply_round_trip_over_tcp",
+      "status": "covered",
+      "coverage": [
+        {
+          "file": "tests/nexus/socket-api.n",
+          "function": "ordering_and_timeouts"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "source": "reqrep.c::request_socket_cannot_receive_before_sending",
+      "status": "covered",
+      "coverage": [
+        {
+          "file": "tests/nexus/socket-api.n",
+          "function": "ordering_and_timeouts"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "source": "reqrep.c::request_socket_cannot_send_twice_without_reply",
+      "status": "covered",
+      "coverage": [
+        {
+          "file": "tests/nexus/socket-api.n",
+          "function": "ordering_and_timeouts"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "source": "reqrep.c::reply_socket_cannot_send_before_receiving",
+      "status": "covered",
+      "coverage": [
+        {
+          "file": "tests/nexus/socket-api.n",
+          "function": "ordering_and_timeouts"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "source": "telnet.c::telnet_socket_round_trip_over_tcp",
+      "status": "pending",
+      "coverage": [],
+      "note": "Telnet protocol and options are not implemented."
+    },
+    {
+      "source": "telnet.c::telnet_socket_round_trip_survives_immediate_close_repeatedly",
+      "status": "pending",
+      "coverage": [],
+      "note": "Telnet protocol and options are not implemented."
+    },
+    {
+      "source": "telnet.c::telnet_socket_reports_closed_after_final_reply",
+      "status": "pending",
+      "coverage": [],
+      "note": "Telnet protocol and options are not implemented."
+    },
+    {
+      "source": "telnet.c::telnet_socket_sends_crlf_terminated_lines",
+      "status": "pending",
+      "coverage": [],
+      "note": "Telnet protocol and options are not implemented."
+    },
+    {
+      "source": "telnet.c::telnet_character_mode_receives_one_character_per_message",
+      "status": "pending",
+      "coverage": [],
+      "note": "Telnet protocol and options are not implemented."
+    },
+    {
+      "source": "telnet.c::telnet_character_mode_sends_raw_bytes_without_crlf",
+      "status": "pending",
+      "coverage": [],
+      "note": "Telnet protocol and options are not implemented."
+    },
+    {
+      "source": "telnet.c::telnet_socket_ignores_telnet_negotiation_bytes",
+      "status": "pending",
+      "coverage": [],
+      "note": "Telnet protocol and options are not implemented."
+    },
+    {
+      "source": "telnet.c::telnet_socket_reports_negotiated_bounds_from_naws",
+      "status": "pending",
+      "coverage": [],
+      "note": "Telnet protocol and options are not implemented."
+    },
+    {
+      "source": "telnet.c::telnet_socket_rejects_udp_urls",
+      "status": "pending",
+      "coverage": [],
+      "note": "Telnet protocol and options are not implemented."
+    },
+    {
+      "source": "telnet.c::telnet_bounds_are_unavailable_on_non_telnet_sockets",
+      "status": "pending",
+      "coverage": [],
+      "note": "Telnet protocol and options are not implemented."
+    },
+    {
+      "source": "telnet.c::telnet_mode_option_round_trips_and_rejects_non_telnet_sockets",
+      "status": "pending",
+      "coverage": [],
+      "note": "Telnet protocol and options are not implemented."
+    }
+  ]
+}

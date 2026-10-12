@@ -182,26 +182,23 @@ check, pass `--upstream-dir /path/to/dev`; the runner requires clean core/Nexus
 sources at the pinned revision and compiles them directly. All loopback peers
 use ephemeral ports, readiness handshakes and process timeouts.
 
-## Source test mapping for this slice
+## Source test parity
 
-| Pinned source scenario | Nerd coverage |
-| --- | --- |
-| `message.c::message_append_and_read_primitives` | `tests/nexus/main.n::buffer_contracts`, golden bytes and bidirectional C peer |
-| `framing.c::tcp_message_framing_round_trip` | `stream_contracts`, C peer and `nexus-message` example |
-| `framing.c::zero_length_messages_are_valid` | Coalesced empty frame and bidirectional empty-frame C exchange |
-| `framing.c::send_rejects_messages_larger_than_maximum` | Bounded append rejection and oversized peer-prefix rejection before allocation |
-| Connected peer sends nothing / timeout / later arrival | Immediate/expired receive and fragmented-header retry in `stream_contracts`; `socket-api.n::ordering_and_timeouts` covers socket options and recovery |
+The [complete parity inventory](nexus-parity.md) maps all 33 pinned scenarios:
+22 core message/framing/request-reply scenarios have equivalent Nerd coverage;
+11 Telnet scenarios remain pending. The runner validates every coverage reference
+and, with `--upstream-dir`, compares the inventory against the original test files.
 
-The simple API also checks multi-client replies, reversed UDP replies, sender
-inspection, stale routes, repeated close/reopen, immediate receives, timeout
-recovery, connect failures/retries, request/reply ordering and slow-peer fairness.
-Additional regressions cover partial payload retry, EOF in prefix/body, snapshot
-ownership, atomic malformed string reads, borrowed self-append through growth,
-maximum-size frame round-trip and deterministic short I/O. `udp_capacity` checks
-the bounded sender identity table. The socket API covers constructors, server
-routing and timing options.
+Regressions also cover all 63 TCP peer slots and admitting a queued client after
+one disconnects; stale reply routes; repeated basic/request-reply reconnects;
+metadata surviving reads/clear; incomplete/malformed senders alongside healthy
+clients; receiving a final reply before EOF; UDP peer capacity; and delayed
+connect/receive success. Deterministic native injection forces refused connect
+attempts and persistent would-block despite read/write readiness. TCP/UDP receive
+and UDP send check their original deadline after incomplete I/O, preventing
+readiness from extending a timeout indefinitely. Immediate calls preserve partial
+progress and return WouldBlock after an incomplete attempt.
 
-Remaining work: native Windows validation and the full upstream scenario parity
-audit, including adversarial reconnect, TCP peer-capacity and delayed-listener retry coverage.
-Telnet and DNS/bracketed IPv6 URLs remain pending. M6/M7 milestone closure still
-requires those agreed checks.
+Remaining feature work: Telnet and DNS/bracketed IPv6 URLs. Native Windows,
+broader stress/soak validation and a dedicated timeout/nonblocking walkthrough
+remain pending. M6/M7 milestone closure still requires their agreed checks.

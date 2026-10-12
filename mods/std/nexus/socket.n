@@ -387,6 +387,22 @@ impl NetSocket {
             else NexusError.TimedOut
     }
 
+    -- Readiness is only a hint. Repeated would-block/interruption with a ready
+    -- descriptor must still respect the operation's original deadline.
+    wait_ready :: fn (self    : ^Self,
+                      entries : []PollEntry,
+                      limit   : ?Instant) -> void\NexusError {
+        on limit {
+            end => {
+                on now() >= end => return self.expired()!
+            }
+
+            else => {
+            }
+        }
+        on nexus_count(poll(entries, deadline = limit))? == 0 => return self.expired()!
+    }
+
     accept_ready :: fn (self: ^Self) -> void\NexusError {
         for i in [0.as(usize) .. max_nexus_clients.as(usize)] {
             on self.peers[i] != nil => again
@@ -460,7 +476,7 @@ impl NetSocket {
                 count += 1
             }
             on count == 0 => return NexusError.Closed!
-            on nexus_count(poll(entries[..count], deadline = limit))? == 0 => return self.expired()!
+            self.wait_ready(entries[..count], limit)?
         }
     }
 
@@ -507,7 +523,7 @@ impl NetSocket {
                 error! => return NexusError.Network { error }!
             }
             entries := [PollEntry { socket: ^self.raw read: yes ... }]
-            on nexus_count(poll(entries[..], deadline = limit))? == 0 => return self.expired()!
+            self.wait_ready(entries[..], limit)?
         }
     }
 
@@ -539,7 +555,7 @@ impl NetSocket {
                     error! => return NexusError.Network { error }!
                 }
                 entries := [PollEntry { socket: ^self.raw write: yes ... }]
-                on nexus_count(poll(entries[..], deadline = limit))? == 0 => return self.expired()!
+                self.wait_ready(entries[..], limit)?
             }
         } else {
             peer : ^NexusPeer

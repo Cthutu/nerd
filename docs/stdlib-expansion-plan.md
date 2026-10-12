@@ -265,8 +265,13 @@ inspection and timing/retry/nonblocking options are implemented. The
 [contracts](stdlib-nexus.md) and [tutorial](tutorials/nexus.md) lead with this API,
 with message, multi-client and request/reply examples. Linux LLVM/C debug/release
 contracts and bidirectional TCP/UDP exchanges against the pinned C source pass.
-Native Windows validation and the complete adversarial/source scenario audit
-remain; milestone checkboxes stay open until those checks pass.
+The [source parity inventory](nexus-parity.md) maps all 22 core source scenarios
+to equivalent coverage, with all 11 Telnet cases marked pending. TCP saturation,
+queued admission after disconnect, repeated reconnects, malformed-peer isolation,
+and delayed connect/receive are tested. Forced stale readiness exposed a timeout
+loop, now fixed; loop-temporary LLVM storage is also bounded. Native Windows and
+broader stress validation remain; milestone checkboxes stay open until their
+agreed checks pass.
 
 ### M7 — Nexus protocol parity
 
