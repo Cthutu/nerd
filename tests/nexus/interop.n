@@ -1,6 +1,4 @@
-use std.network
 use std.nexus
-use std.time
 
 on "linux" {
 
@@ -18,13 +16,10 @@ on "windows" {
 
 }
 
-exchange :: fn (socket: ^Socket) -> void\NexusError {
-    stream := TcpStream.new(socket)?
-    defer stream.done()
-    message : Message
+exchange :: fn (socket: ^NetSocket) -> void\NexusError {
+    message := Message.create(socket)
     defer message.done()
-    deadline := now().add(from_secs(5))
-    assert stream.receive(^message, deadline = deadline)?
+    message.recv()?
     assert message.read_u8()? == 0x12
     assert message.read_u16()? == 0x3456
     assert message.read_u32()? == 0x789abcde
@@ -39,39 +34,22 @@ exchange :: fn (socket: ^Socket) -> void\NexusError {
     message.append_u64(0xfedcba9876543210)?
     message.append_string("nexus")?
     message.append_string("")?
-    stream.queue(^message)?
-    assert stream.flush(deadline = deadline)?
-    assert stream.receive(^message, deadline = deadline)?
+    message.send()?
+    message.recv()?
     assert message.payload().count == 0
-    stream.queue(^message)?
-    assert stream.flush(deadline = deadline)?
+    message.send()?
 }
 
-serve :: fn () -> void\NetworkError {
-    listener := socket(SocketKind.Tcp)?
-    defer _ := listener.close()
-    listener.bind(loopback(0))?
-    listener.listen()?
-    address := listener.local_address()?
+serve :: fn () -> void\NexusError {
+    server := net_socket()
+    defer server.close()
+    server.bind("tcp://127.0.0.1:0")?
+    server.set_option(NetOption.SendTimeoutMs, 5000)
+    server.set_option(NetOption.RecvTimeoutMs, 5000)
+    address := server.local_address()?
     prn($"{address.port}")
     _ := fflush(nil)
-    listener.nonblocking(yes)?
-    entries := [PollEntry {
-        socket: ^listener read: yes ...
-    }
-    ]
-    on poll(entries[..], deadline = now().add(from_secs(5)))? == 0 => return NetworkError.TimedOut {
-        code: 0
-    }!
-    socket := listener.accept()?
-    defer _ := socket.close()
-    socket.nonblocking(yes)?
-    on exchange(^socket) {
-        _! => {
-            return NetworkError.Invalid!
-        } else => {
-        }
-    }
+    exchange(^server)?
 }
 
 main :: fn () -> i32 {

@@ -1,64 +1,126 @@
-# Nexus: reusable messages over TCP
+# Nexus: simple sockets and messages
 
-Run `just run-example nexus-message`. It creates a loopback listener on an
-OS-selected port, connects a client, accepts a server socket and enables
-nonblocking I/O on both ends. A single thread exchanges a string and number:
+Nexus follows the original `cthutu/dev` API: create a socket, connect or bind a
+URL, create a message associated with that socket, then send or receive it.
+Nexus manages TCP connections, message framing and server reply routing.
 
-```text
-Nexus message: hello nexus, reply 43
-```
+## A basic client
 
-The complete runnable code is in
-[examples/nexus-message/nexus-message.n](../../examples/nexus-message/nexus-message.n).
-Connection setup uses the [raw socket readiness API](../std-network-foundation.md).
-The message exchange imports `std.nexus` and `std.time`:
+With a server listening on port 8080:
 
 ```nerd
-client_stream := TcpStream.new(client)?
-defer client_stream.done()
-server_stream := TcpStream.new(server)?
-defer server_stream.done()
-request : Message
-defer request.done()
-reply : Message
-defer reply.done()
-request.append_string("hello nexus")?
-request.append_u32(42)?
-client_stream.queue(^request)?
-request.clear()
-assert client_stream.flush(deadline = deadline)?
-assert server_stream.receive(^request, deadline = deadline)?
-assert request.read_string()? == "hello nexus"
-number := request.read_u32()?
+use std.nexus
+
+send_greeting :: fn () -> void\NexusError {
+    socket := net_socket()
+    defer socket.close()
+    socket.connect("tcp://127.0.0.1:8080")?
+
+    message := Message.create(^socket)
+    defer message.done()
+    message.append_string("hello")?
+    message.append_u32(42)?
+    message.send()?
+}
 ```
 
-Here `client` and `server` are pointers to stable, connected, nonblocking
-`std.network.Socket` values, and `deadline` is a monotonic `Instant` made with
-`now().add(from_secs(2))`. `queue` snapshots the unread payload, so clearing
-`request` immediately is safe. `flush` sends its length prefix and payload,
-resuming any partial writes. `receive` waits for a whole frame before replacing
-`request`. The typed reads consume the string and number through a cursor.
+`send()` sends one complete message. For TCP, Nexus adds its length prefix and
+handles partial writes internally. For UDP, one message becomes one datagram.
+The `?` propagates failures to the caller; the defers release resources on both
+success and failure. Keep socket and message owners stable and do not copy live
+allocated values.
 
-The example clears the same request buffer, appends `"reply"` and `number + 1`,
-queues that message on `server_stream`, flushes it, and receives it into `reply`
-on the client. Clearing retains storage for reuse. The expected reply is 43.
-The example's assertions require completion before its two-second deadline;
-production code should handle a false result as deadline expiry.
+## A basic server and reply
 
-For immediate polling, use `try_flush()` or `try_receive(^reply)`. A false result
-keeps partial progress, allowing another call after socket readiness. For a
-bounded wait, pass `deadline = limit`; reuse that absolute deadline across
-retries rather than starting a fresh timeout on each would-block result.
-After expiry you may deliberately choose a later deadline and resume the same
-frame. Keep the stream alive while a frame is incomplete.
+```nerd
+use std.nexus
 
-Messages own storage and need `done()`. Streams own two bounded buffers and
-need `done()` as well; they borrow sockets, which need a separate `close()`.
-The example disposes of streams before closing their sockets. Read strings
-borrow message storage and remain valid through other reads, but expire when
-the message is appended, cleared, successfully received into or disposed of.
-Keep each owner in stable storage and do not copy allocated values.
+serve_greeting :: fn () -> void\NexusError {
+    socket := net_socket()
+    defer socket.close()
+    socket.bind("tcp://127.0.0.1:8080")?
 
-The [API contracts](../stdlib-nexus.md) describe limits, failures and tested C
-wire compatibility. Multiple clients, UDP routing, request/reply and Telnet
-will have separate walkthroughs when those layers are implemented.
+    message := Message.create(^socket)
+    defer message.done()
+    message.recv()?
+    text := message.read_string()?
+    number := message.read_u32()?
+    prn($"Received {text} and {number}")
+
+    message.clear()
+    message.append_string("reply")?
+    message.append_u32(number + 1)?
+    message.send()?
+}
+```
+
+`bind()` includes TCP listening. `recv()` accepts clients internally and returns
+one complete message. A server can receive from several clients, and each
+received message remembers its originating peer. `clear()` removes the payload
+while preserving that reply route and reusable storage. Sending the same
+message replies to that peer, even if other clients have since sent messages.
+Use `message.id()`, `message.address()` or `message.url()` to inspect the sender.
+They return optional values when no live route is available.
+
+Typed reads consume bytes through a cursor. Read strings borrow message storage;
+use or copy them before clearing, appending, receiving again or disposing of the
+message. The socket must remain in stable storage while associated messages
+exist. `close()` invalidates their association, including after reopening the
+same socket owner; create fresh messages for the new session.
+
+## Request/reply and UDP
+
+Use `net_request_socket()` for a client that must send then receive, and
+`net_reply_socket()` for a server that must receive then send. The message API
+stays the same. Breaking the order returns `NexusError.WrongState`; failed or
+timed-out operations leave the turn unchanged. Basic `net_socket()` imposes no
+turn-taking rule.
+
+Changing a URL to `udp://127.0.0.1:8080` selects datagrams. The same message
+methods and automatic server replies work, including empty datagrams. UDP
+payloads are limited to 65,507 bytes; delivery and ordering are not guaranteed.
+TCP and UDP use identical typed field encodings.
+
+## Timeouts and immediate operations
+
+Normal send and receive calls wait indefinitely. Connect defaults to a
+one-second total budget, retrying a refused/reset connection while waiting for
+a server. Configure options once on the socket:
+
+```nerd
+socket.set_option(NetOption.ConnectTimeoutMs, 2000)
+socket.set_option(NetOption.ReconnectIntervalMs, 25)
+socket.set_option(NetOption.SendTimeoutMs, 2000)
+socket.set_option(NetOption.RecvTimeoutMs, 500)
+```
+
+A bounded operation reports `NexusError.TimedOut`. Set
+`NetOption.Nonblocking` to `1` for immediate operations, which report
+`NexusError.WouldBlock` when they cannot finish immediately; set it to `0` to
+restore waiting. `net_wait_immediate` and `net_wait_infinite` are accepted for
+timeout options. A zero reconnect interval uses the source's 50 ms fallback.
+
+A TCP timeout or would-block result retains partial framing. Retry `send()` on
+the same stable message to resume the original snapshot, or retry `recv()` to
+finish receiving. A failed receive leaves its previous payload and route intact.
+Do not replace or dispose of a pending send message before completion; close the
+socket to cancel it. A fatal connection/frame error requires closing that
+connection; a server can continue servicing its other clients.
+
+## Runnable examples
+
+All examples use an OS-selected loopback port and run both endpoints in one
+thread. Per-operation timeouts bound their waits, and no external service is
+required:
+
+- `just run-example nexus-message`: exchange a string and number; prints
+  `Nexus message: hello nexus, reply 43`.
+- `just run-example nexus-multi-client`: reply to two clients through the received
+  messages; prints `Nexus multi-client: replies 11 and 21`.
+- `just run-example nexus-request-reply`: repeat an exchange and demonstrate a
+  wrong-state error; prints `Nexus request/reply: two exchanges passed`.
+
+The [API contracts](../stdlib-nexus.md) cover ownership, limits and source
+compatibility. `TcpStream` remains available for direct framing/event-loop use;
+the basic socket/message API manages that state for ordinary programs. Telnet
+and DNS/IPv6 URLs remain follow-on work.

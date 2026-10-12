@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bounded Nexus contracts and bidirectional TCP wire compatibility checks."""
+"""Bounded Nexus contracts and bidirectional TCP/UDP wire compatibility checks."""
 from __future__ import annotations
 
 import argparse
@@ -17,7 +17,7 @@ from test_network import ROOT, run
 PINNED = "9ae32dd295241bd3889204537dfa476f222e753c"
 
 
-def interop(server: Path, peer: Path, env: dict[str, str]) -> None:
+def interop(server: Path, peer: Path, env: dict[str, str], protocol: str = "TCP") -> None:
     process = subprocess.Popen([str(server)], cwd=ROOT, env=env, stdout=subprocess.PIPE,
                                stderr=subprocess.STDOUT, text=True)
     assert process.stdout is not None
@@ -29,10 +29,10 @@ def interop(server: Path, peer: Path, env: dict[str, str]) -> None:
         if not port.isdecimal() or not 0 < int(port) <= 65535:
             raise RuntimeError(f"Invalid server readiness: {port!r}")
         output = run([str(peer), port], env, timeout=10)
-        if output.strip() != "C peer passed":
+        if output.strip() != ("C peer passed" if protocol == "TCP" else "C UDP peer passed"):
             raise RuntimeError(f"Unexpected C peer output: {output!r}")
         output, _ = process.communicate(timeout=10)
-        if process.returncode or output.strip() != "Nexus TCP C interoperability passed":
+        if process.returncode or output.strip() != f"Nexus {protocol} C interoperability passed":
             raise RuntimeError(f"Nexus server failed ({process.returncode}): {output!r}")
     finally:
         if process.poll() is None:
@@ -53,7 +53,7 @@ def main() -> None:
         directory = Path(temporary)
         suffix = ".exe" if os.name == "nt" else ""
         executables = []
-        for index, source in enumerate(("tests/nexus/main.n", "tests/nexus/interop.n", "examples/nexus-message/nexus-message.n")):
+        for index, source in enumerate(("tests/nexus/main.n", "tests/nexus/interop.n", "examples/nexus-message/nexus-message.n", "tests/nexus/socket-api.n", "tests/nexus/udp-interop.n", "examples/nexus-multi-client/nexus-multi-client.n", "examples/nexus-request-reply/nexus-request-reply.n")):
             target = directory / (f"case-{index}" + suffix)
             command = [str(args.compiler.resolve()), "build", source, "-o", str(target)]
             if args.release:
@@ -65,9 +65,12 @@ def main() -> None:
                 flags = shlex.split(run(command + ["--copts"], env))
                 run(["clang", str(target.with_suffix(".c")), *flags, "-o", str(target)], env)
             executables.append(target)
-        contracts, server, example = executables
+        contracts, server, example, socket_api, udp_server, multi_client, request_reply = executables
         for target, expected in ((contracts, "Nexus buffer and framing contracts passed"),
-                                 (example, "Nexus message: hello nexus, reply 43")):
+                                 (example, "Nexus message: hello nexus, reply 43"),
+                                 (socket_api, "Nexus socket API contracts passed"),
+                                 (multi_client, "Nexus multi-client: replies 11 and 21"),
+                                 (request_reply, "Nexus request/reply: two exchanges passed")):
             output = run([str(target)], env, timeout=20)
             if output.strip() != expected:
                 raise RuntimeError(f"Unexpected output: {output!r}")
@@ -80,6 +83,8 @@ def main() -> None:
             for _ in range(3):
                 if run([str(contracts)], injected, timeout=20).strip() != "Nexus buffer and framing contracts passed":
                     raise RuntimeError("Fragmented I/O contracts failed")
+            if run([str(socket_api)], injected, timeout=20).strip() != "Nexus socket API contracts passed":
+                raise RuntimeError("Socket API fragmented I/O contracts failed")
             print("PASS deterministic partial I/O and would-block retries")
         else:
             print("SKIP short-I/O injection requires Linux")
@@ -90,6 +95,13 @@ def main() -> None:
         run(command, env)
         interop(server, peer, env)
         print("PASS bidirectional TCP golden-wire C peer")
+        udp_peer = directory / ("udp-peer" + suffix)
+        command = ["clang", "-std=c11", "-Wall", "-Wextra", "-Werror", "tests/nexus/udp-peer.c", "-o", str(udp_peer)]
+        if os.name == "nt":
+            command.append("-lws2_32")
+        run(command, env)
+        interop(udp_server, udp_peer, env, "UDP")
+        print("PASS bidirectional UDP golden-wire C peer")
         if args.upstream_dir:
             upstream = args.upstream_dir.resolve()
             revision = run(["git", "-C", str(upstream), "rev-parse", "HEAD"], env).strip()
@@ -103,6 +115,11 @@ def main() -> None:
             run(command, env)
             interop(server, original, env)
             print(f"PASS original Nexus TCP implementation at {PINNED}")
+            udp_original = directory / ("original-udp-peer" + suffix)
+            udp_command = [str(udp_original) if arg == str(original) else "tests/nexus/udp-peer.c" if arg == "tests/nexus/peer.c" else arg for arg in command]
+            run(udp_command, env)
+            interop(udp_server, udp_original, env, "UDP")
+            print(f"PASS original Nexus UDP implementation at {PINNED}")
 
 
 if __name__ == "__main__":

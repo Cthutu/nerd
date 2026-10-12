@@ -13,6 +13,11 @@ pub max_message_size :: 1_048_576  -- Maximum payload size, excluding framing.
 -- Message and framing failures; Network retains the original socket error.
 pub NexusError :: enum {
     Invalid
+    BadUrl
+    WouldBlock
+    TimedOut
+    WrongState
+    TooManyPeers
     TooLarge
     IncompletePayload
     Closed
@@ -26,9 +31,17 @@ pub NexusError :: enum {
 -- Owns reusable payload storage. Zero initialisation creates an empty message.
 -- Do not copy an allocated message; call done once after its last use.
 pub Message :: plex {
-    storage []u8   -- Owned allocation; do not mutate fields directly.
-    length  usize  -- Payload end, at most max_message_size.
-    offset  usize  -- Read cursor; successful reads consume the front logically.
+    url_storage [32]u8       -- Borrowed sender URL backing storage.
+    owner       ^NetSocket   -- Borrowed stable owner; nil for standalone
+                             --     payload buffers.
+    generation  u64          -- Reject routes from a closed/reopened socket
+                             --     session.
+    route       u64          -- Reply pipe identity, preserved by clear.
+    sender      Ipv4Address  -- UDP reply address, preserved by clear.
+    storage     []u8         -- Owned allocation; do not mutate fields directly.
+    length      usize        -- Payload end, at most max_message_size.
+    offset      usize        -- Read cursor; successful reads consume the front
+                             --     logically.
 }
 
 impl Message {
@@ -39,6 +52,9 @@ impl Message {
         self.storage = nil
         self.length = 0
         self.offset = 0
+        self.owner = nil
+        self.generation = 0
+        self.route = 0
     }
 
     -- Clears payload and cursor, retaining allocated capacity for reuse.

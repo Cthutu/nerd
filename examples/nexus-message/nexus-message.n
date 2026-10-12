@@ -1,102 +1,60 @@
--- Structured Nexus messages: exchange a string and integer over connected TCP,
--- reuse the request buffer and verify the reply. Nexus adds a length prefix so
--- receiving one complete message does not depend on TCP read boundaries. The
--- example runs both endpoints in one thread and shares one absolute deadline.
+-- Nexus structured messages using the original simple socket/message model.
+-- This example runs both endpoints locally so it needs no second process.
+-- Applications normally put the server and client in separate programs.
 
-use std.network
 use std.nexus
-use std.time
 
--- Borrow the connected socket owners while the streams manage framing state.
--- Messages and streams own buffers; their defers free them before socket close.
-exchange :: fn (client   : ^Socket,
-                server   : ^Socket,
-                deadline : Instant) -> void\NexusError {
-    client_stream := TcpStream.new(client)?
-    defer client_stream.done()
-    server_stream := TcpStream.new(server)?
-    defer server_stream.done()
-    request : Message
+run_message :: fn () -> void\NexusError {
+    -- bind creates a TCP listener; Nexus accepts connections and frames messages
+    -- internally. Port zero lets the OS pick a free port for this local example.
+    server := net_socket()
+    defer server.close()
+    server.bind("tcp://127.0.0.1:0")?
+    server.set_option(NetOption.RecvTimeoutMs, 2000)
+    server.set_option(NetOption.SendTimeoutMs, 2000)
+
+    -- A normal client needs only connect with the server's URL. The local_url
+    -- query is needed here because we requested an OS-selected port above.
+    client := net_socket()
+    defer client.close()
+    client.set_option(NetOption.ConnectTimeoutMs, 2000)
+    client.set_option(NetOption.RecvTimeoutMs, 2000)
+    client.set_option(NetOption.SendTimeoutMs, 2000)
+    client.connect(server.local_url()?)?
+
+    -- Messages are associated with their socket. Typed fields use the original
+    -- Nexus wire encoding, and send handles the complete message in one call.
+    request := Message.create(^client)
     defer request.done()
-    reply : Message
-    defer reply.done()
-    -- Typed append helpers use network byte order. Strings carry a u32 byte
-    -- length followed by their bytes, so sender and receiver share an encoding.
     request.append_string("hello nexus")?
     request.append_u32(42)?
-    -- queue copies the unread payload into one pending send slot. The original
-    -- message can immediately be cleared and reused; flush resumes partial writes.
-    client_stream.queue(^request)?
-    request.clear()
-    assert client_stream.flush(deadline = deadline)?
-    -- receive replaces the output only after the complete frame arrives. False
-    -- means the deadline expired with partial state retained; this example requires
-    -- completion and asserts success rather than choosing another deadline.
-    assert server_stream.receive(^request, deadline = deadline)?
-    -- Reads advance a cursor through the decoded payload. Returned strings borrow
-    -- message storage, so use or copy them before clear, append, receive or done.
-    assert request.read_string()? == "hello nexus"
-    number := request.read_u32()?
-    -- Reuse the existing allocation for a response, demonstrating that message
-    -- storage is independent of the socket and can hold successive payloads.
-    request.clear()
-    request.append_string("reply")?
-    request.append_u32(number + 1)?
-    server_stream.queue(^request)?
-    assert server_stream.flush(deadline = deadline)?
-    assert client_stream.receive(^reply, deadline = deadline)?
-    assert reply.read_string()? == "reply"
-    assert reply.read_u32()? == 43
+    request.send()?
+
+    -- recv accepts a client and reads one whole message. The received message
+    -- remembers its sender so reusing it for a reply chooses the correct peer.
+    reply := Message.create(^server)
+    defer reply.done()
+    reply.recv()?
+    assert reply.read_string()? == "hello nexus"
+    number := reply.read_u32()?
+
+    -- clear keeps both the allocation and the reply route. No stream selection
+    -- or queue/flush calls are needed, even when a server has multiple clients.
+    reply.clear()
+    reply.append_string("reply")?
+    reply.append_u32(number + 1)?
+    reply.send()?
+
+    request.recv()?
+    assert request.read_string()? == "reply"
+    assert request.read_u32()? == 43
     prn("Nexus message: hello nexus, reply 43")
 }
 
--- Set up the raw loopback connection first. Nexus streams require stable, live,
--- connected nonblocking sockets; they do not own or close those sockets.
-run_message :: fn () -> void\NetworkError {
-    listener := socket(SocketKind.Tcp)?
-    defer _ := listener.close()
-    listener.bind(loopback(0))?
-    listener.listen()?
-    listener.nonblocking(yes)?
-    address := listener.local_address()?
-    -- Give connect, accept and both message directions the same two-second budget.
-    deadline := now().add(from_secs(2))
-
-    client := socket(SocketKind.Tcp)?
-    defer _ := client.close()
-    client.nonblocking(yes)?
-    _ := client.start_connect(address)?
-    on !client.finish_connect(deadline = deadline)? => return NetworkError.TimedOut {
-        code: 0
-    }!
-    entries := [
-        PollEntry {
-            socket : ^listener
-            read   : yes
-            ...
-        },
-    ]
-    on poll(entries[..], deadline = deadline)? == 0 => return NetworkError.TimedOut {
-        code: 0
-    }!
-    server := listener.accept()?
-    defer _ := server.close()
-    server.nonblocking(yes)?
-
-    -- The exchange uses NexusError while setup uses NetworkError. This small
-    -- example maps exchange failure to a single setup-level failure at the boundary.
-    on exchange(^client, ^server, deadline) {
-        _! => return NetworkError.Invalid!
-
-        else => {
-        }
-    }
-}
-
--- Print a simple diagnostic and choose a process exit status on failure.
 main :: fn () -> i32 {
     return on run_message() {
-        _! => {
+        error! => {
+            _ := error
             eprn("Nexus message failed")
             return 1
         }

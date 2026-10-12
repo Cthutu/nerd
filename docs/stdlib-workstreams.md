@@ -165,3 +165,9 @@ partial-I/O/deadline recovery and terminal framing errors. The
 Linux LLVM/C debug/release checks pass, including deterministic short I/O and
 would-block injection and bidirectional TCP exchange with the unmodified pinned
 C implementation. Windows validation and the remainder of M6/M7 are pending.
+
+12 October 2026: Nexus now exposes the original-style basic/request/reply socket
+and associated Message API, numeric IPv4 TCP/UDP URLs, automatic server replies,
+fair multi-client TCP receive and timing/retry options. Tutorials and runnable
+examples use complete-message send/recv. Native Windows and the full source
+scenario audit remain pending; Telnet and DNS/IPv6 URLs remain later work.

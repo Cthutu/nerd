@@ -1,0 +1,31 @@
+use std.nexus
+on "linux" { ffi "c" { fflush (stream: ^void) -> i32 } }
+on "windows" { ffi "msvcrt" { fflush (stream: ^void) -> i32 } }
+
+serve :: fn () -> void\NexusError {
+    server := net_socket()
+    defer server.close()
+    server.bind("udp://127.0.0.1:0")?
+    server.set_option(NetOption.SendTimeoutMs, 5000)
+    server.set_option(NetOption.RecvTimeoutMs, 5000)
+    address := server.local_address()?
+    prn($"{address.port}")
+    _ := fflush(nil)
+    message := Message.create(^server)
+    defer message.done()
+    message.recv()?
+    assert message.read_u32()? == 42
+    assert message.read_string()? == "nexus"
+    message.clear()
+    message.append_u32(42)?
+    message.append_string("nexus")?
+    message.send()?
+    message.recv()?
+    assert message.payload().count == 0
+    message.send()?
+}
+main :: fn () -> i32 {
+    on serve() { _! => return 1 else => {} }
+    prn("Nexus UDP C interoperability passed")
+    return 0
+}

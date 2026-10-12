@@ -1,9 +1,82 @@
 # Nexus messages and TCP framing
 
-`std.nexus` provides the first M6 layer: reusable message buffers, typed encoding
-and one connected TCP stream. It uses `std.network` directly and starts no
-threads. Run `just run-example nexus-message` for a local structured echo.
-See the [tutorial](tutorials/nexus.md) for ownership and retry patterns.
+`std.nexus` follows the original socket-associated message API. Run
+`just run-example nexus-message`, `nexus-multi-client` or `nexus-request-reply`.
+See the [tutorial](tutorials/nexus.md) for simple client/server programs.
+
+## Socket and message API
+
+| Source Nexus | Nerd |
+| --- | --- |
+| `net_socket()` | `net_socket()` |
+| `net_request_socket()` / `net_reply_socket()` | Same constructors |
+| `net_connect(&socket, url)` | `socket.connect(url)?` |
+| `net_bind(&socket, url)` | `socket.bind(url)?` |
+| `net_message_create(&socket)` | `Message.create(^socket)` |
+| `net_send(&message)` / `net_recv(&message)` | `message.send()?` / `message.recv()?` |
+| `net_message_clear/done` | `message.clear()` / `message.done()` |
+| `net_message_read_*` / `net_message_append_*` | `message.read_*()?` / `message.append_*()?` |
+| `net_message_id/url` | `message.id()` / `message.url()` |
+| `net_set_option/get_option` | `socket.set_option()` / `socket.get_option()` |
+| `net_close(&socket)` | `socket.close()` |
+
+`NetSocket` initially owns no native resources. `connect` and `bind` accept
+numeric IPv4 `tcp://a.b.c.d:port` and `udp://a.b.c.d:port` URLs. Bind includes TCP
+listen; receive accepts connections and selects complete messages fairly across
+ready clients. A partial sender cannot block other clients. `local_url()` and
+`local_address()` expose the actual port after binding port zero.
+
+Sockets own their TCP peers and framing buffers. Keep owners stable, do not copy
+live values, mutate implementation fields or race operations. `close()` is
+idempotent, releases all resources and invalidates associated messages using a
+session generation. Keep the socket owner storage alive through message disposal.
+A reopened owner needs newly created messages. Peer identities are monotonic;
+a stale received message cannot accidentally reply to a replacement TCP client.
+`clear()` preserves association and reply metadata; `done()` removes both.
+Standalone zero-initialised messages still work as payload buffers.
+
+A received message carries the sender ID and address. Its `send()` replies to
+that peer; a connected client's send uses its configured server. Successful
+receive replaces payload and route atomically. Failed receives leave both
+unchanged. `id`, `address` and `url` return nil without a live route. Sender URL
+views borrow the message's fixed storage until its next URL query or disposal.
+The socket's local URL view similarly lasts until its next local URL query or
+close. Normal payload borrowing rules remain separate.
+
+TCP supports at most 63 simultaneous clients per server, leaving one of the 64
+readiness slots for accepting. Further connections remain in the OS backlog
+until a slot opens. Each peer retains at most two 1 MiB framing buffers. UDP
+retains at most 63 distinct sender identities per socket session and one reusable
+receive allocation. Additional UDP senders report `TooManyPeers` after consuming
+their datagram, leaving output unchanged. UDP payloads are capped at 65,507 bytes;
+the limit is checked before sending. Empty datagrams are valid. UDP reply routing
+uses the originating address; it cannot detect a different process reusing that
+address. No unbounded application queue or hidden worker threads are created.
+
+Request sockets start in the send phase; reply sockets start in the receive
+phase. A complete successful operation changes the turn. `WrongState` detects
+incorrect ordering before I/O. Errors and timeouts do not change the turn.
+Basic sockets permit either direction independently.
+
+Options are `Nonblocking`, `ConnectTimeoutMs`, `ReconnectIntervalMs`,
+`SendTimeoutMs` and `RecvTimeoutMs`. Send/receive default to `net_wait_infinite`;
+connect defaults to 1000 ms, with a 25 ms reconnect interval. A zero reconnect
+interval chooses the source's 50 ms fallback. TCP retries refused/reset/timed-out
+or interrupted connects, using fresh native sockets within one absolute budget;
+other failures retain `NetworkError` detail. A nonblocking connect attempts once.
+Nonblocking send/receive report `WouldBlock`; bounded waits report `TimedOut`.
+Each waiting operation computes one absolute deadline, preserving it across
+partial I/O and reconnect attempts. Very large timing values are saturated
+before nanosecond conversion. Retry sleeps are capped at one second.
+
+A TCP send snapshots its unread payload internally. After timeout/would-block,
+retry on the same stable message to continue the snapshot. Sending a different
+message while that peer's frame is pending reports `Invalid`. Do not recreate or
+dispose of a pending send message before completion; close its socket to cancel.
+Fatal framing/I/O errors remove the offending TCP peer. Servers retain other
+clients; disconnected client sockets need `close()` before reconnecting.
+Available I/O is attempted before waiting, so deadlines do not guarantee strict
+wall-clock pre-emption of immediately available operations.
 
 ## Message ownership and encoding
 
@@ -29,7 +102,7 @@ reads. Raw reads and strings borrow message storage. Views survive other reads
 but expire on append, clear, successful receive or done. Copy a view before any
 of those operations if it must outlive them.
 
-## TCP stream ownership and progress
+## Advanced TCP stream ownership and progress
 
 `TcpStream.new(^socket)` requires a live, connected, nonblocking TCP socket.
 Keep that socket at a stable address and open until `stream.done()`, then close
@@ -71,7 +144,11 @@ provides explicit backpressure without hidden workers or unlimited buffering.
 
 | Failure | Behaviour |
 | --- | --- |
-| `Invalid` | Nil/unsuitable socket, disposed or failed stream, nil message, or queue already occupied |
+| `Invalid` | Missing/stale socket association, missing reply route, unsuitable/failed stream, or occupied outgoing slot |
+| `BadUrl` | Unsupported or malformed numeric IPv4 URL; no socket is opened |
+| `WouldBlock` / `TimedOut` | Immediate operation / bounded wait cannot complete; partial progress survives |
+| `WrongState` | Request/reply operation violates its current turn; no I/O occurs |
+| `TooManyPeers` | A UDP sender exceeds the bounded session identity table; output is unchanged |
 | `TooLarge` | Local append exceeds the limit, or peer frame length exceeds it |
 | `IncompletePayload` | A message read lacks its requested bytes; cursor is unchanged |
 | `Closed` | Orderly EOF between frames, or an unsuccessful zero-byte nonempty send |
@@ -84,17 +161,18 @@ remains unchanged on receive failure. Readiness failures preserve parser state.
 This reference treats EOF as terminal for both stream directions.
 
 Wire compatibility is with `cthutu/dev` revision
-`9ae32dd295241bd3889204537dfa476f222e753c`, still the fetched upstream main head
-on 11 October 2026: a big-endian u32 TCP payload length, followed by the payload;
+`9ae32dd295241bd3889204537dfa476f222e753c`, the inspected source revision: a big-endian u32 TCP payload length, followed by the payload;
 unsigned integers and length-prefixed strings use the encoding described above.
 There are no wire-format changes and no nanomsg/ZeroMQ interoperability claim.
 Intentional API differences are independent message ownership, cursor reads,
 atomic failed string reads, borrowed strings lasting through other reads, explicit
-single-slot queuing and resumable partial framing.
+single-slot resumable framing, checked appends and bounded peer tables. The
+simple API retains the original socket/message association and automatic replies;
+Nerd uses methods and propagated result errors in place of C output parameters.
 
 Linux LLVM and C output pass debug/release contracts, golden-wire C exchange,
-and exchange against the unmodified pinned C implementation in both directions,
-including typed values and empty frames. Deterministic short send/receive and
+and TCP/UDP exchanges against the unmodified pinned C implementation in both directions,
+including typed values, empty frames and empty datagrams. Deterministic short send/receive and
 would-block injection checks retry without duplication or loss. Native Windows
 validation of this slice remains pending.
 
@@ -112,13 +190,18 @@ use ephemeral ports, readiness handshakes and process timeouts.
 | `framing.c::tcp_message_framing_round_trip` | `stream_contracts`, C peer and `nexus-message` example |
 | `framing.c::zero_length_messages_are_valid` | Coalesced empty frame and bidirectional empty-frame C exchange |
 | `framing.c::send_rejects_messages_larger_than_maximum` | Bounded append rejection and oversized peer-prefix rejection before allocation |
-| Connected peer sends nothing / timeout / later arrival | Immediate false, absolute deadline expiry and fragmented-header retry in `stream_contracts`; listener/URL option parity remains pending |
+| Connected peer sends nothing / timeout / later arrival | Immediate/expired receive and fragmented-header retry in `stream_contracts`; `socket-api.n::ordering_and_timeouts` covers socket options and recovery |
 
+The simple API also checks multi-client replies, reversed UDP replies, sender
+inspection, stale routes, repeated close/reopen, immediate receives, timeout
+recovery, connect failures/retries, request/reply ordering and slow-peer fairness.
 Additional regressions cover partial payload retry, EOF in prefix/body, snapshot
 ownership, atomic malformed string reads, borrowed self-append through growth,
-maximum-size frame round-trip and deterministic short I/O. The socket constructors,
-server routing and option scenarios require the later pipe/protocol layer.
+maximum-size frame round-trip and deterministic short I/O. `udp_capacity` checks
+the bounded sender identity table. The socket API covers constructors, server
+routing and timing options.
 
-Remaining M6 work: UDP message boundaries, pipes, multiple clients, fair server
-selection and safe reply-route metadata. M7 request/reply, retry options, URL
-parsing and Telnet follow those foundations. This layer does not complete M6.
+Remaining work: native Windows validation and the full upstream scenario parity
+audit, including adversarial reconnect, TCP peer-capacity and delayed-listener retry coverage.
+Telnet and DNS/bracketed IPv6 URLs remain pending. M6/M7 milestone closure still
+requires those agreed checks.
