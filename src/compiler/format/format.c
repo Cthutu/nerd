@@ -932,6 +932,11 @@ internal void format_emit_value_with_indent(StringBuilder* sb,
                                             const Lexer*   lexer,
                                             u32            node_index,
                                             u32            indent_level);
+internal void format_emit_fn_expr_body(StringBuilder* sb,
+                                       const Cst*     cst,
+                                       const Lexer*   lexer,
+                                       u32            node_index,
+                                       u32            indent_level);
 internal void format_emit_expr_with_indent(StringBuilder* sb,
                                            const Cst*     cst,
                                            const Lexer*   lexer,
@@ -1845,7 +1850,8 @@ internal void format_emit_expr(StringBuilder* sb,
     case CK_FnExpr:
         format_emit_fn_signature(sb, cst, lexer, node->a, false);
         sb_append_cstr(sb, " => ");
-        format_emit_expr(sb, cst, lexer, node->b, 0);
+        format_emit_fn_expr_body(
+            sb, cst, lexer, node->b, g_format_expr_indent_level);
         break;
     case CK_FnBlock:
         {
@@ -1854,7 +1860,8 @@ internal void format_emit_expr(StringBuilder* sb,
                     cst, lexer, node_index, &return_expr)) {
                 format_emit_fn_signature(sb, cst, lexer, node->a, false);
                 sb_append_cstr(sb, " => ");
-                format_emit_expr(sb, cst, lexer, return_expr, 0);
+                format_emit_fn_expr_body(
+                    sb, cst, lexer, return_expr, g_format_expr_indent_level);
             } else {
                 format_emit_fn_signature(sb, cst, lexer, node->a, true);
                 sb_append_cstr(sb, " {\n");
@@ -9044,6 +9051,28 @@ internal bool format_emit_sorted_use_run(StringBuilder* sb,
     return true;
 }
 
+// Keep constructor expression bodies within the same width policy as record
+// declarations, counting the declaration/signature prefix already emitted.
+internal void format_emit_fn_expr_body(StringBuilder* sb,
+                                       const Cst*     cst,
+                                       const Lexer*   lexer,
+                                       u32            node_index,
+                                       u32            indent_level)
+{
+    const CstNode* node = &cst->nodes[node_index];
+    if ((node->kind == CK_Plex || node->kind == CK_PlexUpdate) &&
+        format_node_is_single_line(cst, lexer, node_index) &&
+        format_sb_current_column(sb) +
+                format_rendered_expr_width(
+                    cst, lexer, node_index, indent_level) >
+            FORMAT_WRAP_WIDTH) {
+        format_emit_plex_literal_multiline(
+            sb, cst, lexer, node_index, indent_level);
+        return;
+    }
+    format_emit_expr_with_indent(sb, cst, lexer, node_index, 0, indent_level);
+}
+
 //------------------------------------------------------------------------------
 // Format one top-level value node.
 
@@ -9092,8 +9121,8 @@ internal void format_emit_value(StringBuilder* sb,
                 sb, cst, lexer, node->b, g_format_value_indent_level + 1);
         } else {
             sb_append_cstr(sb, " => ");
-            format_emit_expr_with_indent(
-                sb, cst, lexer, node->b, 0, g_format_value_indent_level);
+            format_emit_fn_expr_body(
+                sb, cst, lexer, node->b, g_format_value_indent_level);
         }
         break;
     case CK_FnBlock:
@@ -9103,12 +9132,8 @@ internal void format_emit_value(StringBuilder* sb,
                     cst, lexer, node_index, &return_expr)) {
                 format_emit_fn_signature(sb, cst, lexer, node->a, false);
                 sb_append_cstr(sb, " => ");
-                format_emit_expr_with_indent(sb,
-                                             cst,
-                                             lexer,
-                                             return_expr,
-                                             0,
-                                             g_format_value_indent_level);
+                format_emit_fn_expr_body(
+                    sb, cst, lexer, return_expr, g_format_value_indent_level);
             } else {
                 format_emit_fn_signature(sb, cst, lexer, node->a, true);
                 sb_append_cstr(sb, " {\n");

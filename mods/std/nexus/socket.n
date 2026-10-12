@@ -64,7 +64,15 @@ pub NetSocket :: plex {
 }
 
 -- Creating a disconnected handle opens no OS socket and allocates no buffers.
-pub net_socket :: fn () => NetSocket { next_id: 1 generation: 1 send_ms: net_wait_infinite receive_ms: net_wait_infinite connect_ms: 1000 reconnect_ms: 25 ... }
+pub net_socket :: fn () => NetSocket {
+    next_id      : 1
+    generation   : 1
+    send_ms      : net_wait_infinite
+    receive_ms   : net_wait_infinite
+    connect_ms   : 1000
+    reconnect_ms : 25
+    ...
+}
 
 pub net_request_socket :: fn () -> NetSocket {
     result := net_socket()

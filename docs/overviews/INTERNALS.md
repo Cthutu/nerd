@@ -246,6 +246,10 @@ returned error payload into a success expression followed by a different
 statement. The payload-postfix formatter regression checks the recovery path
 and idempotence; the bounded networking example checks formatted execution.
 
+Expression-bodied functions wrap long returned record literals into aligned
+multiline fields. The width includes the declaration name and function signature,
+including shorthand conversions from a single-return block and nested functions.
+
 The formatter keeps short boolean `on` expressions on one line. When the full
 expression exceeds the wrap width, it places the `=>` and `else` branches on
 separate lines, indented once from the line containing `on`, and aligns their
