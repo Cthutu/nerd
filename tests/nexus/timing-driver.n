@@ -3,8 +3,10 @@
 -- process. Numeric IPv4 URLs keep this test independent of DNS and fixed ports.
 use std.nexus
 
-on "linux" { ffi "c" { fflush (stream: ^void) -> i32 getchar () -> i32 } }
-on "windows" { ffi "msvcrt" { fflush (stream: ^void) -> i32 getchar () -> i32 } }
+ffi "c" {
+    fflush (stream: ^void) -> i32
+    getchar () -> i32
+}
 
 retry_connect :: fn (url: string) -> void\NexusError {
     client := net_socket()

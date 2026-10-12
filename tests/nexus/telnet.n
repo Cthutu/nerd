@@ -4,20 +4,8 @@ use std.network
 use std.nexus
 use std.time
 
-on "linux" {
-
-    ffi "c" {
-        fflush (stream: ^void) -> i32
-    }
-
-}
-
-on "windows" {
-
-    ffi "msvcrt" {
-        fflush (stream: ^void) -> i32
-    }
-
+ffi "c" {
+    fflush (stream: ^void) -> i32
 }
 
 configure :: fn (socket: ^NetSocket) -> void\NexusError {

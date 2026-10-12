@@ -9,20 +9,8 @@ use std.time
 
 -- Flush readiness/log lines even when stdout is captured by the smoke runner.
 -- Shutdown itself uses std.signal, not an application OS signal handler.
-on "linux" {
-
-    ffi "c" {
-        fflush (stream: ^void) -> i32
-    }
-
-}
-
-on "windows" {
-
-    ffi "msvcrt" {
-        fflush (stream: ^void) -> i32
-    }
-
+ffi "c" {
+    fflush (stream: ^void) -> i32
 }
 
 listen :: fn (server: ^NetSocket, url: string) -> void\NexusError {

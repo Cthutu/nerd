@@ -20,6 +20,11 @@ main :: fn () -> i32 {
 ```
 
 Here `abs` is both the Nerd name and the foreign symbol name.
+
+`"c"` names the platform C runtime, including on Windows, where the compiler's
+linker configuration supplies the CRT libraries. Portable C runtime declarations
+do not need separate `"msvcrt"` FFI blocks.
+
 FFI parameters must be named with `name: Type`. The names appear in editor hover
 and signature help but do not affect linking or the C ABI.
 
