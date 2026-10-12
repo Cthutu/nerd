@@ -110,6 +110,7 @@ declare ptr @nrt_mem_realloc(ptr, i64, i64, ptr, i32)
 declare void @nrt_mem_free(ptr)
 
 define internal ptr @fn.0(ptr %system, i64 %handle) {
+  %t14 = alloca i64
   %local.2 = alloca ptr
   %t0 = load { ptr }, ptr %system
   %t1 = extractvalue { ptr } %t0, 0
@@ -136,7 +137,6 @@ for.in.ready.2:
   %t3 = load i64, ptr %t5
   %t13 = alloca ptr, align 4
   store ptr null, ptr %t13, align 4
-  %t14 = alloca i64
   store i64 0, ptr %t14
   br label %for.in.cond.3
 for.in.cond.3:

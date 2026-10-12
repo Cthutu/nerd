@@ -18,6 +18,7 @@ define internal i32 @fn.0() !dbg !6 {
   call void @llvm.dbg.declare(metadata ptr %local.0, metadata !13, metadata !5), !dbg !14
   %local.1 = alloca i32
   call void @llvm.dbg.declare(metadata ptr %local.1, metadata !16, metadata !5), !dbg !14
+  %t4 = alloca i64
   %local.2 = alloca ptr
   call void @llvm.dbg.declare(metadata ptr %local.2, metadata !19, metadata !5), !dbg !17
   %t0 = insertvalue [2 x i32] poison, i32 1, 0, !dbg !8
@@ -26,7 +27,6 @@ define internal i32 @fn.0() !dbg !6 {
   store i32 0, ptr %local.1, !dbg !15
   %t2 = getelementptr inbounds [2 x i32], ptr %local.0, i64 0, i64 0, !dbg !17
   %t3 = add i64 0, 2, !dbg !17
-  %t4 = alloca i64, !dbg !17
   store i64 0, ptr %t4, !dbg !17
   br label %for.in.cond.0, !dbg !17
 for.in.cond.0:

@@ -105,11 +105,14 @@ declare void @$prn_empty()
 
 define internal i32 @fn.0() {
   %local.0 = alloca [3 x i32]
+  %t8 = alloca i64
   %local.1 = alloca ptr
   %local.2 = alloca i32
+  %t19 = alloca i64
   %local.3 = alloca ptr
   %local.5 = alloca i32
   %local.6 = alloca i32
+  %t31 = alloca i64
   %local.7 = alloca ptr
   %t49 = alloca { ptr, i64 }
   %t53 = alloca { ptr, i64 }
@@ -123,7 +126,6 @@ define internal i32 @fn.0() {
   %t5 = insertvalue { ptr, i64 } %t4, i64 3, 1
   %t6 = extractvalue { ptr, i64 } %t5, 0
   %t7 = extractvalue { ptr, i64 } %t5, 1
-  %t8 = alloca i64
   store i64 0, ptr %t8
   br label %for.in.cond.0
 for.in.cond.0:
@@ -146,7 +148,6 @@ for.in.end.3:
   %t16 = insertvalue { ptr, i64 } %t15, i64 3, 1
   %t17 = extractvalue { ptr, i64 } %t16, 0
   %t18 = extractvalue { ptr, i64 } %t16, 1
-  %t19 = alloca i64
   store i64 0, ptr %t19
   br label %for.in.cond.4
 for.in.cond.4:
@@ -172,7 +173,6 @@ for.in.end.7:
   store i32 0, ptr %local.6
   %t29 = extractvalue { ptr, i64 } { ptr @.str.m0.0, i64 2 }, 0
   %t30 = extractvalue { ptr, i64 } { ptr @.str.m0.0, i64 2 }, 1
-  %t31 = alloca i64
   store i64 0, ptr %t31
   br label %for.in.cond.8
 for.in.cond.8:

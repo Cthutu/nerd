@@ -666,6 +666,16 @@ applied-type targets, matching hover's source-label handling. This preserves
 The network readiness signature fixture checks imported function and method
 result payloads alongside optional defaulted deadline parameters.
 
+### Fixed loop temporary storage
+
+LLVM range cursors, hidden iteration indices, short-circuit booleans and range
+membership results use the entry allocation builder. Their stores remain at the
+point of evaluation, so nested loops reuse a fixed slot on each iteration without
+changing evaluation order. Emitting these fixed allocations in the loop body
+previously grew the stack until function exit, causing overflow in a busy Nexus
+readiness retry. The repeated-loop command fixture checks a million evaluations
+without optimisation; native Nexus tests force ready-but-would-block I/O.
+
 ### Recursive record imports
 
 Semantic record import retains a source-to-destination mapping. Re-entering an

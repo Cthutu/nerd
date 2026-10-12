@@ -73,8 +73,12 @@ func fn.0() -> i32 {
 declare ptr @$input({ ptr, i64 })
 
 define internal i32 @fn.0() {
-  %t0 = icmp eq i32 97, 97
   %t1 = alloca i1
+  %t4 = alloca i1
+  %t7 = alloca i1
+  %t18 = alloca i1
+  %t20 = alloca i1
+  %t0 = icmp eq i32 97, 97
   br i1 %t0, label %logical.rhs.0, label %logical.short.1
 logical.short.1:
   store i1 0, ptr %t1
@@ -85,7 +89,6 @@ logical.rhs.0:
   br label %logical.end.2
 logical.end.2:
   %t2 = load i1, ptr %t1
-  %t4 = alloca i1
   br i1 %t2, label %logical.rhs.3, label %logical.short.4
 logical.short.4:
   store i1 0, ptr %t4
@@ -96,7 +99,6 @@ logical.rhs.3:
   br label %logical.end.5
 logical.end.5:
   %t5 = load i1, ptr %t4
-  %t7 = alloca i1
   br i1 %t5, label %logical.rhs.6, label %logical.short.7
 logical.short.7:
   store i1 0, ptr %t7
@@ -139,7 +141,6 @@ on.value.22:
   br label %on.end.16
 on.end.16:
   %t17 = phi i1 [1, %on.value.19], [0, %on.value.22]
-  %t18 = alloca i1
   br i1 %t8, label %logical.rhs.23, label %logical.short.24
 logical.short.24:
   store i1 0, ptr %t18
@@ -149,7 +150,6 @@ logical.rhs.23:
   br label %logical.end.25
 logical.end.25:
   %t19 = load i1, ptr %t18
-  %t20 = alloca i1
   br i1 %t19, label %logical.rhs.26, label %logical.short.27
 logical.short.27:
   store i1 0, ptr %t20

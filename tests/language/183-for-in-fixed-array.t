@@ -44,6 +44,7 @@ declare void @$prn_empty()
 
 define internal void @fn.0() {
   %local.0 = alloca [3 x { ptr, i64 }]
+  %t5 = alloca i64
   %local.1 = alloca ptr
   %t0 = insertvalue [3 x { ptr, i64 }] poison, { ptr, i64 } { ptr @.str.m0.0, i64 5 }, 0
   %t1 = insertvalue [3 x { ptr, i64 }] %t0, { ptr, i64 } { ptr @.str.m0.1, i64 3 }, 1
@@ -51,7 +52,6 @@ define internal void @fn.0() {
   store [3 x { ptr, i64 }] %t2, ptr %local.0
   %t3 = getelementptr inbounds [3 x { ptr, i64 }], ptr %local.0, i64 0, i64 0
   %t4 = add i64 0, 3
-  %t5 = alloca i64
   store i64 0, ptr %t5
   br label %for.in.cond.0
 for.in.cond.0:

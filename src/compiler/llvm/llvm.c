@@ -10681,11 +10681,10 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 string short_label = llvm_label(ctx, "in.short");
                 string end_label   = llvm_label(ctx, "in.end");
                 string result      = llvm_temp(ctx);
+                llvm_emit_alloca(ctx, result_ptr, s("i1"));
                 sb_format(ctx->sb,
-                          "  " STRINGP " = alloca i1\n"
                           "  br i1 " STRINGP ", label %%" STRINGP
                           ", label %%" STRINGP "\n",
-                          STRINGV(result_ptr),
                           STRINGV(lower_ok),
                           STRINGV(upper_label),
                           STRINGV(short_label));
@@ -11099,9 +11098,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 string short_label = llvm_label(ctx, "logical.short");
                 string end_label   = llvm_label(ctx, "logical.end");
                 string result      = llvm_temp(ctx);
-                sb_format(ctx->sb,
-                          "  " STRINGP " = alloca i1\n",
-                          STRINGV(result_ptr));
+                llvm_emit_alloca(ctx, result_ptr, s("i1"));
                 if (expr->binary_op == HIR_BINARY_LogicalAnd) {
                     sb_format(ctx->sb,
                               "  br i1 " STRINGP ", label %%" STRINGP
@@ -13127,10 +13124,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     string range_type_string =
                         llvm_type_string(ctx, range_type);
                     string current_ptr = llvm_temp(ctx);
-                    sb_format(ctx->sb,
-                              "  " STRINGP " = alloca " STRINGP "\n",
-                              STRINGV(current_ptr),
-                              STRINGV(range_type_string));
+                    llvm_emit_alloca(ctx, current_ptr, range_type_string);
                     sb_format(ctx->sb,
                               "  store " STRINGP " " STRINGP ", ptr " STRINGP
                               "\n",
@@ -13154,9 +13148,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                             .type_index  = index_type,
                             .ptr         = llvm_temp(ctx),
                         };
-                        sb_format(ctx->sb,
-                                  "  " STRINGP " = alloca i64\n",
-                                  STRINGV(hidden_index_slot.ptr));
+                        llvm_emit_alloca(ctx, hidden_index_slot.ptr, s("i64"));
                         index_slot = &hidden_index_slot;
                     }
                     sb_format(ctx->sb,
@@ -13441,9 +13433,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                             .type_index  = index_type,
                             .ptr         = llvm_temp(ctx),
                         };
-                        sb_format(ctx->sb,
-                                  "  " STRINGP " = alloca i64\n",
-                                  STRINGV(hidden_index_slot.ptr));
+                        llvm_emit_alloca(ctx, hidden_index_slot.ptr, s("i64"));
                         index_slot = &hidden_index_slot;
                     }
                     sb_format(ctx->sb,
@@ -13835,9 +13825,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                         .type_index  = index_type,
                         .ptr         = llvm_temp(ctx),
                     };
-                    sb_format(ctx->sb,
-                              "  " STRINGP " = alloca i64\n",
-                              STRINGV(hidden_index_slot.ptr));
+                    llvm_emit_alloca(ctx, hidden_index_slot.ptr, s("i64"));
                     index_slot = &hidden_index_slot;
                 }
                 if (hidden_index) {

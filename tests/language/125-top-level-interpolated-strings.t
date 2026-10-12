@@ -100,6 +100,7 @@ define internal i32 @fn.1() {
   %t10 = alloca { ptr, i64 }
   %t15 = alloca { ptr, i64 }
   %t16 = alloca { ptr, i64 }
+  %t18 = alloca i1
   %t22 = alloca { ptr, i64 }
   %t23 = alloca { ptr, i64 }
   %t0 = call i64 @nrt_string_builder_mark()
@@ -133,7 +134,6 @@ define internal i32 @fn.1() {
   store { ptr, i64 } { ptr @.str.m0.6, i64 30 }, ptr %t16
   %t14 = call i1 @nrt_string_eq(ptr %t15, ptr %t16)
   %t17 = xor i1 %t14, 1
-  %t18 = alloca i1
   br i1 %t17, label %logical.short.1, label %logical.rhs.0
 logical.short.1:
   store i1 1, ptr %t18

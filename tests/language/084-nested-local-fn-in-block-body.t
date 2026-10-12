@@ -95,10 +95,10 @@ declare void @$prn_text({ ptr, i64 })
 declare void @$prn_empty()
 
 define internal i8 @fn.0({ ptr, i64 } %text, i8 %char) {
+  %t2 = alloca i64
   %local.4 = alloca ptr
   %t0 = extractvalue { ptr, i64 } %text, 0
   %t1 = extractvalue { ptr, i64 } %text, 1
-  %t2 = alloca i64
   store i64 0, ptr %t2
   br label %for.in.cond.0
 for.in.cond.0:
