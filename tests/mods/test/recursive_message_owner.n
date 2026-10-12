@@ -1,0 +1,15 @@
+-- A socket contains a reusable message, and messages borrow their socket.
+-- Import must retain both type identities through the pointer cycle.
+pub Owner :: plex { message Payload }
+pub Payload :: plex { owner ^Owner value i32 }
+impl Owner {
+    pub create :: fn () -> Self { return Self { ... } }
+    pub set :: fn (self: ^Self, value: i32) {
+        self.message.owner = self
+        self.message.value = value
+    }
+    pub get :: fn (self: Self) -> i32 { return self.message.value }
+}
+impl Payload {
+    pub read :: fn (self: Self) -> i32 { return self.owner.get() }
+}

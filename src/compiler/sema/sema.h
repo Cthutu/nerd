@@ -240,12 +240,22 @@ typedef struct {
     u32 decl_index;
 } SemaEqualityMethod;
 
+// Source-to-destination record mappings also break pointer cycles during
+// import.
+typedef struct {
+    const void* source;
+    u32         source_type;
+    u32         destination_type;
+    bool        complete;
+} SemaImportedRecord;
+
 // Compact semantic side tables keyed by declaration and AST node index.
 
 typedef struct {
     const ProgramInfo* program;
     u32                current_module_index;
     Array(SemaType) types;
+    Array(SemaImportedRecord) imported_records;
     Array(u32) type_param_types;
     Array(u32) type_param_symbols;
     Array(i64) type_param_values;

@@ -1405,7 +1405,13 @@ internal CValue cgen_control(CGen* c, const HirExpr* e)
 
 // C layout equivalence is weaker than semantic identity (e.g. []i32 and
 // []string). Keep generic selection on the original semantic types.
-internal bool cgen_same_type(CGen* c, u32 am, u32 a, u32 bm, u32 b, u32 depth)
+typedef struct CGenTypePair {
+    u32                        am, a, bm, b;
+    const struct CGenTypePair* previous;
+} CGenTypePair;
+
+internal bool
+cgen_same_type(CGen* c, u32 am, u32 a, u32 bm, u32 b, const CGenTypePair* trail)
 {
     if (am == bm && a == b) {
         return true;
@@ -1420,9 +1426,15 @@ internal bool cgen_same_type(CGen* c, u32 am, u32 a, u32 bm, u32 b, u32 depth)
         at->param_count != bt->param_count) {
         return false;
     }
-    if (depth > 64) {
-        return true;
+    // A repeated pair closes a recursive type comparison. Rewalking the
+    // cycle to a depth cap expands branching records exponentially.
+    for (const CGenTypePair* pair = trail; pair != NULL;
+         pair                     = pair->previous) {
+        if (pair->am == am && pair->a == a && pair->bm == bm && pair->b == b) {
+            return true;
+        }
     }
+    CGenTypePair pair = {am, a, bm, b, trail};
     switch (at->kind) {
     case STK_Array:
         if (at->return_type != bt->return_type) {
@@ -1435,10 +1447,10 @@ internal bool cgen_same_type(CGen* c, u32 am, u32 a, u32 bm, u32 b, u32 depth)
     case STK_DynamicArray:
     case STK_Atomic:
         return cgen_same_type(
-            c, am, at->first_param_type, bm, bt->first_param_type, depth + 1);
+            c, am, at->first_param_type, bm, bt->first_param_type, &pair);
     case STK_Function:
         if (!cgen_same_type(
-                c, am, at->return_type, bm, bt->return_type, depth + 1)) {
+                c, am, at->return_type, bm, bt->return_type, &pair)) {
             return false;
         }
         [[fallthrough]];
@@ -1453,7 +1465,7 @@ internal bool cgen_same_type(CGen* c, u32 am, u32 a, u32 bm, u32 b, u32 depth)
                                 af->sema.type_param_types[ap],
                                 bm,
                                 bf->sema.type_param_types[bp],
-                                depth + 1)) {
+                                &pair)) {
                 return false;
             }
             if (at->kind == STK_Plex || at->kind == STK_Union ||
@@ -1484,7 +1496,7 @@ internal bool cgen_matches(CGen* c, u32 type, u32 expected)
         u32 count = array_count(c->program->modules[m].front_end.sema.types);
         if (expected >= c->offsets[m] && expected - c->offsets[m] < count) {
             return cgen_same_type(
-                c, c->module, type, m, expected - c->offsets[m], 0);
+                c, c->module, type, m, expected - c->offsets[m], NULL);
         }
     }
     return false;

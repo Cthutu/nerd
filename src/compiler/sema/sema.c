@@ -926,6 +926,18 @@ u32 sema_import_type(Lexer*       dst_lexer,
         return sema_no_type();
     }
 
+    if (dst_sema == src_sema) {
+        return src_type_index;
+    }
+    // Associated methods import their receiver back to its source module.
+    // Recover the original record identity instead of rebuilding its cycle.
+    for (u32 i = 0; i < array_count(src_sema->imported_records); ++i) {
+        const SemaImportedRecord* record = &src_sema->imported_records[i];
+        if (record->complete && record->source == dst_sema &&
+            record->destination_type == src_type_index) {
+            return record->source_type;
+        }
+    }
     const SemaType* src_type = &src_sema->types[src_type_index];
     switch (src_type->kind) {
     case STK_Void:
@@ -1086,6 +1098,33 @@ u32 sema_import_type(Lexer*       dst_lexer,
     case STK_Plex:
     case STK_Union:
         {
+            // Reserve only when a record is encountered again before its
+            // fields finish importing. A pointer cycle then refers to this
+            // stable index rather than recursively importing the same record.
+            for (u32 i = 0; i < array_count(dst_sema->imported_records); ++i) {
+                SemaImportedRecord* record = &dst_sema->imported_records[i];
+                if (record->source != src_sema ||
+                    record->source_type != src_type_index) {
+                    continue;
+                }
+                if (!record->complete &&
+                    record->destination_type == sema_no_type()) {
+                    record->destination_type =
+                        sema_reserve_type(dst_sema,
+                                          (SemaType){
+                                              .kind  = STK_Never,
+                                              .flags = U16_MAX,
+                                          });
+                }
+                return record->destination_type;
+            }
+            u32 record_index = (u32)array_count(dst_sema->imported_records);
+            array_push(dst_sema->imported_records,
+                       ((SemaImportedRecord){
+                           .source           = src_sema,
+                           .source_type      = src_type_index,
+                           .destination_type = sema_no_type(),
+                       }));
             Array(u32) field_symbols     = NULL;
             Array(u32) field_types       = NULL;
             Array(u8) bit_widths         = NULL;
@@ -1147,6 +1186,15 @@ u32 sema_import_type(Lexer*       dst_lexer,
                                               field_symbols,
                                               field_types,
                                               (u32)array_count(field_symbols));
+            SemaImportedRecord* record =
+                &dst_sema->imported_records[record_index];
+            if (record->destination_type != sema_no_type()) {
+                dst_sema->types[record->destination_type] =
+                    dst_sema->types[imported];
+                imported = record->destination_type;
+            }
+            record->destination_type = imported;
+            record->complete         = true;
             if (src_type->kind == STK_Plex && src_type->plex_use_count > 0 &&
                 dst_sema->types[imported].plex_use_count == 0) {
                 dst_sema->types[imported].first_plex_use =
@@ -29187,6 +29235,7 @@ void sema_done(Sema* sema)
         array_free(inst->node_method_call_explicit_traits);
     }
     array_free(sema->types);
+    array_free(sema->imported_records);
     array_free(sema->type_param_types);
     array_free(sema->type_param_symbols);
     array_free(sema->type_param_values);

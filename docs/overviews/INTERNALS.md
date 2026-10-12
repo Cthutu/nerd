@@ -662,6 +662,18 @@ applied-type targets, matching hover's source-label handling. This preserves
 The network readiness signature fixture checks imported function and method
 result payloads alongside optional defaulted deadline parameters.
 
+### Recursive record imports
+
+Semantic record import retains a source-to-destination mapping. Re-entering an
+unfinished record through a pointer lazily reserves a stable type index, then
+fills it once its fields have been imported. Associated-method receiver imports
+back into the original module recover the original record identity. This avoids
+stack overflow and missing methods for socket/message ownership cycles. The
+mapping is released with its owning Sema. C backend type comparison similarly
+tracks pairs along the active traversal and closes repeated pairs, avoiding
+exponential rewalking of branching cycles. The imported recursive-record fixture
+and Nexus socket contracts exercise both backends.
+
 ### Result propagation and imported display methods
 
 LLVM storage extraction treats a `void` result payload as a successful,

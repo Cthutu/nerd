@@ -260,6 +260,10 @@ main :: fn () {}
                 "kind": 9
             },
             {
+                "label": "recursive_message_owner",
+                "kind": 9
+            },
+            {
                 "label": "reexport",
                 "kind": 9
             },
