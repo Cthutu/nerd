@@ -12790,7 +12790,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                         ctx, branch->source_line, branch->source_path);
                     llvm_bind_local_value(
                         ctx, branch->binder_local_index, scrutinee);
-                    if (emit_effect_branch) {
+                    if (emit_effect_branch || branch->error_handler) {
                         if (!llvm_emit_block(
                                 ctx, function, branch->body_block_index)) {
                             array_free(phi_values);
@@ -12798,9 +12798,13 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                             return (LlvmValue){0};
                         }
                         if (!ctx->block_terminated) {
-                            sb_format(ctx->sb,
-                                      "  br label %%" STRINGP "\n",
-                                      STRINGV(end_label));
+                            if (branch->error_handler) {
+                                sb_append_cstr(ctx->sb, "  unreachable\n");
+                            } else {
+                                sb_format(ctx->sb,
+                                          "  br label %%" STRINGP "\n",
+                                          STRINGV(end_label));
+                            }
                         }
                     } else {
                         LlvmValue value = llvm_emit_block_value(

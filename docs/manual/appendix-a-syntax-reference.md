@@ -9,10 +9,14 @@ error-inject  ::= expression '!'
 propagate     ::= expression '?'
 extract-on    ::= 'on' expression '=>' [ '[' IDENT ']' ] branch-expression
                   'else' [ '[' IDENT ']' ] branch-expression
+              | 'on' expression 'else' [ '[' IDENT ']' ] branch-expression
+              | 'on' expression 'else' '?' [ '[' IDENT ']' ] block
 ```
 
 For a bare-identifier scrutinee, an omitted extraction binder implicitly reuses
-that identifier inside payload-bearing branches.
+that identifier inside payload-bearing branches. Omitting the success arm yields
+the successful payload; plain `else` must exit, while `else?` propagates the
+original failure after its braced handler. Optional absence has no error binder.
 
 [Manual Index](README.md) | Previous: [Diagnostics And Debugging](part13-diagnostics-and-debugging.md) | Next: [Language Reference](appendix-b-language-reference.md)
 

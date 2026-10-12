@@ -233,6 +233,43 @@ the original result. Use `[value]` or `[error]` when a different name is clearer
 For an optional value, the success branch receives the present payload; the
 absence branch has no payload and retains the original optional value.
 
+When you only need the successful payload, omit the success arm:
+
+```nerd
+bound := on server.local_url() else [error] {
+    report(error)
+    return 1
+}
+```
+
+The operation runs once, and the expression produces its successful value.
+The ordinary `else` handler must exit the surrounding control flow with
+`return`, `break`, `again`, or a non-returning call. It cannot fall through or
+supply a replacement value; use the full extraction form for a fallback value.
+Handler braces are ordinary statement blocks, so `break` targets the surrounding
+loop or expression block.
+
+Use `else?` to handle a failure and then propagate it:
+
+```nerd
+bound := on server.local_url() else? [error] {
+    report(error)
+}
+```
+
+After the handler finishes, Nerd forwards the original error to the caller,
+using the same return-channel rules as postfix `?`. The enclosing function
+must have a compatible result return type. Explicit `return`, `break`, or
+`again` in the handler takes precedence over automatic propagation. An explicit
+return can recover or translate the error. `defer` and `undo` cleanup follows
+the failure return, including cleanup declared inside the handler.
+
+Both forms accept optional values too. An absence handler has no error payload,
+so omit `[error]`; `else? { ... }` then returns `nil` through a compatible
+optional return type. Error binders are optional for results; a bare-identifier
+subject retains the branch-local naming rule described above. `else?` requires
+an ordinary braced handler, including `{}` when no handling is needed.
+
 Full matching uses the first table for present/success payload patterns.
 Optional `else` handles absence; result `else` contains error payload patterns:
 

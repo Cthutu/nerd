@@ -67,6 +67,22 @@ that extract a payload. Boolean branches and optional absent branches resolve
 references back to the original subject, preserving assignments and mutability
 checks. Otherwise, updates such as `on ready => ... else { ready = yes }`
 would write a branch-local copy and leave the surrounding state unchanged.
+Extraction shorthand normalises `on subject else ...` to an ordinary extraction
+with a private success binder. Sema excludes the failure handler from payload
+unification and checks that plain handlers leave surrounding control flow.
+For `else?`, a private binder snapshots the whole result or optional, and the
+parser appends a marked ordinary propagation node inside the handler scope.
+This reuses propagation channel checking and cleanup without reevaluating the
+subject or forwarding a modified subject variable. Unreachable synthetic
+propagation is omitted from HIR after an explicit exit. Synthetic locals are
+excluded from LSP completion.
+HIR marks shorthand failure branches as statement handlers. LLVM emits them as
+ordinary blocks and the C backend temporarily removes the extraction value
+target, so handler `break`/`again` resolve to surrounding control flow. A `void`
+success payload requires no binding or value-producing block. The CST retains
+the omitted success arm and `else?` spelling for formatting, including wrapped
+call subjects.
+
 The C backend converts untyped `nil` to an absent optional before considering
 payload promotion, including when evaluating omitted default arguments.
 

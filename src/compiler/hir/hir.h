@@ -301,6 +301,7 @@ typedef struct {
 
 typedef struct {
     bool   is_else;
+    bool   error_handler;
     u32    source_line;
     string source_path;
     u32    first_pattern;

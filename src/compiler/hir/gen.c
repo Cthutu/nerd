@@ -2826,7 +2826,13 @@ internal u32 hir_lower_expr_impl(Hir*         hir,
                         u32 first_child =
                             (u32)array_count(hir->pattern_children);
                         u32 child_count = 0;
-                        if (branch->binder_symbol_handle != U32_MAX) {
+                        if (branch->binder_symbol_handle != U32_MAX &&
+                            !(on->shorthand && i == 0 &&
+                              sema->types[sema->locals
+                                              [sema->on_branch_local_indices
+                                                   [on->first_branch]]
+                                                  .type_index]
+                                      .kind == STK_Void)) {
                             u32 local_index =
                                 sema->on_branch_local_indices[on->first_branch +
                                                               i];
@@ -2914,8 +2920,28 @@ internal u32 hir_lower_expr_impl(Hir*         hir,
                     }
                 }
 
+                u32 body;
+                if (on->shorthand && i == 0 &&
+                    sema->types[sema->locals[sema->on_branch_local_indices
+                                                 [on->first_branch]]
+                                    .type_index]
+                            .kind == STK_Void) {
+                    body = (u32)array_count(hir->blocks);
+                    array_push(hir->blocks,
+                               ((HirBlock){.scope_index = U32_MAX}));
+                } else {
+                    body = hir_lower_on_branch_block(
+                        hir,
+                        lexer,
+                        ast,
+                        sema,
+                        branch->expr_node_index,
+                        hir_node_type(sema, node_index));
+                }
                 HirOnBranch hir_branch = {
                     .is_else = lowered_is_else,
+                    .error_handler =
+                        on->shorthand && (branch->flags & AOBF_Else),
                     .source_line =
                         hir_token_source_line(sema, lexer, branch->token_index),
                     .source_path   = lexer->source.source_path,
@@ -2929,20 +2955,16 @@ internal u32 hir_lower_expr_impl(Hir*         hir,
                                              sema,
                                              branch->guard_node_index)
                             : hir_no_index(),
-                    .body_block_index = hir_lower_on_branch_block(
-                        hir,
-                        lexer,
-                        ast,
-                        sema,
-                        branch->expr_node_index,
-                        hir_node_type(sema, node_index)),
+                    .body_block_index = body,
                     .binder_symbol_handle =
                         (branch->flags & AOBF_ImplicitBinder) ||
                                 (extract_form && !bind_optional_else)
                             ? U32_MAX
                             : branch->binder_symbol_handle,
                     .binder_local_index =
-                        extract_form && !bind_optional_else
+                        on->propagate_failure && (branch->flags & AOBF_Else)
+                            ? sema->node_local_indices[node_index]
+                        : extract_form && !bind_optional_else
                             ? sema_no_local()
                             : sema->on_branch_local_indices[on->first_branch +
                                                             i],
@@ -3338,6 +3360,9 @@ internal u32 hir_lower_on_branch_block(Hir*         hir,
     u32 root_index = hir_unwrap_node(ast, expr_node_index);
     if (root_index < array_count(ast->nodes)) {
         const AstNode* root = &ast->nodes[root_index];
+        if (root->kind == AK_Block) {
+            return hir_lower_block_node(hir, lexer, ast, sema, root_index);
+        }
         if (root->kind == AK_ExprBlock && root->b == U32_MAX &&
             root->token_index < array_count(lexer->tokens) &&
             lexer->tokens[root->token_index].kind == TK_LBrace) {
@@ -3396,6 +3421,10 @@ internal u32 hir_lower_stmt(Hir*         hir,
         return hir_no_index();
     }
 
+    if (ast_has_flag(&ast->nodes[node_index], ANF_ImplicitPropagation) &&
+        hir_node_type(sema, node_index) == sema_no_type()) {
+        return hir_no_index();
+    }
     const AstNode* node             = &ast->nodes[node_index];
     string         stmt_source_path = {0};
     u32            stmt_source_line = 0;

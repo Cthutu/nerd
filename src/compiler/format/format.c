@@ -111,6 +111,7 @@ format_emit_bool_on_multiline_if_long_with_prefix(StringBuilder* sb,
                                                   u32            node_index,
                                                   usize          prefix_width,
                                                   u32            indent_level);
+internal usize  format_sb_current_column(const StringBuilder* sb);
 internal void   format_emit_call_multiline_aligned(StringBuilder* sb,
                                                    const Cst*     cst,
                                                    const Lexer*   lexer,
@@ -1637,7 +1638,46 @@ internal void format_emit_expr(StringBuilder* sb,
             sb_append_cstr(sb, "on");
             if (on->kind != COK_Condition) {
                 sb_append_char(sb, ' ');
-                format_emit_expr(sb, cst, lexer, node->a, node_precedence);
+                if (on->shorthand && cst->nodes[node->a].kind == CK_Call) {
+                    Arena temporary = {0};
+                    arena_init(&temporary);
+                    string flat = format_render_expr_to_string(
+                        &temporary, cst, lexer, node->a);
+                    const CstOnBranch* handler =
+                        &cst->on_branches[on->first_branch + 1];
+                    usize suffix =
+                        9 +
+                        (handler->binder_symbol_handle != U32_MAX
+                             ? lex_symbol(lexer, handler->binder_symbol_handle)
+                                       .count +
+                                   3
+                             : 0);
+                    usize column = format_sb_current_column(sb);
+                    if (column + flat.count + suffix > FORMAT_WRAP_WIDTH) {
+                        format_emit_call_multiline_aligned(
+                            sb, cst, lexer, node->a, column);
+                    } else {
+                        format_emit_expr(
+                            sb, cst, lexer, node->a, node_precedence);
+                    }
+                    arena_done(&temporary);
+                } else {
+                    format_emit_expr(sb, cst, lexer, node->a, node_precedence);
+                }
+            }
+            if (on->shorthand) {
+                const CstOnBranch* branch =
+                    &cst->on_branches[on->first_branch + 1];
+                sb_append_cstr(sb,
+                               on->propagate_failure ? " else? " : " else ");
+                if (branch->binder_symbol_handle != U32_MAX) {
+                    sb_append_char(sb, '[');
+                    sb_append_string(
+                        sb, lex_symbol(lexer, branch->binder_symbol_handle));
+                    sb_append_cstr(sb, "] ");
+                }
+                format_emit_expr(sb, cst, lexer, branch->expr_node_index, 0);
+                break;
             }
             if (on->kind == COK_Bool) {
                 const CstOnBranch* true_branch =
@@ -2755,6 +2795,14 @@ internal void format_emit_bool_on_multiline_prefixed(StringBuilder* sb,
     const CstOnInfo* on   = &cst->ons[node->b];
     ASSERT(node->kind == CK_On && on->kind == COK_Bool,
            "Expected bool on expression");
+    if (on->shorthand) {
+        if (is_else) {
+            sb_append_cstr(sb, "else ");
+        }
+        format_emit_expr_with_indent(
+            sb, cst, lexer, node_index, 0, indent_level);
+        return;
+    }
 
     if (is_else) {
         sb_append_cstr(sb, "else ");

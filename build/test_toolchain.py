@@ -148,6 +148,29 @@ def main():
             '_value: string = ${ return 7 }\nreturn 0\n}\n')
         run('check', diagnostic_source)  # A valid early function return remains valid.
 
+        # Omitted success arms still require an optional/result. Plain handlers
+        # must exit; automatic propagation retains the existing channel checks.
+        shorthand_prelude = (
+            'Failure :: enum { Bad }\nOther :: enum { Different }\n'
+            'operation :: fn () -> i32\\Failure { return Failure.Bad! }\n'
+            'optional :: fn () -> ?i32 { return nil }\n')
+        shorthand_failures = [
+            ('i32', 'value := on operation() else {}\nreturn value', 'fallthrough handler'),
+            ('i32', 'value := on operation() else { on no => return 2 }\nreturn value', 'fallthrough handler'),
+            ('i32', 'value := on operation() else? {}\nreturn value', 'propagat'),
+            ('i32\\Other', 'value := on operation() else? {}\nreturn value', 'found `Failure`'),
+            ('i32', 'value := on 5 else { return 2 }\nreturn value', 'Use a result'),
+            ('i32', 'value := on optional() else [error] { return 2 }\nreturn value', 'optional'),
+            ('i32\\Failure', 'value := on operation() else? return 2\nreturn value', 'Expected LeftBrace'),
+        ]
+        for return_type, body, expected in shorthand_failures:
+            diagnostic_source.write_text(shorthand_prelude +
+                'check_value :: fn () -> ' + return_type + ' {\n' + body + '\n}\n'
+                'main :: fn () {}\n')
+            failure = run('check', diagnostic_source, success=False)
+            assert expected in failure, failure
+            assert 'LLVM lowering failed' not in failure, failure
+
         assert 'Toolchain ready' in run('doctor')
         source = work / 'program.n'
         source.write_text('main :: fn () -> i32 { return 0 }\n')

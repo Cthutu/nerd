@@ -69,6 +69,8 @@ bool-on      ::= 'on' expression '=>' branch-expression [ 'else' branch-expressi
 condition-on ::= 'on' '{' { expression '=>' branch-expression | 'else' '=>' branch-expression } '}'
 value-on     ::= 'on' expression '{' { pattern-list [ 'as' IDENT ] [ 'on' expression ] '=>' branch-expression | 'else' [ 'as' IDENT ] '=>' branch-expression } '}'
 extract-on   ::= 'on' expression '=>' [ '[' IDENT ']' ] branch-expression 'else' [ '[' IDENT ']' ] branch-expression
+              | 'on' expression 'else' [ '[' IDENT ']' ] branch-expression
+              | 'on' expression 'else' '?' [ '[' IDENT ']' ] block
 sum-on       ::= 'on' expression '{' success-pattern-branches '}' 'else' '{' error-pattern-branches '}'
 ```
 
@@ -86,6 +88,21 @@ bracketed binders remain available for renaming. Full matching applies the first
 pattern table to the optional payload or result success payload. Optional
 `else { ... }` handles absence; result `else { ... }` is a pattern table over
 the error payload.
+
+Omitting the success arm (`on expression else ...`) is valid only for optional
+and result subjects. It evaluates the subject once and produces its successful
+payload (or `void` for a `void` payload). The ordinary failure handler must exit
+its surrounding control flow on every reachable path. A fallthrough handler is
+ill-formed. Handler braces are statement scopes, not implicit expression blocks;
+unlabelled `break` and `again` retain their surrounding targets.
+
+With `else?`, normal completion of the braced handler propagates the subject's
+original absence or error according to postfix `?` rules. Mutation of the
+original subject variable does not replace the captured failure. An explicit
+control-flow exit takes precedence. An unreachable implicit propagation after
+an unconditional exit does not require a compatible enclosing return channel.
+Optional absence handlers cannot declare an error binder. Failure propagation
+runs normal `defer` and failure-only `undo` cleanup, including handler cleanup.
 
 ## Branch Expressions
 

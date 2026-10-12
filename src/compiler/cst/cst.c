@@ -2789,6 +2789,47 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
                              out_node);
     }
 
+    if (cst_current_token(state).kind == TK_else) {
+        cst_advance(state);
+        bool propagate = cst_current_token(state).kind == TK_Question;
+        if (propagate) {
+            cst_advance(state);
+        }
+        u32 binder = U32_MAX, binder_token = U32_MAX;
+        if (!cst_parse_on_extract_binder(state, &binder, &binder_token)) {
+            return false;
+        }
+        u32 handler;
+        if (!cst_parse_on_branch_expr(state, &handler)) {
+            return false;
+        }
+        u32 first = (u32)array_count(state->cst.on_branches);
+        array_push(state->cst.on_branches,
+                   ((CstOnBranch){.expr_node_index      = handler,
+                                  .guard_node_index     = U32_MAX,
+                                  .binder_symbol_handle = U32_MAX,
+                                  .binder_token_index   = U32_MAX}));
+        array_push(state->cst.on_branches,
+                   ((CstOnBranch){.expr_node_index      = handler,
+                                  .flags                = COBF_Else,
+                                  .guard_node_index     = U32_MAX,
+                                  .binder_symbol_handle = binder,
+                                  .binder_token_index   = binder_token}));
+        u32 index = (u32)array_count(state->cst.ons);
+        array_push(state->cst.ons,
+                   ((CstOnInfo){.kind              = COK_Bool,
+                                .shorthand         = true,
+                                .propagate_failure = propagate,
+                                .first_branch      = first,
+                                .branch_count      = 2}));
+        return cst_emit_node(state,
+                             ((CstNode){.kind        = CK_On,
+                                        .token_index = token_index,
+                                        .a           = scrutinee,
+                                        .b           = index}),
+                             out_node);
+    }
+
     if (!cst_consume(state, TK_FatArrow)) {
         return false;
     }

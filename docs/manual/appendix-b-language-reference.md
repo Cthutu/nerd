@@ -192,6 +192,11 @@ intended exit code.
 - Condition-chain form: `on { condition => expr }`.
 - In optional/result extraction, omitting `[binder]` for a bare identifier
   reuses that identifier as the branch-local payload name.
+- Extract success: `value := on operation() else [error] { return ... }`.
+  The failure handler must exit the surrounding control flow.
+- Handle then propagate: `value := on operation() else? [error] { report(error) }`.
+  The original failure follows postfix `?` return-channel rules.
+- Optional extraction uses the same forms without an error binder.
 - Value-producing forms must be exhaustive.
 - Statement forms may be partial.
 - Bare identifiers in patterns bind by default. Use `for name` to compare with

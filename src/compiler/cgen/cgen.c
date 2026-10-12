@@ -1276,7 +1276,18 @@ internal CValue cgen_control(CGen* c, const HirExpr* e)
                 CValue guard = cgen_expr(c, b->guard_expr_index);
                 CGEN_OUT("if(%s) {\n", cgen_truth(c, guard));
             }
-            cgen_value_block(c, b->body_block_index, result);
+            if (b->error_handler) {
+                if (push) {
+                    array_pop(c->targets);
+                }
+                cgen_value_block(
+                    c, b->body_block_index, (CValue){NULL, U32_MAX, false});
+                if (push) {
+                    array_push(c->targets, target);
+                }
+            } else {
+                cgen_value_block(c, b->body_block_index, result);
+            }
             CGEN_OUT("goto ncg_end%u;\n", id);
             if (b->guard_expr_index != U32_MAX) {
                 CGEN_OUT("}\n");

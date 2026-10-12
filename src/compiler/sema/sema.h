@@ -125,7 +125,7 @@ typedef struct {
     SemaLocalKind kind;
     bool          implicit;
     bool          is_variadic;
-    u8            _pad1;
+    bool          synthetic;
     u32           symbol_handle;
     u32           owner_decl_index;
     u32           scope_index;

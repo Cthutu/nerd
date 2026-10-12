@@ -85,6 +85,21 @@ Keep the socket and message at stable addresses; dispose of messages with
 `done()` and sockets with `close()` after their last use. Both examples and tests
 use bounded timeouts; the server above intentionally waits indefinitely.
 
+When inspecting a result needs an error message before returning, extraction
+shorthand keeps the successful path small:
+
+```nerd
+bound := on server.local_url() else? [error] {
+    eprn($"Failed to get local URL (code {error.as(i32)})")
+}
+prn($"Listening on {bound}")
+```
+
+Inside a function returning `void\NexusError`, this reports a failure and
+forwards the original `NexusError`. On success, `bound` receives the URL. If the
+handler should return an application exit code instead, use plain `else` and
+an explicit `return 1` inside a function returning `i32`.
+
 ## Character mode
 
 Set the mode before binding or connecting:

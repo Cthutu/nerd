@@ -9139,10 +9139,31 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
                 const AstOnBranch* branch =
                     &ast->on_branches[on->first_branch + i];
                 u32 branch_scope = scope_index;
-                if (branch->binder_symbol_handle != U32_MAX ||
+                if (on->propagate_failure ||
+                    branch->binder_symbol_handle != U32_MAX ||
                     !(branch->flags & AOBF_Else)) {
                     branch_scope =
                         sema_add_scope(sema, owner_decl_index, scope_index);
+                }
+                if (on->propagate_failure && (branch->flags & AOBF_Else) &&
+                    sema->node_local_indices[node_index] == sema_no_local()) {
+                    array_push(
+                        sema->locals,
+                        ((SemaLocal){.kind             = SLK_Binder,
+                                     .implicit         = true,
+                                     .synthetic        = true,
+                                     .symbol_handle    = on->wrapper_symbol,
+                                     .owner_decl_index = owner_decl_index,
+                                     .scope_index      = branch_scope,
+                                     .decl_node_index  = sema_no_decl(),
+                                     .decl_token_index = U32_MAX,
+                                     .type_node_index  = sema_no_type(),
+                                     .value_node_index = node->a,
+                                     .type_index       = sema_no_type(),
+                                     .lowered_symbol_handle = U32_MAX}));
+                    sema->node_local_indices[node_index] =
+                        (u32)array_count(sema->locals) - 1;
+                    sema->scopes[branch_scope].local_count++;
                 }
                 u32 branch_slot = on->first_branch + i;
                 if (branch->binder_symbol_handle != U32_MAX &&
@@ -9152,6 +9173,8 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
                         sema->locals,
                         (SemaLocal){
                             .kind = SLK_Binder,
+                            .synthetic =
+                                on->shorthand && !(branch->flags & AOBF_Else),
                             .implicit =
                                 (branch->flags & AOBF_ImplicitBinder) != 0,
                             .symbol_handle    = branch->binder_symbol_handle,
@@ -19546,6 +19569,8 @@ sema_node_definitely_returns(const Ast* ast, Sema* sema, u32 node_index)
     }
 }
 
+internal bool sema_handler_exits(const Ast* ast, Sema* sema, u32 index);
+
 internal bool sema_infer_block_statements(const Lexer* lexer,
                                           const Ast*   ast,
                                           Sema*        sema,
@@ -19557,6 +19582,20 @@ internal bool sema_infer_block_statements(const Lexer* lexer,
 {
     for (u32 i = first_node; i < end_node; ++i) {
         const AstNode* stmt = &ast->nodes[i];
+
+        // A handler may explicitly break/again or call a never-returning
+        // function. Do not type-check its unreachable automatic propagation.
+        if (ast_has_flag(stmt, ANF_ImplicitPropagation)) {
+            for (u32 prior = first_node; prior < i; ++prior) {
+                if (!ast_node_is_block_statement(&ast->nodes[prior])) {
+                    continue;
+                }
+                if (sema_handler_exits(ast, sema, prior)) {
+                    return true;
+                }
+                prior = ast_block_statement_end_exclusive(ast, prior) - 1;
+            }
+        }
 
         if (stmt->kind == AK_FnStart) {
             i = stmt->b - 1;
@@ -19728,7 +19767,8 @@ internal bool sema_infer_block_statements(const Lexer* lexer,
                     expr = &ast->nodes[expr->a];
                 }
                 u32 materialised = sema_materialise_type(sema, ignored);
-                if (expr->kind != AK_Bind && expr->kind != AK_Assign &&
+                if (!ast_has_flag(stmt, ANF_ImplicitPropagation) &&
+                    expr->kind != AK_Bind && expr->kind != AK_Assign &&
                     expr->kind != AK_DestructureAssign &&
                     sema->types[materialised].kind != STK_Void &&
                     sema->types[materialised].kind != STK_Never) {
@@ -19815,6 +19855,56 @@ internal bool sema_infer_block_statements(const Lexer* lexer,
     }
 
     return true;
+}
+
+// Ordinary handler blocks must leave their surrounding control flow. An
+// expression block's own value break does not count as leaving the handler.
+internal bool sema_assignment_on_covers_all_bool_values(const Ast* ast,
+                                                        u32        on_index);
+
+internal bool sema_handler_exits(const Ast* ast, Sema* sema, u32 index)
+{
+    const AstNode* node = &ast->nodes[index];
+    if (node->kind == AK_Return || node->kind == AK_ReturnExpr ||
+        node->kind == AK_Break || node->kind == AK_BreakExpr ||
+        node->kind == AK_Continue || node->kind == AK_ContinueExpr) {
+        return true;
+    }
+    if (node->kind == AK_Statement || node->kind == AK_Expression) {
+        return sema_handler_exits(ast, sema, node->a);
+    }
+    if (node->kind == AK_Block) {
+        for (u32 i = node->a; i < node->b; ++i) {
+            if (!ast_node_is_block_statement(&ast->nodes[i])) {
+                continue;
+            }
+            if (sema_handler_exits(ast, sema, i)) {
+                return true;
+            }
+            i = ast_block_statement_end_exclusive(ast, i) - 1;
+        }
+        return false;
+    }
+    if (node->kind == AK_On) {
+        const AstOnInfo* on         = &ast->ons[node->b];
+        bool             exhaustive = false;
+        for (u32 i = 0; i < on->branch_count; ++i) {
+            const AstOnBranch* branch = &ast->on_branches[on->first_branch + i];
+            exhaustive |= (branch->flags & AOBF_Else) != 0 &&
+                          branch->guard_node_index == U32_MAX;
+            if (!sema_handler_exits(ast, sema, branch->expr_node_index)) {
+                return false;
+            }
+        }
+        return exhaustive ||
+               (on->kind != AOK_Condition &&
+                (sema_assignment_on_covers_all_bool_values(ast, node->b) ||
+                 sema_on_covers_all_enum_variants(
+                     ast, sema, node->b, sema->node_type_indices[node->a])));
+    }
+    return sema_node_definitely_returns(ast, sema, index) ||
+           (sema->node_type_indices[index] != sema_no_type() &&
+            sema_type_is_never(sema, sema->node_type_indices[index]));
 }
 
 internal bool sema_infer_expr_block_type(const Lexer* lexer,
@@ -23882,6 +23972,16 @@ validate_type:
                     sema->types[scrutinee_type].kind != STK_Enum ||
                     !(sema->types[scrutinee_type].flags &
                       (STF_Optional | STF_Result))) {
+                    if (on->shorthand) {
+                        return error_0304_type_mismatch_with_help(
+                            lexer->source,
+                            sema_node_span(lexer, &ast->nodes[node->a]),
+                            s("optional or result value"),
+                            sema_type_name(
+                                lexer, sema, &temp_arena, scrutinee_type),
+                            s("Use a result or optional value after `on` when "
+                              "omitting the success arm."));
+                    }
                     u32 binder_token_index = U32_MAX;
                     for (u32 i = 0; i < on->branch_count; ++i) {
                         const AstOnBranch* branch =
@@ -23924,6 +24024,10 @@ validate_type:
                 }
             }
 
+            if (on->propagate_failure) {
+                sema->locals[sema->node_local_indices[node_index]].type_index =
+                    scrutinee_type;
+            }
             u32  branch_type      = sema_no_type();
             u32  branch_type_node = sema_no_decl();
             bool extract_form =
@@ -24125,6 +24229,11 @@ validate_type:
                     current_expected = branch_type;
                 }
 
+                bool short_handler =
+                    on->shorthand && (branch->flags & AOBF_Else);
+                if (short_handler) {
+                    current_expected = sema_no_type();
+                }
                 u32 current_type = sema_no_type();
                 if (!sema_infer_node_type(lexer,
                                           ast,
@@ -24135,6 +24244,22 @@ validate_type:
                     return false;
                 }
 
+                if (short_handler) {
+                    if (!on->propagate_failure &&
+                        !sema_handler_exits(
+                            ast, sema, branch->expr_node_index)) {
+                        return error_0304_type_mismatch_with_help(
+                            lexer->source,
+                            sema_node_span(
+                                lexer, &ast->nodes[branch->expr_node_index]),
+                            s("error handler that exits control flow"),
+                            s("fallthrough handler"),
+                            s("End this handler with `return`, `break`, "
+                              "`again`, or a non-returning call; use `else?` "
+                              "to propagate after handling."));
+                    }
+                    continue;
+                }
                 if (current_expected != sema_no_type() &&
                     sema->types[current_expected].kind == STK_Enum &&
                     (sema->types[current_expected].flags &
