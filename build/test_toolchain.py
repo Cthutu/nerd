@@ -78,6 +78,44 @@ def main():
             'Value :: plex { n i32 }\nvalue :: Value { n: 7 }\nmain :: fn () => value.n',
             '-o', work / 'inline-field.c')
         assert (work / 'inline-field.c').exists()
+        # Qualified imports and function-result binders keep source record names
+        # in diagnostics, including transitively imported and composite types.
+        records = work / 'diagnostic_records'
+        records.mkdir()
+        (records / 'mod.n').write_text(
+            'pub Widget :: plex { value u64 }\n'
+            'pub Bits :: union { number u64 byte u8 }\n'
+            'pub make :: fn () -> Widget { return Widget { value: 7 } }\n')
+        relay = work / 'diagnostic_relay'
+        relay.mkdir()
+        (relay / 'mod.n').write_text(
+            'records :: use diagnostic_records\n'
+            'pub make :: fn () -> records.Widget { return records.make() }\n')
+        diagnostic_source = work / 'type-names.n'
+        cases = [
+            ('return records.make()', 'Widget'),
+            ('value := records.Widget { value: 7 }\nreturn ^value', '^Widget'),
+            ('value := records.Bits { number: 7 }\nreturn value', 'Bits'),
+            ('return relay.make()', 'Widget'),
+            ('value := Local { value: 7 }\nreturn records.make()', 'Local'),
+        ]
+        for body, expected in cases:
+            diagnostic_source.write_text(
+                'records :: use diagnostic_records\n'
+                'relay :: use diagnostic_relay\n'
+                + ('Local :: plex { value u64 }\n' if expected == 'Local' else '')
+                + 'main :: fn () -> i32 {\n' + body + '\n}\n')
+            failure = run('check', diagnostic_source, success=False)
+            assert f'Type mismatch: expected `i32`, found `{expected}`' in failure, failure
+            assert f'This expression has type `{expected}`' in failure, failure
+        diagnostic_source.write_text(
+            'signal :: use std.signal\n'
+            'main :: fn () -> i32 {\n'
+            'on signal.watch_shutdown() {\n'
+            'watcher => return watcher\nerror! => return 1\n}\n}\n')
+        failure = run('check', diagnostic_source, success=False)
+        assert 'Type mismatch: expected `i32`, found `ShutdownWatcher`' in failure, failure
+
         assert 'Toolchain ready' in run('doctor')
         source = work / 'program.n'
         source.write_text('main :: fn () -> i32 { return 0 }\n')

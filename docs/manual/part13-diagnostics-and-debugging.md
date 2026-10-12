@@ -134,6 +134,9 @@ deferred statement still needs a valid target where it appears.
 An ordinary `{ ... }` branch of a value-producing `on` is a statement block and
 has type `void`. Write the result expression directly, or use an expression
 block `${ ... }` and supply its result with `break <value>`.
+`return` inside an expression block still returns from the enclosing function.
+Type mismatch diagnostics show imported record names, such as `ShutdownWatcher`,
+when available, instead of expanding their fields.
 
 ## Source Tests
 

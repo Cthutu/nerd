@@ -246,6 +246,7 @@ typedef struct {
     const void* source;
     u32         source_type;
     u32         destination_type;
+    u32         name_symbol; // Destination lexer; diagnostic metadata only.
     bool        complete;
 } SemaImportedRecord;
 

@@ -43,6 +43,10 @@ return path for propagation, including deferred cleanup.
 Sema also diagnoses propagation at the postfix `?`: when the enclosing function
 has no matching optional or result channel, the diagnostic names the propagated
 failure type and suggests a compatible enclosing return type.
+Imported record mappings retain the source alias as a symbol in the destination
+lexer. Diagnostic rendering prefers a local alias, then this preserved name,
+including across transitive imports and inside composite types. These names are
+diagnostic metadata and do not affect structural type identity or layout.
 Recursive semantic type rendering isolates nested names in temporary arenas
 before appending them, keeping composite diagnostics such as
 `^PixelLayer\GfxError` contiguous and source-accurate.

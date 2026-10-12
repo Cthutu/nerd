@@ -17,8 +17,8 @@ main :: fn () {
 hir 0
 module module.0(091-imported-plex-field-interpolation.input)
 import module.1(test.imported_plex)
-import import.0 __impl_Box_bump from module.1(test.imported_plex).decl.1: fn (^plex { usize value }, usize) -> void
-import import.1 make_box from module.1(test.imported_plex).decl.2: fn (usize) -> plex { usize value }
+import import.0 __impl_Box_bump from module.1(test.imported_plex).decl.1: fn (^Box, usize) -> void
+import import.1 make_box from module.1(test.imported_plex).decl.2: fn (usize) -> Box
 bind __impl_Box_bump = import.0
 bind make_box = import.1
 bind boxmod = module.1
@@ -33,8 +33,8 @@ func fn.0(text: string) -> void {
   return <none>
 }
 func fn.1() -> void {
-  let box: plex { usize value } = plex { usize value } call fn (usize) -> plex { usize value } field(module bind.2(boxmod), make_box)(usize 7)
-  expr void call bind.3(consume)(string interpolate(<unknown> "Value: ", usize field(plex { usize value } local.1(box), value)))
+  let box: Box = Box call fn (usize) -> Box field(module bind.2(boxmod), make_box)(usize 7)
+  expr void call bind.3(consume)(string interpolate(<unknown> "Value: ", usize field(Box local.1(box), value)))
 }
 ¬
 ; nerd llvm-ir 0

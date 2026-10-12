@@ -916,6 +916,26 @@ internal bool sema_type_is_void_success(const Sema* sema, u32 type_index)
            sema->types[success_type].kind == STK_Void;
 }
 
+// Prefer a local alias; imported names are diagnostic metadata and do not
+// participate in structural type interning. Copy names across re-exports too.
+internal u32 sema_named_type_symbol(const Sema* sema, u32 type_index)
+{
+    for (u32 i = 0; i < array_count(sema->decls); ++i) {
+        const SemaDecl* decl = &sema->decls[i];
+        if (decl->kind == SK_TypeAlias && decl->type_index == type_index) {
+            return decl->symbol_handle;
+        }
+    }
+    for (u32 i = 0; i < array_count(sema->imported_records); ++i) {
+        const SemaImportedRecord* record = &sema->imported_records[i];
+        if (record->complete && record->destination_type == type_index &&
+            record->name_symbol != U32_MAX) {
+            return record->name_symbol;
+        }
+    }
+    return U32_MAX;
+}
+
 u32 sema_import_type(Lexer*       dst_lexer,
                      Sema*        dst_sema,
                      const Lexer* src_lexer,
@@ -1119,11 +1139,17 @@ u32 sema_import_type(Lexer*       dst_lexer,
                 return record->destination_type;
             }
             u32 record_index = (u32)array_count(dst_sema->imported_records);
+            u32 name_symbol  = sema_named_type_symbol(src_sema, src_type_index);
+            if (name_symbol != U32_MAX) {
+                name_symbol = sema_import_symbol_handle(
+                    dst_lexer, src_lexer, name_symbol);
+            }
             array_push(dst_sema->imported_records,
                        ((SemaImportedRecord){
                            .source           = src_sema,
                            .source_type      = src_type_index,
                            .destination_type = sema_no_type(),
+                           .name_symbol      = name_symbol,
                        }));
             Array(u32) field_symbols     = NULL;
             Array(u32) field_types       = NULL;
@@ -1650,11 +1676,9 @@ string sema_type_name(const Lexer* lexer,
     if (type->kind == STK_Plex || type->kind == STK_Union ||
         (type->kind == STK_Enum &&
          !(type->flags & (STF_Optional | STF_Result)))) {
-        for (u32 i = 0; i < array_count(sema->decls); ++i) {
-            const SemaDecl* decl = &sema->decls[i];
-            if (decl->kind == SK_TypeAlias && decl->type_index == type_index) {
-                return lex_symbol(lexer, decl->symbol_handle);
-            }
+        u32 name_symbol = sema_named_type_symbol(sema, type_index);
+        if (name_symbol != U32_MAX) {
+            return lex_symbol(lexer, name_symbol);
         }
     }
 
