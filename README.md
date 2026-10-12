@@ -136,6 +136,8 @@ LLVM backend status:
 The recipe accepts all directories listed by `just list-examples`, including
 `text-adventure` (whose entry point is `quill.n`). `just run-example triangle`
 or `just re triangle` runs from the example directory so relative assets work.
+An invalid example name reports `Source file not found` with its expected `.n`
+path. Use `just list-examples` to see the available names.
 
 The default VS Code build task (F7) runs `just run-example vktriangle` on both
 Linux and Windows. `std.vulkan` selects its FFI library with ordinary platform

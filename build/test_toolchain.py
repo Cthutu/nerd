@@ -54,6 +54,30 @@ def main():
             assert 'forbidden-clang-invocation' not in result.stdout + result.stderr
             return result.stdout + result.stderr
 
+        # A missing .n argument is a filename, even when it never existed.
+        # Fail before parsing, generating output or invoking a native tool.
+        for missing_source in ['missing.n', 'missing folder/file.n',
+                               'examples/absent/absent.n', str(work / 'absent.n')]:
+            for command in [('build',), ('build', '-r'), ('build', '--cgen'),
+                            ('build', '--copts'), ('check',), ('run',)]:
+                failure = run(*command, missing_source, success=False)
+                assert f'Source file not found: {missing_source}' in failure, failure
+                assert 'EOF' not in failure and '<input>' not in failure, failure
+        failure = run('build', str(work), success=False)
+        assert 'Expected a source file but found directory:' in failure, failure
+        assert 'EOF' not in failure, failure
+        # Existing files with nonstandard extensions still work, and an inline
+        # program containing a filename string must remain an inline program.
+        unusual = work / 'program.source'
+        unusual.write_text('main :: fn () -> i32 { return 0 }\n')
+        run('check', unusual)
+        run('build', '--cgen', 'main :: fn () { assert "missing.n".count == 9 }',
+            '-o', work / 'inline.c')
+        assert (work / 'inline.c').exists()
+        run('build', '--cgen',
+            'Value :: plex { n i32 }\nvalue :: Value { n: 7 }\nmain :: fn () => value.n',
+            '-o', work / 'inline-field.c')
+        assert (work / 'inline-field.c').exists()
         assert 'Toolchain ready' in run('doctor')
         source = work / 'program.n'
         source.write_text('main :: fn () -> i32 { return 0 }\n')

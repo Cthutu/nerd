@@ -143,6 +143,13 @@ The `nerd` executable is mostly orchestration:
 2. build a command-specific config struct
 3. run compiler, LSP, or test commands
 
+The build CLI treats existing filesystem paths and `.n` arguments without a
+Nerd declaration separator (`::`) as source files, including missing filenames. File loading happens in the shared
+compile command before lexing; missing files report their path instead of parsing
+the filename as an inline snippet. Other build arguments retain inline-source
+support. Check and run use the same missing-file wording; directories receive
+an explicit expected-file diagnostic.
+
 The compiler front end currently runs:
 
 1. lexing

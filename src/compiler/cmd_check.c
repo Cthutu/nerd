@@ -27,6 +27,12 @@ internal bool compiler_cmd_check_load_source(NerdSource* source,
     memcpy(source_path, source->source_path.data, source->source_path.count);
     source_path[source->source_path.count] = '\0';
 
+    if (!path_exists(source_path)) {
+        free(source_path);
+        return error_runtime("Source file not found: " STRINGP,
+                             STRINGV(source->source_path));
+    }
+
     if (path_is_directory(source_path)) {
         string bad_path = source->source_path;
         free(source_path);
