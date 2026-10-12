@@ -1,0 +1,195 @@
+-- A real Telnet echo server: connect with a terminal client and send a line.
+-- Nexus accepts clients, decodes Telnet commands and remembers each sender.
+use std.nexus
+
+signal :: use std.signal
+
+-- Flush readiness/log lines even when stdout is captured by the smoke runner.
+-- Shutdown itself uses std.signal, not an application OS signal handler.
+on "linux" {
+
+    ffi "c" {
+        fflush (stream: ^void) -> i32
+    }
+
+}
+
+on "windows" {
+
+    ffi "msvcrt" {
+        fflush (stream: ^void) -> i32
+    }
+
+}
+
+listen :: fn (server: ^NetSocket, url: string) -> void\NexusError {
+    -- Finite waits let the main loop inspect Ctrl+C between network attempts.
+    -- A timeout retains partial input or an outgoing snapshot inside Nexus.
+    server.set_option(NetOption.RecvTimeoutMs, 100)?
+    server.set_option(NetOption.SendTimeoutMs, 100)?
+    server.bind(url)?
+}
+
+prepare_echo :: fn (message: ^Message, escaped: ^Message) -> void\NexusError {
+    -- Received payload is decoded text without CRLF. A literal IAC (255) must
+    -- be doubled on the outgoing Telnet wire; Nexus sends application bytes raw.
+    -- Build the escaped copy before clearing the borrowed input view.
+    escaped.clear()
+    for byte in message.payload() {
+        escaped.append_u8(byte^)?
+        on byte^ == 255 => escaped.append_u8(255)?
+    }
+    -- clear keeps the reply route: send will choose this line's original client,
+    -- even when other clients are connected. Line mode adds CRLF automatically.
+    message.clear()
+    message.append(escaped.payload())?
+}
+
+smoke :: fn (server  : ^NetSocket,
+             reply   : ^Message,
+             escaped : ^Message) -> void\NexusError {
+    -- A bounded local client checks the same echo code without a second terminal.
+    -- Port zero has already selected an unused loopback port on the listener.
+    client  := net_telnet_socket()
+    request := Message.create(^client)
+
+    defer request.done()
+    defer client.close()
+    client.set_option(NetOption.RecvTimeoutMs, 2000)?
+    client.set_option(NetOption.SendTimeoutMs, 2000)?
+    client.connect(server.local_url()?)?
+    for text in ["hello telnet", ""] {
+        request.clear()
+        request.append(text^.as([]u8))?
+        request.send()?
+        reply.recv()?
+        prepare_echo(reply, escaped)?
+        reply.send()?
+        request.recv()?
+        assert request.payload().as(string) == text^
+    }
+    prn("Nexus Telnet echo smoke passed")
+}
+
+main :: fn (args: []string) -> i32 {
+    on args.count > 2 => {
+        eprn("Usage: nexus-telnet-server [tcp://127.0.0.1:2323 | --smoke]")
+        return 1
+    }
+    testing := args.count == 2 && args[1] == "--smoke"
+    url := on testing => "tcp://127.0.0.1:0"
+        else on args.count == 2 => args[1]
+        else "tcp://127.0.0.1:2323"
+
+    -- Register on this main thread before any work. The watcher latches Ctrl+C
+    -- so ordinary code can release sockets and buffers, then restore OS policy.
+    shutdown : signal.ShutdownWatcher
+    on signal.watch_shutdown() {
+        watcher => shutdown = watcher
+
+        error! => {
+            eprn($"Shutdown watcher failed: {error}")
+            return 1
+        }
+    }
+    defer _ := shutdown.close()
+    server            := net_telnet_socket()
+    message           := Message.create(^server)
+    escaped : Message
+    -- Defers run in reverse order. Close cancels any partial outgoing snapshot
+    -- before disposing of its associated Message; keep both owners stable.
+    defer message.done()
+    defer escaped.done()
+    defer server.close()
+    on listen(^server, url) {
+        _! => {
+            eprn($"Cannot listen on {url}")
+            return 1
+        }
+
+        else => {
+        }
+    }
+    on testing => {
+        on smoke(^server, ^message, ^escaped) {
+            _! => {
+                eprn("Telnet echo smoke failed")
+                return 1
+            }
+
+            else => return 0
+        }
+    }
+    bound : string
+    on server.local_url() {
+        value  => bound = value
+        _!     => return 1
+    }
+    prn($"Listening on {bound}")
+    prn("Connect with telnet, type a line, and press Enter. Ctrl+C stops the server.")
+    _       := fflush(nil)
+    sending := no
+
+    for {
+        on shutdown.requested() {
+            requested => on requested => break
+
+            error! => {
+                eprn($"Shutdown watcher failed: {error}")
+                return 1
+            }
+        }
+        on sending => {
+            -- Retrying the same stable Message resumes its snapshot. Do not
+            -- receive another line or rebuild the payload while send is pending.
+            on message.send() {
+                NexusError.TimedOut! => again
+
+                _! => {
+                    -- A fatal peer write removes its route. A client disconnect
+                    -- leaves the listener available for the next connection.
+                    on message.id() != nil => {
+                        eprn("Telnet echo send failed")
+                        return 1
+                    }
+                    prn("Client disconnected before its echo completed.")
+                }
+
+                else => {
+                }
+            }
+            sending = no
+        } else {
+            on message.recv() {
+                NexusError.TimedOut! => again
+
+                _! => {
+                    eprn("Telnet receive failed")
+                    return 1
+                }
+
+                else => {
+                }
+            }
+            on prepare_echo(^message, ^escaped) {
+                _! => {
+                    eprn("Encoded echo exceeds the message limit")
+                    return 1
+                }
+
+                else => {
+                }
+            }
+            prn($"Echoing {message.payload().count} bytes.")
+            _ := fflush(nil)
+
+            sending = yes
+        }
+    }
+    prn("Shutdown requested.")
+    -- Explicitly finish before reporting completion. Deferred close is also
+    -- registered above so earlier error returns follow the same cleanup order.
+    server.close()
+    prn("Telnet server stopped.")
+    return 0
+}

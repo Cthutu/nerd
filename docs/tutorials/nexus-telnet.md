@@ -15,6 +15,33 @@ The [commented example](../../examples/nexus-telnet/nexus-telnet.n) runs both
 endpoints in one thread on an OS-selected loopback port. Real applications
 usually run the terminal client and server in separate processes.
 
+## Running a real echo server
+
+The [server example](../../examples/nexus-telnet-server/README.md) stays running
+for real terminal clients and echoes each complete line to its original sender:
+
+```sh
+just build-example nexus-telnet-server
+./_bin/examples/nexus-telnet-server
+```
+
+From another terminal, run `telnet 127.0.0.1 2323`, then type a line and press
+Enter. Empty lines work too. Several clients can connect, and a partial line
+from one does not stall complete lines from the others. Echoes contain raw text,
+with outgoing literal IAC bytes doubled and CRLF supplied by line mode.
+
+Press Ctrl+C in the server terminal to stop. The example opens a
+`std.signal.watch_shutdown()` watcher on its main thread and polls `requested()`
+between bounded network waits. It retries an unfinished send with the same
+stable Message. Shutdown closes the socket before disposing of that message,
+then closes the watcher; all cleanup runs in ordinary code. Running the built
+binary directly avoids also interrupting the `just` recipe runner.
+
+`./_bin/examples/nexus-telnet-server --smoke` performs a bounded local echo
+without a separate terminal or installed Telnet client. The automated tests
+also deliver a shutdown event to the real server while idle, while a client has
+partial input, and while an outgoing echo is stalled.
+
 ## Receiving and replying to a line
 
 Line mode is the default. `recv()` returns one complete line without its newline;

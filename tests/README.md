@@ -28,7 +28,9 @@ contracts using the freshly built release compiler.
 
 Nexus coverage includes framed TCP, UDP routes, request/reply and Telnet line/
 character protocols, scripted negotiation/NAWS peers and deterministic short I/O.
-Its parity map checks all 33 scenarios from the pinned original source. Optional
+The real Telnet echo server is checked with scripted terminal peers and shutdown
+events, including a stalled outgoing snapshot. Its parity map checks all 33
+scenarios from the pinned original source. Optional
 `--upstream-dir` checks wire compatibility with that unmodified implementation.
 
 ## Test Families

@@ -9,6 +9,7 @@ from pathlib import Path
 import queue
 import re
 import shlex
+import signal
 import socket
 import struct
 import subprocess
@@ -46,9 +47,10 @@ def interop(server: Path, peer: Path, env: dict[str, str], protocol: str = "TCP"
         process.stdout.close()
 
 
-def start_timing(command: list[str], env: dict[str, str]):
+def start_timing(command: list[str], env: dict[str, str], *, shutdown_group: bool = False):
+    flags = subprocess.CREATE_NEW_PROCESS_GROUP if shutdown_group and os.name == "nt" else 0
     process = subprocess.Popen(command, cwd=ROOT, env=env, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                               stderr=subprocess.STDOUT, text=True)
+                               stderr=subprocess.STDOUT, text=True, creationflags=flags)
     assert process.stdout is not None
     lines: queue.Queue[str] = queue.Queue()
     reader = threading.Thread(target=lambda: lines.put(process.stdout.readline()), daemon=True)
@@ -74,6 +76,70 @@ def read_exact(peer: socket.socket, count: int) -> bytes:
             raise RuntimeError("Timing peer closed before completing its frame")
         result.extend(part)
     return bytes(result)
+
+
+def telnet_echo_server(server: Path, env: dict[str, str], *, blocked_send: bool = False) -> None:
+    # Test the actual long-running example with independent terminal wire bytes.
+    # Separate process groups permit targeted Windows console shutdown events.
+    for connected in (False, True):
+        process, ready = start_timing([str(server), "tcp://127.0.0.1:0"], env, shutdown_group=True)
+        peers = []
+        try:
+            line = ready.get(timeout=5).strip()
+            prefix = "Listening on tcp://127.0.0.1:"
+            if not line.startswith(prefix) or not line[len(prefix):].isdecimal():
+                raise RuntimeError(f"Invalid echo server readiness: {line!r}")
+            port = int(line[len(prefix):])
+            if connected:
+                for _ in range(1 if blocked_send else 2):
+                    peer = socket.create_connection(("127.0.0.1", port), timeout=5)
+                    peers.append(peer)
+                    peer.settimeout(5)
+                    if read_exact(peer, 3) != b"\xff\xfd\x1f":
+                        raise RuntimeError("Echo server did not negotiate Telnet")
+                if blocked_send:
+                    peers[0].sendall(b"stall\r\n")
+                    # The shim announces the first blocked application write,
+                    # after Nexus has queued its snapshot. Avoid timing sleeps.
+                    assert process.stdout is not None
+                    blocked_line: queue.Queue[str] = queue.Queue()
+
+                    def capture_block(stream=process.stdout):
+                        for line in stream:
+                            if line.strip() == "Nexus text send blocked":
+                                blocked_line.put(line)
+                                return
+                        blocked_line.put("")
+
+                    threading.Thread(target=capture_block, daemon=True).start()
+                    if blocked_line.get(timeout=5).strip() != "Nexus text send blocked":
+                        raise RuntimeError("Echo server did not queue its stalled send")
+                else:
+                    coalesced = b"first\r\n\r\nliteral\xff\xffIAC\r\n"
+                    peers[0].sendall(coalesced)
+                    if read_exact(peers[0], len(coalesced)) != coalesced:
+                        raise RuntimeError("Echo lost a line, empty payload or escaped IAC")
+                    # An unfinished line on the first peer must not prevent the
+                    # second peer receiving its own reply or Ctrl+C being polled.
+                    peers[0].sendall(b"unfinished")
+                    peers[1].sendall(b"second\r\n")
+                    if read_exact(peers[1], 8) != b"second\r\n":
+                        raise RuntimeError("Echo went to the wrong client")
+            process.send_signal(signal.CTRL_BREAK_EVENT if os.name == "nt" else signal.SIGINT)
+            output, _ = process.communicate(timeout=5)
+            if process.returncode or not output.strip().endswith("Shutdown requested.\nTelnet server stopped."):
+                raise RuntimeError(f"Echo shutdown failed ({process.returncode}): {output!r}")
+            for peer in peers:
+                try:
+                    if peer.recv(1) != b"":
+                        raise RuntimeError("Echo peer remained open after shutdown")
+                except ConnectionResetError:
+                    # Closing with unread partial input can reset rather than FIN.
+                    pass
+        finally:
+            for peer in peers:
+                peer.close()
+            stop_timing(process)
 
 
 def telnet_original(driver: Path, peer: Path, env: dict[str, str]) -> None:
@@ -291,7 +357,7 @@ def main() -> None:
         directory = Path(temporary)
         suffix = ".exe" if os.name == "nt" else ""
         executables = []
-        for index, source in enumerate(("tests/nexus/main.n", "tests/nexus/interop.n", "examples/nexus-message/nexus-message.n", "tests/nexus/socket-api.n", "tests/nexus/udp-interop.n", "examples/nexus-multi-client/nexus-multi-client.n", "examples/nexus-request-reply/nexus-request-reply.n", "tests/nexus/parity.n", "tests/nexus/timing-driver.n", "tests/nexus/telnet.n", "examples/nexus-telnet/nexus-telnet.n")):
+        for index, source in enumerate(("tests/nexus/main.n", "tests/nexus/interop.n", "examples/nexus-message/nexus-message.n", "tests/nexus/socket-api.n", "tests/nexus/udp-interop.n", "examples/nexus-multi-client/nexus-multi-client.n", "examples/nexus-request-reply/nexus-request-reply.n", "tests/nexus/parity.n", "tests/nexus/timing-driver.n", "tests/nexus/telnet.n", "examples/nexus-telnet/nexus-telnet.n", "examples/nexus-telnet-server/nexus-telnet-server.n")):
             target = directory / (f"case-{index}" + suffix)
             command = [str(args.compiler.resolve()), "build", source, "-o", str(target)]
             if args.release:
@@ -303,7 +369,7 @@ def main() -> None:
                 flags = shlex.split(run(command + ["--copts"], env))
                 run(["clang", str(target.with_suffix(".c")), *flags, "-o", str(target)], env)
             executables.append(target)
-        contracts, server, example, socket_api, udp_server, multi_client, request_reply, parity, timing, telnet, telnet_example = executables
+        contracts, server, example, socket_api, udp_server, multi_client, request_reply, parity, timing, telnet, telnet_example, echo_server = executables
         for target, expected in ((contracts, "Nexus buffer and framing contracts passed"),
                                  (example, "Nexus message: hello nexus, reply 43"),
                                  (socket_api, "Nexus socket API contracts passed"),
@@ -316,6 +382,10 @@ def main() -> None:
             if output.strip() != expected:
                 raise RuntimeError(f"Unexpected output: {output!r}")
             print(f"PASS {target.name}: {expected}")
+        if run([str(echo_server), "--smoke"], env, timeout=10).strip() != "Nexus Telnet echo smoke passed":
+            raise RuntimeError("Telnet echo smoke failed")
+        telnet_echo_server(echo_server, env)
+        print("PASS Telnet echo server routes, line escaping and idle/connected shutdown")
         telnet_wire(telnet, env)
         print("PASS Telnet raw line/character wire, negotiation, NAWS and EOF")
         delayed_connect(timing, env)
@@ -336,6 +406,8 @@ def main() -> None:
                 raise RuntimeError("Parity fragmented I/O contracts failed")
             if run([str(telnet)], injected, timeout=20).strip() != "Nexus Telnet contracts passed":
                 raise RuntimeError("Telnet fragmented I/O contracts failed")
+            telnet_echo_server(echo_server, injected)
+            telnet_echo_server(echo_server, dict(injected, NEXUS_TEST_TEXT_SEND_WOULD_BLOCK="1"), blocked_send=True)
             telnet_wire(telnet, injected)
             delayed_connect(timing, dict(injected, NEXUS_TEST_CONNECT_REFUSALS="3"))
             ready_deadlines(timing, injected)

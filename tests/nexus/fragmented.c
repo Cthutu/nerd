@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 ssize_t send(int fd, const void* bytes, size_t length, int flags)
 {
@@ -15,6 +16,19 @@ ssize_t send(int fd, const void* bytes, size_t length, int flags)
     static unsigned calls;
     if (!real_send) {
         real_send = dlsym(RTLD_NEXT, "send");
+    }
+    /* Keep Telnet negotiation writable while stalling application text. The
+     * echo server must retain its pending message and cancel it on shutdown. */
+    if (getenv("NEXUS_TEST_TEXT_SEND_WOULD_BLOCK") && length != 0 &&
+        ((const unsigned char*)bytes)[0] >= 32 &&
+        ((const unsigned char*)bytes)[0] < 127) {
+        static unsigned announced;
+        if (!announced++) {
+            static const char ready[] = "Nexus text send blocked\n";
+            (void)write(STDERR_FILENO, ready, sizeof(ready) - 1);
+        }
+        errno = EAGAIN;
+        return -1;
     }
     if (++calls % 7 == 0) {
         errno = EAGAIN;
