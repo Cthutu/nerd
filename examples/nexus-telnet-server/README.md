@@ -50,23 +50,14 @@ binary directly keeps Ctrl+C from also interrupting the `just` recipe runner.
 Ctrl+C in a remote terminal client is terminal input, not the server's process
 shutdown request; disconnect from the client using its own escape/quit commands.
 
-A different numeric IPv4 TCP URL can be passed to the built binary:
+The listening address is fixed at `tcp://127.0.0.1:2323` in the source.
+There are no command-line options. Change that value if you need another port.
 
-```sh
-./_bin/examples/nexus-telnet-server tcp://127.0.0.1:2324
-```
-
-For a bounded local demonstration without an installed Telnet client:
-
-```sh
-./_bin/examples/nexus-telnet-server --smoke
-```
-
-This checks a text line and an empty line on an OS-selected port, prints
-`Nexus Telnet echo smoke passed`, and exits. The automated native runner also
-checks independent terminal wire bytes, multiple clients, partial input,
+Automated checks exercise the server from separate clients: line escaping,
 client numbering and logs, reset/reconnect recovery, first-attempt connection,
 Ctrl+C while idle/connected, and progress alongside a stalled echo send.
+The test runner changes the port to zero in a temporary source copy so each
+run gets an unused port; the example itself contains no self-test mode.
 
 The [commented source](nexus-telnet-server.n) explains stable ownership, reply
 routes, IAC escaping and the distinction between receiving and retrying a pending

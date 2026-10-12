@@ -188,6 +188,7 @@ NAWS, line/character wire bytes and fragmented/oversized input; C interoperabili
 checks both roles. Native Windows and broader soak validation remain pending.
 
 12 October 2026: Added `nexus-telnet-server`, a real terminal echo server with
-`std.signal` shutdown handling and a bounded local smoke mode. Native checks
+`std.signal` shutdown handling. The example uses a fixed loopback address and
+has no argument processing or embedded smoke mode. Native checks
 exercise per-client replies, empty/coalesced lines, escaped IAC, partial input,
 and graceful shutdown while idle, connected, or retaining a stalled send.

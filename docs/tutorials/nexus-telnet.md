@@ -43,11 +43,11 @@ the socket before disposing of those messages,
 then closes the watcher; all cleanup runs in ordinary code. Running the built
 binary directly avoids also interrupting the `just` recipe runner.
 
-`./_bin/examples/nexus-telnet-server --smoke` performs a bounded local echo
-without a separate terminal or installed Telnet client. The automated tests
-also check connection/disconnection logs, numbering across reconnects, recovery
-from a client reset, and progress while another client's outgoing echo is stalled.
-Shutdown is tested while idle, with partial input and with a pending echo.
+The example has a fixed listening address and no command-line options or
+self-test mode. Edit its `url` value to change the port. Automated checks use
+separate clients to verify connection/disconnection logs, numbering across
+reconnects, reset recovery and progress alongside a stalled echo. Shutdown is
+checked while idle, with partial input and with a pending echo.
 
 Use `127.0.0.1` when connecting to this IPv4 listener. Some clients try IPv6
 `::1` first for `localhost`, reporting a refused attempt before trying IPv4.

@@ -2,8 +2,7 @@
 
 `std.nexus` follows the original socket-associated message API. Run
 `just run-example nexus-message`, `nexus-multi-client`, `nexus-request-reply`, `nexus-telnet` or
-`nexus-telnet-server`. The last is a real echo server with Ctrl+C shutdown;
-its `--smoke` mode is a bounded local demonstration.
+`nexus-telnet-server`. The last is a real echo server on loopback port 2323 with Ctrl+C shutdown.
 See the [tutorial](tutorials/nexus.md) for simple client/server programs.
 
 ## Socket and message API

@@ -83,7 +83,7 @@ def telnet_echo_server(server: Path, env: dict[str, str], *, blocked_send: bool 
     # when clients send no data, and avoid competing buffered stdout readers.
     for connected in (False, True):
         flags = subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0
-        process = subprocess.Popen([str(server), "tcp://127.0.0.1:0"], cwd=ROOT, env=env,
+        process = subprocess.Popen([str(server)], cwd=ROOT, env=env,
                                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                    text=True, creationflags=flags)
         assert process.stdout is not None
@@ -407,6 +407,17 @@ def main() -> None:
         executables = []
         for index, source in enumerate(("tests/nexus/main.n", "tests/nexus/interop.n", "examples/nexus-message/nexus-message.n", "tests/nexus/socket-api.n", "tests/nexus/udp-interop.n", "examples/nexus-multi-client/nexus-multi-client.n", "examples/nexus-request-reply/nexus-request-reply.n", "tests/nexus/parity.n", "tests/nexus/timing-driver.n", "tests/nexus/telnet.n", "examples/nexus-telnet/nexus-telnet.n", "examples/nexus-telnet-server/nexus-telnet-server.n")):
             target = directory / (f"case-{index}" + suffix)
+            if source == "examples/nexus-telnet-server/nexus-telnet-server.n":
+                # The example has a fixed endpoint and no test/argument modes.
+                # Change only its port in a temporary copy so independent runs
+                # use OS-assigned ports and cannot collide with a user's server.
+                original = (ROOT / source).read_text()
+                instrumented, count = re.subn(r'"tcp://127\.0\.0\.1:[0-9]+"',
+                                              '"tcp://127.0.0.1:0"', original)
+                assert count == 1
+                copy = directory / "nexus-telnet-server.n"
+                copy.write_text(instrumented)
+                source = str(copy)
             command = [str(args.compiler.resolve()), "build", source, "-o", str(target)]
             if args.release:
                 command.append("--release")
@@ -430,8 +441,6 @@ def main() -> None:
             if output.strip() != expected:
                 raise RuntimeError(f"Unexpected output: {output!r}")
             print(f"PASS {target.name}: {expected}")
-        if run([str(echo_server), "--smoke"], env, timeout=10).strip() != "Nexus Telnet echo smoke passed":
-            raise RuntimeError("Telnet echo smoke failed")
         telnet_echo_server(echo_server, env)
         print("PASS Telnet echo server client lifecycle, reset recovery, routes and shutdown")
         telnet_wire(telnet, env)

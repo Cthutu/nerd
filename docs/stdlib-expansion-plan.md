@@ -369,8 +369,9 @@ been executed upstream or ported into Nerd.
   a default self-contained run starts a local server and client; optional explicit
   client/server modes can support two-terminal exploration. Document how to pass
   arguments and extend the common recipe only if those modes need it.
-- [x] Give interactive Telnet modes a separate bounded smoke mode using a scripted
-  peer, so automated checks never wait for a user or an installed Telnet client.
+- [x] Check interactive Telnet examples with bounded external scripted peers,
+  so examples need no embedded smoke mode and checks never wait for a user or
+  an installed Telnet client.
 - [ ] Run examples against this checkout's compiler/modules. Put fixed linkage in
   source build settings, use loopback and dynamically assigned ports, and report
   errors clearly. Normal examples need neither Internet access nor elevated rights.
