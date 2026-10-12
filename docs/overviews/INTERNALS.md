@@ -50,6 +50,12 @@ diagnostic metadata and do not affect structural type identity or layout.
 Recursive semantic type rendering isolates nested names in temporary arenas
 before appending them, keeping composite diagnostics such as
 `^PixelLayer\GfxError` contiguous and source-accurate.
+Inference saves and restores the nearest expression block's expected value type
+for return diagnostics. A whole return-operand mismatch can suggest `break` if
+the value fits that block, or its type is still being inferred. The hint excludes
+nested function bodies, call-argument errors and intervening loops, where an
+unlabelled break would target the loop. Function returns retain their semantics;
+this context only selects diagnostic help text.
 Parser recovery and semantic index checking recognise the extraction-shaped
 `on value[payload]` mistake, including an empty branch body, so diagnostics can
 point to the binder and suggest the required `=> [payload]` syntax instead of

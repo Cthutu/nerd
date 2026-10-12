@@ -116,6 +116,38 @@ def main():
         failure = run('check', diagnostic_source, success=False)
         assert 'Type mismatch: expected `i32`, found `ShutdownWatcher`' in failure, failure
 
+        # Suggest break only for a mismatched whole return value that can
+        # supply the nearest expression block. Nested functions/loops and
+        # errors inside call arguments must retain their ordinary diagnostics.
+        break_cases = [
+            ('value: string = ${ return "text" }', True),
+            ('value := ${ return "text" }', True),
+            ('value: bool = ${ return "text" }', False),
+            ('value: string = ${ for { return "text" } }', False),
+            ('value: string = ${ worker :: fn () -> i32 { return "text" }\nbreak "text" }', False),
+            ('value: string = ${ return take("text") }', False),
+            ('for { value: string = ${ return "text" } }', True),
+        ]
+        for body, suggest_break in break_cases:
+            diagnostic_source.write_text(
+                'take :: fn (value: i32) -> i32 { return value }\n'
+                'main :: fn () -> i32 {\n' + body + '\nreturn 0\n}\n')
+            failure = run('check', diagnostic_source, success=False)
+            assert ('Did you mean `break` instead of `return`' in failure) == suggest_break, failure
+            assert 'Type mismatch' in failure, failure
+        diagnostic_source.write_text(
+            'signal :: use std.signal\n'
+            'main :: fn () -> i32 {\n'
+            'watcher := on signal.watch_shutdown() => [value] ${ return value }\n'
+            'else [error] { return 1 }\nreturn 0\n}\n')
+        failure = run('check', diagnostic_source, success=False)
+        assert 'found `ShutdownWatcher`' in failure, failure
+        assert 'Did you mean `break` instead of `return`' in failure, failure
+        diagnostic_source.write_text(
+            'main :: fn () -> i32 {\n'
+            '_value: string = ${ return 7 }\nreturn 0\n}\n')
+        run('check', diagnostic_source)  # A valid early function return remains valid.
+
         assert 'Toolchain ready' in run('doctor')
         source = work / 'program.n'
         source.write_text('main :: fn () -> i32 { return 0 }\n')

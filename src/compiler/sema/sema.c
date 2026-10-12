@@ -21187,6 +21187,50 @@ internal bool sema_check_literal_range(const Lexer* lexer,
     return true;
 }
 
+// A hint is useful only for the whole return operand. Do not reinterpret
+// argument/operator errors, cross a function boundary, or suggest an unlabeled
+// break where an intervening loop would consume it.
+internal bool sema_return_may_mean_break(const Ast*  ast,
+                                         const Sema* sema,
+                                         u32         node_index,
+                                         u32         actual_type)
+{
+    if (!sema->expression_block_hint_active || actual_type == sema_no_type()) {
+        return false;
+    }
+    u32 expected = sema->expression_block_hint_type;
+    if (expected != sema_no_type() &&
+        !sema_type_matches(sema, expected, actual_type)) {
+        return false;
+    }
+    const AstNode* expression = &ast->nodes[sema->expression_block_hint_node];
+    const AstNode* block      = &ast->nodes[expression->a];
+    u32            operand    = sema_unwrap_expr_node(ast, node_index);
+    for (u32 i = block->a; i < block->b; ++i) {
+        const AstNode* statement = &ast->nodes[i];
+        if ((statement->kind != AK_Return &&
+             statement->kind != AK_ReturnExpr) ||
+            statement->a == U32_MAX ||
+            sema_unwrap_expr_node(ast, statement->a) != operand) {
+            continue;
+        }
+        for (u32 j = block->a; j < block->b; ++j) {
+            const AstNode* control = &ast->nodes[j];
+            if (control->kind == AK_FnStart && i > j && i < control->b) {
+                return false;
+            }
+            if (control->kind == AK_For) {
+                const AstNode* body = &ast->nodes[control->b];
+                if (i >= body->a && i < body->b) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+    return false;
+}
+
 internal bool sema_finish_inferred_type(const Lexer* lexer,
                                         const Ast*   ast,
                                         Sema*        sema,
@@ -21213,6 +21257,17 @@ internal bool sema_finish_inferred_type(const Lexer* lexer,
 
     if (expected_type != sema_no_type() &&
         !sema_type_matches(sema, expected_type, type_index)) {
+        if (sema_return_may_mean_break(ast, sema, node_index, type_index)) {
+            return error_0304_type_mismatch_with_help(
+                lexer->source,
+                sema_node_span(lexer, node),
+                sema_type_name(lexer, sema, &temp_arena, expected_type),
+                sema_type_name(lexer, sema, &temp_arena, type_index),
+                s("Did you mean `break` instead of `return` to yield this "
+                  "value "
+                  "from the expression block? `return` exits the enclosing "
+                  "function."));
+        }
         if (sema_type_is_pointer_integer_mismatch(
                 sema, expected_type, type_index)) {
             return error_0304_integer_used_as_pointer(
@@ -21662,8 +21717,26 @@ internal bool sema_infer_node_type(const Lexer* lexer,
         return sema_infer_arithmetic_tree(
             lexer, ast, sema, node_index, expected_type, out_type_index);
     }
-    return sema_infer_node_type_impl(
+    if (kind != AK_ExprBlock && kind != AK_FnDef) {
+        return sema_infer_node_type_impl(
+            lexer, ast, sema, node_index, expected_type, out_type_index);
+    }
+    bool saved_active = sema->expression_block_hint_active;
+    u32  saved_node   = sema->expression_block_hint_node;
+    u32  saved_type   = sema->expression_block_hint_type;
+    if (kind == AK_ExprBlock) {
+        sema->expression_block_hint_active = true;
+        sema->expression_block_hint_node   = node_index;
+        sema->expression_block_hint_type   = expected_type;
+    } else if (kind == AK_FnDef) {
+        sema->expression_block_hint_active = false;
+    }
+    bool ok = sema_infer_node_type_impl(
         lexer, ast, sema, node_index, expected_type, out_type_index);
+    sema->expression_block_hint_active = saved_active;
+    sema->expression_block_hint_node   = saved_node;
+    sema->expression_block_hint_type   = saved_type;
+    return ok;
 }
 
 internal bool sema_infer_node_type_impl(const Lexer* lexer,
