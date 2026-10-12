@@ -6,14 +6,14 @@ exchange :: fn () -> void\NexusError {
     server := net_socket()
     defer server.close()
     server.bind("tcp://127.0.0.1:0")?
-    server.set_option(NetOption.RecvTimeoutMs, 2000)
-    server.set_option(NetOption.SendTimeoutMs, 2000)
+    server.set_option(NetOption.RecvTimeoutMs, 2000)?
+    server.set_option(NetOption.SendTimeoutMs, 2000)?
     first := net_socket()
     defer first.close()
     second := net_socket()
     defer second.close()
-    first.set_option(NetOption.RecvTimeoutMs, 2000)
-    second.set_option(NetOption.RecvTimeoutMs, 2000)
+    first.set_option(NetOption.RecvTimeoutMs, 2000)?
+    second.set_option(NetOption.RecvTimeoutMs, 2000)?
     first.connect(server.local_url()?)?
     second.connect(server.local_url()?)?
 

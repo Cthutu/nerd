@@ -76,6 +76,96 @@ def read_exact(peer: socket.socket, count: int) -> bytes:
     return bytes(result)
 
 
+def telnet_original(driver: Path, peer: Path, env: dict[str, str]) -> None:
+    process, ready = start_timing([str(driver), "echo"], env)
+    try:
+        port = ready.get(timeout=5).strip()
+        if run([str(peer), port], env, timeout=10).strip() != "C Telnet peer passed":
+            raise RuntimeError("Original Telnet client failed")
+        output, _ = process.communicate(timeout=5)
+        if process.returncode or output.strip() != "Nexus Telnet wire passed":
+            raise RuntimeError(f"Nerd Telnet server failed: {output!r}")
+    finally:
+        stop_timing(process)
+    process, ready = start_timing([str(peer), "server"], env)
+    try:
+        port = ready.get(timeout=5).strip()
+        url = f"tcp://127.0.0.1:{int(port)}"
+        if run([str(driver), "original", url], env, timeout=10).strip() != "Nexus Telnet wire passed":
+            raise RuntimeError("Nerd Telnet client failed")
+        output, _ = process.communicate(timeout=5)
+        if process.returncode or output.strip() != "C Telnet peer passed":
+            raise RuntimeError(f"Original Telnet server failed: {output!r}")
+    finally:
+        stop_timing(process)
+
+
+def telnet_wire(driver: Path, env: dict[str, str]) -> None:
+    # Both directions are independently checked against raw Telnet wire bytes.
+    # Send each command byte separately: IAC, option and SB parsing must resume.
+    process, ready = start_timing([str(driver), "oversized"], env)
+    try:
+        port = int(ready.get(timeout=5).strip())
+        with socket.create_connection(("127.0.0.1", port), timeout=5) as peer:
+            if read_exact(peer, 3) != b"\xff\xfd\x1f":
+                raise RuntimeError("Missing oversized peer session request")
+            peer.sendall(b"x" * (1_048_576 + 1))
+            output, _ = process.communicate(timeout=5)
+        if process.returncode or output.strip() != "Nexus Telnet limit passed":
+            raise RuntimeError(f"Telnet input limit failed: {output!r}")
+    finally:
+        stop_timing(process)
+    for character in (False, True):
+        mode = "character" if character else "line"
+        process, ready = start_timing([str(driver), mode], env)
+        try:
+            port = int(ready.get(timeout=5).strip())
+            with socket.create_connection(("127.0.0.1", port), timeout=5) as peer:
+                greeting = b"\xff\xfd\x1f"
+                if character:
+                    greeting += b"\xff\xfb\x01\xff\xfb\x03\xff\xfd\x03"
+                if read_exact(peer, len(greeting)) != greeting:
+                    raise RuntimeError("Wrong Telnet session negotiation")
+                if character:
+                    peer.sendall(b"ab\r\n\xff\xffz")
+                    if read_exact(peer, 5) != b"ab\n\xffz":
+                        raise RuntimeError("Character mode did not preserve/normalise bytes")
+                else:
+                    commands = (b"\xff\xfb\x01\xff\xfd\x03\xff\xfb\x1f"
+                                b"\xff\xfa\x1f\x00\xff\xff\x00\x19\xff\xf0")
+                    for byte in commands:
+                        peer.sendall(bytes([byte]))
+                        time.sleep(0.001)
+                    peer.sendall(b"hi\xff\xff!\r\n\r\nlast\n")
+                    expected = b"\xff\xfe\x01\xff\xfc\x03reply\r\n\r\nlast\r\n"
+                    if read_exact(peer, len(expected)) != expected:
+                        raise RuntimeError("Telnet negotiation/line reply mismatch")
+            output, _ = process.communicate(timeout=5)
+            if process.returncode or output.strip() != "Nexus Telnet wire passed":
+                raise RuntimeError(f"Telnet server failed: {output!r}")
+        finally:
+            stop_timing(process)
+        with socket.socket() as listener:
+            listener.bind(("127.0.0.1", 0))
+            listener.listen()
+            listener.settimeout(5)
+            url = f"tcp://127.0.0.1:{listener.getsockname()[1]}"
+            process, finished = start_timing([str(driver), mode, url], env)
+            try:
+                with listener.accept()[0] as peer:
+                    peer.settimeout(5)
+                    expected = b"xy" if character else b"xy\r\n\r\n"
+                    if read_exact(peer, len(expected)) != expected:
+                        raise RuntimeError("Telnet outgoing bytes were framed or incorrectly terminated")
+                    peer.sendall(b"!!" if character else b"final\r\n")
+                output, _ = process.communicate(timeout=5)
+                output = finished.get(timeout=5) + output
+                if process.returncode or output.strip() != "Nexus Telnet wire passed":
+                    raise RuntimeError(f"Telnet {mode} client failed ({process.returncode}): {output!r}")
+            finally:
+                stop_timing(process)
+
+
 def delayed_connect(client: Path, env: dict[str, str]) -> None:
     # Keep the port bound continuously: it cannot be stolen between choosing
     # an ephemeral address and starting to listen. Bind alone refuses connects.
@@ -126,8 +216,8 @@ def delayed_receive(server: Path, env: dict[str, str], udp: bool) -> None:
 
 def ready_deadlines(driver: Path, env: dict[str, str]) -> None:
     receiving = dict(env, NEXUS_TEST_RECV_WOULD_BLOCK="1")
-    for udp in (False, True):
-        mode = "ready-deadline-udp" if udp else "ready-deadline"
+    for mode, udp in (("ready-deadline", False), ("ready-deadline-udp", True),
+                      ("ready-deadline-telnet", False)):
         process, ready = start_timing([str(driver), mode], receiving)
         try:
             port = ready.get(timeout=5).strip()
@@ -148,7 +238,7 @@ def ready_deadlines(driver: Path, env: dict[str, str]) -> None:
         output = run([str(driver), "udp-send-deadline", url], dict(env, NEXUS_TEST_SEND_WOULD_BLOCK="1"), timeout=5)
         if output.strip() != "Nexus UDP send deadline passed":
             raise RuntimeError(f"Ready send deadline failed: {output!r}")
-    print("PASS TCP/UDP deadlines despite persistent ready-but-would-block I/O")
+    print("PASS TCP/UDP/Telnet deadlines despite persistent ready-but-would-block I/O")
 
 
 def audit_parity(upstream: Path | None = None) -> None:
@@ -176,7 +266,7 @@ def audit_parity(upstream: Path | None = None) -> None:
                 pattern = rf"(?m)^def {re.escape(reference['function'])}\("
             if not re.search(pattern, path.read_text()):
                 raise RuntimeError(f"Missing parity function: {reference!r}")
-    if counts != {"covered": 22, "pending": 11}:
+    if counts != {"covered": 33, "pending": 0}:
         raise RuntimeError(f"Parity inventory/status changed: {counts!r}")
     if upstream is not None:
         source_names = set()
@@ -185,7 +275,7 @@ def audit_parity(upstream: Path | None = None) -> None:
                                 re.findall(r"TEST_CASE\(nexus,\s*(\w+)\)", path.read_text()))
         if source_names != set(names):
             raise RuntimeError(f"Source parity inventory mismatch: {source_names ^ set(names)}")
-    print("PASS Nexus source parity map: 22 core equivalents; 11 Telnet pending")
+    print("PASS Nexus source parity map: 33 source equivalents including Telnet")
 
 
 def main() -> None:
@@ -201,7 +291,7 @@ def main() -> None:
         directory = Path(temporary)
         suffix = ".exe" if os.name == "nt" else ""
         executables = []
-        for index, source in enumerate(("tests/nexus/main.n", "tests/nexus/interop.n", "examples/nexus-message/nexus-message.n", "tests/nexus/socket-api.n", "tests/nexus/udp-interop.n", "examples/nexus-multi-client/nexus-multi-client.n", "examples/nexus-request-reply/nexus-request-reply.n", "tests/nexus/parity.n", "tests/nexus/timing-driver.n")):
+        for index, source in enumerate(("tests/nexus/main.n", "tests/nexus/interop.n", "examples/nexus-message/nexus-message.n", "tests/nexus/socket-api.n", "tests/nexus/udp-interop.n", "examples/nexus-multi-client/nexus-multi-client.n", "examples/nexus-request-reply/nexus-request-reply.n", "tests/nexus/parity.n", "tests/nexus/timing-driver.n", "tests/nexus/telnet.n", "examples/nexus-telnet/nexus-telnet.n")):
             target = directory / (f"case-{index}" + suffix)
             command = [str(args.compiler.resolve()), "build", source, "-o", str(target)]
             if args.release:
@@ -213,17 +303,21 @@ def main() -> None:
                 flags = shlex.split(run(command + ["--copts"], env))
                 run(["clang", str(target.with_suffix(".c")), *flags, "-o", str(target)], env)
             executables.append(target)
-        contracts, server, example, socket_api, udp_server, multi_client, request_reply, parity, timing = executables
+        contracts, server, example, socket_api, udp_server, multi_client, request_reply, parity, timing, telnet, telnet_example = executables
         for target, expected in ((contracts, "Nexus buffer and framing contracts passed"),
                                  (example, "Nexus message: hello nexus, reply 43"),
                                  (socket_api, "Nexus socket API contracts passed"),
                                  (multi_client, "Nexus multi-client: replies 11 and 21"),
                                  (request_reply, "Nexus request/reply: two exchanges passed"),
-                                 (parity, "Nexus parity contracts passed")):
+                                 (parity, "Nexus parity contracts passed"),
+                                 (telnet, "Nexus Telnet contracts passed"),
+                                 (telnet_example, "Nexus Telnet: echo: hello terminal")):
             output = run([str(target)], env, timeout=20)
             if output.strip() != expected:
                 raise RuntimeError(f"Unexpected output: {output!r}")
             print(f"PASS {target.name}: {expected}")
+        telnet_wire(telnet, env)
+        print("PASS Telnet raw line/character wire, negotiation, NAWS and EOF")
         delayed_connect(timing, env)
         delayed_receive(timing, env, False)
         delayed_receive(timing, env, True)
@@ -240,6 +334,9 @@ def main() -> None:
                 raise RuntimeError("Socket API fragmented I/O contracts failed")
             if run([str(parity)], injected, timeout=20).strip() != "Nexus parity contracts passed":
                 raise RuntimeError("Parity fragmented I/O contracts failed")
+            if run([str(telnet)], injected, timeout=20).strip() != "Nexus Telnet contracts passed":
+                raise RuntimeError("Telnet fragmented I/O contracts failed")
+            telnet_wire(telnet, injected)
             delayed_connect(timing, dict(injected, NEXUS_TEST_CONNECT_REFUSALS="3"))
             ready_deadlines(timing, injected)
             print("PASS deterministic partial I/O, refused connects and would-block retries")
@@ -278,6 +375,11 @@ def main() -> None:
             run(udp_command, env)
             interop(udp_server, udp_original, env, "UDP")
             print(f"PASS original Nexus UDP implementation at {PINNED}")
+            telnet_peer = directory / ("original-telnet-peer" + suffix)
+            telnet_command = [str(telnet_peer) if arg == str(original) else "tests/nexus/telnet-peer.c" if arg == "tests/nexus/peer.c" else arg for arg in command]
+            run(telnet_command, env)
+            telnet_original(telnet, telnet_peer, env)
+            print(f"PASS original Nexus Telnet client and server at {PINNED}")
 
 
 if __name__ == "__main__":

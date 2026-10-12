@@ -1,0 +1,554 @@
+-- Telnet uses the same socket/message API, but payloads are terminal bytes,
+-- without the length-prefixed strings used by ordinary Nexus sockets.
+use std.network
+use std.nexus
+use std.time
+
+on "linux" {
+
+    ffi "c" {
+        fflush (stream: ^void) -> i32
+    }
+
+}
+
+on "windows" {
+
+    ffi "msvcrt" {
+        fflush (stream: ^void) -> i32
+    }
+
+}
+
+configure :: fn (socket: ^NetSocket) -> void\NexusError {
+    socket.set_option(NetOption.ConnectTimeoutMs, 2000)?
+    socket.set_option(NetOption.SendTimeoutMs, 2000)?
+    socket.set_option(NetOption.RecvTimeoutMs, 2000)?
+}
+
+options :: fn () -> void\NexusError {
+    socket := net_telnet_socket()
+    defer socket.close()
+    assert socket.get_option(NetOption.TelnetMode)? == net_telnet_line_mode
+    socket.set_option(NetOption.TelnetMode, net_telnet_character_mode)?
+    assert socket.get_option(NetOption.TelnetMode)? == net_telnet_character_mode
+    on socket.set_option(NetOption.TelnetMode, 2) {
+        NexusError.Invalid! => {
+        }
+
+        else => {
+            assert no
+        }
+    }
+    assert socket.get_option(NetOption.TelnetMode)? == net_telnet_character_mode
+    on socket.bind("udp://127.0.0.1:0") {
+        NexusError.ProtocolNotSupported! => {
+        }
+
+        else => {
+            assert no
+        }
+    }
+    on socket.connect("udp://127.0.0.1:1") {
+        NexusError.ProtocolNotSupported! => {
+        }
+
+        else => {
+            assert no
+        }
+    }
+    normal := net_socket()
+    defer normal.close()
+    on normal.set_option(NetOption.TelnetMode, 0) {
+        NexusError.ProtocolNotSupported! => {
+        }
+
+        else => {
+            assert no
+        }
+    }
+    on normal.get_option(NetOption.TelnetMode) {
+        NexusError.ProtocolNotSupported! => {
+        }
+
+        else => {
+            assert no
+        }
+    }
+    message := Message.create(^normal)
+    defer message.done()
+    assert message.telnet_bounds() == nil
+}
+
+-- Sending before accepting works without worker threads. Repeat the immediate
+-- server close to check that a complete final line survives buffered EOF.
+round_trip :: fn () -> void\NexusError {
+    for i in [0 .. 20] {
+        _      := i
+        server := net_telnet_socket()
+
+        defer server.close()
+        configure(^server)?
+        server.bind("tcp://127.0.0.1:0")?
+        client := net_telnet_socket()
+        defer client.close()
+        configure(^client)?
+        client.connect(server.local_url()?)?
+        request := Message.create(^client)
+        defer request.done()
+        request.append("hello from telnet".as([]u8))?
+        request.send()?
+        reply := Message.create(^server)
+        defer reply.done()
+        reply.recv()?
+        assert reply.payload().as(string) == "hello from telnet"
+        assert reply.id() != nil
+        assert reply.telnet_bounds() == nil
+        reply.clear()
+        reply.append("echo: hello from telnet".as([]u8))?
+        reply.send()?
+        server.close()
+        request.recv()?
+        assert request.payload().as(string) == "echo: hello from telnet"
+        on request.recv() {
+            NexusError.Closed! => {
+            }
+
+            else => {
+                assert no
+            }
+        }
+        assert request.payload().as(string) == "echo: hello from telnet"
+        assert request.telnet_bounds() == nil
+    }
+}
+
+raw_send :: fn (peer: ^Socket, bytes: []u8) -> void\NetworkError {
+    sent : usize = 0
+    for sent < bytes.count {
+        on peer.send(bytes[sent..]) {
+            count => {
+                assert count != 0
+                sent += count
+            }
+
+            NetworkError.WouldBlock { code: _ }!,
+            NetworkError.Interrupted { code: _ }! => {
+            }
+
+            error! => return error!
+        }
+    }
+}
+
+-- A slow partial line cannot block another client. Each sender's NAWS state
+-- stays separate, and a timed-out line resumes without changing the output.
+routes_and_resume :: fn () -> void\NexusError {
+    server := net_telnet_socket()
+    defer server.close()
+    configure(^server)?
+    server.bind("tcp://127.0.0.1:0")?
+    address          := server.local_address()?
+    first   : Socket
+    second  : Socket
+
+    on socket(SocketKind.Tcp) {
+        value => first = value
+
+        _! => {
+            assert no
+        }
+    }
+    defer _ := first.close()
+    on socket(SocketKind.Tcp) {
+        value => second = value
+
+        _! => {
+            assert no
+        }
+    }
+    defer _ := second.close()
+    on first.connect(address) {
+        _! => {
+            assert no
+        }
+
+        else => {
+        }
+    }
+    on second.connect(address) {
+        _! => {
+            assert no
+        }
+
+        else => {
+        }
+    }
+    prefix := [
+        255.as(u8),
+        250.as(u8),
+        31.as(u8),
+        0.as(u8),
+        80.as(u8),
+        0.as(u8),
+        25.as(u8),
+        255.as(u8),
+        240.as(u8),
+    ]
+    on raw_send(^first, prefix[..]) {
+        _! => {
+            assert no
+        }
+
+        else => {
+        }
+    }
+    on raw_send(^first, "partial".as([]u8)) {
+        _! => {
+            assert no
+        }
+
+        else => {
+        }
+    }
+    on raw_send(^second, "ready\r\n".as([]u8)) {
+        _! => {
+            assert no
+        }
+
+        else => {
+        }
+    }
+    message := Message.create(^server)
+    defer message.done()
+    message.recv()?
+    assert message.payload().as(string) == "ready"
+    assert message.telnet_bounds() == nil
+    ready_id := message.id()
+    server.set_option(NetOption.RecvTimeoutMs, 20)?
+    on message.recv() {
+        NexusError.TimedOut! => {
+        }
+
+        else => {
+            assert no
+        }
+    }
+    assert message.payload().as(string) == "ready"
+    assert message.id() == ready_id
+    server.set_option(NetOption.Nonblocking, 1)?
+    on message.recv() {
+        NexusError.WouldBlock! => {
+        }
+
+        else => {
+            assert no
+        }
+    }
+    server.set_option(NetOption.Nonblocking, 0)?
+    server.set_option(NetOption.RecvTimeoutMs, 2000)?
+    on raw_send(^first, """
+     line
+    """.as([]u8)) {
+        _! => {
+            assert no
+        }
+
+        else => {
+        }
+    }
+    message.recv()?
+    assert message.payload().as(string) == "partial line"
+    assert message.id() != ready_id
+    on message.telnet_bounds() {
+        bounds => {
+            assert bounds.width == 80
+            assert bounds.height == 25
+        }
+
+        else => {
+            assert no
+        }
+    }
+    message.clear()
+    message.append("routed".as([]u8))?
+    message.send()?
+    -- The first raw client receives the session request, then its own reply.
+    received : [11]u8
+    used     : usize  = 0
+
+    for used < received.count {
+        on first.receive(received[used..]) {
+            part => {
+                assert !part.eof
+                used += part.count
+            }
+
+            NetworkError.WouldBlock { code: _ }!,
+            NetworkError.Interrupted { code: _ }! => {
+            }
+
+            _! => {
+                assert no
+            }
+        }
+    }
+    assert received[0] == 255 && received[1] == 253 && received[2] == 31
+    assert received[3..].as(string) == "routed\r\n"
+}
+
+-- Connected sockets can learn bounds from negotiation even when no complete
+-- text message arrives. Querying metadata does not consume or replace payload.
+client_bounds :: fn () -> void\NexusError {
+    server := net_telnet_socket()
+    defer server.close()
+    configure(^server)?
+    server.bind("tcp://127.0.0.1:0")?
+    client := net_telnet_socket()
+    defer client.close()
+    configure(^client)?
+    client.connect(server.local_url()?)?
+    request := Message.create(^client)
+    defer request.done()
+    request.append("ready".as([]u8))?
+    request.send()?
+    reply := Message.create(^server)
+    defer reply.done()
+    reply.recv()?
+    -- Only outgoing mode changes for an existing peer: use a raw send without
+    -- an appended newline, leaving the client's receive waiting for text.
+    server.set_option(NetOption.TelnetMode, net_telnet_character_mode)?
+    reply.clear()
+    naws := [
+        255.as(u8),
+        250.as(u8),
+        31.as(u8),
+        0.as(u8),
+        80.as(u8),
+        0.as(u8),
+        25.as(u8),
+        255.as(u8),
+        240.as(u8),
+    ]
+    reply.append(naws[..])?
+    reply.send()?
+    client.set_option(NetOption.RecvTimeoutMs, 20)?
+    on request.recv() {
+        NexusError.TimedOut! => {
+        }
+
+        else => {
+            assert no
+        }
+    }
+    assert request.payload().as(string) == "ready"
+    on request.telnet_bounds() {
+        bounds => {
+            assert bounds.width == 80
+            assert bounds.height == 25
+        }
+
+        else => {
+            assert no
+        }
+    }
+    client.close()
+    assert request.telnet_bounds() == nil
+}
+
+oversized_server :: fn () -> void\NexusError {
+    server := net_telnet_socket()
+    defer server.close()
+    configure(^server)?
+    server.bind("tcp://127.0.0.1:0")?
+    address := server.local_address()?
+    prn($"{address.port}")
+    _       := fflush(nil)
+    message := Message.create(^server)
+
+    defer message.done()
+    message.append("unchanged".as([]u8))?
+    on message.recv() {
+        NexusError.TooLarge! => {
+        }
+
+        else => {
+            assert no
+        }
+    }
+    assert message.payload().as(string) == "unchanged"
+    assert message.id() == nil
+    prn("Nexus Telnet limit passed")
+}
+
+echo_server :: fn () -> void\NexusError {
+    server := net_telnet_socket()
+    defer server.close()
+    configure(^server)?
+    server.bind("tcp://127.0.0.1:0")?
+    address := server.local_address()?
+    prn($"{address.port}")
+    _     := fflush(nil)
+    reply := Message.create(^server)
+
+    defer reply.done()
+    reply.recv()?
+    assert reply.payload().as(string) == "hello from telnet"
+    reply.clear()
+    reply.append("echo: hello from telnet".as([]u8))?
+    reply.send()?
+    reply.recv()?
+    assert reply.payload().as(string) == "ack"
+    server.close()
+    prn("Nexus Telnet wire passed")
+}
+
+wire_server :: fn (character: bool) -> void\NexusError {
+    server := net_telnet_socket()
+    defer server.close()
+    configure(^server)?
+    on character => server.set_option(NetOption.TelnetMode, net_telnet_character_mode)?
+    server.bind("tcp://127.0.0.1:0")?
+    address := server.local_address()?
+    prn($"{address.port}")
+    _       := fflush(nil)
+    message := Message.create(^server)
+
+    defer message.done()
+    on character => {
+        expected := [97.as(u8), 98.as(u8), 10.as(u8), 255.as(u8), 122.as(u8)]
+        for item in expected {
+            message.recv()?
+            assert message.payload().count == 1
+            assert message.payload()[0] == item^
+            message.send()?
+        }
+    } else {
+        message.recv()?
+        expected := [104.as(u8), 105.as(u8), 255.as(u8), 33.as(u8)]
+        assert message.payload().count == expected.count
+        for i in [0 .. expected.count] {
+            assert message.payload()[i] == expected[i]
+        }
+        on message.telnet_bounds() {
+            bounds => {
+                assert bounds.width == 255
+                assert bounds.height == 25
+            }
+
+            else => {
+                assert no
+            }
+        }
+        message.clear()
+        assert message.telnet_bounds() != nil
+        message.append("reply".as([]u8))?
+        message.send()?
+        message.recv()?
+        assert message.payload().count == 0
+        message.send()?
+        message.recv()?
+        assert message.payload().as(string) == "last"
+        message.send()?
+        server.close()
+        assert message.telnet_bounds() == nil
+    }
+    prn("Nexus Telnet wire passed")
+}
+
+wire_client :: fn (url       : string,
+                   character : bool,
+                   original  : bool) -> void\NexusError {
+    client := net_telnet_socket()
+    defer client.close()
+    configure(^client)?
+    on character => client.set_option(NetOption.TelnetMode, net_telnet_character_mode)?
+    client.connect(url)?
+    message := Message.create(^client)
+    defer message.done()
+    message.append("xy".as([]u8))?
+    message.send()?
+    message.clear()
+    -- An empty character send emits nothing
+    -- An empty line sends CRLF.
+    on !original => message.send()?
+    on character => {
+        for i in [0 .. 2] {
+            _ := i
+            message.recv()?
+            assert message.payload().as(string) == "!"
+        }
+    } else {
+        message.recv()?
+        assert message.payload().as(string) == "final"
+    }
+    on original => {
+        message.clear()
+        message.append("ack".as([]u8))?
+        message.send()?
+    }
+    on message.recv() {
+        NexusError.Closed! => {
+        }
+
+        else => {
+            assert no
+        }
+    }
+    prn("Nexus Telnet wire passed")
+}
+
+main :: fn (args: []string) -> i32 {
+    on args.count == 2 &&
+        args[1] == "oversized" => {
+        on oversized_server() {
+            _!    => return 6
+            else  => return 0
+        }
+    }
+    on args.count == 2 &&
+        args[1] == "echo" => {
+        on echo_server() {
+            _!    => return 5
+            else  => return 0
+        }
+    }
+    on args.count == 2 => {
+        on wire_server(args[1] == "character") {
+            _!    => return 1
+            else  => return 0
+        }
+    }
+    on args.count == 3 => {
+        on wire_client(args[2], args[1] == "character", args[1] == "original") {
+            _!    => return 2
+            else  => return 0
+        }
+    }
+    on options() {
+        _! => return 3
+
+        else => {
+        }
+    }
+    on round_trip() {
+        _! => return 4
+
+        else => {
+        }
+    }
+    on routes_and_resume() {
+        _! => return 7
+
+        else => {
+        }
+    }
+    on client_bounds() {
+        _! => return 8
+
+        else => {
+        }
+    }
+    prn("Nexus Telnet contracts passed")
+    return 0
+}

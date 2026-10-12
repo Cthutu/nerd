@@ -23,6 +23,8 @@ pub TcpStream :: plex {
     expected       usize    -- Expected payload size after a complete prefix.
     received       usize    -- Payload bytes received so far.
     pending        bool     -- True until the outgoing frame has been flushed.
+    text           bool     -- Internal Telnet transport: no length prefix.
+    line           bool     -- Append CRLF to outgoing Telnet lines.
     failed         bool     -- Terminal framing or I/O failure; dispose of this
                             --     stream.
 }
@@ -61,6 +63,10 @@ impl TcpStream {
         for i in [0 .. 4] {
             self.send_header[i] = (size >> ((3 - i) * 8).as(u32)).as(u8)
         }
+        on self.text => {
+            self.send_header[0] = 13
+            self.send_header[1] = 10
+        }
         self.sent = 0
         self.pending = yes
     }
@@ -70,11 +76,24 @@ impl TcpStream {
     pub try_flush :: fn (self: ^Self) -> bool\NexusError {
         on !self.valid() => return NexusError.Invalid!
         for self.pending {
+            total := self.outgoing.length + 4
+            on self.text => {
+                total = self.outgoing.length
+                on self.line => total += 2
+            }
+            on self.sent == total => {
+                self.pending = no
+                return yes
+            }
             bytes := self.outgoing.payload()
-            on self.sent < 4 => {
+            on !self.text && self.sent < 4 => {
                 bytes = self.send_header[self.sent ..]
-            } else {
+            } else on !self.text => {
                 bytes = bytes[self.sent - 4 ..]
+            }
+            on self.text => {
+                on self.sent < self.outgoing.length => bytes = self.outgoing.payload()[self.sent ..]
+                else bytes = self.send_header[self.sent - self.outgoing.length .. 2]
             }
             on self.socket.send(bytes) {
                 count => {
@@ -83,7 +102,7 @@ impl TcpStream {
                         return NexusError.Closed!
                     }
                     self.sent += count
-                    on self.sent == self.outgoing.length + 4 => self.pending = no
+                    on self.sent == total => self.pending = no
                 }
                 NetworkError.WouldBlock {
                     code

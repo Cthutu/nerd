@@ -1,0 +1,57 @@
+-- A local Telnet line exchange. Real terminal clients normally run in another
+-- process; running both endpoints here keeps the example self-contained.
+use std.nexus
+
+exchange :: fn () -> void\NexusError {
+    -- Telnet shares the simple Nexus socket/message API. Unlike a normal Nexus
+    -- TCP socket it transports terminal text, not length-prefixed binary frames.
+    server := net_telnet_socket()
+    defer server.close()
+    server.set_option(NetOption.RecvTimeoutMs, 2000)?
+    server.set_option(NetOption.SendTimeoutMs, 2000)?
+    server.bind("tcp://127.0.0.1:0")?
+
+    client := net_telnet_socket()
+    defer client.close()
+    client.set_option(NetOption.RecvTimeoutMs, 2000)?
+    client.set_option(NetOption.SendTimeoutMs, 2000)?
+    client.connect(server.local_url()?)?
+
+    -- append adds raw text. append_string would add a binary length prefix,
+    -- which a terminal cannot interpret. Line mode supplies CRLF on send.
+    request := Message.create(^client)
+    defer request.done()
+    request.append("hello terminal".as([]u8))?
+    request.send()?
+
+    -- recv accepts a connection, handles Telnet commands, then returns a whole
+    -- line without its newline. A received message retains the sender's route.
+    reply := Message.create(^server)
+    defer reply.done()
+    reply.recv()?
+    assert reply.payload().as(string) == "hello terminal"
+
+    -- Real terminal clients can report their size through NAWS negotiation.
+    -- Bounds are optional: this small client does not advertise a window size.
+    assert reply.telnet_bounds() == nil
+    reply.clear()
+    reply.append("echo: hello terminal".as([]u8))?
+    reply.send()?
+    server.close()
+
+    -- A complete buffered line survives the server closing immediately after
+    -- sending. The next recv would report Closed when it reaches EOF.
+    request.recv()?
+    prn($"Nexus Telnet: {request.payload().as(string)}")
+}
+
+main :: fn () -> i32 {
+    on exchange() {
+        _! => {
+            eprn("Nexus Telnet failed")
+            return 1
+        }
+
+        else => return 0
+    }
+}

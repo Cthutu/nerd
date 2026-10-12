@@ -4,34 +4,34 @@ use std.nexus
 use std.network
 use std.time
 
-configure :: fn (socket: ^NetSocket) {
-    socket.set_option(NetOption.ConnectTimeoutMs, 2000)
-    socket.set_option(NetOption.SendTimeoutMs, 2000)
-    socket.set_option(NetOption.RecvTimeoutMs, 2000)
+configure :: fn (socket: ^NetSocket) -> void\NexusError {
+    socket.set_option(NetOption.ConnectTimeoutMs, 2000)?
+    socket.set_option(NetOption.SendTimeoutMs, 2000)?
+    socket.set_option(NetOption.RecvTimeoutMs, 2000)?
 }
 
-options :: fn () {
+options :: fn () -> void\NexusError {
     socket := net_socket()
     defer socket.close()
-    assert socket.get_option(NetOption.ConnectTimeoutMs) == 1000
-    assert socket.get_option(NetOption.ReconnectIntervalMs) == 25
-    assert socket.get_option(NetOption.SendTimeoutMs) == net_wait_infinite
-    assert socket.get_option(NetOption.RecvTimeoutMs) == net_wait_infinite
-    assert socket.get_option(NetOption.Nonblocking) == 0
-    socket.set_option(NetOption.ConnectTimeoutMs, 250)
-    socket.set_option(NetOption.ReconnectIntervalMs, 25)
-    socket.set_option(NetOption.SendTimeoutMs, 500)
-    socket.set_option(NetOption.RecvTimeoutMs, 750)
-    socket.set_option(NetOption.Nonblocking, 1)
-    assert socket.get_option(NetOption.ConnectTimeoutMs) == 250
-    assert socket.get_option(NetOption.ReconnectIntervalMs) == 25
-    assert socket.get_option(NetOption.SendTimeoutMs) == 500
-    assert socket.get_option(NetOption.RecvTimeoutMs) == 750
-    assert socket.get_option(NetOption.Nonblocking) == 1
-    socket.set_option(NetOption.RecvTimeoutMs, net_wait_immediate)
-    assert socket.get_option(NetOption.RecvTimeoutMs) == net_wait_immediate
-    socket.set_option(NetOption.ReconnectIntervalMs, 0)
-    assert socket.get_option(NetOption.ReconnectIntervalMs) == 0
+    assert socket.get_option(NetOption.ConnectTimeoutMs)? == 1000
+    assert socket.get_option(NetOption.ReconnectIntervalMs)? == 25
+    assert socket.get_option(NetOption.SendTimeoutMs)? == net_wait_infinite
+    assert socket.get_option(NetOption.RecvTimeoutMs)? == net_wait_infinite
+    assert socket.get_option(NetOption.Nonblocking)? == 0
+    socket.set_option(NetOption.ConnectTimeoutMs, 250)?
+    socket.set_option(NetOption.ReconnectIntervalMs, 25)?
+    socket.set_option(NetOption.SendTimeoutMs, 500)?
+    socket.set_option(NetOption.RecvTimeoutMs, 750)?
+    socket.set_option(NetOption.Nonblocking, 1)?
+    assert socket.get_option(NetOption.ConnectTimeoutMs)? == 250
+    assert socket.get_option(NetOption.ReconnectIntervalMs)? == 25
+    assert socket.get_option(NetOption.SendTimeoutMs)? == 500
+    assert socket.get_option(NetOption.RecvTimeoutMs)? == 750
+    assert socket.get_option(NetOption.Nonblocking)? == 1
+    socket.set_option(NetOption.RecvTimeoutMs, net_wait_immediate)?
+    assert socket.get_option(NetOption.RecvTimeoutMs)? == net_wait_immediate
+    socket.set_option(NetOption.ReconnectIntervalMs, 0)?
+    assert socket.get_option(NetOption.ReconnectIntervalMs)? == 0
 }
 
 -- Check both an empty listener and a connected-but-silent peer. A failed recv
@@ -43,23 +43,23 @@ idle_receive :: fn (udp: bool) -> void\NexusError {
     inbound := Message.create(^server)
     defer inbound.done()
     inbound.append_u32(99)?
-    server.set_option(NetOption.Nonblocking, 1)
+    server.set_option(NetOption.Nonblocking, 1)?
     on inbound.recv() { NexusError.WouldBlock! => {} else => { assert no } }
     assert inbound.payload().count == 4
     assert inbound.id() == nil
-    server.set_option(NetOption.Nonblocking, 0)
-    server.set_option(NetOption.RecvTimeoutMs, 20)
+    server.set_option(NetOption.Nonblocking, 0)?
+    server.set_option(NetOption.RecvTimeoutMs, 20)?
     started := now()
     on inbound.recv() { NexusError.TimedOut! => {} else => { assert no } }
     assert now() - started >= from_ms(20)
     assert inbound.payload().count == 4
     client := net_socket()
     defer client.close()
-    configure(^client)
+    configure(^client)?
     client.connect(server.local_url()?)?
-    server.set_option(NetOption.Nonblocking, 1)
+    server.set_option(NetOption.Nonblocking, 1)?
     on inbound.recv() { NexusError.WouldBlock! => {} else => { assert no } }
-    server.set_option(NetOption.Nonblocking, 0)
+    server.set_option(NetOption.Nonblocking, 0)?
     started = now()
     on inbound.recv() { NexusError.TimedOut! => {} else => { assert no } }
     assert now() - started >= from_ms(20)
@@ -68,7 +68,7 @@ idle_receive :: fn (udp: bool) -> void\NexusError {
     defer outbound.done()
     outbound.append_u32(42)?
     outbound.send()?
-    server.set_option(NetOption.RecvTimeoutMs, 2000)
+    server.set_option(NetOption.RecvTimeoutMs, 2000)?
     inbound.recv()?
     assert inbound.read_u32()? == 42
 }
@@ -79,7 +79,7 @@ idle_receive :: fn (udp: bool) -> void\NexusError {
 tcp_capacity :: fn () -> void\NexusError {
     server := net_socket()
     defer server.close()
-    configure(^server)
+    configure(^server)?
     server.bind("tcp://127.0.0.1:0")?
     clients: [max_nexus_clients + 1]NetSocket
     defer for i in [0 .. clients.count] { clients[i].close() }
@@ -89,7 +89,7 @@ tcp_capacity :: fn () -> void\NexusError {
     defer incoming.done()
     for i in [0 .. clients.count] {
         clients[i] = net_socket()
-        configure(^clients[i])
+        configure(^clients[i])?
         clients[i].connect(server.local_url()?)?
         outgoing := Message.create(^clients[i])
         defer outgoing.done()
@@ -103,12 +103,12 @@ tcp_capacity :: fn () -> void\NexusError {
             assert incoming.read_u32()? == i.as(u32)
         }
     }
-    server.set_option(NetOption.Nonblocking, 1)
+    server.set_option(NetOption.Nonblocking, 1)?
     on incoming.recv() { NexusError.WouldBlock! => {} else => { assert no } }
     old_id := saved.id()
     assert old_id != nil
     clients[0].close()
-    server.set_option(NetOption.Nonblocking, 0)
+    server.set_option(NetOption.Nonblocking, 0)?
     incoming.recv()?
     assert incoming.read_u32()? == max_nexus_clients.as(u32)
     assert incoming.id() != old_id
@@ -133,11 +133,11 @@ tcp_capacity :: fn () -> void\NexusError {
 reconnect :: fn (request_reply: bool) -> void\NexusError {
     server := on request_reply => net_reply_socket() else net_socket()
     defer server.close()
-    configure(^server)
+    configure(^server)?
     server.bind("tcp://127.0.0.1:0")?
     client := on request_reply => net_request_socket() else net_socket()
     defer client.close()
-    configure(^client)
+    configure(^client)?
     previous_id: ?u64
     for round in [0 .. 4] {
         client.connect(server.local_url()?)?
@@ -159,7 +159,7 @@ reconnect :: fn (request_reply: bool) -> void\NexusError {
         client.close()
         on request.send() { NexusError.Invalid! => {} else => { assert no } }
         on request.recv() { NexusError.Invalid! => {} else => { assert no } }
-        server.set_option(NetOption.Nonblocking, 1)
+        server.set_option(NetOption.Nonblocking, 1)?
         retired_by := now().add(from_secs(2))
         for incoming.id() != nil {
             on incoming.recv() { NexusError.WouldBlock! => {} else => { assert no } }
@@ -170,7 +170,7 @@ reconnect :: fn (request_reply: bool) -> void\NexusError {
             NexusError.Invalid!, NexusError.WrongState! => {}
             else => { assert no }
         }
-        server.set_option(NetOption.Nonblocking, 0)
+        server.set_option(NetOption.Nonblocking, 0)?
     }
 }
 
@@ -212,11 +212,11 @@ raw_send :: fn (peer: ^Socket, bytes: []u8) -> void\NexusError {
 fatal_frames :: fn () -> void\NexusError {
     server := net_socket()
     defer server.close()
-    configure(^server)
+    configure(^server)?
     server.bind("tcp://127.0.0.1:0")?
     client := net_socket()
     defer client.close()
-    configure(^client)
+    configure(^client)?
     client.connect(server.local_url()?)?
     request := Message.create(^client)
     defer request.done()
@@ -259,11 +259,11 @@ fatal_frames :: fn () -> void\NexusError {
 metadata :: fn (udp: bool) -> void\NexusError {
     server := net_socket()
     defer server.close()
-    configure(^server)
+    configure(^server)?
     server.bind(on udp => "udp://127.0.0.1:0" else "tcp://127.0.0.1:0")?
     client := net_socket()
     defer client.close()
-    configure(^client)
+    configure(^client)?
     client.connect(server.local_url()?)?
     address := client.local_address()?
     expected := on udp => $"udp://127.0.0.1:{address.port}" else $"tcp://127.0.0.1:{address.port}"
@@ -296,11 +296,11 @@ metadata :: fn (udp: bool) -> void\NexusError {
 final_reply_close :: fn () -> void\NexusError {
     server := net_socket()
     defer server.close()
-    configure(^server)
+    configure(^server)?
     server.bind("tcp://127.0.0.1:0")?
     client := net_socket()
     defer client.close()
-    configure(^client)
+    configure(^client)?
     client.connect(server.local_url()?)?
     request := Message.create(^client)
     defer request.done()
@@ -319,7 +319,7 @@ final_reply_close :: fn () -> void\NexusError {
 }
 
 main :: fn () -> i32 {
-    options()
+    on options() { _! => return 10 else => {} }
     on idle_receive(no) { _! => return 1 else => {} }
     on idle_receive(yes) { _! => return 2 else => {} }
     on tcp_capacity() { _! => return 3 else => {} }

@@ -266,7 +266,7 @@ inspection and timing/retry/nonblocking options are implemented. The
 with message, multi-client and request/reply examples. Linux LLVM/C debug/release
 contracts and bidirectional TCP/UDP exchanges against the pinned C source pass.
 The [source parity inventory](nexus-parity.md) maps all 22 core source scenarios
-to equivalent coverage, with all 11 Telnet cases marked pending. TCP saturation,
+to equivalent coverage; the Telnet slice below adds the remaining 11. TCP saturation,
 queued admission after disconnect, repeated reconnects, malformed-peer isolation,
 and delayed connect/receive are tested. Forced stale readiness exposed a timeout
 loop, now fixed; loop-temporary LLVM storage is also bounded. Native Windows and
@@ -279,7 +279,7 @@ Depends on M6.
 
 - [ ] Port request/reply state machines, timing/retry/non-blocking options and
   sender inspection, including recovery rules after timeout/disconnection.
-- [ ] Port Telnet line/character mode, negotiation filtering and NAWS behaviour
+- [x] Port Telnet line/character mode, negotiation filtering and NAWS behaviour
   in a separate protocol component; it must not complicate raw sockets.
 - [ ] Map all source network tests to passing Nerd equivalents. Add adversarial
   fragmentation, fairness and reconnect tests with bounded resource usage.
@@ -288,6 +288,16 @@ Depends on M6.
 
 Exit: complete agreed Nexus parity matrix and runnable request/reply and Telnet
 examples. Additional patterns such as pub/sub or push/pull need a later proposal.
+
+Implemented M7 Telnet slice (12 October 2026): `net_telnet_socket`, line and
+character modes, resumable raw sends, bounded incremental negotiation and
+per-peer NAWS. All 33 pinned source scenarios now map to Nerd equivalents.
+The commented example and [Telnet tutorial](tutorials/nexus-telnet.md) explain
+terminal bytes, reply routes and optional bounds. Native Linux LLVM/C debug and
+release checks include scripted raw peers, deterministic short I/O, final replies
+followed by close, multi-client isolation and partial-line timeout recovery.
+Pinned C interoperability exercises both client/server roles. Native Windows,
+DNS/IPv6 URL extensions and broader stress validation remain outstanding.
 
 ### M8 — Graph/scheduler and network integration
 
@@ -359,7 +369,7 @@ been executed upstream or ported into Nerd.
   a default self-contained run starts a local server and client; optional explicit
   client/server modes can support two-terminal exploration. Document how to pass
   arguments and extend the common recipe only if those modes need it.
-- [ ] Give interactive Telnet modes a separate bounded smoke mode using a scripted
+- [x] Give interactive Telnet modes a separate bounded smoke mode using a scripted
   peer, so automated checks never wait for a user or an installed Telnet client.
 - [ ] Run examples against this checkout's compiler/modules. Put fixed linkage in
   source build settings, use loopback and dynamically assigned ports, and report

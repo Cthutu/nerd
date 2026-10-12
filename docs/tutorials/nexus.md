@@ -88,10 +88,10 @@ one-second total budget, retrying a refused/reset connection while waiting for
 a server. Configure options once on the socket:
 
 ```nerd
-socket.set_option(NetOption.ConnectTimeoutMs, 2000)
-socket.set_option(NetOption.ReconnectIntervalMs, 25)
-socket.set_option(NetOption.SendTimeoutMs, 2000)
-socket.set_option(NetOption.RecvTimeoutMs, 500)
+socket.set_option(NetOption.ConnectTimeoutMs, 2000)?
+socket.set_option(NetOption.ReconnectIntervalMs, 25)?
+socket.set_option(NetOption.SendTimeoutMs, 2000)?
+socket.set_option(NetOption.RecvTimeoutMs, 500)?
 ```
 
 A bounded operation reports `NexusError.TimedOut`. Set
@@ -124,3 +124,6 @@ The [API contracts](../stdlib-nexus.md) cover ownership, limits and source
 compatibility. `TcpStream` remains available for direct framing/event-loop use;
 the basic socket/message API manages that state for ordinary programs. Telnet
 and DNS/IPv6 URLs remain follow-on work.
+
+For terminal text, see the [Telnet tutorial](nexus-telnet.md). It uses the same
+socket/message API with line or character messages and optional terminal sizes.

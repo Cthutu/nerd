@@ -20,11 +20,16 @@ files while preserving C source fixtures, including `tests/ffi/variadic_host.c`.
 
 The standard-library foundation has separate bounded execution runners:
 `build/test_runtime_threads.py`, `build/test_std_thread_sync.py` and
-`build/test_network.py` and `build/test_raptor.py`, plus `validation/stdlib/check_capabilities.py`. The
+`build/test_network.py`, `build/test_raptor.py` and `build/test_nexus.py`, plus `validation/stdlib/check_capabilities.py`. The
 common recipes run the thread/network examples as programs, with native ABI
 assertions and LLVM/C-output coverage; syntax-only example fixtures are not
 substitutes for those contract tests. `just test-release` repeats the library
 contracts using the freshly built release compiler.
+
+Nexus coverage includes framed TCP, UDP routes, request/reply and Telnet line/
+character protocols, scripted negotiation/NAWS peers and deterministic short I/O.
+Its parity map checks all 33 scenarios from the pinned original source. Optional
+`--upstream-dir` checks wire compatibility with that unmodified implementation.
 
 ## Test Families
 

@@ -9,7 +9,7 @@ on "windows" { ffi "msvcrt" { fflush (stream: ^void) -> i32 getchar () -> i32 } 
 retry_connect :: fn (url: string) -> void\NexusError {
     client := net_socket()
     defer client.close()
-    client.set_option(NetOption.Nonblocking, 1)
+    client.set_option(NetOption.Nonblocking, 1)?
     on client.connect(url) {
         NexusError.WouldBlock! => {}
         else => { assert no }
@@ -17,11 +17,11 @@ retry_connect :: fn (url: string) -> void\NexusError {
     -- Prove the listener is absent before starting the waiting attempt.
     prn("retry-ready")
     _ := fflush(nil)
-    client.set_option(NetOption.Nonblocking, 0)
-    client.set_option(NetOption.ConnectTimeoutMs, 3000)
-    client.set_option(NetOption.ReconnectIntervalMs, 25)
-    client.set_option(NetOption.SendTimeoutMs, 3000)
-    client.set_option(NetOption.RecvTimeoutMs, 3000)
+    client.set_option(NetOption.Nonblocking, 0)?
+    client.set_option(NetOption.ConnectTimeoutMs, 3000)?
+    client.set_option(NetOption.ReconnectIntervalMs, 25)?
+    client.set_option(NetOption.SendTimeoutMs, 3000)?
+    client.set_option(NetOption.RecvTimeoutMs, 3000)?
     client.connect(url)?
     message := Message.create(^client)
     defer message.done()
@@ -36,7 +36,7 @@ arrival :: fn (udp: bool) -> void\NexusError {
     server := net_socket()
     defer server.close()
     server.bind(on udp => "udp://127.0.0.1:0" else "tcp://127.0.0.1:0")?
-    server.set_option(NetOption.RecvTimeoutMs, 3000)
+    server.set_option(NetOption.RecvTimeoutMs, 3000)?
     address := server.local_address()?
     prn($"{address.port}")
     _ := fflush(nil)
@@ -49,22 +49,22 @@ arrival :: fn (udp: bool) -> void\NexusError {
 
 -- The parent queues data before releasing stdin. Native reads are then forced
 -- to would-block despite readiness, which must not restart the timeout budget.
-ready_deadline :: fn (udp: bool) -> void\NexusError {
-    server := net_socket()
+ready_deadline :: fn (udp: bool, telnet: bool) -> void\NexusError {
+    server := on telnet => net_telnet_socket() else net_socket()
     defer server.close()
     server.bind(on udp => "udp://127.0.0.1:0" else "tcp://127.0.0.1:0")?
     address := server.local_address()?
     prn($"{address.port}")
     _ := fflush(nil)
     assert getchar() == 'g'.as(i32)
-    server.set_option(NetOption.RecvTimeoutMs, 50)
+    server.set_option(NetOption.RecvTimeoutMs, 50)?
     message := Message.create(^server)
     defer message.done()
     message.append_u32(99)?
     on message.recv() { NexusError.TimedOut! => {} else => { assert no } }
     assert message.payload().count == 4
     assert message.id() == nil
-    server.set_option(NetOption.Nonblocking, 1)
+    server.set_option(NetOption.Nonblocking, 1)?
     on message.recv() { NexusError.WouldBlock! => {} else => { assert no } }
     assert message.read_u32()? == 99
     prn("Nexus ready deadline passed")
@@ -74,12 +74,12 @@ udp_send_deadline :: fn (url: string) -> void\NexusError {
     client := net_socket()
     defer client.close()
     client.connect(url)?
-    client.set_option(NetOption.SendTimeoutMs, 50)
+    client.set_option(NetOption.SendTimeoutMs, 50)?
     message := Message.create(^client)
     defer message.done()
     message.append_u32(99)?
     on message.send() { NexusError.TimedOut! => {} else => { assert no } }
-    client.set_option(NetOption.Nonblocking, 1)
+    client.set_option(NetOption.Nonblocking, 1)?
     on message.send() { NexusError.WouldBlock! => {} else => { assert no } }
     assert message.read_u32()? == 99
     prn("Nexus UDP send deadline passed")
@@ -96,10 +96,13 @@ main :: fn (args: []string) -> i32 {
         on arrival(yes) { _! => return 3 else => return 0 }
     }
     on args.count == 2 && args[1] == "ready-deadline" => {
-        on ready_deadline(no) { _! => return 4 else => return 0 }
+        on ready_deadline(no, no) { _! => return 4 else => return 0 }
     }
     on args.count == 2 && args[1] == "ready-deadline-udp" => {
-        on ready_deadline(yes) { _! => return 5 else => return 0 }
+        on ready_deadline(yes, no) { _! => return 5 else => return 0 }
+    }
+    on args.count == 2 && args[1] == "ready-deadline-telnet" => {
+        on ready_deadline(no, yes) { _! => return 8 else => return 0 }
     }
     on args.count == 3 && args[1] == "udp-send-deadline" => {
         on udp_send_deadline(args[2]) { _! => return 6 else => return 0 }

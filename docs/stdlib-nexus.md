@@ -1,7 +1,7 @@
-# Nexus messages and TCP framing
+# Nexus messages, TCP framing and Telnet
 
 `std.nexus` follows the original socket-associated message API. Run
-`just run-example nexus-message`, `nexus-multi-client` or `nexus-request-reply`.
+`just run-example nexus-message`, `nexus-multi-client`, `nexus-request-reply` or `nexus-telnet`.
 See the [tutorial](tutorials/nexus.md) for simple client/server programs.
 
 ## Socket and message API
@@ -17,7 +17,9 @@ See the [tutorial](tutorials/nexus.md) for simple client/server programs.
 | `net_message_clear/done` | `message.clear()` / `message.done()` |
 | `net_message_read_*` / `net_message_append_*` | `message.read_*()?` / `message.append_*()?` |
 | `net_message_id/url` | `message.id()` / `message.url()` |
-| `net_set_option/get_option` | `socket.set_option()` / `socket.get_option()` |
+| `net_set_option/get_option` | `socket.set_option(...)?` / `socket.get_option(...)?` |
+| `net_telnet_socket()` | `net_telnet_socket()` |
+| `net_telnet_bounds` | `message.telnet_bounds()` returns optional `TelnetBounds` |
 | `net_close(&socket)` | `socket.close()` |
 
 `NetSocket` initially owns no native resources. `connect` and `bind` accept
@@ -56,10 +58,11 @@ address. No unbounded application queue or hidden worker threads are created.
 Request sockets start in the send phase; reply sockets start in the receive
 phase. A complete successful operation changes the turn. `WrongState` detects
 incorrect ordering before I/O. Errors and timeouts do not change the turn.
-Basic sockets permit either direction independently.
+Basic and Telnet sockets permit either direction independently.
 
 Options are `Nonblocking`, `ConnectTimeoutMs`, `ReconnectIntervalMs`,
-`SendTimeoutMs` and `RecvTimeoutMs`. Send/receive default to `net_wait_infinite`;
+`SendTimeoutMs`, `RecvTimeoutMs` and `TelnetMode`. Set/get return results;
+`TelnetMode` rejects ordinary sockets and values other than the two mode constants. Send/receive default to `net_wait_infinite`;
 connect defaults to 1000 ms, with a 25 ms reconnect interval. A zero reconnect
 interval chooses the source's 50 ms fallback. TCP retries refused/reset/timed-out
 or interrupted connects, using fresh native sockets within one absolute budget;
@@ -101,6 +104,43 @@ unchanged; this includes an incomplete string body after a valid length prefix.
 reads. Raw reads and strings borrow message storage. Views survive other reads
 but expire on append, clear, successful receive or done. Copy a view before any
 of those operations if it must outlive them.
+
+## Telnet sockets
+
+`net_telnet_socket()` uses raw TCP terminal text and shares the socket/message
+ownership, routes, bounded peers and timeout model above. See the
+[Telnet tutorial](tutorials/nexus-telnet.md) and commented `nexus-telnet` example.
+`TelnetMode` defaults to `net_telnet_line_mode`; set it before bind/connect.
+`net_telnet_character_mode` selects one decoded byte per receive and raw sends.
+Input mode is captured per connection; later changes affect sends and new peers.
+
+Line sends append CRLF, and line receives discard CR and finish on LF. Empty
+lines are valid. Character receives map CR to LF and suppress the following LF.
+IAC commands are filtered, doubled IAC yields a literal byte, and NAWS retains
+big-endian width/height per peer. Accepted peers receive DO NAWS; character mode
+also requests WILL ECHO, WILL SGA and DO SGA. Expected options are ignored;
+unsupported DO/WILL receive WONT/DONT. DONT/WONT require no response. Client
+connect does not initiate session negotiation. Subnegotiation storage is fixed
+at eight bytes, and unread wire input at 1024 bytes per peer; decoded lines and
+outgoing snapshots are independently bounded at 1 MiB. Control output drains
+between input chunks and never interrupts a pending application send. If a
+pending application send prevents draining, queued control replies are also
+capped at 1 MiB.
+
+`message.telnet_bounds()` returns `?TelnetBounds` for the live sender after NAWS,
+nil otherwise, including on non-Telnet sockets. Connected clients can inspect
+negotiated bounds even before a complete text message arrives. Clear preserves the route and
+size lookup. Receive timeouts retain partial lines/commands and leave output
+unchanged. Complete messages precede EOF; incomplete final lines report `Closed`.
+Oversized decoded input removes the offending peer. A failed control write
+prevents further sends but leaves final readable input available. These writes
+use the enclosing send/receive deadline and do not create a hidden worker.
+
+Use `append(text.as([]u8))`, not binary `append_string`, for terminal text.
+Outgoing IAC is not automatically escaped, matching the source implementation.
+Applications must double literal IAC themselves. Unlike the source parser,
+escaped IAC immediately completes a character-mode message; bounds and partial
+commands remain fully incremental. Telnet accepts TCP URLs only.
 
 ## Advanced TCP stream ownership and progress
 
@@ -145,6 +185,7 @@ provides explicit backpressure without hidden workers or unlimited buffering.
 | Failure | Behaviour |
 | --- | --- |
 | `Invalid` | Missing/stale socket association, missing reply route, unsuitable/failed stream, or occupied outgoing slot |
+| `ProtocolNotSupported` | Telnet UDP URL, or Telnet mode option on an ordinary socket |
 | `BadUrl` | Unsupported or malformed numeric IPv4 URL; no socket is opened |
 | `WouldBlock` / `TimedOut` | Immediate operation / bounded wait cannot complete; partial progress survives |
 | `WrongState` | Request/reply operation violates its current turn; no I/O occurs |
@@ -171,7 +212,7 @@ simple API retains the original socket/message association and automatic replies
 Nerd uses methods and propagated result errors in place of C output parameters.
 
 Linux LLVM and C output pass debug/release contracts, golden-wire C exchange,
-and TCP/UDP exchanges against the unmodified pinned C implementation in both directions,
+and TCP/UDP/Telnet exchanges against the unmodified pinned C implementation in both directions,
 including typed values, empty frames and empty datagrams. Deterministic short send/receive and
 would-block injection checks retry without duplication or loss. Native Windows
 validation of this slice remains pending.
@@ -185,8 +226,8 @@ use ephemeral ports, readiness handshakes and process timeouts.
 ## Source test parity
 
 The [complete parity inventory](nexus-parity.md) maps all 33 pinned scenarios:
-22 core message/framing/request-reply scenarios have equivalent Nerd coverage;
-11 Telnet scenarios remain pending. The runner validates every coverage reference
+all 22 core message/framing/request-reply and 11 Telnet scenarios have equivalent
+Nerd coverage. The runner validates every coverage reference
 and, with `--upstream-dir`, compares the inventory against the original test files.
 
 Regressions also cover all 63 TCP peer slots and admitting a queued client after
@@ -199,6 +240,6 @@ and UDP send check their original deadline after incomplete I/O, preventing
 readiness from extending a timeout indefinitely. Immediate calls preserve partial
 progress and return WouldBlock after an incomplete attempt.
 
-Remaining feature work: Telnet and DNS/bracketed IPv6 URLs. Native Windows,
+Remaining feature work: DNS/bracketed IPv6 URLs. Native Windows,
 broader stress/soak validation and a dedicated timeout/nonblocking walkthrough
 remain pending. M6/M7 milestone closure still requires their agreed checks.

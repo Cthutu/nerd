@@ -179,3 +179,10 @@ isolation, delayed connection/arrival, and ready-but-would-block deadline tests.
 The audit exposed and fixed indefinite readiness retries and LLVM loop temporary
 stack growth. See [the parity inventory](nexus-parity.md). Native Windows and
 Telnet remain pending.
+
+12 October 2026: Added the Telnet protocol component, original-style constructor,
+fallible mode option and optional per-peer bounds. All 33 pinned source tests
+now have equivalent coverage, including all 11 Telnet cases. Added a commented
+local exchange and separate tutorial. Native scripted peers check negotiation,
+NAWS, line/character wire bytes and fragmented/oversized input; C interoperability
+checks both roles. Native Windows and broader soak validation remain pending.

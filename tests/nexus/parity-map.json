@@ -273,69 +273,124 @@
     },
     {
       "source": "telnet.c::telnet_socket_round_trip_over_tcp",
-      "status": "pending",
-      "coverage": [],
-      "note": "Telnet protocol and options are not implemented."
+      "status": "covered",
+      "coverage": [
+        {
+          "file": "tests/nexus/telnet.n",
+          "function": "round_trip"
+        }
+      ],
+      "note": ""
     },
     {
       "source": "telnet.c::telnet_socket_round_trip_survives_immediate_close_repeatedly",
-      "status": "pending",
-      "coverage": [],
-      "note": "Telnet protocol and options are not implemented."
+      "status": "covered",
+      "coverage": [
+        {
+          "file": "tests/nexus/telnet.n",
+          "function": "round_trip"
+        }
+      ],
+      "note": ""
     },
     {
       "source": "telnet.c::telnet_socket_reports_closed_after_final_reply",
-      "status": "pending",
-      "coverage": [],
-      "note": "Telnet protocol and options are not implemented."
+      "status": "covered",
+      "coverage": [
+        {
+          "file": "tests/nexus/telnet.n",
+          "function": "round_trip"
+        }
+      ],
+      "note": ""
     },
     {
       "source": "telnet.c::telnet_socket_sends_crlf_terminated_lines",
-      "status": "pending",
-      "coverage": [],
-      "note": "Telnet protocol and options are not implemented."
+      "status": "covered",
+      "coverage": [
+        {
+          "file": "build/test_nexus.py",
+          "function": "telnet_wire"
+        }
+      ],
+      "note": ""
     },
     {
       "source": "telnet.c::telnet_character_mode_receives_one_character_per_message",
-      "status": "pending",
-      "coverage": [],
-      "note": "Telnet protocol and options are not implemented."
+      "status": "covered",
+      "coverage": [
+        {
+          "file": "build/test_nexus.py",
+          "function": "telnet_wire"
+        }
+      ],
+      "note": ""
     },
     {
       "source": "telnet.c::telnet_character_mode_sends_raw_bytes_without_crlf",
-      "status": "pending",
-      "coverage": [],
-      "note": "Telnet protocol and options are not implemented."
+      "status": "covered",
+      "coverage": [
+        {
+          "file": "build/test_nexus.py",
+          "function": "telnet_wire"
+        }
+      ],
+      "note": ""
     },
     {
       "source": "telnet.c::telnet_socket_ignores_telnet_negotiation_bytes",
-      "status": "pending",
-      "coverage": [],
-      "note": "Telnet protocol and options are not implemented."
+      "status": "covered",
+      "coverage": [
+        {
+          "file": "build/test_nexus.py",
+          "function": "telnet_wire"
+        }
+      ],
+      "note": ""
     },
     {
       "source": "telnet.c::telnet_socket_reports_negotiated_bounds_from_naws",
-      "status": "pending",
-      "coverage": [],
-      "note": "Telnet protocol and options are not implemented."
+      "status": "covered",
+      "coverage": [
+        {
+          "file": "build/test_nexus.py",
+          "function": "telnet_wire"
+        }
+      ],
+      "note": ""
     },
     {
       "source": "telnet.c::telnet_socket_rejects_udp_urls",
-      "status": "pending",
-      "coverage": [],
-      "note": "Telnet protocol and options are not implemented."
+      "status": "covered",
+      "coverage": [
+        {
+          "file": "tests/nexus/telnet.n",
+          "function": "options"
+        }
+      ],
+      "note": ""
     },
     {
       "source": "telnet.c::telnet_bounds_are_unavailable_on_non_telnet_sockets",
-      "status": "pending",
-      "coverage": [],
-      "note": "Telnet protocol and options are not implemented."
+      "status": "covered",
+      "coverage": [
+        {
+          "file": "tests/nexus/telnet.n",
+          "function": "options"
+        }
+      ],
+      "note": ""
     },
     {
       "source": "telnet.c::telnet_mode_option_round_trips_and_rejects_non_telnet_sockets",
-      "status": "pending",
-      "coverage": [],
-      "note": "Telnet protocol and options are not implemented."
+      "status": "covered",
+      "coverage": [
+        {
+          "file": "tests/nexus/telnet.n",
+          "function": "options"
+        }
+      ],
+      "note": ""
     }
   ]
 }

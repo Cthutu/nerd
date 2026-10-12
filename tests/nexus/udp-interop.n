@@ -6,8 +6,8 @@ serve :: fn () -> void\NexusError {
     server := net_socket()
     defer server.close()
     server.bind("udp://127.0.0.1:0")?
-    server.set_option(NetOption.SendTimeoutMs, 5000)
-    server.set_option(NetOption.RecvTimeoutMs, 5000)
+    server.set_option(NetOption.SendTimeoutMs, 5000)?
+    server.set_option(NetOption.RecvTimeoutMs, 5000)?
     address := server.local_address()?
     prn($"{address.port}")
     _ := fflush(nil)

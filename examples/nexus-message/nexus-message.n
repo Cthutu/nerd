@@ -10,16 +10,16 @@ run_message :: fn () -> void\NexusError {
     server := net_socket()
     defer server.close()
     server.bind("tcp://127.0.0.1:0")?
-    server.set_option(NetOption.RecvTimeoutMs, 2000)
-    server.set_option(NetOption.SendTimeoutMs, 2000)
+    server.set_option(NetOption.RecvTimeoutMs, 2000)?
+    server.set_option(NetOption.SendTimeoutMs, 2000)?
 
     -- A normal client needs only connect with the server's URL. The local_url
     -- query is needed here because we requested an OS-selected port above.
     client := net_socket()
     defer client.close()
-    client.set_option(NetOption.ConnectTimeoutMs, 2000)
-    client.set_option(NetOption.RecvTimeoutMs, 2000)
-    client.set_option(NetOption.SendTimeoutMs, 2000)
+    client.set_option(NetOption.ConnectTimeoutMs, 2000)?
+    client.set_option(NetOption.RecvTimeoutMs, 2000)?
+    client.set_option(NetOption.SendTimeoutMs, 2000)?
     client.connect(server.local_url()?)?
 
     -- Messages are associated with their socket. Typed fields use the original

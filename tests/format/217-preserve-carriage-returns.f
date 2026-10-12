@@ -16,4 +16,3 @@ main :: fn () {
     assert cr.count == 15
     assert mixed.count == 14
 }
-

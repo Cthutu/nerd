@@ -1,0 +1,254 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Telnet decoding is per connection: partial commands, lines and terminal sizes
+-- must never leak between clients. Only raw TCP bytes use this parser.
+use std.network
+
+pub TelnetBounds :: plex {
+    width  u16
+    height u16
+}
+
+-- Internal state owned by a Nexus peer. Input is read in bounded chunks;
+-- completed messages leave coalesced bytes for the next recv call.
+pub TelnetState :: plex {
+    input          [1024]u8
+    position       usize
+    count          usize
+    decoded        Message
+    control        Message
+    control_sent   usize
+    control_failed bool
+    state          u8
+    command        u8
+    option         u8
+    subdata        [8]u8
+    subcount       usize
+    character      bool
+    suppress_lf    bool
+    has_bounds     bool
+    bounds         TelnetBounds
+}
+
+impl TelnetState {
+
+    done :: fn (self: ^Self) {
+        self.decoded.done()
+        self.control.done()
+    }
+
+    -- Server requests window-size reporting. Character mode also requests
+    -- server echo and suppression of go-ahead in both directions.
+    session :: fn (self: ^Self) -> void\NexusError {
+        request := [255.as(u8), 253.as(u8), 31.as(u8)]
+        self.control.append(request[..])?
+        on self.character => {
+            character := [
+                255.as(u8),
+                251.as(u8),
+                1.as(u8),
+                255.as(u8),
+                251.as(u8),
+                3.as(u8),
+                255.as(u8),
+                253.as(u8),
+                3.as(u8),
+            ]
+            self.control.append(character[..])?
+        }
+    }
+
+    -- Never insert negotiation bytes in the middle of an application send.
+    -- Retain short writes and resume on the next writable notification.
+    flush :: fn (self: ^Self, stream: ^TcpStream) -> bool\NexusError {
+        on self.control_failed => {
+            stream.failed = yes
+            return NexusError.Closed!
+        }
+        on stream.pending => return yes
+        for self.control_sent < self.control.length {
+            on stream.socket.send(self.control.storage[self.control_sent..self.control.length]) {
+                count => {
+                    on count == 0 => {
+                        stream.failed = yes
+                        return NexusError.Closed!
+                    }
+                    self.control_sent += count
+                }
+
+                NetworkError.WouldBlock { code: _ }!,
+                NetworkError.Interrupted { code: _ }! => return no
+
+                error! => {
+                    stream.failed = yes
+                    return NexusError.Network { error }!
+                }
+            }
+        }
+        self.control.clear()
+        self.control_sent = 0
+        return yes
+    }
+
+    -- States: text, IAC, option command, suboption, subdata, subdata IAC.
+    -- Unsupported DO/WILL are refused; DONT/WONT need no acknowledgement.
+    decode :: fn (self           : ^Self,
+                  byte           : u8,
+                  character_mode : bool) -> bool\NexusError {
+        on self.state == 0 => {
+            on byte == 255 => {
+                self.state = 1
+                return no
+            }
+            on !self.character => {
+                on byte == 13 => return no
+                on byte == 10 => return yes
+            } else {
+                on byte == 10 &&
+                    self.suppress_lf => {
+                    self.suppress_lf = no
+                    return no
+                }
+                self.suppress_lf = byte == 13
+                on byte == 13 => {
+                    newline := [10.as(u8)]
+                    self.decoded.append(newline[..])?
+                    return yes
+                }
+            }
+            ordinary := [byte]
+            self.decoded.append(ordinary[..])?
+            return self.character
+        }
+        on self.state == 1 => {
+            self.state = 0
+            on byte == 255 => {
+                literal := [byte]
+                self.decoded.append(literal[..])?
+                self.suppress_lf = no
+                return self.character
+            }
+            on byte >= 251 &&
+                byte <= 254 => {
+                self.command = byte
+                self.state = 2
+            }
+            on byte == 250 => {
+                self.state = 3
+                self.subcount = 0
+            }
+            return no
+        }
+        on self.state == 2 => {
+            self.state = 0
+            expected := self.command == 251 && byte == 31
+            on character_mode &&
+                byte == 3 &&
+                (self.command == 251 || self.command == 253) => expected = yes
+            on character_mode &&
+                byte == 1 &&
+                self.command == 253 => expected = yes
+            on !self.control_failed &&
+                !expected &&
+                (self.command == 251 || self.command == 253) => {
+                response := [255.as(u8), on self.command == 251 => 254.as(u8) else 252.as(u8), byte]
+                self.control.append(response[..])?
+            }
+            return no
+        }
+        on self.state == 3 => {
+            self.option = byte
+            self.state = 4
+            return no
+        }
+        on self.state == 4 => {
+            on byte == 255 => {
+                self.state = 5
+                return no
+            }
+        } else {
+            self.state = 4
+            on byte == 240 => {
+                self.state = 0
+                on self.option == 31 &&
+                    self.subcount >= 4 => {
+                    self.bounds.width = (self.subdata[0].as(u16) << 8) | self.subdata[1].as(u16)
+                    self.bounds.height = (self.subdata[2].as(u16) << 8) | self.subdata[3].as(u16)
+                    self.has_bounds = yes
+                }
+                return no
+            }
+            on byte != 255 => return no
+        }
+        on self.subcount < self.subdata.count => {
+            self.subdata[self.subcount] = byte
+            self.subcount += 1
+        }
+        return no
+    }
+
+    -- A refusal may race the peer's final reply and close. A failed control
+    -- write disables further writes, but still lets buffered input reach recv.
+    flush_receive :: fn (self: ^Self, stream: ^TcpStream) -> bool\NexusError {
+        on self.control_failed => return yes
+        on self.flush(stream) {
+            complete => return complete
+
+            NexusError.Closed!,
+            NexusError.Network { error: _ }! => {
+                stream.failed = no
+                self.control_failed = yes
+                self.control.clear()
+                self.control_sent = 0
+                return yes
+            }
+
+            error! => return error!
+        }
+    }
+
+    receive :: fn (self           : ^Self,
+                   stream         : ^TcpStream,
+                   output         : ^Message,
+                   character_mode : bool) -> bool\NexusError {
+        on !stream.valid() => return NexusError.Invalid!
+        for {
+            on !self.flush_receive(stream)? => return no
+            for self.position < self.count {
+                byte := self.input[self.position]
+                self.position += 1
+                on self.decode(byte, character_mode)? => {
+                    output.clear()
+                    output.append(self.decoded.payload())?
+                    self.decoded.clear()
+                    return yes
+                }
+            }
+            -- Replies discovered in the last chunk must drain before waiting
+            -- for another byte; some clients wait for these acknowledgements.
+            on !self.flush_receive(stream)? => return no
+            on stream.socket.receive(self.input[..]) {
+                result => {
+                    on result.eof => {
+                        stream.failed = yes
+                        return NexusError.Closed!
+                    }
+                    self.count = result.count
+                    self.position = 0
+                }
+
+                NetworkError.WouldBlock { code: _ }!,
+                NetworkError.Interrupted { code: _ }! => return no
+
+                error! => {
+                    stream.failed = yes
+                    return NexusError.Network { error }!
+                }
+            }
+        }
+        return NexusError.Invalid!
+    }
+
+}

@@ -1,8 +1,8 @@
 # Nexus source-test parity
 
 The inventory is pinned to `cthutu/dev` revision
-`9ae32dd295241bd3889204537dfa476f222e753c`. All 22 message/framing/request-reply
-scenarios have equivalent Nerd coverage; the 11 Telnet scenarios remain pending.
+`9ae32dd295241bd3889204537dfa476f222e753c`. All 33 message/framing/request-reply
+and Telnet scenarios have equivalent Nerd coverage.
 Covered means the observable contract is checked, rather than a literal copy of
 the original C test. Native Windows validation remains pending for every row.
 
@@ -37,17 +37,17 @@ the original C test suite was executed.
 | `reqrep.c::request_socket_cannot_receive_before_sending` | Covered | [socket-api.n::ordering_and_timeouts](../tests/nexus/socket-api.n) |
 | `reqrep.c::request_socket_cannot_send_twice_without_reply` | Covered | [socket-api.n::ordering_and_timeouts](../tests/nexus/socket-api.n) |
 | `reqrep.c::reply_socket_cannot_send_before_receiving` | Covered | [socket-api.n::ordering_and_timeouts](../tests/nexus/socket-api.n) |
-| `telnet.c::telnet_socket_round_trip_over_tcp` | Pending | Telnet pending |
-| `telnet.c::telnet_socket_round_trip_survives_immediate_close_repeatedly` | Pending | Telnet pending |
-| `telnet.c::telnet_socket_reports_closed_after_final_reply` | Pending | Telnet pending |
-| `telnet.c::telnet_socket_sends_crlf_terminated_lines` | Pending | Telnet pending |
-| `telnet.c::telnet_character_mode_receives_one_character_per_message` | Pending | Telnet pending |
-| `telnet.c::telnet_character_mode_sends_raw_bytes_without_crlf` | Pending | Telnet pending |
-| `telnet.c::telnet_socket_ignores_telnet_negotiation_bytes` | Pending | Telnet pending |
-| `telnet.c::telnet_socket_reports_negotiated_bounds_from_naws` | Pending | Telnet pending |
-| `telnet.c::telnet_socket_rejects_udp_urls` | Pending | Telnet pending |
-| `telnet.c::telnet_bounds_are_unavailable_on_non_telnet_sockets` | Pending | Telnet pending |
-| `telnet.c::telnet_mode_option_round_trips_and_rejects_non_telnet_sockets` | Pending | Telnet pending |
+| `telnet.c::telnet_socket_round_trip_over_tcp` | Covered | [telnet.n::round_trip](../tests/nexus/telnet.n) |
+| `telnet.c::telnet_socket_round_trip_survives_immediate_close_repeatedly` | Covered | [telnet.n::round_trip](../tests/nexus/telnet.n) |
+| `telnet.c::telnet_socket_reports_closed_after_final_reply` | Covered | [telnet.n::round_trip](../tests/nexus/telnet.n) |
+| `telnet.c::telnet_socket_sends_crlf_terminated_lines` | Covered | [test_nexus.py::telnet_wire](../build/test_nexus.py) |
+| `telnet.c::telnet_character_mode_receives_one_character_per_message` | Covered | [test_nexus.py::telnet_wire](../build/test_nexus.py) |
+| `telnet.c::telnet_character_mode_sends_raw_bytes_without_crlf` | Covered | [test_nexus.py::telnet_wire](../build/test_nexus.py) |
+| `telnet.c::telnet_socket_ignores_telnet_negotiation_bytes` | Covered | [test_nexus.py::telnet_wire](../build/test_nexus.py) |
+| `telnet.c::telnet_socket_reports_negotiated_bounds_from_naws` | Covered | [test_nexus.py::telnet_wire](../build/test_nexus.py) |
+| `telnet.c::telnet_socket_rejects_udp_urls` | Covered | [telnet.n::options](../tests/nexus/telnet.n) |
+| `telnet.c::telnet_bounds_are_unavailable_on_non_telnet_sockets` | Covered | [telnet.n::options](../tests/nexus/telnet.n) |
+| `telnet.c::telnet_mode_option_round_trips_and_rejects_non_telnet_sockets` | Covered | [telnet.n::options](../tests/nexus/telnet.n) |
 
 The oversized-send source case mutates private message fields. Nerd callers
 must not do that: checked appends reject oversized payloads atomically, and the
@@ -62,7 +62,12 @@ forced short/would-block I/O. Timing injection verifies refused connects are
 retried and TCP/UDP deadlines expire even when readiness stays asserted while
 every I/O attempt would block. See the [contracts](stdlib-nexus.md) for limits.
 
-Remaining feature work: Telnet line/character modes, negotiation and NAWS.
+Telnet regressions also cover fragmented IAC/SB commands, escaped IAC in text
+and NAWS, coalesced lines, empty lines and character CRLF normalisation.
+Additional tests check per-peer bounds/routes, partial-line timeout recovery,
+1 MiB input limits, and readable final input after failed control writes.
+Escaped IAC immediately completes a character message, correcting the source
+parser's delayed delivery. Original-C interoperability checks both endpoint roles.
 Remaining validation: native Windows, plus broader stress/soak scenarios.
 DNS and bracketed IPv6 URLs are planned extensions beyond the inspected source.
 The dedicated timeout/nonblocking walkthrough is still pending.

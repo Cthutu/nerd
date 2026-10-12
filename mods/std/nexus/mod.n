@@ -14,6 +14,7 @@ pub max_message_size :: 1_048_576  -- Maximum payload size, excluding framing.
 pub NexusError :: enum {
     Invalid
     BadUrl
+    ProtocolNotSupported
     WouldBlock
     TimedOut
     WrongState
