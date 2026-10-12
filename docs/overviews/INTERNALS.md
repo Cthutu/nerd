@@ -195,7 +195,10 @@ the live heap and arena lists and reporting leaks to standard error.
   consumes more stack each time that block executes.
 - The LLVM addressed-local prepass must traverse control-flow scrutinees as well
   as their branches and guards, so locals whose addresses are conditionally
-  used are materialised and initialised on every path.
+  used are materialised and initialised on every path. Large by-value record/tuple
+  fields, large or dynamically indexed arrays, fixed-array slices and data pointers
+  also require this prepass. Implicit address materialisation must not initialise
+  shared storage inside a skipped short-circuit operand or branch.
 
 ## Key Data Products
 

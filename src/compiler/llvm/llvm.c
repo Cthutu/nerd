@@ -16265,8 +16265,29 @@ internal void llvm_collect_addressed_expr_locals(LlvmFunctionContext* ctx,
         }
         break;
     case HIR_EXPR_Cast:
+        llvm_collect_addressed_expr_locals(ctx, expr->operand_expr_index);
+        break;
     case HIR_EXPR_Field:
     case HIR_EXPR_TupleField:
+        if (expr->operand_expr_index < array_count(ctx->hir->exprs)) {
+            u32 operand_type =
+                ctx->hir->exprs[expr->operand_expr_index].type_index;
+            u32 member_type = llvm_member_target_type(ctx->sema, operand_type);
+            SemaTypeKind kind = llvm_type_kind(ctx->sema, member_type);
+            // Large field reads and array.data use addresses even without ^.
+            // Initialise their base before branches can skip the first use.
+            bool large = (kind == STK_Plex || kind == STK_Tuple) &&
+                         llvm_type_sizeof_bytes(ctx->sema, member_type) >= 1024;
+            bool array_data =
+                expr->kind == HIR_EXPR_Field && kind == STK_Array &&
+                expr->symbol_handle != U32_MAX &&
+                string_eq_cstr(lex_symbol(ctx->lexer, expr->symbol_handle),
+                               "data");
+            if (large || array_data) {
+                llvm_mark_mutated_local_base(
+                    ctx, expr->operand_expr_index, false);
+            }
+        }
         llvm_collect_addressed_expr_locals(ctx, expr->operand_expr_index);
         break;
     case HIR_EXPR_Array:
@@ -16288,8 +16309,27 @@ internal void llvm_collect_addressed_expr_locals(LlvmFunctionContext* ctx,
         }
         break;
     case HIR_EXPR_Index:
+        if (expr->operand_expr_index < array_count(ctx->hir->exprs)) {
+            u32 type  = ctx->hir->exprs[expr->operand_expr_index].type_index;
+            i64 index = 0;
+            if (llvm_type_kind(ctx->sema, type) == STK_Array &&
+                (llvm_type_sizeof_bytes(ctx->sema, type) >= 1024 ||
+                 !llvm_expr_integer_constant(
+                     ctx->hir, expr->extra_expr_index, &index))) {
+                llvm_mark_mutated_local_base(
+                    ctx, expr->operand_expr_index, false);
+            }
+        }
         llvm_collect_addressed_expr_locals(ctx, expr->operand_expr_index);
         llvm_collect_addressed_expr_locals(ctx, expr->extra_expr_index);
+        break;
+    case HIR_EXPR_Slice:
+        // Slicing a fixed array borrows its storage; the resulting slice can
+        // also be written through a call, so initialise before loops/branches.
+        llvm_mark_mutated_local_base(ctx, expr->operand_expr_index, false);
+        llvm_collect_addressed_expr_locals(ctx, expr->operand_expr_index);
+        llvm_collect_addressed_expr_locals(ctx, expr->lhs_expr_index);
+        llvm_collect_addressed_expr_locals(ctx, expr->rhs_expr_index);
         break;
     case HIR_EXPR_Block:
         llvm_collect_addressed_locals(ctx, expr->body_block_index);

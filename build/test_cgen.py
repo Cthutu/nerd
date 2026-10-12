@@ -58,6 +58,7 @@ COMMANDS = (
     "260-run-direct-recursive-function",
     "261-run-typed-plex-shorthand-before-ellipsis",
     "262-run-addressed-local-in-skipped-on",
+    "354-run-conditional-aggregate-reads",
     "265-run-byte-slice-equality",
     "266-run-mutable-slice-literal",
     "267-run-fixed-array-equality",
