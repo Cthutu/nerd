@@ -134,6 +134,7 @@ main :: fn () -> i32 {
         }
         for i in [0.as(usize) .. max_nexus_clients.as(usize)] {
             on !pending[i] => again
+
             on replies[i].send() {
                 NexusError.WouldBlock! => again
 
@@ -151,7 +152,7 @@ main :: fn () -> i32 {
         }
         -- recv skips peers with pending echoes, so it cannot overwrite a reply
         -- still being sent. It also accepts clients and detects idle disconnects.
-        for i in [0.as(usize) .. max_nexus_clients.as(usize)] {
+        for i in [0 .. max_nexus_clients.as(usize)] {
             on pending[i] => again
             on replies[i].recv() {
                 NexusError.WouldBlock! => break
