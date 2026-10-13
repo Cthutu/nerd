@@ -151,20 +151,21 @@ def main():
             '_value: string = ${ return 7 }\nreturn 0\n}\n')
         run('check', diagnostic_source)  # A valid early function return remains valid.
 
-        # Omitted success arms still require an optional/result. Plain handlers
-        # must exit; automatic propagation retains the existing channel checks.
+        # Bare handlers require an optional/result and retain propagation channel
+        # checks. The removed on shorthand is diagnosed before semantic analysis.
         shorthand_prelude = (
             'Failure :: enum { Bad }\nOther :: enum { Different }\n'
             'operation :: fn () -> i32\\Failure { return Failure.Bad! }\n'
             'optional :: fn () -> ?i32 { return nil }\n')
         shorthand_failures = [
-            ('i32', 'value := on operation() else {}\nreturn value', 'fallthrough handler'),
-            ('i32', 'value := on operation() else { on no => return 2 }\nreturn value', 'fallthrough handler'),
-            ('i32', 'value := on operation() else? {}\nreturn value', 'propagat'),
-            ('i32\\Other', 'value := on operation() else? {}\nreturn value', 'found `Failure`'),
-            ('i32', 'value := on 5 else { return 2 }\nreturn value', 'Use a result'),
-            ('i32', 'value := on optional() else [error] { return 2 }\nreturn value', 'optional'),
-            ('i32\\Failure', 'value := on operation() else? return 2\nreturn value', 'Expected LeftBrace'),
+            ('i32', 'value := operation() else {}\nreturn value', 'propagat'),
+            ('i32', 'value := operation() else { on no => return 2 }\nreturn value', 'propagat'),
+            ('i32\\Other', 'value := operation() else {}\nreturn value', 'found `Failure`'),
+            ('i32', 'value := 5 else { return 2 }\nreturn value', 'optional or result value'),
+            ('i32', 'value := optional() else [error] { return 2 }\nreturn value', 'optional'),
+            ('i32\\Failure', 'value := operation() else return 2\nreturn value', 'Expected LeftBrace'),
+            ('i32\\Failure', 'value := on operation() else {}\nreturn value', 'removed'),
+            ('i32\\Failure', 'value := on operation() else? {}\nreturn value', 'removed'),
         ]
         for return_type, body, expected in shorthand_failures:
             diagnostic_source.write_text(shorthand_prelude +

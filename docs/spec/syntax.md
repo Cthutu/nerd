@@ -419,10 +419,9 @@ From lowest binding power to highest:
 All conditional and pattern-branching forms use the `on` keyword.
 
 ```bnf
-on-expression   ::= 'on' expression '=>' branch-expression 'else' branch-expression
-                  | 'on' expression '=>' branch-expression
-                  | 'on' expression 'else' [ '[' IDENT ']' ] branch-expression
-                  | 'on' expression 'else' '?' [ '[' IDENT ']' ] block
+on-expression   ::= 'on' expression '=>' [ '[' IDENT ']' ] branch-expression
+                    'else' [ '[' IDENT ']' ] branch-expression
+                  | 'on' expression '=>' [ '[' IDENT ']' ] branch-expression
                   | 'on' '{' condition-on-branch-list '}'
                   | 'on' expression '{' pattern-on-branch-list '}'
 
@@ -448,10 +447,10 @@ The single-line `on condition => value` form is valid where statement
 boundaries permit it. The `else` branch is required for the boolean expression
 form that produces a value.
 
-The forms without a success arm require an optional or result subject and
-implicitly produce its successful payload. Plain `else` must exit the surrounding
-control flow. `else?` requires braces and propagates the original failure when
-the handler finishes normally; its return channel follows postfix `?` rules.
+A bare failure handler is `expression 'else' [ '[' IDENT ']' ] block`.
+It implicitly yields success and propagates the original failure on handler
+fallthrough. Braces are required; the old `on expression else` and `else?`
+shorthand forms are rejected.
 See [control flow](control-flow.md) for extraction and binder semantics.
 
 Inside block-form `on`, branch expressions stop before the next branch head.

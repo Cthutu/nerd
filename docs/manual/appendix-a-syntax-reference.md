@@ -10,14 +10,14 @@ propagate     ::= expression '?'
 fallback      ::= expression '\\' expression
 extract-on    ::= 'on' expression '=>' [ '[' IDENT ']' ] branch-expression
                   'else' [ '[' IDENT ']' ] branch-expression
-              | 'on' expression 'else' [ '[' IDENT ']' ] branch-expression
-              | 'on' expression 'else' '?' [ '[' IDENT ']' ] block
+failure-handler ::= expression 'else' [ '[' IDENT ']' ] block
 ```
 
 For a bare-identifier scrutinee, an omitted extraction binder implicitly reuses
-that identifier inside payload-bearing branches. Omitting the success arm yields
-the successful payload; plain `else` must exit, while `else?` propagates the
-original failure after its braced handler. Optional absence has no error binder.
+that identifier inside payload-bearing branches. A bare failure handler yields
+the successful payload and propagates the original failure on fallthrough.
+Explicit control-flow exits override propagation. Optional absence has no error
+binder. The old `on expression else` and `on expression else?` forms are removed.
 Fallback `\` extracts from either `T\E` or `?T`, evaluates its right operand
 only on failure/absence, and yields `T`. It is right associative, above
 multiplication and below prefix operators.

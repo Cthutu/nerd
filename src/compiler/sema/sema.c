@@ -23991,8 +23991,8 @@ validate_type:
                             s("optional or result value"),
                             sema_type_name(
                                 lexer, sema, &temp_arena, scrutinee_type),
-                            s("Use a result or optional value after `on` when "
-                              "omitting the success arm."));
+                            s("The subject before `else` must have type `?T` "
+                              "or `T\\E`."));
                     }
                     u32 binder_token_index = U32_MAX;
                     for (u32 i = 0; i < on->branch_count; ++i) {
@@ -24280,19 +24280,6 @@ validate_type:
                 }
 
                 if (short_handler) {
-                    if (!on->propagate_failure &&
-                        !sema_handler_exits(
-                            ast, sema, branch->expr_node_index)) {
-                        return error_0304_type_mismatch_with_help(
-                            lexer->source,
-                            sema_node_span(
-                                lexer, &ast->nodes[branch->expr_node_index]),
-                            s("error handler that exits control flow"),
-                            s("fallthrough handler"),
-                            s("End this handler with `return`, `break`, "
-                              "`again`, or a non-returning call; use `else?` "
-                              "to propagate after handling."));
-                    }
                     continue;
                 }
                 if (on->fallback && !branch_definitely_returns &&

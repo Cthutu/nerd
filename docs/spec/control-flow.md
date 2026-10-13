@@ -89,20 +89,20 @@ pattern table to the optional payload or result success payload. Optional
 `else { ... }` handles absence; result `else { ... }` is a pattern table over
 the error payload.
 
-Omitting the success arm (`on expression else ...`) is valid only for optional
-and result subjects. It evaluates the subject once and produces its successful
-payload (or `void` for a `void` payload). The ordinary failure handler must exit
-its surrounding control flow on every reachable path. A fallthrough handler is
-ill-formed. Handler braces are statement scopes, not implicit expression blocks;
-unlabelled `break` and `again` retain their surrounding targets.
+Bare `expression else [error] { ... }` requires an optional or result subject.
+It evaluates the subject once and produces its successful payload, including
+`void`. Handler braces are statement scopes, so `break` and `again` retain
+their surrounding targets. Fallthrough propagates the captured original error
+or absence according to postfix `?` rules, even if the subject was mutated.
+Explicit control-flow exits override propagation; unreachable implicit
+propagation does not require a compatible enclosing return channel. Optional
+absence handlers cannot declare an error binder. Normal `defer` and
+failure-only `undo` cleanup applies, including cleanup inside the handler.
 
-With `else?`, normal completion of the braced handler propagates the subject's
-original absence or error according to postfix `?` rules. Mutation of the
-original subject variable does not replace the captured failure. An explicit
-control-flow exit takes precedence. An unreachable implicit propagation after
-an unconditional exit does not require a compatible enclosing return channel.
-Optional absence handlers cannot declare an error binder. Failure propagation
-runs normal `defer` and failure-only `undo` cleanup, including handler cleanup.
+Bare `else` binds above assignment and below boolean OR. An unbraced `on`
+branch reserves its `else` for the enclosing branch; parenthesise nested bare
+handlers. Full `on ... => [value] ... else [error] ...` extraction remains.
+The old `on expression else` and `on expression else?` shorthand is rejected.
 
 ## Branch Expressions
 

@@ -58,7 +58,7 @@ run_timeouts :: fn () -> void\NexusError {
 }
 
 main :: fn () -> i32 {
-    on run_timeouts() else [error] {
+    run_timeouts() else [error] {
         eprn($"Nexus timeouts failed: {nexus_error_to_string(error)}")
         return 1
     }

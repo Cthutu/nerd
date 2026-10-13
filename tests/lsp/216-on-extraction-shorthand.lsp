@@ -1,7 +1,7 @@
 Failure :: enum { Bad }
 work :: fn () -> i32\Failure { return Failure.Bad! }
 check_value :: fn () -> i32\Failure {
-    value := on work() else? [problem] {
+    value := work() else [problem] {
         assert problem == Failure.Bad
     }
     return value
@@ -146,11 +146,11 @@ main :: fn () {}
             "range": {
                 "start": {
                     "line": 3,
-                    "character": 30
+                    "character": 26
                 },
                 "end": {
                     "line": 3,
-                    "character": 37
+                    "character": 33
                 }
             }
         }

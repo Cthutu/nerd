@@ -192,10 +192,11 @@ intended exit code.
 - Condition-chain form: `on { condition => expr }`.
 - In optional/result extraction, omitting `[binder]` for a bare identifier
   reuses that identifier as the branch-local payload name.
-- Extract success: `value := on operation() else [error] { return ... }`.
-  The failure handler must exit the surrounding control flow.
-- Handle then propagate: `value := on operation() else? [error] { report(error) }`.
-  The original failure follows postfix `?` return-channel rules.
+- Extract and handle: `value := operation() else [error] { report(error) }`.
+  Success yields its payload; handler fallthrough propagates the original
+  failure following postfix `?` return-channel rules. Explicit exits override it.
+- The old `on expression else` and `on expression else?` shorthand is removed;
+  full `on expression => [value] ... else [error] ...` extraction remains.
 - Optional extraction uses the same forms without an error binder.
 - Default extraction: `value := operation() \ default` works for `T\E` and
   `?T`. The source runs once, and the default runs only on error or absence.

@@ -33,6 +33,7 @@ From lowest binding power to highest:
 | Operators                                                                       | Notes                               |
 | ------------------------------------------------------------------------------- | ----------------------------------- |
 | `=`, `+=`, `-=`, `*=`, `/=`, `%=`, `&=`, `^=`, `|=`, `<<=`, `>>=`, `&&=`, `||=` | Assignment and compound assignment. |
+| `else [error] { ... }` | Failure handler; success yields its payload, fallthrough propagates. |
 | `||`                                                                            | Boolean OR.                         |
 | `&&`                                                                            | Boolean AND.                        |
 | `|`, `^`, `&`                                                                   | Bitwise operators.                  |
@@ -200,7 +201,7 @@ expression instead.
 Postfix `?` extracts success from an optional or result value. On failure it
 returns `nil` from an optional-returning function or forwards the error from a
 result-returning function. The enclosing return channel must be compatible.
-`on expression else? [error] { ... }` performs the same propagation after running
+`expression else [error] { ... }` performs the same propagation after running
 its failure handler, while implicitly yielding success. The subject is evaluated
 once and the original failure is forwarded. For an optional, omit the error
 binder; explicit control-flow exits in the handler override propagation.

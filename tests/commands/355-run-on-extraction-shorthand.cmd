@@ -9,7 +9,7 @@ operation :: fn (state: ^State, ok: bool) -> i32\Failure {
 forward :: fn (state: ^State, ok: bool) -> i32\Failure {
     defer state.defers += 1
     undo state.undos += 1
-    value := on operation(state, ok) else? [error] {
+    value := operation(state, ok) else [error] {
         state.handled += 1
         defer state.handler_defers += 1
         undo state.handler_undos += 1
@@ -18,14 +18,14 @@ forward :: fn (state: ^State, ok: bool) -> i32\Failure {
     return value
 }
 translate :: fn (state: ^State) -> i32\Translated {
-    value := on operation(state, no) else? [error] {
+    value := operation(state, no) else [error] {
         assert error == Failure.Bad
         return Translated.Converted!
     }
     return value
 }
 recover :: fn (state: ^State) -> i32\Failure {
-    value := on operation(state, no) else? { return 4 }
+    value := operation(state, no) else { return 4 }
     return value
 }
 optional :: fn (ok: bool) -> ?i32 {
@@ -33,29 +33,29 @@ optional :: fn (ok: bool) -> ?i32 {
     return 9
 }
 optional_forward :: fn (state: ^State, ok: bool) -> ?i32 {
-    value := on optional(ok) else? { state.handled += 1 }
+    value := optional(ok) else { state.handled += 1 }
     return value
 }
 optional_plain :: fn (ok: bool) -> i32 {
-    value := on optional(ok) else { return 6 }
+    value := optional(ok) else { return 6 }
     return value
 }
 void_operation :: fn (ok: bool) -> void\Failure {
     on !ok => return Failure.Bad!
 }
 void_forward :: fn (ok: bool) -> void\Failure {
-    on void_operation(ok) else? {}
+    void_operation(ok) else {}
 }
 Record :: plex { number i32 }
 record_operation :: fn () -> Record\Failure { return Record { number: 11 } }
 record_forward :: fn () -> i32\Failure {
-    record := on record_operation() else? {}
+    record := record_operation() else {}
     return record.number
 }
-inferred :: fn () => on record_operation() else? {}
+inferred :: fn () => record_operation() else {}
 cached_forward :: fn (state: ^State) -> i32\Failure {
     cached := operation(state, no)
-    value := on cached else? [error] {
+    value := cached else [error] {
         assert error == Failure.Bad
         cached = 8
     }
@@ -63,16 +63,16 @@ cached_forward :: fn (state: ^State) -> i32\Failure {
 }
 implicit_error :: fn (state: ^State) -> i32\Failure {
     cached := operation(state, no)
-    value := on cached else? { assert cached == Failure.Bad }
+    value := cached else { assert cached == Failure.Bad }
     return value
 }
 
 panic_handler :: fn (state: ^State) -> i32 {
-    value := on operation(state, yes) else { abort("unexpected failure") }
+    value := operation(state, yes) else { abort("unexpected failure") }
     return value
 }
 exhaustive_handler :: fn (state: ^State, choice: bool) -> i32 {
-    value := on operation(state, no) else {
+    value := operation(state, no) else {
         on choice { yes => return 13 no => return 14 }
     }
     return value
@@ -94,7 +94,7 @@ run :: fn () -> void\Failure {
     on translate(^state) { error! => { assert error == Translated.Converted } else => { assert no } }
     assert recover(^state)? == 4
     assert optional_plain(yes) == 9 && optional_plain(no) == 6
-    present := on optional_forward(^state, yes) else { return Failure.Other! }
+    present := optional_forward(^state, yes) else { return Failure.Other! }
     assert present == 9
     assert !optional_forward(^state, no)
     void_forward(yes)?
@@ -102,36 +102,36 @@ run :: fn () -> void\Failure {
     attempts := 0
     for attempts < 3 {
         attempts += 1
-        value := on optional(no) else { again }
+        value := optional(no) else { again }
         assert value == 0
     }
     assert attempts == 3
     for {
-        value := on optional(no) else { break }
+        value := optional(no) else { break }
         assert value == 0
     }
     attempts = 0
     for attempts < 3 {
         attempts += 1
-        value := on optional(no) else? { again }
+        value := optional(no) else { again }
         assert value == 0
     }
     assert attempts == 3
     for {
-        value := on optional(no) else? { break }
+        value := optional(no) else { break }
         assert value == 0
     }
     ignored := ${
-        value := on optional(no) else? { break 15 }
+        value := optional(no) else { break 15 }
         break value
     }
     assert ignored == 15
     outer := ${
-        value := on optional(no) else { break 12 }
+        value := optional(no) else { break 12 }
         break value
     }
     assert outer == 12
-    _ := on operation(^state, yes) else { return Failure.Other! }
+    _ := operation(^state, yes) else { return Failure.Other! }
     assert panic_handler(^state) == 7
     assert exhaustive_handler(^state, yes) == 13
     assert exhaustive_handler(^state, no) == 14
@@ -143,7 +143,7 @@ run :: fn () -> void\Failure {
         error! => { assert error == Failure.Bad }
         else => { assert no }
     }
-    prn("on extraction shorthand passed")
+    prn("bare else handler passed")
 }
 main :: fn () -> i32 {
     on run() { _! => return 1 else => return 0 }
@@ -151,7 +151,7 @@ main :: fn () -> i32 {
 ¬
 0
 ¬
-on extraction shorthand passed
+bare else handler passed
 ¬
 delete
 ¬

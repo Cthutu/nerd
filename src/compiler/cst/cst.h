@@ -429,7 +429,6 @@ typedef enum : u32 {
 typedef struct {
     CstOnKind kind;
     bool      shorthand;
-    bool      propagate_failure;
     u32       first_branch;
     u32       branch_count;
 } CstOnInfo;

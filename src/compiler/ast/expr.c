@@ -531,6 +531,10 @@ bool ast_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp)
         *out_left_bp  = AST_BP_ASSIGNMENT;
         *out_right_bp = AST_BP_ASSIGNMENT;
         return true;
+    case TK_else:
+        *out_left_bp  = AST_BP_HANDLER;
+        *out_right_bp = AST_BP_HANDLER;
+        return true;
     case TK_LParen:
     case TK_LBracket:
     case TK_LBrace:
@@ -1365,27 +1369,19 @@ internal bool ast_on_expr_is_condition_shaped(const AstParseState* state,
     }
 }
 
-// Normalise the omitted success arm into a private payload binder. For else?,
-// append ordinary propagation inside the handler scope, so its defers/undos
+// Normalise a bare else handler into a private payload binder and append
+// ordinary propagation inside the handler scope, so its defers/undos
 // see the failure exit and the original operation is evaluated only once.
-internal bool ast_parse_on_shorthand(AstParseState* state,
-                                     AstToken       on_token,
-                                     u32            condition,
-                                     u32*           out_node)
+internal bool ast_parse_failure_handler(AstParseState* state,
+                                        AstToken       handler_token,
+                                        u32            condition,
+                                        u32*           out_node)
 {
     u32 else_token = state->token.token_index;
-    if (state->token.token_index == state->token_index &&
-        !ast_next_token(state)) {
-        return false;
-    }
     if (!ast_next_token(state)) {
         return false;
     }
-    bool propagate         = state->token.kind == TK_Question;
-    u32  propagation_token = propagate ? state->token.token_index : else_token;
-    if (propagate && !ast_next_token(state)) {
-        return false;
-    }
+    u32 propagation_token = else_token;
     u32 error_binder = U32_MAX, error_token = U32_MAX;
     if (!ast_parse_on_extract_binder(state, &error_binder, &error_token)) {
         return false;
@@ -1399,12 +1395,12 @@ internal bool ast_parse_on_shorthand(AstParseState* state,
     u32 success;
     if (!ast_emit_node(state,
                        (AstNode){.kind        = AK_SymbolRef,
-                                 .token_index = on_token.token_index,
+                                 .token_index = handler_token.token_index,
                                  .a           = payload},
                        &success)) {
         return false;
     }
-    if (propagate && state->token.kind != TK_LBrace) {
+    if (state->token.kind != TK_LBrace) {
         return error_0203_expected_token(state->lexer->source,
                                          ast_token_span(state, &state->token),
                                          TK_LBrace,
@@ -1439,7 +1435,7 @@ internal bool ast_parse_on_shorthand(AstParseState* state,
         implicit_error = true;
     }
     u32 wrapper = U32_MAX;
-    if (propagate) {
+    {
         if (state->nodes[handler].kind != AK_Block) {
             return error_0203_expected_token(
                 state->lexer->source,
@@ -1474,7 +1470,7 @@ internal bool ast_parse_on_shorthand(AstParseState* state,
     }
     u32 first = (u32)array_count(state->on_branches);
     array_push(state->on_branches,
-               ((AstOnBranch){.token_index          = on_token.token_index,
+               ((AstOnBranch){.token_index          = handler_token.token_index,
                               .expr_node_index      = success,
                               .guard_node_index     = U32_MAX,
                               .binder_symbol_handle = payload,
@@ -1493,13 +1489,13 @@ internal bool ast_parse_on_shorthand(AstParseState* state,
     array_push(state->ons,
                ((AstOnInfo){.kind              = AOK_Extract,
                             .shorthand         = true,
-                            .propagate_failure = propagate,
+                            .propagate_failure = true,
                             .wrapper_symbol    = wrapper,
                             .first_branch      = first,
                             .branch_count      = 2}));
     return ast_emit_node(state,
                          (AstNode){.kind        = AK_On,
-                                   .token_index = on_token.token_index,
+                                   .token_index = handler_token.token_index,
                                    .a           = condition,
                                    .b           = index},
                          out_node);
@@ -1644,7 +1640,8 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
         state->stop_before_on_branch_head;
     state->stop_before_block_lbrace   = true;
     state->stop_before_on_branch_head = false;
-    bool parsed_condition = ast_parse_expr_bp(state, 0, &condition_node);
+    bool parsed_condition =
+        ast_parse_expr_bp(state, AST_BP_HANDLER + 1, &condition_node);
     state->stop_before_block_lbrace   = previous_stop_before_block_lbrace;
     state->stop_before_on_branch_head = previous_stop_before_on_branch_head;
     if (!parsed_condition) {
@@ -2013,10 +2010,14 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
     }
 
     if (state->token.kind == TK_else) {
-        return ast_parse_on_shorthand(
-            state, on_token, condition_node, out_node);
+        return error_0204_unexpected_token_here(
+            state->lexer->source,
+            ast_token_span(state, &state->token),
+            TK_else,
+            "The omitted-success `on ... else` forms have been removed",
+            "Use `expression else [error] { ... }`, or keep `on expression => "
+            "[value] { ... } else [error] { ... }` for full extraction");
     }
-
     if (state->token.kind != TK_FatArrow) {
         return error_0203_expected_token(state->lexer->source,
                                          ast_token_span(state, &state->token),
@@ -2633,8 +2634,10 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
 //------------------------------------------------------------------------------
 // Parse the current token as an infix operator that extends an existing lhs.
 
-internal bool
-ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
+internal bool ast_parse_led_impl(AstParseState* state,
+                                 AstToken       op,
+                                 u32            left_node,
+                                 u32*           out_node)
 {
     u8  left_bp    = 0;
     u8  right_bp   = 0;
@@ -2667,6 +2670,10 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
 
     if (!ast_infix_binding_power(op.kind, &left_bp, &right_bp)) {
         error_ice("Unhandled led token kind: %d", op.kind);
+    }
+
+    if (op.kind == TK_else) {
+        return ast_parse_failure_handler(state, op, left_node, out_node);
     }
 
     if (op.kind == TK_LParen) {
@@ -3119,6 +3126,19 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
 }
 
 //------------------------------------------------------------------------------
+// Delimited operands have their own else clauses, independent of an outer on.
+internal bool
+ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
+{
+    bool boundary = state->stop_before_on_branch_head;
+    if (op.kind == TK_LParen || op.kind == TK_LBracket) {
+        state->stop_before_on_branch_head = false;
+    }
+    bool parsed = ast_parse_led_impl(state, op, left_node, out_node);
+    state->stop_before_on_branch_head = boundary;
+    return parsed;
+}
+
 // Parse an expression starting at the current token and wrap it in
 // AK_Expression.
 
@@ -3144,7 +3164,14 @@ bool ast_parse_expr_bp(AstParseState* state, u8 min_bp, u32* out_node)
 {
     u32 left_node;
 
-    if (!ast_parse_nud(state, state->token, &left_node)) {
+    bool boundary = state->stop_before_on_branch_head;
+    if (state->token.kind == TK_LParen || state->token.kind == TK_LBracket ||
+        state->token.kind == TK_LBrace || state->token.kind == TK_Dollar) {
+        state->stop_before_on_branch_head = false;
+    }
+    bool parsed = ast_parse_nud(state, state->token, &left_node);
+    state->stop_before_on_branch_head = boundary;
+    if (!parsed) {
         return false;
     }
 

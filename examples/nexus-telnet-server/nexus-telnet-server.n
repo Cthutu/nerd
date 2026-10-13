@@ -108,21 +108,19 @@ main :: fn () -> i32 {
         return 1
     }
 
-    bound := on server.local_url() else [error] {
+    bound := server.local_url() else [error] {
         eprn($"Failed to get local URL: {nexus_error_to_string(error)}")
         return 1
     }
     prn($"Listening on {bound}")
-    prn("Connect with telnet, type a line, and press Enter. Ctrl+C stops the server.")
+    prn("Connect with telnet, type a line, and press Enter. Ctrl+C stops the "
+        +"server.")
     _ := fflush(nil)
     server.set_connection_handler(connection_changed)
     -- Immediate operations let us visit every pending client each turn. Sleep
     -- briefly between turns to avoid spinning while idle, and poll shutdown.
-    on server.set_option(NetOption.Nonblocking, 1) {
-        _! => return 1
-
-        else => {
-        }
+    server.set_option(NetOption.Nonblocking, 1) else {
+        return 1
     }
 
     for {

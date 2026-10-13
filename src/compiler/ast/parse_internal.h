@@ -13,6 +13,7 @@
 //------------------------------------------------------------------------------
 
 #define AST_BP_ASSIGNMENT 10
+#define AST_BP_HANDLER 15
 #define AST_BP_LOGICAL_OR 20
 #define AST_BP_LOGICAL_AND 30
 #define AST_BP_BITWISE_OR 40

@@ -1642,9 +1642,13 @@ internal void format_emit_expr(StringBuilder* sb,
     case CK_On:
         {
             const CstOnInfo* on = &cst->ons[node->b];
-            sb_append_cstr(sb, "on");
+            if (!on->shorthand) {
+                sb_append_cstr(sb, "on");
+            }
             if (on->kind != COK_Condition) {
-                sb_append_char(sb, ' ');
+                if (!on->shorthand) {
+                    sb_append_char(sb, ' ');
+                }
                 if (on->shorthand && cst->nodes[node->a].kind == CK_Call) {
                     Arena temporary = {0};
                     arena_init(&temporary);
@@ -1675,8 +1679,7 @@ internal void format_emit_expr(StringBuilder* sb,
             if (on->shorthand) {
                 const CstOnBranch* branch =
                     &cst->on_branches[on->first_branch + 1];
-                sb_append_cstr(sb,
-                               on->propagate_failure ? " else? " : " else ");
+                sb_append_cstr(sb, " else ");
                 if (branch->binder_symbol_handle != U32_MAX) {
                     sb_append_char(sb, '[');
                     sb_append_string(
