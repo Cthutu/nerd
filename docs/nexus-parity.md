@@ -70,4 +70,6 @@ Escaped IAC immediately completes a character message, correcting the source
 parser's delayed delivery. Original-C interoperability checks both endpoint roles.
 Remaining validation: native Windows, plus broader stress/soak scenarios.
 DNS and bracketed IPv6 URLs are planned extensions beyond the inspected source.
-The dedicated timeout/nonblocking walkthrough is still pending.
+The focused [timeout/nonblocking walkthrough](tutorials/nexus-timeouts.md)
+and `nexus-timeouts` example cover bounded receive, immediate would-block,
+and recovery; the native runner checks their output.

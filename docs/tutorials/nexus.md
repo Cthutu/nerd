@@ -81,31 +81,13 @@ methods and automatic server replies work, including empty datagrams. UDP
 payloads are limited to 65,507 bytes; delivery and ordering are not guaranteed.
 TCP and UDP use identical typed field encodings.
 
-## Timeouts and immediate operations
+## Receive timeouts and retry
 
-Normal send and receive calls wait indefinitely. Connect defaults to a
-one-second total budget, retrying a refused/reset connection while waiting for
-a server. Configure options once on the socket:
-
-```nerd
-socket.set_option(NetOption.ConnectTimeoutMs, 2000)?
-socket.set_option(NetOption.ReconnectIntervalMs, 25)?
-socket.set_option(NetOption.SendTimeoutMs, 2000)?
-socket.set_option(NetOption.RecvTimeoutMs, 500)?
-```
-
-A bounded operation reports `NexusError.TimedOut`. Set
-`NetOption.Nonblocking` to `1` for immediate operations, which report
-`NexusError.WouldBlock` when they cannot finish immediately; set it to `0` to
-restore waiting. `net_wait_immediate` and `net_wait_infinite` are accepted for
-timeout options. A zero reconnect interval uses the source's 50 ms fallback.
-
-A TCP timeout or would-block result retains partial framing. Retry `send()` on
-the same stable message to resume the original snapshot, or retry `recv()` to
-finish receiving. A failed receive leaves its previous payload and route intact.
-Do not replace or dispose of a pending send message before completion; close the
-socket to cancel it. A fatal connection/frame error requires closing that
-connection; a server can continue servicing its other clients.
+Normal receive calls wait indefinitely. The focused
+[timeout and nonblocking tutorial](nexus-timeouts.md) shows how to bound a wait,
+handle `TimedOut` or `WouldBlock`, and retry successfully. See the
+[API contracts](../stdlib-nexus.md) for connect/send budgets and pending-send
+ownership rules.
 
 ## Runnable examples
 
@@ -122,8 +104,8 @@ required:
 
 The [API contracts](../stdlib-nexus.md) cover ownership, limits and source
 compatibility. `TcpStream` remains available for direct framing/event-loop use;
-the basic socket/message API manages that state for ordinary programs. Telnet
-and DNS/IPv6 URLs remain follow-on work.
+the basic socket/message API manages that state for ordinary programs.
+DNS/IPv6 URLs remain follow-on work.
 
 For terminal text, see the [Telnet tutorial](nexus-telnet.md). It uses the same
 socket/message API with line or character messages and optional terminal sizes.

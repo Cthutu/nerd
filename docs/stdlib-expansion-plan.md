@@ -298,6 +298,9 @@ release checks include scripted raw peers, deterministic short I/O, final replie
 followed by close, multi-client isolation and partial-line timeout recovery.
 Pinned C interoperability exercises both client/server roles. Native Windows,
 DNS/IPv6 URL extensions and broader stress validation remain outstanding.
+The focused [receive timeout tutorial](tutorials/nexus-timeouts.md) and
+`nexus-timeouts` example cover bounded waits, immediate would-block and retry;
+the native Nexus runner checks the example output in each backend/build mode.
 
 ### M8 — Graph/scheduler and network integration
 

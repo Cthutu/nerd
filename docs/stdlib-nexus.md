@@ -262,6 +262,8 @@ and UDP send check their original deadline after incomplete I/O, preventing
 readiness from extending a timeout indefinitely. Immediate calls preserve partial
 progress and return WouldBlock after an incomplete attempt.
 
-Remaining feature work: DNS/bracketed IPv6 URLs. Native Windows,
-broader stress/soak validation and a dedicated timeout/nonblocking walkthrough
-remain pending. M6/M7 milestone closure still requires their agreed checks.
+Remaining feature work: DNS/bracketed IPv6 URLs. Native Windows
+and broader stress/soak validation remain pending. The focused
+[timeout/nonblocking walkthrough](tutorials/nexus-timeouts.md) demonstrates
+receive recovery with an example checked by the native runner. M6/M7 milestone
+closure still requires their agreed checks.

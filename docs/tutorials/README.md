@@ -9,7 +9,7 @@ completion requirement for the remakes, selected on 3 October 2026.
 | --- | --- | --- |
 | Raptor | [Available](raptor.md) | Separate typed preparation and submission, stable caller-owned task storage and completion, serial/concurrent worker queues, explicitly pumped main-thread work, concurrent-to-serial output, nested waits and drain; async aggregation when implemented |
 | Kerberos | Pending graph API (M4) | Two generators → sum → sink checking 0,2,…,18; typed ports, connections, fan-out, graph/node ownership, errors and shutdown; loader after implementation |
-| Nexus | [Socket/message tutorial](nexus.md) and [Telnet tutorial](nexus-telnet.md) available; native Windows validation pending | Framed message echo, multiple clients and reply routes, request/reply with deadlines and reconnect, UDP boundaries, Telnet line/character modes, and a real echo server with graceful Ctrl+C shutdown |
+| Nexus | [Socket/message tutorial](nexus.md), [receive timeouts tutorial](nexus-timeouts.md), and [Telnet tutorial](nexus-telnet.md) available; native Windows validation pending | Framed message echo, multiple clients and reply routes, request/reply with deadlines and reconnect, UDP boundaries, Telnet line/character modes, and a real echo server with graceful Ctrl+C shutdown |
 
 [Raw TCP/UDP examples](../std-network-foundation.md) are available as foundations;
 they do not establish Nexus message/protocol compatibility. Kerberos's scheduler

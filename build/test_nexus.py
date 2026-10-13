@@ -405,7 +405,21 @@ def main() -> None:
         directory = Path(temporary)
         suffix = ".exe" if os.name == "nt" else ""
         executables = []
-        for index, source in enumerate(("tests/nexus/main.n", "tests/nexus/interop.n", "examples/nexus-message/nexus-message.n", "tests/nexus/socket-api.n", "tests/nexus/udp-interop.n", "examples/nexus-multi-client/nexus-multi-client.n", "examples/nexus-request-reply/nexus-request-reply.n", "tests/nexus/parity.n", "tests/nexus/timing-driver.n", "tests/nexus/telnet.n", "examples/nexus-telnet/nexus-telnet.n", "examples/nexus-telnet-server/nexus-telnet-server.n")):
+        for index, source in enumerate((
+            "tests/nexus/main.n",
+            "tests/nexus/interop.n",
+            "examples/nexus-message/nexus-message.n",
+            "tests/nexus/socket-api.n",
+            "tests/nexus/udp-interop.n",
+            "examples/nexus-multi-client/nexus-multi-client.n",
+            "examples/nexus-request-reply/nexus-request-reply.n",
+            "tests/nexus/parity.n",
+            "tests/nexus/timing-driver.n",
+            "tests/nexus/telnet.n",
+            "examples/nexus-telnet/nexus-telnet.n",
+            "examples/nexus-telnet-server/nexus-telnet-server.n",
+            "examples/nexus-timeouts/nexus-timeouts.n",
+        )):
             target = directory / (f"case-{index}" + suffix)
             if source == "examples/nexus-telnet-server/nexus-telnet-server.n":
                 # The example has a fixed endpoint and no test/argument modes.
@@ -428,7 +442,9 @@ def main() -> None:
                 flags = shlex.split(run(command + ["--copts"], env))
                 run(["clang", str(target.with_suffix(".c")), *flags, "-o", str(target)], env)
             executables.append(target)
-        contracts, server, example, socket_api, udp_server, multi_client, request_reply, parity, timing, telnet, telnet_example, echo_server = executables
+        (contracts, server, example, socket_api, udp_server, multi_client,
+         request_reply, parity, timing, telnet, telnet_example, echo_server,
+         timeouts) = executables
         for target, expected in ((contracts, "Nexus buffer and framing contracts passed"),
                                  (example, "Nexus message: hello nexus, reply 43"),
                                  (socket_api, "Nexus socket API contracts passed"),
@@ -436,7 +452,8 @@ def main() -> None:
                                  (request_reply, "Nexus request/reply: two exchanges passed"),
                                  (parity, "Nexus parity contracts passed"),
                                  (telnet, "Nexus Telnet contracts passed"),
-                                 (telnet_example, "Nexus Telnet: echo: hello terminal")):
+                                 (telnet_example, "Nexus Telnet: echo: hello terminal"),
+                                 (timeouts, "Receive timed out\nReceive would block\nReceived: hello after retry")):
             output = run([str(target)], env, timeout=20)
             if output.strip() != expected:
                 raise RuntimeError(f"Unexpected output: {output!r}")
