@@ -425,6 +425,7 @@ typedef struct {
     u32 flags;
     u32 binder_symbol_handle;
     u32 binder_token_index;
+    u32 error_token_index; // Postfix ! token; U32_MAX for an error table.
 } AstOnBranch;
 
 typedef enum : u32 {

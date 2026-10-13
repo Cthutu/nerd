@@ -493,6 +493,12 @@ bool error_0366_invalid_on_extraction_type(NerdSource source,
                                            ErrorSpan  binder_span,
                                            string     actual_type);
 
+bool error_0369_invalid_error_pattern(NerdSource source,
+                                      ErrorSpan  pattern_span,
+                                      ErrorSpan  value_span,
+                                      string     actual_type,
+                                      bool       postfix);
+
 //------------------------------------------------------------------------------
 // Low-level error system
 

@@ -24039,6 +24039,20 @@ validate_type:
             for (u32 i = 0; i < on->branch_count; ++i) {
                 const AstOnBranch* branch =
                     &ast->on_branches[on->first_branch + i];
+                if ((branch->flags & AOBF_Error) &&
+                    (sema->types[scrutinee_type].kind != STK_Enum ||
+                     !(sema->types[scrutinee_type].flags & STF_Result))) {
+                    bool postfix = branch->error_token_index != U32_MAX;
+                    return error_0369_invalid_error_pattern(
+                        lexer->source,
+                        sema_token_span(lexer,
+                                        postfix ? branch->error_token_index
+                                                : branch->token_index),
+                        sema_node_span(lexer, &ast->nodes[node->a]),
+                        sema_type_name(
+                            lexer, sema, &temp_arena, scrutinee_type),
+                        postfix);
+                }
                 if (branch->flags & AOBF_Else) {
                     has_else = true;
                 }

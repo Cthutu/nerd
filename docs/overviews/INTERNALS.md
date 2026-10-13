@@ -61,6 +61,14 @@ Parser recovery and semantic index checking recognise the extraction-shaped
 point to the binder and suggest the required `=> [payload]` syntax instead of
 blaming the closing brace or reporting that a result is not indexable.
 
+Error-channel pattern branches require a result subject (`STF_Result`). Sema
+rejects these branches for plain values and optionals before checking their
+payload patterns. `AstOnBranch.error_token_index` preserves the postfix `!`
+location even when the parser strips an `AK_ErrorInject` wrapper, so diagnostic
+0369 highlights the marker, reports the subject type, and suggests removing
+`!`. Separate error tables use `U32_MAX` for this token and receive a hint to
+move the match to the first pattern table.
+
 The parser provisionally creates implicit binders for bare-identifier `on`
 subjects before their types are known. Sema retains these only for branches
 that extract a payload. Boolean branches and optional absent branches resolve

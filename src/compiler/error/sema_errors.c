@@ -2120,3 +2120,41 @@ bool error_0368_invalid_undo(NerdSource source, ErrorSpan span, cstr reason)
     error_render(&error);
     return false;
 }
+
+//------------------------------------------------------------------------------
+// Error-channel patterns only select failures from result subjects.
+
+bool error_0369_invalid_error_pattern(NerdSource source,
+                                      ErrorSpan  pattern_span,
+                                      ErrorSpan  value_span,
+                                      string     actual_type,
+                                      bool       postfix)
+{
+    ErrorInfo error = error_init(
+        source,
+        pattern_span,
+        "Error-channel pattern requires a result value, found `" STRINGP "`",
+        STRINGV(actual_type));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        pattern_span,
+                        "This pattern selects an error channel");
+    error_add_reference(&error,
+                        ERROR_REF_SECONDARY,
+                        value_span,
+                        "This `on` subject has type `" STRINGP "`",
+                        STRINGV(actual_type));
+    if (postfix) {
+        error_add_help(&error,
+                       "Remove `!` to match this value directly; error-channel "
+                       "patterns require a result subject of type `T\\U`.");
+    } else {
+        error_add_help(
+            &error,
+            "Match this value in the first pattern table; an error pattern "
+            "table requires a result subject of type `T\\U`.");
+    }
+    error_add_type_definitions(&error, actual_type);
+    error_render(&error);
+    return false;
+}

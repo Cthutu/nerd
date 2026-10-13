@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 # atomics, allocator diagnostics, formatting and generic dispatch.
 COMMANDS = (
     "355-run-on-extraction-shorthand",
+    "356-run-error-channel-patterns",
     "339-imported-mutable-globals",
     "325-runtime-array-i32-length",
     "336-imported-enum-equality",

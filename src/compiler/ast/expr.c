@@ -1201,6 +1201,7 @@ internal bool ast_parse_on_error_pattern_table(AstParseState* state,
             .pattern_index        = U32_MAX,
             .guard_node_index     = U32_MAX,
             .flags                = AOBF_Error,
+            .error_token_index    = U32_MAX,
             .binder_symbol_handle = U32_MAX,
             .binder_token_index   = U32_MAX,
         };
@@ -1541,6 +1542,7 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
             branch.binder_symbol_handle = U32_MAX;
             branch.binder_token_index   = U32_MAX;
             branch.guard_node_index     = U32_MAX;
+            branch.error_token_index    = U32_MAX;
 
             if (state->token.kind == TK_else) {
                 branch.flags = AOBF_Else;
@@ -1715,6 +1717,7 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
             branch.binder_symbol_handle = U32_MAX;
             branch.binder_token_index   = U32_MAX;
             branch.guard_node_index     = U32_MAX;
+            branch.error_token_index    = U32_MAX;
             if (state->token.kind == TK_else) {
                 branch.flags = AOBF_Else;
                 if (!ast_next_token(state)) {
@@ -1788,6 +1791,9 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
                             array_count(state->nodes) &&
                         state->nodes[state->patterns[pattern_root].a].kind ==
                             AK_ErrorInject) {
+                        branch.error_token_index =
+                            state->nodes[state->patterns[pattern_root].a]
+                                .token_index;
                         state->patterns[pattern_root].a =
                             state->nodes[state->patterns[pattern_root].a].a;
                         branch.flags |= AOBF_Error;
@@ -1833,6 +1839,7 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
                 array_free(branch_patterns);
                 if (state->token.kind == TK_Bang) {
                     branch.flags |= AOBF_Error;
+                    branch.error_token_index = state->token.token_index;
                     if (!ast_next_token(state)) {
                         return error_0201_missing_value(
                             state->token.source,

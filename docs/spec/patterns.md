@@ -61,6 +61,12 @@ Built-in optional and result types do not have enum variant patterns. Match
 their payload domains with the `on value { ... } else { ... }` forms described
 in `control-flow.md`, or use boolean extraction with payload binders.
 
+Postfix `!` on a pattern selects the error payload `U` of a result subject
+`T\U`. It requires a result subject; ordinary values and optionals have no
+error channel. When matching an already extracted error value of type `U`,
+write the pattern without `!`. A separate error pattern table likewise
+requires a result subject.
+
 ## Ranges And Comparisons
 
 Range patterns support exclusive `..` and inclusive `..=` bounds. Empty integer
