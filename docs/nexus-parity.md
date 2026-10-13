@@ -68,7 +68,11 @@ Additional tests check per-peer bounds/routes, partial-line timeout recovery,
 1 MiB input limits, and readable final input after failed control writes.
 Escaped IAC immediately completes a character message, correcting the source
 parser's delayed delivery. Original-C interoperability checks both endpoint roles.
-Remaining validation: native Windows, plus broader stress/soak scenarios.
+The [bounded stress runner](../tests/nexus/README.md) adds repeated FIN/reset
+churn, concurrent TCP/Telnet streams, real slow-reader backpressure, exact send
+recovery and shutdown with partial input or pending output.
+Remaining validation: native Windows, long-duration soak and resource-growth
+measurements.
 DNS and bracketed IPv6 URLs are planned extensions beyond the inspected source.
 The focused [timeout/nonblocking walkthrough](tutorials/nexus-timeouts.md)
 and `nexus-timeouts` example cover bounded receive, immediate would-block,

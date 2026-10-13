@@ -1,0 +1,125 @@
+-- Framed echo driver for the native stress runner. The parent controls traffic,
+-- checks every reply byte and bounds process lifetime. Keep test diagnostics
+-- separate from payloads so large replies do not become large console logs.
+use std.network
+use std.nexus
+use std.time
+
+signal :: use std.signal
+
+ffi "c" {
+    fflush (stream: ^void) -> i32
+}
+
+connection_changed :: fn (id: u64, connected: bool) {
+    on connected {
+        yes   => prn($"[Client {id}] connected")
+        else  => prn($"[Client {id}] disconnected")
+    }
+    _ := fflush(nil)
+}
+
+serve :: fn () -> void\NexusError {
+    shutdown := signal.watch_shutdown() else {
+        return NexusError.Invalid!
+    }
+    defer _ := shutdown.close()
+    server                                   := net_socket()
+    replies     : [max_nexus_clients]Message
+    pending     : [max_nexus_clients]bool
+    stalled     : [max_nexus_clients]bool
+    tickets     : [max_nexus_clients]u64
+    next_ticket : u64                        = 0
+
+    for reply in replies {
+        reply^ = Message.create(^server)
+    }
+    defer for reply in replies {
+        reply.done()
+    }
+    -- Cancel partial send snapshots before releasing their associated messages.
+    defer server.close()
+    server.bind("tcp://127.0.0.1:0")?
+    server.set_option(NetOption.Nonblocking, 1)?
+    server.set_connection_handler(connection_changed)
+    prn($"Listening on {server.local_url()?}")
+    _ := fflush(nil)
+
+    for {
+        requested := shutdown.requested() else {
+            return NexusError.Invalid!
+        }
+        on requested => break
+        for i in [0 .. replies.count] {
+            on !pending[i] => again
+            -- Basic TCP permits receiving while a send is pending, but a peer
+            -- can have only one outgoing snapshot. Queue replies in receipt
+            -- order per route while letting other routes make progress.
+            earlier := no
+            for j in [0 .. replies.count] {
+                on pending[j] &&
+                    tickets[j] < tickets[i] &&
+                    replies[j].id() == replies[i].id() => earlier = yes
+            }
+            on earlier => again
+            on replies[i].send() {
+                NexusError.WouldBlock! => {
+                    on !stalled[i] => {
+                        stalled[i] = yes
+                        prn("Send blocked")
+                        _ := fflush(nil)
+                    }
+                    again
+                }
+
+                error! => {
+                    on replies[i].id() != nil => return error!
+                }
+
+                else => {
+                }
+            }
+            pending[i] = no
+            on stalled[i] => {
+                prn("Send resumed")
+                _ := fflush(nil)
+                stalled[i] = no
+            }
+        }
+        for i in [0 .. replies.count] {
+            on pending[i] => again
+            on replies[i].recv() {
+                NexusError.WouldBlock! => break
+
+                NexusError.Network { error }! => {
+                    on error {
+                        NetworkError.ConnectionReset { code: _ }  => break
+                        else                                      => return NexusError.Network { error }!
+                    }
+                }
+
+                error! => return error!
+
+                else => {
+                }
+            }
+            -- Queue a whole payload without altering its originating route.
+            tickets[i] = next_ticket
+            next_ticket += 1
+            pending[i] = yes
+        }
+        sleep_ms(1)
+    }
+    -- Publish completion after socket cancellation and disconnect callbacks.
+    server.close()
+    prn("Nexus stress stopped.")
+    _ := fflush(nil)
+}
+
+main :: fn () -> i32 {
+    serve() else [error] {
+        eprn($"Nexus stress failed: {nexus_error_to_string(error)}")
+        return 1
+    }
+    return 0
+}

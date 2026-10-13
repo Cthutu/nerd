@@ -268,8 +268,8 @@ to equivalent coverage; the Telnet slice below adds the remaining 11. TCP satura
 queued admission after disconnect, repeated reconnects, malformed-peer isolation,
 and delayed connect/receive are tested. Forced stale readiness exposed a timeout
 loop, now fixed; loop-temporary LLVM storage is also bounded. Native Windows and
-broader stress validation remain; milestone checkboxes stay open until their
-agreed checks pass.
+long-duration soak/resource-growth validation remain; milestone checkboxes stay
+open until their agreed checks pass.
 
 ### M7 — Nexus protocol parity
 
@@ -295,7 +295,9 @@ terminal bytes, reply routes and optional bounds. Native Linux LLVM/C debug and
 release checks include scripted raw peers, deterministic short I/O, final replies
 followed by close, multi-client isolation and partial-line timeout recovery.
 Pinned C interoperability exercises both client/server roles. Native Windows,
-DNS/IPv6 URL extensions and broader stress validation remain outstanding.
+DNS/IPv6 URL extensions and long-duration soak/resource-growth validation remain
+outstanding. [Bounded stress checks](../tests/nexus/README.md) now exercise
+TCP/Telnet churn, sustained traffic, slow readers and shutdown under load.
 The focused [receive timeout tutorial](tutorials/nexus-timeouts.md) and
 `nexus-timeouts` example cover bounded waits, immediate would-block and retry;
 the native Nexus runner checks the example output in each backend/build mode.

@@ -263,7 +263,9 @@ readiness from extending a timeout indefinitely. Immediate calls preserve partia
 progress and return WouldBlock after an incomplete attempt.
 
 Remaining feature work: DNS/bracketed IPv6 URLs. Native Windows
-and broader stress/soak validation remain pending. The focused
+and long-duration soak/resource-growth validation remain pending.
+[Bounded stress checks](../tests/nexus/README.md) cover repeated connection
+churn, concurrent traffic, slow-reader recovery and shutdown under load. The focused
 [timeout/nonblocking walkthrough](tutorials/nexus-timeouts.md) demonstrates
 receive recovery with an example checked by the native runner. M6/M7 milestone
 closure still requires their agreed checks.

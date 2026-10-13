@@ -19,6 +19,7 @@ import threading
 import time
 
 from test_network import ROOT, run
+from nexus_stress import traffic, backpressure
 
 PINNED = "9ae32dd295241bd3889204537dfa476f222e753c"
 
@@ -398,7 +399,11 @@ def main() -> None:
     parser.add_argument("--release", action="store_true")
     parser.add_argument("--cgen", action="store_true")
     parser.add_argument("--upstream-dir", type=Path, help="Also build the pinned cthutu/dev C implementation")
+    parser.add_argument("--stress-rounds", type=int, default=12,
+                        help="Connection-churn rounds (12–1000; eight clients per round)")
     args = parser.parse_args()
+    if not 12 <= args.stress_rounds <= 1000:
+        parser.error("--stress-rounds must be between 12 and 1000")
     audit_parity()
     env = dict(os.environ, NERD_LIB_PATH=str(ROOT / "mods"))
     with tempfile.TemporaryDirectory(prefix="nerd-nexus-") as temporary:
@@ -419,6 +424,7 @@ def main() -> None:
             "examples/nexus-telnet/nexus-telnet.n",
             "examples/nexus-telnet-server/nexus-telnet-server.n",
             "examples/nexus-timeouts/nexus-timeouts.n",
+            "tests/nexus/stress.n",
         )):
             target = directory / (f"case-{index}" + suffix)
             if source == "examples/nexus-telnet-server/nexus-telnet-server.n":
@@ -444,7 +450,7 @@ def main() -> None:
             executables.append(target)
         (contracts, server, example, socket_api, udp_server, multi_client,
          request_reply, parity, timing, telnet, telnet_example, echo_server,
-         timeouts) = executables
+         timeouts, stress) = executables
         for target, expected in ((contracts, "Nexus buffer and framing contracts passed"),
                                  (example, "Nexus message: hello nexus, reply 43"),
                                  (socket_api, "Nexus socket API contracts passed"),
@@ -458,6 +464,9 @@ def main() -> None:
             if output.strip() != expected:
                 raise RuntimeError(f"Unexpected output: {output!r}")
             print(f"PASS {target.name}: {expected}")
+        traffic(stress, env, rounds=args.stress_rounds)
+        traffic(echo_server, env, telnet=True, rounds=args.stress_rounds)
+        backpressure(stress, env)
         telnet_echo_server(echo_server, env)
         print("PASS Telnet echo server client lifecycle, reset recovery, routes and shutdown")
         telnet_wire(telnet, env)
