@@ -6,8 +6,8 @@ the compiler representation and should be checked against the code and tests
 when it is used for implementation work.
 
 The main code is in
-[src/compiler/sema/sema.h](/home/matt/nerd/src/compiler/sema/sema.h) and
-[src/compiler/sema/sema.c](/home/matt/nerd/src/compiler/sema/sema.c).
+[src/compiler/sema/sema.h](../src/compiler/sema/sema.h) and
+[src/compiler/sema/sema.c](../src/compiler/sema/sema.c).
 
 ## Design Goal
 
@@ -637,6 +637,6 @@ Today the semantic type system is focused on:
 - exact-match type checks for the implemented arithmetic surface
 - explicit cast validation
 
-One implementation caveat remains: the IR is not yet fully self-describing and
-some backend stages still consult semantic tables. A future cleanup should move
-that remaining type knowledge into IR so VM-style execution becomes practical.
+HIR lowering and both code generators consult semantic type tables. Keep those
+tables alive through generation; HIR is not a standalone serialised type system.
+A VM would require a separate representation and lifetime design.

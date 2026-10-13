@@ -156,10 +156,10 @@ profiles/diagnostics are published; total command latency includes the attempt.
 
 Fixture development exposed an existing imported-generic specialization issue:
 using two integer specializations from sibling modules can lose an explicit
-return. The minimal [reproduction and baseline comparison](../audits/imported-generic-specialization-repro.md)
+return. The minimal [reproduction and baseline comparison](https://github.com/Cthutu/nerd/blob/aada810d/review/audits/imported-generic-specialization-repro.md)
 records the incorrect exit status with both `0a5b6648` and M5 at one job. This
 issue was subsequently fixed in `590105cd` during the
-[M8 adoption review](../audits/compiler-m8-adoption.md), with runtime regressions
+[M8 adoption review](https://github.com/Cthutu/nerd/blob/aada810d/review/audits/compiler-m8-adoption.md), with runtime regressions
 for distinct imported specializations, inference and function values.
 
 ## Next decision

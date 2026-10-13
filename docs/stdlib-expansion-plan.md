@@ -1,11 +1,9 @@
 # Standard-library expansion plan
 
-Status: first foundations implemented for draft review, 2026-10-01. Working
-branch: `std-library`, based on Nerd `00e226c2`. Later milestones remain planned;
-this is not a claim of completed ports.
-
-The first implementation batch uses [parallel workstreams](stdlib-workstreams.md)
-with separate branches, ownership boundaries and a later integration gate.
+Working branch: `std-library`. Thread/sync, IPv4 sockets, Raptor queues/tasks,
+and Nexus TCP/UDP/request-reply/Telnet APIs are implemented. Kerberos graphs,
+DNS/IPv6 and the remaining platform/stress gates are outstanding. The milestone
+sections below distinguish implemented slices from full milestone closure.
 
 ## Objective
 
@@ -341,11 +339,12 @@ show setup, normal operation, error handling and cleanup using the public API.
 Retain focused regression tests separately; examples should not reproduce the
 upstream test framework or expose private implementation details.
 
-The network examples and M1 `thread-pipeline` are implemented in this review;
-the other directories and scenarios remain proposed.
-Nexus test names below refer to the pinned `dev` revision in the source inventory.
-Raptor and Kerberos rows now reference inspected source tests. They have not yet
-been executed upstream or ported into Nerd.
+Thread, task, network and Nexus examples below are implemented.
+`queue-pipeline`, `graph-pipeline` and `task-network-service` remain proposed. Additional Raptor
+examples demonstrate serial output and main-thread pumping; Nexus also has a
+standalone multi-client Telnet echo server. See the [tutorial index](tutorials/README.md).
+Upstream names identify inspected source scenarios, not a claim that the complete
+original suites have been executed. Nerd parity coverage is recorded separately.
 
 | Example directory | Milestone | User-visible scenario | Upstream test basis |
 | --- | --- | --- | --- |

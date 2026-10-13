@@ -87,7 +87,7 @@ python validation/windows/test_runner.py
 The benchmark now includes jobs `1 2 4 8 16 auto`. Automatic mode chooses a
 half-logical-CPU ceiling and reduces dispatch for small/dominated batches;
 numeric overrides retain their previous behavior. Keep omitted jobs at one
-until the adoption gates in `review/audits/task-scheduler-performance.md` pass.
+until the [scheduler adoption gates](../../docs/compiler-profiling.md#scheduler-adoption-policy) pass.
 
 `benchmark-accounting` verifies a known CPU/memory workload before the benchmark.
 On CPython/Windows the harness reads process times and peak working set through
@@ -115,6 +115,5 @@ full runner already includes `expression-depth-debug` and
 Do not reduce this regression to the old 512-term debug case.
 
 Follow `PROMPT.md` through fixes, a final full run, desktop observations and
-committing/pushing the return package. Record native outcomes in the
-[single-core plan](../../review/audits/compiler-single-core-follow-up.md) and
-put the latest tested revision at the top of `results/HANDOFF.md`.
+committing/pushing the return package. Record native outcomes with the new run, and put the latest tested revision
+at the top of `results/HANDOFF.md`.

@@ -30,8 +30,8 @@ Date: YYYY-MM-DD
     dependencies. Earlier closeout statements below describe the original review.
 - [0001: HIR And Backend Boundary](0001-hir-and-backend-boundary.md)
   - Status: accepted.
-  - Closeout: implemented. HIR is the middle layer and LLVM is the only
-    executable backend.
+  - Closeout: implemented. HIR is the middle layer; LLVM is the native binary
+    backend and HIR-to-C is available for external compilation.
 - [0002: For-In Pointer Items](0002-for-in-pointer-items.md)
   - Status: accepted.
   - Closeout: implemented. `for item in collection` binds `item` as a pointer.
@@ -55,13 +55,13 @@ Date: YYYY-MM-DD
   - Status: accepted.
   - Closeout: active policy for AST/CST boundary work.
 - [0009: Backend Toolchain Contract](0009-backend-toolchain-contract.md)
-  - Status: accepted.
-  - Closeout: keep textual LLVM plus clang until measurements justify another
-    executable toolchain.
+  - Status: superseded by 0011. The installed compiler uses direct LLVM tools;
+    its original Clang invocation contract no longer applies.
 - [0010: Target Layout Support](0010-target-layout-support.md)
   - Status: accepted.
-  - Closeout: current support is the host 64-bit clang target; cross-target and
-    aggregate FFI ABI support require explicit future layout work.
+  - Closeout: the 64-bit host layout contract remains; 0011 supersedes the
+    Clang invocation. Cross-target and aggregate FFI support require explicit
+    layout work.
 
 ## Closeout Notes
 

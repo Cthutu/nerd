@@ -8,7 +8,7 @@ use-after-free and LSP fixture path expansion. Native Linux `just test` and
 `just test-release` passed: 1,153 fixtures, zero failures, nine platform skips
 per compiler; 291 C differential fixtures passed at O0/O2 with zero skips.
 The full frontend AddressSanitizer suite and three thread/network examples pass.
-See [current Linux handoff](../../../docs/linux-handoff-2026-10-03.md) and
+See [current Linux handoff](https://github.com/Cthutu/nerd/blob/aada810d/docs/linux-handoff-2026-10-03.md) and
 [retained evidence](../../linux/results/20261003-test-suite-consolidation/README.md).
 
 Windows results below cover their recorded revisions; the new Linux inference
@@ -17,7 +17,7 @@ unmerged branches in the October 2 sections describe that day's state.
 
 ## Complete Linux pickup — 2026-10-02
 
-Start with [today's consolidated Linux handoff](../../../docs/linux-handoff-2026-10-02.md).
+Start with [today's consolidated Linux handoff](https://github.com/Cthutu/nerd/blob/aada810d/docs/linux-handoff-2026-10-02.md).
 It covers every review decision and implementation change on `std-library`
 through `6bc00639`, validation boundaries, Linux commands, branch backups, and
 the independent audit/consolidation work. The consolidation branch also has an
@@ -47,7 +47,7 @@ The old changed workload (47 command fixtures) measured 10.273 s median versus
 unchanged language alternatives. This is about ten seconds less repeated work
 per debug fixture pass, **not** a full-gate percentage speedup.
 
-See the [report and exact mapping](../../../docs/test-suite-consolidation.md) and
+See the [report and exact mapping](https://github.com/Cthutu/nerd/blob/aada810d/docs/test-suite-consolidation.md) and
 [native evidence](20261002-test-suite-consolidation/README.md). Linux/WSL gates
 remain for pickup; no global compiler/editor installation or desktop checks were
 performed. Review/merge this branch independently of ongoing standard-library work.
@@ -87,7 +87,7 @@ Branch **`std-library`**, [draft PR #1](https://github.com/Cthutu/nerd/pull/1),
 targets `main`; all parallel work and repair branches are merged without
 rewriting their published history. `main` is unchanged.
 
-The [review report](../../../docs/stdlib-review-report.md) summarises additions
+The [review report](https://github.com/Cthutu/nerd/blob/aada810d/docs/stdlib-review-report.md) summarises additions
 and prioritises language/compiler, library and workflow recommendations.
 
 Final implementation `2b540cd9` passes native Windows **`just test` and

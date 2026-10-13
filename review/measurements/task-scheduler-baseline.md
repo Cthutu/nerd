@@ -6,7 +6,7 @@ confirmed the release compiler was current. Linux x86-64, AMD Ryzen 9 7950X,
 16 physical cores / 32 logical CPUs, Clang 22.1.8. CPU boost enabled; affinity,
 background load and frequency were not controlled. No parallel benchmark runs.
 
-The [audit and milestone plan](../audits/task-scheduler-performance.md) interprets
+The [audit and milestone plan](https://github.com/Cthutu/nerd/blob/aada810d/review/audits/task-scheduler-performance.md) interprets
 these results. [results.json](task-scheduler-baseline/results.json) contains
 exact argv, all five measured wall times and medians. Adjacent text files contain
 the final sample's complete timing report, with ANSI escapes removed. These

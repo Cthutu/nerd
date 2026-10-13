@@ -7,7 +7,7 @@ just test
 ```
 
 The implementation notes for the runner live in
-[../docs/testing.md](/home/matt/nerd/docs/testing.md). This file is the quick
+[../docs/testing.md](../docs/testing.md). This file is the quick
 index for the test inputs.
 
 `nerd test <root-filename>` is for source-level unit tests written in Nerd
@@ -40,7 +40,8 @@ scenarios and exact captured output. For example, `language/200-on-regressions.t
 retains 14 original regression IDs with begin/pass markers and return assertions.
 Missing scenarios must fail the transcript comparison. Keep configuration,
 process-lifetime and HIR/LLVM-specific contracts separate when batching would
-change their meaning. See the [consolidation map](../docs/test-suite-consolidation.md).
+change their meaning. See the [consolidation map](../docs/test-suite-consolidation-map.json);
+`build/check_test_consolidation.py` verifies the historical migration.
 
 - `language`
   End-to-end source tests. `.t` files contain source, expected process return

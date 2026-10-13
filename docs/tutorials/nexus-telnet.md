@@ -85,20 +85,19 @@ Keep the socket and message at stable addresses; dispose of messages with
 `done()` and sockets with `close()` after their last use. Both examples and tests
 use bounded timeouts; the server above intentionally waits indefinitely.
 
-When inspecting a result needs an error message before returning, extraction
-shorthand keeps the successful path small:
+A bare failure handler can log an error before propagating it:
 
 ```nerd
-bound := on server.local_url() else? [error] {
-    eprn($"Failed to get local URL (code {error.as(i32)})")
+bound := server.local_url() else [error] {
+    eprn($"Failed to get local URL: {nexus_error_to_string(error)}")
 }
 prn($"Listening on {bound}")
 ```
 
 Inside a function returning `void\NexusError`, this reports a failure and
 forwards the original `NexusError`. On success, `bound` receives the URL. If the
-handler should return an application exit code instead, use plain `else` and
-an explicit `return 1` inside a function returning `i32`.
+handler should return an application exit code instead, write an explicit
+`return 1` inside a function returning `i32`; that exit overrides propagation.
 
 ## Character mode
 

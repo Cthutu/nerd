@@ -99,7 +99,7 @@ The current formatter is intentionally narrow:
 - produce stable `.format` snapshots for formatter tests
 
 The formatter implementation lives in
-[src/compiler/format/format.c](/home/matt/nerd/src/compiler/format/format.c)
+[src/compiler/format/format.c](../../src/compiler/format/format.c)
 and uses the CST when structure-sensitive formatting is required.
 ## Compound Functions
 

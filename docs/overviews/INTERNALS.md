@@ -123,11 +123,11 @@ payload promotion, including when evaluating omitted default arguments.
 
 For deeper implementation notes, use these companion documents:
 
-- [../compiler-pipeline.md](/home/matt/nerd/docs/compiler-pipeline.md)
-- [../error-system.md](/home/matt/nerd/docs/error-system.md)
-- [../type-system.md](/home/matt/nerd/docs/type-system.md)
-- [../lsp.md](/home/matt/nerd/docs/lsp.md)
-- [../testing.md](/home/matt/nerd/docs/testing.md)
+- [../compiler-pipeline.md](../compiler-pipeline.md)
+- [../error-system.md](../error-system.md)
+- [../type-system.md](../type-system.md)
+- [../lsp.md](../lsp.md)
+- [../testing.md](../testing.md)
 
 ## C output
 
@@ -171,30 +171,30 @@ The repository contains:
 - `tests`
   Language, error, formatter, and LSP test inputs.
 
-The main executable entry point is [src/nerd.c](/home/matt/nerd/src/nerd.c).
+The main executable entry point is [src/nerd.c](../../src/nerd.c).
 
 ## Reading Order
 
 For most compiler work:
 
-1. [src/nerd.c](/home/matt/nerd/src/nerd.c)
-2. [src/compiler/compiler.h](/home/matt/nerd/src/compiler/compiler.h)
-3. [src/compiler/build/front/front.c](/home/matt/nerd/src/compiler/build/front/front.c)
-4. [src/compiler/build/back/back.c](/home/matt/nerd/src/compiler/build/back/back.c)
+1. [src/nerd.c](../../src/nerd.c)
+2. [src/compiler/compiler.h](../../src/compiler/compiler.h)
+3. [src/compiler/build/front/front.c](../../src/compiler/build/front/front.c)
+4. [src/compiler/build/back/back.c](../../src/compiler/build/back/back.c)
 5. the subsystem you are changing
 
 For editor tooling work:
 
-1. [src/lsp/lsp.c](/home/matt/nerd/src/lsp/lsp.c)
-2. [src/lsp/document.c](/home/matt/nerd/src/lsp/document.c)
-3. [src/lsp/hover.c](/home/matt/nerd/src/lsp/hover.c)
-4. [src/compiler/cst/cst.c](/home/matt/nerd/src/compiler/cst/cst.c)
+1. [src/lsp/lsp.c](../../src/lsp/lsp.c)
+2. [src/lsp/document.c](../../src/lsp/document.c)
+3. [src/lsp/hover.c](../../src/lsp/hover.c)
+4. [src/compiler/cst/cst.c](../../src/compiler/cst/cst.c)
 
 For tests:
 
-1. [tests/README.md](/home/matt/nerd/tests/README.md)
-2. [docs/testing.md](/home/matt/nerd/docs/testing.md)
-3. [build/test.py](/home/matt/nerd/build/test.py)
+1. [tests/README.md](../../tests/README.md)
+2. [docs/testing.md](../testing.md)
+3. [build/test.py](../../build/test.py)
 
 ## Execution Flow
 
@@ -571,10 +571,10 @@ argument.
 
 ## Related Documents
 
-- [FORMAT.md](/home/matt/nerd/docs/overviews/FORMAT.md) for formatter rules
-- [../manual/appendix-a-syntax-reference.md](/home/matt/nerd/docs/manual/appendix-a-syntax-reference.md)
+- [FORMAT.md](FORMAT.md) for formatter rules
+- [../manual/appendix-a-syntax-reference.md](../manual/appendix-a-syntax-reference.md)
   for the source-level syntax reference
-- [build-directives.md](/home/matt/nerd/docs/overviews/build-directives.md) for build-system metadata
+- [build-directives.md](build-directives.md) for build-system metadata
 # Atomics
 
 Semantic types represent `atomic[T]` with `STK_Atomic` and retain the element
@@ -1405,7 +1405,7 @@ and initializer. Both top-level and guarded statement formatting must emit the
 `pub` prefix and include it in wrap-column accounting, just as grouped variable
 formatting already does. The regression checks typed, inferred, zero-initialised,
 undefined and guarded declarations alongside constants and private declarations.
-See [the formatter repair note](../formatter-public-globals.md).
+See `tests/format/212-public-mutable-globals.f` for the idempotence regression.
 
 ## Imported mutable globals in LLVM
 

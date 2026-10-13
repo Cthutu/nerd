@@ -20,10 +20,10 @@ This is a first runtime model, not the final VM-oriented design.
 ## HIR And LLVM Model
 
 Interpolated strings lower through explicit HIR nodes in
-[src/compiler/hir/hir.h](/home/matt/nerd/src/compiler/hir/hir.h) and
-[src/compiler/hir/gen.c](/home/matt/nerd/src/compiler/hir/gen.c), then to
+[src/compiler/hir/hir.h](../src/compiler/hir/hir.h) and
+[src/compiler/hir/gen.c](../src/compiler/hir/gen.c), then to
 runtime helper calls in
-[src/compiler/llvm/llvm.c](/home/matt/nerd/src/compiler/llvm/llvm.c):
+[src/compiler/llvm/llvm.c](../src/compiler/llvm/llvm.c):
 
 - `string.reset`
 - `string.start`
@@ -35,7 +35,7 @@ inside backend string concatenation code.
 
 ## Runtime Helpers
 
-The current helpers live in [data/nrt.c](/home/matt/nerd/data/nrt.c).
+The current helpers live in [data/nrt.c](../data/nrt.c).
 
 The runtime provides:
 

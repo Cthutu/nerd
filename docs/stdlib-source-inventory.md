@@ -23,8 +23,8 @@ not a restriction on the intended dispatch design.
 
 No Raptor tags were found. None of these inspected branch heads implements a
 custom work-stealing deque/scheduler: scheduling delegates to ASIO. Work stealing
-remains the user's requested design goal; confirm the intended source revision
-or deliberately select a new algorithm before calling it a port.
+is supplied by the original Nerd implementation selected below, rather than
+ported from these revisions.
 
 ## Raptor APIs and examples
 
@@ -121,8 +121,8 @@ and attribution terms before copying implementation material; source access alon
 does not resolve those terms. This inventory changes neither project's notices.
 
 M0 still needs upstream builds/execution, a complete component disposition matrix
-and reuse decisions. M2/M3 should explicitly resolve queue correctness and the
-intended work-stealing implementation. M4 can start with serial FIFO dataflow;
+and reuse decisions for future copied components. M2/M3 use the original Nerd
+scheduler described below. M4 can start with serial FIFO dataflow;
 stable handles, cached invalidation and parallel scheduling are additions.
 
 ## Selected Nerd scheduler direction — 3 October 2026
@@ -159,4 +159,6 @@ Linux in LLVM/C debug/release configurations. This is an executed compatibility
 check, not execution of the complete upstream test suite.
 
 The [Nerd contracts](stdlib-nexus.md) distinguish deliberate API differences
-and the remaining UDP, pipe, reply-route and protocol parity work.
+and remaining platform/stress gates. TCP/UDP reply routes, request/reply and
+Telnet are implemented; [the parity inventory](nexus-parity.md) maps all 33
+pinned upstream scenarios to Nerd coverage.

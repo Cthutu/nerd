@@ -12,10 +12,12 @@ BSD-style `std.network`, and message-oriented `std.nexus`. See the
 
 ## Current State
 
-- The compiler pipeline is `lexer -> CST/AST parser -> sema -> HIR -> LLVM IR -> clang`.
-- HIR is the stable checked middle layer and LLVM IR is the executable backend
-  output. The legacy custom IR/C backend is gone.
-- The executable backend currently supports the host 64-bit clang target. Do
+- The compiler pipeline is `lexer -> AST -> sema -> HIR -> LLVM IR -> LLVM tools`.
+  The CST provides source-preserving syntax for formatting and editor tooling.
+- HIR is the checked middle layer. LLVM tools produce native binaries; the
+  optional HIR-to-C backend emits standalone C for external compilation. The
+  retired custom IR is not part of either path.
+- The executable backend currently supports the configured 64-bit host target. Do
   not claim cross-target or aggregate FFI ABI support without explicit layout
   work and tests.
 - Semantic analysis is a distinct front-end phase and owns name resolution,
@@ -155,6 +157,10 @@ validates the module/export model or provides a clear user-facing capability.
 Track the remaining `std.image` decisions and extensions in
 [TODO.md](TODO.md).
 
+General generic functions, types, traits and constraints remain supported. The
+parametrised-module replacement proposal is on hold; integrated optionals and
+results are implemented and documented in the manual and specs.
+
 ### Editor Intelligence
 
 - Extend formatter and LSP behaviour alongside new syntax and semantics.
@@ -167,8 +173,27 @@ Track the remaining `std.image` decisions and extensions in
   highlighting, folding, indentation, incremental selection, and structural
   editing.
 
+### Compiler Maintenance
+
+- Keep formatter layout rules syntax/trivia-based. Extract shared spacing,
+  comment, blank-line and alignment policies in small changes backed by partial
+  source and idempotence fixtures.
+- Keep AST/CST classification and recovery tests aligned. Parser unification
+  needs a separate design; shared syntax helpers are the current direction.
+- Harden LSP declaration/binding/type-fact accessors against incomplete tables
+  and broken imports; reduce crashes to incremental-edit transcripts first.
+- Keep target layout and runtime helper declarations consistent with the C
+  runtime. Cross-target and aggregate FFI support need explicit ABI tests.
+- Keep compiler scheduling at one job by default. Any adaptive-default change
+  needs the [performance adoption gates](docs/compiler-profiling.md#scheduler-adoption-policy).
+
 ### Testing Follow-up
 
+- Add structured expected diagnostics to negative command checks where only
+  failure is currently asserted; retain separate CLI contracts.
+- Consolidate compatible runtime scenarios and investigate sharing LLVM
+  baselines with C differential tests. Preserve IR, ABI, platform and cleanup
+  coverage, and measure compiler/toolchain launches before adopting changes.
 - Add non-fail-fast source-test assertions only if real test suites demonstrate
   that continuing after a failed assertion would be useful.
 
@@ -179,10 +204,8 @@ near-term tasks without a fresh design pass.
 
 - In-place AST compaction for constant folding.
 - Calling-convention annotations for FFI, including platform-specific behaviour.
-- Named arguments, including their interaction with default parameters and
-  call-site argument ordering.
 - Interpolation formatting specifiers such as `{expr; format}`.
-- Operator traits for arithmetic, bitwise, comparison, and assignment
-  operators.
+- Operator traits for arithmetic, bitwise and assignment operators. Equality
+  and ordering already use `core.Eq` and `core.Order`.
 - A synthetic diagnostic harness for hard-limit error categories that are
   impractical to trigger through normal source files.

@@ -113,8 +113,8 @@ the `nerd` filetype and syntax for a `.n` file:
 
 ```sh
 nvim --headless -u NONE \
-  --cmd 'set runtimepath^=/home/matt/nerd/syntax/nerd-nvim' \
-  +'syntax on' +'filetype on' +'edit _tmp/c4.n' \
+  --cmd 'set runtimepath^=./syntax/nerd-nvim' \
+  +'syntax on' +'filetype on' +'edit examples/nexus-timeouts/nexus-timeouts.n' \
   +'lua io.write((vim.bo.filetype or "") .. ":" .. (vim.bo.syntax or ""))' \
   +qa
 ```

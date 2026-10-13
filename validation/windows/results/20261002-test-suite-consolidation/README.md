@@ -5,7 +5,7 @@ Compiler fix: `58818307` preserves optional/result flags during enum payload
 materialisation. Fresh debug/release compilers were built with Clang in this
 worktree; installed Nerd and editor extensions were not changed.
 
-The [consolidation report](../../../../docs/test-suite-consolidation.md) and
+The [consolidation report](https://github.com/Cthutu/nerd/blob/aada810d/docs/test-suite-consolidation.md) and
 [complete migration map](../../../../docs/test-suite-consolidation-map.json)
 describe the 33 duplicate removals and 14-scenario feature batch.
 

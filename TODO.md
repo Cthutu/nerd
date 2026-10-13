@@ -25,8 +25,8 @@ that remain open.
 
 ### Outstanding Extensions
 
-- [ ] Add `Image.load(path, desired_channels := 0)` after a stable `std.fs` or
-      equivalent file API exists.
+- [ ] Add `Image.load(path, desired_channels := 0)` using the existing `std.files`
+      whole-file API.
 - [ ] Add source-relative fixture tests once file loading exists.
 - [ ] Add command regressions for missing files and corrupted file contents
       once file loading exists.

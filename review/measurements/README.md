@@ -1,14 +1,16 @@
 # Measurements
 
-Store repeatable profiling, timing, and allocation results here.
+These are dated profiling, timing and allocation records, not a current status
+checklist. Use [compiler profiling](../../docs/compiler-profiling.md) for current
+commands and adoption policy. Historical report links point to their Git snapshot.
 
 Each note should include command, commit or working-tree context, environment,
 raw summary, and interpretation.
 
-- `task-scheduler-baseline.md`: current exploratory compiler timings and raw
+- `task-scheduler-baseline.md`: historical exploratory compiler timings and raw
   samples supporting the task scheduler experiment.
 
-Current backend timing notes:
+Backend timing records:
 
 - `backend-phase-timing.md`: phase-level timings from the compiler `--timing`
   report.
@@ -45,8 +47,6 @@ Current backend timing notes:
   timing, render dispatch/drain boundaries and remaining system CPU evidence.
 - `compiler-m4-metadata.md`: contiguous metadata-text copying, exact LLVM
   comparisons, fewer bookkeeping acquisitions and single-core latency gains.
-- `compiler-m4-render-scratch.md`: per-module reuse of function scratch arenas,
-  sanitizer/growth regression, serial/parallel comparisons and fresh scaling.
 
 - `compiler-m5-front-end.md`: completed Linux M5 ownership/scheduling and
   graph/sanitizer gates, paired timings, worker scaling, and the decision to
@@ -56,7 +56,7 @@ Current backend timing notes:
   including installed baseline, one-core checking/full builds, incremental
   worker scaling, byte-identical LLVM and raw five-sample measurements.
 
-- [M8 adoption decision](../audits/compiler-m8-adoption.md): final fixed-compiler
+- [M8 adoption decision](https://github.com/Cthutu/nerd/blob/aada810d/review/audits/compiler-m8-adoption.md): final fixed-compiler
   serial/scaling measurements, CPU work and memory limits, task granularity and
   shared-core ownership review. Raw results are in `compiler-m8-adoption/`.
   Default remains one job; native Windows/macOS gates remain outstanding.

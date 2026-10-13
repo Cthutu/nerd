@@ -7,7 +7,7 @@ Compiler sources, core API, test recipe, frontend parity test, Windows runner
 and INTERNALS now match `f3af9bb1` exactly. Earlier batch parallelism,
 single-core optimisations, correctness fixes and opt-in adaptive dispatch remain.
 Benchmark harness improvements and all historical measurement evidence remain.
-The [plan](../audits/compiler-task-graph.md) records why G3–G6 are deferred.
+The [plan](https://github.com/Cthutu/nerd/blob/aada810d/review/audits/compiler-task-graph.md) records why G3–G6 are deferred.
 
 Validation after withdrawal:
 

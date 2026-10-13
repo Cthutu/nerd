@@ -6,7 +6,7 @@ that moves between stages.
 ## Front End
 
 The front end is orchestrated in
-[src/compiler/build/front/front.c](/home/matt/nerd/src/compiler/build/front/front.c).
+[src/compiler/build/front/front.c](../src/compiler/build/front/front.c).
 
 The current stage order is:
 
@@ -29,7 +29,7 @@ than raw syntax guesses.
 ## Back End
 
 The back end is orchestrated in
-[src/compiler/build/back/back.c](/home/matt/nerd/src/compiler/build/back/back.c).
+[src/compiler/build/back/back.c](../src/compiler/build/back/back.c).
 
 It currently:
 
@@ -143,7 +143,7 @@ statement-like constructs, ranges, and cursor contexts.
 
 ## Semantic Analysis
 
-The semantic pass in [src/compiler/sema/sema.c](/home/matt/nerd/src/compiler/sema/sema.c)
+The semantic pass in [src/compiler/sema/sema.c](../src/compiler/sema/sema.c)
 currently does several jobs:
 
 - collect top-level declarations
@@ -177,7 +177,7 @@ partial analysis and request type facts only when the feature needs them.
 
 ## HIR Generation
 
-HIR lowering in [src/compiler/hir/gen.c](/home/matt/nerd/src/compiler/hir/gen.c)
+HIR lowering in [src/compiler/hir/gen.c](../src/compiler/hir/gen.c)
 uses the semantic output to produce:
 
 - global declarations
@@ -198,7 +198,7 @@ from the in-memory HIR; it is not the shape the data structures have to use.
 ## LLVM Generation
 
 The LLVM back end translates HIR to textual LLVM IR in
-[src/compiler/llvm/llvm.c](/home/matt/nerd/src/compiler/llvm/llvm.c).
+[src/compiler/llvm/llvm.c](../src/compiler/llvm/llvm.c).
 Generated LLVM IR remains a tooling artefact as well as the executable backend
 input, so stability matters for tests.
 

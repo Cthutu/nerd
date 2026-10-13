@@ -7,7 +7,7 @@ Kerberos graphs or Nexus protocols, nor declare M0/M1/M5 complete.
 
 ## Changes and review map
 
-- [Workstreams](../../../../docs/stdlib-workstreams.md) preserves branch ownership
+- [Workstreams](https://github.com/Cthutu/nerd/blob/aada810d/docs/stdlib-workstreams.md) preserves branch ownership
   and the integration sequence; published commits are retained by merges.
 - [Thread/sync contracts](../../../../docs/stdlib-thread-sync.md) describe callback
   context lifetime, join ownership and predicate-based waits.
