@@ -69,7 +69,7 @@ options :: fn () -> void\NexusError {
 }
 
 -- Sending before accepting works without worker threads. Repeat the immediate
--- server close to check that a complete final line survives buffered EOF.
+-- send-side shutdown to check that a complete final line survives buffered EOF.
 round_trip :: fn () -> void\NexusError {
     for i in [0 .. 20] {
         _      := i
@@ -95,7 +95,12 @@ round_trip :: fn () -> void\NexusError {
         reply.clear()
         reply.append("echo: hello from telnet".as([]u8))?
         reply.send()?
-        server.close()
+        -- Keep the receive side open for pending Telnet negotiation replies.
+        -- Closing it here can abort the connection instead of producing EOF.
+        on server.peers[0].raw.shutdown_send() => {
+        } else {
+            assert no
+        }
         request.recv()?
         assert request.payload().as(string) == "echo: hello from telnet"
         on request.recv() {

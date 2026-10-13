@@ -1,5 +1,11 @@
 # Internals
 
+Windows console control registration passes a typed `fn` value directly to
+`SetConsoleCtrlHandler`. A `^fn` parameter with `^control_handler` instead
+passes the address of a function-value slot, which is not a callable entry
+point. Native Nexus shutdown tests exercise registration, callback delivery,
+and removal in LLVM and C output.
+
 On Windows the direct LLVM linker includes `legacy_stdio_definitions.lib` with
 the SDK/CRT libraries. Nerd FFI declarations call symbols such as `vprintf`
 directly, so they need the out-of-line definitions normally supplied through

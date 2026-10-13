@@ -220,7 +220,9 @@ checks :: fn () -> void\NetworkError {
             assert no
         }
         else => {
-            on refused.finish_connect(deadline = now().add(from_secs(2))) {
+            -- Native TCP refusal retries can outlast two seconds on Windows.
+            -- Keep the refusal/state assertions, with room for OS scheduling.
+            on refused.finish_connect(deadline = now().add(from_secs(10))) {
                 NetworkError.ConnectionRefused {
                     code
                 }

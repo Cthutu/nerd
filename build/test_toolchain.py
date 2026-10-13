@@ -17,7 +17,10 @@ def main():
     nerd = parser.parse_args().nerd.resolve()
     with tempfile.TemporaryDirectory(prefix='nerd toolchain-') as temporary:
         work = Path(temporary)
-        env = dict(os.environ, NERD_LIB_PATH=str(ROOT / 'mods'), TMPDIR=str(work))
+        # These checks compare diagnostic content, including long native paths.
+        # Keep presentation wrapping independent of the host terminal width.
+        env = dict(os.environ, NERD_LIB_PATH=str(ROOT / 'mods'), TMPDIR=str(work),
+                   COLUMNS='4096')
         tools = ['opt', 'llc', 'llvm-lib' if os.name == 'nt' else 'llvm-ar',
                  'lld-link' if os.name == 'nt' else
                  'ld64.lld' if sys.platform == 'darwin' else 'ld.lld']
