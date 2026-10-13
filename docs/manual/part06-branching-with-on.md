@@ -261,6 +261,18 @@ Bare handlers bind below boolean operators and above assignment. Parenthesise
 a handler expression used as an unbraced branch of `on`, so its `else` is
 distinct from that branch's `else`.
 
+To test an extracted boolean directly, parenthesise the whole handler expression:
+
+```nerd
+on (shutdown.requested() else [error] {
+    eprn($"Shutdown watcher failed: {error}")
+    return 1
+}) => break
+```
+
+Here `break` exits the surrounding loop; the handler's `return 1` exits the
+enclosing function on failure.
+
 The old `on expression else ...` and `on expression else? ...` shorthand forms
 have been removed. Full extraction with `on expression => [value] { ... }
 else [error] { ... }` remains available for work in both branches.

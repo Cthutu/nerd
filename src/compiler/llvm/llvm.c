@@ -6075,9 +6075,21 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
 internal bool      llvm_emit_effect_stmt(LlvmFunctionContext* ctx,
                                          const HirFunction*   function,
                                          const HirStmt*       stmt);
-internal bool      llvm_emit_return(LlvmFunctionContext* ctx,
-                                    const HirFunction*   function,
-                                    const HirStmt*       stmt);
+// A statement can discard its own value while still needing an operand's
+// value, including an on expression used as its subject or guard.
+internal LlvmValue llvm_emit_required_expr(LlvmFunctionContext* ctx,
+                                           const HirFunction*   function,
+                                           u32                  expr_index)
+{
+    bool discard            = ctx->discard_expr_value;
+    ctx->discard_expr_value = false;
+    LlvmValue value         = llvm_emit_expr(ctx, function, expr_index);
+    ctx->discard_expr_value = discard;
+    return value;
+}
+internal bool llvm_emit_return(LlvmFunctionContext* ctx,
+                               const HirFunction*   function,
+                               const HirStmt*       stmt);
 
 internal LlvmValue llvm_address_of_expr(LlvmFunctionContext* ctx,
                                         const HirFunction*   function,
@@ -12637,8 +12649,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
     case HIR_EXPR_On:
         {
             if (expr->on_kind != HIR_ON_Condition) {
-                LlvmValue scrutinee =
-                    llvm_emit_expr(ctx, function, expr->operand_expr_index);
+                LlvmValue scrutinee = llvm_emit_required_expr(
+                    ctx, function, expr->operand_expr_index);
                 if (!scrutinee.ok || expr->branch_count == 0) {
                     return (LlvmValue){0};
                 }
@@ -12752,7 +12764,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                                 ctx->sb, STRINGP ":\n", STRINGV(guard_label));
                             llvm_bind_local_value(
                                 ctx, branch->binder_local_index, scrutinee);
-                            LlvmValue guard = llvm_emit_expr(
+                            LlvmValue guard = llvm_emit_required_expr(
                                 ctx, function, branch->guard_expr_index);
                             if (!guard.ok) {
                                 array_free(phi_values);
@@ -12930,8 +12942,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                         array_free(phi_labels);
                         return (LlvmValue){0};
                     }
-                    LlvmValue condition =
-                        llvm_emit_expr(ctx, function, branch->guard_expr_index);
+                    LlvmValue condition = llvm_emit_required_expr(
+                        ctx, function, branch->guard_expr_index);
                     if (!condition.ok) {
                         array_free(phi_values);
                         array_free(phi_labels);

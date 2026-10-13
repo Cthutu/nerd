@@ -2770,7 +2770,8 @@ internal void format_emit_bool_on_condition_multiline(StringBuilder* sb,
 {
     const CstNode* condition = &cst->nodes[condition_node_index];
     if (!format_logical_chain_kind(condition->kind)) {
-        format_emit_expr(sb, cst, lexer, condition_node_index, 0);
+        format_emit_expr_with_indent(
+            sb, cst, lexer, condition_node_index, 0, indent_level);
         return;
     }
 
@@ -2783,7 +2784,8 @@ internal void format_emit_bool_on_condition_multiline(StringBuilder* sb,
         if (i > 0) {
             format_emit_indent(sb, indent_level + 1);
         }
-        format_emit_expr(sb, cst, lexer, parts[i], 0);
+        format_emit_expr_with_indent(
+            sb, cst, lexer, parts[i], 0, indent_level + (i > 0 ? 1 : 0));
         if (i + 1 < array_count(parts)) {
             sb_append_char(sb, ' ');
             sb_append_string(sb, op);

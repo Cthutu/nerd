@@ -87,6 +87,12 @@ unification. A private binder snapshots the whole result or optional, and the
 parser appends a marked ordinary propagation node inside the handler scope.
 The old omitted-success `on ... else` and `on ... else?` syntax is rejected;
 full `on ... => ... else ...` extraction remains unchanged.
+The formatter passes the enclosing indentation into `on` subject rendering,
+including logical-chain operands, so parenthesised bare handlers keep their
+bodies and closing braces aligned inside loops and nested blocks.
+LLVM always materialises `on` subjects and guards even when the enclosing
+statement discards its result. Letting discard mode reach a nested handler
+expression drops its success value and produces an empty boolean operand.
 This reuses propagation channel checking and cleanup without reevaluating the
 subject or forwarding a modified subject variable. Unreachable synthetic
 propagation is omitted from HIR after an explicit exit. Synthetic locals are
