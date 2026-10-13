@@ -197,6 +197,10 @@ intended exit code.
 - Handle then propagate: `value := on operation() else? [error] { report(error) }`.
   The original failure follows postfix `?` return-channel rules.
 - Optional extraction uses the same forms without an error binder.
+- Default extraction: `value := operation() \ default` works for `T\E` and
+  `?T`. The source runs once, and the default runs only on error or absence.
+  It yields `T`, discards errors, and requires a compatible default. `\` is
+  right associative, above multiplication and below prefix operators.
 - Value-producing forms must be exhaustive.
 - Statement forms may be partial.
 - Bare identifiers in patterns bind by default. Use `for name` to compare with

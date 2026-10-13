@@ -604,6 +604,8 @@ internal int format_expr_precedence(const CstNode* node)
     case CK_IntegerDivide:
     case CK_IntegerModulo:
         return 60;
+    case CK_Fallback:
+        return 65;
     case CK_LogicalNot:
     case CK_IntegerNegate:
     case CK_BitwiseNot:
@@ -1559,6 +1561,11 @@ internal void format_emit_expr(StringBuilder* sb,
         format_emit_expr(sb, cst, lexer, node->a, node_precedence);
         sb_append_cstr(sb, " || ");
         format_emit_expr(sb, cst, lexer, node->b, node_precedence + 1);
+        break;
+    case CK_Fallback:
+        format_emit_expr(sb, cst, lexer, node->a, node_precedence + 1);
+        sb_append_cstr(sb, " \\ ");
+        format_emit_expr(sb, cst, lexer, node->b, node_precedence);
         break;
     case CK_Call:
         format_emit_expr(sb, cst, lexer, node->a, node_precedence);
@@ -3672,6 +3679,7 @@ internal u32 format_node_end_token_index(const Cst*   cst,
     case CK_RangeInclusive:
     case CK_InRange:
     case CK_AnnotatedValue:
+    case CK_Fallback:
     case CK_Bind:
     case CK_Variable:
     case CK_DestructureBind:
@@ -9769,6 +9777,7 @@ internal void format_token_state_blank_line(FormatTokenState* state)
 internal bool format_token_kind_is_binary_operator(TokenKind kind)
 {
     switch (kind) {
+    case TK_Backslash:
     case TK_Plus:
     case TK_PlusEqual:
     case TK_Minus:
@@ -10092,6 +10101,11 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
         return false;
     }
 
+    bool* result_type_tokens =
+        arena_alloc(&temp_arena, array_count(lexer.tokens) * sizeof(bool));
+    memset(result_type_tokens, 0, array_count(lexer.tokens) * sizeof(bool));
+    cst_mark_result_type_tokens(&lexer, result_type_tokens);
+
     FormatTrivia trivia = {0};
     format_trivia_build(&lexer, &trivia);
     format_trivia_validate(&lexer, &trivia);
@@ -10253,6 +10267,13 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
         if (!needs_space && previous_kind != TK_EOF &&
             format_token_had_space_between(&lexer, i - 1, i)) {
             needs_space = true;
+        }
+        // The same token spells a spaced recovery operator and an adjacent
+        // result type separator. Source whitespace must not blur that boundary.
+        if (kind == TK_Backslash || previous_kind == TK_Backslash) {
+            needs_space =
+                !((kind == TK_Backslash && result_type_tokens[i]) ||
+                  (previous_kind == TK_Backslash && result_type_tokens[i - 1]));
         }
 
         if (needs_space && sb->size > 0 && sb->data[sb->size - 1] != ' ' &&

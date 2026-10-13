@@ -143,6 +143,7 @@ typedef enum {
     CK_InRange,
     CK_LogicalAnd,
     CK_LogicalOr,
+    CK_Fallback, // a: wrapped value, b: lazy fallback value
     CK_Call,
     CK_Cast,
     CK_Tuple,
@@ -536,6 +537,8 @@ typedef struct {
 } Cst;
 
 bool cst_parse(const Lexer* lexer, Cst* out_cst);
+// Caller supplies a zeroed array with one entry per lexer token.
+void cst_mark_result_type_tokens(const Lexer* lexer, bool* out_tokens);
 void cst_done(Cst* cst);
 
 u64  cst_get_integer(const Cst* cst, const CstNode* node);

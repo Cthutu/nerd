@@ -84,6 +84,16 @@ This reuses propagation channel checking and cleanup without reevaluating the
 subject or forwarding a modified subject variable. Unreachable synthetic
 propagation is omitted from HIR after an explicit exit. Synthetic locals are
 excluded from LSP completion.
+Lazy fallback `subject \ default` normalises to ordinary `AOK_Extract`
+branches with a private success binder and `AstOnInfo.fallback`. Sema fixes the
+branch context to the source's success type, including literal range checks;
+the failure branch produces a replacement value. `CK_Fallback` preserves the
+source spelling, high precedence (between multiplication and prefix), and
+right associativity for formatting. Existing HIR extraction and LLVM/C
+branching evaluate the subject once and execute the fallback only on failure.
+Like extraction shorthand, a void success omits the binder and value body.
+Token-based formatter recovery asks the CST parser to mark result type tokens;
+it keeps `T\E` adjacent and spaces expression `\` even in malformed code.
 HIR marks shorthand failure branches as statement handlers. LLVM emits them as
 ordinary blocks and the C backend temporarily removes the extraction value
 target, so handler `break`/`again` resolve to surrounding control flow. A `void`

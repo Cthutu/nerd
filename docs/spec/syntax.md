@@ -316,8 +316,15 @@ assignment-operator
 
 binary-operator ::= '||' | '&&' | '|' | '^' | '&'
                   | '==' | '!=' | '<' | '<=' | '>' | '>=' | 'in'
-                  | '<<' | '>>' | '+' | '-' | '*' | '/' | '%'
+                  | '<<' | '>>' | '+' | '-' | '*' | '/' | '%' | '\\'
+```
 
+The binary grammar above is schematic; Pratt binding powers determine grouping.
+Fallback `\` is right associative, above multiplication and below prefix
+operators. See [expressions](expressions.md#lazy-fallback) for typing and lazy
+evaluation rules.
+
+```bnf
 primary         ::= INT
                   | FLOAT
                   | STRING

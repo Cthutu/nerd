@@ -445,6 +445,7 @@ typedef enum : u32 {
 typedef struct {
     AstOnKind kind;
     bool      shorthand;
+    bool      fallback;
     bool      propagate_failure;
     u32       wrapper_symbol;
     u32       first_branch;

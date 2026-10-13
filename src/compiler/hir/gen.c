@@ -2827,7 +2827,7 @@ internal u32 hir_lower_expr_impl(Hir*         hir,
                             (u32)array_count(hir->pattern_children);
                         u32 child_count = 0;
                         if (branch->binder_symbol_handle != U32_MAX &&
-                            !(on->shorthand && i == 0 &&
+                            !((on->shorthand || on->fallback) && i == 0 &&
                               sema->types[sema->locals
                                               [sema->on_branch_local_indices
                                                    [on->first_branch]]
@@ -2921,7 +2921,7 @@ internal u32 hir_lower_expr_impl(Hir*         hir,
                 }
 
                 u32 body;
-                if (on->shorthand && i == 0 &&
+                if ((on->shorthand || on->fallback) && i == 0 &&
                     sema->types[sema->locals[sema->on_branch_local_indices
                                                  [on->first_branch]]
                                     .type_index]

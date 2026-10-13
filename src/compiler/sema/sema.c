@@ -9172,9 +9172,9 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
                     array_push(
                         sema->locals,
                         (SemaLocal){
-                            .kind = SLK_Binder,
-                            .synthetic =
-                                on->shorthand && !(branch->flags & AOBF_Else),
+                            .kind      = SLK_Binder,
+                            .synthetic = (on->shorthand || on->fallback) &&
+                                         !(branch->flags & AOBF_Else),
                             .implicit =
                                 (branch->flags & AOBF_ImplicitBinder) != 0,
                             .symbol_handle    = branch->binder_symbol_handle,
@@ -23068,7 +23068,9 @@ validate_type:
                 expr            = &ast->nodes[expr_root_index];
             }
             if (expr->kind == AK_On) {
-                statement_expected = sema_builtin_type(sema, STK_Void);
+                statement_expected = ast->ons[expr->b].fallback
+                                         ? sema_no_type()
+                                         : sema_builtin_type(sema, STK_Void);
             }
             if (!sema_infer_node_type(lexer,
                                       ast,
@@ -23933,12 +23935,12 @@ validate_type:
 
     case AK_On:
         {
-            const AstOnInfo* on             = &ast->ons[node->b];
-            u32              bool_type      = sema_builtin_type(sema, STK_Bool);
-            u32              void_type      = sema_builtin_type(sema, STK_Void);
-            bool             statement_form = expected_type == void_type;
-            bool             has_else       = false;
-            u32              scrutinee_type = sema_no_type();
+            const AstOnInfo* on        = &ast->ons[node->b];
+            u32              bool_type = sema_builtin_type(sema, STK_Bool);
+            u32              void_type = sema_builtin_type(sema, STK_Void);
+            bool statement_form = !on->fallback && expected_type == void_type;
+            bool has_else       = false;
+            u32  scrutinee_type = sema_no_type();
             if (on->kind != AOK_Condition &&
                 !sema_infer_node_type(lexer,
                                       ast,
@@ -23972,6 +23974,16 @@ validate_type:
                     sema->types[scrutinee_type].kind != STK_Enum ||
                     !(sema->types[scrutinee_type].flags &
                       (STF_Optional | STF_Result))) {
+                    if (on->fallback) {
+                        return error_0304_type_mismatch_with_help(
+                            lexer->source,
+                            sema_node_span(lexer, &ast->nodes[node->a]),
+                            s("optional or result value"),
+                            sema_type_name(
+                                lexer, sema, &temp_arena, scrutinee_type),
+                            s("The left operand of `\\` must have type `?T` or "
+                              "`T\\E`."));
+                    }
                     if (on->shorthand) {
                         return error_0304_type_mismatch_with_help(
                             lexer->source,
@@ -24024,6 +24036,14 @@ validate_type:
                 }
             }
 
+            if (on->fallback) {
+                const SemaType* wrapped = &sema->types[scrutinee_type];
+                u32 variant = (wrapped->flags & STF_Optional) ? 1 : 0;
+                // Recovery yields the success type, independent of any outer
+                // contextual wrapping. Contextualise literals in the fallback.
+                expected_type =
+                    sema->type_param_types[wrapped->first_param_type + variant];
+            }
             if (on->propagate_failure) {
                 sema->locals[sema->node_local_indices[node_index]].type_index =
                     scrutinee_type;
@@ -24204,7 +24224,8 @@ validate_type:
                     if (ast->nodes[branch_root].kind == AK_Expression) {
                         branch_root = ast->nodes[branch_root].a;
                     }
-                    if (ast->nodes[branch_root].kind == AK_On) {
+                    if (ast->nodes[branch_root].kind == AK_On &&
+                        !ast->ons[ast->nodes[branch_root].b].fallback) {
                         branch_expected = void_type;
                     }
                     if (sema_node_definitely_returns(
@@ -24274,6 +24295,16 @@ validate_type:
                     }
                     continue;
                 }
+                if (on->fallback && !branch_definitely_returns &&
+                    !sema_type_is_never(sema, current_type) &&
+                    !sema_type_matches(sema, expected_type, current_type)) {
+                    return error_0304_type_mismatch(
+                        lexer->source,
+                        sema_node_span(lexer,
+                                       &ast->nodes[branch->expr_node_index]),
+                        sema_type_name(lexer, sema, &temp_arena, expected_type),
+                        sema_type_name(lexer, sema, &temp_arena, current_type));
+                }
                 if (current_expected != sema_no_type() &&
                     sema->types[current_expected].kind == STK_Enum &&
                     (sema->types[current_expected].flags &
@@ -24331,7 +24362,7 @@ validate_type:
             if (statement_form) {
                 type_index = void_type;
             } else {
-                if (branch_type == void_type) {
+                if (branch_type == void_type && !on->fallback) {
                     for (u32 i = 0; i < on->branch_count; ++i) {
                         const AstOnBranch* branch =
                             &ast->on_branches[on->first_branch + i];

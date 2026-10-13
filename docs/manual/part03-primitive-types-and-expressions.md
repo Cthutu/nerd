@@ -62,6 +62,34 @@ load :: fn (text: string) -> i32\string {
 }
 ```
 
+### Supplying A Default
+
+Use `\` to extract a value and supply a default on error or absence:
+
+```nerd
+answer := parse("") \ 42
+name : ?string
+display_name := name \ "unknown"
+```
+
+The left side is evaluated once. The fallback is lazy: it runs only when the
+result fails or the optional is absent. An error is discarded rather than
+propagated. The extracted value and fallback have the same success type.
+
+You can chain optional and result values. Chains group from the right and stop
+at the first available value:
+
+```nerd
+answer := first_choice() \ second_choice() \ 42
+```
+
+`\` binds above multiplication and below prefix and postfix operators.
+`parse(text) \ 2 * 3` multiplies the extracted or default value by three.
+Use `parse(text) \ (2 * 3)` to make the multiplication part of the fallback.
+A fallback can also be a value block: `parse(text) \ ${ break 42 }`.
+For a `void` success type, a void fallback handles failure and continues.
+Use `on` extraction when you need to inspect the error.
+
 ## Numeric Expressions
 
 ```nerd

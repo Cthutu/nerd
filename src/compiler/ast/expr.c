@@ -593,6 +593,10 @@ bool ast_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp)
         *out_left_bp  = AST_BP_MULTIPLICATIVE;
         *out_right_bp = AST_BP_MULTIPLICATIVE + 1;
         return true;
+    case TK_Backslash:
+        *out_left_bp  = AST_BP_FALLBACK;
+        *out_right_bp = AST_BP_FALLBACK;
+        return true;
     default:
         return false;
     }
@@ -3054,6 +3058,55 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
     }
     if (!ast_parse_expr_bp(state, right_bp, &right_node)) {
         return false;
+    }
+
+    // Fallback is ordinary payload extraction with a lazy failure branch.
+    // Keep the source spelling in the CST, but reuse on typing and lowering.
+    if (op.kind == TK_Backslash) {
+        char            name[64];
+        InternAddResult ignored = {0};
+        snprintf(name,
+                 sizeof(name),
+                 "$fallback_payload_%u",
+                 (u32)array_count(state->nodes));
+        u32 payload = lex_add_symbol(
+            state->lexer, string_from((u8*)name, strlen(name)), &ignored);
+        u32 success;
+        if (!ast_emit_node(state,
+                           (AstNode){.kind        = AK_SymbolRef,
+                                     .token_index = op.token_index,
+                                     .a           = payload},
+                           &success)) {
+            return false;
+        }
+        u32 first = (u32)array_count(state->on_branches);
+        array_push(state->on_branches,
+                   ((AstOnBranch){.token_index          = op.token_index,
+                                  .expr_node_index      = success,
+                                  .guard_node_index     = U32_MAX,
+                                  .binder_symbol_handle = payload,
+                                  .binder_token_index   = U32_MAX,
+                                  .flags = AOBF_ImplicitBinder}));
+        array_push(state->on_branches,
+                   ((AstOnBranch){.token_index          = op.token_index,
+                                  .expr_node_index      = right_node,
+                                  .guard_node_index     = U32_MAX,
+                                  .binder_symbol_handle = U32_MAX,
+                                  .binder_token_index   = U32_MAX,
+                                  .flags                = AOBF_Else}));
+        u32 index = (u32)array_count(state->ons);
+        array_push(state->ons,
+                   ((AstOnInfo){.kind           = AOK_Extract,
+                                .fallback       = true,
+                                .wrapper_symbol = U32_MAX,
+                                .first_branch   = first,
+                                .branch_count   = 2}));
+        return ast_emit_node(state,
+                             (AstNode){.kind        = AK_On,
+                                       .token_index = op.token_index,
+                                       .a           = left_node,
+                                       .b           = index},
+                             out_node);
     }
 
     AstNode node = {
