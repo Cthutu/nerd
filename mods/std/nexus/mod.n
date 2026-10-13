@@ -29,6 +29,23 @@ pub NexusError :: enum {
     -- Original socket or readiness failure.
 }
 
+pub nexus_error_to_string :: fn (error: NexusError) -> string {
+    on error {
+        NexusError.Invalid               => return "Invalid"
+        NexusError.BadUrl                => return "BadUrl"
+        NexusError.ProtocolNotSupported  => return "ProtocolNotSupported"
+        NexusError.WouldBlock            => return "WouldBlock"
+        NexusError.TimedOut              => return "TimedOut"
+        NexusError.WrongState            => return "WrongState"
+        NexusError.TooManyPeers          => return "TooManyPeers"
+        NexusError.TooLarge              => return "TooLarge"
+        NexusError.IncompletePayload     => return "IncompletePayload"
+        NexusError.Closed                => return "Closed"
+        NexusError.Truncated             => return "Truncated"
+        NexusError.Network { error }     => return $"Network: {network_error_to_string(error)}"
+    }
+}
+
 -- Owns reusable payload storage. Zero initialisation creates an empty message.
 -- Do not copy an allocated message; call done once after its last use.
 pub Message :: plex {

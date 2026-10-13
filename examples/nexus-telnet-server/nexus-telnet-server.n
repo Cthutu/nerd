@@ -71,17 +71,19 @@ main :: fn () -> i32 {
 
     -- Register on this main thread before any work. The watcher latches Ctrl+C
     -- so ordinary code can release sockets and buffers, then restore OS policy.
-    shutdown : signal.ShutdownWatcher
-    on signal.watch_shutdown() {
-        watcher => shutdown = watcher
-
-        error! => {
-            eprn($"Shutdown watcher failed: {error}")
-            return 1
-        }
+    shutdown := on signal.watch_shutdown() => [watcher] ${
+        break watcher
+    } else [error] {
+        eprn($"Failed to watch shutdown: {error}")
+        return 1
     }
     defer _ := shutdown.close()
+
+    -- Create a socket that can interpret telnet protocols and put them into
+    -- messages.
     server := net_telnet_socket()
+    defer server.close()
+
     -- Caller-owned slots stay at fixed addresses. One blocked echo may hold a
     -- slot while other slots receive and send replies for different clients.
     replies : [max_nexus_clients]Message
@@ -99,20 +101,16 @@ main :: fn () -> i32 {
         }
     }
     defer escaped.done()
-    defer server.close()
-    on server.bind(url) {
-        _! => {
-            eprn($"Cannot listen on {url}")
-            return 1
-        }
 
-        else => {
-        }
+    -- Set up the listening port
+    on !server.bind(url) => {
+        eprn($"Cannot listen on {url}")
+        return 1
     }
-    bound : string
-    on server.local_url() {
-        value  => bound = value
-        _!     => return 1
+
+    bound := on server.local_url() else [error] {
+        eprn($"Failed to get local URL: {nexus_error_to_string(error)}")
+        return 1
     }
     prn($"Listening on {bound}")
     prn("Connect with telnet, type a line, and press Enter. Ctrl+C stops the server.")

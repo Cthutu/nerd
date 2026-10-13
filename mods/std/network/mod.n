@@ -44,6 +44,20 @@ pub NetworkError :: enum {
     -- Platform error code.
 }
 
+pub network_error_to_string :: fn (error: NetworkError) -> string {
+    on error {
+        NetworkError.Invalid                     => return "Invalid"
+        NetworkError.WouldBlock { code }         => return $"WouldBlock: {code}"
+        NetworkError.Interrupted { code }        => return $"Interrupted: {code}"
+        NetworkError.TimedOut { code }           => return $"TimedOut: {code}"
+        NetworkError.ConnectionRefused { code }  => return $"ConnectionRefused: {code}"
+        NetworkError.ConnectionReset { code }    => return $"ConnectionReset: {code}"
+        NetworkError.AddressInUse { code }       => return $"AddressInUse: {code}"
+        NetworkError.MessageTooLarge { code }    => return $"MessageTooLarge: {code}"
+        NetworkError.System { code }             => return $"System: {code}"
+    }
+}
+
 -- Selects stream or datagram semantics.
 pub SocketKind :: enum {
     Tcp
