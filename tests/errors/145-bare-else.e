@@ -1,26 +1,24 @@
 main :: fn () { value := on 7 else { return } }
 ¬
 {
-    "message": "Unexpected Keyword `else`",
+    "message": "Expected FatArrow `=>` but found RightBrace `}`",
     "source_file": "tests/errors/145-bare-else.e",
     "primary_location": {
         "line": 1,
-        "column": 31
+        "column": 47
     },
     "references": [
         {
             "kind": "primary",
             "line": 1,
-            "column": 31,
-            "length": 4,
-            "message": "Keyword `else` cannot appear here"
+            "column": 47,
+            "length": 1,
+            "message": "Found RightBrace `}` here"
         }
     ],
-    "notes": [
-        "The omitted-success `on ... else` forms have been removed"
-    ],
+    "notes": [],
     "help": [
-        "Use `expression else [error] { ... }`, or keep `on expression => [value] { ... } else [error] { ... }` for full extraction"
+        "Check for a missing closing delimiter or misplaced operator"
     ]
 }
 ¬
@@ -28,26 +26,24 @@ work :: fn () -> i32\string { return 7 }
 main :: fn () { value := on work() else? {} }
 ¬
 {
-    "message": "Unexpected Keyword `else`",
+    "message": "Expected LeftBrace `{` but found Question `?`",
     "source_file": "tests/errors/145-bare-else.e",
     "primary_location": {
         "line": 2,
-        "column": 36
+        "column": 40
     },
     "references": [
         {
             "kind": "primary",
             "line": 2,
-            "column": 36,
-            "length": 4,
-            "message": "Keyword `else` cannot appear here"
+            "column": 40,
+            "length": 1,
+            "message": "Found Question `?` here"
         }
     ],
-    "notes": [
-        "The omitted-success `on ... else` forms have been removed"
-    ],
+    "notes": [],
     "help": [
-        "Use `expression else [error] { ... }`, or keep `on expression => [value] { ... } else [error] { ... }` for full extraction"
+        "Check for a missing closing delimiter or misplaced operator"
     ]
 }
 ¬

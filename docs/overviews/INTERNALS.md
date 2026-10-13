@@ -87,6 +87,10 @@ unification. A private binder snapshots the whole result or optional, and the
 parser appends a marked ordinary propagation node inside the handler scope.
 The old omitted-success `on ... else` and `on ... else?` syntax is rejected;
 full `on ... => ... else ...` extraction remains unchanged.
+An `on` subject admits handler precedence, stopping before assignment. Its
+`=>` separates the handler expression from the branch. Unbraced branch bodies
+continue to reserve `else` for their enclosing `on`; parentheses or another
+delimited expression allow a handler in that position.
 The formatter passes the enclosing indentation into `on` subject rendering,
 including logical-chain operands, so parenthesised bare handlers keep their
 bodies and closing braces aligned inside loops and nested blocks.

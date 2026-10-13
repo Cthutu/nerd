@@ -1641,7 +1641,7 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
     state->stop_before_block_lbrace   = true;
     state->stop_before_on_branch_head = false;
     bool parsed_condition =
-        ast_parse_expr_bp(state, AST_BP_HANDLER + 1, &condition_node);
+        ast_parse_expr_bp(state, AST_BP_HANDLER, &condition_node);
     state->stop_before_block_lbrace   = previous_stop_before_block_lbrace;
     state->stop_before_on_branch_head = previous_stop_before_on_branch_head;
     if (!parsed_condition) {

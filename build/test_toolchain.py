@@ -152,7 +152,7 @@ def main():
         run('check', diagnostic_source)  # A valid early function return remains valid.
 
         # Bare handlers require an optional/result and retain propagation channel
-        # checks. The removed on shorthand is diagnosed before semantic analysis.
+        # checks. An on subject handler still needs a branch; else? is rejected.
         shorthand_prelude = (
             'Failure :: enum { Bad }\nOther :: enum { Different }\n'
             'operation :: fn () -> i32\\Failure { return Failure.Bad! }\n'
@@ -164,8 +164,8 @@ def main():
             ('i32', 'value := 5 else { return 2 }\nreturn value', 'optional or result value'),
             ('i32', 'value := optional() else [error] { return 2 }\nreturn value', 'optional'),
             ('i32\\Failure', 'value := operation() else return 2\nreturn value', 'Expected LeftBrace'),
-            ('i32\\Failure', 'value := on operation() else {}\nreturn value', 'removed'),
-            ('i32\\Failure', 'value := on operation() else? {}\nreturn value', 'removed'),
+            ('i32\\Failure', 'value := on operation() else {}\nreturn value', 'Expected FatArrow'),
+            ('i32\\Failure', 'value := on operation() else? {}\nreturn value', 'Expected LeftBrace'),
         ]
         for return_type, body, expected in shorthand_failures:
             diagnostic_source.write_text(shorthand_prelude +

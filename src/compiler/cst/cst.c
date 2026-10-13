@@ -2655,7 +2655,7 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
     state->stop_before_block_lbrace   = true;
     state->stop_before_on_branch_head = false;
     bool parsed_scrutinee =
-        cst_parse_expr_bp(state, CST_BP_HANDLER + 1, &scrutinee);
+        cst_parse_expr_bp(state, CST_BP_HANDLER, &scrutinee);
     state->stop_before_block_lbrace   = previous_stop_before_block_lbrace;
     state->stop_before_on_branch_head = previous_stop_before_on_branch_head;
     if (!parsed_scrutinee) {

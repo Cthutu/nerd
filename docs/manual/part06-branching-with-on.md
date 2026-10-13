@@ -261,13 +261,14 @@ Bare handlers bind below boolean operators and above assignment. Parenthesise
 a handler expression used as an unbraced branch of `on`, so its `else` is
 distinct from that branch's `else`.
 
-To test an extracted boolean directly, parenthesise the whole handler expression:
+An `on` subject can contain a bare handler without parentheses; `=>` ends
+the subject:
 
 ```nerd
-on (shutdown.requested() else [error] {
+on shutdown.requested() else [error] {
     eprn($"Shutdown watcher failed: {error}")
     return 1
-}) => break
+} => break
 ```
 
 Here `break` exits the surrounding loop; the handler's `return 1` exits the
