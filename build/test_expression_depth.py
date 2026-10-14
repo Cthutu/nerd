@@ -28,9 +28,9 @@ def main():
             right = f'next({value}) - (' + right + ')'
             right_value = value - right_value
         (work / 'deep.n').write_text(
-            'counter: i32 = 0\nordered: bool = true\n'
+            'counter: i32 = 0\nordered: bool = yes\n'
             'next :: fn (expected: i32) -> i32 { counter += 1\n'
-            'on counter != expected => ordered = false\n return counter }\n'
+            'on counter != expected => ordered = no\n return counter }\n'
             'pub check :: fn () -> i32 {\n'
             'counter = 0\n value := ' + left + '\n'
             f'on value != {2 - count * (count + 1) // 2} => return 1\n'

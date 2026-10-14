@@ -2699,6 +2699,13 @@ internal bool llvm_append_constant_expr_value(StringBuilder* sb,
         llvm_append_zero_value(sb, sema, type_index);
         return true;
     case HIR_EXPR_IntegerLiteral:
+        if (llvm_float_bits(sema, type_index) > 0) {
+            sb_append_string(
+                sb,
+                llvm_float_literal_string(
+                    sema, arena, type_index, (f64)(u64)expr->integer));
+            return true;
+        }
         sb_format(sb, "%lld", (long long)expr->integer);
         return true;
     case HIR_EXPR_FloatLiteral:
@@ -5121,7 +5128,39 @@ internal LlvmValue llvm_coerce_value_to_type(LlvmFunctionContext* ctx,
 
     SemaTypeKind target_kind = llvm_type_kind(ctx->sema, target_type);
     SemaTypeKind source_kind = llvm_type_kind(ctx->sema, value.type_index);
-    bool         pointer_projection =
+    if ((target_kind == STK_F32 || target_kind == STK_F64) &&
+        source_kind == STK_UntypedInteger) {
+        string target = llvm_type_string(ctx, target_type);
+        if (value.value.count > 0 &&
+            (value.value.data[0] == '-' ||
+             (value.value.data[0] >= '0' && value.value.data[0] <= '9'))) {
+            // Keep the entire untyped constant before selecting float storage.
+            bool negative  = value.value.data[0] == '-';
+            u64  magnitude = 0;
+            for (usize i = negative ? 1 : 0; i < value.value.count; ++i) {
+                magnitude = magnitude * 10 + (u64)(value.value.data[i] - '0');
+            }
+            f64 number = (f64)magnitude;
+            value.value =
+                llvm_float_literal_string(ctx->sema,
+                                          ctx->arena,
+                                          target_type,
+                                          negative ? -number : number);
+        } else {
+            string temp = llvm_temp(ctx);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = sitofp " STRINGP " " STRINGP
+                      " to " STRINGP "\n",
+                      STRINGV(temp),
+                      STRINGV(llvm_type_string(ctx, value.type_index)),
+                      STRINGV(value.value),
+                      STRINGV(target));
+            value.value = temp;
+        }
+        value.type_index = target_type;
+        return value;
+    }
+    bool pointer_projection =
         target_kind == STK_Pointer && source_kind == STK_Pointer;
     if ((target_kind == STK_Plex && source_kind == STK_Plex) ||
         pointer_projection) {
@@ -6284,6 +6323,21 @@ llvm_emit_imported_constant_value(LlvmFunctionContext* ctx,
             source_ctx.sema                = &source_storage;
             LlvmValue result               = llvm_emit_expr(
                 &source_ctx, function, source_value->value_expr_index);
+            if (llvm_float_bits(source_ctx.sema, source_value->type_index) >
+                0) {
+                result = llvm_coerce_value_to_type(
+                    &source_ctx, result, source_value->type_index);
+            }
+            if (result_type != sema_no_type() &&
+                llvm_float_bits(ctx->sema, result_type) > 0 &&
+                llvm_type_kind(source_ctx.sema, result.type_index) ==
+                    STK_UntypedInteger) {
+                result = llvm_coerce_value_to_type(
+                    &source_ctx,
+                    result,
+                    llvm_builtin_type(source_ctx.sema,
+                                      llvm_type_kind(ctx->sema, result_type)));
+            }
             llvm_render_sema_done(&source_storage);
             ctx->next_temp  = source_ctx.next_temp;
             ctx->next_label = source_ctx.next_label;
@@ -8841,7 +8895,8 @@ llvm_type_matches_for_call(const Sema* sema, u32 expected_type, u32 actual_type)
         return true;
     }
     if (sema_type_is_float(sema, expected_type) &&
-        llvm_type_kind(sema, actual_type) == STK_UntypedFloat) {
+        (llvm_type_kind(sema, actual_type) == STK_UntypedFloat ||
+         llvm_type_kind(sema, actual_type) == STK_UntypedInteger)) {
         return true;
     }
     return false;
@@ -9525,6 +9580,8 @@ internal LlvmValue llvm_emit_eager_binary_values(LlvmFunctionContext* ctx,
         return (LlvmValue){0};
     }
     if (llvm_float_bits(ctx->sema, result_type) > 0) {
+        lhs   = llvm_coerce_value_to_type(ctx, lhs, result_type);
+        rhs   = llvm_coerce_value_to_type(ctx, rhs, result_type);
         instr = llvm_float_binary_instruction(expr->binary_op);
         if (instr.count == 0) {
             return (LlvmValue){0};
@@ -9639,6 +9696,16 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
     case HIR_EXPR_IntegerLiteral:
         SemaTypeKind integer_type_kind =
             llvm_type_kind(ctx->sema, expr->type_index);
+        if (integer_type_kind == STK_F32 || integer_type_kind == STK_F64) {
+            return (LlvmValue){
+                .ok         = true,
+                .type_index = expr->type_index,
+                .value = llvm_float_literal_string(ctx->sema,
+                                                   ctx->arena,
+                                                   expr->type_index,
+                                                   (f64)(u64)expr->integer),
+            };
+        }
         if (integer_type_kind == STK_Pointer ||
             integer_type_kind == STK_DynamicArray) {
             if (expr->integer == 0) {
@@ -10625,7 +10692,11 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             }
             if (value->kind == HIR_VALUE_Constant &&
                 value->value_expr_index != U32_MAX) {
-                return llvm_emit_expr(ctx, function, value->value_expr_index);
+                LlvmValue result =
+                    llvm_emit_expr(ctx, function, value->value_expr_index);
+                result =
+                    llvm_coerce_value_to_type(ctx, result, value->type_index);
+                return llvm_coerce_value_to_type(ctx, result, expr->type_index);
             }
             if (value->kind == HIR_VALUE_Constant) {
                 HirImport        decl_import = {0};
@@ -10806,6 +10877,11 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     return (LlvmValue){0};
                 }
 
+                if (llvm_float_bits(ctx->sema, lhs.type_index) > 0) {
+                    rhs = llvm_coerce_value_to_type(ctx, rhs, lhs.type_index);
+                } else if (llvm_float_bits(ctx->sema, rhs.type_index) > 0) {
+                    lhs = llvm_coerce_value_to_type(ctx, lhs, rhs.type_index);
+                }
                 cmp = llvm_compare_instruction(
                     ctx->sema, lhs.type_index, expr->binary_op);
                 string       type = llvm_type_string(ctx, lhs.type_index);

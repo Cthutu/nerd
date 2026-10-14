@@ -13,7 +13,7 @@ The semantic analyser recognises these built-in type families:
 | ---------------------------------- | ----------------------------------------------------------------- |
 | `void`                             | No value. Used for statements and functions with no return value. |
 | `!`                                | Never returns. Used for functions that terminate control flow.     |
-| `bool`                             | Boolean value, written with `yes`/`no` or `true`/`false`.         |
+| `bool`                             | Boolean value, written with `yes`/`no`.         |
 | `string`                           | Runtime string slice with string-specific typing.                 |
 | `i8`, `i16`, `i32`, `i64`, `isize` | Signed integer types.                                             |
 | `u8`, `u16`, `u32`, `u64`, `usize` | Unsigned integer types.                                           |
@@ -26,7 +26,12 @@ platform-sized signed integer values.
 
 `untyped integer` and `untyped float` are temporary semantic types for numeric
 literals. They materialise to concrete types from context, or to `i32` and
-`f64` respectively when no stronger destination type is available.
+`f64` respectively when no stronger destination type is available. Constant
+bindings preserve these untyped types. An untyped integer can acquire a
+concrete integer or floating-point type from an annotation, parameter,
+return type, or numeric operand. An untyped float can acquire a concrete
+floating-point type; conversion to an integer requires an explicit cast.
+These rules do not allow implicit conversion between concrete numeric types.
 
 For unannotated numeric locals, concrete usage constraints are collected before
 materialisation. Known function and FFI parameter types, typed assignments,

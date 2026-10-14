@@ -76,7 +76,7 @@ sum-on       ::= 'on' expression '{' success-pattern-branches '}' 'else' '{' err
 
 Condition branches and guards must type as `bool`. Value-producing block-form
 `on` expressions must be exhaustive. Semantic analysis recognises exhaustive
-`else`, boolean coverage (`yes`/`no` or `true`/`false`), and enum variant coverage.
+`else`, boolean coverage (`yes`/`no`), and enum variant coverage.
 
 For `?T`, extraction binds the present `T` and the `else` branch represents
 absence. For `T\E`, extraction binds successful `T` and may bind `E` after

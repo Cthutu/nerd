@@ -12201,7 +12201,8 @@ sema_type_matches(const Sema* sema, u32 expected_type, u32 actual_type)
     }
 
     if (sema_type_is_concrete_float(sema, expected_type) &&
-        sema->types[actual_type].kind == STK_UntypedFloat) {
+        (sema->types[actual_type].kind == STK_UntypedFloat ||
+         sema->types[actual_type].kind == STK_UntypedInteger)) {
         return true;
     }
 
@@ -21546,11 +21547,13 @@ internal bool sema_binary_result_type(const Lexer* lexer,
         lhs_type = rhs_type;
     } else if (sema_type_is_concrete_float(sema, lhs_type) &&
                rhs_type != sema_no_type() &&
-               sema->types[rhs_type].kind == STK_UntypedFloat) {
+               (sema->types[rhs_type].kind == STK_UntypedFloat ||
+                sema->types[rhs_type].kind == STK_UntypedInteger)) {
         rhs_type = lhs_type;
     } else if (sema_type_is_concrete_float(sema, rhs_type) &&
                lhs_type != sema_no_type() &&
-               sema->types[lhs_type].kind == STK_UntypedFloat) {
+               (sema->types[lhs_type].kind == STK_UntypedFloat ||
+                sema->types[lhs_type].kind == STK_UntypedInteger)) {
         lhs_type = rhs_type;
     }
 
@@ -21976,7 +21979,8 @@ validate_type:
                     sema_packed_integer_literal_type(lexer, node, sema);
             }
         } else {
-            type_index = sema_type_is_concrete_integer(sema, value_expected)
+            type_index = (sema_type_is_concrete_integer(sema, value_expected) ||
+                          sema_type_is_concrete_float(sema, value_expected))
                              ? value_expected
                              : sema_builtin_type(sema, STK_UntypedInteger);
         }
@@ -23553,7 +23557,8 @@ validate_type:
                 type_index = value_expected;
             } else if (sema_type_is_concrete_float(sema, value_expected) &&
                        type_index != sema_no_type() &&
-                       sema->types[type_index].kind == STK_UntypedFloat) {
+                       (sema->types[type_index].kind == STK_UntypedFloat ||
+                        sema->types[type_index].kind == STK_UntypedInteger)) {
                 type_index = value_expected;
             }
         }

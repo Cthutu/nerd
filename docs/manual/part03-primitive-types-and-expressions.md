@@ -34,8 +34,6 @@ Boolean literals are:
 ```nerd
 yes
 no
-true   -- alias for yes
-false  -- alias for no
 ```
 
 Use `bool` for answers to yes/no questions: comparisons, loop conditions,
@@ -503,10 +501,12 @@ The same rule applies to floats:
 
 ```nerd
 pi: f32 = 3.14        -- untyped float literal becomes f32
-whole_pi: i64 = 3.14  -- untyped float literal becomes i64 (truncated to 3)
+whole_pi: i64 = 3.14.as(i64)  -- explicit cast truncates to 3
 ```
 
-Here `3.14` becomes either `3.14` or `3` depending on the context.
+An untyped float can acquire a concrete floating-point type from context,
+but converting it to an integer requires an explicit cast. Untyped integers
+can acquire either an integer or floating-point type from context.
 
 Without other context, an integer literal materialises as `i32`, and a float
 literal materialises as `f64`.

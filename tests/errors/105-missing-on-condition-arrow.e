@@ -2,9 +2,9 @@ main :: fn () -> bool {
     left := 1
     right := 2
     on left != right {
-        return false
+        return no
     }
-    return true
+    return yes
 }
 ¬
 {

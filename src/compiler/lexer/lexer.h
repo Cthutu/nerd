@@ -112,8 +112,6 @@ typedef enum {
     TK_as,
     TK_yes,
     TK_no,
-    TK_true,
-    TK_false,
     TK_nil,
     TK_undefined,
 } TokenKind;

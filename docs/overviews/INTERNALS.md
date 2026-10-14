@@ -1,5 +1,14 @@
 # Internals
 
+Untyped integer constants remain untyped in bindings and can adopt concrete
+integer or floating-point contexts at each use. Sema handles compatibility
+and operand typing; LLVM lowering converts integer constants and expressions
+to floating-point operands for declarations, calls, returns, and comparisons.
+Float-to-integer conversion still requires an explicit cast. Boolean literal
+tokens are exclusively `yes` and `no`; `true` and `false` are identifiers,
+with no predefined values. The AST, CST, formatter, and LSP share this lexer
+classification.
+
 Windows console control registration passes a typed `fn` value directly to
 `SetConsoleCtrlHandler`. A `^fn` parameter with `^control_handler` instead
 passes the address of a function-value slot, which is not a callable entry

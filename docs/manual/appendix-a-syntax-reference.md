@@ -270,7 +270,7 @@ value.data
 | `0b1010`, `0b1010_0101` | `untyped integer`; binary literal |
 | `0o755`, `0o7_55` | `untyped integer`; octal literal |
 | `1.5`, `1_000.5`, `1.5_25` | `untyped float`; materialises to `f64` without other context |
-| `yes`, `no`, `true`, `false` | `bool` |
+| `yes`, `no` | `bool` |
 | `ptr: ^i32 = nil` | `^i32` |
 | `value: i32 = undefined` | `i32` |
 | `"string"` | `string` |
