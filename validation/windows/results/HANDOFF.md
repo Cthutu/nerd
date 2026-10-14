@@ -1,5 +1,54 @@
 # Windows return handoff
 
+## Native Windows validation requested — 2026-10-14
+
+Pull **`std-library`** from its verified upstream (Linux remote:
+`agent/std-library`). Implementation baseline: **`12c4097a`**. Run the latest
+revision containing this handoff and the expanded runner, and record its exact
+commit in the return evidence. This section prepares a run; it records **no new
+native Windows pass**.
+
+The most recent full native pass documented below is `caaef691` (October 2).
+Since then the branch integrated the inference repair, Raptor task/queue APIs,
+network and Nexus work, current bare failure-handler and lazy-fallback syntax,
+error-channel diagnostics, and documentation consolidation. October 13 repair
+`4594e49a` also corrected the Windows console-handler function ABI, allowed time
+for native connection refusal, and fixed the Telnet EOF test's shutdown sequence.
+Recheck these paths rather than treating the repair commit as full-run evidence.
+
+The runner now includes previously missing runtime-thread, capability,
+thread-sync, Raptor, network, Nexus, format-workflow, build-settings and Windows
+stdio checks, plus the release compiler's fixture suite. Network/Nexus cover
+LLVM/C and debug/release targets under both compiler builds. All correctness
+stages gate benchmarks. Use the full procedure in [PROMPT.md](../PROMPT.md).
+
+Focus the native review on:
+
+- Nexus TCP/Telnet traffic and slot reuse: the default 12 rounds use 96 lifetime
+  connections and 1,152 replies per protocol, with FIN/RST churn and exact routing.
+- A slow TCP reader producing real backpressure while healthy clients progress,
+  ordered recovery, and shutdown with live peers or pending output.
+- Windows console shutdown delivery and cleanup; automated subprocess checks
+  use CTRL_BREAK_EVENT. Observe Ctrl+C in the interactive Telnet server as well.
+- Connection refusal/readiness, Telnet final buffered data at EOF, Raptor serial
+  and main-thread queues, and current syntax/diagnostic/LSP fixture regressions.
+
+Linux baseline at `12c4097a`: `just test`, formatting and installation passed;
+a separate LLVM run with `--stress-rounds 128` passed 1,024 connections and
+12,288 replies per TCP/Telnet protocol. These are Linux results only. For an
+optional extended Windows run after correctness, use the fresh release compiler:
+
+```powershell
+python build/test_nexus.py --compiler _bin/nerd.exe --stress-rounds 128
+```
+
+This bounded extension does not replace a long-duration soak. Preserve native
+logs, failures, skips and manual observations in a new result directory; complete
+or explicitly block desktop/editor observations and benchmarks as the procedure
+requires. Return fixes and evidence on `std-library`, with the newest outcome
+above this request. DNS/IPv6 and long-duration resource measurements remain
+separate follow-up work.
+
 ## Linux integration completed — 2026-10-03
 
 The audit/consolidation history and optional/result fix are now integrated into

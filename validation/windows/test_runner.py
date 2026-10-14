@@ -12,6 +12,30 @@ import run
 
 
 class RunnerTests(unittest.TestCase):
+    def test_library_matrix_uses_requested_compiler_backend_and_target(self):
+        stages = run.plan(Path('results'))
+        for mode in ['debug', 'release']:
+            suffix = '.exe' if os.name == 'nt' else ''
+            compiler = str(run.ROOT / '_bin' / (('nerd-debug' if mode == 'debug' else 'nerd') + suffix))
+            for backend in ['llvm', 'c']:
+                for target in ['debug', 'release']:
+                    for library in ['network', 'nexus']:
+                        name = f'{library}-{backend}-{target}-{mode}'
+                        selected = run.select(stages, [name])
+                        self.assertEqual([s.name for s in selected], ['build-' + mode, name])
+                        command = selected[-1].command
+                        self.assertEqual(command[1:4], [f'build/test_{library}.py', '--compiler', compiler])
+                        self.assertEqual('--cgen' in command, backend == 'c')
+                        self.assertEqual('--release' in command, target == 'release')
+
+    def test_plan_covers_just_test_scripts(self):
+        # Keep newly added common gates from silently missing native validation.
+        import re
+        recipes = (run.ROOT / 'Justfile').read_text().split('\ntest *args:', 1)[1].split('\ntest-build:', 1)[0]
+        scripts = set(re.findall(r'python3 ([\w/]+\.py)', recipes))
+        planned = {s.command[1] for s in run.plan(Path('results')) if len(s.command) > 1}
+        self.assertFalse(scripts - planned, f'Missing scripts: {scripts - planned}')
+
     def test_dependencies_and_unknown_stage(self):
         stages = run.plan(Path('results with spaces').resolve())
         selected = run.select(stages, ['front-threads-release'])

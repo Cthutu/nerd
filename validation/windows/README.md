@@ -1,7 +1,7 @@
 # Windows validation handoff
 
-On Windows, pull the branch being validated (`main` after the experiment merge),
-then tell Codex:
+On Windows, pull the branch named in the latest handoff from its verified
+upstream, then tell Codex:
 
 > Use $nerd-windows-validation to run the full Windows validation, fix failures,
 > and commit/push the results and return handoff.
@@ -41,9 +41,21 @@ python validation/windows/run.py --only front-threads-debug jobs-release
 Each invocation creates `results/<UTC>-<unique-id>/` with incremental summaries,
 separate command logs, tool versions, and a manual checklist. Tests run serially,
 continue after independent failures, and block dependents of failed builds.
-The full run covers both compiler configurations, the fixture suite (which defaults to the debug compiler;
-`build/test.py --nerd` selects another binary), all auxiliary `just test` checks, debugger
-probes, and finally a jobs 1/2/4/8/16/auto timing sweep if correctness checks pass.
+The full run covers both compiler configurations and their fixture suites, all
+auxiliary `just test` checks, debugger probes, and finally a jobs
+1/2/4/8/16/auto timing sweep if correctness checks pass. Standard-library checks
+include capabilities, thread synchronization, Raptor, network and Nexus. Network
+and Nexus run with both LLVM/C backends and debug/release targets for each
+compiler; Nexus includes bounded traffic, connection churn, backpressure and
+shutdown checks. Linux-only fault injection remains an explicit platform skip.
+
+Library stage names put the compiler configuration last: for example,
+`nexus-c-release-debug` tests C output with a release target using the debug
+compiler. A focused rerun is:
+
+```powershell
+python validation/windows/run.py --only nexus-llvm-debug-debug nexus-c-release-release
+```
 The runner does not install Nerd globally, modify Git, or run `just clean` in
 this checkout. The clean test uses an isolated temporary copy.
 

@@ -122,7 +122,7 @@ Maintain `validation/windows/results/HANDOFF.md` containing:
   rerun after Windows fixes. Do not mark M8 fully validated while native checks
   or memory evidence are still missing; macOS remains a separate gate.
 
-Update applicable audit milestones only for gates this run actually covers
+Update maintained roadmap milestones only for gates this run actually covers
 and link to the handoff; do not reopen completed historical milestones solely
 because this procedure references them. Put the new outcome and tested commit at
 the top of `results/HANDOFF.md`, keeping earlier runs as dated history. Include
