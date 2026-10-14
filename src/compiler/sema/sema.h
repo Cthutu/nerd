@@ -324,10 +324,18 @@ u32 sema_import_type(Lexer*       dst_lexer,
                      const Sema*  src_sema,
                      u32          src_type_index);
 
-u32    sema_no_decl(void);
-u32    sema_no_local(void);
-u32    sema_no_type(void);
-u32    sema_materialise_type(const Sema* sema, u32 type_index);
+u32 sema_no_decl(void);
+u32 sema_no_local(void);
+u32 sema_no_type(void);
+u32 sema_materialise_type(const Sema* sema, u32 type_index);
+// A unique use path exposes its first embedded subobject. Counts saturate at 2.
+typedef struct {
+    u32 path_count;
+    u32 first_field;
+    u32 type_index;
+} SemaPlexEmbedding;
+SemaPlexEmbedding sema_plex_embedding(const Sema* sema, u32 source, u32 target);
+
 bool   sema_type_is_integer(const Sema* sema, u32 type_index);
 bool   sema_type_is_concrete_integer(const Sema* sema, u32 type_index);
 bool   sema_type_is_float(const Sema* sema, u32 type_index);

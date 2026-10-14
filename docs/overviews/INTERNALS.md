@@ -794,6 +794,23 @@ methods lazily, covering interpolation and generic bounds without `use core`.
 The core implementation for `c_string` scans to the first NUL and returns a
 borrowed string view; a null pointer produces an empty string.
 
+Plex `use` conversions share `sema_plex_embedding`, which counts embedding
+paths (saturating at two) and reports the first subobject on a unique path.
+Semantic compatibility accepts directed value and pointer projections, including
+transitive, imported and instantiated uses. Unresolved generic payloads do not
+qualify for a conversion; normal generic inference resolves them first.
+Compound calls keep existing
+non-embedding matches ahead of embedding conversions; equal-tier candidates
+remain ambiguous. Actual expression types stay intact for backend coercion.
+LLVM walks physical subobjects with `extractvalue` for copies or GEP for
+pointers, selecting null for an originally null pointer. Assignment stores
+coerce to their destination type. Explicit embedding casts reuse that path.
+C output represents each nonempty embedded subobject with an anonymous union:
+one member exposes flattened field names, and a named member has the embedded
+type. This preserves layout and provides typed value/address projections,
+including embeddings whose first field is a bit field. The C backend walks the
+same arbitrary-depth path and preserves null pointers.
+
 Data pointers implicitly satisfy an expected `^void` type, but the reverse
 requires an explicit cast. Address-of inference and call-argument context
 seeding do not propagate the erased `void` pointee into the operand. A typed

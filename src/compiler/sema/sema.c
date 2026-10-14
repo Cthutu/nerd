@@ -12099,6 +12099,95 @@ internal bool sema_resolve_type_node(const Lexer* lexer,
 //------------------------------------------------------------------------------
 // Return whether one source type satisfies one target type without casts.
 
+internal SemaPlexEmbedding sema_plex_embedding_at_depth(const Sema* sema,
+                                                        u32         source,
+                                                        u32         target,
+                                                        u32         depth)
+{
+    source = sema_materialise_type(sema, source);
+    target = sema_materialise_type(sema, target);
+    if (source >= array_count(sema->types) ||
+        target >= array_count(sema->types) ||
+        sema->types[source].kind != STK_Plex ||
+        sema->types[target].kind != STK_Plex ||
+        depth > array_count(sema->types)) {
+        return (SemaPlexEmbedding){0};
+    }
+    if (source == target) {
+        return (SemaPlexEmbedding){.path_count = 1, .type_index = target};
+    }
+    SemaType          outer = sema->types[source];
+    SemaPlexEmbedding found = {0};
+    for (u32 i = 0; i < outer.plex_use_count; ++i) {
+        SemaPlexUse       use    = sema->plex_uses[outer.first_plex_use + i];
+        SemaPlexEmbedding nested = sema_plex_embedding_at_depth(
+            sema, use.type_index, target, depth + 1);
+        if (!nested.path_count) {
+            continue;
+        }
+        found.first_field = use.first_field;
+        found.type_index  = sema_materialise_type(sema, use.type_index);
+        found.path_count += nested.path_count;
+        if (found.path_count > 1) {
+            found.path_count = 2;
+            break;
+        }
+    }
+    return found;
+}
+
+SemaPlexEmbedding sema_plex_embedding(const Sema* sema, u32 source, u32 target)
+{
+    return sema_plex_embedding_at_depth(sema, source, target, 0);
+}
+
+internal u32 sema_plex_conversion_paths(const Sema* sema,
+                                        u32         expected,
+                                        u32         actual)
+{
+    expected = sema_materialise_type(sema, expected);
+    actual   = sema_materialise_type(sema, actual);
+    if (expected >= array_count(sema->types) ||
+        actual >= array_count(sema->types) || expected == actual) {
+        return 0;
+    }
+    // Wrapping a projected payload is still an embedding conversion for
+    // overload selection, rather than an exact-compatible match.
+    for (u32 depth = 0; depth < array_count(sema->types); ++depth) {
+        SemaType type = sema->types[expected];
+        if (type.kind == STK_Atomic) {
+            expected = type.first_param_type;
+        } else if (type.kind == STK_Enum &&
+                   (type.flags & (STF_Optional | STF_Result))) {
+            expected =
+                sema->type_param_types[type.first_param_type +
+                                       ((type.flags & STF_Optional) ? 1 : 0)];
+        } else {
+            break;
+        }
+        expected = sema_materialise_type(sema, expected);
+        if (expected >= array_count(sema->types)) {
+            return 0;
+        }
+    }
+    if (sema->types[actual].kind == STK_Atomic) {
+        actual =
+            sema_materialise_type(sema, sema->types[actual].first_param_type);
+        if (actual >= array_count(sema->types)) {
+            return 0;
+        }
+    }
+    if (expected == actual) {
+        return 0;
+    }
+    if (sema->types[expected].kind == STK_Pointer &&
+        sema->types[actual].kind == STK_Pointer) {
+        expected = sema->types[expected].first_param_type;
+        actual   = sema->types[actual].first_param_type;
+    }
+    return sema_plex_embedding(sema, actual, expected).path_count;
+}
+
 internal bool
 sema_type_matches(const Sema* sema, u32 expected_type, u32 actual_type)
 {
@@ -12119,6 +12208,10 @@ sema_type_matches(const Sema* sema, u32 expected_type, u32 actual_type)
     expected_type = sema_materialise_type(sema, expected_type);
     actual_type   = sema_materialise_type(sema, actual_type);
     if (expected_type == actual_type) {
+        return true;
+    }
+
+    if (sema_plex_conversion_paths(sema, expected_type, actual_type) == 1) {
         return true;
     }
 
@@ -21347,6 +21440,12 @@ internal bool sema_finish_inferred_type(const Lexer* lexer,
 
     if (expected_type != sema_no_type() &&
         !sema_type_matches(sema, expected_type, type_index)) {
+        if (sema_plex_conversion_paths(sema, expected_type, type_index) > 1) {
+            return error_0304_type_mismatch(lexer->source,
+                                            sema_node_span(lexer, node),
+                                            s("unique plex use path"),
+                                            s("ambiguous plex use paths"));
+        }
         if (sema_return_may_mean_break(ast, sema, node_index, type_index)) {
             return error_0304_type_mismatch_with_help(
                 lexer->source,
@@ -23855,11 +23954,24 @@ validate_type:
                  (sema->types[source_type].kind == STK_Function &&
                   sema->types[target_type].kind == STK_Pointer));
 
+            u32 plex_paths =
+                sema_plex_conversion_paths(sema, target_type, source_type);
+            if (plex_paths > 1) {
+                return error_0304_type_mismatch(lexer->source,
+                                                sema_node_span(lexer, node),
+                                                s("unique plex use path"),
+                                                s("ambiguous plex use paths"));
+            }
+            bool plex_value_cast = plex_paths == 1 &&
+                                   sema->types[source_type].kind == STK_Plex &&
+                                   sema->types[target_type].kind == STK_Plex;
+
             if (!(primitive_cast || enum_integer_cast || string_slice_cast ||
                   untyped_integer_pointer_cast ||
                   pointer_sized_integer_pointer_cast ||
                   pointer_pointer_sized_integer_cast || void_pointer_cast ||
-                  pointer_pointer_cast || pointer_function_cast)) {
+                  pointer_pointer_cast || pointer_function_cast ||
+                  plex_value_cast)) {
                 return error_0307_invalid_cast(
                     lexer->source,
                     sema_node_span(lexer, node),
@@ -28886,9 +28998,10 @@ internal bool sema_select_compound_call(const Lexer*       lexer,
         array_push(arg_types, arg_type);
     }
 
-    u32 selected_decl = sema_no_decl();
-    u32 selected_type = sema_no_type();
-    u32 match_count   = 0;
+    u32  selected_decl           = sema_no_decl();
+    u32  selected_type           = sema_no_type();
+    u32  match_count             = 0;
+    bool selected_uses_embedding = true;
     for (u32 i = 0; i < compound->candidate_count; ++i) {
         u32 candidate =
             sema->compound_candidates[compound->first_candidate + i];
@@ -28916,8 +29029,9 @@ internal bool sema_select_compound_call(const Lexer*       lexer,
             call->arg_count > signature->param_count) {
             continue;
         }
-        bool            matches  = true;
-        const SemaType* function = &sema->types[fn_type];
+        bool            uses_embedding = false;
+        bool            matches        = true;
+        const SemaType* function       = &sema->types[fn_type];
         for (u32 j = 0; j < call->arg_count; ++j) {
             u32 original_arg = ast->call_args[call->first_arg + j];
             if (ast->nodes[original_arg].kind == AK_Assign) {
@@ -28934,6 +29048,8 @@ internal bool sema_select_compound_call(const Lexer*       lexer,
             }
             u32 expected =
                 sema->type_param_types[function->first_param_type + j];
+            uses_embedding |=
+                sema_plex_conversion_paths(sema, expected, arg_types[j]) == 1;
             if (!sema_type_matches(sema, expected, arg_types[j])) {
                 matches = false;
                 break;
@@ -28942,8 +29058,15 @@ internal bool sema_select_compound_call(const Lexer*       lexer,
         if (!matches) {
             continue;
         }
-        selected_decl = candidate;
-        selected_type = fn_type;
+        if (match_count && uses_embedding && !selected_uses_embedding) {
+            continue;
+        }
+        if (match_count && !uses_embedding && selected_uses_embedding) {
+            match_count = 0;
+        }
+        selected_uses_embedding = uses_embedding;
+        selected_decl           = candidate;
+        selected_type           = fn_type;
         match_count++;
     }
     array_free(arg_types);

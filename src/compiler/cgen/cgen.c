@@ -352,9 +352,12 @@ internal void cgen_record_fields(CGen* c, u32 type, u32 first, u32 depth)
             const SemaPlexUse* use =
                 &cgen_sema(c)->plex_uses[t->first_plex_use + j];
             if (use->first_field == i && use->field_count) {
-                sb_append_cstr(&c->out, "struct {\n");
+                sb_append_cstr(&c->out, "union { struct {\n");
                 cgen_record_fields(c, use->type_index, first + i, depth + 1);
-                sb_append_cstr(&c->out, "};\n");
+                sb_format(&c->out,
+                          "}; %s ncg_use%u; };\n",
+                          cgen_ctype(c, use->type_index),
+                          cgen_canonical(c, use->type_index));
                 i += use->field_count;
                 embedded = true;
                 any      = true;
@@ -748,39 +751,47 @@ internal CValue cgen_coerce(CGen* c, CValue v, u32 t)
             t,
             CF("(%s){%s.data,%s.count}", cgen_ctype(c, t), v.text, v.text));
     }
-    if (to == STK_Pointer && from == STK_Pointer) {
-        u32             source = cgen_type(c, v.type)->first_param_type,
-                        target = cgen_type(c, t)->first_param_type;
-        const SemaType* st     = cgen_type(c, source);
-        if (st->kind == STK_Plex && cgen_kind(c, target) == STK_Plex) {
-            for (u32 i = 0; i < st->plex_use_count; ++i) {
-                const SemaPlexUse* use =
-                    &cgen_sema(c)->plex_uses[st->first_plex_use + i];
-                if (cgen_canonical(c, use->type_index) ==
-                    cgen_canonical(c, target)) {
-                    return cgen_temp(c,
-                                     t,
-                                     CF("&((%s*)%s)->f%u",
-                                        cgen_ctype(c, source),
-                                        v.text,
-                                        use->first_field));
-                }
-                const SemaType* embedded = cgen_type(c, use->type_index);
-                for (u32 j = 0; j < embedded->plex_use_count; ++j) {
-                    const SemaPlexUse* nested =
-                        &cgen_sema(c)->plex_uses[embedded->first_plex_use + j];
-                    if (cgen_canonical(c, nested->type_index) ==
-                        cgen_canonical(c, target)) {
-                        return cgen_temp(
-                            c,
-                            t,
-                            CF("&((%s*)%s)->f%u",
-                               cgen_ctype(c, source),
-                               v.text,
-                               use->first_field + nested->first_field));
-                    }
-                }
+    bool pointer_projection = to == STK_Pointer && from == STK_Pointer;
+    if ((to == STK_Plex && from == STK_Plex) || pointer_projection) {
+        u32 current = pointer_projection
+                          ? cgen_type(c, v.type)->first_param_type
+                          : v.type;
+        u32 target = pointer_projection ? cgen_type(c, t)->first_param_type : t;
+        current    = sema_materialise_type(cgen_sema(c), current);
+        target     = sema_materialise_type(cgen_sema(c), target);
+        if (current != target &&
+            sema_plex_embedding(cgen_sema(c), current, target).path_count ==
+                1) {
+            if (!cgen_type(c, target)->param_count) {
+                return pointer_projection
+                           ? cgen_temp(
+                                 c, t, CF("(%s)%s", cgen_ctype(c, t), v.text))
+                           : cgen_temp(c, t, NULL);
             }
+            while (current != target) {
+                SemaPlexEmbedding path =
+                    sema_plex_embedding(cgen_sema(c), current, target);
+                u32 next = path.type_index;
+                if (pointer_projection) {
+                    // Named union members share the embedded storage and permit
+                    // a typed address even when the first field is a bit field.
+                    cstr projected = CF("(%s ? &((%s*)%s)->ncg_use%u : NULL)",
+                                        v.text,
+                                        cgen_ctype(c, current),
+                                        v.text,
+                                        cgen_canonical(c, next));
+                    v              = cgen_temp(
+                        c, t, CF("(%s)%s", cgen_ctype(c, t), projected));
+                } else {
+                    v = cgen_temp(
+                        c,
+                        next,
+                        CF("(%s).ncg_use%u", v.text, cgen_canonical(c, next)));
+                }
+                current = next;
+            }
+            v.type = t;
+            return v;
         }
     }
     if ((to == STK_Pointer || to == STK_Box) &&
@@ -966,13 +977,16 @@ internal CValue cgen_enum(CGen* c, const HirExpr* e, u32 variant)
             cgen_expr(c, cgen_hir(c)->call_args[e->first_arg + i].expr_index);
         }
     } else if (e->arg_count) {
+        u32 actual =
+            cgen_hir(c)
+                ->exprs[cgen_hir(c)->call_args[e->first_arg].expr_index]
+                .type_index;
+        bool whole_payload =
+            e->arg_count == 1 &&
+            (cgen_canonical(c, actual) == cgen_canonical(c, pt) ||
+             sema_plex_embedding(cgen_sema(c), actual, pt).path_count == 1);
         if ((cgen_kind(c, pt) == STK_Tuple || cgen_kind(c, pt) == STK_Plex) &&
-            !(e->arg_count == 1 &&
-              cgen_canonical(
-                  c,
-                  cgen_hir(c)
-                      ->exprs[cgen_hir(c)->call_args[e->first_arg].expr_index]
-                      .type_index) == cgen_canonical(c, pt))) {
+            !whole_payload) {
             for (u32 i = 0; i < e->arg_count; ++i) {
                 const HirCallArg* a = &cgen_hir(c)->call_args[e->first_arg + i];
                 u32    fi = a->symbol_handle == U32_MAX

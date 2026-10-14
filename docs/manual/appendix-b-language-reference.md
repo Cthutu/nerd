@@ -245,8 +245,14 @@ intended exit code.
   directly accessible on the containing value and participate in literals.
 - Embedded field-name conflicts are invalid. A plex cannot use the same type
   declaration twice, including different applications of one generic plex.
-- Explicit pointer casts from a containing plex to a directly or transitively
-  embedded plex adjust to the aligned, contiguous embedded subobject.
+- A containing plex implicitly converts to a directly or transitively embedded
+  plex where a destination type is known, provided the embedding path is unique.
+  Values copy the embedded subobject; pointers adjust to its original storage
+  and preserve null. Explicit `.as` forms are also supported.
+- Embedding conversions do not introduce implicit downcasts, address-taking,
+  slice or pointer-to-pointer conversions, or function-signature variance.
+  Compound calls prefer members requiring no embedding conversions; multiple
+  members requiring embedding conversions remain ambiguous.
 - Plexes may refer to themselves through pointer fields, such as `next ^Node`;
   direct by-value self-recursion is invalid.
 - `...` at the end of a plex literal initialises omitted fields with their

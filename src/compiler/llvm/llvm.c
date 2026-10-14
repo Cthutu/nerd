@@ -907,29 +907,6 @@ internal u32 llvm_record_field_index(const Sema* sema,
     return U32_MAX;
 }
 
-internal const SemaPlexUse*
-llvm_plex_embedded_next(const Sema* sema, u32 outer_type, u32 target_type)
-{
-    outer_type  = sema_materialise_type(sema, outer_type);
-    target_type = sema_materialise_type(sema, target_type);
-    if (outer_type >= array_count(sema->types) ||
-        sema->types[outer_type].kind != STK_Plex) {
-        return NULL;
-    }
-    const SemaType* outer = &sema->types[outer_type];
-    for (u32 i = 0; i < outer->plex_use_count; ++i) {
-        const SemaPlexUse* use = &sema->plex_uses[outer->first_plex_use + i];
-        u32 embedded           = sema_materialise_type(sema, use->type_index);
-        if (embedded == target_type) {
-            return use;
-        }
-        if (llvm_plex_embedded_next(sema, embedded, target_type) != NULL) {
-            return use;
-        }
-    }
-    return NULL;
-}
-
 internal u32 llvm_enum_variant_index(const Sema* sema,
                                      u32         enum_type,
                                      u32         symbol_handle)
@@ -5144,6 +5121,74 @@ internal LlvmValue llvm_coerce_value_to_type(LlvmFunctionContext* ctx,
 
     SemaTypeKind target_kind = llvm_type_kind(ctx->sema, target_type);
     SemaTypeKind source_kind = llvm_type_kind(ctx->sema, value.type_index);
+    bool         pointer_projection =
+        target_kind == STK_Pointer && source_kind == STK_Pointer;
+    if ((target_kind == STK_Plex && source_kind == STK_Plex) ||
+        pointer_projection) {
+        u32 current = sema_materialise_type(
+            ctx->sema,
+            pointer_projection
+                ? ctx->sema->types[value.type_index].first_param_type
+                : value.type_index);
+        u32 target = sema_materialise_type(
+            ctx->sema,
+            pointer_projection ? ctx->sema->types[target_type].first_param_type
+                               : target_type);
+        if (current != target &&
+            sema_plex_embedding(ctx->sema, current, target).path_count == 1) {
+            if (ctx->sema->types[target].param_count == 0) {
+                value.type_index = target_type;
+                if (!pointer_projection) {
+                    value.value = s("zeroinitializer");
+                }
+                return value;
+            }
+            string original = value.value;
+            while (current != target) {
+                SemaPlexEmbedding path =
+                    sema_plex_embedding(ctx->sema, current, target);
+                string next     = llvm_temp(ctx);
+                u32    physical = llvm_plex_physical_field_index(
+                    ctx->sema, current, path.first_field);
+                if (pointer_projection) {
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = getelementptr " STRINGP
+                              ", ptr " STRINGP ", i64 0, i32 %u\n",
+                              STRINGV(next),
+                              STRINGV(llvm_type_string(ctx, current)),
+                              STRINGV(value.value),
+                              physical);
+                } else {
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = extractvalue " STRINGP
+                              " " STRINGP ", %u\n",
+                              STRINGV(next),
+                              STRINGV(llvm_type_string(ctx, current)),
+                              STRINGV(value.value),
+                              physical);
+                }
+                value.value = next;
+                current     = path.type_index;
+            }
+            if (pointer_projection) {
+                string is_null  = llvm_temp(ctx);
+                string adjusted = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = icmp eq ptr " STRINGP ", null\n"
+                          "  " STRINGP " = select i1 " STRINGP
+                          ", ptr null, ptr " STRINGP "\n",
+                          STRINGV(is_null),
+                          STRINGV(original),
+                          STRINGV(adjusted),
+                          STRINGV(is_null),
+                          STRINGV(value.value));
+                value.value = adjusted;
+            }
+            value.type_index = target_type;
+            return value;
+        }
+    }
+
     if (target_kind == STK_Enum &&
         (ctx->sema->types[target_type].flags & STF_Optional) &&
         source_kind == STK_Nil) {
@@ -6596,7 +6641,10 @@ internal LlvmValue llvm_emit_enum_constructor(LlvmFunctionContext* ctx,
         expr->arg_count > 0) {
         LlvmValue payload = {0};
         if (expr->arg_count == 1 &&
-            args[0].type_index == variant_payload_type) {
+            (args[0].type_index == variant_payload_type ||
+             sema_plex_embedding(
+                 ctx->sema, args[0].type_index, variant_payload_type)
+                     .path_count == 1)) {
             payload = args[0];
         } else if (llvm_type_is_record(ctx->sema, variant_payload_type)) {
             string variant_payload_type_string =
@@ -6626,6 +6674,7 @@ internal LlvmValue llvm_emit_enum_constructor(LlvmFunctionContext* ctx,
             payload = args[0];
         }
 
+        payload = llvm_coerce_value_to_type(ctx, payload, variant_payload_type);
         payload = llvm_cast_to_storage_bits(ctx, payload, storage_payload_bits);
         if (!payload.ok) {
             array_free(args);
@@ -11258,6 +11307,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             LlvmValue value =
                 llvm_emit_expr(ctx, function, expr->rhs_expr_index);
             ctx->discard_expr_value = old_discard_expr_value;
+            value = llvm_coerce_value_to_type(ctx, value, expr->type_index);
             if (!value.ok ||
                 !llvm_emit_assign(ctx, function, expr->lhs_expr_index, value)) {
                 return (LlvmValue){0};
@@ -14730,43 +14780,21 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 };
             }
 
-            if (llvm_type_kind(ctx->sema, operand.type_index) == STK_Pointer &&
-                llvm_type_kind(ctx->sema, expr->type_index) == STK_Pointer) {
-                u32 source_pointee =
-                    llvm_pointee_type(ctx->sema, operand.type_index);
-                u32 target_pointee =
-                    llvm_pointee_type(ctx->sema, expr->type_index);
-                const SemaPlexUse* next = llvm_plex_embedded_next(
-                    ctx->sema, source_pointee, target_pointee);
-                if (next != NULL) {
-                    string adjusted = operand.value;
-                    u32    current  = source_pointee;
-                    while (current != target_pointee) {
-                        next = llvm_plex_embedded_next(
-                            ctx->sema, current, target_pointee);
-                        if (next == NULL) {
-                            return (LlvmValue){0};
-                        }
-                        string temp = llvm_temp(ctx);
-                        sb_format(ctx->sb,
-                                  "  " STRINGP
-                                  " = getelementptr inbounds " STRINGP
-                                  ", ptr " STRINGP ", i64 0, i32 %u\n",
-                                  STRINGV(temp),
-                                  STRINGV(llvm_type_string(ctx, current)),
-                                  STRINGV(adjusted),
-                                  llvm_plex_physical_field_index(
-                                      ctx->sema, current, next->first_field));
-                        adjusted = temp;
-                        current =
-                            sema_materialise_type(ctx->sema, next->type_index);
-                    }
-                    return (LlvmValue){
-                        .ok         = true,
-                        .type_index = expr->type_index,
-                        .value      = adjusted,
-                    };
-                }
+            u32 projection_source = operand.type_index;
+            u32 projection_target = expr->type_index;
+            if (llvm_type_kind(ctx->sema, projection_source) == STK_Pointer &&
+                llvm_type_kind(ctx->sema, projection_target) == STK_Pointer) {
+                projection_source =
+                    llvm_pointee_type(ctx->sema, projection_source);
+                projection_target =
+                    llvm_pointee_type(ctx->sema, projection_target);
+            }
+            if (projection_source != projection_target &&
+                sema_plex_embedding(
+                    ctx->sema, projection_source, projection_target)
+                        .path_count == 1) {
+                return llvm_coerce_value_to_type(
+                    ctx, operand, expr->type_index);
             }
 
             string instr = llvm_cast_instruction(
@@ -15397,8 +15425,9 @@ internal bool llvm_emit_assign(LlvmFunctionContext* ctx,
         return false;
     }
 
-    const HirExpr* target   = &ctx->hir->exprs[target_expr_index];
-    LlvmValue      imported = llvm_imported_global_address(ctx, target);
+    const HirExpr* target = &ctx->hir->exprs[target_expr_index];
+    value = llvm_coerce_value_to_type(ctx, value, target->type_index);
+    LlvmValue imported = llvm_imported_global_address(ctx, target);
     if (imported.ok) {
         value = llvm_coerce_value_to_type(ctx, value, imported.type_index);
         if (!value.ok) {

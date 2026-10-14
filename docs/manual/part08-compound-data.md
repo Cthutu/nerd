@@ -286,12 +286,35 @@ Rect :: plex {
 rect := Rect { x: 10 y: 20 width: 30 height: 40 }
 ```
 
-The embedded fields remain one aligned, contiguous `Point` subobject, so an
-explicit pointer cast such as `(^rect).as(^Point)` adjusts to that subobject.
-This also works through transitive uses. Field names may not conflict, and the
-same type declaration may be used only once in a plex. That duplicate rule also
-applies to different applications of one generic declaration, such as
-`Pair[i32]` and `Pair[f32]`.
+The embedded fields remain one aligned, contiguous `Point` subobject. `use`
+also permits implicit conversion to that embedded type when a destination type
+is known, including arguments, annotated bindings, assignments, and returns:
+
+```nerd
+point: Point = rect            -- copy the embedded Point
+point_ptr: ^Point = ^rect      -- borrow its original storage
+move_point(^rect)              -- a parameter of type ^Point supplies context
+```
+
+Changing `point` leaves `rect` unchanged; changing `point_ptr.x` changes
+`rect.x`. Pointer conversions adjust to the embedded subobject, even when it
+is preceded by other fields, and preserve null pointers. Explicit forms remain
+available: `rect.as(Point)` and `(^rect).as(^Point)`. A `Rect` value cannot be
+cast directly to `^Point`; take its address first.
+
+These conversions also work through transitive uses, but require exactly one
+embedding path. An ambiguous path is an error. They only go from the containing
+plex to the embedded plex: no implicit downcast, address-taking, or conversion
+of slices, pointer-to-pointer types, or function signatures is introduced.
+Matching fields alone does not establish an embedding relationship.
+
+Compound calls prefer a compatible member requiring no embedding conversions.
+If multiple members require embedding conversions, the call is ambiguous;
+embedding depth and declaration order do not choose a winner.
+
+Field names may not conflict, and the same type declaration may be used only
+once in a plex. That duplicate rule also applies to different applications of
+one generic declaration, such as `Pair[i32]` and `Pair[f32]`.
 
 Plexes may refer to themselves through pointers. This is useful for linked
 structures and object graphs because the field has pointer size:

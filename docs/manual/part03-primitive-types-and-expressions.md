@@ -328,9 +328,11 @@ below: i32 = -3.9.as(i32)  -- becomes -3
 
 Nerd does not silently insert broad implicit casts between concrete types. If a
 type conversion matters, write it down. Untyped integer and float literals are
-the main exception: they can become a concrete type from context, such as a
+one exception: they can become a concrete type from context, such as a
 binding annotation or function parameter type. Untyped literals are explained at
-the end of this part.
+the end of this part. Plex `use` declarations also permit conversion to the
+embedded plex, by value or pointer, when a destination type is known; see
+[Compound Data](part08-compound-data.md).
 
 ## Pointer-To-Slice Casts
 
