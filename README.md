@@ -1,0 +1,14 @@
+# Nerd documentation
+
+Tutorials for the [Nerd programming language](https://github.com/Cthutu/nerd).
+This guide assumes familiarity with C and introduces Nerd's syntax and behaviour
+from the beginning.
+
+## Chapters
+
+1. [Overview](docs/learn/01-Overview.md)
+2. [First Programs and Bindings](docs/learn/02-First-Programs.md)
+3. [Primitive Types and Expressions](docs/learn/03-Primitive-Types-and-Expressions.md)
+
+`test.n` contains an additional Nerd example. Directories beginning with `_`
+hold generated output or local verification files and are ignored by Git.
