@@ -334,3 +334,33 @@ main :: fn () {
 Here, `_scratch` must remain unread. Rename it to `scratch` when you start
 using its value. The discard name `_` can be used repeatedly within the same
 scope.
+
+## Using or discarding function results
+
+A function's return value must be used or explicitly discarded. Calling a
+function that returns a value as a standalone statement is a compiler error.
+You can use the result in an expression, return it to the caller, assign it to
+a variable, or explicitly discard it with `_`:
+
+```nerd
+get_answer :: fn () -> i32 {
+    return 42
+}
+
+main :: fn () -> i32 {
+    answer := get_answer()
+    _ := get_answer()
+    return answer
+}
+```
+
+This returns `42`. The first call supplies a value that is read by the
+`return` statement. The second call explicitly discards its result. Replacing
+`_ := get_answer()` with just `get_answer()` is an error.
+
+Assigning a result to an ordinary local does not bypass the unused-name rule:
+that local must subsequently be read. Use an underscore-prefixed name or `_`
+when you intend to leave the result unused.
+
+Functions that return no value, such as `prn`, can be called as standalone
+statements without a discard binding.
