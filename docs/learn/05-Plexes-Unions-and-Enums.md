@@ -90,6 +90,12 @@ This returns `42`: `original.x` remains `20`, while `copy.x` becomes `22`.
 Assignment copies the plex value. For this type, whose fields are integers,
 the two variables have independent field storage.
 
+A plex value introduced with `::` does not allow direct field assignment.
+For example, `original :: Point { x: 20, y: 0 }` makes `original.x += 2` a
+compile-time error. This also applies to nested plex fields stored by value.
+Use `:=` or an explicitly typed variable when you intend to modify a plex,
+or initialise a mutable copy from the binding.
+
 Use `with` to produce a modified copy without updating the original:
 
 ```nerd
@@ -197,6 +203,8 @@ main :: fn () -> i32 {
 
 This returns `42`. A union literal initialises exactly one field. Unlike a
 plex, it cannot hold independent values in all its fields simultaneously.
+Fields stored by value follow the same binding rule as plexes: use a variable
+when you intend to assign a union field, rather than a value bound with `::`.
 
 Assigning another field overwrites the shared storage:
 
