@@ -12667,11 +12667,8 @@ internal bool sema_node_is_box_constructor(const Lexer* lexer,
     return true;
 }
 
-internal bool sema_assignment_target_writes_param_storage(const Ast*  ast,
-                                                          const Sema* sema,
-                                                          u32  node_index,
-                                                          u32* out_local_index,
-                                                          u32* out_root_node)
+internal bool sema_assignment_target_writes_immutable_storage(
+    const Ast* ast, const Sema* sema, u32 node_index, u32* out_root_node)
 {
     const AstNode* node = &ast->nodes[node_index];
     switch (node->kind) {
@@ -12679,22 +12676,34 @@ internal bool sema_assignment_target_writes_param_storage(const Ast*  ast,
         {
             u32 local_index = sema->node_local_indices[node_index];
             if (local_index != sema_no_local() &&
-                sema->locals[local_index].kind == SLK_Param) {
-                *out_local_index = local_index;
-                *out_root_node   = node_index;
+                (sema->locals[local_index].kind == SLK_Param ||
+                 sema->locals[local_index].kind == SLK_Constant)) {
+                *out_root_node = node_index;
+                return true;
+            }
+            u32 decl_index = sema->node_decl_indices[node_index];
+            if (decl_index != sema_no_decl() &&
+                sema->decls[decl_index].kind == SK_Constant) {
+                *out_root_node = node_index;
                 return true;
             }
             return false;
         }
     case AK_Expression:
     case AK_Statement:
-        return sema_assignment_target_writes_param_storage(
-            ast, sema, node->a, out_local_index, out_root_node);
+        return sema_assignment_target_writes_immutable_storage(
+            ast, sema, node->a, out_root_node);
     case AK_Deref:
         return false;
     case AK_Field:
     case AK_TupleField:
         {
+            u32 decl_index = sema->node_decl_indices[node_index];
+            if (decl_index != sema_no_decl() &&
+                sema->decls[decl_index].kind == SK_Constant) {
+                *out_root_node = node_index;
+                return true;
+            }
             u32 base_type = node->a < array_count(sema->node_type_indices)
                                 ? sema->node_type_indices[node->a]
                                 : sema_no_type();
@@ -12702,8 +12711,8 @@ internal bool sema_assignment_target_writes_param_storage(const Ast*  ast,
                 sema->types[base_type].kind == STK_Pointer) {
                 return false;
             }
-            return sema_assignment_target_writes_param_storage(
-                ast, sema, node->a, out_local_index, out_root_node);
+            return sema_assignment_target_writes_immutable_storage(
+                ast, sema, node->a, out_root_node);
         }
     case AK_Index:
         {
@@ -12716,8 +12725,8 @@ internal bool sema_assignment_target_writes_param_storage(const Ast*  ast,
                  sema->types[base_type].kind == STK_DynamicArray)) {
                 return false;
             }
-            return sema_assignment_target_writes_param_storage(
-                ast, sema, node->a, out_local_index, out_root_node);
+            return sema_assignment_target_writes_immutable_storage(
+                ast, sema, node->a, out_root_node);
         }
     default:
         return false;
@@ -26000,15 +26009,15 @@ validate_type:
                     s("runtime-sized fixed array; assign elements instead"));
             }
 
-            u32 param_local     = sema_no_local();
-            u32 param_root_node = U32_MAX;
-            if (sema_assignment_target_writes_param_storage(
-                    ast, sema, node->a, &param_local, &param_root_node)) {
-                const SemaLocal* local = &sema->locals[param_local];
+            u32 immutable_root_node = U32_MAX;
+            if (sema_assignment_target_writes_immutable_storage(
+                    ast, sema, node->a, &immutable_root_node)) {
+                const AstNode* root = &ast->nodes[immutable_root_node];
                 return error_0305_invalid_assignment_target(
                     lexer->source,
-                    sema_node_span(lexer, &ast->nodes[param_root_node]),
-                    lex_symbol(lexer, local->symbol_handle));
+                    sema_node_span(lexer, root),
+                    lex_symbol(lexer,
+                               root->kind == AK_Field ? root->b : root->a));
             }
 
             u8 target_bit_width = target->kind == AK_Field

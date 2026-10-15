@@ -1,5 +1,12 @@
 # Internals
 
+Assignment validation follows by-value field and fixed-array index paths back
+to their root binding. Both value parameters and constant bindings prohibit
+writes to their own storage, including imported constants resolved through
+module fields. Pointer dereferences and indexing through pointer-backed views
+stop this traversal: binding immutability does not make borrowed storage
+immutable. The existing invalid-assignment diagnostic points at the root name.
+
 Untyped integer constants remain untyped in bindings and can adopt concrete
 integer or floating-point contexts at each use. Sema handles compatibility
 and operand typing; LLVM lowering converts integer constants and expressions

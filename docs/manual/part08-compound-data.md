@@ -226,6 +226,9 @@ p := Point { x: 20 ... }  -- y uses its default value
 ```
 
 Fields are read with dot syntax and can be assigned when the value is mutable.
+For a plex value bound with `::`, direct field assignment is rejected, including
+through nested fields stored by value. Use `:=` or an explicitly typed variable
+for a plex you intend to modify.
 Dot access automatically dereferences pointers to plexes and unions. These are
 partial snippets, not complete programs:
 
