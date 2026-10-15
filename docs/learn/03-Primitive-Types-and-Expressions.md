@@ -2,6 +2,8 @@
 
 [Previous: First Programs and Bindings](02-First-Programs.md)
 
+[Next: Variables and Scope](04-Variables-and-Scope.md)
+
 Expressions produce values. A literal, a reference to a binding, an arithmetic
 operation, and a function call can all be expressions. This chapter covers
 primitive values and the operators used to combine them, using the immutable

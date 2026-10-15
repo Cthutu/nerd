@@ -9,6 +9,7 @@ from the beginning.
 1. [Overview](docs/learn/01-Overview.md)
 2. [First Programs and Bindings](docs/learn/02-First-Programs.md)
 3. [Primitive Types and Expressions](docs/learn/03-Primitive-Types-and-Expressions.md)
+4. [Variables and Scope](docs/learn/04-Variables-and-Scope.md)
 
 `test.n` contains an additional Nerd example. Directories beginning with `_`
 hold generated output or local verification files and are ignored by Git.
