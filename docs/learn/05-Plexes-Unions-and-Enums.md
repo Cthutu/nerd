@@ -37,6 +37,29 @@ dot syntax, such as `point.x`.
 the untyped literals `20` and `22` become `i32` values. You can also declare
 the variable explicitly as `point: Point = Point { x: 20, y: 22 }`.
 
+When the surrounding context supplies the plex type, you can omit the type
+name from the literal. This works with an explicitly typed variable, a
+function parameter, or a function's declared return type:
+
+```nerd
+Point :: plex { x i32 y i32 }
+
+make_point :: fn () -> Point {
+    return { x: 20, y: 22 }
+}
+
+sum :: fn (point: Point) => point.x + point.y
+
+main :: fn () -> i32 {
+    point: Point = { x: 20, y: 22 }
+    other := make_point()
+    return point.x + other.y + sum({ x: 0, y: 0 })
+}
+```
+
+This returns `42`. Each unnamed literal gets its `Point` type from its
+context. Writing `Point { ... }` explicitly is still valid in these places.
+
 ## Default fields and shorthand
 
 A plex literal normally supplies every field. End the literal with `...` to
