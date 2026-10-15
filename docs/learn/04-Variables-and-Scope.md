@@ -315,10 +315,14 @@ names.
 
 ## Unused local names
 
-Nerd reports local variables and bindings that are never read. Assigning a new
-value does not count as reading the variable. If a name is deliberately unused,
-prefix it with `_`; use the bare `_` to discard a value without giving it a
-usable name:
+Nerd enforces unused local names as a compile-time rule. A local variable or
+binding that is never read must have a name beginning with `_`; leaving off
+the prefix is a compiler error. Conversely, reading a name beginning with `_`
+is also a compiler error. Assigning a new value does not count as reading the
+variable.
+
+Prefix a deliberately unused name with `_`, or use the bare `_` to discard a
+value without giving it a usable name:
 
 ```nerd
 main :: fn () {
@@ -327,6 +331,6 @@ main :: fn () {
 }
 ```
 
-A leading underscore marks an unused name, rather than suppressing all checks
-on it: trying to read `_scratch` is an error. Rename it when you start using
-the value. The discard name `_` can be used repeatedly within the same scope.
+Here, `_scratch` must remain unread. Rename it to `scratch` when you start
+using its value. The discard name `_` can be used repeatedly within the same
+scope.
