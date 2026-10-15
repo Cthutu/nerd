@@ -337,13 +337,24 @@ Status :: enum {
 }
 
 main :: fn () -> i32 {
-    return Status.Running.as(i32)
+    status := Status.Ready
+    number: i32 = Status.Ready
+    return number + (status == Status.Ready).as(i32)
 }
 ```
 
-This returns `5`. Explicit discriminants must be compile-time integer values,
-and variant names and discriminants must be unique within the enum. Enum values
-remain typed as their enum; `.as(i32)` explicitly obtains an integer here.
+This returns `5`: `Ready` has the explicit discriminant `4`, and the comparison
+contributes `1`. `status` is inferred as `Status`. Because `Ready = 4` explicitly
+defines an integer discriminant, `Status.Ready` can also supply that integer
+where a numeric type is required, without a cast. Integer contexts check that
+the value fits their type, just as for an integer literal.
+
+Explicit discriminants must be compile-time integer values, and variant names
+and discriminants must be unique within the enum. `Running` receives the next
+discriminant, `5`, but its implicit numbering does not enable this contextual
+numeric conversion. Payload constructors also remain enum values. To obtain
+the discriminant of an enum variable, use an explicit cast such as
+`status.as(i32)`.
 
 Plexes and enums containing the primitive values used in this chapter support
 `==` and `!=`. Plex equality compares fields; enum equality compares the active
