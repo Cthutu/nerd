@@ -1719,6 +1719,22 @@ internal u32 hir_lower_expr_impl(Hir*         hir,
 
     const AstNode* node = &ast->nodes[node_index];
     HirUnaryOp     unary_op;
+    u32            inferred_type = hir_node_type(sema, node_index);
+    i64            discriminant  = 0;
+    if (inferred_type != sema_no_type() &&
+        (sema_type_is_concrete_integer(sema, inferred_type) ||
+         sema_type_is_float(sema, inferred_type)) &&
+        sema_explicit_enum_integer(
+            lexer, ast, (Sema*)sema, node_index, &discriminant)) {
+        return hir_add_expr(hir,
+                            (HirExpr){
+                                .kind          = HIR_EXPR_IntegerLiteral,
+                                .type_index    = inferred_type,
+                                .symbol_handle = U32_MAX,
+                                .local_index   = sema_no_local(),
+                                .integer       = discriminant,
+                            });
+    }
     if (node->kind == AK_ZeroInit) {
         u32 default_expr = hir_lower_default_trait_expr(hir, sema, node_index);
         if (default_expr != hir_no_index()) {

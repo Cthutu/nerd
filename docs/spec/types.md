@@ -247,6 +247,14 @@ directly or transitively embedded plex types adjust to the relevant subobject.
 
 Enums support unit variants, payload variants, and explicit discriminant
 expressions.
+An explicitly numbered payload-free variant retains its enum type without a
+numeric expected type. In a concrete integer or floating-point context, that
+variant supplies its discriminant as an untyped integer would; integer range
+checks apply. Unannotated constant aliases preserve this contextual behaviour.
+Implicit discriminants, payload constructors, enum variables, and explicitly
+enum-typed constants do not receive this implicit numeric conversion. Explicit
+assignment of a discriminant is part of semantic enum type identity and is
+preserved across imports and materialisation.
 Payload variants with named fields use an inline plex payload body, such as
 `Resized { width u16 height u16 }`.
 They are constructed and matched with the same braced variant shape:

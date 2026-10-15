@@ -261,6 +261,7 @@ typedef struct {
     Array(u32) type_param_symbols;
     Array(i64) type_param_values;
     Array(bool) type_param_braced_payloads;
+    Array(bool) type_param_explicit_discriminants;
     Array(u8) type_param_bit_widths;
     Array(u8) type_param_bit_offsets;
     Array(bool) type_param_bit_starts;
@@ -324,10 +325,15 @@ u32 sema_import_type(Lexer*       dst_lexer,
                      const Sema*  src_sema,
                      u32          src_type_index);
 
-u32 sema_no_decl(void);
-u32 sema_no_local(void);
-u32 sema_no_type(void);
-u32 sema_materialise_type(const Sema* sema, u32 type_index);
+u32  sema_no_decl(void);
+u32  sema_no_local(void);
+u32  sema_no_type(void);
+u32  sema_materialise_type(const Sema* sema, u32 type_index);
+bool sema_explicit_enum_integer(const Lexer* lexer,
+                                const Ast*   ast,
+                                Sema*        sema,
+                                u32          node_index,
+                                i64*         out_value);
 // A unique use path exposes its first embedded subobject. Counts saturate at 2.
 typedef struct {
     u32 path_count;

@@ -108,6 +108,13 @@ of variants. Variant names must be unique within one enum. Explicit enum
 discriminants must be non-negative integer constants, and every variant in one
 enum must have a distinct final discriminant value.
 
+A payload-free variant explicitly defined with `= integer-expression` can
+supply its discriminant in a numeric context. Thus `number: i32 = Colour.Green`
+is valid for `Green = 4`, with integer literal range checking, while
+`colour := Colour.Green` still infers `Colour`. Unannotated constant aliases
+preserve this behaviour; runtime enum variables require an explicit cast.
+Implicitly numbered variants and payload constructors remain enum values.
+
 At the current milestone boundary, source-level function-valued annotations also
 reuse that same function type syntax:
 

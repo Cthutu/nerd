@@ -682,6 +682,28 @@ Enum variants may be separated with commas. A trailing comma is allowed. Variant
 names must be unique within one enum. Explicit `= <value>` discriminants must be
 unique after implicit values are filled in.
 
+A payload-free variant with an explicit integer discriminant can supply that
+integer when a numeric type is expected:
+
+```nerd
+Colour :: enum { Red Green = 4 Blue }
+
+main :: fn () -> i32 {
+    colour := Colour.Green  -- inferred as Colour
+    number: i32 = Colour.Green  -- the explicit discriminant, 4
+    assert colour == Colour.Green
+    return number
+}
+```
+
+Without a numeric context, the variant remains an enum value. Constant aliases
+declared with `::` preserve the contextual discriminant behaviour. Integer
+contexts check that the discriminant fits the required type, just as for an
+integer literal. Floating-point contexts also accept the integer discriminant.
+Implicitly numbered variants, payload constructors, runtime enum variables, and
+explicitly enum-typed constant bindings do not implicitly become numbers. Use
+an explicit cast when you need the discriminant of a runtime enum value.
+
 Use enums when a value has one active case and the program should track that
 case safely.
 

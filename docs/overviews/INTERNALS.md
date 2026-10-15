@@ -1,5 +1,15 @@
 # Internals
 
+Enum parameter metadata records whether each discriminant was explicitly
+assigned. Interning, imports, and materialisation preserve this flag. Sema
+allows a payload-free explicitly numbered variant (including unannotated
+constant aliases) to acquire a concrete numeric context, checking integer
+ranges as for literals. Its natural type remains the enum type. HIR lowers
+such contextual uses to numeric integer literals, so both backends use the
+existing numeric constant paths without implicitly converting runtime enums.
+Compound-call selection recognises these numeric candidates but prefers a
+candidate accepting the natural enum type over one requiring conversion.
+
 Assignment validation follows by-value field and fixed-array index paths back
 to their root binding. Both value parameters and constant bindings prohibit
 writes to their own storage, including imported constants resolved through

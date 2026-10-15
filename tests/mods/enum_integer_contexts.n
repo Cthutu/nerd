@@ -1,0 +1,2 @@
+pub Colour :: enum { Red Green = 4 Blue }
+pub green :: Colour.Green
