@@ -1,6 +1,6 @@
 # Chapter 6: Arrays, Slices and Dynamic Arrays
 
-[Previous: Plexes, Unions and Enums](05-Plexes-Unions-and-Enums.md)
+[Previous: Plexes, Unions, Enums and Tuples](05-Plexes-Unions-Enums-and-Tuples.md)
 
 Arrays store sequences of elements of one type. Slices borrow a view of existing
 elements. Dynamic arrays own storage that can grow. Choosing between them means

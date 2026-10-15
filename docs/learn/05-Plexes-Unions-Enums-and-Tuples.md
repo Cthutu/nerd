@@ -1,4 +1,4 @@
-# Chapter 5: Plexes, Unions and Enums
+# Chapter 5: Plexes, Unions, Enums and Tuples
 
 [Previous: Variables and Scope](04-Variables-and-Scope.md)
 
@@ -7,7 +7,8 @@
 Primitive types describe individual values. Plexes group named fields into a
 single value, much like C structs. Unions provide named fields that overlap in
 storage. Enums describe a choice between named variants, optionally carrying
-data specific to each variant.
+data specific to each variant. Tuples group values by position rather than by
+field name.
 
 As in earlier chapters, programs returning an integer use it as an exit status.
 Examples using `prn` show their text output separately.
@@ -352,13 +353,84 @@ variant and its payload. Two `Reading.Value(42)` values compare equal, while
 Raw unions do not have built-in value equality: their shared bytes do not
 identify which field should be compared.
 
-## Choosing between the three forms
+## Tuples
+
+A tuple groups a fixed number of values. Its fields can have different types,
+and their positions identify them:
+
+```nerd
+main :: fn () -> i32 {
+    result := (42, "answer")
+    prn(result.1)
+    return result.0
+}
+```
+
+This prints `answer` and returns `42`. Tuple literals use parentheses and
+commas. Field positions start at zero: `.0` accesses the first field and `.1`
+the second. Here `result` has type `(i32, string)`.
+
+A tuple type lists its field types in the same order. This lets a function
+return several values as one result:
+
+```nerd
+get_pair :: fn () -> (i32, i32) {
+    return (20, 22)
+}
+
+main :: fn () -> i32 {
+    (left, right) := get_pair()
+    return left + right
+}
+```
+
+This returns `42`. The declaration `(left, right) := ...` destructures the
+tuple into two variables. Each variable receives the corresponding field.
+An explicit tuple type works on a variable too:
+`pair: (i32, string) = (42, "answer")`.
+
+Assignment copies a tuple value. You can replace the whole value of a tuple
+variable:
+
+```nerd
+main :: fn () -> i32 {
+    original := (20, 22)
+    copy := original
+    copy = (10, copy.1)
+    return original.0 + copy.0 + copy.1
+}
+```
+
+This returns `52`. Replacing `copy` leaves `original` unchanged. The compiler
+currently rejects direct tuple field assignment such as `copy.0 = 10`.
+
+Use `_` in a destructuring declaration to discard a field you do not need:
+
+```nerd
+main :: fn () -> i32 {
+    (answer, _) := (42, "unused")
+    return answer
+}
+```
+
+This returns `42`. The string field is explicitly discarded.
+
+A one-field tuple needs a trailing comma: `(42,)`. Without the comma, `(42)`
+is just a parenthesised integer expression. Its tuple type is `(i32,)` once
+the integer has a concrete `i32` type. Tuples can also contain other tuples
+or the compound values introduced in this chapter.
+
+Use a tuple when positions make the meaning clear, such as a small function
+result. Use a plex when field names make the value easier to understand.
+
+## Choosing between the four forms
 
 | Form | Storage and interpretation | Access |
 | --- | --- | --- |
 | `plex` | Holds all its fields in distinct storage. | Read fields by name. |
 | `union` | Fields overlap; the program tracks which interpretation is valid. | Read the appropriate field by name. |
 | `enum` | Tracks one active variant and its associated payload. | Payload access is covered in a later chapter. |
+| tuple | Holds all its fields in distinct storage, identified by position. | Read fields with `.0`, `.1`, and so on. |
 
 ## Layout and bit fields
 
