@@ -22,11 +22,15 @@ main :: fn () -> i32 {
 }
 ```
 
-The declaration creates `answer` and initialises it to `40`. The assignment
-replaces its stored value with `42`, which the function returns.
+The literal `40` begins as an untyped integer. Declaring a variable requires a
+concrete storage type: in this program, `answer` is inferred as `i32`, and the
+initial value becomes an `i32` value of `40`. The assignment replaces that
+stored value with `42`, which the function returns.
 
-Compare this with `answer :: 40` from chapter 2. That form binds a name to a
-value and cannot be reassigned. `answer := 40` introduces mutable storage.
+Compare this with `answer :: 40` from chapter 2. That form preserves the
+untyped integer and cannot be reassigned. `answer := 40` introduces mutable
+storage with a concrete type. The difference includes both mutability and
+whether the integer has been given a concrete type.
 
 Write `name: Type = expression` to choose the type explicitly:
 
