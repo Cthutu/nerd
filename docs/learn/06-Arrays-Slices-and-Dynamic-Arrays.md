@@ -15,6 +15,28 @@ choosing both how the length is managed and who owns the storage.
 The programs below return their results as integer exit statuses unless they
 explicitly print text.
 
+## Storage and ownership
+
+The collection type determines where its elements live and who releases their
+storage:
+
+| Form | Element storage | Cleanup responsibility |
+| --- | --- | --- |
+| Constant-length `[N]T` | Inline, as part of the array value. Local variables normally use stack storage; array fields live inside their containing value. | No separate allocation to free. |
+| Local `[count]T` with a runtime length | A separate heap allocation, with its length fixed at declaration. | The compiler frees the allocation when the declaring scope exits. |
+| `[]T` | Existing storage borrowed from another value or allocation. | The owner releases the storage; the slice must stay within its lifetime. |
+| `[..]T` | A separate heap allocation that can grow. | The program calls `.free()`, usually through `defer`. |
+
+A local dynamic-array variable is a handle to its allocation. Letting that
+variable go out of scope does not free the allocation automatically. Returning
+the handle can pass cleanup responsibility to the caller; copying it does not
+create independent storage or another allocation to free.
+
+These rules describe the collection's own storage. If an element holds another
+dynamic array or another separately owned resource, copying the outer collection
+does not duplicate that resource, and releasing the outer storage does not
+release it. Manage each owned resource separately.
+
 ## Fixed arrays
 
 Square brackets construct an array literal:
@@ -45,7 +67,7 @@ but its length stays fixed. `[3]i32` and `[4]i32` are different types.
 `values: [3]i32` without an initialiser starts with three zeroed integers.
 
 Ordinary fixed arrays contain their elements directly and need no `.free()`.
-Copying one copies its elements:
+Copying a fixed array copies its elements:
 
 ```nerd
 main :: fn () -> i32 {
@@ -264,6 +286,10 @@ This returns `42`. A default dynamic array starts empty. `.push(value)` appends
 an element, growing storage as necessary. Indexing accesses live elements, just
 as with a fixed array.
 
+The default `values: [..]i32` starts as `nil`, without an element allocation.
+Adding elements or reserving capacity allocates heap storage as needed. That
+storage survives the declaring scope until it is explicitly freed.
+
 The dynamic array owns its allocated storage and requires cleanup. `.free()`
 releases it and resets the array to `nil`. `defer` schedules that call for the
 end of the current scope, including when a `return` exits the scope. Here, the
@@ -272,7 +298,8 @@ beside the declaration makes the cleanup responsibility visible.
 
 You can request initial capacity in a declaration such as `values: [4..]i32`.
 Capacity provides room for elements; it does not make those elements live.
-The array still starts with `.count` equal to zero.
+The array still starts with `.count` equal to zero. This capacity uses heap
+storage too, and requires the same `.free()` cleanup.
 
 ## Capacity and count
 
