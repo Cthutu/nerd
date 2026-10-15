@@ -31,10 +31,10 @@ prepare_echo :: fn (message: ^Message, escaped: ^Message) -> void\NexusError {
 -- Lifecycle callbacks run on this thread, without allocating an event queue.
 -- The identity is assigned on accept, even if the client never sends a line.
 connection_changed :: fn (id: u64, connected: bool) {
-    on connected {
-        yes   => prn($"[Client {id}] connected")
-        else  => prn($"[Client {id}] disconnected")
-    }
+    prn(on connected {
+        yes   => $"[Client {id}] connected"
+        else  => $"[Client {id}] disconnected"
+    })
     _ := fflush(nil)
 }
 
@@ -124,14 +124,11 @@ main :: fn () -> i32 {
     }
 
     for {
-        on shutdown.requested() {
-            requested => on requested => break
+        on shutdown.requested() else [error] {
+            eprn($"Shutdown watcher failed: {error}")
+            return 1
+        } => break
 
-            error! => {
-                eprn($"Shutdown watcher failed: {error}")
-                return 1
-            }
-        }
         for i in [0.as(usize) .. max_nexus_clients.as(usize)] {
             on !pending[i] => again
 
