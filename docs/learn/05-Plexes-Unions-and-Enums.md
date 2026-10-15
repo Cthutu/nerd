@@ -266,35 +266,15 @@ Colour :: enum {
     Blue
 }
 
-describe :: fn (colour: Colour) -> string {
-    return on colour {
-        Red => "red"
-        Green => "green"
-        Blue => "blue"
-    }
-}
-
-main :: fn () {
+main :: fn () -> i32 {
     colour := Colour.Green
-    prn(describe(colour))
+    return (colour == Colour.Green).as(i32)
 }
 ```
 
-Output:
-
-```text
-green
-```
-
-`Colour.Green` constructs the variant named `Green`. Its type is `Colour`.
-Inside `on colour`, the subject supplies the enum type, so the branch patterns
-can use the unqualified names `Red`, `Green`, and `Blue`.
-
-This is a value-producing `on` expression. Each `pattern => expression` branch
-supplies a result, and the enclosing `return` returns the selected string.
-All variants are covered. A value-producing match must be exhaustive; you can
-also use `else => expression` to handle the remaining cases. Branching and
-patterns will be explored in more detail separately.
+This returns `1`. `Colour.Green` constructs the variant named `Green`. Its
+type is `Colour`. The comparison checks which variant the value holds, and
+`.as(i32)` converts the boolean result to `1` for `yes` or `0` for `no`.
 
 ## Enums with payloads
 
@@ -307,26 +287,20 @@ Reading :: enum {
     Value(i32)
 }
 
-value_or_zero :: fn (reading: Reading) -> i32 {
-    return on reading {
-        Missing => 0
-        Value(number) => number
-    }
-}
-
 main :: fn () -> i32 {
     reading := Reading.Value(42)
-    return value_or_zero(reading)
+    return (reading == Reading.Value(42)).as(i32)
 }
 ```
 
-This returns `42`. `Reading.Value(42)` constructs a `Value` variant carrying an
-integer. The pattern `Value(number)` binds that payload to `number` within its
-branch. `Reading.Missing` carries no data.
+This returns `1`. `Reading.Value(42)` constructs a `Value` variant carrying an integer.
+`Reading.Missing` carries no data. Equality compares both the variant and
+its payload, when present.
 
 In C, this commonly needs an enum tag, a union for payload storage, and rules
 kept in sync by the programmer. Nerd's enum represents the variant and its
-payload as one typed value. Use matching to access the active payload.
+payload as one typed value. Accessing the active payload will be covered in a
+later chapter.
 
 Variants can also carry named fields:
 
@@ -339,21 +313,14 @@ Event :: enum {
     }
 }
 
-dimensions_sum :: fn (event: Event) -> i32 {
-    return on event {
-        Closed => 0
-        Resized { width, height } => width + height
-    }
-}
-
 main :: fn () -> i32 {
     event := Event.Resized { width: 20, height: 22 }
-    return dimensions_sum(event)
+    return (event == Event.Resized { width: 20, height: 22 }).as(i32)
 }
 ```
 
-This returns `42`. Construction and matching use the same braced shape.
-The names `width` and `height` are available only within the matching branch.
+This returns `1`. The braced literal supplies the fields carried by the
+`Resized` variant.
 
 ## Discriminants and equality
 
@@ -391,7 +358,7 @@ identify which field should be compared.
 | --- | --- | --- |
 | `plex` | Holds all its fields in distinct storage. | Read fields by name. |
 | `union` | Fields overlap; the program tracks which interpretation is valid. | Read the appropriate field by name. |
-| `enum` | Tracks one active variant and its associated payload. | Match the variant to access its payload. |
+| `enum` | Tracks one active variant and its associated payload. | Payload access is covered in a later chapter. |
 
 ## Layout and bit fields
 
