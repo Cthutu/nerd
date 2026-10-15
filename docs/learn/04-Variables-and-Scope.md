@@ -2,7 +2,7 @@
 
 [Previous: Primitive Types and Expressions](03-Primitive-Types-and-Expressions.md)
 
-[Next: Plexes and Enums](05-Plexes-and-Enums.md)
+[Next: Plexes, Unions and Enums](05-Plexes-Unions-and-Enums.md)
 
 A variable provides storage whose value can change. Its type is fixed by the
 compiler, and each assignment must supply a compatible value. Scope determines

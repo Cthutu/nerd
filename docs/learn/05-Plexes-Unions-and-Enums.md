@@ -1,12 +1,13 @@
-# Chapter 5: Plexes and Enums
+# Chapter 5: Plexes, Unions and Enums
 
 [Previous: Variables and Scope](04-Variables-and-Scope.md)
 
 [Next: Arrays, Slices and Dynamic Arrays](06-Arrays-Slices-and-Dynamic-Arrays.md)
 
 Primitive types describe individual values. Plexes group named fields into a
-single value, much like C structs. Enums describe a choice between named
-variants, optionally carrying data specific to each variant.
+single value, much like C structs. Unions provide named fields that overlap in
+storage. Enums describe a choice between named variants, optionally carrying
+data specific to each variant.
 
 As in earlier chapters, programs returning an integer use it as an exit status.
 Examples using `prn` show their text output separately.
@@ -177,6 +178,52 @@ Here `self: Point` receives a value, and its fields cannot be reassigned through
 that parameter. Methods that modify the caller's plex need a pointer receiver;
 pointer types and mutation through pointers are separate topics.
 
+## Raw unions
+
+A `union` defines named alternatives that share storage, much like a C union.
+Field declarations use the same `name Type` syntax as plexes:
+
+```nerd
+Value :: union {
+    integer i32
+    real f32
+}
+
+main :: fn () -> i32 {
+    value := Value { integer: 42 }
+    return value.integer
+}
+```
+
+This returns `42`. A union literal initialises exactly one field. Unlike a
+plex, it cannot hold independent values in all its fields simultaneously.
+
+Assigning another field overwrites the shared storage:
+
+```nerd
+Value :: union {
+    integer i32
+    real f32
+}
+
+main :: fn () -> i32 {
+    value := Value { integer: 42 }
+    value.real = 3.5
+    return value.real.as(i32)
+}
+```
+
+This returns `3`. Writing `real` stores a floating-point value in the shared
+storage; it does not numerically convert the previous integer value. After the
+write, the example reads `real` rather than treating `integer` as a separately
+preserved value.
+
+A raw union has no tag recording which field the program should read. The
+compiler does not verify that the field you read matches the field last
+written. Use a union when overlapping storage is required and the program
+manages that interpretation. Use an enum when the value should track its
+active alternative.
+
 ## Enums without payloads
 
 An enum defines a set of variants:
@@ -303,6 +350,17 @@ Plexes and enums containing the primitive values used in this chapter support
 `==` and `!=`. Plex equality compares fields; enum equality compares the active
 variant and its payload. Two `Reading.Value(42)` values compare equal, while
 `Reading.Missing` and `Reading.Value(42)` do not.
+
+Raw unions do not have built-in value equality: their shared bytes do not
+identify which field should be compared.
+
+## Choosing between the three forms
+
+| Form | Storage and interpretation | Access |
+| --- | --- | --- |
+| `plex` | Holds all its fields in distinct storage. | Read fields by name. |
+| `union` | Fields overlap; the program tracks which interpretation is valid. | Read the appropriate field by name. |
+| `enum` | Tracks one active variant and its associated payload. | Match the variant to access its payload. |
 
 ## Layout and bit fields
 
