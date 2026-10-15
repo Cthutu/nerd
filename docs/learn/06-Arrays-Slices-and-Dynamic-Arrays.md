@@ -100,14 +100,35 @@ Collection members distinguish element counts from byte sizes:
 | --- | --- | --- | --- |
 | `.count` | Number of elements. | Number of viewed elements. | Number of live elements. |
 | `.bytes` | Byte size of all elements. | Byte size of viewed elements. | Obtain a slice first. |
-| `.size` | Size of the array itself. | Size of the view itself. | Size of the array handle itself. |
+| `.size` | Bytes occupied by the array's elements. | Bytes occupied by the slice value: its pointer and count. | Bytes occupied by the dynamic-array handle, excluding its heap allocation. |
 | `.capacity` | Not applicable. | Not applicable. | Number of elements that fit before growth is needed. |
 | `.data` | Pointer to the first element. | Borrowed pointer to the first element. | Pointer to the current element storage. |
 
 Counts, capacities, and byte sizes have type `usize`. For `[3]i32`, `.count`
 is `3` and `.bytes` is `3 * i32.size`. Its `.size` equals `.bytes` because
-the elements are the array's storage. A slice's `.size` describes the view,
-not the storage it borrows.
+the elements are the array's storage.
+
+A slice value contains a pointer and a `usize` element count. Its `.size`
+measures those two fields, including any layout padding. It does not depend
+on how many elements the slice views or on their type. On the current 64-bit
+target, a slice occupies `16` bytes: an 8-byte pointer and an 8-byte count.
+Its `.bytes` instead measures the viewed elements: `.count * T.size` for a
+slice of `T`.
+
+For example, given `values: [3]i32 = [10, 20, 12]`:
+
+| Expression | `.count` | `.bytes` | `.size` on the current 64-bit target |
+| --- | --- | --- | --- |
+| `values` | `3` | `12` | `12` |
+| `values[..]` | `3` | `12` | `16` |
+| `values[..1]` | `1` | `4` | `16` |
+
+A dynamic-array handle occupies one pointer on the current implementation.
+Its `.size` excludes both the heap-allocated bookkeeping and the element
+storage, so growing the array does not change the handle's size. Use
+`values[..].bytes` for its live element bytes, or
+`values.capacity * T.size` for its element capacity in bytes. Neither includes
+allocation bookkeeping.
 
 Use `.count` for indexing and iteration. A byte size is not an element count.
 An empty collection has no valid element index, and indexing at `.count` is
