@@ -25,7 +25,7 @@ storage:
 | Constant-length `[N]T` | Inline, as part of the array value. Local variables normally use stack storage; array fields live inside their containing value. | No separate allocation to free. |
 | Local `[count]T` with a runtime length | A separate heap allocation, with its length fixed at declaration. | The compiler frees the allocation when the declaring scope exits. |
 | `[]T` | Existing storage borrowed from another value or allocation. | The owner releases the storage; the slice must stay within its lifetime. |
-| `[..]T` | A separate heap allocation that can grow. | The program calls `.free()`, usually through `defer`. |
+| `[..]T` | A separate heap allocation that can grow. | The program calls `.free()` after its last use of the storage. |
 
 A local dynamic-array variable is a handle to its allocation. Letting that
 variable go out of scope does not free the allocation automatically. Returning
@@ -295,11 +295,12 @@ Use `[..]T` when the number of live elements needs to change:
 ```nerd
 main :: fn () -> i32 {
     values: [..]i32
-    defer values.free()
 
     values.push(20)
     values.push(22)
-    return values[0] + values[1]
+    result := values[0] + values[1]
+    values.free()
+    return result
 }
 ```
 
@@ -312,10 +313,11 @@ Adding elements or reserving capacity allocates heap storage as needed. That
 storage survives the declaring scope until it is explicitly freed.
 
 The dynamic array owns its allocated storage and requires cleanup. `.free()`
-releases it and resets the array to `nil`. `defer` schedules that call for the
-end of the current scope, including when a `return` exits the scope. Here, the
-return value is computed before the deferred cleanup runs. Keeping `defer`
-beside the declaration makes the cleanup responsibility visible.
+releases it and resets the array to `nil`. The example saves the calculated
+result before freeing the storage, then returns that result. Accessing the
+array's elements after `.free()` would be invalid. Make sure every path that
+finishes using an owned allocation releases it or passes cleanup responsibility
+to another function.
 
 You can request initial capacity in a declaration such as `values: [4..]i32`.
 Capacity provides room for elements; it does not make those elements live.
@@ -329,12 +331,13 @@ Reserving storage and adding elements are different operations:
 ```nerd
 main :: fn () -> i32 {
     values: [..]i32
-    defer values.free()
 
     values.reserve_to(8)
     values.resize_to(3)
     values[1] = 42
-    return values[0] + values[1] + values[2]
+    result := values[0] + values[1] + values[2]
+    values.free()
+    return result
 }
 ```
 
@@ -365,11 +368,12 @@ last element:
 main :: fn () -> i32 {
     source := [10, 20, 12]
     values: [..]i32
-    defer values.free()
 
     values.append(source[..])
     last := values.pop()
-    return values[0] + values[1] + last
+    result := values[0] + values[1] + last
+    values.free()
+    return result
 }
 ```
 
@@ -383,12 +387,13 @@ There are two indexed removal operations:
 main :: fn () -> i32 {
     source := [10, 20, 30, 40]
     values: [..]i32
-    defer values.free()
 
     values.append(source[..])
     values.delete(1)
     values.swap_delete(0)
-    return values[0] + values[1]
+    result := values[0] + values[1]
+    values.free()
+    return result
 }
 ```
 
@@ -404,13 +409,14 @@ Take a slice to borrow a dynamic array's current elements:
 ```nerd
 main :: fn () -> i32 {
     values: [..]i32
-    defer values.free()
     values.push(20)
     values.push(0)
 
     view := values[..]
     view[1] = 22
-    return values[0] + values[1]
+    result := values[0] + values[1]
+    values.free()
+    return result
 }
 ```
 
@@ -440,14 +446,16 @@ make_values :: fn () -> [..]i32 {
 
 main :: fn () -> i32 {
     values := make_values()
-    defer values.free()
-    return values[0] + values[1]
+    result := values[0] + values[1]
+    values.free()
+    return result
 }
 ```
 
-This returns `42`. The function deliberately does not defer `values.free()`:
-the caller needs the storage after the function returns. Explicitly discarding
-an owning result is not a substitute for freeing its storage.
+This returns `42`. `make_values` returns the owned storage without freeing it,
+so its caller can still use the elements. The caller saves its result and then
+calls `.free()`. Explicitly discarding an owning result is not a substitute for
+freeing its storage.
 
 ## Iterating over elements
 
