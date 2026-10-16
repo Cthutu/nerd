@@ -1,6 +1,6 @@
 # Native Windows validation — 16 October 2026
 
-**Automation: PASS (65/65 stages). Desktop/editor observations: BLOCKED.**
+**Automation: PASS (65/65 stages). Desktop: 24 observed PASS; interactive checks remain partial.**
 
 Tested implementation: `05c6e0235f622d8b184f1f0e872594d42160f628` on
 `std-library`. The checkout was clean at the start and the tested source did
@@ -46,7 +46,7 @@ See [the stage report](SUMMARY.md), [machine-readable report](summary.json),
 | Toolchain, temporary install, format workflow, build settings, Windows stdio | Both compilers pass |
 | Debugger/editor/adapter | Automated stepping/editor probes pass under both compilers; adapter transforms pass |
 | Benchmark | Accounting sanity and all 14 workload/target cells pass, with identical LLVM across jobs 1/2/4/8/16/auto |
-| Desktop build matrix | 48/48 builds pass; runtime visual/input/editor observations remain BLOCKED |
+| Desktop matrix | 48/48 builds pass; 24 debug-compiler cases observed PASS/exit 0, 24 release-compiler cases unobserved |
 
 Each Nexus configuration checks 96 TCP and 96 Telnet completed connections,
 1,152 exact replies per protocol, FIN/reset churn and partial-input shutdown.
@@ -71,9 +71,13 @@ no cell meets the 15% whole-build gain threshold. Keep the one-job default.
 CPU/peak working set describe Nerd only, excluding LLVM/linker children;
 wall time includes them. This is not a whole-process-tree memory gate.
 
-[MANUAL.md](MANUAL.md) and [desktop.json](desktop.json) explicitly record human
-observations still needed. The artifacts are prepared for a later interactive
-session. Long-duration Nexus soak/resource growth, DNS/IPv6, graph integration,
+[MANUAL.md](MANUAL.md) and [desktop.json](desktop.json) retain the user's 24
+explicit desktop PASS observations and zero exit codes, covering all three
+examples, both target modes, jobs 1/4 and both backends with the debug compiler.
+The user stopped the full matrix because it was repetitive; the remaining 24
+release-compiler cases are unobserved. No further duplicate desktop launches
+are requested for this pass. Interactive VS Code and Telnet Ctrl+C observations
+are still pending. Long-duration Nexus soak/resource growth, DNS/IPv6, graph integration,
 and cross-platform adoption remain separate work.
 
 ## Linux return

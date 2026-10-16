@@ -1,39 +1,31 @@
 # Native Windows manual checks — 16 October 2026
 
-Status: **BLOCKED — awaiting human observations**.
+Status: **PARTIAL — 24 desktop observations PASS; no observed failures**.
 
-All 48 desktop builds succeeded at implementation `05c6e023`: Pixels, Dungeon,
-and Triangle, each with debug/release compilers, debug/release targets, jobs 1/4,
-and LLVM/generated-C backends. See [the matrix](desktop.json) and
-[build output](desktop-prepare.log). Successful compilation establishes build
-coverage; drawing, input, resize and normal exit have not been observed here.
-Human observations were requested during this session; none were supplied.
+The user completed the debug-compiler batch for Pixels, Dungeon and Triangle:
+eight cases per example, covering LLVM/generated C, debug/release targets and
+jobs 1/4. All 24 were explicitly marked PASS, with exit code zero. Individual
+notes were empty; the observations and timestamps are retained in
+[desktop.json](desktop.json). Obsolete blocked-reason fields were removed only
+from observed PASS entries.
+
+All 48 builds succeeded. The user stopped after the Triangle examples because
+the full manual matrix was too repetitive. The remaining 24 release-compiler
+cases are unobserved, not failed or implicitly passed. No further duplicate
+desktop launches are requested for this pass. Both compilers already pass the
+full automated matrix; manual coverage below retains its exact compiler scope.
 
 | Check | Status | Evidence / notes |
 | --- | --- | --- |
-| Pixels visibly draws/responds; normal exit | BLOCKED | 16 builds pass; human visual/input observations pending |
-| Dungeon draws before input, regenerates, Q exits | BLOCKED | 16 builds pass; human terminal observations pending |
-| Triangle draws/responds; normal exit | BLOCKED | 16 builds pass; human visual/input observations pending |
-| VS Code/CodeLLDB breakpoints, stepping, locals, call stack | BLOCKED | Both automated debugger/editor probes pass; interactive editor observation pending |
-| Generated C display/input/exit parity | BLOCKED | All 24 C builds pass; human comparison with LLVM pending |
-| Interactive Telnet Ctrl+C shutdown | BLOCKED | All automated CTRL_BREAK_EVENT shutdown checks pass; interactive Ctrl+C observation pending |
+| Pixels drawing/input/normal exit | PASS, debug compiler | All 8 target/jobs/backend cases explicitly PASS; exit 0 |
+| Dungeon drawing/input/normal exit | PASS, debug compiler | All 8 target/jobs/backend cases explicitly PASS; exit 0 |
+| Triangle drawing/input/normal exit | PASS, debug compiler | All 8 target/jobs/backend cases explicitly PASS; exit 0 |
+| Generated C display/input/exit parity | PASS, debug compiler | All 12 C cases explicitly PASS alongside 12 LLVM cases |
+| Release-compiler desktop batch | UNOBSERVED | All 24 builds pass; user stopped repetitive manual matrix |
+| VS Code/CodeLLDB breakpoints, stepping, locals, call stack | BLOCKED | Automated probes pass; interactive editor observation not supplied |
+| Interactive Telnet Ctrl+C shutdown | BLOCKED | Automated CTRL_BREAK_EVENT checks pass; interactive Ctrl+C observation not supplied |
 
-To complete the prepared desktop matrix from an interactive PowerShell:
-
-```powershell
-python validation/windows/manual.py validation/windows/results/20261016T083710Z-8b918d2c --observe
-```
-
-Use `--compiler debug` / `--compiler release` and `--example pixels`, `dungeon`
-or `triangle` to work through smaller groups. The helper records an explicit
-PASS/FAIL/BLOCKED and notes per case. If ignored scratch artifacts have been
-removed, run it with `--prepare` first. Check debugger behaviour with the freshly
-built repository compiler/artifacts, following [DEBUGGER.md](../../../../DEBUGGER.md).
-Do not infer interactive editor success from the automated probes.
-
-Separately run the Telnet server from an interactive console, connect a client,
-exchange text, then press Ctrl+C. Record its command, target/compiler, shutdown
-output and exit status. Keep this observation distinct from automated
-CTRL_BREAK_EVENT delivery. Update this checklist and the handoff with actual
-observations when available. No global compiler or extension was installed by
-this validation run.
+The remaining distinct interactive checks are VS Code debugging and Telnet
+Ctrl+C; their prepared instructions are in ignored `scratch/manual/START-HERE.md`.
+These have not been inferred from desktop PASS answers or automated probes.
+No global compiler or extension was installed by this validation run.

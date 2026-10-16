@@ -1,6 +1,6 @@
 # Windows return handoff
 
-## Native Windows automation passed; manual observations pending — 2026-10-16
+## Native Windows automation passed; 24 desktop checks observed — 2026-10-16
 
 Branch: **`std-library`**. Start and tested implementation:
 **`05c6e0235f622d8b184f1f0e872594d42160f628`**. The checkout was clean at
@@ -42,19 +42,23 @@ tools. See [interpretation](20261016T083710Z-8b918d2c/BENCHMARK.md) and
 [raw measurements](20261016T083710Z-8b918d2c/benchmark.json). Whole-process-tree
 memory, long-duration Nexus resources, sanitizers and macOS are not established.
 
-**Manual checks are BLOCKED pending human observations.** All 48 Pixels/Dungeon/
-Triangle compiler/target/jobs/backend builds pass, but visible drawing, input,
-normal exit, generated-C visual parity, interactive VS Code debugging and Telnet
-Ctrl+C have not been observed in this session. The
-[manual checklist](20261016T083710Z-8b918d2c/MANUAL.md) and
-[prepared desktop matrix](20261016T083710Z-8b918d2c/desktop.json) record the boundary
-and how to complete it. Automated debugger probes do not replace editor use.
+**Desktop observations: 24 PASS, no observed failures, all exit codes zero.**
+The user completed Pixels, Dungeon and Triangle under the debug compiler, each
+with debug/release targets, jobs 1/4 and LLVM/generated C (eight per example).
+Individual notes were empty; explicit answers and timestamps are retained in the
+[desktop matrix](20261016T083710Z-8b918d2c/desktop.json). The user stopped after
+Triangle because the full matrix was too repetitive. The other 24 release-
+compiler cases remain unobserved; all 48 builds passed. No further duplicate
+desktop launches are requested for this pass. Interactive VS Code debugging and
+Telnet Ctrl+C remain BLOCKED pending actual observations. The
+[manual checklist](20261016T083710Z-8b918d2c/MANUAL.md) records the exact boundary.
+Automated debugger probes do not replace editor use.
 
 Linux pickup: pull `std-library` and read this section and its linked report.
 This run changed no implementation, so no Windows fix needs a Linux regression
 rerun. Preserve the existing Linux injection/source-interoperability evidence;
 new implementation work should receive its appropriate Linux checks. Complete
-the manual observations, then continue sustained Nexus soak/resource-growth
+the remaining distinct editor/Ctrl+C observations, then continue sustained Nexus soak/resource-growth
 measurements and DNS/IPv6 work in `std.network` before extending Nexus URLs.
 Graph integration and broader cross-platform adoption remain open.
 
