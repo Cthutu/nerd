@@ -1,9 +1,13 @@
 # Standard-library expansion plan
 
-Working branch: `std-library`. Thread/sync, IPv4 sockets, Raptor queues/tasks,
-and Nexus TCP/UDP/request-reply/Telnet APIs are implemented. Kerberos graphs,
-DNS/IPv6 and the remaining platform/stress gates are outstanding. The milestone
-sections below distinguish implemented slices from full milestone closure.
+Thread/sync, IPv4 sockets, Raptor queues/tasks, and Nexus
+TCP/UDP/request-reply/Telnet APIs are implemented. Follow-up feature work can
+use separate branches from `main`; this plan records the remaining dependencies
+and gates, rather than requiring a long-lived integration branch. Kerberos
+graphs, DNS/IPv6 and the remaining platform/stress gates are outstanding. The
+milestone sections below distinguish implemented slices from full milestone
+closure. See the [latest Windows evidence](../validation/windows/results/HANDOFF.md)
+for automated coverage and the remaining manual observations.
 
 ## Objective
 

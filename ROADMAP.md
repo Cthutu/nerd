@@ -6,9 +6,13 @@ continuing to grow this file.
 
 ## Active Standard-Library Work
 
-The `std-library` branch plans Raptor queues/scheduling, Kerberos graphs, portable
-BSD-style `std.network`, and message-oriented `std.nexus`. See the
-[scope, dependencies and milestone gates](docs/stdlib-expansion-plan.md).
+Thread/synchronisation, IPv4 TCP/UDP, Raptor queues/tasks, and Nexus
+message/request-reply/Telnet APIs are implemented. Follow-up work includes
+Kerberos graphs, DNS/IPv6, sustained resource-growth validation, and the
+remaining interactive/platform checks. See the
+[scope, dependencies and milestone gates](docs/stdlib-expansion-plan.md) and
+[latest Windows validation evidence](validation/windows/results/HANDOFF.md).
+Implemented features and automated passes do not close the outstanding gates.
 
 ## Current State
 
