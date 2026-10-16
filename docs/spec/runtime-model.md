@@ -116,9 +116,10 @@ the reserved range terminate at runtime.
 
 `arena.alloc[T]()` allocates one `T` aligned for `T`;
 `arena.alloc_array[T](count)` allocates contiguous storage for `count` values.
-Arena values are opaque handles. Copying an `arena` value copies the handle to
-the same underlying allocation state; it does not duplicate the reserved range
-or committed pages.
+Arena values are opaque, noncopyable allocation state. Their cursor and backing
+storage belong to one arena object. Share that object through `^arena`; copying
+a pointer shares the same cursor without duplicating ownership. Fresh arena
+construction is permitted, including direct construction in a return expression.
 `mark()` returns the current cursor. `restore(mark)` invalidates allocations
 made after that mark. `reset()` invalidates all allocations from the arena
 without releasing its reserved address range. `done()` releases the reserved

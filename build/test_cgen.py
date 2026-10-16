@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 # Runtime regressions beyond the language suite: defaults, ABI, ownership,
 # atomics, allocator diagnostics, formatting and generic dispatch.
 COMMANDS = (
+    "358-arena-borrowing",
     "357-enum-integer-contexts",
     "355-run-on-extraction-shorthand",
     "356-run-error-channel-patterns",

@@ -61,6 +61,18 @@ and persistent sharing violations without relying on scanner timing.
 This document is the high-level map of the current codebase. It points at the
 main subsystems and tells you where to read next.
 
+Sema validates noncopyable arena storage after type inference and while checking
+concrete generic function instantiations. Stored value reads whose type contains
+an arena produce diagnostic 0370. Address-taking, field/index projection,
+assignment destinations, collection views, tag-only inspections, and pointer
+method receivers borrow storage instead. Aggregate containment stops at pointers and views; fresh
+construction and fresh function results remain valid. Pattern binders are also
+checked because extraction can introduce implicit loads without value AST nodes.
+Both backends consume the same checked HIR; no arena move or runtime ownership
+tracking is introduced. C emission compares enum value patterns by tag, matching
+LLVM; it does not generate equality for unrelated, potentially noncomparable
+payloads.
+
 For unknown-name diagnostics, Sema examines the current module's deduplicated
 direct imports and their already-loaded semantic declarations. Matching private
 declarations contribute per-module `pub` suggestions through the error helpers;

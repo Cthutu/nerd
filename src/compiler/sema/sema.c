@@ -14892,6 +14892,201 @@ internal bool sema_generic_arguments_resolved(Array(u32) arg_types)
     return true;
 }
 
+// Arenas own their cursor and backing allocation. Containing aggregates inherit
+// the restriction; pointers and views borrow storage and remain copyable.
+internal bool sema_type_contains_arena(const Sema* sema, u32 index)
+{
+    if (index >= array_count(sema->types)) {
+        return false;
+    }
+    const SemaType* type = &sema->types[index];
+    switch (type->kind) {
+    case STK_Arena:
+        return true;
+    case STK_Array:
+    case STK_Atomic:
+        return sema_type_contains_arena(sema, type->first_param_type);
+    case STK_Tuple:
+    case STK_Plex:
+    case STK_Union:
+    case STK_Enum:
+        for (u32 i = 0; i < type->param_count; ++i) {
+            if (sema_type_contains_arena(
+                    sema, sema->type_param_types[type->first_param_type + i])) {
+                return true;
+            }
+        }
+        return false;
+    default:
+        return false;
+    }
+}
+
+internal void sema_mark_arena_borrow(const Ast* ast, bool* borrowed, u32 index)
+{
+    while (index < array_count(ast->nodes)) {
+        borrowed[index] = true;
+        if (ast->nodes[index].kind != AK_Expression) {
+            break;
+        }
+        index = ast->nodes[index].a;
+    }
+}
+
+internal bool
+sema_arena_expression_reads_storage(const Ast* ast, const Sema* sema, u32 index)
+{
+    index                = sema_unwrap_expr_node(ast, index);
+    const AstNode* node  = &ast->nodes[index];
+    u32            local = sema->node_local_indices[index];
+    u32            decl  = sema->node_decl_indices[index];
+    if (local != sema_no_local()) {
+        SemaLocalKind kind = sema->locals[local].kind;
+        return kind == SLK_Variable || kind == SLK_Param ||
+               kind == SLK_Constant || kind == SLK_Binder;
+    }
+    if (decl != sema_no_decl()) {
+        SemaDeclKind kind = sema->decls[decl].kind;
+        return kind == SK_Variable || kind == SK_Constant;
+    }
+    switch (node->kind) {
+    case AK_Deref:
+        return true;
+    case AK_Field:
+    case AK_TupleField:
+    case AK_Index:
+        {
+            u32 base = sema->node_type_indices[node->a];
+            if (base < array_count(sema->types)) {
+                SemaTypeKind kind = sema->types[base].kind;
+                if (kind == STK_Pointer || kind == STK_Box ||
+                    kind == STK_Slice || kind == STK_DynamicArray) {
+                    return true;
+                }
+            }
+            return sema_arena_expression_reads_storage(ast, sema, node->a);
+        }
+    default:
+        return false;
+    }
+}
+
+internal bool
+sema_validate_arena_copies(const Lexer* lexer, const Ast* ast, const Sema* sema)
+{
+    Array(bool) borrowed = NULL;
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        array_push(borrowed, false);
+    }
+    // These operations use existing storage without loading an owning value.
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        switch (node->kind) {
+        case AK_AddressOf:
+        case AK_Field:
+        case AK_TupleField:
+        case AK_Index:
+        case AK_Assign:
+            sema_mark_arena_borrow(ast, borrowed, node->a);
+            break;
+        case AK_Slice:
+            sema_mark_arena_borrow(
+                ast, borrowed, ast->slices[node->a].target_node_index);
+            break;
+        case AK_For:
+            sema_mark_arena_borrow(
+                ast, borrowed, ast->fors[node->a].iterable_node_index);
+            break;
+        case AK_Equal:
+        case AK_NotEqual:
+            // Comparing an optional against nil only reads its presence tag.
+            if (ast->nodes[sema_unwrap_expr_node(ast, node->a)].kind ==
+                AK_NilLiteral) {
+                sema_mark_arena_borrow(ast, borrowed, node->b);
+            }
+            if (ast->nodes[sema_unwrap_expr_node(ast, node->b)].kind ==
+                AK_NilLiteral) {
+                sema_mark_arena_borrow(ast, borrowed, node->a);
+            }
+            break;
+        case AK_On:
+            {
+                if (node->a >= array_count(sema->node_type_indices)) {
+                    break;
+                }
+                u32 subject = sema->node_type_indices[node->a];
+                if (subject < array_count(sema->types) &&
+                    sema->types[subject].kind == STK_Enum) {
+                    sema_mark_arena_borrow(ast, borrowed, node->a);
+                }
+            }
+            break;
+        case AK_Cast:
+            if (!sema_type_contains_arena(sema, sema->node_type_indices[i])) {
+                sema_mark_arena_borrow(ast, borrowed, node->a);
+            }
+            break;
+        default:
+            break;
+        }
+    }
+    // A method's implicit address-of is a borrow, but a value receiver copies.
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (node->kind != AK_Call ||
+            sema->node_method_call_decl_indices[i] == sema_no_decl() ||
+            sema->node_method_call_receiver_refs[i]) {
+            continue;
+        }
+        u32 callee = sema_unwrap_expr_node(ast, node->a);
+        if (ast->nodes[callee].kind == AK_Field) {
+            u32 receiver      = ast->nodes[callee].a;
+            u32 receiver_type = sema->node_type_indices[receiver];
+            if (sema->node_method_call_receiver_derefs[i] &&
+                receiver_type < array_count(sema->types) &&
+                sema_type_contains_arena(
+                    sema, sema->types[receiver_type].first_param_type)) {
+                array_free(borrowed);
+                return error_0370_arena_copy(
+                    lexer->source,
+                    sema_node_span(lexer, &ast->nodes[receiver]));
+            }
+            borrowed[receiver]                             = false;
+            borrowed[sema_unwrap_expr_node(ast, receiver)] = false;
+        }
+    }
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (borrowed[i] || sema->node_is_type_expr[i] ||
+            !sema_type_contains_arena(sema, sema->node_type_indices[i])) {
+            continue;
+        }
+        if (node->kind != AK_SymbolRef && node->kind != AK_Deref &&
+            node->kind != AK_Field && node->kind != AK_TupleField &&
+            node->kind != AK_Index) {
+            continue;
+        }
+        if (!sema_arena_expression_reads_storage(ast, sema, i)) {
+            continue;
+        }
+        array_free(borrowed);
+        return error_0370_arena_copy(lexer->source,
+                                     sema_node_span(lexer, node));
+    }
+    array_free(borrowed);
+    // Pattern extraction can introduce implicit loads
+    // with no corresponding value expression in the AST.
+    for (u32 i = 0; i < array_count(sema->locals); ++i) {
+        const SemaLocal* local = &sema->locals[i];
+        if (local->kind == SLK_Binder &&
+            sema_type_contains_arena(sema, local->type_index)) {
+            return error_0370_arena_copy(lexer->source,
+                                         sema_local_span(lexer, ast, local));
+        }
+    }
+    return true;
+}
+
 internal bool sema_emit_generic_function_instantiation(const Lexer* lexer,
                                                        const Ast*   ast,
                                                        Sema*        sema,
@@ -14968,8 +15163,12 @@ internal bool sema_emit_generic_function_instantiation(const Lexer* lexer,
         return false;
     }
     g_sema_type_subst = previous;
+    if (!sema_validate_arena_copies(lexer, ast, sema)) {
+        sema_restore_node_tables(sema, &node_tables);
+        return false;
+    }
 
-    u32 root_scope    = sema->node_scope_indices[decl->value_node_index];
+    u32 root_scope = sema->node_scope_indices[decl->value_node_index];
     array_push(
         sema->generic_fn_instantiations,
         (SemaGenericFnInstantiation){
@@ -29752,7 +29951,8 @@ bool sema_analyse(const Lexer*           lexer,
         error_type_resolver_select(previous_resolver);
         return false;
     }
-    if (!sema_validate_va_lists(lexer, ast, &sema)) {
+    if (!sema_validate_arena_copies(lexer, ast, &sema) ||
+        !sema_validate_va_lists(lexer, ast, &sema)) {
         sema_done(&sema);
         error_type_resolver_select(previous_resolver);
         return false;

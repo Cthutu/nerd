@@ -1204,6 +1204,16 @@ internal cstr cgen_pattern(CGen* c, u32 index, CValue value)
         return result;
     }
     CValue rhs = cgen_coerce(c, cgen_expr(c, p->expr_index), value.type);
+    // Enum value patterns select tags, as in the LLVM backend. Comparing all
+    // payloads here can also emit invalid equality for noncomparable variants.
+    if (cgen_kind(c, value.type) == STK_Enum &&
+        (p->kind == HIR_PATTERN_Value || p->kind == HIR_PATTERN_Equal ||
+         p->kind == HIR_PATTERN_NotEqual)) {
+        return CF("(%s.tag%s%s.tag)",
+                  value.text,
+                  p->kind == HIR_PATTERN_NotEqual ? "!=" : "==",
+                  rhs.text);
+    }
     if (p->kind == HIR_PATTERN_RangeExclusive ||
         p->kind == HIR_PATTERN_RangeInclusive) {
         CValue end =

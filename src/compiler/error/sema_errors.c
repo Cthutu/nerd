@@ -163,6 +163,22 @@ bool error_0304_type_mismatch_with_help(NerdSource source,
     return false;
 }
 
+bool error_0370_arena_copy(NerdSource source, ErrorSpan span)
+{
+    ErrorInfo error =
+        error_init(source, span, "Arena storage cannot be copied");
+    error_add_reference(
+        &error,
+        ERROR_REF_PRIMARY,
+        span,
+        "This expression would copy an arena or an aggregate containing one");
+    error_add_help(&error,
+                   "Use `^arena` to share an existing arena, or construct a "
+                   "fresh arena value.");
+    error_render(&error);
+    return false;
+}
+
 bool error_0304_type_mismatch(NerdSource source,
                               ErrorSpan  span,
                               string     expected_type,

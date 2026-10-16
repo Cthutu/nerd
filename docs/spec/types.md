@@ -24,10 +24,15 @@ The semantic analyser recognises these built-in type families:
 indexes, byte sizes, and capacities. Use `isize` for signed offsets or other
 platform-sized signed integer values.
 
-Copying an `arena` value copies its cursor and storage metadata while retaining
-the same backing allocation. The copied cursors advance independently; using
-both for allocation can overlap their results. Use `^arena` to share one arena
-object and its allocation state. Its owner releases the backing storage once.
+An `arena` value is noncopyable. This restriction propagates through fixed
+arrays, tuples, plexes, unions, and enums containing arenas.
+Loading stored arena data into another value, including arguments, returns,
+aggregate initializers, and modified copies, is rejected. Fresh construction
+and borrowing existing storage remain valid. Inspecting an enum tag or comparing
+an optional against `nil` does not copy its payload. Pointers and views do not
+inherit the restriction: use `^arena` to share one arena object and its allocation
+state.
+Its owner releases the backing storage once.
 
 `untyped integer` and `untyped float` are temporary semantic types for numeric
 literals. They materialise to concrete types from context, or to `i32` and
