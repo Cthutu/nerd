@@ -90,18 +90,18 @@ define internal i32 @fn.0() {
   %t27 = alloca { ptr, i64 }
   %t29 = alloca { ptr, i64 }
   %t33 = alloca { ptr, i64 }
-  %t0 = insertvalue { i32, i32, { ptr, i64 } } poison, i32 3, 0
-  %t1 = insertvalue { i32, i32, { ptr, i64 } } %t0, i32 4, 1
-  %t2 = insertvalue { i32, i32, { ptr, i64 } } %t1, { ptr, i64 } { ptr @.str.m0.0, i64 6 }, 2
-  %t3 = insertvalue { i32, i32, { ptr, i64 } } poison, i32 5, 0
-  %t4 = insertvalue { i32, i32, { ptr, i64 } } %t3, i32 6, 1
-  %t5 = insertvalue { i32, i32, { ptr, i64 } } %t4, { ptr, i64 } { ptr @.str.m0.1, i64 5 }, 2
+  %t0 = insertvalue { { ptr, i64 }, i32, i32 } poison, i32 3, 1
+  %t1 = insertvalue { { ptr, i64 }, i32, i32 } %t0, i32 4, 2
+  %t2 = insertvalue { { ptr, i64 }, i32, i32 } %t1, { ptr, i64 } { ptr @.str.m0.0, i64 6 }, 0
+  %t3 = insertvalue { { ptr, i64 }, i32, i32 } poison, i32 5, 1
+  %t4 = insertvalue { { ptr, i64 }, i32, i32 } %t3, i32 6, 2
+  %t5 = insertvalue { { ptr, i64 }, i32, i32 } %t4, { ptr, i64 } { ptr @.str.m0.1, i64 5 }, 0
   %t6 = call i64 @nrt_string_builder_mark()
   %t7 = alloca { ptr, i64 }
   store { ptr, i64 } { ptr @.str.m0.2, i64 2 }, ptr %t8
   call void @nrt_to_string_string(ptr %t7, ptr %t8)
   call void @nrt_string_builder_append_string(ptr %t7)
-  %t9 = extractvalue { i32, i32, { ptr, i64 } } %t2, 2
+  %t9 = extractvalue { { ptr, i64 }, i32, i32 } %t2, 0
   %t10 = alloca { ptr, i64 }
   store { ptr, i64 } %t9, ptr %t11
   call void @nrt_to_string_string(ptr %t10, ptr %t11)
@@ -110,7 +110,7 @@ define internal i32 @fn.0() {
   store { ptr, i64 } { ptr @.str.m0.3, i64 2 }, ptr %t13
   call void @nrt_to_string_string(ptr %t12, ptr %t13)
   call void @nrt_string_builder_append_string(ptr %t12)
-  %t14 = extractvalue { i32, i32, { ptr, i64 } } %t2, 0
+  %t14 = extractvalue { { ptr, i64 }, i32, i32 } %t2, 1
   %t15 = alloca { ptr, i64 }
   call void @nrt_to_string_i32(ptr %t15, i32 %t14)
   call void @nrt_string_builder_append_string(ptr %t15)
@@ -118,7 +118,7 @@ define internal i32 @fn.0() {
   store { ptr, i64 } { ptr @.str.m0.4, i64 2 }, ptr %t17
   call void @nrt_to_string_string(ptr %t16, ptr %t17)
   call void @nrt_string_builder_append_string(ptr %t16)
-  %t18 = extractvalue { i32, i32, { ptr, i64 } } %t2, 1
+  %t18 = extractvalue { { ptr, i64 }, i32, i32 } %t2, 2
   %t19 = alloca { ptr, i64 }
   call void @nrt_to_string_i32(ptr %t19, i32 %t18)
   call void @nrt_string_builder_append_string(ptr %t19)
@@ -131,7 +131,7 @@ define internal i32 @fn.0() {
   store { ptr, i64 } { ptr @.str.m0.5, i64 2 }, ptr %t24
   call void @nrt_to_string_string(ptr %t23, ptr %t24)
   call void @nrt_string_builder_append_string(ptr %t23)
-  %t25 = extractvalue { i32, i32, { ptr, i64 } } %t5, 2
+  %t25 = extractvalue { { ptr, i64 }, i32, i32 } %t5, 0
   %t26 = alloca { ptr, i64 }
   store { ptr, i64 } %t25, ptr %t27
   call void @nrt_to_string_string(ptr %t26, ptr %t27)
@@ -140,7 +140,7 @@ define internal i32 @fn.0() {
   store { ptr, i64 } { ptr @.str.m0.6, i64 2 }, ptr %t29
   call void @nrt_to_string_string(ptr %t28, ptr %t29)
   call void @nrt_string_builder_append_string(ptr %t28)
-  %t30 = extractvalue { i32, i32, { ptr, i64 } } %t5, 0
+  %t30 = extractvalue { { ptr, i64 }, i32, i32 } %t5, 1
   %t31 = alloca { ptr, i64 }
   call void @nrt_to_string_i32(ptr %t31, i32 %t30)
   call void @nrt_string_builder_append_string(ptr %t31)
@@ -148,7 +148,7 @@ define internal i32 @fn.0() {
   store { ptr, i64 } { ptr @.str.m0.7, i64 2 }, ptr %t33
   call void @nrt_to_string_string(ptr %t32, ptr %t33)
   call void @nrt_string_builder_append_string(ptr %t32)
-  %t34 = extractvalue { i32, i32, { ptr, i64 } } %t5, 1
+  %t34 = extractvalue { { ptr, i64 }, i32, i32 } %t5, 2
   %t35 = alloca { ptr, i64 }
   call void @nrt_to_string_i32(ptr %t35, i32 %t34)
   call void @nrt_string_builder_append_string(ptr %t35)
@@ -156,12 +156,12 @@ define internal i32 @fn.0() {
   call void @nrt_string_builder_finish(ptr %t36, i64 %t22)
   %t37 = load { ptr, i64 }, ptr %t36
   call void @$prn_text({ ptr, i64 } %t37)
-  %t38 = extractvalue { i32, i32, { ptr, i64 } } %t2, 0
-  %t39 = extractvalue { i32, i32, { ptr, i64 } } %t2, 1
+  %t38 = extractvalue { { ptr, i64 }, i32, i32 } %t2, 1
+  %t39 = extractvalue { { ptr, i64 }, i32, i32 } %t2, 2
   %t40 = add i32 %t38, %t39
-  %t41 = extractvalue { i32, i32, { ptr, i64 } } %t5, 0
+  %t41 = extractvalue { { ptr, i64 }, i32, i32 } %t5, 1
   %t42 = add i32 %t40, %t41
-  %t43 = extractvalue { i32, i32, { ptr, i64 } } %t5, 1
+  %t43 = extractvalue { { ptr, i64 }, i32, i32 } %t5, 2
   %t44 = add i32 %t42, %t43
   ret i32 %t44
 }

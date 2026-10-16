@@ -260,6 +260,13 @@ backing type's width. Use `_ : N` to reserve unnamed padding bits. The backing
 type must be `u8`, `u16`, `u32`, `u64`, or `usize`, and each block occupies one
 value of that type in the plex layout.
 
+Ordinary plex fields are arranged by descending alignment to reduce padding;
+this does not change the order in which literal expressions are evaluated.
+Embedded plexes and bit-field blocks stay intact. Use `plex #c` when fields must
+stay in declaration order for C interoperability (`#packed` also preserves that
+order). For example, `plex { a u8 b u32 c u8 }` uses 8 bytes, compared with 12
+bytes for the same fields in a `#c` plex.
+
 Named bits are ordinary flattened fields such as `header.version`; reads and
 writes use the backing integer type. A constant value that does not fit is a
 compile error. A runtime value is masked to the declared width. A bit field

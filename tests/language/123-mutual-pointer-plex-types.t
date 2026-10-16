@@ -38,30 +38,30 @@ func fn.0() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@$left = internal global { i32, ptr } zeroinitializer
-@$right = internal global { i32, ptr } zeroinitializer
+@$left = internal global { ptr, i32 } zeroinitializer
+@$right = internal global { ptr, i32 } zeroinitializer
 
 define void @m0.init() {
-  %t0 = insertvalue { i32, ptr } poison, i32 1, 0
-  %t1 = insertvalue { i32, ptr } %t0, ptr null, 1
-  store { i32, ptr } %t1, ptr @$left
-  %t2 = insertvalue { i32, ptr } poison, i32 2, 0
-  %t3 = insertvalue { i32, ptr } %t2, ptr @$left, 1
-  store { i32, ptr } %t3, ptr @$right
+  %t0 = insertvalue { ptr, i32 } poison, i32 1, 1
+  %t1 = insertvalue { ptr, i32 } %t0, ptr null, 0
+  store { ptr, i32 } %t1, ptr @$left
+  %t2 = insertvalue { ptr, i32 } poison, i32 2, 1
+  %t3 = insertvalue { ptr, i32 } %t2, ptr @$left, 0
+  store { ptr, i32 } %t3, ptr @$right
   ret void
 }
 
 define internal i32 @fn.0() {
-  %t0 = getelementptr inbounds { i32, ptr }, ptr @$left, i64 0, i32 1
+  %t0 = getelementptr inbounds { ptr, i32 }, ptr @$left, i64 0, i32 0
   store ptr @$right, ptr %t0
-  %t1 = load { i32, ptr }, ptr @$left
-  %t2 = extractvalue { i32, ptr } %t1, 1
-  %t3 = load { i32, ptr }, ptr %t2
-  %t4 = extractvalue { i32, ptr } %t3, 0
-  %t5 = load { i32, ptr }, ptr @$right
-  %t6 = extractvalue { i32, ptr } %t5, 1
-  %t7 = load { i32, ptr }, ptr %t6
-  %t8 = extractvalue { i32, ptr } %t7, 0
+  %t1 = load { ptr, i32 }, ptr @$left
+  %t2 = extractvalue { ptr, i32 } %t1, 0
+  %t3 = load { ptr, i32 }, ptr %t2
+  %t4 = extractvalue { ptr, i32 } %t3, 1
+  %t5 = load { ptr, i32 }, ptr @$right
+  %t6 = extractvalue { ptr, i32 } %t5, 0
+  %t7 = load { ptr, i32 }, ptr %t6
+  %t8 = extractvalue { ptr, i32 } %t7, 1
   %t9 = add i32 %t4, %t8
   ret i32 %t9
 }

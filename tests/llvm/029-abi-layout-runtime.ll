@@ -112,12 +112,12 @@ on.next.2:
   %t6 = icmp eq i64 %t5, 1
   %t7 = extractvalue { i64, i128 } %choice, 1
   store i128 %t7, ptr %t9
-  %t8 = load { i32, i64 }, ptr %t9
+  %t8 = load { i64, i32 }, ptr %t9
   %t10 = and i1 %t6, 1
   br i1 %t10, label %on.body.4, label %on.next.5
 on.body.4:
-  %t11 = extractvalue { i32, i64 } %t8, 0
-  %t12 = extractvalue { i32, i64 } %t8, 1
+  %t11 = extractvalue { i64, i32 } %t8, 1
+  %t12 = extractvalue { i64, i32 } %t8, 0
   %t13 = trunc i64 %t12 to i32
   %t14 = add i32 %t11, %t13
   br label %on.value.6
@@ -164,8 +164,8 @@ dynarray.alloc.0:
 dynarray.ready.1:
   %t7 = load ptr, ptr %local.4
   %t8 = getelementptr inbounds i8, ptr %t7, i64 -32
-  %t9 = insertvalue { i32, i64 } poison, i32 3, 0
-  %t10 = insertvalue { i32, i64 } %t9, i64 4, 1
+  %t9 = insertvalue { i64, i32 } poison, i32 3, 1
+  %t10 = insertvalue { i64, i32 } %t9, i64 4, 0
   %t11 = getelementptr inbounds { ptr, i64, i64 }, ptr %t8, i64 0, i32 0
   %t12 = getelementptr inbounds { ptr, i64, i64 }, ptr %t8, i64 0, i32 1
   %t13 = getelementptr inbounds { ptr, i64, i64 }, ptr %t8, i64 0, i32 2
@@ -195,8 +195,8 @@ dynarray.store.3:
   %t30 = getelementptr inbounds { ptr, i64, i64 }, ptr %t29, i64 0, i32 0
   %t31 = getelementptr inbounds { ptr, i64, i64 }, ptr %t29, i64 0, i32 1
   %t32 = load ptr, ptr %t30
-  %t33 = getelementptr inbounds { i32, i64 }, ptr %t32, i64 %t15
-  store { i32, i64 } %t10, ptr %t33
+  %t33 = getelementptr inbounds { i64, i32 }, ptr %t32, i64 %t15
+  store { i64, i32 } %t10, ptr %t33
   store i64 %t17, ptr %t31
   %t34 = load ptr, ptr %local.4
   %t35 = icmp eq ptr %t34, null
@@ -236,8 +236,8 @@ dynarray.reserve.done.7:
   %t54 = getelementptr inbounds i8, ptr %t53, i64 -32
   %t55 = getelementptr inbounds { ptr, i64, i64 }, ptr %t54, i64 0, i32 0
   %t56 = load ptr, ptr %t55
-  %t57 = getelementptr inbounds { i32, i64 }, ptr %t56, i32 0
-  %t58 = load { i32, i64 }, ptr %t57
+  %t57 = getelementptr inbounds { i64, i32 }, ptr %t56, i32 0
+  %t58 = load { i64, i32 }, ptr %t57
   %t59 = load ptr, ptr %local.4
   %t60 = icmp eq ptr %t59, null
   br i1 %t60, label %dynarray.free.done.9, label %dynarray.free.8
@@ -247,8 +247,8 @@ dynarray.free.8:
   store ptr null, ptr %local.4
   br label %dynarray.free.done.9
 dynarray.free.done.9:
-  %t62 = extractvalue { i32, i64 } %t58, 0
-  %t63 = extractvalue { i32, i64 } %t58, 1
+  %t62 = extractvalue { i64, i32 } %t58, 1
+  %t63 = extractvalue { i64, i32 } %t58, 0
   %t64 = trunc i64 %t63 to i32
   %t65 = add i32 %t62, %t64
   ret i32 %t65
@@ -311,10 +311,10 @@ define internal i32 @fn.5() {
   %t33 = getelementptr inbounds i8, ptr %t32, i32 0
   %t34 = load i8, ptr %t33
   %t35 = zext i8 %t34 to i32
-  %t36 = insertvalue { i32, i64 } poison, i32 %t35, 0
-  %t37 = insertvalue { i32, i64 } %t36, i64 8, 1
+  %t36 = insertvalue { i64, i32 } poison, i32 %t35, 1
+  %t37 = insertvalue { i64, i32 } %t36, i64 8, 0
   store i128 0, ptr %t39
-  store { i32, i64 } %t37, ptr %t39
+  store { i64, i32 } %t37, ptr %t39
   %t38 = load i128, ptr %t39
   %t40 = insertvalue { i64, i128 } poison, i64 1, 0
   %t41 = insertvalue { i64, i128 } %t40, i128 %t38, 1
