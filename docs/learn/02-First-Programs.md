@@ -209,3 +209,27 @@ main :: fn () -> i32 {
 As in C, status `0` indicates success, and a nonzero status indicates failure.
 The status is passed to the operating system; it is separate from the text
 printed by the program.
+
+## Function parameters
+
+A function declares its inputs inside the parentheses after `fn`. Each
+parameter uses `name: Type`:
+
+```nerd
+echo :: fn (value: i32) -> i32 {
+    return value
+}
+
+main :: fn () -> i32 {
+    return echo(42)
+}
+```
+
+This returns `42`. `value` is a parameter of type `i32`. Calling `echo(42)`
+supplies `42` as its argument, and the function returns that value. Separate
+multiple parameters and their corresponding arguments with commas.
+
+The parameter type supplies context for the argument: here the untyped literal
+`42` becomes an `i32`. The compiler checks each argument against its parameter's
+type. Parameters receive arguments by value. The parameter name is available
+inside the function body and cannot be reassigned there.

@@ -92,48 +92,6 @@ main :: fn () -> i32 {
 This returns `42`. The first index selects a row; the second selects an element
 of that row.
 
-## Counts and storage sizes
-
-Collection members distinguish element counts from byte sizes:
-
-| Member | Fixed array | Slice | Dynamic array |
-| --- | --- | --- | --- |
-| `.count` | Number of elements. | Number of viewed elements. | Number of live elements. |
-| `.bytes` | Byte size of all elements. | Byte size of viewed elements. | Obtain a slice first. |
-| `.size` | Bytes occupied by the array's elements. | Bytes occupied by the slice value: its pointer and count. | Bytes occupied by the dynamic-array handle, excluding its heap allocation. |
-| `.capacity` | Not applicable. | Not applicable. | Number of elements that fit before growth is needed. |
-| `.data` | Pointer to the first element. | Borrowed pointer to the first element. | Pointer to the current element storage. |
-
-Counts, capacities, and byte sizes have type `usize`. For `[3]i32`, `.count`
-is `3` and `.bytes` is `3 * i32.size`. Its `.size` equals `.bytes` because
-the elements are the array's storage.
-
-A slice value contains a pointer and a `usize` element count. Its `.size`
-measures those two fields, including any layout padding. It does not depend
-on how many elements the slice views or on their type. On the current 64-bit
-target, a slice occupies `16` bytes: an 8-byte pointer and an 8-byte count.
-Its `.bytes` instead measures the viewed elements: `.count * T.size` for a
-slice of `T`.
-
-For example, given `values: [3]i32 = [10, 20, 12]`:
-
-| Expression | `.count` | `.bytes` | `.size` on the current 64-bit target |
-| --- | --- | --- | --- |
-| `values` | `3` | `12` | `12` |
-| `values[..]` | `3` | `12` | `16` |
-| `values[..1]` | `1` | `4` | `16` |
-
-A dynamic-array handle occupies one pointer on the current implementation.
-Its `.size` excludes both the heap-allocated bookkeeping and the element
-storage, so growing the array does not change the handle's size. Use
-`values[..].bytes` for its live element bytes, or
-`values.capacity * T.size` for its element capacity in bytes. Neither includes
-allocation bookkeeping.
-
-Use `.count` for indexing and iteration. A byte size is not an element count.
-An empty collection has no valid element index, and indexing at `.count` is
-always outside the live elements.
-
 ## Creating a slice
 
 Use `[]T` for a slice type. Slicing an array creates a view of its existing
@@ -163,6 +121,49 @@ The end of a slice is exclusive. You can omit either bound:
 
 Slice bounds must describe a valid interval within the source. Slicing uses
 the exclusive `..` spelling, not `..=`.
+
+## Counts and storage sizes
+
+Collection members distinguish element counts from byte sizes:
+
+| Member | Fixed array | Slice | Dynamic array |
+| --- | --- | --- | --- |
+| `.count` | Number of elements. | Number of viewed elements. | Number of live elements. |
+| `.bytes` | Byte size of all elements. | Byte size of viewed elements. | Obtain a slice first. |
+| `.size` | Bytes occupied by the array's elements. | Bytes occupied by the slice value: its pointer and count. | Bytes occupied by the dynamic-array handle, excluding its heap allocation. |
+| `.capacity` | Not applicable. | Not applicable. | Number of elements that fit before growth is needed. |
+| `.data` | Pointer to the first element. | Borrowed pointer to the first element. | Pointer to the current element storage. |
+
+Counts, capacities, and byte sizes have type `usize`. On a type, `T.size`
+gives the byte size of a value of that type; for example, `i32.size` is `4`.
+For `[3]i32`, `.count` is `3` and `.bytes` is `3 * i32.size`. Its `.size` equals
+`.bytes` because the elements are the array's storage.
+
+A slice value contains a pointer and a `usize` element count. Its `.size`
+measures those two fields, including any layout padding. It does not depend
+on how many elements the slice views or on their type. On the current 64-bit
+target, a slice occupies `16` bytes: an 8-byte pointer and an 8-byte count.
+Its `.bytes` instead measures the viewed elements: `.count * T.size` for a
+slice of `T`.
+
+For example, given `values: [3]i32 = [10, 20, 12]`:
+
+| Expression | `.count` | `.bytes` | `.size` on the current 64-bit target |
+| --- | --- | --- | --- |
+| `values` | `3` | `12` | `12` |
+| `values[..]` | `3` | `12` | `16` |
+| `values[..1]` | `1` | `4` | `16` |
+
+A dynamic-array handle occupies one pointer on the current implementation.
+Its `.size` excludes both the heap-allocated bookkeeping and the element
+storage, so growing the array does not change the handle's size. Use
+`values[..].bytes` for its live element bytes, or
+`values.capacity * T.size` for its element capacity in bytes. Neither includes
+allocation bookkeeping.
+
+Use `.count` for indexing and iteration. A byte size is not an element count.
+An empty collection has no valid element index, and indexing at `.count` is
+always outside the live elements.
 
 ## Passing slices to functions
 
@@ -308,9 +309,10 @@ This returns `42`. A default dynamic array starts empty. `.push(value)` appends
 an element, growing storage as necessary. Indexing accesses live elements, just
 as with a fixed array.
 
-The default `values: [..]i32` starts as `nil`, without an element allocation.
-Adding elements or reserving capacity allocates heap storage as needed. That
-storage survives the declaring scope until it is explicitly freed.
+The default `values: [..]i32` starts as `nil`. Here, `nil` is an empty handle
+with no allocation: both `.count` and `.capacity` are zero. Adding elements
+or reserving capacity allocates heap storage as needed. That storage survives
+the declaring scope until it is explicitly freed.
 
 The dynamic array owns its allocated storage and requires cleanup. `.free()`
 releases it and resets the array to `nil`. The example saves the calculated
@@ -456,26 +458,3 @@ This returns `42`. `make_values` returns the owned storage without freeing it,
 so its caller can still use the elements. The caller saves its result and then
 calls `.free()`. Explicitly discarding an owning result is not a substitute for
 freeing its storage.
-
-## Iterating over elements
-
-Use `for item in collection` to visit array, slice, or dynamic-array elements.
-For these collections, the item binding is a pointer to the element. Postfix
-`^` dereferences it, serving the role of prefix `*` in C:
-
-```nerd
-main :: fn () -> i32 {
-    values := [10, 20, 12]
-    total := 0
-    for item in values {
-        total += item^
-    }
-    return total
-}
-```
-
-This returns `42`. Each iteration reads the next element through `item^`.
-Writing `item^ = expression` updates that element. The same iteration form works
-with a slice or dynamic array. Keep the collection's storage stable during
-iteration; avoid operations that grow, free, or rearrange it while traversing
-its elements.
