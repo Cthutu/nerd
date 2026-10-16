@@ -218,16 +218,16 @@ on.end.0:
   ret i32 %t13
 }
 
-define internal i32 @fn.1({ i32, i32, { ptr, i64 } } %point) {
+define internal i32 @fn.1({ { ptr, i64 }, i32, i32 } %point) {
   %t1 = alloca { ptr, i64 }
   %t2 = alloca { ptr, i64 }
   %t12 = alloca { ptr, i64 }
   %t13 = alloca { ptr, i64 }
-  %t0 = extractvalue { i32, i32, { ptr, i64 } } %point, 2
+  %t0 = extractvalue { { ptr, i64 }, i32, i32 } %point, 0
   store { ptr, i64 } %t0, ptr %t1
   store { ptr, i64 } { ptr @.str.m0.1, i64 6 }, ptr %t2
   %t3 = call i1 @nrt_string_eq(ptr %t1, ptr %t2)
-  %t4 = extractvalue { i32, i32, { ptr, i64 } } %point, 0
+  %t4 = extractvalue { { ptr, i64 }, i32, i32 } %point, 1
   %t5 = and i1 %t3, 1
   br i1 %t5, label %on.body.1, label %on.next.2
 on.body.1:
@@ -235,9 +235,9 @@ on.body.1:
 on.value.3:
   br label %on.end.0
 on.next.2:
-  %t6 = extractvalue { i32, i32, { ptr, i64 } } %point, 0
+  %t6 = extractvalue { { ptr, i64 }, i32, i32 } %point, 1
   %t7 = icmp eq i32 %t6, 3
-  %t8 = extractvalue { i32, i32, { ptr, i64 } } %point, 1
+  %t8 = extractvalue { { ptr, i64 }, i32, i32 } %point, 2
   %t9 = and i1 %t7, 1
   br i1 %t9, label %on.body.4, label %on.next.5
 on.body.4:
@@ -246,7 +246,7 @@ on.body.4:
 on.value.6:
   br label %on.end.0
 on.next.5:
-  %t11 = extractvalue { i32, i32, { ptr, i64 } } %point, 2
+  %t11 = extractvalue { { ptr, i64 }, i32, i32 } %point, 0
   store { ptr, i64 } %t11, ptr %t12
   store { ptr, i64 } { ptr @.str.m0.0, i64 8 }, ptr %t13
   %t14 = call i1 @nrt_string_eq(ptr %t12, ptr %t13)
@@ -266,8 +266,8 @@ on.end.0:
   ret i32 %t15
 }
 
-define internal { ptr, i64 } @fn.2({ i32, i32, { ptr, i64 } } %point) {
-  %t0 = extractvalue { i32, i32, { ptr, i64 } } %point, 2
+define internal { ptr, i64 } @fn.2({ { ptr, i64 }, i32, i32 } %point) {
+  %t0 = extractvalue { { ptr, i64 }, i32, i32 } %point, 0
   br i1 1, label %on.body.1, label %on.next.2
 on.body.1:
   br label %on.value.3
@@ -359,10 +359,10 @@ define internal i32 @fn.3() {
   store { ptr, i64 } { ptr @.str.m0.7, i64 13 }, ptr %t38
   call void @nrt_to_string_string(ptr %t37, ptr %t38)
   call void @nrt_string_builder_append_string(ptr %t37)
-  %t39 = insertvalue { i32, i32, { ptr, i64 } } poison, i32 2, 0
-  %t40 = insertvalue { i32, i32, { ptr, i64 } } %t39, i32 3, 1
-  %t41 = insertvalue { i32, i32, { ptr, i64 } } %t40, { ptr, i64 } { ptr @.str.m0.8, i64 6 }, 2
-  %t42 = call i32 @fn.1({ i32, i32, { ptr, i64 } } %t41)
+  %t39 = insertvalue { { ptr, i64 }, i32, i32 } poison, i32 2, 1
+  %t40 = insertvalue { { ptr, i64 }, i32, i32 } %t39, i32 3, 2
+  %t41 = insertvalue { { ptr, i64 }, i32, i32 } %t40, { ptr, i64 } { ptr @.str.m0.8, i64 6 }, 0
+  %t42 = call i32 @fn.1({ { ptr, i64 }, i32, i32 } %t41)
   %t43 = alloca { ptr, i64 }
   call void @nrt_to_string_i32(ptr %t43, i32 %t42)
   call void @nrt_string_builder_append_string(ptr %t43)
@@ -375,10 +375,10 @@ define internal i32 @fn.3() {
   store { ptr, i64 } { ptr @.str.m0.9, i64 8 }, ptr %t48
   call void @nrt_to_string_string(ptr %t47, ptr %t48)
   call void @nrt_string_builder_append_string(ptr %t47)
-  %t49 = insertvalue { i32, i32, { ptr, i64 } } poison, i32 3, 0
-  %t50 = insertvalue { i32, i32, { ptr, i64 } } %t49, i32 4, 1
-  %t51 = insertvalue { i32, i32, { ptr, i64 } } %t50, { ptr, i64 } { ptr @.str.m0.10, i64 5 }, 2
-  %t52 = call i32 @fn.1({ i32, i32, { ptr, i64 } } %t51)
+  %t49 = insertvalue { { ptr, i64 }, i32, i32 } poison, i32 3, 1
+  %t50 = insertvalue { { ptr, i64 }, i32, i32 } %t49, i32 4, 2
+  %t51 = insertvalue { { ptr, i64 }, i32, i32 } %t50, { ptr, i64 } { ptr @.str.m0.10, i64 5 }, 0
+  %t52 = call i32 @fn.1({ { ptr, i64 }, i32, i32 } %t51)
   %t53 = alloca { ptr, i64 }
   call void @nrt_to_string_i32(ptr %t53, i32 %t52)
   call void @nrt_string_builder_append_string(ptr %t53)
@@ -391,10 +391,10 @@ define internal i32 @fn.3() {
   store { ptr, i64 } { ptr @.str.m0.11, i64 15 }, ptr %t58
   call void @nrt_to_string_string(ptr %t57, ptr %t58)
   call void @nrt_string_builder_append_string(ptr %t57)
-  %t59 = insertvalue { i32, i32, { ptr, i64 } } poison, i32 5, 0
-  %t60 = insertvalue { i32, i32, { ptr, i64 } } %t59, i32 6, 1
-  %t61 = insertvalue { i32, i32, { ptr, i64 } } %t60, { ptr, i64 } { ptr @.str.m0.12, i64 8 }, 2
-  %t62 = call i32 @fn.1({ i32, i32, { ptr, i64 } } %t61)
+  %t59 = insertvalue { { ptr, i64 }, i32, i32 } poison, i32 5, 1
+  %t60 = insertvalue { { ptr, i64 }, i32, i32 } %t59, i32 6, 2
+  %t61 = insertvalue { { ptr, i64 }, i32, i32 } %t60, { ptr, i64 } { ptr @.str.m0.12, i64 8 }, 0
+  %t62 = call i32 @fn.1({ { ptr, i64 }, i32, i32 } %t61)
   %t63 = alloca { ptr, i64 }
   call void @nrt_to_string_i32(ptr %t63, i32 %t62)
   call void @nrt_string_builder_append_string(ptr %t63)
@@ -407,10 +407,10 @@ define internal i32 @fn.3() {
   store { ptr, i64 } { ptr @.str.m0.13, i64 11 }, ptr %t68
   call void @nrt_to_string_string(ptr %t67, ptr %t68)
   call void @nrt_string_builder_append_string(ptr %t67)
-  %t69 = insertvalue { i32, i32, { ptr, i64 } } poison, i32 9, 0
-  %t70 = insertvalue { i32, i32, { ptr, i64 } } %t69, i32 10, 1
-  %t71 = insertvalue { i32, i32, { ptr, i64 } } %t70, { ptr, i64 } { ptr @.str.m0.14, i64 5 }, 2
-  %t72 = call { ptr, i64 } @fn.2({ i32, i32, { ptr, i64 } } %t71)
+  %t69 = insertvalue { { ptr, i64 }, i32, i32 } poison, i32 9, 1
+  %t70 = insertvalue { { ptr, i64 }, i32, i32 } %t69, i32 10, 2
+  %t71 = insertvalue { { ptr, i64 }, i32, i32 } %t70, { ptr, i64 } { ptr @.str.m0.14, i64 5 }, 0
+  %t72 = call { ptr, i64 } @fn.2({ { ptr, i64 }, i32, i32 } %t71)
   %t73 = alloca { ptr, i64 }
   store { ptr, i64 } %t72, ptr %t74
   call void @nrt_to_string_string(ptr %t73, ptr %t74)
@@ -423,8 +423,8 @@ define internal i32 @fn.3() {
 }
 
 @$score_pair = internal alias i32 ({ i32, i32 }), ptr @fn.0
-@$score_point = internal alias i32 ({ i32, i32, { ptr, i64 } }), ptr @fn.1
-@$name_of = internal alias { ptr, i64 } ({ i32, i32, { ptr, i64 } }), ptr @fn.2
+@$score_point = internal alias i32 ({ { ptr, i64 }, i32, i32 }), ptr @fn.1
+@$name_of = internal alias { ptr, i64 } ({ { ptr, i64 }, i32, i32 }), ptr @fn.2
 @$main = hidden alias i32 (), ptr @fn.3
 
 declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)

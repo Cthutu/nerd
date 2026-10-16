@@ -238,6 +238,16 @@ Plex annotations are written after `plex` and before the field body. The parser
 recognises `#c` and `#packed`; `#packed` also implies the C-layout flag. These
 annotations are not accepted on `union` or `enum`.
 
+Unannotated plexes store fields in descending alignment order to reduce padding;
+fields with equal alignment retain declaration order. A bit-field storage block
+and each direct `use` subobject move as indivisible units. This changes storage
+only: field names, literal evaluation order, and semantic field order stay the
+same. Tuples keep their declared order. `#c` and `#packed` plexes retain declaration
+order; use these annotations when an external ABI requires a particular layout.
+For example, `plex { a u8 b u32 c u8 }` occupies 8 bytes on supported targets,
+whereas `plex #c { a u8 b u32 c u8 }` occupies 12 bytes. Their field offsets are
+respectively `a=4, b=0, c=5` and `a=0, b=4, c=8`.
+
 `use P` requires `P` to resolve to a plex. It exposes the embedded plex's fields
 as fields of the containing plex, including through transitive uses. Conflicting
 field names are rejected. The same source type declaration cannot be used twice

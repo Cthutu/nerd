@@ -459,47 +459,82 @@ internal const SemaPlexUse* llvm_plex_use_containing_field(const Sema* sema,
     return NULL;
 }
 
+// Embeddings and bit-field blocks each occupy one indivisible storage unit.
+internal u32 llvm_record_storage_end(const Sema* sema, u32 type_index, u32 i)
+{
+    const SemaType*    type = &sema->types[type_index];
+    const SemaPlexUse* use =
+        llvm_plex_use_containing_field(sema, type_index, i);
+    if (use != NULL) {
+        return use->first_field + use->field_count;
+    }
+    u32 end = i + 1;
+    if (sema->type_param_bit_widths[type->first_param_type + i] > 0) {
+        while (end < type->param_count &&
+               sema->type_param_bit_widths[type->first_param_type + end] > 0 &&
+               !sema->type_param_bit_starts[type->first_param_type + end]) {
+            end++;
+        }
+    }
+    return end;
+}
+
+internal u32 llvm_record_storage_type(const Sema* sema, u32 type_index, u32 i)
+{
+    const SemaType*    type = &sema->types[type_index];
+    const SemaPlexUse* use =
+        llvm_plex_use_containing_field(sema, type_index, i);
+    if (use != NULL) {
+        return use->type_index;
+    }
+    u32 param = type->first_param_type + i;
+    return sema->type_param_bit_widths[param] > 0
+               ? sema->type_param_bit_storage_types[param]
+               : sema->type_param_types[param];
+}
+
+Array(u32) llvm_record_storage_order(const Sema* sema, u32 type_index)
+{
+    const SemaType* type = &sema->types[type_index];
+    Array(u32) order     = NULL;
+    bool reorder =
+        type->kind == STK_Plex && !(type->flags & (STF_PlexC | STF_PlexPacked));
+    for (u32 i = 0; i < type->param_count;
+         i     = llvm_record_storage_end(sema, type_index, i)) {
+        array_push(order, i);
+        if (!reorder) {
+            continue;
+        }
+        u32 align = llvm_type_align_bits(
+            sema, llvm_record_storage_type(sema, type_index, i));
+        usize j = array_count(order) - 1;
+        // Stable descending alignment: ties retain declaration order.
+        while (j > 0 && llvm_type_align_bits(
+                            sema,
+                            llvm_record_storage_type(
+                                sema, type_index, order[j - 1])) < align) {
+            order[j] = order[j - 1];
+            j--;
+        }
+        order[j] = i;
+    }
+    return order;
+}
+
 internal u32 llvm_plex_physical_field_index(const Sema* sema,
                                             u32         type_index,
                                             u32         field_index)
 {
-    const SemaType* type     = &sema->types[type_index];
-    u32             physical = 0;
-    for (u32 i = 0; i < type->param_count;) {
-        const SemaPlexUse* use =
-            llvm_plex_use_containing_field(sema, type_index, i);
-        if (use != NULL && use->first_field == i) {
-            if (field_index < i + use->field_count) {
-                return physical;
-            }
-            i += use->field_count;
-            physical++;
-            continue;
+    Array(u32) order = llvm_record_storage_order(sema, type_index);
+    u32 physical     = (u32)array_count(order);
+    for (u32 i = 0; i < array_count(order); ++i) {
+        if (field_index >= order[i] &&
+            field_index < llvm_record_storage_end(sema, type_index, order[i])) {
+            physical = i;
+            break;
         }
-        u32 param = type->first_param_type + i;
-        if (sema->type_param_bit_widths[param] > 0) {
-            u32 end = i + 1;
-            while (end < type->param_count) {
-                u32 next = type->first_param_type + end;
-                if (sema->type_param_bit_widths[next] == 0 ||
-                    sema->type_param_bit_starts[next]) {
-                    break;
-                }
-                end++;
-            }
-            if (field_index < end) {
-                return physical;
-            }
-            i = end;
-            physical++;
-            continue;
-        }
-        if (i == field_index) {
-            return physical;
-        }
-        i++;
-        physical++;
     }
+    array_free(order);
     return physical;
 }
 
@@ -569,34 +604,12 @@ internal u32 llvm_type_storage_bits(const Sema* sema, u32 type_index)
     }
     if (llvm_type_kind(sema, type_index) == STK_Tuple ||
         llvm_type_kind(sema, type_index) == STK_Plex) {
-        const SemaType* type           = &sema->types[type_index];
-        u32             bits           = 0;
-        u32             max_align_bits = 8;
-        for (u32 i = 0; i < type->param_count; ++i) {
-            const SemaPlexUse* use =
-                llvm_plex_use_containing_field(sema, type_index, i);
+        u32 bits           = 0;
+        u32 max_align_bits = 8;
+        Array(u32) order   = llvm_record_storage_order(sema, type_index);
+        for (u32 physical = 0; physical < array_count(order); ++physical) {
             u32 field_type =
-                use != NULL && use->first_field == i
-                    ? use->type_index
-                    : sema->type_param_types[type->first_param_type + i];
-            if (use != NULL) {
-                if (use->first_field != i) {
-                    continue;
-                }
-                i += use->field_count - 1;
-            } else if (sema->type_param_bit_widths[type->first_param_type + i] >
-                       0) {
-                field_type =
-                    sema->type_param_bit_storage_types[type->first_param_type +
-                                                       i];
-                while (i + 1 < type->param_count &&
-                       sema->type_param_bit_widths[type->first_param_type + i +
-                                                   1] > 0 &&
-                       !sema->type_param_bit_starts[type->first_param_type + i +
-                                                    1]) {
-                    i++;
-                }
-            }
+                llvm_record_storage_type(sema, type_index, order[physical]);
             u32 field_align_bits = llvm_type_align_bits(sema, field_type);
             u32 field_bits       = llvm_type_storage_bits(sema, field_type);
             bits                 = llvm_align_bits(bits, field_align_bits);
@@ -605,6 +618,7 @@ internal u32 llvm_type_storage_bits(const Sema* sema, u32 type_index)
                 max_align_bits = field_align_bits;
             }
         }
+        array_free(order);
         return llvm_align_bits(bits, max_align_bits);
     }
     if (llvm_type_kind(sema, type_index) == STK_Array) {
@@ -668,19 +682,9 @@ internal u32 llvm_type_align_bits(const Sema* sema, u32 type_index)
         {
             const SemaType* type           = &sema->types[type_index];
             u32             max_align_bits = 8;
-            for (u32 i = 0; i < type->param_count; ++i) {
-                const SemaPlexUse* use =
-                    llvm_plex_use_containing_field(sema, type_index, i);
-                u32 field_type =
-                    use != NULL && use->first_field == i
-                        ? use->type_index
-                        : sema->type_param_types[type->first_param_type + i];
-                if (use != NULL) {
-                    if (use->first_field != i) {
-                        continue;
-                    }
-                    i += use->field_count - 1;
-                }
+            for (u32 i = 0; i < type->param_count;
+                 i     = llvm_record_storage_end(sema, type_index, i)) {
+                u32 field_type = llvm_record_storage_type(sema, type_index, i);
                 u32 field_align_bits = llvm_type_align_bits(sema, field_type);
                 if (field_align_bits > max_align_bits) {
                     max_align_bits = field_align_bits;
@@ -1074,35 +1078,21 @@ llvm_append_type(StringBuilder* sb, const Sema* sema, u32 type_index)
         break;
     case STK_Tuple:
     case STK_Plex:
-        sb_append_cstr(sb, "{ ");
-        for (u32 i = 0, physical = 0; i < type->param_count; ++i, ++physical) {
-            if (physical > 0) {
-                sb_append_cstr(sb, ", ");
-            }
-            const SemaPlexUse* use =
-                llvm_plex_use_containing_field(sema, type_index, i);
-            if (use != NULL && use->first_field == i) {
-                llvm_append_type(sb, sema, use->type_index);
-                i += use->field_count - 1;
-            } else {
-                u32 field_type =
-                    sema->type_param_types[type->first_param_type + i];
-                if (sema->type_param_bit_widths[type->first_param_type + i] >
-                    0) {
-                    field_type = sema->type_param_bit_storage_types
-                                     [type->first_param_type + i];
-                    while (i + 1 < type->param_count &&
-                           sema->type_param_bit_widths[type->first_param_type +
-                                                       i + 1] > 0 &&
-                           !sema->type_param_bit_starts[type->first_param_type +
-                                                        i + 1]) {
-                        i++;
-                    }
+        {
+            Array(u32) order = llvm_record_storage_order(sema, type_index);
+            sb_append_cstr(sb, "{ ");
+            for (u32 physical = 0; physical < array_count(order); ++physical) {
+                if (physical > 0) {
+                    sb_append_cstr(sb, ", ");
                 }
-                llvm_append_type(sb, sema, field_type);
+                llvm_append_type(sb,
+                                 sema,
+                                 llvm_record_storage_type(
+                                     sema, type_index, order[physical]));
             }
+            sb_append_cstr(sb, " }");
+            array_free(order);
         }
-        sb_append_cstr(sb, " }");
         break;
     case STK_String:
         sb_append_string(sb, llvm_layout_string_type(layout));
@@ -2539,10 +2529,11 @@ internal bool llvm_append_constant_record_value(StringBuilder* sb,
     if (expr_index >= array_count(hir->exprs)) {
         return false;
     }
-    const HirExpr* expr        = &hir->exprs[expr_index];
-    u32            field_count = llvm_record_field_count(sema, record_type);
+    const HirExpr* expr = &hir->exprs[expr_index];
+    Array(u32) order    = llvm_record_storage_order(sema, record_type);
     sb_append_cstr(sb, "{ ");
-    for (u32 i = 0, physical = 0; i < field_count; ++i, ++physical) {
+    for (u32 physical = 0; physical < array_count(order); ++physical) {
+        u32 i = order[physical];
         if (physical > 0) {
             sb_append_cstr(sb, ", ");
         }
@@ -2553,9 +2544,9 @@ internal bool llvm_append_constant_record_value(StringBuilder* sb,
             sb_append_char(sb, ' ');
             if (!llvm_append_constant_record_value(
                     sb, hir, lexer, sema, arena, expr_index, use->type_index)) {
+                array_free(order);
                 return false;
             }
-            i += use->field_count - 1;
             continue;
         }
         u32 field_type = llvm_record_field_type(sema, record_type, i);
@@ -2588,9 +2579,11 @@ internal bool llvm_append_constant_record_value(StringBuilder* sb,
                                                     arena,
                                                     field_expr_index,
                                                     field_type)) {
+            array_free(order);
             return false;
         }
     }
+    array_free(order);
     sb_append_cstr(sb, " }");
     return true;
 }
@@ -3729,40 +3722,30 @@ internal u32 llvm_debug_record_field_offset_bits(const Sema* sema,
         return 0;
     }
 
-    const SemaType* type   = &sema->types[type_index];
-    u32             offset = 0;
-    for (u32 i = 0; i < type->param_count; ++i) {
-        u32 param      = type->first_param_type + i;
-        u32 field_type = sema->type_param_types[param];
-        if (sema->type_param_bit_widths[param] > 0) {
-            field_type = sema->type_param_bit_storage_types[param];
-        }
+    const SemaType* type = &sema->types[type_index];
+    Array(u32) order     = llvm_record_storage_order(sema, type_index);
+    u32 offset           = 0;
+    for (u32 physical = 0; physical < array_count(order); ++physical) {
+        u32 i          = order[physical];
+        u32 field_type = llvm_record_storage_type(sema, type_index, i);
         offset =
             llvm_align_bits(offset, llvm_type_align_bits(sema, field_type));
-        if (sema->type_param_bit_widths[param] > 0) {
-            u32 group_end = i + 1;
-            while (group_end < type->param_count) {
-                u32 next = type->first_param_type + group_end;
-                if (sema->type_param_bit_widths[next] == 0 ||
-                    sema->type_param_bit_starts[next]) {
-                    break;
-                }
-                group_end++;
+        if (field_index >= i &&
+            field_index < llvm_record_storage_end(sema, type_index, i)) {
+            const SemaPlexUse* use =
+                llvm_plex_use_containing_field(sema, type_index, i);
+            if (use != NULL) {
+                offset += llvm_debug_record_field_offset_bits(
+                    sema, use->type_index, field_index - i);
+            } else {
+                offset += sema->type_param_bit_offsets[type->first_param_type +
+                                                       field_index];
             }
-            if (field_index >= i && field_index < group_end) {
-                return offset +
-                       sema->type_param_bit_offsets[type->first_param_type +
-                                                    field_index];
-            }
-            offset += llvm_type_storage_bits(sema, field_type);
-            i = group_end - 1;
-            continue;
-        }
-        if (i == field_index) {
-            return offset;
+            break;
         }
         offset += llvm_type_storage_bits(sema, field_type);
     }
+    array_free(order);
     return offset;
 }
 

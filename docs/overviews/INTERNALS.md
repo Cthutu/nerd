@@ -837,6 +837,17 @@ type. This preserves layout and provides typed value/address projections,
 including embeddings whose first field is a bit field. The C backend walks the
 same arbitrary-depth path and preserves null pointers.
 
+`llvm_record_storage_order` supplies physical storage order to LLVM and C
+emission. It stably sorts unannotated plex storage units by descending alignment,
+leaving semantic field tables untouched. A direct `use` and a bit-field block
+are each one unit. C-layout/packed plexes, tuples, unions and enums retain their
+order. LLVM type rendering, constant aggregates, size computation, field-index
+mapping and debugger offsets use this order; embedded debugger offsets recurse
+into the actual subobject layout. C declarations emit the same order while
+retaining logical `fN` names, including in anonymous embedding overlays. Literal
+expressions still evaluate in source order. Alignment uses bit-block storage
+types rather than the semantic enum type of a named bit field.
+
 Data pointers implicitly satisfy an expected `^void` type, but the reverse
 requires an explicit cast. Address-of inference and call-argument context
 seeding do not propagate the erased `void` pointee into the operand. A typed

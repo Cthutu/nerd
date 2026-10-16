@@ -43,47 +43,47 @@ func fn.0() -> i32 {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@$direct = internal global [2 x { i32, ptr }] zeroinitializer
-@$aliased = internal global [2 x { i32, ptr }] zeroinitializer
+@$direct = internal global [2 x { ptr, i32 }] zeroinitializer
+@$aliased = internal global [2 x { ptr, i32 }] zeroinitializer
 
 define void @m0.init() {
-  %t0 = getelementptr inbounds [2 x { i32, ptr }], ptr @$direct, i64 0, i32 1
-  %t1 = insertvalue { i32, ptr } poison, i32 1, 0
-  %t2 = insertvalue { i32, ptr } %t1, ptr %t0, 1
-  %t3 = insertvalue { i32, ptr } poison, i32 2, 0
-  %t4 = insertvalue { i32, ptr } %t3, ptr null, 1
-  %t5 = insertvalue [2 x { i32, ptr }] poison, { i32, ptr } %t2, 0
-  %t6 = insertvalue [2 x { i32, ptr }] %t5, { i32, ptr } %t4, 1
-  store [2 x { i32, ptr }] %t6, ptr @$direct
-  %t7 = getelementptr inbounds [2 x { i32, ptr }], ptr @$aliased, i64 0, i32 1
-  %t8 = insertvalue { i32, ptr } poison, i32 3, 0
-  %t9 = insertvalue { i32, ptr } %t8, ptr %t7, 1
-  %t10 = getelementptr inbounds [2 x { i32, ptr }], ptr @$aliased, i64 0, i32 0
-  %t11 = insertvalue { i32, ptr } poison, i32 4, 0
-  %t12 = insertvalue { i32, ptr } %t11, ptr %t10, 1
-  %t13 = insertvalue [2 x { i32, ptr }] poison, { i32, ptr } %t9, 0
-  %t14 = insertvalue [2 x { i32, ptr }] %t13, { i32, ptr } %t12, 1
-  store [2 x { i32, ptr }] %t14, ptr @$aliased
+  %t0 = getelementptr inbounds [2 x { ptr, i32 }], ptr @$direct, i64 0, i32 1
+  %t1 = insertvalue { ptr, i32 } poison, i32 1, 1
+  %t2 = insertvalue { ptr, i32 } %t1, ptr %t0, 0
+  %t3 = insertvalue { ptr, i32 } poison, i32 2, 1
+  %t4 = insertvalue { ptr, i32 } %t3, ptr null, 0
+  %t5 = insertvalue [2 x { ptr, i32 }] poison, { ptr, i32 } %t2, 0
+  %t6 = insertvalue [2 x { ptr, i32 }] %t5, { ptr, i32 } %t4, 1
+  store [2 x { ptr, i32 }] %t6, ptr @$direct
+  %t7 = getelementptr inbounds [2 x { ptr, i32 }], ptr @$aliased, i64 0, i32 1
+  %t8 = insertvalue { ptr, i32 } poison, i32 3, 1
+  %t9 = insertvalue { ptr, i32 } %t8, ptr %t7, 0
+  %t10 = getelementptr inbounds [2 x { ptr, i32 }], ptr @$aliased, i64 0, i32 0
+  %t11 = insertvalue { ptr, i32 } poison, i32 4, 1
+  %t12 = insertvalue { ptr, i32 } %t11, ptr %t10, 0
+  %t13 = insertvalue [2 x { ptr, i32 }] poison, { ptr, i32 } %t9, 0
+  %t14 = insertvalue [2 x { ptr, i32 }] %t13, { ptr, i32 } %t12, 1
+  store [2 x { ptr, i32 }] %t14, ptr @$aliased
   ret void
 }
 
 define internal i32 @fn.0() {
-  %t0 = load [2 x { i32, ptr }], ptr @$direct
-  %t1 = extractvalue [2 x { i32, ptr }] %t0, 0
-  %t2 = extractvalue { i32, ptr } %t1, 1
-  %t3 = load { i32, ptr }, ptr %t2
-  %t4 = extractvalue { i32, ptr } %t3, 0
-  %t5 = load [2 x { i32, ptr }], ptr @$aliased
-  %t6 = extractvalue [2 x { i32, ptr }] %t5, 0
-  %t7 = extractvalue { i32, ptr } %t6, 1
-  %t8 = load { i32, ptr }, ptr %t7
-  %t9 = extractvalue { i32, ptr } %t8, 0
+  %t0 = load [2 x { ptr, i32 }], ptr @$direct
+  %t1 = extractvalue [2 x { ptr, i32 }] %t0, 0
+  %t2 = extractvalue { ptr, i32 } %t1, 0
+  %t3 = load { ptr, i32 }, ptr %t2
+  %t4 = extractvalue { ptr, i32 } %t3, 1
+  %t5 = load [2 x { ptr, i32 }], ptr @$aliased
+  %t6 = extractvalue [2 x { ptr, i32 }] %t5, 0
+  %t7 = extractvalue { ptr, i32 } %t6, 0
+  %t8 = load { ptr, i32 }, ptr %t7
+  %t9 = extractvalue { ptr, i32 } %t8, 1
   %t10 = add i32 %t4, %t9
-  %t11 = load [2 x { i32, ptr }], ptr @$aliased
-  %t12 = extractvalue [2 x { i32, ptr }] %t11, 1
-  %t13 = extractvalue { i32, ptr } %t12, 1
-  %t14 = load { i32, ptr }, ptr %t13
-  %t15 = extractvalue { i32, ptr } %t14, 0
+  %t11 = load [2 x { ptr, i32 }], ptr @$aliased
+  %t12 = extractvalue [2 x { ptr, i32 }] %t11, 1
+  %t13 = extractvalue { ptr, i32 } %t12, 0
+  %t14 = load { ptr, i32 }, ptr %t13
+  %t15 = extractvalue { ptr, i32 } %t14, 1
   %t16 = add i32 %t10, %t15
   ret i32 %t16
 }

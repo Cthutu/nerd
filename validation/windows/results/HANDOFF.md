@@ -1,5 +1,24 @@
 # Windows return handoff
 
+## Plex field reordering: focused native checks passed — 2026-10-16
+
+Branch: **`plex-field-layout`**, based on `d5702e16`. Ordinary plex storage
+now sorts stably by descending alignment; `#c`/`#packed` retain declared order.
+The regression proves 8-byte ordinary versus 12-byte C layout for `u8, u32, u8`.
+See [the feature results](20261016-plex-field-layout/README.md) for exact commands,
+original snapshot failures, final LLVM-family rerun and per-family counts.
+Final coverage is 1,202 fixture passes / 15 platform skips across the full run
+and final focused LLVM rerun; release language checks pass 215 / skip two;
+305 LLVM/C differential programs pass at O0/O2. Layout/capabilities, thread sync,
+network, Raptor, Nexus and serial/concurrent LLVM identity checks pass in the
+configurations recorded there. Manuals, specification and internals are updated.
+
+This feature run does not repeat the full 65-stage matrix, benchmarks or human
+observations below. Linux/macOS execution remains outstanding for this change.
+The next Linux session should run the fixture and C-output suites plus the
+library contracts, especially the layout and embedding regressions.
+
+
 ## Native Windows automation passed; 24 desktop checks observed — 2026-10-16
 
 Branch: **`std-library`**. Start and tested implementation:

@@ -6,6 +6,7 @@
 #include <compiler/build/back/llvm_runtime.h>
 #include <compiler/cgen/cgen.h>
 #include <compiler/error/error.h>
+#include <compiler/llvm/llvm.h>
 #include <stdio.h>
 
 static const unsigned char cgen_runtime[] = {
@@ -346,7 +347,9 @@ internal void cgen_record_fields(CGen* c, u32 type, u32 first, u32 depth)
     }
     const SemaType* t   = cgen_type(c, type);
     bool            any = false;
-    for (u32 i = 0; i < t->param_count;) {
+    Array(u32) order    = llvm_record_storage_order(cgen_sema(c), type);
+    for (u32 physical = 0; physical < array_count(order); ++physical) {
+        u32  i        = order[physical];
         bool embedded = false;
         for (u32 j = 0; j < t->plex_use_count; ++j) {
             const SemaPlexUse* use =
@@ -403,6 +406,7 @@ internal void cgen_record_fields(CGen* c, u32 type, u32 first, u32 depth)
         }
         ++i;
     }
+    array_free(order);
     if (!any) {
         sb_append_cstr(&c->out, "unsigned char empty;\n");
     }
