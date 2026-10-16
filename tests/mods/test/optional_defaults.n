@@ -1,0 +1,21 @@
+pub Stamp :: u64
+
+pub Reader :: plex {
+}
+
+pub stamp :: fn (value: ?Stamp = nil) -> Stamp {
+    return on value { present => present else => 99 }
+}
+
+pub decimal :: fn (value: ?f64 = nil) -> f64 {
+    return on value { present => present else => 1.5 }
+}
+
+impl Reader {
+
+    pub read :: fn (self: ^Self, value: ?Stamp = nil) -> Stamp {
+        _ := self
+        return stamp(value = value)
+    }
+
+}

@@ -17,7 +17,10 @@ def main():
     nerd = parser.parse_args().nerd.resolve()
     with tempfile.TemporaryDirectory(prefix='nerd toolchain-') as temporary:
         work = Path(temporary)
-        env = dict(os.environ, NERD_LIB_PATH=str(ROOT / 'mods'), TMPDIR=str(work))
+        # These checks compare diagnostic content, including long native paths.
+        # Keep presentation wrapping independent of the host terminal width.
+        env = dict(os.environ, NERD_LIB_PATH=str(ROOT / 'mods'), TMPDIR=str(work),
+                   COLUMNS='4096')
         tools = ['opt', 'llc', 'llvm-lib' if os.name == 'nt' else 'llvm-ar',
                  'lld-link' if os.name == 'nt' else
                  'ld64.lld' if sys.platform == 'darwin' else 'ld.lld']
@@ -53,6 +56,124 @@ def main():
             assert (result.returncode == 0) == success, result.stdout + result.stderr
             assert 'forbidden-clang-invocation' not in result.stdout + result.stderr
             return result.stdout + result.stderr
+
+        # A missing .n argument is a filename, even when it never existed.
+        # Fail before parsing, generating output or invoking a native tool.
+        for missing_source in ['missing.n', 'missing folder/file.n',
+                               'examples/absent/absent.n', str(work / 'absent.n')]:
+            for command in [('build',), ('build', '-r'), ('build', '--cgen'),
+                            ('build', '--copts'), ('check',), ('run',)]:
+                failure = run(*command, missing_source, success=False)
+                assert f'Source file not found: {missing_source}' in failure, failure
+                assert 'EOF' not in failure and '<input>' not in failure, failure
+        failure = run('build', str(work), success=False)
+        assert 'Expected a source file but found directory:' in failure, failure
+        assert 'EOF' not in failure, failure
+        # Existing files with nonstandard extensions still work, and an inline
+        # program containing a filename string must remain an inline program.
+        unusual = work / 'program.source'
+        unusual.write_text('main :: fn () -> i32 { return 0 }\n')
+        run('check', unusual)
+        run('build', '--cgen', 'main :: fn () { assert "missing.n".count == 9 }',
+            '-o', work / 'inline.c')
+        assert (work / 'inline.c').exists()
+        run('build', '--cgen',
+            'Value :: plex { n i32 }\nvalue :: Value { n: 7 }\nmain :: fn () => value.n',
+            '-o', work / 'inline-field.c')
+        assert (work / 'inline-field.c').exists()
+        # Qualified imports and function-result binders keep source record names
+        # in diagnostics, including transitively imported and composite types.
+        records = work / 'diagnostic_records'
+        records.mkdir()
+        (records / 'mod.n').write_text(
+            'pub Widget :: plex { value u64 }\n'
+            'pub Bits :: union { number u64 byte u8 }\n'
+            'pub make :: fn () -> Widget { return Widget { value: 7 } }\n')
+        relay = work / 'diagnostic_relay'
+        relay.mkdir()
+        (relay / 'mod.n').write_text(
+            'records :: use diagnostic_records\n'
+            'pub make :: fn () -> records.Widget { return records.make() }\n')
+        diagnostic_source = work / 'type-names.n'
+        cases = [
+            ('return records.make()', 'Widget'),
+            ('value := records.Widget { value: 7 }\nreturn ^value', '^Widget'),
+            ('value := records.Bits { number: 7 }\nreturn value', 'Bits'),
+            ('return relay.make()', 'Widget'),
+            ('value := Local { value: 7 }\nreturn records.make()', 'Local'),
+        ]
+        for body, expected in cases:
+            diagnostic_source.write_text(
+                'records :: use diagnostic_records\n'
+                'relay :: use diagnostic_relay\n'
+                + ('Local :: plex { value u64 }\n' if expected == 'Local' else '')
+                + 'main :: fn () -> i32 {\n' + body + '\n}\n')
+            failure = run('check', diagnostic_source, success=False)
+            assert f'Type mismatch: expected `i32`, found `{expected}`' in failure, failure
+            assert f'This expression has type `{expected}`' in failure, failure
+        diagnostic_source.write_text(
+            'signal :: use std.signal\n'
+            'main :: fn () -> i32 {\n'
+            'on signal.watch_shutdown() {\n'
+            'watcher => return watcher\nerror! => return 1\n}\n}\n')
+        failure = run('check', diagnostic_source, success=False)
+        assert 'Type mismatch: expected `i32`, found `ShutdownWatcher`' in failure, failure
+
+        # Suggest break only for a mismatched whole return value that can
+        # supply the nearest expression block. Nested functions/loops and
+        # errors inside call arguments must retain their ordinary diagnostics.
+        break_cases = [
+            ('value: string = ${ return "text" }', True),
+            ('value := ${ return "text" }', True),
+            ('value: bool = ${ return "text" }', False),
+            ('value: string = ${ for { return "text" } }', False),
+            ('value: string = ${ worker :: fn () -> i32 { return "text" }\nbreak "text" }', False),
+            ('value: string = ${ return take("text") }', False),
+            ('for { value: string = ${ return "text" } }', True),
+        ]
+        for body, suggest_break in break_cases:
+            diagnostic_source.write_text(
+                'take :: fn (value: i32) -> i32 { return value }\n'
+                'main :: fn () -> i32 {\n' + body + '\nreturn 0\n}\n')
+            failure = run('check', diagnostic_source, success=False)
+            assert ('Did you mean `break` instead of `return`' in failure) == suggest_break, failure
+            assert 'Type mismatch' in failure, failure
+        diagnostic_source.write_text(
+            'signal :: use std.signal\n'
+            'main :: fn () -> i32 {\n'
+            'watcher := on signal.watch_shutdown() => [value] ${ return value }\n'
+            'else [error] { return 1 }\nreturn 0\n}\n')
+        failure = run('check', diagnostic_source, success=False)
+        assert 'found `ShutdownWatcher`' in failure, failure
+        assert 'Did you mean `break` instead of `return`' in failure, failure
+        diagnostic_source.write_text(
+            'main :: fn () -> i32 {\n'
+            '_value: string = ${ return 7 }\nreturn 0\n}\n')
+        run('check', diagnostic_source)  # A valid early function return remains valid.
+
+        # Bare handlers require an optional/result and retain propagation channel
+        # checks. An on subject handler still needs a branch; else? is rejected.
+        shorthand_prelude = (
+            'Failure :: enum { Bad }\nOther :: enum { Different }\n'
+            'operation :: fn () -> i32\\Failure { return Failure.Bad! }\n'
+            'optional :: fn () -> ?i32 { return nil }\n')
+        shorthand_failures = [
+            ('i32', 'value := operation() else {}\nreturn value', 'propagat'),
+            ('i32', 'value := operation() else { on no => return 2 }\nreturn value', 'propagat'),
+            ('i32\\Other', 'value := operation() else {}\nreturn value', 'found `Failure`'),
+            ('i32', 'value := 5 else { return 2 }\nreturn value', 'optional or result value'),
+            ('i32', 'value := optional() else [error] { return 2 }\nreturn value', 'optional'),
+            ('i32\\Failure', 'value := operation() else return 2\nreturn value', 'Expected LeftBrace'),
+            ('i32\\Failure', 'value := on operation() else {}\nreturn value', 'Expected FatArrow'),
+            ('i32\\Failure', 'value := on operation() else? {}\nreturn value', 'Expected LeftBrace'),
+        ]
+        for return_type, body, expected in shorthand_failures:
+            diagnostic_source.write_text(shorthand_prelude +
+                'check_value :: fn () -> ' + return_type + ' {\n' + body + '\n}\n'
+                'main :: fn () {}\n')
+            failure = run('check', diagnostic_source, success=False)
+            assert expected in failure, failure
+            assert 'LLVM lowering failed' not in failure, failure
 
         assert 'Toolchain ready' in run('doctor')
         source = work / 'program.n'

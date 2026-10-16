@@ -1,0 +1,1 @@
+-std=gnu11 -O2 -DNDEBUG -Wl,/SUBSYSTEM:WINDOWS -lkernel32 -lsynchronization -luser32 -lgdi32 -lopengl32

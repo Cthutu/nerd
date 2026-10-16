@@ -7,7 +7,7 @@ just test
 ```
 
 The implementation notes for the runner live in
-[../docs/testing.md](/home/matt/nerd/docs/testing.md). This file is the quick
+[../docs/testing.md](../docs/testing.md). This file is the quick
 index for the test inputs.
 
 `nerd test <root-filename>` is for source-level unit tests written in Nerd
@@ -18,7 +18,30 @@ source files. Repository regression tests are run by the Python harness via
 in a temporary workspace. Cleanup removes generated `.host.c` and `.input.c`
 files while preserving C source fixtures, including `tests/ffi/variadic_host.c`.
 
+The standard-library foundation has separate bounded execution runners:
+`build/test_runtime_threads.py`, `build/test_std_thread_sync.py` and
+`build/test_network.py`, `build/test_raptor.py` and `build/test_nexus.py`, plus `validation/stdlib/check_capabilities.py`. The
+common recipes run the thread/network examples as programs, with native ABI
+assertions and LLVM/C-output coverage; syntax-only example fixtures are not
+substitutes for those contract tests. `just test-release` repeats the library
+contracts using the freshly built release compiler.
+
+Nexus coverage includes framed TCP, UDP routes, request/reply and Telnet line/
+character protocols, scripted negotiation/NAWS peers and deterministic short I/O.
+The real Telnet echo server is checked with scripted terminal peers and shutdown
+events, including a stalled outgoing snapshot. Its parity map checks all 33
+scenarios from the pinned original source. Optional
+`--upstream-dir` checks wire compatibility with that unmodified implementation.
+
 ## Test Families
+
+Successful runtime regressions may share a feature fixture with separately named
+scenarios and exact captured output. For example, `language/200-on-regressions.t`
+retains 14 original regression IDs with begin/pass markers and return assertions.
+Missing scenarios must fail the transcript comparison. Keep configuration,
+process-lifetime and HIR/LLVM-specific contracts separate when batching would
+change their meaning. See the [consolidation map](../docs/test-suite-consolidation-map.json);
+`build/check_test_consolidation.py` verifies the historical migration.
 
 - `language`
   End-to-end source tests. `.t` files contain source, expected process return

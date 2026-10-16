@@ -1,6 +1,6 @@
 # Dependency scheduler: G1/G2 validation
 
-2026-09-22, Linux x86-64. Plan: [dependency-driven compiler tasks](../audits/compiler-task-graph.md).
+2026-09-22, Linux x86-64. Plan: [dependency-driven compiler tasks](https://github.com/Cthutu/nerd/blob/aada810d/review/audits/compiler-task-graph.md).
 
 - `f45a0116`: plan and contracts.
 - `55883666`: persistent dependency scheduler and per-worker work stealing.

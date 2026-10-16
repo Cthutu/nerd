@@ -512,6 +512,9 @@ internal int nerd_internal_test(const JsonValue* cli_result)
     if (string_eq_cstr(name, "error-context")) {
         return error_context_self_test() ? 0 : 1;
     }
+    if (string_eq_cstr(name, "llvm-lowering-failure")) {
+        return llvm_lowering_failure_self_test() ? 0 : 1;
+    }
     if (string_eq_cstr(name, "llvm-text")) {
         return back_end_llvm_text_self_test() ? 0 : 1;
     }
@@ -1023,18 +1026,16 @@ nerd_build_config_from_json(const JsonValue* cli_result, Array(string) keywords)
     memcpy(source_cstr, resolved_source_arg.data, resolved_source_arg.count);
     source_cstr[resolved_source_arg.count] = '\0';
 
-    if (path_exists(source_cstr) && !path_is_directory(source_cstr)) {
-        FileMap map       = {0};
-        string  file_text = filemap_load(source_cstr, &map);
-        ASSERT(file_text.data != NULL,
-               "Failed to load source file: %s",
-               source_cstr);
-
-        u8* copy = (u8*)arena_alloc(source_arena, file_text.count);
-        memcpy(copy, file_text.data, file_text.count);
-        source_text = string_from(copy, file_text.count);
+    // A source filename stays a filename when it is missing. Otherwise the CLI
+    // would parse paths such as examples/missing/missing.n as inline Nerd code.
+    bool source_filename =
+        strstr(source_cstr, "::") == NULL && resolved_source_arg.count >= 2 &&
+        memcmp(resolved_source_arg.data + resolved_source_arg.count - 2,
+               ".n",
+               2) == 0;
+    if (path_exists(source_cstr) || source_filename) {
+        source_text = (string){0};
         source_path = string_format(source_arena, "%s", source_cstr);
-        filemap_unload(&map);
     }
 
     return (NerdBuildConfig){

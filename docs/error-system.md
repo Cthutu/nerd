@@ -4,9 +4,9 @@ The compiler error system is structured around `ErrorInfo`, not around ad hoc
 printed strings.
 
 The core interfaces are in
-[src/compiler/error/error.h](/home/matt/nerd/src/compiler/error/error.h),
-[src/compiler/error/error.c](/home/matt/nerd/src/compiler/error/error.c), and
-[src/compiler/error/render.c](/home/matt/nerd/src/compiler/error/render.c).
+[src/compiler/error/error.h](../src/compiler/error/error.h),
+[src/compiler/error/error.c](../src/compiler/error/error.c), and
+[src/compiler/error/render.c](../src/compiler/error/render.c).
 
 ## Core Model
 
@@ -205,7 +205,7 @@ The usual pattern is:
 2. if an existing category fits, reuse it and pass source-specific message,
    note, and help context
 3. only add a new helper in
-   [error.h](/home/matt/nerd/src/compiler/error/error.h) when the category is
+   [error.h](../src/compiler/error/error.h) when the category is
    broad enough to reuse across source cases
 4. implement the helper in the relevant phase-specific file
 5. attach the right primary and secondary references

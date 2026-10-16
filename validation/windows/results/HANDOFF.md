@@ -1,5 +1,239 @@
 # Windows return handoff
 
+## Native Windows automation passed; 24 desktop checks observed — 2026-10-16
+
+Branch: **`std-library`**. Start and tested implementation:
+**`05c6e0235f622d8b184f1f0e872594d42160f628`**. The checkout was clean at
+start and source stayed unchanged throughout the run. No compiler, runtime or
+harness fixes were required; this return adds evidence and status documentation.
+
+**All 65 automated stages passed**, including both fresh compiler builds,
+1,200 fixture passes / zero failures / 15 platform skips per compiler, and
+304 LLVM/C differential fixtures at O0/O2 per compiler (two platform fixture
+skips plus the explicit Linux-PTY Dungeon skip). Network/Nexus pass all eight
+compiler/backend/target combinations. Thread sync, Raptor, capabilities,
+6,000-term expression-depth at jobs 1/4 under both compilers, scope-query and
+parallel front-end/output regressions, direct toolchain, temporary install,
+format workflow, build settings, Windows stdio and automated debugger/editor/
+adapter checks pass. Linux-only startup/select/short-I/O injection remains
+explicitly skipped, with original assertions unchanged.
+
+Nexus stress checks each cover 96 TCP and 96 Telnet completed connections,
+1,152 exact replies per protocol, FIN/reset churn, slot reuse, slow-reader
+backpressure, healthy-peer progress, exact recovery and pending-output/partial-
+input shutdown. Console automation uses CTRL_BREAK_EVENT. This is bounded stress,
+not long-duration resource-growth evidence or a human Ctrl+C observation.
+
+Host: Windows 11 Pro x64 build 26200; Threadripper PRO 5955WX, 16 physical / 32
+logical CPUs, Balanced power scheme. Clang/LLVM/LLDB 23.1.0; Python 3.14.7;
+MSVC inventory 14.51.36231; installed SDK libraries 10.0.22621.0 / 10.0.26100.0.
+Native link probes pass using discovery. No dependency, global compiler, editor
+extension or system-policy changes were made. Details and commands are retained
+in the [return report](20261016T083710Z-8b918d2c/README.md),
+[stage summary](20261016T083710Z-8b918d2c/SUMMARY.md), and
+[per-suite counts/skips](20261016T083710Z-8b918d2c/suite-counts.json).
+
+The accounting sanity check and five-sample worker sweep pass, with identical
+LLVM at jobs 1/2/4/8/16/auto across 14 workload/target cells. Jobs 16 covers the
+physical-core count. Auto has roughly 1.1% lower geometric-mean wall time, with
+mixed cell results and no 15% whole-build gain in any cell. Keep the one-job
+default. Windows CPU/peak working set cover Nerd only; wall time includes child
+tools. See [interpretation](20261016T083710Z-8b918d2c/BENCHMARK.md) and
+[raw measurements](20261016T083710Z-8b918d2c/benchmark.json). Whole-process-tree
+memory, long-duration Nexus resources, sanitizers and macOS are not established.
+
+**Desktop observations: 24 PASS, no observed failures, all exit codes zero.**
+The user completed Pixels, Dungeon and Triangle under the debug compiler, each
+with debug/release targets, jobs 1/4 and LLVM/generated C (eight per example).
+Individual notes were empty; explicit answers and timestamps are retained in the
+[desktop matrix](20261016T083710Z-8b918d2c/desktop.json). The user stopped after
+Triangle because the full matrix was too repetitive. The other 24 release-
+compiler cases remain unobserved; all 48 builds passed. No further duplicate
+desktop launches are requested for this pass. Interactive VS Code debugging and
+Telnet Ctrl+C remain BLOCKED pending actual observations. The
+[manual checklist](20261016T083710Z-8b918d2c/MANUAL.md) records the exact boundary.
+Automated debugger probes do not replace editor use.
+
+Linux pickup: pull `std-library` and read this section and its linked report.
+This run changed no implementation, so no Windows fix needs a Linux regression
+rerun. Preserve the existing Linux injection/source-interoperability evidence;
+new implementation work should receive its appropriate Linux checks. Complete
+the remaining distinct editor/Ctrl+C observations, then continue sustained Nexus soak/resource-growth
+measurements and DNS/IPv6 work in `std.network` before extending Nexus URLs.
+Graph integration and broader cross-platform adoption remain open.
+
+## Native Windows validation requested — 2026-10-14
+
+Pull **`std-library`** from its verified upstream (Linux remote:
+`agent/std-library`). Implementation baseline: **`12c4097a`**. Run the latest
+revision containing this handoff and the expanded runner, and record its exact
+commit in the return evidence. This section prepares a run; it records **no new
+native Windows pass**.
+
+The most recent full native pass documented below is `caaef691` (October 2).
+Since then the branch integrated the inference repair, Raptor task/queue APIs,
+network and Nexus work, current bare failure-handler and lazy-fallback syntax,
+error-channel diagnostics, and documentation consolidation. October 13 repair
+`4594e49a` also corrected the Windows console-handler function ABI, allowed time
+for native connection refusal, and fixed the Telnet EOF test's shutdown sequence.
+Recheck these paths rather than treating the repair commit as full-run evidence.
+
+The runner now includes previously missing runtime-thread, capability,
+thread-sync, Raptor, network, Nexus, format-workflow, build-settings and Windows
+stdio checks, plus the release compiler's fixture suite. Network/Nexus cover
+LLVM/C and debug/release targets under both compiler builds. All correctness
+stages gate benchmarks. Use the full procedure in [PROMPT.md](../PROMPT.md).
+
+Focus the native review on:
+
+- Nexus TCP/Telnet traffic and slot reuse: the default 12 rounds use 96 lifetime
+  connections and 1,152 replies per protocol, with FIN/RST churn and exact routing.
+- A slow TCP reader producing real backpressure while healthy clients progress,
+  ordered recovery, and shutdown with live peers or pending output.
+- Windows console shutdown delivery and cleanup; automated subprocess checks
+  use CTRL_BREAK_EVENT. Observe Ctrl+C in the interactive Telnet server as well.
+- Connection refusal/readiness, Telnet final buffered data at EOF, Raptor serial
+  and main-thread queues, and current syntax/diagnostic/LSP fixture regressions.
+
+Linux baseline at `12c4097a`: `just test`, formatting and installation passed;
+a separate LLVM run with `--stress-rounds 128` passed 1,024 connections and
+12,288 replies per TCP/Telnet protocol. These are Linux results only. For an
+optional extended Windows run after correctness, use the fresh release compiler:
+
+```powershell
+python build/test_nexus.py --compiler _bin/nerd.exe --stress-rounds 128
+```
+
+This bounded extension does not replace a long-duration soak. Preserve native
+logs, failures, skips and manual observations in a new result directory; complete
+or explicitly block desktop/editor observations and benchmarks as the procedure
+requires. Return fixes and evidence on `std-library`, with the newest outcome
+above this request. DNS/IPv6 and long-duration resource measurements remain
+separate follow-up work.
+
+## Linux integration completed — 2026-10-03
+
+The audit/consolidation history and optional/result fix are now integrated into
+`std-library`, along with Linux repair `209e8857` for a declaration-inference
+use-after-free and LSP fixture path expansion. Native Linux `just test` and
+`just test-release` passed: 1,153 fixtures, zero failures, nine platform skips
+per compiler; 291 C differential fixtures passed at O0/O2 with zero skips.
+The full frontend AddressSanitizer suite and three thread/network examples pass.
+See [current Linux handoff](https://github.com/Cthutu/nerd/blob/aada810d/docs/linux-handoff-2026-10-03.md) and
+[retained evidence](../../linux/results/20261003-test-suite-consolidation/README.md).
+
+Windows results below cover their recorded revisions; the new Linux inference
+repair has not been validated on native Windows. Statements about separate or
+unmerged branches in the October 2 sections describe that day's state.
+
+## Complete Linux pickup — 2026-10-02
+
+Start with [today's consolidated Linux handoff](https://github.com/Cthutu/nerd/blob/aada810d/docs/linux-handoff-2026-10-02.md).
+It covers every review decision and implementation change on `std-library`
+through `6bc00639`, validation boundaries, Linux commands, branch backups, and
+the independent audit/consolidation work. The consolidation branch also has an
+optional/result enum-materialization fix not yet on `std-library`; fetch its
+latest evidence before integration. Repository `main` has not been changed.
+
+## First test consolidation — 2026-10-02
+
+Separate branch **`test-suite-consolidation`**, tested implementation **`caaef691`**;
+not merged into `std-library` or `main`. Removed 33 exact command/language runtime
+duplicates and replaced 14 additional `on` command regressions with one labelled
+language batch. Dedicated CLI/cleanup contracts, existing HIR/LLVM assertions,
+all diagnostic cases and inherited integer destination-range fixes remain intact.
+
+Batching exposed a compiler bug: materialising an enum with an equivalent earlier
+plex payload lost optional/result flags. **`58818307`** fixes it and covers both
+wrapper forms in the batch; this prerequisite must accompany the consolidation.
+
+Native Windows **`just test` and `just test-release` passed**: 1,147 fixture passes,
+zero failures, 15 platform skips each. Debug common gate: 289 LLVM/C differential
+fixtures at O0/O2 pass, two platform skips, Linux PTY skipped; all auxiliary gates
+including unchanged 6,000-term depth, concurrency, direct toolchain, temporary
+install, library contracts and four Windows stdio modes pass.
+
+The old changed workload (47 command fixtures) measured 10.273 s median versus
+0.317 s for its replacement batch with the same fixed compiler, excluding
+unchanged language alternatives. This is about ten seconds less repeated work
+per debug fixture pass, **not** a full-gate percentage speedup.
+
+See the [report and exact mapping](https://github.com/Cthutu/nerd/blob/aada810d/docs/test-suite-consolidation.md) and
+[native evidence](20261002-test-suite-consolidation/README.md). Linux/WSL gates
+remain for pickup; no global compiler/editor installation or desktop checks were
+performed. Review/merge this branch independently of ongoing standard-library work.
+
+## Integer literal destination-range checks — 2026-10-02
+
+`std-library` rejects out-of-range integer literals during semantic analysis,
+including atomic storage and inferred defaults. Signed minima and full u64
+magnitudes remain valid in the appropriate types; explicit conversions preserve
+large literals before casting. Intentional Windows unsigned handle constants
+now use explicit casts. Native Windows: 1193 fixtures pass, zero failures,
+15 skips; all 300 LLVM/C differential fixtures pass at O0/O2. Release compiler
+range diagnostics, atomic tests and capability/layout probes pass. See
+[evidence and limits](20261002-integer-literal-range/README.md).
+
+## Atomic literal inference fixed — 2026-10-02
+
+`atomic[usize] = 7` now receives the element type as its inference context;
+the capability probe no longer needs a cast. Native Windows compiler suite:
+1192 passed, zero failures, 15 skips; all 300 C differential fixtures passed.
+Final atomic tests pass with debug/release compilers. See
+[results and the separate existing element-range issue](20261002-atomic-literal-inference/README.md).
+
+## Typed FFI callbacks — 2026-10-02
+
+`std-library` now accepts ABI-compatible function types in FFI signatures.
+Windows/Linux thread bindings use typed entry callbacks without raw-pointer casts.
+Native Windows compiler suite: 1187 passed, 0 failed, 15 skips; final eight focused
+callback tests pass with debug/release compilers. All 299 C differential fixtures
+pass, as do Windows LLVM/C and Arch WSL C-output thread tests at O0/O2.
+See [evidence and limits](20261002-typed-ffi-callbacks/README.md). WSL native LLVM
+remains unavailable because `opt`/`llc` are missing. No global installation changed.
+
+## Standard-library foundations integrated for draft review — 2026-10-01
+
+Branch **`std-library`**, [draft PR #1](https://github.com/Cthutu/nerd/pull/1),
+targets `main`; all parallel work and repair branches are merged without
+rewriting their published history. `main` is unchanged.
+
+The [review report](https://github.com/Cthutu/nerd/blob/aada810d/docs/stdlib-review-report.md) summarises additions
+and prioritises language/compiler, library and workflow recommendations.
+
+Final implementation `2b540cd9` passes native Windows **`just test` and
+`just test-release`: 1181 fixture passes, 0 failures, 15 platform skips each**.
+All debug auxiliary stages passed, including **298 C differential fixtures at
+O0/O2** (2 platform skips), toolchain/temporary-install smoke, 6000-term depth,
+concurrency, build settings and Windows stdio. Both recipes execute the new
+thread/network contracts and examples. `just format` passed; later formatting
+changes are whitespace-only in touched C files. Unrelated pre-existing module
+formatting drift was excluded.
+
+Includes `std.thread`, `std.sync`, IPv4 `std.network`, runtime worker cleanup,
+allocation bookkeeping protection, capability/source inventories, and runnable
+`thread-pipeline`, `network-echo`, `network-datagram` examples. Compiler repairs
+preserve imported constant/global semantics, public variable formatting, packed
+bit-field writes and void-call effects; failed LLVM lowering now reports errors.
+These are first foundations, not completed Raptor/Kerberos/Nexus ports.
+
+Fresh Arch WSL build and bounded generated-C checks also pass on `2b540cd9`,
+including runtime/thread/network contracts and the strengthened compiler tests.
+Native LLVM there remains blocked by missing `opt`, `llc`, `ld.lld`, `llvm-ar`.
+No global compiler/editor install, desktop validation or benchmark run occurred.
+Full `just do` and native Linux adoption remain for the receiving PC.
+
+See [exact evidence, failure history and Linux commands](20261001-stdlib-integration/README.md).
+On Linux, fetch/check out `std-library`, fast-forward from the configured remote,
+then run `just test`, `just test-release` and the three `just run-example` commands.
+Run `just do` when ready to test its global installation step.
+
+Raptor/Kerberos source access is now resolved; see the
+[pinned inventory](../../../docs/stdlib-source-inventory.md). The inspected Raptor
+heads use ASIO rather than a custom work-stealing implementation; the intended
+revision/algorithm needs clarification. Kerberos is serial FIFO dataflow.
+Upstream execution, reuse/attribution decisions and later milestones remain open.
+
 ## Windows `just test` repaired — 2026-09-30
 
 On `main`, starting from `b542a13d`, the normal **`just test` recipe passes** in

@@ -17,10 +17,10 @@ main :: fn() -> i32 {
 @.macro.file.m0 = private unnamed_addr constant [36 x i8] c"tests/llvm/020-for-in-break.input.n\00"
 
 define internal i32 @fn.0({ ptr, i64 } %values) {
+  %t2 = alloca i64
   %local.1 = alloca ptr
   %t0 = extractvalue { ptr, i64 } %values, 0
   %t1 = extractvalue { ptr, i64 } %values, 1
-  %t2 = alloca i64
   store i64 0, ptr %t2
   br label %for.in.cond.0
 for.in.cond.0:

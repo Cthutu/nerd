@@ -1,0 +1,39 @@
+[PASS] command: tests/commands/341-run-typed-ffi-callback.cmd
+[PASS] command: tests/commands/342-check-ffi-callback-return-mismatch.cmd
+[PASS] command: tests/commands/343-check-ffi-callback-parameter-mismatch.cmd
+[PASS] command: tests/commands/344-check-ffi-callback-unsafe-parameter.cmd
+[PASS] command: tests/commands/345-check-ffi-callback-unsafe-return.cmd
+[PASS] command: tests/commands/346-check-ffi-callback-nested-unsafe.cmd
+[PASS] command: tests/commands/347-check-ffi-callback-aggregate.cmd
+[FAIL] command: tests/commands/348-check-ffi-callback-nested-signature.cmd
+exit mismatch: expected 0, got 1
+error: Expression result of type `u64` is not used
+ --> 348-check-ffi-callback-nested-signature.input.n:11:5
+   |
+ 9 |     factory := get_factory()
+10 |     result := factory(callback)
+11 |     result(nil)
+   |     ^^^^^^ This expression produces a value, but the value is discarded
+12 | }
+   |
+note: Only `void` expressions can be used as standalone statements.
+help: Bind the result to `_` when the value is intentionally ignored.
+
+
+┌──────────────────────────────────────┐
+│ Test Summary                         │
+├──────────┬────────┬────────┬─────────┤
+│ Type     │ Passed │ Failed │ Skipped │
+├──────────┼────────┼────────┼─────────┤
+│ language │ 0      │ 0      │ 0       │
+│ error    │ 0      │ 0      │ 0       │
+│ hir      │ 0      │ 0      │ 0       │
+│ llvm     │ 0      │ 0      │ 0       │
+│ format   │ 0      │ 0      │ 0       │
+│ lsp      │ 0      │ 0      │ 0       │
+│ command  │ 7      │ 1      │ 0       │
+│ stdlib   │ 0      │ 0      │ 0       │
+│ example  │ 0      │ 0      │ 0       │
+├──────────┼────────┼────────┼─────────┤
+│ total    │ 7      │ 1      │ 0       │
+└──────────┴────────┴────────┴─────────┘

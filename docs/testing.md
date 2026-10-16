@@ -1,7 +1,7 @@
 # Testing
 
 The repository regression test runner lives in
-[build/test.py](/home/matt/nerd/build/test.py).
+[build/test.py](../build/test.py).
 
 `just test` is the main regression gate.
 
@@ -291,3 +291,21 @@ variadic function pointers, C `va_list` forwarding, cleanup, forbidden cursor
 escapes, and nested callback signatures. End-to-end host-DLL coverage currently
 runs on Linux; Windows export alias IR can be compiled with clang's COFF target,
 but that is not a substitute for executing the tests on a Windows host.
+
+
+## Library capability and migration tools
+
+`just test` runs `validation/stdlib/check_capabilities.py` against the checkout's
+modules. It checks single-thread atomic operations and layout, explicit callback
+context, payload aliasing and graph-storage building blocks. Native C layout
+comparison and debug/release execution are part of the probe; `--cgen` selects
+the C path. These probes do not prove concurrent queue correctness, ownership
+transfer, reclamation or graph evaluation. Use the Raptor, thread/sync, network
+and Nexus runners for their respective runtime contracts.
+
+`build/audit_tests.py` inventories fixtures, and `build/audit_on_batch.py` can
+reproduce the historical batching experiment from its pinned Git revision.
+`build/check_test_consolidation.py` verifies the retained
+[migration map](test-suite-consolidation-map.json). These are opt-in maintenance
+tools; obsolete one-off audit outputs live in Git history rather than serving
+as current suite counts or platform validation.

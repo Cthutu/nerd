@@ -1,0 +1,334 @@
+-- Complete-message API regressions for capacity, timeout and disconnection.
+-- Each socket is owned by this test thread; every network wait is bounded.
+use std.nexus
+use std.network
+use std.time
+
+configure :: fn (socket: ^NetSocket) -> void\NexusError {
+    socket.set_option(NetOption.ConnectTimeoutMs, 2000)?
+    socket.set_option(NetOption.SendTimeoutMs, 2000)?
+    socket.set_option(NetOption.RecvTimeoutMs, 2000)?
+}
+
+options :: fn () -> void\NexusError {
+    socket := net_socket()
+    defer socket.close()
+    assert socket.get_option(NetOption.ConnectTimeoutMs)? == 1000
+    assert socket.get_option(NetOption.ReconnectIntervalMs)? == 25
+    assert socket.get_option(NetOption.SendTimeoutMs)? == net_wait_infinite
+    assert socket.get_option(NetOption.RecvTimeoutMs)? == net_wait_infinite
+    assert socket.get_option(NetOption.Nonblocking)? == 0
+    socket.set_option(NetOption.ConnectTimeoutMs, 250)?
+    socket.set_option(NetOption.ReconnectIntervalMs, 25)?
+    socket.set_option(NetOption.SendTimeoutMs, 500)?
+    socket.set_option(NetOption.RecvTimeoutMs, 750)?
+    socket.set_option(NetOption.Nonblocking, 1)?
+    assert socket.get_option(NetOption.ConnectTimeoutMs)? == 250
+    assert socket.get_option(NetOption.ReconnectIntervalMs)? == 25
+    assert socket.get_option(NetOption.SendTimeoutMs)? == 500
+    assert socket.get_option(NetOption.RecvTimeoutMs)? == 750
+    assert socket.get_option(NetOption.Nonblocking)? == 1
+    socket.set_option(NetOption.RecvTimeoutMs, net_wait_immediate)?
+    assert socket.get_option(NetOption.RecvTimeoutMs)? == net_wait_immediate
+    socket.set_option(NetOption.ReconnectIntervalMs, 0)?
+    assert socket.get_option(NetOption.ReconnectIntervalMs)? == 0
+}
+
+-- Check both an empty listener and a connected-but-silent peer. A failed recv
+-- preserves payload, and the same Message can receive a later successful frame.
+idle_receive :: fn (udp: bool) -> void\NexusError {
+    server := net_socket()
+    defer server.close()
+    server.bind(on udp => "udp://127.0.0.1:0" else "tcp://127.0.0.1:0")?
+    inbound := Message.create(^server)
+    defer inbound.done()
+    inbound.append_u32(99)?
+    server.set_option(NetOption.Nonblocking, 1)?
+    on inbound.recv() { NexusError.WouldBlock! => {} else => { assert no } }
+    assert inbound.payload().count == 4
+    assert inbound.id() == nil
+    server.set_option(NetOption.Nonblocking, 0)?
+    server.set_option(NetOption.RecvTimeoutMs, 20)?
+    started := now()
+    on inbound.recv() { NexusError.TimedOut! => {} else => { assert no } }
+    assert now() - started >= from_ms(20)
+    assert inbound.payload().count == 4
+    client := net_socket()
+    defer client.close()
+    configure(^client)?
+    client.connect(server.local_url()?)?
+    server.set_option(NetOption.Nonblocking, 1)?
+    on inbound.recv() { NexusError.WouldBlock! => {} else => { assert no } }
+    server.set_option(NetOption.Nonblocking, 0)?
+    started = now()
+    on inbound.recv() { NexusError.TimedOut! => {} else => { assert no } }
+    assert now() - started >= from_ms(20)
+    assert inbound.read_u32()? == 99
+    outbound := Message.create(^client)
+    defer outbound.done()
+    outbound.append_u32(42)?
+    outbound.send()?
+    server.set_option(NetOption.RecvTimeoutMs, 2000)?
+    inbound.recv()?
+    assert inbound.read_u32()? == 42
+}
+
+-- Fill every accepted TCP slot, then connect one more peer. The extra frame
+-- stays in the OS backlog until an old connection closes; it must then arrive
+-- without starvation, and the old message must not route to the reused slot.
+tcp_capacity :: fn () -> void\NexusError {
+    server := net_socket()
+    defer server.close()
+    configure(^server)?
+    server.bind("tcp://127.0.0.1:0")?
+    clients: [max_nexus_clients + 1]NetSocket
+    defer for i in [0 .. clients.count] { clients[i].close() }
+    saved := Message.create(^server)
+    defer saved.done()
+    incoming := Message.create(^server)
+    defer incoming.done()
+    for i in [0 .. clients.count] {
+        clients[i] = net_socket()
+        configure(^clients[i])?
+        clients[i].connect(server.local_url()?)?
+        outgoing := Message.create(^clients[i])
+        defer outgoing.done()
+        outgoing.append_u32(i.as(u32))?
+        outgoing.send()?
+        on i == 0 => {
+            saved.recv()?
+            assert saved.read_u32()? == 0
+        } else on i < max_nexus_clients => {
+            incoming.recv()?
+            assert incoming.read_u32()? == i.as(u32)
+        }
+    }
+    server.set_option(NetOption.Nonblocking, 1)?
+    on incoming.recv() { NexusError.WouldBlock! => {} else => { assert no } }
+    old_id := saved.id()
+    assert old_id != nil
+    clients[0].close()
+    server.set_option(NetOption.Nonblocking, 0)?
+    incoming.recv()?
+    assert incoming.read_u32()? == max_nexus_clients.as(u32)
+    assert incoming.id() != old_id
+    assert saved.id() == nil
+    assert saved.address() == nil
+    assert saved.url() == nil
+    saved.clear()
+    saved.append_u32(123)?
+    on saved.send() { NexusError.Invalid! => {} else => { assert no } }
+    incoming.clear()
+    incoming.append_u32(456)?
+    incoming.send()?
+    reply := Message.create(^clients[max_nexus_clients])
+    defer reply.done()
+    reply.recv()?
+    assert reply.read_u32()? == 456
+}
+
+-- Reuse one client owner across several sessions. Closing invalidates the old
+-- association, and the server must retire each route before admitting its new
+-- incarnation. Request/reply ordering starts afresh on each connection.
+reconnect :: fn (request_reply: bool) -> void\NexusError {
+    server := on request_reply => net_reply_socket() else net_socket()
+    defer server.close()
+    configure(^server)?
+    server.bind("tcp://127.0.0.1:0")?
+    client := on request_reply => net_request_socket() else net_socket()
+    defer client.close()
+    configure(^client)?
+    previous_id: ?u64
+    for round in [0 .. 4] {
+        client.connect(server.local_url()?)?
+        request := Message.create(^client)
+        defer request.done()
+        incoming := Message.create(^server)
+        defer incoming.done()
+        request.append_u32(round.as(u32))?
+        request.send()?
+        incoming.recv()?
+        assert incoming.read_u32()? == round.as(u32)
+        assert incoming.id() != previous_id
+        previous_id = incoming.id()
+        incoming.clear()
+        incoming.append_u32(round.as(u32) + 1)?
+        incoming.send()?
+        request.recv()?
+        assert request.read_u32()? == round.as(u32) + 1
+        client.close()
+        on request.send() { NexusError.Invalid! => {} else => { assert no } }
+        on request.recv() { NexusError.Invalid! => {} else => { assert no } }
+        server.set_option(NetOption.Nonblocking, 1)?
+        retired_by := now().add(from_secs(2))
+        for incoming.id() != nil {
+            on incoming.recv() { NexusError.WouldBlock! => {} else => { assert no } }
+            assert now() < retired_by
+        }
+        assert incoming.id() == nil
+        on incoming.send() {
+            NexusError.Invalid!, NexusError.WrongState! => {}
+            else => { assert no }
+        }
+        server.set_option(NetOption.Nonblocking, 0)?
+    }
+}
+
+-- Raw peers deliberately violate framing. Translate errors once at the test
+-- boundary, keeping production socket operations behind their normal API.
+raw_peer :: fn (address: Ipv4Address) -> Socket\NexusError {
+    peer: Socket
+    on socket(SocketKind.Tcp) {
+        value => { peer = value }
+        error! => return NexusError.Network { error }!
+    }
+    committed := no
+    defer on !committed => { _ := peer.close() }
+    on peer.connect(address) {
+        error! => return NexusError.Network { error }!
+        else => {}
+    }
+    committed = yes
+    return peer
+}
+
+raw_send :: fn (peer: ^Socket, bytes: []u8) -> void\NexusError {
+    offset: usize = 0
+    limit := now().add(from_secs(2))
+    for offset < bytes.count {
+        on peer.send(bytes[offset..]) {
+            count => { assert count != 0 offset += count }
+            NetworkError.WouldBlock { code }! => { _ := code }
+            NetworkError.Interrupted { code }! => { _ := code }
+            error! => return NexusError.Network { error }!
+        }
+        on now() >= limit => return NexusError.TimedOut!
+    }
+}
+
+-- A malformed sender is removed independently of other clients. Output and
+-- reply metadata remain intact after truncated prefixes/bodies and oversize
+-- announcements; the healthy peer can still receive its reply and send again.
+fatal_frames :: fn () -> void\NexusError {
+    server := net_socket()
+    defer server.close()
+    configure(^server)?
+    server.bind("tcp://127.0.0.1:0")?
+    client := net_socket()
+    defer client.close()
+    configure(^client)?
+    client.connect(server.local_url()?)?
+    request := Message.create(^client)
+    defer request.done()
+    incoming := Message.create(^server)
+    defer incoming.done()
+    for scenario in [0 .. 3] {
+        request.clear()
+        request.append_u32(42)?
+        request.send()?
+        incoming.recv()?
+        route := incoming.id()
+        address := incoming.address()
+        bad := raw_peer(server.local_address()?)?
+        defer _ := bad.close()
+        on scenario == 0 => raw_send(^bad, [0, 0])?
+        on scenario == 1 => raw_send(^bad, [0, 0, 0, 2, 120])?
+        on scenario == 2 => raw_send(^bad, [0, 16, 0, 1])?
+        on bad.shutdown_send() {
+            error! => return NexusError.Network { error }!
+            else => {}
+        }
+        on incoming.recv() {
+            NexusError.Truncated! => { assert scenario < 2 }
+            NexusError.TooLarge! => { assert scenario == 2 }
+            else => { assert no }
+        }
+        assert incoming.id() == route
+        assert incoming.address() == address
+        assert incoming.read_u32()? == 42
+        incoming.clear()
+        incoming.append_u32(43)?
+        incoming.send()?
+        request.recv()?
+        assert request.read_u32()? == 43
+    }
+}
+
+-- Metadata is a value associated with the sender, independent of payload reads
+-- and clear. Validate URL contents against the actual client's local endpoint.
+metadata :: fn (udp: bool) -> void\NexusError {
+    server := net_socket()
+    defer server.close()
+    configure(^server)?
+    server.bind(on udp => "udp://127.0.0.1:0" else "tcp://127.0.0.1:0")?
+    client := net_socket()
+    defer client.close()
+    configure(^client)?
+    client.connect(server.local_url()?)?
+    address := client.local_address()?
+    expected := on udp => $"udp://127.0.0.1:{address.port}" else $"tcp://127.0.0.1:{address.port}"
+    outgoing := Message.create(^client)
+    defer outgoing.done()
+    incoming := Message.create(^server)
+    defer incoming.done()
+    outgoing.append_string("metadata")?
+    outgoing.send()?
+    incoming.recv()?
+    id := incoming.id()
+    assert id != nil
+    on incoming.url() { url => { assert url == expected } else => { assert no } }
+    assert incoming.read_string()? == "metadata"
+    incoming.clear()
+    assert incoming.id() == id
+    on incoming.address() { sender => { assert sender == address } else => { assert no } }
+    on incoming.url() { url => { assert url == expected } else => { assert no } }
+    incoming.append_u32(42)?
+    incoming.send()?
+    -- Receiving a reply into another Message is independent of the send buffer.
+    reply := Message.create(^client)
+    defer reply.done()
+    reply.recv()?
+    assert reply.read_u32()? == 42
+}
+
+-- Closing after a full reply must not discard the reply already in the kernel.
+-- EOF is reported on the next receive, without replacing the existing payload.
+final_reply_close :: fn () -> void\NexusError {
+    server := net_socket()
+    defer server.close()
+    configure(^server)?
+    server.bind("tcp://127.0.0.1:0")?
+    client := net_socket()
+    defer client.close()
+    configure(^client)?
+    client.connect(server.local_url()?)?
+    request := Message.create(^client)
+    defer request.done()
+    incoming := Message.create(^server)
+    defer incoming.done()
+    request.send()?
+    incoming.recv()?
+    incoming.append_string("final reply")?
+    incoming.send()?
+    server.close()
+    request.recv()?
+    on request.recv() { NexusError.Closed! => {} else => { assert no } }
+    assert request.read_string()? == "final reply"
+    assert request.id() == nil
+    on client.local_address() { NexusError.Closed! => {} else => { assert no } }
+}
+
+main :: fn () -> i32 {
+    on options() { _! => return 10 else => {} }
+    on idle_receive(no) { _! => return 1 else => {} }
+    on idle_receive(yes) { _! => return 2 else => {} }
+    on tcp_capacity() { _! => return 3 else => {} }
+    on reconnect(no) { _! => return 4 else => {} }
+    on reconnect(yes) { _! => return 5 else => {} }
+    on fatal_frames() { _! => return 6 else => {} }
+    on metadata(no) { _! => return 7 else => {} }
+    on metadata(yes) { _! => return 8 else => {} }
+    on final_reply_close() { _! => return 9 else => {} }
+    prn("Nexus parity contracts passed")
+    return 0
+}

@@ -1,7 +1,14 @@
+-- Software pixels in a window: paint a small logical framebuffer, add a moving
+-- white bar and present it through std.gfx. The 160 by 120 pixel layer keeps
+-- its logical size when the window is resized; presentation scales it to the
+-- window. Q or Escape closes the window; Alt+Enter toggles full-screen mode.
+
 use std.frame
 use std.gfx
 use std.time
 
+-- Build an opaque colour word in 0xAARRGGBB layout. Bitwise patterns make
+-- colour vary with position and time without loading an image asset.
 pixel_colour :: fn (x: u32, y: u32, frame: u32) -> u32 {
     wave  := ((x + frame) ^ (y * 3 + frame * 2)) & 31
     red   := ((x * 4 + frame * 3) & 255) << 16
@@ -11,7 +18,11 @@ pixel_colour :: fn (x: u32, y: u32, frame: u32) -> u32 {
     return 0xff000000 | red | green | blue
 }
 
+-- Paint the whole layer in one callback, then overlay the progress bar.
 pixels_draw :: fn (layer: ^PixelLayer, frame: u32) {
+    -- paint supplies a borrowed pixel view and row stride for the clipped area.
+    -- Use y * stride + x for indexing; stride need not equal the area width.
+    -- The callback is synchronous, so a pointer to this call's frame counter is valid.
     layer.paint({
         x      : 0
         y      : 0
@@ -36,6 +47,8 @@ pixels_draw :: fn (layer: ^PixelLayer, frame: u32) {
     }, 0xffffffff)
 }
 
+-- Resolve the layer handle, update its pixels and present all frame layers.
+-- Handle lookup can fail, which is why this helper returns a graphics result.
 pixels_render :: fn (gfx    : ^GfxSystem,
                      handle : GfxLayerHandle,
                      frame  : ^Frame,
@@ -46,6 +59,8 @@ pixels_render :: fn (gfx    : ^GfxSystem,
     return yes
 }
 
+-- Keep the frame system alive for the whole graphics lifetime. Deferred cleanup
+-- runs in reverse order, releasing graphics before the native window system.
 main :: fn () {
     frame_system := FrameSystem.init()
     frame := Frame {
@@ -58,18 +73,23 @@ main :: fn () {
         ...
     }
 
+    -- Create the native window from its Frame description before attaching layers.
     frame_system.apply(^frame)
     defer frame_system.done()
 
     gfx := GfxSystem.init()
     defer gfx.done()
 
+    -- A fixed logical resolution gives deliberately large pixels when scaled.
+    -- The layer handle identifies storage owned by gfx, not a separate allocation.
     handle := gfx.create_pixel_layer(^frame, PixelLayerMode.FixedSizeAutoScale {
         width  : 160
         height : 120
     })
     tick : u32 = 0
 
+    -- Refresh window state and drain queued input events before drawing. This
+    -- keeps resize and close requests responsive as the animation advances.
     for frame_system.loop() {
         frame_system.update(^frame)
 
@@ -106,6 +126,8 @@ main :: fn () {
 
         _ := pixels_render(^gfx, handle, ^frame, tick)
 
+        -- Advance a simple animation counter and pause briefly to avoid a tight busy
+        -- loop. This is basic pacing rather than synchronisation with display refresh.
         tick += 1
         sleep_ms(16)
     }

@@ -1,0 +1,5 @@
+PASS iteration 0: old commands 1.499s; batch 0.062s
+PASS iteration 1: old commands 1.486s; batch 0.062s
+PASS iteration 2: old commands 1.485s; batch 0.064s
+PASS iteration 3: old commands 1.480s; batch 0.062s
+PASS mapping, original/batch behaviour, omission and wrong-result checks

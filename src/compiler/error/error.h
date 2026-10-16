@@ -235,6 +235,12 @@ bool error_0304_missing_trait_constraint(NerdSource source,
                                          ErrorSpan  span,
                                          string     param,
                                          string     trait);
+bool error_0304_type_mismatch_with_help(NerdSource source,
+                                        ErrorSpan  span,
+                                        string     expected_type,
+                                        string     actual_type,
+                                        string     help);
+
 bool error_0304_type_mismatch_with_note(NerdSource source,
                                         ErrorSpan  span,
                                         string     expected_type,
@@ -486,6 +492,12 @@ bool error_0366_invalid_on_extraction_type(NerdSource source,
                                            ErrorSpan  value_span,
                                            ErrorSpan  binder_span,
                                            string     actual_type);
+
+bool error_0369_invalid_error_pattern(NerdSource source,
+                                      ErrorSpan  pattern_span,
+                                      ErrorSpan  value_span,
+                                      string     actual_type,
+                                      bool       postfix);
 
 //------------------------------------------------------------------------------
 // Low-level error system

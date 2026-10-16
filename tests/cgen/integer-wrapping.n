@@ -3,7 +3,7 @@ multiply :: fn (a: i64, b: i64) -> i64 { return a * b }
 negate :: fn (a: i64) -> i64 { return -a }
 main :: fn () {
     largest: i64 = 0x7fff_ffff_ffff_ffff
-    smallest: i64 = 0x8000_0000_0000_0000
+    smallest: i64 = 0x8000_0000_0000_0000.as(i64)
     assert add(largest, 1) == smallest
     assert multiply(largest, 2) == -2
     assert negate(smallest) == smallest

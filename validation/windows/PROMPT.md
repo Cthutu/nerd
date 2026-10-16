@@ -12,8 +12,8 @@ Read the latest section of `validation/windows/results/HANDOFF.md` and the
 user's requested branch/revision. Record the exact starting HEAD and compare it
 with the last tested Windows revision. Historical commit IDs and old branch
 names in evidence are context, not checkout instructions. Read the relevant
-active audit when a change has additional gates; the completed single-core
-work is documented in `review/audits/compiler-single-core-follow-up.md`.
+subsystem documentation when a change has additional gates; scheduling policy
+and adoption requirements are in `docs/compiler-profiling.md`.
 
 The full runner includes `expression-depth-debug` and
 `expression-depth-release`: keep the default **6,000 terms**, jobs=1/4, exact
@@ -30,8 +30,8 @@ or unsupported checks from passed ones. Linux evidence is not a Windows pass.
   upstream. Do not merge, delete branches, force-push, or overwrite unrelated
   user changes as part of validation. The old experiment is already merged.
 - Read the repository's applicable `AGENTS.md` instructions if any, `CODEX.md`,
-  `validation/windows/README.md`, `review/audits/compiler-m8-adoption.md`, and
-  the follow-up milestones in `review/audits/task-scheduler-performance.md`.
+  `validation/windows/README.md`, and the scheduler adoption policy in
+  `docs/compiler-profiling.md`.
 - Nerd's normal source-to-binary pipeline invokes LLVM tooling directly:
   `opt`, `llc`, and platform linker/archive tools. **Never add a Clang fallback
   to Nerd.** Clang may build Nerd itself or externally compile compatibility C.
@@ -122,7 +122,7 @@ Maintain `validation/windows/results/HANDOFF.md` containing:
   rerun after Windows fixes. Do not mark M8 fully validated while native checks
   or memory evidence are still missing; macOS remains a separate gate.
 
-Update applicable audit milestones only for gates this run actually covers
+Update maintained roadmap milestones only for gates this run actually covers
 and link to the handoff; do not reopen completed historical milestones solely
 because this procedure references them. Put the new outcome and tested commit at
 the top of `results/HANDOFF.md`, keeping earlier runs as dated history. Include

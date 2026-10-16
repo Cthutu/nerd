@@ -8,7 +8,7 @@ on "windows" {
     pub CTRL_SHUTDOWN_EVENT :: 6
 
     pub ffi "kernel32" {
-        SetConsoleCtrlHandler (handler : ^fn (event: DWORD) -> BOOL,
+        SetConsoleCtrlHandler (handler : fn (event: DWORD) -> BOOL,
                                add     : BOOL) -> BOOL
         GetCurrentThreadId    () -> DWORD
     }

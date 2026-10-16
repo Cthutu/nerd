@@ -1,17 +1,28 @@
+-- Orderly shutdown: wait for a Ctrl+C shutdown request and then leave normally.
+-- A watcher converts the OS notification into something application code can
+-- wait on. Cleanup belongs to ordinary control flow, rather than an OS signal
+-- handler.
+
 signal :: use std.signal
 
 -- Own the watcher for the application's lifetime; all cleanup is normal code.
 run :: fn () -> void\(signal.Error) {
+    -- The watcher is an owned resource. defer registers cleanup for every exit
+    -- from this scope, including a propagated error; deferred actions run in reverse order.
     shutdown := signal.watch_shutdown()?
     defer _ := shutdown.close()
     defer prn("Cleanup complete.")
 
     prn("Ready. Press Ctrl+C to shut down.")
+    -- Wait until a shutdown request arrives. The sticky requested flag remains
+    -- set afterwards, so application code can confirm why the wait completed.
     shutdown.wait()?
     assert shutdown.requested()?
     prn("Shutdown requested.")
 }
 
+-- Translate the watcher result into a process exit status. The ? operators in
+-- run propagate failures to this boundary after running registered cleanup.
 main :: fn () -> i32 {
     on run() => return 0
         else [error] {

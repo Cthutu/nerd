@@ -111,6 +111,7 @@ format_emit_bool_on_multiline_if_long_with_prefix(StringBuilder* sb,
                                                   u32            node_index,
                                                   usize          prefix_width,
                                                   u32            indent_level);
+internal usize  format_sb_current_column(const StringBuilder* sb);
 internal void   format_emit_call_multiline_aligned(StringBuilder* sb,
                                                    const Cst*     cst,
                                                    const Lexer*   lexer,
@@ -603,6 +604,8 @@ internal int format_expr_precedence(const CstNode* node)
     case CK_IntegerDivide:
     case CK_IntegerModulo:
         return 60;
+    case CK_Fallback:
+        return 65;
     case CK_LogicalNot:
     case CK_IntegerNegate:
     case CK_BitwiseNot:
@@ -729,6 +732,7 @@ internal void format_emit_triple_string_text(StringBuilder* sb, string text)
             sb_append_cstr(sb, "\\\\");
             break;
         case '\r':
+            sb_append_cstr(sb, "\\r");
             break;
         default:
             if (text.data[i] < 0x20 || text.data[i] == 0x7f) {
@@ -932,6 +936,11 @@ internal void format_emit_value_with_indent(StringBuilder* sb,
                                             const Lexer*   lexer,
                                             u32            node_index,
                                             u32            indent_level);
+internal void format_emit_fn_expr_body(StringBuilder* sb,
+                                       const Cst*     cst,
+                                       const Lexer*   lexer,
+                                       u32            node_index,
+                                       u32            indent_level);
 internal void format_emit_expr_with_indent(StringBuilder* sb,
                                            const Cst*     cst,
                                            const Lexer*   lexer,
@@ -1090,6 +1099,9 @@ internal void format_emit_pattern(StringBuilder* sb,
             sb_append_char(sb, ')');
         }
         break;
+    }
+    if (pattern->error_postfix) {
+        sb_append_char(sb, '!');
     }
 }
 
@@ -1550,6 +1562,11 @@ internal void format_emit_expr(StringBuilder* sb,
         sb_append_cstr(sb, " || ");
         format_emit_expr(sb, cst, lexer, node->b, node_precedence + 1);
         break;
+    case CK_Fallback:
+        format_emit_expr(sb, cst, lexer, node->a, node_precedence + 1);
+        sb_append_cstr(sb, " \\ ");
+        format_emit_expr(sb, cst, lexer, node->b, node_precedence);
+        break;
     case CK_Call:
         format_emit_expr(sb, cst, lexer, node->a, node_precedence);
         sb_append_char(sb, '(');
@@ -1625,10 +1642,52 @@ internal void format_emit_expr(StringBuilder* sb,
     case CK_On:
         {
             const CstOnInfo* on = &cst->ons[node->b];
-            sb_append_cstr(sb, "on");
+            if (!on->shorthand) {
+                sb_append_cstr(sb, "on");
+            }
             if (on->kind != COK_Condition) {
-                sb_append_char(sb, ' ');
-                format_emit_expr(sb, cst, lexer, node->a, node_precedence);
+                if (!on->shorthand) {
+                    sb_append_char(sb, ' ');
+                }
+                if (on->shorthand && cst->nodes[node->a].kind == CK_Call) {
+                    Arena temporary = {0};
+                    arena_init(&temporary);
+                    string flat = format_render_expr_to_string(
+                        &temporary, cst, lexer, node->a);
+                    const CstOnBranch* handler =
+                        &cst->on_branches[on->first_branch + 1];
+                    usize suffix =
+                        9 +
+                        (handler->binder_symbol_handle != U32_MAX
+                             ? lex_symbol(lexer, handler->binder_symbol_handle)
+                                       .count +
+                                   3
+                             : 0);
+                    usize column = format_sb_current_column(sb);
+                    if (column + flat.count + suffix > FORMAT_WRAP_WIDTH) {
+                        format_emit_call_multiline_aligned(
+                            sb, cst, lexer, node->a, column);
+                    } else {
+                        format_emit_expr(
+                            sb, cst, lexer, node->a, node_precedence);
+                    }
+                    arena_done(&temporary);
+                } else {
+                    format_emit_expr(sb, cst, lexer, node->a, node_precedence);
+                }
+            }
+            if (on->shorthand) {
+                const CstOnBranch* branch =
+                    &cst->on_branches[on->first_branch + 1];
+                sb_append_cstr(sb, " else ");
+                if (branch->binder_symbol_handle != U32_MAX) {
+                    sb_append_char(sb, '[');
+                    sb_append_string(
+                        sb, lex_symbol(lexer, branch->binder_symbol_handle));
+                    sb_append_cstr(sb, "] ");
+                }
+                format_emit_expr(sb, cst, lexer, branch->expr_node_index, 0);
+                break;
             }
             if (on->kind == COK_Bool) {
                 const CstOnBranch* true_branch =
@@ -1842,7 +1901,8 @@ internal void format_emit_expr(StringBuilder* sb,
     case CK_FnExpr:
         format_emit_fn_signature(sb, cst, lexer, node->a, false);
         sb_append_cstr(sb, " => ");
-        format_emit_expr(sb, cst, lexer, node->b, 0);
+        format_emit_fn_expr_body(
+            sb, cst, lexer, node->b, g_format_expr_indent_level);
         break;
     case CK_FnBlock:
         {
@@ -1851,7 +1911,8 @@ internal void format_emit_expr(StringBuilder* sb,
                     cst, lexer, node_index, &return_expr)) {
                 format_emit_fn_signature(sb, cst, lexer, node->a, false);
                 sb_append_cstr(sb, " => ");
-                format_emit_expr(sb, cst, lexer, return_expr, 0);
+                format_emit_fn_expr_body(
+                    sb, cst, lexer, return_expr, g_format_expr_indent_level);
             } else {
                 format_emit_fn_signature(sb, cst, lexer, node->a, true);
                 sb_append_cstr(sb, " {\n");
@@ -2709,7 +2770,8 @@ internal void format_emit_bool_on_condition_multiline(StringBuilder* sb,
 {
     const CstNode* condition = &cst->nodes[condition_node_index];
     if (!format_logical_chain_kind(condition->kind)) {
-        format_emit_expr(sb, cst, lexer, condition_node_index, 0);
+        format_emit_expr_with_indent(
+            sb, cst, lexer, condition_node_index, 0, indent_level);
         return;
     }
 
@@ -2722,7 +2784,8 @@ internal void format_emit_bool_on_condition_multiline(StringBuilder* sb,
         if (i > 0) {
             format_emit_indent(sb, indent_level + 1);
         }
-        format_emit_expr(sb, cst, lexer, parts[i], 0);
+        format_emit_expr_with_indent(
+            sb, cst, lexer, parts[i], 0, indent_level + (i > 0 ? 1 : 0));
         if (i + 1 < array_count(parts)) {
             sb_append_char(sb, ' ');
             sb_append_string(sb, op);
@@ -2744,6 +2807,14 @@ internal void format_emit_bool_on_multiline_prefixed(StringBuilder* sb,
     const CstOnInfo* on   = &cst->ons[node->b];
     ASSERT(node->kind == CK_On && on->kind == COK_Bool,
            "Expected bool on expression");
+    if (on->shorthand) {
+        if (is_else) {
+            sb_append_cstr(sb, "else ");
+        }
+        format_emit_expr_with_indent(
+            sb, cst, lexer, node_index, 0, indent_level);
+        return;
+    }
 
     if (is_else) {
         sb_append_cstr(sb, "else ");
@@ -3049,7 +3120,12 @@ internal bool format_string_should_use_triple_literal(string text)
     bool has_newline = false;
     bool has_content = false;
     for (usize i = 0; i < text.count; ++i) {
-        if (text.data[i] == '\n' || text.data[i] == '\r') {
+        // Physical triple-quoted lines normalise CRLF. Keep carriage returns
+        // escaped in ordinary literals so formatting preserves terminal bytes.
+        if (text.data[i] == '\r') {
+            return false;
+        }
+        if (text.data[i] == '\n') {
             has_newline = true;
         } else {
             has_content = true;
@@ -3608,6 +3684,7 @@ internal u32 format_node_end_token_index(const Cst*   cst,
     case CK_RangeInclusive:
     case CK_InRange:
     case CK_AnnotatedValue:
+    case CK_Fallback:
     case CK_Bind:
     case CK_Variable:
     case CK_DestructureBind:
@@ -8631,6 +8708,16 @@ internal void format_emit_block_statement(StringBuilder* sb,
                 format_emit_expr_with_indent(
                     sb, cst, lexer, deferred->a, 0, indent_level);
                 sb_append_char(sb, '\n');
+            } else if (deferred->kind == CK_Assert) {
+                sb_append_cstr(sb, "assert ");
+                format_emit_expr_with_indent(
+                    sb, cst, lexer, deferred->a, 0, indent_level);
+                if (deferred->b != U32_MAX) {
+                    sb_append_cstr(sb, ", ");
+                    format_emit_expr_with_indent(
+                        sb, cst, lexer, deferred->b, 0, indent_level);
+                }
+                sb_append_char(sb, '\n');
             } else if (deferred->kind == CK_Return) {
                 sb_append_cstr(sb, "return");
                 if (deferred->a != U32_MAX) {
@@ -8722,7 +8809,11 @@ internal void format_emit_block_statement(StringBuilder* sb,
     }
 
     if (stmt->kind == CK_Variable) {
-        string symbol = lex_symbol(lexer, cst_get_symbol(stmt));
+        string symbol              = lex_symbol(lexer, cst_get_symbol(stmt));
+        usize  public_prefix_width = (stmt->flags & CNF_Public) ? 4 : 0;
+        if (public_prefix_width != 0) {
+            sb_append_cstr(sb, "pub ");
+        }
         sb_append_string(sb, symbol);
         if (cst->nodes[stmt->b].kind == CK_AnnotatedValue ||
             cst->nodes[stmt->b].kind == CK_ZeroInit ||
@@ -8744,6 +8835,7 @@ internal void format_emit_block_statement(StringBuilder* sb,
                                                       lexer,
                                                       stmt->b,
                                                       (usize)indent_level * 4 +
+                                                          public_prefix_width +
                                                           symbol.count + 4,
                                                       indent_level);
             }
@@ -9026,6 +9118,28 @@ internal bool format_emit_sorted_use_run(StringBuilder* sb,
     return true;
 }
 
+// Keep constructor expression bodies within the same width policy as record
+// declarations, counting the declaration/signature prefix already emitted.
+internal void format_emit_fn_expr_body(StringBuilder* sb,
+                                       const Cst*     cst,
+                                       const Lexer*   lexer,
+                                       u32            node_index,
+                                       u32            indent_level)
+{
+    const CstNode* node = &cst->nodes[node_index];
+    if ((node->kind == CK_Plex || node->kind == CK_PlexUpdate) &&
+        format_node_is_single_line(cst, lexer, node_index) &&
+        format_sb_current_column(sb) +
+                format_rendered_expr_width(
+                    cst, lexer, node_index, indent_level) >
+            FORMAT_WRAP_WIDTH) {
+        format_emit_plex_literal_multiline(
+            sb, cst, lexer, node_index, indent_level);
+        return;
+    }
+    format_emit_expr_with_indent(sb, cst, lexer, node_index, 0, indent_level);
+}
+
 //------------------------------------------------------------------------------
 // Format one top-level value node.
 
@@ -9074,8 +9188,8 @@ internal void format_emit_value(StringBuilder* sb,
                 sb, cst, lexer, node->b, g_format_value_indent_level + 1);
         } else {
             sb_append_cstr(sb, " => ");
-            format_emit_expr_with_indent(
-                sb, cst, lexer, node->b, 0, g_format_value_indent_level);
+            format_emit_fn_expr_body(
+                sb, cst, lexer, node->b, g_format_value_indent_level);
         }
         break;
     case CK_FnBlock:
@@ -9085,12 +9199,8 @@ internal void format_emit_value(StringBuilder* sb,
                     cst, lexer, node_index, &return_expr)) {
                 format_emit_fn_signature(sb, cst, lexer, node->a, false);
                 sb_append_cstr(sb, " => ");
-                format_emit_expr_with_indent(sb,
-                                             cst,
-                                             lexer,
-                                             return_expr,
-                                             0,
-                                             g_format_value_indent_level);
+                format_emit_fn_expr_body(
+                    sb, cst, lexer, return_expr, g_format_value_indent_level);
             } else {
                 format_emit_fn_signature(sb, cst, lexer, node->a, true);
                 sb_append_cstr(sb, " {\n");
@@ -9466,6 +9576,9 @@ internal bool format_emit_code_block(StringBuilder* sb, NerdSource source)
                 format_emit_value(sb, &cst, &lexer, node->b);
             }
         } else {
+            if (node->flags & CNF_Public) {
+                sb_append_cstr(sb, "pub ");
+            }
             sb_append_string(sb, lex_symbol(&lexer, cst_get_symbol(node)));
             if (cst.nodes[node->b].kind == CK_AnnotatedValue ||
                 cst.nodes[node->b].kind == CK_ZeroInit ||
@@ -9669,6 +9782,7 @@ internal void format_token_state_blank_line(FormatTokenState* state)
 internal bool format_token_kind_is_binary_operator(TokenKind kind)
 {
     switch (kind) {
+    case TK_Backslash:
     case TK_Plus:
     case TK_PlusEqual:
     case TK_Minus:
@@ -9722,8 +9836,6 @@ internal bool format_token_kind_is_atom(TokenKind kind)
     case TK_Symbol:
     case TK_yes:
     case TK_no:
-    case TK_true:
-    case TK_false:
     case TK_nil:
     case TK_undefined:
         return true;
@@ -9992,6 +10104,11 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
         return false;
     }
 
+    bool* result_type_tokens =
+        arena_alloc(&temp_arena, array_count(lexer.tokens) * sizeof(bool));
+    memset(result_type_tokens, 0, array_count(lexer.tokens) * sizeof(bool));
+    cst_mark_result_type_tokens(&lexer, result_type_tokens);
+
     FormatTrivia trivia = {0};
     format_trivia_build(&lexer, &trivia);
     format_trivia_validate(&lexer, &trivia);
@@ -10154,6 +10271,13 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
             format_token_had_space_between(&lexer, i - 1, i)) {
             needs_space = true;
         }
+        // The same token spells a spaced recovery operator and an adjacent
+        // result type separator. Source whitespace must not blur that boundary.
+        if (kind == TK_Backslash || previous_kind == TK_Backslash) {
+            needs_space =
+                !((kind == TK_Backslash && result_type_tokens[i]) ||
+                  (previous_kind == TK_Backslash && result_type_tokens[i - 1]));
+        }
 
         if (needs_space && sb->size > 0 && sb->data[sb->size - 1] != ' ' &&
             sb->data[sb->size - 1] != '\n') {
@@ -10222,7 +10346,8 @@ internal bool format_emit_token_stream_block(StringBuilder* sb,
             format_token_state_newline(&state);
         } else if (!in_interpolated_string &&
                    ((kind == TK_RBrace && next_kind != TK_else &&
-                     next_kind != TK_RParen) ||
+                     next_kind != TK_RParen && next_kind != TK_Bang &&
+                     next_kind != TK_Question) ||
                     kind == TK_Semicolon)) {
             format_token_state_newline(&state);
         } else if (kind == TK_RBracket && multiline_bracket_depth == 0 &&

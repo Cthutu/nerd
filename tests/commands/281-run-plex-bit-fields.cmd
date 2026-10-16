@@ -25,6 +25,11 @@ TokenType :: enum {
     Symbol
 }
 
+get_header :: fn (header: ^Header, calls: ^i32) -> ^Header {
+    calls^ += 1
+    return header
+}
+
 main :: fn () -> i32 {
     header := Header {
         version : 2
@@ -56,6 +61,15 @@ main :: fn () -> i32 {
     pointer.status = TokenType.Symbol
     on header.status != TokenType.Symbol => return 24
 
+    calls: i32 = 0
+    get_header(^header, ^calls).code = 5
+    on calls != 1 => return 26
+    on header.code != 5 => return 27
+    on header.status != TokenType.Symbol => return 28
+    on header.active != 1 => return 29
+    pointer.code = 3
+    on header.code != 3 => return 30
+
     header.kind = TokenType.Float
     on header.kind != TokenType.Float => return 12
     on header.version != 15 => return 13
@@ -73,11 +87,13 @@ main :: fn () -> i32 {
     on defaulted.active != 0 => return 20
     on defaulted.code != 0 => return 21
     on defaulted.length != 7 => return 22
+    prn("bit-field writes complete")
     return 0
 }
 ¬
 0
 ¬
+bit-field writes complete
 
 ¬
 default-main

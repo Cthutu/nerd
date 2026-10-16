@@ -4683,12 +4683,40 @@ internal JsonValue* lsp_decl_location(const LspDocument* doc,
     lsp_token_offsets(
         &doc->front_end.lexer, token_index, &start_offset, &end_offset);
 
-    JsonValue* location = json_new_object(arena);
-    json_object_set_string(location, arena, "uri", uri);
-    json_object_set_object(
-        location,
-        "range",
-        lsp_make_document_range(doc, arena, start_offset, end_offset));
+    JsonValue*         location      = json_new_object(arena);
+    NerdSourceFragment fragment      = {0};
+    NerdSource         mapped_source = {0};
+    usize              mapped_start  = 0;
+    usize              mapped_end    = 0;
+    // The declaration can be in a sibling part of this same semantic module.
+    // Map the file as well as its offsets; the request URI is not its owner.
+    if (lsp_source_fragment_for_range(doc->front_end.lexer.source,
+                                      start_offset,
+                                      end_offset,
+                                      &fragment,
+                                      &mapped_source,
+                                      &mapped_start,
+                                      &mapped_end)) {
+        string path = fragment.source_path;
+        // In-memory editor fragments already carry a URI; disk parts carry
+        // filesystem paths. Keep editor URIs intact instead of encoding twice.
+        string target_uri =
+            string_eq(path, uri) ||
+                    (path.count >= 7 && memcmp(path.data, "file://", 7) == 0)
+                ? path
+                : lsp_path_to_uri(arena, lsp_cstr_from_string(arena, path));
+        json_object_set_string(location, arena, "uri", target_uri);
+        json_object_set_object(
+            location,
+            "range",
+            lsp_make_range(arena, mapped_source, mapped_start, mapped_end));
+    } else {
+        json_object_set_string(location, arena, "uri", uri);
+        json_object_set_object(
+            location,
+            "range",
+            lsp_make_document_range(doc, arena, start_offset, end_offset));
+    }
     return location;
 }
 

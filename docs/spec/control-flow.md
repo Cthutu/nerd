@@ -69,12 +69,14 @@ bool-on      ::= 'on' expression '=>' branch-expression [ 'else' branch-expressi
 condition-on ::= 'on' '{' { expression '=>' branch-expression | 'else' '=>' branch-expression } '}'
 value-on     ::= 'on' expression '{' { pattern-list [ 'as' IDENT ] [ 'on' expression ] '=>' branch-expression | 'else' [ 'as' IDENT ] '=>' branch-expression } '}'
 extract-on   ::= 'on' expression '=>' [ '[' IDENT ']' ] branch-expression 'else' [ '[' IDENT ']' ] branch-expression
+              | 'on' expression 'else' [ '[' IDENT ']' ] branch-expression
+              | 'on' expression 'else' '?' [ '[' IDENT ']' ] block
 sum-on       ::= 'on' expression '{' success-pattern-branches '}' 'else' '{' error-pattern-branches '}'
 ```
 
 Condition branches and guards must type as `bool`. Value-producing block-form
 `on` expressions must be exhaustive. Semantic analysis recognises exhaustive
-`else`, boolean coverage (`yes`/`no` or `true`/`false`), and enum variant coverage.
+`else`, boolean coverage (`yes`/`no`), and enum variant coverage.
 
 For `?T`, extraction binds the present `T` and the `else` branch represents
 absence. For `T\E`, extraction binds successful `T` and may bind `E` after
@@ -86,6 +88,21 @@ bracketed binders remain available for renaming. Full matching applies the first
 pattern table to the optional payload or result success payload. Optional
 `else { ... }` handles absence; result `else { ... }` is a pattern table over
 the error payload.
+
+Bare `expression else [error] { ... }` requires an optional or result subject.
+It evaluates the subject once and produces its successful payload, including
+`void`. Handler braces are statement scopes, so `break` and `again` retain
+their surrounding targets. Fallthrough propagates the captured original error
+or absence according to postfix `?` rules, even if the subject was mutated.
+Explicit control-flow exits override propagation; unreachable implicit
+propagation does not require a compatible enclosing return channel. Optional
+absence handlers cannot declare an error binder. Normal `defer` and
+failure-only `undo` cleanup applies, including cleanup inside the handler.
+
+Bare `else` binds above assignment and below boolean OR. An unbraced `on`
+branch reserves its `else` for the enclosing branch; parenthesise nested bare
+handlers. Full `on ... => [value] ... else [error] ...` extraction remains.
+The old `on expression else` and `on expression else?` shorthand is rejected.
 
 ## Branch Expressions
 

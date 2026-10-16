@@ -1,0 +1,133 @@
+use std.sync
+use std.thread
+
+Shared :: plex {
+    mutex              Mutex
+    changed            Condition
+    worker             ^Thread
+    ready              i32
+    release            bool
+    calls              i32
+    self_join_rejected bool
+    first_arena        ^arena
+    second_arena       ^arena
+}
+
+worker :: fn (context: ^void) {
+    shared := context.as(^Shared)
+    assert shared.mutex.lock()
+    on shared.ready == 0 => {
+        shared.first_arena = current_temp_arena()
+    } else {
+        shared.second_arena = current_temp_arena()
+    }
+    shared.ready += 1
+    assert shared.changed.broadcast()
+    for !shared.release {
+        assert shared.changed.wait(^shared.mutex)
+    }
+    shared.calls += 1
+    assert shared.mutex.unlock()
+}
+
+self_join_worker :: fn (context: ^void) {
+    shared := context.as(^Shared)
+    assert shared.mutex.lock()
+    shared.self_join_rejected = !shared.worker.join()
+    assert shared.mutex.unlock()
+}
+
+allocation_worker :: fn (context: ^void) {
+    assert current_temp_arena().as(^void) != context
+    for index: i32 = 0; index < 100; index += 1 {
+        values : [..]i32
+        values.push(index)
+        assert values[0] == index
+        values.free()
+        text := $"worker allocation {index}"
+        assert text.count > 0
+        current_temp_arena().reset()
+    }
+    -- Deliberately leave a final temporary allocation for the exit hook.
+    text := $"worker exit {42}"
+    assert text == "worker exit 42"
+}
+
+main :: fn () -> i32 {
+    shared : Shared
+    first  : Thread
+    second : Thread
+
+    assert first.join()
+    missing : ThreadFunction
+    assert !first.start(missing, nil)
+    assert !first.started
+    assert !shared.mutex.lock()
+    assert !shared.changed.signal()
+    assert !shared.changed.broadcast()
+    assert !shared.changed.wait(^shared.mutex)
+    assert shared.mutex.init()
+    assert !shared.mutex.init()
+    assert shared.changed.init()
+    assert !shared.changed.init()
+
+    for iteration: i32 = 0; iteration < 32; iteration += 1 {
+        shared.ready = 0
+        shared.release = no
+        assert first.start(worker, (^shared).as(^void))
+        assert !first.start(worker, (^shared).as(^void))
+        assert second.start(worker, (^shared).as(^void))
+        assert shared.mutex.lock()
+        for shared.ready != 2 {
+            assert shared.changed.wait(^shared.mutex)
+        }
+        assert shared.first_arena != shared.second_arena
+        assert shared.first_arena != current_temp_arena()
+        assert shared.second_arena != current_temp_arena()
+        -- A wake without changing the release predicate must not release workers.
+        assert shared.changed.signal()
+        assert shared.calls == iteration * 2
+        shared.release = yes
+        assert shared.changed.broadcast()
+        assert shared.mutex.unlock()
+        assert first.join()
+        assert second.join()
+        assert first.join()
+        assert shared.calls == (iteration + 1) * 2
+    }
+
+    -- Publish before starting: the predicate, not a stored notification, matters.
+    assert shared.mutex.lock()
+    shared.release = yes
+    assert shared.changed.signal()
+    assert shared.mutex.unlock()
+    assert first.start(worker, (^shared).as(^void))
+    assert first.join()
+    assert shared.calls == 65
+
+    -- Hold the mutex until start has published the owner state.
+    shared.worker = ^first
+    assert shared.mutex.lock()
+    assert first.start(self_join_worker, (^shared).as(^void))
+    assert shared.mutex.unlock()
+    assert first.join()
+    assert shared.self_join_rejected
+
+    for round: i32 = 0; round < 8; round += 1 {
+        assert first.start(allocation_worker, current_temp_arena().as(^void))
+        assert second.start(allocation_worker, current_temp_arena().as(^void))
+        assert first.join()
+        assert second.join()
+    }
+
+    assert shared.changed.done()
+    assert shared.changed.done()
+    assert shared.mutex.done()
+    assert shared.mutex.done()
+    assert shared.mutex.init()
+    assert shared.changed.init()
+    assert shared.changed.done()
+    assert shared.mutex.done()
+    prn("Thread lifecycle and predicate waits passed")
+    return 0
+}

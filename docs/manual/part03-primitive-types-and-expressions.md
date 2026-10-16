@@ -34,8 +34,6 @@ Boolean literals are:
 ```nerd
 yes
 no
-true   -- alias for yes
-false  -- alias for no
 ```
 
 Use `bool` for answers to yes/no questions: comparisons, loop conditions,
@@ -61,6 +59,34 @@ load :: fn (text: string) -> i32\string {
     return value + 1
 }
 ```
+
+### Supplying A Default
+
+Use `\` to extract a value and supply a default on error or absence:
+
+```nerd
+answer := parse("") \ 42
+name : ?string
+display_name := name \ "unknown"
+```
+
+The left side is evaluated once. The fallback is lazy: it runs only when the
+result fails or the optional is absent. An error is discarded rather than
+propagated. The extracted value and fallback have the same success type.
+
+You can chain optional and result values. Chains group from the right and stop
+at the first available value:
+
+```nerd
+answer := first_choice() \ second_choice() \ 42
+```
+
+`\` binds above multiplication and below prefix and postfix operators.
+`parse(text) \ 2 * 3` multiplies the extracted or default value by three.
+Use `parse(text) \ (2 * 3)` to make the multiplication part of the fallback.
+A fallback can also be a value block: `parse(text) \ ${ break 42 }`.
+For a `void` success type, a void fallback handles failure and continues.
+Use `on` extraction when you need to inspect the error.
 
 ## Numeric Expressions
 
@@ -300,9 +326,11 @@ below: i32 = -3.9.as(i32)  -- becomes -3
 
 Nerd does not silently insert broad implicit casts between concrete types. If a
 type conversion matters, write it down. Untyped integer and float literals are
-the main exception: they can become a concrete type from context, such as a
+one exception: they can become a concrete type from context, such as a
 binding annotation or function parameter type. Untyped literals are explained at
-the end of this part.
+the end of this part. Plex `use` declarations also permit conversion to the
+embedded plex, by value or pointer, when a destination type is known; see
+[Compound Data](part08-compound-data.md).
 
 ## Pointer-To-Slice Casts
 
@@ -473,10 +501,12 @@ The same rule applies to floats:
 
 ```nerd
 pi: f32 = 3.14        -- untyped float literal becomes f32
-whole_pi: i64 = 3.14  -- untyped float literal becomes i64 (truncated to 3)
+whole_pi: i64 = 3.14.as(i64)  -- explicit cast truncates to 3
 ```
 
-Here `3.14` becomes either `3.14` or `3` depending on the context.
+An untyped float can acquire a concrete floating-point type from context,
+but converting it to an integer requires an explicit cast. Untyped integers
+can acquire either an integer or floating-point type from context.
 
 Without other context, an integer literal materialises as `i32`, and a float
 literal materialises as `f64`.

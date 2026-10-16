@@ -1,0 +1,2 @@
+pub Value :: plex { number i32 }
+pub Failure :: enum { Broken }

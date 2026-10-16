@@ -1,0 +1,55 @@
+-- Request/reply sockets enforce protocol turn-taking using the same small API.
+-- A request socket starts with send; a reply socket starts with recv. Each
+-- successful operation changes its turn. Basic net_socket allows either order.
+use std.nexus
+
+exchange :: fn () -> void\NexusError {
+    server := net_reply_socket()
+    defer server.close()
+    server.bind("tcp://127.0.0.1:0")?
+    server.set_option(NetOption.RecvTimeoutMs, 2000)?
+    server.set_option(NetOption.SendTimeoutMs, 2000)?
+    client := net_request_socket()
+    defer client.close()
+    client.set_option(NetOption.RecvTimeoutMs, 2000)?
+    client.set_option(NetOption.SendTimeoutMs, 2000)?
+    client.connect(server.local_url()?)?
+    request := Message.create(^client)
+    defer request.done()
+    reply := Message.create(^server)
+    defer reply.done()
+
+    for sequence in [0 .. 2] {
+        request.clear()
+        request.append_u32(sequence.as(u32))?
+        request.send()?
+        reply.recv()?
+        number := reply.read_u32()?
+        reply.clear()
+        reply.append_u32(number + 1)?
+        reply.send()?
+        request.recv()?
+        assert request.read_u32()? == sequence.as(u32) + 1
+    }
+    -- Trying to receive another reply before sending another request is an API
+    -- error, not a network timeout. Failure leaves the current turn unchanged.
+    on request.recv() {
+        NexusError.WrongState! => {
+        }
+
+        else => {
+            assert no
+        }
+    }
+    prn("Nexus request/reply: two exchanges passed")
+}
+
+main :: fn () -> i32 {
+    on exchange() {
+        _! => return 1
+
+        else => {
+        }
+    }
+    return 0
+}

@@ -139,10 +139,11 @@ bool error_0303_unknown_type_with_private_modules(NerdSource    source,
 //------------------------------------------------------------------------------
 // Report a semantic type mismatch.
 
-bool error_0304_type_mismatch(NerdSource source,
-                              ErrorSpan  span,
-                              string     expected_type,
-                              string     actual_type)
+bool error_0304_type_mismatch_with_help(NerdSource source,
+                                        ErrorSpan  span,
+                                        string     expected_type,
+                                        string     actual_type,
+                                        string     help)
 {
     ErrorInfo error =
         error_init(source,
@@ -155,13 +156,25 @@ bool error_0304_type_mismatch(NerdSource source,
                         span,
                         "This expression has type `" STRINGP "`",
                         STRINGV(actual_type));
-    error_add_help(&error,
-                   "Change the expression or annotation so both sides use the "
-                   "same type.");
+    error_add_help(&error, STRINGP, STRINGV(help));
     error_add_type_definitions(&error, expected_type);
     error_add_type_definitions(&error, actual_type);
     error_render(&error);
     return false;
+}
+
+bool error_0304_type_mismatch(NerdSource source,
+                              ErrorSpan  span,
+                              string     expected_type,
+                              string     actual_type)
+{
+    return error_0304_type_mismatch_with_help(
+        source,
+        span,
+        expected_type,
+        actual_type,
+        s("Change the expression or annotation so both sides use the same "
+          "type."));
 }
 
 // A generic operator needs an explicit contract, even before instantiation.
@@ -2104,6 +2117,44 @@ bool error_0368_invalid_undo(NerdSource source, ErrorSpan span, cstr reason)
         &error,
         "Use `undo` inside an optional- or result-returning function, "
         "with cleanup that does not return or propagate failure.");
+    error_render(&error);
+    return false;
+}
+
+//------------------------------------------------------------------------------
+// Error-channel patterns only select failures from result subjects.
+
+bool error_0369_invalid_error_pattern(NerdSource source,
+                                      ErrorSpan  pattern_span,
+                                      ErrorSpan  value_span,
+                                      string     actual_type,
+                                      bool       postfix)
+{
+    ErrorInfo error = error_init(
+        source,
+        pattern_span,
+        "Error-channel pattern requires a result value, found `" STRINGP "`",
+        STRINGV(actual_type));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        pattern_span,
+                        "This pattern selects an error channel");
+    error_add_reference(&error,
+                        ERROR_REF_SECONDARY,
+                        value_span,
+                        "This `on` subject has type `" STRINGP "`",
+                        STRINGV(actual_type));
+    if (postfix) {
+        error_add_help(&error,
+                       "Remove `!` to match this value directly; error-channel "
+                       "patterns require a result subject of type `T\\U`.");
+    } else {
+        error_add_help(
+            &error,
+            "Match this value in the first pattern table; an error pattern "
+            "table requires a result subject of type `T\\U`.");
+    }
+    error_add_type_definitions(&error, actual_type);
     error_render(&error);
     return false;
 }

@@ -1,7 +1,16 @@
+-- Procedural dungeon in a terminal: place separated rooms, fill unused space
+-- with mazes, connect regions with doors and prune dead ends. Generation works
+-- on a cell grid; presentation turns its tiles into terminal glyphs and
+-- colours. Any key regenerates with a new seed, while Q/Escape quits. Resizing
+-- also rebuilds the map. Simulation and presentation are callbacks driven by
+-- std.term.
+
 use std.random
 use std.term
 use std.time
 
+-- Tile is the visible terrain category. Cells also retain a generation-region
+-- identifier so initially disconnected areas can be joined deliberately.
 Tile :: enum {
     Wall
     Floor
@@ -13,6 +22,7 @@ Cell :: plex {
     region i32
 }
 
+-- Rooms are rectangles placed on the odd-coordinate grid with a wall margin.
 Room :: plex {
     x i32
     y i32
@@ -25,6 +35,8 @@ Pos :: plex {
     y i32
 }
 
+-- A connector is a wall cell between two region identifiers. Opening it as a
+-- door can merge those regions into one connected component.
 Connector :: plex {
     x i32
     y i32
@@ -32,6 +44,8 @@ Connector :: plex {
     b i32
 }
 
+-- The flat cell array uses row-major indexing. These growable arrays own
+-- storage, clear for regeneration and free after the terminal loop stops.
 cells      : [..]Cell
 rooms      : [..]Room
 connectors : [..]Connector
@@ -50,31 +64,38 @@ door_ink    :: rgb(232, 126, 102)
 door_paper  :: rgb(88, 22, 18)
 text_ink    :: rgb(224, 212, 176)
 
+-- Map a valid (x, y) cell coordinate to its position in the flat array.
 dungeon_index :: fn (x: i32, y: i32) => (y.as(u32) * map_width + x.as(u32)).as(usize)
 
+-- Reject coordinates outside the allocated map before any array access.
 dungeon_in_bounds :: fn (x: i32, y: i32) -> bool {
     return x >= 0 && y >= 0 && x < map_width.as(i32) && y < map_height.as(i32)
 }
 
+-- Keep generation away from the outermost ring so the map has a wall boundary.
 dungeon_inner :: fn (x: i32, y: i32) -> bool {
     return x > 0 && y > 0 && x < map_width.as(i32) - 1 && y < map_height.as(i32) - 1
 }
 
+-- Treat out-of-map neighbours as walls, simplifying edge checks in algorithms.
 dungeon_cell :: fn (x: i32, y: i32) -> Cell {
     on !dungeon_in_bounds(x, y) => return Cell { tile: Tile.Wall region: -1 }
     return cells[dungeon_index(x, y)]
 }
 
+-- Update both terrain and its region label when carving or closing a cell.
 dungeon_set :: fn (x: i32, y: i32, tile: Tile, region: i32) {
     on !dungeon_in_bounds(x, y) => return
     cells[dungeon_index(x, y)] = Cell { tile region }
 }
 
+-- Floors and doors both participate in connectivity; walls do not.
 dungeon_passable :: fn (x: i32, y: i32) -> bool {
     cell := dungeon_cell(x, y)
     return cell.tile == Tile.Floor || cell.tile == Tile.Door
 }
 
+-- Only show wall detail beside passable cells, leaving solid unused areas dark.
 dungeon_wall_visible :: fn (x: i32, y: i32) -> bool {
     for dy: i32 = -1; dy <= 1; dy += 1 {
         for dx: i32 = -1; dx <= 1; dx += 1 {
@@ -86,8 +107,11 @@ dungeon_wall_visible :: fn (x: i32, y: i32) -> bool {
     return no
 }
 
+-- Adapt the random API to the signed coordinates used by the generator.
 rand_i32 :: fn (min: i32, max: i32) => random_range_i64(min.as(i64), max.as(i64)).as(i32)
 
+-- Odd coordinates and dimensions leave space between maze cells for walls.
+-- Two-cell carving steps can later open the intervening wall as a corridor.
 rand_odd :: fn (min: i32, max: i32) -> i32 {
     value := rand_i32(min, max)
     on value % 2 == 0 => value += 1
@@ -95,6 +119,7 @@ rand_odd :: fn (min: i32, max: i32) -> i32 {
     return value
 }
 
+-- Reject rooms that overlap existing rooms or their one-cell separation margin.
 dungeon_room_overlaps :: fn (room: Room) -> bool {
     for existing in rooms {
         on room.x < existing.x + existing.w + 1 &&
@@ -105,6 +130,7 @@ dungeon_room_overlaps :: fn (room: Room) -> bool {
     return no
 }
 
+-- Carve a room rectangle and give all its cells one shared region identifier.
 dungeon_add_room :: fn (room: Room, region: i32) {
     rooms.push(room)
 
@@ -115,6 +141,8 @@ dungeon_add_room :: fn (room: Room, region: i32) {
     }
 }
 
+-- Try a bounded number of random room placements. Rejected candidates simply
+-- leave more space for the maze stage instead of forcing a room into the map.
 dungeon_add_rooms :: fn (region: ^i32) {
     attempts := (map_width * map_height / 18).as(i32)
     on attempts < 40 => attempts = 40
@@ -146,6 +174,8 @@ dungeon_add_rooms :: fn (region: ^i32) {
     }
 }
 
+-- Encode the four cardinal directions as offsets used by carving and
+-- neighbours.
 dungeon_direction_dx :: fn (direction: i32) -> i32 {
     return on direction {
         0     => 0
@@ -155,6 +185,7 @@ dungeon_direction_dx :: fn (direction: i32) -> i32 {
     }
 }
 
+-- Provide the vertical half of the same direction-to-offset mapping.
 dungeon_direction_dy :: fn (direction: i32) -> i32 {
     return on direction {
         0     => -1
@@ -164,6 +195,8 @@ dungeon_direction_dy :: fn (direction: i32) -> i32 {
     }
 }
 
+-- A maze step moves two cells: the target must still be an interior wall cell.
+-- This preserves a separating wall between neighbouring maze paths.
 dungeon_can_carve :: fn (x: i32, y: i32, direction: i32) -> bool {
     dx       := dungeon_direction_dx(direction)
     dy       := dungeon_direction_dy(direction)
@@ -173,13 +206,18 @@ dungeon_can_carve :: fn (x: i32, y: i32, direction: i32) -> bool {
     return dungeon_inner(target_x, target_y) && dungeon_cell(target_x, target_y).tile == Tile.Wall
 }
 
+-- Use a stack for depth-first search instead of recursive function calls.
+-- Choose an uncarved neighbour, open the intermediate wall and advance; when no
+-- choices remain, pop the stack to backtrack.
 dungeon_carve_maze :: fn (start_x: i32, start_y: i32, region: i32) {
     stack : [..]Pos
     stack.push(Pos { x: start_x y: start_y })
     dungeon_set(start_x, start_y, Tile.Floor, region)
 
     for stack.count > 0 {
-        current              := stack[stack.count - 1]
+        current := stack[stack.count - 1]
+        -- Candidate storage is temporary for this step and is freed on both the
+        -- backtracking path and the successful-carve path.
         candidates : [..]i32
 
         for direction: i32 = 0; direction < 4; direction += 1 {
@@ -206,6 +244,8 @@ dungeon_carve_maze :: fn (start_x: i32, start_y: i32, region: i32) {
     stack.free()
 }
 
+-- Start a separate maze region at each remaining uncarved odd-grid cell. The
+-- later connector stage is responsible for joining these regions to rooms.
 dungeon_add_mazes :: fn (region: ^i32) {
     for y: i32 = 1; y < map_height.as(i32); y += 2 {
         for x: i32 = 1; x < map_width.as(i32); x += 2 {
@@ -217,6 +257,8 @@ dungeon_add_mazes :: fn (region: ^i32) {
     }
 }
 
+-- Look for a wall with neighbouring cells from at least two distinct regions.
+-- Each candidate records which regions a door at that position could connect.
 dungeon_find_connectors :: fn () {
     connectors.clear()
 
@@ -245,6 +287,8 @@ dungeon_find_connectors :: fn () {
     }
 }
 
+-- Follow parent links to the representative of a disjoint set. These sets track
+-- which original regions have already been joined by doors.
 region_find :: fn (parents: [..]i32, value: i32) -> i32 {
     current := value
     for parents[current.as(usize)] != current {
@@ -253,6 +297,8 @@ region_find :: fn (parents: [..]i32, value: i32) -> i32 {
     return current
 }
 
+-- Merge two disjoint sets by linking one representative to the other. Cell
+-- region labels stay unchanged; the parent table records merged connectivity.
 region_union :: fn (parents: [..]i32, a: i32, b: i32) {
     root_a := region_find(parents, a)
     root_b := region_find(parents, b)
@@ -260,11 +306,15 @@ region_union :: fn (parents: [..]i32, a: i32, b: i32) {
     on root_a != root_b => parents[root_b.as(usize)] = root_a
 }
 
+-- Use absolute coordinate differences when comparing connector spacing.
 dungeon_abs_i32 :: fn (value: i32) -> i32 {
     on value < 0 => return -value
     return value
 }
 
+-- Discard nearby candidates after placing a door to avoid adjacent doors.
+-- swap_delete fills the removed slot with another candidate, so recheck its
+-- index.
 dungeon_remove_nearby_connectors :: fn (connector: Connector) {
     i : usize = 0
     for i < connectors.count {
@@ -282,6 +332,9 @@ dungeon_remove_nearby_connectors :: fn (connector: Connector) {
     }
 }
 
+-- Start with each region separate and choose candidate doors randomly. Open
+-- doors between different sets; occasionally keep an extra same-set connector
+-- to introduce a loop instead of making every route tree-shaped.
 dungeon_connect_regions :: fn (region_count: i32) {
     dungeon_find_connectors()
 
@@ -312,6 +365,8 @@ dungeon_connect_regions :: fn (region_count: i32) {
     parents.free()
 }
 
+-- Repeatedly replace passable cells with at most one exit by walls. Removing
+-- one dead end can expose another, so continue until a pass changes nothing.
 dungeon_remove_dead_ends :: fn () {
     changed := yes
 
@@ -339,12 +394,14 @@ dungeon_remove_dead_ends :: fn () {
     }
 }
 
+-- Choose an odd map width to preserve the maze grid and boundary walls.
 dungeon_generation_width :: fn (terminal_width: u32) -> u32 {
     width := terminal_width
     on width % 2 == 0 => width -= 1
     return width
 }
 
+-- Reserve terminal rows for status text, then choose an odd map height.
 dungeon_generation_height :: fn (terminal_height: u32) -> u32 {
     height := terminal_height
     on height > 3 => height -= 2
@@ -352,6 +409,8 @@ dungeon_generation_height :: fn (terminal_height: u32) -> u32 {
     return height
 }
 
+-- Reinitialise the reusable buffers to walls and run the generation phases in
+-- order: rooms, mazes, doors, then dead-end pruning.
 dungeon_generate :: fn (terminal_width: u32, terminal_height: u32) {
     map_width  = dungeon_generation_width(terminal_width)
     map_height = dungeon_generation_height(terminal_height)
@@ -373,6 +432,8 @@ dungeon_generate :: fn (terminal_width: u32, terminal_height: u32) {
     generated = yes
 }
 
+-- Derive stable visual noise from position and seed. Drawing uses this hash
+-- instead of consuming random numbers and changing the generation sequence.
 dungeon_hash :: fn (x: u32, y: u32) -> u32 {
     value := x.as(u64) * 1103515245 + y.as(u64) * 12345 + seed
 
@@ -381,6 +442,8 @@ dungeon_hash :: fn (x: u32, y: u32) -> u32 {
     return (value & 0xffff).as(u32)
 }
 
+-- Brighten RGB channels with saturation so texture variation cannot wrap a
+-- channel past 255 and unexpectedly make it dark.
 dungeon_colour_step :: fn (base: Colour, amount: u32) -> Colour {
     r := ((base >> 16) & 0xff) + amount
     g := ((base >> 8) & 0xff) + amount
@@ -392,6 +455,8 @@ dungeon_colour_step :: fn (base: Colour, amount: u32) -> Colour {
     return rgb(r.as(u8), g.as(u8), b.as(u8))
 }
 
+-- Translate terrain to glyphs and colours, with position-based texture
+-- variation.
 dungeon_draw_cell :: fn (x: u32, y: u32) {
     cell  := dungeon_cell(x.as(i32), y.as(i32))
     noise := dungeon_hash(x, y) % 28
@@ -429,6 +494,8 @@ dungeon_draw_cell :: fn (x: u32, y: u32) {
     }
 }
 
+-- Regenerate only when needed, then draw the map and its status rows. A
+-- terminal resize changes the usable generation dimensions.
 dungeon_draw :: fn (width: u32, height: u32) {
     on !generated ||
         map_width != dungeon_generation_width(width) ||
@@ -473,6 +540,8 @@ dungeon_draw :: fn (width: u32, height: u32) {
     }
 }
 
+-- Handle exit keys first. Any other pressed key chooses a fresh seed and
+-- invalidates the map so presentation will regenerate it on the next draw.
 dungeon_simulate :: fn (sim: TermSimulate) {
     on sim.key_pressed(Q) ||
         sim.key_pressed(Escape) => {
@@ -490,10 +559,13 @@ dungeon_simulate :: fn (sim: TermSimulate) {
     }
 }
 
+-- Draw using the current terminal dimensions supplied by the presentation hook.
 dungeon_present :: fn (present: TermPresent) {
     dungeon_draw(present.width, present.height)
 }
 
+-- The checks below use a fixed seed for reproducible generation. Each frees the
+-- shared arrays afterwards so one test does not retain another's map storage.
 test "dungeon generation creates expected width" {
     seed = 12345
     random_seed(seed)
@@ -623,6 +695,8 @@ test "dungeon generation exposes walls beside floors" {
     assert visible_wall_count > 0
 }
 
+-- Set up the seed and terminal, install input/draw callbacks and enter the
+-- loop. Restore the cursor and free map storage once callbacks have stopped.
 main :: fn () {
     seed = now()
     random_seed(seed)
@@ -630,6 +704,8 @@ main :: fn () {
     term_cursor_enable(no)
     defer term_cursor_enable(yes)
 
+    -- Handle input at a 16 ms cadence but present at 100 ms. Separating input
+    -- from drawing avoids regenerating or repainting continuously in a busy loop.
     term_hook_simulation(from_ms(16), dungeon_simulate)
     term_hook_presentation(from_ms(100), dungeon_present)
     term_run()

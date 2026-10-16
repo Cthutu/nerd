@@ -62,6 +62,13 @@ Use `name: Type: value` when a constant should have an explicit type.
 answer: i32: 42  -- constant binding with explicit type
 ```
 
+A constant binding also prevents direct assignment to fields or fixed-array
+elements stored inside its value. For example, after
+`point :: Point { x: 20, y: 22 }`, assigning `point.x = 42` is an error.
+Initialise a variable from the binding when you need a mutable copy. Pointers
+and borrowed views are different: an immutable pointer or view binding does
+not make the storage it refers to read-only.
+
 ## Mutable Bindings
 
 Use `:=` to introduce a mutable binding whose type is inferred from its

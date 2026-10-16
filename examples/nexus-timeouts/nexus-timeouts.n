@@ -1,0 +1,66 @@
+-- Three receive outcomes: a bounded wait, an immediate attempt, then success.
+-- Both endpoints run here so no second terminal or external service is needed.
+use std.nexus
+
+run_timeouts :: fn () -> void\NexusError {
+    server := net_socket()
+    defer server.close()
+    server.bind("tcp://127.0.0.1:0")?
+    server.set_option(NetOption.RecvTimeoutMs, 50)?
+
+    -- A message stays associated with its socket across receive attempts.
+    -- Dispose of it before closing the socket; defers run in reverse order.
+    incoming := Message.create(^server)
+    defer incoming.done()
+
+    -- No client exists yet. This call waits up to its receive budget, then
+    -- reports TimedOut. That is an expected outcome, not a broken socket.
+    on incoming.recv() {
+        NexusError.TimedOut!  => prn("Receive timed out")
+        error!                => return error!
+
+        else => {
+            assert no
+        }
+    }
+
+    -- Nonblocking overrides the timeout: try once without waiting for data.
+    -- WouldBlock means we can try again later. Avoid a tight retry loop.
+    server.set_option(NetOption.Nonblocking, 1)?
+    on incoming.recv() {
+        NexusError.WouldBlock!  => prn("Receive would block")
+        error!                  => return error!
+
+        else => {
+            assert no
+        }
+    }
+
+    -- Now arrange for data to arrive. Port zero above selected a free port;
+    -- local_url supplies that address to our client. Bound its send as well.
+    client := net_socket()
+    defer client.close()
+    client.set_option(NetOption.SendTimeoutMs, 2000)?
+    client.connect(server.local_url()?)?
+    outgoing := Message.create(^client)
+    defer outgoing.done()
+    outgoing.append_string("hello after retry")?
+    outgoing.send()?
+
+    -- Restore waiting and retry the same receive with a generous finite budget.
+    -- Sending first avoids needing threads or timing-dependent sleeps here.
+    server.set_option(NetOption.Nonblocking, 0)?
+    server.set_option(NetOption.RecvTimeoutMs, 2000)?
+    incoming.recv()?
+    text := incoming.read_string()?
+    assert text == "hello after retry"
+    prn($"Received: {text}")
+}
+
+main :: fn () -> i32 {
+    run_timeouts() else [error] {
+        eprn($"Nexus timeouts failed: {nexus_error_to_string(error)}")
+        return 1
+    }
+    return 0
+}

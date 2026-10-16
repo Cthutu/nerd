@@ -1,0 +1,64 @@
+-- Nexus structured messages using the original simple socket/message model.
+-- This example runs both endpoints locally so it needs no second process.
+-- Applications normally put the server and client in separate programs.
+
+use std.nexus
+
+run_message :: fn () -> void\NexusError {
+    -- bind creates a TCP listener; Nexus accepts connections and frames messages
+    -- internally. Port zero lets the OS pick a free port for this local example.
+    server := net_socket()
+    defer server.close()
+    server.bind("tcp://127.0.0.1:0")?
+    server.set_option(NetOption.RecvTimeoutMs, 2000)?
+    server.set_option(NetOption.SendTimeoutMs, 2000)?
+
+    -- A normal client needs only connect with the server's URL. The local_url
+    -- query is needed here because we requested an OS-selected port above.
+    client := net_socket()
+    defer client.close()
+    client.set_option(NetOption.ConnectTimeoutMs, 2000)?
+    client.set_option(NetOption.RecvTimeoutMs, 2000)?
+    client.set_option(NetOption.SendTimeoutMs, 2000)?
+    client.connect(server.local_url()?)?
+
+    -- Messages are associated with their socket. Typed fields use the original
+    -- Nexus wire encoding, and send handles the complete message in one call.
+    request := Message.create(^client)
+    defer request.done()
+    request.append_string("hello nexus")?
+    request.append_u32(42)?
+    request.send()?
+
+    -- recv accepts a client and reads one whole message. The received message
+    -- remembers its sender so reusing it for a reply chooses the correct peer.
+    reply := Message.create(^server)
+    defer reply.done()
+    reply.recv()?
+    assert reply.read_string()? == "hello nexus"
+    number := reply.read_u32()?
+
+    -- clear keeps both the allocation and the reply route. No stream selection
+    -- or queue/flush calls are needed, even when a server has multiple clients.
+    reply.clear()
+    reply.append_string("reply")?
+    reply.append_u32(number + 1)?
+    reply.send()?
+
+    request.recv()?
+    assert request.read_string()? == "reply"
+    assert request.read_u32()? == 43
+    prn("Nexus message: hello nexus, reply 43")
+}
+
+main :: fn () -> i32 {
+    return on run_message() {
+        error! => {
+            _ := error
+            eprn("Nexus message failed")
+            return 1
+        }
+
+        else => 0
+    }
+}

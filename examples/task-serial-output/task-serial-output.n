@@ -1,0 +1,85 @@
+-- Concurrent calculations with serial output: worker tasks square inputs, then
+-- submit print tasks to a separate serial queue. Calculations can overlap, but
+-- output callbacks update a shared summary one at a time. The print order
+-- follows submission to the serial queue, not input-array order.
+
+use std.io
+use std.raptor
+
+-- A shared accumulator needs no mutex here because only serial callbacks modify
+-- it, and main reads it only after those callbacks finish.
+Summary :: plex {
+    count i32
+    total i32
+}
+
+-- Each input owns a separate result and output task. Keeping Work objects in a
+-- fixed array stabilises all pointers used by both stages of the pipeline.
+Work :: plex {
+    number       i32
+    result       i32
+    output_queue ^Queue
+    output_task  Task[void]
+    summary      ^Summary
+}
+
+-- The serial output stage combines printing with accumulation. Serial means
+-- callbacks do not overlap; it does not require one fixed worker thread.
+print_result :: fn (work: ^Work) {
+    -- Only callbacks on this serial queue access the summary until main waits.
+    work.summary.count += 1
+    work.summary.total += work.result
+    prn($"Serial output: {work.number} squared = {work.result}")
+}
+
+-- The concurrent stage writes its own result before preparing and publishing
+-- the dependent output task. Output reads that result after submission.
+calculate :: fn (work: ^Work) {
+    work.result = work.number * work.number
+    work.output_task.create(print_result, work)
+    -- Capacity covers all calculation and output tasks in this finite example.
+    assert work.output_queue.async(^work.output_task) != nil
+}
+
+main :: fn () -> ?void {
+    scheduler : Scheduler
+    scheduler.init(4, capacity = 64)?
+    defer assert scheduler.close()
+    -- Create a serial queue on the same scheduler; the default queue still runs
+    -- calculations concurrently. Both queues borrow the scheduler for their lifetime.
+    output : Queue
+    assert scheduler.create_queue(^output, QueueType.Serial)
+    summary      : Summary
+    work         : [8]Work
+    calculations : [8]Task[void]
+
+    -- Failure cleanup waits for calculations first, because they create output
+    -- tasks. Only then can it safely wait for output and release the local storage.
+    defer {
+        _ := when_all(calculations[..])
+        for i in [0 .. work.count] {
+            _ := work[i].output_task.wait()
+        }
+    }
+    -- Connect each calculation to the same serial queue and summary, while giving
+    -- it a distinct Work object and distinct task storage.
+    for i in [0 .. work.count] {
+        work[i].number = i.as(i32) + 1
+        work[i].output_queue = ^output
+        work[i].summary = ^summary
+        calculations[i].create(calculate, ^work[i])
+        scheduler.get_default_queue().async(^calculations[i])?
+    }
+    -- Calculation completion only guarantees that dependent output was submitted.
+    -- Wait for the output tasks as well before inspecting the shared summary.
+    assert when_all(calculations[..])
+    for i in [0 .. work.count] {
+        assert work[i].output_task.wait()
+    }
+    -- These checks validate the aggregate rather than the nondeterministic print
+    -- order: eight completed outputs must add up to the same mathematical result.
+    assert summary.count == 8
+    assert summary.total == 204
+    prn($"Serial output: total = {summary.total}")
+    return
+}

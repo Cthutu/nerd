@@ -1,0 +1,35 @@
+{
+  "baseline_revision": "007f76a2",
+  "tested_revision": "87e4567a7fe80da1636b1f1ac9a09a776ae42e12",
+  "compiler": "/home/matt/nerd-consolidation-review/_bin/nerd-debug",
+  "compiler_sha256": "6481b2a5849173bf720db572fc7a9a936eb5e3debca80a309b70af2622b14fcc",
+  "platform": "linux",
+  "old_commands": 47,
+  "batch_scenarios": 14,
+  "verified": [
+    "33 exact source/exit/stdout mappings",
+    "dedicated CLI fixtures unchanged",
+    "47 original command fixtures",
+    "batch golden output and return assertions",
+    "omitted scenario rejected despite successful exit",
+    "wrong result rejected",
+    "batch in language differential discovery; old command entries removed"
+  ],
+  "timings": {
+    "before_commands": [
+      1.4862581659981515,
+      1.4851030850259122,
+      1.4801813419908285
+    ],
+    "after_batch": [
+      0.06158913898980245,
+      0.0643389190081507,
+      0.06192812600056641
+    ]
+  },
+  "median_seconds": {
+    "before_commands": 1.4851030850259122,
+    "after_batch": 0.06192812600056641
+  },
+  "measurement_scope": "Only changed fixture work. Same fresh compiler and modules on both sides; original commands extracted to temporary files; batch runs through language harness with HIR/LLVM flags. Sequential, one excluded warmup when measuring. Retained alternative language fixtures are unchanged and outside timing. Not a full-gate speedup."
+}

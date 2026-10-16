@@ -9,7 +9,7 @@ App :: plex {
 
 main :: fn () {
     _app: App = {
-        quit: false
+        quit: no
         init: app_init
         kill: nil
         logic: app_logic

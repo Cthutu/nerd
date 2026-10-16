@@ -5,6 +5,9 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#ifndef NDEBUG
+#include <stdatomic.h>
+#endif
 #if defined(_WIN32)
 #include <windows.h>
 #include <fcntl.h>
@@ -61,6 +64,17 @@ static NrtArenaDebugNode*  g_nrt_arena_head       = NULL;
 static uint64_t            g_nrt_heap_next_index  = 0;
 static uint64_t            g_nrt_heap_break_index = 0;
 static uint64_t            g_nrt_arena_next_index = 0;
+// Protect process-wide diagnostic bookkeeping, not caller-owned payloads.
+static atomic_flag g_nrt_debug_lock = ATOMIC_FLAG_INIT;
+static void nrt_debug_lock(void)
+{
+    while (atomic_flag_test_and_set_explicit(&g_nrt_debug_lock, memory_order_acquire)) {}
+}
+static void nrt_debug_unlock(void)
+{
+    atomic_flag_clear_explicit(&g_nrt_debug_lock, memory_order_release);
+}
+
 #endif
 
 void nrt_string_builder_reset(void);
@@ -73,6 +87,8 @@ void* nrt_arena_alloc(NrtArena*   arena,
                       size_t      alignment,
                       const char* source_path,
                       uint32_t    line);
+void nrt_thread_init(void);
+void nrt_thread_done(void);
 void nrt_core_init(void);
 void nrt_core_done(void);
 
@@ -384,6 +400,7 @@ static void nrt_heap_unlink(NrtHeapDebugHeader* header)
 }
 #endif
 
+// Live-list inspection requires quiescence: join workers before traversing.
 void* nrt_mem_live_head(void)
 {
 #ifndef NDEBUG
@@ -407,6 +424,8 @@ void* nrt_mem_alloc(size_t size,
                     const char* source_path,
                     uint32_t    line)
 {
+    (void)source_path;
+    (void)line;
     if (alignment < 16) {
         alignment = 16;
     }
@@ -428,6 +447,7 @@ void* nrt_mem_alloc(size_t size,
     footer->requested_size = size;
 
 #ifndef NDEBUG
+    nrt_debug_lock();
     NrtHeapDebugHeader* debug = (NrtHeapDebugHeader*)mapping;
     debug->prev               = NULL;
     debug->next               = g_nrt_heap_head;
@@ -446,6 +466,7 @@ void* nrt_mem_alloc(size_t size,
         g_nrt_heap_head->prev = debug;
     }
     g_nrt_heap_head = debug;
+    nrt_debug_unlock();
 #endif
 
     return user;
@@ -494,7 +515,9 @@ void nrt_mem_free(void* memory)
     }
     NrtHeapFooter* footer = nrt_heap_footer_from_user(memory);
 #ifndef NDEBUG
+    nrt_debug_lock();
     nrt_heap_unlink(nrt_heap_debug_from_user(memory));
+    nrt_debug_unlock();
 #endif
     size_t mapping_size = footer->mapping_size;
     size_t    page        = nrt_page_size();
@@ -512,7 +535,9 @@ size_t nrt_mem_size(void* memory)
 void nrt_mem_leak(void* memory)
 {
 #ifndef NDEBUG
+    nrt_debug_lock();
     nrt_heap_unlink(nrt_heap_debug_from_user(memory));
+    nrt_debug_unlock();
 #else
     (void)memory;
 #endif
@@ -521,7 +546,9 @@ void nrt_mem_leak(void* memory)
 void nrt_mem_break_on_alloc(uint64_t index)
 {
 #ifndef NDEBUG
+    nrt_debug_lock();
     g_nrt_heap_break_index = index;
+    nrt_debug_unlock();
 #else
     (void)index;
 #endif
@@ -588,6 +615,7 @@ static void nrt_arena_debug_track(NrtArena*   arena,
         nrt_arena_abort("arena debug tracking allocation failed");
     }
 
+    nrt_debug_lock();
     *node = (NrtArenaDebugNode){
         .prev           = NULL,
         .next           = g_nrt_arena_head,
@@ -607,6 +635,7 @@ static void nrt_arena_debug_track(NrtArena*   arena,
         g_nrt_arena_head->prev = node;
     }
     g_nrt_arena_head = node;
+    nrt_debug_unlock();
 }
 
 static void nrt_arena_debug_update(NrtArena* arena)
@@ -615,12 +644,13 @@ static void nrt_arena_debug_update(NrtArena* arena)
         return;
     }
 
+    nrt_debug_lock();
     NrtArenaDebugNode* node = nrt_arena_debug_find(arena->base);
-    if (node == NULL) {
-        return;
+    if (node != NULL) {
+        node->committed_size = arena->committed_size;
+        node->used_size = (size_t)(arena->current - arena->base);
     }
-    node->committed_size = arena->committed_size;
-    node->used_size      = (size_t)(arena->current - arena->base);
+    nrt_debug_unlock();
 }
 
 static void nrt_arena_debug_done(NrtArena* arena)
@@ -628,7 +658,9 @@ static void nrt_arena_debug_done(NrtArena* arena)
     if (arena == NULL || arena->base == NULL) {
         return;
     }
+    nrt_debug_lock();
     nrt_arena_debug_release(nrt_arena_debug_find(arena->base));
+    nrt_debug_unlock();
 }
 #endif
 
@@ -638,6 +670,8 @@ void nrt_arena_init(NrtArena*   arena,
                     const char* source_path,
                     uint32_t    line)
 {
+    (void)source_path;
+    (void)line;
     if (arena == NULL) {
         return;
     }
@@ -992,9 +1026,10 @@ static void nrt_print_memory_leaks(void)
 }
 #endif
 
-void nrt_core_init(void) {}
+void nrt_thread_init(void) {}
 
-void nrt_core_done(void)
+// Releases only the calling worker's lazy TLS storage; never reports process leaks.
+void nrt_thread_done(void)
 {
     if (g_string_builder_data != NULL) {
         nrt_mem_free(g_string_builder_data);
@@ -1003,8 +1038,18 @@ void nrt_core_done(void)
         g_string_builder_cursor   = 0;
     }
     nrt_arena_done(&g_temp_arena);
+}
+
+void nrt_core_init(void) { nrt_thread_init(); }
+
+// Applications must join workers before process shutdown and live-list inspection.
+void nrt_core_done(void)
+{
+    nrt_thread_done();
 #ifndef NDEBUG
+    nrt_debug_lock();
     nrt_print_memory_leaks();
+    nrt_debug_unlock();
 #endif
 }
 

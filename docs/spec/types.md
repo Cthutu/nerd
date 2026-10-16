@@ -13,7 +13,7 @@ The semantic analyser recognises these built-in type families:
 | ---------------------------------- | ----------------------------------------------------------------- |
 | `void`                             | No value. Used for statements and functions with no return value. |
 | `!`                                | Never returns. Used for functions that terminate control flow.     |
-| `bool`                             | Boolean value, written with `yes`/`no` or `true`/`false`.         |
+| `bool`                             | Boolean value, written with `yes`/`no`.         |
 | `string`                           | Runtime string slice with string-specific typing.                 |
 | `i8`, `i16`, `i32`, `i64`, `isize` | Signed integer types.                                             |
 | `u8`, `u16`, `u32`, `u64`, `usize` | Unsigned integer types.                                           |
@@ -26,7 +26,12 @@ platform-sized signed integer values.
 
 `untyped integer` and `untyped float` are temporary semantic types for numeric
 literals. They materialise to concrete types from context, or to `i32` and
-`f64` respectively when no stronger destination type is available.
+`f64` respectively when no stronger destination type is available. Constant
+bindings preserve these untyped types. An untyped integer can acquire a
+concrete integer or floating-point type from an annotation, parameter,
+return type, or numeric operand. An untyped float can acquire a concrete
+floating-point type; conversion to an integer requires an explicit cast.
+These rules do not allow implicit conversion between concrete numeric types.
 
 For unannotated numeric locals, concrete usage constraints are collected before
 materialisation. Known function and FFI parameter types, typed assignments,
@@ -242,6 +247,14 @@ directly or transitively embedded plex types adjust to the relevant subobject.
 
 Enums support unit variants, payload variants, and explicit discriminant
 expressions.
+An explicitly numbered payload-free variant retains its enum type without a
+numeric expected type. In a concrete integer or floating-point context, that
+variant supplies its discriminant as an untyped integer would; integer range
+checks apply. Unannotated constant aliases preserve this contextual behaviour.
+Implicit discriminants, payload constructors, enum variables, and explicitly
+enum-typed constants do not receive this implicit numeric conversion. Explicit
+assignment of a discriminant is part of semantic enum type identity and is
+preserved across imports and materialisation.
 Payload variants with named fields use an inline plex payload body, such as
 `Resized { width u16 height u16 }`.
 They are constructed and matched with the same braced variant shape:

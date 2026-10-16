@@ -148,6 +148,7 @@ define internal ptr @fn.0({ ptr, i64 } %s, { ptr, i64 } %sep) {
   %local.4 = alloca i64
   %local.5 = alloca i1
   %local.6 = alloca i64
+  %t42 = alloca i1
   store ptr null, ptr %local.2
   %t0 = extractvalue { ptr, i64 } %sep, 1
   %t1 = icmp eq i64 %t0, 0
@@ -222,7 +223,6 @@ for.body.7:
   br label %for.cond.10
 for.cond.10:
   %t41 = load i1, ptr %local.5
-  %t42 = alloca i1
   br i1 %t41, label %logical.rhs.14, label %logical.short.15
 logical.short.15:
   store i1 0, ptr %t42

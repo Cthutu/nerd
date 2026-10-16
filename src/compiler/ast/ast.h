@@ -217,11 +217,12 @@ typedef enum : u32 {
 } AstFnKind;
 
 typedef enum : u8 {
-    ANF_None       = 0,
-    ANF_ConstKnown = 1 << 0,
-    ANF_ConstBusy  = 1 << 1,
-    ANF_Public     = 1 << 2,
-    ANF_Disabled   = 1 << 3,
+    ANF_None                = 0,
+    ANF_ConstKnown          = 1 << 0,
+    ANF_ConstBusy           = 1 << 1,
+    ANF_Public              = 1 << 2,
+    ANF_Disabled            = 1 << 3,
+    ANF_ImplicitPropagation = 1 << 5,
 } AstNodeFlag;
 
 typedef struct {
@@ -424,6 +425,7 @@ typedef struct {
     u32 flags;
     u32 binder_symbol_handle;
     u32 binder_token_index;
+    u32 error_token_index; // Postfix ! token; U32_MAX for an error table.
 } AstOnBranch;
 
 typedef enum : u32 {
@@ -442,6 +444,10 @@ typedef enum : u32 {
 
 typedef struct {
     AstOnKind kind;
+    bool      shorthand;
+    bool      fallback;
+    bool      propagate_failure;
+    u32       wrapper_symbol;
     u32       first_branch;
     u32       branch_count;
 } AstOnInfo;

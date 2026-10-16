@@ -91,6 +91,8 @@ define internal void @fn.0() {
   %local.0 = alloca i32
   %local.1 = alloca i32
   %local.2 = alloca i1
+  %t17 = alloca i1
+  %t20 = alloca i1
   %t26 = alloca { ptr, i64 }
   %t30 = alloca { ptr, i64 }
   store i32 1, ptr %local.0
@@ -121,7 +123,6 @@ define internal void @fn.0() {
   store i32 %t15, ptr %local.1
   store i1 1, ptr %local.2
   %t16 = load i1, ptr %local.2
-  %t17 = alloca i1
   br i1 %t16, label %logical.rhs.0, label %logical.short.1
 logical.short.1:
   store i1 0, ptr %t17
@@ -133,7 +134,6 @@ logical.end.2:
   %t18 = load i1, ptr %t17
   store i1 %t18, ptr %local.2
   %t19 = load i1, ptr %local.2
-  %t20 = alloca i1
   br i1 %t19, label %logical.short.4, label %logical.rhs.3
 logical.short.4:
   store i1 1, ptr %t20

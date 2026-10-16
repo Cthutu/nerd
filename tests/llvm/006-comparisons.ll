@@ -22,6 +22,7 @@ define internal i1 @fn.0(i32 %a, i32 %b) {
 
 define internal i1 @fn.1(i1 %a, i1 %b) {
   %t0 = alloca i1
+  %t2 = alloca i1
   br i1 %a, label %logical.rhs.0, label %logical.short.1
 logical.short.1:
   store i1 0, ptr %t0
@@ -31,7 +32,6 @@ logical.rhs.0:
   br label %logical.end.2
 logical.end.2:
   %t1 = load i1, ptr %t0
-  %t2 = alloca i1
   br i1 %t1, label %logical.short.4, label %logical.rhs.3
 logical.short.4:
   store i1 1, ptr %t2

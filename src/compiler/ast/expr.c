@@ -5,6 +5,7 @@
 //------------------------------------------------------------------------------
 
 #include <compiler/ast/parse_internal.h>
+#include <stdio.h>
 
 //------------------------------------------------------------------------------
 // Map a token kind to the corresponding binary AST node kind.
@@ -69,8 +70,6 @@ bool ast_token_starts_expression(TokenKind kind)
     case TK_InterpolatedStringStart:
     case TK_yes:
     case TK_no:
-    case TK_true:
-    case TK_false:
     case TK_nil:
     case TK_LBracket:
     case TK_LBrace:
@@ -530,6 +529,10 @@ bool ast_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp)
         *out_left_bp  = AST_BP_ASSIGNMENT;
         *out_right_bp = AST_BP_ASSIGNMENT;
         return true;
+    case TK_else:
+        *out_left_bp  = AST_BP_HANDLER;
+        *out_right_bp = AST_BP_HANDLER;
+        return true;
     case TK_LParen:
     case TK_LBracket:
     case TK_LBrace:
@@ -591,6 +594,10 @@ bool ast_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp)
     case TK_Percent:
         *out_left_bp  = AST_BP_MULTIPLICATIVE;
         *out_right_bp = AST_BP_MULTIPLICATIVE + 1;
+        return true;
+    case TK_Backslash:
+        *out_left_bp  = AST_BP_FALLBACK;
+        *out_right_bp = AST_BP_FALLBACK;
         return true;
     default:
         return false;
@@ -1200,6 +1207,7 @@ internal bool ast_parse_on_error_pattern_table(AstParseState* state,
             .pattern_index        = U32_MAX,
             .guard_node_index     = U32_MAX,
             .flags                = AOBF_Error,
+            .error_token_index    = U32_MAX,
             .binder_symbol_handle = U32_MAX,
             .binder_token_index   = U32_MAX,
         };
@@ -1359,6 +1367,138 @@ internal bool ast_on_expr_is_condition_shaped(const AstParseState* state,
     }
 }
 
+// Normalise a bare else handler into a private payload binder and append
+// ordinary propagation inside the handler scope, so its defers/undos
+// see the failure exit and the original operation is evaluated only once.
+internal bool ast_parse_failure_handler(AstParseState* state,
+                                        AstToken       handler_token,
+                                        u32            condition,
+                                        u32*           out_node)
+{
+    u32 else_token = state->token.token_index;
+    if (!ast_next_token(state)) {
+        return false;
+    }
+    u32 propagation_token = else_token;
+    u32 error_binder = U32_MAX, error_token = U32_MAX;
+    if (!ast_parse_on_extract_binder(state, &error_binder, &error_token)) {
+        return false;
+    }
+    char            name[64];
+    InternAddResult ignored = {0};
+    snprintf(
+        name, sizeof(name), "$on_payload_%u", (u32)array_count(state->nodes));
+    u32 payload = lex_add_symbol(
+        state->lexer, string_from((u8*)name, strlen(name)), &ignored);
+    u32 success;
+    if (!ast_emit_node(state,
+                       (AstNode){.kind        = AK_SymbolRef,
+                                 .token_index = handler_token.token_index,
+                                 .a           = payload},
+                       &success)) {
+        return false;
+    }
+    if (state->token.kind != TK_LBrace) {
+        return error_0203_expected_token(state->lexer->source,
+                                         ast_token_span(state, &state->token),
+                                         TK_LBrace,
+                                         state->token.kind);
+    }
+    u32  handler;
+    bool boundary                   = state->allow_statement_boundary;
+    state->allow_statement_boundary = true;
+    bool parsed                     = ast_parse_on_branch_expr(state, &handler);
+    state->allow_statement_boundary = boundary;
+    if (!parsed) {
+        return false;
+    }
+    // Ordinary extraction handler braces are statement scopes, not value
+    // blocks.
+    if (state->nodes[handler].kind == AK_ExprBlock &&
+        state->lexer->tokens[state->nodes[handler].token_index].kind ==
+            TK_LBrace) {
+        u32 body = state->nodes[handler].a;
+        ASSERT(handler + 1 == array_count(state->nodes),
+               "Expected final branch wrapper");
+        array_pop(state->nodes);
+        handler = body;
+    }
+    bool implicit_error = false;
+    if (error_binder == U32_MAX &&
+        state->nodes[condition].kind == AK_SymbolRef &&
+        ast_on_branch_references_symbol(
+            state, success + 1, state->nodes[condition].a)) {
+        error_binder   = state->nodes[condition].a;
+        error_token    = state->nodes[condition].token_index;
+        implicit_error = true;
+    }
+    u32 wrapper = U32_MAX;
+    {
+        if (state->nodes[handler].kind != AK_Block) {
+            return error_0203_expected_token(
+                state->lexer->source,
+                ast_token_span(state, &state->token),
+                TK_LBrace,
+                state->token.kind);
+        }
+        snprintf(name, sizeof(name), "$on_wrapper_%u", success);
+        wrapper = lex_add_symbol(
+            state->lexer, string_from((u8*)name, strlen(name)), &ignored);
+        u32 ref, forward, statement;
+        if (!ast_emit_node(state,
+                           (AstNode){.kind        = AK_SymbolRef,
+                                     .token_index = propagation_token,
+                                     .a           = wrapper},
+                           &ref) ||
+            !ast_emit_node(state,
+                           (AstNode){.kind        = AK_Propagate,
+                                     .token_index = propagation_token,
+                                     .a           = ref,
+                                     .flags       = ANF_ImplicitPropagation},
+                           &forward) ||
+            !ast_emit_node(state,
+                           (AstNode){.kind        = AK_Statement,
+                                     .token_index = propagation_token,
+                                     .a           = forward,
+                                     .flags       = ANF_ImplicitPropagation},
+                           &statement)) {
+            return false;
+        }
+        state->nodes[handler].b = (u32)array_count(state->nodes);
+    }
+    u32 first = (u32)array_count(state->on_branches);
+    array_push(state->on_branches,
+               ((AstOnBranch){.token_index          = handler_token.token_index,
+                              .expr_node_index      = success,
+                              .guard_node_index     = U32_MAX,
+                              .binder_symbol_handle = payload,
+                              .binder_token_index   = U32_MAX,
+                              .flags                = AOBF_ImplicitBinder}));
+    array_push(
+        state->on_branches,
+        ((AstOnBranch){.token_index      = else_token,
+                       .expr_node_index  = handler,
+                       .guard_node_index = U32_MAX,
+                       .flags = AOBF_Else |
+                                (implicit_error ? AOBF_ImplicitBinder : 0),
+                       .binder_symbol_handle = error_binder,
+                       .binder_token_index   = error_token}));
+    u32 index = (u32)array_count(state->ons);
+    array_push(state->ons,
+               ((AstOnInfo){.kind              = AOK_Extract,
+                            .shorthand         = true,
+                            .propagate_failure = true,
+                            .wrapper_symbol    = wrapper,
+                            .first_branch      = first,
+                            .branch_count      = 2}));
+    return ast_emit_node(state,
+                         (AstNode){.kind        = AK_On,
+                                   .token_index = handler_token.token_index,
+                                   .a           = condition,
+                                   .b           = index},
+                         out_node);
+}
+
 internal bool
 ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
 {
@@ -1400,6 +1540,7 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
             branch.binder_symbol_handle = U32_MAX;
             branch.binder_token_index   = U32_MAX;
             branch.guard_node_index     = U32_MAX;
+            branch.error_token_index    = U32_MAX;
 
             if (state->token.kind == TK_else) {
                 branch.flags = AOBF_Else;
@@ -1497,7 +1638,8 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
         state->stop_before_on_branch_head;
     state->stop_before_block_lbrace   = true;
     state->stop_before_on_branch_head = false;
-    bool parsed_condition = ast_parse_expr_bp(state, 0, &condition_node);
+    bool parsed_condition =
+        ast_parse_expr_bp(state, AST_BP_HANDLER, &condition_node);
     state->stop_before_block_lbrace   = previous_stop_before_block_lbrace;
     state->stop_before_on_branch_head = previous_stop_before_on_branch_head;
     if (!parsed_condition) {
@@ -1574,6 +1716,7 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
             branch.binder_symbol_handle = U32_MAX;
             branch.binder_token_index   = U32_MAX;
             branch.guard_node_index     = U32_MAX;
+            branch.error_token_index    = U32_MAX;
             if (state->token.kind == TK_else) {
                 branch.flags = AOBF_Else;
                 if (!ast_next_token(state)) {
@@ -1647,6 +1790,9 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
                             array_count(state->nodes) &&
                         state->nodes[state->patterns[pattern_root].a].kind ==
                             AK_ErrorInject) {
+                        branch.error_token_index =
+                            state->nodes[state->patterns[pattern_root].a]
+                                .token_index;
                         state->patterns[pattern_root].a =
                             state->nodes[state->patterns[pattern_root].a].a;
                         branch.flags |= AOBF_Error;
@@ -1692,6 +1838,7 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
                 array_free(branch_patterns);
                 if (state->token.kind == TK_Bang) {
                     branch.flags |= AOBF_Error;
+                    branch.error_token_index = state->token.token_index;
                     if (!ast_next_token(state)) {
                         return error_0201_missing_value(
                             state->token.source,
@@ -1860,6 +2007,15 @@ ast_parse_on_expr(AstParseState* state, AstToken on_token, u32* out_node)
                              out_node);
     }
 
+    if (state->token.kind == TK_else) {
+        return error_0204_unexpected_token_here(
+            state->lexer->source,
+            ast_token_span(state, &state->token),
+            TK_else,
+            "The omitted-success `on ... else` forms have been removed",
+            "Use `expression else [error] { ... }`, or keep `on expression => "
+            "[value] { ... } else [error] { ... }` for full extraction");
+    }
     if (state->token.kind != TK_FatArrow) {
         return error_0203_expected_token(state->lexer->source,
                                          ast_token_span(state, &state->token),
@@ -2117,13 +2273,11 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
         }
     case TK_yes:
     case TK_no:
-    case TK_true:
-    case TK_false:
         {
             AstNode node = {
                 .kind        = AK_BoolLiteral,
                 .token_index = token.token_index,
-                .a = (token.kind == TK_yes || token.kind == TK_true) ? 1u : 0u,
+                .a           = (token.kind == TK_yes) ? 1u : 0u,
             };
             return ast_emit_node(state, node, out_node);
         }
@@ -2476,8 +2630,10 @@ internal bool ast_parse_nud(AstParseState* state, AstToken token, u32* out_node)
 //------------------------------------------------------------------------------
 // Parse the current token as an infix operator that extends an existing lhs.
 
-internal bool
-ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
+internal bool ast_parse_led_impl(AstParseState* state,
+                                 AstToken       op,
+                                 u32            left_node,
+                                 u32*           out_node)
 {
     u8  left_bp    = 0;
     u8  right_bp   = 0;
@@ -2510,6 +2666,10 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
 
     if (!ast_infix_binding_power(op.kind, &left_bp, &right_bp)) {
         error_ice("Unhandled led token kind: %d", op.kind);
+    }
+
+    if (op.kind == TK_else) {
+        return ast_parse_failure_handler(state, op, left_node, out_node);
     }
 
     if (op.kind == TK_LParen) {
@@ -2903,6 +3063,55 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
         return false;
     }
 
+    // Fallback is ordinary payload extraction with a lazy failure branch.
+    // Keep the source spelling in the CST, but reuse on typing and lowering.
+    if (op.kind == TK_Backslash) {
+        char            name[64];
+        InternAddResult ignored = {0};
+        snprintf(name,
+                 sizeof(name),
+                 "$fallback_payload_%u",
+                 (u32)array_count(state->nodes));
+        u32 payload = lex_add_symbol(
+            state->lexer, string_from((u8*)name, strlen(name)), &ignored);
+        u32 success;
+        if (!ast_emit_node(state,
+                           (AstNode){.kind        = AK_SymbolRef,
+                                     .token_index = op.token_index,
+                                     .a           = payload},
+                           &success)) {
+            return false;
+        }
+        u32 first = (u32)array_count(state->on_branches);
+        array_push(state->on_branches,
+                   ((AstOnBranch){.token_index          = op.token_index,
+                                  .expr_node_index      = success,
+                                  .guard_node_index     = U32_MAX,
+                                  .binder_symbol_handle = payload,
+                                  .binder_token_index   = U32_MAX,
+                                  .flags = AOBF_ImplicitBinder}));
+        array_push(state->on_branches,
+                   ((AstOnBranch){.token_index          = op.token_index,
+                                  .expr_node_index      = right_node,
+                                  .guard_node_index     = U32_MAX,
+                                  .binder_symbol_handle = U32_MAX,
+                                  .binder_token_index   = U32_MAX,
+                                  .flags                = AOBF_Else}));
+        u32 index = (u32)array_count(state->ons);
+        array_push(state->ons,
+                   ((AstOnInfo){.kind           = AOK_Extract,
+                                .fallback       = true,
+                                .wrapper_symbol = U32_MAX,
+                                .first_branch   = first,
+                                .branch_count   = 2}));
+        return ast_emit_node(state,
+                             (AstNode){.kind        = AK_On,
+                                       .token_index = op.token_index,
+                                       .a           = left_node,
+                                       .b           = index},
+                             out_node);
+    }
+
     AstNode node = {
         .kind        = ast_binary_kind_from_token(op.kind),
         .token_index = op.token_index,
@@ -2913,6 +3122,19 @@ ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
 }
 
 //------------------------------------------------------------------------------
+// Delimited operands have their own else clauses, independent of an outer on.
+internal bool
+ast_parse_led(AstParseState* state, AstToken op, u32 left_node, u32* out_node)
+{
+    bool boundary = state->stop_before_on_branch_head;
+    if (op.kind == TK_LParen || op.kind == TK_LBracket) {
+        state->stop_before_on_branch_head = false;
+    }
+    bool parsed = ast_parse_led_impl(state, op, left_node, out_node);
+    state->stop_before_on_branch_head = boundary;
+    return parsed;
+}
+
 // Parse an expression starting at the current token and wrap it in
 // AK_Expression.
 
@@ -2938,7 +3160,14 @@ bool ast_parse_expr_bp(AstParseState* state, u8 min_bp, u32* out_node)
 {
     u32 left_node;
 
-    if (!ast_parse_nud(state, state->token, &left_node)) {
+    bool boundary = state->stop_before_on_branch_head;
+    if (state->token.kind == TK_LParen || state->token.kind == TK_LBracket ||
+        state->token.kind == TK_LBrace || state->token.kind == TK_Dollar) {
+        state->stop_before_on_branch_head = false;
+    }
+    bool parsed = ast_parse_nud(state, state->token, &left_node);
+    state->stop_before_on_branch_head = boundary;
+    if (!parsed) {
         return false;
     }
 

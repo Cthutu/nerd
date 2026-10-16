@@ -1,28 +1,12 @@
-# Architecture Review Workspace
+# Architecture decisions and measurements
 
-This folder holds detailed architecture review material.
+- [decisions/](decisions/README.md) records accepted or superseded architecture
+  choices. Read the status and newer superseding decisions before applying one.
+- [measurements/](measurements/README.md) contains dated performance evidence and
+  raw results. These describe the recorded revision and host, not current validation.
+- `experiments/` retains reference material for the original runtime bridge.
 
-- `decisions/`: accepted, rejected, or superseded decision records.
-- `audits/`: evidence gathered before decisions.
-  - `audits/source-build-configuration.md`: accepted source-owned build syntax and
-    audit of CLI, JSON and environment configuration.
-  - `audits/task-scheduler-performance.md`: compiler concurrency audit,
-    single-core opportunities, and proposed experiment milestones.
-  - `audits/lsp-boundaries.md`: current LSP product/readiness boundaries.
-  - `audits/hir-backend-readiness.md`: current HIR surface and LLVM backend
-    blockers.
-  - `audits/hir-manual-coverage.md`: manual-to-HIR coverage matrix and
-    remaining accepted `<unsupported>` HIR cases.
-  - `audits/formatter-token-trivia-prototype.md`: historical audit trail for
-    the formatter token/trivia prototype.
-  - `audits/formatter-layout-classification.md`: current formatter layout
-    policy groups and recommended MS3 extraction order.
-  - `audits/llvm-abi-layout-assumptions.md`: current LLVM target-layout and
-    runtime ABI assumptions for MS5.
-- `measurements/`: profiling, benchmark, and allocation results.
-
-Keep `../ARCHITECTURE_REVIEW.md` as the top-level synthesis.
-
-The initial architecture review is closed. Keep useful audits and measurements
-in place as evidence, but add new architectural agreements as numbered decision
-records instead of creating a fresh prototype workspace.
+Current implementation guidance lives in [docs](../docs/README.md), and open
+work lives in [ROADMAP.md](../ROADMAP.md). The completed architecture review and
+its audit reports have been removed from the working tree; Git history retains
+those discussions. Add new architectural agreements as numbered decisions.

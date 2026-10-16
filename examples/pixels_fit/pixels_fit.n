@@ -1,7 +1,15 @@
+-- Pixels that fit the window: animate a checkerboard on a pixel layer whose
+-- logical dimensions track the window. pixel_scale: 4 relates logical pixels to
+-- window pixels, so resizing changes how much of the pattern can be painted.
+-- Compare pixels, which holds the logical resolution fixed and scales that
+-- image.
+
 use std.frame
 use std.gfx
 use std.time
 
+-- Pack opaque red, green and blue channels into one colour word. Dividing
+-- coordinates into tiles creates the checkerboard; tick animates its colours.
 fit_colour :: fn (x: u32, y: u32, tick: u32) -> u32 {
     checker       := ((x / 4) + (y / 4) + (tick / 12)) & 1
     red           := ((x * 5 + tick * 2) & 255) << 16
@@ -11,6 +19,8 @@ fit_colour :: fn (x: u32, y: u32, tick: u32) -> u32 {
     return 0xff000000 | red | green | blue
 }
 
+-- Use the layer's current dimensions rather than cached window dimensions, so
+-- drawing covers the layer after any resize. put writes individual pixels.
 fit_draw :: fn (layer: ^PixelLayer, tick: u32) {
     for y: u32 = 0; y < layer.pixel_height(); y += 1 {
         for x: u32 = 0; x < layer.pixel_width(); x += 1 {
@@ -26,6 +36,7 @@ fit_draw :: fn (layer: ^PixelLayer, tick: u32) {
     }, 0xffffffff)
 }
 
+-- Look up the current layer through its handle, draw it, then present.
 fit_render :: fn (gfx    : ^GfxSystem,
                   handle : GfxLayerHandle,
                   frame  : ^Frame,
@@ -36,6 +47,8 @@ fit_render :: fn (gfx    : ^GfxSystem,
     return yes
 }
 
+-- Keep the frame system alive for the whole graphics lifetime. Deferred cleanup
+-- runs in reverse order, releasing graphics before the native window system.
 main :: fn () {
     frame_system := FrameSystem.init()
     frame := Frame {
@@ -48,16 +61,21 @@ main :: fn () {
         ...
     }
 
+    -- Create the native window from its Frame description before attaching layers.
     frame_system.apply(^frame)
     defer frame_system.done()
 
     gfx := GfxSystem.init()
     defer gfx.done()
 
+    -- FitToWindow recalculates logical dimensions as the window changes size.
+    -- The graphics system owns the layer and releases it during gfx.done.
     handle := gfx.create_pixel_layer(^frame,
                                      PixelLayerMode.FitToWindow { pixel_scale: 4 })
     tick : u32 = 0
 
+    -- Refresh window state and drain queued input events before drawing. This
+    -- keeps resize and close requests responsive as the animation advances.
     for frame_system.loop() {
         frame_system.update(^frame)
 
@@ -89,6 +107,8 @@ main :: fn () {
 
         _ := fit_render(^gfx, handle, ^frame, tick)
 
+        -- Advance a simple animation counter and pause briefly to avoid a tight busy
+        -- loop. This is basic pacing rather than synchronisation with display refresh.
         tick += 1
         sleep_ms(16)
     }

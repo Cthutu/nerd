@@ -316,8 +316,15 @@ assignment-operator
 
 binary-operator ::= '||' | '&&' | '|' | '^' | '&'
                   | '==' | '!=' | '<' | '<=' | '>' | '>=' | 'in'
-                  | '<<' | '>>' | '+' | '-' | '*' | '/' | '%'
+                  | '<<' | '>>' | '+' | '-' | '*' | '/' | '%' | '\\'
+```
 
+The binary grammar above is schematic; Pratt binding powers determine grouping.
+Fallback `\` is right associative, above multiplication and below prefix
+operators. See [expressions](expressions.md#lazy-fallback) for typing and lazy
+evaluation rules.
+
+```bnf
 primary         ::= INT
                   | FLOAT
                   | STRING
@@ -412,8 +419,9 @@ From lowest binding power to highest:
 All conditional and pattern-branching forms use the `on` keyword.
 
 ```bnf
-on-expression   ::= 'on' expression '=>' branch-expression 'else' branch-expression
-                  | 'on' expression '=>' branch-expression
+on-expression   ::= 'on' expression '=>' [ '[' IDENT ']' ] branch-expression
+                    'else' [ '[' IDENT ']' ] branch-expression
+                  | 'on' expression '=>' [ '[' IDENT ']' ] branch-expression
                   | 'on' '{' condition-on-branch-list '}'
                   | 'on' expression '{' pattern-on-branch-list '}'
 
@@ -438,6 +446,12 @@ branch-expression
 The single-line `on condition => value` form is valid where statement
 boundaries permit it. The `else` branch is required for the boolean expression
 form that produces a value.
+
+A bare failure handler is `expression 'else' [ '[' IDENT ']' ] block`.
+It implicitly yields success and propagates the original failure on handler
+fallthrough. Braces are required; the old `on expression else` and `else?`
+shorthand forms are rejected.
+See [control flow](control-flow.md) for extraction and binder semantics.
 
 Inside block-form `on`, branch expressions stop before the next branch head.
 For comparison-pattern heads such as `< 0` or `>= 10`, a preceding newline is

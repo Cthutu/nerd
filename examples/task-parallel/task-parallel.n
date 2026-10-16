@@ -1,0 +1,60 @@
+-- Parallel tasks: square eight inputs on a worker scheduler, wait for every
+-- result, then sum them on the calling thread. Work stealing lets idle workers
+-- help with queued work, so task execution order is not part of the result.
+-- Task storage belongs to the caller and stays at stable addresses until
+-- completion.
+
+-- Sum a calculation through Raptor-style typed tasks and our work-stealing
+-- scheduler.
+use std.io
+use std.raptor
+
+-- The callback borrows one input and returns a typed result. The input is
+-- read-only by convention here, so separate tasks need no shared-data lock.
+square :: fn (value: ^i32) -> i32 {
+    number := value^
+    return number * number
+}
+
+main :: fn () -> ?void {
+    scheduler : Scheduler
+    -- Start four workers. Startup can fail, and ? propagates that failure;
+    -- closing the scheduler later drains accepted work and releases its workers.
+    scheduler.init(4)?
+    defer assert scheduler.close()
+    -- Fixed arrays keep both inputs and Task[i32] objects at stable addresses.
+    -- A queued callback borrows these addresses; they must outlive its execution.
+    values : [8]i32       = [1, 2, 3, 4, 5, 6, 7, 8]
+    tasks  : [8]Task[i32]
+
+    -- If a later submission fails, wait for earlier accepted tasks before these
+    -- local arrays leave scope. This deferred wait runs before scheduler cleanup.
+    defer _ := when_all(tasks[..])
+    -- Preparation and submission are separate: create binds the typed callback
+    -- and its input pointer, while async makes the prepared task runnable.
+    for i in [0 .. values.count] {
+        tasks[i].create(square, ^values[i])
+        scheduler.get_default_queue().async(^tasks[i])?
+    }
+    -- when_all infers i32 from the task slice. Completion makes each result
+    -- available and means the task needs no per-task cleanup.
+    assert when_all(tasks[..])
+    -- Read results only after the completion barrier. Summing on this thread
+    -- avoids several workers concurrently modifying one accumulator.
+    total : i32 = 0
+    for i in [0 .. tasks.count] {
+        on tasks[i].get() {
+            value => {
+                total += value
+            }
+
+            else => {
+                assert no
+            }
+        }
+    }
+    assert scheduler.close()
+    assert total == 204
+    prn($"Raptor tasks: sum of squares = {total}")
+    return
+}

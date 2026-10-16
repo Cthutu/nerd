@@ -125,7 +125,7 @@ typedef struct {
     SemaLocalKind kind;
     bool          implicit;
     bool          is_variadic;
-    u8            _pad1;
+    bool          synthetic;
     u32           symbol_handle;
     u32           owner_decl_index;
     u32           scope_index;
@@ -240,16 +240,28 @@ typedef struct {
     u32 decl_index;
 } SemaEqualityMethod;
 
+// Source-to-destination record mappings also break pointer cycles during
+// import.
+typedef struct {
+    const void* source;
+    u32         source_type;
+    u32         destination_type;
+    u32         name_symbol; // Destination lexer; diagnostic metadata only.
+    bool        complete;
+} SemaImportedRecord;
+
 // Compact semantic side tables keyed by declaration and AST node index.
 
 typedef struct {
     const ProgramInfo* program;
     u32                current_module_index;
     Array(SemaType) types;
+    Array(SemaImportedRecord) imported_records;
     Array(u32) type_param_types;
     Array(u32) type_param_symbols;
     Array(i64) type_param_values;
     Array(bool) type_param_braced_payloads;
+    Array(bool) type_param_explicit_discriminants;
     Array(u8) type_param_bit_widths;
     Array(u8) type_param_bit_offsets;
     Array(bool) type_param_bit_starts;
@@ -284,6 +296,9 @@ typedef struct {
     Array(bool) node_is_type_expr;
     Array(bool) node_const_known;
     Array(i64) node_const_values;
+    bool expression_block_hint_active;
+    u32  expression_block_hint_node;
+    u32  expression_block_hint_type;
     bool bitfield_mismatch_context_active;
     u32  bitfield_mismatch_value_node_index;
     u32  bitfield_mismatch_symbol;
@@ -310,10 +325,23 @@ u32 sema_import_type(Lexer*       dst_lexer,
                      const Sema*  src_sema,
                      u32          src_type_index);
 
-u32    sema_no_decl(void);
-u32    sema_no_local(void);
-u32    sema_no_type(void);
-u32    sema_materialise_type(const Sema* sema, u32 type_index);
+u32  sema_no_decl(void);
+u32  sema_no_local(void);
+u32  sema_no_type(void);
+u32  sema_materialise_type(const Sema* sema, u32 type_index);
+bool sema_explicit_enum_integer(const Lexer* lexer,
+                                const Ast*   ast,
+                                Sema*        sema,
+                                u32          node_index,
+                                i64*         out_value);
+// A unique use path exposes its first embedded subobject. Counts saturate at 2.
+typedef struct {
+    u32 path_count;
+    u32 first_field;
+    u32 type_index;
+} SemaPlexEmbedding;
+SemaPlexEmbedding sema_plex_embedding(const Sema* sema, u32 source, u32 target);
+
 bool   sema_type_is_integer(const Sema* sema, u32 type_index);
 bool   sema_type_is_concrete_integer(const Sema* sema, u32 type_index);
 bool   sema_type_is_float(const Sema* sema, u32 type_index);

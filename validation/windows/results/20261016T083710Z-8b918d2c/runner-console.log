@@ -1,0 +1,132 @@
+Results: C:\Users\matt\nerd\validation\windows\results\20261016T083710Z-8b918d2c
+Running build-debug (output streams to its log)
+build-debug: passed
+Running build-release (output streams to its log)
+build-release: passed
+Running clean (output streams to its log)
+clean: passed
+Running memory (output streams to its log)
+memory: passed
+Running runtime-threads (output streams to its log)
+runtime-threads: passed
+Running threads (output streams to its log)
+threads: passed
+Running fixtures (output streams to its log)
+fixtures: passed
+Running doctor-debug (output streams to its log)
+doctor-debug: passed
+Running stdlib-capabilities-debug (output streams to its log)
+stdlib-capabilities-debug: passed
+Running std-thread-sync-llvm-debug (output streams to its log)
+std-thread-sync-llvm-debug: passed
+Running raptor-llvm-debug (output streams to its log)
+raptor-llvm-debug: passed
+Running network-llvm-debug-debug (output streams to its log)
+network-llvm-debug-debug: passed
+Running nexus-llvm-debug-debug (output streams to its log)
+nexus-llvm-debug-debug: passed
+Running network-llvm-release-debug (output streams to its log)
+network-llvm-release-debug: passed
+Running nexus-llvm-release-debug (output streams to its log)
+nexus-llvm-release-debug: passed
+Running std-thread-sync-c-debug (output streams to its log)
+std-thread-sync-c-debug: passed
+Running raptor-c-debug (output streams to its log)
+raptor-c-debug: passed
+Running network-c-debug-debug (output streams to its log)
+network-c-debug-debug: passed
+Running nexus-c-debug-debug (output streams to its log)
+nexus-c-debug-debug: passed
+Running network-c-release-debug (output streams to its log)
+network-c-release-debug: passed
+Running nexus-c-release-debug (output streams to its log)
+nexus-c-release-debug: passed
+Running profile-debug (output streams to its log)
+profile-debug: passed
+Running render-threads-debug (output streams to its log)
+render-threads-debug: passed
+Running expression-depth-debug (output streams to its log)
+expression-depth-debug: passed
+Running jobs-debug (output streams to its log)
+jobs-debug: passed
+Running front-threads-debug (output streams to its log)
+front-threads-debug: passed
+Running toolchain-debug (output streams to its log)
+toolchain-debug: passed
+Running install-debug (output streams to its log)
+install-debug: passed
+Running format-workflow-debug (output streams to its log)
+format-workflow-debug: passed
+Running cgen-debug (output streams to its log)
+cgen-debug: passed
+Running build-settings-debug (output streams to its log)
+build-settings-debug: passed
+Running windows-stdio-debug (output streams to its log)
+windows-stdio-debug: passed
+Running debugger-debug (output streams to its log)
+debugger-debug: passed
+Running editor-debug (output streams to its log)
+editor-debug: passed
+Running doctor-release (output streams to its log)
+doctor-release: passed
+Running fixtures-release (output streams to its log)
+fixtures-release: passed
+Running stdlib-capabilities-release (output streams to its log)
+stdlib-capabilities-release: passed
+Running std-thread-sync-llvm-release (output streams to its log)
+std-thread-sync-llvm-release: passed
+Running raptor-llvm-release (output streams to its log)
+raptor-llvm-release: passed
+Running network-llvm-debug-release (output streams to its log)
+network-llvm-debug-release: passed
+Running nexus-llvm-debug-release (output streams to its log)
+nexus-llvm-debug-release: passed
+Running network-llvm-release-release (output streams to its log)
+network-llvm-release-release: passed
+Running nexus-llvm-release-release (output streams to its log)
+nexus-llvm-release-release: passed
+Running std-thread-sync-c-release (output streams to its log)
+std-thread-sync-c-release: passed
+Running raptor-c-release (output streams to its log)
+raptor-c-release: passed
+Running network-c-debug-release (output streams to its log)
+network-c-debug-release: passed
+Running nexus-c-debug-release (output streams to its log)
+nexus-c-debug-release: passed
+Running network-c-release-release (output streams to its log)
+network-c-release-release: passed
+Running nexus-c-release-release (output streams to its log)
+nexus-c-release-release: passed
+Running profile-release (output streams to its log)
+profile-release: passed
+Running render-threads-release (output streams to its log)
+render-threads-release: passed
+Running expression-depth-release (output streams to its log)
+expression-depth-release: passed
+Running jobs-release (output streams to its log)
+jobs-release: passed
+Running front-threads-release (output streams to its log)
+front-threads-release: passed
+Running toolchain-release (output streams to its log)
+toolchain-release: passed
+Running install-release (output streams to its log)
+install-release: passed
+Running format-workflow-release (output streams to its log)
+format-workflow-release: passed
+Running cgen-release (output streams to its log)
+cgen-release: passed
+Running build-settings-release (output streams to its log)
+build-settings-release: passed
+Running windows-stdio-release (output streams to its log)
+windows-stdio-release: passed
+Running debugger-release (output streams to its log)
+debugger-release: passed
+Running editor-release (output streams to its log)
+editor-release: passed
+Running benchmark-accounting (output streams to its log)
+benchmark-accounting: passed
+Running adapter-transforms (output streams to its log)
+adapter-transforms: passed
+Running benchmark (output streams to its log)
+benchmark: passed
+Report: C:\Users\matt\nerd\validation\windows\results\20261016T083710Z-8b918d2c\SUMMARY.md

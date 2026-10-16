@@ -8,9 +8,18 @@ a working reference rather than a stable contract. The language manual may use
 standard library functions in small examples, but it should not duplicate this
 API reference.
 
+## Planned Expansion
+
+The [standard-library expansion plan](stdlib-expansion-plan.md) tracks queues,
+work-stealing tasks, data graphs, raw sockets and Nexus messaging. Thread/sync,
+IPv4 sockets, Raptor typed tasks and serial/concurrent/main-thread queues are
+implemented. Nexus provides TCP/UDP messaging, request/reply and Telnet.
+Kerberos graphs, DNS and IPv6 remain planned. Consult the module contracts and
+[API tutorials](tutorials/README.md) for supported behaviour and validation limits.
+
 ## Current Modules
 
-The current standard modules live under [mods](/home/matt/nerd/mods). The
+The current standard modules live under [mods](../mods). The
 library is organised into three layers:
 
 - `core`
@@ -37,12 +46,31 @@ library is organised into three layers:
   Mathematical constants, scalar functions, and small geometry helper types.
 - `std.memory`
   Low-level allocation wrappers.
+- `std.network`
+  Experimental IPv4 TCP/UDP sockets with explicit ownership, partial I/O,
+  EOF/datagram semantics, bounded readiness polling, monotonic deadlines,
+  nonblocking TCP connection completion and native errors. See the
+  [API contracts and examples](std-network-foundation.md).
+- `std.nexus`
+  Socket-associated messages over TCP/UDP, server reply routes, request/reply
+  ordering and Telnet line/character modes. Reusable buffers, typed fields,
+  bounded waits and nonblocking retries share one API. See the
+  [contracts](stdlib-nexus.md) and [tutorial](tutorials/nexus.md).
+- `std.queue` and `std.raptor`
+  Bounded mutex deques and our own work-stealing scheduler with typed tasks and
+  serial/concurrent worker queues and explicitly pumped serial main-thread queues. `Task.create` borrows typed input; queues
+  schedule stable caller-owned tasks without per-task allocation. Completed tasks
+  need no cleanup. Startup and submission propagate with `?void`.
+  See [contracts](stdlib-raptor.md).
 - `std.process`
   Portable child-process execution and waiting.
 - `std.signal`
   Owned shutdown notifications with blocking wait and a sticky request flag.
 - `std.text`
   String methods, Unicode scalar operations, and UTF-8 conversion.
+- `std.thread` and `std.sync`
+  Experimental joinable threads, non-recursive mutexes and predicate-based
+  conditions. See [lifetime and synchronisation contracts](stdlib-thread-sync.md).
 - `std.slice`
   Borrowing slice membership with an `Eq` constraint.
 - `std.time`
@@ -57,6 +85,10 @@ library is organised into three layers:
   Windows operating-system bindings re-exported from narrower modules such as
   `os.windows.kernel32`, including Win32 process creation, waiting, exit-code
   inspection, and handle management.
+- `os.thread` and `os.socket`
+  Platform-selected native bindings supporting the initial Windows x64 and
+  Linux x86-64 glibc concurrency/network APIs. Native header layout checks are
+  part of their execution tests.
 
 The repository also contains early `std.random` source work. Treat it as
 experimental until its dependencies and syntax surface are covered by the
@@ -64,7 +96,7 @@ roadmap's horizontal feature policy.
 
 ## Documentation Policy
 
-- Keep core language rules in [manual.md](/home/matt/nerd/docs/manual.md).
+- Keep core language rules in [language manual](manual/README.md).
 - Keep implementation notes in the existing compiler documentation.
 - Keep public standard library signatures, ownership notes, and examples here.
 - Mark unstable or experimental APIs clearly when this document becomes a fuller

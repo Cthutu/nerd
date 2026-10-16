@@ -7,12 +7,20 @@ optional-type ::= '?' type-primary
 result-type   ::= type-primary '\\' type
 error-inject  ::= expression '!'
 propagate     ::= expression '?'
+fallback      ::= expression '\\' expression
 extract-on    ::= 'on' expression '=>' [ '[' IDENT ']' ] branch-expression
                   'else' [ '[' IDENT ']' ] branch-expression
+failure-handler ::= expression 'else' [ '[' IDENT ']' ] block
 ```
 
 For a bare-identifier scrutinee, an omitted extraction binder implicitly reuses
-that identifier inside payload-bearing branches.
+that identifier inside payload-bearing branches. A bare failure handler yields
+the successful payload and propagates the original failure on fallthrough.
+Explicit control-flow exits override propagation. Optional absence has no error
+binder. The old `on expression else` and `on expression else?` forms are removed.
+Fallback `\` extracts from either `T\E` or `?T`, evaluates its right operand
+only on failure/absence, and yields `T`. It is right associative, above
+multiplication and below prefix operators.
 
 [Manual Index](README.md) | Previous: [Diagnostics And Debugging](part13-diagnostics-and-debugging.md) | Next: [Language Reference](appendix-b-language-reference.md)
 
@@ -262,7 +270,7 @@ value.data
 | `0b1010`, `0b1010_0101` | `untyped integer`; binary literal |
 | `0o755`, `0o7_55` | `untyped integer`; octal literal |
 | `1.5`, `1_000.5`, `1.5_25` | `untyped float`; materialises to `f64` without other context |
-| `yes`, `no`, `true`, `false` | `bool` |
+| `yes`, `no` | `bool` |
 | `ptr: ^i32 = nil` | `^i32` |
 | `value: i32 = undefined` | `i32` |
 | `"string"` | `string` |

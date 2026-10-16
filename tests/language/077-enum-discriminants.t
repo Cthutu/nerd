@@ -319,6 +319,7 @@ on.end.0:
 define internal i32 @fn.2() {
   %local.2 = alloca { i64, i8 }
   %local.3 = alloca { i64, i8 }
+  %t19 = alloca i1
   %t0 = insertvalue { i64, i8 } poison, i64 10, 0
   %t1 = insertvalue { i64, i8 } %t0, i8 0, 1
   store { i64, i8 } %t1, ptr %local.2
@@ -356,7 +357,6 @@ on.value.6:
   br label %on.end.0
 on.end.0:
   %t18 = phi i1 [1, %on.value.3], [0, %on.value.6]
-  %t19 = alloca i1
   br i1 %t18, label %logical.rhs.7, label %logical.short.8
 logical.short.8:
   store i1 0, ptr %t19

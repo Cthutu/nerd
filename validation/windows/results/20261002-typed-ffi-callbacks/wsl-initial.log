@@ -1,0 +1,30 @@
+wsl: Failed to start the systemd user session for 'matt'. See journalctl for more details.
+cp: cannot create directory '/./.agents': Permission denied
+cp: cannot create regular file '/./.clang-format': Permission denied
+cp: cannot create regular file '/./.gitignore': Permission denied
+cp: cannot create directory '/./.vscode': Permission denied
+cp: cannot create regular file '/./ARCHITECTURE_REVIEW.md': Permission denied
+cp: cannot create regular file '/./CODEX.md': Permission denied
+cp: cannot create regular file '/./DEBUGGER.md': Permission denied
+cp: cannot create regular file '/./GENERICS.md': Permission denied
+cp: cannot create regular file '/./Justfile': Permission denied
+cp: cannot create regular file '/./README.md': Permission denied
+cp: cannot create regular file '/./ROADMAP.md': Permission denied
+cp: cannot create regular file '/./TODO.md': Permission denied
+cp: cannot create directory '/./build': Permission denied
+cp: cannot create directory '/./data': Permission denied
+cp: cannot create directory '/./docs': Permission denied
+cp: cannot create regular file '/./etc/README.md': Permission denied
+cp: cannot create regular file '/./etc/llvm-tools.json': Permission denied
+cp: preserving times for '/./etc': Operation not permitted
+cp: cannot create directory '/./examples': Permission denied
+cp: cannot create directory '/./mods': Permission denied
+cp: cannot create directory '/./review': Permission denied
+cp: cannot create directory '/./src': Permission denied
+cp: cannot create directory '/./syntax': Permission denied
+cp: cannot create directory '/./tests': Permission denied
+cp: cannot create directory '/./validation': Permission denied
+cp: cannot create directory '/./_obj': Permission denied
+cp: cannot create directory '/./_bin': Permission denied
+cp: cannot create directory '/./_tmp': Permission denied
+cp: preserving times for '/.': Operation not permitted

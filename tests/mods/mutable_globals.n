@@ -1,0 +1,28 @@
+use std.atomics
+
+pub number                 := 7
+pub values                 := [11, 13]
+pub record                 := Pair { first: 17 second: 19 }
+pub callback               := original
+pub signal   : atomic[i32] = 23
+
+pub Pair :: plex {
+    first  i32
+    second i32
+}
+
+pub original :: fn () -> i32 {
+    return 29
+}
+
+pub replacement :: fn () -> i32 {
+    return 31
+}
+
+pub verify :: fn () {
+    assert number == 43
+    assert values[1] == 47
+    assert record.second == 53
+    assert callback() == 31
+    assert signal.load() == 59
+}

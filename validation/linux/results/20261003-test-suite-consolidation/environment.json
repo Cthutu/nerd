@@ -1,0 +1,21 @@
+{
+  "platform": "Linux-7.2.8-1-cachyos-x86_64-with-glibc2.44",
+  "machine": "x86_64",
+  "tools": {
+    "clang": "clang version 22.1.8\nTarget: x86_64-pc-linux-gnu\nThread model: posix\nInstalledDir: /usr/bin",
+    "opt": "LLVM (http://llvm.org/):\n  LLVM version 22.1.8\n  Optimized build.\n  Default target: x86_64-pc-linux-gnu\n  Host CPU: znver4",
+    "llc": "LLVM (http://llvm.org/):\n  LLVM version 22.1.8\n  Optimized build.\n  Default target: x86_64-pc-linux-gnu\n  Host CPU: znver4\n\n  Registered Targets:\n    aarch64     - AArch64 (little endian)\n    aarch64_32  - AArch64 (little endian ILP32)\n    aarch64_be  - AArch64 (big endian)\n    amdgcn      - AMD GCN GPUs\n    arm         - ARM\n    arm64       - ARM64 (little endian)\n    arm64_32    - ARM64 (little endian ILP32)\n    armeb       - ARM (big endian)\n    avr         - Atmel AVR Microcontroller\n    bpf         - BPF (host endian)\n    bpfeb       - BPF (big endian)\n    bpfel       - BPF (little endian)\n    hexagon     - Hexagon\n    lanai       - Lanai\n    loongarch32 - 32-bit LoongArch\n    loongarch64 - 64-bit LoongArch\n    mips        - MIPS (32-bit big endian)\n    mips64      - MIPS (64-bit big endian)\n    mips64el    - MIPS (64-bit little endian)\n    mipsel      - MIPS (32-bit little endian)\n    msp430      - MSP430 [experimental]\n    nvptx       - NVIDIA PTX 32-bit\n    nvptx64     - NVIDIA PTX 64-bit\n    ppc32       - PowerPC 32\n    ppc32le     - PowerPC 32 LE\n    ppc64       - PowerPC 64\n    ppc64le     - PowerPC 64 LE\n    r600        - AMD GPUs HD2XXX-HD6XXX\n    riscv32     - 32-bit RISC-V\n    riscv32be   - 32-bit big endian RISC-V\n    riscv64     - 64-bit RISC-V\n    riscv64be   - 64-bit big endian RISC-V\n    sparc       - Sparc\n    sparcel     - Sparc LE\n    sparcv9     - Sparc V9\n    spirv       - SPIR-V Logical\n    spirv32     - SPIR-V 32-bit\n    spirv64     - SPIR-V 64-bit\n    systemz     - SystemZ\n    thumb       - Thumb\n    thumbeb     - Thumb (big endian)\n    ve          - VE\n    wasm32      - WebAssembly 32-bit\n    wasm64      - WebAssembly 64-bit\n    x86         - 32-bit X86: Pentium-Pro and above\n    x86-64      - 64-bit X86: EM64T and AMD64\n    xcore       - XCore",
+    "ld.lld": "LLD 22.1.8 (compatible with GNU linkers)",
+    "llvm-ar": "LLVM (http://llvm.org/):\n  LLVM version 22.1.8\n  Optimized build.",
+    "python3": "Python 3.14.7",
+    "uv": "uv 0.7.5",
+    "just": "just 1.46.0",
+    "git": "git version 2.55.0"
+  },
+  "initial_revision": "87e4567a7fe80da1636b1f1ac9a09a776ae42e12",
+  "implementation_tested": "209e885703330ed5b533ab949c3365f231dd0bfc",
+  "compiler_sha256": {
+    "debug": "c8fd509a90f460298f19ed3ceb00600e66e0cff3dd92fe7255355c4dc4635a04",
+    "release": "cec835bcf452a3e4d0843bd7845f085ed85da2ec3f7920f9fbe32e53f2586b90"
+  }
+}

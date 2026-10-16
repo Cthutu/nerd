@@ -133,4 +133,4 @@ about 2.55 GiB; this pass does not materially reduce its memory requirement.
 
 ## Evidence and remaining gates
 
-Raw JSON, logs, commands, compiler hashes, tool versions, the scaled generator and scripts are archived under `compiler-single-core-final/` as gzip files. `provenance.json.gz` records the exact final timing commands. The active [completion plan](../audits/compiler-single-core-follow-up.md) tracks the milestones. Native Windows/macOS validation remains external; neither the default worker policy nor the withdrawn task-graph decision is changed by these Linux synthetic results.
+Raw JSON, logs, commands, compiler hashes, tool versions, the scaled generator and scripts are archived under `compiler-single-core-final/` as gzip files. `provenance.json.gz` records the exact final timing commands. The active [completion plan](https://github.com/Cthutu/nerd/blob/aada810d/review/audits/compiler-single-core-follow-up.md) tracks the milestones. Native Windows/macOS validation remains external; neither the default worker policy nor the withdrawn task-graph decision is changed by these Linux synthetic results.

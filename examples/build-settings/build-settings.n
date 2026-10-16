@@ -1,4 +1,11 @@
--- Stable executable settings and a module-local development feature.
+-- Source build settings: make an executable's build choices part of its source.
+-- This console example enables a local development feature and prints a message
+-- only when that feature is selected. The build block is compiler
+-- configuration; it is not code executed by main.
+
+-- Stable executable settings and a module-local development feature. windowed:
+-- no keeps console output available. A define supplies a named compile-time
+-- feature that can be tested with an on guard.
 build {
     windowed: no
     define: development
@@ -6,6 +13,8 @@ build {
 
 use std.io
 
+-- The guarded block is included at compile time, rather than chosen by a
+-- runtime condition. This is useful for optional diagnostics or platform code.
 main :: fn () {
     on "development" {
         prn("Source build settings are active.")

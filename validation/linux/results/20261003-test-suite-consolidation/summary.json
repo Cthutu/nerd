@@ -1,0 +1,157 @@
+{
+  "implementation_revision": "209e885703330ed5b533ab949c3365f231dd0bfc",
+  "platform": "native Linux",
+  "gates": {
+    "just-test": {
+      "exit_code": 0,
+      "counts": {
+        "language": {
+          "passed": 205,
+          "failed": 0,
+          "skipped": 0
+        },
+        "error": {
+          "passed": 126,
+          "failed": 0,
+          "skipped": 1
+        },
+        "hir": {
+          "passed": 28,
+          "failed": 0,
+          "skipped": 0
+        },
+        "llvm": {
+          "passed": 48,
+          "failed": 0,
+          "skipped": 0
+        },
+        "format": {
+          "passed": 212,
+          "failed": 0,
+          "skipped": 0
+        },
+        "lsp": {
+          "passed": 210,
+          "failed": 0,
+          "skipped": 2
+        },
+        "command": {
+          "passed": 306,
+          "failed": 0,
+          "skipped": 6
+        },
+        "stdlib": {
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0
+        },
+        "example": {
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0
+        },
+        "total": {
+          "passed": 1153,
+          "failed": 0,
+          "skipped": 9
+        }
+      },
+      "skipped_fixtures": [
+        "tests/errors/072-windows-ffi-symbols.e",
+        "tests/lsp/107-windows-ffi-symbols.lsp",
+        "tests/lsp/109-top-on-import-completion-with-errors.lsp",
+        "tests/commands/050-run-top-on-trailing-plex-type.cmd",
+        "tests/commands/101-build-windowed-pragma.cmd",
+        "tests/commands/125-run-windows-std-os.cmd",
+        "tests/commands/257-run-windows-fixed-frame-style.cmd",
+        "tests/commands/264-run-std-process-windows.cmd",
+        "tests/commands/274-run-std-files-windows.cmd"
+      ]
+    },
+    "just-test-release": {
+      "exit_code": 0,
+      "counts": {
+        "language": {
+          "passed": 205,
+          "failed": 0,
+          "skipped": 0
+        },
+        "error": {
+          "passed": 126,
+          "failed": 0,
+          "skipped": 1
+        },
+        "hir": {
+          "passed": 28,
+          "failed": 0,
+          "skipped": 0
+        },
+        "llvm": {
+          "passed": 48,
+          "failed": 0,
+          "skipped": 0
+        },
+        "format": {
+          "passed": 212,
+          "failed": 0,
+          "skipped": 0
+        },
+        "lsp": {
+          "passed": 210,
+          "failed": 0,
+          "skipped": 2
+        },
+        "command": {
+          "passed": 306,
+          "failed": 0,
+          "skipped": 6
+        },
+        "stdlib": {
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0
+        },
+        "example": {
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0
+        },
+        "total": {
+          "passed": 1153,
+          "failed": 0,
+          "skipped": 9
+        }
+      },
+      "skipped_fixtures": [
+        "tests/errors/072-windows-ffi-symbols.e",
+        "tests/lsp/107-windows-ffi-symbols.lsp",
+        "tests/lsp/109-top-on-import-completion-with-errors.lsp",
+        "tests/commands/050-run-top-on-trailing-plex-type.cmd",
+        "tests/commands/101-build-windowed-pragma.cmd",
+        "tests/commands/125-run-windows-std-os.cmd",
+        "tests/commands/257-run-windows-fixed-frame-style.cmd",
+        "tests/commands/264-run-std-process-windows.cmd",
+        "tests/commands/274-run-std-files-windows.cmd"
+      ]
+    }
+  },
+  "differential": {
+    "passed": 291,
+    "failed": 0,
+    "platform_skips": 0,
+    "c_optimisation_levels": [
+      "O0",
+      "O2"
+    ]
+  },
+  "frontend_address_sanitizer": "passed",
+  "compiler_sha256": {
+    "debug": "c8fd509a90f460298f19ed3ceb00600e66e0cff3dd92fe7255355c4dc4635a04",
+    "release": "cec835bcf452a3e4d0843bd7845f085ed85da2ec3f7920f9fbe32e53f2586b90"
+  },
+  "remaining": [
+    "Global installation / just do not run",
+    "New inference lifetime repair has no native Windows run",
+    "Stronger negative check diagnostics and later audit milestones remain"
+  ]
+}

@@ -1,0 +1,3 @@
+pub Point :: plex { x i32 }
+pub point :: Point { x: 20 }
+pub variable: Point = Point { x: 0 }

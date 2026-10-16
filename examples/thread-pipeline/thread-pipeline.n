@@ -1,0 +1,78 @@
+-- Producer/consumer threads: pass the integers 1 to 100 through a single slot.
+-- A mutex protects the shared slot and a condition variable wakes either side
+-- when its predicate may have changed. A full slot makes the producer wait,
+-- providing backpressure instead of overwriting an unconsumed value.
+
+-- A one-slot producer/consumer pipeline with explicit ownership and shutdown.
+use std.sync
+use std.thread
+
+-- All mutable fields are protected by mutex while the threads run. occupied is
+-- the slot predicate; finished means no more values will be produced.
+Pipeline :: plex {
+    mutex    Mutex
+    changed  Condition
+    value    i32
+    occupied bool
+    finished bool
+    total    i32
+}
+
+-- Thread callbacks receive an opaque pointer. Recover the known context type;
+-- the caller keeps that Pipeline object alive until joining this thread.
+consume :: fn (context: ^void) {
+    pipeline := context.as(^Pipeline)
+    assert pipeline.mutex.lock()
+    for {
+        -- Always wait in a predicate loop: wakeups do not guarantee a value is ready.
+        -- wait releases the mutex while sleeping and reacquires it before returning.
+        for !pipeline.occupied && !pipeline.finished {
+            assert pipeline.changed.wait(^pipeline.mutex)
+        }
+        -- Consume any last occupied slot before honouring finished. This drains the
+        -- pipeline rather than dropping the last produced value.
+        on !pipeline.occupied && pipeline.finished => break
+        pipeline.total += pipeline.value
+        -- Making the slot empty and signalling under the lock lets a waiting producer
+        -- resume. The next consumer wait then releases the lock for that producer.
+        pipeline.occupied = no
+        assert pipeline.changed.broadcast()
+    }
+    assert pipeline.mutex.unlock()
+}
+
+main :: fn () -> i32 {
+    -- Initialise the mutex before the condition and keep both alive until join.
+    -- The defers release them in reverse order when main leaves its scope.
+    pipeline : Pipeline
+    on !pipeline.mutex.init() => return 1
+    defer _ := pipeline.mutex.done()
+    on !pipeline.changed.init() => return 2
+    defer _ := pipeline.changed.done()
+
+    consumer : Thread
+    on !consumer.start(consume, (^pipeline).as(^void)) => return 3
+    -- The calling thread is the producer. It waits for an empty slot, writes one
+    -- value under the mutex, then notifies the consumer and releases the lock.
+    for value: i32 = 1; value <= 100; value += 1 {
+        assert pipeline.mutex.lock()
+        for pipeline.occupied {
+            assert pipeline.changed.wait(^pipeline.mutex)
+        }
+        pipeline.value = value
+        pipeline.occupied = yes
+        assert pipeline.changed.broadcast()
+        assert pipeline.mutex.unlock()
+    }
+    assert pipeline.mutex.lock()
+    -- Publish end-of-input under the same mutex and wake a sleeping consumer.
+    pipeline.finished = yes
+    assert pipeline.changed.broadcast()
+    assert pipeline.mutex.unlock()
+    -- Joining waits for the consumer to finish and makes its final total safe
+    -- to read without locking. The shared context may now be disposed of.
+    assert consumer.join()
+    assert pipeline.total == 5050
+    prn($"Consumed 100 values; total = {pipeline.total}")
+    return 0
+}

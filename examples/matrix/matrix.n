@@ -1,7 +1,15 @@
+-- Terminal animation: simulate columns of falling glyphs and draw their trails
+-- into std.term's cell framebuffer. Simulation changes animation state;
+-- presentation turns that state into characters and colours. Q or Escape ends
+-- the terminal loop. The terminal library handles input, timed callbacks and
+-- framebuffer output.
+
 use std.random
 use std.term
 use std.time
 
+-- Each column has a moving head, trail length and update cadence. Different
+-- lengths and speeds keep columns from moving in lockstep.
 RainColumn :: plex {
     head   i32
     length u32
@@ -17,6 +25,8 @@ matrix_green        :: rgb(40, 235, 95)
 matrix_green_dim    :: rgb(0, 120, 45)
 matrix_green_faint  :: rgb(0, 55, 24)
 
+-- Mix position and frame number into a reproducible glyph choice. This is a
+-- visual pattern, not a cryptographic random generator.
 matrix_glyph :: fn (x: u32, y: u32, frame_number: u64) -> u32 {
     value := x.as(u64) * 131 + y.as(u64) * 977 + frame_number * 17
 
@@ -32,6 +42,8 @@ matrix_glyph :: fn (x: u32, y: u32, frame_number: u64) -> u32 {
     }
 }
 
+-- Start a column above the visible area with randomly chosen length and speed.
+-- A negative head allows the trail to enter the screen gradually.
 matrix_column_reset :: fn (_index: u32, height: u32) -> RainColumn {
     span       := height + 8
     max_length := height / 2 + 5
@@ -46,6 +58,8 @@ matrix_column_reset :: fn (_index: u32, height: u32) -> RainColumn {
     }
 }
 
+-- Adjust the owned column array to the terminal width, initialising only new
+-- columns. Existing columns retain their animation state across a resize.
 matrix_columns_resize :: fn (width: u32, height: u32) {
     old_count := columns.count
     columns.resize_to(width.as(usize))
@@ -57,6 +71,8 @@ matrix_columns_resize :: fn (width: u32, height: u32) {
     }
 }
 
+-- Advance columns according to their individual cadence, recycling a column
+-- only once its whole trail has passed below the terminal.
 matrix_update :: fn (width: u32, height: u32) {
     matrix_columns_resize(width, height)
 
@@ -75,6 +91,7 @@ matrix_update :: fn (width: u32, height: u32) {
     frame += 1
 }
 
+-- Bright heads and progressively darker tails create the falling-light effect.
 matrix_trail_colour :: fn (distance: u32, length: u32) -> Colour {
     on distance == 0         => return matrix_green_bright
     on distance < 3          => return matrix_green
@@ -82,6 +99,8 @@ matrix_trail_colour :: fn (distance: u32, length: u32) -> Colour {
     return matrix_green_faint
 }
 
+-- Redraw the cell framebuffer from current state. Terminal cells hold glyphs
+-- and foreground/background colours rather than graphical image pixels.
 matrix_draw :: fn (width: u32, height: u32) {
     term_fb_clear()
     term_fb_fill_rect(0,
@@ -123,6 +142,7 @@ matrix_draw :: fn (width: u32, height: u32) {
                  paper = rgb(0, 0, 0))
 }
 
+-- The simulation callback handles exit input before advancing animation.
 matrix_simulate :: fn (sim: TermSimulate) {
     on sim.key_pressed(Q) ||
         sim.key_pressed(Escape) => {
@@ -133,17 +153,23 @@ matrix_simulate :: fn (sim: TermSimulate) {
     matrix_update(sim.width, sim.height)
 }
 
+-- Presentation uses the current terminal size so resizing is reflected even if
+-- the next simulation tick has not run yet.
 matrix_present :: fn (present: TermPresent) {
     matrix_columns_resize(present.width, present.height)
     matrix_draw(present.width, present.height)
 }
 
+-- Seed the random generator once, enter terminal mode and restore the cursor on
+-- exit. The owned dynamic array is released after callbacks stop.
 main :: fn () {
     random_seed(now())
     term_init()
     term_cursor_enable(no)
     defer term_cursor_enable(yes)
 
+    -- Register separate state-update and drawing callbacks with 33 ms intervals.
+    -- term_run drives both; neither callback starts a new thread.
     term_hook_simulation(from_ms(33), matrix_simulate)
     term_hook_presentation(from_ms(33), matrix_present)
     term_run()

@@ -9,6 +9,7 @@
 //------------------------------------------------------------------------------
 
 #define CST_NO_VALUE UINT32_MAX
+#define CST_BP_HANDLER 7
 #define CST_BP_LOGICAL_OR 10
 #define CST_BP_LOGICAL_AND 20
 #define CST_BP_BITWISE_OR 30
@@ -19,6 +20,7 @@
 #define CST_BP_SHIFT 80
 #define CST_BP_ADDITIVE 90
 #define CST_BP_MULTIPLICATIVE 100
+#define CST_BP_FALLBACK 105
 #define CST_BP_PREFIX 110
 
 typedef struct {
@@ -28,13 +30,14 @@ typedef struct {
     Array(u32) token_float_indices;
     Array(u32) token_string_indices;
     Array(u32) token_symbol_handles;
-    bool allow_statement_boundary;
-    bool stop_before_on_branch_head;
-    bool stop_before_call;
-    bool stop_before_ffi_name;
-    bool stop_before_block_lbrace;
-    bool stop_before_for_body;
-    Cst  cst;
+    bool  allow_statement_boundary;
+    bool  stop_before_on_branch_head;
+    bool  stop_before_call;
+    bool  stop_before_ffi_name;
+    bool  stop_before_block_lbrace;
+    bool  stop_before_for_body;
+    bool* result_type_tokens;
+    Cst   cst;
 } CstParseState;
 
 internal bool cst_parse_bind(CstParseState* state, u32* out_node);
@@ -236,8 +239,6 @@ internal bool cst_token_starts_expression(TokenKind kind)
     case TK_InterpolatedStringStart:
     case TK_yes:
     case TK_no:
-    case TK_true:
-    case TK_false:
     case TK_nil:
     case TK_LBracket:
     case TK_LBrace:
@@ -888,6 +889,10 @@ cst_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp)
         *out_left_bp  = 5;
         *out_right_bp = 5;
         return true;
+    case TK_else:
+        *out_left_bp  = CST_BP_HANDLER;
+        *out_right_bp = CST_BP_HANDLER;
+        return true;
     case TK_LParen:
     case TK_LBracket:
     case TK_LBrace:
@@ -949,6 +954,10 @@ cst_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp)
     case TK_Percent:
         *out_left_bp  = CST_BP_MULTIPLICATIVE;
         *out_right_bp = CST_BP_MULTIPLICATIVE + 1;
+        return true;
+    case TK_Backslash:
+        *out_left_bp  = CST_BP_FALLBACK;
+        *out_right_bp = CST_BP_FALLBACK;
         return true;
 
     default:
@@ -1348,6 +1357,9 @@ internal bool cst_parse_type(CstParseState* state, u32* out_node)
         return true;
     }
     u32 token_index = state->token_index;
+    if (state->result_type_tokens) {
+        state->result_type_tokens[token_index] = true;
+    }
     cst_advance(state);
     u32 error_type = 0;
     if (!cst_parse_type(state, &error_type)) {
@@ -2221,17 +2233,14 @@ internal bool cst_parse_prefix(CstParseState* state, u32* out_node)
 
     case TK_yes:
     case TK_no:
-    case TK_true:
-    case TK_false:
         cst_advance(state);
-        return cst_emit_node(
-            state,
-            (CstNode){
-                .kind        = CK_BoolLiteral,
-                .token_index = state->token_index - 1,
-                .a = (token.kind == TK_yes || token.kind == TK_true) ? 1u : 0u,
-            },
-            out_node);
+        return cst_emit_node(state,
+                             (CstNode){
+                                 .kind        = CK_BoolLiteral,
+                                 .token_index = state->token_index - 1,
+                                 .a = (token.kind == TK_yes) ? 1u : 0u,
+                             },
+                             out_node);
     case TK_nil:
         cst_advance(state);
         return cst_emit_node(state,
@@ -2640,7 +2649,8 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
         state->stop_before_on_branch_head;
     state->stop_before_block_lbrace   = true;
     state->stop_before_on_branch_head = false;
-    bool parsed_scrutinee             = cst_parse_expr_bp(state, 0, &scrutinee);
+    bool parsed_scrutinee =
+        cst_parse_expr_bp(state, CST_BP_HANDLER, &scrutinee);
     state->stop_before_block_lbrace   = previous_stop_before_block_lbrace;
     state->stop_before_on_branch_head = previous_stop_before_on_branch_head;
     if (!parsed_scrutinee) {
@@ -2693,6 +2703,14 @@ internal bool cst_parse_on_expr(CstParseState* state, u32* out_node)
                         array_free(branch_patterns);
                         array_free(branches);
                         return false;
+                    }
+                    // Result-error binders and braced enum payload patterns
+                    // leave their postfix outside the parsed payload. Retain it
+                    // here so valid branches do not fall back to token
+                    // recovery.
+                    if (cst_current_token(state).kind == TK_Bang) {
+                        state->cst.patterns[pattern_root].error_postfix = true;
+                        cst_advance(state);
                     }
                     array_push(branch_patterns, pattern_root);
                     if (cst_current_token(state).kind != TK_Comma) {
@@ -3846,10 +3864,69 @@ internal bool cst_parse_pattern(CstParseState* state, u32* out_pattern)
 //------------------------------------------------------------------------------
 // Parse one expression using Pratt binding powers.
 
+internal bool cst_parse_failure_handler(CstParseState* state,
+                                        u32            token_index,
+                                        u32            scrutinee,
+                                        u32*           out_node)
+{
+    u32 binder = U32_MAX, binder_token = U32_MAX;
+    if (!cst_parse_on_extract_binder(state, &binder, &binder_token)) {
+        return false;
+    }
+    if (cst_current_token(state).kind != TK_LBrace) {
+        return false;
+    }
+    u32 handler;
+    if (!cst_parse_on_branch_expr(state, &handler)) {
+        return false;
+    }
+    u32 first = (u32)array_count(state->cst.on_branches);
+    array_push(state->cst.on_branches,
+               ((CstOnBranch){.expr_node_index      = handler,
+                              .guard_node_index     = U32_MAX,
+                              .binder_symbol_handle = U32_MAX,
+                              .binder_token_index   = U32_MAX}));
+    array_push(state->cst.on_branches,
+               ((CstOnBranch){.expr_node_index      = handler,
+                              .flags                = COBF_Else,
+                              .guard_node_index     = U32_MAX,
+                              .binder_symbol_handle = binder,
+                              .binder_token_index   = binder_token}));
+    u32 index = (u32)array_count(state->cst.ons);
+    array_push(state->cst.ons,
+               ((CstOnInfo){.kind         = COK_Bool,
+                            .shorthand    = true,
+                            .first_branch = first,
+                            .branch_count = 2}));
+    return cst_emit_node(state,
+                         ((CstNode){.kind        = CK_On,
+                                    .token_index = token_index,
+                                    .a           = scrutinee,
+                                    .b           = index}),
+                         out_node);
+}
+
+internal bool cst_parse_nested_expr(CstParseState* state, u32* out_node)
+{
+    bool boundary                     = state->stop_before_on_branch_head;
+    state->stop_before_on_branch_head = false;
+    bool parsed                       = cst_parse_expr_bp(state, 0, out_node);
+    state->stop_before_on_branch_head = boundary;
+    return parsed;
+}
+
 internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
 {
-    u32 left = 0;
-    if (!cst_parse_prefix(state, &left)) {
+    u32       left     = 0;
+    bool      boundary = state->stop_before_on_branch_head;
+    TokenKind prefix   = cst_current_token(state).kind;
+    if (prefix == TK_LParen || prefix == TK_LBracket || prefix == TK_LBrace ||
+        prefix == TK_Dollar) {
+        state->stop_before_on_branch_head = false;
+    }
+    bool parsed                       = cst_parse_prefix(state, &left);
+    state->stop_before_on_branch_head = boundary;
+    if (!parsed) {
         return false;
     }
 
@@ -3972,11 +4049,17 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
         u32 token_index = state->token_index;
         u32 right       = 0;
         cst_advance(state);
+        if (token.kind == TK_else) {
+            if (!cst_parse_failure_handler(state, token_index, left, &left)) {
+                return false;
+            }
+            continue;
+        }
         if (token.kind == TK_LParen) {
             Array(u32) args = NULL;
             if (cst_current_token(state).kind != TK_RParen) {
                 for (;;) {
-                    if (!cst_parse_expr_bp(state, 0, &right)) {
+                    if (!cst_parse_nested_expr(state, &right)) {
                         array_free(args);
                         return false;
                     }
@@ -4044,7 +4127,7 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
             if (cst_current_token(state).kind == TK_Range) {
                 is_slice = true;
             } else {
-                if (!cst_parse_expr_bp(state, 0, &start)) {
+                if (!cst_parse_nested_expr(state, &start)) {
                     return false;
                 }
                 if (cst_current_token(state).kind == TK_Range) {
@@ -4057,7 +4140,7 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
                 }
                 if (cst_token_starts_expression(
                         cst_current_token(state).kind)) {
-                    if (!cst_parse_expr_bp(state, 0, &end)) {
+                    if (!cst_parse_nested_expr(state, &end)) {
                         return false;
                     }
                 }
@@ -4406,6 +4489,9 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
             break;
         case TK_PipePipe:
             kind = CK_LogicalOr;
+            break;
+        case TK_Backslash:
+            kind = CK_Fallback;
             break;
         default:
             return false;
@@ -6238,12 +6324,8 @@ internal bool cst_parse_pragma(CstParseState* state, u32* out_node)
                     break;
                 case TK_yes:
                 case TK_no:
-                case TK_true:
-                case TK_false:
-                    param.kind = CPPK_Bool;
-                    param.bool_value =
-                        cst_current_token(state).kind == TK_yes ||
-                        cst_current_token(state).kind == TK_true;
+                    param.kind       = CPPK_Bool;
+                    param.bool_value = cst_current_token(state).kind == TK_yes;
                     break;
                 default:
                     return false;
@@ -6480,6 +6562,28 @@ internal void cst_build_token_value_tables(CstParseState* state)
 
 //------------------------------------------------------------------------------
 // Parse a compact CST for the current Nerd surface grammar.
+
+// Reuse type parsing for token formatting of malformed source. A failed
+// declaration can still have a valid signature or annotation; resume after
+// failures so later type contexts are recorded too.
+void cst_mark_result_type_tokens(const Lexer* lexer, bool* out_tokens)
+{
+    CstParseState state = {.lexer = lexer, .result_type_tokens = out_tokens};
+    cst_build_token_value_tables(&state);
+    while (state.token_index < array_count(lexer->tokens)) {
+        u32 before  = state.token_index;
+        u32 ignored = U32_MAX;
+        cst_parse_top_level_item(&state, &ignored);
+        if (state.token_index == before) {
+            cst_advance(&state);
+        }
+    }
+    cst_done(&state.cst);
+    array_free(state.token_integer_indices);
+    array_free(state.token_float_indices);
+    array_free(state.token_string_indices);
+    array_free(state.token_symbol_handles);
+}
 
 bool cst_parse(const Lexer* lexer, Cst* out_cst)
 {

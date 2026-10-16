@@ -1,7 +1,7 @@
 # Work-stealing compiler benchmark: original, pre-graph and G2
 
 2026-09-22. Current implementation: `598a2d1a`, validation revision `7f08bf0e`.
-Benchmark harness revision: `4a61a525`. [Plan](../audits/compiler-task-graph.md).
+Benchmark harness revision: `4a61a525`. [Plan](https://github.com/Cthutu/nerd/blob/aada810d/review/audits/compiler-task-graph.md).
 Raw samples, compiler hashes, commands, profiles and stdout are retained in
 [compiler-g2-benchmark](compiler-g2-benchmark/).
 

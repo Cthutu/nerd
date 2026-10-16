@@ -14,12 +14,9 @@ Nerd is a small compiler toolchain and language server implemented in C.
 - [syntax/README.md](syntax/README.md)
   VS Code and Neovim editor integration ownership.
 - [review/README.md](review/README.md)
-  Historical architecture review evidence and accepted decision records.
+  Accepted architecture decisions and dated performance measurements.
 - [ROADMAP.md](ROADMAP.md)
   Current project direction and active priorities.
-- [GENERICS.md](GENERICS.md)
-  Design exploration for simplifying generics through parametrised modules,
-  integrated optional/result types, and concrete language protocols.
 - [CODEX.md](CODEX.md)
   Repo-specific guidance for Codex sessions.
 
@@ -44,9 +41,9 @@ If you are new to the repository, read these in order:
 6. [tests/README.md](tests/README.md)
    Test harness expectations and fixture layout.
 
-Use the architecture review under [review/README.md](review/README.md) as
-historical context only. Read it when a task touches an architectural boundary
-or when current docs refer to a settled review decision.
+Use [review/decisions](review/decisions/README.md) for settled architectural
+boundaries. Dated measurements under `review/` are historical evidence; the
+roadmap and subsystem docs describe current work.
 
 ## Task Workflow
 
@@ -66,8 +63,9 @@ or when current docs refer to a settled review decision.
   3. `just install`; if it fails, fix the failure and run it again.
   4. Commit the work, keeping commits small and describing the task slice in the
      commit message.
-  5. Push the completed commit with `git push agent main` when the local
-     `agent` remote is configured for the Codex SSH identity.
+  5. Push the completed commit to the active branch on its configured remote
+     (for this work, `git push agent std-library`). Do not push it to an unrelated
+     branch such as `main`.
   6. Report back with the commit hash, verification run, install result, push
      result, and useful next step.
 
@@ -97,13 +95,12 @@ LLVM backend status:
   equivalent; the default is one job. The count includes the calling thread
   (1–256), capped by ready work. Checking of shared import closures, final
   merging, LLVM tools and C emission remain serial. Parallel jobs remain opt-in;
-  see the [adoption decision and measurements](review/audits/compiler-m8-adoption.md).
+  see the [scheduler policy](docs/compiler-profiling.md#scheduler-adoption-policy).
   `--jobs auto` experimentally selects half the available logical CPUs (rounded
   down, minimum 1, maximum 256); explicit numeric counts remain overrides.
   Small batches and batches dominated by one task use fewer workers or run inline.
   Automatic dispatch estimates parse/HIR/LLVM work separately. Omitted `--jobs`
-  stays at 1 until the [adaptive-default plan](review/audits/task-scheduler-performance.md#adaptive-performance-default--follow-up-plan-2026-09-22)
-  passes its adoption gates.
+  stays at 1 until the scheduler adoption gates pass.
 - `nerd build --cgen source.n` generates a standalone `source.c` from HIR.
   Compile it with `clang source.c $(nerd build --copts source.n) -o source`.
   `--copts` prints Clang arguments, including external libraries, without building.
@@ -136,6 +133,8 @@ LLVM backend status:
 The recipe accepts all directories listed by `just list-examples`, including
 `text-adventure` (whose entry point is `quill.n`). `just run-example triangle`
 or `just re triangle` runs from the example directory so relative assets work.
+An invalid example name reports `Source file not found` with its expected `.n`
+path. Use `just list-examples` to see the available names.
 
 The default VS Code build task (F7) runs `just run-example vktriangle` on both
 Linux and Windows. `std.vulkan` selects its FFI library with ordinary platform

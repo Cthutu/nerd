@@ -1,0 +1,72 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Native x64 Windows threading and synchronisation bindings.
+
+on "windows" {
+
+    -- The Windows x64 ABI has one native calling convention.
+    pub NativeThreadEntry :: fn (context: ^void) -> u32
+
+    -- Storage for a Windows slim reader/writer lock, used exclusively.
+    pub NativeMutex :: plex #c {
+        state usize  -- Opaque SRWLOCK storage; never inspect or copy while
+                     --     live.
+    }
+
+    -- Storage for a Windows condition variable.
+    pub NativeCondition :: plex #c {
+        state usize  -- Opaque CONDITION_VARIABLE storage.
+    }
+
+    ffi "ucrt" {
+        -- Starts a CRT-managed thread; the caller owns a nonzero handle.
+        pub native_thread_start :: _beginthreadex (security   : ^void,
+                                                   stack_size : u32,
+                                                   entry      : NativeThreadEntry,
+                                                   context    : ^void,
+                                                   flags      : u32,
+                                                   id         : ^u32) -> usize
+    }
+
+    ffi "kernel32" {
+        -- Waits for the thread handle to become signalled.
+        pub native_thread_wait :: WaitForSingleObject (handle       : ^void,
+                                                       milliseconds : u32) -> u32
+
+        -- Releases the caller's thread handle.
+        pub native_thread_close :: CloseHandle (handle: ^void) -> i32
+
+        -- Returns a live thread's identifier.
+        pub native_thread_id :: GetThreadId (handle: ^void) -> u32
+
+        -- Returns the calling thread's identifier.
+        pub native_thread_self :: GetCurrentThreadId () -> u32
+
+        -- Initialises an exclusive mutex in stable storage.
+        pub native_mutex_init :: InitializeSRWLock (mutex: ^NativeMutex)
+
+        -- Acquires the exclusive mutex; it is not recursive.
+        pub native_mutex_lock :: AcquireSRWLockExclusive (mutex: ^NativeMutex)
+
+        -- Releases the exclusive mutex from its owning thread.
+        pub native_mutex_unlock :: ReleaseSRWLockExclusive (mutex: ^NativeMutex)
+
+        -- Initialises a condition in stable storage.
+        pub native_condition_init :: InitializeConditionVariable (condition: ^NativeCondition)
+
+        -- Atomically releases the mutex and waits, reacquiring it on return.
+        pub native_condition_wait :: SleepConditionVariableSRW (condition    : ^NativeCondition,
+                                                                mutex        : ^NativeMutex,
+                                                                milliseconds : u32,
+                                                                flags        : u32) -> i32
+
+        -- Wakes at least one current waiter, if any.
+        pub native_condition_signal :: WakeConditionVariable (condition: ^NativeCondition)
+
+        -- Wakes all current waiters.
+        pub native_condition_broadcast :: WakeAllConditionVariable (condition: ^NativeCondition)
+    }
+
+}

@@ -106,7 +106,7 @@ updated runner includes auto/16-worker measurements and a known CPU/memory child
 sanity check. Its new native accounting path still requires execution on Windows;
 compiler-only Windows counters must not be equated with POSIX descendant totals.
 
-M12's [ownership design](../audits/compiler-m12-semantic-ownership.md) is separate
+M12's [ownership design](https://github.com/Cthutu/nerd/blob/aada810d/review/audits/compiler-m12-semantic-ownership.md) is separate
 work. It identifies imported generic and trait mutations and the required
 canonical identities, request publication and continuation boundaries. Its ideal dependency-graph model finds only about 1% module-level whole-build
 headroom on Pixels and below 0.1% on Dungeon. The module-level ownership redesign

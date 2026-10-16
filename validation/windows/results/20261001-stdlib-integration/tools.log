@@ -1,0 +1,16 @@
+clang version 23.1.0 (https://github.com/llvm/llvm-project ea7d852a70e8bdfaf601d6626a760f9771b2c4b4)
+Target: x86_64-pc-windows-msvc
+Thread model: posix
+InstalledDir: C:\Users\matt\scoop\apps\llvm\23.1.0\bin
+Build config: +alloc:rpmalloc
+LLVM (http://llvm.org/):
+  LLVM version 22.1.8
+  Optimized build.
+  Default target: x86_64-pc-windows-msvc
+  Host CPU: znver3
+LLVM (http://llvm.org/):
+  LLVM version 22.1.8
+  Optimized build.
+Python 3.14.7
+just 1.48.0
+git version 2.51.1.windows.1

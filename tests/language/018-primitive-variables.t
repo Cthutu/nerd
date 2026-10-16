@@ -1,8 +1,8 @@
 -- Declares primitive variables with explicit types and casts.
 greeting: string = "Hello"
 enabled: bool = yes
-disabled: bool = false
-truthy: bool = true
+disabled: bool = no
+truthy: bool = yes
 ratio: f32 = 42.as(f32)
 weight: f64
 

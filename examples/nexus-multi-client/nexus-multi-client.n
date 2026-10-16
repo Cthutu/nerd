@@ -1,0 +1,56 @@
+-- Two clients share one Nexus TCP server. A received message remembers its
+-- sender, so replying needs no connection lookup or separate stream objects.
+use std.nexus
+
+exchange :: fn () -> void\NexusError {
+    server := net_socket()
+    defer server.close()
+    server.bind("tcp://127.0.0.1:0")?
+    server.set_option(NetOption.RecvTimeoutMs, 2000)?
+    server.set_option(NetOption.SendTimeoutMs, 2000)?
+    first := net_socket()
+    defer first.close()
+    second := net_socket()
+    defer second.close()
+    first.set_option(NetOption.RecvTimeoutMs, 2000)?
+    second.set_option(NetOption.RecvTimeoutMs, 2000)?
+    first.connect(server.local_url()?)?
+    second.connect(server.local_url()?)?
+
+    -- Each client owns its reusable message. Servers use the very same Message
+    -- type; their recv also records the originating peer as hidden reply state.
+    a := Message.create(^first)
+    defer a.done()
+    b := Message.create(^second)
+    defer b.done()
+    inbound := Message.create(^server)
+    defer inbound.done()
+    a.append_u32(10)?
+    b.append_u32(20)?
+    a.send()?
+    b.send()?
+    for _ in [0 .. 2] {
+        inbound.recv()?
+        number := inbound.read_u32()?
+        -- clear removes payload, retaining storage and the sender's reply route.
+        -- The response goes back to this sender whichever client arrives first.
+        inbound.clear()
+        inbound.append_u32(number + 1)?
+        inbound.send()?
+    }
+    a.recv()?
+    b.recv()?
+    assert a.read_u32()? == 11
+    assert b.read_u32()? == 21
+    prn("Nexus multi-client: replies 11 and 21")
+}
+
+main :: fn () -> i32 {
+    on exchange() {
+        _! => return 1
+
+        else => {
+        }
+    }
+    return 0
+}

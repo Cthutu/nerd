@@ -1,0 +1,337 @@
+use std.memory
+use std.network
+use std.nexus
+use std.time
+
+-- Raw injection writes are small, and retry against a bounded deadline.
+send_raw :: fn (socket: ^Socket, bytes: []u8) -> void\NexusError {
+    offset : usize = 0
+    limit := now().add(from_secs(2))
+    for offset < bytes.count {
+        on socket.send(bytes[offset ..]) {
+            count => {
+                assert count != 0
+                offset += count
+            }
+            NetworkError.WouldBlock {
+                code
+            }! => {
+                _ := code
+            }
+            error! => {
+                return NexusError.Network {
+                    error
+                }!
+            }
+        }
+        on now() >= limit => return NexusError.Invalid!
+    }
+}
+
+buffer_contracts :: fn () -> void\NexusError {
+    message : Message
+    defer message.done()
+    message.append_u8(0x12)?
+    message.append_u16(0x3456)?
+    message.append_u32(0x789abcde)?
+    message.append_u64(0xfedcba9876543210)?
+    message.append_string("nexus")?
+    message.append_string("")?
+    golden: [28]u8 = [
+        0x12,
+        0x34,
+        0x56,
+        0x78,
+        0x9a,
+        0xbc,
+        0xde,
+        0xfe,
+        0xdc,
+        0xba,
+        0x98,
+        0x76,
+        0x54,
+        0x32,
+        0x10,
+        0,
+        0,
+        0,
+        5,
+        110,
+        101,
+        120,
+        117,
+        115,
+        0,
+        0,
+        0,
+        0,
+    ]
+    assert message.payload().count == golden.count
+    for i in [0 .. golden.count] {
+        assert message.payload()[i] == golden[i]
+    }
+    assert message.read_u8()? == 0x12
+    assert message.read_u16()? == 0x3456
+    assert message.read_u32()? == 0x789abcde
+    assert message.read_u64()? == 0xfedcba9876543210
+    text := message.read_string()?
+    assert message.read_string()? == ""
+    assert text == "nexus"
+    -- Reading another string does not invalidate the view.
+    assert message.payload().count == 0
+    on message.read_u32() {
+        NexusError.IncompletePayload! => {
+        }
+
+        else => {
+            assert no
+        }
+    }
+    capacity := message.storage.count
+    message.clear()
+    assert message.storage.count == capacity
+    message.append_u32(4)?
+    message.append("abc".as([]u8))?
+    on message.read_string() {
+        NexusError.IncompletePayload! => {
+        }
+
+        else => {
+            assert no
+        }
+    }
+    assert message.offset == 0
+    -- Neither prefix nor short body was consumed.
+    message.append("d".as([]u8))?
+    assert message.read_string()? == "abcd"
+    message.clear()
+    message.append("abc".as([]u8))?
+    message.append(message.payload())?
+    assert message.payload().as(string) == "abcabc"
+    -- Force growth while appending a borrowed string of the same allocation.
+    padding := alloc(60)
+    defer free(padding)
+    for i in [0 .. padding.count] {
+        padding[i] = 97
+    }
+    message.clear()
+    message.append(padding)?
+    borrowed := message.payload().as(string)
+    message.append_string(borrowed)?
+    assert message.read(60)?.count == 60
+    -- The original view expired at realloc.
+    assert message.read_string()?.count == 60
+    message.clear()
+    large := alloc(max_message_size)
+    defer free(large)
+    for i in [0 .. large.count] {
+        large[i] = 7
+    }
+    message.append(large)?
+    on message.append_u8(1) {
+        NexusError.TooLarge! => {
+        }
+
+        else => {
+            assert no
+        }
+    }
+    on message.append_string("") {
+        NexusError.TooLarge! => {
+        }
+
+        else => {
+            assert no
+        }
+    }
+    assert message.length == max_message_size
+    assert message.storage.count == max_message_size
+    message.done()
+    message.done()
+    assert message.storage.data == nil && message.length == 0
+}
+
+stream_contracts :: fn (client: ^Socket, server: ^Socket, scenario: i32) -> void\NexusError {
+    stream := TcpStream.new(server)?
+    defer stream.done()
+    output : Message
+    defer output.done()
+    output.append_string("unchanged")?
+    deadline := now().add(from_secs(2))
+    on scenario == 0 => {
+        assert !stream.try_receive(^output)?
+        assert !stream.receive(^output, deadline = now())?
+        send_raw(client, [0, 0])?
+        assert !stream.try_receive(^output)?
+        for stream.header_count < 2 {
+            assert !stream.try_receive(^output)?
+        }
+        assert stream.header_count == 2
+        assert !stream.receive(^output, deadline = now().add(from_ms(10)))?
+        assert output.read_string()? == "unchanged"
+        send_raw(client, [0, 3, 97])?
+        assert !stream.try_receive(^output)?
+        for stream.received < 1 {
+            assert !stream.try_receive(^output)?
+        }
+        assert stream.header_count == 4 && stream.received == 1
+        -- Finish this frame, then empty and nonempty coalesced frames.
+        send_raw(client, [98, 99, 0, 0, 0, 0, 0, 0, 0, 1, 120])?
+        assert stream.receive(^output, deadline = deadline)?
+        assert output.payload().as(string) == "abc"
+        assert stream.receive(^output, deadline = deadline)?
+        assert output.payload().count == 0
+        assert stream.receive(^output, deadline = deadline)?
+        assert output.payload().as(string) == "x"
+        sender := TcpStream.new(client)?
+        defer sender.done()
+        output.clear()
+        output.append_string("snapshot")?
+        sender.queue(^output)?
+        on sender.queue(^output) {
+            NexusError.Invalid! => {
+            } else => {
+                assert no
+            }
+        }
+        output.clear()
+        assert sender.flush(deadline = deadline)?
+        assert stream.receive(^output, deadline = deadline)?
+        assert output.read_string()? == "snapshot"
+        assert sender.flush()?  -- No queued frame is already complete.
+        sender.queue(^output)?  -- Consumed message sends an empty payload.
+        assert sender.flush(deadline = deadline)?
+        assert stream.receive(^output, deadline = deadline)?
+        assert output.payload().count == 0
+        on client.shutdown_send() {
+            error! => {
+                return NexusError.Network {
+                    error
+                }!
+            } else => {
+            }
+        }
+        on stream.receive(^output, deadline = deadline) {
+            NexusError.Closed! => {
+            } else => {
+                assert no
+            }
+        }
+    }
+    on scenario == 1 || scenario == 2 => {
+        on scenario == 1 => {
+            send_raw(client, [0, 0])?
+        } else {
+            send_raw(client, [0, 0, 0, 2, 120])?
+        }
+        on client.shutdown_send() {
+            error! => {
+                return NexusError.Network {
+                    error
+                }!
+            } else => {
+            }
+        }
+        on stream.receive(^output, deadline = deadline) {
+            NexusError.Truncated! => {
+            } else => {
+                assert no
+            }
+        }
+        assert output.read_string()? == "unchanged"
+    }
+    on scenario == 3 => {
+        send_raw(client, [0, 16, 0, 1])?  -- One byte over the 1 MiB limit.
+        on stream.receive(^output, deadline = deadline) {
+            NexusError.TooLarge! => {
+            } else => {
+                assert no
+            }
+        }
+        assert stream.incoming.storage.count == 0
+        on stream.try_receive(^output) {
+            NexusError.Invalid! => {
+            } else => {
+                assert no
+            }
+        }
+        assert output.read_string()? == "unchanged"
+    }
+    on scenario == 4 => {
+        sender := TcpStream.new(client)?
+        defer sender.done()
+        large := alloc(max_message_size)
+        defer free(large)
+        for i in [0 .. large.count] {
+            large[i] = 42
+        }
+        output.clear()
+        output.append(large)?
+        sender.queue(^output)?
+        -- A paused receiver may exhaust the kernel's send buffer. The queued
+        -- snapshot remains intact through timeout and output reuse.
+        completed := sender.flush(deadline = now())?
+        output.clear()
+        for !completed {
+            assert !stream.try_receive(^output)? || output.length == max_message_size
+            completed = sender.flush(deadline = now())?
+            on now() >= deadline => return NexusError.Invalid!
+        }
+        on output.length == 0 => {
+            assert stream.receive(^output, deadline = deadline)?
+        }
+        assert output.length == max_message_size
+        for i in [0 .. output.length] {
+            assert output.storage[i] == 42
+        }
+    }
+    assert server.valid  -- The stream never closes the caller's socket.
+}
+
+network_contracts :: fn () -> void\NetworkError {
+    listener := socket(SocketKind.Tcp)?
+    defer _ := listener.close()
+    listener.bind(loopback(0))?
+    listener.listen()?
+    address := listener.local_address()?
+    for scenario in [0 .. 5] {
+        client := socket(SocketKind.Tcp)?
+        defer _ := client.close()
+        client.connect(address)?
+        server := listener.accept()?
+        defer _ := server.close()
+        on TcpStream.new(^server) {
+            NexusError.Invalid! => {
+            } else => {
+                assert no
+            }
+        }
+        client.nonblocking(yes)?
+        server.nonblocking(yes)?
+        on stream_contracts(^client, ^server, scenario.as(i32)) {
+            _! => {
+                return NetworkError.Invalid!
+            }
+            else => {
+            }
+        }
+    }
+}
+
+main :: fn () -> i32 {
+    on buffer_contracts() {
+        _! => {
+            return 1
+        } else => {
+        }
+    }
+    on network_contracts() {
+        _! => {
+            return 2
+        } else => {
+        }
+    }
+    prn("Nexus buffer and framing contracts passed")
+    return 0
+}

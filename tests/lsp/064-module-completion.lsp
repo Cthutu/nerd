@@ -228,6 +228,10 @@ main :: fn () {}
                 "kind": 9
             },
             {
+                "label": "optional_defaults",
+                "kind": 9
+            },
+            {
                 "label": "parts",
                 "kind": 9
             },
@@ -253,6 +257,10 @@ main :: fn () {}
             },
             {
                 "label": "public_method",
+                "kind": 9
+            },
+            {
+                "label": "recursive_message_owner",
                 "kind": 9
             },
             {

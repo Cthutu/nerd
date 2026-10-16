@@ -1,0 +1,72 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Linux x86-64 glibc pthread bindings. The native layout test must pass before
+-- using these opaque layouts on another libc or architecture.
+
+on "linux" {
+
+    -- Native pthread entry ABI; its result is not exposed by std.thread.
+    pub NativeThreadEntry :: fn (context: ^void) -> ^void
+
+    -- Opaque glibc x86-64 pthread_mutex_t (40 bytes, eight-byte alignment).
+    pub NativeMutex :: plex #c {
+        storage [5]usize  -- Native storage, accessed only by pthread functions.
+    }
+
+    -- Opaque glibc x86-64 pthread_cond_t (48 bytes, eight-byte alignment).
+    pub NativeCondition :: plex #c {
+        storage [6]usize  -- Native storage, accessed only by pthread functions.
+    }
+
+    ffi "pthread" {
+        -- Starts a joinable thread with default attributes.
+        pub native_thread_start :: pthread_create (handle     : ^usize,
+                                                   attributes : ^void,
+                                                   entry      : NativeThreadEntry,
+                                                   context    : ^void) -> i32
+
+        -- Joins one thread and releases its native resources.
+        pub native_thread_join :: pthread_join (handle : usize,
+                                                result : ^^void) -> i32
+
+        -- Returns the calling thread's pthread identifier.
+        pub native_thread_self :: pthread_self () -> usize
+
+        -- Compares native thread identifiers.
+        pub native_thread_equal :: pthread_equal (left  : usize,
+                                                  right : usize) -> i32
+
+        -- Initialises a non-recursive mutex with default attributes.
+        pub native_mutex_init :: pthread_mutex_init (mutex      : ^NativeMutex,
+                                                     attributes : ^void) -> i32
+
+        -- Destroys an unlocked mutex with no users or waiters.
+        pub native_mutex_done :: pthread_mutex_destroy (mutex: ^NativeMutex) -> i32
+
+        -- Acquires the mutex.
+        pub native_mutex_lock :: pthread_mutex_lock (mutex: ^NativeMutex) -> i32
+
+        -- Releases the mutex from its owning thread.
+        pub native_mutex_unlock :: pthread_mutex_unlock (mutex: ^NativeMutex) -> i32
+
+        -- Initialises a condition with default attributes.
+        pub native_condition_init :: pthread_cond_init (condition  : ^NativeCondition,
+                                                        attributes : ^void) -> i32
+
+        -- Destroys a condition with no waiters.
+        pub native_condition_done :: pthread_cond_destroy (condition: ^NativeCondition) -> i32
+
+        -- Releases the mutex and waits, reacquiring it on return.
+        pub native_condition_wait :: pthread_cond_wait (condition : ^NativeCondition,
+                                                        mutex     : ^NativeMutex) -> i32
+
+        -- Wakes at least one current waiter, if any.
+        pub native_condition_signal :: pthread_cond_signal (condition: ^NativeCondition) -> i32
+
+        -- Wakes all current waiters.
+        pub native_condition_broadcast :: pthread_cond_broadcast (condition: ^NativeCondition) -> i32
+    }
+
+}

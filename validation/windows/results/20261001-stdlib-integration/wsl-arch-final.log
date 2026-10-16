@@ -1,0 +1,199 @@
+Captured final validation stdout/stderr; terminal colour escapes removed.
+wsl: Failed to start the systemd user session for 'matt'. See journalctl for more details.
+Final integrated Arch WSL validation
+Snapshot: 2b540cd91c3e3bd1dde64b62ae9e5bd1169b91f4
+Checkout: /home/matt/.cache/nerd-combined-final-20261001-2b540cd9
+Started: 2026-10-01T16:32:29.688612+00:00
+Explicit generated-C compatibility; not native LLVM or full just do.
+
+$ uname -srmo
+Linux 6.6.87.2-microsoft-standard-WSL2 x86_64 GNU/Linux
+[exit 0]
+
+$ clang --version
+clang version 22.1.6
+Target: x86_64-pc-linux-gnu
+Thread model: posix
+InstalledDir: /usr/bin
+[exit 0]
+
+$ python3 --version
+Python 3.14.5
+[exit 0]
+
+$ python3 build/build.py nerd --skip-mod-sync
+================================================
+ build :: clang :: debug 
+ projects :: nerd
+================================================
+[run ] _obj/runtime/nrt.o
+[run ] _obj/runtime/nrt.pic.o
+[ cc ] nerd.c
+[ cc ] core/arena.c
+[ cc ] core/array.c
+[ cc ] core/dir.c
+[ cc ] core/filemap.c
+[ cc ] core/hash.c
+[ cc ] core/main.c
+[ cc ] core/map.c
+[ cc ] core/memory.c
+[ cc ] core/mutex.c
+[ cc ] core/output.c
+[ cc ] core/path.c
+[ cc ] core/random.c
+[ cc ] core/shell.c
+[ cc ] core/string.c
+[ cc ] core/task.c
+[ cc ] core/thread.c
+[ cc ] core/time.c
+[ cc ] intern/intern.c
+[ cc ] compiler/ast/dump.c
+[ cc ] compiler/ast/expr.c
+[ cc ] compiler/ast/parse.c
+[ cc ] compiler/ast/query.c
+[ cc ] compiler/ast/utils.c
+[ cc ] compiler/build/back/back.c
+[ cc ] compiler/build/back/llvm_runtime.c
+[ cc ] compiler/build/back/llvm_text.c
+[ cc ] compiler/build/front/front.c
+[ cc ] compiler/build/front/program.c
+[ cc ] compiler/cgen/cgen.c
+[ cc ] compiler/cmd_build.c
+[ cc ] compiler/cmd_check.c
+[ cc ] compiler/cmd_common.c
+[ cc ] compiler/cmd_format.c
+[ cc ] compiler/cmd_run.c
+[ cc ] compiler/cmd_test.c
+[ cc ] compiler/cst/cst.c
+[ cc ] compiler/error/ast_errors.c
+[ cc ] compiler/error/error.c
+[ cc ] compiler/error/lex_errors.c
+[ cc ] compiler/error/render.c
+[ cc ] compiler/error/sema_errors.c
+[ cc ] compiler/format/format.c
+[ cc ] compiler/hir/dump.c
+[ cc ] compiler/hir/gen.c
+[ cc ] compiler/lexer/dump.c
+[ cc ] compiler/lexer/interner.c
+[ cc ] compiler/lexer/lexer.c
+[ cc ] compiler/llvm/llvm.c
+[ cc ] compiler/modules/modules.c
+[ cc ] compiler/sema/sema.c
+[ cc ] timing/timing.c
+[ cc ] table/info.c
+[ cc ] table/table.c
+[ cc ] cli/cli.c
+[ cc ] lsp/builtin.c
+[ cc ] lsp/code_action.c
+[ cc ] lsp/completion.c
+[ cc ] lsp/document.c
+[ cc ] lsp/document_link.c
+[ cc ] lsp/hover.c
+[ cc ] lsp/lsp.c
+[ cc ] lsp/rename.c
+[ cc ] lsp/semantic_tokens.c
+[ cc ] lsp/signature.c
+[ cc ] lsp/utils.c
+[ cc ] object/object.c
+[ cc ] unicode/unicode.c
+[link] _bin/nerd-debug
+[skip] 0 source file(s) up to date
+================================================
+>> Build complete. Go be nerdy! \o/ <<
+================================================
+[exit 0]
+
+$ python3 build/test_runtime_threads.py
+[PASS] runtime workers: debug
+[PASS] runtime workers: release
+[exit 0]
+
+$ python3 build/test_std_thread_sync.py --cgen
+Native thread/sync layouts passed
+CGen debug temp-arena-alias-reproducer.n: passed
+CGen debug lifecycle.n: passed
+CGen debug thread-pipeline.n: passed
+CGen release temp-arena-alias-reproducer.n: passed
+CGen release lifecycle.n: passed
+CGen release thread-pipeline.n: passed
+[exit 0]
+
+$ python3 build/test_network.py --cgen
+PASS native socket layout
+PASS tests/network/main.n
+PASS examples/network-echo/network-echo.n
+PASS examples/network-datagram/network-datagram.n
+[exit 0]
+
+$ python3 build/test_network.py --cgen --release
+PASS native socket layout
+PASS tests/network/main.n
+PASS examples/network-echo/network-echo.n
+PASS examples/network-datagram/network-datagram.n
+[exit 0]
+
+$ /home/matt/.cache/nerd-combined-final-20261001-2b540cd9/_bin/nerd-debug build /home/matt/.cache/nerd-combined-final-20261001-2b540cd9/_tmp/lowering-fixtures/281-run-plex-bit-fields.n --cgen --copts -o /home/matt/.cache/nerd-combined-final-20261001-2b540cd9/_tmp/lowering-fixtures/281-run-plex-bit-fields-debug.c
+-std=gnu11 -g -O0
+[exit 0]
+
+$ clang /home/matt/.cache/nerd-combined-final-20261001-2b540cd9/_tmp/lowering-fixtures/281-run-plex-bit-fields-debug.c -std=gnu11 -g -O0 -o /home/matt/.cache/nerd-combined-final-20261001-2b540cd9/_tmp/lowering-fixtures/281-run-plex-bit-fields-debug
+
+[exit 0]
+
+$ /home/matt/.cache/nerd-combined-final-20261001-2b540cd9/_tmp/lowering-fixtures/281-run-plex-bit-fields-debug
+bit-field writes complete
+[exit 0]
+PASS CGen 281-run-plex-bit-fields O0
+
+$ /home/matt/.cache/nerd-combined-final-20261001-2b540cd9/_bin/nerd-debug build /home/matt/.cache/nerd-combined-final-20261001-2b540cd9/_tmp/lowering-fixtures/281-run-plex-bit-fields.n --cgen --copts -o /home/matt/.cache/nerd-combined-final-20261001-2b540cd9/_tmp/lowering-fixtures/281-run-plex-bit-fields-release.c -r
+-std=gnu11 -O2 -DNDEBUG
+[exit 0]
+
+$ clang /home/matt/.cache/nerd-combined-final-20261001-2b540cd9/_tmp/lowering-fixtures/281-run-plex-bit-fields-release.c -std=gnu11 -O2 -DNDEBUG -o /home/matt/.cache/nerd-combined-final-20261001-2b540cd9/_tmp/lowering-fixtures/281-run-plex-bit-fields-release
+
+[exit 0]
+
+$ /home/matt/.cache/nerd-combined-final-20261001-2b540cd9/_tmp/lowering-fixtures/281-run-plex-bit-fields-release
+bit-field writes complete
+[exit 0]
+PASS CGen 281-run-plex-bit-fields O2
+
+$ /home/matt/.cache/nerd-combined-final-20261001-2b540cd9/_bin/nerd-debug build /home/matt/.cache/nerd-combined-final-20261001-2b540cd9/_tmp/lowering-fixtures/326-optional-void-return.n --cgen --copts -o /home/matt/.cache/nerd-combined-final-20261001-2b540cd9/_tmp/lowering-fixtures/326-optional-void-return-debug.c
+-std=gnu11 -g -O0
+[exit 0]
+
+$ clang /home/matt/.cache/nerd-combined-final-20261001-2b540cd9/_tmp/lowering-fixtures/326-optional-void-return-debug.c -std=gnu11 -g -O0 -o /home/matt/.cache/nerd-combined-final-20261001-2b540cd9/_tmp/lowering-fixtures/326-optional-void-return-debug
+
+[exit 0]
+
+$ /home/matt/.cache/nerd-combined-final-20261001-2b540cd9/_tmp/lowering-fixtures/326-optional-void-return-debug
+optional void works
+[exit 0]
+PASS CGen 326-optional-void-return O0
+
+$ /home/matt/.cache/nerd-combined-final-20261001-2b540cd9/_bin/nerd-debug build /home/matt/.cache/nerd-combined-final-20261001-2b540cd9/_tmp/lowering-fixtures/326-optional-void-return.n --cgen --copts -o /home/matt/.cache/nerd-combined-final-20261001-2b540cd9/_tmp/lowering-fixtures/326-optional-void-return-release.c -r
+-std=gnu11 -O2 -DNDEBUG
+[exit 0]
+
+$ clang /home/matt/.cache/nerd-combined-final-20261001-2b540cd9/_tmp/lowering-fixtures/326-optional-void-return-release.c -std=gnu11 -O2 -DNDEBUG -o /home/matt/.cache/nerd-combined-final-20261001-2b540cd9/_tmp/lowering-fixtures/326-optional-void-return-release
+
+[exit 0]
+
+$ /home/matt/.cache/nerd-combined-final-20261001-2b540cd9/_tmp/lowering-fixtures/326-optional-void-return-release
+optional void works
+[exit 0]
+PASS CGen 326-optional-void-return O2
+
+$ /home/matt/.cache/nerd-combined-final-20261001-2b540cd9/_bin/nerd-debug doctor
+Nerd binary toolchain
+[ERROR] opt — unavailable or failed; install LLVM with this tool on PATH
+[ERROR] llc — unavailable or failed; install LLVM with this tool on PATH
+[ERROR] ld.lld — unavailable or failed; install LLVM with this tool on PATH
+[ERROR] llvm-ar — unavailable or failed; install LLVM with this tool on PATH
+[OK] libc startup objects
+[OK] dynamic loader
+Toolchain incomplete. Fix the errors above and run nerd doctor again.
+[exit 1]
+
+All requested bounded compatibility checks passed.
+Finished: 2026-10-01T16:32:49.175817+00:00

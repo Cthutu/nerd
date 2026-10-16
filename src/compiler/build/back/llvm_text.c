@@ -206,7 +206,8 @@ internal bool back_end_llvm_line_defines_symbol(string line, string* out)
     //   @"$main" = alias void (), ptr @fn.0
     //   @.str.m0.0 = private unnamed_addr constant ...
     if (line.count > 0 && line.data[0] == '@' &&
-        back_end_string_contains_cstr(line, " = ")) {
+        back_end_string_contains_cstr(line, " = ") &&
+        !back_end_string_contains_cstr(line, " = external global ")) {
         return back_end_llvm_line_symbol(line, out);
     }
     return false;
@@ -214,7 +215,9 @@ internal bool back_end_llvm_line_defines_symbol(string line, string* out)
 
 internal bool back_end_llvm_line_declares_symbol(string line, string* out)
 {
-    if (!back_end_string_starts_with_cstr(line, "declare ")) {
+    if (!back_end_string_starts_with_cstr(line, "declare ") &&
+        !(line.count > 0 && line.data[0] == '@' &&
+          back_end_string_contains_cstr(line, " = external global "))) {
         return false;
     }
     return back_end_llvm_line_symbol(line, out);
@@ -443,10 +446,14 @@ bool back_end_llvm_text_self_test(void)
     Array(string) module_llvms = NULL;
     array_push(module_llvms,
                s("declare i32 @puts(ptr)\n"
+                 "@state = external global i32\n"
+                 "@unresolved = external global i64\n"
                  "@.str.prelude = private unnamed_addr constant [1 x i8] "
                  "zeroinitializer\n"));
     array_push(module_llvms,
                s("declare i32 @puts(ptr)\n"
+                 "@state = internal global i32 7\n"
+                 "@unresolved = external global i64\n"
                  "declare void @fn.defined()\n"
                  "declare void @\"$main\"()\n"
                  "define void @fn.defined() {\n"
@@ -479,7 +486,12 @@ bool back_end_llvm_text_self_test(void)
                                             "  ret void\n"
                                             "}\n"));
 
-    bool ok = true;
+    bool ok = back_end_llvm_text_expect_line_count(
+                  combined, "@state = external global i32", 0) &&
+              back_end_llvm_text_expect_line_count(
+                  combined, "@state = internal global i32 7", 1) &&
+              back_end_llvm_text_expect_line_count(
+                  combined, "@unresolved = external global i64", 1);
     ok      = back_end_llvm_text_expect_line_count(
                   combined, "declare i32 @puts(ptr)", 1) &&
               ok;

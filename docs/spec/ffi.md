@@ -55,8 +55,11 @@ analysis rejects defaults on FFI parameters.
 ## Type Surface
 
 Supported FFI-safe types are the scalar primitives, pointers, C-layout plexes,
-packed plexes, raw unions, and function signatures that use FFI-safe parameter
-and return types. Runtime `string`, ordinary non-C plexes, slices, dynamic
+packed plexes, raw unions, and compatible function types. Function types are
+checked recursively and support scalar values, pointers, other compatible
+function types, and `void` results. Callback parameters and results cannot pass
+aggregates by value, even C-layout plexes accepted in ordinary FFI declarations.
+Runtime `string`, ordinary non-C plexes, slices, dynamic
 arrays, tuples, and enums are not documented here as FFI-safe values.
 
 ## Code/Manual Notes

@@ -1,0 +1,10 @@
+foreign :: use mutable_globals_other
+
+pub number := 211
+
+main :: fn () {
+    assert number == 211 && foreign.number == 101
+    number += 2
+    assert number == 213 && foreign.number == 101
+    prn("root global preserved")
+}

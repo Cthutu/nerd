@@ -1,0 +1,114 @@
+{
+  "tested_revision": "caaef691269aab3dfd09431993e28a75b17924e2",
+  "platform": "native Windows",
+  "gates": {
+    "just-test": {
+      "exit_code": 0,
+      "fixtures": {
+        "language": {
+          "passed": 203,
+          "skipped": 2
+        },
+        "error": {
+          "passed": 127,
+          "skipped": 0
+        },
+        "hir": {
+          "passed": 28,
+          "skipped": 0
+        },
+        "llvm": {
+          "passed": 48,
+          "skipped": 0
+        },
+        "format": {
+          "passed": 212,
+          "skipped": 0
+        },
+        "lsp": {
+          "passed": 212,
+          "skipped": 0
+        },
+        "command": {
+          "passed": 299,
+          "skipped": 13
+        },
+        "stdlib": {
+          "passed": 1,
+          "skipped": 0
+        },
+        "example": {
+          "passed": 17,
+          "skipped": 0
+        }
+      },
+      "passed": 1147,
+      "failed": 0,
+      "skipped": 15
+    },
+    "just-test-release": {
+      "exit_code": 0,
+      "fixtures": {
+        "language": {
+          "passed": 203,
+          "skipped": 2
+        },
+        "error": {
+          "passed": 127,
+          "skipped": 0
+        },
+        "hir": {
+          "passed": 28,
+          "skipped": 0
+        },
+        "llvm": {
+          "passed": 48,
+          "skipped": 0
+        },
+        "format": {
+          "passed": 212,
+          "skipped": 0
+        },
+        "lsp": {
+          "passed": 212,
+          "skipped": 0
+        },
+        "command": {
+          "passed": 299,
+          "skipped": 13
+        },
+        "stdlib": {
+          "passed": 1,
+          "skipped": 0
+        },
+        "example": {
+          "passed": 17,
+          "skipped": 0
+        }
+      },
+      "passed": 1147,
+      "failed": 0,
+      "skipped": 15
+    }
+  },
+  "compiler_sha256": {
+    "nerd-debug.exe": "0751a170657c8d61655afc6f6832d1ce8300158851a7ff47266616d4ed41bcb8",
+    "nerd.exe": "d584af1a8ccccde7928a396cf51a9859e69f377a43b94c00599dfd341de17699"
+  },
+  "differential": {
+    "passed": 289,
+    "failed": 0,
+    "platform_skips": 2,
+    "generated_c_optimisations": [
+      "O0",
+      "O2"
+    ],
+    "linux_pty": "skipped on Windows"
+  },
+  "unrun": [
+    "Linux/WSL gates",
+    "global installation",
+    "desktop/editor observation",
+    "full Windows benchmark matrix"
+  ]
+}

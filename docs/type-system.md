@@ -6,8 +6,8 @@ the compiler representation and should be checked against the code and tests
 when it is used for implementation work.
 
 The main code is in
-[src/compiler/sema/sema.h](/home/matt/nerd/src/compiler/sema/sema.h) and
-[src/compiler/sema/sema.c](/home/matt/nerd/src/compiler/sema/sema.c).
+[src/compiler/sema/sema.h](../src/compiler/sema/sema.h) and
+[src/compiler/sema/sema.c](../src/compiler/sema/sema.c).
 
 ## Design Goal
 
@@ -107,6 +107,13 @@ generated tag uses the smallest practical unsigned integer width for the number
 of variants. Variant names must be unique within one enum. Explicit enum
 discriminants must be non-negative integer constants, and every variant in one
 enum must have a distinct final discriminant value.
+
+A payload-free variant explicitly defined with `= integer-expression` can
+supply its discriminant in a numeric context. Thus `number: i32 = Colour.Green`
+is valid for `Green = 4`, with integer literal range checking, while
+`colour := Colour.Green` still infers `Colour`. Unannotated constant aliases
+preserve this behaviour; runtime enum variables require an explicit cast.
+Implicitly numbered variants and payload constructors remain enum values.
 
 At the current milestone boundary, source-level function-valued annotations also
 reuse that same function type syntax:
@@ -222,6 +229,19 @@ parser mostly sees symbols and type syntax; semantic analysis resolves them.
 
 Integer literals begin life as `untyped integer`. This lets the semantic pass
 delay commitment until surrounding context is known.
+
+When an integer destination is selected, the literal must fit that type. For
+example, `value: u8 = 256`, `value: i8 = 128`, and `value: u8 = -1` are semantic
+errors; `value: i8 = -128` is valid. The same rules apply to atomic element types,
+arguments, returns, fields, arrays and inferred variable storage. Positive
+literals retain their full unsigned magnitude, so `u64` accepts
+`18446744073709551615` but `i64` does not. Hexadecimal notation does not bypass
+the destination range check.
+
+Explicit `.as(...)` conversions keep their conversion behavior, including integer
+narrowing: `256.as(u8)` yields zero. A large literal is preserved before the
+conversion, rather than truncated through the default `i32` type. Arithmetic on
+concrete integer values retains its existing wrapping behavior.
 
 When a concrete runtime type is required, `sema_materialise_type(...)` currently
 maps `untyped integer` to `i32`.
@@ -360,9 +380,12 @@ Plex layout annotations are written after `plex`:
 - `PackedHeader :: plex #packed { tag u8 length u32 }`
 
 `#c` requests explicit source-order C-compatible layout. `#packed` emits a
-packed storage layout and implies `#c`. Unannotated plexes currently also use
-source-order layout for predictable lowering and debugging; compiler-driven
-field reordering is reserved for a future optimisation milestone.
+packed storage layout and implies `#c`. Ordinary plex layout is compiler-controlled:
+the compiler may reorder fields or insert padding to reduce wasted space, improve
+cache behavior, or optimize access. Field alignment and named access must remain
+correct. Source order, field offsets, and total size are not stable ABI promises.
+Both backends currently use source-order layout; that is an implementation choice,
+not a language guarantee. Use `#c` when native interoperability requires C layout.
 
 ## Fixed Arrays
 
@@ -621,6 +644,6 @@ Today the semantic type system is focused on:
 - exact-match type checks for the implemented arithmetic surface
 - explicit cast validation
 
-One implementation caveat remains: the IR is not yet fully self-describing and
-some backend stages still consult semantic tables. A future cleanup should move
-that remaining type knowledge into IR so VM-style execution becomes practical.
+HIR lowering and both code generators consult semantic type tables. Keep those
+tables alive through generation; HIR is not a standalone serialised type system.
+A VM would require a separate representation and lifetime design.

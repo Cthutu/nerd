@@ -110,8 +110,13 @@ define void @m0.init() {
 }
 
 define internal i32 @fn.0() {
-  %t0 = icmp slt i32 3, 4
   %t1 = alloca i1
+  %t4 = alloca i1
+  %t7 = alloca i1
+  %t12 = alloca i1
+  %t26 = alloca i1
+  %t32 = alloca i1
+  %t0 = icmp slt i32 3, 4
   br i1 %t0, label %logical.rhs.0, label %logical.short.1
 logical.short.1:
   store i1 0, ptr %t1
@@ -122,7 +127,6 @@ logical.rhs.0:
   br label %logical.end.2
 logical.end.2:
   %t2 = load i1, ptr %t1
-  %t4 = alloca i1
   br i1 %t2, label %logical.rhs.3, label %logical.short.4
 logical.short.4:
   store i1 0, ptr %t4
@@ -133,7 +137,6 @@ logical.rhs.3:
   br label %logical.end.5
 logical.end.5:
   %t5 = load i1, ptr %t4
-  %t7 = alloca i1
   br i1 %t5, label %logical.rhs.6, label %logical.short.7
 logical.short.7:
   store i1 0, ptr %t7
@@ -146,7 +149,6 @@ logical.end.8:
   %t8 = load i1, ptr %t7
   %t10 = load double, ptr @$limit
   %t11 = fcmp olt double 0x3FF8000000000000, %t10
-  %t12 = alloca i1
   br i1 %t11, label %logical.rhs.9, label %logical.short.10
 logical.short.10:
   store i1 0, ptr %t12
@@ -207,7 +209,6 @@ on.end.26:
   %t23 = and i32 14, 11
   %t24 = xor i32 %t23, 3
   %t25 = icmp eq i32 %t24, 9
-  %t26 = alloca i1
   br i1 %t25, label %logical.short.34, label %logical.rhs.33
 logical.short.34:
   store i1 1, ptr %t26
@@ -234,7 +235,6 @@ on.end.36:
   call void @$prn_text({ ptr, i64 } %t29)
   %t30 = load float, ptr @$half
   %t31 = fcmp ole float %t30, 0x3FE0000000000000
-  %t32 = alloca i1
   br i1 %t31, label %logical.rhs.43, label %logical.short.44
 logical.short.44:
   store i1 0, ptr %t32

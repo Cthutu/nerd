@@ -13,6 +13,7 @@
 //------------------------------------------------------------------------------
 
 #define AST_BP_ASSIGNMENT 10
+#define AST_BP_HANDLER 15
 #define AST_BP_LOGICAL_OR 20
 #define AST_BP_LOGICAL_AND 30
 #define AST_BP_BITWISE_OR 40
@@ -23,6 +24,7 @@
 #define AST_BP_SHIFT 90
 #define AST_BP_ADDITIVE 100
 #define AST_BP_MULTIPLICATIVE 110
+#define AST_BP_FALLBACK 115
 #define AST_BP_PREFIX 120
 #define AST_BP_POSTFIX 130
 

@@ -143,6 +143,7 @@ typedef enum {
     CK_InRange,
     CK_LogicalAnd,
     CK_LogicalOr,
+    CK_Fallback, // a: wrapped value, b: lazy fallback value
     CK_Call,
     CK_Cast,
     CK_Tuple,
@@ -386,6 +387,7 @@ typedef struct {
     u32            a;
     u32            b;
     u32            c;
+    bool error_postfix; // Branch pattern followed by a result-error !.
 } CstPattern;
 
 typedef struct {
@@ -426,6 +428,7 @@ typedef enum : u32 {
 
 typedef struct {
     CstOnKind kind;
+    bool      shorthand;
     u32       first_branch;
     u32       branch_count;
 } CstOnInfo;
@@ -533,6 +536,8 @@ typedef struct {
 } Cst;
 
 bool cst_parse(const Lexer* lexer, Cst* out_cst);
+// Caller supplies a zeroed array with one entry per lexer token.
+void cst_mark_result_type_tokens(const Lexer* lexer, bool* out_tokens);
 void cst_done(Cst* cst);
 
 u64  cst_get_integer(const Cst* cst, const CstNode* node);

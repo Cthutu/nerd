@@ -15,6 +15,13 @@ Update both integrations when a change affects:
 If only one editor can reasonably be updated in a commit, call that out in the
 commit message or accompanying notes and leave a clear follow-up.
 
+## Definition Navigation
+
+Go to Definition (F12 in VS Code) works on both named components of a
+`Value\Error` type. In folder modules, the target is the file containing the
+declaration, even when it is `mod.n` or another module part. The same navigation
+is available through the language server in Neovim.
+
 ## Neovim Runtime
 
 The Neovim runtime is repo-owned and copied into the local Linux configuration
@@ -106,8 +113,8 @@ the `nerd` filetype and syntax for a `.n` file:
 
 ```sh
 nvim --headless -u NONE \
-  --cmd 'set runtimepath^=/home/matt/nerd/syntax/nerd-nvim' \
-  +'syntax on' +'filetype on' +'edit _tmp/c4.n' \
+  --cmd 'set runtimepath^=./syntax/nerd-nvim' \
+  +'syntax on' +'filetype on' +'edit examples/nexus-timeouts/nexus-timeouts.n' \
   +'lua io.write((vim.bo.filetype or "") .. ":" .. (vim.bo.syntax or ""))' \
   +qa
 ```

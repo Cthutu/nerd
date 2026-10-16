@@ -1,0 +1,830 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- The source Nexus programming model: create a socket, connect or bind a URL,
+-- then send and receive socket-associated messages. TCP framing, accepting
+-- clients and choosing the reply peer belong to the library.
+
+use std.memory
+use std.network
+use std.time
+
+pub max_nexus_clients  :: 63  -- Leaves one readiness slot for the listener.
+pub max_datagram_size  :: 65507
+pub net_wait_immediate :: 0
+pub net_wait_infinite  :: 0xffffffffffffffff.as(u64)
+
+pub NetOption :: enum {
+    Nonblocking
+    SendTimeoutMs
+    RecvTimeoutMs
+    ConnectTimeoutMs
+    ReconnectIntervalMs
+    TelnetMode
+}
+
+pub NetKind :: enum {
+    Basic
+    Request
+    Reply
+    Telnet
+}
+
+-- A peer is separately allocated so its socket address stays stable even as
+-- other clients connect or disconnect. Message routes use IDs, never pointers.
+pub NexusPeer :: plex {
+    raw     Socket
+    stream  TcpStream
+    telnet  TelnetState
+    id      u64
+    sending ^Message
+}
+
+-- Owns the listener/datagram socket and accepted TCP peers. Keep this owner
+-- stable after connect/bind or Message.create; do not copy or race live values.
+pub NetSocket :: plex {
+    raw                Socket
+    peers              [max_nexus_clients]^NexusPeer
+    udp_addresses      [max_nexus_clients]Ipv4Address
+    udp_ids            [max_nexus_clients]u64
+    server             bool
+    active             bool
+    udp                bool
+    remote             Ipv4Address
+    next_id            u64
+    cursor             usize
+    generation         u64
+    kind               NetKind
+    telnet_mode        u64
+    send_next          bool
+    immediate          bool
+    send_ms            u64
+    receive_ms         u64
+    reconnect_ms       u64
+    connect_ms         u64
+    url_storage        [32]u8
+    datagram           Message
+    connection_handler fn (id: u64, connected: bool)
+}
+
+-- Creating a disconnected handle opens no OS socket and allocates no buffers.
+pub net_socket :: fn () => NetSocket {
+    next_id      : 1
+    generation   : 1
+    send_ms      : net_wait_infinite
+    receive_ms   : net_wait_infinite
+    connect_ms   : 1000
+    reconnect_ms : 25
+    ...
+}
+
+pub net_request_socket :: fn () -> NetSocket {
+    result := net_socket()
+    result.kind = NetKind.Request
+    result.send_next = yes
+    return result
+}
+
+pub net_reply_socket :: fn () -> NetSocket {
+    result := net_socket()
+    result.kind = NetKind.Reply
+    return result
+}
+
+pub net_telnet_socket :: fn () -> NetSocket {
+    result := net_socket()
+    result.kind = NetKind.Telnet
+    return result
+}
+
+pub net_telnet_line_mode      :: 0.as(u64)
+pub net_telnet_character_mode :: 1.as(u64)
+
+NexusEndpoint :: plex {
+    address Ipv4Address
+    udp     bool
+}
+
+-- Like the source parser, accept numeric IPv4 URLs. Reject incomplete octets,
+-- trailing text and overflow before opening a socket; DNS/IPv6 are separate
+-- work.
+nexus_endpoint :: fn (url: string) -> NexusEndpoint\NexusError {
+    on url.count < 7 => return NexusError.BadUrl!
+    udp := url[..6] == "udp://"
+    on !udp && url[..6] != "tcp://" => return NexusError.BadUrl!
+    address  : Ipv4Address
+    position : usize       = 6
+
+    for part in [0 .. 5] {
+        start         := position
+        value   : u32 = 0
+        maximum : u32 = on part < 4 => 255 else 65535
+
+        for position < url.count &&
+            url[position] >= '0' &&
+            url[position] <= '9' {
+            value = value * 10 + (url[position] - '0').as(u32)
+            on value > maximum => return NexusError.BadUrl!
+            position += 1
+        }
+        on position == start => return NexusError.BadUrl!
+        on part < 4 => {
+            address.octets[part] = value.as(u8)
+            separator : u8 = on part < 3 => '.' else ':'
+            on position >= url.count ||
+                url[position] != separator => return NexusError.BadUrl!
+            position += 1
+        } else {
+            address.port = value.as(u16)
+        }
+    }
+    on position != url.count => return NexusError.BadUrl!
+    return NexusEndpoint { address udp }
+}
+
+nexus_limit :: fn (milliseconds: u64, immediate: bool) -> ?Instant {
+    on immediate                         => return now()
+    on milliseconds == net_wait_infinite => return nil
+    current  := now()
+    maximum  := (net_wait_infinite - current.as(u64)) / 1_000_000
+    duration := on milliseconds > maximum => maximum else milliseconds
+
+    return current.add(from_ms(duration))
+}
+
+-- Translate raw socket errors at the boundary, retaining their native detail.
+nexus_socket :: fn (result: Socket\NetworkError) -> Socket\NexusError {
+    on result {
+        value   => return value
+        error!  => return NexusError.Network { error }!
+    }
+}
+
+nexus_bool :: fn (result: bool\NetworkError) -> bool\NexusError {
+    on result {
+        value   => return value
+        error!  => return NexusError.Network { error }!
+    }
+}
+
+nexus_count :: fn (result: usize\NetworkError) -> usize\NexusError {
+    on result {
+        value   => return value
+        error!  => return NexusError.Network { error }!
+    }
+}
+
+nexus_address :: fn (result: Ipv4Address\NetworkError) -> Ipv4Address\NexusError {
+    on result {
+        value   => return value
+        error!  => return NexusError.Network { error }!
+    }
+}
+
+nexus_network_void :: fn (result: void\NetworkError) -> void\NexusError {
+    on result {
+        error!  => return NexusError.Network { error }!
+        else    => return
+    }
+}
+
+impl NetSocket {
+
+    -- Close is idempotent. Generation changes invalidate messages associated
+    -- with the old session even when this same owner is connected again.
+    pub close :: fn (self: ^Self) {
+        for i in [0.as(usize) .. max_nexus_clients.as(usize)] {
+            self.drop(i)
+            self.udp_ids[i] = 0
+        }
+        on self.raw.valid => {
+            _ := self.raw.close()
+        }
+        self.datagram.done()
+        self.active = no
+        self.server = no
+        self.cursor = 0
+        self.generation += 1
+        self.send_next = self.kind == NetKind.Request
+    }
+
+    -- Called synchronously on the socket's owning thread after TCP peers are
+    -- added/removed, including close. IDs are never reused by this owner.
+    -- The handler must not re-enter or modify the socket. UDP has no connections.
+    -- A zero/nil function pointer disables notifications.
+    pub set_connection_handler :: fn (self    : ^Self,
+                                      handler : fn (id: u64, connected: bool)) {
+        self.connection_handler = handler
+    }
+
+    notify_connection :: fn (self: ^Self, id: u64, connected: bool) {
+        on self.connection_handler.as(^void) != nil => {
+            self.connection_handler(id, connected)
+        }
+    }
+
+    drop :: fn (self: ^Self, index: usize) {
+        peer := self.peers[index]
+        on peer == nil => return
+        id := peer.id
+        peer.telnet.done()
+        peer.stream.done()
+        on peer.raw.valid => {
+            _ := peer.raw.close()
+        }
+        free(peer.as(^u8).as([]u8, NexusPeer.size))
+        self.peers[index] = nil
+        self.notify_connection(id, no)
+    }
+
+    add :: fn (self: ^Self, index: usize, raw: Socket) -> void\NexusError {
+        storage := alloc(NexusPeer.size)
+        peer    := storage.data.as(^NexusPeer)
+
+        peer^ = NexusPeer { raw id: self.next_id ... }
+        self.next_id += 1
+        on peer.raw.nonblocking(yes) {
+            error! => {
+                _ := peer.raw.close()
+                free(storage)
+                return NexusError.Network { error }!
+            }
+
+            else => {
+            }
+        }
+        on TcpStream.new(^peer.raw) {
+            stream => {
+                peer.stream = stream
+                self.peers[index] = peer
+                on self.kind == NetKind.Telnet => {
+                    peer.stream.text = yes
+                    peer.stream.line = self.telnet_mode == net_telnet_line_mode
+                    peer.telnet.character = self.telnet_mode == net_telnet_character_mode
+                    on self.server => {
+                        on peer.telnet.session() {
+                            error! => {
+                                self.drop(index)
+                                return error!
+                            }
+
+                            else => {
+                            }
+                        }
+                    }
+                }
+            }
+
+            error! => {
+                _ := peer.raw.close()
+                free(storage)
+                return error!
+            }
+        }
+        self.notify_connection(peer.id, yes)
+    }
+
+    -- Bind includes TCP listen. recv accepts clients internally; UDP already
+    -- receives datagrams after bind. Port zero is useful for local examples/tests.
+    pub bind :: fn (self: ^Self, url: string) -> void\NexusError {
+        on self.active => return NexusError.Invalid!
+        endpoint := nexus_endpoint(url)?
+        on endpoint.udp &&
+            self.kind == NetKind.Telnet => return NexusError.ProtocolNotSupported!
+        raw       := nexus_socket(socket(on endpoint.udp => SocketKind.Udp else SocketKind.Tcp))?
+        committed := no
+
+        defer on !committed => {
+            _ := raw.close()
+        }
+        nexus_network_void(raw.bind(endpoint.address))?
+        on !endpoint.udp => nexus_network_void(raw.listen())?
+        nexus_network_void(raw.nonblocking(yes))?
+        self.raw = raw
+        self.udp = endpoint.udp
+        self.active = yes
+        self.server = yes
+        committed = yes
+    }
+
+    -- Connect and framing setup are one public operation. The socket owner can
+    -- be retried after failure; temporary native resources are always released.
+    pub connect :: fn (self: ^Self, url: string) -> void\NexusError {
+        on self.active => return NexusError.Invalid!
+        endpoint := nexus_endpoint(url)?
+        on endpoint.udp &&
+            self.kind == NetKind.Telnet => return NexusError.ProtocolNotSupported!
+        on endpoint.udp => {
+            raw       := nexus_socket(socket(SocketKind.Udp))?
+            committed := no
+
+            defer on !committed => {
+                _ := raw.close()
+            }
+            nexus_network_void(raw.connect(endpoint.address))?
+            nexus_network_void(raw.nonblocking(yes))?
+            self.raw = raw
+            committed = yes
+        } else {
+            limit := nexus_limit(self.connect_ms, self.immediate)
+            for {
+                on self.connect_tcp(endpoint.address, limit) {
+                    NexusError.Network { error }! => {
+                        on error {
+                            NetworkError.ConnectionRefused { code: _ },
+                            NetworkError.ConnectionReset { code: _ },
+                            NetworkError.TimedOut { code: _ },
+                            NetworkError.Interrupted { code: _ } => {
+                            }
+
+                            else => return NexusError.Network { error }!
+                        }
+                    }
+
+                    NexusError.TimedOut!  => return self.expired()!
+                    error!                => return error!
+                    else                  => break
+                }
+                on self.immediate ||
+                    self.connect_ms == 0 => return self.expired()!
+                delay := on self.reconnect_ms == 0
+                    =>   50.as(u64)
+                    else self.reconnect_ms
+                -- Bound each sleep to a second even for very large retry options.
+                on delay > 1000 => delay = 1000
+                on limit {
+                    end => {
+                        current := now()
+                        on current >= end => return NexusError.TimedOut!
+                        remaining := ((end - current).as(u64) + 999_999) / 1_000_000
+                        on delay > remaining => delay = remaining
+                    }
+
+                    else => {
+                    }
+                }
+                sleep_ms(delay)
+            }
+        }
+        self.remote = endpoint.address
+        self.udp = endpoint.udp
+        self.active = yes
+        self.server = no
+    }
+
+    connect_tcp :: fn (self    : ^Self,
+                       address : Ipv4Address,
+                       limit   : ?Instant) -> void\NexusError {
+        raw      := nexus_socket(socket(SocketKind.Tcp))?
+        consumed := no
+
+        defer on !consumed => {
+            _ := raw.close()
+        }
+        nexus_network_void(raw.nonblocking(yes))?
+        _ := nexus_bool(raw.start_connect(address))?
+        on !nexus_bool(raw.finish_connect(deadline = limit))? => return NexusError.TimedOut!
+        consumed = yes
+        self.add(0, raw)?
+    }
+
+    pub set_option :: fn (self   : ^Self,
+                          option : NetOption,
+                          value  : u64) -> void\NexusError {
+        on option {
+            NetOption.TelnetMode => {
+                on self.kind != NetKind.Telnet => return NexusError.ProtocolNotSupported!
+                on value > net_telnet_character_mode => return NexusError.Invalid!
+                self.telnet_mode = value
+            }
+
+            NetOption.Nonblocking => {
+                self.immediate = value != 0
+            }
+
+            NetOption.SendTimeoutMs => {
+                self.send_ms = value
+            }
+
+            NetOption.RecvTimeoutMs => {
+                self.receive_ms = value
+            }
+
+            NetOption.ConnectTimeoutMs => {
+                self.connect_ms = value
+            }
+
+            NetOption.ReconnectIntervalMs => {
+                self.reconnect_ms = value
+            }
+        }
+    }
+
+    pub get_option :: fn (self: Self, option: NetOption) -> u64\NexusError {
+        on option == NetOption.TelnetMode &&
+            self.kind != NetKind.Telnet => return NexusError.ProtocolNotSupported!
+        return on option {
+            NetOption.TelnetMode => self.telnet_mode
+
+            NetOption.Nonblocking => on self.immediate
+                =>   1.as(u64)
+                else 0.as(u64)
+
+            NetOption.SendTimeoutMs        => self.send_ms
+            NetOption.RecvTimeoutMs        => self.receive_ms
+            NetOption.ConnectTimeoutMs     => self.connect_ms
+            NetOption.ReconnectIntervalMs  => self.reconnect_ms
+        }
+    }
+
+    -- Port inspection is needed only when asking the OS to choose a local port.
+    pub local_address :: fn (self: ^Self) -> Ipv4Address\NexusError {
+        on !self.active => return NexusError.Invalid!
+        on self.raw.valid => return nexus_address(self.raw.local_address())?
+        on self.peers[0] == nil => return NexusError.Closed!
+        return nexus_address(self.peers[0].raw.local_address())?
+    }
+
+    expired :: fn (self: Self) -> NexusError {
+        return on self.immediate
+            =>   NexusError.WouldBlock
+            else NexusError.TimedOut
+    }
+
+    -- Readiness is only a hint. Repeated would-block/interruption with a ready
+    -- descriptor must still respect the operation's original deadline.
+    wait_ready :: fn (self    : ^Self,
+                      entries : []PollEntry,
+                      limit   : ?Instant) -> void\NexusError {
+        on limit {
+            end => {
+                on now() >= end => return self.expired()!
+            }
+
+            else => {
+            }
+        }
+        on nexus_count(poll(entries, deadline = limit))? == 0 => return self.expired()!
+    }
+
+    accept_ready :: fn (self: ^Self) -> void\NexusError {
+        for i in [0.as(usize) .. max_nexus_clients.as(usize)] {
+            on self.peers[i] != nil => again
+            on self.raw.accept() {
+                raw => self.add(i, raw)?
+
+                NetworkError.WouldBlock { code }! => {
+                    _ := code
+                    return
+                }
+
+                NetworkError.Interrupted { code }! => {
+                    _ := code
+                    return
+                }
+
+                error! => return NexusError.Network { error }!
+            }
+        }
+    }
+
+    -- Poll all active clients together: a slow partial sender never prevents a
+    -- later ready peer from supplying a complete message. The rotating cursor
+    -- gives ready peers equal opportunities rather than preferring slot zero.
+    recv_tcp :: fn (self    : ^Self,
+                    message : ^Message,
+                    limit   : ?Instant) -> void\NexusError {
+        character_mode := self.telnet_mode == net_telnet_character_mode
+        for {
+            on self.server => self.accept_ready()?
+            for step in [0.as(usize) .. max_nexus_clients.as(usize)] {
+                index := (self.cursor + step) % max_nexus_clients
+                peer  := self.peers[index]
+
+                on peer == nil => again
+                -- Do not consume another request while this Telnet client's
+                -- previous reply still borrows a pending Message. Other peers
+                -- and the listener can continue independently.
+                on self.server &&
+                    self.kind == NetKind.Telnet &&
+                    peer.sending != nil => again
+                received := on self.kind == NetKind.Telnet
+                    =>   peer.telnet.receive(^peer.stream, message, character_mode)
+                    else peer.stream.try_receive(message)
+                on received {
+                    complete => {
+                        on complete => {
+                            message.route = peer.id
+                            self.cursor = (index + 1) % max_nexus_clients
+                            return
+                        }
+                    }
+
+                    NexusError.Closed! => {
+                        self.drop(index)
+                        on !self.server => return NexusError.Closed!
+                    }
+
+                    error! => {
+                        self.drop(index)
+                        return error!
+                    }
+                }
+            }
+            entries : [max_poll_sockets]PollEntry
+            count   : usize                       = 0
+            room                                  := no
+
+            for i in [0.as(usize) .. max_nexus_clients.as(usize)] {
+                peer := self.peers[i]
+                on peer == nil => {
+                    room = yes
+                } else {
+                    entries[count] = PollEntry {
+                        socket : ^peer.raw
+                        read   : yes
+                        write  : peer.telnet.control.length != 0 && !peer.stream.pending
+                        ...
+                    }
+                    count += 1
+                }
+            }
+            on self.server &&
+                room => {
+                entries[count] = PollEntry { socket: ^self.raw read: yes ... }
+                count += 1
+            }
+            on count == 0 => return NexusError.Closed!
+            self.wait_ready(entries[..count], limit)?
+        }
+    }
+
+    recv_udp :: fn (self    : ^Self,
+                    message : ^Message,
+                    limit   : ?Instant) -> void\NexusError {
+        self.datagram.reserve(max_datagram_size)?
+        for {
+            on self.raw.receive_from(self.datagram.storage[..max_datagram_size]) {
+                received => {
+                    sender         := received.sender
+                    slot   : usize = max_nexus_clients.as(usize)
+
+                    for i in [0.as(usize) .. max_nexus_clients.as(usize)] {
+                        on self.udp_ids[i] != 0 &&
+                            self.udp_addresses[i] == sender => {
+                            slot = i
+                            break
+                        }
+                        on self.udp_ids[i] == 0 &&
+                            slot == max_nexus_clients => slot = i
+                    }
+                    on slot == max_nexus_clients => return NexusError.TooManyPeers!
+                    on self.udp_ids[slot] == 0 => {
+                        self.udp_ids[slot] = self.next_id
+                        self.next_id += 1
+                        self.udp_addresses[slot] = sender
+                    }
+                    message.clear()
+                    message.append(self.datagram.storage[..received.count])?
+                    message.sender = received.sender
+                    message.route = self.udp_ids[slot]
+                    return
+                }
+
+                NetworkError.WouldBlock { code }! => {
+                    _ := code
+                }
+
+                NetworkError.Interrupted { code }! => {
+                    _ := code
+                }
+
+                error! => return NexusError.Network { error }!
+            }
+            entries := [PollEntry { socket: ^self.raw read: yes ... }]
+            self.wait_ready(entries[..], limit)?
+        }
+    }
+
+    send_message :: fn (self: ^Self, message: ^Message) -> void\NexusError {
+        on !self.active ||
+            message.generation != self.generation => return NexusError.Invalid!
+        on (self.kind == NetKind.Request || self.kind == NetKind.Reply) &&
+            !self.send_next => return NexusError.WrongState!
+        limit := nexus_limit(self.send_ms, self.immediate)
+        on self.udp => {
+            on message.payload().count > max_datagram_size => return NexusError.TooLarge!
+            on self.server && message.route == 0 => return NexusError.Invalid!
+            address := on self.server => message.sender else self.remote
+            for {
+                on self.raw.send_to(message.payload(), address) {
+                    count => {
+                        _ := count
+                        break
+                    }
+
+                    NetworkError.WouldBlock { code }! => {
+                        _ := code
+                    }
+
+                    NetworkError.Interrupted { code }! => {
+                        _ := code
+                    }
+
+                    error! => return NexusError.Network { error }!
+                }
+                entries := [PollEntry { socket: ^self.raw write: yes ... }]
+                self.wait_ready(entries[..], limit)?
+            }
+        } else {
+            peer : ^NexusPeer
+            on self.server => {
+                for i in [0.as(usize) .. max_nexus_clients.as(usize)] {
+                    candidate := self.peers[i]
+                    on candidate != nil &&
+                        candidate.id == message.route => {
+                        peer = candidate
+                        break
+                    }
+                }
+            } else {
+                peer = self.peers[0]
+            }
+            on peer == nil => return NexusError.Invalid!
+            defer on peer.stream.failed => {
+                for i in [0.as(usize) .. max_nexus_clients.as(usize)] {
+                    on self.peers[i] == peer => {
+                        self.drop(i)
+                        break
+                    }
+                }
+            }
+            on peer.sending != nil &&
+                peer.sending != message => return NexusError.Invalid!
+            on !peer.stream.pending => {
+                on self.kind == NetKind.Telnet => {
+                    -- Reserve the sender even if negotiation must finish first.
+                    peer.sending = message
+                    for !peer.telnet.flush(^peer.stream)? {
+                        entries := [PollEntry { socket: ^peer.raw write: yes ... }]
+                        self.wait_ready(entries[..], limit)?
+                    }
+                    peer.stream.line = self.telnet_mode == net_telnet_line_mode
+                }
+                on peer.stream.queue(message) {
+                    error! => {
+                        peer.sending = nil
+                        return error!
+                    }
+
+                    else => {
+                    }
+                }
+                peer.sending = message
+            }
+            on peer.stream.flush(deadline = limit) {
+                complete => {
+                    on !complete => return self.expired()!
+                    peer.sending = nil
+                }
+
+                error! => return error!
+            }
+        }
+        on (self.kind == NetKind.Request || self.kind == NetKind.Reply) => self.send_next = no
+    }
+
+    receive_message :: fn (self: ^Self, message: ^Message) -> void\NexusError {
+        on !self.active ||
+            message.generation != self.generation => return NexusError.Invalid!
+        on (self.kind == NetKind.Request || self.kind == NetKind.Reply) &&
+            self.send_next => return NexusError.WrongState!
+        limit := nexus_limit(self.receive_ms, self.immediate)
+        on self.udp
+            =>   self.recv_udp(message, limit)?
+            else self.recv_tcp(message, limit)?
+        on (self.kind == NetKind.Request || self.kind == NetKind.Reply) => self.send_next = yes
+    }
+
+}
+
+impl Message {
+
+    -- Associate with a stable socket owner, just like net_message_create.
+    pub create :: fn (socket: ^NetSocket) -> Self {
+        on socket == nil => return Self { ... }
+        return Self { owner: socket generation: socket.generation ... }
+    }
+
+    -- A complete-message operation: framing and partial-I/O retries are hidden.
+    pub send :: fn (self: ^Self) -> void\NexusError {
+        on self.owner == nil => return NexusError.Invalid!
+        self.owner.send_message(self)?
+    }
+
+    pub recv :: fn (self: ^Self) -> void\NexusError {
+        on self.owner == nil => return NexusError.Invalid!
+        self.owner.receive_message(self)?
+    }
+
+    -- Stable sender identity for the lifetime of a TCP pipe or UDP session.
+    pub id :: fn (self: Self) -> ?u64 {
+        on self.owner == nil ||
+            self.owner.generation != self.generation ||
+            self.route == 0 => return nil
+        for i in [0.as(usize) .. max_nexus_clients.as(usize)] {
+            on self.owner.udp &&
+                self.owner.udp_ids[i] == self.route => return self.route
+            peer := self.owner.peers[i]
+            on peer != nil && peer.id == self.route => return self.route
+        }
+        return nil
+    }
+
+    -- Bounds belong to the live sender, not to the reusable payload buffer.
+    pub telnet_bounds :: fn (self: Self) -> ?TelnetBounds {
+        on self.owner == nil ||
+            self.owner.kind != NetKind.Telnet ||
+            self.owner.generation != self.generation => return nil
+        for i in [0.as(usize) .. max_nexus_clients.as(usize)] {
+            peer := self.owner.peers[i]
+            on peer != nil &&
+                (peer.id == self.route || !self.owner.server && i == 0) &&
+                peer.telnet.has_bounds => return peer.telnet.bounds
+        }
+        return nil
+    }
+
+    pub address :: fn (self: Self) -> ?Ipv4Address {
+        on self.owner == nil ||
+            self.owner.generation != self.generation ||
+            self.route == 0 => return nil
+        on self.owner.udp => return self.sender
+        for i in [0.as(usize) .. max_nexus_clients.as(usize)] {
+            peer := self.owner.peers[i]
+            on peer != nil &&
+                peer.id == self.route => {
+                on peer.raw.peer_address() {
+                    value  => return value
+                    _!     => return nil
+                }
+            }
+        }
+        return nil
+    }
+
+}
+
+-- Format an endpoint into borrowed owner storage; no temporary allocation.
+nexus_url :: fn (address: Ipv4Address, udp: bool, buffer: []u8) -> string {
+    prefix := on udp => "udp://" else "tcp://"
+    for i in [0 .. prefix.count] {
+        buffer[i] = prefix[i]
+    }
+    count : usize = prefix.count
+    for part in [0 .. 5] {
+        value : u32 = address.port.as(u32)
+        on part < 4 => value = address.octets[part].as(u32)
+        digits : [5]u8
+        used   : usize = 0
+
+        for {
+            digits[used] = ('0'.as(u32) + value % 10).as(u8)
+            used  += 1
+            value /= 10
+            on value == 0 => break
+        }
+        for i in [0 .. used] {
+            buffer[count] = digits[used - i - 1]
+            count += 1
+        }
+        on part < 4 => {
+            buffer[count] = on part < 3 => '.' else ':'
+            count += 1
+        }
+    }
+    return buffer[..count].as(string)
+}
+
+impl NetSocket {
+
+    -- The bound URL includes the actual port when bind requested port zero.
+    pub local_url :: fn (self: ^Self) -> string\NexusError {
+        address := self.local_address()?
+        return nexus_url(address, self.udp, self.url_storage[..])
+    }
+
+}
+
+impl Message {
+
+    -- Sender URL survives clear, just as the source's hidden reply metadata.
+    pub url :: fn (self: ^Self) -> ?string {
+        on self.address() {
+            address  => return nexus_url(address, self.owner.udp, self.url_storage[..])
+            else     => return nil
+        }
+    }
+
+}

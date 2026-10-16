@@ -32,14 +32,28 @@ def plan(folder: Path) -> list[Stage]:
     suffix = '.exe' if os.name == 'nt' else ''
     stages = [Stage('build-debug', [python, 'build/build.py', 'nerd', '--skip-mod-sync']),
               Stage('build-release', [python, 'build/build.py', '-r', 'nerd', '--skip-mod-sync'])]
-    for name in ['clean', 'memory', 'threads']:
-        stages.append(Stage(name, [python, f'build/test_{name}.py']))
+    for name in ['clean', 'memory', 'runtime_threads', 'threads']:
+        stages.append(Stage(name.replace('_', '-'), [python, f'build/test_{name}.py']))
     stages.append(Stage('fixtures', [python, 'build/test.py'], ('build-debug',)))
     for mode in ['debug', 'release']:
         nerd = str(ROOT / '_bin' / (('nerd-debug' if mode == 'debug' else 'nerd') + suffix))
         needs = ('build-' + mode,)
         stages.append(Stage('doctor-' + mode, [nerd, 'doctor'], needs))
-        for name in ['profile', 'render_threads', 'expression_depth', 'jobs', 'front_threads', 'toolchain', 'install', 'cgen']:
+        if mode == 'release':
+            stages.append(Stage('fixtures-release', [python, 'build/test.py', '--nerd', nerd], needs))
+        stages.append(Stage('stdlib-capabilities-' + mode,
+                            [python, 'validation/stdlib/check_capabilities.py', '--compiler', nerd], needs))
+        for backend, flags in [('llvm', []), ('c', ['--cgen'])]:
+            for name in ['std_thread_sync', 'raptor']:
+                stages.append(Stage(f'{name.replace("_", "-")}-{backend}-{mode}',
+                                    [python, f'build/test_{name}.py', '--nerd', nerd] + flags, needs))
+            for target, target_flags in [('debug', []), ('release', ['--release'])]:
+                for name in ['network', 'nexus']:
+                    stages.append(Stage(f'{name}-{backend}-{target}-{mode}',
+                                        [python, f'build/test_{name}.py', '--compiler', nerd]
+                                        + flags + target_flags, needs))
+        for name in ['profile', 'render_threads', 'expression_depth', 'jobs', 'front_threads',
+                     'toolchain', 'install', 'format_workflow', 'cgen', 'build_settings', 'windows_stdio']:
             command = [python, f'build/test_{name}.py', '--nerd', nerd]
             stages.append(Stage(name.replace('_', '-') + '-' + mode,
                                 command, needs))

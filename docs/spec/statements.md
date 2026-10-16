@@ -46,6 +46,13 @@ without an initializer calls the canonical `core.Default` implementation for
 its type when a concrete implementation exists; otherwise it is
 zero-initialised.
 
+Assignment to by-value storage rooted in a constant binding is rejected,
+including nested plex or union fields and fixed-array elements. This applies
+to local, top-level, and imported constant bindings. Target validation follows
+field and index projections to the root binding, stopping at pointer
+dereferences and indexing through pointers, slices, or dynamic arrays. A
+constant pointer or view does not make the storage it refers to immutable.
+
 `undefined` is only valid where the parser builds an explicitly typed variable
 initializer. It opts out of both `Default` and zero-initialisation. Semantic
 definite-assignment checks require it to be assigned before read.

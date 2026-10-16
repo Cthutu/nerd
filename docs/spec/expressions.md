@@ -33,6 +33,7 @@ From lowest binding power to highest:
 | Operators                                                                       | Notes                               |
 | ------------------------------------------------------------------------------- | ----------------------------------- |
 | `=`, `+=`, `-=`, `*=`, `/=`, `%=`, `&=`, `^=`, `|=`, `<<=`, `>>=`, `&&=`, `||=` | Assignment and compound assignment. |
+| `else [error] { ... }` | Failure handler; success yields its payload, fallthrough propagates. |
 | `||`                                                                            | Boolean OR.                         |
 | `&&`                                                                            | Boolean AND.                        |
 | `|`, `^`, `&`                                                                   | Bitwise operators.                  |
@@ -41,6 +42,7 @@ From lowest binding power to highest:
 | `<<`, `>>`                                                                      | Shifts.                             |
 | `+`, `-`                                                                        | Additive operators.                 |
 | `*`, `/`, `%`                                                                   | Multiplicative operators.           |
+| `\`                                                                             | Lazy fallback, right associative.   |
 | prefix `-`, `!`, `^`                                                            | Negation, logical not, address-of.  |
 | calls, indexing, slicing, fields, casts, plex literals, `with`, postfix `^`     | Postfix operators.                  |
 
@@ -69,6 +71,36 @@ is evaluated only when the lower comparison succeeds.
 
 Assignments require assignable targets. Compound assignments lower through the
 corresponding binary operation before assigning.
+
+## Lazy Fallback
+
+`wrapped \ fallback` extracts the success value from `T\E` or the present
+value from `?T`. The left operand is evaluated once. On error or absence, only
+the fallback is evaluated; the error is discarded. The expression has type `T`,
+and the fallback must produce a compatible `T` (or exit control flow). Numeric
+literals are checked against `T`, including its range. `void` payloads are
+supported with a void fallback, so handled failures can continue execution.
+
+`\` binds more tightly than multiplication and less tightly than prefix and
+postfix operators. It is right associative:
+
+```nerd
+value := first() \ second() \ 42 -- first() \ (second() \ 42)
+scaled := first() \ 2 * 3        -- (first() \ 2) * 3
+computed := first() \ (2 * 3)     -- computed fallback
+```
+
+Mixed optional/result chains follow the same rules, with each fallback evaluated
+only if needed. Parentheses can explicitly group a left-associated extraction.
+Fallbacks may be calls or value blocks, and may use ordinary propagation or
+other control flow. Error inspection remains available through `on` extraction.
+
+The AST parser normalises this operator to extraction branches with a private
+success binder; the CST preserves the operator for formatting. HIR and both
+backends use existing branching to preserve lazy evaluation.
+Formatting places spaces around expression `\`, while result types retain
+adjacent `T\E`. Token recovery uses the CST type parser to identify type
+separators even when other syntax in the declaration is malformed.
 
 ## Calls And Fields
 
@@ -169,6 +201,10 @@ expression instead.
 Postfix `?` extracts success from an optional or result value. On failure it
 returns `nil` from an optional-returning function or forwards the error from a
 result-returning function. The enclosing return channel must be compatible.
+`expression else [error] { ... }` performs the same propagation after running
+its failure handler, while implicitly yielding success. The subject is evaluated
+once and the original failure is forwarded. For an optional, omit the error
+binder; explicit control-flow exits in the handler override propagation.
 ## Compound Function Selection
 
 Calling a compound function filters its flattened concrete members using the

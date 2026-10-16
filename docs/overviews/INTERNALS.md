@@ -1,5 +1,37 @@
 # Internals
 
+Enum parameter metadata records whether each discriminant was explicitly
+assigned. Interning, imports, and materialisation preserve this flag. Sema
+allows a payload-free explicitly numbered variant (including unannotated
+constant aliases) to acquire a concrete numeric context, checking integer
+ranges as for literals. Its natural type remains the enum type. HIR lowers
+such contextual uses to numeric integer literals, so both backends use the
+existing numeric constant paths without implicitly converting runtime enums.
+Compound-call selection recognises these numeric candidates but prefers a
+candidate accepting the natural enum type over one requiring conversion.
+
+Assignment validation follows by-value field and fixed-array index paths back
+to their root binding. Both value parameters and constant bindings prohibit
+writes to their own storage, including imported constants resolved through
+module fields. Pointer dereferences and indexing through pointer-backed views
+stop this traversal: binding immutability does not make borrowed storage
+immutable. The existing invalid-assignment diagnostic points at the root name.
+
+Untyped integer constants remain untyped in bindings and can adopt concrete
+integer or floating-point contexts at each use. Sema handles compatibility
+and operand typing; LLVM lowering converts integer constants and expressions
+to floating-point operands for declarations, calls, returns, and comparisons.
+Float-to-integer conversion still requires an explicit cast. Boolean literal
+tokens are exclusively `yes` and `no`; `true` and `false` are identifiers,
+with no predefined values. The AST, CST, formatter, and LSP share this lexer
+classification.
+
+Windows console control registration passes a typed `fn` value directly to
+`SetConsoleCtrlHandler`. A `^fn` parameter with `^control_handler` instead
+passes the address of a function-value slot, which is not a callable entry
+point. Native Nexus shutdown tests exercise registration, callback delivery,
+and removal in LLVM and C output.
+
 On Windows the direct LLVM linker includes `legacy_stdio_definitions.lib` with
 the SDK/CRT libraries. Nerd FFI declarations call symbols such as `vprintf`
 directly, so they need the out-of-line definitions normally supplied through
@@ -43,13 +75,31 @@ return path for propagation, including deferred cleanup.
 Sema also diagnoses propagation at the postfix `?`: when the enclosing function
 has no matching optional or result channel, the diagnostic names the propagated
 failure type and suggests a compatible enclosing return type.
+Imported record mappings retain the source alias as a symbol in the destination
+lexer. Diagnostic rendering prefers a local alias, then this preserved name,
+including across transitive imports and inside composite types. These names are
+diagnostic metadata and do not affect structural type identity or layout.
 Recursive semantic type rendering isolates nested names in temporary arenas
 before appending them, keeping composite diagnostics such as
 `^PixelLayer\GfxError` contiguous and source-accurate.
+Inference saves and restores the nearest expression block's expected value type
+for return diagnostics. A whole return-operand mismatch can suggest `break` if
+the value fits that block, or its type is still being inferred. The hint excludes
+nested function bodies, call-argument errors and intervening loops, where an
+unlabelled break would target the loop. Function returns retain their semantics;
+this context only selects diagnostic help text.
 Parser recovery and semantic index checking recognise the extraction-shaped
 `on value[payload]` mistake, including an empty branch body, so diagnostics can
 point to the binder and suggest the required `=> [payload]` syntax instead of
 blaming the closing brace or reporting that a result is not indexable.
+
+Error-channel pattern branches require a result subject (`STF_Result`). Sema
+rejects these branches for plain values and optionals before checking their
+payload patterns. `AstOnBranch.error_token_index` preserves the postfix `!`
+location even when the parser strips an `AK_ErrorInject` wrapper, so diagnostic
+0369 highlights the marker, reports the subject type, and suggests removing
+`!`. Separate error tables use `U32_MAX` for this token and receive a hint to
+move the match to the first pattern table.
 
 The parser provisionally creates implicit binders for bare-identifier `on`
 subjects before their types are known. Sema retains these only for branches
@@ -57,16 +107,53 @@ that extract a payload. Boolean branches and optional absent branches resolve
 references back to the original subject, preserving assignments and mutability
 checks. Otherwise, updates such as `on ready => ... else { ready = yes }`
 would write a branch-local copy and leave the surrounding state unchanged.
+Bare failure handling normalises `subject else ...` to an ordinary extraction
+with a private success binder. Sema excludes the failure handler from payload
+unification. A private binder snapshots the whole result or optional, and the
+parser appends a marked ordinary propagation node inside the handler scope.
+The old omitted-success `on ... else` and `on ... else?` syntax is rejected;
+full `on ... => ... else ...` extraction remains unchanged.
+An `on` subject admits handler precedence, stopping before assignment. Its
+`=>` separates the handler expression from the branch. Unbraced branch bodies
+continue to reserve `else` for their enclosing `on`; parentheses or another
+delimited expression allow a handler in that position.
+The formatter passes the enclosing indentation into `on` subject rendering,
+including logical-chain operands, so parenthesised bare handlers keep their
+bodies and closing braces aligned inside loops and nested blocks.
+LLVM always materialises `on` subjects and guards even when the enclosing
+statement discards its result. Letting discard mode reach a nested handler
+expression drops its success value and produces an empty boolean operand.
+This reuses propagation channel checking and cleanup without reevaluating the
+subject or forwarding a modified subject variable. Unreachable synthetic
+propagation is omitted from HIR after an explicit exit. Synthetic locals are
+excluded from LSP completion.
+Lazy fallback `subject \ default` normalises to ordinary `AOK_Extract`
+branches with a private success binder and `AstOnInfo.fallback`. Sema fixes the
+branch context to the source's success type, including literal range checks;
+the failure branch produces a replacement value. `CK_Fallback` preserves the
+source spelling, high precedence (between multiplication and prefix), and
+right associativity for formatting. Existing HIR extraction and LLVM/C
+branching evaluate the subject once and execute the fallback only on failure.
+Like extraction shorthand, a void success omits the binder and value body.
+Token-based formatter recovery asks the CST parser to mark result type tokens;
+it keeps `T\E` adjacent and spaces expression `\` even in malformed code.
+HIR marks shorthand failure branches as statement handlers. LLVM emits them as
+ordinary blocks and the C backend temporarily removes the extraction value
+target, so handler `break`/`again` resolve to surrounding control flow. A `void`
+success payload requires no binding or value-producing block. The CST retains
+the omitted success arm and `else?` spelling for formatting, including wrapped
+call subjects.
+
 The C backend converts untyped `nil` to an absent optional before considering
 payload promotion, including when evaluating omitted default arguments.
 
 For deeper implementation notes, use these companion documents:
 
-- [../compiler-pipeline.md](/home/matt/nerd/docs/compiler-pipeline.md)
-- [../error-system.md](/home/matt/nerd/docs/error-system.md)
-- [../type-system.md](/home/matt/nerd/docs/type-system.md)
-- [../lsp.md](/home/matt/nerd/docs/lsp.md)
-- [../testing.md](/home/matt/nerd/docs/testing.md)
+- [../compiler-pipeline.md](../compiler-pipeline.md)
+- [../error-system.md](../error-system.md)
+- [../type-system.md](../type-system.md)
+- [../lsp.md](../lsp.md)
+- [../testing.md](../testing.md)
 
 ## C output
 
@@ -110,30 +197,30 @@ The repository contains:
 - `tests`
   Language, error, formatter, and LSP test inputs.
 
-The main executable entry point is [src/nerd.c](/home/matt/nerd/src/nerd.c).
+The main executable entry point is [src/nerd.c](../../src/nerd.c).
 
 ## Reading Order
 
 For most compiler work:
 
-1. [src/nerd.c](/home/matt/nerd/src/nerd.c)
-2. [src/compiler/compiler.h](/home/matt/nerd/src/compiler/compiler.h)
-3. [src/compiler/build/front/front.c](/home/matt/nerd/src/compiler/build/front/front.c)
-4. [src/compiler/build/back/back.c](/home/matt/nerd/src/compiler/build/back/back.c)
+1. [src/nerd.c](../../src/nerd.c)
+2. [src/compiler/compiler.h](../../src/compiler/compiler.h)
+3. [src/compiler/build/front/front.c](../../src/compiler/build/front/front.c)
+4. [src/compiler/build/back/back.c](../../src/compiler/build/back/back.c)
 5. the subsystem you are changing
 
 For editor tooling work:
 
-1. [src/lsp/lsp.c](/home/matt/nerd/src/lsp/lsp.c)
-2. [src/lsp/document.c](/home/matt/nerd/src/lsp/document.c)
-3. [src/lsp/hover.c](/home/matt/nerd/src/lsp/hover.c)
-4. [src/compiler/cst/cst.c](/home/matt/nerd/src/compiler/cst/cst.c)
+1. [src/lsp/lsp.c](../../src/lsp/lsp.c)
+2. [src/lsp/document.c](../../src/lsp/document.c)
+3. [src/lsp/hover.c](../../src/lsp/hover.c)
+4. [src/compiler/cst/cst.c](../../src/compiler/cst/cst.c)
 
 For tests:
 
-1. [tests/README.md](/home/matt/nerd/tests/README.md)
-2. [docs/testing.md](/home/matt/nerd/docs/testing.md)
-3. [build/test.py](/home/matt/nerd/build/test.py)
+1. [tests/README.md](../../tests/README.md)
+2. [docs/testing.md](../testing.md)
+3. [build/test.py](../../build/test.py)
 
 ## Execution Flow
 
@@ -142,6 +229,13 @@ The `nerd` executable is mostly orchestration:
 1. parse CLI input
 2. build a command-specific config struct
 3. run compiler, LSP, or test commands
+
+The build CLI treats existing filesystem paths and `.n` arguments without a
+Nerd declaration separator (`::`) as source files, including missing filenames. File loading happens in the shared
+compile command before lexing; missing files report their path instead of parsing
+the filename as an inline snippet. Other build arguments retain inline-source
+support. Check and run use the same missing-file wording; directories receive
+an explicit expected-file diagnostic.
 
 The compiler front end currently runs:
 
@@ -195,7 +289,10 @@ the live heap and arena lists and reporting leaks to standard error.
   consumes more stack each time that block executes.
 - The LLVM addressed-local prepass must traverse control-flow scrutinees as well
   as their branches and guards, so locals whose addresses are conditionally
-  used are materialised and initialised on every path.
+  used are materialised and initialised on every path. Large by-value record/tuple
+  fields, large or dynamically indexed arrays, fixed-array slices and data pointers
+  also require this prepass. Implicit address materialisation must not initialise
+  shared storage inside a skipped short-circuit operand or branch.
 
 ## Key Data Products
 
@@ -217,6 +314,15 @@ block so the formatter can remove it while retaining structured layout for the
 rest of the block. The compiler AST remains authoritative for rejecting that
 semicolon as invalid Nerd syntax.
 
+The CST retains the error postfix (`!`) on branch patterns, including error
+binders, wildcards, and braced enum payloads. These valid result matches use
+structured formatting, preserving normal array layout elsewhere in the function.
+
+String formatting preserves decoded bytes. Literals containing carriage returns
+stay escaped rather than being converted to physical triple-quoted lines, whose
+CRLF is normalised by the lexer. This matters for protocol strings such as
+Telnet's CRLF terminator, including a standalone CR without LF.
+
 When a code block cannot be parsed as CST, the formatter retries regions at
 line-leading top-level declaration boundaries with balanced delimiters. Valid
 neighbouring declarations still use structured formatting, including function
@@ -235,6 +341,16 @@ When a value-producing `on` consists of ordinary braced statement branches,
 Sema diagnoses the void branch at the `on` expression instead of allowing the
 later variable-storage check to report a void local. Value-bearing braced
 branches must use the `${ ... }` expression-block form with `break <value>`.
+
+Token-stream recovery keeps error injection (`!`) and propagation (`?`) attached
+to a preceding closing payload brace. Inserting a newline there can turn a
+returned error payload into a success expression followed by a different
+statement. The payload-postfix formatter regression checks the recovery path
+and idempotence; the bounded networking example checks formatted execution.
+
+Expression-bodied functions wrap long returned record literals into aligned
+multiline fields. The width includes the declaration name and function signature,
+including shorthand conversions from a single-return block and nested functions.
 
 The formatter keeps short boolean `on` expressions on one line. When the full
 expression exceeds the wrap width, it places the `=>` and `else` branches on
@@ -471,14 +587,20 @@ after `impl`, for example
 separate from target matching permits parameters used only in member signatures
 or bodies, such as `impl [T] Stack[i32]`. Method resolution first binds any
 parameters present in the receiver target, then binds remaining parameters from
-method arguments before instantiating the member.
+method arguments before instantiating the member. Callback signatures and pointer
+arguments with unbound method parameters are inferred without an expected type
+first, then checked against the substituted signature. This permits
+`queue.async(^task)` to infer the result parameter through `^Task[T]` rather than
+rejecting the concrete pointer against `^Task[<unknown>]`. Concrete parameters
+still supply expected types, including integer literals before a generic pointer
+argument.
 
 ## Related Documents
 
-- [FORMAT.md](/home/matt/nerd/docs/overviews/FORMAT.md) for formatter rules
-- [../manual/appendix-a-syntax-reference.md](/home/matt/nerd/docs/manual/appendix-a-syntax-reference.md)
+- [FORMAT.md](FORMAT.md) for formatter rules
+- [../manual/appendix-a-syntax-reference.md](../manual/appendix-a-syntax-reference.md)
   for the source-level syntax reference
-- [build-directives.md](/home/matt/nerd/docs/overviews/build-directives.md) for build-system metadata
+- [build-directives.md](build-directives.md) for build-system metadata
 # Atomics
 
 Semantic types represent `atomic[T]` with `STK_Atomic` and retain the element
@@ -542,6 +664,13 @@ source-module provenance and private implementation visibility. HIR generation
 therefore receives only concrete function types and symbols. There is no HIR or
 LLVM compound entity, symbol, wrapper, or dispatcher.
 
+Inferring a function body can import compound overload proxies and grow
+`sema->decls`. Call-site inference keeps its result in a stack variable and
+reacquires the declaration by index before writing it back. Neither an output
+pointer nor a declaration pointer may survive that recursive inference call.
+The frontend ownership suite exercises an optional-value `on` expression with
+an imported `abort` overload, including AddressSanitizer validation.
+
 ### Structural and collection equality
 
 Semantic analysis checks equality recursively for plex fields, tuple members,
@@ -585,6 +714,12 @@ navigation to another resolvable module (including folder-module `mod.n`).
 If that failure discarded the root AST, the request parses the open buffer
 without loading its imports and resolves the module path from that scratch AST.
 
+Definition requests for declarations in the open module map both URI and range
+through the declaration's source fragment. Folder-module parts share semantic
+declarations, but a result type's error declaration can live in `mod.n` or a
+sibling file rather than the part under the cursor. In-memory fragment URIs are
+preserved; filesystem paths are converted to file URIs only once.
+
 ## Receiving Variadic C Calls
 
 AST/CST function signatures retain the final named variadic binder separately
@@ -616,6 +751,51 @@ callback signatures contain nested parameter lists, including variadic callbacks
 Local aliases of built-in types, including `VaList`, are resolved as types.
 HIR omits local type-alias declarations because they require no runtime storage.
 
+### Optional/result payload materialisation
+
+`sema_materialise_type` recursively canonicalises enum payload types. When an
+earlier enum uses a structurally equivalent plex, this can produce a different
+interned enum entry for an optional or result. The new entry must retain
+`STF_Optional`/`STF_Result`; otherwise implicit payload conversion and pattern
+binding treat the wrapper as an ordinary enum and reject valid initialisers.
+The combined `on` runtime regressions exercise both wrapper forms after an
+earlier equivalent payload declaration, including LLVM/C differential execution.
+
+Imported default arguments are emitted and coerced using the declaring module's
+parameter type before their type indices are mapped into the caller. In
+particular, an optional `nil` default must become a zero-initialised tagged value
+before that mapping; retagging an unconverted pointer null would produce invalid
+LLVM aggregate arguments. The imported optional-default regression covers
+functions, methods, scalar aliases and floating payloads.
+
+Signature help finds the leftmost return-type token through result payloads and
+applied-type targets, matching hover's source-label handling. This preserves
+`bool\Error` and `Container[T]` rather than displaying only `\Error` or `[T]`.
+The network readiness signature fixture checks imported function and method
+result payloads alongside optional defaulted deadline parameters.
+
+### Fixed loop temporary storage
+
+LLVM range cursors, hidden iteration indices, short-circuit booleans and range
+membership results use the entry allocation builder. Their stores remain at the
+point of evaluation, so nested loops reuse a fixed slot on each iteration without
+changing evaluation order. Emitting these fixed allocations in the loop body
+previously grew the stack until function exit, causing overflow in a busy Nexus
+readiness retry. The repeated-loop command fixture checks a million evaluations
+without optimisation; native Nexus tests force ready-but-would-block I/O.
+
+### Recursive record imports
+
+Semantic record import retains a source-to-destination mapping. Re-entering an
+unfinished record through a pointer lazily reserves a stable type index, then
+fills it once its fields have been imported. Associated-method receiver imports
+back into the original module recover the original record identity. This avoids
+stack overflow and missing methods for socket/message ownership cycles. The
+mapping is released with its owning Sema. C backend type comparison similarly
+tracks pairs along the active traversal and closes repeated pairs, avoiding
+exponential rewalking of branching cycles. The imported recursive-record fixture
+and Nexus socket contracts exercise both backends.
+
 ### Result propagation and imported display methods
 
 LLVM storage extraction treats a `void` result payload as a successful,
@@ -639,6 +819,23 @@ Checking a `core.Display` constraint also discovers core's public `show`
 methods lazily, covering interpolation and generic bounds without `use core`.
 The core implementation for `c_string` scans to the first NUL and returns a
 borrowed string view; a null pointer produces an empty string.
+
+Plex `use` conversions share `sema_plex_embedding`, which counts embedding
+paths (saturating at two) and reports the first subobject on a unique path.
+Semantic compatibility accepts directed value and pointer projections, including
+transitive, imported and instantiated uses. Unresolved generic payloads do not
+qualify for a conversion; normal generic inference resolves them first.
+Compound calls keep existing
+non-embedding matches ahead of embedding conversions; equal-tier candidates
+remain ambiguous. Actual expression types stay intact for backend coercion.
+LLVM walks physical subobjects with `extractvalue` for copies or GEP for
+pointers, selecting null for an originally null pointer. Assignment stores
+coerce to their destination type. Explicit embedding casts reuse that path.
+C output represents each nonempty embedded subobject with an anonymous union:
+one member exposes flattened field names, and a named member has the embedded
+type. This preserves layout and provides typed value/address projections,
+including embeddings whose first field is a bit field. The C backend walks the
+same arbitrary-depth path and preserves null pointers.
 
 Data pointers implicitly satisfy an expected `^void` type, but the reverse
 requires an explicit cast. Address-of inference and call-argument context
@@ -1162,3 +1359,122 @@ It does not prefer an existing debug compiler or fall back to PATH: either may
 predate syntax in the checkout and silently rewrite it through formatter
 recovery. A failed compiler build stops the workflow before any source file is
 formatted. VS Code also invokes `nerd format`, using its configured executable.
+
+## Atomic initializer inference
+
+Integer literals are range-checked when a concrete integer context is selected.
+`sema_literal_magnitude` follows literal/negation/constant aliases, retaining a
+`u64` magnitude separately from the sign; the existing `i64` constant folder
+cannot distinguish a large positive `u64` from a negative number. Signed minima
+are checked as whole negative expressions, including named literal constants;
+usage inference must not prematurely narrow their positive operands. After
+usage inference, variable initializers are checked against materialised storage
+types too, including default `i32` array/tuple elements. Constants remain
+untyped until used in a concrete context.
+
+Explicit casts preserve large untyped literal operands in `u64`/`i64` storage
+before conversion, avoiding premature `i32` truncation in LLVM. They do not use
+implicit destination-range rules; concrete integer arithmetic still wraps.
+Diagnostic fixture 141 groups the range errors, while existing fixture 349 and
+the C differential integer-wrapping probe cover valid boundaries/conversions.
+
+At the entry to `sema_infer_node_type`, an expected `atomic[T]` supplies `T` as
+the expression's value context before literal or arithmetic inference runs.
+The declared storage type remains atomic. This prevents an untyped initializer
+such as `7` from materialising as `i32` before matching `atomic[usize]`, and
+preserves ordinary literal validation and explicit-type compatibility.
+The same path handles assignments and atomic fields. Regression 349 exercises
+these contexts through LLVM and generated C; 350/351 reject oversized literals
+and incompatible typed values.
+
+## Typed native callbacks
+
+`sema_type_is_ffi_safe` accepts `STK_Function` through a recursive callback ABI
+check. Callback parameters/results must be scalars, pointers, or compatible
+function types (with `void` allowed for results). Aggregates are excluded because
+Nerd's internal aggregate calling convention is not a general C callback ABI.
+Function pointers nested in signatures are also checked, with bounded recursion.
+Ordinary function-type matching diagnoses incompatible callback arguments.
+
+Existing HIR and backends already represent these function values: LLVM emits
+native pointer values and generated C uses function-pointer typedefs. No new AST,
+HIR instruction, cast, or callback trampoline is required. Windows and Linux
+thread bindings use their existing `NativeThreadEntry` aliases directly.
+`341-run-typed-ffi-callback.cmd` exercises C `qsort` invoking a Nerd callback;
+the C differential suite and thread lifecycle harness cover both backends.
+
+## Runtime worker-thread prerequisite
+
+Worker entry wrappers must pair `nrt_thread_init` and `nrt_thread_done` around
+user callbacks. The latter releases only the current thread's string builder
+and temporary arena and is idempotent. `nrt_core_done` still performs main-thread
+cleanup and process leak reporting after all workers are joined. Debug heap and
+arena list/index mutations are serialised with a runtime atomic flag; payloads
+and arena cursors still require ownership or application synchronisation.
+Live-list pointers used by `std.memory.print_leaks` require quiescent workers.
+
+`core.current_temp_arena()` returns the calling thread's arena. The existing
+`core.temp_arena` binding is evaluated at each use and also returns the calling
+thread's arena; it is not a cached main-thread pointer. No general data-race or
+move-safety guarantee is implied.
+`build/test_runtime_threads.py` exercises native debug/release runtime allocation,
+cross-thread frees, arena tracking and per-worker cleanup before process exit.
+
+Objects allocated in a worker's temporary arena must not outlive worker cleanup.
+Use explicit owned storage when transferring results across threads; do not infer
+whole-library thread safety from runtime bookkeeping locks.
+
+## Imported constant evaluation in generated C
+
+HIR distinguishes `HIR_VALUE_Constant` expression bindings from mutable
+`HIR_VALUE_Global` storage. Generated C expands constant expressions at each
+reference, including imported and module-qualified references, matching its
+local-constant path and LLVM. Only mutable globals receive module initialisers;
+unused constant expressions must not introduce startup side effects.
+
+`cgen_binding` evaluates an imported constant in the defining module's type/HIR
+context and restores the caller afterwards. Each expansion receives distinct
+local names and separate local-type, cleanup, target and override bookkeeping,
+so an `on` payload binder cannot overwrite a caller local with the same HIR
+index. Temporaries remain in the enclosing generated function's declaration
+scope. `tests/cgen/imported-constant-calls.n` compares repeated calls, aggregate
+constants, qualified references, one-time mutable initialisation and binder
+isolation against LLVM at both C optimisation levels.
+
+## Public mutable declaration formatting
+
+Standalone mutable declarations carry visibility independently of their type
+and initializer. Both top-level and guarded statement formatting must emit the
+`pub` prefix and include it in wrap-column accounting, just as grouped variable
+formatting already does. The regression checks typed, inferred, zero-initialised,
+undefined and guarded declarations alongside constants and private declarations.
+See `tests/format/212-public-mutable-globals.f` for the idempotence regression.
+
+## Imported mutable globals in LLVM
+
+Mutable imports resolve through declaration provenance to their defining HIR
+value. Reads, writes, addresses and calls through mutable function pointers use
+that storage; they must not take the constant-expression expansion path.
+Standalone module IR declares imported globals; the textual module combiner
+removes declarations satisfied by definitions and deduplicates unresolved ones.
+Globals whose names collide across modules receive module/value-qualified
+internal names. A public root global retains its exported symbol spelling.
+
+A failed function lowering now emits a module/function diagnostic and rejects
+the rendered module. Only successful unterminated functions receive implicit
+returns. The backend checks rejected primary and sidecar results before writing
+or linking them. The `llvm-lowering-failure` internal test constructs an invalid
+binding reference and requires an empty result plus one diagnostic; command
+fixture 340 runs it in the normal gate. Fixture 339 covers imported and
+re-exported storage, mutation, addresses, aggregate fields, atomics, function
+pointers and two same-named globals from distinct modules. Generated C also
+resolves module-qualified fields to their storage before borrowing them.
+
+The stricter failure path exposed two formerly hidden lowering gaps. Optional
+`void` success carries only a presence tag, but a returned void expression must
+still execute exactly once; it must not be packed into nonexistent payload
+storage or omitted by generated C. Packed bit-field assignment through a pointer
+must locate the containing value's storage and evaluate the owner once before
+loading, masking and storing the field. Command fixtures 281 and 326 now assert
+completion and observable side effects, so an implicit early return cannot make
+their success checks disappear.

@@ -5,15 +5,15 @@ compiler front end.
 
 The key files are:
 
-- [src/lsp/lsp.h](/home/matt/nerd/src/lsp/lsp.h)
-- [src/lsp/lsp.c](/home/matt/nerd/src/lsp/lsp.c)
-- [src/lsp/document.c](/home/matt/nerd/src/lsp/document.c)
-- [src/lsp/hover.c](/home/matt/nerd/src/lsp/hover.c)
-- [src/lsp/completion.c](/home/matt/nerd/src/lsp/completion.c)
-- [src/lsp/signature.c](/home/matt/nerd/src/lsp/signature.c)
-- [src/lsp/semantic_tokens.c](/home/matt/nerd/src/lsp/semantic_tokens.c)
-- [src/lsp/code_action.c](/home/matt/nerd/src/lsp/code_action.c)
-- [src/lsp/rename.c](/home/matt/nerd/src/lsp/rename.c)
+- [src/lsp/lsp.h](../src/lsp/lsp.h)
+- [src/lsp/lsp.c](../src/lsp/lsp.c)
+- [src/lsp/document.c](../src/lsp/document.c)
+- [src/lsp/hover.c](../src/lsp/hover.c)
+- [src/lsp/completion.c](../src/lsp/completion.c)
+- [src/lsp/signature.c](../src/lsp/signature.c)
+- [src/lsp/semantic_tokens.c](../src/lsp/semantic_tokens.c)
+- [src/lsp/code_action.c](../src/lsp/code_action.c)
+- [src/lsp/rename.c](../src/lsp/rename.c)
 
 ## Core Design
 

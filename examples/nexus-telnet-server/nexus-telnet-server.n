@@ -1,0 +1,209 @@
+-- A real Telnet echo server: connect with a terminal client and send a line.
+-- Nexus accepts clients, decodes Telnet commands and remembers each sender.
+use std.nexus
+
+signal :: use std.signal
+
+use std.network
+use std.time
+
+-- Flush readiness/log lines even when stdout is captured by the test runner.
+-- Shutdown itself uses std.signal, not an application OS signal handler.
+ffi "c" {
+    fflush (stream: ^void) -> i32
+}
+
+prepare_echo :: fn (message: ^Message, escaped: ^Message) -> void\NexusError {
+    -- Received payload is decoded text without CRLF. A literal IAC (255) must
+    -- be doubled on the outgoing Telnet wire; Nexus sends application bytes raw.
+    -- Build the escaped copy before clearing the borrowed input view.
+    escaped.clear()
+    for byte in message.payload() {
+        escaped.append_u8(byte^)?
+        on byte^ == 255 => escaped.append_u8(255)?
+    }
+    -- clear keeps the reply route: send will choose this line's original client,
+    -- even when other clients are connected. Line mode adds CRLF automatically.
+    message.clear()
+    message.append(escaped.payload())?
+}
+
+-- Lifecycle callbacks run on this thread, without allocating an event queue.
+-- The identity is assigned on accept, even if the client never sends a line.
+connection_changed :: fn (id: u64, connected: bool) {
+    prn(on connected {
+        yes   => $"[Client {id}] connected"
+        else  => $"[Client {id}] disconnected"
+    })
+    _ := fflush(nil)
+}
+
+log_line :: fn (message: ^Message) {
+    on message.id() {
+        id    => pr($"[Client {id}] ")
+        else  => return
+    }
+    -- Escape controls/non-ASCII bytes for readable, valid console output.
+    -- Logging never changes the payload sent back to the client.
+    bytes := message.payload()
+    hex   := "0123456789abcdef"
+
+    for i in [0.as(usize) .. bytes.count] {
+        byte := bytes[i]
+        on byte >= 32 &&
+            byte < 127 => {
+            pr(bytes[i..i + 1].as(string))
+        } else {
+            pr("\\x")
+            high := (byte / 16).as(usize)
+            low  := (byte % 16).as(usize)
+
+            pr(hex[high..high + 1])
+            pr(hex[low..low + 1])
+        }
+    }
+    prn("")
+    _ := fflush(nil)
+}
+
+main :: fn () -> i32 {
+    url := "tcp://127.0.0.1:2323"
+
+    -- Register on this main thread before any work. The watcher latches Ctrl+C
+    -- so ordinary code can release sockets and buffers, then restore OS policy.
+    shutdown := on signal.watch_shutdown() => [watcher] ${
+        break watcher
+    } else [error] {
+        eprn($"Failed to watch shutdown: {error}")
+        return 1
+    }
+    defer _ := shutdown.close()
+
+    -- Create a socket that can interpret telnet protocols and put them into
+    -- messages.
+    server := net_telnet_socket()
+    defer server.close()
+
+    -- Caller-owned slots stay at fixed addresses. One blocked echo may hold a
+    -- slot while other slots receive and send replies for different clients.
+    replies : [max_nexus_clients]Message
+    pending : [max_nexus_clients]bool
+
+    for reply in replies {
+        reply^ = Message.create(^server)
+    }
+    escaped : Message
+    -- Defers run in reverse order. Close cancels any partial outgoing snapshot
+    -- before disposing of its associated Message; keep both owners stable.
+    defer {
+        for reply in replies {
+            reply.done()
+        }
+    }
+    defer escaped.done()
+
+    -- Set up the listening port
+    on !server.bind(url) => {
+        eprn($"Cannot listen on {url}")
+        return 1
+    }
+
+    bound := server.local_url() else [error] {
+        eprn($"Failed to get local URL: {nexus_error_to_string(error)}")
+        return 1
+    }
+    prn($"Listening on {bound}")
+    prn("Connect with telnet, type a line, and press Enter. Ctrl+C stops the "
+        +"server.")
+    _ := fflush(nil)
+    server.set_connection_handler(connection_changed)
+    -- Immediate operations let us visit every pending client each turn. Sleep
+    -- briefly between turns to avoid spinning while idle, and poll shutdown.
+    server.set_option(NetOption.Nonblocking, 1) else {
+        return 1
+    }
+
+    for {
+        on shutdown.requested() else [error] {
+            eprn($"Shutdown watcher failed: {error}")
+            return 1
+        } => break
+
+        for i in [0.as(usize) .. max_nexus_clients.as(usize)] {
+            on !pending[i] => again
+
+            on replies[i].send() {
+                NexusError.WouldBlock! => again
+
+                _! => {
+                    on replies[i].id() != nil => {
+                        eprn("Telnet echo send failed")
+                        return 1
+                    }
+                }
+
+                else => {
+                }
+            }
+            pending[i] = no
+        }
+        -- recv skips peers with pending echoes, so it cannot overwrite a reply
+        -- still being sent. It also accepts clients and detects idle disconnects.
+        for i in [0 .. max_nexus_clients.as(usize)] {
+            on pending[i] => again
+            on replies[i].recv() {
+                NexusError.WouldBlock! => break
+
+                NexusError.Network { error }! => {
+                    -- A reset affects this client only. Nexus already removed
+                    -- its route and reported its disconnection to the handler.
+                    on error {
+                        NetworkError.ConnectionReset { code: _ } => break
+
+                        else => {
+                            eprn("Telnet receive failed")
+                            return 1
+                        }
+                    }
+                }
+
+                _! => {
+                    eprn("Telnet receive failed")
+                    return 1
+                }
+
+                else => {
+                }
+            }
+            log_line(^replies[i])
+            on prepare_echo(^replies[i], ^escaped) {
+                _! => {
+                    eprn("Encoded echo exceeds the message limit")
+                    return 1
+                }
+
+                else => {
+                }
+            }
+            -- Queue immediately before receiving again: the library knows to
+            -- defer more input from this peer until its reply has completed.
+            on replies[i].send() {
+                NexusError.WouldBlock! => pending[i] = yes
+
+                _! => {
+                    on replies[i].id() != nil => return 1
+                }
+
+                else => {
+                }
+            }
+        }
+        sleep_ms(1)
+    }
+    prn("Shutdown requested.")
+    -- Explicitly finish before reporting completion. Deferred close is also
+    -- registered above so earlier error returns follow the same cleanup order.
+    server.close()
+    prn("Telnet server stopped.")
+    return 0
+}

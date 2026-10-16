@@ -226,6 +226,9 @@ p := Point { x: 20 ... }  -- y uses its default value
 ```
 
 Fields are read with dot syntax and can be assigned when the value is mutable.
+For a plex value bound with `::`, direct field assignment is rejected, including
+through nested fields stored by value. Use `:=` or an explicitly typed variable
+for a plex you intend to modify.
 Dot access automatically dereferences pointers to plexes and unions. These are
 partial snippets, not complete programs:
 
@@ -286,12 +289,35 @@ Rect :: plex {
 rect := Rect { x: 10 y: 20 width: 30 height: 40 }
 ```
 
-The embedded fields remain one aligned, contiguous `Point` subobject, so an
-explicit pointer cast such as `(^rect).as(^Point)` adjusts to that subobject.
-This also works through transitive uses. Field names may not conflict, and the
-same type declaration may be used only once in a plex. That duplicate rule also
-applies to different applications of one generic declaration, such as
-`Pair[i32]` and `Pair[f32]`.
+The embedded fields remain one aligned, contiguous `Point` subobject. `use`
+also permits implicit conversion to that embedded type when a destination type
+is known, including arguments, annotated bindings, assignments, and returns:
+
+```nerd
+point: Point = rect            -- copy the embedded Point
+point_ptr: ^Point = ^rect      -- borrow its original storage
+move_point(^rect)              -- a parameter of type ^Point supplies context
+```
+
+Changing `point` leaves `rect` unchanged; changing `point_ptr.x` changes
+`rect.x`. Pointer conversions adjust to the embedded subobject, even when it
+is preceded by other fields, and preserve null pointers. Explicit forms remain
+available: `rect.as(Point)` and `(^rect).as(^Point)`. A `Rect` value cannot be
+cast directly to `^Point`; take its address first.
+
+These conversions also work through transitive uses, but require exactly one
+embedding path. An ambiguous path is an error. They only go from the containing
+plex to the embedded plex: no implicit downcast, address-taking, or conversion
+of slices, pointer-to-pointer types, or function signatures is introduced.
+Matching fields alone does not establish an embedding relationship.
+
+Compound calls prefer a compatible member requiring no embedding conversions.
+If multiple members require embedding conversions, the call is ambiguous;
+embedding depth and declaration order do not choose a winner.
+
+Field names may not conflict, and the same type declaration may be used only
+once in a plex. That duplicate rule also applies to different applications of
+one generic declaration, such as `Pair[i32]` and `Pair[f32]`.
 
 Plexes may refer to themselves through pointers. This is useful for linked
 structures and object graphs because the field has pointer size:
@@ -655,6 +681,28 @@ on event {
 Enum variants may be separated with commas. A trailing comma is allowed. Variant
 names must be unique within one enum. Explicit `= <value>` discriminants must be
 unique after implicit values are filled in.
+
+A payload-free variant with an explicit integer discriminant can supply that
+integer when a numeric type is expected:
+
+```nerd
+Colour :: enum { Red Green = 4 Blue }
+
+main :: fn () -> i32 {
+    colour := Colour.Green  -- inferred as Colour
+    number: i32 = Colour.Green  -- the explicit discriminant, 4
+    assert colour == Colour.Green
+    return number
+}
+```
+
+Without a numeric context, the variant remains an enum value. Constant aliases
+declared with `::` preserve the contextual discriminant behaviour. Integer
+contexts check that the discriminant fits the required type, just as for an
+integer literal. Floating-point contexts also accept the integer discriminant.
+Implicitly numbered variants, payload constructors, runtime enum variables, and
+explicitly enum-typed constant bindings do not implicitly become numbers. Use
+an explicit cast when you need the discriminant of a runtime enum value.
 
 Use enums when a value has one active case and the program should track that
 case safely.

@@ -907,29 +907,6 @@ internal u32 llvm_record_field_index(const Sema* sema,
     return U32_MAX;
 }
 
-internal const SemaPlexUse*
-llvm_plex_embedded_next(const Sema* sema, u32 outer_type, u32 target_type)
-{
-    outer_type  = sema_materialise_type(sema, outer_type);
-    target_type = sema_materialise_type(sema, target_type);
-    if (outer_type >= array_count(sema->types) ||
-        sema->types[outer_type].kind != STK_Plex) {
-        return NULL;
-    }
-    const SemaType* outer = &sema->types[outer_type];
-    for (u32 i = 0; i < outer->plex_use_count; ++i) {
-        const SemaPlexUse* use = &sema->plex_uses[outer->first_plex_use + i];
-        u32 embedded           = sema_materialise_type(sema, use->type_index);
-        if (embedded == target_type) {
-            return use;
-        }
-        if (llvm_plex_embedded_next(sema, embedded, target_type) != NULL) {
-            return use;
-        }
-    }
-    return NULL;
-}
-
 internal u32 llvm_enum_variant_index(const Sema* sema,
                                      u32         enum_type,
                                      u32         symbol_handle)
@@ -2320,6 +2297,7 @@ internal u32 llvm_value_symbol_handle(const Hir* hir, u32 value_index)
 
 internal string llvm_value_name_string(const Hir*   hir,
                                        const Lexer* lexer,
+                                       const Sema*  sema,
                                        Arena*       arena,
                                        u32          value_index)
 {
@@ -2327,7 +2305,75 @@ internal string llvm_value_name_string(const Hir*   hir,
     if (symbol_handle == U32_MAX) {
         return (string){0};
     }
+    string name = lex_symbol(lexer, symbol_handle);
+    if (sema != NULL && sema->program != NULL &&
+        !(hir->current_module_index == sema->program->root_module_index &&
+          llvm_root_exports_symbol(sema, name))) {
+        for (u32 m = 0; m < array_count(sema->program->modules); ++m) {
+            const FrontEndState* other = &sema->program->modules[m].front_end;
+            if (other->hir.current_module_index == hir->current_module_index) {
+                continue;
+            }
+            for (u32 i = 0; i < array_count(other->hir.values); ++i) {
+                const HirValue* value = &other->hir.values[i];
+                if (value->kind != HIR_VALUE_Global ||
+                    value->decl_index >= array_count(other->sema.decls) ||
+                    other->sema.decls[value->decl_index].import_module_index !=
+                        U32_MAX) {
+                    continue;
+                }
+                u32 symbol = llvm_value_symbol_handle(&other->hir, i);
+                if (symbol != U32_MAX &&
+                    string_eq(name, lex_symbol(&other->lexer, symbol))) {
+                    return string_format(arena,
+                                         "@.global.m%u.v%u",
+                                         hir->current_module_index,
+                                         value_index);
+                }
+            }
+        }
+    }
     return llvm_symbol_name_string(lexer, arena, symbol_handle);
+}
+
+// Follow declaration provenance rather than evaluating a mutable import as a
+// constant. Re-exports retain the defining module's single storage location.
+internal bool llvm_import_source_global(const Sema*      sema,
+                                        const Lexer*     lexer,
+                                        const HirImport* import,
+                                        const Hir**      out_hir,
+                                        const Lexer**    out_lexer,
+                                        const Sema**     out_sema,
+                                        u32*             out_index)
+{
+    HirImport current = *import;
+    for (u32 depth = 0; depth < 16; ++depth) {
+        if (!llvm_import_source_value(sema,
+                                      lexer,
+                                      &current,
+                                      out_hir,
+                                      out_lexer,
+                                      out_sema,
+                                      out_index)) {
+            return false;
+        }
+        const HirValue* value = &(*out_hir)->values[*out_index];
+        if (value->decl_index < array_count((*out_sema)->decls)) {
+            const SemaDecl* decl = &(*out_sema)->decls[value->decl_index];
+            if (decl->import_module_index != U32_MAX) {
+                current = (HirImport){
+                    .module_index  = decl->import_module_index,
+                    .decl_index    = decl->import_decl_index,
+                    .symbol_handle = decl->symbol_handle,
+                    .type_index    = decl->type_index,
+                };
+                lexer = *out_lexer;
+                continue;
+            }
+        }
+        return value->kind == HIR_VALUE_Global;
+    }
+    return false;
 }
 
 internal void llvm_append_function_signature(StringBuilder*     sb,
@@ -2653,6 +2699,13 @@ internal bool llvm_append_constant_expr_value(StringBuilder* sb,
         llvm_append_zero_value(sb, sema, type_index);
         return true;
     case HIR_EXPR_IntegerLiteral:
+        if (llvm_float_bits(sema, type_index) > 0) {
+            sb_append_string(
+                sb,
+                llvm_float_literal_string(
+                    sema, arena, type_index, (f64)(u64)expr->integer));
+            return true;
+        }
         sb_format(sb, "%lld", (long long)expr->integer);
         return true;
     case HIR_EXPR_FloatLiteral:
@@ -4938,7 +4991,7 @@ internal bool llvm_emit_nil_box_binding(LlvmFunctionContext* ctx,
     }
 
     string name = llvm_value_name_string(
-        ctx->hir, ctx->lexer, ctx->arena, binding->target_index);
+        ctx->hir, ctx->lexer, ctx->sema, ctx->arena, binding->target_index);
     if (name.count == 0) {
         return false;
     }
@@ -5075,6 +5128,106 @@ internal LlvmValue llvm_coerce_value_to_type(LlvmFunctionContext* ctx,
 
     SemaTypeKind target_kind = llvm_type_kind(ctx->sema, target_type);
     SemaTypeKind source_kind = llvm_type_kind(ctx->sema, value.type_index);
+    if ((target_kind == STK_F32 || target_kind == STK_F64) &&
+        source_kind == STK_UntypedInteger) {
+        string target = llvm_type_string(ctx, target_type);
+        if (value.value.count > 0 &&
+            (value.value.data[0] == '-' ||
+             (value.value.data[0] >= '0' && value.value.data[0] <= '9'))) {
+            // Keep the entire untyped constant before selecting float storage.
+            bool negative  = value.value.data[0] == '-';
+            u64  magnitude = 0;
+            for (usize i = negative ? 1 : 0; i < value.value.count; ++i) {
+                magnitude = magnitude * 10 + (u64)(value.value.data[i] - '0');
+            }
+            f64 number = (f64)magnitude;
+            value.value =
+                llvm_float_literal_string(ctx->sema,
+                                          ctx->arena,
+                                          target_type,
+                                          negative ? -number : number);
+        } else {
+            string temp = llvm_temp(ctx);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = sitofp " STRINGP " " STRINGP
+                      " to " STRINGP "\n",
+                      STRINGV(temp),
+                      STRINGV(llvm_type_string(ctx, value.type_index)),
+                      STRINGV(value.value),
+                      STRINGV(target));
+            value.value = temp;
+        }
+        value.type_index = target_type;
+        return value;
+    }
+    bool pointer_projection =
+        target_kind == STK_Pointer && source_kind == STK_Pointer;
+    if ((target_kind == STK_Plex && source_kind == STK_Plex) ||
+        pointer_projection) {
+        u32 current = sema_materialise_type(
+            ctx->sema,
+            pointer_projection
+                ? ctx->sema->types[value.type_index].first_param_type
+                : value.type_index);
+        u32 target = sema_materialise_type(
+            ctx->sema,
+            pointer_projection ? ctx->sema->types[target_type].first_param_type
+                               : target_type);
+        if (current != target &&
+            sema_plex_embedding(ctx->sema, current, target).path_count == 1) {
+            if (ctx->sema->types[target].param_count == 0) {
+                value.type_index = target_type;
+                if (!pointer_projection) {
+                    value.value = s("zeroinitializer");
+                }
+                return value;
+            }
+            string original = value.value;
+            while (current != target) {
+                SemaPlexEmbedding path =
+                    sema_plex_embedding(ctx->sema, current, target);
+                string next     = llvm_temp(ctx);
+                u32    physical = llvm_plex_physical_field_index(
+                    ctx->sema, current, path.first_field);
+                if (pointer_projection) {
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = getelementptr " STRINGP
+                              ", ptr " STRINGP ", i64 0, i32 %u\n",
+                              STRINGV(next),
+                              STRINGV(llvm_type_string(ctx, current)),
+                              STRINGV(value.value),
+                              physical);
+                } else {
+                    sb_format(ctx->sb,
+                              "  " STRINGP " = extractvalue " STRINGP
+                              " " STRINGP ", %u\n",
+                              STRINGV(next),
+                              STRINGV(llvm_type_string(ctx, current)),
+                              STRINGV(value.value),
+                              physical);
+                }
+                value.value = next;
+                current     = path.type_index;
+            }
+            if (pointer_projection) {
+                string is_null  = llvm_temp(ctx);
+                string adjusted = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = icmp eq ptr " STRINGP ", null\n"
+                          "  " STRINGP " = select i1 " STRINGP
+                          ", ptr null, ptr " STRINGP "\n",
+                          STRINGV(is_null),
+                          STRINGV(original),
+                          STRINGV(adjusted),
+                          STRINGV(is_null),
+                          STRINGV(value.value));
+                value.value = adjusted;
+            }
+            value.type_index = target_type;
+            return value;
+        }
+    }
+
     if (target_kind == STK_Enum &&
         (ctx->sema->types[target_type].flags & STF_Optional) &&
         source_kind == STK_Nil) {
@@ -6006,9 +6159,21 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
 internal bool      llvm_emit_effect_stmt(LlvmFunctionContext* ctx,
                                          const HirFunction*   function,
                                          const HirStmt*       stmt);
-internal bool      llvm_emit_return(LlvmFunctionContext* ctx,
-                                    const HirFunction*   function,
-                                    const HirStmt*       stmt);
+// A statement can discard its own value while still needing an operand's
+// value, including an on expression used as its subject or guard.
+internal LlvmValue llvm_emit_required_expr(LlvmFunctionContext* ctx,
+                                           const HirFunction*   function,
+                                           u32                  expr_index)
+{
+    bool discard            = ctx->discard_expr_value;
+    ctx->discard_expr_value = false;
+    LlvmValue value         = llvm_emit_expr(ctx, function, expr_index);
+    ctx->discard_expr_value = discard;
+    return value;
+}
+internal bool llvm_emit_return(LlvmFunctionContext* ctx,
+                               const HirFunction*   function,
+                               const HirStmt*       stmt);
 
 internal LlvmValue llvm_address_of_expr(LlvmFunctionContext* ctx,
                                         const HirFunction*   function,
@@ -6060,6 +6225,66 @@ internal LlvmValue llvm_emit_expr_as_type(LlvmFunctionContext* ctx,
     return llvm_coerce_value_to_type(ctx, value, target_type);
 }
 
+internal LlvmValue llvm_imported_global_address(LlvmFunctionContext* ctx,
+                                                const HirExpr*       expr)
+{
+    const HirImport* import        = NULL;
+    HirImport        decl_import   = {0};
+    u32              binding_index = U32_MAX;
+    u32              decl_index    = U32_MAX;
+    if (expr->kind != HIR_EXPR_LocalRef && expr->kind != HIR_EXPR_Field) {
+        return (LlvmValue){0};
+    }
+    if (expr->ref_kind == HIR_REF_Binding) {
+        binding_index = expr->ref_index;
+    } else if (expr->ref_kind == HIR_REF_Decl) {
+        decl_index = expr->ref_index;
+        if (decl_index < array_count(ctx->hir->decl_binding_indices)) {
+            binding_index = ctx->hir->decl_binding_indices[decl_index];
+        }
+    }
+    if (binding_index < array_count(ctx->hir->bindings)) {
+        const HirBinding* binding = &ctx->hir->bindings[binding_index];
+        import = llvm_binding_import(ctx->hir, binding_index);
+        if (binding->kind == HIR_BINDING_Value &&
+            binding->target_index < array_count(ctx->hir->values)) {
+            decl_index = ctx->hir->values[binding->target_index].decl_index;
+        }
+    }
+    if (import == NULL && decl_index < array_count(ctx->sema->decls)) {
+        const SemaDecl* decl = &ctx->sema->decls[decl_index];
+        if (decl->import_module_index != U32_MAX) {
+            decl_import = (HirImport){
+                .module_index  = decl->import_module_index,
+                .decl_index    = decl->import_decl_index,
+                .symbol_handle = decl->symbol_handle,
+                .type_index    = decl->type_index,
+            };
+            import = &decl_import;
+        }
+    }
+    if (import == NULL) {
+        import = llvm_field_import(ctx->sema, ctx->lexer, ctx->hir, expr);
+    }
+    const Hir*   source_hir   = NULL;
+    const Lexer* source_lexer = NULL;
+    const Sema*  source_sema  = NULL;
+    u32          index        = U32_MAX;
+    if (import == NULL || !llvm_import_source_global(ctx->sema,
+                                                     ctx->lexer,
+                                                     import,
+                                                     &source_hir,
+                                                     &source_lexer,
+                                                     &source_sema,
+                                                     &index)) {
+        return (LlvmValue){0};
+    }
+    string name = llvm_value_name_string(
+        source_hir, source_lexer, source_sema, ctx->arena, index);
+    return (LlvmValue){
+        .ok = name.count > 0, .type_index = expr->type_index, .value = name};
+}
+
 internal LlvmValue
 llvm_emit_imported_constant_value(LlvmFunctionContext* ctx,
                                   const HirFunction*   function,
@@ -6098,6 +6323,21 @@ llvm_emit_imported_constant_value(LlvmFunctionContext* ctx,
             source_ctx.sema                = &source_storage;
             LlvmValue result               = llvm_emit_expr(
                 &source_ctx, function, source_value->value_expr_index);
+            if (llvm_float_bits(source_ctx.sema, source_value->type_index) >
+                0) {
+                result = llvm_coerce_value_to_type(
+                    &source_ctx, result, source_value->type_index);
+            }
+            if (result_type != sema_no_type() &&
+                llvm_float_bits(ctx->sema, result_type) > 0 &&
+                llvm_type_kind(source_ctx.sema, result.type_index) ==
+                    STK_UntypedInteger) {
+                result = llvm_coerce_value_to_type(
+                    &source_ctx,
+                    result,
+                    llvm_builtin_type(source_ctx.sema,
+                                      llvm_type_kind(ctx->sema, result_type)));
+            }
             llvm_render_sema_done(&source_storage);
             ctx->next_temp  = source_ctx.next_temp;
             ctx->next_label = source_ctx.next_label;
@@ -6448,10 +6688,17 @@ internal LlvmValue llvm_emit_enum_constructor(LlvmFunctionContext* ctx,
 
     u32 variant_payload_type =
         llvm_enum_variant_payload_type(ctx->sema, enum_type, variant_index);
-    if (variant_payload_type != sema_no_type() && expr->arg_count > 0) {
+    // Void arguments still run above for their effects, but carry no bits to
+    // pack into an optional/result success variant.
+    if (variant_payload_type != sema_no_type() &&
+        !llvm_type_is_void(ctx->sema, variant_payload_type) &&
+        expr->arg_count > 0) {
         LlvmValue payload = {0};
         if (expr->arg_count == 1 &&
-            args[0].type_index == variant_payload_type) {
+            (args[0].type_index == variant_payload_type ||
+             sema_plex_embedding(
+                 ctx->sema, args[0].type_index, variant_payload_type)
+                     .path_count == 1)) {
             payload = args[0];
         } else if (llvm_type_is_record(ctx->sema, variant_payload_type)) {
             string variant_payload_type_string =
@@ -6481,6 +6728,7 @@ internal LlvmValue llvm_emit_enum_constructor(LlvmFunctionContext* ctx,
             payload = args[0];
         }
 
+        payload = llvm_coerce_value_to_type(ctx, payload, variant_payload_type);
         payload = llvm_cast_to_storage_bits(ctx, payload, storage_payload_bits);
         if (!payload.ok) {
             array_free(args);
@@ -7027,7 +7275,11 @@ internal LlvmValue llvm_address_of_expr(LlvmFunctionContext* ctx,
         return (LlvmValue){0};
     }
 
-    const HirExpr* expr = &ctx->hir->exprs[expr_index];
+    const HirExpr* expr     = &ctx->hir->exprs[expr_index];
+    LlvmValue      imported = llvm_imported_global_address(ctx, expr);
+    if (imported.ok) {
+        return imported;
+    }
     if (expr->kind == HIR_EXPR_Unary && expr->unary_op == HIR_UNARY_Deref) {
         LlvmValue pointer =
             llvm_emit_expr(ctx, function, expr->operand_expr_index);
@@ -7338,6 +7590,7 @@ internal LlvmValue llvm_address_of_expr(LlvmFunctionContext* ctx,
                 if (value->kind == HIR_VALUE_Global) {
                     string name = llvm_value_name_string(ctx->hir,
                                                          ctx->lexer,
+                                                         ctx->sema,
                                                          ctx->arena,
                                                          binding->target_index);
                     return (LlvmValue){
@@ -8374,6 +8627,11 @@ internal bool llvm_callee_name(LlvmFunctionContext* ctx,
     }
 
     const HirExpr* callee = &ctx->hir->exprs[callee_expr_index];
+    if (llvm_imported_global_address(ctx, callee).ok) {
+        LlvmValue loaded = llvm_emit_expr(ctx, function, callee_expr_index);
+        *out             = loaded.value;
+        return loaded.ok;
+    }
     if (callee->kind == HIR_EXPR_FunctionRef &&
         callee->ref_index < array_count(ctx->hir->functions)) {
         *out = llvm_function_name_string(
@@ -8383,6 +8641,17 @@ internal bool llvm_callee_name(LlvmFunctionContext* ctx,
     if (callee->kind == HIR_EXPR_Field &&
         llvm_type_is_function(ctx->sema, callee->type_index) &&
         callee->symbol_handle != U32_MAX) {
+        if (callee->operand_expr_index < array_count(ctx->hir->exprs) &&
+            llvm_record_type_has_field(
+                ctx->sema,
+                ctx->hir->exprs[callee->operand_expr_index].type_index,
+                callee->symbol_handle)) {
+            // A stored callback must win over an unrelated same-named
+            // declaration. Resolve namespace functions only for non-fields.
+            LlvmValue loaded = llvm_emit_expr(ctx, function, callee_expr_index);
+            *out             = loaded.value;
+            return loaded.ok;
+        }
         const HirImport* import =
             llvm_field_import(ctx->sema, ctx->lexer, ctx->hir, callee);
         if (import != NULL) {
@@ -8626,7 +8895,8 @@ llvm_type_matches_for_call(const Sema* sema, u32 expected_type, u32 actual_type)
         return true;
     }
     if (sema_type_is_float(sema, expected_type) &&
-        llvm_type_kind(sema, actual_type) == STK_UntypedFloat) {
+        (llvm_type_kind(sema, actual_type) == STK_UntypedFloat ||
+         llvm_type_kind(sema, actual_type) == STK_UntypedInteger)) {
         return true;
     }
     return false;
@@ -8709,6 +8979,29 @@ internal bool llvm_explicit_generic_function_index(LlvmFunctionContext* ctx,
         !llvm_type_is_function(ctx->sema, expr->type_index) ||
         expr->operand_expr_index >= array_count(ctx->hir->exprs)) {
         return false;
+    }
+
+    // Erased signatures can be shared by distinct explicit specializations.
+    // Preserve the semantic selection rather than picking the first matching
+    // type.
+    if (expr->symbol_handle != U32_MAX) {
+        for (u32 i = 0; i < array_count(ctx->sema->generic_fn_instantiations);
+             ++i) {
+            const SemaGenericFnInstantiation* inst =
+                &ctx->sema->generic_fn_instantiations[i];
+            if (inst->symbol_handle != expr->symbol_handle) {
+                continue;
+            }
+            for (u32 f = 0; f < array_count(ctx->hir->functions); ++f) {
+                const HirFunction* fn = &ctx->hir->functions[f];
+                if (fn->kind == HIR_FUNCTION_GenericInstantiation &&
+                    fn->root_scope_index == inst->root_scope_index &&
+                    fn->fn_node_index == inst->fn_node_index) {
+                    *out = f;
+                    return true;
+                }
+            }
+        }
     }
 
     const HirExpr* target = &ctx->hir->exprs[expr->operand_expr_index];
@@ -9287,6 +9580,8 @@ internal LlvmValue llvm_emit_eager_binary_values(LlvmFunctionContext* ctx,
         return (LlvmValue){0};
     }
     if (llvm_float_bits(ctx->sema, result_type) > 0) {
+        lhs   = llvm_coerce_value_to_type(ctx, lhs, result_type);
+        rhs   = llvm_coerce_value_to_type(ctx, rhs, result_type);
         instr = llvm_float_binary_instruction(expr->binary_op);
         if (instr.count == 0) {
             return (LlvmValue){0};
@@ -9372,13 +9667,45 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
         return (LlvmValue){0};
     }
 
-    const HirExpr* expr = &ctx->hir->exprs[expr_index];
+    const HirExpr* expr     = &ctx->hir->exprs[expr_index];
+    LlvmValue      imported = llvm_imported_global_address(ctx, expr);
+    if (imported.ok) {
+        string loaded = llvm_temp(ctx);
+        string type   = llvm_type_string(ctx, imported.type_index);
+        if (llvm_type_is_atomic(ctx->sema, imported.type_index)) {
+            sb_format(ctx->sb,
+                      "  " STRINGP " = load atomic " STRINGP ", ptr " STRINGP
+                      " seq_cst, align %u\n",
+                      STRINGV(loaded),
+                      STRINGV(type),
+                      STRINGV(imported.value),
+                      llvm_type_align_bits(ctx->sema, imported.type_index) / 8);
+        } else {
+            sb_format(ctx->sb,
+                      "  " STRINGP " = load " STRINGP ", ptr " STRINGP "\n",
+                      STRINGV(loaded),
+                      STRINGV(type),
+                      STRINGV(imported.value));
+        }
+        imported.value = loaded;
+        return imported;
+    }
     switch (expr->kind) {
     case HIR_EXPR_DefaultValue:
         return llvm_default_value(ctx, expr->type_index);
     case HIR_EXPR_IntegerLiteral:
         SemaTypeKind integer_type_kind =
             llvm_type_kind(ctx->sema, expr->type_index);
+        if (integer_type_kind == STK_F32 || integer_type_kind == STK_F64) {
+            return (LlvmValue){
+                .ok         = true,
+                .type_index = expr->type_index,
+                .value = llvm_float_literal_string(ctx->sema,
+                                                   ctx->arena,
+                                                   expr->type_index,
+                                                   (f64)(u64)expr->integer),
+            };
+        }
         if (integer_type_kind == STK_Pointer ||
             integer_type_kind == STK_DynamicArray) {
             if (expr->integer == 0) {
@@ -10365,7 +10692,11 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             }
             if (value->kind == HIR_VALUE_Constant &&
                 value->value_expr_index != U32_MAX) {
-                return llvm_emit_expr(ctx, function, value->value_expr_index);
+                LlvmValue result =
+                    llvm_emit_expr(ctx, function, value->value_expr_index);
+                result =
+                    llvm_coerce_value_to_type(ctx, result, value->type_index);
+                return llvm_coerce_value_to_type(ctx, result, expr->type_index);
             }
             if (value->kind == HIR_VALUE_Constant) {
                 HirImport        decl_import = {0};
@@ -10399,7 +10730,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             }
             if (value->kind == HIR_VALUE_Global) {
                 string name = llvm_value_name_string(
-                    ctx->hir, ctx->lexer, ctx->arena, value_index);
+                    ctx->hir, ctx->lexer, ctx->sema, ctx->arena, value_index);
                 if (name.count == 0) {
                     return (LlvmValue){0};
                 }
@@ -10482,11 +10813,10 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 string short_label = llvm_label(ctx, "in.short");
                 string end_label   = llvm_label(ctx, "in.end");
                 string result      = llvm_temp(ctx);
+                llvm_emit_alloca(ctx, result_ptr, s("i1"));
                 sb_format(ctx->sb,
-                          "  " STRINGP " = alloca i1\n"
                           "  br i1 " STRINGP ", label %%" STRINGP
                           ", label %%" STRINGP "\n",
-                          STRINGV(result_ptr),
                           STRINGV(lower_ok),
                           STRINGV(upper_label),
                           STRINGV(short_label));
@@ -10547,6 +10877,11 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     return (LlvmValue){0};
                 }
 
+                if (llvm_float_bits(ctx->sema, lhs.type_index) > 0) {
+                    rhs = llvm_coerce_value_to_type(ctx, rhs, lhs.type_index);
+                } else if (llvm_float_bits(ctx->sema, rhs.type_index) > 0) {
+                    lhs = llvm_coerce_value_to_type(ctx, lhs, rhs.type_index);
+                }
                 cmp = llvm_compare_instruction(
                     ctx->sema, lhs.type_index, expr->binary_op);
                 string       type = llvm_type_string(ctx, lhs.type_index);
@@ -10900,9 +11235,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 string short_label = llvm_label(ctx, "logical.short");
                 string end_label   = llvm_label(ctx, "logical.end");
                 string result      = llvm_temp(ctx);
-                sb_format(ctx->sb,
-                          "  " STRINGP " = alloca i1\n",
-                          STRINGV(result_ptr));
+                llvm_emit_alloca(ctx, result_ptr, s("i1"));
                 if (expr->binary_op == HIR_BINARY_LogicalAnd) {
                     sb_format(ctx->sb,
                               "  br i1 " STRINGP ", label %%" STRINGP
@@ -11050,6 +11383,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             LlvmValue value =
                 llvm_emit_expr(ctx, function, expr->rhs_expr_index);
             ctx->discard_expr_value = old_discard_expr_value;
+            value = llvm_coerce_value_to_type(ctx, value, expr->type_index);
             if (!value.ok ||
                 !llvm_emit_assign(ctx, function, expr->lhs_expr_index, value)) {
                 return (LlvmValue){0};
@@ -12441,8 +12775,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
     case HIR_EXPR_On:
         {
             if (expr->on_kind != HIR_ON_Condition) {
-                LlvmValue scrutinee =
-                    llvm_emit_expr(ctx, function, expr->operand_expr_index);
+                LlvmValue scrutinee = llvm_emit_required_expr(
+                    ctx, function, expr->operand_expr_index);
                 if (!scrutinee.ok || expr->branch_count == 0) {
                     return (LlvmValue){0};
                 }
@@ -12556,7 +12890,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                                 ctx->sb, STRINGP ":\n", STRINGV(guard_label));
                             llvm_bind_local_value(
                                 ctx, branch->binder_local_index, scrutinee);
-                            LlvmValue guard = llvm_emit_expr(
+                            LlvmValue guard = llvm_emit_required_expr(
                                 ctx, function, branch->guard_expr_index);
                             if (!guard.ok) {
                                 array_free(phi_values);
@@ -12594,7 +12928,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                         ctx, branch->source_line, branch->source_path);
                     llvm_bind_local_value(
                         ctx, branch->binder_local_index, scrutinee);
-                    if (emit_effect_branch) {
+                    if (emit_effect_branch || branch->error_handler) {
                         if (!llvm_emit_block(
                                 ctx, function, branch->body_block_index)) {
                             array_free(phi_values);
@@ -12602,9 +12936,13 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                             return (LlvmValue){0};
                         }
                         if (!ctx->block_terminated) {
-                            sb_format(ctx->sb,
-                                      "  br label %%" STRINGP "\n",
-                                      STRINGV(end_label));
+                            if (branch->error_handler) {
+                                sb_append_cstr(ctx->sb, "  unreachable\n");
+                            } else {
+                                sb_format(ctx->sb,
+                                          "  br label %%" STRINGP "\n",
+                                          STRINGV(end_label));
+                            }
                         }
                     } else {
                         LlvmValue value = llvm_emit_block_value(
@@ -12730,8 +13068,8 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                         array_free(phi_labels);
                         return (LlvmValue){0};
                     }
-                    LlvmValue condition =
-                        llvm_emit_expr(ctx, function, branch->guard_expr_index);
+                    LlvmValue condition = llvm_emit_required_expr(
+                        ctx, function, branch->guard_expr_index);
                     if (!condition.ok) {
                         array_free(phi_values);
                         array_free(phi_labels);
@@ -12928,10 +13266,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     string range_type_string =
                         llvm_type_string(ctx, range_type);
                     string current_ptr = llvm_temp(ctx);
-                    sb_format(ctx->sb,
-                              "  " STRINGP " = alloca " STRINGP "\n",
-                              STRINGV(current_ptr),
-                              STRINGV(range_type_string));
+                    llvm_emit_alloca(ctx, current_ptr, range_type_string);
                     sb_format(ctx->sb,
                               "  store " STRINGP " " STRINGP ", ptr " STRINGP
                               "\n",
@@ -12955,9 +13290,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                             .type_index  = index_type,
                             .ptr         = llvm_temp(ctx),
                         };
-                        sb_format(ctx->sb,
-                                  "  " STRINGP " = alloca i64\n",
-                                  STRINGV(hidden_index_slot.ptr));
+                        llvm_emit_alloca(ctx, hidden_index_slot.ptr, s("i64"));
                         index_slot = &hidden_index_slot;
                     }
                     sb_format(ctx->sb,
@@ -13242,9 +13575,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                             .type_index  = index_type,
                             .ptr         = llvm_temp(ctx),
                         };
-                        sb_format(ctx->sb,
-                                  "  " STRINGP " = alloca i64\n",
-                                  STRINGV(hidden_index_slot.ptr));
+                        llvm_emit_alloca(ctx, hidden_index_slot.ptr, s("i64"));
                         index_slot = &hidden_index_slot;
                     }
                     sb_format(ctx->sb,
@@ -13636,9 +13967,7 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                         .type_index  = index_type,
                         .ptr         = llvm_temp(ctx),
                     };
-                    sb_format(ctx->sb,
-                              "  " STRINGP " = alloca i64\n",
-                              STRINGV(hidden_index_slot.ptr));
+                    llvm_emit_alloca(ctx, hidden_index_slot.ptr, s("i64"));
                     index_slot = &hidden_index_slot;
                 }
                 if (hidden_index) {
@@ -14527,43 +14856,21 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 };
             }
 
-            if (llvm_type_kind(ctx->sema, operand.type_index) == STK_Pointer &&
-                llvm_type_kind(ctx->sema, expr->type_index) == STK_Pointer) {
-                u32 source_pointee =
-                    llvm_pointee_type(ctx->sema, operand.type_index);
-                u32 target_pointee =
-                    llvm_pointee_type(ctx->sema, expr->type_index);
-                const SemaPlexUse* next = llvm_plex_embedded_next(
-                    ctx->sema, source_pointee, target_pointee);
-                if (next != NULL) {
-                    string adjusted = operand.value;
-                    u32    current  = source_pointee;
-                    while (current != target_pointee) {
-                        next = llvm_plex_embedded_next(
-                            ctx->sema, current, target_pointee);
-                        if (next == NULL) {
-                            return (LlvmValue){0};
-                        }
-                        string temp = llvm_temp(ctx);
-                        sb_format(ctx->sb,
-                                  "  " STRINGP
-                                  " = getelementptr inbounds " STRINGP
-                                  ", ptr " STRINGP ", i64 0, i32 %u\n",
-                                  STRINGV(temp),
-                                  STRINGV(llvm_type_string(ctx, current)),
-                                  STRINGV(adjusted),
-                                  llvm_plex_physical_field_index(
-                                      ctx->sema, current, next->first_field));
-                        adjusted = temp;
-                        current =
-                            sema_materialise_type(ctx->sema, next->type_index);
-                    }
-                    return (LlvmValue){
-                        .ok         = true,
-                        .type_index = expr->type_index,
-                        .value      = adjusted,
-                    };
-                }
+            u32 projection_source = operand.type_index;
+            u32 projection_target = expr->type_index;
+            if (llvm_type_kind(ctx->sema, projection_source) == STK_Pointer &&
+                llvm_type_kind(ctx->sema, projection_target) == STK_Pointer) {
+                projection_source =
+                    llvm_pointee_type(ctx->sema, projection_source);
+                projection_target =
+                    llvm_pointee_type(ctx->sema, projection_target);
+            }
+            if (projection_source != projection_target &&
+                sema_plex_embedding(
+                    ctx->sema, projection_source, projection_target)
+                        .path_count == 1) {
+                return llvm_coerce_value_to_type(
+                    ctx, operand, expr->type_index);
             }
 
             string instr = llvm_cast_instruction(
@@ -14929,9 +15236,10 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                         default_emit_ctx->macro_source_hir  = ctx->hir;
                         default_emit_ctx->macro_source_lexer = ctx->lexer;
                         context_value =
-                            llvm_emit_expr(default_emit_ctx,
-                                           function,
-                                           param->default_expr_index);
+                            llvm_emit_expr_as_type(default_emit_ctx,
+                                                   function,
+                                                   param->default_expr_index,
+                                                   param->type_index);
                         default_emit_ctx->macro_source_path  = (string){0};
                         default_emit_ctx->macro_source_line  = 0;
                         default_emit_ctx->macro_source_hir   = NULL;
@@ -15194,6 +15502,31 @@ internal bool llvm_emit_assign(LlvmFunctionContext* ctx,
     }
 
     const HirExpr* target = &ctx->hir->exprs[target_expr_index];
+    value = llvm_coerce_value_to_type(ctx, value, target->type_index);
+    LlvmValue imported = llvm_imported_global_address(ctx, target);
+    if (imported.ok) {
+        value = llvm_coerce_value_to_type(ctx, value, imported.type_index);
+        if (!value.ok) {
+            return false;
+        }
+        string type = llvm_type_string(ctx, imported.type_index);
+        if (llvm_type_is_atomic(ctx->sema, imported.type_index)) {
+            sb_format(ctx->sb,
+                      "  store atomic " STRINGP " " STRINGP ", ptr " STRINGP
+                      " seq_cst, align %u\n",
+                      STRINGV(type),
+                      STRINGV(value.value),
+                      STRINGV(imported.value),
+                      llvm_type_align_bits(ctx->sema, imported.type_index) / 8);
+        } else {
+            sb_format(ctx->sb,
+                      "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n",
+                      STRINGV(type),
+                      STRINGV(value.value),
+                      STRINGV(imported.value));
+        }
+        return true;
+    }
 
     if (target->kind == HIR_EXPR_Index) {
         LlvmValue target_ptr =
@@ -15266,6 +15599,69 @@ internal bool llvm_emit_assign(LlvmFunctionContext* ctx,
     }
 
     if (target->kind == HIR_EXPR_TupleField || target->kind == HIR_EXPR_Field) {
+        const HirExpr* owner = &ctx->hir->exprs[target->operand_expr_index];
+        u32 record_type = llvm_member_target_type(ctx->sema, owner->type_index);
+        u32 bit_field   = target->kind == HIR_EXPR_Field
+                              ? llvm_record_field_index(
+                                    ctx->sema, record_type, target->symbol_handle)
+                              : U32_MAX;
+        if (llvm_record_bit_field(
+                ctx->sema, record_type, bit_field, NULL, NULL)) {
+            // A bit-field has no address of its own. Resolve its containing
+            // record once, including pointer-producing calls, then update the
+            // packed storage without overwriting adjacent fields.
+            bool pointer_owner =
+                llvm_type_kind(ctx->sema, owner->type_index) == STK_Pointer ||
+                llvm_type_kind(ctx->sema, owner->type_index) == STK_Box;
+            LlvmValue address =
+                pointer_owner
+                    ? llvm_emit_expr(ctx, function, target->operand_expr_index)
+                    : llvm_address_of_expr(
+                          ctx, function, target->operand_expr_index);
+            if (!address.ok) {
+                return false;
+            }
+            while (pointer_owner) {
+                u32 pointee =
+                    llvm_type_kind(ctx->sema, address.type_index) == STK_Box
+                        ? ctx->sema->types[address.type_index].first_param_type
+                        : llvm_pointee_type(ctx->sema, address.type_index);
+                if (pointee == record_type) {
+                    break;
+                }
+                if (llvm_type_kind(ctx->sema, pointee) != STK_Pointer &&
+                    llvm_type_kind(ctx->sema, pointee) != STK_Box) {
+                    return false;
+                }
+                string next = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = load ptr, ptr " STRINGP "\n",
+                          STRINGV(next),
+                          STRINGV(address.value));
+                address = (LlvmValue){
+                    .ok = true, .type_index = pointee, .value = next};
+            }
+            string type   = llvm_type_string(ctx, record_type);
+            string loaded = llvm_temp(ctx);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = load " STRINGP ", ptr " STRINGP "\n",
+                      STRINGV(loaded),
+                      STRINGV(type),
+                      STRINGV(address.value));
+            LlvmValue record = {
+                .ok = true, .type_index = record_type, .value = loaded};
+            LlvmValue updated =
+                llvm_insert_record_field(ctx, record, bit_field, value);
+            if (!updated.ok) {
+                return false;
+            }
+            sb_format(ctx->sb,
+                      "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n",
+                      STRINGV(type),
+                      STRINGV(updated.value),
+                      STRINGV(address.value));
+            return true;
+        }
         LlvmValue field_ptr =
             llvm_address_of_expr(ctx, function, target_expr_index);
         if (field_ptr.ok) {
@@ -15335,7 +15731,7 @@ internal bool llvm_emit_assign(LlvmFunctionContext* ctx,
         }
 
         string name = llvm_value_name_string(
-            ctx->hir, ctx->lexer, ctx->arena, binding->target_index);
+            ctx->hir, ctx->lexer, ctx->sema, ctx->arena, binding->target_index);
         if (name.count == 0) {
             return false;
         }
@@ -15990,13 +16386,71 @@ internal void llvm_collect_addressed_expr_locals(LlvmFunctionContext* ctx,
         }
         break;
     case HIR_EXPR_Cast:
-    case HIR_EXPR_Field:
-    case HIR_EXPR_TupleField:
         llvm_collect_addressed_expr_locals(ctx, expr->operand_expr_index);
         break;
+    case HIR_EXPR_Field:
+    case HIR_EXPR_TupleField:
+        if (expr->operand_expr_index < array_count(ctx->hir->exprs)) {
+            u32 operand_type =
+                ctx->hir->exprs[expr->operand_expr_index].type_index;
+            u32 member_type = llvm_member_target_type(ctx->sema, operand_type);
+            SemaTypeKind kind = llvm_type_kind(ctx->sema, member_type);
+            // Large field reads and array.data use addresses even without ^.
+            // Initialise their base before branches can skip the first use.
+            bool large = (kind == STK_Plex || kind == STK_Tuple) &&
+                         llvm_type_sizeof_bytes(ctx->sema, member_type) >= 1024;
+            bool array_data =
+                expr->kind == HIR_EXPR_Field && kind == STK_Array &&
+                expr->symbol_handle != U32_MAX &&
+                string_eq_cstr(lex_symbol(ctx->lexer, expr->symbol_handle),
+                               "data");
+            if (large || array_data) {
+                llvm_mark_mutated_local_base(
+                    ctx, expr->operand_expr_index, false);
+            }
+        }
+        llvm_collect_addressed_expr_locals(ctx, expr->operand_expr_index);
+        break;
+    case HIR_EXPR_Array:
+    case HIR_EXPR_Tuple:
+    case HIR_EXPR_Plex:
+    case HIR_EXPR_PlexUpdate:
+        // Addresses inside aggregate values escape just like call arguments.
+        // Materialise their locals at declaration, rather than first use inside
+        // a loop (which would initialise the same storage on every iteration).
+        if (expr->kind == HIR_EXPR_PlexUpdate) {
+            llvm_collect_addressed_expr_locals(ctx, expr->operand_expr_index);
+        }
+        for (u32 i = 0; i < expr->arg_count; ++i) {
+            u32 arg = expr->first_arg + i;
+            if (arg < array_count(ctx->hir->call_args)) {
+                llvm_collect_addressed_expr_locals(
+                    ctx, ctx->hir->call_args[arg].expr_index);
+            }
+        }
+        break;
     case HIR_EXPR_Index:
+        if (expr->operand_expr_index < array_count(ctx->hir->exprs)) {
+            u32 type  = ctx->hir->exprs[expr->operand_expr_index].type_index;
+            i64 index = 0;
+            if (llvm_type_kind(ctx->sema, type) == STK_Array &&
+                (llvm_type_sizeof_bytes(ctx->sema, type) >= 1024 ||
+                 !llvm_expr_integer_constant(
+                     ctx->hir, expr->extra_expr_index, &index))) {
+                llvm_mark_mutated_local_base(
+                    ctx, expr->operand_expr_index, false);
+            }
+        }
         llvm_collect_addressed_expr_locals(ctx, expr->operand_expr_index);
         llvm_collect_addressed_expr_locals(ctx, expr->extra_expr_index);
+        break;
+    case HIR_EXPR_Slice:
+        // Slicing a fixed array borrows its storage; the resulting slice can
+        // also be written through a call, so initialise before loops/branches.
+        llvm_mark_mutated_local_base(ctx, expr->operand_expr_index, false);
+        llvm_collect_addressed_expr_locals(ctx, expr->operand_expr_index);
+        llvm_collect_addressed_expr_locals(ctx, expr->lhs_expr_index);
+        llvm_collect_addressed_expr_locals(ctx, expr->rhs_expr_index);
         break;
     case HIR_EXPR_Block:
         llvm_collect_addressed_locals(ctx, expr->body_block_index);
@@ -18322,6 +18776,52 @@ internal void llvm_render_import(StringBuilder*   sb,
                                  const Sema*      sema,
                                  const HirImport* import)
 {
+    const Hir*   source_hir   = NULL;
+    const Lexer* source_lexer = NULL;
+    const Sema*  source_sema  = NULL;
+    u32          source_index = U32_MAX;
+    if (llvm_import_source_global(sema,
+                                  lexer,
+                                  import,
+                                  &source_hir,
+                                  &source_lexer,
+                                  &source_sema,
+                                  &source_index)) {
+        if (source_hir == hir) {
+            return;
+        }
+        // Direct imports and re-exports can name the same defining storage.
+        for (u32 i = 0;
+             i < array_count(hir->imports) && &hir->imports[i] != import;
+             ++i) {
+            const Hir*   earlier_hir   = NULL;
+            const Lexer* earlier_lexer = NULL;
+            const Sema*  earlier_sema  = NULL;
+            u32          earlier_index = U32_MAX;
+            if (llvm_import_source_global(sema,
+                                          lexer,
+                                          &hir->imports[i],
+                                          &earlier_hir,
+                                          &earlier_lexer,
+                                          &earlier_sema,
+                                          &earlier_index) &&
+                earlier_hir == source_hir && earlier_index == source_index) {
+                return;
+            }
+        }
+        Arena temp = {0};
+        arena_init(&temp);
+        sb_append_string(
+            sb,
+            llvm_value_name_string(
+                source_hir, source_lexer, source_sema, &temp, source_index));
+        arena_done(&temp);
+        sb_append_cstr(sb, " = external global ");
+        llvm_append_type(
+            sb, source_sema, source_hir->values[source_index].type_index);
+        sb_append_char(sb, '\n');
+        return;
+    }
     if (sema == NULL || import->type_index >= array_count(sema->types) ||
         sema->types[import->type_index].kind != STK_Function) {
         return;
@@ -18515,10 +19015,14 @@ internal void llvm_render_global_values(StringBuilder*   sb,
             continue;
         }
 
-        u32  binding_index = llvm_hir_value_binding_index(hir, i);
-        bool exported = binding_index != U32_MAX &&
-                        llvm_hir_binding_is_exported(sema, hir, binding_index);
-        llvm_append_symbol_name(sb, lex_symbol(lexer, symbol_handle));
+        u32   binding_index = llvm_hir_value_binding_index(hir, i);
+        bool  exported = binding_index != U32_MAX &&
+                         llvm_hir_binding_is_exported(sema, hir, binding_index);
+        Arena name_arena = {0};
+        arena_init(&name_arena);
+        sb_append_string(
+            sb, llvm_value_name_string(hir, lexer, sema, &name_arena, i));
+        arena_done(&name_arena);
         sb_append_cstr(sb, exported ? " = global " : " = internal global ");
         llvm_append_type(sb, sema, value->type_index);
         sb_append_cstr(sb, " ");
@@ -18638,7 +19142,7 @@ internal void llvm_render_global_init(StringBuilder*     sb,
             continue;
         }
 
-        string name = llvm_value_name_string(hir, lexer, temp, i);
+        string name = llvm_value_name_string(hir, lexer, sema, temp, i);
         if (name.count == 0) {
             continue;
         }
@@ -18672,7 +19176,7 @@ internal void llvm_render_global_init(StringBuilder*     sb,
     (void)arena;
 }
 
-internal void llvm_render_function(StringBuilder*     sb,
+internal bool llvm_render_function(StringBuilder*     sb,
                                    const Hir*         hir,
                                    const Lexer*       lexer,
                                    const Sema*        sema,
@@ -18688,7 +19192,7 @@ internal void llvm_render_function(StringBuilder*     sb,
         llvm_append_function_signature(
             sb, hir, lexer, sema, function, function_index);
         sb_append_char(sb, '\n');
-        return;
+        return true;
     }
 
     u32 debug_scope_id = llvm_debug_add_function(
@@ -18748,7 +19252,14 @@ internal void llvm_render_function(StringBuilder*     sb,
     bool emitted = llvm_initialise_assigned_param_slots(&ctx, function) &&
                    llvm_emit_param_debug_values(&ctx, function) &&
                    llvm_emit_block(&ctx, function, function->body_block_index);
-    if (!emitted || !ctx.block_terminated) {
+    if (!emitted) {
+        error_runtime("LLVM lowering failed in module %u, function %u (%.*s)",
+                      hir->current_module_index,
+                      function_index,
+                      (int)lexer->source.source_path.count,
+                      lexer->source.source_path.data);
+    }
+    if (emitted && !ctx.block_terminated) {
         u32 return_type = llvm_function_return_type(sema, function->type_index);
         if (ctx.va_root.count > 0) {
             sb_format(&body_sb,
@@ -18768,6 +19279,7 @@ internal void llvm_render_function(StringBuilder*     sb,
     array_free(ctx.control_targets);
     sb_append_cstr(sb, "}\n");
     (void)arena;
+    return emitted;
 }
 
 internal void llvm_render_binding_alias(StringBuilder*    sb,
@@ -19051,16 +19563,18 @@ string llvm_render_hir(const Hir*   hir,
         sb_append_char(&sb, '\n');
     }
 
+    bool functions_ok = true;
     for (u32 i = 0; i < array_count(hir->functions); ++i) {
-        llvm_render_function(&sb,
-                             hir,
-                             lexer,
-                             render_sema,
-                             arena,
-                             debug,
-                             &hir->functions[i],
-                             i,
-                             &scratch);
+        bool function_ok = llvm_render_function(&sb,
+                                                hir,
+                                                lexer,
+                                                render_sema,
+                                                arena,
+                                                debug,
+                                                &hir->functions[i],
+                                                i,
+                                                &scratch);
+        functions_ok     = functions_ok && function_ok;
         sb_append_char(&sb, '\n');
     }
 
@@ -19153,7 +19667,65 @@ string llvm_render_hir(const Hir*   hir,
         llvm_debug_done(debug);
     }
     llvm_render_sema_done(&render_sema_storage);
-    return rendered;
+    return functions_ok ? rendered : (string){0};
+}
+
+// Malformed HIR must produce a diagnostic and no apparently successful IR.
+bool llvm_lowering_failure_self_test(void)
+{
+    Hir   hir   = {.current_module_index = 0};
+    Lexer lexer = {.source = {.source_path = s("lowering-probe.n")}};
+    Sema  sema  = {0};
+    array_push(sema.types, ((SemaType){.kind = STK_Void}));
+    array_push(sema.types,
+               ((SemaType){.kind = STK_Function, .return_type = 0}));
+    array_push(hir.exprs,
+               ((HirExpr){.kind               = HIR_EXPR_LocalRef,
+                          .ref_kind           = HIR_REF_Binding,
+                          .ref_index          = U32_MAX,
+                          .symbol_handle      = U32_MAX,
+                          .operand_expr_index = U32_MAX,
+                          .extra_expr_index   = U32_MAX,
+                          .lhs_expr_index     = U32_MAX,
+                          .rhs_expr_index     = U32_MAX,
+                          .callee_expr_index  = U32_MAX,
+                          .body_block_index   = U32_MAX,
+                          .for_index          = U32_MAX,
+                          .type_index         = 0}));
+    array_push(hir.stmts,
+               ((HirStmt){.kind             = HIR_STMT_Expr,
+                          .expr_index       = 0,
+                          .body_block_index = U32_MAX}));
+    HirBlock block = {.stmt_count = 1};
+    array_push(block.stmt_indices, 0);
+    array_push(hir.blocks, block);
+    array_push(hir.functions,
+               ((HirFunction){.kind                = HIR_FUNCTION_Normal,
+                              .decl_index          = U32_MAX,
+                              .varargs_local_index = U32_MAX,
+                              .type_index          = 1,
+                              .body_block_index    = 0}));
+    Arena arena = {0};
+    arena_init(&arena);
+    ErrorContext diagnostics = {0};
+    error_context_init(&diagnostics, ERROR_RENDER_NORMAL, true);
+    ErrorContext* previous = error_context_select(&diagnostics);
+    string result = llvm_render_hir(&hir, &lexer, &sema, &arena, false, false);
+    bool   ok     = result.count == 0 && array_count(diagnostics.pending) == 1;
+    error_context_select(previous);
+    error_context_done(&diagnostics);
+    arena_done(&arena);
+    array_free(hir.blocks[0].stmt_indices);
+    array_free(hir.blocks);
+    array_free(hir.exprs);
+    array_free(hir.stmts);
+    array_free(hir.functions);
+    array_free(sema.types);
+    if (!ok) {
+        return error_runtime("LLVM lowering failure was not propagated");
+    }
+    prn("llvm-lowering-failure ok");
+    return true;
 }
 
 bool llvm_save_hir(const Hir*   hir,
@@ -19164,8 +19736,12 @@ bool llvm_save_hir(const Hir*   hir,
     Arena arena = {0};
     arena_init(&arena);
     string rendered = llvm_render_hir(hir, lexer, sema, &arena, true, false);
+    if (rendered.count == 0) {
+        arena_done(&arena);
+        return false;
+    }
 
-    FILE* file      = fopen(path, "wb");
+    FILE* file = fopen(path, "wb");
     if (!file) {
         arena_done(&arena);
         return error_runtime("Failed to open LLVM IR file for writing: %s",

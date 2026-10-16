@@ -207,3 +207,34 @@ can mutate them. Shared implicit core therefore currently serializes checking.
 Verbose output, custom source loaders, partial results and legacy
 `NERD_MEMORY_PROFILE` keep the serial front end. HIR/parse tasks retain owned
 results until ordered adoption/publication, and the default remains one job.
+
+
+## Scheduler adoption policy
+
+The default remains `--jobs 1`. Numeric worker counts and `--jobs auto` are
+opt-in; `auto` selects half the available logical CPUs within the 1–256 limit,
+then phase-specific estimates may dispatch smaller batches inline. This policy
+is implemented, but is not evidence that parallel builds are always faster.
+
+Before changing the default, compare repeated, alternating unprofiled runs on
+representative small and large real programs and synthetic graphs. Check
+whole-build latency, source-to-IR latency, CPU work and peak memory, with exact
+output/diagnostic parity and runtime checks. Keep instrumentation runs separate.
+The retained adoption targets are at most 5% single-worker regression outside
+noise, at least 15% representative whole-build improvement from parallelism,
+and at most 1.5x peak RSS at the selected default without an explicit tradeoff.
+Serial optimisations available at one job do not count as parallel speedup.
+Native platform results must identify the tested revision, toolchain and host;
+compiler-process counters do not establish whole-process-tree memory use.
+Windows editor observation, sanitizers and macOS validation must be reported
+separately when not exercised by a run.
+
+Semantic checks retain exclusive ownership of transitive import closures:
+generic instantiation can mutate imported tables, so shared `core` cannot simply
+be marked read-only. The module-level ownership redesign was not adopted after
+its headroom study; a finer-grained scheduler would require a new measured design.
+The persistent dependency-task experiment was also withdrawn. Neither is an
+outstanding implementation milestone for the current compiler.
+
+Use [dated measurements](../review/measurements/README.md) for historical
+comparisons, and the current benchmark/test tools to establish new results.

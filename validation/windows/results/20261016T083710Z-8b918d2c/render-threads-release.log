@@ -1,0 +1,12 @@
+[PASS] concurrent LLVM: tiny
+[PASS] concurrent LLVM: wide
+[PASS] concurrent LLVM: deep
+[PASS] concurrent LLVM: large
+[PASS] concurrent LLVM: dungeon
+[PASS] concurrent LLVM: pixels
+[PASS] concurrent LLVM: quill
+[PASS] concurrent LLVM: 196-plex-use
+[PASS] concurrent LLVM: 128-generic-functions
+[PASS] concurrent LLVM: 077-enum-discriminants
+[PASS] concurrent LLVM: imported-values-defaults
+Serial/concurrent LLVM identity, repeated input reuse and cleanup passed

@@ -1,0 +1,52 @@
+use std.network
+use std.time
+
+checks :: fn () -> void\NetworkError {
+    receiver := socket(SocketKind.Udp)?
+    defer _ := receiver.close()
+    receiver.bind(loopback(0))?
+    receiver.nonblocking(yes)?
+    entries := [PollEntry { socket: ^receiver read: yes ... }]
+    limit   := now().add(from_ms(100))
+
+    assert poll(entries[..], deadline = limit)? == 0
+    assert now() >= limit
+    assert !entries[0].readable && !entries[0].exceptional
+    listener := socket(SocketKind.Tcp)?
+    defer _ := listener.close()
+    listener.bind(loopback(0))?
+    listener.listen()?
+    destination := listener.local_address()?
+    client      := socket(SocketKind.Tcp)?
+
+    defer _ := client.close()
+    client.nonblocking(yes)?
+    assert !client.start_connect(destination)?
+    -- The probe makes the first connection poll observe no readiness.
+    assert !client.finish_connect(deadline = now())?
+    assert client.connection == ConnectState.Pending
+    assert client.is_nonblocking
+    on client.nonblocking(no) {
+        NetworkError.Invalid! => {
+        }
+
+        else => {
+            assert no
+        }
+    }
+    assert client.finish_connect(deadline = now().add(from_secs(2)))?
+    assert client.connection == ConnectState.Connected
+    server := listener.accept()?
+    defer _ := server.close()
+    prn("network interrupted waits and pending connect retry passed")
+}
+
+main :: fn () -> i32 {
+    return on checks() {
+        _! => {
+            eprn("network interrupted wait contracts failed")
+            return 1
+        }
+        else => 0
+    }
+}

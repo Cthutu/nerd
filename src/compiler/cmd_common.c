@@ -197,6 +197,13 @@ bool compile(NerdSource                source,
                effective_source.source_path.count);
         source_path[effective_source.source_path.count] = '\0';
 
+        if (!path_exists(source_path)) {
+            free(source_path);
+            nerd_side_file_registry_done(&side_files);
+            return error_runtime("Source file not found: " STRINGP,
+                                 STRINGV(effective_source.source_path));
+        }
+
         if (path_is_directory(source_path)) {
             string bad_path = effective_source.source_path;
             free(source_path);

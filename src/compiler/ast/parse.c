@@ -3779,11 +3779,8 @@ internal bool ast_parse_pragma(AstParseState* state, u32* out_node)
                     break;
                 case TK_yes:
                 case TK_no:
-                case TK_true:
-                case TK_false:
                     param.kind       = APPK_Bool;
-                    param.bool_value = state->token.kind == TK_yes ||
-                                       state->token.kind == TK_true;
+                    param.bool_value = state->token.kind == TK_yes;
                     break;
                 default:
                     return error_0204_unexpected_token(

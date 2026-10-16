@@ -38,7 +38,7 @@ on "windows" {
         control_generation += 2
         on control_generation == 0 => control_generation = 2
         control_state.store(control_generation)
-        on SetConsoleCtrlHandler(^control_handler, 1) == 0 => {
+        on SetConsoleCtrlHandler(control_handler, 1) == 0 => {
             code := GetLastError()
             control_state.store(0)
             return Error.System { code }!
@@ -56,7 +56,7 @@ on "windows" {
     }
 
     native_close :: fn () -> void\Error {
-        on SetConsoleCtrlHandler(^control_handler, 0) == 0 => return Error.System { code: GetLastError() }!
+        on SetConsoleCtrlHandler(control_handler, 0) == 0 => return Error.System { code: GetLastError() }!
         control_state.store(0)
         WakeByAddressAll(^control_state)
     }

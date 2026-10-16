@@ -1,0 +1,4 @@
+PASS ASan/UBSan/leak detection tests/stdlib-raptor/contracts.n release=False (8 runs)
+PASS ASan/UBSan/leak detection examples/task-parallel/task-parallel.n release=False (8 runs)
+PASS ASan/UBSan/leak detection tests/stdlib-raptor/contracts.n release=True (8 runs)
+PASS ASan/UBSan/leak detection examples/task-parallel/task-parallel.n release=True (8 runs)

@@ -6524,7 +6524,7 @@ internal void lsp_completion_add_symbols(Arena*             arena,
 
     for (u32 i = 0; i < array_count(sema->locals); ++i) {
         const SemaLocal* local = &sema->locals[i];
-        if (local->symbol_handle == U32_MAX) {
+        if (local->synthetic || local->symbol_handle == U32_MAX) {
             continue;
         }
         lsp_completion_add(arena,
