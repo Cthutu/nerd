@@ -426,10 +426,22 @@ main :: fn () -> i32 {
 
 This returns `42`. The string field is explicitly discarded.
 
-A one-field tuple needs a trailing comma: `(42,)`. Without the comma, `(42)`
-is just a parenthesised integer expression. Its tuple type is `(i32,)` once
-the integer has a concrete `i32` type. Tuples can also contain other tuples
-or the compound values introduced in this chapter.
+A one-element tuple needs a trailing comma in both its value and its type:
+
+```nerd
+main :: fn () -> i32 {
+    single := (42,)
+    typed: (i32,) = (42,)
+    return single.0 + typed.0 - 42
+}
+```
+
+This returns `42`. Both variables have type `(i32,)`, and `.0` accesses their
+only field. Without the comma, `(42)` is just a parenthesised integer
+expression, and `(i32)` is not a one-element tuple type.
+
+Tuples can also contain other tuples or the compound values introduced in
+this chapter.
 
 Use a tuple when positions make the meaning clear, such as a small function
 result. Use a plex when field names make the value easier to understand.
