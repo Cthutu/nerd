@@ -18,11 +18,16 @@ The semantic analyser recognises these built-in type families:
 | `i8`, `i16`, `i32`, `i64`, `isize` | Signed integer types.                                             |
 | `u8`, `u16`, `u32`, `u64`, `usize` | Unsigned integer types.                                           |
 | `f32`, `f64`                       | Floating-point types.                                             |
-| `arena`                            | Opaque handle to a pointer-stable arena allocation region.        |
+| `arena`                            | Opaque allocation state for a pointer-stable arena region.        |
 
 `isize` and `usize` are pointer-sized integer types. Use `usize` for counts,
 indexes, byte sizes, and capacities. Use `isize` for signed offsets or other
 platform-sized signed integer values.
+
+Copying an `arena` value copies its cursor and storage metadata while retaining
+the same backing allocation. The copied cursors advance independently; using
+both for allocation can overlap their results. Use `^arena` to share one arena
+object and its allocation state. Its owner releases the backing storage once.
 
 `untyped integer` and `untyped float` are temporary semantic types for numeric
 literals. They materialise to concrete types from context, or to `i32` and

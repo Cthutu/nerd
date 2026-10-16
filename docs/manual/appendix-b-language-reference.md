@@ -297,8 +297,10 @@ intended exit code.
 - `arena` is an opaque built-in type that reserves one 4 GiB address range,
   grows by committing pages inside that range, and keeps allocation addresses
   stable while it grows.
-- Copying an `arena` value copies a handle to the same underlying allocation
-  state; it does not copy the arena's storage.
+- Copying an `arena` value copies its cursor and storage metadata without
+  duplicating its backing allocation. Cursor updates are independent, so
+  allocating through both copies can overlap. Share allocation state through
+  `^arena`, and keep one owner responsible for releasing the storage once.
 - Arena marks are `u32` cursor values. Restoring to a mark invalidates later
   allocations; resetting an arena invalidates all allocations from it.
 - Runtime interpolated strings are allocated from the temporary arena and remain
