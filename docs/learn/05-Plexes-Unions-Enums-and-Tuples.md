@@ -483,10 +483,16 @@ result. Use a plex when field names make the value easier to understand.
 
 ## Layout and bit fields
 
-Write `plex #c { ... }` when you need C-compatible field layout.
-`plex #packed { ... }` requests packed C-compatible storage. Ordinary plex
-syntax describes the fields; layout annotations make an external layout
-requirement explicit.
+Ordinary plex fields are reordered to reduce padding and make the value smaller.
+The compiler places fields in descending alignment order; fields with equal
+alignment keep their declaration order. Field names and the order in which
+literal expressions are evaluated are unaffected. Embedded plexes and bit-field
+storage blocks stay intact when reordered.
+
+Write `plex #c { ... }` when you need C-compatible field layout in declaration
+order. `plex #packed { ... }` also preserves declaration order, with packed
+C-compatible storage. For example, `plex { a u8 b u32 c u8 }` occupies 8 bytes,
+while the same fields in a `plex #c` occupy 12 bytes.
 
 A plex can pack named bit fields into an unsigned integer storage block:
 
