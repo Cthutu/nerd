@@ -472,21 +472,15 @@ void* nrt_mem_alloc(size_t size,
     return user;
 }
 
-// Runtime-sized local fixed arrays own storage until their lexical scope exits.
-void* nrt_local_array_alloc(uint64_t    count,
-                            size_t      item_size,
-                            const char* source_path,
-                            uint32_t    line)
+// Validate before either backend reserves runtime-sized local stack storage.
+size_t nrt_local_array_bytes(uint64_t count, size_t item_size)
 {
     if (count > PTRDIFF_MAX ||
         (item_size != 0 && count > (uint64_t)PTRDIFF_MAX / item_size)) {
         nrt_heap_abort(
             "invalid runtime array length or allocation size overflow");
     }
-    size_t bytes = (size_t)count * item_size;
-    void*  data  = nrt_mem_alloc(bytes, 16, source_path, line);
-    memset(data, 0, bytes);
-    return data;
+    return (size_t)count * item_size;
 }
 
 void* nrt_mem_realloc(void*       memory,

@@ -1250,11 +1250,24 @@ as expression returns, so returning a local runtime-sized array is diagnosed
 before lowering. Resolving a runtime-sized array also interns `usize`, allowing
 LLVM to widen smaller integer lengths even in programs with no imports.
 
-Both backends call `nrt_local_array_alloc`, which checks the signed address range
-and multiplication overflow before allocating zeroed storage. The allocation
-is registered in the ordered cleanup stack independently of the local binding,
-so all lexical exits release it after subsequently registered defers/undos.
+Both backends call `nrt_local_array_bytes` to validate the signed address range
+and multiplication overflow before reserving zeroed stack storage. The helper
+does not allocate. LLVM emits a dynamic, 16-byte-aligned `alloca` at the declaration.
+Scopes containing runtime arrays save the stack on entry and register restoration
+before their defers/undos, so all deferred bodies run while the scope's arrays
+remain alive. Early exits use the same cleanup path; loops restore their body
+stack each iteration. The loop-expression wrapper also scopes header arrays.
+Generated C uses aligned byte VLAs within native lexical blocks, reserving one
+byte when the logical length is zero; loop headers get their own C block.
 Slices and raw pointers borrow this storage without transferring ownership.
+The [LLVM stack intrinsics](https://llvm.org/docs/LangRef.html#llvm-stacksave-intrinsic)
+provide scope-based reclamation rather than waiting for the function to return.
+
+Assigned-local collection visits deferred bodies as well as ordinary blocks.
+Otherwise a variable mutated only by a defer/undo can remain an SSA constant
+until the first emitted cleanup, losing accumulated changes across loop paths.
+Such locals must have slots from their declarations, including release builds.
+
 LLVM's C-style loop update block resets `block_terminated` on entry: an
 unconditional `again` or `break` in the body must not suppress update code in a
 separate control-flow block.

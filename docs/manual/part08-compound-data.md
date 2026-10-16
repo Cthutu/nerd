@@ -730,8 +730,12 @@ process :: fn (count: usize) {
 
 The length is captured once. All elements start zeroed; `.count` is immediately
 `count`, and `.size` and `.bytes` report the element storage size. The compiler
-allocates and releases storage automatically when the scope exits. There is no
-`.free()` or resize operation. Use slices to pass a view to another function,
+reserves the element storage on the stack, just as for constant-length local
+arrays. It remains alive through that scope's `defer` and applicable `undo`
+bodies, then is reclaimed on every way out of the scope. Each loop iteration
+reclaims its own local arrays; a loop-header array lives for the loop. There is
+no heap fallback, `.free()`, or resize operation. Runtime lengths must fit the
+available thread stack. Use slices to pass a view to another function,
 and keep any borrowed view within the array's lifetime. Runtime lengths are for
 local declarations; fields and function signatures still require constant array
 lengths or slice types.
