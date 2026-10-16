@@ -209,11 +209,18 @@ main :: fn () -> i32 {
 ```
 
 This returns `42`. `point` has type `^Point`, and `values` has type `^[2]i32`.
-These expressions create anonymous local storage; they do not allocate heap
-storage. Their addresses must stay within the lifetime of the enclosing scope.
+The compiler places these temporary values in anonymous local storage; they
+do not allocate heap storage. Their addresses must stay within the lifetime
+of the enclosing scope.
 
 The pointed-to type can also come from context. For example,
 `point: ^Point = ^{ x: 20, y: 22 }` supplies `Point` as the literal's type.
+
+Other temporary expressions are not generally addressable. The compiler
+rejects `^42`, `^(20 + 22)`, taking the address of a function's returned value,
+and taking the address of a tuple literal. Store a computed value in a variable
+first: for example, `answer := 20 + 22`, followed by `pointer := ^answer`.
+That pointer refers to the variable's storage and follows its lifetime.
 
 ## Pointer arithmetic and comparison
 
