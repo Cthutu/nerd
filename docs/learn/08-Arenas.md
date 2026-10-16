@@ -261,6 +261,11 @@ when several functions need to share its allocation position and storage.
 Passing `^arena` also lets a function initialize a caller's default-constructed
 arena when its first allocation is made.
 
+Copying an `arena` value copies its allocation position and storage information;
+it does not create independent backing storage or share updates to the position.
+Allocating through both copies can therefore hand out overlapping memory.
+Pass `^arena` to share an arena, and release its storage through its owner once.
+
 ## Storing strings in an arena
 
 The arena's `.pr(text)` method returns a string backed by that arena.
