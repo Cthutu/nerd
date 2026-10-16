@@ -4,7 +4,10 @@ The inventory is pinned to `cthutu/dev` revision
 `9ae32dd295241bd3889204537dfa476f222e753c`. All 33 message/framing/request-reply
 and Telnet scenarios have equivalent Nerd coverage.
 Covered means the observable contract is checked, rather than a literal copy of
-the original C test. Native Windows validation remains pending for every row.
+the original C test. Native Windows automated coverage now passes under both
+compiler builds, LLVM/C backends and debug/release targets; see the
+[16 October results](../validation/windows/results/20261016T083710Z-8b918d2c/README.md). Human desktop/Ctrl+C
+observations and long-duration resource measurements remain separate gates.
 
 The machine-readable [mapping](../tests/nexus/parity-map.json) is checked by
 `build/test_nexus.py`: referenced files/functions must exist, entries must be
@@ -71,8 +74,9 @@ parser's delayed delivery. Original-C interoperability checks both endpoint role
 The [bounded stress runner](../tests/nexus/README.md) adds repeated FIN/reset
 churn, concurrent TCP/Telnet streams, real slow-reader backpressure, exact send
 recovery and shutdown with partial input or pending output.
-Remaining validation: native Windows, long-duration soak and resource-growth
-measurements.
+Remaining validation: interactive Windows observations, long-duration soak and
+resource-growth measurements. Native Windows automated contracts and bounded
+stress pass; Linux-only fault injection remains explicitly skipped there.
 DNS and bracketed IPv6 URLs are planned extensions beyond the inspected source.
 The focused [timeout/nonblocking walkthrough](tutorials/nexus-timeouts.md)
 and `nexus-timeouts` example cover bounded receive, immediate would-block,

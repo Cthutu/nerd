@@ -1,0 +1,7 @@
+PASS native socket layout
+SKIP deterministic select interruption injection requires Linux
+PASS tests/network/main.n
+PASS tests/network/readiness.n
+PASS examples/network-readiness/network-readiness.n
+PASS examples/network-echo/network-echo.n
+PASS examples/network-datagram/network-datagram.n

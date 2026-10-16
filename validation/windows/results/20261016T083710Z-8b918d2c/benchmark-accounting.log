@@ -1,0 +1,1 @@
+Known child CPU and peak-memory accounting passed: {'wall_ns': 131726000, 'user_seconds': 0.078125, 'system_seconds': 0.046875, 'max_process_rss_bytes': 44982272, 'accounting_scope': 'compiler-process-only'}

@@ -1,5 +1,63 @@
 # Windows return handoff
 
+## Native Windows automation passed; manual observations pending — 2026-10-16
+
+Branch: **`std-library`**. Start and tested implementation:
+**`05c6e0235f622d8b184f1f0e872594d42160f628`**. The checkout was clean at
+start and source stayed unchanged throughout the run. No compiler, runtime or
+harness fixes were required; this return adds evidence and status documentation.
+
+**All 65 automated stages passed**, including both fresh compiler builds,
+1,200 fixture passes / zero failures / 15 platform skips per compiler, and
+304 LLVM/C differential fixtures at O0/O2 per compiler (two platform fixture
+skips plus the explicit Linux-PTY Dungeon skip). Network/Nexus pass all eight
+compiler/backend/target combinations. Thread sync, Raptor, capabilities,
+6,000-term expression-depth at jobs 1/4 under both compilers, scope-query and
+parallel front-end/output regressions, direct toolchain, temporary install,
+format workflow, build settings, Windows stdio and automated debugger/editor/
+adapter checks pass. Linux-only startup/select/short-I/O injection remains
+explicitly skipped, with original assertions unchanged.
+
+Nexus stress checks each cover 96 TCP and 96 Telnet completed connections,
+1,152 exact replies per protocol, FIN/reset churn, slot reuse, slow-reader
+backpressure, healthy-peer progress, exact recovery and pending-output/partial-
+input shutdown. Console automation uses CTRL_BREAK_EVENT. This is bounded stress,
+not long-duration resource-growth evidence or a human Ctrl+C observation.
+
+Host: Windows 11 Pro x64 build 26200; Threadripper PRO 5955WX, 16 physical / 32
+logical CPUs, Balanced power scheme. Clang/LLVM/LLDB 23.1.0; Python 3.14.7;
+MSVC inventory 14.51.36231; installed SDK libraries 10.0.22621.0 / 10.0.26100.0.
+Native link probes pass using discovery. No dependency, global compiler, editor
+extension or system-policy changes were made. Details and commands are retained
+in the [return report](20261016T083710Z-8b918d2c/README.md),
+[stage summary](20261016T083710Z-8b918d2c/SUMMARY.md), and
+[per-suite counts/skips](20261016T083710Z-8b918d2c/suite-counts.json).
+
+The accounting sanity check and five-sample worker sweep pass, with identical
+LLVM at jobs 1/2/4/8/16/auto across 14 workload/target cells. Jobs 16 covers the
+physical-core count. Auto has roughly 1.1% lower geometric-mean wall time, with
+mixed cell results and no 15% whole-build gain in any cell. Keep the one-job
+default. Windows CPU/peak working set cover Nerd only; wall time includes child
+tools. See [interpretation](20261016T083710Z-8b918d2c/BENCHMARK.md) and
+[raw measurements](20261016T083710Z-8b918d2c/benchmark.json). Whole-process-tree
+memory, long-duration Nexus resources, sanitizers and macOS are not established.
+
+**Manual checks are BLOCKED pending human observations.** All 48 Pixels/Dungeon/
+Triangle compiler/target/jobs/backend builds pass, but visible drawing, input,
+normal exit, generated-C visual parity, interactive VS Code debugging and Telnet
+Ctrl+C have not been observed in this session. The
+[manual checklist](20261016T083710Z-8b918d2c/MANUAL.md) and
+[prepared desktop matrix](20261016T083710Z-8b918d2c/desktop.json) record the boundary
+and how to complete it. Automated debugger probes do not replace editor use.
+
+Linux pickup: pull `std-library` and read this section and its linked report.
+This run changed no implementation, so no Windows fix needs a Linux regression
+rerun. Preserve the existing Linux injection/source-interoperability evidence;
+new implementation work should receive its appropriate Linux checks. Complete
+the manual observations, then continue sustained Nexus soak/resource-growth
+measurements and DNS/IPv6 work in `std.network` before extending Nexus URLs.
+Graph integration and broader cross-platform adoption remain open.
+
 ## Native Windows validation requested — 2026-10-14
 
 Pull **`std-library`** from its verified upstream (Linux remote:

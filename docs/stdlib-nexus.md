@@ -237,7 +237,10 @@ Linux LLVM and C output pass debug/release contracts, golden-wire C exchange,
 and TCP/UDP/Telnet exchanges against the unmodified pinned C implementation in both directions,
 including typed values, empty frames and empty datagrams. Deterministic short send/receive and
 would-block injection checks retry without duplication or loss. Native Windows
-validation of this slice remains pending.
+now passes the automated contract, parity, golden-wire and bounded stress matrix
+under both compiler builds, LLVM/C and debug/release targets; see the
+[16 October results](../validation/windows/results/20261016T083710Z-8b918d2c/README.md). Linux-only fault injection
+is skipped on Windows; interactive desktop/Ctrl+C observations remain pending.
 
 Run `python3 build/test_nexus.py` (also part of `just test`). Add `--release`
 and/or `--cgen` for the other configurations. To repeat the original-source
@@ -262,8 +265,9 @@ and UDP send check their original deadline after incomplete I/O, preventing
 readiness from extending a timeout indefinitely. Immediate calls preserve partial
 progress and return WouldBlock after an incomplete attempt.
 
-Remaining feature work: DNS/bracketed IPv6 URLs. Native Windows
-and long-duration soak/resource-growth validation remain pending.
+Remaining feature work: DNS/bracketed IPv6 URLs. Interactive Windows observations
+and long-duration soak/resource-growth validation remain pending. The automated
+native Windows matrix passes; see the dated results above.
 [Bounded stress checks](../tests/nexus/README.md) cover repeated connection
 churn, concurrent traffic, slow-reader recovery and shutdown under load. The focused
 [timeout/nonblocking walkthrough](tutorials/nexus-timeouts.md) demonstrates

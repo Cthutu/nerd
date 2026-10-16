@@ -1,0 +1,3 @@
+[PASS] entry-point integer widths, signedness, arguments and target modes
+[PASS] dynamic enum allocation, growth and reserve alignment at debug/release jobs 1/4
+Direct LLVM outputs, no-Clang execution, and doctor dependency checks passed

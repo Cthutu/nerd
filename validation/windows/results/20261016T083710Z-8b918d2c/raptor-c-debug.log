@@ -1,0 +1,15 @@
+[SKIP] Partial native startup injection requires Linux
+CGen debug tests/stdlib-raptor/contracts.n: passed
+CGen debug tests/stdlib-raptor/main-queue.n: passed
+CGen debug examples/task-main-thread/task-main-thread.n: passed
+CGen debug examples/task-serial-output/task-serial-output.n: passed
+CGen debug examples/task-parallel/task-parallel.n: passed
+CGen debug tests/stdlib-raptor/pending-create.n: rejected
+CGen debug tests/stdlib-raptor/nil-callback.n: rejected
+CGen release tests/stdlib-raptor/contracts.n: passed
+CGen release tests/stdlib-raptor/main-queue.n: passed
+CGen release examples/task-main-thread/task-main-thread.n: passed
+CGen release examples/task-serial-output/task-serial-output.n: passed
+CGen release examples/task-parallel/task-parallel.n: passed
+CGen release tests/stdlib-raptor/pending-create.n: rejected
+CGen release tests/stdlib-raptor/nil-callback.n: rejected

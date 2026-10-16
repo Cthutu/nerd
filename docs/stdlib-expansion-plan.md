@@ -230,8 +230,9 @@ Depends on relevant M0/M1 foundations; independent of M2–M4.
 
 Current slice: IPv4 TCP/UDP plus bounded readiness and monotonic deadlines,
 nonblocking TCP connection completion and a runnable deadline-bounded exchange
-are implemented. Readiness/connect LLVM/C debug/release checks pass on Linux;
-new native Windows checks remain pending. See the
+are implemented. Readiness/connect LLVM/C debug/release checks pass on Linux and in the
+[native Windows automated matrix](../validation/windows/results/20261016T083710Z-8b918d2c/README.md). Interactive
+Windows observations and broader adoption gates remain open. See the
 [contracts and remaining M5 work](std-network-foundation.md). M5 remains open for
 IPv6, resolution, remaining options/lifecycle contracts and broader validation.
 
@@ -267,9 +268,11 @@ The [source parity inventory](nexus-parity.md) maps all 22 core source scenarios
 to equivalent coverage; the Telnet slice below adds the remaining 11. TCP saturation,
 queued admission after disconnect, repeated reconnects, malformed-peer isolation,
 and delayed connect/receive are tested. Forced stale readiness exposed a timeout
-loop, now fixed; loop-temporary LLVM storage is also bounded. Native Windows and
-long-duration soak/resource-growth validation remain; milestone checkboxes stay
-open until their agreed checks pass.
+loop, now fixed; loop-temporary LLVM storage is also bounded. The
+[native Windows automated matrix](../validation/windows/results/20261016T083710Z-8b918d2c/README.md) passes under both
+compiler builds and both backends/target modes. Interactive Windows observations
+and long-duration soak/resource-growth validation remain; milestone checkboxes
+stay open until their agreed checks pass.
 
 ### M7 — Nexus protocol parity
 
@@ -294,9 +297,10 @@ The commented example and [Telnet tutorial](tutorials/nexus-telnet.md) explain
 terminal bytes, reply routes and optional bounds. Native Linux LLVM/C debug and
 release checks include scripted raw peers, deterministic short I/O, final replies
 followed by close, multi-client isolation and partial-line timeout recovery.
-Pinned C interoperability exercises both client/server roles. Native Windows,
-DNS/IPv6 URL extensions and long-duration soak/resource-growth validation remain
-outstanding. [Bounded stress checks](../tests/nexus/README.md) now exercise
+Pinned C interoperability exercises both client/server roles on Linux. The
+[native Windows automated matrix](../validation/windows/results/20261016T083710Z-8b918d2c/README.md) passes. Interactive
+Windows observations, DNS/IPv6 URL extensions and long-duration soak/resource-
+growth validation remain outstanding. [Bounded stress checks](../tests/nexus/README.md) now exercise
 TCP/Telnet churn, sustained traffic, slow readers and shutdown under load.
 The focused [receive timeout tutorial](tutorials/nexus-timeouts.md) and
 `nexus-timeouts` example cover bounded waits, immediate would-block and retry;

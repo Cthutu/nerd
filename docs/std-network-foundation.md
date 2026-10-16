@@ -169,6 +169,17 @@ IPv6, DNS/resolver ownership, receive/both-direction shutdown, socket options
 remain followups. There is no Nexus framing, wire-format change, protocol or
 scheduler dependency here. Do not declare M5 or cross-platform adoption complete.
 
+## Native Windows automated validation, 2026-10-16
+
+Implementation `05c6e023` passes all eight network compiler/backend/target
+combinations, including native layout, readiness, connection completion,
+deadlines and examples. Both compiler fixture suites and C differential gates
+also pass. See the [full results](../validation/windows/results/20261016T083710Z-8b918d2c/README.md). Linux-only
+interruption injection remains explicitly skipped on Windows. Interactive
+Windows observations and wider M5 extensions/adoption gates remain open.
+
+The following October 1 section records the earlier validation boundary.
+
 ## Validation, 2026-10-01
 
 Fresh Clang-built Windows compiler: direct LLVM and explicit generated-C checks
