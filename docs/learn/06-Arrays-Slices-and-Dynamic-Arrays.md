@@ -2,10 +2,9 @@
 
 [Previous: Plexes, Unions, Enums and Tuples](05-Plexes-Unions-Enums-and-Tuples.md)
 
-Arrays store sequences of elements of one type. A slice, written `[]T`, borrows
-a view of existing elements of type `T`. Dynamic arrays own storage that can
-grow. Choosing between them means choosing both how the length is managed and
-who owns the storage.
+Arrays store sequences of elements of one type. Slices borrow a view of existing
+elements. Dynamic arrays own storage that can grow. Choosing between them means
+choosing both how the length is managed and who owns the storage.
 
 | Type | Role |
 | --- | --- |
