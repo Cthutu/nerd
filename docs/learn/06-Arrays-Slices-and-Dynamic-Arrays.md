@@ -2,6 +2,8 @@
 
 [Previous: Plexes, Unions, Enums and Tuples](05-Plexes-Unions-Enums-and-Tuples.md)
 
+[Next: Pointers](07-Pointers.md)
+
 Arrays store sequences of elements of one type. Slices borrow a view of existing
 elements. Dynamic arrays own storage that can grow. Choosing between them means
 choosing both how the length is managed and who owns the storage.
