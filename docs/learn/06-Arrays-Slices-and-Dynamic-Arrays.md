@@ -25,7 +25,7 @@ storage:
 | Form | Element storage | Cleanup responsibility |
 | --- | --- | --- |
 | Constant-length `[N]T` | Inline, as part of the array value. Local variables normally use stack storage; array fields live inside their containing value. | No separate allocation to free. |
-| Local `[count]T` with a runtime length | A separate heap allocation, with its length fixed at declaration. | The compiler frees the allocation when the declaring scope exits. |
+| Local `[count]T` with a runtime length | Stack storage, with its length fixed at declaration. | Storage is reclaimed automatically when the declaring scope exits. |
 | `[]T` | Existing storage borrowed from another value or allocation. | The owner releases the storage; the slice must stay within its lifetime. |
 | `[..]T` | A separate heap allocation that can grow. | The program calls `.free()` after its last use of the storage. |
 
@@ -285,11 +285,17 @@ This returns `4`. The length is evaluated once when the array is declared,
 so changing `count` later does not change the array's three-element length.
 The elements start zeroed.
 
-Nerd allocates this runtime-sized local array's storage on the heap and releases
-it automatically when its scope exits. It has no resize or `.free()` operation.
-Borrowed slices must remain within its lifetime. Runtime lengths are supported
-for direct local declarations, while ordinary fixed-array fields and function
-signatures require constant lengths. Use a slice parameter for varying lengths.
+Nerd allocates this runtime-sized local array's elements on the stack, just as
+it does for constant-length local arrays. Storage is reclaimed automatically
+when the declaring scope exits, including when the function returns. It has no
+resize or `.free()` operation. The storage must fit the available thread stack;
+there is no fallback to heap allocation.
+
+Borrowed slices must remain within the array's lifetime. Returning a slice does
+not keep that stack storage alive, and returning the runtime-sized array itself
+is rejected by the compiler. Runtime lengths are supported for direct local
+declarations, while ordinary fixed-array fields and function signatures require
+constant lengths. Use a slice parameter for varying lengths.
 
 ## Dynamic arrays and cleanup
 
