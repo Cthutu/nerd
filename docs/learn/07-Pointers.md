@@ -2,6 +2,8 @@
 
 [Previous: Arrays, Slices and Dynamic Arrays](06-Arrays-Slices-and-Dynamic-Arrays.md)
 
+[Next: Arenas](08-Arenas.md)
+
 A pointer holds the address of a value. As in C, copying a pointer copies the
 address, and accessing the pointed-to value requires valid storage. Nerd uses
 `^` for pointer types, taking addresses, and dereferencing; its position tells
