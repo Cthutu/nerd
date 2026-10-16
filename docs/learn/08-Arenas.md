@@ -135,6 +135,12 @@ This returns `42`. Allocating more storage leaves `first` valid, including
 when the arena needs to grow. This differs from dynamic-array growth, which
 can move the array's elements.
 
+More generally, any valid pointer into a live arena allocation continues to
+refer to the same storage as more allocations are made. This includes pointers
+to fields and array elements within an allocation. Arena-allocated values can
+therefore hold pointers to one another without growth invalidating those
+pointers, provided the allocations they reference remain live.
+
 The current runtime reserves a 4 GiB virtual address range per arena and
 commits memory as needed. Reserving this range does not immediately consume
 4 GiB of physical memory. Requests that exceed the supported range fail at
@@ -224,6 +230,12 @@ initializes the new allocation before reading it.
 | `.restore(mark)` | Invalidates allocations after the mark. | Retained for reuse. |
 | `.reset()` | Invalidates all allocations. | Retained for reuse. |
 | `.done()` | Invalidates all allocations. | Released. |
+
+Pointers into an allocation remain valid until that allocation is invalidated.
+This applies equally to a pointer to the whole allocation and a pointer to a
+field or element inside it. `.reset()` and `.done()` invalidate all such pointers;
+`.restore(mark)` invalidates only pointers into allocations made after the mark.
+Pointers into allocations made before the mark remain valid after a restore.
 
 An owned arena does not automatically release its storage when its local
 variable goes out of scope. Call `.done()` after the last use of its values.
