@@ -277,6 +277,32 @@ This returns `1`. `Colour.Green` constructs the variant named `Green`. Its
 type is `Colour`. The comparison checks which variant the value holds, and
 `.as(i32)` converts the boolean result to `1` for `yes` or `0` for `no`.
 
+When the expected enum type is known, you can omit the type name and write
+`Green` instead of `Colour.Green`:
+
+```nerd
+Colour :: enum { Red Green Blue }
+
+get_colour :: fn () -> Colour {
+    return Green
+}
+
+is_green :: fn (colour: Colour) => colour == Green
+
+main :: fn () -> i32 {
+    colour: Colour = Green
+    return (is_green(Green) && colour == Green && get_colour() == Green).as(i32)
+}
+```
+
+This returns `1`. The variable annotation, function return type, and function
+parameter each supply `Colour` as the expected type. In comparisons such as
+`colour == Green`, the left operand supplies the type for the right operand.
+
+Use the qualified form when there is no enum type supplied by context:
+`colour := Colour.Green` lets the initialiser determine the variable's type.
+A bare `Green` does not select an enum just because one is defined nearby.
+
 ## Enums with payloads
 
 A variant can carry data. The enum records which variant is active, so the
