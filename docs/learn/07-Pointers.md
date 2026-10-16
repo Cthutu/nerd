@@ -250,22 +250,27 @@ does not compare the contents of the pointed-to values.
 ## Casting to and from void pointers
 
 `^void` holds an address without specifying a pointee type, like C's `void *`.
-Use `.as(^void)` to erase a pointer's element type and `.as(^T)` to give the
-address a specific pointer type again:
+A typed pointer converts implicitly to `^void` when that type is expected.
+Converting back to a typed pointer requires an explicit `.as(^T)` cast:
 
 ```nerd
 main :: fn () -> i32 {
     answer := 42
     pointer := ^answer
-    address := pointer.as(^void)
+    address: ^void = pointer
     restored := address.as(^i32)
     return restored^
 }
 ```
 
-This returns `42`. Both casts preserve the address. They do not allocate or
-copy the pointed-to value, convert its contents, or extend its lifetime.
-Here the original storage holds an `i32`, so restoring `^i32` is appropriate.
+This returns `42`. Assigning `pointer` to `address` implicitly converts `^i32`
+to `^void`; `.as(^void)` is not required. You can also write
+`address := pointer.as(^void)` when you want to choose that type explicitly
+without an annotation.
+
+Both conversions preserve the address. They do not allocate or copy the
+pointed-to value, convert its contents, or extend its lifetime. Here the
+original storage holds an `i32`, so restoring `^i32` is appropriate.
 
 A typed pointer can also be supplied directly where `^void` is expected:
 
