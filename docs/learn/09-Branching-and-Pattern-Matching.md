@@ -153,6 +153,10 @@ This returns `42`. The expression after `on`, called the **subject** or
 only the first matching branch runs. `1, 2` means either pattern selects the
 same body. Use `else` for the fallback and place it last.
 
+A value comparison pattern can start with an operator such as `<`, `>=`, or
+`==`. The operator is optional: when omitted, `==` is assumed. For example,
+`0 => 0` means the same as `== 0 => 0`, and `1, 2` means `== 1, == 2`.
+
 Write each branch on its own line, especially when its pattern begins with a
 comparison operator. This separates the next branch's pattern from the
 previous branch's expression.
