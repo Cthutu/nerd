@@ -220,7 +220,7 @@ Assignment operators are:
 | `/=`                       | divide, then assign      |
 | `%=`                       | modulo, then assign      |
 | `&=`                       | bitwise and, then assign |
-| `^=`                       | bitwise xor, then assign |
+| `~=`                       | bitwise xor, then assign |
 | <code>&#124;=</code>       | bitwise or, then assign  |
 | `&&=`                      | logical and, then assign |
 | <code>&#124;&#124;=</code> | logical or, then assign  |

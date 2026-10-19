@@ -185,8 +185,10 @@ main :: fn () -> i32 {
 
 Use prefix `^` to take an address and postfix `^` to dereference.
 Postfix operations can be chained without parentheses: `ptr^[i]` indexes the
-dereferenced value and is equivalent to `(ptr^)[i]`. Write spaces around
-bitwise XOR, such as `flags ^ mask`.
+dereferenced value and is equivalent to `(ptr^)[i]`. Likewise, `callback^(arg)`
+calls a dereferenced function, `ptr^^` dereferences twice, and `ptr^ - 1`
+subtracts from the dereferenced value. Bitwise XOR uses binary `~`, as in
+`flags ~ mask`; prefix `~` remains bitwise NOT.
 
 ## Nil
 

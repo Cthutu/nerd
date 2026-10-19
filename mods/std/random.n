@@ -21,9 +21,9 @@ random_step :: fn () -> u64 {
 
     value := random_state
 
-    value        ^= value >> 12
-    value        ^= value << 25
-    value        ^= value >> 27
+    value        ~= value >> 12
+    value        ~= value << 25
+    value        ~= value >> 27
     random_state = value
     return value * RANDOM_MULTIPLIER
 }

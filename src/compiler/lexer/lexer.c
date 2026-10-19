@@ -1153,27 +1153,11 @@ internal bool lexer_lex_one_token(NerdSource source,
         return true;
     }
 
-    if (c == '^') {
-        if (i + 2 < source_code.count && source_code.data[i + 1] == '=' &&
-            source_code.data[i + 2] == '>') {
-            array_push(lexer->tokens,
-                       (Token){.kind = TK_Caret, .offset = (u32)i});
-            *io_index = i + 1;
-        } else if (i + 1 < source_code.count &&
-                   source_code.data[i + 1] == '=' &&
-                   !(lexer->mode == LEXER_MODE_FORMAT && i > 0 &&
-                     source_code.data[i - 1] != ' ' &&
-                     source_code.data[i - 1] != '\t' &&
-                     source_code.data[i - 1] != '\n' &&
-                     source_code.data[i - 1] != '\r')) {
-            array_push(lexer->tokens,
-                       (Token){.kind = TK_CaretEqual, .offset = (u32)i});
-            *io_index = i + 2;
-        } else {
-            array_push(lexer->tokens,
-                       (Token){.kind = TK_Caret, .offset = (u32)i});
-            *io_index = i + 1;
-        }
+    if (c == '~' && i + 1 < source_code.count &&
+        source_code.data[i + 1] == '=') {
+        array_push(lexer->tokens,
+                   (Token){.kind = TK_TildeEqual, .offset = (u32)i});
+        *io_index = i + 2;
         return true;
     }
 
@@ -1481,7 +1465,7 @@ usize lex_token_end_offset(const Lexer* lexer, const Token* token)
     case TK_PercentEqual:
     case TK_AmpEqual:
     case TK_PipeEqual:
-    case TK_CaretEqual:
+    case TK_TildeEqual:
     case TK_AmpAmp:
     case TK_PipePipe:
     case TK_LessEqual:

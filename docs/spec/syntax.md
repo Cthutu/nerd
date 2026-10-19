@@ -311,10 +311,10 @@ binary-expression
 
 assignment-operator
                 ::= '=' | '+=' | '-=' | '*=' | '/=' | '%='
-                  | '&=' | '^=' | '|=' | '<<=' | '>>='
+                  | '&=' | '~=' | '|=' | '<<=' | '>>='
                   | '&&=' | '||='
 
-binary-operator ::= '||' | '&&' | '|' | '^' | '&'
+binary-operator ::= '||' | '&&' | '|' | '~' | '&'
                   | '==' | '!=' | '<' | '<=' | '>' | '>=' | 'in'
                   | '<<' | '>>' | '+' | '-' | '*' | '/' | '%' | '\\'
 ```
@@ -347,6 +347,7 @@ prefix-expression
                 ::= primary
                   | '-' prefix-expression
                   | '!' prefix-expression
+                  | '~' prefix-expression
                   | '^' prefix-expression
 
 postfix-expression
@@ -384,10 +385,13 @@ The bracket postfix is intentionally ambiguous between indexing and explicit
 generic arguments until semantic analysis knows whether the target is a generic
 function or method.
 
-Because `^` is both postfix dereference and infix bitwise XOR, attachment to the
-left operand disambiguates a dereference followed by another postfix operation.
-For example, `ptr^[i]` parses as `(ptr^)[i]`, while `value ^ [i]` parses as a
-bitwise XOR whose right operand is an array literal.
+In expressions, prefix `^` takes an address and postfix `^` always
+dereferences. Postfix operations can follow it directly: `ptr^[i]` is
+`(ptr^)[i]`, `callback^(arg)` calls the dereferenced function, and `ptr^^`
+dereferences twice. Binary `~` is bitwise XOR and prefix `~` is bitwise NOT;
+`a ~~b` therefore parses as `a ~ (~b)`. No whitespace rule is needed to
+distinguish XOR from dereference. `ptr^=value` is dereference followed by
+ordinary assignment, while `bits~=mask` is XOR assignment.
 
 `interpolated-string` starts with `$"` and is parsed from the token stream
 described in [`lexer.md`](lexer.md#interpolated-strings). A `+"..."` string
@@ -400,11 +404,11 @@ From lowest binding power to highest:
 
 | Operators                                                                                                                 | Associativity |
 | ------------------------------------------------------------------------------------------------------------------------- | ------------- |
-| `=`, `+=`, `-=`, `*=`, `/=`, `%=`, `&=`, `^=`, `|=`, `<<=`, `>>=`, `&&=`, `||=`                                           | Right         |
+| `=`, `+=`, `-=`, `*=`, `/=`, `%=`, `&=`, `~=`, `|=`, `<<=`, `>>=`, `&&=`, `||=`                                           | Right         |
 | `||`                                                                                                                      | Left          |
 | `&&`                                                                                                                      | Left          |
 | `|`                                                                                                                       | Left          |
-| `^`                                                                                                                       | Left          |
+| `~`                                                                                                                       | Left          |
 | `&`                                                                                                                       | Left          |
 | `==`, `!=`                                                                                                                | Left          |
 | `<`, `<=`, `>`, `>=`, `in`                                                                                                | Left          |
@@ -412,7 +416,7 @@ From lowest binding power to highest:
 | `+`, `-`                                                                                                                  | Left          |
 | `*`, `/`, `%`                                                                                                             | Left          |
 | Calls, indexing, slicing, field access, tuple field access, casts, plex literals, `with` updates, postfix `^` dereference | Left/postfix  |
-| Prefix `-`, `!`, `^` address-of                                                                                           | Prefix        |
+| Prefix `-`, `!`, `~` bitwise NOT, `^` address-of                                                                                           | Prefix        |
 
 ## `on` Expressions
 

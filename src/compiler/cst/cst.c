@@ -816,7 +816,7 @@ internal bool cst_starts_assignment(const CstParseState* state)
     case TK_SlashEqual:
     case TK_PercentEqual:
     case TK_AmpEqual:
-    case TK_CaretEqual:
+    case TK_TildeEqual:
     case TK_PipeEqual:
     case TK_AmpAmpEqual:
     case TK_PipePipeEqual:
@@ -838,7 +838,7 @@ internal bool cst_token_is_assignment_operator(TokenKind kind)
     case TK_SlashEqual:
     case TK_PercentEqual:
     case TK_AmpEqual:
-    case TK_CaretEqual:
+    case TK_TildeEqual:
     case TK_PipeEqual:
     case TK_AmpAmpEqual:
     case TK_PipePipeEqual:
@@ -880,7 +880,7 @@ cst_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp)
     case TK_SlashEqual:
     case TK_PercentEqual:
     case TK_AmpEqual:
-    case TK_CaretEqual:
+    case TK_TildeEqual:
     case TK_PipeEqual:
     case TK_AmpAmpEqual:
     case TK_PipePipeEqual:
@@ -897,6 +897,7 @@ cst_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp)
     case TK_LBracket:
     case TK_LBrace:
     case TK_with:
+    case TK_Caret:
     case TK_Bang:
     case TK_Question:
         *out_left_bp  = CST_BP_PREFIX + 10;
@@ -933,7 +934,7 @@ cst_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp)
         *out_left_bp  = CST_BP_BITWISE_AND;
         *out_right_bp = CST_BP_BITWISE_AND + 1;
         return true;
-    case TK_Caret:
+    case TK_Tilde:
         *out_left_bp  = CST_BP_BITWISE_XOR;
         *out_right_bp = CST_BP_BITWISE_XOR + 1;
         return true;
@@ -1000,46 +1001,6 @@ internal bool cst_token_is_adjacent_to_previous(const CstParseState* state,
 internal bool cst_postfix_token_can_cross_statement_boundary(TokenKind kind)
 {
     return kind == TK_with || kind == TK_Dot;
-}
-
-internal bool cst_caret_is_postfix_deref(const CstParseState* state)
-{
-    if (cst_token_is_adjacent_to_previous(state, state->token_index) &&
-        cst_peek_kind_at(state, 1) == TK_LBracket) {
-        return true;
-    }
-    if (state->token_index >= array_count(state->lexer->tokens)) {
-        return true;
-    }
-    if (state->token_index + 1 < array_count(state->lexer->tokens) &&
-        cst_token_has_newline_before(state, state->token_index + 1)) {
-        return true;
-    }
-    if ((state->stop_before_block_lbrace || state->stop_before_for_body) &&
-        cst_peek_kind_at(state, 1) == TK_LBrace) {
-        return true;
-    }
-    return !cst_token_starts_expression(cst_peek_kind_at(state, 1));
-}
-
-internal bool cst_consumed_caret_is_postfix_deref(const CstParseState* state)
-{
-    if (state->token_index > 0 &&
-        cst_token_is_adjacent_to_previous(state, state->token_index - 1) &&
-        cst_current_token(state).kind == TK_LBracket) {
-        return true;
-    }
-    if (state->token_index >= array_count(state->lexer->tokens)) {
-        return true;
-    }
-    if (cst_token_has_newline_before(state, state->token_index)) {
-        return true;
-    }
-    if ((state->stop_before_block_lbrace || state->stop_before_for_body) &&
-        cst_current_token(state).kind == TK_LBrace) {
-        return true;
-    }
-    return !cst_token_starts_expression(cst_current_token(state).kind);
 }
 
 //------------------------------------------------------------------------------
@@ -3983,8 +3944,7 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
             break;
         }
 
-        bool caret_is_postfix =
-            token.kind == TK_Caret && cst_caret_is_postfix_deref(state);
+        bool caret_is_postfix = token.kind == TK_Caret;
         bool detached_postfix =
             token.kind == TK_Bang &&
             !cst_token_is_adjacent_to_previous(state, state->token_index);
@@ -4398,8 +4358,7 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
             continue;
         }
 
-        if (token.kind == TK_Caret &&
-            cst_consumed_caret_is_postfix_deref(state)) {
+        if (token.kind == TK_Caret) {
             if (!cst_emit_node(state,
                                (CstNode){
                                    .kind        = CK_Deref,
@@ -4451,7 +4410,7 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
         case TK_Amp:
             kind = CK_BitwiseAnd;
             break;
-        case TK_Caret:
+        case TK_Tilde:
             kind = CK_BitwiseXor;
             break;
         case TK_Pipe:

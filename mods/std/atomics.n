@@ -108,7 +108,7 @@ pub impl [T] atomic[T] {
                          value : T,
                          order :: AtomicOrder = SequentiallyConsistent) -> T {
         previous : T = self^
-        self^ ^= value
+        self^ ~= value
         return previous
     }
 

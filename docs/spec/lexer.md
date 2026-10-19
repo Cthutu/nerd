@@ -119,8 +119,9 @@ For example, `$"Hello {name}"` emits this token shape:
 | `TK_PipeEqual`       | `|=`            |                                                           |
 | `TK_PipePipe`        | `||`            |                                                           |
 | `TK_PipePipeEqual`   | `||=`           | Recognised before `||` and `|=`.                          |
-| `TK_Caret`           | `^`             |                                                           |
-| `TK_CaretEqual`      | `^=`            |                                                           |
+| `TK_Caret`           | `^`             | Pointer notation; never combined with `=`.                 |
+| `TK_Tilde`           | `~`             | Prefix bitwise NOT or infix bitwise XOR.                   |
+| `TK_TildeEqual`      | `~=`            | Recognised before `~`.                                    |
 | `TK_Less`            | `<`             |                                                           |
 | `TK_LessEqual`       | `<=`            |                                                           |
 | `TK_ShiftLeft`       | `<<`            |                                                           |

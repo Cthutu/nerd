@@ -30,8 +30,8 @@ matrix_green_faint  :: rgb(0, 55, 24)
 matrix_glyph :: fn (x: u32, y: u32, frame_number: u64) -> u32 {
     value := x.as(u64) * 131 + y.as(u64) * 977 + frame_number * 17
 
-    value ^= value >> 7
-    value ^= value << 11
+    value ~= value >> 7
+    value ~= value << 11
     return on (value % 6) {
         0     => '0'
         1     => '1'

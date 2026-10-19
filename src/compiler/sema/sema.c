@@ -22008,7 +22008,7 @@ internal bool sema_binary_result_type(const Lexer* lexer,
                 op = s("&");
                 break;
             case AK_BitwiseXor:
-                op = s("^");
+                op = s("~");
                 break;
             case AK_BitwiseOr:
                 op = s("|");

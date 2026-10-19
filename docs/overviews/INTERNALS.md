@@ -509,11 +509,16 @@ passes a pointer to that slice value. Inside the method, the receiver therefore
 retains its declared pointer type; `self^[i]` explicitly indexes the slice,
 while `self[i]` uses Nerd's ordinary pointer-indexing semantics.
 
-The AST and CST Pratt parsers classify a caret attached to its left operand and
-followed by `[` as postfix dereference rather than bitwise XOR. This allows an
-index or slice postfix to follow immediately, as in `ptr^[i]`, while preserving
-spaced `lhs ^ rhs` as bitwise XOR. The formatter emits the chained postfix form
-without redundant parentheses.
+The AST and CST Pratt parsers use binary `~` for XOR and prefix `~` for bitwise
+NOT. XOR retains its former binding power and left associativity; `~=` has
+its own `TK_TildeEqual` token and lowers to the existing XOR assignment path,
+including atomic read-modify-write operations. Both parsers treat an expression
+caret as an unconditional postfix dereference when there is a left operand.
+This removes the old lookahead/attachment rules, allowing `p^ - 1`, `p^^`,
+`p^[i]` and `callback^(arg)` without extra parentheses. The lexer always splits
+`^=` into caret and ordinary assignment, in compiler and formatter modes;
+`p^=>...` similarly becomes dereference followed by the branch arrow. The
+formatter prints binary `~` with spaces and prefix `~` without an operand gap.
 
 When an expression-bodied function omits its return annotation, semantic
 analysis records any postfix `?` failure channel while inferring the body. It

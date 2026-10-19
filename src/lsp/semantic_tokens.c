@@ -548,7 +548,8 @@ internal bool lsp_semantic_token_type(const LspDeclarationView* view,
     case TK_AmpAmpEqual:
     case TK_PipeEqual:
     case TK_PipePipeEqual:
-    case TK_CaretEqual:
+    case TK_Tilde:
+    case TK_TildeEqual:
     case TK_Dot:
     case TK_LBracket:
     case TK_RBracket:
