@@ -19,16 +19,16 @@ score_pair :: fn (pair: (i32, i32)) -> i32 {
 score_point :: fn (point: Point) -> i32 {
     fallback :: "fallback"
     return on point {
-        { name: "origin", x: x } => x
-        { x: 3, y: y } => y * 10
-        { name: for fallback } => 50
+        { name: "origin", x: x, ... } => x
+        { x: 3, y: y, ... } => y * 10
+        { name: for fallback, ... } => 50
         else => 0
     }
 }
 
 name_of :: fn (point: Point) -> string {
     return on point {
-        { name: name } => name
+        { name: name, ... } => name
         else => ""
     }
 }

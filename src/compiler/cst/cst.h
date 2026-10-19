@@ -388,6 +388,7 @@ typedef struct {
     u32            b;
     u32            c;
     bool error_postfix; // Branch pattern followed by a result-error !.
+    bool has_rest;      // Plex pattern ends with ... .
 } CstPattern;
 
 typedef struct {

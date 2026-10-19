@@ -261,6 +261,9 @@ bool error_0304_missing_plex_fields(NerdSource source,
                                     ErrorSpan  span,
                                     string     missing_fields,
                                     u32        missing_field_count);
+bool error_0304_missing_plex_pattern_fields(NerdSource source,
+                                            ErrorSpan  span,
+                                            string     missing_fields);
 bool error_0304_unknown_record_literal_field(NerdSource source,
                                              ErrorSpan  span,
                                              string     record_kind,

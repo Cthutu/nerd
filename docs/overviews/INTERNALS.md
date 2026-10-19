@@ -1519,3 +1519,18 @@ must locate the containing value's storage and evaluate the owner once before
 loading, masking and storing the field. Command fixtures 281 and 326 now assert
 completion and observable side effects, so an implicit early return cannot make
 their success checks disappear.
+
+Plex `on` patterns record an explicit `has_rest` flag in AST/CST when their
+field list ends with `...`. Sema requires all declared fields unless this flag
+is set, rejects duplicates independently of the marker, and recursively checks
+nested plexes and enum payloads. `for expression`, field binders, field shorthand,
+`field: _`, and branch-level `as` keep their existing meanings. Destructuring
+bindings are unchanged. The formatter emits the trailing marker canonically.
+AST/CST field lists and HIR pattern child lists are assembled locally before
+being appended to shared storage, keeping each parent's range contiguous across
+recursive patterns. Typed nested plex qualifiers receive the enclosing scope
+and are marked as type syntax. LLVM named enum payload matching uses the record
+field extraction helper so physical storage reordering preserves field identity.
+C emission uses each HIR child's field-name marker to distinguish matching a
+whole plex enum payload from matching a named payload field, independently of
+whether the variant declaration used braces or parentheses.

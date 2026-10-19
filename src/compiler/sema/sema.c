@@ -8855,6 +8855,10 @@ internal bool sema_resolve_pattern_refs(const Lexer* lexer,
         }
         return true;
     case APK_Plex:
+        if (pattern->c != 0) {
+            sema_mark_type_expr_nodes_in_scope(
+                ast, sema, pattern->c - 1, scope_index);
+        }
         for (u32 i = 0; i < pattern->b; ++i) {
             if (!sema_resolve_pattern_refs(
                     lexer,
@@ -17351,16 +17355,26 @@ internal bool sema_check_on_pattern_type(const Lexer* lexer,
                             lexer, sema, &temp_arena, qualified_type));
                 }
             }
-            const SemaType* plex = &sema->types[value_type];
+            const SemaType plex = sema->types[value_type];
             for (u32 i = 0; i < pattern->b; ++i) {
                 const AstPlexPatternField* field =
                     &ast->pattern_fields[pattern->a + i];
+                for (u32 previous = 0; previous < i; ++previous) {
+                    if (ast->pattern_fields[pattern->a + previous]
+                            .symbol_handle == field->symbol_handle) {
+                        return error_0304_type_mismatch(
+                            lexer->source,
+                            sema_token_span(lexer, field->token_index),
+                            s("unique plex pattern field"),
+                            lex_symbol(lexer, field->symbol_handle));
+                    }
+                }
                 u32 field_type = sema_no_type();
-                for (u32 j = 0; j < plex->param_count; ++j) {
-                    if (sema->type_param_symbols[plex->first_param_type + j] ==
+                for (u32 j = 0; j < plex.param_count; ++j) {
+                    if (sema->type_param_symbols[plex.first_param_type + j] ==
                         field->symbol_handle) {
                         field_type =
-                            sema->type_param_types[plex->first_param_type + j];
+                            sema->type_param_types[plex.first_param_type + j];
                         break;
                     }
                 }
@@ -17370,11 +17384,11 @@ internal bool sema_check_on_pattern_type(const Lexer* lexer,
                     if (field_name.count > 1 && field_name.data[0] == '_') {
                         string unprefixed_field_name = string_from(
                             field_name.data + 1, field_name.count - 1);
-                        for (u32 j = 0; j < plex->param_count; ++j) {
-                            string plex_field_name =
-                                lex_symbol(lexer,
-                                           sema->type_param_symbols
-                                               [plex->first_param_type + j]);
+                        for (u32 j = 0; j < plex.param_count; ++j) {
+                            string plex_field_name = lex_symbol(
+                                lexer,
+                                sema->type_param_symbols[plex.first_param_type +
+                                                         j]);
                             if (string_eq(plex_field_name,
                                           unprefixed_field_name)) {
                                 suggested_field_name = plex_field_name;
@@ -17395,6 +17409,37 @@ internal bool sema_check_on_pattern_type(const Lexer* lexer,
                                                 field_type,
                                                 false)) {
                     return false;
+                }
+            }
+            if (!pattern->has_rest) {
+                StringBuilder missing = {0};
+                sb_init(&missing, &temp_arena);
+                u32 missing_count = 0;
+                for (u32 j = 0; j < plex.param_count; ++j) {
+                    u32 symbol =
+                        sema->type_param_symbols[plex.first_param_type + j];
+                    bool found = false;
+                    for (u32 i = 0; i < pattern->b; ++i) {
+                        if (ast->pattern_fields[pattern->a + i].symbol_handle ==
+                            symbol) {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        if (missing_count++ > 0) {
+                            sb_append_cstr(&missing, ", ");
+                        }
+                        sb_append_char(&missing, '`');
+                        sb_append_string(&missing, lex_symbol(lexer, symbol));
+                        sb_append_char(&missing, '`');
+                    }
+                }
+                if (missing_count > 0) {
+                    return error_0304_missing_plex_pattern_fields(
+                        lexer->source,
+                        sema_pattern_span(lexer, pattern),
+                        sb_to_string(&missing));
                 }
             }
             return true;

@@ -7122,18 +7122,13 @@ internal LlvmValue llvm_emit_pattern_condition(LlvmFunctionContext* ctx,
                         return (LlvmValue){0};
                     }
 
-                    string variant_payload_type_string =
-                        llvm_type_string(ctx, variant_payload_type);
-                    child_value = llvm_temp(ctx);
-                    sb_format(ctx->sb,
-                              "  " STRINGP " = extractvalue " STRINGP
-                              " " STRINGP ", %u\n",
-                              STRINGV(child_value),
-                              STRINGV(variant_payload_type_string),
-                              STRINGV(variant_payload.value),
-                              field_index);
-                    child_type = llvm_record_field_type(
-                        ctx->sema, variant_payload_type, field_index);
+                    LlvmValue field = llvm_extract_record_field(
+                        ctx, variant_payload, field_index);
+                    if (!field.ok) {
+                        return (LlvmValue){0};
+                    }
+                    child_value = field.value;
+                    child_type  = field.type_index;
                 }
                 if (!payload_is_tuple &&
                     llvm_type_is_record(ctx->sema, variant_payload_type) &&

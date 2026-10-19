@@ -10,7 +10,7 @@ Event :: enum {
 
 score :: fn (event: Event) -> i32 {
     return on event {
-        Resized { width } => width.as(i32)
+        Resized { width, ... } => width.as(i32)
         Closed => 0
     }
 }

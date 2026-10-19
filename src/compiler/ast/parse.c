@@ -2248,8 +2248,10 @@ ast_emit_pattern(AstParseState* state, AstPattern pattern, u32* out_pattern)
     return true;
 }
 
-internal bool
-ast_parse_plex_pattern(AstParseState* state, u32 type_node, u32* out_pattern)
+internal bool ast_parse_plex_pattern_fields(AstParseState* state,
+                                            u32            type_node,
+                                            u32*           out_pattern,
+                                            Array(AstPlexPatternField) * fields)
 {
     AstToken open = state->token;
     ASSERT(open.kind == TK_LBrace, "Expected plex pattern");
@@ -2260,9 +2262,26 @@ ast_parse_plex_pattern(AstParseState* state, u32 type_node, u32* out_pattern)
                                          TK_EOF);
     }
 
-    u32 first_field = (u32)array_count(state->pattern_fields);
-    u32 field_count = 0;
+    u32  field_count = 0;
+    bool has_rest    = false;
     while (state->token.kind != TK_RBrace) {
+        if (state->token.kind == TK_Ellipsis) {
+            has_rest = true;
+            if (!ast_next_token(state)) {
+                return false;
+            }
+            if (state->token.kind == TK_Comma && !ast_next_token(state)) {
+                return false;
+            }
+            if (state->token.kind != TK_RBrace) {
+                return error_0203_expected_token(
+                    state->lexer->source,
+                    ast_token_span(state, &state->token),
+                    TK_RBrace,
+                    state->token.kind);
+            }
+            break;
+        }
         if (state->token.kind != TK_Symbol) {
             return error_0203_expected_token(
                 state->lexer->source,
@@ -2297,7 +2316,7 @@ ast_parse_plex_pattern(AstParseState* state, u32 type_node, u32* out_pattern)
                 return false;
             }
         }
-        array_push(state->pattern_fields,
+        array_push(*fields,
                    (AstPlexPatternField){
                        .token_index   = field.token_index,
                        .symbol_handle = field.value.symbol_handle,
@@ -2349,15 +2368,32 @@ ast_parse_plex_pattern(AstParseState* state, u32 type_node, u32* out_pattern)
         !ast_next_token(state)) {
         return false;
     }
+    // Nested patterns append their own fields first. Publish this pattern's
+    // fields together so its range remains contiguous.
+    u32 first_field = (u32)array_count(state->pattern_fields);
+    for (u32 i = 0; i < field_count; ++i) {
+        array_push(state->pattern_fields, (*fields)[i]);
+    }
     return ast_emit_pattern(state,
                             (AstPattern){
                                 .kind        = APK_Plex,
                                 .token_index = open.token_index,
                                 .a           = first_field,
                                 .b           = field_count,
+                                .has_rest    = has_rest,
                                 .c = type_node == U32_MAX ? 0 : type_node + 1,
                             },
                             out_pattern);
+}
+
+internal bool
+ast_parse_plex_pattern(AstParseState* state, u32 type_node, u32* out_pattern)
+{
+    Array(AstPlexPatternField) fields = {0};
+    bool ok =
+        ast_parse_plex_pattern_fields(state, type_node, out_pattern, &fields);
+    array_free(fields);
+    return ok;
 }
 
 internal bool ast_parse_tuple_pattern(AstParseState* state, u32* out_pattern)

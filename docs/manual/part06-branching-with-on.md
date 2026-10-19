@@ -151,6 +151,29 @@ on details {
 }
 ```
 
+## Plex patterns
+
+A plex pattern must mention every field, or explicitly ignore the rest with
+trailing `...`. For a plex with fields `x`, `y`, and `name`:
+
+```nerd
+on point {
+    { x: for wanted_x, y: height, name: _ } => handle(height)
+    { x: 0, ... } as matched => handle(matched.y)
+    else => fallback()
+}
+```
+
+`x: for wanted_x` compares with an existing value. `y: height` binds a new
+branch-local name; `y` would bind the field as `y`. `name: _` ignores that field.
+`...` ignores every field not listed, and `as matched` binds the whole subject.
+The rules also apply inside nested plex patterns and named enum payload patterns.
+
+Adding a field makes complete patterns require an update. Patterns ending with
+`...` continue to ignore the additional field. Even with `...`, listed fields
+must exist and cannot be repeated. An empty `{}` pattern is complete only for
+an empty plex; use `{ ... }` to ignore all fields of any plex.
+
 ## Pattern Binders
 
 Patterns can bind values for use in a branch:

@@ -304,6 +304,25 @@ bool error_0304_integer_used_as_pointer(NerdSource source,
     return false;
 }
 
+bool error_0304_missing_plex_pattern_fields(NerdSource source,
+                                            ErrorSpan  span,
+                                            string     missing_fields)
+{
+    ErrorInfo error =
+        error_init(source, span, "Plex pattern is missing fields");
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This pattern does not mention every field");
+    error_add_note(&error, "Missing fields: " STRINGP, STRINGV(missing_fields));
+    error_add_help(
+        &error,
+        "Match or bind each field, use `field: _` to ignore a field, "
+        "or add trailing `...` to ignore all remaining fields.");
+    error_render(&error);
+    return false;
+}
+
 bool error_0304_missing_plex_fields(NerdSource source,
                                     ErrorSpan  span,
                                     string     missing_fields,

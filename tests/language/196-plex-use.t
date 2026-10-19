@@ -49,7 +49,7 @@ set_wide :: fn (aligned: ^Aligned) {
 
 read_wide :: fn (container: Container) -> i32 {
     return on container {
-        { wide: wide } => wide.as(i32)
+        { wide: wide, ... } => wide.as(i32)
         else => 0
     }
 }

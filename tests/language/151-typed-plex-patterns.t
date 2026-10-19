@@ -18,8 +18,8 @@ Key :: enum {
 
 score :: fn (event: Event) -> i32 {
     return on event {
-        KeyDown(KeyEvent { keycode: Escape }) => 1
-        KeyDown(KeyEvent { keycode: Other }) => 2
+        KeyDown(KeyEvent { keycode: Escape, ... }) => 1
+        KeyDown(KeyEvent { keycode: Other, ... }) => 2
         else => 0
     }
 }
@@ -58,10 +58,10 @@ type type.1 = KeyEvent
 type type.2 = Key
 func fn.0(event: Event) -> i32 {
   return i32 on Event local.0(event) {
-    enum_variant(KeyDown, value(Key Escape)) => {
+    enum_variant(KeyDown, plex(keycode: enum_variant(Escape))) => {
       expr i32 1
     }
-    enum_variant(KeyDown, value(Key Other)) => {
+    enum_variant(KeyDown, plex(keycode: enum_variant(Other))) => {
       expr i32 2
     }
     else => {
@@ -113,38 +113,32 @@ declare void @$prn_empty()
 
 define internal i32 @fn.0({ i64, i256 } %event) {
   %t4 = alloca i256
-  %t16 = alloca i256
+  %t13 = alloca i256
   %t0 = extractvalue { i64, i256 } %event, 0
   %t1 = icmp eq i64 %t0, 0
   %t2 = extractvalue { i64, i256 } %event, 1
   store i256 %t2, ptr %t4
   %t3 = load { { i64, i8 }, i32, i32 }, ptr %t4
   %t5 = extractvalue { { i64, i8 }, i32, i32 } %t3, 0
-  %t6 = insertvalue { i64, i8 } poison, i64 41, 0
-  %t7 = insertvalue { i64, i8 } %t6, i8 0, 1
-  %t8 = extractvalue { i64, i8 } %t5, 0
-  %t9 = extractvalue { i64, i8 } %t7, 0
-  %t10 = icmp eq i64 %t8, %t9
-  %t11 = and i1 %t1, %t10
-  br i1 %t11, label %on.body.1, label %on.next.2
+  %t6 = extractvalue { i64, i8 } %t5, 0
+  %t7 = icmp eq i64 %t6, 41
+  %t8 = and i1 %t1, %t7
+  br i1 %t8, label %on.body.1, label %on.next.2
 on.body.1:
   br label %on.value.3
 on.value.3:
   br label %on.end.0
 on.next.2:
-  %t12 = extractvalue { i64, i256 } %event, 0
-  %t13 = icmp eq i64 %t12, 0
-  %t14 = extractvalue { i64, i256 } %event, 1
-  store i256 %t14, ptr %t16
-  %t15 = load { { i64, i8 }, i32, i32 }, ptr %t16
-  %t17 = extractvalue { { i64, i8 }, i32, i32 } %t15, 0
-  %t18 = insertvalue { i64, i8 } poison, i64 42, 0
-  %t19 = insertvalue { i64, i8 } %t18, i8 0, 1
-  %t20 = extractvalue { i64, i8 } %t17, 0
-  %t21 = extractvalue { i64, i8 } %t19, 0
-  %t22 = icmp eq i64 %t20, %t21
-  %t23 = and i1 %t13, %t22
-  br i1 %t23, label %on.body.4, label %on.next.5
+  %t9 = extractvalue { i64, i256 } %event, 0
+  %t10 = icmp eq i64 %t9, 0
+  %t11 = extractvalue { i64, i256 } %event, 1
+  store i256 %t11, ptr %t13
+  %t12 = load { { i64, i8 }, i32, i32 }, ptr %t13
+  %t14 = extractvalue { { i64, i8 }, i32, i32 } %t12, 0
+  %t15 = extractvalue { i64, i8 } %t14, 0
+  %t16 = icmp eq i64 %t15, 42
+  %t17 = and i1 %t10, %t16
+  br i1 %t17, label %on.body.4, label %on.next.5
 on.body.4:
   br label %on.value.6
 on.value.6:
@@ -156,8 +150,8 @@ on.body.7:
 on.value.9:
   br label %on.end.0
 on.end.0:
-  %t24 = phi i32 [1, %on.value.3], [2, %on.value.6], [0, %on.value.9]
-  ret i32 %t24
+  %t18 = phi i32 [1, %on.value.3], [2, %on.value.6], [0, %on.value.9]
+  ret i32 %t18
 }
 
 define internal i32 @fn.1() {

@@ -18,8 +18,8 @@ Key :: enum {
 
 score :: fn (event: Event) -> i32 {
     return on event {
-        KeyDown(KeyEvent { keycode: Escape }) => 1
-        KeyDown(KeyEvent { keycode: Other }) => 2
+        KeyDown(KeyEvent { keycode: Escape, ... }) => 1
+        KeyDown(KeyEvent { keycode: Other, ... }) => 2
         else => 0
     }
 }

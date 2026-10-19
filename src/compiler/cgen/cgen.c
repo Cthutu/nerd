@@ -1156,7 +1156,6 @@ internal cstr cgen_pattern(CGen* c, u32 index, CValue value)
         CGEN_OUT("%s=%s;\n", cgen_local_name(c, p->local_index), value.text);
         return "true";
     }
-    bool braced = false;
     if (p->kind == HIR_PATTERN_Tuple || p->kind == HIR_PATTERN_Plex ||
         p->kind == HIR_PATTERN_EnumVariant) {
         cstr condition = "true";
@@ -1166,8 +1165,6 @@ internal cstr cgen_pattern(CGen* c, u32 index, CValue value)
                 cgen_error(c, "enum pattern", index);
                 return "false";
             }
-            braced = cgen_sema(c)->type_param_braced_payloads
-                         [cgen_type(c, value.type)->first_param_type + v];
             condition =
                 CF("(%s.tag==%lld)",
                    value.text,
@@ -1185,10 +1182,9 @@ internal cstr cgen_pattern(CGen* c, u32 index, CValue value)
             CValue child = value;
             if ((cgen_kind(c, value.type) == STK_Plex ||
                  cgen_kind(c, value.type) == STK_Tuple) &&
-                !(p->kind == HIR_PATTERN_EnumVariant && !braced &&
-                  p->child_count == 1 &&
-                  cgen_hir(c)->patterns[ch->pattern_index].kind ==
-                      HIR_PATTERN_Bind)) {
+                !(p->kind == HIR_PATTERN_EnumVariant &&
+                  cgen_kind(c, value.type) == STK_Plex && p->child_count == 1 &&
+                  !ch->has_field_name)) {
                 u32 fi =
                     ch->has_field_name
                         ? cgen_field_index(c, value.type, ch->symbol_handle)

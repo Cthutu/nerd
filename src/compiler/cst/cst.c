@@ -3401,14 +3401,27 @@ internal bool cst_pattern_starts_braced_enum_variant(const CstParseState* state)
            state->lexer->tokens[index].kind == TK_LBrace;
 }
 
-internal bool
-cst_parse_plex_pattern(CstParseState* state, u32 type_node, u32* out_pattern)
+internal bool cst_parse_plex_pattern_fields(CstParseState* state,
+                                            u32            type_node,
+                                            u32*           out_pattern,
+                                            Array(CstPlexPatternField) * fields)
 {
     u32 token_index = state->token_index;
     cst_advance(state);
-    u32 first_field = (u32)array_count(state->cst.pattern_fields);
-    u32 field_count = 0;
+    u32  field_count = 0;
+    bool has_rest    = false;
     while (cst_current_token(state).kind != TK_RBrace) {
+        if (cst_current_token(state).kind == TK_Ellipsis) {
+            has_rest = true;
+            cst_advance(state);
+            if (cst_current_token(state).kind == TK_Comma) {
+                cst_advance(state);
+            }
+            if (cst_current_token(state).kind != TK_RBrace) {
+                return false;
+            }
+            break;
+        }
         if (cst_current_token(state).kind != TK_Symbol) {
             return false;
         }
@@ -3436,7 +3449,7 @@ cst_parse_plex_pattern(CstParseState* state, u32 type_node, u32* out_pattern)
                 return false;
             }
         }
-        array_push(state->cst.pattern_fields,
+        array_push(*fields,
                    (CstPlexPatternField){
                        .token_index   = field_token,
                        .symbol_handle = field_symbol,
@@ -3450,15 +3463,32 @@ cst_parse_plex_pattern(CstParseState* state, u32 type_node, u32* out_pattern)
     if (!cst_consume(state, TK_RBrace)) {
         return false;
     }
+    // Nested patterns append their own fields first. Publish this pattern's
+    // fields together so its range remains contiguous.
+    u32 first_field = (u32)array_count(state->cst.pattern_fields);
+    for (u32 i = 0; i < field_count; ++i) {
+        array_push(state->cst.pattern_fields, (*fields)[i]);
+    }
     return cst_emit_pattern(state,
                             (CstPattern){
                                 .kind        = CPK_Plex,
                                 .token_index = token_index,
                                 .a           = first_field,
                                 .b           = field_count,
+                                .has_rest    = has_rest,
                                 .c = type_node == U32_MAX ? 0 : type_node + 1,
                             },
                             out_pattern);
+}
+
+internal bool
+cst_parse_plex_pattern(CstParseState* state, u32 type_node, u32* out_pattern)
+{
+    Array(CstPlexPatternField) fields = {0};
+    bool ok =
+        cst_parse_plex_pattern_fields(state, type_node, out_pattern, &fields);
+    array_free(fields);
+    return ok;
 }
 
 internal bool cst_pattern_starts_typed_plex(const CstParseState* state)

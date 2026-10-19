@@ -209,6 +209,10 @@ intended exit code.
 - Bare identifiers in patterns bind by default. Use `for name` to compare with
   an existing runtime value.
 - Pattern guards use `on condition`.
+- Plex patterns mention every field unless they end with `...`.
+  `field: for wanted` compares an existing value, `field: bound` binds it,
+  `field` binds it under its own name, and `field: _` ignores it.
+  `pattern as name` also binds the whole subject.
 
 ## Loops
 

@@ -493,9 +493,9 @@ typed-plex-pattern
 plex-pattern-field
                 ::= IDENT
                   | IDENT ':' pattern
-                  | '_'
 plex-pattern-field-list
-                ::= plex-pattern-field { ',' plex-pattern-field } [ ',' ]
+                ::= '...' [ ',' ]
+                  | plex-pattern-field { ',' plex-pattern-field } [ ',' [ '...' [ ',' ] ] ]
 
 enum-variant-pattern
                 ::= module-path '(' pattern-list? ')'

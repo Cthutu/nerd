@@ -57,7 +57,7 @@ func fn.1() -> i32 {
   expr void call fn (Item) -> void field([..]Item local.5(dyn), push)(Item plex(value: i32 4))
   let choice: Choice = Choice call One(Item deref(^Item local.4(first)))
   return i32 add(i32 add(i32 call bind.2(sum_items)([]Item slice([2]Item local.3(fixed), <none>, <none>)), i32 call bind.2(sum_items)([]Item slice([..]Item local.5(dyn), <none>, <none>))), i32 on Choice local.6(choice) {
-    enum_variant(One, as value) => {
+    enum_variant(One, plex(value: as value)) => {
       expr i32 local.7(value)
     }
     else => {

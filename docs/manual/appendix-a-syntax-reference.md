@@ -299,6 +299,10 @@ for name
 Variant()
 Variant(name)
 { field: pattern }
+{ field: for wanted, ... }
+{ field: bound, other: _ }
+{ field, ... }
+{ ... }
 Type { field: pattern }
 left, right
 start..end
@@ -310,6 +314,9 @@ pattern as name
 pattern on condition
 pattern as name on condition
 ```
+
+Plex patterns must list every field, or end with `...` to ignore remaining
+fields. `for wanted` compares with an existing value; a bare name binds.
 
 ## C Variadic Definitions
 
