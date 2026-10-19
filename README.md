@@ -14,6 +14,7 @@ from the beginning.
 6. [Arrays, Slices and Dynamic Arrays](docs/learn/06-Arrays-Slices-and-Dynamic-Arrays.md)
 7. [Pointers](docs/learn/07-Pointers.md)
 8. [Arenas](docs/learn/08-Arenas.md)
+9. [Branching and Pattern Matching](docs/learn/09-Branching-and-Pattern-Matching.md)
 
 `test.n` contains an additional Nerd example. Directories beginning with `_`
 hold generated output or local verification files and are ignored by Git.

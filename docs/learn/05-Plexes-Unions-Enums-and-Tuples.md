@@ -326,8 +326,8 @@ its payload, when present.
 
 In C, this commonly needs an enum tag, a union for payload storage, and rules
 kept in sync by the programmer. Nerd's enum represents the variant and its
-payload as one typed value. Accessing the active payload will be covered in a
-later chapter.
+payload as one typed value. Accessing the active payload is covered in
+[Chapter 9's enum patterns](09-Branching-and-Pattern-Matching.md#extracting-enum-payloads).
 
 Variants can also carry named fields:
 
@@ -478,7 +478,7 @@ result. Use a plex when field names make the value easier to understand.
 | --- | --- | --- |
 | `plex` | Holds all its fields in distinct storage. | Read fields by name. |
 | `union` | Fields overlap; the program tracks which interpretation is valid. | Read the appropriate field by name. |
-| `enum` | Tracks one active variant and its associated payload. | Payload access is covered in a later chapter. |
+| `enum` | Tracks one active variant and its associated payload. | Extract payloads with the [patterns in Chapter 9](09-Branching-and-Pattern-Matching.md#extracting-enum-payloads). |
 | tuple | Holds all its fields in distinct storage, identified by position. | Read fields with `.0`, `.1`, and so on. |
 
 ## Layout and bit fields

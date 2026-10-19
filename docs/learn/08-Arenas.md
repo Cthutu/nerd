@@ -2,6 +2,8 @@
 
 [Previous: Pointers](07-Pointers.md)
 
+[Next: Branching and Pattern Matching](09-Branching-and-Pattern-Matching.md)
+
 An arena manages storage for a group of values that can be released together.
 Allocate from it as needed, then reclaim a group of allocations at once.
 This suits data that shares a lifetime, such as the working data for one task
