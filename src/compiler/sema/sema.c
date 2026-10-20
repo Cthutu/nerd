@@ -12339,6 +12339,20 @@ internal bool sema_type_is_never(const Sema* sema, u32 type_index)
            sema->types[type_index].kind == STK_Never;
 }
 
+internal bool sema_type_is_truthy(Sema* sema, u32 type_index)
+{
+    if (type_index == sema_no_type()) {
+        return false;
+    }
+    if (sema_type_matches(
+            sema, sema_builtin_type(sema, STK_Bool), type_index)) {
+        return true;
+    }
+    const SemaType* type = &sema->types[type_index];
+    return type->kind == STK_Enum &&
+           (type->flags & (STF_Optional | STF_Result));
+}
+
 internal bool sema_type_is_pointer_integer_mismatch(const Sema* sema,
                                                     u32         expected_type,
                                                     u32         actual_type)
@@ -15004,6 +15018,10 @@ sema_validate_arena_copies(const Lexer* lexer, const Ast* ast, const Sema* sema)
         case AK_For:
             sema_mark_arena_borrow(
                 ast, borrowed, ast->fors[node->a].iterable_node_index);
+            // A loop condition observes presence/success, not an owning
+            // payload.
+            sema_mark_arena_borrow(
+                ast, borrowed, ast->fors[node->a].condition_node_index);
             break;
         case AK_Equal:
         case AK_NotEqual:
@@ -18393,6 +18411,26 @@ internal bool sema_seed_for_condition_side(const Lexer* lexer,
         lexer, ast, sema, local_index, expected_type);
 }
 
+internal bool sema_infer_for_condition(const Lexer* lexer,
+                                       const Ast*   ast,
+                                       Sema*        sema,
+                                       u32          node_index)
+{
+    u32 type = sema_no_type();
+    if (!sema_infer_node_type(
+            lexer, ast, sema, node_index, sema_no_type(), &type)) {
+        return false;
+    }
+    if (sema_type_is_truthy(sema, type)) {
+        return true;
+    }
+    return error_0304_type_mismatch(
+        lexer->source,
+        sema_node_span(lexer, &ast->nodes[node_index]),
+        s("bool, box, optional, or result"),
+        sema_type_name(lexer, sema, &temp_arena, type));
+}
+
 internal bool sema_seed_for_condition_local_types(const Lexer* lexer,
                                                   const Ast*   ast,
                                                   Sema*        sema,
@@ -20153,13 +20191,8 @@ internal bool sema_infer_block_statements(const Lexer* lexer,
                 }
             }
             if (for_info->condition_node_index != U32_MAX) {
-                u32 condition_type = sema_no_type();
-                if (!sema_infer_node_type(lexer,
-                                          ast,
-                                          sema,
-                                          for_info->condition_node_index,
-                                          sema_builtin_type(sema, STK_Bool),
-                                          &condition_type)) {
+                if (!sema_infer_for_condition(
+                        lexer, ast, sema, for_info->condition_node_index)) {
                     return false;
                 }
             }
@@ -23624,13 +23657,8 @@ validate_type:
                 }
             }
             if (for_info->condition_node_index != U32_MAX) {
-                u32 condition_type = sema_no_type();
-                if (!sema_infer_node_type(lexer,
-                                          ast,
-                                          sema,
-                                          for_info->condition_node_index,
-                                          sema_builtin_type(sema, STK_Bool),
-                                          &condition_type)) {
+                if (!sema_infer_for_condition(
+                        lexer, ast, sema, for_info->condition_node_index)) {
                     return false;
                 }
             }
@@ -24039,10 +24067,7 @@ validate_type:
                 return false;
             }
             type_index = sema_materialise_type(sema, type_index);
-            const SemaType* operand_type = &sema->types[type_index];
-            if (!sema_type_matches(sema, bool_type, type_index) &&
-                !(operand_type->kind == STK_Enum &&
-                  (operand_type->flags & (STF_Optional | STF_Result)))) {
+            if (!sema_type_is_truthy(sema, type_index)) {
                 return error_0325_invalid_unary_operand(
                     lexer->source,
                     sema_node_span(lexer, node),

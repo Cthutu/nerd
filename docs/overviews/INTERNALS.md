@@ -1,5 +1,16 @@
 # Internals
 
+Condition-style and C-style `for` loops infer their condition without forcing a
+boolean payload type. Both semantic paths validate the same truthy types as
+logical negation: bool-compatible values (including boxes), optionals, and
+results. LLVM boolean coercion tests the optional/result discriminant against
+the success variant instead of interpreting the payload as a boolean. Generated
+C already uses the corresponding presence/success tag test. Both statement and
+value-producing loop paths evaluate the condition once per visit and retain
+normal `again`, `break`, and exhaustion/`else` behavior.
+Ownership validation treats condition storage as borrowed because checking its
+tag does not copy an arena-bearing payload.
+
 Enum parameter metadata records whether each discriminant was explicitly
 assigned. Interning, imports, and materialisation preserve this flag. Sema
 allows a payload-free explicitly numbered variant (including unannotated

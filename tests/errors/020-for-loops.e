@@ -7,7 +7,7 @@ main :: fn () {
 }
 ¬
 {
-    "message": "Type mismatch: expected `bool`, found `untyped integer`",
+    "message": "Type mismatch: expected `bool, box, optional, or result`, found `untyped integer`",
     "source_file": "tests/errors/020-for-loops.e",
     "primary_location": {
         "line": 4,

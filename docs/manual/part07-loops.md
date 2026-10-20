@@ -32,7 +32,21 @@ main :: fn () -> i32 {
 }
 ```
 
-The loop continues while the condition is true.
+The loop continues while the condition is truthy. Conditions accept booleans,
+boxes, optionals, and results. A box is truthy when allocated, an optional when
+present, and a result when successful. The payload is not tested: a present
+`?bool` containing `no`, or a successful result containing zero, is still truthy.
+
+```nerd
+for try_step() {  -- repeat while an optional is present or a result succeeds
+    iterations += 1
+}
+```
+
+The condition is evaluated once before every iteration, including the final
+check that ends the loop. Absence or error ends the loop normally; it does not
+propagate the failure or bind the payload. Use the existing extraction syntax
+inside the body when the payload is needed.
 
 ## C-Style Loops
 
@@ -53,6 +67,9 @@ The three parts are:
 | initialisation | runs once before the loop starts |
 | condition | checked before each iteration |
 | update | runs after each iteration |
+
+The condition uses the same truth rules as a condition loop, including optional
+presence and result success.
 
 ## `again`
 

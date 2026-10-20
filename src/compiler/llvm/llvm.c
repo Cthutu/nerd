@@ -5336,6 +5336,28 @@ internal LlvmValue llvm_coerce_value_to_type(LlvmFunctionContext* ctx,
         };
     }
 
+    if (target_kind == STK_Bool && source_kind == STK_Enum &&
+        (ctx->sema->types[value.type_index].flags &
+         (STF_Optional | STF_Result))) {
+        string tag = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = extractvalue " STRINGP " " STRINGP ", 0\n",
+                  STRINGV(tag),
+                  STRINGV(llvm_type_string(ctx, value.type_index)),
+                  STRINGV(value.value));
+        u32 success =
+            (ctx->sema->types[value.type_index].flags & STF_Optional) ? 1 : 0;
+        string temp = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = icmp eq i64 " STRINGP ", %lld\n",
+                  STRINGV(temp),
+                  STRINGV(tag),
+                  (long long)llvm_enum_variant_discriminant(
+                      ctx->sema, value.type_index, success));
+        return (LlvmValue){
+            .ok = true, .type_index = target_type, .value = temp};
+    }
+
     if (target_kind == STK_Bool && source_kind == STK_Box) {
         string temp = llvm_temp(ctx);
         sb_format(ctx->sb,

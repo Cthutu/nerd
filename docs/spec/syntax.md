@@ -298,6 +298,11 @@ for-item-list   ::= for-item { ',' for-item }
 ```
 
 The `for-in` form accepts only plain identifiers before `in`.
+Condition-style and C-style loop conditions accept booleans, boxes, optionals,
+and results. Boxes test allocation, optionals test presence, and results test
+success, independently of their payload values. The condition is evaluated once
+before each iteration. A false condition takes the normal exhaustion path,
+including a loop expression's `else` branch; it does not propagate a failure.
 
 ## Expressions
 
