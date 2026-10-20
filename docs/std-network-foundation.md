@@ -1,7 +1,8 @@
 # IPv4 sockets, readiness and deadlines
 
-`std.network` is the first M5 slice. Importing it needs no consumer linker flags:
-`os.socket` selects Winsock (`ws2_32`) on Windows and libc on Linux. This slice
+`std.network` provides IPv4 sockets, readiness and deadlines. Importing it needs
+no consumer linker flags: `os.socket` selects Winsock (`ws2_32`) on Windows and
+libc on Linux. This slice
 supports the repository's Windows x64 and Linux x64 targets.
 
 ## Public contract
@@ -158,16 +159,19 @@ python build/test_network.py --cgen --release
 
 `--release` optimises the example/test programs; `--compiler PATH` selects a
 separately built compiler. `--cgen` explicitly tests C output with Clang; it is
-not a fallback for missing native LLVM tools. Both `just test` and
-`just test-release` execute this runner on the integrated branch. The existing
-example family checks syntax but does not replace these execution tests.
+not a fallback for missing native LLVM tools. Network execution is opt-in through
+`just test-network` (also accepts `--cgen` and `--release`); it is excluded from
+`just test` and `just test-release`. Example syntax checks do not replace these
+execution tests.
 
-## Remaining M5 work
+## Remaining work
 
 IPv6, DNS/resolver ownership, receive/both-direction shutdown, socket options
 (including reuse and close-on-exec/inheritance policy), cancellation and stress testing
 remain followups. There is no Nexus framing, wire-format change, protocol or
-scheduler dependency here. Do not declare M5 or cross-platform adoption complete.
+scheduler dependency here. The
+[roadmap](../ROADMAP.md#active-standard-library-work) tracks these extensions and
+the remaining adoption gates.
 
 ## Native Windows automated validation, 2026-10-16
 
@@ -176,45 +180,12 @@ combinations, including native layout, readiness, connection completion,
 deadlines and examples. Both compiler fixture suites and C differential gates
 also pass. See the [full results](https://github.com/Cthutu/nerd/blob/fac0feae825d73a478466410956c1ca7749a2a8a/validation/windows/results/20261016T083710Z-8b918d2c/README.md). Linux-only
 interruption injection remains explicitly skipped on Windows. Interactive
-Windows observations and wider M5 extensions/adoption gates remain open.
-
-The following October 1 section records the earlier validation boundary.
-
-## Validation, 2026-10-01
-
-Fresh Clang-built Windows compiler: direct LLVM and explicit generated-C checks
-passed with both unoptimised and optimised programs. All three programs and the
-native C layout assertions passed in each mode.
-
-Arch Linux under WSL: a fresh native compiler built with Clang 22.1.6; Linux
-semantic checks and generated-C execution passed at O0/O2, including Linux
-MSG_TRUNC and SIGPIPE-suppression declarations. The compiler lives in an isolated
-user cache checkout; no global installation changed. Direct LLVM execution is
-still unverified there because opt/llc are absent. This is WSL evidence, not a
-standalone Linux host adoption gate.
-
-The initial full `just test` fixture run had 1175 passes, 15 platform skips and
-one stale LSP completion expectation: `os.socket` was missing from the expected
-module list. After updating that fixture, `just test --filter
-117-os-module-completion` passed the corrected test and every auxiliary check,
-including 295 C-output differential fixtures at two optimisation levels (two
-platform skips), build settings and all four Windows stdio modes. The other
-1175 fixture results were not redundantly rerun. Both `just run-example`
-commands also passed using the freshly built release compiler; the focused
-socket suite passed with that compiler and optimised programs.
-
-[Raw Windows gate logs](https://github.com/Cthutu/nerd/blob/fac0feae825d73a478466410956c1ca7749a2a8a/validation/windows/results/20261001-std-network/README.md)
-retain the initial failure and the successful follow-up. The integrated OS
-completion fixture contains both `socket` and `thread`. See the latest
-[handoff](https://github.com/Cthutu/nerd/blob/fac0feae825d73a478466410956c1ca7749a2a8a/validation/windows/results/HANDOFF.md) for combined results.
+Windows observations and wider extensions/adoption gates remain open.
 
 Readiness sources: [Winsock select](https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-select),
 [Winsock getsockopt](https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-getsockopt),
 [Linux select](https://man7.org/linux/man-pages/man2/select.2.html) and
-[Linux connect](https://man7.org/linux/man-pages/man2/connect.2.html). The new
-readiness/connect slice passes native Linux LLVM and C output in debug/release;
-its native Windows execution is still pending. The Windows results below describe
-the earlier IPv4 socket slice.
+[Linux connect](https://man7.org/linux/man-pages/man2/connect.2.html).
 
 Native sources consulted: [Winsock startup](https://learn.microsoft.com/en-us/windows/win32/api/winsock/nf-winsock-wsastartup),
 [WSADATA](https://learn.microsoft.com/en-us/windows/win32/api/winsock/ns-winsock-wsadata),

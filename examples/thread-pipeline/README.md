@@ -21,7 +21,7 @@ owner stay at fixed addresses until join succeeds. Failure to start leaves all
 ownership in the main thread and releases the initialised synchronisation
 objects through `defer`.
 
-This is a new M1 teaching example and foundation test, not a Raptor queue port
-or a claimed mapping to an inaccessible upstream test. A Raptor-derived queue
-pipeline is a separate M2 milestone. See [the API contract](../../docs/stdlib-thread-sync.md)
-and [validation status](https://github.com/Cthutu/nerd/blob/fac0feae825d73a478466410956c1ca7749a2a8a/validation/windows/results/20261001-thread-sync/README.md).
+This is a thread/synchronisation teaching example and foundation test. A
+Raptor-derived queue pipeline remains
+[open work](../../ROADMAP.md#kerberos-and-integration). See
+[the API contract](../../docs/stdlib-thread-sync.md) and [validation status](https://github.com/Cthutu/nerd/blob/fac0feae825d73a478466410956c1ca7749a2a8a/validation/windows/results/20261001-thread-sync/README.md).

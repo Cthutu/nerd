@@ -1,9 +1,9 @@
 # Thread and synchronisation foundation
 
-This is the first M1 slice, not a scheduler or a complete M1 sign-off.
-It provides `std.thread` and `std.sync`, backed by `os.thread` without adding
-application-specific compiler flags. It depends on the runtime thread lifecycle
-and allocation tracking fixes on `std-runtime-threads`.
+This foundation provides `std.thread` and `std.sync`, backed by `os.thread`
+without adding application-specific compiler flags. The runtime supplies thread
+lifecycle and allocation tracking. Remaining validation gates are tracked in the
+[roadmap](../ROADMAP.md#validation-and-delivery-gates).
 
 ```nerd
 use std.thread

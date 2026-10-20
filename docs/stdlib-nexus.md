@@ -271,5 +271,5 @@ native Windows matrix passes; see the dated results above.
 [Bounded stress checks](../tests/nexus/README.md) cover repeated connection
 churn, concurrent traffic, slow-reader recovery and shutdown under load. The focused
 [timeout/nonblocking walkthrough](tutorials/nexus-timeouts.md) demonstrates
-receive recovery with an example checked by the native runner. M6/M7 milestone
-closure still requires their agreed checks.
+receive recovery with an example checked by the native runner. Remaining
+[delivery gates](../ROADMAP.md#validation-and-delivery-gates) stay open until verified.

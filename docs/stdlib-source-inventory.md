@@ -37,8 +37,8 @@ and executes nodes synchronously.
 
 | Source | Inspected tests | Nerd mapping |
 | --- | --- | --- |
-| Master `src/test_main.cc` | `Wait`, `VoidTasks`, `Serial` | M3 task results, void completion and serial dependency example |
-| Graph `src/test_task.cc`, `src/test_graph.cc` | Task checks plus generator → sum → print/fan-out graph scenario | M4 serial dataflow example; compare with Kerberos's more developed tests |
+| Master `src/test_main.cc` | `Wait`, `VoidTasks`, `Serial` | Raptor task results, void completion and serial dependency example |
+| Graph `src/test_task.cc`, `src/test_graph.cc` | Task checks plus generator → sum → print/fan-out graph scenario | Kerberos serial dataflow example; compare with Kerberos's more developed tests |
 | Continuations/v2 branches | Incomplete continuation/result redesign checks | Defer until API intent and completion are resolved |
 
 Inspection identifies hazards that need targeted tests and redesigned contracts:
@@ -89,9 +89,9 @@ strands. A declared timer queue is not implemented.
 
 | File | Active tests | Nerd mapping |
 | --- | --- | --- |
-| `src/test_queue.cc` | `DataQueue.Empty`, `PushPop`, `Strings`, `FailPop`, `Full`, `Multithread` | M2 FIFO baseline; extend concurrency and ownership coverage |
-| `src/test_pipeline.cc` | `DataQueue.Complex`, `Graph.GenKernel`, `Graph.Loader` | M4 payload, serial dataflow and later loader examples |
-| `src/test_scheduler.cc` | `Scheduler.Basic`, `Wait`, `VoidTasks`, `Serial` | M3 task and serial execution contracts |
+| `src/test_queue.cc` | `DataQueue.Empty`, `PushPop`, `Strings`, `FailPop`, `Full`, `Multithread` | FIFO baseline; extend concurrency and ownership coverage |
+| `src/test_pipeline.cc` | `DataQueue.Complex`, `Graph.GenKernel`, `Graph.Loader` | Kerberos payload, serial dataflow and later loader examples |
+| `src/test_scheduler.cc` | `Scheduler.Basic`, `Wait`, `VoidTasks`, `Serial` | Raptor task and serial execution contracts |
 
 There are 13 active project tests. `Graph.GenKernel` (line 132) connects two
 0–9 generators to a sum node and sink checking 0,2,...,18: use this as the first
@@ -120,10 +120,11 @@ Davies as author. Some tests instead name Matt Davies. Record the intended reuse
 and attribution terms before copying implementation material; source access alone
 does not resolve those terms. This inventory changes neither project's notices.
 
-M0 still needs upstream builds/execution, a complete component disposition matrix
-and reuse decisions for future copied components. M2/M3 use the original Nerd
-scheduler described below. M4 can start with serial FIFO dataflow;
-stable handles, cached invalidation and parallel scheduling are additions.
+Upstream builds/execution, a complete component disposition matrix and reuse
+decisions for future copied components remain open in the
+[roadmap](../ROADMAP.md#validation-and-delivery-gates). Queues/tasks use the
+original Nerd scheduler described below. Kerberos can start with serial FIFO
+dataflow; stable handles, cached invalidation and parallel scheduling are additions.
 
 ## Selected Nerd scheduler direction — 3 October 2026
 

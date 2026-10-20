@@ -7,12 +7,78 @@ continuing to grow this file.
 ## Active Standard-Library Work
 
 Thread/synchronisation, IPv4 TCP/UDP, Raptor queues/tasks, and Nexus
-message/request-reply/Telnet APIs are implemented. Follow-up work includes
-Kerberos graphs, DNS/IPv6, sustained resource-growth validation, and the
-remaining interactive/platform checks. See the
-[scope, dependencies and milestone gates](docs/stdlib-expansion-plan.md) and
-[latest Windows validation evidence](https://github.com/Cthutu/nerd/blob/fac0feae825d73a478466410956c1ca7749a2a8a/validation/windows/results/HANDOFF.md).
-Implemented features and automated passes do not close the outstanding gates.
+message/request-reply/Telnet APIs are implemented. Supported behaviour lives in
+[module contracts](docs/stdlib.md) and [API tutorials](docs/tutorials/README.md).
+The retired expansion plan lives in Git history; the open work below replaces
+its milestone checklists. Implementation does not imply that every platform or
+stress-validation gate has passed.
+
+### Kerberos and integration
+
+- Design typed named ports, FIFO links, graph/node ownership and serial
+  data-availability evaluation using the
+  [pinned source inventory](docs/stdlib-source-inventory.md). Do not assume graphs
+  are DAGs or substitute topological traversal for the source semantics. Define
+  cycles, mutation during evaluation, removal/stale handles and ordering before
+  implementing parallel evaluation. Stable identifiers are an intentional Nerd
+  improvement, not a source-parity requirement. Public module names remain open.
+- Keep graph storage independent of workers. Use our original Raptor-compatible
+  work-stealing scheduler for a later execution adapter; ASIO is not a dependency
+  or algorithm to copy. Define dependency readiness, completion/error/cancellation
+  and mutation rules, then compare serial and parallel results.
+- Add a runnable Kerberos tutorial: two generators feed a sum and sink checking
+  0,2,…,18. Cover typed ports, fan-out, ownership, errors and shutdown; add the
+  loader walkthrough after implementing its API.
+- Add queue-pipeline, graph-pipeline and bounded task/network-service examples.
+  Keep blocking network I/O outside CPU workers unless a readiness driver is
+  explicitly supported. Test overload, backpressure, cancellation and shutdown
+  across the combined layers without coupling the standalone APIs.
+
+### Networking extensions
+
+- Add IPv6 and DNS resolution to `std.network`, with resolver errors, ownership
+  and blocking behaviour explicit. Extend Nexus URLs with DNS names and bracketed
+  IPv6; these are additions beyond the inspected upstream contract.
+- Define receive/both-direction shutdown, remaining socket options, address reuse,
+  close-on-exec/inheritance and cancellation. Retain partial-I/O counts, portable
+  error categories and native details. IPv6 unavailability must be an explicit
+  capability result.
+- Preserve the [Nexus source parity matrix](docs/nexus-parity.md), bounded buffering,
+  reply-route lifetime and request/reply timeout recovery. Do not claim
+  ZeroMQ/nanomsg interoperability. Further messaging patterns need a fresh design.
+
+### Validation and delivery gates
+
+- Complete the upstream component disposition matrix and build/run original
+  reference suites where supported. Record unsupported checks explicitly. Resolve
+  attribution/reuse terms before copying future source material; source access
+  does not grant reuse rights. The Nerd scheduler is an original implementation.
+- Validate relevant atomic width/alignment, publication, payload and callback
+  lifetimes, thread-entry ABI, allocator/TLS behaviour and native layouts with
+  focused probes. Do not label queues lock-free without progress and reclamation
+  guarantees. Compiler prerequisites need separate regression-backed fixes.
+- Retain exactly-once queue/task execution and destruction, wraparound, empty/full
+  transitions, simultaneous producers/consumers, nested waits, idle wake-up,
+  shutdown during submission, partial worker-start failure, predicate waits and
+  resource-release coverage. Audit existing tests before adding duplicates.
+- Compare serial, single-worker and multi-worker results and performance using
+  reproducible workloads, with task granularity and allocations reported. This
+  does not authorise a change to compiler concurrency defaults.
+- Complete sustained resource-growth/soak validation and the remaining interactive
+  platform observations. The [live Windows handoff](validation/windows/HANDOFF.md)
+  records native follow-up; [archived automated evidence](https://github.com/Cthutu/nerd/blob/fac0feae825d73a478466410956c1ca7749a2a8a/validation/windows/results/HANDOFF.md)
+  describes its recorded revision, not subsequent changes. Validate native
+  Windows, Linux and WSL independently, including release, LLVM/C output,
+  installation, formatter and LSP surfaces. macOS remains a separate port.
+- Keep network/Nexus execution opt-in through `just test-network` and
+  `just test-nexus`; keep long stress runs and benchmarks opt-in too. Use loopback,
+  listener-assigned ports, explicit synchronisation, bounded deadlines and
+  process-tree cleanup. A stress pass is not a memory-order proof.
+- Deliver runnable tutorials for all three remade APIs. Examples must explain
+  ownership, errors/backpressure and shutdown, use ordinary source build settings,
+  and have meaningful output/exit checks in the appropriate native runner.
+  Preserve cross-platform `just run-example` launches and scripted peers for
+  interactive examples; no silent stubs or unexplained skips close these gates.
 
 ## Current State
 

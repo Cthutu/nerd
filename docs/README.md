@@ -109,7 +109,7 @@ explicitly keeps it visible.
 ## Maintenance
 
 Keep current behaviour in the manual, specs and subsystem docs, and open work in
-[the roadmap](../ROADMAP.md) or the [library plan](stdlib-expansion-plan.md).
+[the roadmap](../ROADMAP.md) or [TODO.md](../TODO.md).
 Completed audits, one-off repair reports and superseded handoffs belong in Git
 history. Keep reproducible validation tools, source provenance, accepted decision
 records and dated measurements when they still support a maintained contract.

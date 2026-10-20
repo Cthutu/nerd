@@ -10,10 +10,9 @@ API reference.
 
 ## Planned Expansion
 
-The [standard-library expansion plan](stdlib-expansion-plan.md) tracks queues,
-work-stealing tasks, data graphs, raw sockets and Nexus messaging. Thread/sync,
-IPv4 sockets, Raptor typed tasks and serial/concurrent/main-thread queues are
-implemented. Nexus provides TCP/UDP messaging, request/reply and Telnet.
+The [roadmap](../ROADMAP.md#active-standard-library-work) tracks remaining
+standard-library work and validation gates. Thread/sync, IPv4 sockets, Raptor
+typed tasks and serial/concurrent/main-thread queues are implemented. Nexus provides TCP/UDP messaging, request/reply and Telnet.
 Kerberos graphs, DNS and IPv6 remain planned. Consult the module contracts and
 [API tutorials](tutorials/README.md) for supported behaviour and validation limits.
 
