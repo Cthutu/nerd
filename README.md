@@ -16,6 +16,7 @@ from the beginning.
 8. [Arenas](docs/learn/08-Arenas.md)
 9. [Branching and Pattern Matching](docs/learn/09-Branching-and-Pattern-Matching.md)
 10. [Optionals, Results and Error Handling](docs/learn/10-Optionals-Results-and-Error-Handling.md)
+11. [Methods and Traits](docs/learn/11-Methods-and-Traits.md)
 
 ## Packaging
 
