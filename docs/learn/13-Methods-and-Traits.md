@@ -1,8 +1,8 @@
-# Chapter 12: Methods and Traits
+# Chapter 13: Methods and Traits
 
-[Previous: Generics](11-Generics.md)
+[Previous: Generics](12-Generics.md)
 
-[Next: String Interpolation](13-String-Interpolation.md)
+[Next: String Interpolation](14-String-Interpolation.md)
 
 Earlier chapters used calls such as `values.push(42)` and `storage.reset()`.
 These are methods: functions called through a value. This chapter explains
@@ -90,7 +90,7 @@ keyword.
 
 ## Methods on generic types
 
-Chapter 11 introduced generic data types. Declare their implementation's type
+Chapter 12 introduced generic data types. Declare their implementation's type
 parameters explicitly after `impl`, then apply them to the target type:
 
 ```nerd
@@ -314,7 +314,7 @@ This writes `Error: the system is not ready` followed by a newline to standard
 error and exits with status `1`. The runtime uses `Display.show` to obtain the
 message after cleanup has run.
 
-String interpolation also uses `Display` for custom values. Chapter 13 covers
+String interpolation also uses `Display` for custom values. Chapter 14 covers
 its syntax and temporary storage; direct `show()` calls need
 neither interpolation syntax nor an implicit printing operation. If a `show`
 implementation allocates its returned string in an arena, that string follows
@@ -423,7 +423,7 @@ compiler bug matters if default construction allocates or changes state.
 
 ## Trait requirements in reusable functions
 
-A generic function from Chapter 11 can require its type arguments to implement
+A generic function from Chapter 12 can require its type arguments to implement
 a particular trait. Add a `where` constraint:
 
 ```nerd
@@ -492,22 +492,26 @@ impl Iterator[i32] for Countdown {
 
 main :: fn () -> i32 {
     countdown := Countdown { remaining: 2 }
-    first := countdown.next() \ 0
-    second := countdown.next() \ 0
-    missing := countdown.next()
-    return on !missing => first + second else 0
+    total := 0
+    for item in countdown {
+        total += item
+    }
+    return total
 }
 ```
 
-This returns `3`. The calls produce present values `2` and `1`, followed by
-absence. A present zero would still be an item: the optional's presence,
-rather than the payload's truthiness, determines whether an item was produced.
+This returns `3`. The loop calls `next` to obtain present values `2` and `1`,
+then stops on absence. A present zero would still be an item: the optional's
+presence, rather than the payload's truthiness, determines whether an item
+was produced.
 This implementation keeps returning `nil` once `remaining` reaches zero;
 start it with a nonnegative count.
 
-The language's iteration loop uses this same trait to request successive
-items and stops when `next` returns `nil`. Loop syntax will be covered in a
-later chapter; the calls here show the protocol directly.
+The loop syntax from Chapter 11 uses the trait to request successive items.
+Unlike built-in collection iteration, a user-defined iterator binds the
+returned item directly: here `item` is an `i32`, so it needs no dereference.
+You can also call `countdown.next()` directly and handle the optional result
+using the forms from Chapter 10.
 
 ## Choosing a method or a trait
 

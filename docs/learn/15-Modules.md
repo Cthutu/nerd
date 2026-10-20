@@ -1,8 +1,8 @@
-# Chapter 14: Modules
+# Chapter 15: Modules
 
-[Previous: String Interpolation](13-String-Interpolation.md)
+[Previous: String Interpolation](14-String-Interpolation.md)
 
-[Next: Special Function Declarations](15-Special-Function-Declarations.md)
+[Next: Special Function Declarations](16-Special-Function-Declarations.md)
 
 Modules organize declarations across source files and control which names
 other code can use. Nerd does not require C-style headers or textual inclusion:
@@ -95,7 +95,7 @@ main :: fn () -> i32 {
 This returns `42`. Exporting the type does not by itself export every inherent
 method. `pub` on `get` makes that call available outside its module.
 Public generic declarations can be imported too. With a bare `use`, type
-arguments and inference work as in Chapter 11.
+arguments and inference work as in Chapter 12.
 
 Use `pub impl Counter { ... }` when every method in a block should be public,
 instead of marking each member separately.
@@ -233,4 +233,4 @@ lookup rule, allowing a file to import an adjacent helper by its short name.
 For a project's public paths, use the directory structure and invoke Nerd
 from the root containing those paths.
 
-Compile-time selection of platform-specific imports is covered in Chapter 16.
+Compile-time selection of platform-specific imports is covered in Chapter 17.

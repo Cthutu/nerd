@@ -1,8 +1,8 @@
-# Chapter 15: Special Function Declarations
+# Chapter 16: Special Function Declarations
 
-[Previous: Modules](14-Modules.md)
+[Previous: Modules](15-Modules.md)
 
-[Next: Defines](16-Defines.md)
+[Next: Defines](17-Defines.md)
 
 This chapter covers multi-functions, which select among a set of functions,
 and foreign function declarations, which call code through the C ABI. Both
@@ -163,7 +163,7 @@ main :: fn () -> i32 {
 
 This returns `9`. `.c_string()` copies the text into the temporary arena and
 adds a zero terminator. The returned pointer remains valid until that arena
-storage is reclaimed, following Chapter 13's rules. A foreign function must
+storage is reclaimed, following Chapter 14's rules. A foreign function must
 not retain it beyond that lifetime. Taking a string's data pointer alone
 does not add the terminator a C string API requires.
 

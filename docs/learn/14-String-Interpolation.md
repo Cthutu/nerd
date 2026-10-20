@@ -1,12 +1,12 @@
-# Chapter 13: String Interpolation
+# Chapter 14: String Interpolation
 
-[Previous: Methods and Traits](12-Methods-and-Traits.md)
+[Previous: Methods and Traits](13-Methods-and-Traits.md)
 
-[Next: Modules](14-Modules.md)
+[Next: Modules](15-Modules.md)
 
 String interpolation builds text by inserting expression values into a string.
 It combines the strings from Chapter 3, the arenas from Chapter 8, and the
-`Display` trait from Chapter 12. Runtime interpolation uses the built-in
+`Display` trait from Chapter 13. Runtime interpolation uses the built-in
 temporary arena, so understanding the resulting string's lifetime is essential.
 
 ## Inserting expressions
@@ -95,7 +95,7 @@ the outer interpolation incorporates that text into its own result.
 There is no need to print inside `show` or manually call it at the insertion.
 
 Built-in formatting and a generic trait constraint are distinct in the current
-compiler, as discussed in Chapter 12. For example, formatting an integer here
+compiler, as discussed in Chapter 13. For example, formatting an integer here
 works even though the compiler currently rejects an integer argument to a
 generic function constrained by `Display`.
 

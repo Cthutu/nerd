@@ -16,12 +16,13 @@ from the beginning.
 8. [Arenas](docs/learn/08-Arenas.md)
 9. [Branching and Pattern Matching](docs/learn/09-Branching-and-Pattern-Matching.md)
 10. [Optionals, Results and Error Handling](docs/learn/10-Optionals-Results-and-Error-Handling.md)
-11. [Generics](docs/learn/11-Generics.md)
-12. [Methods and Traits](docs/learn/12-Methods-and-Traits.md)
-13. [String Interpolation](docs/learn/13-String-Interpolation.md)
-14. [Modules](docs/learn/14-Modules.md)
-15. [Special Function Declarations](docs/learn/15-Special-Function-Declarations.md)
-16. [Defines](docs/learn/16-Defines.md)
+11. [Loops with `for`](docs/learn/11-Loops.md)
+12. [Generics](docs/learn/12-Generics.md)
+13. [Methods and Traits](docs/learn/13-Methods-and-Traits.md)
+14. [String Interpolation](docs/learn/14-String-Interpolation.md)
+15. [Modules](docs/learn/15-Modules.md)
+16. [Special Function Declarations](docs/learn/16-Special-Function-Declarations.md)
+17. [Defines](docs/learn/17-Defines.md)
 
 ## Packaging
 

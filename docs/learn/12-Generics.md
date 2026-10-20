@@ -1,8 +1,8 @@
-# Chapter 11: Generics
+# Chapter 12: Generics
 
-[Previous: Optionals, Results and Error Handling](10-Optionals-Results-and-Error-Handling.md)
+[Previous: Loops with `for`](11-Loops.md)
 
-[Next: Methods and Traits](12-Methods-and-Traits.md)
+[Next: Methods and Traits](13-Methods-and-Traits.md)
 
 Generics let one function or data type work with different concrete types.
 Instead of writing separate versions for integers, strings, and each of your
@@ -10,7 +10,7 @@ own types, declare **type parameters** and supply types when the declaration
 is used. The compiler builds concrete versions for the combinations you use.
 
 This chapter covers generic functions and data types. It does not require
-traits or method definitions; those follow in Chapter 12.
+traits or method definitions; those follow in Chapter 13.
 
 ## A function with a type parameter
 

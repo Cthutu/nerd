@@ -1,6 +1,6 @@
-# Chapter 16: Defines
+# Chapter 17: Defines
 
-[Previous: Special Function Declarations](15-Special-Function-Declarations.md)
+[Previous: Special Function Declarations](16-Special-Function-Declarations.md)
 
 Defines select code during compilation. They let a program include a platform
 API or optional feature without making that selection a runtime decision.
@@ -185,7 +185,7 @@ build. None performs C preprocessor-style token replacement.
 
 ## Combining defines with native libraries
 
-Chapter 15's FFI declarations may need a platform-specific library search
+Chapter 16's FFI declarations may need a platform-specific library search
 path. A source `build` block can select it using the same define syntax:
 
 ```nerd
@@ -203,4 +203,4 @@ main :: fn () {
 This prints `library configuration`. The relative path is interpreted from
 the declaring source file's directory and contributes to native linking when
 the guard is enabled. It does not add a Nerd module search root; module lookup
-still uses the rules from Chapter 14.
+still uses the rules from Chapter 15.
