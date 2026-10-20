@@ -669,3 +669,9 @@ void error_render(ErrorInfo* error_info);
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
+
+bool error_0109_invalid_exponent(NerdSource source, ErrorSpan span);
+
+bool error_0305_immutable_tuple_field(NerdSource source,
+                                      ErrorSpan  span,
+                                      string     root);

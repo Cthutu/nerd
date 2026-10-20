@@ -10,7 +10,10 @@ in `docs/string-runtime.md`.
 Bindings are immutable values. Variables allocate mutable storage. Local typed
 variables without an initializer use a concrete canonical `core.Default`
 implementation when one exists for the variable type; otherwise they are
-zero-initialised. Typed variables initialised with `undefined` deliberately skip
+zero-initialised. The selected default constructor executes exactly once per
+execution of the declaration, including nested scopes and loop iterations. Its
+side effects and allocations belong to that single constructed value.
+Typed variables initialised with `undefined` deliberately skip
 both forms of initialisation and are protected by definite-assignment checks.
 
 ## Zero Initialisation

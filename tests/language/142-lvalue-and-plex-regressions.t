@@ -34,7 +34,6 @@ func fn.0(cell: Cell) -> i32 {
   return i32 add(i32 index([4]i32 field(Cell local.0(cell), values), untyped integer 1), i32 index([4]i32 field(Cell local.0(cell), values), untyped integer 2))
 }
 func fn.1() -> i32 {
-  expr <unknown> default
   let box: Box = <unknown> default
   assign i32 index([4]i32 field(Cell field(Box local.1(box), cell), values), untyped integer 1) = i32 7
   assign i32 deref(^i32 address_of(i32 index([4]i32 field(Cell field(Box local.1(box), cell), values), untyped integer 2))) = i32 9

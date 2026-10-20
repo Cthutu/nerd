@@ -56,7 +56,6 @@ func fn.0(system: ^System, handle: u64) -> ^Info {
   }
 }
 func fn.1() -> i32 {
-  expr <unknown> default
   let infos: [..]Info = [..]Info array(; min_capacity 2)
   expr void call fn (Info) -> void field([..]Info local.3(infos), push)(Info plex(handle: u64 7))
   expr void call fn (Info) -> void field([..]Info local.3(infos), push)(Info plex(handle: u64 9))

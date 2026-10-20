@@ -1614,7 +1614,19 @@ internal void format_emit_expr(StringBuilder* sb,
     case CK_Index:
         format_emit_expr(sb, cst, lexer, node->a, node_precedence);
         sb_append_char(sb, '[');
-        format_emit_expr(sb, cst, lexer, node->b, 0);
+        if (cst->nodes[node->b].kind == CK_Tuple &&
+            (cst->nodes[node->b].flags & CNF_TypeArguments)) {
+            const CstNode* args = &cst->nodes[node->b];
+            for (u32 i = 0; i < args->b; ++i) {
+                if (i) {
+                    sb_append_cstr(sb, ", ");
+                }
+                format_emit_expr(
+                    sb, cst, lexer, cst->tuple_items[args->a + i], 0);
+            }
+        } else {
+            format_emit_expr(sb, cst, lexer, node->b, 0);
+        }
         sb_append_char(sb, ']');
         break;
     case CK_Slice:

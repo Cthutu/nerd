@@ -764,6 +764,8 @@ internal bool hir_ast_kind_is_expression_child(AstKind kind)
     case AK_InterpPartExpr:
     case AK_BoolLiteral:
     case AK_NilLiteral:
+    case AK_ZeroInit:
+    case AK_Undefined:
     case AK_SymbolRef:
     case AK_EnumVariant:
     case AK_TypeFn:
@@ -2137,6 +2139,28 @@ internal u32 hir_lower_expr_impl(Hir*         hir,
                 return hir_add_unsupported_expr(hir, sema, node_index);
             }
 
+            const AstCallInfo* call           = &ast->calls[node->b];
+            const AstNode*     display_callee = &ast->nodes[node->a];
+            if (display_callee->kind == AK_Field &&
+                ast->calls[node->b].arg_count == 0 &&
+                string_eq(lex_symbol(lexer, display_callee->b), s("show")) &&
+                sema->node_method_call_decl_indices[node_index] ==
+                    sema_no_decl() &&
+                sema_type_is_builtin_interpolatable(
+                    sema, hir_node_type(sema, display_callee->a))) {
+                u32 argument =
+                    hir_lower_expr(hir, lexer, ast, sema, display_callee->a);
+                u32 first = (u32)array_count(hir->call_args);
+                array_push(hir->call_args,
+                           ((HirCallArg){.expr_index    = argument,
+                                         .symbol_handle = U32_MAX}));
+                return hir_add_expr(
+                    hir,
+                    ((HirExpr){.kind       = HIR_EXPR_InterpolatedString,
+                               .type_index = hir_node_type(sema, node_index),
+                               .first_arg  = first,
+                               .arg_count  = 1}));
+            }
             if (node_index < array_count(sema->node_method_call_decl_indices) &&
                 sema->node_method_call_decl_indices[node_index] !=
                     sema_no_decl() &&
@@ -2154,8 +2178,7 @@ internal u32 hir_lower_expr_impl(Hir*         hir,
                 }
                 const AstNode* callee_node =
                     &ast->nodes[method_field_node_index];
-                const AstCallInfo* call = &ast->calls[node->b];
-                u32                decl_index =
+                u32 decl_index =
                     sema->node_method_call_decl_indices[node_index];
                 u32 callee_type = hir_node_type(sema, node->a);
                 u32 lowered_symbol =
@@ -2436,7 +2459,6 @@ internal u32 hir_lower_expr_impl(Hir*         hir,
                     });
             }
 
-            const AstCallInfo* call = &ast->calls[node->b];
             if (hir_node_is_box_constructor(lexer, ast, node->a)) {
                 Array(HirCallArg) lowered_args = NULL;
                 for (u32 i = 0; i < call->arg_count; ++i) {
@@ -3246,46 +3268,83 @@ internal u32 hir_add_stmt(Hir* hir, HirStmt stmt)
     return (u32)array_count(hir->stmts) - 1;
 }
 
-internal bool hir_append_destructure_tuple_items(Hir*        hir,
-                                                 const Ast*  ast,
-                                                 const Sema* sema,
-                                                 u32         pattern_index,
-                                                 u32*        out_count)
+internal bool hir_append_destructure_items(Hir*        hir,
+                                           const Ast*  ast,
+                                           const Sema* sema,
+                                           u32         pattern_index,
+                                           u32         value_type,
+                                           const u32*  path,
+                                           u32         depth,
+                                           u32*        out_count)
 {
     if (pattern_index >= array_count(ast->patterns)) {
         return false;
     }
-
     const AstPattern* pattern = &ast->patterns[pattern_index];
-    if (pattern->kind != APK_Tuple) {
+    if (pattern->kind == APK_Ignore) {
+        return true;
+    }
+    u32 local = pattern_index < array_count(sema->pattern_local_indices)
+                    ? sema->pattern_local_indices[pattern_index]
+                    : sema_no_local();
+    if (local != sema_no_local()) {
+        array_push(
+            hir->destructure_items,
+            ((HirDestructureItem){.local_index = local,
+                                  .type_index  = hir_local_type(sema, local),
+                                  .field_index = depth ? path[0] : 0,
+                                  .field_path  = (u32*)path,
+                                  .field_count = depth}));
+        (*out_count)++;
+        if (pattern->kind == APK_Bind && pattern->b != U32_MAX) {
+            return hir_append_destructure_items(
+                hir, ast, sema, pattern->b, value_type, path, depth, out_count);
+        }
+        return true;
+    }
+    if (pattern->kind != APK_Tuple && pattern->kind != APK_Plex) {
         return false;
     }
-
+    if (value_type >= array_count(sema->types)) {
+        return false;
+    }
+    const SemaType* type = &sema->types[value_type];
     for (u32 i = 0; i < pattern->b; ++i) {
-        u32 child_index = ast->pattern_items[pattern->a + i];
-        if (child_index >= array_count(ast->patterns)) {
+        u32 field = i, child;
+        if (pattern->kind == APK_Plex) {
+            const AstPlexPatternField* named =
+                &ast->pattern_fields[pattern->a + i];
+            child = named->pattern_index;
+            field = U32_MAX;
+            for (u32 j = 0; j < type->param_count; ++j) {
+                if (sema->type_param_symbols[type->first_param_type + j] ==
+                    named->symbol_handle) {
+                    field = j;
+                    break;
+                }
+            }
+        } else {
+            child = ast->pattern_items[pattern->a + i];
+        }
+        if (field >= type->param_count) {
             return false;
         }
-
-        const AstPattern* child = &ast->patterns[child_index];
-        if (child->kind == APK_Ignore) {
-            continue;
+        u32* next = arena_alloc(&hir->arena, sizeof(u32) * (depth + 1));
+        if (depth) {
+            memcpy(next, path, sizeof(u32) * depth);
         }
-
-        u32 local_index = child_index < array_count(sema->pattern_local_indices)
-                              ? sema->pattern_local_indices[child_index]
-                              : sema_no_local();
-        if (local_index == sema_no_local()) {
+        next[depth] = field;
+        if (!hir_append_destructure_items(
+                hir,
+                ast,
+                sema,
+                child,
+                sema->type_param_types[type->first_param_type + field],
+                next,
+                depth + 1,
+                out_count)) {
             return false;
         }
-
-        array_push(hir->destructure_items,
-                   (HirDestructureItem){
-                       .local_index = local_index,
-                       .type_index  = hir_local_type(sema, local_index),
-                       .field_index = i,
-                   });
-        (*out_count)++;
     }
     return true;
 }
@@ -3621,8 +3680,15 @@ internal u32 hir_lower_stmt(Hir*         hir,
             }
             u32 first_item = (u32)array_count(hir->destructure_items);
             u32 item_count = 0;
-            if (!hir_append_destructure_tuple_items(
-                    hir, ast, sema, node->a, &item_count)) {
+            if (!hir_append_destructure_items(
+                    hir,
+                    ast,
+                    sema,
+                    node->a,
+                    hir_node_type(sema, value_node_index),
+                    NULL,
+                    0,
+                    &item_count)) {
                 return hir_add_stmt(
                     hir,
                     (HirStmt){
@@ -3651,7 +3717,8 @@ internal u32 hir_lower_stmt(Hir*         hir,
                     .symbol_handle     = U32_MAX,
                     .local_index       = sema_no_local(),
                     .type_index        = hir_node_type(sema, node_index),
-                    .body_block_index  = item_count,
+                    .body_block_index  = hir_no_index(),
+                    .destructure_count = item_count,
                     .source_line       = stmt_source_line,
                     .source_path       = stmt_source_path,
                 });
@@ -5056,3 +5123,45 @@ void hir_done(Hir* hir)
 }
 
 //------------------------------------------------------------------------------
+
+u32 hir_destructure_source_expr(const Hir*                hir,
+                                const Sema*               sema,
+                                u32                       root,
+                                const HirDestructureItem* item)
+{
+    for (u32 i = 0; i < item->field_count; ++i) {
+        if (root >= array_count(hir->exprs)) {
+            return U32_MAX;
+        }
+        const HirExpr* expr  = &hir->exprs[root];
+        u32            field = item->field_path[i];
+        if (expr->kind == HIR_EXPR_Tuple) {
+            if (field >= expr->arg_count) {
+                return U32_MAX;
+            }
+            root = hir->call_args[expr->first_arg + field].expr_index;
+        } else if (expr->kind == HIR_EXPR_Plex) {
+            if (expr->type_index >= array_count(sema->types)) {
+                return U32_MAX;
+            }
+            u32 symbol =
+                sema->type_param_symbols
+                    [sema->types[expr->type_index].first_param_type + field];
+            u32 found = U32_MAX;
+            for (u32 j = 0; j < expr->arg_count; ++j) {
+                const HirCallArg* arg = &hir->call_args[expr->first_arg + j];
+                if (arg->symbol_handle == symbol) {
+                    found = arg->expr_index;
+                    break;
+                }
+            }
+            if (found == U32_MAX) {
+                return U32_MAX;
+            }
+            root = found;
+        } else {
+            return U32_MAX;
+        }
+    }
+    return root;
+}

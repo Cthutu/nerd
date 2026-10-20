@@ -217,3 +217,16 @@ In a function-value or address context, the expected function type performs
 the same parameter-only selection. A missing, zero-match, or multiple-match
 context is ill-formed. The resulting expression is the selected concrete
 function, never a compound runtime value.
+
+Logical `&&` and `||` use condition truthiness for bool, box, optional and result
+operands and return bool. Evaluation short-circuits. Optional truthiness tests
+presence, including a present bool payload of `no`; result truthiness tests the
+success variant. Condition chains and pattern guards use the same boundary.
+This does not introduce implicit optional/result conversions in bool assignments
+or parameters; `!!value` explicitly produces the condition's boolean value.
+
+Explicit generic function arguments use comma-delimited brackets, including on
+receiver methods and qualified functions. Applications can nest as type arguments.
+Applied generic types are valid associated-member receivers. Ordinary value
+indexing still requires one integer index; a comma argument list is not a
+multidimensional indexing operation.

@@ -552,6 +552,13 @@ where T: Display {
 }
 ```
 
+Built-in formatting also satisfies canonical `Display`: bool, integer widths,
+`f32`, `f64`, string, and tuples/arrays/slices/dynamic arrays whose elements are
+built-in displayable values. Their `.show()` uses the same representation as
+interpolation, so `describe(42)` above returns `"42"`. Aggregates of custom values
+are not automatically given a Display implementation by this rule. Existing
+explicit user implementations continue through normal trait method lookup.
+
 Inside a generic function, receiver calls to trait methods require a matching
 constraint. It is not enough that one concrete call site happens to pass a type
 that implements the trait.
@@ -607,6 +614,14 @@ The trait names and all other public core bindings are available implicitly. A
 local declaration with the same name takes precedence over the implicit core
 declaration.
 
+Generic function arguments may be inferred or written explicitly:
+`make_pair[i32, string](42, "answer")`. Explicit argument lists also work on
+receiver methods and qualified functions. Type arguments can themselves be
+applications, for example `make_pair[Cell[i32], string](cell, "answer")`.
+Associated functions may be called directly on an applied type:
+`Cell[i32].init(42)` or `support.Pair[i32, string].init(42, "answer")`.
+Aliases remain useful names, but are not required to make these calls work.
+
 ## Destructuring
 
 Destructuring binds parts of compound values:
@@ -623,6 +638,29 @@ Use `_` to ignore a value:
 ```nerd
 (first, _) := (1, 2)  -- ignore the second value
 ```
+
+Plex patterns select fields by name, and may rename or nest patterns:
+
+```nerd
+point := Point { x: 20, y: 22 }
+{ x, y } := point
+{ y: second, x: first } :: point
+{ x, y }: Point = point
+{ x, y } = another_point
+```
+
+The source is evaluated once, and all selected fields are captured before any
+assignment overwrites a destination. Extracted boxes move ownership: the source
+box field becomes nil, and the new box local owns cleanup. Destructuring
+assignment releases an overwritten owned box. Ownership swaps such as
+`(left, right) = (right, left)` preserve the allocations. Ignored fields in an
+existing aggregate stay with that aggregate; ordinary aggregate-field cleanup
+remains explicit. Destructuring does not introduce deep aggregate destruction.
+
+Tuple fields obey the mutability of their root storage. A variable permits
+`pair.0 = 21`, `pair.1 += 1` and nested projections such as `nested.0.1`.
+Tuple fields inside mutable records work too. Immutable bindings and by-value
+parameters cannot be mutated; pass a pointer to mutable storage when needed.
 
 ## Raw Unions
 

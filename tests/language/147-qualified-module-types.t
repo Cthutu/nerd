@@ -33,7 +33,6 @@ bind Box = type.1
 type type.0 = Holder
 type type.1 = Box
 func fn.0() -> i32 {
-  expr <unknown> default
   let box: Box = <unknown> default
   assign Box local.0(box) = Box call fn (usize) -> Box field(module bind.3(boxmod), make_box)(usize 7)
   expr void call bind.1(__impl_Box_bump)(^Box address_of(Box local.0(box)), usize 1)

@@ -1,0 +1,28 @@
+pub Cell :: plex [T] {
+    value T
+}
+
+pub Pair :: plex [A, B] {
+    first  A
+    second B
+}
+
+pub impl [T] Cell[T] {
+
+    init :: fn (value: T) -> Self {
+        return { value }
+    }
+
+}
+
+pub impl [A, B] Pair[A, B] {
+
+    init :: fn (first: A, second: B) -> Self {
+        return { first second }
+    }
+
+}
+
+pub make_pair :: fn [A, B] (first: A, second: B) -> Pair[A, B] {
+    return { first second }
+}

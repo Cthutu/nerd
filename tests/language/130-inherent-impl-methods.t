@@ -70,11 +70,9 @@ func fn.1(self: Counter) -> i32 {
   return i32 field(Counter local.2(self), value)
 }
 func fn.2() -> void {
-  expr <unknown> default
   let counter: Counter = <unknown> default
   expr void call bind.6(__impl_Counter_inc)(^Counter address_of(Counter local.3(counter)), i32 7)
   expr void call bind.6(__impl_Counter_inc)(^Counter address_of(Counter local.3(counter)), i32 5)
-  expr <unknown> default
   let stack: plex { [..]i32 data } = <unknown> default
   expr void call decl.1(__impl_Stack_T_push_g_2ffac2fa)(^plex { [..]i32 data } address_of(plex { [..]i32 data } local.4(stack)), i32 call bind.7(__impl_Counter_get)(Counter local.3(counter)))
   expr void call decl.1(__impl_Stack_T_push_g_2ffac2fa)(^plex { [..]i32 data } address_of(plex { [..]i32 data } local.4(stack)), i32 30)

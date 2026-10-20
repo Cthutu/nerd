@@ -975,7 +975,7 @@ internal void hir_render_stmt_at_indent(StringBuilder* sb,
                            : "destructure assign ");
         hir_render_expr(sb, hir, lexer, sema, arena, stmt->expr_index);
         sb_append_cstr(sb, " {");
-        for (u32 i = 0; i < stmt->body_block_index; ++i) {
+        for (u32 i = 0; i < stmt->destructure_count; ++i) {
             u32 item_index = stmt->target_expr_index + i;
             if (item_index >= array_count(hir->destructure_items)) {
                 continue;

@@ -106,20 +106,27 @@ binding, and assignment:
 ```nerd
 (x, y) :: pair
 (x, y) := pair
-(x, y): Pair : pair
+(x, y): Pair = pair
 (x, y) = pair
 { name, age } := person
 ```
 
 Tuple and plex destructuring shape is checked against the source expression
-type. `_` ignores a value.
+type. `_` ignores a value. Patterns may nest tuple and named plex fields. The
+source is evaluated once. All selected values are read before destinations are
+written. Selected box values transfer ownership and clear the corresponding
+source slots; overwritten box destinations are released. Unselected fields of
+existing aggregates retain ownership, and general aggregate-field cleanup remains
+explicit. Repeated field selection is rejected to prevent duplicate ownership.
 
 ## Assignment Targets
 
 Assignment and compound assignment require mutable storage. Valid targets
 include mutable locals, mutable module variables, fields or elements reached
 through mutable storage, indexes into slices and dynamic arrays, and explicit
-pointer dereferences.
+pointer dereferences. Numeric tuple fields follow the same root-storage rules,
+including nested fields and compound assignment; by-value parameters and immutable
+bindings remain immutable.
 
 Function parameters are immutable bindings. Assigning to a parameter name is
 rejected, and assigning to fields or fixed-array elements stored directly inside

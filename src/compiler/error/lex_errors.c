@@ -134,3 +134,17 @@ bool error_0108_packed_integer_literal_too_large(NerdSource source,
 }
 
 //------------------------------------------------------------------------------
+
+bool error_0109_invalid_exponent(NerdSource source, ErrorSpan span)
+{
+    ErrorInfo info =
+        error_init(source, span, "Scientific exponent requires decimal digits");
+    error_add_reference(
+        &info,
+        ERROR_REF_PRIMARY,
+        span,
+        "Expected digits after exponent marker and optional sign");
+    error_add_help(&info, "Use forms such as `1e3`, `1.0e-3` or `1E+3`.");
+    error_render(&info);
+    return false;
+}

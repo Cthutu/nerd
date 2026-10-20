@@ -215,8 +215,9 @@ typedef struct {
 } CstNode;
 
 typedef enum : u8 {
-    CNF_None   = 0,
-    CNF_Public = 1 << 0,
+    CNF_None          = 0,
+    CNF_Public        = 1 << 0,
+    CNF_TypeArguments = 1 << 1,
 } CstNodeFlag;
 
 typedef struct {

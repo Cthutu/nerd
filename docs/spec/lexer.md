@@ -69,7 +69,7 @@ For example, `$"Hello {name}"` emits this token shape:
 | ---------------------------- | ---------------------------------------------------------------------------------- | ----------------------- | ----------------------------------------------------------------------------------------- |
 | `TK_EOF`                     | none                                                                               | none                    | Parser sentinel; not emitted by `lex()`.                                                  |
 | `TK_Integer`                 | Decimal digits, `0x` hex, `0b` binary, `0o` octal, or single-quoted integer | `lexer->integers`       | Decimal, prefixed-base, character, and packed integer literals all share this token.      |
-| `TK_Float`                   | Decimal digits followed by `.` and at least one decimal digit or `_`               | `lexer->floats`         | Only base-10 floats are recognised. No exponent form is currently lexed.                  |
+| `TK_Float`                   | Decimal digits with a fractional part and/or an `e`/`E` exponent               | `lexer->floats`         | Base-10 only; exponent has an optional sign and required decimal digits. Digit separators are allowed between digits.                  |
 | `TK_String`                  | `"..."`, `"""..."""`, or an interpolated text chunk                                | `lexer->strings`        | Escapes are decoded by the lexer. Triple strings drop one leading newline and trim closing-delimiter indentation from each body line. |
 | `TK_CString`                 | `c"..."`                                                                           | `lexer->strings`        | C string literal. Escapes are decoded by the lexer.                                       |
 | `TK_InterpolatedStringStart` | `$"`                                                                               | none                    | Starts an interpolated string.                                                            |
@@ -163,3 +163,8 @@ For example, `$"Hello {name}"` emits this token shape:
 | `TK_no`        | `no`            | Boolean literal token.         |
 | `TK_nil`       | `nil`           | Nil literal token.             |
 | `TK_undefined` | `undefined`     | Undefined-value literal token. |
+
+Numeric tuple projections are lexed as integer selectors after a dot, including
+chained projections `.0.1`; they are not decimal floating literals. Scientific
+notation is floating point even without a decimal point. The formatter preserves
+its original spelling and complete exponent token span.

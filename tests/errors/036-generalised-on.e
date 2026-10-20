@@ -37,7 +37,7 @@ main :: fn () -> i32 {
 }
 ¬
 {
-    "message": "Type mismatch: expected `bool`, found `i32`",
+    "message": "`on` condition requires bool, box, optional or result, found `i32`",
     "source_file": "tests/errors/036-generalised-on.e",
     "primary_location": {
         "line": 4,
@@ -49,12 +49,12 @@ main :: fn () -> i32 {
             "line": 4,
             "column": 9,
             "length": 5,
-            "message": "This expression has type `i32`"
+            "message": "This expression cannot be used as a condition"
         }
     ],
     "notes": [],
     "help": [
-        "Change the expression or annotation so both sides use the same type."
+        "Use bool or box/optional/result presence, or block-form `on` for value matching."
     ]
 }
 ¬

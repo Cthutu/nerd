@@ -48,7 +48,6 @@ bind Box = type.1
 generic type type.0 = <unknown>
 generic type type.1 = <unknown>
 func fn.0() -> void {
-  expr <unknown> default
   let stack: plex { [..]i32 data } = <unknown> default
   expr void call bind.3(stack_push_g_5df2a8da)(^plex { [..]i32 data } address_of(plex { [..]i32 data } local.0(stack)), i32 42)
   expr void call bind.3(stack_push_g_5df2a8da)(^plex { [..]i32 data } address_of(plex { [..]i32 data } local.0(stack)), i32 13)

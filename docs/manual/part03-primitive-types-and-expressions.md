@@ -128,6 +128,17 @@ million := 1_000_000     -- decimal literal with digit separators
 seconds := 86_400.0      -- float literal with digit separators
 ```
 
+Decimal scientific notation is also supported: `1e3`, `1.0e3`, `1e-3` and
+`1E+3` are floating-point literals, including when the mantissa has no decimal
+point. They remain untyped until context selects `f32` or `f64` (otherwise `f64`).
+Exponent signs are optional, exponent digits are required, and underscores may
+separate digits. Hexadecimal integers such as `0x1e3` keep their integer meaning.
+
+```nerd
+milliseconds: f64 = 1e-3
+large: f32 = 1E+3
+```
+
 ## Operators
 
 Arithmetic operators work with matching numeric operands:
@@ -204,13 +215,20 @@ compiler reports a missing constraint at the comparison operator and suggests
 `where T: Eq`. Floating-point element equality retains scalar behaviour:
 positive and negative zero are equal, and NaN is unequal even to itself.
 
-Logical operators work with `bool`:
+Logical operators:
 
 | Operator                  | Meaning |
 | ------------------------- | ------- |
 | `&&`                      | and     |
 | <code>&#124;&#124;</code> | or      |
 | `!`                       | not     |
+
+Logical `&&` and `||` accept boolean values and box/optional/result presence tests.
+They evaluate left to right and skip the right operand when the left decides the
+result. For `?bool`, a present `no` is true as a condition: presence is tested,
+not the payload. A result tests whether it succeeded. The same presence rules
+apply to condition chains and pattern guards. Boolean assignments and function
+arguments still require a bool; write `!!value` to turn presence into a bool.
 
 Bitwise operators work with matching integer operands:
 

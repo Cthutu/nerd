@@ -26,7 +26,6 @@ hir 0
 bind split = fn.0
 bind main = fn.1
 func fn.0(s: string, sep: string) -> [..]string {
-  expr <unknown> default
   let parts: [..]string = <unknown> default
   expr void on bool equal(usize field(string local.1(sep), count), usize 0) {
     value(bool yes) => {

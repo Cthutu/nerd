@@ -107,7 +107,7 @@ right: i32 = 2
 main :: fn () => left && right
 ¬
 {
-    "message": "Operator `&&` requires matching bool operands, found `i32` and `i32`",
+    "message": "Operator `&&` requires bool, box, optional or result condition operands, found `i32` and `i32`",
     "source_file": "tests/errors/018-primitive-operators.e",
     "primary_location": {
         "line": 3,
@@ -124,7 +124,7 @@ main :: fn () => left && right
     ],
     "notes": [],
     "help": [
-        "Use `&&` only with matching bool operands."
+        "Use `&&` only with bool, box, optional or result condition operands."
     ]
 }
 ¬
