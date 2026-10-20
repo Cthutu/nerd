@@ -315,18 +315,10 @@ pattern binds `x` and `y`, then uses `...` to ignore the remaining fields.
 Without `label: _` or `...`, these patterns would be rejected for missing a field.
 
 A shorthand field such as `y` means `y: y`; write `y: vertical` to give its
-binder another name. The subject supplies the plex type. Fields can appear in
-any order.
+binder another name. The subject supplies the plex type.
 
-`{ ... }` ignores every field without binding any of them. An empty `{}`
-pattern is complete only for an empty plex. The `...` marker must be last,
-although a trailing comma is allowed. Unknown or duplicate fields are errors
-even when `...` is present. Each nested plex pattern follows the same rules.
-
-Complete patterns make the compiler report newly added fields that need
-attention. Use `...` when you deliberately want additional fields to remain
-unconstrained. Unlike `...` in a plex literal, pattern `...` does not initialize
-omitted fields or compare them with their defaults.
+The [shared pattern rules below](#shared-rules-for-combining-patterns) summarise
+how these field patterns also apply inside enum payloads.
 
 ## Matching enum variants
 
@@ -402,17 +394,21 @@ main :: fn () -> i32 {
 ```
 
 This returns `42`. `width: horizontal` renames the bound field, while `height`
-uses shorthand. Named payload patterns follow the same field-coverage rules
-as plex patterns: mention every field, or use trailing `...`. For example,
-`Resized { width, ... }` binds `width` and ignores `height`. A branch-level
-`as whole` would bind the whole `Event`, rather than one of its payload fields.
+uses shorthand. The variant name wraps a plex-style field pattern; its fields
+follow the same testing, binding, and coverage rules as a plex pattern.
 
-## Tests, bindings and ignored payload values
+## Shared rules for combining patterns
 
-Each field or payload position accepts a pattern of its own. The literal,
-comparison, range, and existing-value tests used in outer matches work inside
-these positions too. Each position can also introduce a binding or be ignored
-with `_`:
+Tuples, plexes, and enum payloads use the same patterns for their parts. The
+outer shape selects what to inspect: tuple elements by position, plex fields
+by name, or an enum variant and its payload. Each selected part then has a
+pattern of its own. These rules apply recursively, so a payload can contain
+a plex pattern whose fields contain further patterns.
+
+### Testing, binding and ignoring a value
+
+A literal, comparison, range, existing-value test, binding, or `_` has the
+same role wherever it appears. Only the surrounding shape changes:
 
 | Purpose | Plex field | Single enum payload | Positional enum payloads | Named enum payload |
 | --- | --- | --- | --- | --- |
@@ -436,6 +432,51 @@ such as `number` introduces a name without restricting the value. `_` does
 neither: it accepts the value and leaves it unnamed. To bind a value and then
 test it, use a binder in the pattern and a guard on the branch. For example,
 `Value(number) on number > 10 => number` binds the payload and then tests it.
+
+In particular, `for wanted` always compares with an existing value. A name
+in a binding position introduces a new branch-local name, even when an outer
+variable has that spelling. This distinction applies equally to tuple
+elements, plex fields, and enum payloads.
+
+### Covering named fields and positions
+
+Plex patterns and named enum payload patterns share the same field rules:
+
+| Choice | Plex pattern | Named enum payload pattern |
+| --- | --- | --- |
+| Test one field and ignore the rest | `{ x: for wanted, ... }` | `Resized { width: for wanted, ... }` |
+| Bind one field and ignore the rest | `{ x, ... }` | `Resized { width, ... }` |
+| Explicitly ignore one field and bind another | `{ x: _, y, ... }` | `Resized { width: _, height }` |
+| Ignore all fields | `{ ... }` | `Resized { ... }` |
+
+Write each field exactly once, or end with `...` to leave the other fields
+unconstrained. `field` is shorthand for `field: field`, and `field: _`
+explicitly ignores that field. Fields can appear in any order. The trailing
+`...` marker may be followed by a comma, but no further fields. Unknown or
+duplicate fields are errors even when `...` is present. An empty `{}`
+pattern is complete only for a plex or named payload with no fields.
+
+Complete field patterns make the compiler report newly added fields that
+need attention. Use `...` when you deliberately want additional fields to
+remain unconstrained. Unlike `...` in a plex literal, pattern `...` does not
+initialize omitted fields or compare them with their defaults.
+
+Tuple patterns and positional enum payload patterns instead account for
+every position. Use `_` for each unwanted element, as in `(first, _)` or
+`Pair(first, _)`; `...` does not skip positional elements.
+
+### Whole-subject bindings and guards
+
+Field and element binders name their individual parts. A branch-level
+`as whole` names the entire subject of the `on`: a plex for a plex match,
+or the enum value for an enum match. It does not name just the payload.
+
+A guard follows the pattern and any `as` binder, and can use the names they
+introduce. It runs only after the pattern matches. If it is false, matching
+continues with the next branch. These branch rules are the same for every
+outer pattern shape.
+
+## Applying the shared rules to enum payloads
 
 ### Positional payload patterns
 
@@ -469,10 +510,6 @@ This returns `42`: the three calls contribute `20`, `20`, and `2`. In
 `Pair(> 10, right)`, the first payload must exceed `10`, and the second is
 bound to `right`. `Value(_)` handles the remaining single-value payloads;
 `Pair(_, _)` handles the remaining pairs without binding either element.
-
-Positional patterns must account for every payload position. Use `_` for
-each unwanted element; the trailing `...` field marker belongs to braced
-plex patterns and named payload patterns.
 
 ### Named payload patterns
 
