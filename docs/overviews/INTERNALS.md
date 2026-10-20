@@ -1,5 +1,18 @@
 # Internals
 
+Qualified generic lookup resolves module exports to their declaration kind and
+source declaration before specialization. Type applications accept both bare
+symbols and module-member targets; expression-parsed bracket applications share
+the same argument-list resolver. Qualified type aliases, literals and associated
+calls therefore retain the original generic template identity. Generic calls
+and explicit function values similarly instantiate a qualified exported function
+using the existing imported-generic path. Reference resolution marks brackets
+as type arguments only for generic exports rooted in a module binding, preserving
+ordinary indexing of exported array values. Export tables still control visibility.
+HIR lowers qualified generic functions to declaration/import references, retaining
+the selected specialization symbol for both direct calls and explicit function
+values so LLVM and C generation reuse the existing generic-function lookup.
+
 Associated-call target resolution uses the qualified type resolver rather than
 only the bare type-symbol resolver. This lets `name.Type.init(...)` resolve a
 public type through `name :: use module` before selecting an associated

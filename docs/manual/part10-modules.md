@@ -176,6 +176,22 @@ main :: fn () {
 The type and associated function must both be public. Qualified calls use the
 same method selection and visibility rules as calls after a bare `use` import.
 
+Exported generics also support qualification:
+
+```nerd
+cells :: use app.cells
+
+main :: fn () {
+    cell: cells.Cell[i32]
+    cell.value = cells.identity(42)
+    _wide := cells.identity[i64](42)
+}
+```
+
+Generic function calls can infer type arguments or receive them explicitly.
+Qualified generic types work in annotations, aliases, nested type arguments,
+and typed literals, just like bare imported names.
+
 ## Public Exports
 
 Use `pub` to make a declaration visible outside its module:

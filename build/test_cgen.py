@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 # Runtime regressions beyond the language suite: defaults, ABI, ownership,
 # atomics, allocator diagnostics, formatting and generic dispatch.
 COMMANDS = (
+    "371-qualified-generics",
     "370-qualified-associated-calls",
     "369-nested-labelled-loop-values",
     "368-truthy-for-conditions",

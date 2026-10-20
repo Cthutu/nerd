@@ -1,0 +1,23 @@
+pub Cell :: plex [T] {
+    value T
+}
+
+impl [T] Cell[T] {
+    pub init :: fn (value: T) -> Self {
+        return { value }
+    }
+
+    pub get :: fn (cell: ^Self) -> T {
+        return cell.value
+    }
+}
+
+pub identity :: fn [T] (value: T) -> T {
+    return value
+}
+
+pub wrap :: fn [T] (value: T) -> Cell[T] {
+    return { value }
+}
+
+pub values := [11, 13]

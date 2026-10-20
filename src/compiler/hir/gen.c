@@ -2617,6 +2617,28 @@ internal u32 hir_lower_expr_impl(Hir*         hir,
                                     hir, lexer, ast, sema, node->a),
                             });
     case AK_Field:
+        {
+            u32 decl_index = hir_node_decl(sema, node_index);
+            if (decl_index != sema_no_decl() &&
+                sema->decls[decl_index].kind == SK_GenericFunction) {
+                u32 binding_index = hir_decl_binding(hir, decl_index);
+                u32 symbol = sema->node_lowered_symbol_handles[node_index];
+                return hir_add_expr(
+                    hir,
+                    (HirExpr){
+                        .kind          = HIR_EXPR_LocalRef,
+                        .type_index    = hir_node_type(sema, node_index),
+                        .symbol_handle = symbol != U32_MAX ? symbol : node->b,
+                        .local_index   = sema_no_local(),
+                        .ref_kind      = binding_index != hir_no_index()
+                                             ? HIR_REF_Binding
+                                             : HIR_REF_Decl,
+                        .ref_index     = binding_index != hir_no_index()
+                                             ? binding_index
+                                             : decl_index,
+                    });
+            }
+        }
         return hir_add_expr(hir,
                             (HirExpr){
                                 .kind       = HIR_EXPR_Field,
