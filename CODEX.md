@@ -18,3 +18,23 @@ Commit and push all standard-library and compiler changes after verification.
 Whenever creating any commit, push it so the remote has a backup.
 
 Treat compiler bugs as highest priority.
+
+Use the `Cthutu` GitHub account for this repository. Authenticate `gh` commands
+with a command-scoped `GH_TOKEN`; do not switch the shared active account with
+`gh auth switch`, log out other accounts, or set a user/machine-wide token.
+Other agents use the `rocket-matt` account in the same environment.
+
+Load the stored `Cthutu` token without printing or saving it. For Git Bash:
+
+```bash
+cthutu_gh_token=$(env -u GH_TOKEN -u GITHUB_TOKEN gh auth token --hostname github.com --user Cthutu) &&
+  GH_TOKEN="$cthutu_gh_token" gh api user --jq .login
+unset cthutu_gh_token
+```
+
+Use the same command-scoped environment for subsequent `gh` operations. In
+PowerShell, capture the token in a variable, temporarily assign `$env:GH_TOKEN`,
+and restore its previous value in `finally`. Clear inherited `GH_TOKEN` and
+`GITHUB_TOKEN` while looking up the stored account token. Never include tokens
+in logs or tracked files. `GH_TOKEN` controls `gh` API authentication; Git pushes
+over SSH continue to use the repository's configured SSH remote.
