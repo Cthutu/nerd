@@ -203,7 +203,7 @@ Pair :: plex [A, B] {
 }
 
 make_pair :: fn [A, B] (first: A, second: B) -> Pair[A, B] {
-    return { first: first, second: second }
+    return { first, second }
 }
 
 main :: fn () -> i32 {
@@ -216,6 +216,10 @@ main :: fn () -> i32 {
 This prints `answer` and returns `42`. The call infers `A` as `i32` and `B`
 as `string`, producing a `Pair[i32, string]`. Type arguments are positional:
 `Pair[string, i32]` would give the fields different types.
+
+The return type supplies the literal's type. Since each parameter has the
+same name as its field, `{ first, second }` uses Chapter 5's shorthand for
+`{ first: first, second: second }`.
 
 Both parameters must be determined for each call. Supplying only
 `make_pair[i32](...)` is an error; it does not ask the compiler to infer just
