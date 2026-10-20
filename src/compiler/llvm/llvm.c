@@ -8720,7 +8720,10 @@ internal bool llvm_callee_name(LlvmFunctionContext* ctx,
                 candidate_symbol =
                     llvm_function_method_symbol_handle(ctx->sema, candidate);
             }
-            if (candidate_symbol != U32_MAX &&
+            // Associated constructors may share a name across generic types
+            // and specializations. Keep the signature selected by semantics.
+            if (candidate->type_index == callee->type_index &&
+                candidate_symbol != U32_MAX &&
                 string_eq(lex_symbol(ctx->lexer, candidate_symbol),
                           lex_symbol(ctx->lexer, callee->symbol_handle))) {
                 *out = llvm_function_name_string(

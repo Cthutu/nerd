@@ -1499,6 +1499,10 @@ a generic application when its receiver denotes a generic type or callable and
 continues checking ordinary value indexes separately. Applied type receivers and
 qualified exported generic declarations are resolved before runtime member lookup.
 Both backends preserve explicit imported function specialization selection.
+LLVM associated-function lookup also matches the selected function type, so
+same-named constructors from different generic types or specializations cannot
+accidentally call the first `init` in the module. This matters when ordinary plex
+storage order differs from declaration order.
 
 Plex and tuple destructuring lower to one source expression plus arena-owned
 projection paths. `HirStmt.destructure_count` is separate from `body_block_index`:
