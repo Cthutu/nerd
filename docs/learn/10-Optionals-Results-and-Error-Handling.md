@@ -221,6 +221,28 @@ This returns `42` and prints `using default` once. The left operand is
 evaluated once, and the fallback runs only when needed. With a result, the
 error is discarded; use `on` when you need to inspect it.
 
+When recovery needs several statements, use an expression block as the
+fallback. `break` supplies the replacement value:
+
+```nerd
+read_number :: fn () -> i32\string {
+    return "number unavailable"!
+}
+
+main :: fn () -> i32 {
+    number := read_number() \ ${
+        prn("using default")
+        break 40
+    }
+    return number + 2
+}
+```
+
+This prints `using default` and returns `42`. The block runs only on failure;
+on success, `number` receives the successful payload directly. `break 40`
+exits the expression block, then execution continues after the declaration.
+It does not return from `main`. The same form works for optional absence.
+
 The extracted value and fallback must have compatible success types. You can
 chain choices, such as `first_choice() \ second_choice() \ 42`. Chains group
 from the right and stop at the first present or successful value.
