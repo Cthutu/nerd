@@ -586,9 +586,12 @@ The current compiler accepts these entry-point forms:
 | No return value (`void`) | `0` when the function finishes. |
 | `i32` | The returned integer. |
 | `?void` | `0` on success; `1` on absence. |
+| `?i32` | The present integer; `1` on absence. |
+| `void\Error` | `0` on success; `1` on error, with a message on stderr. |
+| `i32\Error` | The successful integer; `1` on error, with a message on stderr. |
 
-Other integer return types are also accepted, but `i32` is sufficient for
-the examples in this guide.
+Plain integer return types of other widths are also accepted. Optional and
+result entry points use `void` or `i32` payloads.
 
 An entry point can return `?void` when initialization may fail:
 
@@ -607,16 +610,55 @@ This prints `ready` and exits with status `0`. Reaching the end of this
 `main`, or using bare `return`, succeeds. Returning `nil` or propagating
 absence exits with status `1`, after registered cleanup runs.
 
-The current compiler rejects `?i32`, `void\Error`, and `i32\Error` as return
-types for `main`, even though these are valid return types for ordinary
-functions. They cannot yet be used to propagate absence or errors out of the
-entry point. Handle those outcomes inside a supported `main` and return an
-integer exit status explicitly when needed.
+### Optional integer exit statuses
+
+With `?i32`, presence supplies an explicit exit status: `return 0` exits with
+`0`, and `return 42` exits with `42`. Absence supplies the fallback status `1`:
+
+```nerd
+main :: fn () -> ?i32 {
+    return nil
+}
+```
+
+This exits with status `1` without printing an error message. A useful
+convention is to use `0` for success, `1` for a generic or unknown error, and
+other nonzero statuses for specific failures defined by your program. On
+that convention, `nil` means failure without a more specific exit status.
+Returning a present `1` produces the same process exit status as returning
+`nil`; the operating system does not receive the optional's presence tag.
+
+A present integer is used as the status even though the optional itself is
+truthy. Presence of `42` therefore exits with `42`, rather than indicating
+successful process completion. Propagating optional absence with `?` also
+uses the fallback status `1`.
+
+### Results with error messages
 
 In `T\Error`, `Error` stands for an error **type**, rather than a particular
 error value. It can be an enum, string, integer, or another suitable value
-type; an error outcome carries a value of that type. The entry-point
-restriction applies regardless of which error type you choose.
+type; an error outcome carries a value of that type. For a result-returning
+`main`, the error type must implement `Display`, which supplies its textual
+representation. This is required even if the program only returns success.
+Trait implementations are covered later; `string` already supports this,
+so it can be used directly:
+
+```nerd
+main :: fn () -> i32\string {
+    return "could not read configuration"!
+}
+```
+
+This exits with status `1` and writes `Error: could not read configuration`
+followed by a newline to standard error. A successful `return 42` would instead
+exit with `42` and produce no automatic error message. For `void\Error`, a
+bare `return` or reaching the end succeeds with status `0`.
+
+Explicit error returns and errors propagated with `?` run applicable `undo`
+and `defer` cleanup before the entry-point error message is printed. A result
+error always uses status `1`; an integer error payload is displayed as an
+error message, rather than used as the exit status. Use a successful `i32`
+payload when you want to choose the exit status yourself.
 
 ## Choosing how to handle an outcome
 

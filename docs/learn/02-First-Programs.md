@@ -196,7 +196,7 @@ no return value also finishes the call. It is useful when you need to leave a
 function before reaching the end of its body.
 
 For now, use either no return value or an `i32` exit status for `main`.
-Chapter 10 introduces its optional `?void` return form. The original hello
+Chapter 10 introduces optional and result return forms. The original hello
 world returns no value and finishes with status `0`. To make the status
 explicit, write:
 
