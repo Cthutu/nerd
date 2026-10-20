@@ -83,7 +83,9 @@ main :: fn () -> i32 {
 }
 ```
 
-This returns `4`, the storage size of an `i32` in bytes. The function can use
+This returns `4`, the storage size of an `i32` in bytes. `T.size` uses the
+general storage-size property from [Chapter 3](03-Primitive-Types-and-Expressions.md)
+on the type supplied as `T`. The function can use
 `T` wherever the chosen type is needed, including declarations, pointer and
 array element types, return types, and type operations such as `.size`.
 Calling `storage_size()` cannot infer `T`; its `usize` return type does not

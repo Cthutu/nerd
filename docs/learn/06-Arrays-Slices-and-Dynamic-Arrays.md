@@ -136,7 +136,9 @@ Collection members distinguish element counts from byte sizes:
 | `.capacity` | Not applicable. | Not applicable. | Number of elements that fit before growth is needed. |
 | `.data` | Pointer to the first element. | Borrowed pointer to the first element. | Pointer to the current element storage. |
 
-Counts, capacities, and byte sizes have type `usize`. On a type, `T.size`
+Counts, capacities, and byte sizes have type `usize`. As introduced in
+[Chapter 3](03-Primitive-Types-and-Expressions.md), `.size` works on all
+concrete types and values, including collections. On a type, `T.size`
 gives the byte size of a value of that type; for example, `i32.size` is `4`.
 For `[3]i32`, `.count` is `3` and `.bytes` is `3 * i32.size`. Its `.size` equals
 `.bytes` because the elements are the array's storage.

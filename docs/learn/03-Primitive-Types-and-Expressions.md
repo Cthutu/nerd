@@ -359,3 +359,30 @@ message :: """
 The initial newline after the opening delimiter is omitted. The indentation of
 the closing delimiter is trimmed from the body lines. This example contains
 the same text as `"first\n  second\n"`, including the final newline.
+
+## Storage size with `.size`
+
+`.size` is a general property of types and values, not just arrays. Write a
+type followed by `.size` to obtain the storage size of a value of that type
+in bytes. On a typed value, `.size` gives the size of that value's representation.
+The result has type `usize` in both cases:
+
+```nerd
+number : i32 : 42
+
+main :: fn () -> i32 {
+    return (i32.size + number.size).as(i32)
+}
+```
+
+This returns `8`: `i32.size` and `number.size` are each `4`. The cast converts
+the `usize` sum into the `i32` exit status.
+
+The property works for every concrete type, including the compound types
+introduced in later chapters. A size describes the value's own storage,
+including any layout padding. It does not include separately referenced data.
+
+For a string, `.size` measures the string value's representation, not the
+number of text bytes. `"hello".count` is `5`, while `"hello".size` equals
+`string.size`, regardless of the text's length. The same distinction between
+a value's own size and the data it refers to matters for collections later.
