@@ -91,7 +91,7 @@ library is organised into three layers:
 
 The repository also contains early `std.random` source work. Treat it as
 experimental until its dependencies and syntax surface are covered by the
-roadmap's horizontal feature policy.
+[contribution rules](../README.md#contribution-rules).
 
 ## Documentation Policy
 

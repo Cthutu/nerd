@@ -69,6 +69,27 @@ Git history; the roadmap and subsystem docs describe current work.
   6. Report back with the commit hash, verification run, install result, push
      result, and useful next step.
 
+## Contribution Rules
+
+- Use British spelling where practical and keep changes small and reviewable.
+- Land language features across parsing, sema, HIR, LLVM/C, formatting, LSP,
+  tests and affected manual/spec documentation together. Record any deliberate
+  deferral in [open work](ROADMAP.md) before committing.
+- Prefer dense runtime tests grouped by feature with checked `prn` output.
+  Exercise the real CLI when its behaviour changes. Passing tests should remove
+  intermediates; failing tests should retain evidence.
+- Keep compiler data arena-backed, table-based and index-based. Keep the AST
+  compact and syntax-oriented, preserve its RPN-friendly structure, and store
+  semantic facts/dependencies in side tables. Parser helpers should make token
+  consumption explicit. Avoid AST growth without a measured reason.
+- Preserve supported forward references and dependency ordering. Lower simple
+  top-level constants directly and leave optimisation to LLVM unless separately
+  designed. Keep parsing traits such as `Parse` at library level.
+- Follow the [pipeline](docs/compiler-pipeline.md),
+  [diagnostic policy](docs/error-system.md#failure-policy) and
+  [architecture decisions](review/decisions/README.md). Generated Nerd symbols
+  use `$`; compiler/runtime helpers remain internal unless explicitly exported.
+
 ## Generated Files
 
 Repo-level generated directories should start with an underscore, such as

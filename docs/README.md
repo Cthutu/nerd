@@ -4,11 +4,11 @@ This folder contains developer-facing documentation for the repository.
 
 ## Source Of Truth
 
-Use [../ROADMAP.md](../ROADMAP.md) for current project direction,
-active work, and cross-cutting engineering rules. Use the learner-facing
-[manual/README.md](manual/README.md) for source-level
-language behaviour and [spec/README.md](spec/README.md)
-for implementation-derived language facts.
+Use [../ROADMAP.md](../ROADMAP.md) for open work and
+[contribution rules](../README.md#contribution-rules) for engineering guidance.
+Use the learner-facing [manual/README.md](manual/README.md) for source-level
+language behaviour and [spec/README.md](spec/README.md) for implementation-derived
+language facts.
 
 The other documents in this folder are implementation notes. Keep them when
 they describe compiler structure, subsystem ownership, diagnostics, tooling, or
@@ -109,7 +109,7 @@ explicitly keeps it visible.
 ## Maintenance
 
 Keep current behaviour in the manual, specs and subsystem docs, and open work in
-[the roadmap](../ROADMAP.md) or [TODO.md](../TODO.md).
+[the roadmap](../ROADMAP.md).
 Completed audits, one-off repair reports and superseded handoffs belong in Git
 history. Keep reproducible validation tools, source provenance, accepted decision
 records and dated measurements when they still support a maintained contract.
