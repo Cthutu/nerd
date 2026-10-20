@@ -13,41 +13,46 @@ Nerd is a small compiler toolchain and language server implemented in C.
   Regression test families and fixture conventions.
 - [syntax/README.md](syntax/README.md)
   VS Code and Neovim editor integration ownership.
-- [review/README.md](review/README.md)
-  Accepted architecture decisions and dated performance measurements.
 - [ROADMAP.md](ROADMAP.md)
   Current project direction and active priorities.
-- [CODEX.md](CODEX.md)
-  Repo-specific guidance for Codex sessions.
 
 ## Catching Up
 
 If you are new to the repository, read these in order:
 
-1. [CODEX.md](CODEX.md)
-   Repo-specific working rules for Codex sessions.
-2. [ROADMAP.md](ROADMAP.md)
-   Current project direction. Prefer this over older historical notes when they
-   disagree.
-3. [DEBUGGER.md](DEBUGGER.md)
-   Source-level debugger roadmap and current VS Code/CodeLLDB implementation
-   status.
-4. [docs/README.md](docs/README.md)
-   Documentation map. Follow its links into the manual, specs, compiler
-   internals, diagnostics, standard library, LSP, editor support, and testing
-   docs.
-5. [src/README.md](src/README.md)
-   Current implementation entry points for the compiler and language server.
-6. [tests/README.md](tests/README.md)
+1. [docs/README.md](docs/README.md)
+   Documentation map for the manual, specs, compiler internals, standard library,
+   editor support and testing.
+2. [src/README.md](src/README.md)
+   Compiler and language-server implementation entry points.
+3. [tests/README.md](tests/README.md)
    Test harness expectations and fixture layout.
+4. [ROADMAP.md](ROADMAP.md)
+   Open work and deferred ideas.
+5. [DEBUGGER.md](DEBUGGER.md)
+   Current debugger behaviour and remaining native checks.
 
-Use [review/decisions](review/decisions/README.md) for settled architectural
-boundaries. [Historical measurements](review/measurements/README.md) remain in
-Git history; the roadmap and subsystem docs describe current work.
+Current architectural contracts live in [the compiler pipeline](docs/compiler-pipeline.md).
+Historical decisions, reviews and measurements remain in Git history.
+
+## Repository Scope
+
+Keep source code (`src`, `data`, `syntax`), build/development configuration
+(`build`, `etc`, editor settings), standard-library modules (`mods`), tests and
+validation tools (`tests`, `validation`), examples and learning materials, and
+maintained documentation. Benchmarks and editor integrations support development;
+source provenance and API contracts are maintained documentation.
+
+Review files outside those purposes as deletion candidates. Completed plans,
+review closeouts, superseded decisions, raw validation logs and duplicated agent
+instructions belong in Git history. Keep current constraints in subsystem docs
+and unfinished work in the roadmap. Generated outputs and local review inputs
+stay ignored rather than becoming repository content.
 
 ## Task Workflow
 
-- Make the smallest coherent change for the task.
+- Prioritise confirmed compiler bugs and make the smallest coherent change for
+  the task.
 - Update or add tests for changed behaviour, including regression tests for
   discovered bugs.
 - Update affected documentation in the same change. For language changes, keep
@@ -72,6 +77,8 @@ Git history; the roadmap and subsystem docs describe current work.
 ## Contribution Rules
 
 - Use British spelling where practical and keep changes small and reviewable.
+- Update [compiler internals](docs/overviews/INTERNALS.md) when changes affect
+  compiler structure or behaviour.
 - Land language features across parsing, sema, HIR, LLVM/C, formatting, LSP,
   tests and affected manual/spec documentation together. Record any deliberate
   deferral in [open work](ROADMAP.md) before committing.
@@ -85,9 +92,8 @@ Git history; the roadmap and subsystem docs describe current work.
 - Preserve supported forward references and dependency ordering. Lower simple
   top-level constants directly and leave optimisation to LLVM unless separately
   designed. Keep parsing traits such as `Parse` at library level.
-- Follow the [pipeline](docs/compiler-pipeline.md),
-  [diagnostic policy](docs/error-system.md#failure-policy) and
-  [architecture decisions](review/decisions/README.md). Generated Nerd symbols
+- Follow the [pipeline](docs/compiler-pipeline.md) and
+  [diagnostic policy](docs/error-system.md#failure-policy). Generated Nerd symbols
   use `$`; compiler/runtime helpers remain internal unless explicitly exported.
 
 ## Generated Files

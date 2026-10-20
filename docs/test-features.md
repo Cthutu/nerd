@@ -136,7 +136,7 @@ scattered across command fixtures.
 ## Repository footprint and evidence
 
 The cleanup is based on `fac0feae`. Historical measurements and validation outputs
-are available through the immutable [measurement archive](../review/measurements/README.md)
+are available through the immutable [measurement archive](https://github.com/Cthutu/nerd/tree/fac0feae825d73a478466410956c1ca7749a2a8a/review/measurements)
 and [Windows archive](https://github.com/Cthutu/nerd/tree/fac0feae825d73a478466410956c1ca7749a2a8a/validation/windows/results).
 Current Windows handoff instructions live in
 [validation/windows/HANDOFF.md](../validation/windows/HANDOFF.md).

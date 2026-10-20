@@ -57,6 +57,20 @@ The backend is intentionally split into small pieces:
   owns textual LLVM concatenation and declaration filtering for the combined
   input.
 
+## Allocation and ownership
+
+Use arenas for phase/request-lifetime source copies, scratch text and response
+objects. Use dynamic arrays for growing compiler tables; reserve from earlier
+phase counts where practical. Direct heap ownership should be explicit and
+limited to escaped lifetimes or backing stores with teardown. Reuse scratch
+arenas when lifetimes permit rather than creating one for every small operation.
+
+Lowering must not introduce hidden heap ownership. Generated allocations must
+belong to a source/runtime owner, such as a dynamic array, string builder or
+explicit allocation API. Borrowed slices do not allocate backing storage;
+constant slice literals use compiler-emitted data and runtime views borrow
+existing storage. Unexpected generated allocation is a correctness issue.
+
 ## C transpilation
 
 `nerd build --cgen source.n` selects the HIR-to-C backend in
@@ -191,6 +205,12 @@ HIR is the semantically checked middle layer. It is intentionally target-agnosti
 at the language level: functions, types, values, imports, exports, locals, and
 control-flow constructs are represented as compiler facts rather than as C or
 LLVM spelling.
+
+HIR separates entity identity from source names. Functions, types and stored
+values have HIR-local identities; binding records name those entities. Imports,
+module aliases and exports have explicit records. Renaming a source binding
+must not change the underlying entity's identity. Backend implementation symbols
+and source-facing aliases/debug names remain separate.
 
 HIR also has a stable textual representation for tests. The text is derived
 from the in-memory HIR; it is not the shape the data structures have to use.

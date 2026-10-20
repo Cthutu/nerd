@@ -29,7 +29,7 @@ or unsupported checks from passed ones. Linux evidence is not a Windows pass.
 - Work on the user-selected branch, otherwise the current branch and verified
   upstream. Do not merge, delete branches, force-push, or overwrite unrelated
   user changes as part of validation. The old experiment is already merged.
-- Read the repository's applicable `AGENTS.md` instructions if any, `CODEX.md`,
+- Read the repository's applicable `AGENTS.md` instructions if any, `README.md`,
   `validation/windows/README.md`, and the scheduler adoption policy in
   `docs/compiler-profiling.md`.
 - Nerd's normal source-to-binary pipeline invokes LLVM tooling directly:
