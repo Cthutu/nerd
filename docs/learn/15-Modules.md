@@ -216,21 +216,25 @@ way to re-export: callers then keep the additional qualification, as in
 
 ## Where modules are found
 
-Nerd searches the selected library roots, then the directory from which the
-compiler was invoked. This is why the examples run from their project root;
-a qualified import does not automatically search beside an arbitrary source
-file passed from elsewhere.
+Ordinary module lookup and implicit `core` lookup use this order:
 
-If `NERD_LIB_PATH` is unset, the library root is `mods` beside the compiler.
-Setting it replaces that bundled-library search with the listed directories:
-separate them with `;` on Windows or `:` on Unix. An empty value disables
-library lookup. The same selection applies to implicit core declarations, so
-an override must still make `core` available. Missing modules do not fall back
-to a different installed copy of the library.
+| Order | `NERD_LIB_PATH` unset | `NERD_LIB_PATH` defined |
+| --- | --- | --- |
+| 1 | The `mods` directory beside the compiler executable. | Each listed directory, from left to right. An empty value skips this step. |
+| 2 | The current working directory of the compiler invocation. | The current working directory of the compiler invocation. |
 
-Bare sibling imports inside an imported module have a separate relative
-lookup rule, allowing a file to import an adjacent helper by its short name.
-For a project's public paths, use the directory structure and invoke Nerd
-from the root containing those paths.
+Separate library directories with `;` on Windows or `:` on Unix. Defining
+`NERD_LIB_PATH` replaces the bundled-library search completely: missing modules
+do not fall back to `mods` beside the compiler or another installed library.
+Your selected search locations must still make `core` available.
+
+The working directory is where you invoked Nerd, not necessarily the directory
+containing the source file. This is why the examples run from their project
+root. Qualified imports do not automatically search beside that source file.
+
+There is one relative-import exception: an explicit bare single-name import
+from a file outside the invocation directory can first resolve an adjacent
+sibling module, before the table's search. Imports from the invocation directory
+retain library-first precedence. Implicit `core` lookup always follows the table.
 
 Compile-time selection of platform-specific imports is covered in Chapter 17.
