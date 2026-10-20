@@ -250,4 +250,20 @@ main :: fn () -> i32 {
 }
 ```
 
+A labelled break can also supply the named loop's result from inside a nested
+loop:
+
+```nerd
+answer := for $outer {
+    for {
+        break $outer 42
+    }
+}
+```
+
+Here, `answer` is `42`. Only breaks targeting `$outer` determine its result
+type; the inner loop's own breaks belong to the inner loop. All values supplied
+to the same loop must have compatible types. A finite outer loop still needs
+an `else` value for normal exhaustion.
+
 Use labels only when the target would otherwise be ambiguous.

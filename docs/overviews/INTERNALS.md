@@ -1,5 +1,15 @@
 # Internals
 
+Loop result inference and loop-`else` validation share a target-aware value-break
+search. It follows explicit labels through nested loops, blocks and expression
+operands while keeping unlabelled breaks with their nearest control target.
+Nested loops and expression blocks shadowing the requested label stop that
+search, as do function and deferred-body boundaries. A worklist visits nodes in
+source order without adding C recursion for deep operands. Inference merges only
+the collected target's values; presence checks use the same walk and stop at the
+first match. This fixes labelled outer loop results being inferred as `void`
+when their value-producing breaks occur inside nested loops.
+
 Condition-style and C-style `for` loops infer their condition without forcing a
 boolean payload type. Both semantic paths validate the same truthy types as
 logical negation: bool-compatible values (including boxes), optionals, and

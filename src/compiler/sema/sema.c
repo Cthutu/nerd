@@ -17807,6 +17807,247 @@ internal bool sema_merge_control_break_type(const Lexer* lexer,
     return true;
 }
 
+typedef struct {
+    u32  node_index;
+    bool implicit_target;
+} SemaValueBreakVisit;
+
+internal void sema_push_value_break_visit(Array(SemaValueBreakVisit) * visits,
+                                          u32  node_index,
+                                          bool implicit_target)
+{
+    if (node_index != U32_MAX) {
+        array_push(*visits,
+                   ((SemaValueBreakVisit){node_index, implicit_target}));
+    }
+}
+
+// Follow explicit labels across nested control targets, but keep their bare
+// breaks local. An explicit worklist also handles deep expression operands.
+internal bool sema_find_value_breaks_for_target(const Ast* ast,
+                                                u32        node_index,
+                                                u32        target_label,
+                                                Array(u32) * out_breaks)
+{
+    Array(SemaValueBreakVisit) visits = NULL;
+    sema_push_value_break_visit(&visits, node_index, true);
+    bool found = false;
+    while (array_count(visits) > 0) {
+        SemaValueBreakVisit visit    = array_pop(visits);
+        const AstNode*      node     = &ast->nodes[visit.node_index];
+        bool                implicit = visit.implicit_target;
+        u32                 left     = U32_MAX;
+        u32                 right    = U32_MAX;
+        switch (node->kind) {
+        case AK_Break:
+        case AK_BreakExpr:
+            if (node->a != U32_MAX &&
+                ((node->b == U32_MAX && implicit) ||
+                 (node->b != U32_MAX && node->b == target_label))) {
+                found = true;
+                if (out_breaks == NULL) {
+                    array_free(visits);
+                    return true;
+                }
+                array_push(*out_breaks, visit.node_index);
+            }
+            break;
+        case AK_Block:
+            {
+                u32 first = (u32)array_count(visits);
+                for (u32 i = node->a; i < node->b; ++i) {
+                    const AstNode* stmt = &ast->nodes[i];
+                    if (stmt->kind == AK_FnStart) {
+                        i = stmt->b;
+                        continue;
+                    }
+                    if (stmt->kind == AK_Block &&
+                        sema_block_is_expr_block_body(ast, i)) {
+                        i = stmt->b - 1;
+                        continue;
+                    }
+                    if (!ast_node_is_block_statement(stmt)) {
+                        continue;
+                    }
+                    sema_push_value_break_visit(&visits, i, implicit);
+                    i = ast_block_statement_end_exclusive(ast, i) - 1;
+                }
+                // Pop statements in source order for deterministic inference.
+                for (u32 i = first, end = (u32)array_count(visits); i < end;
+                     ++i) {
+                    SemaValueBreakVisit swap = visits[i];
+                    visits[i]                = visits[--end];
+                    visits[end]              = swap;
+                }
+            }
+            break;
+        case AK_For:
+            {
+                const AstForInfo* loop = &ast->fors[node->a];
+                if (target_label == U32_MAX ||
+                    loop->label_symbol == target_label) {
+                    break;
+                }
+                sema_push_value_break_visit(
+                    &visits, loop->else_block_index, false);
+                sema_push_value_break_visit(&visits, node->b, false);
+                for (u32 i = loop->update_count; i > 0; --i) {
+                    sema_push_value_break_visit(
+                        &visits,
+                        ast->for_items[loop->first_update + i - 1],
+                        false);
+                }
+                sema_push_value_break_visit(
+                    &visits, loop->condition_node_index, false);
+                sema_push_value_break_visit(
+                    &visits, loop->iterable_node_index, false);
+                for (u32 i = loop->init_count; i > 0; --i) {
+                    sema_push_value_break_visit(
+                        &visits,
+                        ast->for_items[loop->first_init + i - 1],
+                        false);
+                }
+            }
+            break;
+        case AK_ExprBlock:
+            if (target_label != U32_MAX && node->b != target_label) {
+                sema_push_value_break_visit(&visits, node->a, false);
+            }
+            break;
+        case AK_On:
+            {
+                const AstOnInfo* on = &ast->ons[node->b];
+                for (u32 i = on->branch_count; i > 0; --i) {
+                    const AstOnBranch* branch =
+                        &ast->on_branches[on->first_branch + i - 1];
+                    sema_push_value_break_visit(
+                        &visits, branch->expr_node_index, implicit);
+                    sema_push_value_break_visit(
+                        &visits, branch->guard_node_index, implicit);
+                }
+                left = node->a;
+            }
+            break;
+        case AK_Call:
+            {
+                const AstCallInfo* call = &ast->calls[node->b];
+                for (u32 i = call->arg_count; i > 0; --i) {
+                    sema_push_value_break_visit(
+                        &visits,
+                        ast->call_args[call->first_arg + i - 1],
+                        implicit);
+                }
+                left = node->a;
+            }
+            break;
+        case AK_Tuple:
+        case AK_Array:
+            for (u32 i = node->b; i > 0; --i) {
+                sema_push_value_break_visit(
+                    &visits, ast->tuple_items[node->a + i - 1], implicit);
+            }
+            break;
+        case AK_Plex:
+        case AK_PlexUpdate:
+            {
+                const AstPlexLiteralInfo* literal =
+                    &ast->plex_literals[node->a];
+                for (u32 i = literal->field_count; i > 0; --i) {
+                    sema_push_value_break_visit(
+                        &visits,
+                        ast->plex_literal_fields[literal->first_field + i - 1]
+                            .value_node_index,
+                        implicit);
+                }
+                if (node->kind == AK_PlexUpdate) {
+                    left = literal->target_node_index;
+                }
+            }
+            break;
+        case AK_Slice:
+            {
+                const AstSliceInfo* slice = &ast->slices[node->a];
+                sema_push_value_break_visit(
+                    &visits, slice->end_node_index, implicit);
+                sema_push_value_break_visit(
+                    &visits, slice->start_node_index, implicit);
+                left = slice->target_node_index;
+            }
+            break;
+        case AK_Cast:
+            left  = node->a;
+            right = sema_cast_info(ast, node)->extra_node_index;
+            break;
+        case AK_InterpolatedString:
+            for (u32 i = node->b; i > node->a; --i) {
+                sema_push_value_break_visit(&visits, i - 1, implicit);
+            }
+            break;
+        case AK_Bind:
+        case AK_Variable:
+        case AK_DestructureBind:
+        case AK_DestructureVariable:
+        case AK_DestructureAssign:
+            left = node->b;
+            break;
+        case AK_AnnotatedValue:
+            left = node->b;
+            break;
+        case AK_Statement:
+        case AK_Expression:
+        case AK_Return:
+        case AK_ReturnExpr:
+        case AK_InterpPartExpr:
+        case AK_IntegerNegate:
+        case AK_LogicalNot:
+        case AK_BitwiseNot:
+        case AK_ErrorInject:
+        case AK_Propagate:
+        case AK_AddressOf:
+        case AK_Deref:
+        case AK_Field:
+        case AK_TupleField:
+            left = node->a;
+            break;
+        case AK_StringConcat:
+        case AK_IntegerPlus:
+        case AK_IntegerMinus:
+        case AK_IntegerMultiply:
+        case AK_IntegerDivide:
+        case AK_IntegerModulo:
+        case AK_BitwiseAnd:
+        case AK_BitwiseXor:
+        case AK_BitwiseOr:
+        case AK_ShiftLeft:
+        case AK_ShiftRight:
+        case AK_Equal:
+        case AK_NotEqual:
+        case AK_Less:
+        case AK_LessEqual:
+        case AK_Greater:
+        case AK_GreaterEqual:
+        case AK_InRange:
+        case AK_LogicalAnd:
+        case AK_LogicalOr:
+        case AK_Index:
+        case AK_RangeExclusive:
+        case AK_RangeInclusive:
+        case AK_Assign:
+        case AK_Assert:
+            left  = node->a;
+            right = node->b;
+            break;
+        default:
+            // Functions, types and deferred bodies are separate boundaries.
+            break;
+        }
+        sema_push_value_break_visit(&visits, right, implicit);
+        sema_push_value_break_visit(&visits, left, implicit);
+    }
+    array_free(visits);
+    return found;
+}
+
 internal bool sema_collect_value_breaks_for_target(const Lexer* lexer,
                                                    const Ast*   ast,
                                                    Sema*        sema,
@@ -17817,96 +18058,33 @@ internal bool sema_collect_value_breaks_for_target(const Lexer* lexer,
                                                    u32* in_out_result_type_node,
                                                    bool* out_has_value_break)
 {
-    const AstNode* node = &ast->nodes[node_index];
-    if (node->kind == AK_Break || node->kind == AK_BreakExpr) {
-        if (node->a != U32_MAX &&
-            (node->b == U32_MAX || node->b == target_label)) {
-            if (!sema_merge_control_break_type(lexer,
-                                               ast,
-                                               sema,
-                                               node_index,
-                                               expected_type,
-                                               in_out_result_type,
-                                               in_out_result_type_node)) {
-                return false;
-            }
-            *out_has_value_break = true;
-        }
-        return true;
+    Array(u32) breaks = NULL;
+    if (sema_find_value_breaks_for_target(
+            ast, node_index, target_label, &breaks)) {
+        *out_has_value_break = true;
     }
-
-    if (node->kind == AK_Statement || node->kind == AK_Expression) {
-        return sema_collect_value_breaks_for_target(lexer,
-                                                    ast,
-                                                    sema,
-                                                    node->a,
-                                                    target_label,
-                                                    expected_type,
-                                                    in_out_result_type,
-                                                    in_out_result_type_node,
-                                                    out_has_value_break);
-    }
-
-    if (node->kind == AK_On) {
-        const AstOnInfo* on = &ast->ons[node->b];
-        for (u32 i = 0; i < on->branch_count; ++i) {
-            const AstOnBranch* branch = &ast->on_branches[on->first_branch + i];
-            if (!sema_collect_value_breaks_for_target(lexer,
-                                                      ast,
-                                                      sema,
-                                                      branch->expr_node_index,
-                                                      target_label,
-                                                      expected_type,
-                                                      in_out_result_type,
-                                                      in_out_result_type_node,
-                                                      out_has_value_break)) {
-                return false;
-            }
+    for (u32 i = 0; i < array_count(breaks); ++i) {
+        if (!sema_merge_control_break_type(lexer,
+                                           ast,
+                                           sema,
+                                           breaks[i],
+                                           expected_type,
+                                           in_out_result_type,
+                                           in_out_result_type_node)) {
+            array_free(breaks);
+            return false;
         }
     }
-
+    array_free(breaks);
     return true;
-}
-
-internal bool sema_node_has_value_break_for_target(const Ast* ast,
-                                                   u32        node_index,
-                                                   u32        target_label)
-{
-    const AstNode* node = &ast->nodes[node_index];
-    if (node->kind == AK_Break || node->kind == AK_BreakExpr) {
-        return node->a != U32_MAX &&
-               (node->b == U32_MAX || node->b == target_label);
-    }
-    if (node->kind == AK_Statement || node->kind == AK_Expression) {
-        return sema_node_has_value_break_for_target(ast, node->a, target_label);
-    }
-    if (node->kind == AK_On) {
-        const AstOnInfo* on = &ast->ons[node->b];
-        for (u32 i = 0; i < on->branch_count; ++i) {
-            const AstOnBranch* branch = &ast->on_branches[on->first_branch + i];
-            if (sema_node_has_value_break_for_target(
-                    ast, branch->expr_node_index, target_label)) {
-                return true;
-            }
-        }
-    }
-    return false;
 }
 
 internal bool sema_block_has_value_break_for_target(const Ast* ast,
                                                     u32        block_index,
                                                     u32        target_label)
 {
-    const AstNode* block = &ast->nodes[block_index];
-    ASSERT(block->kind == AK_Block, "Expected block");
-    for (u32 i = block->a; i < block->b; ++i) {
-        if (ast_node_is_block_statement(&ast->nodes[i]) &&
-            sema_node_has_value_break_for_target(ast, i, target_label)) {
-            return true;
-        }
-        i = ast_block_statement_end_exclusive(ast, i) - 1;
-    }
-    return false;
+    return sema_find_value_breaks_for_target(
+        ast, block_index, target_label, NULL);
 }
 
 internal void sema_select_default_method_for_local(const Lexer* lexer,
@@ -23708,45 +23886,28 @@ validate_type:
             u32  loop_type_node       = node_index;
             bool body_has_value_break = false;
             bool else_has_value_break = false;
-            for (u32 i = body->a; i < body->b; ++i) {
-                const AstNode* stmt = &ast->nodes[i];
-                if (!ast_node_is_block_statement(stmt)) {
-                    continue;
-                }
-                if (!sema_collect_value_breaks_for_target(
-                        lexer,
-                        ast,
-                        sema,
-                        i,
-                        for_info->label_symbol,
-                        expected_type,
-                        &loop_type,
-                        &loop_type_node,
-                        &body_has_value_break)) {
-                    return false;
-                }
-                i = ast_block_statement_end_exclusive(ast, i) - 1;
+            if (!sema_collect_value_breaks_for_target(lexer,
+                                                      ast,
+                                                      sema,
+                                                      node->b,
+                                                      for_info->label_symbol,
+                                                      expected_type,
+                                                      &loop_type,
+                                                      &loop_type_node,
+                                                      &body_has_value_break)) {
+                return false;
             }
-            if (else_block != NULL) {
-                for (u32 i = else_block->a; i < else_block->b; ++i) {
-                    const AstNode* stmt = &ast->nodes[i];
-                    if (!ast_node_is_block_statement(stmt)) {
-                        continue;
-                    }
-                    if (!sema_collect_value_breaks_for_target(
-                            lexer,
-                            ast,
-                            sema,
-                            i,
-                            for_info->label_symbol,
-                            expected_type,
-                            &loop_type,
-                            &loop_type_node,
-                            &else_has_value_break)) {
-                        return false;
-                    }
-                    i = ast_block_statement_end_exclusive(ast, i) - 1;
-                }
+            if (else_block != NULL && !sema_collect_value_breaks_for_target(
+                                          lexer,
+                                          ast,
+                                          sema,
+                                          for_info->else_block_index,
+                                          for_info->label_symbol,
+                                          expected_type,
+                                          &loop_type,
+                                          &loop_type_node,
+                                          &else_has_value_break)) {
+                return false;
             }
             for (u32 item = 0; item < for_info->update_count; ++item) {
                 u32 item_node = ast->for_items[for_info->first_update + item];
