@@ -666,10 +666,10 @@ uses the fallback status `1`.
 In `T\Error`, `Error` stands for an error **type**, rather than a particular
 error value. It can be an enum, string, integer, or another suitable value
 type; an error outcome carries a value of that type. For a result-returning
-`main`, the error type must implement `Display`, which supplies its textual
-representation. This is required even if the program only returns success.
-Trait implementations are covered later; `string` already supports this,
-so it can be used directly:
+`main`, the error type must implement the `Display` trait, which supplies its
+textual representation. This is required even if the program only returns
+success. Traits and how to implement them will be covered in a later chapter.
+The `string` type already implements `Display`, so it can be used directly:
 
 ```nerd
 main :: fn () -> i32\string {
