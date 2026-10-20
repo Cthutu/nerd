@@ -155,8 +155,10 @@ enabled :: yes
 disabled : bool : no
 ```
 
-Conditions and logical operations require `bool`; integers do not implicitly
-act as truth values. Use a comparison such as `count != 0` to produce a boolean.
+Among these primitive types, only `bool` has truthiness: `yes` is true and `no`
+is false. Integers do not implicitly act as truth values. Use a comparison such
+as `count != 0` to produce a boolean. Optional and result types also have
+truthiness; Chapter 10 covers them and where the compiler accepts them.
 
 ## Arithmetic expressions
 
@@ -226,8 +228,8 @@ outside_limits :: !within_limits
 
 `&&` and `||` short-circuit. The right operand of `&&` is evaluated only if
 the left operand is true; the right operand of `||` is evaluated only if the
-left operand is false. `!` operates on a boolean, so use `!(count == 0)` or
-`count != 0` when testing a number.
+left operand is false. For the primitive types covered here, `!` operates on
+`bool`, so use `!(count == 0)` or `count != 0` when testing a number.
 
 ## Bitwise operators
 

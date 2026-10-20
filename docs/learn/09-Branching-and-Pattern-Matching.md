@@ -31,7 +31,10 @@ main :: fn () {
 ```
 
 This prints `warm`. If the condition is false, the statement does nothing.
-The condition must have type `bool`; an integer is not implicitly a boolean.
+For the types covered so far, the condition must have type `bool`; an integer
+is not implicitly a boolean. Optionals and results also have truthiness and
+can be tested directly in this short form of `on`. Chapter 10 explains their
+presence and success tests.
 
 Add `else` to choose between two expressions:
 

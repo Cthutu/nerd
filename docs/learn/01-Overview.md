@@ -57,6 +57,9 @@ Several features give common C patterns direct language support:
 - **Optional values and results.** `?T` represents a value that may be absent,
   and `T\E` represents either a successful value or an error. Matching and
   failure propagation make these outcomes part of ordinary control flow.
+  Alongside booleans, these types have truthiness: presence or success is true,
+  while absence or failure is false, regardless of the contained value.
+  Chapter 10 explains their use in conditions and current compiler limitations.
 - **Scoped cleanup.** `defer` runs cleanup when a scope exits. `undo` runs
   cleanup on failure, helping unwind partially completed resource acquisition.
   Cleanup can stay beside the operation that makes it necessary.

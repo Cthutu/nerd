@@ -34,6 +34,9 @@ main :: fn () {
 
 This prints `missing`. The return type is an optional signed 32-bit integer.
 Returning `42` constructs presence; returning `nil` means there is no integer.
+The condition uses the optional's **truthiness**: a present optional is true,
+and an absent optional is false. There is no need to compare it with `nil`
+before choosing a branch.
 
 In a declaration, write the optional type explicitly when it is needed:
 `answer: ?i32 = 42` holds a present integer. `answer := 42` instead declares
@@ -96,6 +99,8 @@ main :: fn () -> i32 {
 This returns `42`. A successful call contains an `i32`; a failed call contains
 a `MathError`. The `!` after an error value selects the error outcome, even
 when the success and error types could otherwise accept the same value.
+Results also have truthiness: success is true and failure is false. The `on`
+in `main` tests that outcome, then binds the successful payload as `number`.
 
 The error type is your choice: it can be an enum, string, integer, or a plex
 carrying details. There is no required base error type. Here the enum makes
@@ -143,7 +148,21 @@ the outer `outcome` still has its original result type. The same shorthand
 works for optionals, but their absent branch has no replacement payload.
 Use explicit bracketed names when that makes the changing types clearer.
 
-## Checking for failure without extracting
+## Truthiness and checking for failure
+
+Booleans, optionals, and results have truthiness:
+
+| Value | True when | False when |
+| --- | --- | --- |
+| `bool` | `yes` | `no` |
+| `?T` | A value is present | The value is absent (`nil`) |
+| `T\E` | The outcome is success | The outcome is an error |
+
+For optionals and results, truthiness tests the wrapper's outcome, rather than
+the payload. A present `?bool` containing `no` is true, as is a successful
+`bool\E` containing `no`. The same applies to a contained zero or empty string.
+Use `on outcome => ... else ...` to branch directly on this truthiness; extract
+the payload first when you want to test the contained value instead.
 
 Prefix `!` tests absence or failure. It is true for an absent optional or a
 failed result, and false for a present optional or successful result:
@@ -165,6 +184,13 @@ absence and presence.
 Placement matters: prefix `!value` checks failure, while postfix `error!`
 constructs an error. Prefix `!` on an ordinary boolean remains boolean
 negation, as in earlier chapters.
+
+The current compiler does not yet accept optionals and results everywhere a
+`bool` is required. Direct short-form `on` and prefix `!` accept them, but
+`&&`, `||`, condition chains, guards, and boolean parameters or assignments
+require actual `bool` values. `!!outcome` converts the truthiness test into a
+`bool`: the first `!` tests absence or failure, and the second negates that
+test. For example, combine two outcomes with `!!first && !!second`.
 
 ## Supplying a default with `\`
 
