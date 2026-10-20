@@ -577,7 +577,18 @@ Undo cleanup cannot return or propagate another failure, or register further
 undo actions. Process termination and runtime panics are not failure returns
 and do not trigger undo as error handling.
 
-## An optional entry point
+## Entry-point return types
+
+The current compiler accepts these entry-point forms:
+
+| Return type | Exit status |
+| --- | --- |
+| No return value (`void`) | `0` when the function finishes. |
+| `i32` | The returned integer. |
+| `?void` | `0` on success; `1` on absence. |
+
+Other integer return types are also accepted, but `i32` is sufficient for
+the examples in this guide.
 
 An entry point can return `?void` when initialization may fail:
 
@@ -595,6 +606,17 @@ main :: fn () -> ?void {
 This prints `ready` and exits with status `0`. Reaching the end of this
 `main`, or using bare `return`, succeeds. Returning `nil` or propagating
 absence exits with status `1`, after registered cleanup runs.
+
+The current compiler rejects `?i32`, `void\Error`, and `i32\Error` as return
+types for `main`, even though these are valid return types for ordinary
+functions. They cannot yet be used to propagate absence or errors out of the
+entry point. Handle those outcomes inside a supported `main` and return an
+integer exit status explicitly when needed.
+
+In `T\Error`, `Error` stands for an error **type**, rather than a particular
+error value. It can be an enum, string, integer, or another suitable value
+type; an error outcome carries a value of that type. The entry-point
+restriction applies regardless of which error type you choose.
 
 ## Choosing how to handle an outcome
 

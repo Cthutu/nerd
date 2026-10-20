@@ -195,9 +195,10 @@ The bare `return` is optional here because reaching the end of a function with
 no return value also finishes the call. It is useful when you need to leave a
 function before reaching the end of its body.
 
-For `main`, you can choose between returning no value and returning an `i32`
-exit status. The original hello world returns no value and finishes with status
-`0`. To make the status explicit, write:
+For now, use either no return value or an `i32` exit status for `main`.
+Chapter 10 introduces its optional `?void` return form. The original hello
+world returns no value and finishes with status `0`. To make the status
+explicit, write:
 
 ```nerd
 main :: fn () -> i32 {
