@@ -295,6 +295,7 @@ Point :: plex {
 score :: fn (point: Point) -> i32 {
     return on point {
         { x: 0, y, label: _ } => y
+        { x: > 10, y, ... } => point.x + y
         { x, y, ... } => x + y
         else => 0
     }
@@ -307,8 +308,10 @@ main :: fn () -> i32 {
 ```
 
 This returns `42`. The first pattern requires `x` to be zero, binds `y`, and
-explicitly ignores `label`. It mentions all three fields. The second pattern
-binds `x` and `y`, then uses `...` to ignore `label` and any fields added later.
+explicitly ignores `label`. It mentions all three fields. The second tests
+whether `x > 10`, binds `y`, and ignores the remaining fields. The comparison
+does not bind `x`; its value is read through `point.x` in the body. The third
+pattern binds `x` and `y`, then uses `...` to ignore the remaining fields.
 Without `label: _` or `...`, these patterns would be rejected for missing a field.
 
 A shorthand field such as `y` means `y: y`; write `y: vertical` to give its
@@ -403,6 +406,110 @@ uses shorthand. Named payload patterns follow the same field-coverage rules
 as plex patterns: mention every field, or use trailing `...`. For example,
 `Resized { width, ... }` binds `width` and ignores `height`. A branch-level
 `as whole` would bind the whole `Event`, rather than one of its payload fields.
+
+## Tests, bindings and ignored payload values
+
+Each field or payload position accepts a pattern of its own. The literal,
+comparison, range, and existing-value tests used in outer matches work inside
+these positions too. Each position can also introduce a binding or be ignored
+with `_`:
+
+| Purpose | Plex field | Single enum payload | Positional enum payloads | Named enum payload |
+| --- | --- | --- | --- | --- |
+| Match a literal value | `{ x: 42, ... }` | `Value(42)` | `Pair(42, _)` | `Resized { width: 42, ... }` |
+| Write equality explicitly | `{ x: == 42, ... }` | `Value(== 42)` | `Pair(== 42, _)` | `Resized { width: == 42, ... }` |
+| Compare a value | `{ x: > 10, ... }` | `Value(> 10)` | `Pair(> 10, _)` | `Resized { width: > 10, ... }` |
+| Match a range | `{ x: 10..=20, ... }` | `Value(10..=20)` | `Pair(10..=20, _)` | `Resized { width: 10..=20, ... }` |
+| Compare with an existing value | `{ x: for wanted, ... }` | `Value(for wanted)` | `Pair(for wanted, _)` | `Resized { width: for wanted, ... }` |
+| Bind a value | `{ x: horizontal, ... }` | `Value(number)` | `Pair(left, right)` | `Resized { width: horizontal, ... }` |
+| Ignore a value | `{ x: _, ... }` | `Value(_)` | `Pair(_, right)` | `Resized { width: _, ... }` |
+
+All six comparison operators work here: `==`, `!=`, `<`, `<=`, `>`, and `>=`.
+The field or payload must support the chosen operator.
+Omitting the operator in a value test means `==`, so `Value(42)` and
+`Value(== 42)` have the same meaning. The exclusive `..` and bracketed `in`
+range spellings work here too. `for wanted` can also use an expression, such
+as `for (wanted + 1)`.
+
+A test such as `> 10` checks the value without introducing a name. A binder
+such as `number` introduces a name without restricting the value. `_` does
+neither: it accepts the value and leaves it unnamed. To bind a value and then
+test it, use a binder in the pattern and a guard on the branch. For example,
+`Value(number) on number > 10 => number` binds the payload and then tests it.
+
+### Positional payload patterns
+
+Patterns can combine tests and bindings in the same variant:
+
+```nerd
+Reading :: enum {
+    Missing
+    Value(i32)
+    Pair(i32, i32)
+}
+
+score :: fn (reading: Reading, wanted: i32) -> i32 {
+    return on reading {
+        Value(> 10) => 20
+        Value(for wanted) => 2
+        Value(_) => 0
+        Pair(> 10, right) => right
+        Pair(_, _) => 0
+        Missing => 0
+    }
+}
+
+main :: fn () -> i32 {
+    return score(Reading.Value(11), 7) +
+        score(Reading.Pair(11, 20), 7) + score(Reading.Value(7), 7)
+}
+```
+
+This returns `42`: the three calls contribute `20`, `20`, and `2`. In
+`Pair(> 10, right)`, the first payload must exceed `10`, and the second is
+bound to `right`. `Value(_)` handles the remaining single-value payloads;
+`Pair(_, _)` handles the remaining pairs without binding either element.
+
+Positional patterns must account for every payload position. Use `_` for
+each unwanted element; the trailing `...` field marker belongs to braced
+plex patterns and named payload patterns.
+
+### Named payload patterns
+
+The same choices appear after a payload field's colon:
+
+```nerd
+Event :: enum {
+    Closed
+    Resized { width i32 height i32 }
+}
+
+score :: fn (event: Event, wanted: i32) -> i32 {
+    return on event {
+        Resized { width: 0, height: _ } => 0
+        Resized { width: > 10, height: vertical } => vertical
+        Resized { width: for wanted, ... } => wanted
+        Resized { ... } => 0
+        Closed => 0
+    }
+}
+
+main :: fn () -> i32 {
+    return score(Event.Resized { width: 20, height: 35 }, 7) +
+        score(Event.Resized { width: 7, height: 99 }, 7)
+}
+```
+
+This returns `42`: the first call binds `height` to `vertical` and returns
+`35`; the second compares `width` with `wanted` and returns `7`. The first
+two patterns mention both fields. The third ignores the other fields with
+`...`, and `Resized { ... }` handles any remaining `Resized` value without
+binding or testing its fields.
+
+These patterns also nest inside a variant carrying a plex value. For a
+variant declared as `Moved(Position)`, where `Position` has fields `x` and
+`y`, `Moved({ x: > 10, y })` tests `x` and binds `y`. Every nested plex
+pattern must cover its fields or explicitly ignore the rest with `...`.
 
 ## Nested patterns and alternatives
 
