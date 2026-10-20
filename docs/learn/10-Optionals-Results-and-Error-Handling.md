@@ -2,7 +2,7 @@
 
 [Previous: Branching and Pattern Matching](09-Branching-and-Pattern-Matching.md)
 
-[Next: Methods and Traits](11-Methods-and-Traits.md)
+[Next: Generics](11-Generics.md)
 
 Some operations cannot always produce a useful value. An item may be absent,
 or an operation may fail with information explaining why. Nerd represents
@@ -670,7 +670,7 @@ error value. It can be an enum, string, integer, or another suitable value
 type; an error outcome carries a value of that type. For a result-returning
 `main`, the error type must implement the `Display` trait, which supplies its
 textual representation. This is required even if the program only returns
-success. [Chapter 11](11-Methods-and-Traits.md) covers traits and how to
+success. [Chapter 12](12-Methods-and-Traits.md) covers traits and how to
 implement them.
 The `string` type already implements `Display`, so it can be used directly:
 

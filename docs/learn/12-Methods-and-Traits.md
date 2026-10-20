@@ -1,6 +1,6 @@
-# Chapter 11: Methods and Traits
+# Chapter 12: Methods and Traits
 
-[Previous: Optionals, Results and Error Handling](10-Optionals-Results-and-Error-Handling.md)
+[Previous: Generics](11-Generics.md)
 
 Earlier chapters used calls such as `values.push(42)` and `storage.reset()`.
 These are methods: functions called through a value. This chapter explains
@@ -85,6 +85,66 @@ An associated function's declared return type must contain `Self`, for example
 factories. Write that return type explicitly rather than relying on expression
 function inference. `init` is an ordinary binding name, not a special constructor
 keyword.
+
+## Methods on generic types
+
+Chapter 11 introduced generic data types. Declare their implementation's type
+parameters explicitly after `impl`, then apply them to the target type:
+
+```nerd
+Cell :: plex [T] { value T }
+
+impl [T] Cell[T] {
+    init :: fn (value: T) -> Self {
+        return { value: value }
+    }
+
+    set :: fn (self: ^Self, value: T) {
+        self.value = value
+    }
+
+    get :: fn (self: Self) => self.value
+}
+
+IntCell :: Cell[i32]
+
+main :: fn () -> i32 {
+    cell := IntCell.init(40)
+    cell.set(42)
+    return cell.get()
+}
+```
+
+This returns `42`. `[T]` declares the implementation's parameter;
+`Cell[T]` applies it to the target type. For `Cell[i32]`, `Self` means
+`Cell[i32]`, and the methods use `i32` wherever they refer to `T`.
+The parameter is available in member signatures and bodies.
+
+The example calls `init` through the concrete alias `IntCell`. The current
+compiler rejects the direct associated call `Cell[i32].init(40)`; using the
+alias selects the same concrete type and works around that limitation.
+
+A method can also declare its own type parameters, independently of whether
+its receiver type is generic:
+
+```nerd
+Selector :: plex { use_first bool }
+
+impl Selector {
+    choose :: fn [T] (self: Self, first: T, second: T) =>
+        on self.use_first => first else second
+}
+
+main :: fn () -> i32 {
+    selector := Selector { use_first: yes }
+    prn(selector.choose("chosen", "other"))
+    return selector.choose[i32](42, 0)
+}
+```
+
+This prints `chosen` and returns `42`. Type arguments can be inferred from
+the method's arguments or supplied after its name. The `storage.alloc[i32]()`
+calls from Chapter 8 use this explicit method-call syntax too.
 
 ## Declaring and implementing a trait
 
@@ -361,8 +421,8 @@ compiler bug matters if default construction allocates or changes state.
 
 ## Trait requirements in reusable functions
 
-A reusable function can accept different types while requiring a particular
-trait. This uses a **type parameter** and a `where` constraint:
+A generic function from Chapter 11 can require its type arguments to implement
+a particular trait. Add a `where` constraint:
 
 ```nerd
 Status :: enum { Ready Waiting }
@@ -391,17 +451,17 @@ main :: fn () {
 }
 ```
 
-This prints `ready` followed by `label`. `[T]` declares a type parameter; `T`
-stands for the concrete argument type chosen at a call. `where T: Display`
-requires that type to support `Display`, so the body can call `value.show()`.
+This prints `ready` followed by `label`. As before, `[T]` declares the
+function's type parameter. The new `where T: Display` requires the chosen
+type to support `Display`, so the body can call `value.show()`.
 The compiler checks the requirement for each concrete call. It can infer `T`
 from the argument, or you can supply it explicitly, as in
 `describe[Status](Status.Ready)`.
 
-Such functions are called **generic functions**. A matching trait constraint
-is required inside the generic body; a particular caller passing a displayable
-type does not replace that declaration. Further generic type and implementation
-forms will be covered in a later chapter.
+A matching trait constraint is required inside the generic body; a particular
+caller passing a displayable type does not replace that declaration. Generic
+implementation blocks can use `where` constraints in the same way when their
+methods need trait operations on a type parameter.
 
 The current compiler distinguishes built-in formatting from an explicit
 `Display` implementation when checking these constraints. For example,
