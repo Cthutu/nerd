@@ -6,7 +6,7 @@ use separate branches from `main`; this plan records the remaining dependencies
 and gates, rather than requiring a long-lived integration branch. Kerberos
 graphs, DNS/IPv6 and the remaining platform/stress gates are outstanding. The
 milestone sections below distinguish implemented slices from full milestone
-closure. See the [latest Windows evidence](../validation/windows/results/HANDOFF.md)
+closure. See the [latest Windows evidence](https://github.com/Cthutu/nerd/blob/fac0feae825d73a478466410956c1ca7749a2a8a/validation/windows/results/HANDOFF.md)
 for automated coverage and the remaining manual observations.
 
 ## Objective
@@ -235,7 +235,7 @@ Depends on relevant M0/M1 foundations; independent of M2–M4.
 Current slice: IPv4 TCP/UDP plus bounded readiness and monotonic deadlines,
 nonblocking TCP connection completion and a runnable deadline-bounded exchange
 are implemented. Readiness/connect LLVM/C debug/release checks pass on Linux and in the
-[native Windows automated matrix](../validation/windows/results/20261016T083710Z-8b918d2c/README.md). Interactive
+[native Windows automated matrix](https://github.com/Cthutu/nerd/blob/fac0feae825d73a478466410956c1ca7749a2a8a/validation/windows/results/20261016T083710Z-8b918d2c/README.md). Interactive
 Windows observations and broader adoption gates remain open. See the
 [contracts and remaining M5 work](std-network-foundation.md). M5 remains open for
 IPv6, resolution, remaining options/lifecycle contracts and broader validation.
@@ -273,7 +273,7 @@ to equivalent coverage; the Telnet slice below adds the remaining 11. TCP satura
 queued admission after disconnect, repeated reconnects, malformed-peer isolation,
 and delayed connect/receive are tested. Forced stale readiness exposed a timeout
 loop, now fixed; loop-temporary LLVM storage is also bounded. The
-[native Windows automated matrix](../validation/windows/results/20261016T083710Z-8b918d2c/README.md) passes under both
+[native Windows automated matrix](https://github.com/Cthutu/nerd/blob/fac0feae825d73a478466410956c1ca7749a2a8a/validation/windows/results/20261016T083710Z-8b918d2c/README.md) passes under both
 compiler builds and both backends/target modes. Interactive Windows observations
 and long-duration soak/resource-growth validation remain; milestone checkboxes
 stay open until their agreed checks pass.
@@ -302,7 +302,7 @@ terminal bytes, reply routes and optional bounds. Native Linux LLVM/C debug and
 release checks include scripted raw peers, deterministic short I/O, final replies
 followed by close, multi-client isolation and partial-line timeout recovery.
 Pinned C interoperability exercises both client/server roles on Linux. The
-[native Windows automated matrix](../validation/windows/results/20261016T083710Z-8b918d2c/README.md) passes. Interactive
+[native Windows automated matrix](https://github.com/Cthutu/nerd/blob/fac0feae825d73a478466410956c1ca7749a2a8a/validation/windows/results/20261016T083710Z-8b918d2c/README.md) passes. Interactive
 Windows observations, DNS/IPv6 URL extensions and long-duration soak/resource-
 growth validation remain outstanding. [Bounded stress checks](../tests/nexus/README.md) now exercise
 TCP/Telnet churn, sustained traffic, slow readers and shutdown under load.

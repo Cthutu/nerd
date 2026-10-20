@@ -208,7 +208,8 @@ with the literal `nil` only tests presence, regardless of the element type.
 Boxes are owning values. Use slices for borrowed views and boxes when ownership
 must be represented in the type. Passing a `box[T]` to a function that expects
 `box[T]`, assigning it to another `box[T]`, or returning it moves ownership and
-sets the source box to nil. Converting a `box[T]` to `^T` or `[]T` only borrows
+sets the source box to nil. This also applies to a global box variable used as
+the source. Converting a `box[T]` to `^T` or `[]T` only borrows
 the storage and does not move ownership. This works in assignments, calls and
 returns whose destination has the borrowed type.
 

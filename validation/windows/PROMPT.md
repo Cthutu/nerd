@@ -8,7 +8,7 @@ or reading historical results does not itself request execution.
 
 ## Select the current validation scope
 
-Read the latest section of `validation/windows/results/HANDOFF.md` and the
+Read the latest section of `validation/windows/HANDOFF.md` and the
 user's requested branch/revision. Record the exact starting HEAD and compare it
 with the last tested Windows revision. Historical commit IDs and old branch
 names in evidence are context, not checkout instructions. Read the relevant
@@ -78,13 +78,13 @@ or unsupported checks from passed ones. Linux evidence is not a Windows pass.
 5. Within the authorized commit/push scope, publish each coherent tested fix
    to the selected branch as you go. Stage
    only intended changes; include relevant results and update a human-readable
-   `validation/windows/results/HANDOFF.md`. Review generated artifacts before
+   `validation/windows/HANDOFF.md`. Review generated artifacts before
    staging. Do not commit binaries, objects, PDBs, SDKs, core dumps, or ignored
    scratch folders. Retain useful text logs, JSON, minimal reproductions and
    necessary screenshots. Inspect for credentials or unrelated workplace data;
    redact those narrowly while retaining diagnostics and outcomes.
 6. Commit code fixes before the final full run so its recorded HEAD identifies
-   the tested implementation; commit the resulting evidence afterwards. Run the
+   the tested implementation; record the resulting conclusions in the handoff afterwards. Run the
    complete runner again. It covers the existing fixture
    suite using the debug compiler and auxiliary checks with debug AND release
    compilers; these include debug/release generated targets and output modes.
@@ -110,7 +110,7 @@ or unsupported checks from passed ones. Linux evidence is not a Windows pass.
 
 ## Required return package
 
-Maintain `validation/windows/results/HANDOFF.md` containing:
+Maintain `validation/windows/HANDOFF.md` containing:
 
 - Date, Windows edition/build and architecture, CPU/core counts, LLVM/compiler
   versions, SDK/CRT/debugger details, start commit and tested final code commit.
@@ -125,16 +125,18 @@ Maintain `validation/windows/results/HANDOFF.md` containing:
 Update maintained roadmap milestones only for gates this run actually covers
 and link to the handoff; do not reopen completed historical milestones solely
 because this procedure references them. Put the new outcome and tested commit at
-the top of `results/HANDOFF.md`, keeping earlier runs as dated history. Include
+the top of `HANDOFF.md`, keeping earlier runs as dated history. Include
 the two expression-depth outcomes, scope-query regressions, accounting sanity
 check, worker sweep and any desktop/editor blockers in the return summary.
 Do not rewrite earlier Linux measurements as Windows results. Within the
-authorized scope, commit and push intended fixes, harness updates and evidence.
+authorized scope, commit and push intended fixes, harness updates and concise handoff conclusions.
+Keep generated raw reports, logs and screenshots local under ignored `results/`;
+do not force-add them.
 If upstream advanced, fetch and reconcile without overwriting others or forcing
 history; rerun checks affected by that reconciliation before the final push.
 Verify HEAD is pushed and report the branch, final pushed commit, working-tree
 state, remaining blockers and handoff path to the user. If authentication or a
-required external resource prevents completion, commit the available evidence
+required external resource prevents completion, commit the available handoff conclusions
 locally, clearly report what was not pushed/tested, and give the concrete next
 step. Never label blocked or unrun checks as passed.
 

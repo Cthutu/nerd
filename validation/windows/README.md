@@ -13,9 +13,10 @@ If the current session has not discovered it, start a new session or tell Codex:
 > Read `.agents/skills/nerd-windows-validation/SKILL.md` and execute the Windows
 > validation workflow, committing and pushing fixes and evidence.
 
-Codex should run the validation, fix failures, preserve results here, and push
-fixes and evidence to the same branch. Back on Linux, ask Codex to pull that
-branch and read `validation/windows/results/HANDOFF.md`.
+Codex should run validation, fix failures, keep raw results locally under the
+ignored `results/` directory, and push fixes plus a concise maintained handoff to
+the same branch. Back on Linux, ask Codex to pull that
+branch and read `validation/windows/HANDOFF.md`.
 
 The compiler must be built with a recent Clang supporting the repository's C23
 features and `#embed` (Linux evidence used LLVM 22.1.8). Native binary generation
@@ -120,7 +121,7 @@ gate; do not enable automatic defaults merely because correctness tests pass.
 ## Previous round: single-core completion (2026-09-23)
 
 The Windows round tested the completed S1–S5 implementation at `c32eb92d`,
-including `6dd4b36e`; results are in `results/HANDOFF.md`. Use the latest handoff
+including `6dd4b36e`; results are in `HANDOFF.md`. Use the latest handoff
 and requested revision to select future rounds. The
 full runner already includes `expression-depth-debug` and
 `expression-depth-release`, each using the default 6,000 terms with jobs=1/4.
@@ -128,4 +129,4 @@ Do not reduce this regression to the old 512-term debug case.
 
 Follow `PROMPT.md` through fixes, a final full run, desktop observations and
 committing/pushing the return package. Record native outcomes with the new run, and put the latest tested revision
-at the top of `results/HANDOFF.md`.
+at the top of `HANDOFF.md`.

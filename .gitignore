@@ -16,3 +16,8 @@ tests/**/*.pdb
 nerd-src/main
 .codex
 *.format
+
+# Generated validation evidence; historical runs remain in Git history.
+validation/linux/results/
+validation/windows/results/
+review/measurements/*/

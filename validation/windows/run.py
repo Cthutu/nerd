@@ -32,7 +32,7 @@ def plan(folder: Path) -> list[Stage]:
     suffix = '.exe' if os.name == 'nt' else ''
     stages = [Stage('build-debug', [python, 'build/build.py', 'nerd', '--skip-mod-sync']),
               Stage('build-release', [python, 'build/build.py', '-r', 'nerd', '--skip-mod-sync'])]
-    for name in ['clean', 'memory', 'runtime_threads', 'threads']:
+    for name in ['harness', 'clean', 'memory', 'runtime_threads', 'threads']:
         stages.append(Stage(name.replace('_', '-'), [python, f'build/test_{name}.py']))
     stages.append(Stage('fixtures', [python, 'build/test.py'], ('build-debug',)))
     for mode in ['debug', 'release']:

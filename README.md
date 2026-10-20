@@ -42,8 +42,8 @@ If you are new to the repository, read these in order:
    Test harness expectations and fixture layout.
 
 Use [review/decisions](review/decisions/README.md) for settled architectural
-boundaries. Dated measurements under `review/` are historical evidence; the
-roadmap and subsystem docs describe current work.
+boundaries. [Historical measurements](review/measurements/README.md) remain in
+Git history; the roadmap and subsystem docs describe current work.
 
 ## Task Workflow
 
@@ -64,8 +64,8 @@ roadmap and subsystem docs describe current work.
   4. Commit the work, keeping commits small and describing the task slice in the
      commit message.
   5. Push the completed commit to the active branch on its configured remote
-     (for this work, `git push agent std-library`). Do not push it to an unrelated
-     branch such as `main`.
+     (for example, `git push -u agent clean-up` for the cleanup branch). Do not
+     push it to an unrelated branch such as `main`.
   6. Report back with the commit hash, verification run, install result, push
      result, and useful next step.
 

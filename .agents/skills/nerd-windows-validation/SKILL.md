@@ -17,10 +17,10 @@ this workflow.
 
 Read [the procedure](../../../validation/windows/PROMPT.md),
 [runner instructions](../../../validation/windows/README.md), and the newest
-section of [the handoff](../../../validation/windows/results/HANDOFF.md).
+section of [the handoff](../../../validation/windows/HANDOFF.md).
 Record the intended branch/revision, changes since the last tested Windows
 revision, focused regressions and remaining native checks in a new dated
-handoff section. Preserve previous evidence. Check the runner's stage list and
+handoff section. Link prior evidence through the archived handoff; keep raw runs local. Check the runner's stage list and
 run `python validation/windows/test_runner.py` if changing its instructions or
 implementation. Commit/push the prepared handoff when requested or already
 authorized. Give the user the invocation below for the Windows machine.
@@ -32,7 +32,7 @@ prerequisites, fresh debug/release builds, failure repair, final full validation
 desktop/editor observations, serial benchmark runs and the return package.
 Use the user's selected branch, otherwise the current branch and its verified
 upstream; do not recreate historical experiment branches from old evidence.
-The full workflow includes committing/pushing tested fixes and evidence when
+The full workflow includes committing/pushing tested fixes and a concise handoff when
 requested or authorized in the session. Preserve narrower requests such as
 read-only diagnosis, tests only, or no push.
 
@@ -60,7 +60,8 @@ working-tree state. Do not merge or delete branches unless requested.
   worker default. Do not lower depth-test counts or weaken checks to pass.
 - Keep failed runs, suite counts, manual evidence and raw measurements under
   `validation/windows/results/`; put the latest outcome at the top of
-  `HANDOFF.md`. Distinguish native results, platform skips and blocked checks.
+  `validation/windows/HANDOFF.md`. Raw outputs are ignored; commit maintained
+  conclusions and commands. Distinguish native results, platform skips and blocked checks.
 - Windows CPU/working-set metrics cover Nerd only; wall time includes child
   tools. Do not claim whole-tree memory or cross-platform accounting parity.
 

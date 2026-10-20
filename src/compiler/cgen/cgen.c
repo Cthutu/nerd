@@ -955,6 +955,16 @@ internal void cgen_consume(CGen* c, u32 index, u32 t)
     const HirExpr* e = &cgen_hir(c)->exprs[index];
     if (e->kind == HIR_EXPR_LocalRef && e->ref_kind == HIR_REF_Local) {
         CGEN_OUT("%s = NULL;\n", cgen_local_name(c, e->ref_index));
+    } else if (e->kind == HIR_EXPR_LocalRef && e->ref_kind == HIR_REF_Binding &&
+               e->ref_index < array_count(cgen_hir(c)->bindings)) {
+        const HirBinding* binding = &cgen_hir(c)->bindings[e->ref_index];
+        if (binding->kind == HIR_BINDING_Value &&
+            binding->target_index < array_count(cgen_hir(c)->values) &&
+            cgen_hir(c)->values[binding->target_index].kind ==
+                HIR_VALUE_Global) {
+            CGEN_OUT("%s = NULL;\n",
+                     cgen_binding(c, c->module, e->ref_index, 0));
+        }
     }
 }
 internal void cgen_return(CGen* c, CValue v)
@@ -2980,6 +2990,11 @@ internal CValue cgen_expr(CGen* c, u32 index)
     case HIR_EXPR_StringConcat:
     case HIR_EXPR_InterpolatedString:
         {
+            // Inner continuation nodes need not have an inferred type. Like
+            // string literals, their runtime representation is always string.
+            if (t == U32_MAX) {
+                t = cgen_builtin(c, STK_String);
+            }
             cstr mark = CF("ncg_mark%u", c->next++);
             CGEN_OUT("uintptr_t %s=nrt_string_builder_mark();\n", mark);
             u32 n = e->kind == HIR_EXPR_StringConcat ? 2 : e->arg_count;

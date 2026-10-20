@@ -58,6 +58,7 @@ ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 SUITE_LABELS = {
     "language": "language",
     "errors": "error",
+    "sema": "sema",
     "hir": "hir",
     "llvm": "llvm",
     "format": "format",
@@ -428,8 +429,51 @@ def remove_generated_path(path: pathlib.Path) -> None:
         path.unlink(missing_ok=True)
 
 
+LANGUAGE_CASE = re.compile(r"^=== case: ([a-zA-Z0-9_.-]+) ===$", re.MULTILINE)
+
+
+def language_cases(path: pathlib.Path) -> list[tuple[str, list[str]]]:
+    """Keep programs requiring independent namespaces in one feature fixture."""
+    chunks = LANGUAGE_CASE.split(path.read_text(encoding="utf-8"))
+    cases = []
+    if chunks[0].strip():
+        cases.append(("batch", split_section_text(chunks[0])))
+    for index in range(1, len(chunks), 2):
+        cases.append((chunks[index], split_section_text(chunks[index + 1])))
+    return cases
+
+
+def split_section_text(text: str) -> list[str]:
+    return [part.removeprefix("\n").removesuffix("\n") for part in text.split("¬")]
+
+
+def language_flags(source: str) -> list[str]:
+    return ["-r"] if "-- test-release" in source.splitlines() else []
+
+
+def fixture_source(name: str) -> str:
+    """Find a named regression for auxiliary backend/scheduling probes."""
+    for path in sorted((ROOT / "tests/language").glob("*.t")):
+        for label, parts in language_cases(path):
+            if label == name or f"-- {name}\n" in parts[0]:
+                return parts[0]
+    command = ROOT / "tests/commands" / (name + ".cmd")
+    if command.exists():
+        return split_sections(command)[0]
+    raise ValueError(f"Missing regression source: {name}")
+
+
 def test_language(path: pathlib.Path) -> list[Failure]:
-    parts = split_sections(path)
+    failures = []
+    cases = language_cases(path)
+    for label, parts in cases:
+        case_failures = test_language_case(path, parts)
+        failures.extend(Failure(path, f"{label}: {failure.message}")
+                        for failure in case_failures)
+    return failures or ([] if cases else [Failure(path, "empty language fixture")])
+
+
+def test_language_case(path: pathlib.Path, parts: list[str]) -> list[Failure]:
     if len(parts) < 5:
         return [Failure(path, "language test must have source, exit, stdout, HIR, and LLVM sections")]
 
@@ -446,6 +490,7 @@ def test_language(path: pathlib.Path) -> list[Failure]:
             "build",
             "--hir",
             "--llvm",
+            *language_flags(source),
             str(input_path),
             "--output",
             str(output_root),
@@ -470,6 +515,7 @@ def test_language(path: pathlib.Path) -> list[Failure]:
                 "run",
                 "--hir",
                 "--llvm",
+                *language_flags(source),
                 str(input_path),
             ],
             stdin=stdin,
@@ -521,6 +567,24 @@ def test_language(path: pathlib.Path) -> list[Failure]:
     if not failures:
         input_path.unlink(missing_ok=True)
         cleanup_generated_outputs(path)
+    return failures
+
+
+def test_sema(path: pathlib.Path) -> list[Failure]:
+    """Valid programs which intentionally have no linkable/runnable artifact."""
+    chunks = LANGUAGE_CASE.split(path.read_text(encoding="utf-8"))
+    if chunks[0].strip() or len(chunks) < 3:
+        return [Failure(path, "semantic tests require named source blocks")]
+    failures = []
+    for index in range(1, len(chunks), 2):
+        label, source = chunks[index:index + 2]
+        input_path = path.with_suffix(".input.n")
+        input_path.write_text(source.removeprefix("\n"), encoding="utf-8")
+        proc = run_cmd([str(NERD), "check", str(input_path)])
+        if proc.returncode != 0 or proc.stdout.strip() or proc.stderr.strip():
+            failures.append(Failure(path, f"{label}: semantic check failed\n{proc.stdout}{proc.stderr}"))
+        else:
+            input_path.unlink(missing_ok=True)
     return failures
 
 
@@ -681,9 +745,17 @@ def test_errors(path: pathlib.Path) -> list[Failure]:
 
 def test_format(path: pathlib.Path) -> list[Failure]:
     parts = split_sections(path)
-    if len(parts) != 2:
-        return [Failure(path, "format test must have source and expected sections")]
-    source, expected = parts
+    if not parts or len(parts) % 2:
+        return [Failure(path, "format tests must contain source/expected pairs")]
+    failures: list[Failure] = []
+    for index in range(0, len(parts), 2):
+        case_failures = test_format_case(path, *parts[index:index + 2])
+        failures.extend(Failure(path, f"case {index // 2}: {failure.message}")
+                        for failure in case_failures)
+    return failures
+
+
+def test_format_case(path: pathlib.Path, source: str, expected: str) -> list[Failure]:
     input_path = path.with_suffix(".input.n")
     input_path.write_text(source, encoding="utf-8", newline="\n")
     proc = run_cmd([str(NERD), "format", "--stdout", str(input_path)])
@@ -747,9 +819,18 @@ def lsp_read_frames(data: bytes) -> list[dict]:
 
 def test_lsp(path: pathlib.Path) -> list[Failure]:
     parts = split_sections(path)
-    if len(parts) != 3:
-        return [Failure(path, "LSP test must have source, requests, and expected sections")]
-    source, requests_text, expected_text = parts
+    if not parts or len(parts) % 3:
+        return [Failure(path, "LSP tests must contain source/requests/expected triples")]
+    failures: list[Failure] = []
+    for index in range(0, len(parts), 3):
+        case_failures = test_lsp_case(path, *parts[index:index + 3])
+        failures.extend(Failure(path, f"case {index // 3}: {failure.message}")
+                        for failure in case_failures)
+    return failures
+
+
+def test_lsp_case(path: pathlib.Path, source: str, requests_text: str,
+                  expected_text: str) -> list[Failure]:
     requests = json.loads(normalize_repo_uris(requests_text))
 
     lsp_args = [str(NERD), "lsp"]
@@ -1264,6 +1345,7 @@ def collect(filter_text: str = "") -> list[tuple[str, pathlib.Path]]:
     for kind, directory, suffix in [
         ("language", "tests/language", "*.t"),
         ("errors", "tests/errors", "*.e"),
+        ("sema", "tests/sema", "*.check"),
         ("hir", "tests/hir", "*.hir"),
         ("llvm", "tests/llvm", "*.ll"),
         ("format", "tests/format", "*.f"),
@@ -1284,6 +1366,8 @@ def collect(filter_text: str = "") -> list[tuple[str, pathlib.Path]]:
             if source_path_matches_platform(path) and source_has_tests(path):
                 cases.append(("stdlib", path))
     for path in sorted((ROOT / "examples").glob("**/*.n")):
+        if path.relative_to(ROOT / "examples").parts[0].startswith(("network-", "nexus-")):
+            continue
         if example_has_entry_point(path):
             cases.append(("examples", path))
     return cases
@@ -1303,6 +1387,7 @@ def main() -> int:
     runners = {
         "language": test_language,
         "errors": test_errors,
+        "sema": test_sema,
         "hir": test_hir,
         "llvm": test_llvm,
         "format": test_format,

@@ -261,7 +261,7 @@ destructure-pattern
                   | pattern
 
 destructure-field
-                ::= IDENT [ ':' ( IDENT | '_' ) ]
+                ::= IDENT [ ':' destructure-pattern ]
                   | '_'
 destructure-field-list
                 ::= destructure-field { ',' destructure-field } [ ',' ]
@@ -269,9 +269,9 @@ destructure-pattern-list
                 ::= destructure-pattern { ',' destructure-pattern } [ ',' ]
 ```
 
-Tuple and plex destructuring patterns are restricted to symbol binds and `_`
-ignores, with nested full patterns accepted only through the general `pattern`
-fallback.
+Tuple and plex destructuring patterns may nest. A named plex field can select
+another tuple or plex pattern after `:`; leaf binds are identifiers or `_`.
+Named fields can be renamed, and ignored fields retain the source ownership.
 
 ## Loops
 

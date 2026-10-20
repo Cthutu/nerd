@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Compare actual LLVM module renders across serial and concurrent execution."""
 import argparse
+from test import fixture_source
 from concurrent.futures import ThreadPoolExecutor
 import os
 from pathlib import Path
@@ -60,9 +61,8 @@ def main():
                       pixels=ROOT / 'examples/pixels/pixels.n',
                       quill=ROOT / 'examples/text-adventure/quill.n')
         for name in ['196-plex-use', '128-generic-functions', '077-enum-discriminants']:
-            fixture = ROOT / 'tests/language' / (name + '.t')
             source = work / (name + '.n')
-            source.write_text(fixture.read_text(encoding="utf-8").split('¬')[0], encoding="utf-8")
+            source.write_text(fixture_source(name), encoding="utf-8")
             inputs[name] = source
         imports = work / 'imports'
         imports.mkdir()

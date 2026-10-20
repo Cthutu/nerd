@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Check scheduled front-end ownership, graph identity and diagnostic parity."""
 import argparse
+from test import fixture_source
 import json
 import os
 from pathlib import Path
@@ -107,7 +108,7 @@ def main():
         valid += list(inputs.values())
         for fixture in ['128-generic-functions', '196-plex-use', '077-enum-discriminants']:
             source = work / (fixture + '.n')
-            source.write_text((ROOT / 'tests/language' / (fixture + '.t')).read_text(encoding="utf-8").split('¬')[0], encoding="utf-8")
+            source.write_text(fixture_source(fixture), encoding="utf-8")
             valid.append(source)
         valid += [ROOT / 'examples' / name / (name + '.n') for name in ['dungeon', 'pixels']]
         valid.append(ROOT / 'examples/text-adventure/quill.n')

@@ -39,7 +39,7 @@ consume no admission capacity and require no cleanup.
 All native-start failures join previously started workers and free storage;
 allocation uses the existing allocator's fatal out-of-memory policy. Linux failure
 injection verifies partial-start cleanup and reinitialisation. That injection
-remains Linux-only; [native Windows functional contracts](../validation/windows/results/20261016T083710Z-8b918d2c/README.md)
+remains Linux-only; [native Windows functional contracts](https://github.com/Cthutu/nerd/blob/fac0feae825d73a478466410956c1ca7749a2a8a/validation/windows/results/20261016T083710Z-8b918d2c/README.md)
 now pass under both compiler builds and backends.
 
 ## API mapping and deliberate differences
@@ -181,7 +181,7 @@ worker submission and waiting, explicit progress, bounded batches, non-reentrant
 pumping, owner wait rejection, capacity/retry and shutdown rejection without
 stopping. Both common test recipes include these contracts and all three tutorial
 programs. Serial-output lines are checked independently of concurrent calculation
-order, with the total required last. [Native Windows functional validation](../validation/windows/results/20261016T083710Z-8b918d2c/README.md)
+order, with the total required last. [Native Windows functional validation](https://github.com/Cthutu/nerd/blob/fac0feae825d73a478466410956c1ca7749a2a8a/validation/windows/results/20261016T083710Z-8b918d2c/README.md)
 passes under both compiler builds and backends. Raptor throughput/latency and
 long-duration measurements remain separate work; the compiler worker sweep in
 that report is not a Raptor scheduler benchmark.

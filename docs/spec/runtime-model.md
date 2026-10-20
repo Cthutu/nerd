@@ -76,7 +76,8 @@ first.
 
 Box ownership moves when a `box[T]` is assigned to another `box[T]`, passed to a
 parameter of type `box[T]`, or returned from a function. The source box is set
-to nil by the move. Converting a box where `^T` or `[]T` is expected borrows its
+to nil by the move, including when the source is a module-global box variable.
+Converting a box where `^T` or `[]T` is expected borrows its
 storage without transferring ownership. Borrowing does not extend the allocation
 lifetime: pointers and slices must not be used after the owner is freed. Returning
 a borrow into a local box leaves a dangling pointer/view after scope cleanup.

@@ -1380,7 +1380,7 @@ untyped until used in a concrete context.
 Explicit casts preserve large untyped literal operands in `u64`/`i64` storage
 before conversion, avoiding premature `i32` truncation in LLVM. They do not use
 implicit destination-range rules; concrete integer arithmetic still wraps.
-Diagnostic fixture 141 groups the range errors, while existing fixture 349 and
+The atomics diagnostic group covers range errors, while its runtime feature file and
 the C differential integer-wrapping probe cover valid boundaries/conversions.
 
 At the entry to `sema_infer_node_type`, an expected `atomic[T]` supplies `T` as
@@ -1453,7 +1453,7 @@ and initializer. Both top-level and guarded statement formatting must emit the
 `pub` prefix and include it in wrap-column accounting, just as grouped variable
 formatting already does. The regression checks typed, inferred, zero-initialised,
 undefined and guarded declarations alongside constants and private declarations.
-See `tests/format/212-public-mutable-globals.f` for the idempotence regression.
+See `tests/format/modules.f` for the idempotence regression.
 
 ## Imported mutable globals in LLVM
 
@@ -1470,7 +1470,7 @@ the rendered module. Only successful unterminated functions receive implicit
 returns. The backend checks rejected primary and sidecar results before writing
 or linking them. The `llvm-lowering-failure` internal test constructs an invalid
 binding reference and requires an empty result plus one diagnostic; command
-fixture 340 runs it in the normal gate. Fixture 339 covers imported and
+fixture 340 runs it in the normal gate. The modules runtime group covers imported and
 re-exported storage, mutation, addresses, aggregate fields, atomics, function
 pointers and two same-named globals from distinct modules. Generated C also
 resolves module-qualified fields to their storage before borrowing them.
@@ -1480,7 +1480,7 @@ The stricter failure path exposed two formerly hidden lowering gaps. Optional
 still execute exactly once; it must not be packed into nonexistent payload
 storage or omitted by generated C. Packed bit-field assignment through a pointer
 must locate the containing value's storage and evaluate the owner once before
-loading, masking and storing the field. Command fixtures 281 and 326 now assert
+loading, masking and storing the field. The records and error-handling runtime groups assert
 completion and observable side effects, so an implicit early return cannot make
 their success checks disappear.
 
@@ -1530,3 +1530,21 @@ for optional bool; C uses its existing truth predicate. Ordinary bool assignment
 matching is unchanged. Decimal exponent literals bypass integer accumulation,
 retain untyped float/contextual conversion rules, validate exponent syntax, and
 include the exponent in token spans for formatting and diagnostics.
+
+
+## Feature fixture consolidation and C regressions
+
+Feature runtime files retain independent programs when merging namespaces would
+change declarations or entry points. The Python harness executes every named
+block, and the C differential runner discovers those same blocks. Formatter
+pairs and LSP triples are grouped without dropping their source/range/session
+assertions. Teaching-contract discrepancies and verification are recorded in
+`docs/test-features.md` and `docs/compiler-issues.md`.
+
+Expanded C coverage found two pre-existing implementation omissions. C box
+consumption now clears a HIR global-value binding as well as local storage,
+matching the LLVM ownership path after calls, assignment and return. Nested
+string continuation expressions can have no inferred type; C emission selects
+the builtin string representation, as literal and LLVM emission already do,
+instead of treating the result as void and generating `&0`. This also fixes C
+compilation of the existing image decoder's three-part messages.

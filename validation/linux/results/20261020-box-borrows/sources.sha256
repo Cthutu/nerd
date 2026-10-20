@@ -1,5 +1,0 @@
-666d9cb347083380c65d62088cad1aa0853b9b844c8e5c0f19907176348ee768  src/compiler/sema/sema.c
-11a012263358a41c4254883f4ca099354911b8ed0136e77657470dd3a5b5dd16  src/compiler/llvm/llvm.c
-ac3e69a2f877e93cfaa50563dbc691446115eae1ce6be29099b51560f975ef1c  src/compiler/cgen/cgen.c
-0f8dab9524f0ddd90b337a607009f51155863a719d9db56b3b8c480bbb25b1d7  tests/language/243-implicit-box-borrows.t
-8214784609509061093cab0fcf47efffde916ff0e29e6f4d20d7e955c1862554  tests/errors/151-implicit-box-borrows.e

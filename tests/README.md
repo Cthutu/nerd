@@ -1,123 +1,34 @@
-# Test Suite
+# Test suite
 
-This directory contains the repository regression tests. The full gate is:
+Run `just test` for the compiler gate and `just test-release` for the release
+compiler. Network and Nexus example integrations are opt-in through
+`just test-network` and `just test-nexus`; their CLI flags are forwarded.
 
-```sh
-just test
-```
+[Feature inventory and teaching-doc gaps](../docs/test-features.md) explains
+where coverage belongs. [Harness formats and commands](../docs/testing.md)
+describes each regression family.
 
-The implementation notes for the runner live in
-[../docs/testing.md](../docs/testing.md). This file is the quick
-index for the test inputs.
+- `language/*.t`: feature programs with labelled stdout and result assertions.
+  Independent programs within a feature use `=== case: scenario-name ===`.
+  Keep `main`, imports, canonical trait names and source locations intact when
+  they are part of the regression. Source/result/stdout/HIR/LLVM sections use
+  `¬`; an optional sixth section supplies stdin.
+- `sema/*.check`: named positive semantic checks for programs that intentionally
+  cannot link or run, such as declarations of external callback-test libraries.
+- `errors/*.e`: feature groups of source/JSON diagnostic pairs. Line, column,
+  references, help and notes remain checked.
+- `format/*.f`: feature groups of source/formatted-source pairs.
+- `lsp/*.lsp`: editor-operation groups of source/requests/expected triples.
+  Each triple starts a fresh server. Windows-only cases stay separate.
+- `hir/*.hir`, `llvm/*.ll`: focused lowering assertions; expected lines are
+  ordered subsequences, with source and snapshot separated by `¬`.
+- `commands/*.cmd`: CLI syntax, argument passing, output artifacts, exit and
+  shutdown behaviour, allocator diagnostics and diagnostic rendering.
+- `cgen/`: additional C-specific source probes. `build/test_cgen.py` also
+  discovers language programs and selected process/diagnostic command contracts.
+- `install/`, `ffi/`, `mods/`: installation, host-code and imported source fixtures.
 
-`nerd test <root-filename>` is for source-level unit tests written in Nerd
-source files. Repository regression tests are run by the Python harness via
-`just test`.
-
-`just test` also runs `build/test_clean.py`, which exercises the cleanup recipe
-in a temporary workspace. Cleanup removes generated `.host.c` and `.input.c`
-files while preserving C source fixtures, including `tests/ffi/variadic_host.c`.
-
-The standard-library foundation has separate bounded execution runners:
-`build/test_runtime_threads.py`, `build/test_std_thread_sync.py` and
-`build/test_network.py`, `build/test_raptor.py` and `build/test_nexus.py`, plus `validation/stdlib/check_capabilities.py`. The
-common recipes run the thread/network examples as programs, with native ABI
-assertions and LLVM/C-output coverage; syntax-only example fixtures are not
-substitutes for those contract tests. `just test-release` repeats the library
-contracts using the freshly built release compiler.
-
-Nexus coverage includes framed TCP, UDP routes, request/reply and Telnet line/
-character protocols, scripted negotiation/NAWS peers and deterministic short I/O.
-The real Telnet echo server is checked with scripted terminal peers and shutdown
-events, including a stalled outgoing snapshot. Its parity map checks all 33
-scenarios from the pinned original source. Optional
-`--upstream-dir` checks wire compatibility with that unmodified implementation.
-
-## Test Families
-
-Successful runtime regressions may share a feature fixture with separately named
-scenarios and exact captured output. For example, `language/200-on-regressions.t`
-retains 14 original regression IDs with begin/pass markers and return assertions.
-Missing scenarios must fail the transcript comparison. Keep configuration,
-process-lifetime and HIR/LLVM-specific contracts separate when batching would
-change their meaning. See the [consolidation map](../docs/test-suite-consolidation-map.json);
-`build/check_test_consolidation.py` verifies the historical migration.
-
-- `language`
-  End-to-end source tests. `.t` files contain source, expected process return
-  value, expected stdout, expected HIR, and expected LLVM IR, separated by
-  `¬`.
-- `errors`
-  Structured compiler diagnostic tests. `.e` files contain source and expected
-  JSON diagnostic output, separated by `¬`.
-- `hir`
-  Focused HIR snapshot tests. `.hir` files contain source and expected HIR,
-  separated by `¬`.
-- `llvm`
-  Focused LLVM IR snapshot tests. `.ll` files contain source and expected LLVM
-  IR, separated by `¬`.
-- `format`
-  Formatter snapshot tests. `.f` files contain input and expected formatted
-  output.
-- `lsp`
-  Language-server transcript tests.
-- `commands`
-  Public command regressions that exercise the real command path.
-- `stdlib`
-  Source-level unit tests declared with `test` blocks inside `mods/std`.
-- `examples`
-  Real programs under `examples/` that declare `main`; the runner checks them
-  with `nerd check`, which also checks their imported support modules.
-- `install`
-  Source fixtures used by `build/test_install.py` for installed-compiler smoke
-  checks outside the repository tree.
-- `mods`
-  Source modules used by module-related tests.
-
-Generated artefacts are removed when tests pass and retained when tests fail, so
-failed cases can be inspected locally.
-
-Use `-- test-platform: linux` in the source section for cases that intentionally
-depend on host APIs unavailable on other platforms.
-
-Debugger coverage is split between LLVM metadata snapshots, command tests with
-`debug-info`/`no-debug-info`, and Linux CodeLLDB smoke scripts:
-
-```sh
-python3 build/check_debugger_adapter_transforms.py
-python3 build/check_debugger_smoke.py --nerd _bin/nerd-debug
-python3 build/check_debugger_stepping.py --nerd _bin/nerd-debug
-```
-
-## C backend differential tests
-
-`python3 build/test_cgen.py --nerd _bin/nerd-debug` runs every language fixture,
-selected command runtime regressions, and `tests/cgen/*.n`. Each program is
-built with LLVM, then generated as C and compiled by Clang at `-O0` and `-O2`.
-The runner compares exit status, stdout and stderr, forwarding fixture stdin.
-It also checks output names, paths with spaces, inline source, argument forwarding,
-invalid input, and generation without Clang on `PATH`. The pixels examples also
-exercise `--cgen --copts` with default source discovery and standalone compilation
-without requiring a display server. `just test` runs this suite.
-Installation smoke tests move generated C out of its source directory and compile
-it independently for debug and release runtime configurations.
-
-Generated C is compiled with `-Werror` in the differential suite. On Linux, a
-PTY regression also builds the actual dungeon example with a fixed seed, waits
-for a complete frame before sending any input, compares that frame across LLVM
-and C at both optimisation levels, and checks that Q exits successfully. Waiting
-for the frame first distinguishes normal presentation from the shutdown flush.
-
-C option tests execute `--copts` with no Clang on PATH, verify that existing
-artifacts are preserved, and compile with its returned arguments. C hosts call
-exports from generated objects, archives and shared libraries, covering imported
-functions, variadic definitions and global initialisation.
-
-`build/test_toolchain.py` checks direct LLVM binary/object/library output and
-`nerd doctor`. On POSIX it restricts PATH to LLVM tools, traps any Clang use,
-and checks each missing tool plus C generation without a binary toolchain.
-It runs as part of `just test`.
-
-`build/test_profile.py` checks module labels, dependency records, thread CPU
-availability, allocation fields, failed phases, JSON escaping and output parity
-with profiling enabled. It also runs as part of `just test`.
+The Python fixture harness is distinct from `nerd test`, which executes unit
+tests declared in Nerd sources. Default recipes retain stdlib unit tests,
+Raptor and native thread/sync contracts. Generated trial inputs, logs and
+measurements are local evidence; do not commit them as replacement fixtures.

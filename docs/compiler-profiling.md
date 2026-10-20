@@ -236,5 +236,5 @@ its headroom study; a finer-grained scheduler would require a new measured desig
 The persistent dependency-task experiment was also withdrawn. Neither is an
 outstanding implementation milestone for the current compiler.
 
-Use [dated measurements](../review/measurements/README.md) for historical
+Use [dated measurements](https://github.com/Cthutu/nerd/blob/fac0feae825d73a478466410956c1ca7749a2a8a/review/measurements/README.md) for historical
 comparisons, and the current benchmark/test tools to establish new results.

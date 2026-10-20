@@ -27,7 +27,7 @@ This is a supported subset of watch expressions, not a general Nerd evaluator.
 
 Linux smoke tools cover source breakpoints, imported modules and folder parts,
 step-over, call stacks, locals and watches using CodeLLDB's bundled LLDB.
-Historical observations are in [review/measurements](review/measurements/README.md).
+Historical observations are in [review/measurements](https://github.com/Cthutu/nerd/blob/fac0feae825d73a478466410956c1ca7749a2a8a/review/measurements/README.md).
 A previous host/revision's pass does not establish current native validation.
 
 ## Remaining work

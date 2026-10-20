@@ -1,7 +1,0 @@
-Native thread/sync layouts passed
-CGen debug temp-arena-alias-reproducer.n: passed
-CGen debug lifecycle.n: passed
-CGen debug thread-pipeline.n: passed
-CGen release temp-arena-alias-reproducer.n: passed
-CGen release lifecycle.n: passed
-CGen release thread-pipeline.n: passed

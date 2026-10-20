@@ -1,0 +1,35 @@
+use std.io
+
+-- Block-form `on` materialises untyped local integer constants to i32.
+main :: fn () {
+    i :: 2
+
+    prn(on i {
+        0 => "zero"
+        else as x => $"non-zero: {x}"
+    })
+}
+¬
+hir 0
+module module.branching.input(branching.input)
+import module.std.io(std.io)
+import import.0 prn from module.core(core).decl.N: <unknown>
+import import.1 input from module.std.io(std.io).decl.N: fn (string) -> [..]u8
+import import.2 prn_text from module.core(core).decl.N: fn (string) -> void
+import import.3 prn_empty from module.core(core).decl.N: fn () -> void
+bind prn = import.0
+bind input = import.1
+bind prn_text = import.2
+bind prn_empty = import.3
+bind main = fn.0
+func fn.0() -> void {
+  let i: untyped integer = untyped integer 2
+  expr void call bind.2(prn_text)(string on i32 local.0(i) {
+    value(i32 0) => {
+      expr string "zero"
+    }
+    else as x => {
+      expr string interpolate(<unknown> "non-zero: ", i32 local.1(x))
+    }
+  })
+}

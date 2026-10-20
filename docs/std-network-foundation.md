@@ -174,7 +174,7 @@ scheduler dependency here. Do not declare M5 or cross-platform adoption complete
 Implementation `05c6e023` passes all eight network compiler/backend/target
 combinations, including native layout, readiness, connection completion,
 deadlines and examples. Both compiler fixture suites and C differential gates
-also pass. See the [full results](../validation/windows/results/20261016T083710Z-8b918d2c/README.md). Linux-only
+also pass. See the [full results](https://github.com/Cthutu/nerd/blob/fac0feae825d73a478466410956c1ca7749a2a8a/validation/windows/results/20261016T083710Z-8b918d2c/README.md). Linux-only
 interruption injection remains explicitly skipped on Windows. Interactive
 Windows observations and wider M5 extensions/adoption gates remain open.
 
@@ -203,10 +203,10 @@ platform skips), build settings and all four Windows stdio modes. The other
 commands also passed using the freshly built release compiler; the focused
 socket suite passed with that compiler and optimised programs.
 
-[Raw Windows gate logs](../validation/windows/results/20261001-std-network/README.md)
+[Raw Windows gate logs](https://github.com/Cthutu/nerd/blob/fac0feae825d73a478466410956c1ca7749a2a8a/validation/windows/results/20261001-std-network/README.md)
 retain the initial failure and the successful follow-up. The integrated OS
 completion fixture contains both `socket` and `thread`. See the latest
-[handoff](../validation/windows/results/HANDOFF.md) for combined results.
+[handoff](https://github.com/Cthutu/nerd/blob/fac0feae825d73a478466410956c1ca7749a2a8a/validation/windows/results/HANDOFF.md) for combined results.
 
 Readiness sources: [Winsock select](https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-select),
 [Winsock getsockopt](https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-getsockopt),

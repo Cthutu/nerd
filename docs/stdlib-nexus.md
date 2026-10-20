@@ -239,7 +239,7 @@ including typed values, empty frames and empty datagrams. Deterministic short se
 would-block injection checks retry without duplication or loss. Native Windows
 now passes the automated contract, parity, golden-wire and bounded stress matrix
 under both compiler builds, LLVM/C and debug/release targets; see the
-[16 October results](../validation/windows/results/20261016T083710Z-8b918d2c/README.md). Linux-only fault injection
+[16 October results](https://github.com/Cthutu/nerd/blob/fac0feae825d73a478466410956c1ca7749a2a8a/validation/windows/results/20261016T083710Z-8b918d2c/README.md). Linux-only fault injection
 is skipped on Windows; interactive desktop/Ctrl+C observations remain pending.
 
 Run `python3 build/test_nexus.py` (also part of `just test`). Add `--release`

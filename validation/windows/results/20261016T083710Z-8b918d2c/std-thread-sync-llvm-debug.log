@@ -1,7 +1,0 @@
-Native thread/sync layouts passed
-LLVM debug temp-arena-alias-reproducer.n: passed
-LLVM debug lifecycle.n: passed
-LLVM debug thread-pipeline.n: passed
-LLVM release temp-arena-alias-reproducer.n: passed
-LLVM release lifecycle.n: passed
-LLVM release thread-pipeline.n: passed

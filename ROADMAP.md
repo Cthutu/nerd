@@ -11,7 +11,7 @@ message/request-reply/Telnet APIs are implemented. Follow-up work includes
 Kerberos graphs, DNS/IPv6, sustained resource-growth validation, and the
 remaining interactive/platform checks. See the
 [scope, dependencies and milestone gates](docs/stdlib-expansion-plan.md) and
-[latest Windows validation evidence](validation/windows/results/HANDOFF.md).
+[latest Windows validation evidence](https://github.com/Cthutu/nerd/blob/fac0feae825d73a478466410956c1ca7749a2a8a/validation/windows/results/HANDOFF.md).
 Implemented features and automated passes do not close the outstanding gates.
 
 ## Current State

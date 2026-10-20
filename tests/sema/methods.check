@@ -1,0 +1,45 @@
+=== case: 120-check-public-impl ===
+use test.public_impl
+
+main :: fn () -> i32 {
+    box := make_box(1)
+    box.bump(41)
+    return box.get().as(i32)
+}
+=== case: 216-check-method-call-contextual-plex-local ===
+Thing :: plex {
+    value i32
+}
+
+System :: plex {
+    count i32
+}
+
+impl System {
+    apply :: fn (system: ^Self, thing: ^Thing) {
+        system.count += thing.value
+    }
+}
+
+main :: fn () {
+    system: System = { count: 0 }
+    thing := { value: 42 }
+    system.apply(^thing)
+}
+=== case: 225-check-private-imported-method-no-duplicate ===
+use test.private_public_impl_import
+use test.public_impl
+
+main :: fn () -> i32 {
+    box := make_box(1)
+    box.bump(41)
+    return box.get().as(i32) - helper()
+}
+=== case: 226-check-private-imported-public-method-no-duplicate ===
+use test.private_public_method_import
+use test.public_method
+
+main :: fn () -> i32 {
+    widget := Widget.init(42)
+    return widget.get() - helper()
+}

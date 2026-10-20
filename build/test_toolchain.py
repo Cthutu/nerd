@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Integration checks for direct LLVM tools and nerd doctor."""
 import argparse
+from test import fixture_source
 import os
 from pathlib import Path
 import shutil
@@ -200,7 +201,7 @@ def main():
         for name in ['242-run-atomic-operators', '298-run-variadic-promotions',
                      '308-run-shutdown-watcher', '316-run-pixel-layer-layout']:
             fixture = ROOT / 'tests/commands' / (name + '.cmd')
-            source.write_text(fixture.read_text(encoding="utf-8").split('¬')[0])
+            source.write_text(fixture_source(name))
             behaviors = []
             for release in [[], ['-r']]:
                 run('build', *release, '--jobs', 4, source, '-o', executable)
@@ -231,7 +232,7 @@ def main():
         print('[PASS] entry-point integer widths, signedness, arguments and target modes')
         # Heap enum stores must remain aligned after header placement, growth,
         # and explicit reserve. Optimized Windows code uses aligned SIMD stores.
-        source.write_text((ROOT / 'tests/commands/317-run-dynamic-enum-alignment.cmd').read_text(encoding="utf-8").split('\u00ac')[0], encoding="utf-8")
+        source.write_text(fixture_source('317-run-dynamic-enum-alignment'), encoding="utf-8")
         for release in [[], ['-r']]:
             for jobs in [1, 4]:
                 run('build', *release, '--jobs', jobs, source, '-o', executable)

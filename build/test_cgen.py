@@ -3,99 +3,30 @@
 import argparse
 from concurrent.futures import ThreadPoolExecutor
 import os
+import json
+import re
 from pathlib import Path
 import subprocess
 import tempfile
 
-from test import case_platforms, current_platform
+from test import case_platforms, current_platform, language_cases, language_flags
 
 ROOT = Path(__file__).resolve().parents[1]
-# Runtime regressions beyond the language suite: defaults, ABI, ownership,
-# atomics, allocator diagnostics, formatting and generic dispatch.
+# Process-lifetime, argument and diagnostic contracts beyond language discovery.
 COMMANDS = (
-    "357-enum-integer-contexts",
-    "355-run-on-extraction-shorthand",
-    "356-run-error-channel-patterns",
-    "339-imported-mutable-globals",
-    "325-runtime-array-i32-length",
-    "336-imported-enum-equality",
-    "335-structural-equality",
-    "334-generic-contextual-pointer-literal",
-    "333-indexed-loop-slot-growth",
-    "330-runtime-fixed-arrays",
-    "331-runtime-array-negative",
-    "332-runtime-array-overflow",
-    "327-undo-cleanup",
-    "328-optional-main-failure",
-    "329-optional-main-args",
-    "326-optional-void-return",
-    "325-enum-final-return-fallthrough",
-    "323-run-implicit-void-pointer",
-    "322-run-c-string-display",
-    "320-named-default-parameters",
-    "319-address-of-plex-literal",
-    "317-run-dynamic-enum-alignment",
-    "310-run-return-after-iteration",
-    "210-run-fixed-array-implicit-slice",
-    "211-run-implicit-integer-comparison-width",
-    "212-run-large-array-field-index",
-    "213-run-llvm-function-field-call",
-    "214-run-counted-box-allocation",
-    "215-run-box-field-return-ownership",
-    "217-run-enum-braced-payload-aliased-binders",
-    "217-run-string-bytes",
-    "218-run-core-abort",
-    "220-run-byte-arrays-to-string",
-    "223-run-never-on-expression",
-    "228-run-core-option-expect",
-    "229-run-core-option-expect-abort",
-    "235-run-pointer-dynarray-count-logical",
-    "238-run-dynarray-result-pattern",
-    "242-run-atomic-operators",
-    "243-run-compile-time-parameter",
-    "244-run-compound-functions",
-    "251-run-atomic-method-name-is-not-intrinsic",
-    "254-run-core-done-reports-leaks",
-    "258-run-dynamic-array-leak-location",
-    "259-run-lazy-arena-leak-location",
-    "260-run-direct-recursive-function",
-    "261-run-typed-plex-shorthand-before-ellipsis",
-    "262-run-addressed-local-in-skipped-on",
-    "354-run-conditional-aggregate-reads",
-    "265-run-byte-slice-equality",
-    "266-run-mutable-slice-literal",
-    "267-run-fixed-array-equality",
-    "271-run-void-result-success",
-    "272-run-core-arena-pr",
-    "272-run-negate-optional-result",
-    "274-run-assignment-context-local-inference",
-    "275-run-imported-default-arena",
-    "275-run-range-item-used-in-nested-local",
-    "276-run-propagate-call-once",
-    "277-run-unused-default-once",
-    "281-run-plex-bit-fields",
-    "282-run-range-membership",
-    "283-run-compound-assignment-inference",
-    "284-run-bitfield-enum-display",
-    "285-run-pointer-ordering",
-    "287-run-inferred-expression-propagation",
-    "288-run-usage-context-inference",
-    "291-run-nested-tuple-items",
-    "292-run-plex-usage-context",
-    "294-run-content-equality",
-    "294-run-named-trait-parameters",
-    "295-run-imported-content-equality",
-    "296-run-merged-standard-library",
-    "298-run-variadic-promotions",
-    "299-run-variadic-forwarding",
-    "302-run-public-main",
-    "304-run-named-function-table",
-    "305-run-format-c-string",
-    "306-run-void-result-propagation",
-    "307-run-imported-display-interpolation",
-    "308-run-shutdown-watcher",
-    "341-run-typed-ffi-callback",
-    "349-run-atomic-literal-inference",
+    '331-runtime-array-negative',
+    '332-runtime-array-overflow',
+    '328-optional-main-failure',
+    '329-optional-main-args',
+    '218-run-core-abort',
+    '223-run-never-on-expression',
+    '228-run-core-option-expect',
+    '229-run-core-option-expect-abort',
+    '254-run-core-done-reports-leaks',
+    '258-run-dynamic-array-leak-location',
+    '259-run-lazy-arena-leak-location',
+    '296-run-merged-standard-library',
+    '308-run-shutdown-watcher',
 )
 
 
@@ -117,17 +48,34 @@ def behaviour(result):
 
 
 def differential(nerd, fixture, tmp, env):
-    parts = sections(fixture)
+    cases = language_cases(fixture) if fixture.suffix == ".t" else [("program", sections(fixture))]
     work = tmp / fixture.stem
     work.mkdir()
+    failures = []
+    for label, parts in cases:
+        case_work = work / label
+        case_work.mkdir()
+        try:
+            differential_case(nerd, fixture, parts, case_work, env)
+        except Exception as error:
+            failures.append(f"{label}: {error}")
+    assert not failures, "\n".join(failures)
+    return f"[PASS] C: {fixture.name} ({len(cases)} programs, -O0, -O2)"
+
+
+def differential_case(nerd, fixture, parts, work, env):
     source = work / (fixture.stem + ".n")
-    source.write_text(parts[0], encoding="utf-8")
+    # Resolve literal assets against the fixture before relocating its program.
+    def embedded_asset(match):
+        asset = fixture.parent / json.loads(match[1])
+        return "@embed(" + json.dumps(str(asset.resolve())) + ")"
+    source.write_text(re.sub(r'@embed\(("[^"\n]+")\)', embedded_asset, parts[0]), encoding="utf-8")
     stdin = parts[5].encode() if fixture.suffix == ".t" and len(parts) > 5 else None
     output = work / ("program.exe" if os.name == "nt" else "program")
-    run([nerd, "build", "-o", output, source], env)
+    run([nerd, "build", *language_flags(parts[0]), "-o", output, source], env)
     expected = run([output], env, check=False, stdin=stdin)
     output.unlink()
-    run([nerd, "build", "--cgen", "-o", output, source], env)
+    run([nerd, "build", *language_flags(parts[0]), "--cgen", "-o", output, source], env)
     assert not output.exists(), "C generation must not create a binary"
     generated = output.with_suffix(".c")
     assert generated.is_file(), "C output must replace the binary extension"
@@ -139,7 +87,6 @@ def differential(nerd, fixture, tmp, env):
         assert behaviour(actual) == behaviour(expected), (
             f"{fixture.name} {optimisation}: C and LLVM behaviour differs\n"
             f"C: {behaviour(actual)!r}\nLLVM: {behaviour(expected)!r}")
-    return f"[PASS] C: {fixture.name} (-O0, -O2)"
 
 
 def cli_checks(nerd, tmp, env):
@@ -440,7 +387,9 @@ def main():
             for cflag in ("--cgen", "--copts"):
                 result = run([nerd, "build", cflag, *flags, "main :: fn () {}"], env, check=False)
                 assert result.returncode and not result.stdout, f"{cflag} must reject {flags}"
-    print(f"C generation: {len(fixtures)} differential fixtures at two optimisation levels and CLI conflicts passed; {len(skipped)} platform skips")
+    programs = sum(len(language_cases(fixture)) if fixture.suffix == ".t" else 1
+                   for fixture in fixtures)
+    print(f"C generation: {len(fixtures)} files / {programs} programs at two optimisation levels and CLI conflicts passed; {len(skipped)} platform file skips")
 
 
 if __name__ == "__main__":

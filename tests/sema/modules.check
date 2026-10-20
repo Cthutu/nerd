@@ -1,0 +1,8 @@
+=== case: 170-check-file-module-child-import ===
+use test.file_module.child
+
+main :: fn () -> i32 {
+    display : ChildHandle = nil
+    on display == nil => return 0
+    return 1
+}

@@ -38,11 +38,13 @@ omitting `--nerd` or by setting `NERD_BIN`.
 
 ## Test Families
 
-The repository currently has seven main test families:
+The regression families are indexed by [feature and editor operation](test-features.md):
 
 - `tests/language`
   End-to-end compiler tests with expected runtime result, stdout, HIR, and LLVM
   IR.
+- `tests/sema`
+  Named positive semantic programs, checked without linking external fixtures.
 - `tests/errors`
   Structured error-rendering tests in JSON form.
 - `tests/hir`
@@ -71,12 +73,33 @@ Language tests use `.t` files with five sections separated by `¬`:
 4. expected HIR
 5. expected generated LLVM IR
 
-The first section is also valid source input by itself, which makes local
-debugging straightforward.
+Most ordinary scenarios share a feature program with labelled `prn` output and
+result assertions. Each label and its results occur in the exact stdout oracle,
+so a missing or skipped scenario fails the test.
+
+Programs that require independent namespaces, entry points, imports, locations,
+or trait implementations are separated by a line `=== case: scenario-name ===`.
+Each block has the same five sections and may add a sixth section for stdin.
+The runner compiles each block independently, preserving its declarations and
+`main`; failures include the scenario name. Do not rename fields, methods or
+canonical traits simply to combine programs. A complete source comment line
+`-- test-release` preserves cases that specifically require target optimisation.
+
+The C differential runner discovers every language block, including all migrated
+command cases. Legacy backend failures discovered during expansion are tracked
+and fixed with regressions; they are not silently excluded from the gate.
 
 Language tests should stay behavior-first. Include only enough HIR or LLVM text
 to assert the compiler fact that matters for the case; the runner treats those
 sections as ordered subsequences rather than requiring a full-file snapshot.
+
+## Positive semantic tests
+
+`.check` files under `tests/sema` contain `=== case: scenario-name ===` source
+blocks. Each must pass `nerd check` without diagnostics. These retain ordinary
+positive type-checking coverage moved from `.cmd`, including foreign libraries
+which intentionally do not exist for linking. Negative semantic programs belong
+in feature-grouped `.e` files with located JSON diagnostics.
 
 ## HIR Tests
 
@@ -293,7 +316,7 @@ runs on Linux; Windows export alias IR can be compiled with clang's COFF target,
 but that is not a substitute for executing the tests on a Windows host.
 
 
-## Library capability and migration tools
+## Library capabilities and opt-in integrations
 
 `just test` runs `validation/stdlib/check_capabilities.py` against the checkout's
 modules. It checks single-thread atomic operations and layout, explicit callback
@@ -303,9 +326,23 @@ the C path. These probes do not prove concurrent queue correctness, ownership
 transfer, reclamation or graph evaluation. Use the Raptor, thread/sync, network
 and Nexus runners for their respective runtime contracts.
 
-`build/audit_tests.py` inventories fixtures, and `build/audit_on_batch.py` can
-reproduce the historical batching experiment from its pinned Git revision.
-`build/check_test_consolidation.py` verifies the retained
-[migration map](test-suite-consolidation-map.json). These are opt-in maintenance
-tools; obsolete one-off audit outputs live in Git history rather than serving
-as current suite counts or platform validation.
+Network and Nexus example integrations are opt-in and are excluded from default
+example discovery and both common test recipes:
+
+```sh
+just test-network
+just test-network --cgen --release
+just test-nexus
+just test-nexus --cgen --release
+```
+
+The recipes build the debug compiler. To select the release compiler explicitly,
+use `python3 build/test_network.py --compiler _bin/nerd --release` or the
+corresponding `build/test_nexus.py` command. Default gates retain stdlib source
+unit tests, Raptor, native thread/sync contracts and compiler/toolchain checks.
+
+`build/test_harness.py` checks grouped-program isolation, stdin, later formatter
+and LSP failures, truncated groups and release metadata. Both common gates run
+it. The [feature inventory](test-features.md) records taxonomy, teaching-doc gaps
+and the snapshot review. Historical audits and raw validation outputs are
+available through immutable archive links, not regenerated tracked reports.

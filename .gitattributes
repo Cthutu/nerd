@@ -1,0 +1,2 @@
+# Formatter inputs deliberately exercise trailing whitespace.
+tests/format/*.f whitespace=-blank-at-eol

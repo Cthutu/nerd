@@ -6,7 +6,7 @@ and Telnet scenarios have equivalent Nerd coverage.
 Covered means the observable contract is checked, rather than a literal copy of
 the original C test. Native Windows automated coverage now passes under both
 compiler builds, LLVM/C backends and debug/release targets; see the
-[16 October results](../validation/windows/results/20261016T083710Z-8b918d2c/README.md). Human desktop/Ctrl+C
+[16 October results](https://github.com/Cthutu/nerd/blob/fac0feae825d73a478466410956c1ca7749a2a8a/validation/windows/results/20261016T083710Z-8b918d2c/README.md). Human desktop/Ctrl+C
 observations and long-duration resource measurements remain separate gates.
 
 The machine-readable [mapping](../tests/nexus/parity-map.json) is checked by

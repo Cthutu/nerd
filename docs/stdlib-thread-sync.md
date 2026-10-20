@@ -115,7 +115,7 @@ checks a 100-element one-slot producer/consumer pipeline with total 5050.
 Native OS resource-exhaustion fault injection, forced spurious wake scheduling,
 timed waits, cancellation, thread identity and broader stress testing remain
 future work. Native Windows evidence and Linux/WSL gaps are recorded in
-[the validation note](../validation/windows/results/20261001-thread-sync/README.md).
+[the validation note](https://github.com/Cthutu/nerd/blob/fac0feae825d73a478466410956c1ca7749a2a8a/validation/windows/results/20261001-thread-sync/README.md).
 Both `just test` and `just test-release` execute this runner through LLVM and
 generated C, including the imported temporary-arena alias regression. This does
 not replace the later complete `just do` platform gates.

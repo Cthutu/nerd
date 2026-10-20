@@ -113,3 +113,5 @@ Keep current behaviour in the manual, specs and subsystem docs, and open work in
 Completed audits, one-off repair reports and superseded handoffs belong in Git
 history. Keep reproducible validation tools, source provenance, accepted decision
 records and dated measurements when they still support a maintained contract.
+
+The [test feature inventory](test-features.md) records taxonomy and teaching-document gaps.

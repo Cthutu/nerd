@@ -46,7 +46,7 @@ python3 build/test_nexus.py --compiler _bin/nerd-debug --stress-rounds 128
 This performs 1,024 completed connections and 12,288 checked replies for each
 protocol. The option accepts 12–1,000 rounds. These are bounded stress checks;
 long-duration soak, resource-growth measurements and WAN behaviour remain
-separate work. The [16 October native Windows run](../../validation/windows/results/20261016T083710Z-8b918d2c/README.md)
+separate work. The [16 October native Windows run](https://github.com/Cthutu/nerd/blob/fac0feae825d73a478466410956c1ca7749a2a8a/validation/windows/results/20261016T083710Z-8b918d2c/README.md)
 passes all eight compiler/backend/target combinations. Interactive desktop and
 Ctrl+C observations remain explicitly blocked pending human observations;
 Linux-only fault injection remains a platform skip.
