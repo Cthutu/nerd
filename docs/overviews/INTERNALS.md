@@ -1,5 +1,11 @@
 # Internals
 
+Associated-call target resolution uses the qualified type resolver rather than
+only the bare type-symbol resolver. This lets `name.Type.init(...)` resolve a
+public type through `name :: use module` before selecting an associated
+function. The existing imported method table and target-type matching perform
+selection, and module export and method visibility checks remain in force.
+
 Loop result inference and loop-`else` validation share a target-aware value-break
 search. It follows explicit labels through nested loops, blocks and expression
 operands while keeping unlabelled breaks with their nearest control target.

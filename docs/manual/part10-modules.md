@@ -163,6 +163,19 @@ main :: fn () {
 }
 ```
 
+Public associated functions can also be called through a qualified type:
+
+```nerd
+shapes :: use app.shapes
+
+main :: fn () {
+    _layer := shapes.Layer.init()
+}
+```
+
+The type and associated function must both be public. Qualified calls use the
+same method selection and visibility rules as calls after a bare `use` import.
+
 ## Public Exports
 
 Use `pub` to make a declaration visible outside its module:

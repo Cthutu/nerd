@@ -507,6 +507,8 @@ impl [T] Stack[T] {
 Public methods are available when another module imports the type.
 They also remain available when the type is named through a qualified module
 binding, such as `collections.Stack[i32]`.
+Public associated functions on qualified types are also callable directly, such
+as `shapes.Layer.init()` after `shapes :: use app.shapes`.
 
 ## Traits
 

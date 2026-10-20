@@ -33,3 +33,31 @@ main :: fn () {
         "Call the method through a value, for example `value.increment()`."
     ]
 }
+
+¬
+widgets :: use test.public_method
+main :: fn () {
+    widgets.Widget.get()
+}
+¬
+{
+    "message": "Receiver method `get` cannot be called through a type",
+    "source_file": "tests/errors/101-receiver-method-through-type.e",
+    "primary_location": {
+        "line": 3,
+        "column": 23
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 3,
+            "column": 23,
+            "length": 1,
+            "message": "`get` requires a receiver value"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Call the method through a value, for example `value.get()`."
+    ]
+}

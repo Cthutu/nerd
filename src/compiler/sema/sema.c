@@ -25422,11 +25422,11 @@ validate_type:
             }
             if (field_callee->kind == AK_Field) {
                 u32 associated_target = sema_no_type();
-                if (sema_try_resolve_type_symbol(lexer,
-                                                 ast,
-                                                 sema,
-                                                 field_callee->a,
-                                                 &associated_target)) {
+                if (sema_try_resolve_qualified_type_node(lexer,
+                                                         ast,
+                                                         sema,
+                                                         field_callee->a,
+                                                         &associated_target)) {
                     bool                   found_associated = false;
                     SemaResolvedMethodCall associated_call  = {0};
                     if (!sema_try_resolve_associated_call(lexer,
