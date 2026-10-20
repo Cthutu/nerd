@@ -601,9 +601,11 @@ Undo cleanup cannot return or propagate another failure, or register further
 undo actions. Process termination and runtime panics are not failure returns
 and do not trigger undo as error handling.
 
-## Entry-point return types
+## Return types for the `main` function
 
-The current compiler accepts these entry-point forms:
+The function bound to `main` is the program's entry point. Its return value
+determines the process exit status. Nerd supports these return types for
+`main`:
 
 | Return type | Exit status |
 | --- | --- |
@@ -614,10 +616,11 @@ The current compiler accepts these entry-point forms:
 | `void\Error` | `0` on success; `1` on error, with a message on stderr. |
 | `i32\Error` | The successful integer; `1` on error, with a message on stderr. |
 
-Plain integer return types of other widths are also accepted. Optional and
-result entry points use `void` or `i32` payloads.
+Plain integer return types of other widths are also accepted. When `main`
+returns an optional or result, its present or successful payload type must be
+`void` or `i32`.
 
-An entry point can return `?void` when initialization may fail:
+The `main` function can return `?void` when initialization may fail:
 
 ```nerd
 initialize :: fn () -> ?void {
@@ -636,8 +639,9 @@ absence exits with status `1`, after registered cleanup runs.
 
 ### Optional integer exit statuses
 
-With `?i32`, presence supplies an explicit exit status: `return 0` exits with
-`0`, and `return 42` exits with `42`. Absence supplies the fallback status `1`:
+When `main` returns `?i32`, presence supplies an explicit exit status:
+`return 0` exits with `0`, and `return 42` exits with `42`. Absence supplies
+the fallback status `1`:
 
 ```nerd
 main :: fn () -> ?i32 {
@@ -679,7 +683,7 @@ exit with `42` and produce no automatic error message. For `void\Error`, a
 bare `return` or reaching the end succeeds with status `0`.
 
 Explicit error returns and errors propagated with `?` run applicable `undo`
-and `defer` cleanup before the entry-point error message is printed. A result
+and `defer` cleanup before the error returned from `main` is displayed. A result
 error always uses status `1`; an integer error payload is displayed as an
 error message, rather than used as the exit status. Use a successful `i32`
 payload when you want to choose the exit status yourself.
