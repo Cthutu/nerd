@@ -229,6 +229,24 @@ def main():
                         result = subprocess.run([str(executable)], env=env, capture_output=True)
                         assert result.returncode == expected, (kind, parameters, windowed, release, result.returncode, expected, result.stderr)
         print('[PASS] entry-point integer widths, signedness, arguments and target modes')
+        for returned, body, status, message in [
+                ('?i32', 'return -7', -7, ''),
+                ('i32\\string', 'return 1', 1, ''),
+                ('void\\string', 'return "failure"!', 1, 'Error: failure\n'),
+                ('?void', 'return nil', 1, '')]:
+            expected = status & (0xffffffff if os.name == 'nt' else 0xff)
+            for parameters in ['', 'args: []string']:
+                prefix = 'assert args.count >= 1\n' if parameters else ''
+                for windowed in ([False, True] if os.name == 'nt' and not parameters else [False]):
+                    source.write_text(('build { windowed: yes }\n' if windowed else '') +
+                                      f'main :: fn ({parameters}) -> {returned} {{\n{prefix}{body}\n}}\n')
+                    for release in [[], ['-r']]:
+                        run('build', *release, source, '-o', executable)
+                        result = subprocess.run([str(executable)], env=env,
+                                                capture_output=True, text=True)
+                        assert (result.returncode, result.stdout, result.stderr) == (
+                            expected, '', message), (returned, parameters, windowed, release, result)
+        print('[PASS] main optional/result payload statuses, error streams and target modes')
         # Heap enum stores must remain aligned after header placement, growth,
         # and explicit reserve. Optimized Windows code uses aligned SIMD stores.
         source.write_text((ROOT / 'tests/commands/317-run-dynamic-enum-alignment.cmd').read_text(encoding="utf-8").split('\u00ac')[0], encoding="utf-8")

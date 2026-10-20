@@ -3605,11 +3605,40 @@ bool cgen_save_program(const ProgramInfo*        program,
                       cgen_function(c, c->module, main_fn),
                       args);
         } else if (cgen_type(c, ft->return_type)->kind == STK_Enum &&
-                   (cgen_type(c, ft->return_type)->flags & STF_Optional)) {
+                   (cgen_type(c, ft->return_type)->flags &
+                    (STF_Optional | STF_Result))) {
+            u32      return_type     = ft->return_type;
+            SemaType returned        = *cgen_type(c, return_type);
+            bool     optional        = (returned.flags & STF_Optional) != 0;
+            u32      success_variant = optional ? 1 : 0;
+            u32 success_type = cgen_field_type(c, return_type, success_variant);
             sb_format(&c->out,
-                      "int result=%s(%s).tag == 0 ? 1 : 0;\n",
+                      "%s main_value=%s(%s); int result=1;\n"
+                      "if(main_value.tag==%u) { result=%s; }",
+                      cgen_ctype(c, return_type),
                       cgen_function(c, c->module, main_fn),
-                      args);
+                      args,
+                      success_variant,
+                      cgen_void(c, success_type)
+                          ? "0"
+                          : CF("main_value.payload.f%u", success_variant));
+            if (!optional) {
+                sb_append_cstr(&c->out, " else {\n");
+                sb_init(&c->body, &c->body_arena);
+                CGEN_OUT(
+                    "uintptr_t main_error_mark=nrt_string_builder_mark();\n");
+                cgen_display(c,
+                             (CValue){"main_value.payload.f1",
+                                      cgen_field_type(c, return_type, 1),
+                                      false},
+                             0);
+                CGEN_OUT("NerdString main_error_text;\n"
+                         "nrt_string_builder_finish(&main_error_text,main_"
+                         "error_mark);\n"
+                         "nrt_report_main_error(&main_error_text);\n");
+                sb_append_string(&c->out, sb_to_string(&c->body));
+                sb_append_cstr(&c->out, "}\n");
+            }
         } else {
             sb_format(&c->out,
                       "int result=(int)%s(%s);\n",

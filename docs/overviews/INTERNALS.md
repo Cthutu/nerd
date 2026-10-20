@@ -887,11 +887,18 @@ before returning. The return value is evaluated before cleanup. Undo actions
 cannot escape the function or an outer loop, propagate failures, or register
 other undo actions. Normal lexical scope exit discards undo registrations.
 
-The host wrappers accept `main -> ?void` (with zero arguments or `[]string`):
-they call the aggregate-returning Nerd function and convert absent tag 0 to
-status 1 and present tag 1 to status 0. LLVM console/windowed wrappers and the
-C executable wrapper share this convention; ordinary integer/void entry points
-keep their existing ABI.
+The host wrappers accept `main -> ?void`, `?i32`, `void\E`, and `i32\E`,
+with zero arguments or `[]string`. Sema validates the success payload and error
+display support and marks `main_status_wrapper` only for executable entry points.
+LLVM emits a separate `$main.status` bridge returning i32; the original function
+retains its aggregate ABI, including calls from Nerd code. Optional absence exits
+1 silently. Presence/result success returns 0 for void or the i32 payload. Result
+failure formats E using ordinary built-in/Display machinery and calls
+`nrt_report_main_error`, then exits 1. C emission mirrors the conversion. Normal
+function defer/undo cleanup precedes the bridge; core shutdown follows display.
+The runtime helper writes one `Error: <message>` line to stderr and enables red
+only for a capable terminal without nonempty `NO_COLOR` or `TERM=dumb`. Reset
+precedes the newline, and redirected output contains no ANSI sequences.
 
 ## Compiler performance instrumentation
 

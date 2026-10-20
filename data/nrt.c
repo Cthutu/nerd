@@ -886,11 +886,22 @@ static _Thread_local size_t   g_string_builder_cursor   = 0;
 
 NrtArena* nrt_temp_arena(void) { return &g_temp_arena; }
 
-#ifndef NDEBUG
 static bool nrt_stderr_supports_colour(void)
 {
 #if defined(_WIN32)
-    HANDLE handle = GetStdHandle(STD_ERROR_HANDLE);
+    char no_colour[2];
+    char term[5];
+    if (GetEnvironmentVariableA("NO_COLOR", no_colour, sizeof(no_colour)) > 0 ||
+        (GetEnvironmentVariableA("TERM", term, sizeof(term)) == 4 &&
+         strcmp(term, "dumb") == 0)) return false;
+#else
+    const char* no_colour = getenv("NO_COLOR");
+    const char* term = getenv("TERM");
+    if ((no_colour != NULL && no_colour[0] != '\0') ||
+        (term != NULL && strcmp(term, "dumb") == 0)) return false;
+#endif
+#if defined(_WIN32)
+    HANDLE handle = nrt_windows_stream_handle(stderr);
     DWORD  mode   = 0;
     return handle != INVALID_HANDLE_VALUE && GetConsoleMode(handle, &mode) &&
            SetConsoleMode(handle, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
@@ -899,6 +910,19 @@ static bool nrt_stderr_supports_colour(void)
 #endif
 }
 
+void nrt_report_main_error(const NerdString* message)
+{
+    fflush(stdout);
+    bool colour = nrt_stderr_supports_colour();
+    if (colour) nrt_epr("\033[31m", 5);
+    nrt_epr("Error: ", 7);
+    if (message != NULL) nrt_epr(message->data, message->count);
+    if (colour) nrt_epr("\033[0m", 4);
+    nrt_eprn(NULL, 0);
+    fflush(stderr);
+}
+
+#ifndef NDEBUG
 static size_t nrt_decimal_width(uint64_t value)
 {
     size_t width = 1;

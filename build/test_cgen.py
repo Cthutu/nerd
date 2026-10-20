@@ -13,6 +13,15 @@ ROOT = Path(__file__).resolve().parents[1]
 # Runtime regressions beyond the language suite: defaults, ABI, ownership,
 # atomics, allocator diagnostics, formatting and generic dispatch.
 COMMANDS = (
+    "366-result-main-call-status",
+    "359-result-main-void-error",
+    "360-result-main-i32-success",
+    "361-result-main-propagation",
+    "362-optional-main-i32-success",
+    "363-optional-main-i32-failure",
+    "364-result-main-string-error",
+    "365-result-main-void-success",
+
     "358-arena-borrowing",
     "357-enum-integer-contexts",
     "355-run-on-extraction-shorthand",

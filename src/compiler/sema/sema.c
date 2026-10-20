@@ -28432,26 +28432,62 @@ sema_validate_entry_point(const Lexer* lexer, const Ast* ast, Sema* sema)
             sema_type_name(lexer, sema, &temp_arena, type_index));
     }
 
-    const SemaType* fn_type      = &sema->types[type_index];
-    bool            valid_params = fn_type->param_count == 0;
-    if (!valid_params && fn_type->param_count == 1) {
+    const SemaType fn_type      = sema->types[type_index];
+    bool           valid_params = fn_type.param_count == 0;
+    if (!valid_params && fn_type.param_count == 1) {
         u32 string_type = sema_builtin_type(sema, STK_String);
         u32 args_type   = sema_add_slice_type(sema, string_type);
         valid_params    = sema_type_matches(
-            sema, args_type, sema->type_param_types[fn_type->first_param_type]);
+            sema, args_type, sema->type_param_types[fn_type.first_param_type]);
     }
 
-    if (!valid_params ||
-        (!sema_type_is_integer(sema, fn_type->return_type) &&
-         sema->types[fn_type->return_type].kind != STK_Void &&
-         !(sema_type_is_void_success(sema, fn_type->return_type) &&
-           (sema->types[fn_type->return_type].flags & STF_Optional)))) {
+    u32      return_type = fn_type.return_type;
+    SemaType returned    = sema->types[return_type];
+    bool     channel     = returned.kind == STK_Enum &&
+                           (returned.flags & (STF_Optional | STF_Result));
+    bool     valid_return =
+        sema_type_is_integer(sema, return_type) || returned.kind == STK_Void;
+    if (channel) {
+        u32          success = (returned.flags & STF_Optional) ? 1 : 0;
+        SemaTypeKind payload_kind =
+            sema->types[sema->type_param_types[returned.first_param_type +
+                                               success]]
+                .kind;
+        valid_return = payload_kind == STK_Void || payload_kind == STK_I32;
+    }
+    if (!valid_params || !valid_return) {
         return error_0316_invalid_entry_point(
             lexer->source,
             sema_decl_span(lexer, ast, decl),
             sema_type_name(lexer, sema, &temp_arena, type_index));
     }
+    if (channel && (returned.flags & STF_Result)) {
+        u32 error_type = sema->type_param_types[returned.first_param_type + 1];
+        if (!sema_type_is_builtin_interpolatable(sema, error_type)) {
+            ErrorSpan site = sema_decl_span(lexer, ast, decl);
+            if (sema_find_core_trait_symbol(lexer, sema, s("Display")) ==
+                sema_no_decl()) {
+                InternAddResult ignored = {0};
+                u32             symbol =
+                    lex_add_symbol((Lexer*)lexer, s("Display"), &ignored);
+                if (sema_find_symbol_handle_by_name(lexer, s("Display")) ==
+                    sema_no_decl()) {
+                    array_push(((Lexer*)lexer)->symbol_handles, symbol);
+                }
+                if (!sema_import_implicit_core_decls(lexer, sema)) {
+                    return false;
+                }
+            }
+            u32 display =
+                sema_find_core_trait_symbol(lexer, sema, s("Display"));
+            if (!sema_type_satisfies_trait_constraint(
+                    lexer, ast, sema, error_type, display, site)) {
+                return false;
+            }
+        }
+    }
 
+    sema->main_status_wrapper = channel;
     return true;
 }
 

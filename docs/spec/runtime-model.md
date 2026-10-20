@@ -193,6 +193,14 @@ normal return from `main`, the generated entry wrapper calls `core_done` before
 returning the exit status to the host. Non-returning termination such as
 `abort` does not run normal shutdown.
 
+For an optional `main`, absence returns status 1 silently; presence returns 0
+for `?void` or the `?i32` payload. Result `main` returns (`void\E`, `i32\E`)
+use the same success statuses. An error is displayed once on stderr as
+`Error: <message>` followed by a newline, after defer/undo cleanup and before
+`core_done`. Custom error types require core `Display`; built-in displayable
+values retain their normal formatting. Red text is used only on capable
+terminals, with plain text for redirection, nonempty `NO_COLOR`, or `TERM=dumb`.
+
 `core_done` releases process-wide storage owned by core, including the runtime
 temporary arena and interpolation buffer. Debug builds then walk the runtime's
 remaining heap and arena tracking lists. If either list is non-empty, every

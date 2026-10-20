@@ -254,7 +254,8 @@ typedef struct {
 
 typedef struct {
     const ProgramInfo* program;
-    u32                current_module_index;
+    bool main_status_wrapper; // Validated optional/result entry point.
+    u32  current_module_index;
     Array(SemaType) types;
     Array(SemaImportedRecord) imported_records;
     Array(u32) type_param_types;

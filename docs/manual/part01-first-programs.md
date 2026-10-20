@@ -44,6 +44,41 @@ Run arguments are passed after `--`, as in `nerd run hello.n -- one two`.
 `args[0]` is the executable path supplied by the operating system; user
 arguments start at `args[1]`.
 
+
+`main` may return a process status or a fallible result:
+
+| Return type | Success | Failure |
+| --- | --- | --- |
+| `void` | Exit 0 | — |
+| `i32` | Exit with the returned integer | — |
+| `?void` | Exit 0 | Exit 1, silently |
+| `?i32` | Exit with the present integer | Exit 1, silently |
+| `void\E` | Exit 0 | Display the error and exit 1 |
+| `i32\E` | Exit with the successful integer | Display the error and exit 1 |
+
+Ordinary integer return types of other widths also remain supported. Optional
+and result entry points use `void` or `i32` success payloads.
+
+```nerd
+main :: fn () -> void\string {
+    return "could not load configuration"!
+}
+```
+
+This writes `Error: could not load configuration` followed by a newline to
+stderr, then exits with status 1. Built-in displayable error values, such as
+strings and integers, use their normal formatting. Other error types require
+an implementation of the core `Display` trait, whose `show` method supplies
+the message. A missing implementation is a compile error, even when a particular
+program only returns success.
+
+Errors appear in red on supported terminals. Redirected output is plain text;
+a nonempty `NO_COLOR` environment variable or `TERM=dumb` also disables color.
+Normal `defer` and `undo` actions run before error display, and runtime shutdown
+runs afterwards. Display runs once and only for the error channel: a successful
+integer status of 1 does not print a message. Propagation with `?` and failure
+handler fallthrough can return the final error from `main` automatically.
+
 ## Comments
 
 Line comments start with `--`. Comments are for readers of the source file:
