@@ -18,6 +18,10 @@ from the beginning.
 10. [Optionals, Results and Error Handling](docs/learn/10-Optionals-Results-and-Error-Handling.md)
 11. [Generics](docs/learn/11-Generics.md)
 12. [Methods and Traits](docs/learn/12-Methods-and-Traits.md)
+13. [String Interpolation](docs/learn/13-String-Interpolation.md)
+14. [Modules](docs/learn/14-Modules.md)
+15. [Special Function Declarations](docs/learn/15-Special-Function-Declarations.md)
+16. [Defines](docs/learn/16-Defines.md)
 
 ## Packaging
 

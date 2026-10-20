@@ -2,6 +2,8 @@
 
 [Previous: Generics](11-Generics.md)
 
+[Next: String Interpolation](13-String-Interpolation.md)
+
 Earlier chapters used calls such as `values.push(42)` and `storage.reset()`.
 These are methods: functions called through a value. This chapter explains
 how to define methods for your own types, and how traits describe behavior
@@ -312,8 +314,8 @@ This writes `Error: the system is not ready` followed by a newline to standard
 error and exits with status `1`. The runtime uses `Display.show` to obtain the
 message after cleanup has run.
 
-String interpolation also uses `Display` for custom values. Its syntax and
-temporary storage will be covered separately; direct `show()` calls need
+String interpolation also uses `Display` for custom values. Chapter 13 covers
+its syntax and temporary storage; direct `show()` calls need
 neither interpolation syntax nor an implicit printing operation. If a `show`
 implementation allocates its returned string in an arena, that string follows
 the arena's lifetime, as in Chapter 8. The examples above return string literals.
