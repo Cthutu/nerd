@@ -86,9 +86,11 @@ Postfix `!` constructs the error outcome:
 MathError :: enum { ZeroDivisor NegativeDivisor }
 
 divide :: fn (numerator: i32, divisor: i32) -> i32\MathError {
-    on divisor == 0 => return MathError.ZeroDivisor!
-    on divisor < 0 => return MathError.NegativeDivisor!
-    return numerator / divisor
+    on divisor {
+        0 => return MathError.ZeroDivisor!
+        < 0 => return MathError.NegativeDivisor!
+        else => return numerator / divisor
+    }
 }
 
 main :: fn () -> i32 {
