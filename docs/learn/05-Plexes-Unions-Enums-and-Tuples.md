@@ -472,6 +472,47 @@ this chapter.
 Use a tuple when positions make the meaning clear, such as a small function
 result. Use a plex when field names make the value easier to understand.
 
+## More destructuring forms
+
+Destructuring works with constant bindings, explicitly typed variables, and
+assignment to existing variables as well as inferred variable declarations:
+
+```nerd
+main :: fn () -> i32 {
+    (base, extra) :: (20, 1)
+    (left, right): (i32, i32) = (base, extra)
+    (left, right) = (right, left)
+    return left + right + 21
+}
+```
+
+This returns `42`. The right-hand side is evaluated before assignment changes
+the destinations, so a tuple assignment can swap values. Constant destructuring
+uses `::`; typed constant destructuring uses a colon before the source value,
+for example `(left, right): (i32, i32) : (20, 22)`.
+
+A plex can be destructured by field name. This example shows syntax accepted
+by `nerd check`; the current LLVM backend cannot yet lower plex destructuring:
+
+```nerd
+Point :: plex { x i32 y i32 }
+
+main :: fn () -> i32 {
+    point := Point { x: 20, y: 22 }
+    { x, y } := point
+    return x + y
+}
+```
+
+The intended result is `42`, but `nerd run` currently reports an LLVM lowering
+failure for this form. Use `x := point.x` and `y := point.y` to extract the
+fields in executable code until that backend limitation is resolved.
+
+Tuple positions and plex field names must match the source shape. `_` discards
+an unwanted tuple position. Destructuring a value does not make the new names
+aliases for its fields; ordinary value and ownership rules apply to extracted
+values.
+
 ## Choosing between the four forms
 
 | Form | Storage and interpretation | Access |

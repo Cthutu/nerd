@@ -169,6 +169,33 @@ Use `.count` for indexing and iteration. A byte size is not an element count.
 An empty collection has no valid element index, and indexing at `.count` is
 always outside the live elements.
 
+## Payload byte sizes and data pointers
+
+`.bytes` measures the payload of a fixed array, slice, or string. Its result is
+`usize`. For a fixed array it equals `.size`; for a slice it is
+`.count * T.size`. For a string it equals `.count` because strings contain bytes.
+Compare this with `.size` on a slice or string, which measures the view's own
+representation rather than its referenced payload.
+
+```nerd
+main :: fn () -> i32 {
+    values: [3]i32 = [10, 12, 20]
+    view := values[1..]
+    prn($"array bytes: {values.bytes}, slice bytes: {view.bytes}")
+    return values[0] + view[0] + view[1]
+}
+```
+
+This prints `array bytes: 12, slice bytes: 8` and returns `42`.
+Dynamic arrays do not expose `.bytes`; take a slice and inspect that view when
+you need the byte size of their live elements.
+
+Fixed arrays expose `.data` as a pointer to element zero, including arrays
+whose lengths are chosen at runtime. The pointer borrows the array's storage.
+Chapter 7 explains pointers and converting a pointer/count pair back into a
+slice. An empty array has no element zero to read or write; a data pointer does
+not establish that an element exists.
+
 ## Passing slices to functions
 
 In C, a function often receives a pointer and a separate length. A Nerd slice

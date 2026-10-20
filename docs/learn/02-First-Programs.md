@@ -236,3 +236,23 @@ The parameter type supplies context for the argument: here the untyped literal
 `42` becomes an `i32`. The compiler checks each argument against its parameter's
 type. Parameters receive arguments by value. The parameter name is available
 inside the function body and cannot be reassigned there.
+
+## Command-line arguments
+
+An executable entry point can receive a slice of argument strings:
+
+```nerd
+main :: fn (args: []string) {
+    prn(args[0])
+    on args.count > 1 => prn(args[1])
+}
+```
+
+`args[0]` is the executable path supplied by the operating system. Additional
+arguments begin at `args[1]`; check the count before indexing them. Build with
+`nerd build main.n`, then run `./main Ada` on Linux or macOS, or
+`.\main.exe Ada` on Windows. The program prints its executable path and `Ada`.
+
+The `[]string` type is a slice: a counted view of strings. Chapter 6 introduces
+slices, and Chapter 9 explains the conditional `on` used to check the count.
+Chapter 23 develops a complete program using this entry-point form.

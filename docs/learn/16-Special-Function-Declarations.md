@@ -250,3 +250,7 @@ A receiving declaration needs at least one fixed runtime parameter. Generic
 and defaulted parameters are not supported on these receiving
 definitions. Its argument cursor is borrowed for that invocation; it is not
 an owning collection that may escape the function.
+
+Receiving variadic arguments, forwarding `VaList` cursors, and exporting
+C-callable wrappers are covered in
+[Chapter 22: Advanced C Interoperability](22-Advanced-C-Interoperability.md).

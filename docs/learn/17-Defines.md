@@ -2,6 +2,8 @@
 
 [Previous: Special Function Declarations](16-Special-Function-Declarations.md)
 
+[Next: Boxes and Ownership](18-Boxes-and-Ownership.md)
+
 Defines select code during compilation. They let a program include a platform
 API or optional feature without making that selection a runtime decision.
 Nerd uses a string-literal form of `on` to test whether a named define is enabled.

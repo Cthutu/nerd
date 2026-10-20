@@ -315,6 +315,41 @@ nested `inner` block. The later `break 0` is not reached. Without a label,
 Labels use a separate `$name` spelling to distinguish them from ordinary value
 names.
 
+## Functions that never return
+
+The type `!` means evaluation never produces a value. A function returning `!`
+terminates or otherwise never returns to its caller. This differs from `void`,
+whose functions can finish normally without returning a value.
+
+The built-in `abort` function returns `!`:
+
+```nerd
+require_positive :: fn (value: i32) -> i32 {
+    on value <= 0 => abort("expected a positive value")
+    return value
+}
+
+main :: fn () -> i32 {
+    return require_positive(42)
+}
+```
+
+This returns `42`. Passing zero would terminate the program instead. The
+compiler knows that a call returning `!` cannot fall through, so it can also
+appear where a value is otherwise required:
+
+```nerd
+main :: fn () -> i32 {
+    allowed := yes
+    answer := on allowed => 42 else abort("not allowed")
+    return answer
+}
+```
+
+This returns `42`. The abort branch need not manufacture an integer. Do not
+expect normal scope cleanup from process termination. The prefix `!condition`
+operator still means logical negation; `!` in a type position is the never type.
+
 ## Unused local names
 
 Nerd enforces unused local names as a compile-time rule. A local variable or

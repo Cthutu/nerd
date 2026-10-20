@@ -112,3 +112,8 @@ Run and modify the examples as you go. Pay attention to the compiler's
 diagnostics and to differences from C, especially in type inference, value
 matching, and ownership. The aim is to become comfortable expressing familiar
 programming tasks in Nerd and to recognise where its features simplify them.
+
+[Chapter 18: Boxes and Ownership](18-Boxes-and-Ownership.md) explains owning
+heap allocations and their automatic local cleanup. The later chapters cover
+source tests, compile-time parameters and macros, atomics, advanced C
+interoperability, and build configuration.

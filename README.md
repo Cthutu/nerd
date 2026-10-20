@@ -23,6 +23,14 @@ from the beginning.
 15. [Modules](docs/learn/15-Modules.md)
 16. [Special Function Declarations](docs/learn/16-Special-Function-Declarations.md)
 17. [Defines](docs/learn/17-Defines.md)
+18. [Boxes and Ownership](docs/learn/18-Boxes-and-Ownership.md)
+19. [Assertions and Testing](docs/learn/19-Assertions-and-Testing.md)
+20. [Compile-Time Parameters and Built-In Macros](docs/learn/20-Compile-Time-Parameters-and-Macros.md)
+21. [Atomic Values](docs/learn/21-Atomic-Values.md)
+22. [Advanced C Interoperability](docs/learn/22-Advanced-C-Interoperability.md)
+23. [Building and Configuring Programs](docs/learn/23-Building-and-Configuring-Programs.md)
+
+[Appendix A: Syntax and Pragmas](docs/learn/Appendix-A-Syntax-and-Pragmas.md)
 
 ## Packaging
 
