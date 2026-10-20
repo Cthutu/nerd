@@ -81,6 +81,7 @@ declare void @$prn_empty()
 
 define internal i32 @fn.0() {
   %local.0 = alloca [3 x i32]
+  %t7 = alloca [3 x i32]
   %t10 = alloca { ptr, i64 }
   %t23 = alloca { ptr, i64 }
   %t31 = alloca { ptr, i64 }
@@ -92,7 +93,6 @@ define internal i32 @fn.0() {
   %t4 = insertvalue [3 x i32] poison, i32 1, 0
   %t5 = insertvalue [3 x i32] %t4, i32 2, 1
   %t6 = insertvalue [3 x i32] %t5, i32 3, 2
-  %t7 = alloca [3 x i32]
   store [3 x i32] %t6, ptr %t7
   %t8 = call i64 @nrt_string_builder_mark()
   %t9 = alloca { ptr, i64 }

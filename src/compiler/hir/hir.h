@@ -130,6 +130,7 @@ typedef enum : u8 {
     HIR_UNARY_Negate,
     HIR_UNARY_BitwiseNot,
     HIR_UNARY_AddressOf,
+    HIR_UNARY_AddressOfValue,
     HIR_UNARY_Deref,
 } HirUnaryOp;
 

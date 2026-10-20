@@ -12,6 +12,8 @@ main :: fn () {
     assert other.number == 37
     number += 2
     pointer := ^number
+    qualified_pointer := ^other.number
+    assert qualified_pointer == pointer
     pointer^ += 4
     assert other.number == 43
     assert other.values[0] == 11

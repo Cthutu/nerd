@@ -103,6 +103,7 @@ declare void @$prn_empty()
 
 define internal i32 @fn.0() {
   %local.0 = alloca [5 x i32]
+  %t20 = alloca [3 x i32]
   %t31 = alloca { ptr, i64 }
   %t46 = alloca { ptr, i64 }
   %t61 = alloca { ptr, i64 }
@@ -131,7 +132,6 @@ define internal i32 @fn.0() {
   %t17 = insertvalue [3 x i32] poison, i32 1, 0
   %t18 = insertvalue [3 x i32] %t17, i32 2, 1
   %t19 = insertvalue [3 x i32] %t18, i32 3, 2
-  %t20 = alloca [3 x i32]
   store [3 x i32] %t19, ptr %t20
   %t21 = getelementptr inbounds [3 x i32], ptr %t20, i64 0, i64 0
   %t22 = insertvalue { ptr, i64 } poison, ptr %t21, 0

@@ -249,10 +249,6 @@ bool error_0304_type_mismatch_with_note(NerdSource source,
                                         string     actual_type,
                                         cstr       note_format,
                                         ...);
-bool error_0304_address_of_constant_binding(NerdSource source,
-                                            ErrorSpan  span,
-                                            string     actual_type,
-                                            string     symbol);
 bool error_0304_integer_used_as_pointer(NerdSource source,
                                         ErrorSpan  span,
                                         string     expected_type,

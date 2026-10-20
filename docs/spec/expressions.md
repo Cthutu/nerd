@@ -129,6 +129,16 @@ count operand. Fixed arrays, slices, and dynamic arrays whose element type is
 `i8` or `u8` can be cast to `string`; the cast creates a counted view over the
 existing bytes and does not copy, null-trim, or validate the data.
 
+## Addresses
+
+Prefix `^` takes the address of existing variable storage or materializes an
+intermediate value in anonymous mutable stack storage. The operand is evaluated
+once. Addressing a named constant copies its value, subject to the usual copy
+restrictions. An expected pointer type supplies a type context for literals;
+otherwise their normal runtime defaults apply. The temporary lives through its
+enclosing scope, including deferred code, and its pointer must not escape that
+scope. Bit fields and expressions without a storable value cannot be addressed.
+
 ## Indexing And Slicing
 
 ```bnf

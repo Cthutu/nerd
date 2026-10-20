@@ -520,3 +520,59 @@ main :: fn () { a := Holder.Owned(arena(4096))
         "Use `^arena` to share an existing arena, or construct a fresh arena value."
     ]
 }
+
+¬
+main :: fn () {
+    storage :: arena(4096)
+    pointer := ^storage
+}
+¬
+{
+    "message": "Arena storage cannot be copied",
+    "source_file": "tests/errors/151-arena-copy.e",
+    "primary_location": {
+        "line": 3,
+        "column": 17
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 3,
+            "column": 17,
+            "length": 7,
+            "message": "This expression would copy an arena or an aggregate containing one"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Use `^arena` to share an existing arena, or construct a fresh arena value."
+    ]
+}
+¬
+Holder :: plex { storage arena }
+main :: fn () {
+    holder :: Holder { storage: arena(4096) }
+    pointer := ^holder.storage
+}
+¬
+{
+    "message": "Arena storage cannot be copied",
+    "source_file": "tests/errors/151-arena-copy.e",
+    "primary_location": {
+        "line": 4,
+        "column": 24
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 4,
+            "column": 24,
+            "length": 7,
+            "message": "This expression would copy an arena or an aggregate containing one"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Use `^arena` to share an existing arena, or construct a fresh arena value."
+    ]
+}

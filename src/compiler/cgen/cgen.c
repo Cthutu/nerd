@@ -2423,6 +2423,14 @@ internal CValue cgen_expr(CGen* c, u32 index)
                 CValue v = cgen_lvalue(c, e->operand_expr_index);
                 return cgen_temp(c, t, CF("&(%s)", v.text));
             }
+            if (e->unary_op == HIR_UNARY_AddressOfValue) {
+                CValue v    = cgen_expr_as(c,
+                                           e->operand_expr_index,
+                                           cgen_type(c, t)->first_param_type);
+                // Always copy, including a reference to a named constant.
+                CValue slot = cgen_temp(c, v.type, v.text);
+                return cgen_temp(c, t, CF("&(%s)", slot.text));
+            }
             if (e->unary_op == HIR_UNARY_Deref) {
                 CValue v = cgen_lvalue(c, index);
                 return cgen_temp(c, t, v.text);

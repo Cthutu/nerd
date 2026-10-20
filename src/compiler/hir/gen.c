@@ -1747,6 +1747,12 @@ internal u32 hir_lower_expr_impl(Hir*         hir,
     }
 
     if (hir_unary_op_from_ast_kind(node->kind, &unary_op)) {
+        if (unary_op == HIR_UNARY_AddressOf &&
+            !sema_node_is_addressable(ast, sema, node->a) &&
+            sema->node_compound_selected_decl_indices[node->a] ==
+                sema_no_decl()) {
+            unary_op = HIR_UNARY_AddressOfValue;
+        }
         return hir_add_expr(hir,
                             (HirExpr){
                                 .kind       = HIR_EXPR_Unary,

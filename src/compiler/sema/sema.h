@@ -330,6 +330,8 @@ u32  sema_no_decl(void);
 u32  sema_no_local(void);
 u32  sema_no_type(void);
 u32  sema_materialise_type(const Sema* sema, u32 type_index);
+// Existing storage; false for values that need an anonymous stack copy.
+bool sema_node_is_addressable(const Ast* ast, const Sema* sema, u32 node_index);
 bool sema_explicit_enum_integer(const Lexer* lexer,
                                 const Ast*   ast,
                                 Sema*        sema,

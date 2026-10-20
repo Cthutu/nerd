@@ -7245,6 +7245,28 @@ llvm_emit_branch_pattern_condition(LlvmFunctionContext* ctx,
     return result;
 }
 
+internal LlvmValue llvm_address_of_value(LlvmFunctionContext* ctx,
+                                         LlvmValue            value)
+{
+    if (!value.ok) {
+        return (LlvmValue){0};
+    }
+
+    string type = llvm_type_string(ctx, value.type_index);
+    string ptr  = llvm_temp(ctx);
+    llvm_emit_alloca(ctx, ptr, type);
+    sb_format(ctx->sb,
+              "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n",
+              STRINGV(type),
+              STRINGV(value.value),
+              STRINGV(ptr));
+    return (LlvmValue){
+        .ok         = true,
+        .type_index = sema_no_type(),
+        .value      = ptr,
+    };
+}
+
 internal LlvmValue llvm_address_of_expr(LlvmFunctionContext* ctx,
                                         const HirFunction*   function,
                                         u32                  expr_index)
@@ -7616,27 +7638,8 @@ internal LlvmValue llvm_address_of_expr(LlvmFunctionContext* ctx,
         };
     }
 
-    LlvmValue value = llvm_emit_expr(ctx, function, expr_index);
-    if (!value.ok) {
-        return (LlvmValue){0};
-    }
-
-    string type = llvm_type_string(ctx, value.type_index);
-    string ptr  = llvm_temp(ctx);
-    sb_format(ctx->sb,
-              "  " STRINGP " = alloca " STRINGP "\n",
-              STRINGV(ptr),
-              STRINGV(type));
-    sb_format(ctx->sb,
-              "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n",
-              STRINGV(type),
-              STRINGV(value.value),
-              STRINGV(ptr));
-    return (LlvmValue){
-        .ok         = true,
-        .type_index = sema_no_type(),
-        .value      = ptr,
-    };
+    return llvm_address_of_value(ctx,
+                                 llvm_emit_expr(ctx, function, expr_index));
 }
 
 // Borrow a fixed array expression as a slice without copying its storage.
@@ -11443,6 +11446,15 @@ internal LlvmValue llvm_emit_expr_impl(LlvmFunctionContext* ctx,
         }
     case HIR_EXPR_Unary:
         {
+            if (expr->unary_op == HIR_UNARY_AddressOfValue) {
+                LlvmValue value =
+                    llvm_emit_expr(ctx, function, expr->operand_expr_index);
+                value = llvm_coerce_value_to_type(
+                    ctx, value, llvm_pointee_type(ctx->sema, expr->type_index));
+                LlvmValue address  = llvm_address_of_value(ctx, value);
+                address.type_index = expr->type_index;
+                return address;
+            }
             if (expr->unary_op == HIR_UNARY_AddressOf) {
                 LlvmValue address = llvm_address_of_expr(
                     ctx, function, expr->operand_expr_index);

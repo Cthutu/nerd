@@ -1,29 +1,28 @@
+nothing :: fn () {}
 main :: fn () {
-    value :: 1
-    pointer :: ^value
+    pointer := ^nothing()
 }
+
 ¬
 {
-    "message": "Type mismatch: expected `addressable value`, found `untyped integer`",
+    "message": "Type mismatch: expected `addressable value`, found `void`",
     "source_file": "tests/errors/025-pointers.e",
     "primary_location": {
         "line": 3,
-        "column": 17
+        "column": 24
     },
     "references": [
         {
             "kind": "primary",
             "line": 3,
-            "column": 17,
-            "length": 5,
-            "message": "This expression has type `untyped integer`"
+            "column": 24,
+            "length": 1,
+            "message": "This expression has type `void`"
         }
     ],
-    "notes": [
-        "The binding `value` is a constant declared with `::`; constant bindings do not provide addressable storage."
-    ],
+    "notes": [],
     "help": [
-        "Use `:=` or `name: Type = ...` to create a variable before taking its address."
+        "Change the expression or annotation so both sides use the same type."
     ]
 }
 ¬
@@ -79,5 +78,54 @@ main :: fn () => pointer[0]
     "notes": [],
     "help": [
         "Change the expression or annotation so both sides use the same type."
+    ]
+}
+
+¬
+main :: fn () { pointer := ^nil }
+¬
+{
+    "message": "Type mismatch: expected `addressable value`, found `nil`",
+    "source_file": "tests/errors/025-pointers.e",
+    "primary_location": {
+        "line": 1,
+        "column": 29
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 1,
+            "column": 29,
+            "length": 3,
+            "message": "This expression has type `nil`"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Change the expression or annotation so both sides use the same type."
+    ]
+}
+¬
+main :: fn () { pointer := ^i32 }
+¬
+{
+    "message": "Unknown symbol `i32`",
+    "source_file": "tests/errors/025-pointers.e",
+    "primary_location": {
+        "line": 1,
+        "column": 29
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 1,
+            "column": 29,
+            "length": 3,
+            "message": "This symbol is not defined"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Add a binding for `i32` or fix the spelling."
     ]
 }

@@ -1246,11 +1246,24 @@ restriction, since another alternative may not initialize those bindings. The
 formatter splits grouped braced payload patterns onto separate lines in block
 `on` expressions and excludes these multiline heads from arrow alignment.
 
-Address-of accepts plex literals and forwards an expected pointer's pointee type
-into literal inference, allowing both `^Info { ... }` and contextual `^{ ... }`.
-Parenthesized addressable operands retain their addressability. HIR uses the
-existing address-of operation: LLVM materializes the aggregate into local stack
-storage, and C generation takes the address of its generated aggregate temporary.
+Address-of accepts intermediate expressions and named constants as well as
+existing storage. It forwards an expected pointer's non-void pointee type into
+operand inference, including `^Info { ... }` and contextual `^{ ... }`.
+Parenthesized addressable operands retain their addressability. Semantic storage
+classification is shared with HIR lowering: existing storage uses `address_of`,
+while computed values and constants use `address_of_value`. The latter evaluates
+the operand once, coerces it to the concrete pointee type, and materializes a
+mutable stack copy in both LLVM and generated C. This distinction prevents
+addressing a constant from aliasing its original storage. Numeric pointees are
+materialized to runtime types; void, bare nil, types, modules, and bit fields
+remain rejected.
+LLVM reserves these fixed temporary slots in the entry allocation builder and
+stores their values at evaluation time, so loop iterations reuse storage without
+growing the stack. Distinct evaluations whose scopes overlap retain distinct
+slots.
+Arena copy validation uses the same storage classification, so borrowing a
+variable remains valid while materializing a copy of an arena-bearing constant
+is rejected.
 The lifetime guarantee is the enclosing scope; taking the address does not make
 the value heap-owned or safe to return from the function.
 

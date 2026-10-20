@@ -14987,6 +14987,10 @@ sema_validate_arena_copies(const Lexer* lexer, const Ast* ast, const Sema* sema)
         const AstNode* node = &ast->nodes[i];
         switch (node->kind) {
         case AK_AddressOf:
+            if (sema_node_is_addressable(ast, sema, node->a)) {
+                sema_mark_arena_borrow(ast, borrowed, node->a);
+            }
+            break;
         case AK_Field:
         case AK_TupleField:
         case AK_Index:
@@ -17643,7 +17647,27 @@ internal bool sema_check_multi_on_pattern_payload_variant(const Lexer* lexer,
 }
 
 internal bool
-sema_node_is_addressable(const Ast* ast, Sema* sema, u32 node_index)
+sema_node_is_bit_field(const Ast* ast, const Sema* sema, u32 node_index)
+{
+    node_index          = sema_unwrap_expr_node(ast, node_index);
+    const AstNode* node = &ast->nodes[node_index];
+    if (node->kind != AK_Field) {
+        return false;
+    }
+    u32 type = sema_member_target_type(sema, sema->node_type_indices[node->a]);
+    if (type < array_count(sema->types) && sema->types[type].kind == STK_Plex) {
+        const SemaType* record = &sema->types[type];
+        for (u32 i = 0; i < record->param_count; ++i) {
+            u32 param = record->first_param_type + i;
+            if (sema->type_param_symbols[param] == node->b) {
+                return sema->type_param_bit_widths[param] > 0;
+            }
+        }
+    }
+    return false;
+}
+
+bool sema_node_is_addressable(const Ast* ast, const Sema* sema, u32 node_index)
 {
     const AstNode* node = &ast->nodes[node_index];
     switch (node->kind) {
@@ -17657,8 +17681,8 @@ sema_node_is_addressable(const Ast* ast, Sema* sema, u32 node_index)
         if (sema->node_decl_indices[node_index] != U32_MAX) {
             const SemaDecl* decl =
                 &sema->decls[sema->node_decl_indices[node_index]];
-            return decl->kind == SK_Constant || decl->kind == SK_Variable ||
-                   decl->kind == SK_Function || decl->kind == SK_FfiFunction;
+            return decl->kind == SK_Variable || decl->kind == SK_Function ||
+                   decl->kind == SK_FfiFunction;
         }
         return false;
     case AK_Expression:
@@ -17677,8 +17701,10 @@ sema_node_is_addressable(const Ast* ast, Sema* sema, u32 node_index)
             if (target_type == sema_no_type()) {
                 return false;
             }
-            return sema->types[target_type].kind == STK_Array ||
-                   sema->types[target_type].kind == STK_Pointer ||
+            if (sema->types[target_type].kind == STK_Array) {
+                return sema_node_is_addressable(ast, sema, node->a);
+            }
+            return sema->types[target_type].kind == STK_Pointer ||
                    sema->types[target_type].kind == STK_Slice ||
                    sema->types[target_type].kind == STK_DynamicArray ||
                    sema->types[target_type].kind == STK_String;
@@ -17689,19 +17715,16 @@ sema_node_is_addressable(const Ast* ast, Sema* sema, u32 node_index)
             u32 target_type = node->a < array_count(sema->node_type_indices)
                                   ? sema->node_type_indices[node->a]
                                   : sema_no_type();
-            if (node->kind == AK_Field) {
-                u32 record_type = sema_member_target_type(sema, target_type);
-                if (record_type < array_count(sema->types) &&
-                    sema->types[record_type].kind == STK_Plex) {
-                    const SemaType* record = &sema->types[record_type];
-                    for (u32 i = 0; i < record->param_count; ++i) {
-                        u32 param = record->first_param_type + i;
-                        if (sema->type_param_symbols[param] == node->b &&
-                            sema->type_param_bit_widths[param] > 0) {
-                            return false;
-                        }
-                    }
-                }
+            if (target_type < array_count(sema->types) &&
+                sema->types[target_type].kind == STK_Module) {
+                u32 decl = sema->node_decl_indices[node_index];
+                return decl < array_count(sema->decls) &&
+                       (sema->decls[decl].kind == SK_Variable ||
+                        sema->decls[decl].kind == SK_Function ||
+                        sema->decls[decl].kind == SK_FfiFunction);
+            }
+            if (sema_node_is_bit_field(ast, sema, node_index)) {
+                return false;
             }
             if (target_type != sema_no_type() &&
                 target_type < array_count(sema->types) &&
@@ -17716,23 +17739,6 @@ sema_node_is_addressable(const Ast* ast, Sema* sema, u32 node_index)
     default:
         return false;
     }
-}
-
-internal const SemaLocal*
-sema_address_of_constant_local(const Ast* ast, Sema* sema, u32 node_index)
-{
-    const AstNode* node = &ast->nodes[node_index];
-    if (node->kind != AK_SymbolRef) {
-        return NULL;
-    }
-
-    u32 local_index = sema->node_local_indices[node_index];
-    if (local_index == sema_no_local()) {
-        return NULL;
-    }
-
-    const SemaLocal* local = &sema->locals[local_index];
-    return local->kind == SLK_Constant ? local : NULL;
 }
 
 internal bool sema_merge_control_break_type(const Lexer* lexer,
@@ -22508,26 +22514,19 @@ validate_type:
 
     case AK_AddressOf:
         {
-            u32 pointee_type = sema_no_type();
-            u32 operand_decl = node->a < array_count(sema->node_decl_indices)
-                                   ? sema->node_decl_indices[node->a]
-                                   : sema_no_decl();
-            if (operand_decl == sema_no_decl() &&
-                ast->nodes[node->a].kind == AK_SymbolRef) {
-                operand_decl = sema_find_decl(sema, ast->nodes[node->a].a);
-                sema->node_decl_indices[node->a] = operand_decl;
-            }
-            bool compound_operand =
-                operand_decl != sema_no_decl() &&
-                sema->decls[operand_decl].kind == SK_CompoundFunction;
-            u32  operand      = sema_unwrap_expr_node(ast, node->a);
-            bool plex_operand = operand < array_count(ast->nodes) &&
-                                ast->nodes[operand].kind == AK_Plex;
+            u32     pointee_type = sema_no_type();
+            u32     operand      = sema_unwrap_expr_node(ast, node->a);
+            AstKind operand_kind = ast->nodes[operand].kind;
+            bool    storage_operand =
+                operand_kind == AK_Index || operand_kind == AK_Field ||
+                operand_kind == AK_TupleField || operand_kind == AK_Deref;
+            bool contextual = operand_kind == AK_Plex ||
+                              (!storage_operand &&
+                               !sema_node_is_addressable(ast, sema, node->a));
             // Infer the concrete operand before erasing its pointer type.
             // Passing void down would reject explicitly typed plex literals.
             u32  expected_pointee =
-                (compound_operand || plex_operand) &&
-                        expected_type != sema_no_type() &&
+                contextual && expected_type != sema_no_type() &&
                         sema->types[expected_type].kind == STK_Pointer &&
                         sema->types[sema->types[expected_type].first_param_type]
                                 .kind != STK_Void
@@ -22544,24 +22543,21 @@ validate_type:
             bool selected_function =
                 sema->node_compound_selected_decl_indices[node->a] !=
                 sema_no_decl();
-            if (!selected_function &&
-                !sema_node_is_addressable(ast, sema, node->a)) {
-                const SemaLocal* constant =
-                    sema_address_of_constant_local(ast, sema, node->a);
-                if (constant) {
-                    return error_0304_address_of_constant_binding(
-                        lexer->source,
-                        sema_node_span(lexer, &ast->nodes[node->a]),
-                        sema_type_name(lexer, sema, &temp_arena, pointee_type),
-                        lex_symbol(lexer, constant->symbol_handle));
-                }
+            bool addressable  = selected_function ||
+                                sema_node_is_addressable(ast, sema, node->a);
+            SemaTypeKind kind = sema->types[pointee_type].kind;
+            if (sema_node_is_bit_field(ast, sema, node->a) ||
+                (!addressable &&
+                 (kind == STK_Void || kind == STK_Never || kind == STK_Nil ||
+                  kind == STK_Module || sema->node_is_type_expr[node->a]))) {
                 return error_0304_type_mismatch(
                     lexer->source,
                     sema_node_span(lexer, &ast->nodes[node->a]),
                     s("addressable value"),
                     sema_type_name(lexer, sema, &temp_arena, pointee_type));
             }
-            type_index = sema_add_pointer_type(sema, pointee_type);
+            pointee_type = sema_materialise_type(sema, pointee_type);
+            type_index   = sema_add_pointer_type(sema, pointee_type);
         }
         break;
 
