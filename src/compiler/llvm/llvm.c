@@ -3508,6 +3508,7 @@ internal u32 llvm_debug_lexical_scope(LlvmDebugModule* debug,
 }
 
 internal string    llvm_type_string(LlvmFunctionContext* ctx, u32 type_index);
+internal u64       llvm_type_storage_bytes(const Sema* sema, u32 type_index);
 internal LlvmValue llvm_coerce_value_to_type(LlvmFunctionContext* ctx,
                                              LlvmValue            value,
                                              u32                  target_type);
@@ -5309,6 +5310,42 @@ internal LlvmValue llvm_coerce_value_to_type(LlvmFunctionContext* ctx,
         };
     }
 
+    if (target_kind == STK_Slice && source_kind == STK_Box &&
+        ctx->sema->types[target_type].first_param_type ==
+            ctx->sema->types[value.type_index].first_param_type) {
+        // Borrow the allocation without consuming its owner. The runtime size
+        // query is nil-safe, so an absent box produces a null, empty slice.
+        string bytes = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = call i64 @nrt_mem_size(ptr " STRINGP ")\n",
+                  STRINGV(bytes),
+                  STRINGV(value.value));
+        u64 item_size = llvm_type_storage_bytes(
+            ctx->sema, ctx->sema->types[value.type_index].first_param_type);
+        string count = bytes;
+        if (item_size > 1) {
+            count = llvm_temp(ctx);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = udiv i64 " STRINGP ", %llu\n",
+                      STRINGV(count),
+                      STRINGV(bytes),
+                      (unsigned long long)item_size);
+        }
+        string slice0 = llvm_temp(ctx), slice1 = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP
+                  " = insertvalue { ptr, i64 } poison, ptr " STRINGP ", 0\n"
+                  "  " STRINGP " = insertvalue { ptr, i64 } " STRINGP
+                  ", i64 " STRINGP ", 1\n",
+                  STRINGV(slice0),
+                  STRINGV(value.value),
+                  STRINGV(slice1),
+                  STRINGV(slice0),
+                  STRINGV(count));
+        return (LlvmValue){
+            .ok = true, .type_index = target_type, .value = slice1};
+    }
+
     if (target_kind == STK_Slice && source_kind == STK_Array &&
         ctx->sema->types[target_type].first_param_type ==
             ctx->sema->types[value.type_index].first_param_type) {
@@ -6373,8 +6410,6 @@ internal string llvm_dynamic_array_load_header_field(LlvmFunctionContext* ctx,
                                                      u32    field_index,
                                                      string type);
 
-internal u64 llvm_type_storage_bytes(const Sema* sema, u32 type_index);
-
 internal string llvm_dynamic_array_header_field_ptr(LlvmFunctionContext* ctx,
                                                     string               header,
                                                     u32 field_index);
@@ -6696,6 +6731,8 @@ internal LlvmValue llvm_emit_enum_constructor(LlvmFunctionContext* ctx,
         LlvmValue payload = {0};
         if (expr->arg_count == 1 &&
             (args[0].type_index == variant_payload_type ||
+             (llvm_type_kind(ctx->sema, variant_payload_type) == STK_Slice &&
+              llvm_type_kind(ctx->sema, args[0].type_index) == STK_Box) ||
              sema_plex_embedding(
                  ctx->sema, args[0].type_index, variant_payload_type)
                      .path_count == 1)) {
@@ -15784,6 +15821,12 @@ internal bool llvm_emit_assign_stmt(LlvmFunctionContext* ctx,
             target->ref_kind == HIR_REF_Local) {
             excluded_local = target->ref_index;
         }
+    }
+    // Ownership follows the destination type. A box assigned to a borrowed
+    // pointer or slice must not be consumed as though another box owned it.
+    if (stmt->target_expr_index < array_count(ctx->hir->exprs)) {
+        value = llvm_coerce_value_to_type(
+            ctx, value, ctx->hir->exprs[stmt->target_expr_index].type_index);
     }
     u32 source_local = llvm_box_move_source_local(ctx, stmt->expr_index);
     if (excluded_local != U32_MAX && excluded_local != source_local &&

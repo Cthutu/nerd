@@ -12288,7 +12288,8 @@ sema_type_matches(const Sema* sema, u32 expected_type, u32 actual_type)
     }
 
     if (sema->types[expected_type].kind == STK_Slice &&
-        sema->types[actual_type].kind == STK_Array &&
+        (sema->types[actual_type].kind == STK_Array ||
+         sema->types[actual_type].kind == STK_Box) &&
         sema->types[expected_type].first_param_type ==
             sema->types[actual_type].first_param_type) {
         return true;
@@ -14163,7 +14164,8 @@ bool sema_bind_generic_type_node(const Lexer*            lexer,
     }
 
     if (type_node->kind == AK_TypePointer &&
-        sema->types[actual_type].kind == STK_Pointer) {
+        (sema->types[actual_type].kind == STK_Pointer ||
+         sema->types[actual_type].kind == STK_Box)) {
         return sema_bind_generic_type_node(
             lexer,
             ast,
@@ -14176,7 +14178,8 @@ bool sema_bind_generic_type_node(const Lexer*            lexer,
 
     if (type_node->kind == AK_TypeSlice &&
         (sema->types[actual_type].kind == STK_Slice ||
-         sema->types[actual_type].kind == STK_Array)) {
+         sema->types[actual_type].kind == STK_Array ||
+         sema->types[actual_type].kind == STK_Box)) {
         return sema_bind_generic_type_node(
             lexer,
             ast,
@@ -15982,7 +15985,7 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
                 }
                 u32 arg_type = sema_no_type();
                 // Unbound generic arguments need their concrete type inferred
-                // first. Supplying a pointer/record type containing unknowns
+                // first. Supplying a borrowed type containing unknowns
                 // prematurely rejects the concrete argument before binding it.
                 u32 inference_expected =
                     generic != NULL &&
@@ -15990,8 +15993,10 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
                                      .kind == AK_TypeFn ||
                              (!sema_generic_arguments_resolved(
                                   source_arg_types) &&
-                              source_ast->nodes[source_param->type_node_index]
-                                      .kind == AK_TypePointer))
+                              (source_ast->nodes[source_param->type_node_index]
+                                       .kind == AK_TypePointer ||
+                               source_ast->nodes[source_param->type_node_index]
+                                       .kind == AK_TypeSlice)))
                         ? sema_no_type()
                         : expected_dst;
                 if (!sema_infer_node_type(lexer,

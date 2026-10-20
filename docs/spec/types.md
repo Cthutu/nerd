@@ -69,7 +69,9 @@ items: [..]i32 = nil
 
 Slices are non-owning views over storage owned elsewhere. `box[T]` is the
 language-owned heap pointer form; boxes move ownership through assignment,
-box-typed parameters, and return values. See `runtime-model.md` for the
+box-typed parameters, and return values. A `box[T]` converts implicitly to
+`^T` or `[]T` as a borrow, preserving ownership and the exact element type.
+Borrowed views expire when the owning allocation is freed. See `runtime-model.md` for the
 language-visible ownership rules.
 
 ## Type Syntax

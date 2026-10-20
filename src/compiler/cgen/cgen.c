@@ -736,6 +736,19 @@ internal CValue cgen_coerce(CGen* c, CValue v, u32 t)
                             v.text,
                             cgen_type(c, v.type)->return_type));
     }
+    if (to == STK_Slice && from == STK_Box) {
+        cstr item = cgen_ctype(c, cgen_type(c, v.type)->first_param_type);
+        return cgen_temp(
+            c,
+            t,
+            CF("(%s){%s,%s?nrt_mem_size(%s)/(sizeof(%s)?sizeof(%s):1):0}",
+               cgen_ctype(c, t),
+               v.text,
+               v.text,
+               v.text,
+               item,
+               item));
+    }
     if (to == STK_Slice && from == STK_Array) {
         return cgen_temp(c,
                          t,

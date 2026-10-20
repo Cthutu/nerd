@@ -208,17 +208,27 @@ with the literal `nil` only tests presence, regardless of the element type.
 Boxes are owning values. Use slices for borrowed views and boxes when ownership
 must be represented in the type. Passing a `box[T]` to a function that expects
 `box[T]`, assigning it to another `box[T]`, or returning it moves ownership and
-sets the source box to nil. Passing a `box[T]` to a function expecting `^T`
-only borrows the pointer and does not move ownership.
+sets the source box to nil. Converting a `box[T]` to `^T` or `[]T` only borrows
+the storage and does not move ownership. This works in assignments, calls and
+returns whose destination has the borrowed type.
 
 Boxes expose `.data` and `.count`. The `.data` field is a borrowed `^T`; the
 `.count` field is derived from the allocation metadata and reports the number
-of `T` values in the allocation. To view a counted box as a slice:
+of `T` values in the allocation. A box converts implicitly to a slice with the
+same data pointer and element count:
 
 ```nerd
 bytes := box[u8](4096)
-view := bytes.data.as([]u8, bytes.count)
+view: []u8 = bytes
 ```
+
+A nil box converts to a null pointer or an empty slice with a null data pointer.
+The element type must match exactly; this does not reinterpret or flatten the
+allocation. Neither borrow keeps the allocation alive. Stop using borrowed
+pointers and slices before the owning box is freed, including automatic scope
+cleanup. Returning a borrow into a local box therefore leaves a dangling view.
+Moving ownership to another box leaves existing borrows valid until that new
+owner frees the allocation.
 
 A `box[T]` can be passed to a function expecting `^T`. This is a weak pointer
 borrow and does not transfer ownership:
