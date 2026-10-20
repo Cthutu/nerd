@@ -281,8 +281,9 @@ Here `for` introduces a value pattern; it does not repeat any code.
 
 ## Plex patterns
 
-A plex pattern names the fields it inspects. Omitted fields impose no
-condition on the match:
+A plex pattern must mention every field exactly once, or end with `...` to
+explicitly ignore the remaining fields. Use `field: _` to ignore one named
+field:
 
 ```nerd
 Point :: plex {
@@ -293,8 +294,8 @@ Point :: plex {
 
 score :: fn (point: Point) -> i32 {
     return on point {
-        { x: 0, y } => y
-        { x, y } => x + y
+        { x: 0, y, label: _ } => y
+        { x, y, ... } => x + y
         else => 0
     }
 }
@@ -305,10 +306,24 @@ main :: fn () -> i32 {
 }
 ```
 
-This returns `42`. `{ x: 0, y }` requires `x` to be zero and binds `y`.
-`{ x, y }` binds both fields. A shorthand field such as `y` means
-`y: y`; write `y: vertical` to give its binder another name. `label` is
-ignored in both patterns. The subject supplies the plex type for these patterns.
+This returns `42`. The first pattern requires `x` to be zero, binds `y`, and
+explicitly ignores `label`. It mentions all three fields. The second pattern
+binds `x` and `y`, then uses `...` to ignore `label` and any fields added later.
+Without `label: _` or `...`, these patterns would be rejected for missing a field.
+
+A shorthand field such as `y` means `y: y`; write `y: vertical` to give its
+binder another name. The subject supplies the plex type. Fields can appear in
+any order.
+
+`{ ... }` ignores every field without binding any of them. An empty `{}`
+pattern is complete only for an empty plex. The `...` marker must be last,
+although a trailing comma is allowed. Unknown or duplicate fields are errors
+even when `...` is present. Each nested plex pattern follows the same rules.
+
+Complete patterns make the compiler report newly added fields that need
+attention. Use `...` when you deliberately want additional fields to remain
+unconstrained. Unlike `...` in a plex literal, pattern `...` does not initialize
+omitted fields or compare them with their defaults.
 
 ## Matching enum variants
 
@@ -384,9 +399,10 @@ main :: fn () -> i32 {
 ```
 
 This returns `42`. `width: horizontal` renames the bound field, while `height`
-uses shorthand. As with plex patterns, you can mention only the fields you
-need. A branch-level `as whole` would bind the whole `Event`, rather than
-one of its payload fields.
+uses shorthand. Named payload patterns follow the same field-coverage rules
+as plex patterns: mention every field, or use trailing `...`. For example,
+`Resized { width, ... }` binds `width` and ignores `height`. A branch-level
+`as whole` would bind the whole `Event`, rather than one of its payload fields.
 
 ## Nested patterns and alternatives
 
