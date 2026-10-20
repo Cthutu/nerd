@@ -248,14 +248,17 @@ typedef struct {
     u32         local_index;
     u32         type_index;
     u32         body_block_index;
+    u32         destructure_count;
     u32         source_line;
     string      source_path;
 } HirStmt;
 
 typedef struct {
-    u32 local_index;
-    u32 type_index;
-    u32 field_index;
+    u32  local_index;
+    u32  type_index;
+    u32  field_index;
+    u32* field_path;
+    u32  field_count;
 } HirDestructureItem;
 
 typedef struct {
@@ -392,3 +395,9 @@ bool hir_save(const Hir* hir, const Lexer* lexer, const Sema* sema, cstr path);
 void hir_dump(const Hir* hir, const Lexer* lexer, const Sema* sema);
 
 //------------------------------------------------------------------------------
+
+// Finds a literal source leaf without evaluating it again.
+u32 hir_destructure_source_expr(const Hir*                hir,
+                                const Sema*               sema,
+                                u32                       root,
+                                const HirDestructureItem* item);

@@ -120,6 +120,10 @@ main :: fn () {}
                 "kind": 9
             },
             {
+                "label": "compiler_constructs",
+                "kind": 9
+            },
+            {
                 "label": "completion_parts",
                 "kind": 9
             },

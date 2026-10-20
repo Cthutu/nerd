@@ -887,7 +887,6 @@ peak process RSS come from the benchmark runner. Workers capture value-only
 records in fixed result slots; the coordinator emits the stream. See
 [profiling and benchmarking](../compiler-profiling.md).
 
-
 Semantic scope predicates query the parser's completed conditional, trait and
 implementation tables rather than scanning all AST nodes for each expression.
 An empty implementation table rules out an enclosing implementation immediately.
@@ -931,7 +930,6 @@ in one operation. This preserves the remapped text while avoiding an arena
 allocation and shared bookkeeping-lock acquisition for every unchanged byte.
 Adjacent references, empty lines and trailing spans retain their old behavior.
 
-
 Before LLVM emission, the backend builds a program-wide table of function-name
 counts. Names come from each function's first HIR binding, preserving the
 existing qualification rules: aliases count once, unbound functions do not
@@ -943,7 +941,6 @@ and checking do not build it. Standalone HIR rendering without an index retains
 the scan fallback. Index construction still resolves canonical bindings by
 scanning each module's bindings once per function; repeated conflict queries
 now look up the resulting spelling instead of rescanning the whole program.
-
 
 Immediately before whole-program HIR generation, the front end builds line-start
 arrays for source snapshots and mapped fragment buffers. `ProgramInfo` owns the
@@ -961,7 +958,6 @@ and LSP callers of the source-only API keep their existing behavior. Storage
 grows with indexed line count, including separate fragment indexes when their
 buffer views differ from the combined source.
 
-
 Usage-context local-type inference filters AST node kinds before checking
 whether nodes belong to disabled or generic bodies. Those scope predicates
 scan AST ranges, so nodes that cannot contribute constraints bypass them.
@@ -969,13 +965,11 @@ Eligible nodes retain their traversal order and scope exclusions on every
 fixed-point pass. Local-declaration constraints, convergence and final seeding
 are unchanged; no inference results are cached.
 
-
 Declaration collection filters non-declaration AST kinds before querying their
 enclosing conditional bodies. Its FFI wrapper search resolves a binding's
 payload and compares the exact target node before checking function scope.
 These read-only checks avoid repeated AST scans for unrelated nodes while
 preserving recursive traversal, first-wrapper selection and diagnostic order.
-
 
 LLVM rendering lazily initializes three private scratch arenas per module:
 temporary values, entry-block text and body text. Global initialization and each
@@ -1489,3 +1483,46 @@ must locate the containing value's storage and evaluate the owner once before
 loading, masking and storing the field. Command fixtures 281 and 326 now assert
 completion and observable side effects, so an implicit early return cannot make
 their success checks disappear.
+
+## Compiler construct repairs (20 October 2026)
+
+Default and undefined initializer AST nodes are expression children. HIR emits
+them through their declarations rather than as additional effect statements.
+This prevents a Default call, its allocation and its side effects from running
+twice. HIR snapshots intentionally remove the former standalone default no-ops.
+
+Type application and tuple-type parsers collect arguments in temporary arrays
+before appending them to the shared AST item array. Recursive parsing therefore
+cannot interleave an inner application's arguments into the outer list. Expression
+brackets keep the existing Index/tuple argument representation; semantics resolves
+a generic application when its receiver denotes a generic type or callable and
+continues checking ordinary value indexes separately. Applied type receivers and
+qualified exported generic declarations are resolved before runtime member lookup.
+Both backends preserve explicit imported function specialization selection.
+
+Plex and tuple destructuring lower to one source expression plus arena-owned
+projection paths. `HirStmt.destructure_count` is separate from `body_block_index`:
+using an item count as a block index could make the addressed-local traversal
+recurse into itself. Both backends capture all selected fields once, move selected
+box slots before overwriting destinations, release replaced owned boxes, and
+register extracted box locals for normal cleanup. Addressable owning sources are
+evaluated through one retained address; literal sources consume selected leaves.
+This follows existing explicit aggregate-field lifetime rules rather than adding
+a recursive destructor for records. Semantic checking rejects repeated selections.
+
+Tuple field assignment passes the same root-mutability checks as named fields.
+The assignment parser recognises tuple projections, and the lexer preserves
+chained numeric selectors. Immutable tuple targets have a field-specific diagnostic.
+
+Canonical Display includes the exact types supported by builtin interpolation.
+Builtin `.show()` lowers to a single-argument HIR interpolation; this is callable
+formatting support, not a constraint-only exception. Explicit implementations use
+normal method resolution. The shared semantic predicate defines the boundary for
+constraints, interpolation and builtin show calls, including builtin aggregates.
+
+Condition-only presence conversions accept optional/result values in logical
+operators, chains and guards. LLVM extracts the success/presence tag, including
+for optional bool; C uses its existing truth predicate. Ordinary bool assignment
+matching is unchanged. Decimal exponent literals bypass integer accumulation,
+retain untyped float/contextual conversion rules, validate exponent syntax, and
+include the exponent in token spans for formatting and diagnostics.

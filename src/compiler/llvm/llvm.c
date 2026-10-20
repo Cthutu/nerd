@@ -3501,6 +3501,7 @@ internal u32 llvm_debug_lexical_scope(LlvmDebugModule* debug,
 }
 
 internal string    llvm_type_string(LlvmFunctionContext* ctx, u32 type_index);
+internal u64       llvm_type_storage_bytes(const Sema* sema, u32 type_index);
 internal LlvmValue llvm_coerce_value_to_type(LlvmFunctionContext* ctx,
                                              LlvmValue            value,
                                              u32                  target_type);
@@ -5143,6 +5144,27 @@ internal LlvmValue llvm_coerce_value_to_type(LlvmFunctionContext* ctx,
         value.type_index = target_type;
         return value;
     }
+    if (target_kind == STK_Bool && source_kind == STK_Enum &&
+        (ctx->sema->types[value.type_index].flags &
+         (STF_Optional | STF_Result))) {
+        string tag = llvm_temp(ctx), boolean = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = extractvalue " STRINGP " " STRINGP ", 0\n",
+                  STRINGV(tag),
+                  STRINGV(llvm_type_string(ctx, value.type_index)),
+                  STRINGV(value.value));
+        u32 success =
+            (ctx->sema->types[value.type_index].flags & STF_Optional) ? 1 : 0;
+        i64 discriminant = llvm_enum_variant_discriminant(
+            ctx->sema, value.type_index, success);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = icmp eq i64 " STRINGP ", %lld\n",
+                  STRINGV(boolean),
+                  STRINGV(tag),
+                  (long long)discriminant);
+        return (LlvmValue){
+            .ok = true, .type_index = target_type, .value = boolean};
+    }
     bool pointer_projection =
         target_kind == STK_Pointer && source_kind == STK_Pointer;
     if ((target_kind == STK_Plex && source_kind == STK_Plex) ||
@@ -5290,6 +5312,42 @@ internal LlvmValue llvm_coerce_value_to_type(LlvmFunctionContext* ctx,
             .type_index = target_type,
             .value      = temp,
         };
+    }
+
+    if (target_kind == STK_Slice && source_kind == STK_Box &&
+        ctx->sema->types[target_type].first_param_type ==
+            ctx->sema->types[value.type_index].first_param_type) {
+        // Borrow the allocation without consuming its owner. The runtime size
+        // query is nil-safe, so an absent box produces a null, empty slice.
+        string bytes = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = call i64 @nrt_mem_size(ptr " STRINGP ")\n",
+                  STRINGV(bytes),
+                  STRINGV(value.value));
+        u64 item_size = llvm_type_storage_bytes(
+            ctx->sema, ctx->sema->types[value.type_index].first_param_type);
+        string count = bytes;
+        if (item_size > 1) {
+            count = llvm_temp(ctx);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = udiv i64 " STRINGP ", %llu\n",
+                      STRINGV(count),
+                      STRINGV(bytes),
+                      (unsigned long long)item_size);
+        }
+        string slice0 = llvm_temp(ctx), slice1 = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP
+                  " = insertvalue { ptr, i64 } poison, ptr " STRINGP ", 0\n"
+                  "  " STRINGP " = insertvalue { ptr, i64 } " STRINGP
+                  ", i64 " STRINGP ", 1\n",
+                  STRINGV(slice0),
+                  STRINGV(value.value),
+                  STRINGV(slice1),
+                  STRINGV(slice0),
+                  STRINGV(count));
+        return (LlvmValue){
+            .ok = true, .type_index = target_type, .value = slice1};
     }
 
     if (target_kind == STK_Slice && source_kind == STK_Array &&
@@ -6356,8 +6414,6 @@ internal string llvm_dynamic_array_load_header_field(LlvmFunctionContext* ctx,
                                                      u32    field_index,
                                                      string type);
 
-internal u64 llvm_type_storage_bytes(const Sema* sema, u32 type_index);
-
 internal string llvm_dynamic_array_header_field_ptr(LlvmFunctionContext* ctx,
                                                     string               header,
                                                     u32 field_index);
@@ -6679,6 +6735,8 @@ internal LlvmValue llvm_emit_enum_constructor(LlvmFunctionContext* ctx,
         LlvmValue payload = {0};
         if (expr->arg_count == 1 &&
             (args[0].type_index == variant_payload_type ||
+             (llvm_type_kind(ctx->sema, variant_payload_type) == STK_Slice &&
+              llvm_type_kind(ctx->sema, args[0].type_index) == STK_Box) ||
              sema_plex_embedding(
                  ctx->sema, args[0].type_index, variant_payload_type)
                      .path_count == 1)) {
@@ -9003,6 +9061,39 @@ internal bool llvm_imported_generic_callee_name(LlvmFunctionContext* ctx,
         llvm_type_is_function(ctx->sema, callee->type_index) &&
         callee->operand_expr_index < array_count(ctx->hir->exprs)) {
         const HirExpr* target = &ctx->hir->exprs[callee->operand_expr_index];
+        if (target->kind == HIR_EXPR_Field && ctx->sema->program != NULL) {
+            u32 owner_type =
+                ctx->hir->exprs[target->operand_expr_index].type_index;
+            if (llvm_type_kind(ctx->sema, owner_type) == STK_Module) {
+                u32 module_index = ctx->sema->types[owner_type].return_type;
+                const ModuleInfo* module =
+                    &ctx->sema->program->modules[module_index];
+                string wanted = lex_symbol(ctx->lexer, callee->symbol_handle);
+                const Sema* source = &module->front_end.sema;
+                for (u32 i = 0;
+                     i < array_count(source->generic_fn_instantiations);
+                     ++i) {
+                    const SemaGenericFnInstantiation* inst =
+                        &source->generic_fn_instantiations[i];
+                    if (!string_eq(wanted,
+                                   lex_symbol(&module->front_end.lexer,
+                                              inst->symbol_handle))) {
+                        continue;
+                    }
+                    const Hir* hir = &module->front_end.hir;
+                    for (u32 f = 0; f < array_count(hir->functions); ++f) {
+                        const HirFunction* fn = &hir->functions[f];
+                        if (fn->kind == HIR_FUNCTION_GenericInstantiation &&
+                            fn->root_scope_index == inst->root_scope_index &&
+                            fn->fn_node_index == inst->fn_node_index) {
+                            *out = llvm_function_name_string(
+                                hir, ctx->lexer, ctx->arena, f);
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
         if (target->kind == HIR_EXPR_LocalRef &&
             target->ref_kind == HIR_REF_Binding) {
             const HirImport* import =
@@ -15768,6 +15859,12 @@ internal bool llvm_emit_assign_stmt(LlvmFunctionContext* ctx,
             excluded_local = target->ref_index;
         }
     }
+    // Ownership follows the destination type. A box assigned to a borrowed
+    // pointer or slice must not be consumed as though another box owned it.
+    if (stmt->target_expr_index < array_count(ctx->hir->exprs)) {
+        value = llvm_coerce_value_to_type(
+            ctx, value, ctx->hir->exprs[stmt->target_expr_index].type_index);
+    }
     u32 source_local = llvm_box_move_source_local(ctx, stmt->expr_index);
     if (excluded_local != U32_MAX && excluded_local != source_local &&
         llvm_type_is_box(ctx->sema, value.type_index)) {
@@ -15853,18 +15950,45 @@ internal bool llvm_emit_destructure(LlvmFunctionContext* ctx,
                                     const HirFunction*   function,
                                     const HirStmt*       stmt)
 {
+    const HirExpr* source = &ctx->hir->exprs[stmt->expr_index];
+    bool           addressable =
+        source->kind == HIR_EXPR_LocalRef || source->kind == HIR_EXPR_Field ||
+        source->kind == HIR_EXPR_TupleField || source->kind == HIR_EXPR_Index ||
+        (source->kind == HIR_EXPR_Unary && source->unary_op == HIR_UNARY_Deref);
+    bool owning = false;
+    for (u32 i = 0; i < stmt->destructure_count; ++i) {
+        owning |= llvm_type_is_box(
+            ctx->sema,
+            ctx->hir->destructure_items[stmt->target_expr_index + i]
+                .type_index);
+    }
+    LlvmValue source_address = {0};
+    if (owning && addressable) {
+        source_address = llvm_address_of_expr(ctx, function, stmt->expr_index);
+    }
     bool old_discard_expr_value = ctx->discard_expr_value;
     ctx->discard_expr_value     = false;
-    LlvmValue value         = llvm_emit_expr(ctx, function, stmt->expr_index);
+    LlvmValue value;
+    if (source_address.ok) {
+        string loaded = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = load " STRINGP ", ptr " STRINGP "\n",
+                  STRINGV(loaded),
+                  STRINGV(llvm_type_string(ctx, source->type_index)),
+                  STRINGV(source_address.value));
+        value = (LlvmValue){
+            .ok = true, .type_index = source->type_index, .value = loaded};
+    } else {
+        value = llvm_emit_expr(ctx, function, stmt->expr_index);
+    }
     ctx->discard_expr_value = old_discard_expr_value;
     if (!value.ok) {
         return false;
     }
     llvm_debug_emit_marker(ctx, stmt->source_line, stmt->source_path);
 
-    string tuple_type       = llvm_type_string(ctx, value.type_index);
     Array(LlvmValue) fields = NULL;
-    for (u32 i = 0; i < stmt->body_block_index; ++i) {
+    for (u32 i = 0; i < stmt->destructure_count; ++i) {
         u32 item_index = stmt->target_expr_index + i;
         if (item_index >= array_count(ctx->hir->destructure_items)) {
             array_free(fields);
@@ -15873,26 +15997,76 @@ internal bool llvm_emit_destructure(LlvmFunctionContext* ctx,
 
         const HirDestructureItem* item =
             &ctx->hir->destructure_items[item_index];
-        string field = llvm_temp(ctx);
-        sb_format(ctx->sb,
-                  "  " STRINGP " = extractvalue " STRINGP " " STRINGP ", %u\n",
-                  STRINGV(field),
-                  STRINGV(tuple_type),
-                  STRINGV(value.value),
-                  item->field_index);
-        array_push(fields,
-                   (LlvmValue){
-                       .ok         = true,
-                       .type_index = item->type_index,
-                       .value      = field,
-                   });
+        LlvmValue field = value;
+        for (u32 j = 0; j < item->field_count; ++j) {
+            field = llvm_extract_record_field(ctx, field, item->field_path[j]);
+            if (!field.ok) {
+                array_free(fields);
+                return false;
+            }
+        }
+        array_push(fields, field);
     }
 
-    for (u32 i = 0; i < stmt->body_block_index; ++i) {
+    if (source_address.ok) {
+        for (u32 i = 0; i < stmt->destructure_count; ++i) {
+            const HirDestructureItem* item =
+                &ctx->hir->destructure_items[stmt->target_expr_index + i];
+            if (!llvm_type_is_box(ctx->sema, item->type_index)) {
+                continue;
+            }
+            LlvmValue address = source_address;
+            if (!address.ok) {
+                array_free(fields);
+                return false;
+            }
+            u32    type    = value.type_index;
+            string pointer = address.value;
+            for (u32 j = 0; j < item->field_count; ++j) {
+                u32 field = item->field_path[j];
+                u32 physical =
+                    llvm_type_kind(ctx->sema, type) == STK_Plex
+                        ? llvm_plex_physical_field_index(ctx->sema, type, field)
+                        : field;
+                string next = llvm_temp(ctx);
+                sb_format(ctx->sb,
+                          "  " STRINGP " = getelementptr " STRINGP
+                          ", ptr " STRINGP ", i64 0, i32 %u\n",
+                          STRINGV(next),
+                          STRINGV(llvm_type_string(ctx, type)),
+                          STRINGV(pointer),
+                          physical);
+                pointer = next;
+                type    = llvm_record_field_type(ctx->sema, type, field);
+            }
+            sb_format(ctx->sb,
+                      "  store ptr null, ptr " STRINGP "\n",
+                      STRINGV(pointer));
+        }
+    }
+
+    if (!addressable) {
+        for (u32 i = 0; i < stmt->destructure_count; ++i) {
+            const HirDestructureItem* item =
+                &ctx->hir->destructure_items[stmt->target_expr_index + i];
+            if (!llvm_type_is_box(ctx->sema, item->type_index)) {
+                continue;
+            }
+            u32 leaf = hir_destructure_source_expr(
+                ctx->hir, ctx->sema, stmt->expr_index, item);
+            if (leaf != U32_MAX &&
+                !llvm_consume_box_expr(ctx, leaf, item->type_index, U32_MAX)) {
+                array_free(fields);
+                return false;
+            }
+        }
+    }
+    for (u32 i = 0; i < stmt->destructure_count; ++i) {
         const HirDestructureItem* item =
             &ctx->hir->destructure_items[stmt->target_expr_index + i];
         LlvmValue field = fields[i];
         if (stmt->kind == HIR_STMT_DestructureLet && ctx->debug == NULL &&
+            !llvm_type_is_box(ctx->sema, item->type_index) &&
             !llvm_local_is_assigned(ctx, item->local_index)) {
             llvm_set_local_value(ctx, item->local_index, field);
             continue;
@@ -15900,6 +16074,12 @@ internal bool llvm_emit_destructure(LlvmFunctionContext* ctx,
 
         LlvmLocalSlot* slot =
             llvm_ensure_local_slot(ctx, item->local_index, item->type_index);
+        if (stmt->kind == HIR_STMT_DestructureAssign &&
+            llvm_type_is_box(ctx->sema, item->type_index) &&
+            !llvm_emit_box_free_slot(ctx, slot)) {
+            array_free(fields);
+            return false;
+        }
         llvm_store_local_slot(ctx, slot, field);
     }
 
@@ -16523,7 +16703,7 @@ internal void llvm_collect_assigned_locals(LlvmFunctionContext* ctx,
             llvm_mark_mutated_local_base(ctx, stmt->target_expr_index, true);
         }
         if (stmt->kind == HIR_STMT_DestructureAssign) {
-            for (u32 j = 0; j < stmt->body_block_index; ++j) {
+            for (u32 j = 0; j < stmt->destructure_count; ++j) {
                 u32 item_index = stmt->target_expr_index + j;
                 if (item_index < array_count(ctx->hir->destructure_items)) {
                     llvm_mark_assigned_local(

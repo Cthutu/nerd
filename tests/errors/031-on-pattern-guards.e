@@ -5,7 +5,7 @@ main :: fn () => on value {
 }
 ¬
 {
-    "message": "Type mismatch: expected `bool`, found `i32`",
+    "message": "`on` condition requires bool, box, optional or result, found `i32`",
     "source_file": "tests/errors/031-on-pattern-guards.e",
     "primary_location": {
         "line": 3,
@@ -17,12 +17,12 @@ main :: fn () => on value {
             "line": 3,
             "column": 10,
             "length": 5,
-            "message": "This expression has type `i32`"
+            "message": "This expression cannot be used as a condition"
         }
     ],
     "notes": [],
     "help": [
-        "Change the expression or annotation so both sides use the same type."
+        "Use bool or box/optional/result presence, or block-form `on` for value matching."
     ]
 }
 ¬

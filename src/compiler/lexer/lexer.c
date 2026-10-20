@@ -149,7 +149,8 @@ internal bool lexer_lex_decimal_separator_digits(NerdSource source,
         }
 
         if (!lexer_is_decimal_digit(source_code.data[i])) {
-            if (lexer_is_number_tail(source_code.data[i])) {
+            if (source_code.data[i] != 'e' && source_code.data[i] != 'E' &&
+                lexer_is_number_tail(source_code.data[i])) {
                 return error_0103_invalid_number_literal(
                     source,
                     (ErrorSpan){.start = start, .end = i + 1},
@@ -814,14 +815,40 @@ internal bool lexer_lex_one_token(NerdSource source,
             }
         }
 
-        if (!lexer_lex_integer_digits(
-                source, source_code, start, &i, base, &total, &had_separator)) {
+        bool tuple_field =
+            array_count(lexer->tokens) > 0 &&
+            lexer->tokens[array_count(lexer->tokens) - 1].kind == TK_Dot;
+        usize probe = i;
+        while (probe < source_code.count &&
+               (lexer_is_decimal_digit(source_code.data[probe]) ||
+                source_code.data[probe] == '_')) {
+            probe++;
+        }
+        bool decimal_float =
+            !tuple_field && base == 10 && probe < source_code.count &&
+            (source_code.data[probe] == 'e' || source_code.data[probe] == 'E' ||
+             (source_code.data[probe] == '.' && probe + 1 < source_code.count &&
+              (lexer_is_decimal_digit(source_code.data[probe + 1]) ||
+               source_code.data[probe + 1] == '_')));
+        if (decimal_float) {
+            if (!lexer_lex_decimal_separator_digits(
+                    source, source_code, start, &i)) {
+                return false;
+            }
+        } else if (!lexer_lex_integer_digits(source,
+                                             source_code,
+                                             start,
+                                             &i,
+                                             base,
+                                             &total,
+                                             &had_separator)) {
             return false;
         }
 
         UNUSED(had_separator);
 
-        bool is_float = base == 10 && i + 1 < source_code.count &&
+        bool is_float = !tuple_field && base == 10 &&
+                        i + 1 < source_code.count &&
                         source_code.data[i] == '.' &&
                         (lexer_is_decimal_digit(source_code.data[i + 1]) ||
                          source_code.data[i + 1] == '_');
@@ -831,7 +858,28 @@ internal bool lexer_lex_one_token(NerdSource source,
                     source, source_code, start, &i)) {
                 return false;
             }
-
+        }
+        if (!tuple_field && base == 10 && i < source_code.count &&
+            (source_code.data[i] == 'e' || source_code.data[i] == 'E')) {
+            is_float       = true;
+            usize exponent = i++;
+            if (i < source_code.count &&
+                (source_code.data[i] == '+' || source_code.data[i] == '-')) {
+                i++;
+            }
+            if (i >= source_code.count ||
+                !lexer_is_decimal_digit(source_code.data[i])) {
+                return error_0109_invalid_exponent(
+                    source,
+                    (ErrorSpan){.start = exponent,
+                                .end   = i < source_code.count ? i + 1 : i});
+            }
+            if (!lexer_lex_decimal_separator_digits(
+                    source, source_code, start, &i)) {
+                return false;
+            }
+        }
+        if (is_float) {
             usize literal_len = i - start;
             if (lexer->string_arena.data == NULL) {
                 arena_init(&lexer->string_arena);
@@ -1416,6 +1464,22 @@ usize lex_token_end_offset(const Lexer* lexer, const Token* token)
                        ((lexer->source.source.data[index] >= '0' &&
                          lexer->source.source.data[index] <= '9') ||
                         lexer->source.source.data[index] == '_')) {
+                    index++;
+                }
+            }
+            if (index < lexer->source.source.count &&
+                (lexer->source.source.data[index] == 'e' ||
+                 lexer->source.source.data[index] == 'E')) {
+                index++;
+                if (index < lexer->source.source.count &&
+                    (lexer->source.source.data[index] == '+' ||
+                     lexer->source.source.data[index] == '-')) {
+                    index++;
+                }
+                while (
+                    index < lexer->source.source.count &&
+                    (lexer_is_decimal_digit(lexer->source.source.data[index]) ||
+                     lexer->source.source.data[index] == '_')) {
                     index++;
                 }
             }

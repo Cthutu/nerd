@@ -1,0 +1,2 @@
+PASS C debug-compiler release=False: ASan, UBSan and leak detection
+PASS C debug-compiler release=True: ASan, UBSan and leak detection

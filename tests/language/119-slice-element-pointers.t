@@ -49,7 +49,6 @@ func fn.0() -> i32 {
   let slice: []i32 = []i32 slice([3]i32 local.0(fixed), <none>, <none>)
   let slice_ptr: ^i32 = ^i32 address_of(i32 index([]i32 local.2(slice), untyped integer 2))
   assign i32 deref(^i32 local.3(slice_ptr)) = i32 32
-  expr <unknown> default
   let dyn: [..]i32 = <unknown> default
   expr void call fn (i32) -> void field([..]i32 local.4(dyn), push)(i32 5)
   expr void call fn (i32) -> void field([..]i32 local.4(dyn), push)(i32 6)

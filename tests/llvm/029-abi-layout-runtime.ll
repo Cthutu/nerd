@@ -59,7 +59,7 @@ main :: fn() -> i32 {
 @.str.m0.5 = private unnamed_addr constant [2 x i8] c" \00"
 @.str.m0.6 = private unnamed_addr constant [5 x i8] c"same\00"
 @.str.m0.7 = private unnamed_addr constant [5 x i8] c"same\00"
-@.slice.const.m0.41 = private unnamed_addr constant [4 x i8] [i8 97, i8 98, i8 99, i8 100]
+@.slice.const.m0.40 = private unnamed_addr constant [4 x i8] [i8 97, i8 98, i8 99, i8 100]
 
 declare i1 @nrt_string_eq(ptr, ptr)
 declare void @nrt_string_builder_reset()

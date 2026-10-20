@@ -88,14 +88,12 @@ bind prn_empty = import.3
 bind make_words = fn.0
 bind main = fn.1
 func fn.0() -> [..]string {
-  expr <unknown> default
   let words: [..]string = <unknown> default
   expr void call fn (string) -> void field([..]string local.0(words), push)(string "look")
   expr void call fn (string) -> void field([..]string local.0(words), push)(string "north")
   return [..]string local.0(words)
 }
 func fn.1() -> i32 {
-  expr <unknown> default
   let empty: [..]string = <unknown> default
   expr void on bool not_equal([..]string local.2(empty), [..]string nil) {
     value(bool yes) => {
@@ -169,7 +167,6 @@ func fn.1() -> i32 {
   }
   expr void call bind.2(prn_text)(string interpolate(string index([..]string local.6(words), untyped integer 0), <unknown> " ", string index([..]string local.6(words), untyped integer 1)))
   expr void call fn () -> void field([..]string local.6(words), free)()
-  expr <unknown> default
   let nums: [..]i32 = <unknown> default
   expr void call fn (i32) -> void field([..]i32 local.7(nums), push)(i32 1)
   expr void call fn (i32) -> void field([..]i32 local.7(nums), push)(i32 2)
@@ -256,7 +253,7 @@ func fn.1() -> i32 {
 @.str.m0.10 = private unnamed_addr constant [2 x i8] c" \00"
 @.str.m0.11 = private unnamed_addr constant [2 x i8] c" \00"
 @.str.m0.12 = private unnamed_addr constant [2 x i8] c" \00"
-@.slice.const.m0.63 = private unnamed_addr constant [2 x { ptr, i64 }] [{ ptr, i64 } { ptr @.str.m0.5, i64 4 }, { ptr, i64 } { ptr @.str.m0.6, i64 2 }]
+@.slice.const.m0.61 = private unnamed_addr constant [2 x { ptr, i64 }] [{ ptr, i64 } { ptr @.str.m0.5, i64 4 }, { ptr, i64 } { ptr @.str.m0.6, i64 2 }]
 
 declare i1 @nrt_string_eq(ptr, ptr)
 declare void @nrt_string_builder_reset()

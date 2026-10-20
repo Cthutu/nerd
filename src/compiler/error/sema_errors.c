@@ -786,16 +786,19 @@ bool error_0319_invalid_on_condition(NerdSource source,
                                      ErrorSpan  span,
                                      string     actual_type)
 {
-    ErrorInfo error = error_init(source,
-                                 span,
-                                 "`on` condition must have type `bool`, found "
-                                 "`" STRINGP "`",
-                                 STRINGV(actual_type));
-    error_add_reference(
-        &error, ERROR_REF_PRIMARY, span, "This condition is not boolean");
+    ErrorInfo error = error_init(
+        source,
+        span,
+        "`on` condition requires bool, box, optional or result, found "
+        "`" STRINGP "`",
+        STRINGV(actual_type));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This expression cannot be used as a condition");
     error_add_help(&error,
-                   "Use a `bool` expression here, or use block-form `on` for "
-                   "value matching.");
+                   "Use bool or box/optional/result presence, or block-form "
+                   "`on` for value matching.");
     error_add_type_definitions(&error, actual_type);
     error_render(&error);
     return false;
@@ -2156,5 +2159,25 @@ bool error_0369_invalid_error_pattern(NerdSource source,
     }
     error_add_type_definitions(&error, actual_type);
     error_render(&error);
+    return false;
+}
+
+bool error_0305_immutable_tuple_field(NerdSource source,
+                                      ErrorSpan  span,
+                                      string     root)
+{
+    ErrorInfo info = error_init(
+        source,
+        span,
+        "Cannot assign to tuple field rooted in immutable `" STRINGP "`",
+        STRINGV(root));
+    error_add_reference(&info,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This tuple field is part of immutable storage");
+    error_add_help(
+        &info,
+        "Use a mutable binding or pass a pointer to mutable tuple storage.");
+    error_render(&info);
     return false;
 }

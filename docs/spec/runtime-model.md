@@ -10,7 +10,10 @@ in `docs/string-runtime.md`.
 Bindings are immutable values. Variables allocate mutable storage. Local typed
 variables without an initializer use a concrete canonical `core.Default`
 implementation when one exists for the variable type; otherwise they are
-zero-initialised. Typed variables initialised with `undefined` deliberately skip
+zero-initialised. The selected default constructor executes exactly once per
+execution of the declaration, including nested scopes and loop iterations. Its
+side effects and allocations belong to that single constructed value.
+Typed variables initialised with `undefined` deliberately skip
 both forms of initialisation and are protected by definite-assignment checks.
 
 ## Zero Initialisation
@@ -58,7 +61,8 @@ runtime-heap-compatible `^T` allocation.
 The box value itself is pointer-shaped. The allocation header/runtime metadata
 stores the byte size, and the language exposes `box.count` as the allocation
 byte size divided by `T.size`. `box.data` exposes the owned pointer as `^T` for
-borrowing views such as `box.data.as([]T, box.count)`.
+borrowing. `box[T]` also converts implicitly to `[]T`, using that pointer and
+allocation count; a nil box yields a null, empty slice. Element types must match.
 
 For array-like values, `data` is the pointer to the payload, `count` is the
 number of live elements, and `bytes` is the payload byte size. Fixed arrays,
@@ -72,8 +76,10 @@ first.
 
 Box ownership moves when a `box[T]` is assigned to another `box[T]`, passed to a
 parameter of type `box[T]`, or returned from a function. The source box is set
-to nil by the move. Passing a box where `^T` is expected borrows the pointee and
-does not transfer ownership.
+to nil by the move. Converting a box where `^T` or `[]T` is expected borrows its
+storage without transferring ownership. Borrowing does not extend the allocation
+lifetime: pointers and slices must not be used after the owner is freed. Returning
+a borrow into a local box leaves a dangling pointer/view after scope cleanup.
 
 `box.free()` releases the owned allocation and resets the box to nil. Local and
 parameter boxes that still own an allocation are freed automatically when they

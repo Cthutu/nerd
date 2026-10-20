@@ -11,7 +11,6 @@ main :: fn () {
 hir 0
 bind main = fn.0
 func fn.0() -> i32 {
-  expr <unknown> default
   let value: i32 = <unknown> default
   assign i32 local.0(value) = i32 42
   return i32 local.0(value)

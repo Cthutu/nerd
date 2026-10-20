@@ -1,7 +1,7 @@
 main :: fn () => on 1.as(i32) => 42 else 7
 ¬
 {
-    "message": "`on` condition must have type `bool`, found `i32`",
+    "message": "`on` condition requires bool, box, optional or result, found `i32`",
     "source_file": "tests/errors/015-on-short-form.e",
     "primary_location": {
         "line": 1,
@@ -13,12 +13,12 @@ main :: fn () => on 1.as(i32) => 42 else 7
             "line": 1,
             "column": 22,
             "length": 1,
-            "message": "This condition is not boolean"
+            "message": "This expression cannot be used as a condition"
         }
     ],
     "notes": [],
     "help": [
-        "Use a `bool` expression here, or use block-form `on` for value matching."
+        "Use bool or box/optional/result presence, or block-form `on` for value matching."
     ]
 }
 ¬

@@ -65,7 +65,6 @@ func fn.2(rect: ^Rect) -> i32 {
   return i32 call bind.5(__impl_Rect_area)(Rect deref(^Rect local.3(rect)))
 }
 func fn.3() -> i32 {
-  expr <unknown> default
   let rect: Rect = <unknown> default
   expr void call bind.6(__impl_Rect_grow)(^Rect address_of(Rect local.4(rect)), i32 3)
   let result: i32 = i32 call bind.7(use_methods)(^Rect address_of(Rect local.4(rect)))

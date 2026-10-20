@@ -2884,6 +2884,65 @@ internal bool ast_parse_led_impl(AstParseState* state,
             return ast_emit_node(state, node, out_node);
         }
 
+        u32 close = op.token_index, depth = 0;
+        for (; close < array_count(state->lexer->tokens); ++close) {
+            TokenKind kind = state->lexer->tokens[close].kind;
+            if (kind == TK_LBracket) {
+                depth++;
+            }
+            if (kind == TK_RBracket && --depth == 0) {
+                break;
+            }
+        }
+        if ((state->token.kind == TK_Comma &&
+             state->token.token_index < close) ||
+            (ast_peek_kind_at(state, 0) == TK_Comma &&
+             state->token_index < close)) {
+            Array(u32) args = NULL;
+            array_push(args, start_node);
+            while ((state->token.kind == TK_Comma &&
+                    state->token.token_index < close) ||
+                   (ast_peek_kind_at(state, 0) == TK_Comma &&
+                    state->token_index < close)) {
+                // The expression cursor may already have consumed the comma.
+                bool advanced;
+                if (state->token.kind == TK_Comma) {
+                    advanced = ast_next_token(state) && ast_next_token(state);
+                } else {
+                    while (state->token.kind != TK_Comma) {
+                        if (!ast_next_token(state)) {
+                            array_free(args);
+                            return false;
+                        }
+                    }
+                    advanced = ast_next_token(state);
+                }
+                if (!advanced) {
+                    array_free(args);
+                    return false;
+                }
+                u32 argument;
+                if (!ast_parse_expr_bp(state, 0, &argument)) {
+                    array_free(args);
+                    return false;
+                }
+                array_push(args, argument);
+            }
+            u32 first = (u32)array_count(state->tuple_items);
+            for (u32 i = 0; i < array_count(args); ++i) {
+                array_push(state->tuple_items, args[i]);
+            }
+            u32 count = (u32)array_count(args);
+            array_free(args);
+            if (!ast_emit_node(state,
+                               (AstNode){.kind        = AK_Tuple,
+                                         .token_index = op.token_index,
+                                         .a           = first,
+                                         .b           = count},
+                               &start_node)) {
+                return false;
+            }
+        }
         if (!ast_expect_token(state, TK_RBracket)) {
             return false;
         }

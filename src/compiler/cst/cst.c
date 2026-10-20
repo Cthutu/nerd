@@ -3221,15 +3221,16 @@ internal bool cst_parse_destructure_tuple_pattern(CstParseState* state,
 {
     u32 token_index = state->token_index;
     cst_advance(state);
-    u32 first_item = (u32)array_count(state->cst.pattern_items);
-    u32 item_count = 0;
+    Array(u32) items = NULL;
+    u32 item_count   = 0;
     if (cst_current_token(state).kind != TK_RParen) {
         for (;;) {
             u32 item = U32_MAX;
             if (!cst_parse_destructure_pattern(state, &item)) {
+                array_free(items);
                 return false;
             }
-            array_push(state->cst.pattern_items, item);
+            array_push(items, item);
             ++item_count;
             if (cst_current_token(state).kind != TK_Comma) {
                 break;
@@ -3241,8 +3242,14 @@ internal bool cst_parse_destructure_tuple_pattern(CstParseState* state,
         }
     }
     if (!cst_consume(state, TK_RParen)) {
+        array_free(items);
         return false;
     }
+    u32 first_item = (u32)array_count(state->cst.pattern_items);
+    for (u32 i = 0; i < array_count(items); ++i) {
+        array_push(state->cst.pattern_items, items[i]);
+    }
+    array_free(items);
     return cst_emit_pattern(state,
                             (CstPattern){
                                 .kind        = CPK_Tuple,
@@ -3258,10 +3265,11 @@ internal bool cst_parse_destructure_plex_pattern(CstParseState* state,
 {
     u32 token_index = state->token_index;
     cst_advance(state);
-    u32 first_field = (u32)array_count(state->cst.pattern_fields);
-    u32 field_count = 0;
+    Array(CstPlexPatternField) fields = NULL;
+    u32 field_count                   = 0;
     while (cst_current_token(state).kind != TK_RBrace) {
         if (cst_current_token(state).kind != TK_Symbol) {
+            array_free(fields);
             return false;
         }
         u32 field_token   = state->token_index;
@@ -3274,6 +3282,7 @@ internal bool cst_parse_destructure_plex_pattern(CstParseState* state,
                                       .token_index = field_token,
                                   },
                                   &field_pattern)) {
+                array_free(fields);
                 return false;
             }
             cst_advance(state);
@@ -3281,6 +3290,7 @@ internal bool cst_parse_destructure_plex_pattern(CstParseState* state,
             cst_advance(state);
             if (!cst_consume(state, TK_Colon) ||
                 !cst_parse_destructure_pattern(state, &field_pattern)) {
+                array_free(fields);
                 return false;
             }
         } else {
@@ -3292,11 +3302,12 @@ internal bool cst_parse_destructure_plex_pattern(CstParseState* state,
                                       .b           = U32_MAX,
                                   },
                                   &field_pattern)) {
+                array_free(fields);
                 return false;
             }
             cst_advance(state);
         }
-        array_push(state->cst.pattern_fields,
+        array_push(fields,
                    (CstPlexPatternField){
                        .token_index   = field_token,
                        .symbol_handle = field_symbol,
@@ -3312,8 +3323,14 @@ internal bool cst_parse_destructure_plex_pattern(CstParseState* state,
         }
     }
     if (!cst_consume(state, TK_RBrace)) {
+        array_free(fields);
         return false;
     }
+    u32 first_field = (u32)array_count(state->cst.pattern_fields);
+    for (u32 i = 0; i < array_count(fields); ++i) {
+        array_push(state->cst.pattern_fields, fields[i]);
+    }
+    array_free(fields);
     return cst_emit_pattern(state,
                             (CstPattern){
                                 .kind        = CPK_Plex,
@@ -4164,6 +4181,34 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
                     return false;
                 }
                 continue;
+            }
+            if (cst_current_token(state).kind == TK_Comma) {
+                Array(u32) args = NULL;
+                array_push(args, start);
+                while (cst_current_token(state).kind == TK_Comma) {
+                    cst_advance(state);
+                    u32 argument;
+                    if (!cst_parse_nested_expr(state, &argument)) {
+                        array_free(args);
+                        return false;
+                    }
+                    array_push(args, argument);
+                }
+                u32 first = (u32)array_count(state->cst.tuple_items);
+                for (u32 i = 0; i < array_count(args); ++i) {
+                    array_push(state->cst.tuple_items, args[i]);
+                }
+                u32 count = (u32)array_count(args);
+                array_free(args);
+                if (!cst_emit_node(state,
+                                   (CstNode){.kind        = CK_Tuple,
+                                             .token_index = token_index,
+                                             .a           = first,
+                                             .b           = count,
+                                             .flags       = CNF_TypeArguments},
+                                   &start)) {
+                    return false;
+                }
             }
             if (!cst_consume(state, TK_RBracket)) {
                 return false;

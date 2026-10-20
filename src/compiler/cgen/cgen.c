@@ -740,6 +740,19 @@ internal CValue cgen_coerce(CGen* c, CValue v, u32 t)
                             v.text,
                             cgen_type(c, v.type)->return_type));
     }
+    if (to == STK_Slice && from == STK_Box) {
+        cstr item = cgen_ctype(c, cgen_type(c, v.type)->first_param_type);
+        return cgen_temp(
+            c,
+            t,
+            CF("(%s){%s,%s?nrt_mem_size(%s)/(sizeof(%s)?sizeof(%s):1):0}",
+               cgen_ctype(c, t),
+               v.text,
+               v.text,
+               v.text,
+               item,
+               item));
+    }
     if (to == STK_Slice && from == STK_Array) {
         return cgen_temp(c,
                          t,
@@ -1562,6 +1575,38 @@ internal bool cgen_resolve(CGen* c,
     }
     if (e->kind == HIR_EXPR_Index &&
         cgen_kind(c, e->type_index) == STK_Function) {
+        const HirExpr* target = &h->exprs[e->operand_expr_index];
+        if (target->kind == HIR_EXPR_Field &&
+            cgen_kind(c, h->exprs[target->operand_expr_index].type_index) ==
+                STK_Module) {
+            u32 owner =
+                cgen_type(c, h->exprs[target->operand_expr_index].type_index)
+                    ->return_type;
+            const FrontEndState* front = &c->program->modules[owner].front_end;
+            string wanted = lex_symbol(&cgen_front(c)->lexer, e->symbol_handle);
+            for (u32 i = 0;
+                 i < array_count(front->sema.generic_fn_instantiations);
+                 ++i) {
+                const SemaGenericFnInstantiation* inst =
+                    &front->sema.generic_fn_instantiations[i];
+                if (!string_eq(
+                        wanted,
+                        lex_symbol(&front->lexer, inst->symbol_handle))) {
+                    continue;
+                }
+                for (u32 f = 0; f < array_count(front->hir.functions); ++f) {
+                    const HirFunction* fn = &front->hir.functions[f];
+                    if (fn->kind == HIR_FUNCTION_GenericInstantiation &&
+                        fn->root_scope_index == inst->root_scope_index &&
+                        fn->fn_node_index == inst->fn_node_index) {
+                        *out_module = owner;
+                        *out_fn     = f;
+                        c->module   = saved;
+                        return true;
+                    }
+                }
+            }
+        }
         // Explicit generic arguments choose a specialization even when its
         // erased callable signature is identical to another specialization.
         if (e->symbol_handle != U32_MAX) {
@@ -3087,16 +3132,79 @@ internal void cgen_stmt(CGen* c, u32 index)
     case HIR_STMT_DestructureLet:
     case HIR_STMT_DestructureAssign:
         {
-            CValue v = cgen_expr(c, st->expr_index);
-            for (u32 i = 0; i < st->body_block_index; ++i) {
+            const HirExpr* source      = &cgen_hir(c)->exprs[st->expr_index];
+            bool           addressable = source->kind == HIR_EXPR_LocalRef ||
+                                         source->kind == HIR_EXPR_Field ||
+                                         source->kind == HIR_EXPR_TupleField ||
+                                         source->kind == HIR_EXPR_Index ||
+                                         (source->kind == HIR_EXPR_Unary &&
+                                          source->unary_op == HIR_UNARY_Deref);
+            bool           owning      = false;
+            for (u32 i = 0; i < st->destructure_count; ++i) {
+                owning |=
+                    cgen_kind(c,
+                              cgen_hir(c)
+                                  ->destructure_items[st->target_expr_index + i]
+                                  .type_index) == STK_Box;
+            }
+            CValue original = {0};
+            if (owning && addressable) {
+                original = cgen_lvalue(c, st->expr_index);
+            }
+            CValue v = original.text
+                           ? cgen_temp(c, original.type, original.text)
+                           : cgen_expr(c, st->expr_index);
+            Array(CValue) fields = NULL;
+            for (u32 i = 0; i < st->destructure_count; ++i) {
+                const HirDestructureItem* item =
+                    &cgen_hir(c)->destructure_items[st->target_expr_index + i];
+                cstr text = v.text;
+                for (u32 j = 0; j < item->field_count; ++j) {
+                    text = CF("(%s).f%u", text, item->field_path[j]);
+                }
+                array_push(fields, cgen_temp(c, item->type_index, text));
+            }
+            // Capture every field before moving any ownership or overwriting
+            // targets.
+            for (u32 i = 0; i < st->destructure_count; ++i) {
+                const HirDestructureItem* item =
+                    &cgen_hir(c)->destructure_items[st->target_expr_index + i];
+                if (cgen_kind(c, item->type_index) != STK_Box) {
+                    continue;
+                }
+                if (original.text) {
+                    cstr text = original.text;
+                    for (u32 j = 0; j < item->field_count; ++j) {
+                        text = CF("(%s).f%u", text, item->field_path[j]);
+                    }
+                    CGEN_OUT("%s=NULL;\n", text);
+                } else if (!addressable) {
+                    u32 leaf = hir_destructure_source_expr(
+                        cgen_hir(c), cgen_sema(c), st->expr_index, item);
+                    if (leaf != U32_MAX) {
+                        cgen_consume(c, leaf, item->type_index);
+                    }
+                }
+            }
+            for (u32 i = 0; i < st->destructure_count; ++i) {
                 const HirDestructureItem* item =
                     &cgen_hir(c)->destructure_items[st->target_expr_index + i];
                 cgen_local(c, item->local_index, item->type_index);
-                CGEN_OUT("%s=%s.f%u;\n",
+                if (cgen_kind(c, item->type_index) == STK_Box &&
+                    st->kind == HIR_STMT_DestructureAssign) {
+                    CGEN_OUT("nrt_mem_free(%s);\n",
+                             cgen_local_name(c, item->local_index));
+                }
+                CGEN_OUT("%s=%s;\n",
                          cgen_local_name(c, item->local_index),
-                         v.text,
-                         item->field_index);
+                         fields[i].text);
+                if (cgen_kind(c, item->type_index) == STK_Box &&
+                    st->kind == HIR_STMT_DestructureLet) {
+                    array_push(c->cleanups,
+                               ((CCleanup){.index = item->local_index}));
+                }
             }
+            array_free(fields);
             break;
         }
     case HIR_STMT_Return:

@@ -71,7 +71,9 @@ intended exit code.
   of `T` values recorded by the allocation metadata.
 - `box[T]` moves on assignment, box-parameter calls, and return; the source
   box is set to nil.
-- `box[T]` borrows implicitly as `^T` for function calls and dot access.
+- `box[T]` borrows implicitly as `^T` or `[]T` in typed assignments, calls and
+  returns; dot access also borrows. Nil boxes produce null pointers/empty slices.
+  Borrowing does not extend allocation lifetime or transfer ownership.
 - `box[T]` converts implicitly to `bool`, where nil is `no` and non-nil is
   `yes`.
 - `box.free()` releases the allocation and resets the box to nil. Local and
