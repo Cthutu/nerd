@@ -16,5 +16,21 @@ from the beginning.
 8. [Arenas](docs/learn/08-Arenas.md)
 9. [Branching and Pattern Matching](docs/learn/09-Branching-and-Pattern-Matching.md)
 
+## Packaging
+
+Run `just package` to build the release compiler from `~/nerd` and create
+`_dist/nerd.zip`. The archive contains these entries directly at its root:
+
+```text
+nerd.exe
+mods/
+examples/
+docs/
+```
+
+`mods` and `examples` come from `~/nerd`; `docs` comes from this repository.
+The build uses Nerd's `just build-release nerd` workflow and requires its
+usual release-build dependencies.
+
 `test.n` contains an additional Nerd example. Directories beginning with `_`
 hold generated output or local verification files and are ignored by Git.
