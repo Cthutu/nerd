@@ -36,14 +36,13 @@ through `pointer^` changes `value` itself. You could also write
 | `^value` | Address of a value. | `&value` |
 | `pointer^` | Value at a pointer. | `*pointer` |
 
-The operand of address-of must provide addressable storage. Variables and
-their array elements or plex fields can provide it. An immutable integer
-binding such as `answer :: 42` does not provide storage whose address you can
-take; use a variable when you need an address.
+Taking the address of a variable, array element, or plex field borrows its
+existing storage. When the operand is an intermediate expression or a named
+constant, the compiler instead creates anonymous mutable stack storage for
+its value. The sections below explain that temporary storage's lifetime.
 
-The same character is the infix bitwise XOR operator from chapter 3. Write
-spaces around XOR, as in `flags ^ mask`; keep a dereference attached to its
-pointer, as in `pointer^`.
+The `^` character is reserved for pointer operations. Infix bitwise XOR uses
+`~`, as in `flags ~ mask`.
 
 ## Copying and reassigning pointers
 
@@ -196,7 +195,7 @@ following `[index]` selects an element. `array_pointer^[1]` means
 `(array_pointer^)[1]`. In contrast, `array_pointer[0]` accesses the first whole
 array at that address; it does not select its first integer.
 
-## Addresses of compound literals
+## Addresses of literals and intermediate values
 
 You can take the address of a plex or array literal directly:
 
@@ -218,11 +217,50 @@ of the enclosing scope.
 The pointed-to type can also come from context. For example,
 `point: ^Point = ^{ x: 20, y: 22 }` supplies `Point` as the literal's type.
 
-Other temporary expressions are not generally addressable. The compiler
-rejects `^42`, `^(20 + 22)`, taking the address of a function's returned value,
-and taking the address of a tuple literal. Store a computed value in a variable
-first: for example, `answer := 20 + 22`, followed by `pointer := ^answer`.
-That pointer refers to the variable's storage and follows its lifetime.
+The same rule applies to scalar literals, computed expressions, returned
+values, and tuple literals:
+
+```nerd
+make_answer :: fn () -> i32 {
+    return 42
+}
+
+main :: fn () -> i32 {
+    literal := ^42
+    computed := ^(20 + 22)
+    returned := ^make_answer()
+    pair := ^(20, 22)
+    return (literal^ + computed^ + returned^ + pair.0 + pair.1) / 4
+}
+```
+
+This returns `42`. Each operand is evaluated once and stored in an anonymous
+mutable stack variable. Its storage lasts until the enclosing scope exits,
+rather than disappearing at the end of the expression. No heap allocation
+is needed, and the pointer must not escape that scope.
+
+An expected pointer type supplies context for literals: `wide: ^i64 = ^42`
+stores an `i64`. Without that context, ordinary runtime defaults apply, so
+`literal` above has type `^i32`.
+
+## Taking the address of a named constant
+
+Taking a constant's address creates a mutable copy, rather than exposing
+writable storage for the constant:
+
+```nerd
+answer :: 42
+
+main :: fn () -> i32 {
+    copy := ^answer
+    copy^ = 0
+    return answer + copy^
+}
+```
+
+This returns `42`. Changing `copy^` does not change `answer`. This differs from
+`^variable`, which points at the variable's existing storage. Normal copy
+restrictions still apply when creating a temporary from a constant.
 
 ## Pointer arithmetic and comparison
 
@@ -329,7 +367,9 @@ lifetime of that storage.
 
 ## Storage lifetime and ownership
 
-Taking an address does not create a new allocation or transfer ownership.
+Taking the address of existing storage borrows it; addressing an intermediate
+value creates anonymous stack storage. Neither transfers ownership or creates
+a heap allocation.
 Do not call `.free()` merely because you obtained a pointer to a local value
 or an array element. The storage still belongs to the original value or
 allocation.

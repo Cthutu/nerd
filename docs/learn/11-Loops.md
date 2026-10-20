@@ -35,10 +35,42 @@ main :: fn () -> i32 {
 This returns `3`. If the first test is false, the body never runs. The
 condition is checked again after each completed iteration.
 
-The current compiler requires a `bool` condition here. As discussed in
-Chapter 10, use `!!outcome` when you want an optional's presence or a result's
-success as a boolean condition; direct truthiness is not yet accepted in
-every conditional context.
+Loop conditions also accept optionals and results, using Chapter 10's
+truthiness rules. Presence and success keep the loop running, regardless of
+the payload:
+
+```nerd
+optional_step :: fn (remaining: ^i32) -> ?bool {
+    on remaining^ == 0 => return nil
+    remaining^ -= 1
+    return no
+}
+
+result_step :: fn (remaining: ^i32) -> bool\string {
+    on remaining^ == 0 => return "finished"!
+    remaining^ -= 1
+    return no
+}
+
+main :: fn () -> i32 {
+    remaining := 2
+    visits := 0
+    for optional_step(^remaining) {
+        visits += 1
+    }
+    remaining = 2
+    for result_step(^remaining) {
+        visits += 1
+    }
+    return visits
+}
+```
+
+This returns `4`. A present optional containing `no` and a successful result
+containing `no` are both truthy. The condition is evaluated once before each
+iteration, including the final test that stops the loop. Absence or error
+ends the loop normally; it does not propagate the failure or extract a payload
+for the body. A value-producing loop takes its normal exhaustion `else` path.
 
 ## Unconditional loops and `break`
 
@@ -83,6 +115,8 @@ This returns `42`: the sum of `0` through `6` is `21`.
 
 The variable `i` belongs to the loop's scope and is unavailable after the loop.
 The body has its own scope for each iteration.
+The condition accepts the same truthy types as a condition-style loop,
+including optional presence and result success.
 
 ## Skipping to the next iteration with `again`
 
@@ -335,11 +369,23 @@ An expression block such as `${ ... }` does provide a value target for
 would otherwise receive the break intended for the loop. `again` targets a
 loop rather than an expression block.
 
-A label can also accompany a value, as in `break $outer 42`. Compiler note:
-that works directly in the labelled loop's body, but using it from inside
-another loop currently leaves the outer loop incorrectly typed as `void`.
-When a nested loop needs to supply an outer result, assign it to a variable
-and use a bare labelled break as a workaround.
+A labelled break can supply a loop's result even from inside another loop:
+
+```nerd
+main :: fn () -> i32 {
+    answer := for $outer {
+        for {
+            break $outer 42
+        }
+    }
+    return answer
+}
+```
+
+This returns `42`. The break targets `$outer`, so its value determines the
+outer loop's result. Breaks targeting the inner loop do not determine that
+result. Values supplied to the same loop must have compatible types, and a
+finite outer loop still needs an `else` for normal exhaustion.
 
 ## Cleanup on each iteration
 

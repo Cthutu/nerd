@@ -195,6 +195,8 @@ The current compiler does not yet accept optionals and results everywhere a
 require actual `bool` values. `!!outcome` converts the truthiness test into a
 `bool`: the first `!` tests absence or failure, and the second negates that
 test. For example, combine two outcomes with `!!first && !!second`.
+Condition-style and C-style `for` loops also accept optionals and results
+directly, testing presence or success; Chapter 11 demonstrates these forms.
 
 ## Supplying a default with `\`
 

@@ -117,7 +117,7 @@ This returns `42`. For a simple variable, `total += 11` has the same effect as
 | Operators | Update |
 | --- | --- |
 | `+=`, `-=`, `*=`, `/=`, `%=` | Arithmetic |
-| `&=`, `\|=`, `^=` | Bitwise AND, OR, and XOR |
+| `&=`, `\|=`, `~=` | Bitwise AND, OR, and XOR |
 | `<<=`, `>>=` | Bit shifts |
 | `&&=`, `\|\|=` | Boolean AND and OR |
 

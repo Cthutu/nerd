@@ -239,7 +239,7 @@ Bitwise operations work on integers:
 | --- | --- |
 | `&` | Bitwise AND |
 | `\|` | Bitwise OR |
-| `^` | Bitwise XOR |
+| `~` | Bitwise XOR |
 | Prefix `~` | Bitwise complement |
 | `<<` | Shift left |
 | `>>` | Shift right |
@@ -248,13 +248,13 @@ Bitwise operations work on integers:
 bits : u32 : 0b1010
 low_bits :: bits & 0b0011  -- 2
 combined :: bits | 0b0101  -- 15
-toggled :: bits ^ 0b1111   -- 5
+toggled :: bits ~ 0b1111   -- 5
 shifted :: bits << 1      -- 20
 ```
 
 Keep bitwise `&` and `|` distinct from boolean `&&` and `||`. A right shift
 of an unsigned integer shifts in zero bits; a right shift of a signed integer
-preserves the sign. `~` flips every bit in an integer; its concrete type
+preserves the sign. Prefix `~` flips every bit in an integer; its concrete type
 determines how many bits are flipped.
 
 ## Operator precedence
@@ -272,7 +272,7 @@ lowest precedence:
 | `<`, `<=`, `>`, `>=` | Ordering |
 | `==`, `!=` | Equality |
 | `&` | Bitwise AND |
-| `^` | Bitwise XOR |
+| `~` | Bitwise XOR |
 | `\|` | Bitwise OR |
 | `&&` | Logical AND |
 | `\|\|` | Logical OR |

@@ -111,6 +111,10 @@ In a new project, create `counters.n`:
 pub Counter :: plex { value i32 }
 
 impl Counter {
+    pub init :: fn (value: i32) -> Self {
+        return { value }
+    }
+
     pub get :: fn (self: Self) => self.value
 }
 ```
@@ -121,30 +125,51 @@ Create `main.n`:
 counters :: use counters
 
 main :: fn () -> i32 {
-    counter: counters.Counter = { value: 42 }
+    counter: counters.Counter = counters.Counter.init(42)
     return counter.get()
 }
 ```
 
 This returns `42`. Exporting the type does not by itself export every inherent
-method. `pub` on `get` makes that call available outside its module.
-Public generic declarations can be imported too. With a bare `use`, type
-arguments and inference work as in Chapter 12.
+method. `pub` on `init` and `get` makes those calls available outside their
+module. The associated function is called through the qualified type,
+`counters.Counter`, while the receiver method is called through `counter`.
 
 Use `pub impl Counter { ... }` when every method in a block should be public,
 instead of marking each member separately.
 
-Compiler note: a direct associated call such as `module.Type.init(...)`
-is currently rejected even when the type and function are public.
-Import with `use module` and call
-`Type.init(...)` instead. The public receiver call above works with a
-qualified type.
+## Qualified generics
 
-Qualified generic type applications also currently fail: import an exported
-`Cell` with bare `use` and write `Cell[i32]`, rather than `module.Cell[i32]`.
-The same limitation affects generic function calls such as
-`module.identity(42)`; use `identity(42)` after a bare import instead.
-Qualified ordinary type names, as used for `counters.Counter` above, work.
+Public generic types and functions support both qualified access and bare
+imports. Type arguments and inference follow Chapter 12's rules.
+
+In a new project, create `cells.n`:
+
+```nerd
+pub Cell :: plex [T] { value T }
+
+pub identity :: fn [T] (value: T) -> T {
+    return value
+}
+```
+
+Create `main.n`:
+
+```nerd
+cells :: use cells
+
+main :: fn () -> i32 {
+    cell: cells.Cell[i32] = { value: cells.identity(40) }
+    wide := cells.identity[i64](2)
+    return cell.value + wide.as(i32)
+}
+```
+
+This returns `42`. `cells.Cell[i32]` names the exported generic type with
+`i32` as its argument. The first function call infers `i32`; the second
+explicitly chooses `i64`. Qualified generic types can also be used in aliases,
+nested type arguments, and typed literals, such as
+`cells.Cell[i32] { value: 42 }`.
 
 ## Dotted paths and grouped imports
 
