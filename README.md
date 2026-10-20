@@ -63,5 +63,5 @@ LLVM tools described by the included manifest:
 scoop install .\llvm-tools.json
 ```
 
-`test.n` contains an additional Nerd example. Directories beginning with `_`
-hold generated output or local verification files and are ignored by Git.
+Directories beginning with `_` hold generated output or local verification
+files and are ignored by Git.
