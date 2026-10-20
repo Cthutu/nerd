@@ -18,19 +18,25 @@ from the beginning.
 
 ## Packaging
 
-Run `just package` to build the release compiler from `~/nerd` and create
-`_dist/nerd.zip`. The archive contains these entries directly at its root:
+Run `just package` to build the release compiler and VS Code extension from
+`~/nerd` and create `_dist/nerd.zip`. The archive contains these entries directly
+at its root:
 
 ```text
 nerd.exe
+nerd-language-<version>.vsix
 mods/
 examples/
 docs/
 ```
 
 `mods` and `examples` come from `~/nerd`; `docs` comes from this repository.
-The build uses Nerd's `just build-release nerd` workflow and requires its
-usual release-build dependencies.
+The VSIX filename uses the extension's name and version from its `package.json`.
+The build uses Nerd's `just build-release nerd` and `just package` workflows,
+requiring the usual release-build dependencies plus Node.js and npm.
+
+After extracting the archive, open VS Code's Extensions view, choose
+**Install from VSIX...** from its menu, and select the included `.vsix` file.
 
 `test.n` contains an additional Nerd example. Directories beginning with `_`
 hold generated output or local verification files and are ignored by Git.

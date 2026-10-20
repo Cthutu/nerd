@@ -1,6 +1,7 @@
-"""Package Nerd's Windows release compiler, modules, examples, and tutorials."""
+"""Package Nerd's release compiler, VS Code extension, modules, and tutorials."""
 
 from pathlib import Path
+import json
 import subprocess
 import tempfile
 from zipfile import ZIP_DEFLATED, ZipFile
@@ -36,6 +37,13 @@ def main() -> None:
     if not compiler.is_file():
         raise SystemExit(f"Release compiler not found: {compiler}")
 
+    subprocess.run(["just", "package"], cwd=NERD_ROOT, check=True)
+    extension_dir = NERD_ROOT / "syntax" / "nerd-vscode"
+    manifest = json.loads((extension_dir / "package.json").read_text(encoding="utf-8"))
+    vsix = extension_dir / f"{manifest['name']}-{manifest['version']}.vsix"
+    if not vsix.is_file():
+        raise SystemExit(f"VS Code extension not found: {vsix}")
+
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     # Finish the new archive before replacing a previous package.
     with tempfile.NamedTemporaryFile(
@@ -45,6 +53,7 @@ def main() -> None:
     try:
         with ZipFile(temporary_path, "w", ZIP_DEFLATED) as archive:
             archive.write(compiler, "nerd.exe")
+            archive.write(vsix, vsix.name)
             for name, source in directories.items():
                 add_directory(archive, source, name)
         temporary_path.replace(OUTPUT)
