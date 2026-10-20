@@ -253,8 +253,10 @@ or `item.name()`, rather than a bare `name(item)`.
 
 ## The built-in traits
 
-Nerd makes its core declarations available automatically, including these
-five traits. You do not need an import to use them:
+The standard-library `core` module declares these five traits in `core.n`.
+Nerd makes its public declarations available automatically, so you do not
+need an import to use them. [Chapter 15](15-Modules.md#the-core-module)
+explains the module in more detail:
 
 | Trait | Required function | Language behavior |
 | --- | --- | --- |

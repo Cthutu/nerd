@@ -9,8 +9,10 @@ Allocate from it as needed, then reclaim a group of allocations at once.
 This suits data that shares a lifetime, such as the working data for one task
 or request. An arena's allocations keep their addresses as its storage grows.
 
-The `arena` type and the operations used here are available through the
-implicitly imported `core` module. No explicit import is needed. As in earlier
+The `arena` type is built into the language. Its methods and the `temp_arena`
+binding come from the automatically available `core` module, defined in
+`core.n`. No explicit import is needed;
+[Chapter 15](15-Modules.md#the-core-module) explains that module. As in earlier
 chapters, integer results are program exit statuses; printed output is shown
 separately.
 

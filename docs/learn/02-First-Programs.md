@@ -33,8 +33,10 @@ Hello, world!
 The program's entry point is the function bound to `main`. Here, `fn ()` defines
 a function with no parameters, and the braces contain its statements. Calling
 `prn` prints the supplied string followed by a newline. It comes from `core`,
-which every Nerd module imports implicitly, so this program needs no explicit
-import.
+the standard-library module made available automatically to Nerd programs.
+Its source file is `core.n`, so these helpers are written in Nerd too. This
+program needs no explicit import; [Chapter 15](15-Modules.md#the-core-module)
+explains the module and how its file is found.
 
 Statements do not need terminating semicolons. Nerd line comments begin with
 `--`:

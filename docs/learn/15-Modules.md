@@ -40,10 +40,44 @@ module, including implementation helpers called by public functions. Public
 types must also expose suitable public field types; a public plex or union
 cannot expose a private type through a field declaration.
 
-Every module already has access to public core declarations such as `prn`,
-`arena`, and `Display`. An explicit import of `core` is unnecessary. Local
-declarations can shadow those implicit names, so avoid reusing a core name
-when you intend to use its language-supported behavior.
+## The `core` module
+
+`core` is the standard-library module that supplies the common helpers used
+throughout this guide. Its source file is `core.n`. Nerd loads it automatically
+and makes its public declarations available in every module, without an
+explicit `use`. This is why the first hello-world program could call `prn`
+before imports had been introduced.
+
+Examples of what `core.n` provides include:
+
+| Declarations | Purpose |
+| --- | --- |
+| `pr`, `prn` | Print text to standard output, without or with a final newline. |
+| `epr`, `eprn` | Print text to standard error, without or with a final newline. |
+| `temp_arena` | Access the calling thread's temporary arena. |
+| Arena methods such as `.alloc`, `.mark`, `.reset`, and `.done` | Allocate and manage arena storage. |
+| `Display`, `Eq`, `Order`, `Default`, `Iterator[Item]` | The standard traits used by the language features from Chapter 13. |
+
+The file contains Nerd declarations, just like your own module files. Some
+operations delegate to the runtime; `core.n` supplies their Nerd-facing helpers
+and methods. Primitive types such as `i32` and `bool`, the `arena` type, and
+the optional and result type forms are built into the language. They are not
+ordinary type declarations supplied by `core.n`.
+
+`core` names the module; `core.n` names its source file. In a normal installation,
+that file is at `mods/core.n` beside the compiler executable. If you replace
+the library search paths with `NERD_LIB_PATH`, make sure `core.n` remains
+available through the search locations in the table below. That table explains
+where the compiler looks for the file.
+
+Local declarations can shadow implicitly available core names. A new local
+trait called `Display`, for example, is a different declaration from the
+standard trait. Implement the existing core traits when integrating with
+language features, rather than redeclaring their names.
+
+The implicit import covers `core`'s public declarations, not every other
+standard-library module. Modules such as `std.text` still need a `use`
+declaration, as other imports do.
 
 ## Importing names directly
 
@@ -216,7 +250,7 @@ way to re-export: callers then keep the additional qualification, as in
 
 ## Where modules are found
 
-Ordinary module lookup and implicit `core` lookup use this order:
+Ordinary module lookup, including lookup of `core.n`, uses this order:
 
 | Order | `NERD_LIB_PATH` unset | `NERD_LIB_PATH` defined |
 | --- | --- | --- |
@@ -226,7 +260,8 @@ Ordinary module lookup and implicit `core` lookup use this order:
 Separate library directories with `;` on Windows or `:` on Unix. Defining
 `NERD_LIB_PATH` replaces the bundled-library search completely: missing modules
 do not fall back to `mods` beside the compiler or another installed library.
-Your selected search locations must still make `core` available.
+Your selected search locations must still provide `core.n` for its helpers
+to remain available.
 
 The working directory is where you invoked Nerd, not necessarily the directory
 containing the source file. This is why the examples run from their project
@@ -235,6 +270,7 @@ root. Qualified imports do not automatically search beside that source file.
 There is one relative-import exception: an explicit bare single-name import
 from a file outside the invocation directory can first resolve an adjacent
 sibling module, before the table's search. Imports from the invocation directory
-retain library-first precedence. Implicit `core` lookup always follows the table.
+retain library-first precedence. Automatic lookup of `core.n` always follows
+the table.
 
 Compile-time selection of platform-specific imports is covered in Chapter 17.
