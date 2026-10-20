@@ -15,6 +15,7 @@ from the beginning.
 7. [Pointers](docs/learn/07-Pointers.md)
 8. [Arenas](docs/learn/08-Arenas.md)
 9. [Branching and Pattern Matching](docs/learn/09-Branching-and-Pattern-Matching.md)
+10. [Optionals, Results and Error Handling](docs/learn/10-Optionals-Results-and-Error-Handling.md)
 
 ## Packaging
 

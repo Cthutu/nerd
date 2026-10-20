@@ -2,6 +2,8 @@
 
 [Previous: Arenas](08-Arenas.md)
 
+[Next: Optionals, Results and Error Handling](10-Optionals-Results-and-Error-Handling.md)
+
 Nerd uses `on` to choose which code to run. It covers the jobs of C's `if`,
 conditional operator, and `switch`, and extends them with patterns that can
 inspect values and extract their parts.
