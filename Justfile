@@ -1,6 +1,6 @@
 default:
     @just --list
 
-# Package the release compiler, VS Code extension, modules, examples, and docs.
+# Package the compiler, VS Code extension, LLVM Scoop manifest, and documentation.
 package:
     python3 build/package.py

@@ -26,6 +26,7 @@ at its root:
 ```text
 nerd.exe
 nerd-language-<version>.vsix
+llvm-tools.json
 mods/
 examples/
 docs/
@@ -33,11 +34,19 @@ docs/
 
 `mods` and `examples` come from `~/nerd`; `docs` comes from this repository.
 The VSIX filename uses the extension's name and version from its `package.json`.
+The LLVM Scoop manifest comes from `~/nerd/etc/llvm-tools.json`.
 The build uses Nerd's `just build-release nerd` and `just package` workflows,
 requiring the usual release-build dependencies plus Node.js and npm.
 
 After extracting the archive, open VS Code's Extensions view, choose
 **Install from VSIX...** from its menu, and select the included `.vsix` file.
+
+With Scoop installed, run this from the extracted directory to install the
+LLVM tools described by the included manifest:
+
+```powershell
+scoop install .\llvm-tools.json
+```
 
 `test.n` contains an additional Nerd example. Directories beginning with `_`
 hold generated output or local verification files and are ignored by Git.

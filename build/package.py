@@ -1,4 +1,4 @@
-"""Package Nerd's release compiler, VS Code extension, modules, and tutorials."""
+"""Package Nerd, its VS Code extension, LLVM Scoop manifest, and tutorials."""
 
 from pathlib import Path
 import json
@@ -19,6 +19,10 @@ def add_directory(archive: ZipFile, source: Path, name: str) -> None:
 
 
 def main() -> None:
+    llvm_manifest = NERD_ROOT / "etc" / "llvm-tools.json"
+    if not llvm_manifest.is_file():
+        raise SystemExit(f"LLVM Scoop manifest not found: {llvm_manifest}")
+
     directories = {
         "mods": NERD_ROOT / "mods",
         "examples": NERD_ROOT / "examples",
@@ -54,6 +58,7 @@ def main() -> None:
         with ZipFile(temporary_path, "w", ZIP_DEFLATED) as archive:
             archive.write(compiler, "nerd.exe")
             archive.write(vsix, vsix.name)
+            archive.write(llvm_manifest, llvm_manifest.name)
             for name, source in directories.items():
                 add_directory(archive, source, name)
         temporary_path.replace(OUTPUT)
