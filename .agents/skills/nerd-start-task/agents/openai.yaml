@@ -1,0 +1,4 @@
+interface:
+  display_name: "Start a Nerd task"
+  short_description: "Read Nerd guidance and prepare the task workflow"
+  default_prompt: "Use $nerd-start-task to read the current repository guidance and prepare for this Nerd task."
