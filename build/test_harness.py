@@ -39,7 +39,7 @@ class GroupedFixtures(unittest.TestCase):
             failures = runner.test_format(path)
         self.assertEqual(run.call_args_list[1].args[1:], ('b', 'B'))
         self.assertIn('case 1', failures[0].message)
-        path.write_text('a¬A¬b')
+        path.write_text('a¬A¬b', encoding="utf-8")
         self.assertTrue(runner.test_format(path))
 
     def test_lsp_checks_later_sessions_and_rejects_truncation(self):
@@ -48,7 +48,7 @@ class GroupedFixtures(unittest.TestCase):
             failures = runner.test_lsp(path)
         self.assertEqual(run.call_args_list[1].args[1], 'b')
         self.assertIn('case 1', failures[0].message)
-        path.write_text('a¬[]¬[]¬b')
+        path.write_text('a¬[]¬[]¬b', encoding="utf-8")
         self.assertTrue(runner.test_lsp(path))
 
     def test_semantic_groups_check_every_program_without_linking(self):
