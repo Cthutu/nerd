@@ -1,0 +1,12 @@
+-- This example shows how to use the encryption module (std.crypt)
+
+use std.crypt
+
+original_message :: "Hello, World!"
+
+main :: fn () -> void {
+    prn($"Original message: {original_message}")
+
+    sha1_hash := sha1(original_message)
+    prn($"SHA1 hash: {sha1_hash}")
+}

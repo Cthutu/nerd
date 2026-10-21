@@ -1,0 +1,24 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Provides APIs for hashing, key generation, encryption and signatures.
+
+Sha1Hash :: plex {
+    hash [20]u8
+}
+
+pub impl Display for Sha1Hash {
+
+    show :: fn (_self: Self) -> string {
+        result : string
+        return result
+    }
+
+}
+
+pub sha1 :: fn (_input: string) -> string {
+    -- Computes the SHA1 hash of the input string and returns it as a hexadecimal string.
+    -- This is a placeholder implementation. In a real implementation, you would use a proper cryptographic library.
+    return "SHA1_HASH_PLACEHOLDER"
+}

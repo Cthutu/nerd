@@ -7,7 +7,7 @@
             "command": "just",
             "args": [
                 "run-example",
-                "vktriangle"
+                "encrypt"
             ],
             "group": {
                 "kind": "build",
