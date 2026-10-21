@@ -1,0 +1,123 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Linux desktop integration using xdg-open and Zenity (GTK native dialogs).
+
+on "linux" {
+
+    use os.linux
+
+    -- Waits for xdg-open's launch result; the desktop application owns its lifetime.
+    native_open :: fn (target: string) -> void\SystemError {
+        arguments : [3]^i8 = [c"xdg-open", target.c_string(), nil]
+        child              := sys_fork()
+
+        on child < 0 => return SystemError.Failed { code: last_error().as(u32) }!
+        on child == 0 => {
+            _ := execvp(arguments[0], arguments.data)
+            sys_exit(127)
+        }
+        status : i32
+        waited       := sys_waitpid(child, ^status, 0)
+
+        for waited < 0 && last_error() == EINTR {
+            waited = sys_waitpid(child, ^status, 0)
+        }
+        on waited < 0 => return SystemError.Failed { code: last_error().as(u32) }!
+        on status == (127 << 8) => return SystemError.Unavailable!
+        on status != 0 => return SystemError.Failed { code: status.as(u32) }!
+    }
+
+    -- Captures only provider stdout through an anonymous pipe. Arguments are
+    -- prepared before fork; the child allocates nothing before exec/exit.
+    native_dialog :: fn (kind         : i32,
+                         title        : string,
+                         suggested    : string,
+                         output_arena : ^arena) -> string\SystemError {
+        arguments : [..]^i8
+        defer arguments.free()
+        arguments.push(c"zenity")
+        arguments.push(c"--file-selection")
+        arguments.push($"--title={title}".c_string())
+        on kind == 1 => {
+            arguments.push(c"--save")
+            arguments.push(c"--confirm-overwrite")
+            on suggested.count != 0 => arguments.push($"--filename={suggested}".c_string())
+        }
+        on kind == 2 => arguments.push(c"--directory")
+        arguments.push(nil)
+        descriptors : [2]i32
+        on sys_pipe2(descriptors.data, O_CLOEXEC) < 0 => return SystemError.Failed { code: last_error().as(u32) }!
+        child := sys_fork()
+        on child < 0 => {
+            code := last_error().as(u32)
+            _    := sys_close(descriptors[0])
+            _    := sys_close(descriptors[1])
+
+            return SystemError.Failed { code }!
+        }
+        on child == 0 => {
+            _ := sys_close(descriptors[0])
+            on sys_dup2(descriptors[1], 1) < 0 => {
+                sys_exit(126)
+            }
+            on descriptors[1] == 1 => {
+                -- dup2(fd, fd) preserves CLOEXEC, so clear it explicitly.
+                on sys_fcntl(1, F_SETFD, 0) < 0 => {
+                    sys_exit(126)
+                }
+            } else {
+                _ := sys_close(descriptors[1])
+            }
+            _ := execvp(arguments[0], arguments.data)
+
+            sys_exit(127)
+        }
+        _               := sys_close(descriptors[1])
+        output : [..]u8
+
+        defer output.free()
+        failed            := no
+        buffer : [4096]u8
+
+        for {
+            received := sys_read(descriptors[0], buffer.data, buffer.count)
+            for received < 0 && last_error() == EINTR {
+                received = sys_read(descriptors[0], buffer.data, buffer.count)
+            }
+            on received < 0 => {
+                failed = yes
+                break
+            }
+            on received == 0 => break
+            -- Drain even oversized provider output so the child cannot block.
+            on output.count + received.as(usize) > 1048576 => failed = yes
+            on !failed => {
+                for i: usize = 0; i < received.as(usize); i += 1 {
+                    output.push(buffer[i])
+                }
+            }
+        }
+        _            := sys_close(descriptors[0])
+        status : i32
+        waited       := sys_waitpid(child, ^status, 0)
+
+        for waited < 0 && last_error() == EINTR {
+            waited = sys_waitpid(child, ^status, 0)
+        }
+        on waited < 0 => return SystemError.Failed { code: last_error().as(u32) }!
+        on status == (127 << 8) => return SystemError.Unavailable!
+        on status == (1 << 8) => return SystemError.Cancelled!
+        on failed ||
+            status != 0 => return SystemError.Failed { code: status.as(u32) }!
+        -- Remove exactly the provider's final newline, preserving path whitespace.
+        on output.count == 0 ||
+            output[output.count - 1] != 10 => return SystemError.Failed { code: 0 }!
+        text := output[..output.count - 1].as(string)
+        on text.count == 0 ||
+            !valid_text(text) => return SystemError.Failed { code: 0 }!
+        return output_arena.pr(text)
+    }
+
+}

@@ -1,0 +1,28 @@
+use std.system
+
+-- Provider tests run only with isolated fake desktop commands on PATH.
+main :: fn (args: []string) -> i32 {
+    on args.count < 2 => return 2
+    on args[1] == "open" => {
+        assert !!open_browser("https://example.test/a?x=one&y=two")
+        assert !!open_path("-name with spaces;$(echo unsafe)")
+        assert !!open_explorer()
+        return 0
+    }
+    result := on args[1] {
+        "file"  => open_file(title = "Quote \" and $shell; title")
+        "save"  => save_file(title = "Save", suggested_path = "two words;$(unsafe).txt")
+        else    => select_folder()
+    }
+    path := result else [error] {
+        on error {
+            Cancelled               => prn("cancelled")
+            Unavailable             => prn("unavailable")
+            Failed { code: _code }  => prn("failed")
+            else                    => prn("invalid")
+        }
+        return 0
+    }
+    prn($"selected:[{path}]")
+    return 0
+}

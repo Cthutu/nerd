@@ -29,6 +29,8 @@ describes each regression family.
 - `install/`, `ffi/`, `mods/`: installation, host-code and imported source fixtures.
 - `stdlib-capabilities/`: executable language/atomic and native-layout probes,
   included in the default debug/release gates.
+- `stdlib-system/`: desktop-provider fixtures; `build/test_std_system.py` checks
+  Linux launch and dialog contracts with isolated providers, without displaying UI.
 - `windows/`: native Windows matrix runner, portable runner checks, desktop
   checklist and current handoff. Generated results remain ignored.
 

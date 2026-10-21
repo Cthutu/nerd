@@ -1,0 +1,26 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Linux process and pipe primitives used by portable application services.
+
+on "linux" {
+
+    pub O_CLOEXEC :: 0x80000  -- Close across exec.
+    pub F_SETFD   :: 2  -- Replace descriptor flags.
+
+    ffi "c" {
+        -- Executes with PATH lookup and the inherited environment.
+        pub execvp (file: ^i8, arguments: ^^i8) -> i32
+    }
+
+    -- Creates a pipe, optionally closing both ends across exec.
+    pub sys_pipe2 :: fn (descriptors: ^i32, flags: i32) => syscall(SYS_PIPE2, descriptors.as(usize).as(u64), flags.as(u64), 0, 0, 0, 0).as(i32)
+
+    -- Changes descriptor flags, for example clearing close-on-exec after dup2.
+    pub sys_fcntl :: fn (fd: i32, command: i32, value: i32) => syscall(SYS_FCNTL, fd.as(u64), command.as(u64), value.as(u64), 0, 0, 0).as(i32)
+
+    -- Duplicates a descriptor onto an exact descriptor number.
+    pub sys_dup2 :: fn (old_fd: i32, new_fd: i32) => syscall(SYS_DUP2, old_fd.as(u64), new_fd.as(u64), 0, 0, 0, 0).as(i32)
+
+}

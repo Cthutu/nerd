@@ -24,6 +24,15 @@ completed plans remain in Git history.
 - Add queue/graph pipelines and a bounded task/network-service example. Keep
   blocking I/O outside CPU workers; verify backpressure and coordinated shutdown.
 
+### Desktop integration
+
+- Extend `std.system` with file filters, multiple selection and window ownership
+  when an application needs them; consider XDG portals for sandboxed Linux.
+- Complete interactive Windows/Linux checks for selection, cancellation,
+  overwrite confirmation, Unicode paths and desktop launches using the
+  [system example](examples/system/system.n). Automated provider tests do not
+  establish the visible desktop experience.
+
 ### Networking extensions
 
 - Add IPv6 and DNS resolution, with explicit resolver ownership, errors and

@@ -61,6 +61,9 @@ library is organised into three layers:
   schedule stable caller-owned tasks without per-task allocation. Completed tasks
   need no cleanup. Startup and submission propagate with `?void`.
   See [contracts](stdlib-raptor.md).
+- `std.system`
+  Desktop file dialogs, browser pages and default file/folder applications.
+  See [desktop integration](stdlib-system.md).
 - `std.process`
   Portable child-process execution and waiting.
 - `std.signal`

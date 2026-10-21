@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 import os
 import json
 import re
+import shlex
 from pathlib import Path
 import subprocess
 import tempfile
@@ -75,14 +76,15 @@ def differential_case(nerd, fixture, parts, work, env):
     run([nerd, "build", *language_flags(parts[0]), "-o", output, source], env)
     expected = run([output], env, check=False, stdin=stdin)
     output.unlink()
-    run([nerd, "build", *language_flags(parts[0]), "--cgen", "-o", output, source], env)
+    generated_options = run([nerd, "build", *language_flags(parts[0]),
+                             "--cgen", "--copts", "-o", output, source], env)
+    copts = shlex.split(generated_options.stdout.decode("utf-8"))
     assert not output.exists(), "C generation must not create a binary"
     generated = output.with_suffix(".c")
     assert generated.is_file(), "C output must replace the binary extension"
     for optimisation in ("-O0", "-O2"):
         run(["clang", "-std=gnu11", optimisation,
-             "-Werror", generated, "-o", output,
-             *([] if os.name == "nt" else ["-lm"])], env)
+             "-Werror", generated, "-o", output, *copts], env)
         actual = run([output], env, check=False, stdin=stdin)
         assert behaviour(actual) == behaviour(expected), (
             f"{fixture.name} {optimisation}: C and LLVM behaviour differs\n"

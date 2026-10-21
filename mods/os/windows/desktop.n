@@ -1,0 +1,108 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Windows desktop shell, common-dialog and COM bindings.
+
+on "windows" {
+
+    pub COINIT_APARTMENTTHREADED :: 2  -- Initialise a UI apartment.
+    pub SW_SHOWNORMAL            :: 1  -- Normal application display.
+    pub OFN_EXPLORER             :: 0x00080000  -- Explorer-style dialog.
+    pub OFN_PATHMUSTEXIST        :: 0x00000800  -- Require an existing
+    --     directory.
+    pub OFN_FILEMUSTEXIST :: 0x00001000  -- Require an existing file.
+    pub OFN_NOCHANGEDIR   :: 0x00000008  -- Preserve the current
+    --     directory.
+    pub OFN_OVERWRITEPROMPT  :: 0x00000002  -- Confirm replacement.
+    pub BIF_RETURNONLYFSDIRS :: 0x0001  -- Filesystem folders only.
+    pub BIF_EDITBOX          :: 0x0010  -- Allow typed folder paths.
+    pub BIF_NEWDIALOGSTYLE   :: 0x0040  -- Resizable folder picker.
+
+    -- Common open/save dialog state; Windows SDK commdlg.h layout (152 bytes).
+    pub OPENFILENAMEW :: plex #c {
+        lStructSize       u32    -- Structure size.
+        hwndOwner         ^void  -- Optional owner window.
+        hInstance         ^void  -- Template instance.
+        lpstrFilter       ^u16   -- Double-NUL-terminated filter pairs.
+        lpstrCustomFilter ^u16   -- Custom filter buffer.
+        nMaxCustFilter    u32    -- Custom filter capacity.
+        nFilterIndex      u32    -- Selected filter.
+        lpstrFile         ^u16   -- Path buffer.
+        nMaxFile          u32    -- Path capacity in UTF-16 units.
+        lpstrFileTitle    ^u16   -- Optional file title buffer.
+        nMaxFileTitle     u32    -- File title capacity.
+        lpstrInitialDir   ^u16   -- Optional initial directory.
+        lpstrTitle        ^u16   -- Dialog title.
+        Flags             u32    -- Dialog behaviour.
+        nFileOffset       u16    -- File name offset.
+        nFileExtension    u16    -- Extension offset.
+        lpstrDefExt       ^u16   -- Default extension.
+        lCustData         isize  -- Callback data.
+        lpfnHook          ^void  -- Optional callback.
+        lpTemplateName    ^u16   -- Template name.
+        pvReserved        ^void  -- Reserved.
+        dwReserved        u32    -- Reserved.
+        FlagsEx           u32    -- Extended flags.
+    }
+
+    -- Folder browser state from shlobj_core.h.
+    pub BROWSEINFOW :: plex #c {
+        hwndOwner      ^void  -- Optional owner window.
+        pidlRoot       ^void  -- Root item identifier.
+        pszDisplayName ^u16   -- Display name buffer.
+        lpszTitle      ^u16   -- Prompt.
+        ulFlags        u32    -- Browser behaviour.
+        lpfn           ^void  -- Optional callback.
+        lParam         isize  -- Callback data.
+        iImage         i32    -- Selected image index.
+    }
+
+    ffi "comdlg32" {
+        -- Opens the native file picker.
+        pub GetOpenFileNameW (state: ^OPENFILENAMEW) -> i32
+
+        -- Opens the native save picker.
+        pub GetSaveFileNameW (state: ^OPENFILENAMEW) -> i32
+
+        -- Distinguishes common-dialog cancellation (zero) from errors.
+        pub CommDlgExtendedError () -> u32
+    }
+    ffi "shell32" {
+        -- Opens a path or URI through the desktop shell; >32 means accepted.
+        pub ShellExecuteW (owner      : ^void,
+                           verb       : ^u16,
+                           file       : ^u16,
+                           parameters : ^u16,
+                           directory  : ^u16,
+                           show       : i32) -> isize
+
+        -- Selects a folder; returned item must be released with CoTaskMemFree.
+        pub SHBrowseForFolderW (state: ^BROWSEINFOW) -> ^void
+
+        -- Converts a selected shell item into a filesystem path.
+        pub SHGetPathFromIDListW (item: ^void, output: ^u16) -> i32
+    }
+    ffi "ole32" {
+        -- Initialises COM on the calling thread.
+        pub CoInitializeEx (reserved: ^void, flags: u32) -> i32
+
+        -- Balances a successful COM initialisation.
+        pub CoUninitialize ()
+
+        -- Releases a shell-allocated item.
+        pub CoTaskMemFree (memory: ^void)
+    }
+    ffi "kernel32" {
+        -- Converts UTF-16 to UTF-8 or another code page.
+        pub WideCharToMultiByte (code_page    : u32,
+                                 flags        : u32,
+                                 input        : ^u16,
+                                 input_count  : i32,
+                                 output       : ^u8,
+                                 output_count : i32,
+                                 default_char : ^u8,
+                                 used_default : ^i32) -> i32
+    }
+
+}

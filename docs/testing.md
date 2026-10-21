@@ -9,6 +9,8 @@ It runs cleanup, allocator and thread checks, builds the checkout's debug compil
 runs the fixture suite, then runs the profiling, scheduling, toolchain,
 installation-smoke, C-output, build-settings and Windows-stdio checks. It stops
 at the first failing stage; a fixture failure does not mean the later checks ran.
+C differential checks compile with `nerd build --cgen --copts` so imported
+external libraries use the same link options as native output.
 Python subprocess output is decoded as UTF-8 on every host, including Windows.
 The Windows installation smoke test also requires `llvm-dwarfdump` on `PATH`
 to verify source-level debug information. Keep LLVM tools outside the checkout

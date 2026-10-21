@@ -52,6 +52,8 @@ test *args:
     python3 build/test_cgen.py --nerd _bin/nerd-debug{{exe_suffix}}
     python3 build/test_build_settings.py --nerd _bin/nerd-debug{{exe_suffix}}
     python3 build/test_windows_stdio.py --nerd _bin/nerd-debug{{exe_suffix}}
+    python3 build/test_std_system.py --nerd _bin/nerd-debug{{exe_suffix}}
+    python3 build/test_std_system.py --nerd _bin/nerd-debug{{exe_suffix}} --cgen
 
 test-release *args:
     python3 build/test_harness.py

@@ -1,0 +1,132 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Windows desktop integration through os.windows.
+
+on "windows" {
+
+    use os.windows
+
+    -- Converts validated UTF-8 to terminated temporary UTF-16.
+    wide_text :: fn (text: string) -> ^u16\SystemError {
+        on text.count == 0 => {
+            empty := temp_arena.alloc_array[u16](1)
+            empty[0] = 0
+            return empty.data
+        }
+        size := MultiByteToWideChar(CP_UTF8,
+                                    8,
+                                    text.data,
+                                    text.count.as(i32),
+                                    nil,
+                                    0)
+        on size <= 0 => return SystemError.Failed { code: GetLastError() }!
+        output := temp_arena.alloc_array[u16](size.as(usize) + 1)
+        _      := MultiByteToWideChar(CP_UTF8, 8, text.data, text.count.as(i32), output.data, size)
+
+        output[size.as(usize)] = 0
+        return output.data
+    }
+
+    -- Copies a terminated Windows path into caller-selected UTF-8 storage.
+    narrow_text :: fn (text: ^u16, output_arena: ^arena) -> string\SystemError {
+        size := WideCharToMultiByte(CP_UTF8, 0, text, -1, nil, 0, nil, nil)
+        on size <= 0 => return SystemError.Failed { code: GetLastError() }!
+        output := output_arena.alloc_bytes(size.as(usize))
+        on WideCharToMultiByte(CP_UTF8, 0, text, -1, output.data, size, nil, nil) != size => return SystemError.Failed { code: GetLastError() }!
+        return output[..size.as(usize) - 1].as(string)
+    }
+
+    -- Balances COM initialisation; callers keep all desktop work on the UI thread.
+    native_open :: fn (target: string) -> void\SystemError {
+        text        := wide_text(target)?
+        initialised := CoInitializeEx(nil, COINIT_APARTMENTTHREADED)
+
+        on initialised < 0 => return SystemError.Failed { code: initialised.as(u32) }!
+        defer CoUninitialize()
+        result := ShellExecuteW(nil, nil, text, nil, nil, SW_SHOWNORMAL)
+        on result <= 32 => return SystemError.Failed { code: result.as(u32) }!
+    }
+
+    -- Runs a synchronous native open/save/folder picker.
+    native_dialog :: fn (kind         : i32,
+                         title        : string,
+                         suggested    : string,
+                         output_arena : ^arena) -> string\SystemError {
+        prompt      := wide_text(title)?
+        initialised := CoInitializeEx(nil, COINIT_APARTMENTTHREADED)
+
+        on initialised < 0 => return SystemError.Failed { code: initialised.as(u32) }!
+        defer CoUninitialize()
+        path := temp_arena.alloc_array[u16](32768)
+        path[0] = 0
+        on kind == 2 => {
+            display : [260]u16
+            state              := BROWSEINFOW { pszDisplayName: display.data lpszTitle: prompt ulFlags: BIF_RETURNONLYFSDIRS | BIF_EDITBOX | BIF_NEWDIALOGSTYLE ... }
+            item               := SHBrowseForFolderW(^state)
+
+            on item == nil => return SystemError.Cancelled!
+            defer CoTaskMemFree(item)
+            on SHGetPathFromIDListW(item, path.data) == 0 => return SystemError.Failed { code: 0 }!
+            return narrow_text(path.data, output_arena)
+        }
+        initial         := wide_text(suggested)?
+        count   : usize = 0
+
+        for initial[count] != 0 {
+            count += 1
+        }
+        on count >= path.count => return SystemError.Invalid!
+        for i: usize = 0; i <= count; i += 1 {
+            path[i] = initial[i]
+        }
+        state := OPENFILENAMEW {
+            lStructSize : OPENFILENAMEW.size.as(u32)
+            lpstrFile   : path.data
+            nMaxFile    : path.count.as(u32)
+            lpstrTitle  : prompt
+            Flags       : OFN_EXPLORER | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR
+            ...
+        }
+        accepted : i32
+        on kind == 0 => {
+            state.Flags |= OFN_FILEMUSTEXIST
+            accepted = GetOpenFileNameW(^state)
+        } else {
+            state.Flags |= OFN_OVERWRITEPROMPT
+            accepted = GetSaveFileNameW(^state)
+        }
+        on accepted == 0 => {
+            code := CommDlgExtendedError()
+            on code == 0 => return SystemError.Cancelled!
+            return SystemError.Failed { code }!
+        }
+        return narrow_text(path.data, output_arena)
+    }
+
+}
+
+on "windows" {
+
+    test "desktop paths round trip Unicode and retain whitespace" {
+        mark := temp_arena.mark()
+        defer temp_arena.restore(mark)
+        text := " C:/界/𐍈 document.txt "
+        wide := wide_text(text) else {
+            assert no
+            return
+        }
+        copied := narrow_text(wide, temp_arena) else {
+            assert no
+            return
+        }
+        assert copied == text, "Desktop paths must round trip through UTF-16"
+        empty := wide_text("") else {
+            assert no
+            return
+        }
+        assert empty[0] == 0, "Empty titles must be terminated"
+    }
+
+}

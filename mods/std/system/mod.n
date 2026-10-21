@@ -1,0 +1,96 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Portable file dialogs, browser pages and desktop file/folder opening.
+
+use std.files
+use std.text
+
+-- Desktop failures; cancellation is distinct from native/provider failure.
+pub SystemError :: enum {
+    Invalid
+    Cancelled
+    Unavailable
+    Failed {
+        code u32
+    }
+}
+
+-- Describes desktop errors for diagnostics and UI messages.
+pub impl Display for SystemError {
+
+    show :: fn (self: Self) -> string {
+        return on self {
+            Invalid          => "invalid desktop request"
+            Cancelled        => "selection cancelled"
+            Unavailable      => "desktop provider unavailable"
+            Failed { code }  => $"desktop operation failed (code {code})"
+        }
+    }
+
+}
+
+-- Validates text before passing it to a desktop provider.
+valid_text :: fn (text: string) -> bool {
+    on text.count > 0x7fffffff || !text.utf8_validate() => return no
+    for byte in text {
+        on byte^ == 0 => return no
+    }
+    return yes
+}
+
+-- Opens an HTTP(S) page in the default browser. Success means accepted.
+pub open_browser :: fn (url: string) -> void\SystemError {
+    on !valid_text(url) ||
+        !(url.starts_with("https://") || url.starts_with("http://")) => return SystemError.Invalid!
+    return native_open(url)
+}
+
+-- Opens a file or folder with its default desktop application.
+pub open_path :: fn (path: string) -> void\SystemError {
+    on path.count == 0 || !valid_text(path) => return SystemError.Invalid!
+    -- Prefix relative paths so Linux launchers cannot interpret them as options
+    -- or URIs. Windows accepts the same relative spelling.
+    target := on is_absolute(path) {
+        yes   => path
+        else  => $"./{path}"
+    }
+    return native_open(target)
+}
+
+-- Opens a directory in the desktop file manager.
+pub open_explorer :: fn (directory: string = ".") -> void\SystemError {
+    on directory.count == 0 ||
+        !valid_text(directory) => return SystemError.Invalid!
+    info := file_info(directory) else {
+        return SystemError.Invalid!
+    }
+    on info.kind != FileKind.Directory => return SystemError.Invalid!
+    return open_path(directory)
+}
+
+-- Selects an existing file. Result storage belongs to output_arena. Call on the
+-- application's UI thread; blocks until selection or cancellation.
+pub open_file :: fn (title        : string = "Open file",
+                     output_arena : ^arena = temp_arena) -> string\SystemError {
+    on !valid_text(title) => return SystemError.Invalid!
+    return native_dialog(0, title, "", output_arena)
+}
+
+-- Selects a save destination, requesting overwrite confirmation. Does not
+-- write.
+pub save_file :: fn (title          : string = "Save file",
+                     suggested_path : string = "",
+                     output_arena   : ^arena = temp_arena) -> string\SystemError {
+    on !valid_text(title) ||
+        !valid_text(suggested_path) => return SystemError.Invalid!
+    return native_dialog(1, title, suggested_path, output_arena)
+}
+
+-- Selects an existing folder; result storage belongs to output_arena.
+pub select_folder :: fn (title        : string = "Select folder",
+                         output_arena : ^arena = temp_arena) -> string\SystemError {
+    on !valid_text(title) => return SystemError.Invalid!
+    return native_dialog(2, title, "", output_arena)
+}
