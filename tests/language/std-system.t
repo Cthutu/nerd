@@ -5,6 +5,9 @@ main :: fn () {
         use os.windows
         assert OPENFILENAMEW.size == 152, "Windows common dialog ABI"
         assert BROWSEINFOW.size == 64, "Windows folder dialog ABI"
+        assert SHELLEXECUTEINFOW.size == 112, "Windows shell launch ABI"
+        assert !open_path("nerd-missing-shell-target-713e5a"),
+            "Missing shell target must report failure without an error dialog"
     }
     assert !open_browser("file:///tmp/program"), "Browser rejects non-web schemes"
     assert !open_path(""), "Empty path rejected"

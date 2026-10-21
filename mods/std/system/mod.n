@@ -50,13 +50,7 @@ pub open_browser :: fn (url: string) -> void\SystemError {
 -- Opens a file or folder with its default desktop application.
 pub open_path :: fn (path: string) -> void\SystemError {
     on path.count == 0 || !valid_text(path) => return SystemError.Invalid!
-    -- Prefix relative paths so Linux launchers cannot interpret them as options
-    -- or URIs. Windows accepts the same relative spelling.
-    target := on is_absolute(path) {
-        yes   => path
-        else  => $"./{path}"
-    }
-    return native_open(target)
+    return native_open_path(path)
 }
 
 -- Opens a directory in the desktop file manager.

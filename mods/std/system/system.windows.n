@@ -38,15 +38,50 @@ on "windows" {
         return output[..size.as(usize) - 1].as(string)
     }
 
-    -- Balances COM initialisation; callers keep all desktop work on the UI thread.
-    native_open :: fn (target: string) -> void\SystemError {
-        text        := wide_text(target)?
-        initialised := CoInitializeEx(nil, COINIT_APARTMENTTHREADED)
+    -- Resolves local paths once and normalises separators for the Windows shell.
+    windows_shell_path :: fn (path: string) -> ^u16\SystemError {
+        input         := wide_text(path)?
+        index : usize = 0
 
+        for input[index] != 0 {
+            on input[index] == 47 => input[index] = 92
+            index += 1
+        }
+        -- Use one resolution call so relative paths observe the current directory
+        -- only once. The Windows path limit includes the terminating NUL.
+        output := temp_arena.alloc_array[u16](32768)
+        size   := GetFullPathNameW(input, output.count.as(u32), output.data, nil)
+
+        on size == 0 => return SystemError.Failed { code: GetLastError() }!
+        on size.as(usize) >= output.count => return SystemError.Invalid!
+        return output.data
+    }
+
+    -- Opens a normalised absolute filesystem path through the desktop shell.
+    native_open_path :: fn (path: string) -> void\SystemError {
+        return shell_open(windows_shell_path(path)?)
+    }
+
+    -- Opens a browser URI without applying filesystem path conversion.
+    native_open :: fn (target: string) -> void\SystemError {
+        return shell_open(wide_text(target)?)
+    }
+
+    -- Balances COM initialisation around a native shell launch.
+    shell_open :: fn (text: ^u16) -> void\SystemError {
+        initialised := CoInitializeEx(nil, COINIT_APARTMENTTHREADED)
         on initialised < 0 => return SystemError.Failed { code: initialised.as(u32) }!
         defer CoUninitialize()
-        result := ShellExecuteW(nil, nil, text, nil, nil, SW_SHOWNORMAL)
-        on result <= 32 => return SystemError.Failed { code: result.as(u32) }!
+        -- The example exits immediately, so finish shell/DDE activation before
+        -- releasing this thread's COM apartment.
+        state := SHELLEXECUTEINFOW {
+            cbSize : SHELLEXECUTEINFOW.size.as(u32)
+            fMask  : SEE_MASK_NOASYNC | SEE_MASK_FLAG_NO_UI
+            lpFile : text
+            nShow  : SW_SHOWNORMAL
+            ...
+        }
+        on ShellExecuteExW(^state) == 0 => return SystemError.Failed { code: GetLastError() }!
     }
 
     -- Runs a synchronous native open/save/folder picker.
@@ -127,6 +162,55 @@ on "windows" {
             return
         }
         assert empty[0] == 0, "Empty titles must be terminated"
+    }
+
+}
+
+on "windows" {
+
+    test "Windows shell paths resolve dot paths and native separators" {
+        mark := temp_arena.mark()
+        defer temp_arena.restore(mark)
+        current := windows_shell_path(".") else {
+            assert no
+            return
+        }
+        slash := windows_shell_path("./.") else {
+            assert no
+            return
+        }
+        backslash := windows_shell_path(".\\.") else {
+            assert no
+            return
+        }
+        current_text := narrow_text(current, temp_arena) else {
+            assert no
+            return
+        }
+        slash_text := narrow_text(slash, temp_arena) else {
+            assert no
+            return
+        }
+        backslash_text := narrow_text(backslash, temp_arena) else {
+            assert no
+            return
+        }
+        assert is_absolute(current_text), "Shell paths must be absolute"
+        assert current_text == slash_text && current_text == backslash_text,
+            "Dot paths must resolve to the same current directory"
+        for byte in current_text {
+            assert byte^ != 47, "Shell paths must use Windows separators"
+        }
+        unicode := windows_shell_path("C:/界 folder/𐍈.txt") else {
+            assert no
+            return
+        }
+        unicode_text := narrow_text(unicode, temp_arena) else {
+            assert no
+            return
+        }
+        assert unicode_text == "C:\\界 folder\\𐍈.txt",
+            "Shell conversion must retain spaces and Unicode"
     }
 
 }

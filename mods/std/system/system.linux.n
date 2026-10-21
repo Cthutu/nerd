@@ -8,6 +8,15 @@ on "linux" {
 
     use os.linux
 
+    -- Prefixes relative paths so the launcher cannot interpret options or URIs.
+    native_open_path :: fn (path: string) -> void\SystemError {
+        target := on is_absolute(path) {
+            yes   => path
+            else  => $"./{path}"
+        }
+        return native_open(target)
+    }
+
     -- Waits for xdg-open's launch result; the desktop application owns its lifetime.
     native_open :: fn (target: string) -> void\SystemError {
         arguments : [3]^i8 = [c"xdg-open", target.c_string(), nil]

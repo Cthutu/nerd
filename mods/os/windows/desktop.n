@@ -19,6 +19,28 @@ on "windows" {
     pub BIF_EDITBOX          :: 0x0010  -- Allow typed folder paths.
     pub BIF_NEWDIALOGSTYLE   :: 0x0040  -- Resizable folder picker.
 
+    pub SEE_MASK_NOASYNC    :: 0x00000100  -- Complete shell activation.
+    pub SEE_MASK_FLAG_NO_UI :: 0x00000400  -- Return errors to the caller.
+
+    -- Shell launch request; no process handle is requested by default.
+    pub SHELLEXECUTEINFOW :: plex #c {
+        cbSize         u32    -- Structure size.
+        fMask          u32    -- Launch flags.
+        hwnd           ^void  -- Optional owner window.
+        lpVerb         ^u16   -- Optional action verb.
+        lpFile         ^u16   -- Path or URI.
+        lpParameters   ^u16   -- Optional command arguments.
+        lpDirectory    ^u16   -- Optional working directory.
+        nShow          i32    -- Display mode.
+        hInstApp       ^void  -- Legacy result.
+        lpIDList       ^void  -- Optional shell item.
+        lpClass        ^u16   -- Optional association class.
+        hkeyClass      ^void  -- Optional association key.
+        dwHotKey       u32    -- Optional hotkey.
+        hIconOrMonitor ^void  -- Native union slot.
+        hProcess       ^void  -- Optional owned process handle.
+    }
+
     -- Common open/save dialog state; Windows SDK commdlg.h layout (152 bytes).
     pub OPENFILENAMEW :: plex #c {
         lStructSize       u32    -- Structure size.
@@ -69,6 +91,9 @@ on "windows" {
         pub CommDlgExtendedError () -> u32
     }
     ffi "shell32" {
+        -- Launches through the shell with explicit completion flags.
+        pub ShellExecuteExW (state: ^SHELLEXECUTEINFOW) -> i32
+
         -- Opens a path or URI through the desktop shell; >32 means accepted.
         pub ShellExecuteW (owner      : ^void,
                            verb       : ^u16,
@@ -94,6 +119,12 @@ on "windows" {
         pub CoTaskMemFree (memory: ^void)
     }
     ffi "kernel32" {
+        -- Resolves a local path against the process's current directory.
+        pub GetFullPathNameW (path      : ^u16,
+                              capacity  : u32,
+                              output    : ^u16,
+                              file_part : ^^u16) -> u32
+
         -- Converts UTF-16 to UTF-8 or another code page.
         pub WideCharToMultiByte (code_page    : u32,
                                  flags        : u32,

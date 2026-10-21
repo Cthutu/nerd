@@ -45,7 +45,11 @@ application's lifetime. No worker threads or callbacks are hidden in the API.
 Keep returned arena storage alive while using its string.
 
 Windows uses `os.windows` bindings to `GetOpenFileNameW`, `GetSaveFileNameW`,
-`SHBrowseForFolderW` and `ShellExecuteW`. The declarations follow the [Windows SDK common-dialog layout](https://learn.microsoft.com/en-us/windows/win32/api/commdlg/ns-commdlg-openfilenamew).
+`SHBrowseForFolderW` and `ShellExecuteExW`. File/folder activation completes before
+the calling COM apartment is released, so short-lived console programs can launch
+folders reliably. The declarations follow the [Windows SDK common-dialog layout](https://learn.microsoft.com/en-us/windows/win32/api/commdlg/ns-commdlg-openfilenamew).
+Local paths are resolved against the current directory and use absolute native
+Windows separators before shell launching; browser URLs retain their URI spelling.
 Paths convert between UTF-8 and
 UTF-16. COM is initialised as an apartment on the calling thread and balanced
 on return; a thread already initialised as a multithreaded apartment reports
