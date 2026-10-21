@@ -8,7 +8,7 @@ or reading historical results does not itself request execution.
 
 ## Select the current validation scope
 
-Read the latest section of `validation/windows/HANDOFF.md` and the
+Read the latest section of `tests/windows/HANDOFF.md` and the
 user's requested branch/revision. Record the exact starting HEAD and compare it
 with the last tested Windows revision. Historical commit IDs and old branch
 names in evidence are context, not checkout instructions. Read the relevant
@@ -30,7 +30,7 @@ or unsupported checks from passed ones. Linux evidence is not a Windows pass.
   upstream. Do not merge, delete branches, force-push, or overwrite unrelated
   user changes as part of validation. The old experiment is already merged.
 - Read the repository's applicable `AGENTS.md` instructions if any, `README.md`,
-  `validation/windows/README.md`, and the scheduler adoption policy in
+  `tests/windows/README.md`, and the scheduler adoption policy in
   `docs/compiler-profiling.md`.
 - Nerd's normal source-to-binary pipeline invokes LLVM tooling directly:
   `opt`, `llc`, and platform linker/archive tools. **Never add a Clang fallback
@@ -63,8 +63,8 @@ or unsupported checks from passed ones. Linux evidence is not a Windows pass.
    within available permissions, following this machine's instructions. Do not
    silently replace unrelated toolchains, change system policies, or dump the
    entire environment into logs. Record dependency problems and resolutions.
-3. Run `python validation/windows/test_runner.py`, then
-   `python validation/windows/run.py`. Use `py -3` or the PowerShell launcher
+3. Run `python tests/windows/test_runner.py`, then
+   `python tests/windows/run.py`. Use `py -3` or the PowerShell launcher
    if that is how Python is installed. Inspect per-stage logs while it runs.
    Each invocation writes a unique results folder and incremental summaries.
    Read failed logs even if subsequent independent tests pass. A failed build
@@ -78,7 +78,7 @@ or unsupported checks from passed ones. Linux evidence is not a Windows pass.
 5. Within the authorized commit/push scope, publish each coherent tested fix
    to the selected branch as you go. Stage
    only intended changes; include relevant results and update a human-readable
-   `validation/windows/HANDOFF.md`. Review generated artifacts before
+   `tests/windows/HANDOFF.md`. Review generated artifacts before
    staging. Do not commit binaries, objects, PDBs, SDKs, core dumps, or ignored
    scratch folders. Retain useful text logs, JSON, minimal reproductions and
    necessary screenshots. Inspect for credentials or unrelated workplace data;
@@ -110,7 +110,7 @@ or unsupported checks from passed ones. Linux evidence is not a Windows pass.
 
 ## Required return package
 
-Maintain `validation/windows/HANDOFF.md` containing:
+Maintain `tests/windows/HANDOFF.md` containing:
 
 - Date, Windows edition/build and architecture, CPU/core counts, LLVM/compiler
   versions, SDK/CRT/debugger details, start commit and tested final code commit.

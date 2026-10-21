@@ -16,7 +16,7 @@ If the current session has not discovered it, start a new session or tell Codex:
 Codex should run validation, fix failures, keep raw results locally under the
 ignored `results/` directory, and push fixes plus a concise maintained handoff to
 the same branch. Back on Linux, ask Codex to pull that
-branch and read `validation/windows/HANDOFF.md`.
+branch and read `tests/windows/HANDOFF.md`.
 
 The compiler must be built with a recent Clang supporting the repository's C23
 features and `#embed` (Linux evidence used LLVM 22.1.8). Native binary generation
@@ -31,12 +31,12 @@ Missing dependencies must be recorded and resolved, not treated as passing tests
 From the repository root in PowerShell:
 
 ```powershell
-python validation/windows/run.py --list
-python validation/windows/run.py
+python tests/windows/run.py --list
+python tests/windows/run.py
 # Equivalent launcher, if your script execution policy permits it:
-.\validation\windows\run.ps1
+.\tests\windows\run.ps1
 # Focus a rerun; required builds are included automatically:
-python validation/windows/run.py --only front-threads-debug jobs-release
+python tests/windows/run.py --only front-threads-debug jobs-release
 ```
 
 Each invocation creates `results/<UTC>-<unique-id>/` with incremental summaries,
@@ -55,7 +55,7 @@ Library stage names put the compiler configuration last: for example,
 compiler. A focused rerun is:
 
 ```powershell
-python validation/windows/run.py --only nexus-llvm-debug-debug nexus-c-release-release
+python tests/windows/run.py --only nexus-llvm-debug-debug nexus-c-release-release
 ```
 The runner does not install Nerd globally, modify Git, or run `just clean` in
 this checkout. The clean test uses an isolated temporary copy.
@@ -77,8 +77,8 @@ For repeatable desktop evidence, prepare the matrix after building both compiler
 and before benchmarks, then observe it from an interactive Windows terminal:
 
 ```powershell
-python validation/windows/manual.py validation/windows/results/<run> --prepare
-python validation/windows/manual.py validation/windows/results/<run> --observe
+python tests/windows/manual.py tests/windows/results/<run> --prepare
+python tests/windows/manual.py tests/windows/results/<run> --observe
 ```
 
 The helper covers both compilers, debug/release targets, jobs 1/4 and LLVM/C
@@ -92,7 +92,7 @@ editor check in `MANUAL.md`. Windows installation smoke additionally requires
 To verify this harness itself (does not validate Windows compiler behavior):
 
 ```powershell
-python validation/windows/test_runner.py
+python tests/windows/test_runner.py
 ```
 
 ## Adaptive scheduling follow-up (M9–M11)

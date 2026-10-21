@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run bounded, single-thread M0 language probes against explicit checkout modules."""
+"""Run bounded, single-thread language and native-layout probes against explicit checkout modules."""
 import argparse
 import os
 import shlex
@@ -29,13 +29,13 @@ def main():
     env = dict(os.environ, NERD_LIB_PATH=str(ROOT / 'mods'))
     with tempfile.TemporaryDirectory(prefix='nerd-capabilities-') as directory:
         binary = Path(directory) / ('probe.exe' if os.name == 'nt' else 'probe')
-        run(['clang', str(ROOT / 'validation/stdlib/layout.c'), '-o', str(binary)], env)
+        run(['clang', str(ROOT / 'tests/stdlib-capabilities/layout.c'), '-o', str(binary)], env)
         native = run([str(binary)], env)
         if native.stderr:
             raise SystemExit(f'Unexpected native layout diagnostic: {native.stderr}')
         for name, expected in [('capabilities', 'stdlib capabilities: passed'),
                                ('layout', native.stdout.strip())]:
-            source = ROOT / f'validation/stdlib/{name}.n'
+            source = ROOT / f'tests/stdlib-capabilities/{name}.n'
             run([compiler, 'check', str(source)], env)
             for mode in ([], ['--release']):
                 output = binary.with_suffix('.c') if args.cgen else binary

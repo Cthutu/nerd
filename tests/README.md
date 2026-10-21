@@ -27,6 +27,10 @@ describes each regression family.
 - `cgen/`: additional C-specific source probes. `build/test_cgen.py` also
   discovers language programs and selected process/diagnostic command contracts.
 - `install/`, `ffi/`, `mods/`: installation, host-code and imported source fixtures.
+- `stdlib-capabilities/`: executable language/atomic and native-layout probes,
+  included in the default debug/release gates.
+- `windows/`: native Windows matrix runner, portable runner checks, desktop
+  checklist and current handoff. Generated results remain ignored.
 
 The Python fixture harness is distinct from `nerd test`, which executes unit
 tests declared in Nerd sources. Default recipes retain stdlib unit tests,

@@ -1,5 +1,13 @@
 # Windows validation handoff
 
+## Test infrastructure relocation — 21 October 2026
+
+The native runner and this handoff now live under `tests/windows/`; standard-library
+capability/layout probes live under `tests/stdlib-capabilities/`. Use
+`python tests/windows/test_runner.py` and `python tests/windows/run.py --list`
+to check the relocated harness. Test scope and native Windows requirements are
+unchanged. New raw results stay local under ignored `tests/windows/results/`.
+
 ## clean-up branch — 20 October 2026
 
 Validate `clean-up` after pulling its configured upstream. This branch reorganises

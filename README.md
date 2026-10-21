@@ -39,7 +39,7 @@ Historical decisions, reviews and measurements remain in Git history.
 
 Keep source code (`src`, `data`, `syntax`), build/development configuration
 (`build`, `etc`, editor settings), standard-library modules (`mods`), tests and
-validation tools (`tests`, `validation`), examples and learning materials, and
+validation tools (`tests`), examples and learning materials, and
 maintained documentation. Benchmarks and editor integrations support development;
 source provenance and API contracts are maintained documentation.
 

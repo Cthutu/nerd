@@ -42,7 +42,7 @@ def plan(folder: Path) -> list[Stage]:
         if mode == 'release':
             stages.append(Stage('fixtures-release', [python, 'build/test.py', '--nerd', nerd], needs))
         stages.append(Stage('stdlib-capabilities-' + mode,
-                            [python, 'validation/stdlib/check_capabilities.py', '--compiler', nerd], needs))
+                            [python, 'tests/stdlib-capabilities/check_capabilities.py', '--compiler', nerd], needs))
         for backend, flags in [('llvm', []), ('c', ['--cgen'])]:
             for name in ['std_thread_sync', 'raptor']:
                 stages.append(Stage(f'{name.replace("_", "-")}-{backend}-{mode}',

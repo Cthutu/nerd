@@ -1,0 +1,4 @@
+# Generated native results and Python caches stay local.
+results/
+__pycache__/
+*.pyc

@@ -318,7 +318,7 @@ but that is not a substitute for executing the tests on a Windows host.
 
 ## Library capabilities and opt-in integrations
 
-`just test` runs `validation/stdlib/check_capabilities.py` against the checkout's
+`just test` runs `tests/stdlib-capabilities/check_capabilities.py` against the checkout's
 modules. It checks single-thread atomic operations and layout, explicit callback
 context, payload aliasing and graph-storage building blocks. Native C layout
 comparison and debug/release execution are part of the probe; `--cgen` selects

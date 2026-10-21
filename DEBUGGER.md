@@ -34,7 +34,7 @@ A previous host/revision's pass does not establish current native validation.
 
 - Validate the complete Windows VS Code experience for the requested revision:
   breakpoints, stepping, call stacks, locals, watches and active-session artefact
-  lifetime. Use the [Windows workflow](validation/windows/README.md) and record
+  lifetime. Use the [Windows workflow](tests/windows/README.md) and record
   user-observed behaviour separately from automated probes.
 - Keep the launch schema platform-aware if another native adapter is introduced.
 - Extend general pointer dereference/indexing only with explicit runtime-layout

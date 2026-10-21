@@ -55,7 +55,7 @@ completed plans remain in Git history.
   workloads that report task granularity and allocations. Keep compiler defaults
   at one job until the [adoption gates](docs/compiler-profiling.md#scheduler-adoption-policy) pass.
 - Complete sustained resource-growth checks and remaining interactive/platform
-  observations. Follow the [Windows handoff](validation/windows/HANDOFF.md);
+  observations. Follow the [Windows handoff](tests/windows/HANDOFF.md);
   validate native Windows, Linux and WSL independently. macOS is a separate port.
 - Check runnable tutorials/examples for results, ownership, errors and shutdown
   under LLVM/C and debug/release builds, including installation and editor support.
