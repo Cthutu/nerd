@@ -426,20 +426,22 @@ tuple into two variables. Each variable receives the corresponding field.
 An explicit tuple type works on a variable too:
 `pair: (i32, string) = (42, "answer")`.
 
-Assignment copies a tuple value. You can replace the whole value of a tuple
-variable:
+Assignment copies a tuple value. You can change individual fields of a tuple
+variable or replace its whole value:
 
 ```nerd
 main :: fn () -> i32 {
     original := (20, 22)
     copy := original
-    copy = (10, copy.1)
+    copy.0 = 10
     return original.0 + copy.0 + copy.1
 }
 ```
 
-This returns `52`. Replacing `copy` leaves `original` unchanged. The compiler
-currently rejects direct tuple field assignment such as `copy.0 = 10`.
+This returns `52`. Changing `copy` leaves `original` unchanged. Compound
+assignment, such as `copy.0 += 1`, also works. Nested tuple fields follow the
+same rule: the storage containing them must be mutable. Fields of a tuple
+bound with `::` or passed as a by-value parameter cannot be assigned to.
 
 Use `_` in a destructuring declaration to discard a field you do not need:
 
@@ -491,8 +493,7 @@ the destinations, so a tuple assignment can swap values. Constant destructuring
 uses `::`; typed constant destructuring uses a colon before the source value,
 for example `(left, right): (i32, i32) : (20, 22)`.
 
-A plex can be destructured by field name. This example shows syntax accepted
-by `nerd check`; the current LLVM backend cannot yet lower plex destructuring:
+A plex can be destructured by field name:
 
 ```nerd
 Point :: plex { x i32 y i32 }
@@ -504,9 +505,9 @@ main :: fn () -> i32 {
 }
 ```
 
-The intended result is `42`, but `nerd run` currently reports an LLVM lowering
-failure for this form. Use `x := point.x` and `y := point.y` to extract the
-fields in executable code until that backend limitation is resolved.
+This returns `42`. To give the extracted values different names, write
+`{ x: left, y: right } := point` and use `left` and `right`. Tuple and plex
+destructuring patterns can also nest. The source expression is evaluated once.
 
 Tuple positions and plex field names must match the source shape. `_` discards
 an unwanted tuple position. Destructuring a value does not make the new names

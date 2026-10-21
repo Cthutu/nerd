@@ -94,10 +94,9 @@ This prints `point=(3, 4)`. The `show` method can itself use interpolation;
 the outer interpolation incorporates that text into its own result.
 There is no need to print inside `show` or manually call it at the insertion.
 
-Built-in formatting and a generic trait constraint are distinct in the current
-compiler, as discussed in Chapter 13. For example, formatting an integer here
-works even though the compiler currently rejects an integer argument to a
-generic function constrained by `Display`.
+Built-in formatting types also satisfy the core `Display` trait, so they can
+be passed to generic functions constrained by `Display`, as in Chapter 13.
+For example, `describe(42)` uses the same integer representation as interpolation.
 
 ## Compile-time interpolation
 

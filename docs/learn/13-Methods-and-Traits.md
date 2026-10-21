@@ -122,9 +122,8 @@ This returns `42`. `[T]` declares the implementation's parameter;
 `Cell[i32]`, and the methods use `i32` wherever they refer to `T`.
 The parameter is available in member signatures and bodies.
 
-The example calls `init` through the concrete alias `IntCell`. The current
-compiler rejects the direct associated call `Cell[i32].init(40)`; using the
-alias selects the same concrete type and works around that limitation.
+The example calls `init` through the concrete alias `IntCell`. You can also
+write `Cell[i32].init(40)` directly; both select the same concrete type.
 
 A method can also declare its own type parameters, independently of whether
 its receiver type is generic:
@@ -418,10 +417,8 @@ matching `Default` implementation, a typed local uses the zero initialization
 rules already described there. This trait does not automatically turn every
 zero-initialized field or plex literal into a call to `default()`.
 
-Compiler note: implicit `Default` initialization currently calls `default()`
-twice. An explicit call such as `settings := Default[Settings].default()`
-runs it once. The example's implementation has no side effects, but this
-compiler bug matters if default construction allocates or changes state.
+Implicit initialization calls `default()` once for the variable, just as an
+explicit call such as `settings := Default[Settings].default()` does.
 
 ## Trait requirements in reusable functions
 
@@ -452,11 +449,12 @@ where T: Display {
 main :: fn () {
     prn(describe(Status.Ready))
     prn(describe(Label { text: "label" }))
+    prn(describe(42))
 }
 ```
 
-This prints `ready` followed by `label`. As before, `[T]` declares the
-function's type parameter. The new `where T: Display` requires the chosen
+This prints `ready`, `label`, and `42` on separate lines. As before, `[T]`
+declares the function's type parameter. The new `where T: Display` requires the chosen
 type to support `Display`, so the body can call `value.show()`.
 The compiler checks the requirement for each concrete call. It can infer `T`
 from the argument, or you can supply it explicitly, as in
@@ -467,11 +465,12 @@ caller passing a displayable type does not replace that declaration. Generic
 implementation blocks can use `where` constraints in the same way when their
 methods need trait operations on a type parameter.
 
-The current compiler distinguishes built-in formatting from an explicit
-`Display` implementation when checking these constraints. For example,
-integers can be formatted by the runtime, but `describe(42)` is currently
-rejected for lacking a `Display` implementation. The example uses two custom
-types with explicit implementations.
+Built-in formatting types also satisfy the core `Display` trait. For example,
+`describe(42)` returns `"42"`. Booleans, integer types, `f32`, `f64`, and strings
+support this, as do tuples, arrays, slices, and dynamic arrays containing
+built-in displayable values. Their `.show()` uses the same representation as
+string interpolation, covered in Chapter 14. Aggregates containing custom
+types do not automatically gain `Display` through this rule.
 
 ### `Iterator[Item]`: producing optional items
 

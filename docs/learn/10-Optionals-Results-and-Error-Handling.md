@@ -189,12 +189,25 @@ Placement matters: prefix `!value` checks failure, while postfix `error!`
 constructs an error. Prefix `!` on an ordinary boolean remains boolean
 negation, as in earlier chapters.
 
-The current compiler does not yet accept optionals and results everywhere a
-`bool` is required. Direct short-form `on` and prefix `!` accept them, but
-`&&`, `||`, condition chains, guards, and boolean parameters or assignments
-require actual `bool` values. `!!outcome` converts the truthiness test into a
-`bool`: the first `!` tests absence or failure, and the second negates that
-test. For example, combine two outcomes with `!!first && !!second`.
+Optionals and results can be used directly in short-form `on`, condition
+chains, pattern guards, and the logical operators `&&`, `||`, and prefix `!`.
+Logical operators return `bool`; `&&` and `||` skip the right operand when
+the left operand determines the answer. For example, `first && second` tests
+whether both outcomes are present or successful, without extracting them.
+
+```nerd
+main :: fn () -> i32 {
+    present: ?bool = no
+    succeeded: bool\string = no
+    return on present && succeeded => 42 else 0
+}
+```
+
+This returns `42`: both wrappers test true even though their payloads are `no`.
+
+Boolean parameters and assignments still require actual `bool` values.
+`!!outcome` converts the truthiness test into a `bool`: the first `!` tests
+absence or failure, and the second negates that test.
 Condition-style and C-style `for` loops also accept optionals and results
 directly, testing presence or success; Chapter 11 demonstrates these forms.
 

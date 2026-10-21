@@ -59,7 +59,7 @@ Several features give common C patterns direct language support:
   failure propagation make these outcomes part of ordinary control flow.
   Alongside booleans, these types have truthiness: presence or success is true,
   while absence or failure is false, regardless of the contained value.
-  Chapter 10 explains their use in conditions and current compiler limitations.
+  Chapter 10 explains their use in conditions and logical expressions.
 - **Scoped cleanup.** `defer` runs cleanup when a scope exits. `undo` runs
   cleanup on failure, helping unwind partially completed resource acquisition.
   Cleanup can stay beside the operation that makes it necessary.

@@ -143,9 +143,11 @@ without a cast: an untyped integer such as `2` can be used where an integer or
 a float is required. This also applies through bindings, as in `float_answer`
 above; a concrete typed integer still requires an explicit cast to a float.
 
-Digit separators are allowed, as in `86_400.0`. Nerd currently recognises decimal
-floating-point literals; C-style exponent notation such as `1e3` is not
-supported.
+Digit separators are allowed, as in `86_400.0`. Decimal scientific notation is
+also supported: `1e3`, `1.0e3`, `1e-3`, and `1E+3` are floating-point literals.
+Even without a decimal point, an exponent makes the literal a float. These
+literals remain untyped until context selects `f32` or `f64`. An exponent needs
+digits after its optional sign. Hexadecimal `0x1e3` remains an integer literal.
 
 Boolean literals are `yes` and `no`, both with the concrete type `bool`.
 The C spellings `true` and `false` are not predefined boolean values:
@@ -158,7 +160,7 @@ disabled : bool : no
 Among these primitive types, only `bool` has truthiness: `yes` is true and `no`
 is false. Integers do not implicitly act as truth values. Use a comparison such
 as `count != 0` to produce a boolean. Optional and result types also have
-truthiness; Chapter 10 covers them and where the compiler accepts them.
+truthiness; Chapter 10 explains how to use it.
 
 ## Arithmetic expressions
 

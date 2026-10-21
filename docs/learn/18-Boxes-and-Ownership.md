@@ -102,13 +102,13 @@ borrowed lifetimes for you.
 ## Allocating several elements
 
 `box[T](count)` allocates a contiguous sequence. `.count` gives its element
-count; `.data` points to the first element. Convert the pair to a slice to
-work with the elements:
+count; `.data` points to the first element. A box implicitly converts to a
+slice when the expected type is `[]T`:
 
 ```nerd
 main :: fn () -> i32 {
     numbers := box[i32](3)
-    view := numbers.data.as([]i32, numbers.count)
+    view: []i32 = numbers
     view[0] = 10
     view[1] = 12
     view[2] = 20
@@ -116,9 +116,17 @@ main :: fn () -> i32 {
 }
 ```
 
-This returns `42`. The slice borrows the box's allocation. A box has no
-`push` operation and does not grow; use a dynamic array when the live element
-count needs to change.
+This returns `42`. The slice borrows the box's allocation without moving
+ownership. The same conversion works when passing a box to a `[]T` parameter.
+The element type must match exactly. A nil box produces an empty slice with a
+null data pointer. You can still construct the view explicitly with
+`numbers.data.as([]i32, numbers.count)`.
+
+Borrowing does not extend the allocation's lifetime. Moving the box to another
+owner leaves existing views valid until that owner releases the allocation;
+returning a view into a local box leaves it dangling after automatic cleanup.
+A box has no `push` operation and does not grow; use a dynamic array when the
+live element count needs to change.
 
 ## Releasing storage early
 

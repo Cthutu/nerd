@@ -180,12 +180,9 @@ cell. The literals omit their type names because the declarations supply them.
 
 Supply all type arguments when naming a concrete generic type. `Cell` alone
 is a template, rather than a concrete storage type. A type argument can itself
-be a concrete generic type: `NestedCell :: Cell[IntCell]` defines a cell whose
-value is an integer cell.
-
-Compiler note: use an alias such as `IntCell` for the inner application.
-Directly writing `Cell[Cell[i32]]` currently resolves incorrectly; the alias
-form selects the intended nested type.
+be a concrete generic type: `NestedCell :: Cell[Cell[i32]]` defines a cell whose
+value is an integer cell. `Cell[IntCell]` names the same type; the inner alias
+is optional.
 
 The usual plex rules still apply, including field access, initialization,
 layout, and copying. Generic type application does not allocate storage by
@@ -225,11 +222,9 @@ Both parameters must be determined for each call. Supplying only
 `make_pair[i32](...)` is an error; it does not ask the compiler to infer just
 the remaining parameter.
 
-Compiler note: the current parser also rejects calls with several explicit
-type arguments, such as `make_pair[i32, string](21, "answer")`. Use inference
-for this function, as the example does. Single explicit arguments, such as
-`identity[i64](42)`, work; generic type applications such as
-`Pair[i32, string]` also accept multiple arguments.
+You can supply both arguments explicitly with
+`make_pair[i32, string](21, "answer")`. Type arguments can themselves be
+generic applications, such as `Cell[i32]`.
 
 The names `A` and `B` belong to their own declarations. The function's type
 parameters are passed as arguments to `Pair`; they do not refer to bindings
