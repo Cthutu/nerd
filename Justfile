@@ -154,8 +154,8 @@ build-example example: (build-release "nerd")
     mkdir -p _bin/examples
     NERD_LIB_PATH="{{justfile_directory()}}/mods" ./_bin/nerd{{exe_suffix}} build -r -o "_bin/examples/{{example}}{{exe_suffix}}" "examples/{{example}}/{{if example == "text-adventure" { "quill" } else { example }}}.n"
 
-run-example example: (build-example example)
-    cd "examples/{{example}}" && "../../_bin/examples/{{example}}{{exe_suffix}}"
+run-example example *args: (build-example example)
+    cd "examples/{{example}}" && "../../_bin/examples/{{example}}{{exe_suffix}}" {{args}}
 
 alias be := build-example
 
