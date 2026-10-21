@@ -239,6 +239,15 @@ from reaching the call, it resolves the method from the receiver's retained type
 using the same matching as hover and completion. Existing branches are still
 excluded while the earlier error is present.
 
+`Stub missing trait members` inserts method stubs into the selected `impl`.
+It reads signatures from the trait's defining module, including implicitly
+imported core traits such as `Display`. The action remains available when a
+missing-member error prevents retention of semantic declaration/type facts:
+local syntax and public traits from loaded unqualified imports provide the
+fallback. Module aliases alone do not expose bare trait names; ambiguous
+fallback matches are declined. Existing members are compared by name across
+module lexers so they are not generated again.
+
 For unused locals, the server offers both a rename quick fix that toggles the
 leading underscore convention and a removal quick fix for simple local
 declaration lines. For mistaken function definitions written as `name : fn`,

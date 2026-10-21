@@ -7007,3 +7007,588 @@ main :: fn () {
     "result": null
   }
 ]
+
+¬
+Sha1Hash :: plex {
+    hash [20]u8
+}
+impl Display for Sha1Hash {
+}
+¬
+[
+  {
+    "jsonrpc": "2.0",
+    "id": 2,
+    "method": "textDocument/codeAction",
+    "params": {
+      "textDocument": {
+        "uri": "file:///test.n"
+      },
+      "range": {
+        "start": {
+          "line": 3,
+          "character": 0
+        },
+        "end": {
+          "line": 3,
+          "character": 0
+        }
+      },
+      "context": {
+        "diagnostics": []
+      }
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "id": 3,
+    "method": "textDocument/codeAction",
+    "params": {
+      "textDocument": {
+        "uri": "file:///test.n"
+      },
+      "range": {
+        "start": {
+          "line": 4,
+          "character": 0
+        },
+        "end": {
+          "line": 4,
+          "character": 0
+        }
+      },
+      "context": {
+        "diagnostics": []
+      }
+    }
+  }
+]
+¬
+[
+  {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "result": {
+      "serverInfo": {
+        "name": "Nerd LSP",
+        "version": "0.1.0"
+      },
+      "capabilities": {
+        "textDocumentSync": {
+          "openClose": true,
+          "change": 2
+        },
+        "hoverProvider": true,
+        "definitionProvider": true,
+        "documentSymbolProvider": true,
+        "completionProvider": {
+          "triggerCharacters": [
+            ".",
+            "{"
+          ],
+          "resolveProvider": false
+        },
+        "signatureHelpProvider": {
+          "triggerCharacters": [
+            "(",
+            ","
+          ],
+          "retriggerCharacters": [
+            ",",
+            "\n"
+          ]
+        },
+        "semanticTokensProvider": {
+          "legend": {
+            "tokenTypes": [
+              "variable",
+              "function",
+              "keyword",
+              "number",
+              "operator",
+              "string"
+            ],
+            "tokenModifiers": [
+              "unnecessary"
+            ]
+          },
+          "full": true
+        }
+      }
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "textDocument/publishDiagnostics",
+    "params": {
+      "uri": "file:///test.n",
+      "diagnostics": [
+        {
+          "range": {
+            "start": {
+              "line": 3,
+              "character": 0
+            },
+            "end": {
+              "line": 3,
+              "character": 4
+            }
+          },
+          "severity": 1,
+          "source": "nerd",
+          "message": "Trait implementation is missing required member",
+          "relatedInformation": [
+            {
+              "location": {
+                "uri": "__REPO_URI__/mods/core.n",
+                "range": {
+                  "start": {
+                    "line": 197,
+                    "character": 4
+                  },
+                  "end": {
+                    "line": 197,
+                    "character": 11
+                  }
+                }
+              },
+              "message": "Type `Display` is defined here"
+            },
+            {
+              "location": {
+                "uri": "file:///test.n",
+                "range": {
+                  "start": {
+                    "line": 3,
+                    "character": 0
+                  },
+                  "end": {
+                    "line": 3,
+                    "character": 4
+                  }
+                }
+              },
+              "message": "note: Missing member: `show`"
+            },
+            {
+              "location": {
+                "uri": "file:///test.n",
+                "range": {
+                  "start": {
+                    "line": 3,
+                    "character": 0
+                  },
+                  "end": {
+                    "line": 3,
+                    "character": 4
+                  }
+                }
+              },
+              "message": "help: Add the missing member to this `impl` block."
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "id": 2,
+    "result": [
+      {
+        "title": "Stub missing trait members",
+        "kind": "quickfix",
+        "edit": {
+          "changes": {
+            "file:///test.n": [
+              {
+                "range": {
+                  "start": {
+                    "line": 4,
+                    "character": 0
+                  },
+                  "end": {
+                    "line": 4,
+                    "character": 0
+                  }
+                },
+                "newText": "    show :: fn (_self: Self) -> string {\n        result: string\n        return result\n    }\n"
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  {
+    "jsonrpc": "2.0",
+    "id": 3,
+    "result": [
+      {
+        "title": "Stub missing trait members",
+        "kind": "quickfix",
+        "edit": {
+          "changes": {
+            "file:///test.n": [
+              {
+                "range": {
+                  "start": {
+                    "line": 4,
+                    "character": 0
+                  },
+                  "end": {
+                    "line": 4,
+                    "character": 0
+                  }
+                },
+                "newText": "    show :: fn (_self: Self) -> string {\n        result: string\n        return result\n    }\n"
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  {
+    "jsonrpc": "2.0",
+    "id": 999,
+    "result": null
+  }
+]
+
+¬
+-- lsp-uri: __REPO_URI__/tests/lsp/trait-stub-imports/client.n
+use contracts
+Hash :: plex { bytes [20]u8 }
+impl Printable for Hash {
+    reset :: fn (_self: Self) {}
+}
+¬
+[
+  {
+    "jsonrpc": "2.0",
+    "id": 2,
+    "method": "textDocument/codeAction",
+    "params": {
+      "textDocument": {
+        "uri": "__REPO_URI__/tests/lsp/trait-stub-imports/client.n"
+      },
+      "range": {
+        "start": {
+          "line": 2,
+          "character": 0
+        },
+        "end": {
+          "line": 2,
+          "character": 0
+        }
+      },
+      "context": {
+        "diagnostics": []
+      }
+    }
+  }
+]
+¬
+[
+  {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "result": {
+      "serverInfo": {
+        "name": "Nerd LSP",
+        "version": "0.1.0"
+      },
+      "capabilities": {
+        "textDocumentSync": {
+          "openClose": true,
+          "change": 2
+        },
+        "hoverProvider": true,
+        "definitionProvider": true,
+        "documentSymbolProvider": true,
+        "completionProvider": {
+          "triggerCharacters": [
+            ".",
+            "{"
+          ],
+          "resolveProvider": false
+        },
+        "signatureHelpProvider": {
+          "triggerCharacters": [
+            "(",
+            ","
+          ],
+          "retriggerCharacters": [
+            ",",
+            "\n"
+          ]
+        },
+        "semanticTokensProvider": {
+          "legend": {
+            "tokenTypes": [
+              "variable",
+              "function",
+              "keyword",
+              "number",
+              "operator",
+              "string"
+            ],
+            "tokenModifiers": [
+              "unnecessary"
+            ]
+          },
+          "full": true
+        }
+      }
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "textDocument/publishDiagnostics",
+    "params": {
+      "uri": "__REPO_URI__/tests/lsp/trait-stub-imports/client.n",
+      "diagnostics": [
+        {
+          "range": {
+            "start": {
+              "line": 2,
+              "character": 0
+            },
+            "end": {
+              "line": 2,
+              "character": 4
+            }
+          },
+          "severity": 1,
+          "source": "nerd",
+          "message": "Trait implementation is missing required member",
+          "relatedInformation": [
+            {
+              "location": {
+                "uri": "__REPO_URI__/tests/lsp/trait-stub-imports/contracts/mod.n",
+                "range": {
+                  "start": {
+                    "line": 0,
+                    "character": 4
+                  },
+                  "end": {
+                    "line": 0,
+                    "character": 13
+                  }
+                }
+              },
+              "message": "Type `Printable` is defined here"
+            },
+            {
+              "location": {
+                "uri": "__REPO_URI__/tests/lsp/trait-stub-imports/client.n",
+                "range": {
+                  "start": {
+                    "line": 2,
+                    "character": 0
+                  },
+                  "end": {
+                    "line": 2,
+                    "character": 4
+                  }
+                }
+              },
+              "message": "note: Missing member: `show`"
+            },
+            {
+              "location": {
+                "uri": "__REPO_URI__/tests/lsp/trait-stub-imports/client.n",
+                "range": {
+                  "start": {
+                    "line": 2,
+                    "character": 0
+                  },
+                  "end": {
+                    "line": 2,
+                    "character": 4
+                  }
+                }
+              },
+              "message": "help: Add the missing member to this `impl` block."
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "id": 2,
+    "result": [
+      {
+        "title": "Stub missing trait members",
+        "kind": "quickfix",
+        "edit": {
+          "changes": {
+            "__REPO_URI__/tests/lsp/trait-stub-imports/client.n": [
+              {
+                "range": {
+                  "start": {
+                    "line": 4,
+                    "character": 0
+                  },
+                  "end": {
+                    "line": 4,
+                    "character": 0
+                  }
+                },
+                "newText": "\n    show :: fn (_self: Self) -> string {\n        result: string\n        return result\n    }\n"
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  {
+    "jsonrpc": "2.0",
+    "id": 999,
+    "result": null
+  }
+]
+
+¬
+-- lsp-uri: __REPO_URI__/tests/lsp/trait-stub-imports/client.n
+contracts :: use contracts
+Hash :: plex { bytes [20]u8 }
+impl Printable for Hash {
+}
+¬
+[
+  {
+    "jsonrpc": "2.0",
+    "id": 2,
+    "method": "textDocument/codeAction",
+    "params": {
+      "textDocument": {
+        "uri": "__REPO_URI__/tests/lsp/trait-stub-imports/client.n"
+      },
+      "range": {
+        "start": {
+          "line": 2,
+          "character": 0
+        },
+        "end": {
+          "line": 2,
+          "character": 0
+        }
+      },
+      "context": {
+        "diagnostics": []
+      }
+    }
+  }
+]
+¬
+[
+  {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "result": {
+      "serverInfo": {
+        "name": "Nerd LSP",
+        "version": "0.1.0"
+      },
+      "capabilities": {
+        "textDocumentSync": {
+          "openClose": true,
+          "change": 2
+        },
+        "hoverProvider": true,
+        "definitionProvider": true,
+        "documentSymbolProvider": true,
+        "completionProvider": {
+          "triggerCharacters": [
+            ".",
+            "{"
+          ],
+          "resolveProvider": false
+        },
+        "signatureHelpProvider": {
+          "triggerCharacters": [
+            "(",
+            ","
+          ],
+          "retriggerCharacters": [
+            ",",
+            "\n"
+          ]
+        },
+        "semanticTokensProvider": {
+          "legend": {
+            "tokenTypes": [
+              "variable",
+              "function",
+              "keyword",
+              "number",
+              "operator",
+              "string"
+            ],
+            "tokenModifiers": [
+              "unnecessary"
+            ]
+          },
+          "full": true
+        }
+      }
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "textDocument/publishDiagnostics",
+    "params": {
+      "uri": "__REPO_URI__/tests/lsp/trait-stub-imports/client.n",
+      "diagnostics": [
+        {
+          "range": {
+            "start": {
+              "line": 2,
+              "character": 0
+            },
+            "end": {
+              "line": 2,
+              "character": 4
+            }
+          },
+          "severity": 1,
+          "source": "nerd",
+          "message": "Type mismatch: expected `known trait`, found `Printable`",
+          "relatedInformation": [
+            {
+              "location": {
+                "uri": "__REPO_URI__/tests/lsp/trait-stub-imports/client.n",
+                "range": {
+                  "start": {
+                    "line": 2,
+                    "character": 0
+                  },
+                  "end": {
+                    "line": 2,
+                    "character": 4
+                  }
+                }
+              },
+              "message": "help: Change the expression or annotation so both sides use the same type."
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "id": 2,
+    "result": []
+  },
+  {
+    "jsonrpc": "2.0",
+    "id": 999,
+    "result": null
+  }
+]

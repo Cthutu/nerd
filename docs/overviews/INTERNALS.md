@@ -369,6 +369,14 @@ established at the cursor. Unused-import diagnostics require complete semantic
 analysis, since incomplete reference information cannot establish that an import
 is unused.
 
+Trait-member stub actions require syntax rather than complete type facts.
+Missing-member validation can fail before root declarations are retained, so
+trait lookup falls back to checked public exports of loaded unqualified imports
+and implicit core. Imported declaration chains are followed to the owning
+module before reading method signatures. Stub rendering uses that module's AST
+and lexer; existing implementation members are compared by text rather than
+module-local symbol handles. No imported syntax or semantic tables are mutated.
+
 Plex literal completion uses the literal's semantic type before falling back to
 an explicit type name in source. This supports contextual `{ ... }` and
 `^{ ... }` initializers, including nested imported records. Sema records their

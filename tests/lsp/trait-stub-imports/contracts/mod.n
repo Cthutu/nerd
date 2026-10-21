@@ -1,0 +1,4 @@
+pub Printable :: trait {
+    show :: fn (self: Self) -> string
+    reset :: fn (self: Self)
+}

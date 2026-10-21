@@ -626,7 +626,9 @@ internal void error_normal_render(const ErrorInfo* error_info)
         const ErrorDefinition* def  = &error_info->definitions[i];
         u32                    line = 0, column = 0;
         lex_offset_to_line_col(def->source, def->span.start, &line, &column);
-        eprn("note: " STRINGP " (" STRINGP ":%u:%u)",
+        eprn("%snote:%s " STRINGP " (" STRINGP ":%u:%u)",
+             ANSI_BOLD_CYAN,
+             ANSI_RESET,
              STRINGV(def->message),
              STRINGV(def->source.source_path),
              line + 1,

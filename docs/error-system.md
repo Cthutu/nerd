@@ -147,6 +147,11 @@ The same `ErrorInfo` can be rendered in three modes:
 - `ERROR_RENDER_DIAGNOSTICS`
   JSON diagnostics consumed by the LSP path.
 
+Normal terminal output uses bold cyan for every `note:` prefix, including
+notes that point to a definition in another source file, and for `help:`
+prefixes. Definition locations keep their file, line and column after the
+message. Structured JSON and LSP diagnostics retain the same uncoloured data.
+
 This is the key architectural choice: the structured error is the source of
 truth, and each consumer gets a different projection of it.
 Diagnostics for expanded folder modules carry source-fragment information so

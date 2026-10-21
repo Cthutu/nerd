@@ -2756,8 +2756,9 @@ lsp_code_action_missing_imported_ast_plex_fields(Arena*             arena,
 }
 
 internal bool lsp_code_action_impl_has_member(const Ast*     ast,
+                                              const Lexer*   lexer,
                                               const AstNode* impl_body,
-                                              u32            symbol)
+                                              string         name)
 {
     if (impl_body->kind != AK_Block) {
         return false;
@@ -2766,7 +2767,7 @@ internal bool lsp_code_action_impl_has_member(const Ast*     ast,
     for (u32 i = impl_body->a; i < impl_body->b; ++i) {
         const AstNode* member = &ast->nodes[i];
         if (ast_node_is_binding_like(member) &&
-            ast_get_symbol(member) == symbol) {
+            string_eq(lex_symbol(lexer, ast_get_symbol(member)), name)) {
             return true;
         }
     }
@@ -2821,10 +2822,51 @@ internal u32 lsp_code_action_find_trait_impl_at_offset(
     return best_node;
 }
 
+// Only unqualified uses contribute bare trait names. A module alias alone does
+// not make its exports visible, and transitive/private declarations stay
+// hidden.
+internal bool lsp_code_action_trait_module_visible(Arena*             arena,
+                                                   const LspDocument* doc,
+                                                   string module_name)
+{
+    if (string_eq_cstr(module_name, "core")) {
+        return true;
+    }
+    const Ast*   ast   = &doc->front_end.ast;
+    const Lexer* lexer = &doc->front_end.lexer;
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (node->kind != AK_Use || node->a >= array_count(ast->nodes)) {
+            continue;
+        }
+        bool bound = false;
+        for (u32 j = 0; j < array_count(ast->nodes); ++j) {
+            if (ast_node_is_binding_like(&ast->nodes[j]) &&
+                ast->nodes[j].b == i) {
+                bound = true;
+                break;
+            }
+        }
+        const AstNode* path_node = &ast->nodes[node->a];
+        if (bound || path_node->kind != AK_ModRef ||
+            path_node->a >= array_count(ast->module_paths)) {
+            continue;
+        }
+        cstr path = module_path_to_qualified_name(
+            arena, lexer, ast, &ast->module_paths[path_node->a]);
+        if (path && string_eq(s(path), module_name)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 internal bool lsp_code_action_trait_node_for_impl(const LspDocument* doc,
                                                   const AstImplInfo* impl,
+                                                  LspDocument* out_trait_doc,
                                                   u32* out_trait_node_index)
 {
+    *out_trait_doc   = *doc;
     const Ast*  ast  = &doc->front_end.ast;
     const Sema* sema = &doc->front_end.sema;
     if (impl->trait_type_node_index >= array_count(ast->nodes)) {
@@ -2855,15 +2897,73 @@ internal bool lsp_code_action_trait_node_for_impl(const LspDocument* doc,
         decl_index = lsp_code_action_find_decl(sema, trait_type->a);
     }
 
-    const SemaDecl* decl = NULL;
-    if (!lsp_sema_decl(sema, decl_index, &decl) || decl->kind != SK_Trait ||
-        decl->import_module_index != sema_no_decl() ||
-        decl->value_node_index >= array_count(ast->nodes)) {
-        return false;
+    // A missing-member diagnostic can precede retention of root declaration
+    // facts. Loaded modules still own checked public trait declarations.
+    if (decl_index == sema_no_decl() && trait_type->kind == AK_SymbolRef) {
+        Arena temp = {0};
+        arena_init(&temp);
+        string name  = lex_symbol(&doc->front_end.lexer, trait_type->a);
+        bool   found = false;
+        for (u32 i = 0; i < array_count(doc->program.modules); ++i) {
+            LspModuleView module = {0};
+            if (!lsp_program_module_view(&doc->program, i, &module) ||
+                !lsp_code_action_trait_module_visible(
+                    &temp, doc, module.info->qualified_name)) {
+                continue;
+            }
+            for (u32 j = 0; j < lsp_module_export_count(&module); ++j) {
+                const SemaDecl* decl      = NULL;
+                u32             candidate = sema_no_decl();
+                if (!lsp_module_export_decl(&module, j, &decl, &candidate) ||
+                    decl->kind != SK_Trait ||
+                    !string_eq(lex_symbol(module.lexer, decl->symbol_handle),
+                               name)) {
+                    continue;
+                }
+                if (found) {
+                    arena_done(&temp);
+                    return false;
+                }
+                found                          = true;
+                decl_index                     = candidate;
+                out_trait_doc->source          = module.lexer->source.source;
+                out_trait_doc->front_end.lexer = *module.lexer;
+                out_trait_doc->front_end.ast   = *module.ast;
+                out_trait_doc->front_end.sema  = *module.sema;
+            }
+        }
+        arena_done(&temp);
     }
 
-    *out_trait_node_index = decl->value_node_index;
-    return true;
+    // Declaration indices and symbol handles belong to their defining module.
+    // Follow imports (including re-exports and implicit core) before reading
+    // AST.
+    for (u32 depth = 0; depth <= array_count(doc->program.modules); ++depth) {
+        const SemaDecl* decl = NULL;
+        if (!lsp_sema_decl(&out_trait_doc->front_end.sema, decl_index, &decl) ||
+            decl->kind != SK_Trait) {
+            return false;
+        }
+        if (decl->import_module_index == sema_no_decl()) {
+            if (decl->value_node_index >=
+                array_count(out_trait_doc->front_end.ast.nodes)) {
+                return false;
+            }
+            *out_trait_node_index = decl->value_node_index;
+            return true;
+        }
+        LspModuleView module = {0};
+        if (!lsp_program_module_view(
+                &doc->program, decl->import_module_index, &module)) {
+            return false;
+        }
+        decl_index                     = decl->import_decl_index;
+        out_trait_doc->source          = module.lexer->source.source;
+        out_trait_doc->front_end.lexer = *module.lexer;
+        out_trait_doc->front_end.ast   = *module.ast;
+        out_trait_doc->front_end.sema  = *module.sema;
+    }
+    return false;
 }
 
 internal void lsp_code_action_append_param_stub_name(Arena*          arena,
@@ -2980,23 +3080,27 @@ lsp_code_action_missing_trait_impl_members(Arena*             arena,
         return false;
     }
 
-    u32 trait_node_index = U32_MAX;
-    if (!lsp_code_action_trait_node_for_impl(doc, impl, &trait_node_index)) {
+    LspDocument trait_doc        = {0};
+    u32         trait_node_index = U32_MAX;
+    if (!lsp_code_action_trait_node_for_impl(
+            doc, impl, &trait_doc, &trait_node_index)) {
         return false;
     }
 
-    const AstNode* trait_node = &ast->nodes[trait_node_index];
+    const Ast*     trait_ast   = &trait_doc.front_end.ast;
+    const Lexer*   trait_lexer = &trait_doc.front_end.lexer;
+    const AstNode* trait_node  = &trait_ast->nodes[trait_node_index];
     if (trait_node->kind != AK_Trait ||
-        trait_node->a >= array_count(ast->trait_infos)) {
+        trait_node->a >= array_count(trait_ast->trait_infos)) {
         return false;
     }
 
-    const AstTraitInfo* trait = &ast->trait_infos[trait_node->a];
-    if (trait->body_node_index >= array_count(ast->nodes)) {
+    const AstTraitInfo* trait = &trait_ast->trait_infos[trait_node->a];
+    if (trait->body_node_index >= array_count(trait_ast->nodes)) {
         return false;
     }
 
-    const AstNode* trait_body = &ast->nodes[trait->body_node_index];
+    const AstNode* trait_body = &trait_ast->nodes[trait->body_node_index];
     if (trait_body->kind != AK_Block) {
         return false;
     }
@@ -3025,13 +3129,16 @@ lsp_code_action_missing_trait_impl_members(Arena*             arena,
 
     u32 missing_count = 0;
     for (u32 i = trait_body->a; i < trait_body->b; ++i) {
-        const AstNode* required = &ast->nodes[i];
+        const AstNode* required = &trait_ast->nodes[i];
         if (required->kind != AK_Bind) {
             continue;
         }
 
         if (lsp_code_action_impl_has_member(
-                ast, impl_body, ast_get_symbol(required))) {
+                ast,
+                &doc->front_end.lexer,
+                impl_body,
+                lex_symbol(trait_lexer, ast_get_symbol(required)))) {
             continue;
         }
 
@@ -3041,7 +3148,7 @@ lsp_code_action_missing_trait_impl_members(Arena*             arena,
         if (lsp_code_action_append_trait_member_stub(
                 arena,
                 &sb,
-                doc,
+                &trait_doc,
                 required,
                 sb_to_string(&member_indent),
                 sb_to_string(&body_indent))) {
@@ -3547,13 +3654,6 @@ void lsp_handle_code_action(LspState* state, const LspMessage* message)
         message->arena, actions, uri, doc, offset);
     lsp_code_action_add_missing_enum_variants_action(
         message->arena, actions, uri, doc, offset);
-
-    LspTypeFactView view = {0};
-    if (!lsp_type_fact_view(state, uri, &view)) {
-        json_object_set_array(response, "result", actions);
-        lsp_send_response(message->arena, response);
-        return;
-    }
 
     lsp_code_action_add_trait_impl_stub_action(
         message->arena, actions, uri, doc, offset);

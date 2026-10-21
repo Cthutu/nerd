@@ -58,6 +58,15 @@ def main():
             assert 'forbidden-clang-invocation' not in result.stdout + result.stderr
             return result.stdout + result.stderr
 
+        # Definition-location notes and explanatory notes share cyan prefixes.
+        note_source = work / 'missing-trait.n'
+        note_source.write_text('Hash :: plex { bytes [20]u8 }\n'
+                               'impl Display for Hash {}\n', encoding='utf-8')
+        diagnostic = run('check', note_source, success=False)
+        for message in ('Type `Display` is defined here', 'Missing member: `show`'):
+            assert '\x1b[1;36mnote:\x1b[0m ' + message in diagnostic, diagnostic
+        print('[PASS] definition and explanatory note colours')
+
         # A missing .n argument is a filename, even when it never existed.
         # Fail before parsing, generating output or invoking a native tool.
         for missing_source in ['missing.n', 'missing folder/file.n',
