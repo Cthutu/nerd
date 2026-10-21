@@ -83,6 +83,9 @@ validating the language against the implementation, use
 
 ## Language Design Notes
 
+- [Idiomatic Nerd](idiomatic-nerd.md)
+  Project preferences for expressing decisions, values and shared error handling.
+
 The learner-facing manual lives under:
 
 - [manual/README.md](manual/README.md)

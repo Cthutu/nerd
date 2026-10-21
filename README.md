@@ -77,6 +77,8 @@ stay ignored rather than becoming repository content.
 ## Contribution Rules
 
 - Use British spelling where practical and keep changes small and reviewable.
+- Follow [Idiomatic Nerd](docs/idiomatic-nerd.md) when writing Nerd source.
+  Extend the guide with concrete examples as project idioms emerge.
 - Update [compiler internals](docs/overviews/INTERNALS.md) when changes affect
   compiler structure or behaviour.
 - Land language features across parsing, sema, HIR, LLVM/C, formatting, LSP,

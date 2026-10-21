@@ -1,39 +1,31 @@
 use std.system
 
+-- Dialog commands display the selected path and preserve their error channel.
+show_selection :: fn (selection: string\SystemError) -> void\SystemError {
+    prn(selection?)
+}
+
 -- Explicit commands keep desktop interaction opt-in.
 main :: fn (args: []string) -> i32 {
     on args.count < 2 => {
         prn("Usage: system file|save|folder|browser|explorer")
         return 0
     }
-    on args[1] == "browser" => {
-        on open_browser("https://example.com") => return 0
-            else [error] {
-            eprn(error.show())
-            return 1
-        }
-    }
-    on args[1] == "explorer" => {
-        on open_explorer() => return 0
-            else [error] {
-            eprn(error.show())
-            return 1
-        }
-    }
-    selection := on args[1] {
-        "file"    => open_file()
-        "save"    => save_file(title = "Save a document", suggested_path = "document.txt")
-        "folder"  => select_folder()
+    result := on args[1] {
+        "file"      => show_selection(open_file())
+        "save"      => show_selection(save_file(title = "Save a document", suggested_path = "document.txt"))
+        "folder"    => show_selection(select_folder())
+        "browser"   => open_browser("https://example.com")
+        "explorer"  => open_explorer()
 
         else => {
             eprn("Unknown command")
             return 1
         }
     }
-    path := selection else [error] {
+    result else [error] {
         eprn(error.show())
         return on error { Cancelled => 0 else => 1 }
     }
-    prn(path)
     return 0
 }
