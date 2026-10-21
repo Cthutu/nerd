@@ -26571,6 +26571,7 @@ validate_type:
                     return false;
                 }
                 if (has_explicit_return_type && !has_return &&
+                    sema->types[declared_return_type].kind != STK_Void &&
                     !sema_type_is_void_success(sema, declared_return_type)) {
                     return error_0314_missing_return(
                         lexer->source,

@@ -134,7 +134,8 @@ Function-body style is also part of the type rules:
 - fat-arrow functions infer their return type from the body expression
 - block-bodied functions without `-> Type` return `void`, except unannotated
   `main` may still infer an integer process status
-- block-bodied functions with `-> Type` return values through explicit `return`
+- block-bodied functions with a value-producing `-> Type` return values through
+  explicit `return`; explicit `-> void` permits fallthrough and bare `return`
 - mixing `->` with `=>` is rejected with a dedicated semantic diagnostic
 
 Short-form `on` expressions also participate in semantic typing:

@@ -126,7 +126,9 @@ is_large :: fn (value: i32) -> bool {
 }
 ```
 
-`void` functions can omit both `-> void` and a final return:
+`void` functions can omit both `-> void` and a final return. Writing `-> void`
+explicitly also permits reaching the closing brace without a return. Use bare
+`return` when such a function needs to exit early:
 
 ```nerd
 use std.io

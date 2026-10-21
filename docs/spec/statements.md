@@ -93,6 +93,9 @@ unannotated block-bodied `main` may infer an integer process status for
 entry-point compatibility. Other block-bodied functions without `-> Type`
 return `void`, and a value-bearing `return` is rejected.
 
+An explicit `-> void` also permits fallthrough to the end of the body and bare
+`return` for early exits. It does not require a value-returning statement.
+
 Executable entry points may be either `main :: fn ()` or
 `main :: fn (args: []string)`. In the argument form, `args[0]` is the
 operating-system executable path and additional user arguments start at

@@ -1,5 +1,10 @@
 # Internals
 
+Missing-return validation distinguishes explicit `void` from value-producing
+return types. Both implicit and explicit `void` bodies may fall through; HIR and
+the backends emit the normal void exit and deferred cleanup. Optional/result
+types with a void success value retain their existing implicit-success rules.
+
 Enum parameter metadata records whether each discriminant was explicitly
 assigned. Interning, imports, and materialisation preserve this flag. Sema
 allows a payload-free explicitly numbered variant (including unannotated

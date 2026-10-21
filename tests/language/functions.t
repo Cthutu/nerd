@@ -630,3 +630,31 @@ main :: fn () -> i32 {
 ¬
 
 ¬
+
+=== case: explicit-void-fallthrough ===
+empty :: fn () -> void {}
+show :: fn (early: bool) -> void {
+    defer prn("cleanup")
+    on early => return
+    prn("body")
+}
+main :: fn () -> void {
+    empty()
+    callback: fn () -> void = empty
+    callback()
+    nested :: fn () -> void {}
+    nested()
+    show(yes)
+    show(no)
+    prn("explicit void main")
+}
+¬
+0
+¬
+cleanup
+body
+cleanup
+explicit void main
+¬
+
+¬
