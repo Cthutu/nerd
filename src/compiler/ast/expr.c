@@ -3058,27 +3058,37 @@ internal bool ast_parse_led_impl(AstParseState* state,
                 return false;
             }
 
-            u32 type_node = 0;
-            if (!ast_parse_type(state, &type_node)) {
-                return false;
-            }
-
-            u32  extra_node = U32_MAX;
-            bool has_comma  = state->token.kind == TK_Comma;
-            if (!has_comma && ast_peek_token(state)) {
-                has_comma = state->token.kind == TK_Comma;
-            }
-            if (has_comma) {
-                if (!ast_expect_token(state, TK_Comma) ||
-                    !ast_next_token(state)) {
+            u32 type_node  = U32_MAX;
+            u32 extra_node = U32_MAX;
+            if (state->token.kind != TK_RParen) {
+                bool type_syntax = state->token.kind != TK_Symbol &&
+                                   state->token.kind != TK_LParen &&
+                                   ast_token_starts_type_syntax(
+                                       state, state->token.token_index);
+                if (type_syntax) {
+                    if (!ast_parse_type(state, &type_node)) {
+                        return false;
+                    }
+                } else if (!ast_parse_expr(state, &extra_node)) {
                     return false;
                 }
-                if (!ast_parse_expr(state, &extra_node)) {
+                bool comma = state->token.kind == TK_Comma;
+                if (!comma && ast_peek_token(state)) {
+                    comma = state->token.kind == TK_Comma;
+                }
+                if (comma) {
+                    if (type_node == U32_MAX) {
+                        type_node = extra_node;
+                    }
+                    if (!ast_expect_token(state, TK_Comma) ||
+                        !ast_next_token(state) ||
+                        !ast_parse_expr(state, &extra_node)) {
+                        return false;
+                    }
+                }
+                if (!ast_expect_token(state, TK_RParen)) {
                     return false;
                 }
-            }
-            if (!ast_expect_token(state, TK_RParen)) {
-                return false;
             }
 
             u32 cast_index = (u32)array_count(state->casts);

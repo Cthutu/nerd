@@ -9492,6 +9492,56 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
     case AK_Cast:
         {
             const AstCastInfo* cast = sema_cast_info(ast, node);
+            if (cast->type_node_index == U32_MAX &&
+                cast->extra_node_index != U32_MAX) {
+                u32 candidate = sema_unwrap_type_candidate_node(
+                    ast, cast->extra_node_index);
+                const AstNode* first = &ast->nodes[candidate];
+                u32 local = first->kind == AK_SymbolRef
+                                ? sema_lookup_local(sema, scope_index, first->a)
+                                : sema_no_local();
+                u32 decl  = first->kind == AK_SymbolRef
+                                ? sema_find_decl(sema, first->a)
+                                : sema_no_decl();
+                bool type =
+                    local != sema_no_local()
+                        ? sema->locals[local].kind == SLK_TypeAlias
+                        : decl != sema_no_decl() &&
+                              (sema->decls[decl].kind == SK_TypeAlias ||
+                               sema->decls[decl].kind == SK_GenericTypeAlias);
+                if (first->kind == AK_Index) {
+                    u32 base =
+                        ast->nodes[first->a].kind == AK_SymbolRef
+                            ? sema_find_decl(sema, ast->nodes[first->a].a)
+                            : sema_no_decl();
+                    type = base != sema_no_decl() &&
+                           sema->decls[base].kind == SK_GenericTypeAlias;
+                }
+                if (first->kind == AK_SymbolRef && local == sema_no_local()) {
+                    for (u32 j = 0; j < g_sema_type_subst.count; ++j) {
+                        type |= g_sema_type_subst.param_symbols[j] == first->a;
+                    }
+                }
+                if (first->kind == AK_Field) {
+                    u32 root = candidate;
+                    while (ast->nodes[root].kind == AK_Field) {
+                        root = ast->nodes[root].a;
+                    }
+                    u32 base = ast->nodes[root].kind == AK_SymbolRef
+                                   ? sema_find_decl(sema, ast->nodes[root].a)
+                                   : sema_no_decl();
+                    if (base != sema_no_decl() &&
+                        sema->decls[base].kind == SK_Module) {
+                        u32 ignored;
+                        type = sema_try_resolve_qualified_type_node(
+                            lexer, ast, sema, candidate, &ignored);
+                    }
+                }
+                if (type) {
+                    sema_mark_type_expr_nodes(
+                        ast, sema, cast->extra_node_index);
+                }
+            }
             return sema_resolve_node_refs(lexer,
                                           ast,
                                           owner_decl_index,
@@ -12767,6 +12817,55 @@ internal const AstCastInfo* sema_cast_info(const Ast* ast, const AstNode* node)
     return &ast->casts[node->b];
 }
 
+internal u32 sema_cast_type_argument(const Lexer*       lexer,
+                                     const Ast*         ast,
+                                     Sema*              sema,
+                                     const AstCastInfo* cast)
+{
+    if (cast->type_node_index != U32_MAX) {
+        return cast->type_node_index;
+    }
+    if (cast->extra_node_index == U32_MAX) {
+        return U32_MAX;
+    }
+    u32 candidate = sema_unwrap_expr_node(ast, cast->extra_node_index);
+    u32 type      = sema_no_type();
+    u32 local     = sema->node_local_indices[candidate];
+    if (local != sema_no_local() && sema->locals[local].kind == SLK_TypeAlias) {
+        sema_mark_type_expr_nodes(ast, sema, cast->extra_node_index);
+        return candidate;
+    }
+    if (ast->nodes[candidate].kind == AK_Field &&
+        !sema->node_is_type_expr[candidate]) {
+        u32 root = candidate;
+        while (ast->nodes[root].kind == AK_Field) {
+            root = ast->nodes[root].a;
+        }
+        u32 decl = ast->nodes[root].kind == AK_SymbolRef
+                       ? sema_find_decl(sema, ast->nodes[root].a)
+                       : sema_no_decl();
+        if (decl == sema_no_decl() || sema->decls[decl].kind != SK_Module) {
+            return U32_MAX;
+        }
+    }
+    if (sema->node_is_type_expr[candidate] ||
+        sema_try_resolve_qualified_type_node(
+            lexer, ast, sema, candidate, &type)) {
+        sema_mark_type_expr_nodes(ast, sema, cast->extra_node_index);
+        return candidate;
+    }
+    return U32_MAX;
+}
+
+u32 sema_cast_count_node(const Ast* ast, const Sema* sema, u32 node_index)
+{
+    const AstCastInfo* cast = sema_cast_info(ast, &ast->nodes[node_index]);
+    return cast->extra_node_index != U32_MAX &&
+                   !sema->node_is_type_expr[cast->extra_node_index]
+               ? cast->extra_node_index
+               : U32_MAX;
+}
+
 internal bool sema_dynarray_method_signature(Sema*        sema,
                                              const Lexer* lexer,
                                              u32          dynarray_type,
@@ -15024,6 +15123,52 @@ internal bool sema_require_trait_constraint_for_generic_receiver(
         lex_symbol(lexer, param_symbol));
 }
 
+// Contextual casts never supply evidence for an unbound generic parameter.
+internal bool sema_expr_needs_cast_context(const Lexer* lexer,
+                                           const Ast*   ast,
+                                           Sema*        sema,
+                                           u32          index)
+{
+    if (index >= array_count(ast->nodes)) {
+        return false;
+    }
+    const AstNode* node = &ast->nodes[index];
+    if (node->kind == AK_Cast) {
+        return sema_cast_type_argument(
+                   lexer, ast, sema, sema_cast_info(ast, node)) == U32_MAX;
+    }
+    if (node->kind == AK_Expression || node->kind == AK_IntegerNegate ||
+        node->kind == AK_BitwiseNot) {
+        return sema_expr_needs_cast_context(lexer, ast, sema, node->a);
+    }
+    if (node->kind >= AK_IntegerPlus && node->kind <= AK_ShiftRight) {
+        return sema_expr_needs_cast_context(lexer, ast, sema, node->a) ||
+               sema_expr_needs_cast_context(lexer, ast, sema, node->b);
+    }
+    if (node->kind == AK_Array || node->kind == AK_Tuple) {
+        for (u32 i = 0; i < node->b; ++i) {
+            if (sema_expr_needs_cast_context(
+                    lexer, ast, sema, ast->tuple_items[node->a + i])) {
+                return true;
+            }
+        }
+    }
+    if (node->kind == AK_Plex) {
+        const AstPlexLiteralInfo* literal = &ast->plex_literals[node->a];
+        for (u32 i = 0; i < literal->field_count; ++i) {
+            if (sema_expr_needs_cast_context(
+                    lexer,
+                    ast,
+                    sema,
+                    ast->plex_literal_fields[literal->first_field + i]
+                        .value_node_index)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 // Earlier call arguments can establish the context for later literals.
 internal bool sema_generic_arguments_resolved(Array(u32) arg_types)
 {
@@ -15238,7 +15383,8 @@ sema_instantiate_imported_generic_function(const Lexer*    lexer,
             return false;
         }
         if (explicit_arg_count == 0 &&
-            sema_node_is_empty_array_literal(ast, arg_node)) {
+            (sema_node_is_empty_array_literal(ast, arg_node) ||
+             sema_expr_needs_cast_context(lexer, ast, sema, arg_node))) {
             continue;
         }
         u32 expected_src = sema_no_type();
@@ -15329,7 +15475,8 @@ sema_instantiate_imported_generic_function(const Lexer*    lexer,
             return false;
         }
         if (explicit_arg_count != 0 ||
-            !sema_node_is_empty_array_literal(ast, arg_node)) {
+            (!sema_node_is_empty_array_literal(ast, arg_node) &&
+             !sema_expr_needs_cast_context(lexer, ast, sema, arg_node))) {
             continue;
         }
 
@@ -15478,7 +15625,8 @@ internal bool sema_instantiate_generic_function(const Lexer* lexer,
             return false;
         }
         if (explicit_arg_count == 0 &&
-            sema_node_is_empty_array_literal(ast, arg_node)) {
+            (sema_node_is_empty_array_literal(ast, arg_node) ||
+             sema_expr_needs_cast_context(lexer, ast, sema, arg_node))) {
             continue;
         }
         u32 expected_arg = sema_no_type();
@@ -15557,7 +15705,8 @@ internal bool sema_instantiate_generic_function(const Lexer* lexer,
             return false;
         }
         if (explicit_arg_count != 0 ||
-            !sema_node_is_empty_array_literal(ast, arg_node)) {
+            (!sema_node_is_empty_array_literal(ast, arg_node) &&
+             !sema_expr_needs_cast_context(lexer, ast, sema, arg_node))) {
             continue;
         }
 
@@ -16072,109 +16221,12 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
                     call->arg_count);
             }
 
-            for (u32 j = 0; j < visible_arg_count; ++j) {
-                const AstParam* source_param =
-                    &source_ast->params[source_signature->first_param + 1 + j];
-                u32 expected_source = sema_no_type();
-                if (!sema_resolve_type_node_ex(source_lexer,
-                                               source_ast,
-                                               source_sema,
-                                               source_param->type_node_index,
-                                               subst,
-                                               &expected_source)) {
-                    array_free(source_arg_types);
-                    return false;
-                }
-                u32 expected_dst = imported ? sema_import_type((Lexer*)lexer,
-                                                               sema,
-                                                               source_lexer,
-                                                               source_sema,
-                                                               expected_source)
-                                            : expected_source;
-                u32 arg_node =
-                    ast->call_args[call->first_arg + call_arg_offset + j];
-                if (!sema_call_arg_value_node(lexer,
-                                              ast,
-                                              source_lexer,
-                                              source_param,
-                                              arg_node,
-                                              &arg_node)) {
-                    array_free(source_arg_types);
-                    return false;
-                }
-                if (seed_arg_contexts) {
-                    if (!sema_seed_local_from_call_arg_expected(
-                            lexer, ast, sema, arg_node, expected_dst)) {
-                        sema_preserve_concrete_method_call_type(
-                            lexer,
-                            sema,
-                            call_node_index,
-                            call_node->a,
-                            source_lexer,
-                            source_ast,
-                            source_sema,
-                            source_decl,
-                            method->decl_index,
-                            imported,
-                            receiver_ref,
-                            receiver_deref);
-                        array_free(source_arg_types);
-                        return false;
-                    }
-                    continue;
-                }
-                u32 arg_type = sema_no_type();
-                // Unbound generic arguments need their concrete type inferred
-                // first. Supplying a borrowed type containing unknowns
-                // prematurely rejects the concrete argument before binding it.
-                u32 inference_expected =
-                    generic != NULL &&
-                            (source_ast->nodes[source_param->type_node_index]
-                                     .kind == AK_TypeFn ||
-                             (!sema_generic_arguments_resolved(
-                                  source_arg_types) &&
-                              (source_ast->nodes[source_param->type_node_index]
-                                       .kind == AK_TypePointer ||
-                               source_ast->nodes[source_param->type_node_index]
-                                       .kind == AK_TypeSlice)))
-                        ? sema_no_type()
-                        : expected_dst;
-                if (!sema_infer_node_type(lexer,
-                                          ast,
-                                          sema,
-                                          arg_node,
-                                          inference_expected,
-                                          &arg_type)) {
-                    array_free(source_arg_types);
-                    return false;
-                }
-                if (generic != NULL) {
-                    u32 source_arg_type =
-                        imported ? sema_import_type((Lexer*)source_lexer,
-                                                    source_sema,
-                                                    lexer,
-                                                    sema,
-                                                    arg_type)
-                                 : arg_type;
-                    if (!sema_bind_generic_type_node(
-                            source_lexer,
-                            source_ast,
-                            source_sema,
-                            generic,
-                            source_param->type_node_index,
-                            source_arg_type,
-                            source_arg_types)) {
-                        array_free(source_arg_types);
-                        return error_0304_type_mismatch(
-                            lexer->source,
-                            sema_node_span(lexer, &ast->nodes[arg_node]),
-                            s("generic parameter-compatible argument"),
-                            sema_type_name(lexer, sema, &temp_arena, arg_type));
-                    }
-                }
-                if (generic != NULL) {
-                    // Validate against the signature after argument inference;
-                    // the pre-inference function type may contain unknowns.
+            for (u32 cast_pass = 0; cast_pass < 2; ++cast_pass) {
+                for (u32 j = 0; j < visible_arg_count; ++j) {
+                    const AstParam* source_param =
+                        &source_ast
+                             ->params[source_signature->first_param + 1 + j];
+                    u32 expected_source = sema_no_type();
                     if (!sema_resolve_type_node_ex(
                             source_lexer,
                             source_ast,
@@ -16185,20 +16237,137 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
                         array_free(source_arg_types);
                         return false;
                     }
-                    expected_dst = imported ? sema_import_type((Lexer*)lexer,
-                                                               sema,
-                                                               source_lexer,
-                                                               source_sema,
-                                                               expected_source)
-                                            : expected_source;
-                }
-                if (!sema_type_matches(sema, expected_dst, arg_type)) {
-                    array_free(source_arg_types);
-                    return error_0304_type_mismatch(
-                        lexer->source,
-                        sema_node_span(lexer, &ast->nodes[arg_node]),
-                        sema_type_name(lexer, sema, &temp_arena, expected_dst),
-                        sema_type_name(lexer, sema, &temp_arena, arg_type));
+                    u32 expected_dst = imported
+                                           ? sema_import_type((Lexer*)lexer,
+                                                              sema,
+                                                              source_lexer,
+                                                              source_sema,
+                                                              expected_source)
+                                           : expected_source;
+                    u32 arg_node =
+                        ast->call_args[call->first_arg + call_arg_offset + j];
+                    if (!sema_call_arg_value_node(lexer,
+                                                  ast,
+                                                  source_lexer,
+                                                  source_param,
+                                                  arg_node,
+                                                  &arg_node)) {
+                        array_free(source_arg_types);
+                        return false;
+                    }
+                    bool contextual = sema_expr_needs_cast_context(
+                        lexer, ast, sema, arg_node);
+                    if (contextual != (cast_pass == 1)) {
+                        continue;
+                    }
+                    if (seed_arg_contexts) {
+                        if (!sema_seed_local_from_call_arg_expected(
+                                lexer, ast, sema, arg_node, expected_dst)) {
+                            sema_preserve_concrete_method_call_type(
+                                lexer,
+                                sema,
+                                call_node_index,
+                                call_node->a,
+                                source_lexer,
+                                source_ast,
+                                source_sema,
+                                source_decl,
+                                method->decl_index,
+                                imported,
+                                receiver_ref,
+                                receiver_deref);
+                            array_free(source_arg_types);
+                            return false;
+                        }
+                        continue;
+                    }
+                    u32 arg_type = sema_no_type();
+                    // Unbound generic arguments need their concrete type
+                    // inferred first. Supplying a borrowed type containing
+                    // unknowns prematurely rejects the concrete argument before
+                    // binding it.
+                    u32 inference_expected =
+                        generic != NULL &&
+                                (source_ast
+                                         ->nodes[source_param->type_node_index]
+                                         .kind == AK_TypeFn ||
+                                 (!sema_generic_arguments_resolved(
+                                      source_arg_types) &&
+                                  (source_ast
+                                           ->nodes[source_param
+                                                       ->type_node_index]
+                                           .kind == AK_TypePointer ||
+                                   source_ast
+                                           ->nodes[source_param
+                                                       ->type_node_index]
+                                           .kind == AK_TypeSlice)))
+                            ? sema_no_type()
+                            : expected_dst;
+                    if (!sema_infer_node_type(lexer,
+                                              ast,
+                                              sema,
+                                              arg_node,
+                                              inference_expected,
+                                              &arg_type)) {
+                        array_free(source_arg_types);
+                        return false;
+                    }
+                    if (generic != NULL) {
+                        u32 source_arg_type =
+                            imported ? sema_import_type((Lexer*)source_lexer,
+                                                        source_sema,
+                                                        lexer,
+                                                        sema,
+                                                        arg_type)
+                                     : arg_type;
+                        if (!sema_bind_generic_type_node(
+                                source_lexer,
+                                source_ast,
+                                source_sema,
+                                generic,
+                                source_param->type_node_index,
+                                source_arg_type,
+                                source_arg_types)) {
+                            array_free(source_arg_types);
+                            return error_0304_type_mismatch(
+                                lexer->source,
+                                sema_node_span(lexer, &ast->nodes[arg_node]),
+                                s("generic parameter-compatible argument"),
+                                sema_type_name(
+                                    lexer, sema, &temp_arena, arg_type));
+                        }
+                    }
+                    if (generic != NULL) {
+                        // Validate against the signature after argument
+                        // inference; the pre-inference function type may
+                        // contain unknowns.
+                        if (!sema_resolve_type_node_ex(
+                                source_lexer,
+                                source_ast,
+                                source_sema,
+                                source_param->type_node_index,
+                                subst,
+                                &expected_source)) {
+                            array_free(source_arg_types);
+                            return false;
+                        }
+                        expected_dst = imported
+                                           ? sema_import_type((Lexer*)lexer,
+                                                              sema,
+                                                              source_lexer,
+                                                              source_sema,
+                                                              expected_source)
+                                           : expected_source;
+                    }
+                    if (!sema_type_matches(sema, expected_dst, arg_type)) {
+                        array_free(source_arg_types);
+                        return error_0304_type_mismatch(
+                            lexer->source,
+                            sema_node_span(lexer, &ast->nodes[arg_node]),
+                            sema_type_name(
+                                lexer, sema, &temp_arena, expected_dst),
+                            sema_type_name(lexer, sema, &temp_arena, arg_type));
+                    }
                 }
             }
 
@@ -18439,8 +18608,11 @@ internal bool sema_collect_explicit_numeric_cast_type(const Lexer* lexer,
     if (node->kind == AK_Cast) {
         const AstCastInfo* cast = sema_cast_info(ast, node);
         u32                cast_type;
-        if (!sema_resolve_type_node(
-                lexer, ast, sema, cast->type_node_index, &cast_type)) {
+        u32 argument = sema_cast_type_argument(lexer, ast, sema, cast);
+        if (argument == U32_MAX) {
+            return true;
+        }
+        if (!sema_resolve_type_node(lexer, ast, sema, argument, &cast_type)) {
             return false;
         }
         if (!sema_type_is_concrete_integer(sema, cast_type) &&
@@ -19046,13 +19218,14 @@ internal u32 sema_usage_expr_type(SemaUsageInference* ctx, u32 index, u32 depth)
         }
     case AK_Cast:
         {
-            u32 type = sema_no_type();
+            u32 type     = sema_no_type();
+            u32 argument = sema_cast_type_argument(
+                ctx->lexer, ast, sema, sema_cast_info(ast, node));
+            if (argument == U32_MAX) {
+                return sema_no_type();
+            }
             if (!sema_resolve_type_node(
-                    ctx->lexer,
-                    ast,
-                    sema,
-                    sema_cast_info(ast, node)->type_node_index,
-                    &type)) {
+                    ctx->lexer, ast, sema, argument, &type)) {
                 ctx->ok = false;
             }
             return type;
@@ -24177,10 +24350,27 @@ validate_type:
                     lexer, ast, sema, node->a, sema_no_type(), &source_type)) {
                 return false;
             }
-            if (!sema_resolve_type_node(
-                    lexer, ast, sema, cast->type_node_index, &target_type)) {
-                return false;
+            u32 argument = sema_cast_type_argument(lexer, ast, sema, cast);
+            if (argument != U32_MAX) {
+                if (!sema_resolve_type_node(
+                        lexer, ast, sema, argument, &target_type)) {
+                    return false;
+                }
+            } else {
+                target_type = expected_type;
+                if (target_type == sema_no_type() ||
+                    sema->types[target_type].kind == STK_UntypedInteger ||
+                    sema->types[target_type].kind == STK_UntypedFloat) {
+                    return error_0304_type_mismatch_with_help(
+                        lexer->source,
+                        sema_node_span(lexer, node),
+                        s("concrete contextual cast destination"),
+                        s("undetermined type"),
+                        s("Add a destination type annotation or write "
+                          "`.as(Type)` explicitly."));
+                }
             }
+            u32 count_node = sema_cast_count_node(ast, sema, node_index);
 
             // An explicit conversion must see the whole literal, not an i32
             // truncation introduced by default materialisation before the cast.
@@ -24205,12 +24395,12 @@ validate_type:
                 }
             }
 
-            if (cast->extra_node_index != U32_MAX) {
+            if (count_node != U32_MAX) {
                 u32 size_type = sema_no_type();
                 if (!sema_infer_node_type(lexer,
                                           ast,
                                           sema,
-                                          cast->extra_node_index,
+                                          count_node,
                                           sema_builtin_type(sema, STK_Usize),
                                           &size_type)) {
                     return false;
@@ -24235,8 +24425,7 @@ validate_type:
                 if (!sema_type_is_integer(sema, size_type)) {
                     return error_0304_type_mismatch(
                         lexer->source,
-                        sema_node_span(lexer,
-                                       &ast->nodes[cast->extra_node_index]),
+                        sema_node_span(lexer, &ast->nodes[count_node]),
                         s("integer"),
                         sema_type_name(lexer, sema, &temp_arena, size_type));
                 }
@@ -24258,6 +24447,12 @@ validate_type:
                 break;
             }
 
+            bool array_slice_cast =
+                sema->types[target_type].kind == STK_Slice &&
+                (sema->types[source_type].kind == STK_Array ||
+                 sema->types[source_type].kind == STK_Slice) &&
+                sema->types[target_type].first_param_type ==
+                    sema->types[source_type].first_param_type;
             bool primitive_cast =
                 sema_type_is_castable_primitive(sema, source_type) &&
                 sema_type_is_castable_primitive(sema, target_type) &&
@@ -24332,8 +24527,8 @@ validate_type:
                                    sema->types[source_type].kind == STK_Plex &&
                                    sema->types[target_type].kind == STK_Plex;
 
-            if (!(primitive_cast || enum_integer_cast || string_slice_cast ||
-                  untyped_integer_pointer_cast ||
+            if (!(array_slice_cast || primitive_cast || enum_integer_cast ||
+                  string_slice_cast || untyped_integer_pointer_cast ||
                   pointer_sized_integer_pointer_cast ||
                   pointer_pointer_sized_integer_cast || void_pointer_cast ||
                   pointer_pointer_cast || pointer_function_cast ||
@@ -29961,8 +30156,19 @@ bool sema_analyse(const Lexer*           lexer,
             ast->nodes[i].kind == AK_Undefined) {
             sema_mark_type_expr_nodes(ast, &sema, ast->nodes[i].a);
         } else if (ast->nodes[i].kind == AK_Cast) {
-            sema_mark_type_expr_nodes(
-                ast, &sema, ast->casts[ast->nodes[i].b].type_node_index);
+            const AstCastInfo* cast = &ast->casts[ast->nodes[i].b];
+            sema_mark_type_expr_nodes(ast, &sema, cast->type_node_index);
+            if (cast->type_node_index == U32_MAX &&
+                cast->extra_node_index != U32_MAX) {
+                u32 candidate =
+                    sema_unwrap_expr_node(ast, cast->extra_node_index);
+                if (ast->nodes[candidate].kind == AK_SymbolRef &&
+                    sema_is_builtin_type_name(
+                        lex_symbol(lexer, ast->nodes[candidate].a))) {
+                    sema_mark_type_expr_nodes(
+                        ast, &sema, cast->extra_node_index);
+                }
+            }
         }
     }
     for (u32 i = 0; i < array_count(sema.decls); ++i) {

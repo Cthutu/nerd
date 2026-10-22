@@ -291,6 +291,39 @@ main :: fn () -> i32 {
 }
 ```
 
+When the surrounding position already specifies a type, leave the destination
+out and write `.as()`:
+
+```nerd
+a: u32 = 42
+b: u64 = a.as()           -- the annotation supplies u64
+c: u64 = a.as() + 1       -- arithmetic passes that expected type to operands
+
+consume :: fn (value: u64) { prn($"{value}") }
+consume(3.1415.as())       -- the parameter supplies u64; conversion yields 3
+```
+
+Annotations, assignment targets, parameters, return annotations and typed
+aggregate elements supply the expected type. Conversion rules remain exactly
+the same as `.as(Type)`, including narrowing and truncation. The compiler reports
+an error for `b := a.as()` because no concrete destination is available. Keep
+`.as(Type)` when you want the conversion type to remain explicit independently
+of its surrounding code.
+
+Generic calls can obtain the destination from other arguments, explicit type
+arguments or an annotated result. A contextual cast cannot establish an
+otherwise unknown generic type by guessing from its source value.
+
+For a fixed array `[N]T` or runtime-sized array `[n]T`, `view: []T = array.as()`
+borrows the original storage and uses its own element count. Writes through the
+view change the array. No elements are copied and the array must outlive the
+view. The explicit spelling `array.as([]T)` also works.
+
+For a pointer, keep the count explicit: `view: []T = pointer.as(count)` infers
+`[]T`, while `pointer.as([]T, count)` specifies it directly. The count has type
+`usize`, and the pointer and count expressions are evaluated once, in that order.
+A pointer cannot supply its own length, so `pointer.as()` cannot create a slice.
+
 Numeric values can be cast between concrete numeric types, such as `usize` to
 `i32` or `f64` to `f32`. Pointer and slice casts are more restricted and are
 introduced below, then covered again in Part 8.

@@ -358,7 +358,7 @@ postfix         ::= '(' call-arg-list? ')'
                   | '[' [ expression ] '..' [ expression ] ']'
                   | '.' IDENT
                   | '.' INT
-                  | '.as' '(' type [ ',' expression ] ')'
+                  | '.as' '(' [ type [ ',' expression ] | expression ] ')'
                   | 'with' plex-literal-body
                   | plex-literal-body
                   | '^'

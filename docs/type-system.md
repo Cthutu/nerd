@@ -582,7 +582,12 @@ Explicit casts use postfix syntax:
 - `128.as(u8)`
 
 Cast validity is semantic and table-driven. The parser only records a cast node
-with a source expression and a target type expression.
+with a source expression and optional destination/count arguments. `.as()` uses
+the concrete expected type, retaining explicit cast semantics. `.as(count)`
+uses the expected slice type and an explicit `usize` count. A single argument
+naming a type remains an explicit destination. Missing destinations are errors
+when context cannot supply a concrete type. Fixed and runtime-sized arrays can
+cast to same-element slices without a count, borrowing their original storage.
 
 The current milestone allows explicit casts across compatible primitive
 numeric/bool types, from integers to pointers, and rejects unsupported casts

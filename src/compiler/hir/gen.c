@@ -2606,7 +2606,21 @@ internal u32 hir_lower_expr_impl(Hir*         hir,
                 return hir_add_unsupported_expr(hir, sema, node_index);
             }
 
-            const AstCastInfo* cast = &ast->casts[node->b];
+            u32 count_node  = sema_cast_count_node(ast, sema, node_index);
+            u32 source      = hir_node_type(sema, node->a);
+            u32 destination = hir_node_type(sema, node_index);
+            if (sema->types[source].kind == STK_Array &&
+                sema->types[destination].kind == STK_Slice) {
+                return hir_add_expr(hir,
+                                    (HirExpr){
+                                        .kind               = HIR_EXPR_Slice,
+                                        .type_index         = destination,
+                                        .operand_expr_index = hir_lower_expr(
+                                            hir, lexer, ast, sema, node->a),
+                                        .lhs_expr_index = hir_no_index(),
+                                        .rhs_expr_index = hir_no_index(),
+                                    });
+            }
             return hir_add_expr(
                 hir,
                 (HirExpr){
@@ -2617,9 +2631,8 @@ internal u32 hir_lower_expr_impl(Hir*         hir,
                     .operand_expr_index =
                         hir_lower_expr(hir, lexer, ast, sema, node->a),
                     .extra_expr_index =
-                        cast->extra_node_index != U32_MAX
-                            ? hir_lower_expr(
-                                  hir, lexer, ast, sema, cast->extra_node_index)
+                        count_node != U32_MAX
+                            ? hir_lower_expr(hir, lexer, ast, sema, count_node)
                             : hir_no_index(),
                 });
         }

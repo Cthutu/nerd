@@ -145,7 +145,25 @@ Tuple fields use integer selectors. Generic functions and
 methods can provide explicit type arguments before the call parentheses, as in
 `id[i32](value)` or `arena.alloc[i32]()`.
 
-Casts are explicit semantic conversions. Pointer-to-slice casts use the optional
+Casts are explicit semantic conversions. `.as()` takes its destination from a
+concrete expected type at its position. Expected types come from annotations,
+assignments, resolved parameters, returns and aggregate elements, and flow through
+arithmetic operands in the normal left-to-right inference order. An unresolved
+or conflicting destination is an error; conversion validity is identical to
+`.as(Type)`.
+
+`.as(count)` infers the destination slice type for a pointer-to-slice cast, with
+a `usize` count. A single named argument is resolved as a type when it names a
+type, otherwise as a count expression. `.as(Type, count)` remains explicit.
+Fixed arrays and runtime-sized fixed arrays can cast to matching-element slices
+without a count, borrowing the original storage and its stored/known length.
+The source and optional count are evaluated once, in source order.
+
+Generic inference defers arguments containing contextual casts until other
+arguments, explicit type arguments or an expected return type establish the
+parameters. The cast supplies no evidence for an unbound generic parameter.
+
+Pointer-to-slice casts use the optional
 count operand. Fixed arrays, slices, and dynamic arrays whose element type is
 `i8` or `u8` can be cast to `string`; the cast creates a counted view over the
 existing bytes and does not copy, null-trim, or validate the data.

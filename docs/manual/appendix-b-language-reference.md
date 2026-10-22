@@ -133,7 +133,11 @@ intended exit code.
 
 ## Type Conversion
 
-- Use `.as(Type)` for explicit casts.
+- Use `.as(Type)` for explicit casts, or `.as()` when the position supplies a
+  concrete destination type. The conversion rules are the same.
+- `view: []T = pointer.as(count)` infers the slice type with an explicit `usize`
+  count. `view: []T = array.as()` borrows a fixed or runtime-sized array using
+  its own count.
 - Use `p.as([]T, count)` to make a slice view from a pointer and count.
 - Untyped integer address constants must use explicit pointer casts such as
   `n.as(^T)`.

@@ -1,0 +1,13 @@
+main :: fn () {
+    a: u32 = 42
+    b: u64 = a.as() + 1
+    values := [1, 2, 3]
+    view: []i32 = values.as()
+    pointer := values.data
+    prefix: []i32 = pointer.as(2)
+    prn($"{b} {view} {prefix}")
+}
+¬
+let b: u64 = u64 add(u64 cast(u32 local.0(a) as u64), u64 1)
+let view: []i32 = []i32 slice([3]i32 local.2(values), <none>, <none>)
+let prefix: []i32 = []i32 cast(^i32 local.4(pointer) as []i32, usize 2)

@@ -4425,16 +4425,32 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
             }
             if (cst_current_token(state).kind == TK_as) {
                 cst_advance(state);
-                if (!cst_consume(state, TK_LParen) ||
-                    !cst_parse_type(state, &right)) {
+                if (!cst_consume(state, TK_LParen)) {
                     return false;
                 }
-
+                right     = CST_NO_VALUE;
                 u32 extra = CST_NO_VALUE;
-                if (cst_current_token(state).kind == TK_Comma) {
-                    cst_advance(state);
-                    if (!cst_parse_expr_bp(state, 0, &extra)) {
+                if (cst_current_token(state).kind != TK_RParen) {
+                    TokenKind first = cst_current_token(state).kind;
+                    // Named types and count expressions share expression
+                    // syntax; the semantic pass distinguishes them.
+                    if (first == TK_Caret || first == TK_LBracket ||
+                        first == TK_Question || first == TK_fn ||
+                        first == TK_plex || first == TK_union) {
+                        if (!cst_parse_type(state, &right)) {
+                            return false;
+                        }
+                    } else if (!cst_parse_expr_bp(state, 0, &extra)) {
                         return false;
+                    }
+                    if (cst_current_token(state).kind == TK_Comma) {
+                        if (right == CST_NO_VALUE) {
+                            right = extra;
+                        }
+                        cst_advance(state);
+                        if (!cst_parse_expr_bp(state, 0, &extra)) {
+                            return false;
+                        }
                     }
                 }
                 if (!cst_consume(state, TK_RParen)) {

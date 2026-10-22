@@ -364,6 +364,7 @@ bool sema_type_is_builtin_interpolatable(const Sema* sema, u32 type_index);
 
 // Checked range assignment: element-compatible values fill; slices copy.
 bool sema_range_assignment_is_copy(const Sema* sema, u32 target, u32 value);
+u32  sema_cast_count_node(const Ast* ast, const Sema* sema, u32 node_index);
 
 // Physical anonymous/use group containing a promoted logical field, if any.
 const SemaPlexUse*

@@ -477,6 +477,16 @@ The tuple expression parser collects child nodes in a temporary array before
 appending them to the AST tuple item table. Nested tuples therefore cannot
 interleave their entries with the parent tuple's contiguous item range.
 
+Contextual casts reuse the existing eight-byte AST/CST cast record. Omitted
+destinations use a missing type index. A named type or count expression in the
+single-argument form occupies the extra-expression index; Sema resolves type
+names and marks them as type expressions. `sema_cast_count_node` exposes the
+remaining runtime count to HIR. Usage inference treats casts as boundaries,
+so a destination never constrains the source of a conversion. Generic argument
+checking defers contextual casts until independent arguments establish types.
+HIR retains normal cast operations, or a borrowed slice for fixed-array casts;
+the LLVM and C backends therefore share existing conversion rules.
+
 Sema also collects explicit numeric cast targets from compound-assignment
 operands. An untyped literal initializer
 can therefore adopt a later explicit numeric type without requiring the rest of
