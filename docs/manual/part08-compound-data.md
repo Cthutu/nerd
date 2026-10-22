@@ -682,6 +682,40 @@ Value :: union {
 
 Raw unions are low-level. The program must know which field is valid.
 
+Plexes and unions can contain a `plex { ... }` or `union { ... }` without a
+field name. Its fields are directly accessible on the containing value:
+
+```nerd
+Hash :: plex {
+    union {
+        bytes [20]u8
+        plex {
+            a u32
+            b u32
+            c u32
+            d u32
+            e u32
+        }
+    }
+}
+
+hash: Hash
+hash.a = 0x01010101
+assert hash.bytes[0] == 1
+```
+
+The anonymous plex keeps its fields together; the anonymous union overlays its
+alternatives. `Hash` occupies 20 bytes on supported targets. Nesting works in
+either direction, and promoted field names must be unique in the containing
+record. An anonymous plex may use `#c` to keep declaration order, as an ordinary
+plex can.
+
+Literals use the promoted names. `Hash { a: 1 b: 2 c: 3 d: 4 e: 5 }` selects
+the word view. A byte-array field selects the other view. A literal cannot
+initialise overlapping union alternatives together. `...` still zero-fills
+omitted fields in the selected view. Field definitions use `bytes [20]u8`,
+without a colon; colons belong in literals.
+
 ## Enums
 
 Enums are tagged values:

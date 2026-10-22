@@ -207,9 +207,11 @@ itself.
 
 ```bnf
 plex-type       ::= 'plex' generic-params? plex-annotation* '{' plex-member* '}'
-union-type      ::= 'union' generic-params? '{' plex-field* '}'
+union-type      ::= 'union' generic-params? '{' union-member* '}'
 plex-annotation ::= '#c' | '#packed'
 plex-member     ::= plex-field | plex-bit-field-block | 'use' type
+                  | plex-type | union-type
+union-member    ::= plex-field | plex-type | union-type
 plex-field      ::= IDENT type
 plex-bit-field-block
                 ::= IDENT '{' plex-bit-field* '}'
@@ -221,6 +223,16 @@ plex-field-body ::= '{' plex-field* '}'
 ```
 
 Plex and union fields are written as `field Type`, not `field: Type`.
+
+A bare `plex { ... }` or `union { ... }` member promotes its fields into the
+containing plex or union. Nesting is recursive and duplicate promoted names
+are rejected. The anonymous record remains one physical storage group: plex
+fields retain their product layout, and union alternatives overlap. Literal
+fields must select at most one alternative of each union; multiple promoted
+fields of the same anonymous plex alternative may be initialised together.
+Unselected views are excluded from missing-field checks. `...` permits default
+zero values in the selected view, or a wholly defaulted union group.
+
 Plexes may also contain anonymous bit-field storage blocks. The storage type
 must be `u8`, `u16`, `u32`, `u64`, or `usize`; aliases resolving to one of
 those types are accepted. Widths are positive compile-time integers and their

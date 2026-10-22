@@ -4,6 +4,7 @@
 // Copyright (C)2026 Matt Davies, all rights reserved
 //------------------------------------------------------------------------------
 
+#include <compiler/modules/modules.h>
 #include <lsp/lsp.h>
 
 #include <stdio.h>
@@ -639,4 +640,43 @@ bool lsp_expression_enum_type(const LspDocument* doc,
 
     *out_enum_type = type_index;
     return true;
+}
+
+// Only unqualified uses contribute bare names. A module alias alone does
+// not make its exports visible, and transitive/private declarations stay
+// hidden.
+bool lsp_module_visible_unqualified(Arena*             arena,
+                                    const LspDocument* doc,
+                                    string             module_name)
+{
+    if (string_eq_cstr(module_name, "core")) {
+        return true;
+    }
+    const Ast*   ast   = &doc->front_end.ast;
+    const Lexer* lexer = &doc->front_end.lexer;
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        if (node->kind != AK_Use || node->a >= array_count(ast->nodes)) {
+            continue;
+        }
+        bool bound = false;
+        for (u32 j = 0; j < array_count(ast->nodes); ++j) {
+            if (ast_node_is_binding_like(&ast->nodes[j]) &&
+                ast->nodes[j].b == i) {
+                bound = true;
+                break;
+            }
+        }
+        const AstNode* path_node = &ast->nodes[node->a];
+        if (bound || path_node->kind != AK_ModRef ||
+            path_node->a >= array_count(ast->module_paths)) {
+            continue;
+        }
+        cstr path = module_path_to_qualified_name(
+            arena, lexer, ast, &ast->module_paths[path_node->a]);
+        if (path && string_eq(s(path), module_name)) {
+            return true;
+        }
+    }
+    return false;
 }

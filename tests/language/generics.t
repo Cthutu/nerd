@@ -63,7 +63,7 @@ func fn.0() -> void {
 ; nerd llvm-ir 0
 ; generated from HIR
 
-@.macro.file.m0 = private unnamed_addr constant [35 x i8] c"tests/language/generics.t\00"
+@.macro.file.m0 = private unnamed_addr constant [26 x i8] c"tests/language/generics.t\00"
 @.str.m0.0 = private unnamed_addr constant [9 x i8] c"generic \00"
 @.str.m0.1 = private unnamed_addr constant [5 x i8] c"none\00"
 
@@ -94,51 +94,51 @@ declare void @$prn_empty()
 
 define internal void @fn.0() {
   %local.0 = alloca { i32 }
-  %local.1 = alloca i128
+  %local.1 = alloca [2 x i64]
   %local.2 = alloca { i64, i32 }
-  %t17 = alloca { ptr, i64 }
+  %t16 = alloca { ptr, i64 }
   store { i32 } zeroinitializer, ptr %local.0
   %t0 = getelementptr inbounds { i32 }, ptr %local.0, i64 0, i32 0
   store i32 7, ptr %t0
-  store i128 0, ptr %local.1
+  store [2 x i64] zeroinitializer, ptr %local.1
   %t1 = load { i32 }, ptr %local.0
   %t2 = extractvalue { i32 } %t1, 0
   %t3 = add i32 %t2, 1
-  %t4 = load i128, ptr %local.1
-  %t5 = zext i32 %t3 to i128
-  store i128 %t5, ptr %local.1
-  %t6 = load i128, ptr %local.1
-  %t7 = trunc i128 %t6 to i32
-  %t8 = insertvalue { i64, i32 } poison, i64 1, 0
-  %t9 = insertvalue { i64, i32 } %t8, i32 %t7, 1
-  store { i64, i32 } %t9, ptr %local.2
-  %t10 = load { i64, i32 }, ptr %local.2
-  %t11 = extractvalue { i64, i32 } %t10, 0
-  %t12 = icmp eq i64 %t11, 1
-  %t13 = extractvalue { i64, i32 } %t10, 1
-  %t14 = and i1 %t12, 1
-  br i1 %t14, label %on.body.1, label %on.next.2
+  store i32 %t3, ptr %local.1
+  %t4 = load [2 x i64], ptr %local.1
+  %t5 = alloca [2 x i64]
+  store [2 x i64] %t4, ptr %t5
+  %t6 = load i32, ptr %t5
+  %t7 = insertvalue { i64, i32 } poison, i64 1, 0
+  %t8 = insertvalue { i64, i32 } %t7, i32 %t6, 1
+  store { i64, i32 } %t8, ptr %local.2
+  %t9 = load { i64, i32 }, ptr %local.2
+  %t10 = extractvalue { i64, i32 } %t9, 0
+  %t11 = icmp eq i64 %t10, 1
+  %t12 = extractvalue { i64, i32 } %t9, 1
+  %t13 = and i1 %t11, 1
+  br i1 %t13, label %on.body.1, label %on.next.2
 on.body.1:
-  %t15 = call i64 @nrt_string_builder_mark()
-  %t16 = alloca { ptr, i64 }
-  store { ptr, i64 } { ptr @.str.m0.0, i64 8 }, ptr %t17
-  call void @nrt_to_string_string(ptr %t16, ptr %t17)
-  call void @nrt_string_builder_append_string(ptr %t16)
+  %t14 = call i64 @nrt_string_builder_mark()
+  %t15 = alloca { ptr, i64 }
+  store { ptr, i64 } { ptr @.str.m0.0, i64 8 }, ptr %t16
+  call void @nrt_to_string_string(ptr %t15, ptr %t16)
+  call void @nrt_string_builder_append_string(ptr %t15)
+  %t17 = alloca { ptr, i64 }
+  call void @nrt_to_string_i32(ptr %t17, i32 %t12)
+  call void @nrt_string_builder_append_string(ptr %t17)
   %t18 = alloca { ptr, i64 }
-  call void @nrt_to_string_i32(ptr %t18, i32 %t13)
-  call void @nrt_string_builder_append_string(ptr %t18)
-  %t19 = alloca { ptr, i64 }
-  call void @nrt_string_builder_finish(ptr %t19, i64 %t15)
-  %t20 = load { ptr, i64 }, ptr %t19
-  call void @$prn_text({ ptr, i64 } %t20)
+  call void @nrt_string_builder_finish(ptr %t18, i64 %t14)
+  %t19 = load { ptr, i64 }, ptr %t18
+  call void @$prn_text({ ptr, i64 } %t19)
   br label %on.end.0
 on.next.2:
-  %t21 = insertvalue { i64, i32 } poison, i64 0, 0
-  %t22 = insertvalue { i64, i32 } %t21, i32 0, 1
-  %t23 = extractvalue { i64, i32 } %t10, 0
-  %t24 = extractvalue { i64, i32 } %t22, 0
-  %t25 = icmp eq i64 %t23, %t24
-  br i1 %t25, label %on.body.3, label %on.end.0
+  %t20 = insertvalue { i64, i32 } poison, i64 0, 0
+  %t21 = insertvalue { i64, i32 } %t20, i32 0, 1
+  %t22 = extractvalue { i64, i32 } %t9, 0
+  %t23 = extractvalue { i64, i32 } %t21, 0
+  %t24 = icmp eq i64 %t22, %t23
+  br i1 %t24, label %on.body.3, label %on.end.0
 on.body.3:
   call void @$prn_text({ ptr, i64 } { ptr @.str.m0.1, i64 4 })
   br label %on.end.0

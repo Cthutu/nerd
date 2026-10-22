@@ -361,3 +361,7 @@ bool   sema_bind_generic_type_node(const Lexer*            lexer,
 
 // Types formatted directly by the runtime and canonical Display.show.
 bool sema_type_is_builtin_interpolatable(const Sema* sema, u32 type_index);
+
+// Physical anonymous/use group containing a promoted logical field, if any.
+const SemaPlexUse*
+sema_record_field_group(const Sema* sema, u32 type_index, u32 field_index);

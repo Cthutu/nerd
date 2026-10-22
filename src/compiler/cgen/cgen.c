@@ -355,7 +355,11 @@ internal void cgen_record_fields(CGen* c, u32 type, u32 first, u32 depth)
             const SemaPlexUse* use =
                 &cgen_sema(c)->plex_uses[t->first_plex_use + j];
             if (use->first_field == i && use->field_count) {
-                sb_append_cstr(&c->out, "union { struct {\n");
+                sb_format(&c->out,
+                          "union { %s {\n",
+                          cgen_kind(c, use->type_index) == STK_Union
+                              ? "union"
+                              : "struct");
                 cgen_record_fields(c, use->type_index, first + i, depth + 1);
                 sb_format(&c->out,
                           "}; %s ncg_use%u; };\n",
@@ -438,6 +442,10 @@ internal void cgen_define_type(CGen* c, u32 id)
         if (k == STK_Function) {
             cgen_define_type(c, cgen_canonical(c, st->return_type));
         }
+    }
+    for (u32 i = 0; i < st->plex_use_count; ++i) {
+        u32 nested = cgen_sema(c)->plex_uses[st->first_plex_use + i].type_index;
+        cgen_define_type(c, cgen_canonical(c, nested));
     }
     if (k == STK_Function) {
         sb_format(&c->out,

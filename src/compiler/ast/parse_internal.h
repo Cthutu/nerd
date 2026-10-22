@@ -80,6 +80,7 @@ typedef struct {
     Array(AstTypeApplyInfo) type_applications;
     Array(AstSliceInfo) slices;
     Array(AstPlexField) plex_fields;
+    Array(AstPlexField) pending_plex_fields;
     Array(AstPlexBitField) plex_bit_fields;
     Array(AstPlexTypeInfo) plex_types;
     Array(AstEnumVariant) enum_variants;

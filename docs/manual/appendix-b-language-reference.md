@@ -230,6 +230,11 @@ intended exit code.
 
 - Tuples are positional.
 - Plexes are named-field product types.
+- Plexes and unions may contain anonymous `plex { ... }` and `union { ... }`
+  members. Their field names are promoted into the containing record while
+  preserving contiguous plex storage and overlapping union alternatives.
+  Duplicate promoted names and literals selecting overlapping alternatives are
+  invalid.
 - Plexes, raw unions, and enums may be declared locally inside blocks and are
   scoped like local bindings.
 - Generic plexes are written as `plex [T] { ... }` and used as `Name[T]`.

@@ -291,3 +291,7 @@ void lsp_handle_prepare_rename(LspState* state, const LspMessage* message);
 void lsp_handle_rename(LspState* state, const LspMessage* message);
 
 //------------------------------------------------------------------------------
+
+bool lsp_module_visible_unqualified(Arena*             arena,
+                                    const LspDocument* doc,
+                                    string             module_name);

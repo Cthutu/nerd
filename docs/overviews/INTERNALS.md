@@ -1,5 +1,29 @@
 # Internals
 
+Anonymous `plex` and `union` members promote field names through the existing
+record-group side tables. AST and CST parsers use a temporary field stack so
+recursive type parsing cannot interleave parent and child field ranges. The
+stack is released on both success and failure; no AST node/field size grows.
+Group shapes participate in type interning and survive imports and generic
+materialisation. Literal validation selects physical union alternatives and
+excludes inactive views from missing-field checks.
+
+LLVM and C retain anonymous groups as indivisible storage units. Wide LLVM
+unions use arrays of alignment-sized integers rather than an oversized integer
+with a different ABI alignment. Aggregate union views are reinterpreted through
+stack storage; promoted value and pointer operations descend through plex
+offsets and union overlays. Literal lowering writes only supplied fields so
+an inactive default view cannot overwrite the selected one. Debug offsets
+follow the same group path. The formatter recursively renders anonymous groups
+and advances parent comment cursors past comments already emitted by a child.
+
+LSP hover and definition search within the selected record's nested groups,
+including checked imported exports. Incomplete-member completion can parse a
+complete declaration prefix as CST even when the following function is broken.
+Unqualified module visibility is shared with trait-stub lookup; aliases alone
+do not expose public names.
+
+
 CST variable initialisers recognise same-line array-type syntax after `:=`,
 matching the AST parser's type-as-initialiser lookahead. The formatter retains
 the complete type for invalid/unfinished source instead of splitting its

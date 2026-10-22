@@ -670,6 +670,10 @@ main :: fn () {}
     "id": 2,
     "result": [
       {
+        "label": "anonymous_records",
+        "kind": 9
+      },
+      {
         "label": "associated_a",
         "kind": 9
       },

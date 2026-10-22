@@ -720,3 +720,39 @@ Rect :: plex {
     use Point[i32]
     width i32
 }
+¬
+Hash::plex{
+union{
+bytes [20]u8 -- Bytes of the hash.
+plex{a u32 -- First word.
+b u32 c u32 d u32 e u32}
+}
+}
+Union::union{plex #c{a u8 b u32}other u64}
+Named::plex{field plex{x i32 y i32} tail u8}
+¬
+Hash :: plex {
+    union {
+        bytes [20]u8  -- Bytes of the hash.
+        plex {
+            a u32  -- First word.
+            b u32
+            c u32
+            d u32
+            e u32
+        }
+    }
+}
+
+Union :: union {
+    plex #c {
+        a u8
+        b u32
+    }
+    other u64
+}
+
+Named :: plex {
+    field plex { x i32 y i32 }
+    tail  u8
+}

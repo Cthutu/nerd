@@ -5,6 +5,7 @@
 //------------------------------------------------------------------------------
 
 #include <compiler/build/front/front.h>
+#include <compiler/cst/cst.h>
 #include <compiler/error/error.h>
 #include <compiler/modules/modules.h>
 #include <compiler/sema/sema.h>
@@ -3002,24 +3003,32 @@ internal u32 lsp_completion_ast_enum_payload_symbol(const Ast* ast,
 
 internal bool lsp_completion_seen_name(Array(string) seen, string name);
 
-internal void lsp_completion_add_ast_plex_fields_for_symbol(Arena*       arena,
-                                                            JsonValue*   items,
-                                                            const Lexer* lexer,
-                                                            const Ast*   ast,
-                                                            u32 type_symbol)
+internal void lsp_completion_add_ast_record_fields(Arena*         arena,
+                                                   JsonValue*     items,
+                                                   const Lexer*   lexer,
+                                                   const Ast*     ast,
+                                                   const AstNode* value,
+                                                   u32            depth)
 {
-    const AstNode* value = lsp_completion_ast_find_type_bind(ast, type_symbol);
-    if (value == NULL || value->kind != AK_TypePlex ||
-        value->a >= array_count(ast->plex_types)) {
+    if (!value || value->kind != AK_TypePlex ||
+        depth > array_count(ast->nodes)) {
         return;
     }
-
     const AstPlexTypeInfo* plex = &ast->plex_types[value->a];
     for (u32 i = 0; i < plex->field_count; ++i) {
         const AstPlexField* field = &ast->plex_fields[plex->first_field + i];
         if (field->symbol_handle != U32_MAX) {
             lsp_completion_add(
                 arena, items, lex_symbol(lexer, field->symbol_handle), 5);
+        }
+        if (field->embedded &&
+            field->type_node_index < array_count(ast->nodes)) {
+            const AstNode* child = &ast->nodes[field->type_node_index];
+            if (child->kind == AK_SymbolRef) {
+                child = lsp_completion_ast_find_type_bind(ast, child->a);
+            }
+            lsp_completion_add_ast_record_fields(
+                arena, items, lexer, ast, child, depth + 1);
         }
         if (field->bit_field_group) {
             for (u32 bit = 0; bit < field->bit_field_count; ++bit) {
@@ -3032,6 +3041,21 @@ internal void lsp_completion_add_ast_plex_fields_for_symbol(Arena*       arena,
             }
         }
     }
+}
+
+internal void lsp_completion_add_ast_plex_fields_for_symbol(Arena*       arena,
+                                                            JsonValue*   items,
+                                                            const Lexer* lexer,
+                                                            const Ast*   ast,
+                                                            u32 type_symbol)
+{
+    const AstNode* value = lsp_completion_ast_find_type_bind(ast, type_symbol);
+    if (value == NULL || value->kind != AK_TypePlex ||
+        value->a >= array_count(ast->plex_types)) {
+        return;
+    }
+
+    lsp_completion_add_ast_record_fields(arena, items, lexer, ast, value, 0);
 }
 
 internal bool
@@ -3336,11 +3360,140 @@ internal bool lsp_completion_text_enum_payload_type(Arena*  arena,
     return false;
 }
 
+// A complete type declaration can still be parsed when a later edited function
+// is incomplete. Use its CST instead of treating every nested row as a field.
+internal void lsp_completion_add_cst_record_fields(Arena*       arena,
+                                                   JsonValue*   items,
+                                                   const Lexer* lexer,
+                                                   const Cst*   cst,
+                                                   u32          node_index,
+                                                   u32          depth)
+{
+    if (node_index >= array_count(cst->nodes) ||
+        depth > array_count(cst->nodes)) {
+        return;
+    }
+    const CstNode* node = &cst->nodes[node_index];
+    if (node->kind == CK_TypeApply) {
+        lsp_completion_add_cst_record_fields(
+            arena,
+            items,
+            lexer,
+            cst,
+            cst->type_applications[node->a].target_node_index,
+            depth + 1);
+    } else if (node->kind == CK_SymbolRef) {
+        for (u32 i = 0; i < array_count(cst->bindings); ++i) {
+            const CstNode* bind = &cst->nodes[cst->bindings[i]];
+            if (bind->kind == CK_Bind && bind->a == node->a) {
+                lsp_completion_add_cst_record_fields(
+                    arena, items, lexer, cst, bind->b, depth + 1);
+                break;
+            }
+        }
+    } else if (node->kind == CK_TypePlex) {
+        const CstPlexTypeInfo* plex = &cst->plex_types[node->a];
+        for (u32 i = 0; i < plex->field_count; ++i) {
+            const CstPlexField* field =
+                &cst->plex_fields[plex->first_field + i];
+            if (field->symbol_handle != U32_MAX) {
+                lsp_completion_add(
+                    arena, items, lex_symbol(lexer, field->symbol_handle), 5);
+            }
+            if (field->embedded) {
+                lsp_completion_add_cst_record_fields(arena,
+                                                     items,
+                                                     lexer,
+                                                     cst,
+                                                     field->type_node_index,
+                                                     depth + 1);
+            }
+            for (u32 bit = 0; bit < field->bit_field_count; ++bit) {
+                const CstPlexBitField* member =
+                    &cst->plex_bit_fields[field->first_bit_field + bit];
+                string name = lex_symbol(lexer, member->symbol_handle);
+                if (!string_eq_cstr(name, "_")) {
+                    lsp_completion_add(arena, items, name, 5);
+                }
+            }
+        }
+    }
+}
+
+internal bool lsp_completion_add_prefix_record_fields(Arena*     arena,
+                                                      JsonValue* items,
+                                                      string     source,
+                                                      string     type_name)
+{
+    Lexer lexer = {0};
+    if (!lex_with_config(
+            (NerdSource){.source = source, .source_path = s("<completion>")},
+            &(LexerConfig){.mode = LEXER_MODE_FORMAT},
+            &lexer)) {
+        lex_done(&lexer);
+        return false;
+    }
+    u32  token_count = (u32)array_count(lexer.tokens);
+    bool added       = false;
+    for (u32 i = 0; i + 3 < token_count; ++i) {
+        Token token = lexer.tokens[i];
+        if (token.kind != TK_Symbol || lexer.tokens[i + 1].kind != TK_Colon ||
+            lexer.tokens[i + 2].kind != TK_Colon ||
+            (lexer.tokens[i + 3].kind != TK_plex &&
+             lexer.tokens[i + 3].kind != TK_union)) {
+            continue;
+        }
+        string name =
+            string_from(source.data + token.offset,
+                        lex_token_end_offset(&lexer, &token) - token.offset);
+        if (!string_eq(name, type_name)) {
+            continue;
+        }
+        u32  depth  = 0;
+        bool opened = false;
+        for (u32 end = i + 3; end < token_count; ++end) {
+            if (lexer.tokens[end].kind == TK_LBrace) {
+                ++depth;
+                opened = true;
+            }
+            if (lexer.tokens[end].kind != TK_RBrace || !opened ||
+                --depth != 0) {
+                continue;
+            }
+            __array_count(lexer.tokens) = end + 1;
+            Cst cst                     = {0};
+            if (cst_parse(&lexer, &cst)) {
+                for (u32 b = 0; b < array_count(cst.bindings); ++b) {
+                    const CstNode* bind = &cst.nodes[cst.bindings[b]];
+                    if (bind->kind == CK_Bind &&
+                        string_eq(lex_symbol(&lexer, bind->a), type_name)) {
+                        usize before = array_count(items->array.values);
+                        lsp_completion_add_cst_record_fields(
+                            arena, items, &lexer, &cst, bind->b, 0);
+                        added = array_count(items->array.values) > before;
+                        break;
+                    }
+                }
+                cst_done(&cst);
+            }
+            __array_count(lexer.tokens) = token_count;
+            break;
+        }
+        break;
+    }
+    lex_done(&lexer);
+    return added;
+}
+
 internal bool lsp_completion_add_text_plex_fields(Arena*     arena,
                                                   JsonValue* items,
                                                   string     source,
                                                   string     type_name)
 {
+    if (lsp_completion_add_prefix_record_fields(
+            arena, items, source, type_name)) {
+        return true;
+    }
     usize line_start = 0;
     bool  in_plex    = false;
     usize before     = array_count(items->array.values);

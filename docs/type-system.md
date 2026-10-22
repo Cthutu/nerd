@@ -21,6 +21,22 @@ That means:
 - type rows live in `Sema.types`
 - AST nodes are linked to inferred or declared types through side tables
 
+## Anonymous records
+
+Anonymous plex/union members share the embedded-record representation with
+`use`: logical fields are flattened into the record's member table, and
+`SemaPlexUse` rows retain the containing storage groups. A group may now be a
+plex or a union, regardless of its enclosing record kind. Interning compares
+these groups as well as field names/types, so equal flattened signatures with
+different physical layouts remain distinct. Imports and materialisation copy
+and canonicalise each group's type before interning the containing record.
+
+Literal checking counts physical alternatives rather than promoted names when
+selecting a union view. Inactive views satisfy completeness checks without
+being evaluated or written. Anonymous union storage also prevents automatic
+value equality, as a named union field would; an enclosing explicit `Eq`
+implementation can define the intended comparison.
+
 ## Type Representation
 
 Each semantic type is stored as a compact `SemaType` row:
@@ -88,10 +104,11 @@ deferred.
 Raw union types are written `union { field Type ... }`. They share the same
 named-field storage model as plexes, but lower to overlapping storage: all
 fields overlap and the programmer is responsible for knowing which field is
-currently valid. A union value is constructed with exactly one field, such as
-`Value { i: 42 }`, and fields are read with dot notation. Raw unions are meant
-for low-level and FFI-facing code, so they are intentionally not supported in
-pattern matching.
+currently valid. A union value selects one storage alternative, such as
+`Value { i: 42 }`, and fields are read with dot notation. Multiple promoted
+fields from the same anonymous plex alternative may be initialised together.
+Raw unions are meant for low-level and FFI-facing code, so they are intentionally
+not supported in pattern matching.
 
 Enum types are written `enum { Variant ... }`. Unit variants have no payload.
 Tuple-like payload variants write their payload types after the variant name,

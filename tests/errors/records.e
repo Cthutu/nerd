@@ -1859,3 +1859,147 @@ main :: fn () { _f: fn (p: ^Point) = rect_only }
     "Change the expression or annotation so both sides use the same type."
   ]
 }
+¬
+Outer :: plex { own u32 union { own u32 other u32 } }
+main :: fn () {}
+¬
+{
+    "message": "Embedded plex field `own` conflicts with another field",
+    "source_file": "tests/errors/records.e",
+    "primary_location": {
+        "line": 1,
+        "column": 25
+    },
+    "references": [],
+    "notes": [],
+    "help": [
+        "Rename the field or remove one of the conflicting plex uses."
+    ]
+}
+¬
+Outer :: union { plex { own u32 } plex { own u16 } }
+main :: fn () {}
+¬
+{
+    "message": "Embedded plex field `own` conflicts with another field",
+    "source_file": "tests/errors/records.e",
+    "primary_location": {
+        "line": 1,
+        "column": 35
+    },
+    "references": [],
+    "notes": [],
+    "help": [
+        "Rename the field or remove one of the conflicting plex uses."
+    ]
+}
+¬
+Outer :: plex { union { scalar u64 plex { a u32 b u32 } } }
+main :: fn () { value := Outer { scalar: 1 a: 2 b: 3 } prn($"{value.a}") }
+¬
+{
+    "message": "Type mismatch: expected `one union alternative`, found `missing or conflicting union alternatives`",
+    "source_file": "tests/errors/records.e",
+    "primary_location": {
+        "line": 2,
+        "column": 32
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 2,
+            "column": 32,
+            "length": 1,
+            "message": "This expression has type `missing or conflicting union alternatives`"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Change the expression or annotation so both sides use the same type."
+    ]
+}
+¬
+Outer :: union { scalar u64 plex { a u32 b u32 } }
+main :: fn () { value := Outer { a: 1 } prn($"{value.a}") }
+¬
+{
+    "message": "Plex literal is missing required field",
+    "source_file": "tests/errors/records.e",
+    "primary_location": {
+        "line": 2,
+        "column": 32
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 2,
+            "column": 32,
+            "length": 1,
+            "message": "This literal does not initialise every required field"
+        }
+    ],
+    "notes": [
+        "Missing field: `b`"
+    ],
+    "help": [
+        "Add all fields required by the plex type, or write `...` in the literal to initialise omitted fields with their default values."
+    ]
+}
+¬
+Outer :: plex { tag u8 union { a u32 b u32 } }
+main :: fn () { value := Outer { tag: 1 } prn($"{value.tag}") }
+¬
+{
+    "message": "Type mismatch: expected `one union alternative`, found `missing or conflicting union alternatives`",
+    "source_file": "tests/errors/records.e",
+    "primary_location": {
+        "line": 2,
+        "column": 32
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 2,
+            "column": 32,
+            "length": 1,
+            "message": "This expression has type `missing or conflicting union alternatives`"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Change the expression or annotation so both sides use the same type."
+    ]
+}
+¬
+Outer :: plex { union { a u32 b u32 } }
+main :: fn () { left: Outer right: Outer assert left == right }
+¬
+{
+    "message": "Operator `==` requires matching operands that support Eq, found `Outer` and `Outer`",
+    "source_file": "tests/errors/records.e",
+    "primary_location": {
+        "line": 2,
+        "column": 54
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 2,
+            "column": 54,
+            "length": 2,
+            "message": "These operands have types `Outer` and `Outer`"
+        },
+        {
+            "kind": "secondary",
+            "source_file": "tests/errors/records.e",
+            "line": 1,
+            "column": 1,
+            "length": 5,
+            "message": "Type `Outer` is defined here"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Use `==` only with matching operands that support Eq."
+    ]
+}

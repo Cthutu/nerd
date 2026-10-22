@@ -1361,3 +1361,73 @@ main :: fn () -> i32 {
 ¬
 
 ¬
+
+=== case: anonymous-record-members ===
+use test.anonymous_records
+
+Overlay :: union { scalar u64 plex #c { low u32 high u32 } }
+OtherViews :: union { plex { first u32 second u32 } plex { short_a u16 short_b u16 } }
+Nested :: plex { plex { union { x u32 y u32 } } tail u8 }
+GroupedC :: plex { plex #c { a u8 b u32 } c u8 }
+GroupedN :: plex { plex { a u8 b u32 } c u8 }
+Generic :: plex [T] { prefix u8 plex { value T } }
+Named :: plex { inner plex { first u8 second u32 } tail u8 }
+Bits :: plex { union { raw u8 plex { u8 { low : 4 high : 4 } } } }
+saved :: Overlay { low: 16843009 high: 33686018 }
+read_copy :: fn (hash: Hash) -> u32 { return hash.e }
+change :: fn (hash: ^Hash) { hash.c = 50529027 }
+optional :: fn (hash: Hash) -> ?Hash { return hash }
+main :: fn () {
+    hash: Hash
+    hash.a = 16843009
+    hash.e = 33686018
+    assert Hash.size == 20
+    assert hash.bytes[0] == 1 && hash.bytes[16] == 2
+    change(^hash)
+    assert hash.bytes[8] == 3
+    constructed := make()
+    assert constructed.a == 16843009 && constructed.e == 33686018
+    clone := copy(hash)
+    assert read_copy(clone) == 33686018
+    on optional(hash) => [some] { assert some.c == 50529027 }
+    other := Hash { bytes: [1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5] }
+    assert other.e == 84215045
+    envelope := Envelope { prefix: 7 a: 16843009 b: 33686018 suffix: 9 ... }
+    assert Envelope.size == 28
+    assert envelope.bytes[0] == 1 && envelope.bytes[4] == 2
+    assert envelope.prefix == 7 && envelope.suffix == 9
+    assert copy(envelope).a == 16843009
+    overlay := Overlay { low: 16843009 high: 33686018 }
+    assert saved.low == overlay.low && saved.high == overlay.high
+    overlay.low = 67372036
+    assert overlay.high == 33686018
+    views := OtherViews { first: 16843009 second: 33686018 }
+    assert views.short_a == 257 && views.short_b == 257
+    views.short_b = 514
+    assert views.second == 33686018
+    nested := Nested { x: 42 tail: 3 }
+    assert nested.y == 42 && nested.tail == 3
+    g1: GroupedC
+    g2: GroupedN
+    assert (^g1.b).as(usize) - (^g1.a).as(usize) == 4
+    assert (^g2.a).as(usize) - (^g2.b).as(usize) == 4
+    generic: Generic[i32] = { prefix: 1 value: 42 }
+    assert generic.value == 42 && generic.prefix == 1
+    named := Named { inner: { first: 7 second: 42 } tail: 3 }
+    assert named.inner.second == 42 && named.tail == 3
+    array: [2]Hash
+    array[1] = hash
+    assert array[1].e == 33686018 && array[0].a == 0
+    bits: Bits
+    bits.low = 3
+    bits.high = 12
+    assert bits.raw == 195 && bits.low == 3 && bits.high == 12
+    prn($"anonymous records {Hash.size} {Envelope.size} {clone.a} {overlay.high} {nested.y}")
+}
+¬
+0
+¬
+anonymous records 20 28 16843009 33686018 42
+¬
+
+¬

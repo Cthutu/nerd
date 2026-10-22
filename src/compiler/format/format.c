@@ -1899,7 +1899,9 @@ internal void format_emit_expr(StringBuilder* sb,
                     }
                     sb_append_cstr(sb, " }");
                 } else if (field->embedded) {
-                    sb_append_cstr(sb, "use ");
+                    if (lexer->tokens[field->token_index].kind == TK_use) {
+                        sb_append_cstr(sb, "use ");
+                    }
                 } else {
                     sb_append_string(sb,
                                      lex_symbol(lexer, field->symbol_handle));
@@ -5303,14 +5305,28 @@ internal void format_emit_type_plex_multiline(StringBuilder* sb,
             have_previous_field       = true;
             continue;
         } else if (field->embedded) {
-            sb_append_cstr(sb, "use ");
+            if (lexer->tokens[field->token_index].kind == TK_use) {
+                sb_append_cstr(sb, "use ");
+            }
         } else {
             sb_append_string(sb, field_name);
             for (usize pad = field_name.count; pad <= max_field_width; ++pad) {
                 sb_append_char(sb, ' ');
             }
         }
-        format_emit_expr(sb, cst, lexer, field->type_node_index, 0);
+        if (field->embedded &&
+            lexer->tokens[field->token_index].kind != TK_use) {
+            format_emit_type_plex_multiline(
+                sb, cst, lexer, field->type_node_index, indent_level + 1);
+            u32 close =
+                format_node_end_token_index(cst, lexer, field->type_node_index);
+            format_skip_block_comments_before_offset(
+                lexer,
+                &comment_index,
+                lex_token_end_offset(lexer, &lexer->tokens[close]));
+        } else {
+            format_emit_expr(sb, cst, lexer, field->type_node_index, 0);
+        }
         usize field_end_offset = field_end_offsets[i];
         if (field_has_comments[i]) {
             usize before_offset = lexer->source.source.count;

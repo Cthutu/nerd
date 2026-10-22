@@ -65,6 +65,9 @@ The formatter should be deterministic and idempotent.
   single-line branches remain grouped, with a blank line separating the group
   from adjacent multiline branches.
 - Explicit grouping parentheses are preserved.
+- Anonymous plex/union members retain their bare `plex` or `union` form, with
+  nested bodies indented recursively. Comments inside a child record are emitted
+  once; named nested record fields keep their field name.
 - Array types mistakenly used as inferred initialisers, such as
   `digest := [20]u8`, remain together while editing. Formatting does not split
   the element type into a separate statement or change the compiler's

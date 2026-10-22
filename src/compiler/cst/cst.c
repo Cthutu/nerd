@@ -26,6 +26,7 @@
 typedef struct {
     const Lexer* lexer;
     u32          token_index;
+    Array(CstPlexField) pending_plex_fields;
     Array(u32) token_integer_indices;
     Array(u32) token_float_indices;
     Array(u32) token_string_indices;
@@ -558,6 +559,13 @@ internal bool cst_skip_type_tokens(const CstParseState* state, u32* io_index)
         }
         (*io_index)++;
         while (cst_kind_at_stream_index(state, *io_index) != TK_RBrace) {
+            if (cst_kind_at_stream_index(state, *io_index) == TK_plex ||
+                cst_kind_at_stream_index(state, *io_index) == TK_union) {
+                if (!cst_skip_type_tokens(state, io_index)) {
+                    return false;
+                }
+                continue;
+            }
             if (kind == TK_plex &&
                 cst_kind_at_stream_index(state, *io_index) == TK_use) {
                 (*io_index)++;
@@ -1688,8 +1696,8 @@ internal bool cst_parse_type_primary(CstParseState* state, u32* out_node)
         if (!cst_consume(state, TK_LBrace)) {
             return false;
         }
-        u32 first_field = (u32)array_count(state->cst.plex_fields);
-        u32 field_count = 0;
+        u32 first_pending = (u32)array_count(state->pending_plex_fields);
+        u32 field_count   = 0;
         while (cst_current_token(state).kind != TK_RBrace) {
             if (!is_union && cst_current_token(state).kind == TK_Symbol &&
                 cst_peek_kind_at(state, 1) == TK_LBrace) {
@@ -1740,7 +1748,7 @@ internal bool cst_parse_type_primary(CstParseState* state, u32* out_node)
                 if (!cst_consume(state, TK_RBrace)) {
                     return false;
                 }
-                array_push(state->cst.plex_fields,
+                array_push(state->pending_plex_fields,
                            (CstPlexField){
                                .token_index     = storage_token,
                                .symbol_handle   = U32_MAX,
@@ -1753,6 +1761,24 @@ internal bool cst_parse_type_primary(CstParseState* state, u32* out_node)
                 field_count++;
                 continue;
             }
+            if (cst_current_token(state).kind == TK_plex ||
+                cst_current_token(state).kind == TK_union) {
+                u32 member_token = state->token_index;
+                u32 type_node    = 0;
+                if (!cst_parse_type(state, &type_node)) {
+                    return false;
+                }
+                array_push(state->pending_plex_fields,
+                           (CstPlexField){
+                               .token_index     = member_token,
+                               .symbol_handle   = U32_MAX,
+                               .type_node_index = type_node,
+                               .first_bit_field = U32_MAX,
+                               .embedded        = true,
+                           });
+                field_count++;
+                continue;
+            }
             if (!is_union && cst_current_token(state).kind == TK_use) {
                 u32 use_token = state->token_index;
                 cst_advance(state);
@@ -1760,7 +1786,7 @@ internal bool cst_parse_type_primary(CstParseState* state, u32* out_node)
                 if (!cst_parse_type(state, &type_node)) {
                     return false;
                 }
-                array_push(state->cst.plex_fields,
+                array_push(state->pending_plex_fields,
                            (CstPlexField){
                                .token_index     = use_token,
                                .symbol_handle   = U32_MAX,
@@ -1781,7 +1807,7 @@ internal bool cst_parse_type_primary(CstParseState* state, u32* out_node)
             if (!cst_parse_type(state, &type_node)) {
                 return false;
             }
-            array_push(state->cst.plex_fields,
+            array_push(state->pending_plex_fields,
                        (CstPlexField){
                            .token_index     = field_token,
                            .symbol_handle   = field_symbol,
@@ -1793,6 +1819,14 @@ internal bool cst_parse_type_primary(CstParseState* state, u32* out_node)
         }
         if (!cst_consume(state, TK_RBrace)) {
             return false;
+        }
+        u32 first_field = (u32)array_count(state->cst.plex_fields);
+        for (u32 i = first_pending; i < array_count(state->pending_plex_fields);
+             ++i) {
+            array_push(state->cst.plex_fields, state->pending_plex_fields[i]);
+        }
+        if (state->pending_plex_fields) {
+            __array_count(state->pending_plex_fields) = first_pending;
         }
         u32 plex_type_index = (u32)array_count(state->cst.plex_types);
         array_push(state->cst.plex_types,
@@ -6646,6 +6680,7 @@ void cst_mark_result_type_tokens(const Lexer* lexer, bool* out_tokens)
         }
     }
     cst_done(&state.cst);
+    array_free(state.pending_plex_fields);
     array_free(state.token_integer_indices);
     array_free(state.token_float_indices);
     array_free(state.token_string_indices);
@@ -6661,6 +6696,7 @@ bool cst_parse(const Lexer* lexer, Cst* out_cst)
         u32 item_index = U32_MAX;
         if (!cst_parse_top_level_item(&state, &item_index)) {
             cst_done(&state.cst);
+            array_free(state.pending_plex_fields);
             array_free(state.token_integer_indices);
             array_free(state.token_float_indices);
             array_free(state.token_string_indices);
@@ -6679,6 +6715,7 @@ bool cst_parse(const Lexer* lexer, Cst* out_cst)
         array_push(state.cst.floats, lexer->floats[i]);
     }
 
+    array_free(state.pending_plex_fields);
     array_free(state.token_integer_indices);
     array_free(state.token_float_indices);
     array_free(state.token_string_indices);

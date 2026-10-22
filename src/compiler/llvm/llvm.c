@@ -440,31 +440,11 @@ internal u32 llvm_align_bits(u32 bits, u32 align_bits)
     return remainder == 0 ? bits : bits + align_bits - remainder;
 }
 
-internal const SemaPlexUse* llvm_plex_use_containing_field(const Sema* sema,
-                                                           u32 type_index,
-                                                           u32 field_index)
-{
-    if (type_index >= array_count(sema->types) ||
-        sema->types[type_index].kind != STK_Plex) {
-        return NULL;
-    }
-    const SemaType* type = &sema->types[type_index];
-    for (u32 i = 0; i < type->plex_use_count; ++i) {
-        const SemaPlexUse* use = &sema->plex_uses[type->first_plex_use + i];
-        if (field_index >= use->first_field &&
-            field_index < use->first_field + use->field_count) {
-            return use;
-        }
-    }
-    return NULL;
-}
-
 // Embeddings and bit-field blocks each occupy one indivisible storage unit.
 internal u32 llvm_record_storage_end(const Sema* sema, u32 type_index, u32 i)
 {
     const SemaType*    type = &sema->types[type_index];
-    const SemaPlexUse* use =
-        llvm_plex_use_containing_field(sema, type_index, i);
+    const SemaPlexUse* use  = sema_record_field_group(sema, type_index, i);
     if (use != NULL) {
         return use->first_field + use->field_count;
     }
@@ -482,8 +462,7 @@ internal u32 llvm_record_storage_end(const Sema* sema, u32 type_index, u32 i)
 internal u32 llvm_record_storage_type(const Sema* sema, u32 type_index, u32 i)
 {
     const SemaType*    type = &sema->types[type_index];
-    const SemaPlexUse* use =
-        llvm_plex_use_containing_field(sema, type_index, i);
+    const SemaPlexUse* use  = sema_record_field_group(sema, type_index, i);
     if (use != NULL) {
         return use->type_index;
     }
@@ -696,9 +675,9 @@ internal u32 llvm_type_align_bits(const Sema* sema, u32 type_index)
         {
             const SemaType* type           = &sema->types[type_index];
             u32             max_align_bits = 8;
-            for (u32 i = 0; i < type->param_count; ++i) {
-                u32 field_type =
-                    sema->type_param_types[type->first_param_type + i];
+            for (u32 i = 0; i < type->param_count;
+                 i     = llvm_record_storage_end(sema, type_index, i)) {
+                u32 field_type = llvm_record_storage_type(sema, type_index, i);
                 u32 field_align_bits = llvm_type_align_bits(sema, field_type);
                 if (field_align_bits > max_align_bits) {
                     max_align_bits = field_align_bits;
@@ -759,14 +738,15 @@ internal u32 llvm_union_storage_bits(const Sema* sema, u32 union_type)
 
     const SemaType* type = &sema->types[union_type];
     u32             bits = 8;
-    for (u32 i = 0; i < type->param_count; ++i) {
-        u32 field_type = sema->type_param_types[type->first_param_type + i];
+    for (u32 i = 0; i < type->param_count;
+         i     = llvm_record_storage_end(sema, union_type, i)) {
+        u32 field_type = llvm_record_storage_type(sema, union_type, i);
         u32 field_bits = llvm_type_storage_bits(sema, field_type);
         if (field_bits > bits) {
             bits = field_bits;
         }
     }
-    return bits;
+    return llvm_align_bits(bits, llvm_type_align_bits(sema, union_type));
 }
 
 internal u32 llvm_pointee_type(const Sema* sema, u32 type_index)
@@ -1123,8 +1103,16 @@ llvm_append_type(StringBuilder* sb, const Sema* sema, u32 type_index)
             break;
         }
     case STK_Union:
-        sb_format(sb, "i%u", llvm_union_storage_bits(sema, type_index));
-        break;
+        {
+            u32 bits  = llvm_union_storage_bits(sema, type_index);
+            u32 align = llvm_type_align_bits(sema, type_index);
+            if (bits <= align) {
+                sb_format(sb, "i%u", bits);
+            } else {
+                sb_format(sb, "[%u x i%u]", bits / align, align);
+            }
+            break;
+        }
     case STK_DynamicArray:
     case STK_Module:
     default:
@@ -2449,7 +2437,11 @@ llvm_append_zero_value(StringBuilder* sb, const Sema* sema, u32 type_index)
         sb_append_cstr(sb, "null");
         break;
     case STK_Union:
-        sb_append_cstr(sb, "0");
+        sb_append_cstr(sb,
+                       llvm_union_storage_bits(sema, type_index) <=
+                               llvm_type_align_bits(sema, type_index)
+                           ? "0"
+                           : "zeroinitializer");
         break;
     case STK_Enum:
     case STK_Plex:
@@ -2537,8 +2529,7 @@ internal bool llvm_append_constant_record_value(StringBuilder* sb,
         if (physical > 0) {
             sb_append_cstr(sb, ", ");
         }
-        const SemaPlexUse* use =
-            llvm_plex_use_containing_field(sema, record_type, i);
+        const SemaPlexUse* use = sema_record_field_group(sema, record_type, i);
         if (use != NULL && use->first_field == i) {
             llvm_append_type(sb, sema, use->type_index);
             sb_append_char(sb, ' ');
@@ -3717,7 +3708,11 @@ internal u32 llvm_debug_record_field_offset_bits(const Sema* sema,
         return layout->enum_tag_bits;
     }
     if (kind == STK_Union) {
-        return 0;
+        const SemaPlexUse* use =
+            sema_record_field_group(sema, type_index, field_index);
+        return use ? llvm_debug_record_field_offset_bits(
+                         sema, use->type_index, field_index - use->first_field)
+                   : 0;
     }
     if (kind != STK_Tuple && kind != STK_Plex) {
         return 0;
@@ -3734,7 +3729,7 @@ internal u32 llvm_debug_record_field_offset_bits(const Sema* sema,
         if (field_index >= i &&
             field_index < llvm_record_storage_end(sema, type_index, i)) {
             const SemaPlexUse* use =
-                llvm_plex_use_containing_field(sema, type_index, i);
+                sema_record_field_group(sema, type_index, i);
             if (use != NULL) {
                 offset += llvm_debug_record_field_offset_bits(
                     sema, use->type_index, field_index - i);
@@ -5061,7 +5056,10 @@ internal LlvmValue llvm_default_value(LlvmFunctionContext* ctx, u32 type_index)
     }
     if (kind == STK_Enum || kind == STK_Tuple || kind == STK_Plex ||
         kind == STK_Array || kind == STK_Slice || kind == STK_String ||
-        kind == STK_Arena) {
+        kind == STK_Arena ||
+        (kind == STK_Union &&
+         llvm_union_storage_bits(ctx->sema, type_index) >
+             llvm_type_align_bits(ctx->sema, type_index))) {
         return (LlvmValue){
             .ok         = true,
             .type_index = type_index,
@@ -5427,8 +5425,37 @@ internal LlvmValue llvm_cast_to_union_storage(LlvmFunctionContext* ctx,
         return (LlvmValue){0};
     }
 
-    string storage_type = string_format(ctx->arena, "i%u", storage_bits);
-    u32    value_bits   = llvm_type_storage_bits(ctx->sema, value.type_index);
+    string storage_type = llvm_type_string(ctx, union_type);
+    if (storage_bits > llvm_type_align_bits(ctx->sema, union_type) ||
+        (llvm_type_is_record(ctx->sema, value.type_index) ||
+         llvm_type_kind(ctx->sema, value.type_index) == STK_Array ||
+         llvm_type_kind(ctx->sema, value.type_index) == STK_Slice ||
+         llvm_type_kind(ctx->sema, value.type_index) == STK_Enum)) {
+        string ptr        = llvm_temp(ctx);
+        string result     = llvm_temp(ctx);
+        string value_type = llvm_type_string(ctx, value.type_index);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = alloca " STRINGP "\n",
+                  STRINGV(ptr),
+                  STRINGV(storage_type));
+        sb_format(ctx->sb,
+                  "  store " STRINGP " zeroinitializer, ptr " STRINGP "\n",
+                  STRINGV(storage_type),
+                  STRINGV(ptr));
+        sb_format(ctx->sb,
+                  "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n",
+                  STRINGV(value_type),
+                  STRINGV(value.value),
+                  STRINGV(ptr));
+        sb_format(ctx->sb,
+                  "  " STRINGP " = load " STRINGP ", ptr " STRINGP "\n",
+                  STRINGV(result),
+                  STRINGV(storage_type),
+                  STRINGV(ptr));
+        return (LlvmValue){
+            .ok = true, .type_index = union_type, .value = result};
+    }
+    u32 value_bits = llvm_type_storage_bits(ctx->sema, value.type_index);
     if (value_bits == storage_bits &&
         llvm_integer_bits(ctx->sema, value.type_index) > 0) {
         value.type_index = union_type;
@@ -5494,6 +5521,32 @@ internal LlvmValue llvm_cast_from_union_storage(LlvmFunctionContext* ctx,
         return (LlvmValue){0};
     }
 
+    if (storage_bits > llvm_type_align_bits(ctx->sema, value.type_index) ||
+        (llvm_type_is_record(ctx->sema, field_type) ||
+         llvm_type_kind(ctx->sema, field_type) == STK_Array ||
+         llvm_type_kind(ctx->sema, field_type) == STK_Slice ||
+         llvm_type_kind(ctx->sema, field_type) == STK_Enum)) {
+        string ptr          = llvm_temp(ctx);
+        string result       = llvm_temp(ctx);
+        string storage_type = llvm_type_string(ctx, value.type_index);
+        string field_type_s = llvm_type_string(ctx, field_type);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = alloca " STRINGP "\n",
+                  STRINGV(ptr),
+                  STRINGV(storage_type));
+        sb_format(ctx->sb,
+                  "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n",
+                  STRINGV(storage_type),
+                  STRINGV(value.value),
+                  STRINGV(ptr));
+        sb_format(ctx->sb,
+                  "  " STRINGP " = load " STRINGP ", ptr " STRINGP "\n",
+                  STRINGV(result),
+                  STRINGV(field_type_s),
+                  STRINGV(ptr));
+        return (LlvmValue){
+            .ok = true, .type_index = field_type, .value = result};
+    }
     if (llvm_integer_bits(ctx->sema, field_type) == storage_bits) {
         return (LlvmValue){
             .ok         = true,
@@ -5757,9 +5810,20 @@ internal LlvmValue llvm_extract_record_field(LlvmFunctionContext* ctx,
                                              u32                  field_index)
 {
     u32 current_type = record.type_index;
+    if (llvm_type_kind(ctx->sema, current_type) == STK_Union) {
+        const SemaPlexUse* use =
+            sema_record_field_group(ctx->sema, current_type, field_index);
+        u32 field_type =
+            use ? use->type_index
+                : llvm_record_field_type(ctx->sema, current_type, field_index);
+        LlvmValue field = llvm_cast_from_union_storage(ctx, record, field_type);
+        return use && field.ok ? llvm_extract_record_field(
+                                     ctx, field, field_index - use->first_field)
+                               : field;
+    }
     while (llvm_type_kind(ctx->sema, current_type) == STK_Plex) {
-        const SemaPlexUse* use = llvm_plex_use_containing_field(
-            ctx->sema, current_type, field_index);
+        const SemaPlexUse* use =
+            sema_record_field_group(ctx->sema, current_type, field_index);
         if (use == NULL) {
             break;
         }
@@ -5775,6 +5839,9 @@ internal LlvmValue llvm_extract_record_field(LlvmFunctionContext* ctx,
             .ok = true, .type_index = use->type_index, .value = temp};
         current_type = use->type_index;
         field_index -= use->first_field;
+    }
+    if (llvm_type_kind(ctx->sema, current_type) == STK_Union) {
+        return llvm_extract_record_field(ctx, record, field_index);
     }
     u32 field_type =
         llvm_record_field_type(ctx->sema, current_type, field_index);
@@ -5848,8 +5915,26 @@ internal LlvmValue llvm_insert_record_field(LlvmFunctionContext* ctx,
                                             u32                  field_index,
                                             LlvmValue            value)
 {
-    const SemaPlexUse* use = llvm_plex_use_containing_field(
-        ctx->sema, record.type_index, field_index);
+    if (llvm_type_kind(ctx->sema, record.type_index) == STK_Union) {
+        const SemaPlexUse* group =
+            sema_record_field_group(ctx->sema, record.type_index, field_index);
+        if (group) {
+            LlvmValue nested =
+                llvm_cast_from_union_storage(ctx, record, group->type_index);
+            if (!nested.ok) {
+                return nested;
+            }
+            value = llvm_insert_record_field(
+                ctx, nested, field_index - group->first_field, value);
+            if (!value.ok) {
+                return value;
+            }
+        }
+        return llvm_cast_to_union_storage(ctx, value, record.type_index);
+    }
+
+    const SemaPlexUse* use =
+        sema_record_field_group(ctx->sema, record.type_index, field_index);
     u32 physical = llvm_type_kind(ctx->sema, record.type_index) == STK_Plex
                        ? llvm_plex_physical_field_index(
                              ctx->sema,
@@ -7361,8 +7446,7 @@ internal LlvmValue llvm_address_of_expr(LlvmFunctionContext* ctx,
             field_index = llvm_record_field_index(
                 ctx->sema, record_type, expr->symbol_handle);
         }
-        if (field_index == U32_MAX ||
-            llvm_type_kind(ctx->sema, record_type) == STK_Union) {
+        if (field_index == U32_MAX) {
             return (LlvmValue){0};
         }
 
@@ -7395,11 +7479,17 @@ internal LlvmValue llvm_address_of_expr(LlvmFunctionContext* ctx,
         string ptr           = target_address.value;
         u32    current_type  = record_type;
         u32    current_field = field_index;
-        while (llvm_type_kind(ctx->sema, current_type) == STK_Plex) {
-            const SemaPlexUse* use = llvm_plex_use_containing_field(
-                ctx->sema, current_type, current_field);
+        while (llvm_type_kind(ctx->sema, current_type) == STK_Plex ||
+               llvm_type_kind(ctx->sema, current_type) == STK_Union) {
+            const SemaPlexUse* use =
+                sema_record_field_group(ctx->sema, current_type, current_field);
             if (use == NULL) {
                 break;
+            }
+            if (llvm_type_kind(ctx->sema, current_type) == STK_Union) {
+                current_type = use->type_index;
+                current_field -= use->first_field;
+                continue;
             }
             string next = llvm_temp(ctx);
             sb_format(ctx->sb,
@@ -7418,6 +7508,10 @@ internal LlvmValue llvm_address_of_expr(LlvmFunctionContext* ctx,
             llvm_record_bit_field(
                 ctx->sema, current_type, current_field, NULL, NULL)) {
             return (LlvmValue){0};
+        }
+        if (llvm_type_kind(ctx->sema, current_type) == STK_Union) {
+            return (LlvmValue){
+                .ok = true, .type_index = field_type, .value = ptr};
         }
         string next        = llvm_temp(ctx);
         u32 physical_field = llvm_type_kind(ctx->sema, current_type) == STK_Plex
@@ -10551,24 +10645,33 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
     case HIR_EXPR_Plex:
     case HIR_EXPR_PlexUpdate:
         {
-            if (llvm_type_kind(ctx->sema, expr->type_index) == STK_Union) {
-                if (expr->arg_count == 0) {
-                    return llvm_default_value(ctx, expr->type_index);
+            if (expr->kind == HIR_EXPR_Plex &&
+                (llvm_type_kind(ctx->sema, expr->type_index) == STK_Union ||
+                 (expr->type_index < array_count(ctx->sema->types) &&
+                  ctx->sema->types[expr->type_index].plex_use_count > 0))) {
+                LlvmValue result = llvm_default_value(ctx, expr->type_index);
+                for (u32 i = 0; i < expr->arg_count; ++i) {
+                    const HirCallArg* arg =
+                        &ctx->hir->call_args[expr->first_arg + i];
+                    u32 field = llvm_record_field_index(
+                        ctx->sema, expr->type_index, arg->symbol_handle);
+                    LlvmValue value =
+                        llvm_emit_expr(ctx, function, arg->expr_index);
+                    value = llvm_coerce_value_to_type(
+                        ctx,
+                        value,
+                        llvm_record_field_type(
+                            ctx->sema, expr->type_index, field));
+                    if (!value.ok) {
+                        return value;
+                    }
+                    result =
+                        llvm_insert_record_field(ctx, result, field, value);
+                    if (!result.ok) {
+                        return result;
+                    }
                 }
-
-                const HirCallArg* arg = &ctx->hir->call_args[expr->first_arg];
-                if (llvm_record_field_index(ctx->sema,
-                                            expr->type_index,
-                                            arg->symbol_handle) == U32_MAX) {
-                    return (LlvmValue){0};
-                }
-                LlvmValue field_value =
-                    llvm_emit_expr(ctx, function, arg->expr_index);
-                if (!field_value.ok) {
-                    return (LlvmValue){0};
-                }
-                return llvm_cast_to_union_storage(
-                    ctx, field_value, expr->type_index);
+                return result;
             }
 
             if (expr->kind == HIR_EXPR_Plex) {
@@ -12716,15 +12819,6 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 if (field_type != sema_no_type()) {
                     result_type = field_type;
                 }
-            }
-
-            if (llvm_type_kind(ctx->sema, target.type_index) == STK_Union) {
-                u32 field_type = llvm_record_field_type(
-                    ctx->sema, target.type_index, field_index);
-                if (field_type == sema_no_type()) {
-                    return (LlvmValue){0};
-                }
-                return llvm_cast_from_union_storage(ctx, target, field_type);
             }
 
             LlvmValue result =
@@ -15764,21 +15858,10 @@ internal bool llvm_emit_assign(LlvmFunctionContext* ctx,
             return false;
         }
 
-        if (llvm_type_kind(ctx->sema, record.type_index) == STK_Union) {
-            LlvmValue union_value =
-                llvm_cast_to_union_storage(ctx, value, record.type_index);
-            if (!union_value.ok) {
-                return false;
-            }
-            return llvm_emit_assign(
-                ctx, function, target->operand_expr_index, union_value);
-        }
-
         u32 field_index = llvm_field_index_for_value(ctx, target, record);
         if (field_index == U32_MAX) {
             return false;
         }
-
         LlvmValue updated =
             llvm_insert_record_field(ctx, record, field_index, value);
         if (!updated.ok) {

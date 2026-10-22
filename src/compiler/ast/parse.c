@@ -405,6 +405,13 @@ internal bool ast_skip_type_tokens(const AstParseState* state, u32* io_index)
         }
         (*io_index)++;
         while (ast_kind_at_stream_index(state, *io_index) != TK_RBrace) {
+            if (ast_kind_at_stream_index(state, *io_index) == TK_plex ||
+                ast_kind_at_stream_index(state, *io_index) == TK_union) {
+                if (!ast_skip_type_tokens(state, io_index)) {
+                    return false;
+                }
+                continue;
+            }
             if (kind == TK_plex &&
                 ast_kind_at_stream_index(state, *io_index) == TK_use) {
                 (*io_index)++;
@@ -1665,8 +1672,8 @@ internal bool ast_parse_type_primary(AstParseState* state, u32* out_node)
             return false;
         }
 
-        u32 first_field = (u32)array_count(state->plex_fields);
-        u32 field_count = 0;
+        u32 first_pending = (u32)array_count(state->pending_plex_fields);
+        u32 field_count   = 0;
         while (state->token.kind != TK_RBrace) {
             if (!is_union && state->token.kind == TK_Symbol &&
                 ast_cursor_kind(state) == TK_LBrace) {
@@ -1731,7 +1738,7 @@ internal bool ast_parse_type_primary(AstParseState* state, u32* out_node)
                         return false;
                     }
                 }
-                array_push(state->plex_fields,
+                array_push(state->pending_plex_fields,
                            (AstPlexField){
                                .token_index     = storage_token.token_index,
                                .symbol_handle   = U32_MAX,
@@ -1740,6 +1747,26 @@ internal bool ast_parse_type_primary(AstParseState* state, u32* out_node)
                                .bit_field_count = bit_field_count,
                                .bit_field_group = true,
                                .embedded        = false,
+                           });
+                field_count++;
+                if (!ast_next_token(state)) {
+                    return false;
+                }
+                continue;
+            }
+            if (state->token.kind == TK_plex || state->token.kind == TK_union) {
+                AstToken member_token = state->token;
+                u32      type_node    = 0;
+                if (!ast_parse_type(state, &type_node)) {
+                    return false;
+                }
+                array_push(state->pending_plex_fields,
+                           (AstPlexField){
+                               .token_index     = member_token.token_index,
+                               .symbol_handle   = U32_MAX,
+                               .type_node_index = type_node,
+                               .first_bit_field = U32_MAX,
+                               .embedded        = true,
                            });
                 field_count++;
                 if (!ast_next_token(state)) {
@@ -1756,7 +1783,7 @@ internal bool ast_parse_type_primary(AstParseState* state, u32* out_node)
                 if (!ast_parse_type(state, &type_node)) {
                     return false;
                 }
-                array_push(state->plex_fields,
+                array_push(state->pending_plex_fields,
                            (AstPlexField){
                                .token_index     = use_token.token_index,
                                .symbol_handle   = U32_MAX,
@@ -1794,7 +1821,7 @@ internal bool ast_parse_type_primary(AstParseState* state, u32* out_node)
             if (!ast_parse_type(state, &type_node)) {
                 return false;
             }
-            array_push(state->plex_fields,
+            array_push(state->pending_plex_fields,
                        (AstPlexField){
                            .token_index     = field.token_index,
                            .symbol_handle   = field.value.symbol_handle,
@@ -1806,6 +1833,14 @@ internal bool ast_parse_type_primary(AstParseState* state, u32* out_node)
             if (!ast_next_token(state)) {
                 return false;
             }
+        }
+        u32 first_field = (u32)array_count(state->plex_fields);
+        for (u32 i = first_pending; i < array_count(state->pending_plex_fields);
+             ++i) {
+            array_push(state->plex_fields, state->pending_plex_fields[i]);
+        }
+        if (state->pending_plex_fields) {
+            __array_count(state->pending_plex_fields) = first_pending;
         }
         u32 plex_type_index = (u32)array_count(state->plex_types);
         array_push(state->plex_types,
@@ -6196,6 +6231,7 @@ Ast ast_parse(Lexer* lexer)
         }
     }
 
+    array_free(state.pending_plex_fields);
     return (Ast){
         .nodes                 = state.nodes,
         .generic_params        = state.generic_params,
@@ -6237,6 +6273,7 @@ Ast ast_parse(Lexer* lexer)
     };
 
 error:
+    array_free(state.pending_plex_fields);
     ast_done(&(Ast){.nodes                 = state.nodes,
                     .generic_params        = state.generic_params,
                     .generic_param_symbols = state.generic_param_symbols,

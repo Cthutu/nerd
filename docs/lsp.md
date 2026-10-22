@@ -216,6 +216,12 @@ text. The diagnostics path also publishes a hint diagnostic with
 that tag for faded unused code even when a theme ignores semantic-token
 modifiers.
 
+Anonymous plex and union fields participate in member completion, hover and
+go-to-definition, including through imported record types. Hover comments and
+locations come from the nested field declaration. A later incomplete expression
+such as `hash.` can still use the complete type declaration's CST for promoted
+member completion.
+
 ## Code Actions
 
 The server offers a quick fix for incomplete plex literals. When a literal is

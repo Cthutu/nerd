@@ -2822,45 +2822,6 @@ internal u32 lsp_code_action_find_trait_impl_at_offset(
     return best_node;
 }
 
-// Only unqualified uses contribute bare trait names. A module alias alone does
-// not make its exports visible, and transitive/private declarations stay
-// hidden.
-internal bool lsp_code_action_trait_module_visible(Arena*             arena,
-                                                   const LspDocument* doc,
-                                                   string module_name)
-{
-    if (string_eq_cstr(module_name, "core")) {
-        return true;
-    }
-    const Ast*   ast   = &doc->front_end.ast;
-    const Lexer* lexer = &doc->front_end.lexer;
-    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
-        const AstNode* node = &ast->nodes[i];
-        if (node->kind != AK_Use || node->a >= array_count(ast->nodes)) {
-            continue;
-        }
-        bool bound = false;
-        for (u32 j = 0; j < array_count(ast->nodes); ++j) {
-            if (ast_node_is_binding_like(&ast->nodes[j]) &&
-                ast->nodes[j].b == i) {
-                bound = true;
-                break;
-            }
-        }
-        const AstNode* path_node = &ast->nodes[node->a];
-        if (bound || path_node->kind != AK_ModRef ||
-            path_node->a >= array_count(ast->module_paths)) {
-            continue;
-        }
-        cstr path = module_path_to_qualified_name(
-            arena, lexer, ast, &ast->module_paths[path_node->a]);
-        if (path && string_eq(s(path), module_name)) {
-            return true;
-        }
-    }
-    return false;
-}
-
 internal bool lsp_code_action_trait_node_for_impl(const LspDocument* doc,
                                                   const AstImplInfo* impl,
                                                   LspDocument* out_trait_doc,
@@ -2907,7 +2868,7 @@ internal bool lsp_code_action_trait_node_for_impl(const LspDocument* doc,
         for (u32 i = 0; i < array_count(doc->program.modules); ++i) {
             LspModuleView module = {0};
             if (!lsp_program_module_view(&doc->program, i, &module) ||
-                !lsp_code_action_trait_module_visible(
+                !lsp_module_visible_unqualified(
                     &temp, doc, module.info->qualified_name)) {
                 continue;
             }

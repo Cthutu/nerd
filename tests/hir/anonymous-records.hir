@@ -1,0 +1,15 @@
+Hash :: plex {
+    union {
+        bytes [20]u8
+        plex { a u32 b u32 c u32 d u32 e u32 }
+    }
+}
+main :: fn () -> i32 {
+    hash: Hash
+    hash.e = 42
+    return hash.e.as(i32)
+}
+¬
+type type.0 = Hash
+assign u32 field(Hash local.0(hash), e) = u32 42
+return i32 cast(u32 field(Hash local.0(hash), e) as i32)
