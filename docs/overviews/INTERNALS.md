@@ -1625,6 +1625,12 @@ existing string builder and handles signed minima without signed overflow.
 The formatter renders the descriptor and the LSP treats the format token as
 string syntax. AST node size and literal-table cursor alignment are unchanged.
 
+Impl declaration collection and trait-member lookup exclude bindings inside
+function bodies. Those bindings remain method-local constants or helper
+functions; they must not enter the impl method table or satisfy trait members.
+In particular, collecting a nested helper twice would leave orphan parameter
+locals and produce false unused-parameter diagnostics.
+
 Canonical Display includes the exact types supported by builtin interpolation.
 Builtin `.show()` lowers to a single-argument HIR interpolation; this is callable
 formatting support, not a constraint-only exception. Explicit implementations use

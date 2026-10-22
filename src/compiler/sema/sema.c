@@ -6289,7 +6289,8 @@ internal bool sema_impl_has_member(const Ast*     ast,
 {
     for (u32 i = body->a; i < body->b; ++i) {
         const AstNode* member = &ast->nodes[i];
-        if (member->kind == AK_Bind && ast_get_symbol(member) == symbol) {
+        if (member->kind == AK_Bind && ast_get_symbol(member) == symbol &&
+            !sema_node_is_inside_function_body(ast, i)) {
             *out_member_node_index = i;
             return true;
         }
@@ -6309,7 +6310,8 @@ internal bool sema_impl_has_named_member(const Lexer*   impl_lexer,
         const AstNode* member = &impl_ast->nodes[i];
         if (member->kind == AK_Bind &&
             string_eq(lex_symbol(impl_lexer, ast_get_symbol(member)),
-                      member_name)) {
+                      member_name) &&
+            !sema_node_is_inside_function_body(impl_ast, i)) {
             *out_member_node_index = i;
             return true;
         }
@@ -6851,6 +6853,13 @@ internal bool sema_collect_decls_in_range(const Lexer*           lexer,
             for (u32 method_node_index = body->a; method_node_index < body->b;
                  ++method_node_index) {
                 const AstNode* method_node = &ast->nodes[method_node_index];
+                // Function bodies share this flat AST range. Their bindings and
+                // pragmas belong to the method's lexical scope, not the impl.
+                if ((method_node->kind == AK_Bind ||
+                     method_node->kind == AK_Pragma) &&
+                    sema_node_is_inside_function_body(ast, method_node_index)) {
+                    continue;
+                }
                 if (method_node->kind == AK_Pragma) {
                     const AstPragmaInfo* pragma = &ast->pragmas[method_node->a];
                     if (string_eq(lex_symbol(lexer, pragma->symbol_handle),
