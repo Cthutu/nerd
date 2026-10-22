@@ -77,6 +77,12 @@ For example, `$"Hello {name}"` emits this token shape:
 | `TK_InterpolatedStringEnd`   | `"`                                                                                | none                    | Ends an interpolated string or continuation.                                              |
 | `TK_Symbol`                  | Identifier text                                                                    | `lexer->symbol_handles` | Emitted only when the identifier is not a keyword.                                        |
 
+Interpolation holes may have a `TK_InterpolationFormat` token, spanning the
+colon and raw format text up to the closing `}`. It has no literal-table payload.
+This token is recognised only at the hole's outer brace depth, outside parentheses
+and brackets; nested expression colons keep their ordinary meaning. Parsing
+validates `[0][width][d|b|o|x|X]` and a maximum width of 1024.
+
 ## Operator And Punctuation Tokens
 
 | Token kind           | Source spelling | Notes                                                     |

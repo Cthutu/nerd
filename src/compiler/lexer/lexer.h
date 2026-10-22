@@ -28,6 +28,7 @@ typedef enum {
     TK_InterpolatedStringStart,
     TK_StringContinuationStart,
     TK_InterpolatedStringEnd,
+    TK_InterpolationFormat,
     TK_Symbol,
 
     // Operators & punctuation
@@ -165,6 +166,9 @@ void   lex_done(Lexer* lexer);
 void   lex_dump(const Lexer* lexer);
 u32    lex_add_symbol(Lexer* lexer, string str, InternAddResult* out_result);
 string lex_symbol(const Lexer* lexer, u32 handle);
+// Packed integer format: low byte is d/b/o/x/X, width in bits 8..18,
+// zero padding in bit 19. Zero denotes no format (or invalid syntax).
+u32    lex_interpolation_format(const Lexer* lexer, const Token* token);
 usize  lex_token_end_offset(const Lexer* lexer, const Token* token);
 Token* lex_find(const Lexer* lexer, usize offset, u32* token_end);
 void   lex_prepare_line_indexes(Array(LexerLineIndex) * indexes,

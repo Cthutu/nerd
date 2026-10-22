@@ -22875,6 +22875,13 @@ validate_type:
             }
             part_type                  = sema_materialise_type(sema, part_type);
             sema->node_type_indices[i] = part_type;
+            if (part->b && !sema_type_is_integer(sema, part_type)) {
+                return error_0304_type_mismatch(
+                    lexer->source,
+                    sema_node_span(lexer, &ast->nodes[part->a]),
+                    s("integer for an interpolation format"),
+                    sema_type_name(lexer, sema, &temp_arena, part_type));
+            }
             if (sema_type_is_builtin_interpolatable(sema, part_type)) {
                 continue;
             }

@@ -303,6 +303,7 @@ typedef struct {
 typedef struct {
     u32 expr_index;
     u32 symbol_handle;
+    u32 interpolation_format; // Zero for ordinary call arguments.
 } HirCallArg;
 
 typedef struct {

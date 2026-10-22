@@ -629,10 +629,24 @@ internal bool lexer_lex_interpolated_expr(NerdSource source,
                                           Lexer*     lexer,
                                           u32        brace_depth)
 {
-    usize i     = *io_index;
-    u32   depth = brace_depth;
+    usize i           = *io_index;
+    u32   depth       = brace_depth;
+    u32   parentheses = 0, brackets = 0;
 
     while (i < source_code.count) {
+        if (depth == 1 && parentheses == 0 && brackets == 0 &&
+            source_code.data[i] == ':') {
+            usize start = i++;
+            while (i < source_code.count && source_code.data[i] != '}' &&
+                   source_code.data[i] != '"' && source_code.data[i] != '\n' &&
+                   source_code.data[i] != '\r') {
+                ++i;
+            }
+            array_push(
+                lexer->tokens,
+                (Token){.kind = TK_InterpolationFormat, .offset = (u32)start});
+            continue;
+        }
         if (source_code.data[i] == '{') {
             array_push(lexer->tokens,
                        (Token){.kind = TK_LBrace, .offset = (u32)i});
@@ -654,6 +668,19 @@ internal bool lexer_lex_interpolated_expr(NerdSource source,
             continue;
         }
 
+        u8 delimiter = source_code.data[i];
+        if (delimiter == '(') {
+            ++parentheses;
+        }
+        if (delimiter == ')' && parentheses) {
+            --parentheses;
+        }
+        if (delimiter == '[') {
+            ++brackets;
+        }
+        if (delimiter == ']' && brackets) {
+            --brackets;
+        }
         *io_index = i;
         if (!lexer_lex_one_token(source, source_code, io_index, lexer, true)) {
             return false;
@@ -1503,6 +1530,17 @@ usize lex_token_end_offset(const Lexer* lexer, const Token* token)
         return token->offset + 2;
     case TK_InterpolatedStringEnd:
         return token->offset + 1;
+    case TK_InterpolationFormat:
+        {
+            usize  end    = token->offset + 1;
+            string source = lexer->source.source;
+            while (end < source.count && source.data[end] != '}' &&
+                   source.data[end] != '"' && source.data[end] != '\n' &&
+                   source.data[end] != '\r') {
+                ++end;
+            }
+            return end;
+        }
     case TK_Symbol:
         {
             usize index = token->offset;
@@ -1739,4 +1777,31 @@ bool lex_line_index_self_test(void)
         prn("lexer-line-index ok");
     }
     return ok;
+}
+
+// Parse the source-preserving format token without growing token payloads.
+u32 lex_interpolation_format(const Lexer* lexer, const Token* token)
+{
+    string source = lexer->source.source;
+    usize  i = token->offset + 1, end = lex_token_end_offset(lexer, token);
+    if (i == end) {
+        return 0;
+    }
+    bool zero  = source.data[i] == '0';
+    u32  width = 0;
+    while (i < end && source.data[i] >= '0' && source.data[i] <= '9') {
+        width = width * 10 + source.data[i++] - '0';
+        if (width > 1024) {
+            return 0;
+        }
+    }
+    u32 kind = 'd';
+    if (i < end) {
+        kind = source.data[i++];
+    }
+    if (i != end || (kind != 'd' && kind != 'b' && kind != 'o' && kind != 'x' &&
+                     kind != 'X')) {
+        return 0;
+    }
+    return kind | (width << 8) | ((u32)zero << 19);
 }

@@ -21,7 +21,7 @@
 // | AK_BoolLiteral         | 0 no, 1 yes                       | 0                               |
 // | AK_NilLiteral          | 0                                 | 0                               |
 // | AK_StringConcat        | Ast index of lhs                  | Ast index of rhs                |
-// | AK_InterpPartExpr      | Ast index of expr                 | 0                               |
+// | AK_InterpPartExpr      | Ast index of expr                 | Packed integer format                               |
 // | AK_InterpolatedString  | First part index                  | End-exclusive part index        |
 // | AK_BuiltinMacro        | Symbol handle                     | Optional arg expr or U32_MAX     |
 // | AK_SymbolRef           | Symbol handle                     | 0                               |

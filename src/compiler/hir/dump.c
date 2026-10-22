@@ -573,6 +573,18 @@ internal void hir_render_expr(StringBuilder* sb,
             }
             const HirCallArg* arg = &hir->call_args[expr->first_arg + i];
             hir_render_expr(sb, hir, lexer, sema, arena, arg->expr_index);
+            if (arg->interpolation_format) {
+                u32 format = arg->interpolation_format;
+                sb_append_char(sb, ':');
+                if (format & (1u << 19)) {
+                    sb_append_char(sb, '0');
+                }
+                u32 width = (format >> 8) & 2047;
+                if (width) {
+                    sb_format(sb, "%u", width);
+                }
+                sb_append_char(sb, format & 255);
+            }
         }
         sb_append_char(sb, ')');
         break;

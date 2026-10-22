@@ -476,6 +476,21 @@ Each expression inside `{...}` is evaluated, converted to text, and inserted at
 that position in the produced string. In the example, the result is the string
 `"value=42"`.
 
+Integer expressions accept a format after a colon, for example
+`$"{value:02X}"` prints uppercase hexadecimal with at least two digits, padded
+with zeroes. The form is `[0][width][kind]`: `d` means decimal (the default),
+`b` binary, `o` octal, `x` lowercase hex, and `X` uppercase hex. Width is a minimum
+field width from 0 to 1024; longer values are never truncated. Padding uses
+spaces unless the width starts with `0`. A minus sign precedes zero padding,
+including for non-decimal formats. Formats currently require integer operands;
+floating precision, alignment, and custom `Display` formats are not supported.
+
+```nerd
+byte: u8 = 10
+prn($"{byte:02X}") -- 0A
+prn($"{byte:08b}") -- 00001010
+```
+
 Use `\{` and `\}` for literal braces in interpolated string text:
 
 ```nerd

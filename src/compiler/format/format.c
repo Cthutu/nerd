@@ -1181,12 +1181,22 @@ internal void format_emit_expr(StringBuilder* sb,
                         sb, cst, lexer, part->a, indent_level);
                     sb_append_char(sb, '\n');
                     format_emit_indent(sb, g_format_expr_indent_level);
-                    sb_append_char(sb, '}');
                 } else {
                     sb_append_char(sb, '{');
                     format_emit_expr(sb, cst, lexer, part->a, 0);
-                    sb_append_char(sb, '}');
                 }
+                if (part->b) {
+                    sb_append_char(sb, ':');
+                    if (part->b & (1u << 19)) {
+                        sb_append_char(sb, '0');
+                    }
+                    u32 width = (part->b >> 8) & 2047;
+                    if (width) {
+                        sb_format(sb, "%u", width);
+                    }
+                    sb_append_char(sb, part->b & 255);
+                }
+                sb_append_char(sb, '}');
                 continue;
             }
             error_ice("Unhandled interpolated string part kind: %u",

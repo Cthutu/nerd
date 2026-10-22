@@ -10034,7 +10034,28 @@ internal LlvmValue llvm_emit_expr_impl(LlvmFunctionContext* ctx,
                 if (!part.ok) {
                     return (LlvmValue){0};
                 }
-                if (!llvm_emit_append_string_value(ctx, part)) {
+                if (arg->interpolation_format) {
+                    bool is_signed = !llvm_type_is_unsigned_integer(
+                        ctx->sema, part.type_index);
+                    u32    bits = llvm_integer_bits(ctx->sema, part.type_index);
+                    string value = part.value;
+                    if (bits < 64) {
+                        value = llvm_temp(ctx);
+                        sb_format(ctx->sb,
+                                  "  " STRINGP " = %s i%u " STRINGP " to i64\n",
+                                  STRINGV(value),
+                                  is_signed ? "sext" : "zext",
+                                  bits,
+                                  STRINGV(part.value));
+                    }
+                    sb_format(ctx->sb,
+                              "  call void "
+                              "@nrt_string_builder_append_integer(i64 " STRINGP
+                              ", i32 %u, i32 %u)\n",
+                              STRINGV(value),
+                              is_signed ? 1u : 0u,
+                              arg->interpolation_format);
+                } else if (!llvm_emit_append_string_value(ctx, part)) {
                     return (LlvmValue){0};
                 }
             }
@@ -18963,6 +18984,7 @@ internal void llvm_render_string_runtime_declarations(StringBuilder* sb)
         {"void", "nrt_to_string_u16", "ptr, i16"},
         {"void", "nrt_to_string_u32", "ptr, i32"},
         {"void", "nrt_to_string_u64", "ptr, i64"},
+        {"void", "nrt_string_builder_append_integer", "i64, i32, i32"},
         {"void", "nrt_to_string_isize", "ptr, i64"},
         {"void", "nrt_to_string_usize", "ptr, i64"},
         {"void", "nrt_to_string_f32", "ptr, float"},

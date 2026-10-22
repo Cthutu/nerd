@@ -19,7 +19,7 @@
 // | CK_BoolLiteral     | 0 no, 1 yes           | 0                     |
 // | CK_NilLiteral      | 0                     | 0                     |
 // | CK_StringConcat    | Left node index       | Right node index      |
-// | CK_InterpPartExpr  | Expr node index       | 0                     |
+// | CK_InterpPartExpr  | Expr node index       | Integer format        |
 // | CK_InterpolatedString | First part index    | End-exclusive index   |
 // | CK_SymbolRef       | Symbol handle         | 0                     |
 // | CK_MacroRef        | Symbol handle         | 0                     |

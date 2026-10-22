@@ -3064,8 +3064,25 @@ internal CValue cgen_expr(CGen* c, u32 index)
                     e->kind == HIR_EXPR_StringConcat
                         ? (i ? e->rhs_expr_index : e->lhs_expr_index)
                         : cgen_hir(c)->call_args[e->first_arg + i].expr_index;
-                CValue v = cgen_expr(c, ei);
-                cgen_display(c, v, 0);
+                CValue v      = cgen_expr(c, ei);
+                u32    format = e->kind == HIR_EXPR_InterpolatedString
+                                    ? cgen_hir(c)
+                                          ->call_args[e->first_arg + i]
+                                          .interpolation_format
+                                    : 0;
+                if (format) {
+                    SemaTypeKind kind = cgen_kind(c, v.type);
+                    bool is_signed    = kind != STK_U8 && kind != STK_U16 &&
+                                        kind != STK_U32 && kind != STK_U64 &&
+                                        kind != STK_Usize;
+                    CGEN_OUT("nrt_string_builder_append_integer((uint64_t)(%s),"
+                             "%u,%u);\n",
+                             v.text,
+                             is_signed ? 1u : 0u,
+                             format);
+                } else {
+                    cgen_display(c, v, 0);
+                }
             }
             CValue r = cgen_temp(c, t, NULL);
             if (c->interpolation_arena) {

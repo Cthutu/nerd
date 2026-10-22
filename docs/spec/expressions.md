@@ -217,6 +217,16 @@ values may be interpolated when their type implements the canonical
 `core.Display` trait; interpolation calls `Display.show(value)` and inserts the
 returned string.
 
+An interpolation hole may end in `:format`. Integer formats accept
+`[0][width][d|b|o|x|X]`, with optional width and kind (default `d`), but at least
+one character. Width is a decimal minimum field width no greater than 1024.
+The first `0` requests zero padding; otherwise padding is spaces. Signed values
+use a sign and magnitude in every base, including the minimum signed integer;
+the sign precedes zero padding. Formatting never truncates digits. Non-integer
+operands and unsupported format syntax are diagnosed. Each hole evaluates once,
+in source order, including inside nested interpolation and continuations.
+Constant operands and runtime operands follow the same formatting rules.
+
 ## Built-In Macros
 
 Built-in macro expressions start with `@`.

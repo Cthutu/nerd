@@ -1614,6 +1614,17 @@ Tuple field assignment passes the same root-mutability checks as named fields.
 The assignment parser recognises tuple projections, and the lexer preserves
 chained numeric selectors. Immutable tuple targets have a field-specific diagnostic.
 
+Integer interpolation formats live in the unused `b` field of AST/CST
+`InterpPartExpr` nodes: base selector in the low byte, minimum width in bits
+8–18, and zero padding in bit 19. Zero means ordinary interpolation. HIR carries
+the descriptor in `HirCallArg.interpolation_format` for interpolation parts;
+ordinary call arguments leave it zero. LLVM and C evaluate each part once and
+call `nrt_string_builder_append_integer` after widening its checked integer type
+to 64 bits with the appropriate signedness. The helper writes directly to the
+existing string builder and handles signed minima without signed overflow.
+The formatter renders the descriptor and the LSP treats the format token as
+string syntax. AST node size and literal-table cursor alignment are unchanged.
+
 Canonical Display includes the exact types supported by builtin interpolation.
 Builtin `.show()` lowers to a single-argument HIR interpolation; this is callable
 formatting support, not a constraint-only exception. Explicit implementations use

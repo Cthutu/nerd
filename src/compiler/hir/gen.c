@@ -1967,6 +1967,10 @@ internal u32 hir_lower_expr_impl(Hir*         hir,
                     (HirCallArg){
                         .expr_index = hir_lower_expr(hir, lexer, ast, sema, i),
                         .symbol_handle = U32_MAX,
+                        .interpolation_format =
+                            ast->nodes[i].kind == AK_InterpPartExpr
+                                ? ast->nodes[i].b
+                                : 0,
                     });
             }
             u32 first_arg = (u32)array_count(hir->call_args);

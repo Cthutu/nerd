@@ -91,7 +91,9 @@ These require a concrete use case or a fresh design before implementation:
 
 - Cross-target layouts, aggregate FFI ABI and calling-convention annotations.
 - In-place AST compaction for constant folding.
-- Interpolation formatting specifiers and arithmetic/bitwise/assignment traits.
+- Floating-point precision, alignment and custom `Display` interpolation formats;
+  integer base/width/zero-padding formats are implemented.
+- Arithmetic/bitwise/assignment traits.
 - Tree-sitter after the semantic LSP experience is established.
 - Non-fail-fast source-test assertions and synthetic hard-limit diagnostic tests.
 - Parametrised modules replacing general generics remain on hold.

@@ -393,6 +393,11 @@ dereferences twice. Binary `~` is bitwise XOR and prefix `~` is bitwise NOT;
 distinguish XOR from dereference. `ptr^=value` is dereference followed by
 ordinary assignment, while `bits~=mask` is XOR assignment.
 
+Interpolation holes use `{ expression [ ':' integer-format ] }`.
+`integer-format` has the form `[0][width][d|b|o|x|X]`; the lexer preserves it as
+one `TK_InterpolationFormat` token, including the colon. Colons within nested
+braces, parentheses, and brackets remain ordinary expression tokens.
+
 `interpolated-string` starts with `$"` and is parsed from the token stream
 described in [`lexer.md`](lexer.md#interpolated-strings). A `+"..."` string
 continuation can be parsed after a string-like expression and is folded into the

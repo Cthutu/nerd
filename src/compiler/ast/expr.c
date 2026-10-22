@@ -644,6 +644,7 @@ internal bool ast_parse_interpolated_string(AstParseState* state,
         bool is_expr;
         u32  token_index;
         u32  payload;
+        u32  format;
     } InterpPart;
 
     Array(InterpPart) parts = NULL;
@@ -681,6 +682,7 @@ internal bool ast_parse_interpolated_string(AstParseState* state,
                         parts[i].is_expr ? AK_InterpPartExpr : AK_StringLiteral,
                     .token_index = parts[i].token_index,
                     .a           = parts[i].payload,
+                    .b           = parts[i].format,
                 };
                 if (!ast_emit_node(state, part_node, NULL)) {
                     array_free(parts);
@@ -731,6 +733,25 @@ internal bool ast_parse_interpolated_string(AstParseState* state,
                 array_free(parts);
                 return false;
             }
+            u32 format = 0;
+            if (ast_expr_cursor_kind(state) == TK_InterpolationFormat) {
+                if (!ast_next_token(state)) {
+                    array_free(parts);
+                    return false;
+                }
+                format = lex_interpolation_format(
+                    state->lexer,
+                    &state->lexer->tokens[state->token.token_index]);
+                if (!format) {
+                    array_free(parts);
+                    return error_0204_unexpected_token(
+                        state->lexer->source,
+                        ast_token_span(state, &state->token),
+                        TK_InterpolationFormat,
+                        "Use [0][width][d|b|o|x|X], with a width no greater "
+                        "than 1024.");
+                }
+            }
             if (!ast_expect_token(state, TK_RBrace)) {
                 array_free(parts);
                 return false;
@@ -741,6 +762,7 @@ internal bool ast_parse_interpolated_string(AstParseState* state,
                            .is_expr     = true,
                            .token_index = start_token.token_index,
                            .payload     = expr_root,
+                           .format      = format,
                        }));
             continue;
         }

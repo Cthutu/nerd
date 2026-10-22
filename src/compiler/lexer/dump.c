@@ -26,6 +26,8 @@ string token_kind_to_string(TokenKind kind)
         return string_from_cstr("InterpolatedStringStart `$\"`");
     case TK_StringContinuationStart:
         return string_from_cstr("StringContinuationStart `+\"`");
+    case TK_InterpolationFormat:
+        return s("InterpolationFormat");
     case TK_InterpolatedStringEnd:
         return string_from_cstr("InterpolatedStringEnd `\"`");
     case TK_Symbol:

@@ -1167,6 +1167,49 @@ void nrt_string_builder_finish_in(NerdString* out, size_t start, NrtArena* arena
     g_string_builder_cursor = start;
 }
 
+// Integer interpolation formats share one ABI across integer widths/backends.
+void nrt_string_builder_append_integer(uint64_t value,
+                                       uint32_t is_signed,
+                                       uint32_t format)
+{
+    uint32_t    kind   = format & 255;
+    uint32_t    base   = kind == 'b'                    ? 2
+                         : kind == 'o'                  ? 8
+                         : (kind == 'x' || kind == 'X') ? 16
+                                                        : 10;
+    const char* digits = kind == 'X' ? "0123456789ABCDEF" : "0123456789abcdef";
+    bool        negative = is_signed && (int64_t)value < 0;
+    if (negative) {
+        value = (uint64_t)0 - value;
+    }
+    u8       reversed[64];
+    uint32_t count = 0;
+    do {
+        reversed[count++] = (u8)digits[value % base];
+        value /= base;
+    } while (value);
+    uint32_t width   = (format >> 8) & 2047;
+    uint32_t length  = count + (negative ? 1 : 0);
+    uint32_t padding = width > length ? width - length : 0;
+    bool     zero    = (format & (1u << 19)) != 0;
+    if (!zero) {
+        for (uint32_t i = 0; i < padding; ++i) {
+            nrt_string_builder_append_byte(' ');
+        }
+    }
+    if (negative) {
+        nrt_string_builder_append_byte('-');
+    }
+    if (zero) {
+        for (uint32_t i = 0; i < padding; ++i) {
+            nrt_string_builder_append_byte('0');
+        }
+    }
+    while (count) {
+        nrt_string_builder_append_byte(reversed[--count]);
+    }
+}
+
 void nrt_string_builder_finish(NerdString* out, size_t start)
 {
     nrt_string_builder_finish_in(out, start, &g_temp_arena);

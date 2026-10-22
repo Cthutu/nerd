@@ -531,6 +531,7 @@ internal bool lsp_semantic_token_type(const LspDeclarationView* view,
     case TK_String:
     case TK_InterpolatedStringStart:
     case TK_InterpolatedStringEnd:
+    case TK_InterpolationFormat:
         *out_type = LSP_SEMANTIC_STRING;
         return true;
 

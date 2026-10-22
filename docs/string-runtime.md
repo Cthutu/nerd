@@ -43,6 +43,8 @@ The runtime provides:
 - `nrt_string_builder_reset()`
 - `nrt_string_builder_mark()`
 - `nrt_string_builder_append_string(...)`
+- `nrt_string_builder_append_integer(value, is_signed, format)` for checked
+  integer base, width and zero-padding descriptors
 - `nrt_string_builder_finish(...)`
 - `nrt_to_string_<type>(...)` helpers for built-in primitive types
 - `nrt_arena_pr(...)` and `nrt_arena_prn(...)` for placing finished strings in

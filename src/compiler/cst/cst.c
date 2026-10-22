@@ -2086,6 +2086,7 @@ internal bool cst_parse_interpolated_string(CstParseState* state, u32* out_node)
         bool is_expr;
         u32  token_index;
         u32  payload;
+        u32  format;
     } InterpPart;
 
     u32 token_index         = state->token_index;
@@ -2107,6 +2108,7 @@ internal bool cst_parse_interpolated_string(CstParseState* state, u32* out_node)
                                                           : CK_StringLiteral,
                                        .token_index = parts[i].token_index,
                                        .a           = parts[i].payload,
+                                       .b           = parts[i].format,
                                    },
                                    NULL)) {
                     array_free(parts);
@@ -2146,8 +2148,21 @@ internal bool cst_parse_interpolated_string(CstParseState* state, u32* out_node)
         if (token.kind == TK_LBrace) {
             u32 expr = 0;
             cst_advance(state);
-            if (!cst_parse_expr_bp(state, 0, &expr) ||
-                !cst_consume(state, TK_RBrace)) {
+            if (!cst_parse_expr_bp(state, 0, &expr)) {
+                array_free(parts);
+                return false;
+            }
+            u32 format = 0;
+            if (cst_current_token(state).kind == TK_InterpolationFormat) {
+                Token format_token = cst_current_token(state);
+                format = lex_interpolation_format(state->lexer, &format_token);
+                if (!format) {
+                    array_free(parts);
+                    return false;
+                }
+                cst_advance(state);
+            }
+            if (!cst_consume(state, TK_RBrace)) {
                 array_free(parts);
                 return false;
             }
@@ -2157,6 +2172,7 @@ internal bool cst_parse_interpolated_string(CstParseState* state, u32* out_node)
                            .is_expr     = true,
                            .token_index = token_index,
                            .payload     = expr,
+                           .format      = format,
                        }));
             continue;
         }
