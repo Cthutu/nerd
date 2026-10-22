@@ -1112,7 +1112,7 @@ impl Display for QueueInfo {
                 separator := on capabilities.count == 0 => "" else ", "
 
                 capabilities = temp_arena.pr($"{capabilities}{separator}{names[i]}")
-                remaining    = remaining ^ bit
+                remaining    = remaining ~ bit
             }
         }
         on remaining != 0 => {

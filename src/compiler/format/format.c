@@ -1498,7 +1498,7 @@ internal void format_emit_expr(StringBuilder* sb,
         break;
     case CK_BitwiseXor:
         format_emit_expr(sb, cst, lexer, node->a, node_precedence);
-        sb_append_cstr(sb, " ^ ");
+        sb_append_cstr(sb, " ~ ");
         format_emit_expr(sb, cst, lexer, node->b, node_precedence + 1);
         break;
     case CK_BitwiseOr:
@@ -3416,7 +3416,7 @@ internal string format_assignment_operator(const Lexer*   lexer,
     case TK_SlashEqual:
     case TK_PercentEqual:
     case TK_AmpEqual:
-    case TK_CaretEqual:
+    case TK_TildeEqual:
     case TK_PipeEqual:
     case TK_AmpAmpEqual:
     case TK_PipePipeEqual:
@@ -3445,8 +3445,8 @@ internal string format_assignment_operator(const Lexer*   lexer,
         return s("%=");
     case TK_AmpEqual:
         return s("&=");
-    case TK_CaretEqual:
-        return s("^=");
+    case TK_TildeEqual:
+        return s("~=");
     case TK_PipeEqual:
         return s("|=");
     case TK_ShiftLeftEqual:
@@ -5934,7 +5934,7 @@ internal bool format_find_wrappable_infix_operator(string value,
         usize op_end   = op_start;
         while (op_end < value.count &&
                (value.data[op_end] == '|' || value.data[op_end] == '&' ||
-                value.data[op_end] == '^' || value.data[op_end] == '+' ||
+                value.data[op_end] == '~' || value.data[op_end] == '+' ||
                 value.data[op_end] == '-' || value.data[op_end] == '*' ||
                 value.data[op_end] == '/' || value.data[op_end] == '%' ||
                 value.data[op_end] == '<' || value.data[op_end] == '>' ||
@@ -9836,7 +9836,7 @@ internal bool format_token_kind_is_binary_operator(TokenKind kind)
     case TK_PipeEqual:
     case TK_PipePipe:
     case TK_PipePipeEqual:
-    case TK_CaretEqual:
+    case TK_TildeEqual:
     case TK_Less:
     case TK_LessEqual:
     case TK_ShiftLeft:

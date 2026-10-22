@@ -235,10 +235,12 @@ Bitwise operators work with matching integer operands:
 | Operator            | Meaning             |
 | ------------------- | ------------------- |
 | `&`                 | bitwise and         |
-| `^`                 | bitwise xor         |
+| `~`                 | bitwise xor         |
 | <code>&#124;</code> | bitwise or          |
 | `<<`                | shift left          |
 | `>>`                | shift right         |
+
+Binary `~` means XOR; prefix `~` means bitwise NOT, as in `~mask`.
 
 Shift operators require integer operands. Use an explicit cast if the shift
 count or shifted value comes from another numeric type.
@@ -617,7 +619,7 @@ the concrete constraint.
 
 `atomic[T]` declares independently addressable atomic storage. `T` may be
 `bool`, a fixed-width or pointer-width integer, or a thin pointer. Ordinary
-reads, assignments, and `+=`, `-=`, `&=`, `|=`, and `^=` use sequentially
+reads, assignments, and `+=`, `-=`, `&=`, `|=`, and `~=` use sequentially
 consistent ordering; compound assignments are indivisible read-modify-write
 operations.
 

@@ -96,6 +96,18 @@ and persistent sharing violations without relying on scanner timing.
 This document is the high-level map of the current codebase. It points at the
 main subsystems and tells you where to read next.
 
+Sema validates noncopyable arena storage after type inference and while checking
+concrete generic function instantiations. Stored value reads whose type contains
+an arena produce diagnostic 0370. Address-taking, field/index projection,
+assignment destinations, collection views, tag-only inspections, and pointer
+method receivers borrow storage instead. Aggregate containment stops at pointers and views; fresh
+construction and fresh function results remain valid. Pattern binders are also
+checked because extraction can introduce implicit loads without value AST nodes.
+Both backends consume the same checked HIR; no arena move or runtime ownership
+tracking is introduced. C emission compares enum value patterns by tag, matching
+LLVM; it does not generate equality for unrelated, potentially noncomparable
+payloads.
+
 For unknown-name diagnostics, Sema examines the current module's deduplicated
 direct imports and their already-loaded semantic declarations. Matching private
 declarations contribute per-module `pub` suggestions through the error helpers;
@@ -550,11 +562,16 @@ passes a pointer to that slice value. Inside the method, the receiver therefore
 retains its declared pointer type; `self^[i]` explicitly indexes the slice,
 while `self[i]` uses Nerd's ordinary pointer-indexing semantics.
 
-The AST and CST Pratt parsers classify a caret attached to its left operand and
-followed by `[` as postfix dereference rather than bitwise XOR. This allows an
-index or slice postfix to follow immediately, as in `ptr^[i]`, while preserving
-spaced `lhs ^ rhs` as bitwise XOR. The formatter emits the chained postfix form
-without redundant parentheses.
+The AST and CST Pratt parsers use binary `~` for XOR and prefix `~` for bitwise
+NOT. XOR retains its former binding power and left associativity; `~=` has
+its own `TK_TildeEqual` token and lowers to the existing XOR assignment path,
+including atomic read-modify-write operations. Both parsers treat an expression
+caret as an unconditional postfix dereference when there is a left operand.
+This removes the old lookahead/attachment rules, allowing `p^ - 1`, `p^^`,
+`p^[i]` and `callback^(arg)` without extra parentheses. The lexer always splits
+`^=` into caret and ordinary assignment, in compiler and formatter modes;
+`p^=>...` similarly becomes dereference followed by the branch arrow. The
+formatter prints binary `~` with spaces and prefix `~` without an operand gap.
 
 When an expression-bodied function omits its return annotation, semantic
 analysis records any postfix `?` failure channel while inferring the body. It
@@ -1310,11 +1327,24 @@ as expression returns, so returning a local runtime-sized array is diagnosed
 before lowering. Resolving a runtime-sized array also interns `usize`, allowing
 LLVM to widen smaller integer lengths even in programs with no imports.
 
-Both backends call `nrt_local_array_alloc`, which checks the signed address range
-and multiplication overflow before allocating zeroed storage. The allocation
-is registered in the ordered cleanup stack independently of the local binding,
-so all lexical exits release it after subsequently registered defers/undos.
+Both backends call `nrt_local_array_bytes` to validate the signed address range
+and multiplication overflow before reserving zeroed stack storage. The helper
+does not allocate. LLVM emits a dynamic, 16-byte-aligned `alloca` at the declaration.
+Scopes containing runtime arrays save the stack on entry and register restoration
+before their defers/undos, so all deferred bodies run while the scope's arrays
+remain alive. Early exits use the same cleanup path; loops restore their body
+stack each iteration. The loop-expression wrapper also scopes header arrays.
+Generated C uses aligned byte VLAs within native lexical blocks, reserving one
+byte when the logical length is zero; loop headers get their own C block.
 Slices and raw pointers borrow this storage without transferring ownership.
+The [LLVM stack intrinsics](https://llvm.org/docs/LangRef.html#llvm-stacksave-intrinsic)
+provide scope-based reclamation rather than waiting for the function to return.
+
+Assigned-local collection visits deferred bodies as well as ordinary blocks.
+Otherwise a variable mutated only by a defer/undo can remain an SSA constant
+until the first emitted cleanup, losing accumulated changes across loop paths.
+Such locals must have slots from their declarations, including release builds.
+
 LLVM's C-style loop update block resets `block_terminated` on entry: an
 unconditional `again` or `break` in the body must not suppress update code in a
 separate control-flow block.

@@ -156,7 +156,9 @@ intended exit code.
 - Dot access automatically dereferences pointers when the pointee provides the
   requested tuple, collection, plex, or union member.
 - A postfix operation may follow dereference directly; `ptr^[i]` means
-  `(ptr^)[i]`. A spaced caret remains bitwise XOR, as in `value ^ mask`.
+  `(ptr^)[i]`. `callback^(arg)` calls a dereferenced function and `ptr^^`
+  dereferences twice. Binary `~` is bitwise XOR (`value ~ mask`), prefix `~`
+  is bitwise NOT, and `~=` performs XOR assignment. `^` never means XOR.
 - `@file` expands to the current source filename as a `string`.
 - `@line` expands to the current 1-based source line as an untyped integer.
 - `@embed("path")` embeds a source-relative file as static binary data and
@@ -313,8 +315,9 @@ intended exit code.
 - `arena` is an opaque built-in type that reserves one 4 GiB address range,
   grows by committing pages inside that range, and keeps allocation addresses
   stable while it grows.
-- Copying an `arena` value copies a handle to the same underlying allocation
-  state; it does not copy the arena's storage.
+- Arena values and aggregates containing them cannot be copied. Fresh arena
+  construction is allowed; share existing allocation state through `^arena`,
+  and keep one owner responsible for releasing its storage once.
 - Arena marks are `u32` cursor values. Restoring to a mark invalidates later
   allocations; resetting an arena invalidates all allocations from it.
 - Runtime interpolated strings are allocated from the temporary arena and remain

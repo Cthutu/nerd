@@ -20,8 +20,10 @@ define internal i32 @fn.0() {
   %t0 = icmp slt i32 1, 2
   store { ptr, i64 } { ptr @.str.m0.0, i64 2 }, ptr %t1
   call void @nrt_nerd_assert(i1 %t0, ptr @.assert.source_path.m0.0, i32 2, ptr %t1)
+  store i32 1, ptr %local.0
+  %t2 = load i32, ptr %local.0
   store i32 2, ptr %local.0
-  ret i32 1
+  ret i32 %t2
 }
 
 @$main = hidden alias i32 (), ptr @fn.0

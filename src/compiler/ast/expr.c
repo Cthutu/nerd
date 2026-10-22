@@ -25,7 +25,7 @@ internal AstKind ast_binary_kind_from_token(TokenKind kind)
         return AK_IntegerModulo;
     case TK_Amp:
         return AK_BitwiseAnd;
-    case TK_Caret:
+    case TK_Tilde:
         return AK_BitwiseXor;
     case TK_Pipe:
         return AK_BitwiseOr;
@@ -356,59 +356,6 @@ internal bool ast_postfix_token_can_cross_statement_boundary(TokenKind kind)
     return kind == TK_with || kind == TK_Dot;
 }
 
-internal bool ast_caret_is_postfix_deref(const AstParseState* state,
-                                         AstToken             token)
-{
-    ASSERT(token.kind == TK_Caret, "Expected caret token");
-    if (ast_token_is_adjacent_to_previous(state, token.token_index) &&
-        ast_peek_kind_at(state, 0) == TK_LBracket) {
-        return true;
-    }
-    if (token.token_index + 1 >= array_count(state->lexer->tokens)) {
-        return true;
-    }
-    if (state->stop_before_for_body) {
-        TokenKind next_kind = state->lexer->tokens[token.token_index + 1].kind;
-        if (next_kind == TK_LBrace || next_kind == TK_Dollar) {
-            return true;
-        }
-    }
-    if (state->stop_before_block_lbrace &&
-        state->lexer->tokens[token.token_index + 1].kind == TK_LBrace) {
-        return true;
-    }
-    if (ast_token_has_newline_before(state, token.token_index + 1)) {
-        return true;
-    }
-    return !ast_token_starts_expression(ast_peek_kind_at(state, 0));
-}
-
-internal bool ast_consumed_caret_is_postfix_deref(const AstParseState* state)
-{
-    if (state->token_index > 0 &&
-        ast_token_is_adjacent_to_previous(state, state->token_index - 1) &&
-        ast_expr_cursor_kind(state) == TK_LBracket) {
-        return true;
-    }
-    if (state->token_index >= array_count(state->lexer->tokens)) {
-        return true;
-    }
-    if (state->stop_before_for_body) {
-        TokenKind next_kind = state->lexer->tokens[state->token_index].kind;
-        if (next_kind == TK_LBrace || next_kind == TK_Dollar) {
-            return true;
-        }
-    }
-    if (state->stop_before_block_lbrace &&
-        state->lexer->tokens[state->token_index].kind == TK_LBrace) {
-        return true;
-    }
-    if (ast_token_has_newline_before(state, state->token_index)) {
-        return true;
-    }
-    return !ast_token_starts_expression(ast_expr_cursor_kind(state));
-}
-
 internal bool ast_token_can_continue_on_branch_head(TokenKind kind)
 {
     return kind == TK_FatArrow || kind == TK_as || kind == TK_on;
@@ -424,7 +371,7 @@ internal bool ast_token_is_assignment_operator(TokenKind kind)
     case TK_SlashEqual:
     case TK_PercentEqual:
     case TK_AmpEqual:
-    case TK_CaretEqual:
+    case TK_TildeEqual:
     case TK_PipeEqual:
     case TK_ShiftLeftEqual:
     case TK_ShiftRightEqual:
@@ -520,7 +467,7 @@ bool ast_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp)
     case TK_SlashEqual:
     case TK_PercentEqual:
     case TK_AmpEqual:
-    case TK_CaretEqual:
+    case TK_TildeEqual:
     case TK_PipeEqual:
     case TK_ShiftLeftEqual:
     case TK_ShiftRightEqual:
@@ -537,6 +484,7 @@ bool ast_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp)
     case TK_LBracket:
     case TK_LBrace:
     case TK_with:
+    case TK_Caret:
     case TK_Bang:
     case TK_Question:
         *out_left_bp  = AST_BP_POSTFIX;
@@ -573,7 +521,7 @@ bool ast_infix_binding_power(TokenKind kind, u8* out_left_bp, u8* out_right_bp)
         *out_left_bp  = AST_BP_BITWISE_AND;
         *out_right_bp = AST_BP_BITWISE_AND + 1;
         return true;
-    case TK_Caret:
+    case TK_Tilde:
         *out_left_bp  = AST_BP_BITWISE_XOR;
         *out_right_bp = AST_BP_BITWISE_XOR + 1;
         return true;
@@ -2644,7 +2592,7 @@ internal bool ast_parse_led_impl(AstParseState* state,
         return ast_parse_assignment(state, out_node);
     }
 
-    if (op.kind == TK_Caret && ast_consumed_caret_is_postfix_deref(state)) {
+    if (op.kind == TK_Caret) {
         AstNode node = {
             .kind        = AK_Deref,
             .token_index = op.token_index,
@@ -3297,8 +3245,7 @@ bool ast_parse_expr_bp(AstParseState* state, u8 min_bp, u32* out_node)
             break;
         }
 
-        bool caret_is_postfix =
-            next.kind == TK_Caret && ast_caret_is_postfix_deref(state, next);
+        bool caret_is_postfix = next.kind == TK_Caret;
         bool detached_postfix =
             next.kind == TK_Bang &&
             !ast_token_is_adjacent_to_previous(state, next.token_index);

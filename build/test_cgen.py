@@ -15,6 +15,7 @@ from test import case_platforms, current_platform, language_cases, language_flag
 ROOT = Path(__file__).resolve().parents[1]
 # Process-lifetime, argument and diagnostic contracts beyond language discovery.
 COMMANDS = (
+    'arena-borrowing',
     'slice-assignment-negative',
     'slice-assignment-reversed',
     'slice-assignment-end',

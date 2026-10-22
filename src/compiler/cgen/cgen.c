@@ -31,7 +31,6 @@ typedef struct {
     bool block;
     u32  index;
     bool failure_only;
-    cstr allocation;
 } CCleanup;
 typedef struct {
     cstr text;
@@ -940,9 +939,7 @@ internal void cgen_cleanup_to(CGen* c, u32 base, cstr failure)
         }
         u32 save                   = array_count(c->cleanups);
         __array_count(c->cleanups) = n - 1;
-        if (cl.allocation != NULL) {
-            CGEN_OUT("nrt_mem_free(%s);\n", cl.allocation);
-        } else if (cl.block) {
+        if (cl.block) {
             cgen_block(c, cl.index);
         } else {
             CGEN_OUT("nrt_mem_free(%s); %s = NULL;\n",
@@ -1238,6 +1235,16 @@ internal cstr cgen_pattern(CGen* c, u32 index, CValue value)
         return result;
     }
     CValue rhs = cgen_coerce(c, cgen_expr(c, p->expr_index), value.type);
+    // Enum value patterns select tags, as in the LLVM backend. Comparing all
+    // payloads here can also emit invalid equality for noncomparable variants.
+    if (cgen_kind(c, value.type) == STK_Enum &&
+        (p->kind == HIR_PATTERN_Value || p->kind == HIR_PATTERN_Equal ||
+         p->kind == HIR_PATTERN_NotEqual)) {
+        return CF("(%s.tag%s%s.tag)",
+                  value.text,
+                  p->kind == HIR_PATTERN_NotEqual ? "!=" : "==",
+                  rhs.text);
+    }
     if (p->kind == HIR_PATTERN_RangeExclusive ||
         p->kind == HIR_PATTERN_RangeInclusive) {
         CValue end =
@@ -1350,8 +1357,9 @@ internal CValue cgen_control(CGen* c, const HirExpr* e)
         return result;
     }
     const HirFor* loop = &cgen_hir(c)->fors[e->for_index];
-    target.symbol      = loop->label_symbol;
-    target.loop        = true;
+    CGEN_OUT("{\n"); // Loop-header locals share the loop scope.
+    target.symbol = loop->label_symbol;
+    target.loop   = true;
     for (u32 i = 0; i < loop->init_stmt_count; ++i) {
         cgen_stmt(c, cgen_hir(c)->for_init_stmts[loop->first_init_stmt + i]);
     }
@@ -1459,7 +1467,7 @@ internal CValue cgen_control(CGen* c, const HirExpr* e)
         cgen_value_block(c, loop->else_block_index, result);
     }
     array_pop(c->targets);
-    CGEN_OUT("ncg_end%u:;\n", id);
+    CGEN_OUT("ncg_end%u:;\n}\n", id);
     return result;
 }
 
@@ -2343,18 +2351,26 @@ internal CValue cgen_expr(CGen* c, u32 index)
             CValue count  = cgen_expr(c, e->operand_expr_index);
             CValue result = cgen_temp(c, t, NULL);
             u32    item   = cgen_type(c, t)->first_param_type;
-            CGEN_OUT("%s.data = "
-                     "nrt_local_array_alloc((uint64_t)%s,sizeof(%s),%s,%u);\n%"
-                     "s.count=(size_t)%s;\n",
-                     result.text,
-                     count.text,
-                     cgen_ctype(c, item),
-                     cgen_quote(c, e->source_path),
-                     e->source_line,
-                     result.text,
-                     count.text);
-            array_push(c->cleanups,
-                       ((CCleanup){.allocation = CF("%s.data", result.text)}));
+            cstr   bytes  = CF("ncg_bytes%u", c->next++);
+            cstr   data   = CF("ncg_stack%u", c->next++);
+            // Native C VLAs release storage on every lexical exit, after the
+            // generated defer/undo bodies. Use one byte for an empty array.
+            CGEN_OUT(
+                "size_t %s=nrt_local_array_bytes((uint64_t)%s,sizeof(%s));\n"
+                "_Alignas(16) unsigned char %s[%s ? %s : 1];\n"
+                "memset(%s,0,%s);\n%s.data=%s; %s.count=(size_t)%s;\n",
+                bytes,
+                count.text,
+                cgen_ctype(c, item),
+                data,
+                bytes,
+                bytes,
+                data,
+                bytes,
+                result.text,
+                data,
+                result.text,
+                count.text);
             return result;
         }
     case HIR_EXPR_DefaultValue:

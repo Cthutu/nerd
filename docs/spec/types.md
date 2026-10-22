@@ -18,11 +18,21 @@ The semantic analyser recognises these built-in type families:
 | `i8`, `i16`, `i32`, `i64`, `isize` | Signed integer types.                                             |
 | `u8`, `u16`, `u32`, `u64`, `usize` | Unsigned integer types.                                           |
 | `f32`, `f64`                       | Floating-point types.                                             |
-| `arena`                            | Opaque handle to a pointer-stable arena allocation region.        |
+| `arena`                            | Opaque allocation state for a pointer-stable arena region.        |
 
 `isize` and `usize` are pointer-sized integer types. Use `usize` for counts,
 indexes, byte sizes, and capacities. Use `isize` for signed offsets or other
 platform-sized signed integer values.
+
+An `arena` value is noncopyable. This restriction propagates through fixed
+arrays, tuples, plexes, unions, and enums containing arenas.
+Loading stored arena data into another value, including arguments, returns,
+aggregate initializers, and modified copies, is rejected. Fresh construction
+and borrowing existing storage remain valid. Inspecting an enum tag or comparing
+an optional against `nil` does not copy its payload. Pointers and views do not
+inherit the restriction: use `^arena` to share one arena object and its allocation
+state.
+Its owner releases the backing storage once.
 
 `untyped integer` and `untyped float` are temporary semantic types for numeric
 literals. They materialise to concrete types from context, or to `i32` and
@@ -401,11 +411,16 @@ value initializer (the `undefined` opt-out is also accepted), not in fields,
 function signatures, aliases, or global storage. Constant lengths keep their
 existing fixed-array representation and behaviour.
 
-Storage is automatically heap-allocated and released on leaving its lexical
-scope, including `return`, `break`, `again`, and failure propagation. Cleanup is
-ordered with `defer` and `undo`, so later cleanup statements run before the
-array's allocation is released. A direct return of a runtime-sized local array
-is rejected. It can be borrowed as `[]T` or through `.data`; as with other raw
-pointers and slices, borrowed views must not outlive the owning scope. Nerd does
+Like constant-length local arrays, runtime-sized local arrays use stack storage
+for their lexical scope. All of that scope's `defer` and applicable `undo` bodies
+run while the storage is still alive; their existing reverse registration order
+is unchanged. Leaving the scope reclaims the storage, including on `return`,
+`break`, `again`, and failure propagation. Loop iterations reclaim their local
+storage on each exit; arrays declared in a loop header live for that loop.
+Runtime-sized local arrays do not use the heap or fall back to it. Their lengths
+are subject to the available thread stack space, as for other stack variables.
+A direct return of a runtime-sized local array is rejected. It can be borrowed
+as `[]T` or through `.data`; as with other raw pointers and slices, borrowed
+views must not outlive the owning scope. Nerd does
 not track the lifetimes of such views. The runtime array's internal pointer/count
 representation is not an inline C array; use `.data` at FFI boundaries.

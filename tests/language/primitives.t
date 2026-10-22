@@ -32,7 +32,7 @@ case_5_main :: fn () -> i32 {
     prn(on (1.5 < case_5_limit && !no) => "float" else "bad")
     prn(on ordered => "cmp" else "bad")
     prn(on (5 % 2 == 1) => "mod" else "bad")
-    prn(on (((mask & 11) ^ 3) == 9 || no) => "bits" else "bad")
+    prn(on (((mask & 11) ~ 3) == 9 || no) => "bits" else "bad")
     return on (case_5_half <= 0.5 && 3 != 4) => 1 else 0
 }
 
@@ -410,7 +410,7 @@ main :: fn () {
     prn(on (1.5 < limit && !no) => "float" else "bad")
     prn(on ordered => "cmp" else "bad")
     prn(on (5 % 2 == 1) => "mod" else "bad")
-    prn(on (((mask & 11) ^ 3) == 9 || no) => "bits" else "bad")
+    prn(on (((mask & 11) ~ 3) == 9 || no) => "bits" else "bad")
     return on (half <= 0.5 && 3 != 4) => 1 else 0
 }
 ¬

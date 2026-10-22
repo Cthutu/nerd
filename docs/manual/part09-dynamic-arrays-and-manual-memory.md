@@ -312,8 +312,13 @@ move the cursor beyond that range.
 
 Use `arena.alloc[T]()` for one value and `arena.alloc_array[T](count)` for a
 slice. The arena representation is opaque; use methods rather than fields.
-Arena values are handle-like: assigning or passing an `arena` value copies the
-handle to the same underlying allocation state, not the owned storage.
+Arena values cannot be copied. Initializing a variable from an existing arena,
+assigning it to another variable, passing it by value, or returning it from
+stored arena data is a compile-time error. This also applies to aggregates
+containing arenas. Fresh construction, including a function that returns
+`arena(4096)` directly, is allowed. Pass `^arena` to share one arena's allocation
+state. Keep one owner responsible for calling `.done()` once after all uses of
+that storage.
 
 `mark()` returns the current arena cursor as a `u32`. `restore(mark)` moves the
 cursor back to a previous mark, invalidating allocations made after that mark

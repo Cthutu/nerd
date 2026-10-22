@@ -101,7 +101,7 @@ main :: fn () {
     typed:f64:2.0
     ratio: f64 = 3.14 + 2.0 * 3.0
     s :string = "hello"
-    flags: u32 = 7 | 2 ^ 1 & 3
+    flags: u32 = 7 | 2 ~ 1 & 3
     same := ratio >= 7.5 && flags != 0
     return on same => "ok" else "bad"
 }
@@ -163,7 +163,7 @@ main :: fn () {
     typed  : f64    : 2.0
     ratio  : f64    = 3.14 + 2.0 * 3.0
     s      : string = "hello"
-    flags  : u32    = 7 | 2 ^ 1 & 3
+    flags  : u32    = 7 | 2 ~ 1 & 3
     same            := ratio >= 7.5 && flags != 0
 
     return on same => "ok" else "bad"

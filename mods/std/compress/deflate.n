@@ -370,7 +370,7 @@ deflate_decode_stored_block :: fn (reader           : ^DeflateReader,
     inverse := reader.bytes[reader.byte_index].as(u16) | (reader.bytes[reader.byte_index + 1].as(u16) << 8)
     reader.byte_index += 2
 
-    on (length ^ inverse) != 0xffff => return compress_bool_invalid("Invalid "
+    on (length ~ inverse) != 0xffff => return compress_bool_invalid("Invalid "
         +"stored deflate block length")
     on (reader.byte_index + length.as(usize) > reader.bytes.count) => return compress_bool_error(UnexpectedEnd)
 

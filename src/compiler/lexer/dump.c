@@ -112,8 +112,8 @@ string token_kind_to_string(TokenKind kind)
         return string_from_cstr("PipePipeEqual `||=`");
     case TK_Caret:
         return string_from_cstr("Caret `^`");
-    case TK_CaretEqual:
-        return string_from_cstr("CaretEqual `^=`");
+    case TK_TildeEqual:
+        return string_from_cstr("TildeEqual `~=`");
     case TK_Tilde:
         return string_from_cstr("Tilde `~`");
     case TK_Less:

@@ -146,7 +146,11 @@
                 },
                 {
                     "name": "keyword.operator.bitwise.nerd",
-                    "match": "&|\\||\\^"
+                    "match": "&|\\||~=?"
+                },
+                {
+                    "name": "keyword.operator.pointer.nerd",
+                    "match": "\\^"
                 },
                 {
                     "name": "keyword.operator.arithmetic.nerd",

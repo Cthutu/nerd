@@ -2953,7 +2953,7 @@ typedef struct {
 typedef struct {
     u32    block_index;
     bool   failure_only;
-    string allocation;
+    string stack_save;
 } LlvmDefer;
 
 typedef struct {
@@ -8698,6 +8698,33 @@ internal bool llvm_emit_effect_block(LlvmFunctionContext* ctx,
                                      const HirFunction*   function,
                                      u32                  block_index);
 
+// Register restoration before this scope's defers so all its locals remain
+// alive throughout deferred cleanup, just as ordinary fixed-size locals do.
+internal void llvm_begin_stack_scope(LlvmFunctionContext* ctx, u32 scope_index)
+{
+    if (scope_index >= array_count(ctx->sema->scopes)) {
+        return;
+    }
+    const SemaScope* scope = &ctx->sema->scopes[scope_index];
+    for (u32 i = 0; i < scope->local_count; ++i) {
+        u32 local = scope->first_local + i;
+        if (local >= array_count(ctx->sema->locals)) {
+            continue;
+        }
+        u32 type = ctx->sema->locals[local].type_index;
+        if (type < array_count(ctx->sema->types) &&
+            (ctx->sema->types[type].flags & STF_RuntimeArray)) {
+            string saved = llvm_temp(ctx);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = call ptr @llvm.stacksave.p0()\n",
+                      STRINGV(saved));
+            array_push(ctx->defer_block_indices,
+                       ((LlvmDefer){.stack_save = saved}));
+            return;
+        }
+    }
+}
+
 internal bool llvm_emit_defers_to(LlvmFunctionContext* ctx,
                                   const HirFunction*   function,
                                   u32                  defer_count,
@@ -8711,10 +8738,10 @@ internal bool llvm_emit_defers_to(LlvmFunctionContext* ctx,
     u32 old_count = array_count(ctx->defer_block_indices);
     for (u32 i = old_count; i > defer_count; --i) {
         LlvmDefer action = ctx->defer_block_indices[i - 1];
-        if (action.allocation.count > 0) {
+        if (action.stack_save.count > 0) {
             sb_format(ctx->sb,
-                      "  call void @nrt_mem_free(ptr " STRINGP ")\n",
-                      STRINGV(action.allocation));
+                      "  call void @llvm.stackrestore.p0(ptr " STRINGP ")\n",
+                      STRINGV(action.stack_save));
             continue;
         }
         if (action.failure_only && failure.count == 0) {
@@ -9830,9 +9857,39 @@ internal LlvmValue llvm_emit_eager_binary(LlvmFunctionContext* ctx,
     return value;
 }
 
+internal LlvmValue llvm_emit_expr_impl(LlvmFunctionContext* ctx,
+                                       const HirFunction*   function,
+                                       u32                  expr_index);
+
 internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                                   const HirFunction*   function,
                                   u32                  expr_index)
+{
+    if (expr_index < array_count(ctx->hir->exprs) &&
+        ctx->hir->exprs[expr_index].kind == HIR_EXPR_For) {
+        const HirExpr* expr = &ctx->hir->exprs[expr_index];
+        if (expr->for_index >= array_count(ctx->hir->fors)) {
+            return (LlvmValue){0};
+        }
+        u32 base = array_count(ctx->defer_block_indices);
+        llvm_begin_stack_scope(ctx,
+                               ctx->hir->fors[expr->for_index].scope_index);
+        LlvmValue result = llvm_emit_expr_impl(ctx, function, expr_index);
+        if (!ctx->block_terminated &&
+            !llvm_emit_defers_to(ctx, function, base, true, (string){0})) {
+            result.ok = false;
+        }
+        if (ctx->defer_block_indices != NULL) {
+            __array_count(ctx->defer_block_indices) = base;
+        }
+        return result;
+    }
+    return llvm_emit_expr_impl(ctx, function, expr_index);
+}
+
+internal LlvmValue llvm_emit_expr_impl(LlvmFunctionContext* ctx,
+                                       const HirFunction*   function,
+                                       u32                  expr_index)
 {
     if (expr_index >= array_count(ctx->hir->exprs)) {
         return (LlvmValue){0};
@@ -10327,19 +10384,22 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
             }
             u32 item_type = ctx->sema->types[expr->type_index].first_param_type;
             string data = llvm_temp(ctx), partial = llvm_temp(ctx),
-                   value = llvm_temp(ctx);
-            string path  = llvm_allocation_source_path_global_name(
-                ctx->hir, ctx->lexer, ctx->arena, expr);
+                   value = llvm_temp(ctx), bytes = llvm_temp(ctx);
             sb_format(ctx->sb,
                       "  " STRINGP
-                      " = call ptr @nrt_local_array_alloc(i64 " STRINGP
-                      ", i64 %llu, ptr " STRINGP ", i32 %u)\n",
-                      STRINGV(data),
+                      " = call i64 @nrt_local_array_bytes(i64 " STRINGP
+                      ", i64 %llu)\n"
+                      "  " STRINGP " = alloca i8, i64 " STRINGP ", align 16\n"
+                      "  call void @llvm.memset.p0.i64(ptr " STRINGP
+                      ", i8 0, i64 " STRINGP ", i1 false)\n",
+                      STRINGV(bytes),
                       STRINGV(count.value),
                       (unsigned long long)llvm_type_storage_bytes(ctx->sema,
                                                                   item_type),
-                      STRINGV(path),
-                      expr->source_line);
+                      STRINGV(data),
+                      STRINGV(bytes),
+                      STRINGV(data),
+                      STRINGV(bytes));
             sb_format(
                 ctx->sb,
                 "  " STRINGP
@@ -10352,8 +10412,6 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                 STRINGV(value),
                 STRINGV(partial),
                 STRINGV(count.value));
-            array_push(ctx->defer_block_indices,
-                       ((LlvmDefer){.allocation = data}));
             return (LlvmValue){
                 .ok = true, .type_index = expr->type_index, .value = value};
         }
@@ -16320,7 +16378,8 @@ internal bool llvm_emit_effect_block(LlvmFunctionContext* ctx,
         old_scope = llvm_debug_enter_scope(
             ctx, function, block->scope_index, line, source_path);
     }
-    u32 defer_base        = array_count(ctx->defer_block_indices);
+    u32 defer_base = array_count(ctx->defer_block_indices);
+    llvm_begin_stack_scope(ctx, block->scope_index);
     ctx->block_terminated = false;
     bool ok               = llvm_emit_effect_stmt_indices(
         ctx, function, block->stmt_indices, 0, block->stmt_count);
@@ -16904,7 +16963,7 @@ internal void llvm_collect_assigned_locals(LlvmFunctionContext* ctx,
             }
         }
 
-        if (stmt->kind == HIR_STMT_Block) {
+        if (stmt->kind == HIR_STMT_Block || stmt->kind == HIR_STMT_Defer) {
             llvm_collect_assigned_locals(ctx, stmt->body_block_index);
         }
 
@@ -17091,6 +17150,7 @@ internal bool llvm_emit_block(LlvmFunctionContext* ctx,
     llvm_bind_block_function_values(ctx, block_index);
 
     u32 defer_base = array_count(ctx->defer_block_indices);
+    llvm_begin_stack_scope(ctx, block->scope_index);
     for (u32 i = 0; i < block->stmt_count; ++i) {
         if (ctx->block_terminated) {
             break;
@@ -19025,7 +19085,9 @@ internal void llvm_render_dynamic_array_runtime_declarations(StringBuilder* sb)
 {
     static const LlvmRuntimeDecl decls[] = {
         {"ptr", "nrt_mem_alloc", "i64, i64, ptr, i32"},
-        {"ptr", "nrt_local_array_alloc", "i64, i64, ptr, i32"},
+        {"i64", "nrt_local_array_bytes", "i64, i64"},
+        {"ptr", "llvm.stacksave.p0", ""},
+        {"void", "llvm.stackrestore.p0", "ptr"},
         {"ptr", "nrt_mem_realloc", "ptr, i64, i64, ptr, i32"},
         {"void", "nrt_mem_free", "ptr"},
         {"i64", "nrt_mem_size", "ptr"},

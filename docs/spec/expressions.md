@@ -32,18 +32,18 @@ From lowest binding power to highest:
 
 | Operators                                                                       | Notes                               |
 | ------------------------------------------------------------------------------- | ----------------------------------- |
-| `=`, `+=`, `-=`, `*=`, `/=`, `%=`, `&=`, `^=`, `|=`, `<<=`, `>>=`, `&&=`, `||=` | Assignment and compound assignment. |
+| `=`, `+=`, `-=`, `*=`, `/=`, `%=`, `&=`, `~=`, `|=`, `<<=`, `>>=`, `&&=`, `||=` | Assignment and compound assignment. |
 | `else [error] { ... }` | Failure handler; success yields its payload, fallthrough propagates. |
 | `||`                                                                            | Boolean OR.                         |
 | `&&`                                                                            | Boolean AND.                        |
-| `|`, `^`, `&`                                                                   | Bitwise operators.                  |
+| `|`, `~`, `&`                                                                   | Bitwise operators.                  |
 | `==`, `!=`                                                                      | Equality.                           |
 | `<`, `<=`, `>`, `>=`, `in`                                                      | Ordering and range membership.       |
 | `<<`, `>>`                                                                      | Shifts.                             |
 | `+`, `-`                                                                        | Additive operators.                 |
 | `*`, `/`, `%`                                                                   | Multiplicative operators.           |
 | `\`                                                                             | Lazy fallback, right associative.   |
-| prefix `-`, `!`, `^`                                                            | Negation, logical not, address-of.  |
+| prefix `-`, `!`, `~`, `^`                                                            | Negation, logical NOT, bitwise NOT, address-of.  |
 | calls, indexing, slicing, fields, casts, plex literals, `with`, postfix `^`     | Postfix operators.                  |
 
 The `==` and `!=` operators are built in for primitive equality, strings,
@@ -183,9 +183,13 @@ pointee type; `ptr - ptr` returns an `isize` element distance. Arithmetic on
 parser-supported. Inclusive `..=` range syntax is used in array range literals
 and patterns, but slice postfix parsing currently accepts only `..`.
 
-Postfix operations can continue directly after a postfix dereference. Thus
-`ptr^[i]` is equivalent to `(ptr^)[i]`. Whitespace before `^` keeps its infix
-bitwise-XOR meaning when followed by an expression, as in `value ^ [i]`.
+Postfix operations can continue directly after a postfix dereference:
+`ptr^[i]` is equivalent to `(ptr^)[i]`, and `callback^(arg)` calls the
+dereferenced function. Caret is never XOR, so `ptr^ - 1` subtracts from the
+dereferenced value and `ptr^^` dereferences twice. Whitespace does not select
+between pointer and bitwise operations. Binary `~` is XOR; prefix `~` is
+bitwise NOT. For example, `a ~~b` means `a ~ (~b)`. XOR retains its precedence
+between bitwise AND and OR, and `~=` performs XOR assignment.
 
 ## Aggregate Expressions
 

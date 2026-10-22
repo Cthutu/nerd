@@ -50,7 +50,7 @@ internal bool ast_compound_assignment_binary_kind(TokenKind op, AstKind* out)
     case TK_AmpEqual:
         *out = AK_BitwiseAnd;
         return true;
-    case TK_CaretEqual:
+    case TK_TildeEqual:
         *out = AK_BitwiseXor;
         return true;
     case TK_PipeEqual:
@@ -6122,7 +6122,7 @@ bool ast_parse_assignment(AstParseState* state, u32* out_node)
                state->token.kind == TK_SlashEqual ||
                state->token.kind == TK_PercentEqual ||
                state->token.kind == TK_AmpEqual ||
-               state->token.kind == TK_CaretEqual ||
+               state->token.kind == TK_TildeEqual ||
                state->token.kind == TK_PipeEqual ||
                state->token.kind == TK_ShiftLeftEqual ||
                state->token.kind == TK_ShiftRightEqual ||

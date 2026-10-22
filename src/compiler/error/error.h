@@ -227,6 +227,8 @@ bool error_0303_unknown_type_with_private_modules(NerdSource    source,
                                                   string        type_name,
                                                   const string* modules,
                                                   u32           module_count);
+bool error_0370_arena_copy(NerdSource source, ErrorSpan span);
+
 bool error_0304_type_mismatch(NerdSource source,
                               ErrorSpan  span,
                               string     expected_type,

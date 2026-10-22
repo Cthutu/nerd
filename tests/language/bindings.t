@@ -113,7 +113,7 @@ case_12_main :: fn () {
 
     bits := 6
     bits &= 3
-    bits ^= 7
+    bits ~= 7
     bits |= 8
 
     flag := yes
