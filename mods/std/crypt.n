@@ -5,20 +5,144 @@
 -- Provides APIs for hashing, key generation, encryption and signatures.
 
 Sha1Hash :: plex {
-    hash [20]u8
+    union {
+        bytes [20]u8
+        plex {
+            a u32
+            b u32
+            c u32
+            d u32
+            e u32
+        }
+    }
 }
 
 pub impl Display for Sha1Hash {
 
-    show :: fn (_self: Self) -> string {
-        result : string
-        return result
+    show :: fn (self: Self) -> string {
+        add :: fn (value: u32) -> string {
+            return temp_arena.pr($"{value >> 24 & 0xFF:02X}{value >> 16 & 0xFF:02X}{value >> 8 & 0xFF:02X}{value & 0xFF:02X}")
+        }
+
+        return temp_arena.pr($"{add(self.a)}{add(self.b)}{add(self.c)}{add(self.d)}{add(self.e)}")
     }
 
 }
 
-pub sha1 :: fn (_input: string) -> string {
-    -- Computes the SHA1 hash of the input string and returns it as a hexadecimal string.
-    -- This is a placeholder implementation. In a real implementation, you would use a proper cryptographic library.
-    return "SHA1_HASH_PLACEHOLDER"
+align_up :: fn [T] (value: T, alignment: T) -> T {
+    return on alignment {
+        0     => value
+        else  => (value + (alignment - 1)) & ~(alignment - 1)
+    }
+}
+
+left_rotate :: fn (value: u32, count: u32) -> u32 {
+    return (value << count) | (value >> (32 - count))
+}
+
+right_rotate :: fn (value: u32, count: u32) -> u32 {
+    return (value >> count) | (value << (32 - count))
+}
+
+pub sha1 :: fn (input: string) -> Sha1Hash {
+    h0 := 0x67452301
+    h1 := 0xEFCDAB89
+    h2 := 0x98BADCFE
+    h3 := 0x10325476
+    h4 := 0xC3D2E1F0
+
+    msg_len := input.count * 8
+
+    -- Preprocessing
+    mark := temp_arena.mark()
+    defer temp_arena.restore(mark)
+    buffer_len := align_up(msg_len.as(u64) + 1 + 64, 512) / 8
+    buffer := temp_arena.alloc_bytes(buffer_len.as())
+
+    buffer[0 .. input.count] = input[..].as([]u8)
+    buffer[input.count] = 0x80
+    buffer[input.count + 1 .. buffer_len - 8] = 0
+    for i in [0 .. 8] {
+        buffer[buffer_len - 1 - i.as()] = ((msg_len >> (i.as(usize) * 8)) & 0xFF).as(u8)
+    }
+
+    num_chunks := buffer_len / 64
+    for c in [0 .. num_chunks] {
+        chunk := buffer[c * 64 .. (c + 1) * 64]
+
+        w: [80]u32
+        for i in [0 .. 16] {
+            offset := i * 4
+            w[i] = (chunk[offset].as(u32) << 24) |
+            (chunk[offset + 1].as(u32) << 16) |
+            (chunk[offset + 2].as(u32) << 8) |
+            chunk[offset + 3].as(u32)
+        }
+        for i in [16 .. 80] {
+            w[i] = left_rotate(w[i - 3] ~ w[i - 8] ~ w[i - 14] ~ w[i - 16], 1)
+        }
+
+        a := h0
+        b := h1
+        c := h2
+        d := h3
+        e := h4
+
+        for i in [0 .. 80] {
+            f : u32
+            k : u32
+
+            on i {
+                in [0 ..= 19] => {
+                    f = (b & c) | ((~b) & d)
+                    k = 0x5A827999
+                }
+
+                in [20 ..= 39] => {
+                    f = b ~ c ~ d
+                    k = 0x6ED9EBA1
+                }
+
+                in [40 ..= 59] => {
+                    f = (b & c) | (b & d) | (c & d)
+                    k = 0x8F1BBCDC
+                }
+
+                in [60 ..= 79] => {
+                    f = b ~ c ~ d
+                    k = 0xCA62C1D6
+                }
+            }
+
+            temp := left_rotate(a, 5) + f + e + k + w[i]
+            e = d
+            d = c
+            c = left_rotate(b, 30)
+            b = a
+            a = temp
+        }
+
+        h0 += a
+        h1 += b
+        h2 += c
+        h3 += d
+        h4 += e
+    }
+
+    return {
+        a: h0
+        b: h1
+        c: h2
+        d: h3
+        e: h4
+    }
+}
+
+test "sha1" {
+    input         := "The quick brown fox jumps over the lazy dog"
+    expected_hash := "2FD4E1C67A2D28FCED849EE1BB76E7391B93EB12"
+    actual_hash   := sha1(input).show()
+
+    assert actual_hash == expected_hash,
+        $"Expected: {expected_hash}, Actual: {actual_hash}"
 }

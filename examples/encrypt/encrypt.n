@@ -2,7 +2,7 @@
 
 use std.crypt
 
-original_message :: "Hello, World!"
+original_message :: "The quick brown fox jumps over the lazy dog"
 
 main :: fn () -> void {
     prn($"Original message: {original_message}")

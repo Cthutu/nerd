@@ -38,6 +38,12 @@ library is organised into three layers:
   Pointer-stable arena construction, allocation, reset, and release helpers.
 - `std.io`
   Basic input helpers.
+- `std.crypt`
+  `sha1(input: string)` hashes counted input bytes and returns a digest value.
+  Its `Display.show()` produces 40 uppercase hexadecimal digits. Padding and
+  word loading follow SHA1's big-endian byte order; scratch allocations are
+  released before returning. The digest's `bytes` field aliases native word
+  storage, so use `show()` for the canonical digest representation.
 - `std.files`
   Portable file handles, whole-file operations, filesystem queries, and lexical
   path processing.
