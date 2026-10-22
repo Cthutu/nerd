@@ -1,5 +1,11 @@
 # Internals
 
+CST variable initialisers recognise same-line array-type syntax after `:=`,
+matching the AST parser's type-as-initialiser lookahead. The formatter retains
+the complete type for invalid/unfinished source instead of splitting its
+element type into another statement. This does not make array types valid
+runtime initialisers; newline-separated array literals keep their boundaries.
+
 Missing-return validation distinguishes explicit `void` from value-producing
 return types. Both implicit and explicit `void` bodies may fall through; HIR and
 the backends emit the normal void exit and deferred cleanup. Optional/result

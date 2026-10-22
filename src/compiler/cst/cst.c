@@ -5492,6 +5492,25 @@ internal bool cst_parse_ffi_def(CstParseState* state,
                          out_node);
 }
 
+// Preserve a type mistakenly used after ':=' as one syntax unit. Splitting
+// '[20]u8' into an array literal and a statement changes the parser diagnostic.
+// Keep genuine array literals followed by a new statement on the next line.
+internal bool
+cst_variable_initializer_is_array_type_syntax(const CstParseState* state)
+{
+    if (cst_current_token(state).kind != TK_LBracket) {
+        return false;
+    }
+    u32 close_bracket = state->token_index + 1;
+    if (!cst_skip_until_matching_rbracket(state, &close_bracket) ||
+        cst_kind_at_stream_index(state, close_bracket) != TK_RBracket ||
+        cst_token_has_newline_before(state, close_bracket + 1)) {
+        return false;
+    }
+    u32 cursor = state->token_index;
+    return cst_skip_type_tokens(state, &cursor);
+}
+
 internal bool
 cst_parse_variable_payload(CstParseState* state, u32 token_index, u32* out_node)
 {
@@ -5504,6 +5523,9 @@ cst_parse_variable_payload(CstParseState* state, u32 token_index, u32* out_node)
 
     if (cst_current_token(state).kind == TK_Equal) {
         cst_advance(state);
+        if (cst_variable_initializer_is_array_type_syntax(state)) {
+            return cst_parse_type(state, out_node);
+        }
         return cst_parse_expr_bp(state, 0, out_node);
     }
 

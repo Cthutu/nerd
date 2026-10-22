@@ -65,6 +65,11 @@ The formatter should be deterministic and idempotent.
   single-line branches remain grouped, with a blank line separating the group
   from adjacent multiline branches.
 - Explicit grouping parentheses are preserved.
+- Array types mistakenly used as inferred initialisers, such as
+  `digest := [20]u8`, remain together while editing. Formatting does not split
+  the element type into a separate statement or change the compiler's
+  type-as-initialiser diagnostic. A newline after an array literal still marks
+  a separate statement.
 - When a multiline plex literal is the final call argument, the call's closing
   parenthesis remains attached to the literal's closing brace as `})`.
 - Vertical spacing remains conservative apart from collapsing repeated blank lines.

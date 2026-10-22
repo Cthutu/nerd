@@ -272,3 +272,45 @@ compile_file :: fn (input: string) {
         prn(file)
     }
 }
+¬
+main::fn(){
+digest:=[20]u8
+}
+¬
+main :: fn () {
+    digest := [20]u8
+}
+¬
+main::fn(){
+view:=[]u8
+}
+¬
+main :: fn () {
+    view := []u8
+}
+¬
+main::fn(){
+growing:=[..]u8
+}
+¬
+main :: fn () {
+    growing := [..]u8
+}
+¬
+main::fn(){
+nested:=[2][20]u8
+}
+¬
+main :: fn () {
+    nested := [2][20]u8
+}
+¬
+main::fn(){
+values:=[20]
+consume(values)
+}
+¬
+main :: fn () {
+    values := [20]
+    consume(values)
+}
