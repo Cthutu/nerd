@@ -6743,7 +6743,7 @@ internal string llvm_slice_count_i64(LlvmFunctionContext* ctx,
 {
     if (start_is_constant && end_is_constant) {
         return string_format(
-            ctx->arena, "%lld", (long long)(end_value - start_value));
+            ctx->arena, "%lld", (long long)((u64)end_value - (u64)start_value));
     }
 
     if (start_is_constant && start_value == 0) {
@@ -11471,6 +11471,71 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
         }
     case HIR_EXPR_Atomic:
         return llvm_emit_atomic_expr(ctx, function, expr);
+    case HIR_EXPR_SliceFill:
+    case HIR_EXPR_SliceCopy:
+        {
+            LlvmValue target =
+                llvm_emit_expr(ctx, function, expr->lhs_expr_index);
+            if (!target.ok) {
+                return (LlvmValue){0};
+            }
+            u32  item = ctx->sema->types[expr->type_index].first_param_type;
+            bool copy = expr->kind == HIR_EXPR_SliceCopy;
+            LlvmValue value =
+                llvm_emit_expr(ctx, function, expr->rhs_expr_index);
+            value = llvm_coerce_value_to_type(
+                ctx, value, copy ? expr->type_index : item);
+            if (!value.ok) {
+                return (LlvmValue){0};
+            }
+            string data  = llvm_temp(ctx);
+            string count = llvm_temp(ctx);
+            sb_format(
+                ctx->sb,
+                "  " STRINGP " = extractvalue { ptr, i64 } " STRINGP ", 0\n"
+                "  " STRINGP " = extractvalue { ptr, i64 } " STRINGP ", 1\n",
+                STRINGV(data),
+                STRINGV(target.value),
+                STRINGV(count),
+                STRINGV(target.value));
+            if (copy) {
+                string source       = llvm_temp(ctx);
+                string source_count = llvm_temp(ctx);
+                sb_format(
+                    ctx->sb,
+                    "  " STRINGP " = extractvalue { ptr, i64 } " STRINGP ", 0\n"
+                    "  " STRINGP " = extractvalue { ptr, i64 } " STRINGP ", 1\n"
+                    "  call void @nrt_slice_copy(ptr " STRINGP ", i64 " STRINGP
+                    ", ptr " STRINGP ", i64 " STRINGP ", i64 %llu)\n",
+                    STRINGV(source),
+                    STRINGV(value.value),
+                    STRINGV(source_count),
+                    STRINGV(value.value),
+                    STRINGV(data),
+                    STRINGV(count),
+                    STRINGV(source),
+                    STRINGV(source_count),
+                    (unsigned long long)llvm_type_sizeof_bytes(ctx->sema,
+                                                               item));
+            } else {
+                string slot = llvm_temp(ctx);
+                string type = llvm_type_string(ctx, item);
+                llvm_emit_alloca(ctx, slot, type);
+                sb_format(ctx->sb,
+                          "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n"
+                          "  call void @nrt_slice_fill(ptr " STRINGP
+                          ", i64 " STRINGP ", ptr " STRINGP ", i64 %llu)\n",
+                          STRINGV(type),
+                          STRINGV(value.value),
+                          STRINGV(slot),
+                          STRINGV(data),
+                          STRINGV(count),
+                          STRINGV(slot),
+                          (unsigned long long)llvm_type_sizeof_bytes(ctx->sema,
+                                                                     item));
+            }
+            return target;
+        }
     case HIR_EXPR_Assign:
         {
             const HirExpr* atomic_target =
@@ -12033,6 +12098,14 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                             ctx, function, expr->rhs_expr_index, &end);
                     }
                 }
+                if (expr->slice_checked) {
+                    sb_format(ctx->sb,
+                              "  call void @nrt_slice_check(i64 " STRINGP
+                              ", i64 " STRINGP ", i64 " STRINGP ")\n",
+                              STRINGV(total_count),
+                              STRINGV(start),
+                              STRINGV(end));
+                }
 
                 string count    = llvm_slice_count_i64(ctx,
                                                        start,
@@ -12123,6 +12196,14 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                         llvm_emit_index_i64(
                             ctx, function, expr->rhs_expr_index, &end);
                     }
+                }
+                if (expr->slice_checked) {
+                    sb_format(ctx->sb,
+                              "  call void @nrt_slice_check(i64 " STRINGP
+                              ", i64 " STRINGP ", i64 " STRINGP ")\n",
+                              STRINGV(total_count),
+                              STRINGV(start),
+                              STRINGV(end));
                 }
 
                 string count = llvm_slice_count_i64(ctx,
@@ -12264,6 +12345,14 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                             ctx, function, expr->rhs_expr_index, &end);
                     }
                 }
+                if (expr->slice_checked) {
+                    sb_format(ctx->sb,
+                              "  call void @nrt_slice_check(i64 " STRINGP
+                              ", i64 " STRINGP ", i64 " STRINGP ")\n",
+                              STRINGV(total_count),
+                              STRINGV(start),
+                              STRINGV(end));
+                }
 
                 string slice_count = llvm_slice_count_i64(ctx,
                                                           start,
@@ -12347,6 +12436,17 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
                     llvm_emit_index_i64(
                         ctx, function, expr->rhs_expr_index, &end);
                 }
+            }
+            if (expr->slice_checked) {
+                sb_format(ctx->sb,
+                          "  call void @nrt_slice_check(i64 " STRINGP
+                          ", i64 " STRINGP ", i64 " STRINGP ")\n",
+                          STRINGV(string_format(
+                              ctx->arena,
+                              "%u",
+                              llvm_array_count(ctx->sema, target_type))),
+                          STRINGV(start),
+                          STRINGV(end));
             }
 
             string count              = llvm_slice_count_i64(ctx,
@@ -16594,6 +16694,11 @@ internal void llvm_collect_addressed_expr_locals(LlvmFunctionContext* ctx,
         llvm_collect_addressed_expr_locals(ctx, expr->lhs_expr_index);
         llvm_collect_addressed_expr_locals(ctx, expr->rhs_expr_index);
         break;
+    case HIR_EXPR_SliceFill:
+    case HIR_EXPR_SliceCopy:
+        llvm_collect_addressed_expr_locals(ctx, expr->lhs_expr_index);
+        llvm_collect_addressed_expr_locals(ctx, expr->rhs_expr_index);
+        break;
     case HIR_EXPR_Assign:
         llvm_collect_addressed_expr_locals(ctx, expr->rhs_expr_index);
         break;
@@ -18811,6 +18916,9 @@ internal void llvm_render_slice_runtime_declarations(StringBuilder* sb)
 {
     static const LlvmRuntimeDecl decls[] = {
         {"i1", "nrt_slice_eq", "ptr, i64, ptr, i64, i64"},
+        {"void", "nrt_slice_check", "i64, i64, i64"},
+        {"void", "nrt_slice_copy", "ptr, i64, ptr, i64, i64"},
+        {"void", "nrt_slice_fill", "ptr, i64, ptr, i64"},
     };
     llvm_render_runtime_declarations(
         sb, decls, (u32)(sizeof(decls) / sizeof(decls[0])));
@@ -18820,6 +18928,10 @@ internal bool llvm_hir_uses_slice_runtime(const Hir* hir, const Sema* sema)
 {
     for (u32 i = 0; i < array_count(hir->exprs); ++i) {
         const HirExpr* expr = &hir->exprs[i];
+        if (expr->kind == HIR_EXPR_SliceFill ||
+            expr->kind == HIR_EXPR_SliceCopy) {
+            return true;
+        }
         if (expr->kind != HIR_EXPR_Binary ||
             (expr->binary_op != HIR_BINARY_Equal &&
              expr->binary_op != HIR_BINARY_NotEqual) ||

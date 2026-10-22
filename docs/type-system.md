@@ -478,6 +478,14 @@ The index expression must be an integer type. In debug builds, the backend emits
 a bounds check before each slice index and aborts with a fatal message if the
 index is outside `slice.count`. Release builds may omit those checks.
 
+An explicit slice on the left of `=` fills or copies its underlying elements.
+An element-compatible value fills; otherwise a same-element slice (including
+the usual fixed-array borrow) copies, with equal lengths and overlap-safe
+semantics. Nested slice values prefer filling when compatible with one element.
+Bounds and copy lengths are checked before writing, including in release
+builds. Direct string ranges and non-copyable/atomic elements are rejected.
+See [the manual](manual/part08-compound-data.md#assigning-to-a-range) for examples.
+
 Strings share the same field and slicing surface where it preserves the string
 type:
 

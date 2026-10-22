@@ -1405,6 +1405,53 @@ internal u32 hir_lower_expr_with_expected(Hir*         hir,
     return hir_lower_expr(hir, lexer, ast, sema, node_index);
 }
 
+internal void hir_check_slice_views(Hir* hir, u32 first)
+{
+    // Include views produced by on/block branches within either operand.
+    for (u32 i = first; i < array_count(hir->exprs); ++i) {
+        if (hir->exprs[i].kind == HIR_EXPR_Slice) {
+            hir->exprs[i].slice_checked = true;
+        }
+    }
+}
+
+internal u32 hir_lower_range_assignment(Hir*           hir,
+                                        const Lexer*   lexer,
+                                        const Ast*     ast,
+                                        const Sema*    sema,
+                                        const AstNode* node)
+{
+    u32  target_type = hir_node_type(sema, node->a);
+    bool copy        = sema_range_assignment_is_copy(
+        sema, target_type, hir_node_type(sema, node->b));
+    u32 expected =
+        copy ? target_type : sema->types[target_type].first_param_type;
+    u32 first  = (u32)array_count(hir->exprs);
+    u32 target = hir_lower_expr(hir, lexer, ast, sema, node->a);
+    u32 value =
+        hir_lower_expr_with_expected(hir, lexer, ast, sema, node->b, expected);
+    if (sema->types[expected].kind == STK_Slice &&
+        sema->types[hir->exprs[value].type_index].kind == STK_Array) {
+        value = hir_add_expr(hir,
+                             (HirExpr){
+                                 .kind               = HIR_EXPR_Slice,
+                                 .type_index         = expected,
+                                 .operand_expr_index = value,
+                                 .lhs_expr_index     = hir_no_index(),
+                                 .rhs_expr_index     = hir_no_index(),
+                             });
+    }
+    hir_check_slice_views(hir, first);
+    return hir_add_expr(
+        hir,
+        (HirExpr){
+            .kind           = copy ? HIR_EXPR_SliceCopy : HIR_EXPR_SliceFill,
+            .type_index     = target_type,
+            .lhs_expr_index = target,
+            .rhs_expr_index = value,
+        });
+}
+
 internal u32 hir_lower_eq_trait_expr(Hir*         hir,
                                      const Lexer* lexer,
                                      const Ast*   ast,
@@ -1957,6 +2004,9 @@ internal u32 hir_lower_expr_impl(Hir*         hir,
                                 .local_index   = sema_no_local(),
                             });
     case AK_Assign:
+        if (ast->nodes[node->a].kind == AK_Slice) {
+            return hir_lower_range_assignment(hir, lexer, ast, sema, node);
+        }
         return hir_add_expr(hir,
                             (HirExpr){
                                 .kind       = HIR_EXPR_Assign,
@@ -3646,6 +3696,20 @@ internal u32 hir_lower_stmt(Hir*         hir,
         }
     case AK_Assign:
         {
+            if (ast->nodes[node->a].kind == AK_Slice) {
+                u32 expr =
+                    hir_lower_range_assignment(hir, lexer, ast, sema, node);
+                return hir_add_stmt(hir,
+                                    (HirStmt){
+                                        .kind             = HIR_STMT_Expr,
+                                        .expr_index       = expr,
+                                        .body_block_index = hir_no_index(),
+                                        .local_index      = sema_no_local(),
+                                        .symbol_handle    = U32_MAX,
+                                        .source_line      = stmt_source_line,
+                                        .source_path      = stmt_source_path,
+                                    });
+            }
             u32 target_expr  = hir_lower_expr(hir, lexer, ast, sema, node->a);
             u32 target_type  = hir_node_type(sema, node->a);
             u32 target_local = hir_node_local(sema, node->a);

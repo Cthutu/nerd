@@ -12931,10 +12931,14 @@ internal bool sema_assignment_target_writes_immutable_storage(
             return sema_assignment_target_writes_immutable_storage(
                 ast, sema, node->a, out_root_node);
         }
+    case AK_Slice:
     case AK_Index:
         {
-            u32 base_type = node->a < array_count(sema->node_type_indices)
-                                ? sema->node_type_indices[node->a]
+            u32 base      = node->kind == AK_Slice
+                                ? ast->slices[node->a].target_node_index
+                                : node->a;
+            u32 base_type = base < array_count(sema->node_type_indices)
+                                ? sema->node_type_indices[base]
                                 : sema_no_type();
             if (base_type != sema_no_type() &&
                 (sema->types[base_type].kind == STK_Pointer ||
@@ -12943,11 +12947,52 @@ internal bool sema_assignment_target_writes_immutable_storage(
                 return false;
             }
             return sema_assignment_target_writes_immutable_storage(
-                ast, sema, node->a, out_root_node);
+                ast, sema, base, out_root_node);
         }
     default:
         return false;
     }
+}
+
+// Bulk writes duplicate values, including owners nested inside aggregates.
+// Borrowed slices and pointers copy their view/identity, not their pointees.
+internal bool sema_range_item_is_copyable(const Sema* sema, u32 index)
+{
+    if (index == sema_no_type()) {
+        return true; // Payload-free enum alternatives and unbound generics.
+    }
+    const SemaType* type = &sema->types[index];
+    if (type->flags & STF_RuntimeArray) {
+        return false;
+    }
+    switch (type->kind) {
+    case STK_Arena:
+    case STK_Box:
+    case STK_VaList:
+    case STK_Atomic:
+        return false;
+    case STK_Array:
+        return sema_range_item_is_copyable(sema, type->first_param_type);
+    case STK_Plex:
+    case STK_Union:
+    case STK_Tuple:
+    case STK_Enum:
+        for (u32 i = 0; i < type->param_count; ++i) {
+            if (!sema_range_item_is_copyable(
+                    sema, sema->type_param_types[type->first_param_type + i])) {
+                return false;
+            }
+        }
+        return true;
+    default:
+        return true;
+    }
+}
+
+bool sema_range_assignment_is_copy(const Sema* sema, u32 target, u32 value)
+{
+    return !sema_type_matches(
+        sema, sema->types[target].first_param_type, value);
 }
 
 internal u32 sema_enclosing_function_return_type(const Sema* sema,
@@ -26344,7 +26389,7 @@ validate_type:
                     return false;
                 }
                 target_record_type = record_type;
-            } else if (target->kind == AK_Index ||
+            } else if (target->kind == AK_Slice || target->kind == AK_Index ||
                        target->kind == AK_TupleField) {
                 if (!sema_infer_node_type(lexer,
                                           ast,
@@ -26385,6 +26430,57 @@ validate_type:
                     sema_node_span(lexer, root),
                     lex_symbol(lexer,
                                root->kind == AK_Field ? root->b : root->a));
+            }
+
+            if (target->kind == AK_Slice) {
+                if (sema->types[target_type].kind != STK_Slice) {
+                    return error_0304_type_mismatch_with_note(
+                        lexer->source,
+                        sema_node_span(lexer, target),
+                        s("writable array or slice range"),
+                        s("string"),
+                        "Strings do not support range assignment.");
+                }
+                u32 item = sema->types[target_type].first_param_type;
+                if (!sema_range_item_is_copyable(sema, item)) {
+                    return error_0304_type_mismatch_with_note(
+                        lexer->source,
+                        sema_node_span(lexer, target),
+                        s("copyable range element"),
+                        sema_type_name(lexer, sema, &temp_arena, item),
+                        "Range assignment duplicates element values. Owning "
+                        "values and atomic storage require individual "
+                        "operations.");
+                }
+                u32     value_node = sema_unwrap_expr_node(ast, node->b);
+                AstKind value_kind = ast->nodes[value_node].kind;
+                u32     hint       = sema_no_type();
+                if (value_kind == AK_Plex || value_kind == AK_EnumVariant ||
+                    value_kind == AK_NilLiteral ||
+                    value_kind == AK_IntegerLiteral ||
+                    value_kind == AK_FloatLiteral) {
+                    hint = item;
+                } else if (value_kind == AK_Array) {
+                    hint = (sema->types[item].kind == STK_Array ||
+                            sema->types[item].kind == STK_Slice)
+                               ? item
+                               : target_type;
+                }
+                u32 actual = sema_no_type();
+                if (!sema_infer_node_type(
+                        lexer, ast, sema, node->b, hint, &actual)) {
+                    return false;
+                }
+                // An element-compatible value fills, even when that element
+                // is itself a slice. Otherwise require a same-element slice.
+                u32 expected =
+                    sema_type_matches(sema, item, actual) ? item : target_type;
+                if (!sema_infer_node_type(
+                        lexer, ast, sema, node->b, expected, &actual)) {
+                    return false;
+                }
+                type_index = target_type;
+                break;
             }
 
             u8 target_bit_width = target->kind == AK_Field

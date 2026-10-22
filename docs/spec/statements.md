@@ -53,6 +53,11 @@ field and index projections to the root binding, stopping at pointer
 dereferences and indexing through pointers, slices, or dynamic arrays. A
 constant pointer or view does not make the storage it refers to immutable.
 
+The same root check applies to range writes such as `array[..] = value`.
+An explicit slice assignment fills or copies its elements; assigning to a
+slice variable itself still replaces the view. See
+[range assignment semantics](expressions.md).
+
 `undefined` is only valid where the parser builds an explicitly typed variable
 initializer. It opts out of both `Default` and zero-initialisation. Semantic
 definite-assignment checks require it to be assigned before read.

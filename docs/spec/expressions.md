@@ -72,6 +72,27 @@ is evaluated only when the lower comparison succeeds.
 Assignments require assignable targets. Compound assignments lower through the
 corresponding binary operation before assigning.
 
+An explicit slice target `collection[start..end] = rhs` writes underlying
+elements, and has the destination slice type. If `rhs` is assignable to one
+element, it fills the range; otherwise it must coerce to a same-element slice
+and copies exactly that many elements. Element compatibility takes priority,
+including nested slices and optional elements. Ordinary fixed-array-to-slice
+borrowing applies. The result is the destination view after the write.
+
+Evaluation order is collection, start, end, then `rhs`, once each; omitted
+bounds default to zero and collection count. Bounds are checked before forming
+the view. Require `0 <= start <= end <= count`, and equal source/destination
+counts for copies, before writing any element. These checks remain enabled in
+release builds. Empty ranges still evaluate `rhs`. Fills capture the original
+element value; copies have `memmove` overlap semantics.
+
+Targets may slice mutable fixed arrays, slices, runtime-sized fixed arrays or
+dynamic arrays. The ordinary index root-mutability rules apply. String targets
+and compound range assignments are rejected. Element types must not contain
+boxes, arenas, runtime-array owners, variadic cursors or atomic storage by value;
+this check descends fixed arrays, records, tuples and enum payloads, and stops
+at borrowed slices, dynamic-array handles and pointers.
+
 ## Lazy Fallback
 
 `wrapped \ fallback` extracts the success value from `T\E` or the present

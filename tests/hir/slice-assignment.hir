@@ -1,0 +1,8 @@
+main :: fn () {
+    xs := [1, 2, 3]
+    xs[..2] = 7
+    xs[1..] = xs[..2]
+}
+¬
+expr []i32 slice_fill([]i32 checked_slice([3]i32 local.0(xs), <none>, untyped integer 2) = i32 7)
+expr []i32 slice_copy([]i32 checked_slice([3]i32 local.0(xs), untyped integer 1, <none>) = []i32 checked_slice([3]i32 local.0(xs), <none>, untyped integer 2))

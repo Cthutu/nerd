@@ -73,6 +73,8 @@ typedef enum : u8 {
     HIR_EXPR_Unary,
     HIR_EXPR_Binary,
     HIR_EXPR_Assign,
+    HIR_EXPR_SliceFill,
+    HIR_EXPR_SliceCopy,
     HIR_EXPR_Atomic,
     HIR_EXPR_Call,
     HIR_EXPR_VaNext,
@@ -295,6 +297,7 @@ typedef struct {
     u8          atomic_order;
     u8          atomic_failure_order;
     bool        default_missing;
+    bool        slice_checked; // Bounds required for a bulk-write view.
 } HirExpr;
 
 typedef struct {

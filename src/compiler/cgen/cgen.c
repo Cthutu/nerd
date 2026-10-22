@@ -2700,6 +2700,32 @@ internal CValue cgen_expr(CGen* c, u32 index)
                                 v.text,
                                 order));
         }
+    case HIR_EXPR_SliceFill:
+    case HIR_EXPR_SliceCopy:
+        {
+            CValue target = cgen_expr(c, e->lhs_expr_index);
+            u32    item   = cgen_type(c, t)->first_param_type;
+            bool   copy   = e->kind == HIR_EXPR_SliceCopy;
+            CValue value  = cgen_coerce(
+                c, cgen_expr(c, e->rhs_expr_index), copy ? t : item);
+            if (copy) {
+                CGEN_OUT("nrt_slice_copy(%s.data,%s.count,%s.data,%s.count,"
+                         "sizeof(%s));\n",
+                         target.text,
+                         target.text,
+                         value.text,
+                         value.text,
+                         cgen_ctype(c, item));
+            } else {
+                value = cgen_temp(c, item, value.text);
+                CGEN_OUT("nrt_slice_fill(%s.data,%s.count,&%s,sizeof(%s));\n",
+                         target.text,
+                         target.text,
+                         value.text,
+                         cgen_ctype(c, item));
+            }
+            return target;
+        }
     case HIR_EXPR_Assign:
         {
             CValue         lhs    = cgen_lvalue(c, e->lhs_expr_index);
@@ -2983,6 +3009,17 @@ internal CValue cgen_expr(CGen* c, u32 index)
                         : cgen_kind(c, bt) == STK_DynamicArray
                             ? CF("(%s?%s->data:NULL)", v.text, v.text)
                             : CF("%s.data", v.text);
+            if (e->slice_checked) {
+                cstr count = cgen_kind(c, bt) == STK_Array
+                                 ? CF("%u", cgen_type(c, bt)->return_type)
+                             : cgen_kind(c, bt) == STK_DynamicArray
+                                 ? CF("(%s?%s->count:0)", v.text, v.text)
+                                 : CF("%s.count", v.text);
+                CGEN_OUT("nrt_slice_check(%s,(uint64_t)%s,(uint64_t)%s);\n",
+                         count,
+                         lo,
+                         hi);
+            }
             return cgen_temp(c,
                              t,
                              CF("(%s){((%s*)%s)+%s, (%s>%s?%s-%s:0)}",

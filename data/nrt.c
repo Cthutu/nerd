@@ -280,6 +280,52 @@ bool nrt_slice_eq(const void* lhs,
     return memcmp(lhs, rhs, lhs_count * element_size) == 0;
 }
 
+// Bulk assignment checks remain enabled in release builds. Validate before
+// forming element pointers or touching destination storage.
+void nrt_slice_check(size_t count, size_t start, size_t end)
+{
+    if (start > end || end > count) {
+        nrt_eprintfn("fatal: slice assignment range out of bounds");
+        exit(127);
+    }
+}
+
+void nrt_slice_copy(void*       destination,
+                    size_t      count,
+                    const void* source,
+                    size_t      source_count,
+                    size_t      element_size)
+{
+    if (count != source_count) {
+        nrt_eprintfn("fatal: slice assignment lengths differ");
+        exit(127);
+    }
+    if (element_size != 0 && count > SIZE_MAX / element_size) {
+        nrt_eprintfn("fatal: slice assignment size overflow");
+        exit(127);
+    }
+    if (count != 0 && element_size != 0) {
+        memmove(destination, source, count * element_size);
+    }
+}
+
+void nrt_slice_fill(void*       destination,
+                    size_t      count,
+                    const void* value,
+                    size_t      element_size)
+{
+    if (element_size != 0 && count > SIZE_MAX / element_size) {
+        nrt_eprintfn("fatal: slice assignment size overflow");
+        exit(127);
+    }
+    if (element_size == 0) {
+        return;
+    }
+    for (size_t i = 0; i < count; ++i) {
+        memcpy((u8*)destination + i * element_size, value, element_size);
+    }
+}
+
 static const size_t NRT_ARENA_RESERVE_SIZE = (size_t)1 << 32;
 static const size_t NRT_ARENA_MAX_CURSOR   = UINT32_MAX;
 

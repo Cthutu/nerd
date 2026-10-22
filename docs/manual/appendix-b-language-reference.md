@@ -229,6 +229,11 @@ intended exit code.
 ## Data
 
 - Tuples are positional.
+- `collection[a..b] = value` fills a half-open range; a same-element slice
+  copies into it with equal lengths and overlap-safe behaviour. Bounds and
+  length checks remain enabled in release builds. Element-compatible values
+  take priority over copying, including nested slices. Strings and
+  non-copyable/atomic elements do not support range assignment.
 - Plexes are named-field product types.
 - Plexes and unions may contain anonymous `plex { ... }` and `union { ... }`
   members. Their field names are promoted into the containing record while

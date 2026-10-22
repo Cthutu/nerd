@@ -638,6 +638,19 @@ rejecting the concrete pointer against `^Task[<unknown>]`. Concrete parameters
 still supply expected types, including integer literals before a generic pointer
 argument.
 
+## Range Assignment
+
+Range writes keep the existing AST assignment/slice shapes. Sema validates
+root mutability and recursively checks that element values can be duplicated;
+`sema_range_assignment_is_copy` shares the element-first compatibility decision
+with HIR. HIR emits `HIR_EXPR_SliceFill` or `HIR_EXPR_SliceCopy` as value
+expressions, and marks directly participating slice views `slice_checked`.
+Both backends evaluate those views and the right-hand value once. Checked
+views call `nrt_slice_check` before pointer arithmetic. Fills capture one typed
+value in a reusable function-entry stack slot and call `nrt_slice_fill`; copies call
+`nrt_slice_copy`, which checks equal counts before `memmove`. No hidden heap
+buffer is required. These runtime checks are independent of release mode.
+
 ## Related Documents
 
 - [FORMAT.md](FORMAT.md) for formatter rules

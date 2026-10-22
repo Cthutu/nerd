@@ -96,6 +96,46 @@ make a slice work.
 
 Dot access automatically dereferences pointers to collection headers.
 
+### Assigning To A Range
+
+Put a range on the left of `=` to change its elements. An element value fills
+the range; another slice copies its elements into the range:
+
+```nerd
+values := [10, 20, 30, 40]
+values[1..3] = 7             -- [10, 7, 7, 40]
+values[1..] = values[..3]    -- [10, 10, 7, 7], even though the ranges overlap
+```
+
+The upper bound is excluded. Omitted bounds mean the beginning or end of the
+collection, so `values[..] = 0` fills everything. This works with writable fixed
+arrays, slices and dynamic arrays. A constant slice binding still permits
+writing through its view, just as indexing does; a constant fixed array does
+not permit changing its elements. Strings do not support range assignment.
+
+A copy requires equal lengths, but the ranges can start at different indices.
+Overlapping copies behave as though the source elements were captured before
+writing. Bounds must satisfy `0 <= start <= end <= count`. Invalid bounds or
+unequal copy lengths stop the program before any elements are written, in both
+debug and release builds. An empty range writes nothing and still evaluates
+the value once.
+
+Evaluation proceeds through the collection, lower bound, upper bound and
+right-hand value, once each. A fill captures that one value before writing;
+`values[..] = values[2]` repeats the original third element. An assignment
+expression returns the destination slice after writing.
+
+The destination's element type distinguishes fills from copies. For `[][]i32`,
+an `[]i32` value fills each element with the same borrowed view; a `[][]i32`
+value copies views. Fixed arrays can borrow as slices where those slice types
+are expected. Neither operation copies the storage behind a nested view.
+
+Range assignments require copyable elements. Boxes, arenas, runtime-sized
+array owners and variadic cursors cannot be duplicated, including when nested
+inside records, tuples, enums or fixed arrays. Atomic elements also require
+individual atomic operations. Compound assignments such as `values[..] += 1`
+are not supported.
+
 ## Pointer-To-Slice Casts
 
 When you have a pointer and a count, build a slice view with:
