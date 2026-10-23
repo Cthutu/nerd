@@ -1,5 +1,18 @@
 # Windows validation handoff
 
+## Main language feature integration — 23 October 2026
+
+Validate `main` after pulling its configured upstream. The integration brings in
+explicit plex-pattern field coverage, optional/result entry points, addresses of
+intermediate values, optional/result loop conditions, nested labelled loop
+results and qualified associated/generic calls. Arena-sharing guidance remains
+pointer-based; arenas are still noncopyable. New runtime checks are grouped in
+the existing feature files, with entry-point process contracts under commands.
+Pay particular attention to stderr/exit/cleanup behaviour for result-returning
+`main`, native Windows stdio checks, loop temporaries and imported generic
+constructors. Native Windows execution of this integration remains pending;
+Linux and portable harness results do not close that gate.
+
 ## Test infrastructure relocation — 21 October 2026
 
 The native runner and this handoff now live under `tests/windows/`; standard-library

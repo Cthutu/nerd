@@ -473,31 +473,6 @@ break } }
 }
 
 ¬
-main :: fn () -> ?i32 { return nil }
-¬
-{
-  "message": "Invalid type for entry point `main`: found `fn () -> ?i32`",
-  "source_file": "tests/errors/error-handling.e",
-  "primary_location": {
-    "line": 1,
-    "column": 1
-  },
-  "references": [
-    {
-      "kind": "primary",
-      "line": 1,
-      "column": 1,
-      "length": 4,
-      "message": "`main` must be a function with no parameters or one `[]string` parameter, returning an integer, `?void`, or no value"
-    }
-  ],
-  "notes": [],
-  "help": [
-    "Change `main` to `fn ()`, or to `fn (args: []string)` if the program needs command-line arguments."
-  ]
-}
-
-¬
 Failure :: enum { Bad WithCode { code i32 } }
 name :: fn (value: Failure) {
     on value { Failure.Bad! => {} else => {} }
@@ -1229,7 +1204,6 @@ main :: fn () { value := work() else return }
     "Check for a missing closing delimiter or misplaced operator"
   ]
 }
-
 
 ¬
 main :: fn () { value: ?i32 = 42

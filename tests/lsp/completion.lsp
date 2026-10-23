@@ -834,6 +834,10 @@ main :: fn () {}
         "kind": 9
       },
       {
+        "label": "qualified_generics",
+        "kind": 9
+      },
+      {
         "label": "recursive_message_owner",
         "kind": 9
       },

@@ -36,6 +36,14 @@ COMMANDS = (
     '259-run-lazy-arena-leak-location',
     '296-run-merged-standard-library',
     '308-run-shutdown-watcher',
+    '359-result-main-void-error',
+    '360-result-main-i32-success',
+    '361-result-main-propagation',
+    '362-optional-main-i32-success',
+    '363-optional-main-i32-failure',
+    '364-result-main-string-error',
+    '365-result-main-void-success',
+    '366-result-main-call-status',
 )
 
 

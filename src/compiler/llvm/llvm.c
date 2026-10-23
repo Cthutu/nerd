@@ -5392,6 +5392,28 @@ internal LlvmValue llvm_coerce_value_to_type(LlvmFunctionContext* ctx,
         };
     }
 
+    if (target_kind == STK_Bool && source_kind == STK_Enum &&
+        (ctx->sema->types[value.type_index].flags &
+         (STF_Optional | STF_Result))) {
+        string tag = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = extractvalue " STRINGP " " STRINGP ", 0\n",
+                  STRINGV(tag),
+                  STRINGV(llvm_type_string(ctx, value.type_index)),
+                  STRINGV(value.value));
+        u32 success =
+            (ctx->sema->types[value.type_index].flags & STF_Optional) ? 1 : 0;
+        string temp = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = icmp eq i64 " STRINGP ", %lld\n",
+                  STRINGV(temp),
+                  STRINGV(tag),
+                  (long long)llvm_enum_variant_discriminant(
+                      ctx->sema, value.type_index, success));
+        return (LlvmValue){
+            .ok = true, .type_index = target_type, .value = temp};
+    }
+
     if (target_kind == STK_Bool && source_kind == STK_Box) {
         string temp = llvm_temp(ctx);
         sb_format(ctx->sb,
@@ -7265,18 +7287,13 @@ internal LlvmValue llvm_emit_pattern_condition(LlvmFunctionContext* ctx,
                         return (LlvmValue){0};
                     }
 
-                    string variant_payload_type_string =
-                        llvm_type_string(ctx, variant_payload_type);
-                    child_value = llvm_temp(ctx);
-                    sb_format(ctx->sb,
-                              "  " STRINGP " = extractvalue " STRINGP
-                              " " STRINGP ", %u\n",
-                              STRINGV(child_value),
-                              STRINGV(variant_payload_type_string),
-                              STRINGV(variant_payload.value),
-                              field_index);
-                    child_type = llvm_record_field_type(
-                        ctx->sema, variant_payload_type, field_index);
+                    LlvmValue field = llvm_extract_record_field(
+                        ctx, variant_payload, field_index);
+                    if (!field.ok) {
+                        return (LlvmValue){0};
+                    }
+                    child_value = field.value;
+                    child_type  = field.type_index;
                 }
                 if (!payload_is_tuple &&
                     llvm_type_is_record(ctx->sema, variant_payload_type) &&
@@ -7391,6 +7408,28 @@ llvm_emit_branch_pattern_condition(LlvmFunctionContext* ctx,
         result.value = temp;
     }
     return result;
+}
+
+internal LlvmValue llvm_address_of_value(LlvmFunctionContext* ctx,
+                                         LlvmValue            value)
+{
+    if (!value.ok) {
+        return (LlvmValue){0};
+    }
+
+    string type = llvm_type_string(ctx, value.type_index);
+    string ptr  = llvm_temp(ctx);
+    llvm_emit_alloca(ctx, ptr, type);
+    sb_format(ctx->sb,
+              "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n",
+              STRINGV(type),
+              STRINGV(value.value),
+              STRINGV(ptr));
+    return (LlvmValue){
+        .ok         = true,
+        .type_index = sema_no_type(),
+        .value      = ptr,
+    };
 }
 
 internal LlvmValue llvm_address_of_expr(LlvmFunctionContext* ctx,
@@ -7773,27 +7812,8 @@ internal LlvmValue llvm_address_of_expr(LlvmFunctionContext* ctx,
         };
     }
 
-    LlvmValue value = llvm_emit_expr(ctx, function, expr_index);
-    if (!value.ok) {
-        return (LlvmValue){0};
-    }
-
-    string type = llvm_type_string(ctx, value.type_index);
-    string ptr  = llvm_temp(ctx);
-    sb_format(ctx->sb,
-              "  " STRINGP " = alloca " STRINGP "\n",
-              STRINGV(ptr),
-              STRINGV(type));
-    sb_format(ctx->sb,
-              "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n",
-              STRINGV(type),
-              STRINGV(value.value),
-              STRINGV(ptr));
-    return (LlvmValue){
-        .ok         = true,
-        .type_index = sema_no_type(),
-        .value      = ptr,
-    };
+    return llvm_address_of_value(ctx,
+                                 llvm_emit_expr(ctx, function, expr_index));
 }
 
 // Borrow a fixed array expression as a slice without copying its storage.
@@ -11731,6 +11751,15 @@ internal LlvmValue llvm_emit_expr_impl(LlvmFunctionContext* ctx,
         }
     case HIR_EXPR_Unary:
         {
+            if (expr->unary_op == HIR_UNARY_AddressOfValue) {
+                LlvmValue value =
+                    llvm_emit_expr(ctx, function, expr->operand_expr_index);
+                value = llvm_coerce_value_to_type(
+                    ctx, value, llvm_pointee_type(ctx->sema, expr->type_index));
+                LlvmValue address  = llvm_address_of_value(ctx, value);
+                address.type_index = expr->type_index;
+                return address;
+            }
             if (expr->unary_op == HIR_UNARY_AddressOf) {
                 LlvmValue address = llvm_address_of_expr(
                     ctx, function, expr->operand_expr_index);
@@ -18974,6 +19003,7 @@ internal void llvm_render_string_runtime_declarations(StringBuilder* sb)
         {"void", "nrt_string_builder_append_byte", "i8"},
         {"void", "nrt_string_builder_finish", "ptr, i64"},
         {"void", "nrt_string_builder_finish_in", "ptr, i64, ptr"},
+        {"void", "nrt_report_main_error", "ptr"},
         {"void", "nrt_to_string_string", "ptr, ptr"},
         {"void", "nrt_to_string_bool", "ptr, i1"},
         {"void", "nrt_to_string_i8", "ptr, i8"},
@@ -19887,6 +19917,123 @@ internal void llvm_render_export_wrapper(StringBuilder*    sb,
     }
 }
 
+// Translate the language entry point's channel into a host process status.
+// Keep this outside the user's function so its ordinary return ABI and cleanup
+// semantics also apply when main is called from Nerd code.
+internal bool llvm_render_main_status(StringBuilder*     sb,
+                                      const Hir*         hir,
+                                      const Lexer*       lexer,
+                                      const Sema*        sema,
+                                      LlvmRenderScratch* scratch)
+{
+    if (!sema->main_status_wrapper) {
+        return true;
+    }
+    for (u32 i = 0; i < array_count(hir->bindings); ++i) {
+        const HirBinding* binding = &hir->bindings[i];
+        if (binding->kind != HIR_BINDING_Function ||
+            !llvm_symbol_is_main(lexer, binding->symbol_handle)) {
+            continue;
+        }
+        const HirFunction* function = &hir->functions[binding->target_index];
+        u32 returned = llvm_function_return_type(sema, function->type_index);
+        const SemaType type            = sema->types[returned];
+        bool           optional        = (type.flags & STF_Optional) != 0;
+        u32            success_variant = optional ? 1 : 0;
+        u32            success_type =
+            sema->type_param_types[type.first_param_type + success_variant];
+        bool takes_args =
+            llvm_function_param_count(sema, function->type_index) != 0;
+        llvm_render_scratch_begin(scratch);
+        StringBuilder entry = {0}, body = {0};
+        sb_init(&entry, &scratch->entry);
+        sb_init(&body, &scratch->body);
+        LlvmFunctionContext ctx = {
+            .sb                      = &body,
+            .entry_sb                = &entry,
+            .hir                     = hir,
+            .lexer                   = lexer,
+            .sema                    = sema,
+            .arena                   = &scratch->temp,
+            .layout                  = llvm_default_layout(),
+            .global_init_value_index = U32_MAX,
+        };
+        string returned_s    = llvm_type_string(&ctx, returned);
+        string function_name = llvm_function_name_string(
+            hir, lexer, ctx.arena, binding->target_index);
+        u32 storage_bits = llvm_enum_storage_payload_bits(sema, returned);
+        sb_format(&body,
+                  "  %%main.value = call " STRINGP " " STRINGP "(%s)\n"
+                  "  %%main.tag = extractvalue " STRINGP " %%main.value, 0\n"
+                  "  %%main.success = icmp eq i64 %%main.tag, %u\n"
+                  "  br i1 %%main.success, label %%success, label %%failure\n\n"
+                  "success:\n",
+                  STRINGV(returned_s),
+                  STRINGV(function_name),
+                  takes_args ? "{ ptr, i64 } %args" : "",
+                  STRINGV(returned_s),
+                  success_variant);
+        if (llvm_type_kind(sema, success_type) == STK_Void) {
+            sb_append_cstr(&body, "  ret i32 0\n");
+        } else {
+            sb_format(&body,
+                      "  %%success.bits = extractvalue " STRINGP
+                      " %%main.value, 1\n",
+                      STRINGV(returned_s));
+            LlvmValue value = llvm_cast_from_storage_bits(
+                &ctx,
+                (LlvmValue){.ok = true, .value = s("%success.bits")},
+                storage_bits,
+                success_type);
+            if (!value.ok) {
+                return false;
+            }
+            sb_format(&body, "  ret i32 " STRINGP "\n", STRINGV(value.value));
+        }
+        sb_append_cstr(&body, "\nfailure:\n");
+        if (!optional) {
+            u32 error_type = sema->type_param_types[type.first_param_type + 1];
+            sb_format(&body,
+                      "  %%error.bits = extractvalue " STRINGP
+                      " %%main.value, 1\n",
+                      STRINGV(returned_s));
+            LlvmValue error =
+                llvm_type_storage_bits(sema, error_type) == 0
+                    ? (LlvmValue){.ok         = true,
+                                  .type_index = error_type,
+                                  .value      = s("zeroinitializer")}
+                    : llvm_cast_from_storage_bits(
+                          &ctx,
+                          (LlvmValue){.ok = true, .value = s("%error.bits")},
+                          storage_bits,
+                          error_type);
+            if (!error.ok) {
+                return false;
+            }
+            sb_append_cstr(
+                &body, "  %error.mark = call i64 @nrt_string_builder_mark()\n");
+            if (!llvm_emit_append_string_value(&ctx, error)) {
+                return false;
+            }
+            sb_append_cstr(
+                &body,
+                "  %error.text = alloca { ptr, i64 }\n"
+                "  call void @nrt_string_builder_finish(ptr %error.text, i64 "
+                "%error.mark)\n"
+                "  call void @nrt_report_main_error(ptr %error.text)\n");
+        }
+        sb_append_cstr(&body, "  ret i32 1\n");
+        sb_format(sb,
+                  "define hidden i32 @$main.status(%s) {\nentry:\n",
+                  takes_args ? "{ ptr, i64 } %args" : "");
+        sb_append_string(sb, sb_to_string(&entry));
+        sb_append_string(sb, sb_to_string(&body));
+        sb_append_cstr(sb, "}\n\n");
+        return true;
+    }
+    return false;
+}
+
 string llvm_render_hir(const Hir*   hir,
                        const Lexer* lexer,
                        const Sema*  sema,
@@ -19944,7 +20091,8 @@ string llvm_render_hir(const Hir*   hir,
     }
     sb_append_char(&sb, '\n');
 
-    bool uses_string_runtime = llvm_hir_uses_string_runtime(hir, render_sema);
+    bool uses_string_runtime = render_sema->main_status_wrapper ||
+                               llvm_hir_uses_string_runtime(hir, render_sema);
     bool uses_assert_runtime = llvm_hir_uses_assert(hir);
     bool uses_slice_runtime  = llvm_hir_uses_slice_runtime(hir, render_sema);
     bool uses_dynamic_array_runtime =
@@ -20023,6 +20171,9 @@ string llvm_render_hir(const Hir*   hir,
         sb_append_char(&sb, '\n');
     }
 
+    functions_ok =
+        llvm_render_main_status(&sb, hir, lexer, render_sema, &scratch) &&
+        functions_ok;
     llvm_render_scratch_done(&scratch);
 
     for (u32 i = 0; i < array_count(hir->bindings); ++i) {

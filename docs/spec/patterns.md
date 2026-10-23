@@ -32,13 +32,31 @@ patterns qualify the record type before the field pattern body:
 
 ```nerd
 on value {
-    Point { x: 0, y } => y
-    _ => 0
+    { x: 0, y, ... } => y
+    else => 0
 }
 ```
 
 Field shorthand parses as a nested pattern for the same field name. `field:
 pattern` uses an explicit nested pattern.
+
+Every field must appear exactly once unless the pattern ends with `...`.
+The trailing marker ignores remaining fields; it can be followed by a comma,
+but no further fields or markers. Unknown and duplicate fields are errors even
+when `...` is present. These rules apply recursively to nested plex patterns
+and plex enum payloads. Field order is unrestricted.
+
+- `field: 42` matches a value; nested patterns work in the same position.
+- `field: for wanted` compares with an existing variable or expression.
+- `field: bound` binds the field to `bound`; `field` is shorthand for
+  `field: field`.
+- `field: _` explicitly ignores one field.
+- `{ ... }` explicitly ignores all fields; `{}` is complete only for an empty plex.
+- `{ field: for wanted, ... } as matched` also binds the whole subject.
+
+Ignoring a field does not compare it with its default value. Plex literal `...`
+initialises omitted fields; pattern `...` leaves them unconstrained.
+
 
 ## Enum Patterns
 

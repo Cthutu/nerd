@@ -214,3 +214,8 @@ operation and its undo are optional.
 A `main :: fn () -> ?void` can use `?` to propagate initialisation failure.
 Reaching its end or using bare `return` succeeds with process status 0;
 `return nil` or propagating absence exits with status 1, after cleanup.
+
+A `main` returning `?i32` similarly exits with the present status or 1 on absence.
+For `void\E` and `i32\E`, a returned error runs undo/defer cleanup, then displays
+`Error: <message>` on stderr and exits with status 1. Successful results run only
+normal defer cleanup and preserve the integer status, or use 0 for void.

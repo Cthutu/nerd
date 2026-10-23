@@ -75,11 +75,8 @@ back_end_llvm_runtime_root_main_info(const FrontEndState* root)
                              sema->types[return_type].kind == STK_Never);
         if (return_type < array_count(sema->types)) {
             const SemaType* type = &sema->types[return_type];
-            info.returns_optional_void =
-                type->kind == STK_Enum && (type->flags & STF_Optional) &&
-                type->param_count == 2 &&
-                sema->types[sema->type_param_types[type->first_param_type + 1]]
-                        .kind == STK_Void;
+            info.returns_status  = type->kind == STK_Enum &&
+                                   (type->flags & (STF_Optional | STF_Result));
         }
         info.takes_args = fn_type->param_count == 1;
         // The host entry point returns i32, but Nerd main may return any
@@ -207,8 +204,8 @@ internal void back_end_append_core_lifecycle_call(StringBuilder*           sb,
 internal void back_end_append_main_return_type(StringBuilder*      sb,
                                                BackEndRootMainInfo info)
 {
-    if (info.returns_optional_void) {
-        sb_append_cstr(sb, "{ i64, i8 }");
+    if (info.returns_status) {
+        sb_append_cstr(sb, "i32");
     } else if (info.returns_void) {
         sb_append_cstr(sb, "void");
     } else {
@@ -222,22 +219,23 @@ internal void back_end_append_typed_main_call(StringBuilder*      sb,
     sb_append_cstr(sb, "  ");
     if (!info.returns_void) {
         sb_append_cstr(sb,
-                       info.return_bits == 32 && !info.returns_optional_void
+                       info.return_bits == 32 || info.returns_status
                            ? "%result = "
                            : "%main.result = ");
     }
     sb_append_cstr(sb, "call ");
     back_end_append_main_return_type(sb, info);
-    sb_append_cstr(sb,
-                   info.takes_args ? " @$main({ ptr, i64 } %arg.slice.1)\n"
-                                   : " @$main()\n");
-    if (info.returns_optional_void) {
-        sb_append_cstr(
-            sb,
-            "  %main.tag = extractvalue { i64, i8 } %main.result, 0\n"
-            "  %main.failed = icmp eq i64 %main.tag, 0\n"
-            "  %result = zext i1 %main.failed to i32\n");
-    } else if (!info.returns_void && info.return_bits != 32) {
+    if (info.returns_status) {
+        sb_append_cstr(sb,
+                       info.takes_args
+                           ? " @$main.status({ ptr, i64 } %arg.slice.1)\n"
+                           : " @$main.status()\n");
+    } else {
+        sb_append_cstr(sb,
+                       info.takes_args ? " @$main({ ptr, i64 } %arg.slice.1)\n"
+                                       : " @$main()\n");
+    }
+    if (!info.returns_status && !info.returns_void && info.return_bits != 32) {
         sb_format(sb,
                   "  %%result = %s i%u %%main.result to i32\n",
                   info.return_bits > 32 ? "trunc"

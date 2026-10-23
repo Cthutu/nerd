@@ -263,8 +263,12 @@ The runtime `main` wrapper accepts the host `argc`/`argv`, constructs a
 `[]string` view when the Nerd entry point is `main :: fn (args: []string)`, and
 passes the operating-system executable path as `args[0]`. `nerd run` forwards
 program arguments written after `--` to that generated executable.
-A `main` returning `?void` maps presence to exit status 0 and absence to status
-1, after normal function cleanup.
+Optional `main` returns (`?void` or `?i32`) map absence to status 1 and presence
+to status 0 or the integer payload. Result returns (`void\E` or `i32\E`) map
+success the same way; failure displays E on stderr with an `Error: ` prefix and
+exits with status 1. Function cleanup precedes display, and core shutdown follows.
+LLVM uses an internal status bridge without changing the user function's return
+ABI. C emission follows the same convention.
 
 `nerd build --obj` combines module LLVM without the executable `main` wrapper
 and uses `llc` to produce a relocatable object. `nerd build --lib` compiles the

@@ -252,34 +252,6 @@ bool error_0304_type_mismatch_with_note(NerdSource source,
     return false;
 }
 
-bool error_0304_address_of_constant_binding(NerdSource source,
-                                            ErrorSpan  span,
-                                            string     actual_type,
-                                            string     symbol)
-{
-    ErrorInfo error = error_init(
-        source,
-        span,
-        "Type mismatch: expected `addressable value`, found `" STRINGP "`",
-        STRINGV(actual_type));
-    error_add_reference(&error,
-                        ERROR_REF_PRIMARY,
-                        span,
-                        "This expression has type `" STRINGP "`",
-                        STRINGV(actual_type));
-    error_add_note(&error,
-                   "The binding `" STRINGP "` is a constant declared with "
-                   "`::`; constant bindings do not provide addressable "
-                   "storage.",
-                   STRINGV(symbol));
-    error_add_help(&error,
-                   "Use `:=` or `name: Type = ...` to create a variable before "
-                   "taking its address.");
-    error_add_type_definitions(&error, actual_type);
-    error_render(&error);
-    return false;
-}
-
 bool error_0304_integer_used_as_pointer(NerdSource source,
                                         ErrorSpan  span,
                                         string     expected_type,
@@ -300,6 +272,25 @@ bool error_0304_integer_used_as_pointer(NerdSource source,
                    "integer address is intentional.");
     error_add_type_definitions(&error, expected_type);
     error_add_type_definitions(&error, actual_type);
+    error_render(&error);
+    return false;
+}
+
+bool error_0304_missing_plex_pattern_fields(NerdSource source,
+                                            ErrorSpan  span,
+                                            string     missing_fields)
+{
+    ErrorInfo error =
+        error_init(source, span, "Plex pattern is missing fields");
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "This pattern does not mention every field");
+    error_add_note(&error, "Missing fields: " STRINGP, STRINGV(missing_fields));
+    error_add_help(
+        &error,
+        "Match or bind each field, use `field: _` to ignore a field, "
+        "or add trailing `...` to ignore all remaining fields.");
     error_render(&error);
     return false;
 }
@@ -711,9 +702,8 @@ bool error_0315_missing_entry_point(NerdSource source, ErrorSpan span)
     error_add_help(
         &error,
         "Add `main :: fn () => 0`, `main :: fn (args: []string) => 0`, or "
-        "another supported function bound to main returning an integer, "
-        "`?void`, or no type "
-        "at all.");
+        "another supported function bound to main returning an integer, no "
+        "value, `?void`, `?i32`, or a result with `void`/`i32` success.");
     error_render(&error);
     return false;
 }
@@ -735,7 +725,8 @@ bool error_0316_invalid_entry_point(NerdSource source,
         ERROR_REF_PRIMARY,
         span,
         "`main` must be a function with no parameters or one `[]string` "
-        "parameter, returning an integer, `?void`, or no value");
+        "parameter, returning an integer, no value, `?void`, `?i32`, or a "
+        "result with `void`/`i32` success");
     error_add_help(&error,
                    "Change `main` to `fn ()`, or to `fn (args: []string)` if "
                    "the program needs command-line arguments.");

@@ -81,3 +81,14 @@ main :: fn () {
     other := make_pair[Cell[i32], string](cell, "nested")
     pair.0.1 += 1
 }
+¬
+cells::use test.qualified_generics
+main::fn(){cell:=cells.Cell[i32]{value:42}
+assert cell.value==42}
+¬
+cells :: use test.qualified_generics
+
+main :: fn () {
+    cell := cells.Cell[i32] { value: 42 }
+    assert cell.value == 42
+}

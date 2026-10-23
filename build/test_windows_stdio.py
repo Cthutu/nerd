@@ -105,6 +105,56 @@ int main(int argc, char** argv) {
 }
 '''
 
+COLOUR_PARENT = r'''
+#include <windows.h>
+#include <stdio.h>
+#include <string.h>
+int main(int argc, char** argv) {
+    if (argc != 3) return 2;
+    HANDLE screen = CreateFileA("CONOUT$", GENERIC_READ|GENERIC_WRITE,
+        FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+    if (screen == INVALID_HANDLE_VALUE) return 3;
+    SetStdHandle(STD_OUTPUT_HANDLE, screen);
+    SetStdHandle(STD_ERROR_HANDLE, screen);
+    CONSOLE_SCREEN_BUFFER_INFO before;
+    if (!GetConsoleScreenBufferInfo(screen, &before)) return 4;
+    COORD origin = {0,0};
+    DWORD count;
+    DWORD cells = (DWORD)before.dwSize.X * before.dwSize.Y;
+    FillConsoleOutputCharacterA(screen, ' ', cells, origin, &count);
+    FillConsoleOutputAttribute(screen, 7, cells, origin, &count);
+    SetConsoleTextAttribute(screen, 7);
+    SetConsoleCursorPosition(screen, origin);
+    char command[32768];
+    snprintf(command, sizeof(command), "\"%s\"", argv[1]);
+    STARTUPINFOA startup = {0};
+    startup.cb = sizeof(startup);
+    PROCESS_INFORMATION process = {0};
+    if (!CreateProcessA(NULL, command, NULL, NULL, TRUE, 0, NULL, NULL,
+                        &startup, &process)) return 5;
+    WaitForSingleObject(process.hProcess, 30000);
+    DWORD status;
+    GetExitCodeProcess(process.hProcess, &status);
+    CloseHandle(process.hThread);
+    CloseHandle(process.hProcess);
+    if (status != 1) return 6;
+    char text[4096] = {0};
+    if (!ReadConsoleOutputCharacterA(screen, text, sizeof(text)-1, origin, &count)) return 7;
+    const char* message = strstr(text, "Error: color failure");
+    if (!message) return 8;
+    size_t offset = (size_t)(message-text);
+    COORD position = {(SHORT)(offset % before.dwSize.X), (SHORT)(offset / before.dwSize.X)};
+    WORD attributes[7];
+    if (!ReadConsoleOutputAttribute(screen, attributes, 7, position, &count) || count != 7) return 9;
+    WORD expected = strcmp(argv[2], "red") == 0 ? FOREGROUND_RED : 7;
+    for (int i=0; i<7; ++i) if ((attributes[i] & 15) != expected) return 10;
+    CONSOLE_SCREEN_BUFFER_INFO after;
+    if (!GetConsoleScreenBufferInfo(screen, &after) || (after.wAttributes & 15) != 7) return 11;
+    CloseHandle(screen);
+    return 0;
+}
+'''
+
 SOURCE = '''build { windowed: yes }
 ffi "kernel32" {
     Sleep (milliseconds: u32)
@@ -193,6 +243,35 @@ def main():
                 assert (work / 'out.txt').read_text() == 'nerd-stdout-marker\n'
                 assert (work / 'err.txt').read_text() == 'nerd-stderr-marker\n'
                 print(f'[PASS] {label}: parent console live output, mixed handles, detached, pipes/stdin, files', flush=True)
+
+        # Check the visible console attributes, not merely the presence of ANSI
+        # bytes, and ensure red is reset and disabled by NO_COLOR/TERM=dumb.
+        colour_source = work / 'colour-parent.c'
+        colour_source.write_text(COLOUR_PARENT, encoding='utf-8')
+        colour_parent = work / 'colour-parent.exe'
+        subprocess.run(['clang', str(colour_source), '-o', str(colour_parent)], check=True)
+        source.write_text('build { windowed: yes }\n'
+                          'main :: fn () -> void\\string { return "color failure"! }\n',
+                          encoding='utf-8')
+        for cgen in (False, True):
+            for release in (False, True):
+                label = f'{"cgen" if cgen else "llvm"}-{"release" if release else "debug"}'
+                binary = work / (label + '-main-error.exe')
+                compile_program(binary, release, cgen=cgen)
+                colour_env = dict(env, TERM='xterm')
+                colour_env.pop('NO_COLOR', None)
+                for expected, overrides in [('red', {}), ('plain', {'NO_COLOR': '1'}),
+                                            ('plain', {'TERM': 'dumb'})]:
+                    result = subprocess.run([str(colour_parent), str(binary), expected],
+                                            creationflags=subprocess.CREATE_NEW_CONSOLE,
+                                            startupinfo=hidden, env={**colour_env, **overrides})
+                    assert result.returncode == 0, (label, expected, overrides, result.returncode)
+                result = subprocess.run([str(binary)], capture_output=True, text=True,
+                                        encoding='utf-8', env=colour_env)
+                assert (result.returncode, result.stdout, result.stderr) == (
+                    1, '', 'Error: color failure\n'), (label, result)
+                print(f'[PASS] {label}: main errors use red console text, reset colour, '
+                      'respect NO_COLOR/TERM and redirect as plain stderr', flush=True)
 
 
 if __name__ == '__main__':

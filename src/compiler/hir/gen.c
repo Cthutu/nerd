@@ -1796,6 +1796,12 @@ internal u32 hir_lower_expr_impl(Hir*         hir,
     }
 
     if (hir_unary_op_from_ast_kind(node->kind, &unary_op)) {
+        if (unary_op == HIR_UNARY_AddressOf &&
+            !sema_node_is_addressable(ast, sema, node->a) &&
+            sema->node_compound_selected_decl_indices[node->a] ==
+                sema_no_decl()) {
+            unary_op = HIR_UNARY_AddressOfValue;
+        }
         return hir_add_expr(hir,
                             (HirExpr){
                                 .kind       = HIR_EXPR_Unary,
@@ -2700,6 +2706,28 @@ internal u32 hir_lower_expr_impl(Hir*         hir,
                                     hir, lexer, ast, sema, node->a),
                             });
     case AK_Field:
+        {
+            u32 decl_index = hir_node_decl(sema, node_index);
+            if (decl_index != sema_no_decl() &&
+                sema->decls[decl_index].kind == SK_GenericFunction) {
+                u32 binding_index = hir_decl_binding(hir, decl_index);
+                u32 symbol = sema->node_lowered_symbol_handles[node_index];
+                return hir_add_expr(
+                    hir,
+                    (HirExpr){
+                        .kind          = HIR_EXPR_LocalRef,
+                        .type_index    = hir_node_type(sema, node_index),
+                        .symbol_handle = symbol != U32_MAX ? symbol : node->b,
+                        .local_index   = sema_no_local(),
+                        .ref_kind      = binding_index != hir_no_index()
+                                             ? HIR_REF_Binding
+                                             : HIR_REF_Decl,
+                        .ref_index     = binding_index != hir_no_index()
+                                             ? binding_index
+                                             : decl_index,
+                    });
+            }
+        }
         return hir_add_expr(hir,
                             (HirExpr){
                                 .kind       = HIR_EXPR_Field,
@@ -3218,10 +3246,10 @@ internal u32 hir_lower_pattern(Hir*         hir,
                                });
     case APK_Tuple:
         {
-            u32 first_child = (u32)array_count(hir->pattern_children);
+            Array(HirPatternChild) children = NULL;
             for (u32 i = 0; i < pattern->b; ++i) {
                 u32 child = ast->pattern_items[pattern->a + i];
-                array_push(hir->pattern_children,
+                array_push(children,
                            (HirPatternChild){
                                .symbol_handle = U32_MAX,
                                .pattern_index = hir_lower_pattern(
@@ -3229,6 +3257,11 @@ internal u32 hir_lower_pattern(Hir*         hir,
                                .has_field_name = false,
                            });
             }
+            u32 first_child = (u32)array_count(hir->pattern_children);
+            for (u32 i = 0; i < array_count(children); ++i) {
+                array_push(hir->pattern_children, children[i]);
+            }
+            array_free(children);
             return hir_add_pattern(hir,
                                    (HirPattern){
                                        .kind          = HIR_PATTERN_Tuple,
@@ -3239,11 +3272,11 @@ internal u32 hir_lower_pattern(Hir*         hir,
         }
     case APK_Plex:
         {
-            u32 first_child = (u32)array_count(hir->pattern_children);
+            Array(HirPatternChild) children = NULL;
             for (u32 i = 0; i < pattern->b; ++i) {
                 const AstPlexPatternField* field =
                     &ast->pattern_fields[pattern->a + i];
-                array_push(hir->pattern_children,
+                array_push(children,
                            (HirPatternChild){
                                .symbol_handle = field->symbol_handle,
                                .pattern_index = hir_lower_pattern(
@@ -3251,6 +3284,11 @@ internal u32 hir_lower_pattern(Hir*         hir,
                                .has_field_name = true,
                            });
             }
+            u32 first_child = (u32)array_count(hir->pattern_children);
+            for (u32 i = 0; i < array_count(children); ++i) {
+                array_push(hir->pattern_children, children[i]);
+            }
+            array_free(children);
             return hir_add_pattern(hir,
                                    (HirPattern){
                                        .kind          = HIR_PATTERN_Plex,
@@ -3268,8 +3306,8 @@ internal u32 hir_lower_pattern(Hir*         hir,
 
             const AstEnumPattern* enum_pattern =
                 &ast->enum_patterns[pattern->a];
-            u32 first_child = (u32)array_count(hir->pattern_children);
-            u32 child_count = enum_pattern->pattern_count;
+            Array(HirPatternChild) children = NULL;
+            u32 child_count                 = enum_pattern->pattern_count;
             if (enum_pattern->braced_payload &&
                 enum_pattern->pattern_count == 1) {
                 u32 payload_pattern_index =
@@ -3281,7 +3319,7 @@ internal u32 hir_lower_pattern(Hir*         hir,
                     for (u32 i = 0; i < payload_pattern->b; ++i) {
                         const AstPlexPatternField* field =
                             &ast->pattern_fields[payload_pattern->a + i];
-                        array_push(hir->pattern_children,
+                        array_push(children,
                                    (HirPatternChild){
                                        .symbol_handle = field->symbol_handle,
                                        .pattern_index = hir_lower_pattern(
@@ -3298,7 +3336,7 @@ internal u32 hir_lower_pattern(Hir*         hir,
                 for (u32 i = 0; i < enum_pattern->pattern_count; ++i) {
                     u32 child =
                         ast->pattern_items[enum_pattern->first_pattern + i];
-                    array_push(hir->pattern_children,
+                    array_push(children,
                                (HirPatternChild){
                                    .symbol_handle = U32_MAX,
                                    .pattern_index = hir_lower_pattern(
@@ -3307,6 +3345,11 @@ internal u32 hir_lower_pattern(Hir*         hir,
                                });
                 }
             }
+            u32 first_child = (u32)array_count(hir->pattern_children);
+            for (u32 i = 0; i < array_count(children); ++i) {
+                array_push(hir->pattern_children, children[i]);
+            }
+            array_free(children);
             return hir_add_pattern(
                 hir,
                 (HirPattern){

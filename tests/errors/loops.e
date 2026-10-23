@@ -7,7 +7,7 @@ main :: fn () {
 }
 ¬
 {
-  "message": "Type mismatch: expected `bool`, found `untyped integer`",
+  "message": "Type mismatch: expected `bool, box, optional, or result`, found `untyped integer`",
   "source_file": "tests/errors/loops.e",
   "primary_location": {
     "line": 4,
@@ -445,5 +445,97 @@ main :: fn () {
   ],
   "help": [
     "Add square brackets around the range: `for item in [start .. end] { ... }`"
+  ]
+}
+
+¬
+main :: fn () {
+    value :: for yes $outer {
+        for { break $outer 7 }
+    }
+}
+¬
+{
+  "message": "Missing `else` for loop expression returning `untyped integer`",
+  "source_file": "tests/errors/loops.e",
+  "primary_location": {
+    "line": 2,
+    "column": 14
+  },
+  "references": [
+    {
+      "kind": "primary",
+      "line": 2,
+      "column": 14,
+      "length": 3,
+      "message": "This loop can finish normally without breaking with a `untyped integer` value"
+    }
+  ],
+  "notes": [
+    "Finite value-producing loop expressions must make normal loop exhaustion explicit with `else { break <expr> }`."
+  ],
+  "help": [
+    "Add an `else` block that breaks with the loop result, or make the loop infinite if normal exhaustion is impossible."
+  ]
+}
+
+¬
+main :: fn () {
+    value :: for $outer {
+        for { break $outer 7 }
+        break $outer "nope"
+    }
+}
+¬
+{
+  "message": "Type mismatch: expected `untyped integer`, found `string`",
+  "source_file": "tests/errors/loops.e",
+  "primary_location": {
+    "line": 4,
+    "column": 22
+  },
+  "references": [
+    {
+      "kind": "primary",
+      "line": 4,
+      "column": 22,
+      "length": 6,
+      "message": "This expression has type `string`"
+    }
+  ],
+  "notes": [],
+  "help": [
+    "Change the expression or annotation so both sides use the same type."
+  ]
+}
+
+¬
+main :: fn () {
+    value :: for no $outer {
+        for { break 7 }
+    } else {
+        break 0
+    }
+}
+¬
+{
+  "message": "Loop `else` requires a value-producing loop expression",
+  "source_file": "tests/errors/loops.e",
+  "primary_location": {
+    "line": 4,
+    "column": 12
+  },
+  "references": [
+    {
+      "kind": "primary",
+      "line": 4,
+      "column": 12,
+      "length": 1,
+      "message": "This `else` block has no matching value-producing `break` in the loop"
+    }
+  ],
+  "notes": [],
+  "help": [
+    "Use `else` only on loops that return a value with `break <expr>`, or remove the `else` block."
   ]
 }

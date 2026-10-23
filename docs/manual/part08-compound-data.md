@@ -224,6 +224,18 @@ main :: fn () -> i32 {
 ```
 
 Use prefix `^` to take an address and postfix `^` to dereference.
+You can also address an intermediate result:
+
+```nerd
+sum := ^(a + b)
+point := ^make_point()
+```
+
+The expression is evaluated once into an anonymous mutable stack variable
+that lives until the enclosing scope ends. `^constant_name` creates a copy of
+the constant, so changing the copy does not change the constant. A pointer to
+such a temporary must not escape its scope, just like a pointer to a named local.
+
 Postfix operations can be chained without parentheses: `ptr^[i]` indexes the
 dereferenced value and is equivalent to `(ptr^)[i]`. Likewise, `callback^(arg)`
 calls a dereferenced function, `ptr^^` dereferences twice, and `ptr^ - 1`
@@ -535,6 +547,8 @@ impl [T] Stack[T] {
 Public methods are available when another module imports the type.
 They also remain available when the type is named through a qualified module
 binding, such as `collections.Stack[i32]`.
+Public associated functions on qualified types are also callable directly, such
+as `shapes.Layer.init()` after `shapes :: use app.shapes`.
 
 ## Traits
 

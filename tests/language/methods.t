@@ -450,9 +450,9 @@ bind global_box = value.0
 bind main = fn.0
 generic type type.0 = <unknown>
 type type.1 = IntBox
-global value.0: IntBox = IntBox call fn (i32) -> IntBox field(IntBox bind.1(IntBox), init)(i32 40)
+global value.0: IntBox = IntBox call decl.3(__impl_Box_T_init_g_5785563a)(i32 40)
 func fn.0() -> i32 {
-  let box: IntBox = IntBox call fn (i32) -> IntBox field(IntBox bind.1(IntBox), init)(i32 2)
+  let box: IntBox = IntBox call decl.3(__impl_Box_T_init_g_5785563a)(i32 2)
   return i32 subtract(i32 add(i32 add(i32 field(IntBox bind.2(global_box), value), i32 field(IntBox local.0(box), value)), i32 cast(usize call decl.4(__impl_Box_T_item_size_g_54fbddea)(IntBox local.0(box)) as i32)), i32 cast(usize field(i32 i32, size) as i32))
 }
 inst func fn.1(value: i32) -> IntBox {

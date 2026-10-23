@@ -67,3 +67,14 @@ records the precise differences without changing the teaching reference or
 rolling back approved work. Internal manuals/specs are checked separately and
 updated where they omitted established behaviour. Native Windows execution of
 the reorganised suite and the two C fixes remains outstanding.
+
+## Fixed: qualified imports invalidate alias-classification pointers
+
+Resolving a qualified generic alias, such as `IntegerCell :: cells.Cell[i32]`,
+can append imported declarations. Alias classification retained a pointer into
+that resizable declaration table and wrote through it after resolution.
+AddressSanitizer identified a heap use-after-free. Classification now reacquires
+the declaration by its stable index after recursively resolving the RHS.
+The qualified-generic program in [generics.t](../tests/language/generics.t)
+retains aliases, nested instantiations, wide values, local module aliases,
+associated constructors and explicit/inferred function calls as one regression.

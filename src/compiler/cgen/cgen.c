@@ -1187,7 +1187,6 @@ internal cstr cgen_pattern(CGen* c, u32 index, CValue value)
         CGEN_OUT("%s=%s;\n", cgen_local_name(c, p->local_index), value.text);
         return "true";
     }
-    bool braced = false;
     if (p->kind == HIR_PATTERN_Tuple || p->kind == HIR_PATTERN_Plex ||
         p->kind == HIR_PATTERN_EnumVariant) {
         cstr condition = "true";
@@ -1197,8 +1196,6 @@ internal cstr cgen_pattern(CGen* c, u32 index, CValue value)
                 cgen_error(c, "enum pattern", index);
                 return "false";
             }
-            braced = cgen_sema(c)->type_param_braced_payloads
-                         [cgen_type(c, value.type)->first_param_type + v];
             condition =
                 CF("(%s.tag==%lld)",
                    value.text,
@@ -1216,10 +1213,9 @@ internal cstr cgen_pattern(CGen* c, u32 index, CValue value)
             CValue child = value;
             if ((cgen_kind(c, value.type) == STK_Plex ||
                  cgen_kind(c, value.type) == STK_Tuple) &&
-                !(p->kind == HIR_PATTERN_EnumVariant && !braced &&
-                  p->child_count == 1 &&
-                  cgen_hir(c)->patterns[ch->pattern_index].kind ==
-                      HIR_PATTERN_Bind)) {
+                !(p->kind == HIR_PATTERN_EnumVariant &&
+                  cgen_kind(c, value.type) == STK_Plex && p->child_count == 1 &&
+                  !ch->has_field_name)) {
                 u32 fi =
                     ch->has_field_name
                         ? cgen_field_index(c, value.type, ch->symbol_handle)
@@ -2489,6 +2485,14 @@ internal CValue cgen_expr(CGen* c, u32 index)
             if (e->unary_op == HIR_UNARY_AddressOf) {
                 CValue v = cgen_lvalue(c, e->operand_expr_index);
                 return cgen_temp(c, t, CF("&(%s)", v.text));
+            }
+            if (e->unary_op == HIR_UNARY_AddressOfValue) {
+                CValue v    = cgen_expr_as(c,
+                                           e->operand_expr_index,
+                                           cgen_type(c, t)->first_param_type);
+                // Always copy, including a reference to a named constant.
+                CValue slot = cgen_temp(c, v.type, v.text);
+                return cgen_temp(c, t, CF("&(%s)", slot.text));
             }
             if (e->unary_op == HIR_UNARY_Deref) {
                 CValue v = cgen_lvalue(c, index);
@@ -3794,11 +3798,40 @@ bool cgen_save_program(const ProgramInfo*        program,
                       cgen_function(c, c->module, main_fn),
                       args);
         } else if (cgen_type(c, ft->return_type)->kind == STK_Enum &&
-                   (cgen_type(c, ft->return_type)->flags & STF_Optional)) {
+                   (cgen_type(c, ft->return_type)->flags &
+                    (STF_Optional | STF_Result))) {
+            u32      return_type     = ft->return_type;
+            SemaType returned        = *cgen_type(c, return_type);
+            bool     optional        = (returned.flags & STF_Optional) != 0;
+            u32      success_variant = optional ? 1 : 0;
+            u32 success_type = cgen_field_type(c, return_type, success_variant);
             sb_format(&c->out,
-                      "int result=%s(%s).tag == 0 ? 1 : 0;\n",
+                      "%s main_value=%s(%s); int result=1;\n"
+                      "if(main_value.tag==%u) { result=%s; }",
+                      cgen_ctype(c, return_type),
                       cgen_function(c, c->module, main_fn),
-                      args);
+                      args,
+                      success_variant,
+                      cgen_void(c, success_type)
+                          ? "0"
+                          : CF("main_value.payload.f%u", success_variant));
+            if (!optional) {
+                sb_append_cstr(&c->out, " else {\n");
+                sb_init(&c->body, &c->body_arena);
+                CGEN_OUT(
+                    "uintptr_t main_error_mark=nrt_string_builder_mark();\n");
+                cgen_display(c,
+                             (CValue){"main_value.payload.f1",
+                                      cgen_field_type(c, return_type, 1),
+                                      false},
+                             0);
+                CGEN_OUT("NerdString main_error_text;\n"
+                         "nrt_string_builder_finish(&main_error_text,main_"
+                         "error_mark);\n"
+                         "nrt_report_main_error(&main_error_text);\n");
+                sb_append_string(&c->out, sb_to_string(&c->body));
+                sb_append_cstr(&c->out, "}\n");
+            }
         } else {
             sb_format(&c->out,
                       "int result=(int)%s(%s);\n",

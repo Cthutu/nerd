@@ -35,6 +35,55 @@ return types. Both implicit and explicit `void` bodies may fall through; HIR and
 the backends emit the normal void exit and deferred cleanup. Optional/result
 types with a void success value retain their existing implicit-success rules.
 
+Qualified generic literals use the same AST/CST literal path as bare types;
+indexing a call result remains ordinary indexing so missing extraction-arrow
+hints stay intact. Scoped module aliases retain their lexical binding during
+type-annotation resolution. Resolving an imported generic can append declaration
+rows, so alias classification reacquires its declaration by index afterwards.
+Associated calls retain the selected declaration as well as the specialised
+symbol for HIR lowering. Rechecking an outer loop body preserves cached inner
+value-loop types rather than replacing them with `void`.
+
+Qualified generic lookup resolves module exports to their declaration kind and
+source declaration before specialization. Type applications accept both bare
+symbols and module-member targets; expression-parsed bracket applications share
+the same argument-list resolver. Qualified type aliases, literals and associated
+calls therefore retain the original generic template identity. Generic calls
+and explicit function values similarly instantiate a qualified exported function
+using the existing imported-generic path. Reference resolution marks brackets
+as type arguments only for generic exports rooted in a module binding, preserving
+ordinary indexing of exported array values. Export tables still control visibility.
+HIR lowers qualified generic functions to declaration/import references, retaining
+the selected specialization symbol for both direct calls and explicit function
+values so LLVM and C generation reuse the existing generic-function lookup.
+
+Associated-call target resolution uses the qualified type resolver rather than
+only the bare type-symbol resolver. This lets `name.Type.init(...)` resolve a
+public type through `name :: use module` before selecting an associated
+function. The existing imported method table and target-type matching perform
+selection, and module export and method visibility checks remain in force.
+
+Loop result inference and loop-`else` validation share a target-aware value-break
+search. It follows explicit labels through nested loops, blocks and expression
+operands while keeping unlabelled breaks with their nearest control target.
+Nested loops and expression blocks shadowing the requested label stop that
+search, as do function and deferred-body boundaries. A worklist visits nodes in
+source order without adding C recursion for deep operands. Inference merges only
+the collected target's values; presence checks use the same walk and stop at the
+first match. This fixes labelled outer loop results being inferred as `void`
+when their value-producing breaks occur inside nested loops.
+
+Condition-style and C-style `for` loops infer their condition without forcing a
+boolean payload type. Both semantic paths validate the same truthy types as
+logical negation: bool-compatible values (including boxes), optionals, and
+results. LLVM boolean coercion tests the optional/result discriminant against
+the success variant instead of interpreting the payload as a boolean. Generated
+C already uses the corresponding presence/success tag test. Both statement and
+value-producing loop paths evaluate the condition once per visit and retain
+normal `again`, `break`, and exhaustion/`else` behavior.
+Ownership validation treats condition storage as borrowed because checking its
+tag does not copy an arena-bearing payload.
+
 Enum parameter metadata records whether each discriminant was explicitly
 assigned. Interning, imports, and materialisation preserve this flag. Sema
 allows a payload-free explicitly numbered variant (including unannotated
@@ -953,11 +1002,18 @@ before returning. The return value is evaluated before cleanup. Undo actions
 cannot escape the function or an outer loop, propagate failures, or register
 other undo actions. Normal lexical scope exit discards undo registrations.
 
-The host wrappers accept `main -> ?void` (with zero arguments or `[]string`):
-they call the aggregate-returning Nerd function and convert absent tag 0 to
-status 1 and present tag 1 to status 0. LLVM console/windowed wrappers and the
-C executable wrapper share this convention; ordinary integer/void entry points
-keep their existing ABI.
+The host wrappers accept `main -> ?void`, `?i32`, `void\E`, and `i32\E`,
+with zero arguments or `[]string`. Sema validates the success payload and error
+display support and marks `main_status_wrapper` only for executable entry points.
+LLVM emits a separate `$main.status` bridge returning i32; the original function
+retains its aggregate ABI, including calls from Nerd code. Optional absence exits
+1 silently. Presence/result success returns 0 for void or the i32 payload. Result
+failure formats E using ordinary built-in/Display machinery and calls
+`nrt_report_main_error`, then exits 1. C emission mirrors the conversion. Normal
+function defer/undo cleanup precedes the bridge; core shutdown follows display.
+The runtime helper writes one `Error: <message>` line to stderr and enables red
+only for a capable terminal without nonempty `NO_COLOR` or `TERM=dumb`. Reset
+precedes the newline, and redirected output contains no ANSI sequences.
 
 ## Compiler performance instrumentation
 
@@ -1299,11 +1355,24 @@ restriction, since another alternative may not initialize those bindings. The
 formatter splits grouped braced payload patterns onto separate lines in block
 `on` expressions and excludes these multiline heads from arrow alignment.
 
-Address-of accepts plex literals and forwards an expected pointer's pointee type
-into literal inference, allowing both `^Info { ... }` and contextual `^{ ... }`.
-Parenthesized addressable operands retain their addressability. HIR uses the
-existing address-of operation: LLVM materializes the aggregate into local stack
-storage, and C generation takes the address of its generated aggregate temporary.
+Address-of accepts intermediate expressions and named constants as well as
+existing storage. It forwards an expected pointer's non-void pointee type into
+operand inference, including `^Info { ... }` and contextual `^{ ... }`.
+Parenthesized addressable operands retain their addressability. Semantic storage
+classification is shared with HIR lowering: existing storage uses `address_of`,
+while computed values and constants use `address_of_value`. The latter evaluates
+the operand once, coerces it to the concrete pointee type, and materializes a
+mutable stack copy in both LLVM and generated C. This distinction prevents
+addressing a constant from aliasing its original storage. Numeric pointees are
+materialized to runtime types; void, bare nil, types, modules, and bit fields
+remain rejected.
+LLVM reserves these fixed temporary slots in the entry allocation builder and
+stores their values at evaluation time, so loop iterations reuse storage without
+growing the stack. Distinct evaluations whose scopes overlap retain distinct
+slots.
+Arena copy validation uses the same storage classification, so borrowing a
+variable remains valid while materializing a copy of an arena-bearing constant
+is rejected.
 The lifetime guarantee is the enclosing scope; taking the address does not make
 the value heap-owned or safe to return from the function.
 
@@ -1661,3 +1730,18 @@ string continuation expressions can have no inferred type; C emission selects
 the builtin string representation, as literal and LLVM emission already do,
 instead of treating the result as void and generating `&0`. This also fixes C
 compilation of the existing image decoder's three-part messages.
+
+Plex `on` patterns record an explicit `has_rest` flag in AST/CST when their
+field list ends with `...`. Sema requires all declared fields unless this flag
+is set, rejects duplicates independently of the marker, and recursively checks
+nested plexes and enum payloads. `for expression`, field binders, field shorthand,
+`field: _`, and branch-level `as` keep their existing meanings. Destructuring
+bindings are unchanged. The formatter emits the trailing marker canonically.
+AST/CST field lists and HIR pattern child lists are assembled locally before
+being appended to shared storage, keeping each parent's range contiguous across
+recursive patterns. Typed nested plex qualifiers receive the enclosing scope
+and are marked as type syntax. LLVM named enum payload matching uses the record
+field extraction helper so physical storage reordering preserves field identity.
+C emission uses each HIR child's field-name marker to distinguish matching a
+whole plex enum payload from matching a named payload field, independently of
+whether the variant declaration used braces or parentheses.

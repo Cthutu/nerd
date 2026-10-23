@@ -178,16 +178,16 @@ case_9_score_pair :: fn (pair: (i32, i32)) -> i32 {
 case_9_score_point :: fn (point: Case_9_Point) -> i32 {
     fallback :: "fallback"
     return on point {
-        { name: "origin", x: x } => x
-        { x: 3, y: y } => y * 10
-        { name: for fallback } => 50
+        { name: "origin", x: x, ... } => x
+        { x: 3, y: y, ... } => y * 10
+        { name: for fallback, ... } => 50
         else => 0
     }
 }
 
 case_9_name_of :: fn (point: Case_9_Point) -> string {
     return on point {
-        { name: name } => name
+        { name: name, ... } => name
         else => ""
     }
 }
@@ -348,8 +348,8 @@ Case_17_Key :: enum {
 
 case_17_score :: fn (event: Case_17_Event) -> i32 {
     return on event {
-        KeyDown(Case_17_KeyEvent { keycode: Escape }) => 1
-        KeyDown(Case_17_KeyEvent { keycode: Other }) => 2
+        KeyDown(Case_17_KeyEvent { keycode: Escape, ... }) => 1
+        KeyDown(Case_17_KeyEvent { keycode: Other, ... }) => 2
         else => 0
     }
 }
@@ -1681,8 +1681,8 @@ Key :: enum {
 
 score :: fn (event: Event) -> i32 {
     return on event {
-        KeyDown(KeyEvent { keycode: Escape }) => 1
-        KeyDown(KeyEvent { keycode: Other }) => 2
+        KeyDown(KeyEvent { keycode: Escape, ... }) => 1
+        KeyDown(KeyEvent { keycode: Other, ... }) => 2
         else => 0
     }
 }
@@ -2004,6 +2004,63 @@ main :: fn () -> i32 {
 0
 ¬
 bare else handler passed
+¬
+
+¬
+
+=== case: explicit-plex-pattern-fields ===
+Point :: plex { x i32
+ y i32
+ name string }
+Outer :: plex { before i32
+ point Point
+ after i32 }
+Empty :: plex {}
+Event :: enum { Moved(Point)
+ Idle }
+score :: fn (point: Point, wanted: i32) -> i32 {
+    return on point {
+        { x: for wanted, y: height, name: _ } => height
+        { x: 0, ... } as matched => matched.y + 10
+        { name: "special", ... } => 30
+        { ... } => 40
+        else => -1
+    }
+}
+main :: fn () {
+    assert score(Point { x: 2, y: 7, name: "a" }, 2) == 7
+    assert score(Point { x: 0, y: 7, name: "a" }, 2) == 17
+    assert score(Point { x: 1, y: 7, name: "special" }, 2) == 30
+    assert score(Point { x: 1, y: 7, name: "a" }, 2) == 40
+    point := Point { x: 2, y: 7, name: "a" }
+    value := on point { { name: _, y, x: for (1 + 1) } => y
+ else => 0 }
+    assert value == 7
+    nested := Outer { before: 1, point, after: 9 }
+    result := on nested {
+        { before: 1, point: Point { x: 2, ... }, after: last } => last
+        else => 0
+    }
+    assert result == 9
+    result2 := on nested {
+        { point: { name: "a", x, y: _ }, ... } => x
+        else => 0
+    }
+    assert result2 == 2
+    event := Event.Moved(point)
+    assert (on event { Moved { x: for value, ... } => 0
+ Moved { y, ... } => y
+ else => -1 }) == 7
+    empty := Empty {}
+    assert (on empty { {} => 1
+ else => 0 }) == 1
+    assert (on empty { { ... } => 2
+ else => 0 }) == 2
+}
+¬
+0
+¬
+
 ¬
 
 ¬

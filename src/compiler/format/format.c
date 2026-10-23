@@ -1057,6 +1057,12 @@ internal void format_emit_pattern(StringBuilder* sb,
                     sb, cst, lexer, field->pattern_index, explicit_binds);
             }
         }
+        if (pattern->has_rest) {
+            if (pattern->b > 0) {
+                sb_append_cstr(sb, ", ");
+            }
+            sb_append_cstr(sb, "...");
+        }
         sb_append_cstr(sb, " }");
         break;
     case CPK_EnumVariant:

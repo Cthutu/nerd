@@ -44,7 +44,7 @@ def plan(folder: Path) -> list[Stage]:
         stages.append(Stage('stdlib-capabilities-' + mode,
                             [python, 'tests/stdlib-capabilities/check_capabilities.py', '--compiler', nerd], needs))
         for backend, flags in [('llvm', []), ('c', ['--cgen'])]:
-            for name in ['std_thread_sync', 'raptor']:
+            for name in ['std_thread_sync', 'raptor', 'std_system']:
                 stages.append(Stage(f'{name.replace("_", "-")}-{backend}-{mode}',
                                     [python, f'build/test_{name}.py', '--nerd', nerd] + flags, needs))
             for target, target_flags in [('debug', []), ('release', ['--release'])]:

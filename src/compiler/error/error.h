@@ -249,10 +249,6 @@ bool error_0304_type_mismatch_with_note(NerdSource source,
                                         string     actual_type,
                                         cstr       note_format,
                                         ...);
-bool error_0304_address_of_constant_binding(NerdSource source,
-                                            ErrorSpan  span,
-                                            string     actual_type,
-                                            string     symbol);
 bool error_0304_integer_used_as_pointer(NerdSource source,
                                         ErrorSpan  span,
                                         string     expected_type,
@@ -261,6 +257,9 @@ bool error_0304_missing_plex_fields(NerdSource source,
                                     ErrorSpan  span,
                                     string     missing_fields,
                                     u32        missing_field_count);
+bool error_0304_missing_plex_pattern_fields(NerdSource source,
+                                            ErrorSpan  span,
+                                            string     missing_fields);
 bool error_0304_unknown_record_literal_field(NerdSource source,
                                              ErrorSpan  span,
                                              string     record_kind,

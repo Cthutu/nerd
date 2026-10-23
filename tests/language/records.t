@@ -856,7 +856,7 @@ Event :: enum {
 
 score :: fn (event: Event) -> i32 {
     return on event {
-        Resized { width } => width.as(i32)
+        Resized { width, ... } => width.as(i32)
         Closed => 0
     }
 }
@@ -1050,7 +1050,7 @@ set_wide :: fn (aligned: ^Aligned) {
 
 read_wide :: fn (container: Container) -> i32 {
     return on container {
-        { wide: wide } => wide.as(i32)
+        { wide: wide, ... } => wide.as(i32)
         else => 0
     }
 }

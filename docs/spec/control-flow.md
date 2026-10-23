@@ -43,6 +43,12 @@ A loop can produce a value through `break value`. A finite value-producing loop
 must make exhaustion explicit with an `else` block that produces a compatible
 value. Infinite loops do not need an exhaustion value.
 
+`break $label value` supplies a result to the named loop even from inside other
+loops or expression blocks. Only breaks resolving to that target participate in
+its result typing and exhaustion checks. Unlabelled breaks belong to their
+nearest control target, and a nested declaration of the same label shadows the
+outer target. Function bodies do not contribute breaks to an enclosing loop.
+
 ```nerd
 result := for item in items {
     on item == target => break item

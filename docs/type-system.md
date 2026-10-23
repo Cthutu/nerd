@@ -507,16 +507,28 @@ Pointer types use `^T`, and address-of expressions use the same prefix marker:
 - `array_ptr: ^[3]i32 = ^values`
 - `literal_ptr: ^[3]i32 = ^[1, 2, 3]`
 
-Address-of is only valid for addressable values. Current addressable forms are
-runtime symbols, fixed-array element indexes, pointer indexes, and array
-literals. Taking the address of an array literal produces a pointer to the whole
-fixed array, not a slice.
+Address-of refers to existing storage for variables, parameters, dereferences,
+and addressable fields and elements. For an intermediate expression, it evaluates
+the expression once, stores the result in an anonymous mutable stack variable,
+and returns its address. For example, `sum := ^(a + b)` and
+`point := ^make_point()` keep their results available through a pointer.
+`^constant_name` likewise creates a mutable copy; writes through the pointer
+do not change the constant. Each evaluation creates its own temporary.
+The usual copy restrictions still apply, including the prohibition on copying
+an existing arena or an aggregate containing one.
+
+An expected pointer type supplies the temporary's type, so
+`small: ^u8 = ^42` creates a `u8`. Without context, numeric literals use their
+normal variable defaults (`i32` and `f64`). Void expressions, bare `nil`, type
+and module names, and bit fields cannot be addressed. Taking the address of an
+array literal produces a pointer to the whole fixed array, not a slice.
 
 Plex literals are also addressable. `^Info { value: 1, ... }` creates an
 anonymous local value and returns `^Info`. When an expected pointer type is
 available, `^{ value: 1, ... }` infers the plex type from its pointee. This works
 in pointer-valued fields and function arguments. Each evaluation initializes
-an anonymous mutable value; no heap allocation is performed. The pointer remains
+an anonymous mutable value; no heap allocation is performed. For all addressed
+temporaries, the pointer remains
 valid within the enclosing scope and must not escape that scope, just like a
 pointer to a named local variable.
 

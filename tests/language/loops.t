@@ -1196,3 +1196,240 @@ main :: fn () -> i32 {
 ¬
 
 ¬
+
+=== case: 368-truthy-for-conditions ===
+Error :: enum { Stop }
+
+next_optional :: fn (calls: ^i32) -> ?bool {
+    calls^ += 1
+    on calls^ > 3 => return nil
+    return no
+}
+next_result :: fn (calls: ^i32) -> i32\Error {
+    calls^ += 1
+    on calls^ > 3 => return (Error.Stop)!
+    return 0
+}
+next_optional_void :: fn (calls: ^i32) -> ?void {
+    calls^ += 1
+    on calls^ > 3 => return nil
+}
+next_result_void :: fn (calls: ^i32) -> void\Error {
+    calls^ += 1
+    on calls^ > 3 => return (Error.Stop)!
+}
+
+main :: fn () {
+    calls := 0
+    bodies := 0
+    for next_optional(^calls) {
+        bodies += 1
+        again
+    }
+    assert calls == 4
+    assert bodies == 3
+
+    calls = 0
+    bodies = 0
+    for next_result(^calls) { bodies += 1 }
+    assert calls == 4
+    assert bodies == 3
+
+    calls = 0
+    bodies = 0
+    for next_optional_void(^calls) { bodies += 1 }
+    assert calls == 4
+    assert bodies == 3
+
+    calls = 0
+    bodies = 0
+    for next_result_void(^calls) { bodies += 1 }
+    assert calls == 4
+    assert bodies == 3
+
+    pending: ?bool = no
+    for pending {
+        pending = nil
+        bodies += 1
+    }
+    assert bodies == 4
+    successful: i32\Error = 0
+    for successful {
+        successful = (Error.Stop)!
+        bodies += 1
+    }
+    assert bodies == 5
+
+    calls = 0
+    bodies = 0
+    for i := 0; next_result(^calls); i += 1 {
+        assert i == bodies
+        bodies += 1
+        again
+    }
+    assert calls == 4
+    assert bodies == 3
+
+    calls = 0
+    bodies = 0
+    for i := 0; next_optional(^calls); i += 1 {
+        assert i == bodies
+        bodies += 1
+    }
+    assert calls == 4
+    assert bodies == 3
+
+    missing: ?i32
+    exhausted := for missing { break 10 } else { break 20 }
+    assert exhausted == 20
+    present: ?i32 = 0
+    broken := for present { break 30 } else { break 40 }
+    assert broken == 30
+    failed: bool\Error = (Error.Stop)!
+    error_end := for failed { break 50 } else { break 60 }
+    assert error_end == 60
+    false_success: bool\Error = no
+    success_break := for false_success { break 70 } else { break 80 }
+    assert success_break == 70
+
+    calls = 0
+    c_style := for i := 0; next_optional(^calls); i += 1 {
+        on i == 1 => break 90
+    } else { break 100 }
+    assert c_style == 90
+    assert calls == 2
+
+    full_box := box[i32](1)
+    for full_box { break }
+    empty_box: box[i32]
+    for empty_box { assert no }
+    absent_storage: ?arena
+    for absent_storage { assert no }
+    failed_storage: arena\Error = (Error.Stop)!
+    for failed_storage { assert no }
+    for no { assert no }
+}
+¬
+0
+¬
+
+¬
+
+¬
+
+=== case: 369-nested-labelled-loop-values ===
+main :: fn () {
+    direct := for $outer {
+        for { break $outer 42 }
+    }
+    assert direct == 42
+
+    deep := for $outer {
+        for {
+            for { break $outer 43 }
+        }
+    }
+    assert deep == 43
+
+    log := 0
+    cleaned := for $outer {
+        defer log = log * 10 + 1
+        for {
+            defer log = log * 10 + 2
+            break $outer 44
+        }
+    }
+    assert cleaned == 44
+    assert log == 21
+
+    own_values := for $outer {
+        inner := for { break "inner" }
+        assert inner == "inner"
+        for { break $outer 45 }
+    }
+    assert own_values == 45
+
+    shadowed := for $same {
+        inner := for $same { break $same "inner" }
+        assert inner == "inner"
+        break $same 46
+    }
+    assert shadowed == 46
+
+    block_shadow := for $same {
+        inner := $same { break $same "block" }
+        assert inner == "block"
+        break $same 47
+    }
+    assert block_shadow == 47
+
+    through_block := for $outer {
+        $inner {
+            for { break $outer 48 }
+        }
+    }
+    assert through_block == 48
+
+    scoped := for $outer {
+        {
+            for { break $outer 49 }
+        }
+    }
+    assert scoped == 49
+
+    finite := for i in [0 .. 3] $outer {
+        for {
+            on i == 2 => break $outer 50
+            break
+        }
+    } else { break -1 }
+    assert finite == 50
+
+    exhausted := for i in [0 .. 0] $outer {
+        for { break $outer i }
+    } else { break 51 }
+    assert exhausted == 51
+
+    c_style := for i := 0; i < 3; i += 1 $outer {
+        for {
+            on i == 2 => break $outer 52
+            break
+        }
+    } else { break -1 }
+    assert c_style == 52
+
+    inner_else := for $outer {
+        for no {} else { break $outer 53 }
+    }
+    assert inner_else == 53
+
+    wide: i64 = for $outer {
+        for { break $outer 5_000_000_000 }
+    }
+    assert wide == 5_000_000_000
+
+    function_boundary := for $same {
+        local :: fn () -> string {
+            return for $same { break $same "function" }
+        }
+        assert local() == "function"
+        break $same 54
+    }
+    assert function_boundary == 54
+
+    sibling := for $outer {
+        for {
+            on yes => break $outer 55
+            break
+        }
+        break $outer 56
+    }
+    assert sibling == 55
+}
+¬
+0
+¬
+
+¬
+
+¬

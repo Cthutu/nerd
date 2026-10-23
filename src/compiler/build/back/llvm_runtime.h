@@ -13,7 +13,7 @@
 
 typedef struct {
     bool returns_void;
-    bool returns_optional_void;
+    bool returns_status;
     bool takes_args;
     u32  return_bits;
     bool return_signed;

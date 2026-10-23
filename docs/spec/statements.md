@@ -106,6 +106,18 @@ Executable entry points may be either `main :: fn ()` or
 operating-system executable path and additional user arguments start at
 `args[1]`.
 
+Executable `main` return types also include `?void`, `?i32`, `void\E`, and
+`i32\E`. Optional absence exits with status 1 silently; presence exits with
+0 for `void` or with the `i32` payload. Result success follows the same payload
+rules. Result failure writes `Error: <displayed E>\n` to stderr and exits with
+status 1. Built-in displayable types use their normal interpolation formatting;
+other error types must implement core `Display`. The requirement is checked
+regardless of which return branch executes. Display happens once after function
+cleanup and before runtime shutdown. Supported terminals use red text, reset
+before the newline; redirection, nonempty `NO_COLOR`, or `TERM=dumb` produces
+plain text. Success never invokes error display, including a successful status 1.
+
+
 ## Destructuring
 
 Destructuring statements support constant binding, mutable binding, typed
