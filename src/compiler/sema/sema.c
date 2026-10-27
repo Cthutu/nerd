@@ -19827,8 +19827,9 @@ sema_seed_call_arg_context_local_types(const Lexer*           lexer,
 }
 
 // Collect concrete usage constraints before materialising local initialisers.
-// Constraints belong to literal leaves, so aliases and tuple projections share
-// them without changing the AST or choosing a type from the first use alone.
+// Constraints belong to literal leaves and contextual cast results, so aliases
+// and tuple projections share them without changing the AST or choosing a type
+// from the first use alone.
 typedef struct {
     const Lexer* lexer;
     const Ast*   ast;
@@ -19873,8 +19874,7 @@ internal u32 sema_usage_call_type(SemaUsageInference* ctx, u32 index)
         } else if (decl != sema_no_decl()) {
             const SemaDecl* binding = &sema->decls[decl];
             if (binding->kind == SK_GenericFunction ||
-                binding->kind == SK_CompoundFunction ||
-                binding->kind == SK_BuiltinFunction) {
+                binding->kind == SK_CompoundFunction) {
                 return sema_no_type();
             }
             known = binding->type_index;
@@ -20027,7 +20027,7 @@ internal u32 sema_usage_expr_type(SemaUsageInference* ctx, u32 index, u32 depth)
             u32 argument = sema_cast_type_argument(
                 ctx->lexer, ast, sema, sema_cast_info(ast, node));
             if (argument == U32_MAX) {
-                return sema_no_type();
+                return ctx->literals[index];
             }
             if (!sema_resolve_type_node(
                     ctx->lexer, ast, sema, argument, &type)) {
@@ -20177,6 +20177,24 @@ internal bool sema_usage_constrain(SemaUsageInference* ctx,
         return true;
     }
     if (path_count != 0) {
+        return true;
+    }
+    if (node->kind == AK_Cast &&
+        sema_cast_info(ast, node)->type_node_index == U32_MAX &&
+        sema_cast_info(ast, node)->extra_node_index == U32_MAX) {
+        // The destination constrains the cast result, never its source.
+        u32 prior = ctx->literals[index];
+        if (prior != sema_no_type() && prior != expected) {
+            return error_0304_type_mismatch(
+                ctx->lexer->source,
+                sema_node_span(ctx->lexer, node),
+                sema_type_name(ctx->lexer, sema, &temp_arena, prior),
+                sema_type_name(ctx->lexer, sema, &temp_arena, expected));
+        }
+        if (prior == sema_no_type()) {
+            ctx->literals[index] = expected;
+            ctx->changed         = true;
+        }
         return true;
     }
     if (node->kind == AK_Array &&
@@ -20367,7 +20385,7 @@ internal bool sema_usage_has_local(const Ast* ast, const Sema* sema, u32 index)
     }
 }
 
-// Only eagerly seed initialisers whose literals need contextual types.
+// Only eagerly seed initialisers whose literals or casts need contextual types.
 // Other expressions may depend on pattern bindings not yet inferred.
 internal bool
 sema_usage_needs_seed(SemaUsageInference* ctx, u32 index, u32 depth)
@@ -20378,6 +20396,7 @@ sema_usage_needs_seed(SemaUsageInference* ctx, u32 index, u32 depth)
     }
     const AstNode* node = &ast->nodes[index];
     switch (node->kind) {
+    case AK_Cast:
     case AK_Plex:
     case AK_Array:
         return ctx->literals[index] != sema_no_type();

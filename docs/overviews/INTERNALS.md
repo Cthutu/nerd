@@ -8,6 +8,13 @@ slice context does not change a local's storage or ownership. Matching explicitl
 typed record literals also propagate their field context. Normal inference
 retains length, annotation, cast, field and range validation.
 
+The usage-constraint table also records result types for empty contextual casts.
+Local aliases, arithmetic and tuple projections share those constraints without
+propagating them into the cast operand. Known imported function signatures
+participate even though their declarations are represented as builtin functions.
+Normal cast inference validates each conversion after constraints converge;
+missing or conflicting destinations remain errors.
+
 C aggregate zero initialisers use `(type){}` rather than a scalar `{0}`, which
 Clang rejects for an empty array member. Enum initialisation retains its
 first-discriminant path. Windows C representation of nested zero-sized arrays

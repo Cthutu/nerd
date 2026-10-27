@@ -112,3 +112,48 @@ release contextual casts
 ¬
 
 ¬
+
+=== case: local-contextual-casts ===
+use std.random
+rng :: use std.random
+take_u64 :: fn (value: u64) => value
+take_u8 :: fn (value: u8) => value
+take_i32 :: fn (value: i32) => value
+converted_return :: fn (value: f64) -> u64 {
+    result := value.as()
+    return result
+}
+produce :: fn (calls: ^i32) -> f64 {
+    calls^ += 1
+    return 42.75
+}
+main :: fn () {
+    count: usize = 7
+    upper := count.as()
+    alias := upper
+    assert random_range_u64(alias, alias) == 7
+    qualified := count.as()
+    assert rng.random_range_u64(qualified, qualified) == 7
+    source := 42
+    arithmetic := source.as() + 1
+    assert take_u64(arithmetic) == 43
+    assert take_i32(source) == 42
+    fields := (source.as(), 258.as())
+    assert take_u64(fields.0) == 42
+    assert take_u8(fields.1) == 2
+    calls: i32
+    once := produce(^calls).as()
+    assert take_u64(once) == 42 && calls == 1
+    assignment := source.as()
+    destination: u64
+    destination = assignment
+    assert destination == 42 && converted_return(3.75) == 3
+    prn("local contextual casts passed")
+}
+¬
+0
+¬
+local contextual casts passed
+¬
+
+¬
