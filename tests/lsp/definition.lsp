@@ -5104,14 +5104,14 @@ main :: fn () {
     "jsonrpc": "2.0",
     "id": 4,
     "result": {
-      "uri": "file:///home/matt/nerd/mods/std/gfx/mod.n",
+      "uri": "__REPO_URI__/mods/std/gfx/mod.n",
       "range": {
         "start": {
-          "line": 653,
+          "line": 648,
           "character": 8
         },
         "end": {
-          "line": 653,
+          "line": 648,
           "character": 26
         }
       }
@@ -5131,14 +5131,14 @@ main :: fn () {
     "jsonrpc": "2.0",
     "id": 6,
     "result": {
-      "uri": "file:///home/matt/nerd/mods/std/gfx/mod.n",
+      "uri": "__REPO_URI__/mods/std/gfx/mod.n",
       "range": {
         "start": {
-          "line": 677,
+          "line": 673,
           "character": 8
         },
         "end": {
-          "line": 677,
+          "line": 673,
           "character": 23
         }
       }
@@ -5150,7 +5150,6 @@ main :: fn () {
     "result": null
   }
 ]
-
 ¬
 use test.broken_import_exports
 use std.opengl

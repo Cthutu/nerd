@@ -133,30 +133,24 @@ draw_image_viewer :: fn (layer: ^PixelLayer, image: ^Image) {
     }
 
     -- Outline the fitted image rectangle so its boundary and letterboxing are visible.
-    layer.fill(PixelRect {
-        x      : rect.x
-        y      : rect.y
-        width  : rect.width
-        height : 1
-    }, 0xffffffff)
+    layer.fill(PixelRect { x: rect.x y: rect.y width: rect.width height: 1 },
+               0xffffffff)
     layer.fill(PixelRect {
         x      : rect.x
         y      : rect.y + rect.height - 1
         width  : rect.width
         height : 1
-    }, 0xffffffff)
-    layer.fill(PixelRect {
-        x      : rect.x
-        y      : rect.y
-        width  : 1
-        height : rect.height
-    }, 0xffffffff)
+    },
+               0xffffffff)
+    layer.fill(PixelRect { x: rect.x y: rect.y width: 1 height: rect.height },
+               0xffffffff)
     layer.fill(PixelRect {
         x      : rect.x + rect.width - 1
         y      : rect.y
         width  : 1
         height : rect.height
-    }, 0xffffffff)
+    },
+               0xffffffff)
 }
 
 -- Resolve the layer handle and present the freshly drawn image.
@@ -196,7 +190,8 @@ main :: fn () {
 
     -- Draw into a fixed 320 by 200 logical surface. Window resizing scales that
     -- surface; fitting the source image happens within these logical dimensions.
-    layer_handle := gfx.create_pixel_layer(^frame, PixelLayerMode.FixedSizeAutoScale {
+    layer_handle := gfx.create_pixel_layer(^frame,
+                                           PixelLayerMode.FixedSizeAutoScale {
         width  : 320
         height : 200
     })

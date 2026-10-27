@@ -155,13 +155,7 @@ JpegBits :: plex {
 impl JpegBits {
 
     new :: fn (bytes: []u8) -> Self {
-        return {
-            bytes
-            offset    : 0
-            bits      : 0
-            bit_count : 0
-            marker    : 0
-        }
+        return { bytes offset: 0 bits: 0 bit_count: 0 marker: 0 }
     }
 
 }
@@ -171,27 +165,19 @@ jpeg_be_u16_at :: fn (bytes: []u8, index: usize) -> u16 {
 }
 
 jpeg_invalid :: fn (message: string) -> JpegDecoder\ImageError {
-    return (ImageError.InvalidData {
-        message
-    })!
+    return (ImageError.InvalidData { message })!
 }
 
 jpeg_bool_invalid :: fn (message: string) -> bool\ImageError {
-    return (ImageError.InvalidData {
-        message
-    })!
+    return (ImageError.InvalidData { message })!
 }
 
 jpeg_image_invalid :: fn (message: string) -> Image\ImageError {
-    return (ImageError.InvalidData {
-        message
-    })!
+    return (ImageError.InvalidData { message })!
 }
 
 jpeg_byte_invalid :: fn (message: string) -> u8\ImageError {
-    return (ImageError.InvalidData {
-        message
-    })!
+    return (ImageError.InvalidData { message })!
 }
 
 jpeg_decoder_error :: fn (error: ImageError) -> JpegDecoder\ImageError {
@@ -749,9 +735,7 @@ jpeg_decode_huffman :: fn (decoder     : ^JpegDecoder,
         }
     }
 
-    return (ImageError.InvalidData {
-        message: "JPEG invalid Huffman code"
-    })!
+    return (ImageError.InvalidData { message: "JPEG invalid Huffman code" })!
 }
 
 jpeg_clear_block :: fn (block: []i32) {
@@ -865,8 +849,8 @@ jpeg_store_block :: fn (component : ^JpegComponent,
             on target_x >= component.width => again
 
             component.pixels[(target_y * component.width + target_x).as(usize)] = jpeg_idct_value(block,
-                                                                                      x.as(i32),
-                                                                                      y.as(i32))
+                                                                                                  x.as(i32),
+                                                                                                  y.as(i32))
         }
     }
 }

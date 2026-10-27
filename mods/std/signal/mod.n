@@ -22,6 +22,7 @@ pub impl Display for Error {
             AlreadyWatching  => "a shutdown watcher is already active"
             Closed           => "the shutdown watcher is closed"
             WrongThread      => "use the shutdown watcher on its opening thread"
+
             Unsupported      => "shutdown watching is unsupported on this "
                 +"platform"
             System { code }  => $"native shutdown operation failed (error {code})"

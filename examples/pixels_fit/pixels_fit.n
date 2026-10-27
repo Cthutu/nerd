@@ -28,12 +28,8 @@ fit_draw :: fn (layer: ^PixelLayer, tick: u32) {
         }
     }
 
-    layer.fill(PixelRect {
-        x      : 0
-        y      : 0
-        width  : layer.pixel_width()
-        height : 2
-    }, 0xffffffff)
+    layer.fill(PixelRect { x: 0 y: 0 width: layer.pixel_width() height: 2 },
+               0xffffffff)
 }
 
 -- Look up the current layer through its handle, draw it, then present.

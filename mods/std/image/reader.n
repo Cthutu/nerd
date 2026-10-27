@@ -12,10 +12,7 @@ ImageReader :: plex {
 impl ImageReader {
 
     new :: fn (bytes: []u8) -> Self {
-        return {
-            bytes
-            offset: 0
-        }
+        return { bytes offset: 0 }
     }
 
     remaining :: fn (reader: Self) -> usize {

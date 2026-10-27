@@ -71,9 +71,7 @@ impl PngPixels {
 }
 
 png_invalid :: fn (message: string) -> PngContainer\ImageError {
-    return (ImageError.InvalidData {
-        message
-    })!
+    return (ImageError.InvalidData { message })!
 }
 
 png_error :: fn (error: ImageError) -> PngContainer\ImageError {
@@ -83,9 +81,7 @@ png_error :: fn (error: ImageError) -> PngContainer\ImageError {
 png_ok :: fn (png: PngContainer) => png
 
 png_image_invalid :: fn (message: string) -> Image\ImageError {
-    return (ImageError.InvalidData {
-        message
-    })!
+    return (ImageError.InvalidData { message })!
 }
 
 png_image_error :: fn (error: ImageError) -> Image\ImageError {
@@ -95,9 +91,7 @@ png_image_error :: fn (error: ImageError) -> Image\ImageError {
 png_image_ok :: fn (image: Image) => image
 
 png_pixels_invalid :: fn (message: string) -> PngPixels\ImageError {
-    return (ImageError.InvalidData {
-        message
-    })!
+    return (ImageError.InvalidData { message })!
 }
 
 png_pixels_error :: fn (error: ImageError) -> PngPixels\ImageError {
@@ -107,9 +101,7 @@ png_pixels_error :: fn (error: ImageError) -> PngPixels\ImageError {
 png_pixels_ok :: fn (pixels: PngPixels) => pixels
 
 png_invalid_chunk :: fn (message: string) -> PngChunk\ImageError {
-    return (ImageError.InvalidData {
-        message
-    })!
+    return (ImageError.InvalidData { message })!
 }
 
 png_chunk_error :: fn (error: ImageError) -> PngChunk\ImageError {
@@ -344,12 +336,7 @@ png_parse :: fn (bytes: []u8) -> PngContainer\ImageError {
                         idat_chunks.free()
                         return png_invalid("PNG ended before IDAT")
                     }
-                    return png_ok({
-                        ihdr
-                        idat_chunks
-                        palette
-                        transparency
-                    })
+                    return png_ok({ ihdr idat_chunks palette transparency })
                 }
                 again
             }
@@ -510,7 +497,9 @@ png_expand_greyscale :: fn (pixels       : []u8,
     for i in [0 .. pixels.count] {
         target := i * 2
         output[target] = pixels[i]
-        output[target + 1] = on pixels[i].as(u16) == transparent_value => 0 else 255
+        output[target + 1] = on pixels[i].as(u16) == transparent_value
+            =>   0
+            else 255
     }
 
     return png_pixels_ok(PngPixels { channels: 2 data: output })

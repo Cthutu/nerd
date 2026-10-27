@@ -50,9 +50,7 @@ impl Huffman {
 }
 
 compress_invalid :: fn (message: string) -> [..]u8\CompressionError {
-    return (CompressionError.InvalidData {
-        message
-    })!
+    return (CompressionError.InvalidData { message })!
 }
 
 compress_error :: fn (error: CompressionError) -> [..]u8\CompressionError {
@@ -62,22 +60,14 @@ compress_error :: fn (error: CompressionError) -> [..]u8\CompressionError {
 compress_ok :: fn (bytes: [..]u8) => bytes
 
 compress_huffman_invalid :: fn (message: string) -> Huffman\CompressionError {
-    return (CompressionError.InvalidData {
-        message
-    })!
+    return (CompressionError.InvalidData { message })!
 }
 
 compress_huffman_ok :: fn (huffman: Huffman) => huffman
 
 -- Creates a reader over raw DEFLATE block bytes.
 deflate_reader_new :: fn (bytes: []u8) -> DeflateReader {
-    return {
-        bytes
-        byte_index : 0
-        bit_buffer : 0
-        bit_count  : 0
-        failed     : no
-    }
+    return { bytes byte_index: 0 bit_buffer: 0 bit_count: 0 failed: no }
 }
 
 -- Reads bits in the order DEFLATE stores them.
@@ -141,9 +131,7 @@ deflate_build_huffman :: fn (lengths: []u8) -> Huffman\CompressionError {
         next_codes[bits] = code
     }
 
-    huffman := Huffman {
-        entries: nil
-    }
+    huffman := Huffman { entries: nil }
     for symbol: usize = 0; symbol < lengths.count; symbol += 1 {
         length := lengths[symbol]
         on (length == 0) => again
@@ -352,9 +340,7 @@ compress_bool_error :: fn (error: CompressionError) -> bool\CompressionError {
 }
 
 compress_bool_invalid :: fn (message: string) -> bool\CompressionError {
-    return (CompressionError.InvalidData {
-        message
-    })!
+    return (CompressionError.InvalidData { message })!
 }
 
 -- Decodes an uncompressed stored block.

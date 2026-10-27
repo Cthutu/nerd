@@ -139,7 +139,8 @@ App :: plex {
 }
 
 main :: fn () {
-    _app: App = {
+    _app : App =
+                 {
         quit   : no
         init   : app_init
         kill   : nil
@@ -186,12 +187,7 @@ pixels_draw :: fn (layer: ^PixelLayer, frame: u32) {
     })
 
     bar_width := (frame % layer.pixel_width().as(u32)) + 1
-    layer.fill(PixelRect {
-        x      : 0
-        y      : 0
-        width  : bar_width
-        height : 3
-    }, 0xffffffff)
+    layer.fill(PixelRect { x: 0 y: 0 width: bar_width height: 3 }, 0xffffffff)
 }
 ¬
 main :: fn () {

@@ -75,6 +75,11 @@ The formatter should be deterministic and idempotent.
   a separate statement.
 - When a multiline plex literal is the final call argument, the call's closing
   parenthesis remains attached to the literal's closing brace as `})`.
+- A multiline plex literal or `with` update collapses to one line when its
+  formatted fields fit within 80 columns, including the declaration or call
+  prefix. Comments, blank lines between field groups and multiline field values
+  keep the literal multiline. Compact literals in arrays retain row alignment,
+  including rows that were multiline in the input.
 - Vertical spacing remains conservative apart from collapsing repeated blank lines.
 
 ## Alignment Rules

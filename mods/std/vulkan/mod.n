@@ -155,40 +155,56 @@ pub vk_result_to_string :: fn (result: VkResult) -> string {
     return on result {
         VK_SUCCESS    => "Operation completed successfully"
         VK_NOT_READY  => "Operation has not completed yet"
+
         VK_TIMEOUT      => "Timed out waiting for the "
             +"operation"
         VK_EVENT_SET    => "Event is signalled"
         VK_EVENT_RESET  => "Event is not signalled"
+
         VK_INCOMPLETE                  => "Output array is too small for "
             +"all results"
         VK_ERROR_OUT_OF_HOST_MEMORY    => "Unable to allocate host memory"
         VK_ERROR_OUT_OF_DEVICE_MEMORY  => "Unable to allocate device memory"
+
         VK_ERROR_INITIALIZATION_FAILED => "Vulkan object initialisation "
             +"failed"
+
         VK_ERROR_DEVICE_LOST => "Connection to the Vulkan device "
             +"was lost"
+
         VK_ERROR_MEMORY_MAP_FAILED => "Unable to map memory for host "
             +"access"
+
         VK_ERROR_LAYER_NOT_PRESENT => "A requested layer is missing or "
             +"could not be loaded"
+
         VK_ERROR_EXTENSION_NOT_PRESENT => "A requested extension is not "
             +"supported"
+
         VK_ERROR_FEATURE_NOT_PRESENT => "A requested device feature is "
             +"not supported"
+
         VK_ERROR_INCOMPATIBLE_DRIVER => "The driver is incompatible with "
             +"the requested Vulkan configuration"
+
         VK_ERROR_TOO_MANY_OBJECTS => "The limit for objects of this "
             +"type has been reached"
+
         VK_ERROR_FORMAT_NOT_SUPPORTED => "The device does not support the "
             +"requested format"
+
         VK_ERROR_FRAGMENTED_POOL => "Memory pool fragmentation "
             +"prevented allocation"
+
         VK_ERROR_SURFACE_LOST_KHR => "The presentation surface is no "
             +"longer available"
+
         VK_ERROR_NATIVE_WINDOW_IN_USE_KHR => "The window is already in use by "
             +"another surface or graphics API"
+
         VK_SUBOPTIMAL_KHR => "The swapchain still works but "
             +"no longer fully matches the surface"
+
         VK_ERROR_OUT_OF_DATE_KHR  => "The surface has changed; "
             +"recreate the swapchain"
         else                      => temp_arena.pr($"Unknown Vulkan result ({result})")
