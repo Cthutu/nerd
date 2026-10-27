@@ -35,6 +35,7 @@ COMMANDS = (
     '258-run-dynamic-array-leak-location',
     'dynamic-array-copy-leak-location',
     'dynamic-array-copy-aggregate',
+    'dynamic-array-literal-leak-location',
     '259-run-lazy-arena-leak-location',
     '296-run-merged-standard-library',
     '308-run-shutdown-watcher',

@@ -1758,9 +1758,10 @@ internal u32 hir_lower_expr(Hir*         hir,
         u32      type = expr->type_index;
         if (expr->source_line == 0 && type < array_count(sema->types) &&
             (sema->types[type].kind == STK_Array ||
-             sema->types[type].kind == STK_Slice)) {
-            // A borrowed collection may allocate when converted to an owned
-            // dynamic array later; keep the source of that implicit copy.
+             sema->types[type].kind == STK_Slice ||
+             sema->types[type].kind == STK_DynamicArray)) {
+            // Dynamic-array literals allocate directly; borrowed collections
+            // may also allocate when converted to an owned dynamic array.
             hir_node_source_location(sema,
                                      lexer,
                                      ast,

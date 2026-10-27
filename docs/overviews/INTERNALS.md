@@ -618,6 +618,11 @@ array expression used to allocate a capacity-bearing dynamic-array local uses
 the local declaration location, which LLVM passes to the runtime allocator for
 leak diagnostics.
 
+HIR retains source locations for dynamic-array literals too, including empty
+literals and literals nested in record fields. Both backends use the literal's
+location for its allocation; freeing an outer collection does not free nested
+dynamic arrays, whose leaks must still point to their own literal.
+
 Dynamic-array heap storage pads its three-word header to 32 bytes before the
 first element. Both LLVM lowering and the compatibility C helper preserve the
 allocator's 16-byte alignment across allocation, growth, reserve and pointer
