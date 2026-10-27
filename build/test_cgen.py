@@ -33,6 +33,8 @@ COMMANDS = (
     '229-run-core-option-expect-abort',
     '254-run-core-done-reports-leaks',
     '258-run-dynamic-array-leak-location',
+    'dynamic-array-copy-leak-location',
+    'dynamic-array-copy-aggregate',
     '259-run-lazy-arena-leak-location',
     '296-run-merged-standard-library',
     '308-run-shutdown-watcher',

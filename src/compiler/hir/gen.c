@@ -1749,10 +1749,27 @@ internal u32 hir_lower_expr(Hir*         hir,
                             u32          node_index)
 {
     node_index = hir_unwrap_node(ast, node_index);
-    if (hir_ast_is_arithmetic(ast, node_index)) {
-        return hir_lower_arithmetic_tree(hir, lexer, ast, sema, node_index);
+    u32 result =
+        hir_ast_is_arithmetic(ast, node_index)
+            ? hir_lower_arithmetic_tree(hir, lexer, ast, sema, node_index)
+            : hir_lower_expr_impl(hir, lexer, ast, sema, node_index);
+    if (result < array_count(hir->exprs)) {
+        HirExpr* expr = &hir->exprs[result];
+        u32      type = expr->type_index;
+        if (expr->source_line == 0 && type < array_count(sema->types) &&
+            (sema->types[type].kind == STK_Array ||
+             sema->types[type].kind == STK_Slice)) {
+            // A borrowed collection may allocate when converted to an owned
+            // dynamic array later; keep the source of that implicit copy.
+            hir_node_source_location(sema,
+                                     lexer,
+                                     ast,
+                                     node_index,
+                                     &expr->source_path,
+                                     &expr->source_line);
+        }
     }
-    return hir_lower_expr_impl(hir, lexer, ast, sema, node_index);
+    return result;
 }
 
 internal u32 hir_lower_expr_impl(Hir*         hir,

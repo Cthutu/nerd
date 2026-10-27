@@ -2893,6 +2893,10 @@ internal bool llvm_expr_is_constant_value(const Hir*   hir,
             hir, lexer, sema, expr->operand_expr_index);
     case HIR_EXPR_Array:
     case HIR_EXPR_Tuple:
+        if (llvm_type_kind(sema, expr->type_index) == STK_DynamicArray) {
+            // Even constant elements need a fresh runtime allocation.
+            return false;
+        }
         for (u32 i = 0; i < expr->arg_count; ++i) {
             const HirCallArg* arg = &hir->call_args[expr->first_arg + i];
             if (!llvm_expr_is_constant_value(
@@ -3044,6 +3048,7 @@ typedef struct {
     const Sema*       sema;
     Arena*            arena;
     const LlvmLayout* layout;
+    const HirExpr*    conversion_source;
     u32               next_temp;
     u32               next_label;
     bool              block_terminated;
@@ -5110,6 +5115,63 @@ internal LlvmValue llvm_coerce_value_to_type(LlvmFunctionContext* ctx,
 
     SemaTypeKind target_kind = llvm_type_kind(ctx->sema, target_type);
     SemaTypeKind source_kind = llvm_type_kind(ctx->sema, value.type_index);
+    if (target_kind == STK_DynamicArray &&
+        (source_kind == STK_Array || source_kind == STK_Slice)) {
+        string data = llvm_temp(ctx), count;
+        if (source_kind == STK_Array) {
+            string slot = llvm_temp(ctx);
+            string type = llvm_type_string(ctx, value.type_index);
+            sb_format(ctx->sb,
+                      "  " STRINGP " = alloca " STRINGP "\n"
+                      "  store " STRINGP " " STRINGP ", ptr " STRINGP "\n"
+                      "  " STRINGP " = getelementptr inbounds " STRINGP
+                      ", ptr " STRINGP ", i64 0, i64 0\n",
+                      STRINGV(slot),
+                      STRINGV(type),
+                      STRINGV(type),
+                      STRINGV(value.value),
+                      STRINGV(slot),
+                      STRINGV(data),
+                      STRINGV(type),
+                      STRINGV(slot));
+            count =
+                string_format(ctx->arena,
+                              "%u",
+                              ctx->sema->types[value.type_index].return_type);
+        } else {
+            count = llvm_temp(ctx);
+            sb_format(
+                ctx->sb,
+                "  " STRINGP " = extractvalue { ptr, i64 } " STRINGP ", 0\n"
+                "  " STRINGP " = extractvalue { ptr, i64 } " STRINGP ", 1\n",
+                STRINGV(data),
+                STRINGV(value.value),
+                STRINGV(count),
+                STRINGV(value.value));
+        }
+        const HirExpr* source = ctx->conversion_source;
+        string         path   = llvm_allocation_source_path_global_name(
+            ctx->hir, ctx->lexer, ctx->arena, source);
+        u32    item_type = ctx->sema->types[target_type].first_param_type;
+        string header = llvm_temp(ctx), result = llvm_temp(ctx);
+        sb_format(
+            ctx->sb,
+            "  " STRINGP " = call ptr @nrt_array_copy(ptr " STRINGP
+            ", i64 " STRINGP ", i64 %llu, ptr " STRINGP ", i32 %u)\n"
+            "  " STRINGP " = getelementptr inbounds i8, ptr " STRINGP
+            ", i64 %llu\n",
+            STRINGV(header),
+            STRINGV(data),
+            STRINGV(count),
+            (unsigned long long)llvm_type_storage_bytes(ctx->sema, item_type),
+            STRINGV(path),
+            source != NULL ? source->source_line : 0,
+            STRINGV(result),
+            STRINGV(header),
+            (unsigned long long)llvm_dynamic_array_header_bytes(ctx->layout));
+        return (LlvmValue){
+            .ok = true, .type_index = target_type, .value = result};
+    }
     if ((target_kind == STK_F32 || target_kind == STK_F64) &&
         source_kind == STK_UntypedInteger) {
         string target = llvm_type_string(ctx, target_type);
@@ -5495,7 +5557,9 @@ internal LlvmValue llvm_cast_to_union_storage(LlvmFunctionContext* ctx,
                   STRINGV(value.value),
                   STRINGV(storage_type));
     } else if ((llvm_type_kind(ctx->sema, value.type_index) == STK_Pointer ||
-                llvm_type_kind(ctx->sema, value.type_index) == STK_Function) &&
+                llvm_type_kind(ctx->sema, value.type_index) == STK_Function ||
+                llvm_type_kind(ctx->sema, value.type_index) ==
+                    STK_DynamicArray) &&
                value_bits == storage_bits) {
         sb_format(ctx->sb,
                   "  " STRINGP " = ptrtoint " STRINGP " " STRINGP " to " STRINGP
@@ -5589,7 +5653,8 @@ internal LlvmValue llvm_cast_from_union_storage(LlvmFunctionContext* ctx,
                   STRINGV(value.value),
                   STRINGV(field_type_s));
     } else if ((llvm_type_kind(ctx->sema, field_type) == STK_Pointer ||
-                llvm_type_kind(ctx->sema, field_type) == STK_Function) &&
+                llvm_type_kind(ctx->sema, field_type) == STK_Function ||
+                llvm_type_kind(ctx->sema, field_type) == STK_DynamicArray) &&
                field_bits == storage_bits) {
         sb_format(ctx->sb,
                   "  " STRINGP " = inttoptr " STRINGP " " STRINGP " to " STRINGP
@@ -5654,7 +5719,9 @@ internal LlvmValue llvm_cast_to_storage_bits(LlvmFunctionContext* ctx,
                   STRINGV(value.value),
                   STRINGV(storage_type));
     } else if ((llvm_type_kind(ctx->sema, value.type_index) == STK_Pointer ||
-                llvm_type_kind(ctx->sema, value.type_index) == STK_Function) &&
+                llvm_type_kind(ctx->sema, value.type_index) == STK_Function ||
+                llvm_type_kind(ctx->sema, value.type_index) ==
+                    STK_DynamicArray) &&
                value_bits == storage_bits) {
         sb_format(ctx->sb,
                   "  " STRINGP " = ptrtoint " STRINGP " " STRINGP " to " STRINGP
@@ -5742,7 +5809,8 @@ internal LlvmValue llvm_cast_from_storage_bits(LlvmFunctionContext* ctx,
                   STRINGV(value.value),
                   STRINGV(result_type_s));
     } else if ((llvm_type_kind(ctx->sema, result_type) == STK_Pointer ||
-                llvm_type_kind(ctx->sema, result_type) == STK_Function) &&
+                llvm_type_kind(ctx->sema, result_type) == STK_Function ||
+                llvm_type_kind(ctx->sema, result_type) == STK_DynamicArray) &&
                result_bits == storage_bits) {
         sb_format(ctx->sb,
                   "  " STRINGP " = inttoptr " STRINGP " " STRINGP " to " STRINGP
@@ -9908,9 +9976,14 @@ internal LlvmValue llvm_emit_expr(LlvmFunctionContext* ctx,
         if (ctx->defer_block_indices != NULL) {
             __array_count(ctx->defer_block_indices) = base;
         }
+        ctx->conversion_source = expr;
         return result;
     }
-    return llvm_emit_expr_impl(ctx, function, expr_index);
+    LlvmValue result       = llvm_emit_expr_impl(ctx, function, expr_index);
+    ctx->conversion_source = expr_index < array_count(ctx->hir->exprs)
+                                 ? &ctx->hir->exprs[expr_index]
+                                 : NULL;
+    return result;
 }
 
 internal LlvmValue llvm_emit_expr_impl(LlvmFunctionContext* ctx,
@@ -19097,7 +19170,8 @@ internal bool llvm_equality_contains_kind_depth(const Sema*  sema,
         return llvm_equality_contains_kind_depth(
             sema, sema->types[type].first_param_type, wanted, depth + 1);
     }
-    if (kind == STK_Plex || kind == STK_Tuple || kind == STK_Enum) {
+    if (kind == STK_Plex || kind == STK_Tuple || kind == STK_Enum ||
+        kind == STK_Union) {
         SemaType st = sema->types[type];
         for (u32 i = 0; i < st.param_count; ++i) {
             if (llvm_equality_contains_kind_depth(
@@ -19121,8 +19195,8 @@ internal bool llvm_hir_uses_dynamic_array_runtime(const Hir*  hir,
                                                   const Sema* sema)
 {
     for (u32 i = 0; i < array_count(hir->exprs); ++i) {
-        SemaTypeKind kind = llvm_type_kind(sema, hir->exprs[i].type_index);
-        if (kind == STK_DynamicArray ||
+        if (llvm_equality_contains_kind(
+                sema, hir->exprs[i].type_index, STK_DynamicArray) ||
             llvm_equality_contains_kind(
                 sema, hir->exprs[i].type_index, STK_Box) ||
             hir->exprs[i].kind == HIR_EXPR_Box ||
@@ -19143,6 +19217,7 @@ internal void llvm_render_dynamic_array_runtime_declarations(StringBuilder* sb)
 {
     static const LlvmRuntimeDecl decls[] = {
         {"ptr", "nrt_mem_alloc", "i64, i64, ptr, i32"},
+        {"ptr", "nrt_array_copy", "ptr, i64, i64, ptr, i32"},
         {"i64", "nrt_local_array_bytes", "i64, i64"},
         {"ptr", "llvm.stacksave.p0", ""},
         {"void", "llvm.stackrestore.p0", "ptr"},

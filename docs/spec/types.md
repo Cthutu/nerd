@@ -200,6 +200,21 @@ language form is a non-empty type list.
 | `union { ... }`        | Raw union with named alternatives sharing storage.                               |
 | `enum { ... }`         | Tagged enum, optionally with payload variants.                                   |
 
+### Copying into dynamic arrays
+
+A fixed array `[N]T` or slice `[]T` implicitly converts to `[..]T` when a
+dynamic-array destination is expected, including initialisers, assignments,
+plex fields, function arguments and returns. Generic `[..]T` parameters infer
+`T` from either source form. Element types must match; this conversion does not
+perform per-element numeric or plex conversions.
+
+The conversion evaluates the source once, allocates a fresh buffer, and copies
+its elements shallowly. The source remains unchanged and the resulting count
+equals the source count. Empty sources produce an empty owned buffer. Nested
+references are not cloned. Existing dynamic-array-to-dynamic-array handle
+copying remains unchanged. Replacement assignment does not free the previous
+destination buffer; the program is responsible for releasing owned storage.
+
 ### Optional and result types
 
 `?T` contains either no value or one value of `T`. `nil` constructs absence;

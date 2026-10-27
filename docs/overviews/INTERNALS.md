@@ -626,6 +626,22 @@ optimized Windows Dungeon then faulted on an aligned SIMD store while appending
 terminal input events. Regression checks exercise these stores and their values
 in debug/release targets at jobs 1/4, including explicit capacity and reserve.
 
+Fixed arrays and slices also implicitly convert to dynamic arrays with matching
+element types. Sema accepts the conversion and generic dynamic-array parameters
+bind their element type from either source form. HIR retains the actual source
+type; the LLVM and C coercion paths call `nrt_array_copy` to allocate a fresh
+buffer and copy the payload shallowly. The shared `NrtArray` header is also used
+by C growth helpers. The runtime checks payload-size overflow and avoids reading
+empty sources. Backend expression emission retains the most recently emitted
+expression's source location for allocation diagnostics on these implicit copies.
+Dynamic-array literals require runtime allocation even when their elements are
+constant, so LLVM excludes them and their enclosing aggregates from static
+constant backing generation.
+
+Runtime-declaration discovery includes dynamic arrays nested in aggregate
+fields, including unions. LLVM's union and enum storage conversions recognise
+dynamic-array handles as pointer values in both directions.
+
 Implicit fixed-array-to-slice call arguments are lowered from the address of the
 original HIR array expression. This preserves the language's borrowed-view
 semantics and avoids directing mutations through a copied LLVM temporary.

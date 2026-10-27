@@ -12593,6 +12593,12 @@ sema_type_matches(const Sema* sema, u32 expected_type, u32 actual_type)
         return true;
     }
 
+    if (expected->kind == STK_DynamicArray &&
+        (actual->kind == STK_Array || actual->kind == STK_Slice) &&
+        expected->first_param_type == actual->first_param_type) {
+        return true;
+    }
+
     if (sema->types[expected_type].kind == STK_Slice &&
         (sema->types[actual_type].kind == STK_Array ||
          sema->types[actual_type].kind == STK_Box) &&
@@ -14679,7 +14685,9 @@ bool sema_bind_generic_type_node(const Lexer*            lexer,
     }
 
     if (type_node->kind == AK_TypeDynamicArray &&
-        sema->types[actual_type].kind == STK_DynamicArray) {
+        (sema->types[actual_type].kind == STK_DynamicArray ||
+         sema->types[actual_type].kind == STK_Array ||
+         sema->types[actual_type].kind == STK_Slice)) {
         return sema_bind_generic_type_node(
             lexer,
             ast,
