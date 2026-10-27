@@ -1,5 +1,15 @@
 # Compiler issues found during feature-test cleanup
 
+## Fixed: a missing interpolation brace blamed a later string literal
+
+An interpolation such as `$"{count} location{plural(count), {other} mobs>"`
+could consume following source as expression tokens and nested strings, then
+report an unterminated literal at an unrelated location name. Diagnostic 0110
+now anchors the unfinished expression's opening `{`, identifies a possible
+closing quote and gives delimiter-specific help. The interpolation-delimiters
+error/runtime fixtures cover the reproduction, EOF, calls, indexes, nested
+interpolations and valid quoted/multiline operands.
+
 ## Fixed: interpolation ignored a pointer-receiver Display implementation
 
 A `World` plex with `show(self: ^World)` compiled but interpolated structurally.

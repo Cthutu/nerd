@@ -629,11 +629,60 @@ internal bool lexer_lex_interpolated_expr(NerdSource source,
                                           Lexer*     lexer,
                                           u32        brace_depth)
 {
-    usize i           = *io_index;
-    u32   depth       = brace_depth;
+    usize i                = *io_index;
+    usize expression_start = i - 1;
+    u32   depth            = brace_depth;
     u32   parentheses = 0, brackets = 0;
+    usize parentheses_start = 0, brackets_start = 0;
+    usize possible_quote = source_code.count, possible_delimiter = 0;
+    char  possible_closer = 0;
 
     while (i < source_code.count) {
+        if (depth == 1 && source_code.data[i] == '"' &&
+            array_count(lexer->tokens) > 0) {
+            TokenKind previous =
+                lexer->tokens[array_count(lexer->tokens) - 1].kind;
+            bool ends_expression = false;
+            switch (previous) {
+            case TK_Integer:
+            case TK_Float:
+            case TK_String:
+            case TK_CString:
+            case TK_InterpolatedStringEnd:
+            case TK_InterpolationFormat:
+            case TK_Symbol:
+            case TK_RParen:
+            case TK_RBracket:
+            case TK_RBrace:
+            case TK_yes:
+            case TK_no:
+            case TK_nil:
+            case TK_undefined:
+                ends_expression = true;
+                break;
+            default:
+                break;
+            }
+            // A quoted operand is legal inside interpolation (calls, matches,
+            // nested strings). A quote after a complete operand at the outer
+            // brace level instead indicates a missing interpolation closer.
+            if (ends_expression) {
+                usize delimiter =
+                    parentheses ? parentheses_start : brackets_start;
+                char closer = parentheses ? ')' : brackets ? ']' : 0;
+                if (possible_quote < source_code.count) {
+                    delimiter = possible_delimiter;
+                    closer    = possible_closer;
+                }
+                return error_0110_unterminated_interpolation(
+                    source,
+                    (ErrorSpan){.start = expression_start,
+                                .end   = expression_start + 1},
+                    (ErrorSpan){.start = delimiter, .end = delimiter + 1},
+                    closer,
+                    possible_quote < source_code.count ? possible_quote : i);
+            }
+        }
         if (depth == 1 && parentheses == 0 && brackets == 0 &&
             source_code.data[i] == ':') {
             usize start = i++;
@@ -670,12 +719,18 @@ internal bool lexer_lex_interpolated_expr(NerdSource source,
 
         u8 delimiter = source_code.data[i];
         if (delimiter == '(') {
+            if (!parentheses) {
+                parentheses_start = i;
+            }
             ++parentheses;
         }
         if (delimiter == ')' && parentheses) {
             --parentheses;
         }
         if (delimiter == '[') {
+            if (!brackets) {
+                brackets_start = i;
+            }
             ++brackets;
         }
         if (delimiter == ']' && brackets) {
@@ -685,12 +740,33 @@ internal bool lexer_lex_interpolated_expr(NerdSource source,
         if (!lexer_lex_one_token(source, source_code, io_index, lexer, true)) {
             return false;
         }
+        // A missing '}' can make the outer closing quote consume later source
+        // as a multiline nested literal. Keep its origin for a later error,
+        // without rejecting valid multiline strings inside interpolation.
+        if (depth == 1 && delimiter == '"' &&
+            possible_quote == source_code.count &&
+            (memchr(source_code.data + i, '\n', *io_index - i) != NULL ||
+             memchr(source_code.data + i, '\r', *io_index - i) != NULL)) {
+            possible_quote = i;
+            possible_delimiter =
+                parentheses ? parentheses_start : brackets_start;
+            possible_closer = parentheses ? ')' : brackets ? ']' : 0;
+        }
         i = *io_index;
     }
 
-    return error_0106_unterminated_string_literal(
+    usize delimiter = parentheses ? parentheses_start : brackets_start;
+    char  closer    = parentheses ? ')' : brackets ? ']' : 0;
+    if (possible_quote < source_code.count) {
+        delimiter = possible_delimiter;
+        closer    = possible_closer;
+    }
+    return error_0110_unterminated_interpolation(
         source,
-        (ErrorSpan){.start = interpolation_start, .end = source_code.count});
+        (ErrorSpan){.start = expression_start, .end = expression_start + 1},
+        (ErrorSpan){.start = delimiter, .end = delimiter + 1},
+        closer,
+        possible_quote);
 }
 
 internal bool lexer_lex_interpolated_text(NerdSource source,

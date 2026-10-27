@@ -1,5 +1,12 @@
 # Internals
 
+Interpolation expression lexing retains the opening brace and outstanding
+parenthesis/bracket origins for diagnostic 0110. A quote following a complete
+operand at the outer interpolation brace level diagnoses the unfinished field.
+If a missing `}` has already caused a quote to consume later lines as a nested
+literal, its origin is retained for the later diagnostic without rejecting valid
+multiline strings. Plain and nested unterminated literals retain diagnostic 0106.
+
 Core Display requires `show(self: ^Self) -> string`. Trait signature validation
 reads imported requirements from their defining AST and substitutes the target
 type in that module before importing the required function type. This prevents
