@@ -350,6 +350,30 @@ For tests:
 
 ## Execution Flow
 
+The formatter measures compact plex-literal candidates at their destination
+column before collapsing multiline input. Nested candidates are measured in a
+flat mode to avoid repeated recursive width measurement. Declaration grouping
+and array-row alignment use the resulting layout so a second formatting pass
+produces the same output. Comments and blank field groups prevent compaction.
+
+The CST parser releases partially collected plex-literal field lists before
+recovering from an incomplete field, so formatting unfinished source does not
+leak compiler allocations.
+
+Braced branch heads can name either a typed plex pattern or an enum payload.
+Their existing `AstPattern.c` slot retains the complete possible type spelling
+as a syntax node. Sema disambiguates from the subject type and records the
+result in `pattern_type_indices`; HIR lowers a record interpretation directly
+through its nested plex pattern. This keeps `Mob { name }` valid as a branch
+head without changing enum payload syntax or mutating the parsed AST.
+
+LSP import navigation and import ranges share a token-range helper that follows
+only source-visible dotted components. Grouped import prefixes are not counted
+again when finding a leaf's end. Member rename keys fields and variants by their
+declaration path and token offset, follows imported and generic owners, and
+uses source annotations before materialised structural type IDs. This avoids
+renaming unrelated members when record layouts have been interned together.
+
 The `nerd` executable is mostly orchestration:
 
 1. parse CLI input
