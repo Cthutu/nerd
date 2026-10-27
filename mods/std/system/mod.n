@@ -20,8 +20,8 @@ pub SystemError :: enum {
 -- Describes desktop errors for diagnostics and UI messages.
 pub impl Display for SystemError {
 
-    show :: fn (self: Self) -> string {
-        return on self {
+    show :: fn (self: ^Self) -> string {
+        return on self^ {
             Invalid          => "invalid desktop request"
             Cancelled        => "selection cancelled"
             Unavailable      => "desktop provider unavailable"

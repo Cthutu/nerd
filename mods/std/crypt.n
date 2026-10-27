@@ -19,7 +19,7 @@ Sha1Hash :: plex {
 
 pub impl Display for Sha1Hash {
 
-    show :: fn (self: Self) -> string {
+    show :: fn (self: ^Self) -> string {
         add :: fn (value: u32) -> string {
             return temp_arena.pr($"{value >> 24 & 0xFF:02X}{value >> 16 & 0xFF:02X}{value >> 8 & 0xFF:02X}{value & 0xFF:02X}")
         }

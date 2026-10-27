@@ -509,13 +509,13 @@ pub VkQueueFamilyProperties2 :: plex #c {
 
 pub impl Display for VkQueueFamilyProperties2 {
 
-    show :: fn (self: Self) => self.queueFamilyProperties.show()
+    show :: fn (self: ^Self) => self.queueFamilyProperties.show()
 
 }
 
 pub impl Display for VkQueueFamilyProperties {
 
-    show :: fn (self: Self) -> string {
+    show :: fn (self: ^Self) -> string {
         flags := [
             VK_QUEUE_GRAPHICS_BIT,
             VK_QUEUE_COMPUTE_BIT,
@@ -565,10 +565,10 @@ pub impl Display for VkQueueFamilyProperties {
 pub impl Display for VkPhysicalDevice {
 
     -- The name is copied into temp_arena; no stack-backed string escapes.
-    show :: fn (self: Self) -> string {
-        on self == nil => return "nil"
+    show :: fn (self: ^Self) -> string {
+        on self^ == nil => return "nil"
         properties : VkPhysicalDeviceProperties
-        vkGetPhysicalDeviceProperties(self, ^properties)
+        vkGetPhysicalDeviceProperties(self^, ^properties)
         return temp_arena.pr(properties.deviceName.data.as(c_string).show())
     }
 

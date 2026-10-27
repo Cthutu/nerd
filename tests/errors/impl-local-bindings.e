@@ -80,7 +80,7 @@ main :: fn () { hash := Hash { a: 10 } assert hash.helper(1) == 2 }
 ¬
 Hash :: plex { a u32 }
 impl Display for Hash {
- show :: fn (self: Self) -> string {
+ show :: fn (self: ^Self) -> string {
   helper :: fn (value: u32) -> string { return "unused" }
   return helper(self.a)
  }

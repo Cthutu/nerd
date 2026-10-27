@@ -557,7 +557,7 @@ required function members:
 
 ```nerd
 Display :: trait {
-    show :: fn (self: Self) -> string
+    show :: fn (self: ^Self) -> string
 }
 ```
 
@@ -580,7 +580,7 @@ Point :: plex {
 }
 
 impl Display for Point {
-    show :: fn (self: Self) -> string {
+    show :: fn (self: ^Self) -> string {
         return $"{self.x}, {self.y}"
     }
 }
@@ -636,7 +636,7 @@ type parameters:
 ```nerd
 impl [T] Display for Box[T]
 where T: Display {
-    show :: fn (self: Self) -> string {
+    show :: fn (self: ^Self) -> string {
         return self.value.show()
     }
 }
@@ -651,8 +651,12 @@ can be used.
 The `core` module is implicitly available in every module. It defines the
 language-known traits and result types:
 
-- `Display` supplies `show :: fn (self: Self) -> string`. String interpolation uses
-  this trait for non-built-in values.
+- `Display` supplies `show :: fn (self: ^Self) -> string`. String interpolation uses
+  an explicit implementation before built-in structural formatting. The receiver
+  borrows the value, so formatting does not copy an arena or other owned state.
+  Both `value.show()` and interpolation take the address automatically; an
+  intermediate expression is evaluated once into temporary storage. Implementations
+  must use the pointer receiver and return `string`; a by-value receiver is an error.
 - `Eq` supplies `eq :: fn (self: Self, other: Self) -> bool`. The `==` and `!=` operators
   use this trait for non-built-in values. Arrays, slices, and boxes support
   content equality when their elements support `Eq`. Plexes and enums

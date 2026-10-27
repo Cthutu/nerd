@@ -57,7 +57,7 @@ import import.0 prn from module.core(core).decl.N: <unknown>
 import import.1 input from module.std.io(std.io).decl.N: fn (string) -> [..]u8
 import import.2 prn_text from module.core(core).decl.N: fn (string) -> void
 import import.3 prn_empty from module.core(core).decl.N: fn () -> void
-import import.4 __trait_Display_for_c_string_show from module.core(core).decl.N: fn (^i8) -> string
+import import.4 __trait_Display_for_c_string_show from module.core(core).decl.N: fn (^^i8) -> string
 bind prn = import.0
 bind input = import.1
 bind prn_text = import.2
@@ -166,7 +166,7 @@ Point :: plex {
 }
 
 impl Display for Point {
-    show :: fn (self: Self) => $"Point({self.x}, {self.y})"
+    show :: fn (self: ^Self) => $"Point({self.x}, {self.y})"
 }
 
 impl Eq for Point {
@@ -521,7 +521,7 @@ Point :: plex {
 }
 
 impl Display for Point {
-    show :: fn (self: Self) -> string {
+    show :: fn (self: ^Self) -> string {
         return $"Point({self.x}, {self.y})"
     }
 }
@@ -737,8 +737,8 @@ TokenType :: enum {
 }
 
 impl Display for TokenType {
-    show :: fn (self: TokenType) -> string {
-        return on self {
+    show :: fn (self: ^Self) -> string {
+        return on self^ {
             TokenType.Identifier => "Identifier"
         }
     }

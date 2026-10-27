@@ -8249,7 +8249,9 @@ internal bool llvm_display_show_function_name(LlvmFunctionContext* ctx,
         u32 fn_type = decl->type_index;
         if (!llvm_type_is_function(ctx->sema, fn_type) ||
             llvm_function_param_count(ctx->sema, fn_type) != 1 ||
-            llvm_function_param_type(ctx->sema, fn_type, 0) != type_index ||
+            llvm_pointee_type(
+                ctx->sema, llvm_function_param_type(ctx->sema, fn_type, 0)) !=
+                type_index ||
             llvm_function_return_type(ctx->sema, fn_type) != string_type) {
             continue;
         }
@@ -8310,7 +8312,11 @@ internal bool llvm_emit_append_display_string_value(LlvmFunctionContext* ctx,
             ctx, value.type_index, &function_name)) {
         return false;
     }
-    string value_type = llvm_type_string(ctx, value.type_index);
+    LlvmValue address = llvm_address_of_value(ctx, value);
+    if (!address.ok) {
+        return false;
+    }
+    string value_type = s("ptr");
     string shown      = llvm_temp(ctx);
     string shown_ptr  = llvm_temp(ctx);
     sb_format(ctx->sb,
@@ -8323,7 +8329,7 @@ internal bool llvm_emit_append_display_string_value(LlvmFunctionContext* ctx,
               STRINGV(shown),
               STRINGV(function_name),
               STRINGV(value_type),
-              STRINGV(value.value),
+              STRINGV(address.value),
               STRINGV(shown_ptr),
               STRINGV(shown),
               STRINGV(shown_ptr),

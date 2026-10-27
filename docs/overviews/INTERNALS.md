@@ -1,5 +1,15 @@
 # Internals
 
+Core Display requires `show(self: ^Self) -> string`. Trait signature validation
+reads imported requirements from their defining AST and substitutes the target
+type in that module before importing the required function type. This prevents
+silently accepting mismatched receivers or returns for imported traits.
+Interpolation resolves explicit Display methods in sema, including imported and
+generic implementations, and lowers them to ordinary borrowed HIR calls. Implicit
+address-taking marks arena-containing operands as borrowed. Built-in formatting
+remains the fallback, and result-main error rendering uses the pointer signature
+in both backends.
+
 Anonymous `plex` and `union` members promote field names through the existing
 record-group side tables. AST and CST parsers use a temporary field stack so
 recursive type parsing cannot interleave parent and child field ranges. The

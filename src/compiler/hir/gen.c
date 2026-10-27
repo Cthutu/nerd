@@ -1958,7 +1958,67 @@ internal u32 hir_lower_expr_impl(Hir*         hir,
                                     hir, lexer, ast, sema, node->b),
                             });
     case AK_InterpPartExpr:
-        return hir_lower_expr(hir, lexer, ast, sema, node->a);
+        {
+            u32 receiver = hir_lower_expr(hir, lexer, ast, sema, node->a);
+            u32 decl     = sema->node_method_call_decl_indices[node_index];
+            if (decl == sema_no_decl()) {
+                return receiver;
+            }
+            u32 fn_type       = hir_node_type(sema, node_index);
+            u32 receiver_type = hir_function_param_type(sema, fn_type, 0);
+            if (sema->node_method_call_receiver_refs[node_index] ||
+                sema->node_method_call_receiver_derefs[node_index]) {
+                receiver = hir_add_expr(
+                    hir,
+                    (HirExpr){
+                        .kind               = HIR_EXPR_Unary,
+                        .type_index         = receiver_type,
+                        .symbol_handle      = U32_MAX,
+                        .local_index        = sema_no_local(),
+                        .operand_expr_index = receiver,
+                        .unary_op =
+                            sema->node_method_call_receiver_refs[node_index]
+                                ? (sema_node_is_addressable(ast, sema, node->a)
+                                       ? HIR_UNARY_AddressOf
+                                       : HIR_UNARY_AddressOfValue)
+                                : HIR_UNARY_Deref,
+                    });
+            }
+            u32 binding = hir_decl_binding(hir, decl);
+            u32 callee  = hir_add_expr(
+                hir,
+                (HirExpr){
+                    .kind       = HIR_EXPR_LocalRef,
+                    .type_index = fn_type,
+                    .symbol_handle =
+                        sema->node_lowered_symbol_handles[node_index],
+                    .local_index = sema_no_local(),
+                    .ref_kind    = binding != hir_no_index() ? HIR_REF_Binding
+                                                             : HIR_REF_Decl,
+                    .ref_index   = binding != hir_no_index() ? binding : decl,
+                });
+            u32 first_arg = (u32)array_count(hir->call_args);
+            array_push(hir->call_args,
+                       ((HirCallArg){
+                           .expr_index    = receiver,
+                           .symbol_handle = U32_MAX,
+                       }));
+            return hir_add_expr(
+                hir,
+                (HirExpr){
+                    .kind              = HIR_EXPR_Call,
+                    .type_index        = sema->types[fn_type].return_type,
+                    .symbol_handle     = U32_MAX,
+                    .local_index       = sema_no_local(),
+                    .callee_expr_index = callee,
+                    .first_arg         = first_arg,
+                    .arg_count         = 1,
+                    .source_line =
+                        hir_node_source_line(sema, lexer, ast, node_index),
+                    .source_path =
+                        hir_node_source_path(sema, lexer, ast, node_index),
+                });
+        }
     case AK_InterpolatedString:
         {
             Array(HirCallArg) lowered_parts = NULL;

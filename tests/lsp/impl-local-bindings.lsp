@@ -1,6 +1,6 @@
 Hash :: plex { a u32 }
 impl Display for Hash {
- show :: fn (self: Self) -> string {
+ show :: fn (self: ^Self) -> string {
   add :: fn (value: u32) -> string {
    return temp_arena.pr($"{value:02X}")
   }

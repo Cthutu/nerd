@@ -1,5 +1,21 @@
 # Compiler issues found during feature-test cleanup
 
+## Fixed: interpolation ignored a pointer-receiver Display implementation
+
+A `World` plex with `show(self: ^World)` compiled but interpolated structurally.
+The previous core requirement was by value; imported trait signature checks
+incorrectly used foreign node indices in the local AST and could skip validation.
+Backend Display discovery then required an exact by-value receiver match.
+
+Core Display now requires `show(self: ^Self) -> string`. Imported requirements
+are checked in their defining module, and mismatched receivers/returns are
+diagnosed. Sema selects interpolation methods and HIR emits normal borrowed
+calls, with explicit implementations taking precedence over built-in formatting.
+`display-borrow.t` checks the World reproduction, receiver identity, exactly-once
+evaluation, noncopyable storage and generic dispatch; `display-signatures.e`
+checks invalid canonical and imported trait signatures. Both backend paths and
+the existing imported-display and result-main tests exercise the new contract.
+
 The teaching reference is `/home/matt/nd`; it was not changed. Use valid teaching
 examples and intended language rules as regression contracts. A transformed
 batch failing is not sufficient evidence of a compiler bug. The failed batching

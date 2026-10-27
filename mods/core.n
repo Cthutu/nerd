@@ -197,7 +197,7 @@ impl arena {
 -- Defines the canonical trait used to convert values to display strings.
 pub Display :: trait {
     -- Converts a value to a string representation.
-    show :: fn (self: Self) -> string
+    show :: fn (self: ^Self) -> string
 }
 
 -- Defines the canonical trait used by non-built-in equality.
@@ -234,13 +234,13 @@ pub impl Display for c_string {
 
     -- Borrows bytes up to the first NUL; nil displays as an empty string.
     -- Non-nil pointers must refer to valid null-terminated storage.
-    show :: fn (self: Self) -> string {
-        on self == nil => return ""
+    show :: fn (self: ^Self) -> string {
+        on self^ == nil => return ""
         count : usize = 0
-        for self[count] != 0 {
+        for self^[count] != 0 {
             count += 1
         }
-        return self.as(^u8).as([]u8, count).as(string)
+        return self^.as(^u8).as([]u8, count).as(string)
     }
 
 }

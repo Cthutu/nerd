@@ -113,7 +113,7 @@ in type identity. A function type without `-> type` has return type `void`.
 Missing names in callback fields and nested function types produce a diagnostic
 with `name: Type` as help.
 Trait requirements require parameter names, for example
-`show :: fn (self: Self) -> string`. Names document the requirement and do not
+`show :: fn (self: ^Self) -> string`. Names document the requirement and do not
 have to match the names in its implementation.
 A trait may use
 `trait [Item] { next :: fn (self: Self) -> Item }` to declare generic parameters.
@@ -122,13 +122,20 @@ language features. A trait may use `trait for Value` to name the self type
 `Value` instead of `Self`.
 
 Trait implementations attach those required functions to a concrete type:
-`impl Display for Point { show :: fn (self: Self) -> string { ... } }`.
+`impl Display for Point { show :: fn (self: ^Self) -> string { ... } }`.
 Language-required traits such as `Display` are canonical declarations from
 `core`. The core declarations currently include `Display`, `Eq`, `Order`,
 `Default`, and `Iterator[Item]`. Optional and result values are built-in types,
 written `?T` and `T\E`; there are no core `Option` or `Result` enums. Core names are
 available through the implicit `core` import unless shadowed by a local
 declaration. All other public core bindings use the same implicit import.
+The canonical `Display.show` requires `fn (self: ^Self) -> string`.
+Signature validation follows imported trait declarations in their defining
+module; it does not interpret their node indices in the implementing module.
+Concrete generic Display methods are checked when specialised. Interpolation
+selects an explicit core Display implementation before structural formatting,
+borrows addressable operands, and evaluates other operands once into temporary
+storage. It does not copy noncopyable arena-containing values to format them.
 `Display.show(value)` supplies interpolation for non-built-in values. `Eq.eq`
 supplies equality for non-built-in values used with `==` and `!=`.
 `Order.compare(lhs, rhs)` supplies ordering for non-built-in values used with

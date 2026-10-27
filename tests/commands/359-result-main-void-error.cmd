@@ -1,6 +1,6 @@
 Problem :: plex { code i32 }
 impl Display for Problem {
-    show :: fn (self: Self) -> string {
+    show :: fn (self: ^Self) -> string {
         prn("display")
         return $"problem {self.code}"
     }

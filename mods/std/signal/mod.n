@@ -17,8 +17,8 @@ pub Error :: enum {
 
 pub impl Display for Error {
 
-    show :: fn (self: Self) -> string {
-        return on self {
+    show :: fn (self: ^Self) -> string {
+        return on self^ {
             AlreadyWatching  => "a shutdown watcher is already active"
             Closed           => "the shutdown watcher is closed"
             WrongThread      => "use the shutdown watcher on its opening thread"

@@ -6803,6 +6803,10 @@ internal bool sema_validate_trait_impl_signature(const Lexer* lexer,
                                                  const Ast*   ast,
                                                  Sema*        sema,
                                                  u32          impl_node_index,
+                                                 const Lexer* trait_lexer,
+                                                 const Ast*   trait_ast,
+                                                 Sema*        trait_sema,
+                                                 u32          trait_decl_index,
                                                  u32 trait_member_node_index,
                                                  u32 impl_member_node_index)
 {
@@ -6818,34 +6822,30 @@ internal bool sema_validate_trait_impl_signature(const Lexer* lexer,
         return false;
     }
 
-    u32 trait_symbol =
-        sema_trait_symbol_from_type_node(ast, impl->trait_type_node_index);
-    u32 trait_decl_index = sema_find_decl(sema, trait_symbol);
-    if (trait_decl_index == sema_no_decl() ||
-        trait_decl_index >= array_count(sema->decls) ||
-        sema->decls[trait_decl_index].value_node_index >=
-            array_count(ast->nodes)) {
-        return true;
-    }
     const AstNode* trait_node =
-        &ast->nodes[sema->decls[trait_decl_index].value_node_index];
+        &trait_ast->nodes[trait_sema->decls[trait_decl_index].value_node_index];
 
-    u32 self_symbol      = sema_trait_self_alias_symbol(lexer, ast, trait_node);
+    u32 self_symbol =
+        sema_trait_self_alias_symbol(trait_lexer, trait_ast, trait_node);
     u32 subst_symbols[1] = {self_symbol};
-    u32 subst_types[1]   = {target_type};
+    u32 subst_types[1]   = {
+        trait_sema == sema
+            ? target_type
+            : sema_import_type(
+                  (Lexer*)trait_lexer, trait_sema, lexer, sema, target_type)};
     SemaTypeSubstitution subst = {
         .param_symbols = subst_symbols,
         .arg_types     = subst_types,
         .count         = self_symbol == sema_no_decl() ? 0 : 1,
     };
 
-    const AstNode* required_member = &ast->nodes[trait_member_node_index];
+    const AstNode* required_member = &trait_ast->nodes[trait_member_node_index];
     const AstNode* required_value =
-        sema_trait_member_value(ast, required_member);
+        sema_trait_member_value(trait_ast, required_member);
     const AstNode* impl_member = &ast->nodes[impl_member_node_index];
     const AstNode* impl_value  = sema_trait_member_value(ast, impl_member);
     if (required_value == NULL || required_value->kind != AK_TypeFn ||
-        required_value->a >= array_count(ast->fn_signatures)) {
+        required_value->a >= array_count(trait_ast->fn_signatures)) {
         return error_0304_type_mismatch(lexer->source,
                                         sema_node_span(lexer, required_member),
                                         s("function trait member"),
@@ -6867,10 +6867,18 @@ internal bool sema_validate_trait_impl_signature(const Lexer* lexer,
     }
 
     u32 expected_fn_type     = sema_no_type();
-    u32 required_value_index = (u32)(required_value - ast->nodes);
-    if (!sema_resolve_type_node_ex(
-            lexer, ast, sema, required_value_index, subst, &expected_fn_type)) {
+    u32 required_value_index = (u32)(required_value - trait_ast->nodes);
+    if (!sema_resolve_type_node_ex(trait_lexer,
+                                   trait_ast,
+                                   trait_sema,
+                                   required_value_index,
+                                   subst,
+                                   &expected_fn_type)) {
         return false;
+    }
+    if (trait_sema != sema) {
+        expected_fn_type = sema_import_type(
+            (Lexer*)lexer, sema, trait_lexer, trait_sema, expected_fn_type);
     }
     u32 actual_decl_index = sema_find_impl_method_decl(
         sema, impl_node_index, ast_get_symbol(impl_member));
@@ -7273,41 +7281,75 @@ internal bool sema_validate_trait_impl_signatures(const Lexer* lexer,
         }
         u32 trait_decl_index = sema_find_decl(sema, trait_symbol);
         if (trait_decl_index == sema_no_decl() ||
-            sema->decls[trait_decl_index].kind != SK_Trait ||
-            sema->decls[trait_decl_index].value_node_index >=
-                array_count(ast->nodes)) {
+            sema->decls[trait_decl_index].kind != SK_Trait) {
+            continue;
+        }
+
+        const Lexer*    trait_lexer = lexer;
+        const Ast*      trait_ast   = ast;
+        Sema*           trait_sema  = sema;
+        const SemaDecl* trait_decl  = &sema->decls[trait_decl_index];
+        if (trait_decl->import_module_index != sema_no_decl() &&
+            !sema_imported_decl_source(sema,
+                                       trait_decl,
+                                       &trait_lexer,
+                                       &trait_ast,
+                                       &trait_sema,
+                                       &trait_decl_index)) {
+            return false;
+        }
+        if (trait_sema->decls[trait_decl_index].value_node_index >=
+            array_count(trait_ast->nodes)) {
             continue;
         }
 
         const AstNode* trait_node =
-            &ast->nodes[sema->decls[trait_decl_index].value_node_index];
+            &trait_ast
+                 ->nodes[trait_sema->decls[trait_decl_index].value_node_index];
         if (trait_node->kind != AK_Trait ||
-            trait_node->a >= array_count(ast->trait_infos)) {
+            trait_node->a >= array_count(trait_ast->trait_infos)) {
             continue;
         }
 
-        const AstTraitInfo* trait = &ast->trait_infos[trait_node->a];
-        if (trait->body_node_index >= array_count(ast->nodes)) {
+        const AstTraitInfo* trait = &trait_ast->trait_infos[trait_node->a];
+        // Generic trait arguments are checked when their members are resolved.
+        if (trait->generic_params_index != U32_MAX) {
             continue;
         }
-        const AstNode* trait_body = &ast->nodes[trait->body_node_index];
+        if (trait->body_node_index >= array_count(trait_ast->nodes)) {
+            continue;
+        }
+        const AstNode* trait_body = &trait_ast->nodes[trait->body_node_index];
         const AstNode* impl_body  = &ast->nodes[impl->body_node_index];
         for (u32 member_index = trait_body->a; member_index < trait_body->b;
              ++member_index) {
-            const AstNode* required = &ast->nodes[member_index];
+            const AstNode* required = &trait_ast->nodes[member_index];
             if (required->kind != AK_Bind) {
                 continue;
             }
 
             u32 impl_member_index = U32_MAX;
-            if (!sema_impl_has_member(ast,
-                                      impl_body,
-                                      ast_get_symbol(required),
-                                      &impl_member_index)) {
+            if (!sema_impl_has_member(
+                    ast,
+                    impl_body,
+                    trait_sema == sema
+                        ? ast_get_symbol(required)
+                        : sema_import_symbol_handle((Lexer*)lexer,
+                                                    trait_lexer,
+                                                    ast_get_symbol(required)),
+                    &impl_member_index)) {
                 continue;
             }
-            if (!sema_validate_trait_impl_signature(
-                    lexer, ast, sema, i, member_index, impl_member_index)) {
+            if (!sema_validate_trait_impl_signature(lexer,
+                                                    ast,
+                                                    sema,
+                                                    i,
+                                                    trait_lexer,
+                                                    trait_ast,
+                                                    trait_sema,
+                                                    trait_decl_index,
+                                                    member_index,
+                                                    impl_member_index)) {
                 return false;
             }
         }
@@ -15271,7 +15313,10 @@ internal u32 sema_trait_method_receiver_node_index(const Ast* ast,
                                                    u32        call_node_index,
                                                    u32        call_arg_offset)
 {
-    const AstNode*     call = &ast->nodes[call_node_index];
+    const AstNode* call = &ast->nodes[call_node_index];
+    if (call->kind == AK_InterpPartExpr) {
+        return call->a;
+    }
     const AstCallInfo* info = &ast->calls[call->b];
     if (call_arg_offset > 0 && info->arg_count >= call_arg_offset) {
         return ast->call_args[info->first_arg];
@@ -15483,6 +15528,11 @@ sema_validate_arena_copies(const Lexer* lexer, const Ast* ast, const Sema* sema)
     for (u32 i = 0; i < array_count(ast->nodes); ++i) {
         const AstNode* node = &ast->nodes[i];
         switch (node->kind) {
+        case AK_InterpPartExpr:
+            if (sema->node_method_call_receiver_refs[i]) {
+                sema_mark_arena_borrow(ast, borrowed, node->a);
+            }
+            break;
         case AK_AddressOf:
             if (sema_node_is_addressable(ast, sema, node->a)) {
                 sema_mark_arena_borrow(ast, borrowed, node->a);
@@ -16298,9 +16348,12 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
                                            bool*        out_found,
                                            SemaResolvedMethodCall* out_call)
 {
-    const AstNode*     call_node            = &ast->nodes[call_node_index];
-    const AstCallInfo* call                 = &ast->calls[call_node->b];
-    *out_found                              = false;
+    const AstNode*     call_node          = &ast->nodes[call_node_index];
+    const AstCallInfo  interpolation_call = {0};
+    const AstCallInfo* call               = call_node->kind == AK_InterpPartExpr
+                                                ? &interpolation_call
+                                                : &ast->calls[call_node->b];
+    *out_found                            = false;
     bool                   found_trait_call = false;
     SemaResolvedMethodCall trait_call       = {0};
 
@@ -16918,6 +16971,47 @@ internal bool sema_try_resolve_method_call(const Lexer* lexer,
                                           &fn_type_index)) {
                     array_free(source_arg_types);
                     return false;
+                }
+            }
+            // Generic impl signatures become concrete at specialisation time.
+            u32 core_display = sema_find_core_trait_symbol(
+                source_lexer, source_sema, s("Display"));
+            if (generic != NULL && core_display != sema_no_decl() &&
+                sema_method_matches_trait_symbol(source_lexer,
+                                                 source_lexer,
+                                                 source_ast,
+                                                 source_method,
+                                                 core_display)) {
+                u32 target = sema_no_type();
+                if (!sema_resolve_type_node_ex(
+                        source_lexer,
+                        source_ast,
+                        source_sema,
+                        source_method->target_type_node_index,
+                        subst,
+                        &target)) {
+                    array_free(source_arg_types);
+                    return false;
+                }
+                Array(u32) params = NULL;
+                array_push(params, sema_add_pointer_type(source_sema, target));
+                u32 expected = sema_add_function_type(
+                    source_sema,
+                    params,
+                    sema_builtin_type(source_sema, STK_String));
+                array_free(params);
+                if (!sema_type_matches(source_sema, expected, fn_type_index) ||
+                    !sema_type_matches(source_sema, fn_type_index, expected)) {
+                    array_free(source_arg_types);
+                    return error_0304_type_mismatch(
+                        source_lexer->source,
+                        sema_node_span(source_lexer, source_fn_def),
+                        sema_type_name(
+                            source_lexer, source_sema, &temp_arena, expected),
+                        sema_type_name(source_lexer,
+                                       source_sema,
+                                       &temp_arena,
+                                       fn_type_index));
                 }
             }
             array_free(source_arg_types);
@@ -23340,8 +23434,28 @@ validate_type:
                     s("integer for an interpolation format"),
                     sema_type_name(lexer, sema, &temp_arena, part_type));
             }
-            if (sema_type_is_builtin_interpolatable(sema, part_type)) {
+            if (part->b) {
                 continue;
+            }
+            if (sema_type_is_builtin_interpolatable(sema, part_type)) {
+                bool custom_show = false;
+                for (u32 j = 0; j < array_count(sema->methods); ++j) {
+                    const SemaMethod* method = &sema->methods[j];
+                    if (method->is_trait_impl &&
+                        method->symbol_handle != U32_MAX &&
+                        string_eq(lex_symbol(lexer, method->symbol_handle),
+                                  s("show"))) {
+                        custom_show = true;
+                        break;
+                    }
+                }
+                // Primitive formatting needs no lazy trait import unless an
+                // explicit implementation could override it. C strings have
+                // a core implementation and must still discover that method.
+                if (!custom_show &&
+                    sema->types[part_type].kind != STK_Pointer) {
+                    continue;
+                }
             }
             // Imported Display implementations may be used without spelling
             // the trait name in this module, just like imported Eq methods.
@@ -23360,7 +23474,40 @@ validate_type:
             }
             u32 display_symbol =
                 sema_find_core_trait_symbol(lexer, sema, s("Display"));
+            if (display_symbol == sema_no_decl() &&
+                sema_type_is_builtin_interpolatable(sema, part_type)) {
+                continue;
+            }
             if (display_symbol != sema_no_decl()) {
+                InternAddResult ignored = {0};
+                u32  show  = lex_add_symbol((Lexer*)lexer, s("show"), &ignored);
+                bool found = false;
+                SemaResolvedMethodCall method = {0};
+                if (!sema_try_resolve_method_call(lexer,
+                                                  ast,
+                                                  sema,
+                                                  i,
+                                                  part_type,
+                                                  show,
+                                                  U32_MAX,
+                                                  display_symbol,
+                                                  0,
+                                                  false,
+                                                  &found,
+                                                  &method)) {
+                    return false;
+                }
+                if (found) {
+                    sema->node_method_call_decl_indices[i] = method.decl_index;
+                    sema->node_method_call_receiver_refs[i] =
+                        method.receiver_ref;
+                    sema->node_method_call_receiver_derefs[i] =
+                        method.receiver_deref;
+                    sema->node_lowered_symbol_handles[i] =
+                        method.lowered_symbol_handle;
+                    sema->node_type_indices[i] = method.fn_type_index;
+                    continue;
+                }
                 if (!sema_type_satisfies_trait_constraint(
                         lexer,
                         ast,

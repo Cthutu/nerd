@@ -1839,7 +1839,10 @@ internal void cgen_display(CGen* c, CValue value, u32 depth)
         const SemaType* fn = cgen_type(c, d->type_index);
         if (fn->kind != STK_Function || fn->param_count != 1 ||
             cgen_kind(c, fn->return_type) != STK_String ||
-            cgen_canonical(c, cgen_field_type(c, d->type_index, 0)) !=
+            cgen_kind(c, cgen_field_type(c, d->type_index, 0)) != STK_Pointer ||
+            cgen_canonical(c,
+                           cgen_type(c, cgen_field_type(c, d->type_index, 0))
+                               ->first_param_type) !=
                 cgen_canonical(c, value.type)) {
             continue;
         }
@@ -1850,7 +1853,7 @@ internal void cgen_display(CGen* c, CValue value, u32 depth)
         CValue text =
             cgen_temp(c,
                       fn->return_type,
-                      CF("%s(%s)",
+                      CF("%s(&%s)",
                          cgen_decl(c, c->module, method->decl_index, 0),
                          value.text));
         CGEN_OUT("nrt_string_builder_append_string(&%s);\n", text.text);
