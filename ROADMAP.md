@@ -73,6 +73,11 @@ completed plans remain in Git history.
 
 ## Compiler and tooling
 
+- Fix Windows C representation of nested zero-sized arrays, preserving logical
+  sizes, addresses, indexing and embedded/FFI layouts. The explicit `[2][0]Mob`
+  reproduction and observed Clang ABI limitation are in
+  [compiler issues](docs/compiler-issues.md#open-nested-zero-sized-array-representation-in-windows-c-output).
+
 - Improve semantic editor operations and harden incomplete/broken-import analysis;
   reproduce crashes with incremental-edit transcripts. Keep VS Code and Neovim
   integrations aligned. See [LSP](docs/lsp.md) and [editor support](docs/editor-support.md).

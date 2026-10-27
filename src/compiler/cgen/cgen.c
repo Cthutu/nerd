@@ -316,6 +316,14 @@ internal cstr cgen_zero(CGen* c, u32 t)
                 : 0;
         return CF("(%s){.tag=%lld}", cgen_ctype(c, t), (long long)tag);
     }
+    SemaTypeKind kind = cgen_kind(c, t);
+    if (kind == STK_Array || kind == STK_Plex || kind == STK_Union ||
+        kind == STK_Tuple) {
+        // An explicit scalar zero cannot initialise an empty array member.
+        // Clang's empty aggregate initializer also handles nested zero-sized
+        // arrays without changing their layout or adding dummy storage.
+        return CF("(%s){}", cgen_ctype(c, t));
+    }
     return CF("(%s){0}", cgen_ctype(c, t));
 }
 internal CValue cgen_temp(CGen* c, u32 t, cstr expr)

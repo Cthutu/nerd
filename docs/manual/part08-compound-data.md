@@ -65,6 +65,13 @@ at the first element, `.count` is the element count, and `.bytes` is the byte
 size of their element storage. For a `[N]T`, `.bytes` and `.size` are the same
 value, while `.count` is `N`.
 
+An array literal in an unannotated local can acquire its element type from later
+usage. A concrete slice parameter or record field supplies context for each
+`{ ... }` element, including through aliases and nested arrays. This determines
+the elements' types; it does not change the local array into an owning collection
+or extend its storage lifetime. A slice returned from a function must still
+refer to storage that remains alive after that function returns.
+
 ## Slices
 
 A slice is a view into contiguous storage. Slice types are written `[]T`.

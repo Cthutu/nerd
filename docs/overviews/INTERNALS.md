@@ -1,5 +1,18 @@
 # Internals
 
+Usage constraints include array literals. A concrete array/slice destination
+constrains literal element types recursively before local materialisation,
+including record fields, aliases and tuple projections. The temporary literal
+constraint table records a fixed-array type with the literal's own count, so
+slice context does not change a local's storage or ownership. Matching explicitly
+typed record literals also propagate their field context. Normal inference
+retains length, annotation, cast, field and range validation.
+
+C aggregate zero initialisers use `(type){}` rather than a scalar `{0}`, which
+Clang rejects for an empty array member. Enum initialisation retains its
+first-discriminant path. Windows C representation of nested zero-sized arrays
+remains open; see the reproduction in `docs/compiler-issues.md`.
+
 Interpolation expression lexing retains the opening brace and outstanding
 parenthesis/bracket origins for diagnostic 0110. A quote following a complete
 operand at the outer interpolation brace level diagnoses the unfinished field.

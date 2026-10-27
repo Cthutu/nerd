@@ -60,6 +60,16 @@ local aliases, address expressions, tuples, and nested literal fields. Declared
 field types then provide context for field values. Conflicting record types are
 errors; inference does not select a record merely by matching its field names.
 
+Concrete array and slice usages also supply element context through local array
+literal initialisers. For example, a returned record field of type `[]Mob` can
+determine `Mob` for the elements of a local `mobs := [{ ... }]`. Context passes
+through aliases, tuple projections, nested arrays, and both contextual and
+explicitly typed record literals. Empty arrays can acquire an element type in
+the same way. Unannotated local arrays retain their fixed length and inline
+storage; using them as slices borrows that storage and does not extend its
+lifetime. Explicit annotations/casts and incompatible element constraints remain
+checked normally.
+
 Context can also come from an explicit numeric cast in a later compound assignment.
 For example, `total := 0` followed by `total += value.as(u64)` infers `total`
 as `u64`; an untyped compound operand does not override the default by itself.

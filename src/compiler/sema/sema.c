@@ -19924,6 +19924,7 @@ internal u32 sema_usage_expr_type(SemaUsageInference* ctx, u32 index, u32 depth)
     case AK_BoolLiteral:
         return sema_builtin_type(sema, STK_Bool);
     case AK_Plex:
+    case AK_Array:
         return ctx->literals[index];
     case AK_AddressOf:
         {
@@ -20058,7 +20059,10 @@ internal bool sema_usage_constrain(SemaUsageInference* ctx,
         sema->types[expected].kind != STK_Tuple &&
         sema->types[expected].kind != STK_Plex &&
         sema->types[expected].kind != STK_Union &&
-        sema->types[expected].kind != STK_Pointer) {
+        sema->types[expected].kind != STK_Pointer &&
+        sema->types[expected].kind != STK_Array &&
+        sema->types[expected].kind != STK_Slice &&
+        sema->types[expected].kind != STK_DynamicArray) {
         return true;
     }
     const AstNode* node = &ast->nodes[index];
@@ -20133,8 +20137,57 @@ internal bool sema_usage_constrain(SemaUsageInference* ctx,
     if (path_count != 0) {
         return true;
     }
-    if (sema_local_value_is_contextual_plex_literal(
-            ast, sema, index, expected)) {
+    if (node->kind == AK_Array &&
+        (sema->types[expected].kind == STK_Array ||
+         sema->types[expected].kind == STK_Slice ||
+         sema->types[expected].kind == STK_DynamicArray)) {
+        u32 item       = sema->types[expected].first_param_type;
+        // A slice use supplies an element type, not a different owner or
+        // lifetime. Keep the literal's fixed length and inline local storage.
+        u32 array_type = sema_add_array_type(sema, item, node->b);
+        u32 prior      = ctx->literals[index];
+        if (prior != sema_no_type() && prior != array_type) {
+            return error_0304_type_mismatch(
+                ctx->lexer->source,
+                sema_node_span(ctx->lexer, node),
+                sema_type_name(ctx->lexer, sema, &temp_arena, prior),
+                sema_type_name(ctx->lexer, sema, &temp_arena, array_type));
+        }
+        if (prior == sema_no_type()) {
+            ctx->literals[index] = array_type;
+            ctx->changed         = true;
+        }
+        for (u32 i = 0; i < node->b; ++i) {
+            if (!sema_usage_constrain(ctx,
+                                      ast->tuple_items[node->a + i],
+                                      item,
+                                      NULL,
+                                      0,
+                                      depth + 1)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    bool contextual_record =
+        sema_local_value_is_contextual_plex_literal(ast, sema, index, expected);
+    if (!contextual_record && node->kind == AK_Plex &&
+        (sema->types[expected].kind == STK_Plex ||
+         sema->types[expected].kind == STK_Union)) {
+        const AstPlexLiteralInfo* literal = &ast->plex_literals[node->a];
+        if (literal->target_node_index != U32_MAX) {
+            u32 target = sema_no_type();
+            if (!sema_resolve_type_node(ctx->lexer,
+                                        ast,
+                                        sema,
+                                        literal->target_node_index,
+                                        &target)) {
+                return false;
+            }
+            contextual_record = target == expected;
+        }
+    }
+    if (contextual_record) {
         u32 prior = ctx->literals[index];
         if (prior != sema_no_type() && prior != expected) {
             return error_0304_type_mismatch(
@@ -20242,7 +20295,22 @@ internal bool sema_usage_has_local(const Ast* ast, const Sema* sema, u32 index)
         return sema_usage_has_local(ast, sema, node->a);
     case AK_Assign:
         return sema_usage_has_local(ast, sema, node->b);
+    case AK_Plex:
+        {
+            const AstPlexLiteralInfo* literal = &ast->plex_literals[node->a];
+            for (u32 i = 0; i < literal->field_count; ++i) {
+                if (sema_usage_has_local(
+                        ast,
+                        sema,
+                        ast->plex_literal_fields[literal->first_field + i]
+                            .value_node_index)) {
+                    return true;
+                }
+            }
+            return false;
+        }
     case AK_Tuple:
+    case AK_Array:
         for (u32 i = 0; i < node->b; ++i) {
             if (sema_usage_has_local(
                     ast, sema, ast->tuple_items[node->a + i])) {
@@ -20269,6 +20337,7 @@ sema_usage_needs_seed(SemaUsageInference* ctx, u32 index, u32 depth)
     const AstNode* node = &ast->nodes[index];
     switch (node->kind) {
     case AK_Plex:
+    case AK_Array:
         return ctx->literals[index] != sema_no_type();
     case AK_IntegerLiteral:
     case AK_FloatLiteral:
@@ -20395,7 +20464,10 @@ sema_seed_usage_context_local_types(const Lexer*           lexer,
                     sema->types[a].kind != STK_Tuple &&
                     sema->types[a].kind != STK_Plex &&
                     sema->types[a].kind != STK_Union &&
-                    sema->types[a].kind != STK_Pointer) {
+                    sema->types[a].kind != STK_Pointer &&
+                    sema->types[a].kind != STK_Array &&
+                    sema->types[a].kind != STK_Slice &&
+                    sema->types[a].kind != STK_DynamicArray) {
                     continue;
                 }
                 u32 b  = sema_usage_expr_type(&ctx, node->b, 0);

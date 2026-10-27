@@ -1,5 +1,42 @@
 # Compiler issues found during feature-test cleanup
 
+## Fixed: record-field context did not reach local array elements
+
+For a `World` with `mobs []Mob`, a local `mobs := [{ id: 1, name: "Bear" }]`
+followed by `return { mobs }` failed with an unknown plex type. Usage inference
+propagated record field context but stopped at arrays and slice destinations.
+It now carries element context through array literals and their local aliases,
+including tuple projections and nested arrays. Fixed-array storage/lifetimes
+remain unchanged: returning a slice of a local array still leaves a dangling
+view. The original shape is checked without executing that unsafe factory;
+runtime regressions keep borrowed arrays alive or return inline arrays by value.
+
+The C comparison exposed a pre-existing empty-array initializer bug: `{0}`
+cannot initialise a struct whose first member is a zero-length array. Aggregate
+zero initialisation now uses Clang's empty initializer extension, preserving
+the declared storage representation. Enum defaults
+continue to use their declared first discriminant.
+
+### Open: nested zero-sized array representation in Windows C output
+
+The following explicit-type probe passes LLVM, but generated Windows C is rejected:
+
+```nerd
+Mob :: plex { id u32 name string }
+main :: fn () {
+    values: [2][0]Mob
+    assert values.count == 2
+}
+```
+
+Clang's
+Microsoft ABI gives the zero-array wrapper size 4 and alignment 8, so it cannot
+be an array element. Packing/alignment experiments do not produce a true
+zero-sized record on this target. This needs a deliberate representation for
+zero-sized values and embedded fields, including `.size`, indexing, addresses
+and FFI layout; dummy bytes or a global ABI switch would change the contract.
+It is independent of contextual inference (the probe uses an explicit type).
+
 ## Fixed: a missing interpolation brace blamed a later string literal
 
 An interpolation such as `$"{count} location{plural(count), {other} mobs>"`

@@ -1,0 +1,12 @@
+=== case: returned-record-slice-element-context ===
+Mob :: plex { id u32 name string }
+Location :: plex { id u32 name string mobs []i32 }
+World :: plex { locations []Location mobs []Mob }
+-- Type checking does not extend the lifetime of the local arrays. This factory
+-- is deliberately not executed: its returned slices would outlive their storage.
+init_world :: fn () -> World {
+    mobs := [{ id: 1, name: "Bear" }, { id: 2, name: "Boar" }]
+    locations := [Location { id: 1, name: "Elwynn Forest", mobs: [1, 2] }]
+    return { locations, mobs }
+}
+main :: fn () {}
