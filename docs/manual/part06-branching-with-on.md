@@ -168,6 +168,9 @@ on point {
 branch-local name; `y` would bind the field as `y`. `name: _` ignores that field.
 `...` ignores every field not listed, and `as matched` binds the whole subject.
 The rules also apply inside nested plex patterns and named enum payload patterns.
+You can name the record type before the braces, such as `Point { x, y, name }`.
+This works as a branch head too; the subject type distinguishes it from an enum
+variant with a braced payload.
 
 Adding a field makes complete patterns require an update. Patterns ending with
 `...` continue to ignore the additional field. Even with `...`, listed fields

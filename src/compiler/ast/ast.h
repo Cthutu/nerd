@@ -398,8 +398,8 @@ typedef struct {
     u32            token_index;
     u32            a;
     u32            b;
-    u32            c;
-    bool has_rest; // Plex pattern explicitly ignores remaining fields.
+    u32            c; // Optional record type spelling, encoded as node + 1.
+    bool has_rest;    // Plex pattern explicitly ignores remaining fields.
 } AstPattern;
 
 typedef struct {

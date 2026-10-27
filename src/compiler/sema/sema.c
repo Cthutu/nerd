@@ -9067,6 +9067,10 @@ internal bool sema_resolve_pattern_refs(const Lexer* lexer,
         {
             const AstEnumPattern* enum_pattern =
                 &ast->enum_patterns[pattern->a];
+            if (pattern->c != 0) {
+                sema_mark_type_expr_nodes_in_scope(
+                    ast, sema, pattern->c - 1, scope_index);
+            }
             for (u32 i = 0; i < enum_pattern->pattern_count; ++i) {
                 if (!sema_resolve_pattern_refs(
                         lexer,
@@ -10087,6 +10091,10 @@ internal void sema_collect_pattern_deps(const Ast*  ast,
         {
             const AstEnumPattern* enum_pattern =
                 &ast->enum_patterns[pattern->a];
+            if (pattern->c != 0) {
+                sema_collect_node_deps(
+                    ast, sema, owner_decl_index, pattern->c - 1, out_sema);
+            }
             for (u32 i = 0; i < enum_pattern->pattern_count; ++i) {
                 sema_collect_pattern_deps(
                     ast,
@@ -18087,6 +18095,32 @@ internal bool sema_check_on_pattern_type(const Lexer* lexer,
                 &ast->enum_patterns[pattern->a];
             if (value_type == sema_no_type() ||
                 sema->types[value_type].kind != STK_Enum) {
+                if (value_type < array_count(sema->types) &&
+                    sema->types[value_type].kind == STK_Plex &&
+                    enum_pattern->braced_payload &&
+                    enum_pattern->pattern_count == 1 && pattern->c != 0) {
+                    u32 qualifier = sema_no_type();
+                    if (!sema_resolve_type_node(
+                            lexer, ast, sema, pattern->c - 1, &qualifier)) {
+                        return false;
+                    }
+                    if (qualifier != value_type) {
+                        return error_0304_type_mismatch(
+                            lexer->source,
+                            sema_node_span(lexer, &ast->nodes[pattern->c - 1]),
+                            sema_type_name(
+                                lexer, sema, &temp_arena, value_type),
+                            sema_type_name(
+                                lexer, sema, &temp_arena, qualifier));
+                    }
+                    return sema_check_on_pattern_type(
+                        lexer,
+                        ast,
+                        sema,
+                        ast->pattern_items[enum_pattern->first_pattern],
+                        value_type,
+                        false);
+                }
                 if (enum_pattern->braced_payload) {
                     return error_0304_type_mismatch(
                         lexer->source,

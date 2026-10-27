@@ -40,6 +40,11 @@ on value {
 Field shorthand parses as a nested pattern for the same field name. `field:
 pattern` uses an explicit nested pattern.
 
+A typed plex pattern is valid directly as a branch head as well as inside
+another pattern. The subject's type disambiguates a typed record head from the
+same braced syntax used for an enum payload. The record qualifier must resolve
+to the subject's record type.
+
 Every field must appear exactly once unless the pattern ends with `...`.
 The trailing marker ignores remaining fields; it can be followed by a comma,
 but no further fields or markers. Unknown and duplicate fields are errors even

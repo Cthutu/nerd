@@ -3384,6 +3384,20 @@ internal u32 hir_lower_pattern(Hir*         hir,
 
             const AstEnumPattern* enum_pattern =
                 &ast->enum_patterns[pattern->a];
+            if (pattern_index < array_count(sema->pattern_type_indices)) {
+                u32 type = sema->pattern_type_indices[pattern_index];
+                if (type < array_count(sema->types) &&
+                    sema->types[type].kind == STK_Plex &&
+                    enum_pattern->braced_payload &&
+                    enum_pattern->pattern_count == 1) {
+                    return hir_lower_pattern(
+                        hir,
+                        lexer,
+                        ast,
+                        sema,
+                        ast->pattern_items[enum_pattern->first_pattern]);
+                }
+            }
             Array(HirPatternChild) children = NULL;
             u32 child_count                 = enum_pattern->pattern_count;
             if (enum_pattern->braced_payload &&
