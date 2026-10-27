@@ -273,6 +273,40 @@ A public module binding, such as `pub child :: use api.internal`, is another
 way to re-export: callers then keep the additional qualification, as in
 `api.child.answer()`, instead of receiving `answer` directly through `api`.
 
+## Using standard-library modules
+
+Modules beyond `core` need an explicit import. For example, `std.crypt`
+provides `sha1`, whose digest implements `Display`:
+
+```nerd
+crypt :: use std.crypt
+
+main :: fn () {
+    digest := crypt.sha1("abc")
+    prn($"{digest}")
+}
+```
+
+This prints `A9993E364706816ABA3E25717850C26C9CD0D89D`. The digest's `show`
+method produces its hexadecimal text in the temporary arena, so the resulting
+string follows Chapter 14's lifetime rules. SHA-1 is a legacy hash; use this
+example to understand the module API, rather than for security-sensitive work.
+
+`std.system` provides synchronous desktop integration on Windows and Linux:
+
+| Functions | Result |
+| --- | --- |
+| `open_file()`, `save_file()`, `select_folder()` | A selected path as `string\SystemError`. |
+| `open_browser(url)`, `open_path(path)`, `open_explorer()` | Launch status as `void\SystemError`. |
+
+Import it with `system :: use std.system`, then call a qualified function such
+as `system.open_file()`. Handle its result with Chapter 10's error-handling
+forms. Dialog cancellation returns `SystemError.Cancelled`; it is distinct
+from a service failure. Dialog paths use the temporary arena by default, or
+the arena passed with the named `output_arena` argument. Desktop calls belong
+on the application's UI thread, and dialogs wait for user interaction.
+Process execution remains in `std.process`.
+
 ## Where modules are found
 
 Ordinary module lookup, including lookup of `core.n`, uses this order:

@@ -41,6 +41,36 @@ This prints `21 doubled is 42`. Calls, field access, arithmetic, and the other
 expressions already covered can supply the values. Each inserted expression
 is evaluated when the string is built.
 
+Every hole needs a closing `}`. If one is missing, the compiler points to its
+opening `{` so you can find the unfinished expression.
+
+## Integer formats
+
+Add a colon and a format inside a hole to choose an integer representation:
+
+```nerd
+main :: fn () {
+    value: u8 = 10
+    prn($"hex={value:02X}, binary={value:08b}, decimal={value:4d}")
+}
+```
+
+This prints `hex=0A, binary=00001010, decimal=  10`. A format has the form
+`[0][width][kind]`, where the bracketed parts are optional but at least one
+character must be present:
+
+| Part | Meaning |
+| --- | --- |
+| `0` | Pad with zeroes instead of spaces. |
+| `width` | Minimum field width, from 0 to 1024. Longer values are not truncated. |
+| `d`, `b`, `o`, `x`, `X` | Decimal, binary, octal, lowercase hex, uppercase hex. The default is decimal. |
+
+For example, `:x` selects hexadecimal without padding and `:04` selects
+zero-padded decimal. Signed values keep a minus sign in every base; it goes
+before zero padding. These formats work for compile-time and runtime integers.
+They do not support float precision, alignment, strings, or custom `Display`
+values. A formatted expression is still evaluated exactly once.
+
 ## Literal braces and continuations
 
 Escape literal braces with `\{` and `\}`:
@@ -75,13 +105,13 @@ not join automatically.
 ## Formatting your own types with `Display`
 
 For a custom type, implement the existing `Display` trait. Interpolation calls
-its `show` method and inserts the returned string:
+its `show` method with a borrowed pointer and inserts the returned string:
 
 ```nerd
 Point :: plex { x i32 y i32 }
 
 impl Display for Point {
-    show :: fn (self: Self) => $"({self.x}, {self.y})"
+    show :: fn (self: ^Self) => $"({self.x}, {self.y})"
 }
 
 main :: fn () {
@@ -93,6 +123,11 @@ main :: fn () {
 This prints `point=(3, 4)`. The `show` method can itself use interpolation;
 the outer interpolation incorporates that text into its own result.
 There is no need to print inside `show` or manually call it at the insertion.
+
+Interpolation borrows an addressable operand for `show`; for another expression,
+it evaluates the expression once into temporary storage. An explicit core
+`Display` implementation takes precedence over built-in structural formatting.
+The pointer receiver avoids copying a value merely to display it.
 
 Built-in formatting types also satisfy the core `Display` trait, so they can
 be passed to generic functions constrained by `Display`, as in Chapter 13.

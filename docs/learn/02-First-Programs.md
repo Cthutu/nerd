@@ -145,7 +145,8 @@ function results in larger expressions.
 
 For a block function that returns a value, write its return type explicitly.
 For one that returns no value, you can omit the return type, as in `greet`.
-Writing `-> void` explicitly has the same meaning.
+Writing `-> void` explicitly has the same meaning. Both forms can reach the
+closing brace without a `return`; a bare `return` exits early.
 
 ## Expression functions
 

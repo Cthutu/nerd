@@ -365,6 +365,11 @@ enough live elements for the supplied count. The cast does not establish that
 the count fits the original allocation. The slice must stay within the
 lifetime of that storage.
 
+If context supplies the slice type, you can omit the explicit type argument:
+`view: []i32 = pointer.as(2)`. The count is still required and has type
+`usize`; `pointer.as()` cannot invent a length. The source pointer and count
+are each evaluated once, in that order.
+
 ## Storage lifetime and ownership
 
 Taking the address of existing storage borrows it; addressing an intermediate

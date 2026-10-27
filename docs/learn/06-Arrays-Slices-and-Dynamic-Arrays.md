@@ -50,9 +50,9 @@ main :: fn () -> i32 {
 }
 ```
 
-This returns `42`. The inferred type is `[3]i32`: three elements, each an
-`i32`. Array indexing starts at zero, as in C. The last valid index is one less
-than the element count.
+This returns `42`. With no stronger context, the inferred type is `[3]i32`:
+three elements, each an `i32`. Array indexing starts at zero, as in C. The last
+valid index is one less than the element count.
 
 Write the length before the element type to declare it explicitly:
 
@@ -94,6 +94,36 @@ main :: fn () -> i32 {
 This returns `42`. The first index selects a row; the second selects an element
 of that row.
 
+## Element types from later uses
+
+Concrete uses can supply the element type of a local array literal, even
+when its declaration has no annotation:
+
+```nerd
+Point :: plex { x i32 y i32 }
+
+sum :: fn (points: []Point) -> i32 {
+    return points[0].x + points[0].y
+}
+
+main :: fn () -> i32 {
+    points := [{ x: 20, y: 22 }]
+    return sum(points)
+}
+```
+
+This returns `42`. The `[]Point` parameter determines the unnamed literal's
+type. `points` remains a fixed `[1]Point` array with inline storage; the call
+borrows it as a slice. Context can also pass through local aliases, tuple
+elements, nested arrays, and record fields. An empty local literal `[]` can
+obtain its element type from a concrete use too. Explicit annotations still
+apply, and incompatible element requirements are errors.
+
+Borrowing does not extend the array's lifetime. In particular, returning a
+record containing a slice of a local array leaves a dangling view. Return
+an inline fixed-array field or an owned dynamic array when the elements must
+survive the function.
+
 ## Creating a slice
 
 Use `[]T` for a slice type. Slicing an array creates a view of its existing
@@ -123,6 +153,37 @@ The end of a slice is exclusive. You can omit either bound:
 
 Slice bounds must describe a valid interval within the source. Slicing uses
 the exclusive `..` spelling, not `..=`.
+
+You can also cast an array to a matching-element slice with `values.as([]i32)`,
+or `view: []i32 = values.as()` when context supplies the type. These casts
+borrow the array's storage and use its own count, including for arrays whose
+lengths are chosen at runtime.
+
+## Assigning a range
+
+Assigning to an explicit slice writes its underlying elements. An element
+value fills the selected range; a matching slice or array copies elements:
+
+```nerd
+main :: fn () -> i32 {
+    values := [1, 2, 3, 4]
+    values[1..3] = 10
+    values[1..4] = values[..3]
+    return values[0] + values[1] + values[2] + values[3]
+}
+```
+
+This returns `22`. The fill makes `[1, 10, 10, 4]`; the overlapping copy then
+makes `[1, 1, 10, 10]`, preserving the original source elements during copying.
+Copying requires equal source and destination counts. Bounds and copy lengths
+are checked before writing, including in release builds. Each expression is
+evaluated once, in destination, bounds, then source order; even an empty range
+evaluates its right-hand side.
+
+This works with mutable arrays, slices, and dynamic arrays. If the right-hand
+side can itself be one element, filling takes priority, including for elements
+that are slices. Strings, compound assignments such as `values[..] += 1`, and
+elements containing noncopyable or atomic storage do not support range assignment.
 
 ## Counts and storage sizes
 
@@ -363,6 +424,38 @@ Capacity provides room for elements; it does not make those elements live.
 The array still starts with `.count` equal to zero. This capacity uses heap
 storage too, and requires the same `.free()` cleanup.
 
+## Copying an array or slice into owned storage
+
+When a `[..]T` destination is expected, a fixed array or a slice of `T` creates
+a fresh dynamic array containing a copy of its elements:
+
+```nerd
+main :: fn () -> i32 {
+    source := [20, 22]
+    values: [..]i32 = source
+    source[0] = 0
+    result := values[0] + values[1]
+    values.free()
+    return result
+}
+```
+
+This returns `42`. Changing the source leaves the new element storage unchanged.
+The conversion also works for assignment targets, record fields, function
+parameters, and declared returns. It evaluates the source once and sets the
+new count to the source count; an empty source produces an empty owned buffer.
+A function returning `[..]T` can therefore return a local fixed array: the
+elements are copied before that array's local storage expires.
+Element types must match: this does not perform a numeric conversion on each
+element. A generic `[..]T` parameter can infer `T` from an array or slice.
+
+The copy is shallow: pointers, slices, and dynamic-array handles inside elements
+still refer to their existing storage. The new allocation needs `.free()`.
+Assignment does not release a destination's previous buffer; free it before
+replacing it. Passing an array to a dynamic-array parameter creates owned
+storage too, so the receiving function must free it or pass that responsibility
+on. Dynamic-array-to-dynamic-array assignment still copies the handle.
+
 ## Capacity and count
 
 Reserving storage and adding elements are different operations:
@@ -467,7 +560,8 @@ Use `values[..].bytes` when you need the byte size of the live elements.
 
 Do not apply the fixed-array copying rule to dynamic arrays: a simple assignment
 does not duplicate the element allocation. To obtain independent storage, create
-another dynamic array and `.append` the source elements into it. Keep one clear
+another dynamic array and `.append` the source elements into it, or write
+`copy: [..]i32 = values[..]` to copy from a slice. Keep one clear
 cleanup responsibility for each owned allocation. Freeing array storage also
 does not automatically clean up resources owned separately by its elements.
 

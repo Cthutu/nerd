@@ -22,6 +22,7 @@ programs. Follow the chapter links for runnable examples and semantic rules.
 | `fn (arg :: Type)` | Compile-time value parameter. | [20](20-Compile-Time-Parameters-and-Macros.md) |
 | `fn { member_a member_b }` | Multi-function declaration; members normally occupy separate lines. | [16](16-Special-Function-Declarations.md) |
 | `fn (...) -> !` | Function that never returns. | [4](04-Variables-and-Scope.md) |
+| `value.as(Type)`, `value.as()` | Explicit conversion, with a named or contextual destination. | [3](03-Primitive-Types-and-Expressions.md) |
 
 ## Data and ownership
 
@@ -30,11 +31,15 @@ programs. Follow the chapter links for runnable examples and semantic rules.
 | `plex { field Type }`, `value with { field: expression }` | Record and updated copy. | [5](05-Plexes-Unions-Enums-and-Tuples.md) |
 | `plex #c { ... }`, `plex #packed { ... }` | Explicit layout choices. | [5](05-Plexes-Unions-Enums-and-Tuples.md) |
 | `union { field Type }`, `enum { Variant Variant(Type) }` | Shared storage or tagged alternatives. | [5](05-Plexes-Unions-Enums-and-Tuples.md) |
+| `union { plex { x i32 y i32 } bits u64 }` | Anonymous record members with promoted fields. | [5](05-Plexes-Unions-Enums-and-Tuples.md) |
 | `(left, right) := pair`, `{ x, y } := point` | Destructuring. | [5](05-Plexes-Unions-Enums-and-Tuples.md) |
 | `[N]T`, `[]T`, `[..]T` | Fixed array, borrowed slice, dynamic array. | [6](06-Arrays-Slices-and-Dynamic-Arrays.md) |
 | `values[start..end]`, `values[..]` | Borrowed slice with exclusive end. | [6](06-Arrays-Slices-and-Dynamic-Arrays.md) |
+| `values[start..end] = source` | Fill with one element or copy an equal-length slice; overlap is supported. | [6](06-Arrays-Slices-and-Dynamic-Arrays.md) |
+| `copy: [..]T = array_or_slice` | Fresh owned buffer containing a shallow element copy. | [6](06-Arrays-Slices-and-Dynamic-Arrays.md) |
 | `^T`, `^value`, `pointer^` | Pointer type, address, dereference. | [7](07-Pointers.md) |
 | `pointer.as([]T, count)` | Borrowed pointer/count view. | [7](07-Pointers.md) |
+| `view: []T = pointer.as(count)`, `view: []T = array.as()` | Contextual slice casts; pointers require a count. | [7](07-Pointers.md), [6](06-Arrays-Slices-and-Dynamic-Arrays.md) |
 | `box[T]()`, `box[T](count)`, `box[T](ptr)` | Allocate or adopt owned storage. | [18](18-Boxes-and-Ownership.md) |
 | `atomic[T]` | Atomic scalar storage. | [21](21-Atomic-Values.md) |
 | `?T`, `T\E`, `value!`, `expression?` | Optional, result, error injection, propagation. | [10](10-Optionals-Results-and-Error-Handling.md) |
@@ -50,6 +55,8 @@ programs. Follow the chapter links for runnable examples and semantic rules.
 | `break`, `again`, `return` | Exit a loop/block, repeat a loop, or exit a function. | [11](11-Loops.md), [4](04-Variables-and-Scope.md) |
 | `defer statement`, `undo statement` | Scope-exit or failure-only cleanup. | [10](10-Optionals-Results-and-Error-Handling.md) |
 | `impl Type { ... }`, `impl Trait for Type { ... }` | Inherent methods or trait implementation. | [13](13-Methods-and-Traits.md) |
+| `show :: fn (self: ^Self) -> string` | Required borrowed receiver for core `Display`. | [13](13-Methods-and-Traits.md) |
+| `$"{value:02X}"` | Integer interpolation with minimum width and base. | [14](14-String-Interpolation.md) |
 | `name :: use module`, `use module` | Qualified or direct imports. | [15](15-Modules.md) |
 | `use parent { child_a child_b }` | Grouped module imports. | [15](15-Modules.md) |
 | `pub name :: value` | Public declaration or re-export. | [15](15-Modules.md) |

@@ -147,6 +147,10 @@ This prints `chosen` and returns `42`. Type arguments can be inferred from
 the method's arguments or supplied after its name. The `storage.alloc[i32]()`
 calls from Chapter 8 use this explicit method-call syntax too.
 
+A helper function declared inside a method stays in that method's lexical
+scope. It does not become another member of the surrounding `impl`, so callers
+cannot access it as `value.helper()` or `Type.helper()`.
+
 ## Declaring and implementing a trait
 
 A trait names a set of required functions. A type implements the trait by
@@ -259,7 +263,7 @@ explains the module in more detail:
 
 | Trait | Required function | Language behavior |
 | --- | --- | --- |
-| `Display` | `show(self: Self) -> string` | Text representation, including errors returned from `main`. |
+| `Display` | `show(self: ^Self) -> string` | Text representation, including errors returned from `main`. |
 | `Eq` | `eq(self: Self, other: Self) -> bool` | Equality with `==` and `!=`. |
 | `Order` | `compare(self: Self, other: Self) -> i32` | Ordering with `<`, `<=`, `>`, and `>=`. |
 | `Default` | `default() -> Self` | Initialization of a typed local variable without an initializer. |
@@ -277,7 +281,7 @@ Implement `Display` to give a value a textual representation:
 Status :: enum { Ready Waiting }
 
 impl Display for Status {
-    show :: fn (self: Self) => on self {
+    show :: fn (self: ^Self) => on self^ {
         Ready => "ready"
         Waiting => "waiting"
     }
@@ -286,13 +290,20 @@ impl Display for Status {
 main :: fn () {
     status := Status.Waiting
     prn(status.show())
-    prn(Display.show(status))
+    prn(Display.show(^status))
 }
 ```
 
 This prints `waiting` twice. `show` returns a string; it does not print that
 string itself. `prn` performs the printing here. Strings and numbers already
 have built-in display support.
+
+The canonical `Display.show` requires a pointer receiver, `self: ^Self`.
+Receiver syntax such as `status.show()` supplies the address automatically;
+the explicit trait call uses `Display.show(^status)`. Field access through the
+pointer remains automatic, but matching the enum value requires `on self^`.
+This lets formatting borrow values, including types containing noncopyable
+arenas. A by-value `self: Self` implementation does not satisfy `Display`.
 
 Chapter 10 required `Display` for the error type of a result-returning `main`.
 Here is a complete implementation for a custom error:
@@ -301,7 +312,7 @@ Here is a complete implementation for a custom error:
 Failure :: enum { NotReady }
 
 impl Display for Failure {
-    show :: fn (self: Self) => on self {
+    show :: fn (self: ^Self) => on self^ {
         NotReady => "the system is not ready"
     }
 }
@@ -429,7 +440,7 @@ a particular trait. Add a `where` constraint:
 Status :: enum { Ready Waiting }
 
 impl Display for Status {
-    show :: fn (self: Self) => on self {
+    show :: fn (self: ^Self) => on self^ {
         Ready => "ready"
         Waiting => "waiting"
     }
@@ -438,7 +449,7 @@ impl Display for Status {
 Label :: plex { text string }
 
 impl Display for Label {
-    show :: fn (self: Self) => self.text
+    show :: fn (self: ^Self) => self.text
 }
 
 describe :: fn [T] (value: T) -> string

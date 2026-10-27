@@ -307,6 +307,28 @@ and precision in mind.
 Because `.as` binds more tightly than arithmetic, use parentheses to cast an
 entire calculation: `(2 + 3).as(f64)`. Writing `2 + 3.as(f64)` casts only `3`.
 
+When the destination is known from context, `.as()` can omit the type:
+
+```nerd
+widen :: fn (value: u8) -> u64 {
+    return value.as()
+}
+
+main :: fn () -> i32 {
+    small: u8 = 42
+    wide: u64 = small.as()
+    return (wide + widen(0)).as()
+}
+```
+
+This returns `42`. The annotation supplies `u64` for the first cast; each
+function's return annotation supplies its return cast's destination. Assignment
+targets, resolved function parameters, and typed aggregate elements also supply
+context, including through arithmetic operands. Conversion rules are identical
+to `.as(Type)`. Writing `wide := small.as()` without any other concrete context
+is an error. A contextual cast cannot determine an otherwise unknown generic
+type from its source; use an explicit type or let another argument establish it.
+
 ## Strings
 
 Double-quoted literals produce `string` values:

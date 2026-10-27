@@ -225,7 +225,7 @@ main :: fn () -> i32 {
 }
 ```
 
-This returns `42`. A union literal initialises exactly one field. Unlike a
+This returns `42`. This union literal initialises one alternative. Unlike a
 plex, it cannot hold independent values in all its fields simultaneously.
 Fields stored by value follow the same binding rule as plexes: use a variable
 when you intend to assign a union field, rather than a value bound with `::`.
@@ -255,6 +255,35 @@ compiler does not verify that the field you read matches the field last
 written. Use a union when overlapping storage is required and the program
 manages that interpretation. Use an enum when the value should track its
 active alternative.
+
+## Anonymous plex and union members
+
+A bare `plex { ... }` or `union { ... }` inside a record promotes its fields
+into the containing type:
+
+```nerd
+Value :: union {
+    plex { x i32 y i32 }
+    packed u64
+}
+
+main :: fn () -> i32 {
+    value := Value { x: 20, y: 22 }
+    return value.x + value.y
+}
+```
+
+This returns `42`. The anonymous plex is one union alternative: its `x` and
+`y` occupy separate storage within that alternative, while `packed` overlaps
+the whole group. A literal may initialise both `x` and `y`, but cannot also
+initialise `packed`. Reading the appropriate alternative remains the program's
+responsibility, as with other raw unions.
+
+Anonymous unions inside plexes similarly offer overlapping fields alongside
+the plex's other fields. Nesting can continue recursively; promoted names
+must remain unique. A literal supplies the fields required by its chosen
+alternative, or uses `...` to default omitted fields. Unlike `use Point`,
+an anonymous member does not name a separate type to extract by conversion.
 
 ## Enums without payloads
 
