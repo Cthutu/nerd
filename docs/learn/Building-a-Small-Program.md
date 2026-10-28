@@ -1,6 +1,6 @@
-# Part 12: Building A Small Program
+# Building a Small Program
 
-[Manual Index](README.md) | Previous: [Interoperability With C](part11-interoperability-with-c.md) | Next: [Diagnostics And Debugging](part13-diagnostics-and-debugging.md)
+[Learning guide](README.md)
 
 This part combines the earlier concepts into a small command-line text
 adventure. The goal is not to build a full game; it is to show how Nerd programs

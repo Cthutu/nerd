@@ -23,5 +23,7 @@ loader, formatter, and test harness where relevant.
 | [`tests.md`](tests.md)                               | Test formats and source-level `test` declarations.                                         |
 | [`implementation-notes.md`](implementation-notes.md) | Contributor notes about implementation boundaries.                                         |
 
-When code and manual disagree, preserve the code-derived fact in these specs and
-flag the manual inconsistency in the relevant document or change summary.
+When code and the [learning guide](../learn/README.md) disagree, preserve the
+code-derived observation in these specs and investigate the mismatch as a
+potential compiler bug or regression. Do not change the teaching contract just
+to match the current implementation.

@@ -5,8 +5,7 @@ Nerd is a small compiler toolchain and language server implemented in C.
 ## Repository Map
 
 - [docs/README.md](docs/README.md)
-  Developer documentation, manual, implementation-derived language specs, and
-  compiler subsystem notes.
+  Learning guide, language specs and compiler documentation.
 - [src/README.md](src/README.md)
   Main compiler and language-server implementation entry points.
 - [tests/README.md](tests/README.md)
@@ -21,8 +20,8 @@ Nerd is a small compiler toolchain and language server implemented in C.
 If you are new to the repository, read these in order:
 
 1. [docs/README.md](docs/README.md)
-   Documentation map for the manual, specs, compiler internals, standard library,
-   editor support and testing.
+   Documentation map for the learning guide, specs, compiler internals,
+   standard library, editor support and testing.
 2. [src/README.md](src/README.md)
    Compiler and language-server implementation entry points.
 3. [tests/README.md](tests/README.md)
@@ -56,7 +55,7 @@ stay ignored rather than becoming repository content.
 - Update or add tests for changed behaviour, including regression tests for
   discovered bugs.
 - Update affected documentation in the same change. For language changes, keep
-  the learner-facing manual under [docs/manual](docs/manual/README.md) and the
+  the learning guide under [docs/learn](docs/learn/README.md) and the
   implementation-derived specs under [docs/spec](docs/spec/README.md) aligned.
 - Prefer `just test` as the full gate; use focussed
   `python3 build/test.py --filter ...` runs while iterating.
@@ -82,7 +81,7 @@ stay ignored rather than becoming repository content.
 - Update [compiler internals](docs/overviews/INTERNALS.md) when changes affect
   compiler structure or behaviour.
 - Land language features across parsing, sema, HIR, LLVM/C, formatting, LSP,
-  tests and affected manual/spec documentation together. Record any deliberate
+  tests and affected learning/spec documentation together. Record any deliberate
   deferral in [open work](ROADMAP.md) before committing.
 - Prefer dense runtime tests grouped by feature with checked `prn` output.
   Exercise the real CLI when its behaviour changes. Passing tests should remove
@@ -110,11 +109,18 @@ Useful commands:
 ```sh
 just test
 just install
+just test-docs
+just dist
 python3 build/test_install.py --nerd _bin/nerd-debug
 python3 build/check_editor_integrations.py --nerd _bin/nerd-debug
 python3 build/build.py
 ./_bin/nerd --help
 ```
+
+Start learning Nerd with the [learning guide](docs/learn/README.md).
+`just dist` packages the compiler, learning guide, library, Scoop manifest and examples
+as `_dist/nerd.zip`; `just package` packages only the VS Code extension. See
+[distribution packaging](docs/distribution.md).
 
 LLVM backend status:
 

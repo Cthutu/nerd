@@ -1,15 +1,15 @@
-# Manual Style Guide
+# Learning Guide Style
 
 This document records the rules for writing and revising the learner-facing
-Nerd manual. Use it when adding new manual sections or reviewing existing parts.
+Nerd guide. Use it when adding new guide sections or reviewing existing parts.
 
 ## Goal
 
-The manual should teach the language from first principles. A reader should be
+The guide should teach the language from first principles. A reader should be
 able to move through the parts in order without needing to already know Nerd
 terminology.
 
-The manual is not a compiler implementation guide and is not the standard
+The guide is not a compiler implementation guide and is not the standard
 library reference.
 
 ## Teaching Order
@@ -45,7 +45,7 @@ when `call` has not been explained yet.
 - Define source-level terms from the reader's point of view.
 - Avoid compiler-internal terms unless they affect how source code behaves.
 - If a word has a precise Nerd meaning, do not use it loosely.
-- Use British spelling in manual text. Prefer forms such as `initialise`,
+- Use British spelling in guide text. Prefer forms such as `initialise`,
   `initialiser`, `uninitialised`, `behaviour`, and `optimisation`. Do not
   rewrite source syntax, API names, quoted output, or external names.
 
@@ -110,7 +110,7 @@ table as a compact reference.
 
 ## Standard Library
 
-The manual may use implicit core printing helpers for simple examples, especially `pr`
+The guide may use implicit core printing helpers for simple examples, especially `pr`
 and `prn`.
 
 When first used, explain only what the example needs:
@@ -119,8 +119,8 @@ When first used, explain only what the example needs:
 - `pr` prints without a newline.
 - `prn` prints with a newline.
 
-Do not document the full standard library API in the language manual. Use
-`docs/stdlib.md` for that.
+Do not document the full standard library API in the language guide. Use
+`../stdlib.md` for that.
 
 ## Review Comments
 
@@ -129,11 +129,11 @@ During review, comments may be added as paragraphs beginning with `//`.
 When addressing a review comment:
 
 1. Read the nearby section and the surrounding teaching order.
-2. Revise the manual text so the issue is actually handled.
+2. Revise the guide text so the issue is actually handled.
 3. Remove the original `//` comment.
 4. Search the edited part for remaining `//` comments before finishing.
 
-Do not leave review comments in user-facing manual parts.
+Do not leave review comments in user-facing guide parts.
 
 ## Part Checklist
 
@@ -144,5 +144,5 @@ Before considering a part ready:
 - Any deferred topic points to the later part that teaches it.
 - Tables are used for compact sets of forms where they improve scanning.
 - Standard library usage is kept incidental and clearly identified.
-- No test files are referenced from user-facing manual parts.
+- No test files are referenced from user-facing guide parts.
 - No review comments beginning with `//` remain.

@@ -1,12 +1,10 @@
 # Test features and teaching coverage
 
-The taxonomy follows [cthutu/nerd-docs](https://github.com/Cthutu/nerd-docs/tree/b7204cf1cab979bb5abcf31367ab14552d5ec259/docs/learn),
-reviewed from `/home/matt/nd` at `b7204cf1cab979bb5abcf31367ab14552d5ec259`.
-That checkout matches its fetched `origin/main`; it was read, not edited.
-Chapter numbers below refer to that revision. The teaching examples are the
-language reference for this review; compiler failures against valid examples
-must be reproduced, tracked and fixed. Current implementation behaviour alone
-does not establish the intended contract. The teaching checkout was not edited.
+The taxonomy follows the [learning guide](learn/README.md), imported from
+`cthutu/nerd-docs` with its history. Chapter numbers below refer to that guide.
+Teaching examples describe intended language behaviour. Compiler failures
+against valid examples must be reproduced, tracked and fixed; current
+implementation behaviour alone does not establish the intended contract.
 
 ## Feature taxonomy
 
@@ -103,35 +101,27 @@ There are no C exclusions for these cases. The [compiler issue record](compiler-
 contains reproductions, fixes and teaching-example verification. Literal embedded
 assets resolve against the fixture before C-test relocation.
 
-## Teaching coverage and contract discrepancies
+## Teaching coverage and documentation gaps
 
-These are specific differences at the pinned teaching revision, rather than
-claims that whole chapters are missing or that the teaching examples fail.
-The previously approved compiler extensions remain covered. References to
-implementation limitations are recorded separately from intended language
-rules; no changes were made to `nerd-docs`. See the issue record for direct
-execution of its existing verification programs.
+The earlier review compared teaching revision
+`b7204cf1cab979bb5abcf31367ab14552d5ec259` against the compiler. The imported
+guide includes subsequent teaching updates for scientific notation, tuple
+mutation, plex destructuring, nested/explicit generics, associated calls,
+Display, optional/result truthiness and box borrowing. Those old limitation
+notes are no longer current documentation gaps.
 
-| Category | Teaching location | Verified coverage / discrepancy to track |
+| Category | Teaching location | Remaining scope |
 | --- | --- | --- |
-| Limitation note differs | Ch. 3, numeric literals | Scientific forms `1e3`, `1e-3`, `1E+3` work; `primitives.t` checks contextual floats and malformed exponents are in `primitives.e`. The positive exponent probe passes. |
-| Limitation note differs | Ch. 5, tuple copying | Fields rooted in mutable tuple storage accept direct/compound assignment; `tuples.t` covers nested and pointer projections, `tuples.e` rejects immutable roots. |
-| Limitation note differs | Ch. 5, plex destructuring | Runtime lowering supports named, renamed and nested patterns; `records.t` covers single evaluation and box ownership transfer. The existing plex-destructuring verification programs also run successfully. |
-| Workaround note differs | Ch. 12, nested type applications | `Cell[Cell[i32]]` works directly, including qualified/nested positions; `generics.t` retains the original nested-application regression. An inner alias is optional. |
-| Limitation note differs | Ch. 12, several type parameters | Multiple explicit function arguments, including methods and qualified functions, parse; `generics.t` checks them. Malformed-list diagnostics remain checked. |
-| Workaround note differs | Ch. 13, generic implementation blocks | `Cell[i32].init(...)` and qualified applied receivers work; `generics.t` preserves the associated-call regression and both returned fields. |
-| Limitation note differs | Ch. 13, trait constraints | Canonical `Display` accepts built-in formatting types and supplies callable `.show()`. `traits.t` covers primitive and recursively built-in aggregate formatting. Custom-element aggregate synthesis remains outside this bridge. |
-| Condition boundary differs | Ch. 10, truthiness | Optionals/results work in `&&`/`||`, chains and guards; a present `no` tests presence. `branching.t` covers short-circuit effects; boolean assignments/parameters remain explicit and have negative tests. |
-| Missing convenience example | Ch. 18, several elements | Implicit `box[T]` to `[]T` borrowing is supported, in addition to the documented pointer conversion and explicit `.data` cast. `boxes.t` covers inference, nil/empty boxes, mutation, optional wrapping and owner lifetime boundaries. |
-| Advanced example gap | Ch. 12–13 | Erased callback specialization and inference through generic task/receiver shapes have tests in `generics.t`; the general generic-method chapter does not show these API patterns. Add focused examples rather than exposing internal specialization symbols. |
-| Library/API material outside chapter scope | No library API chapters | Raptor, Nexus, network, term/gfx/io smoke and lifecycle tests are API coverage, not missing language syntax. Keep their tutorial/reference backlog distinct from language gaps. |
-| Intentionally implementation/editor focused | No teaching requirement | HIR/LLVM identities, C parity, source locations, diagnostic JSON, completion edits and process/artifact cleanup need engineering docs and regressions, not a learner chapter for each assertion. |
+| Advanced example gap | Ch. 12–13 | Erased callback specialisation and generic task/receiver inference have compiler tests; the guide does not walk through those API patterns. |
+| Library/API learning material | Beyond the language chapters | Keep Raptor, Nexus and Kerberos tutorial work distinct from core language coverage; see [tutorials](tutorials/README.md). |
+| Engineering coverage | Developer docs | HIR/LLVM identities, C parity, source locations, diagnostic JSON, editor edits and process/artifact cleanup belong in engineering docs and regressions. |
+| Executable teaching coverage | Selected guide examples | `tests/docs/cases.json` retains the local teaching verification selection. It does not yet cover every runnable fence in every chapter. Fragments and intentional errors require explicit expectations before adding them. |
 
-The separate teaching checkout was not modified. Its broad coverage already
-includes bit fields/layout, runtime arrays, compound functions, default/named
-parameters, macros, compile-time parameters, source tests, atomics and advanced
-FFI; these are not classified as missing merely because their tests were formerly
-scattered across command fixtures.
+`build/test_docs.py` extracts the selected examples from their chapter and
+section, checks stdout/exit status or artifacts, and runs in both debug and
+release gates. It replaces the path-dependent local `_verify` scripts without
+checking in generated outputs. Known issue probes remain in the language and
+error feature suites; historical logs are not test oracles.
 
 ## Repository footprint and evidence
 

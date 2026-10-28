@@ -1,19 +1,19 @@
 # Developer Documentation
 
-This folder contains developer-facing documentation for the repository.
+This folder contains the learning guide, language specs and developer documentation.
 
 ## Source Of Truth
 
 Use [../ROADMAP.md](../ROADMAP.md) for open work and
 [contribution rules](../README.md#contribution-rules) for engineering guidance.
-Use the learner-facing [manual/README.md](manual/README.md) for source-level
+Use the [learning guide](learn/README.md) for source-level
 language behaviour and [spec/README.md](spec/README.md) for implementation-derived
 language facts.
 
 The other documents in this folder are implementation notes. Keep them when
 they describe compiler structure, subsystem ownership, diagnostics, tooling, or
-standard-library surface that is not already covered by the manual or specs.
-When one of these notes disagrees with the roadmap, manual, specs, tests, or
+standard-library surface that is not already covered by the learning guide or specs.
+When one of these notes disagrees with the roadmap, learning guide, specs, tests, or
 implementation, verify against the implementation and update the note before
 relying on it.
 
@@ -33,7 +33,7 @@ If you are new to the codebase, read these first:
 10. [testing.md](testing.md)
 
 If you are learning the Nerd language rather than the compiler implementation,
-start with [manual/README.md](manual/README.md). If you are
+start with [learn/README.md](learn/README.md). If you are
 validating the language against the implementation, use
 [spec/README.md](spec/README.md).
 
@@ -78,6 +78,8 @@ validating the language against the implementation, use
   VS Code and Neovim/LazyVim integration ownership and verification checklist.
 - [configuration.md](configuration.md)
   Project-level environment and compile-time define configuration.
+- [distribution.md](distribution.md)
+  Building a release archive containing the compiler, editor extension and learning material.
 - [testing.md](testing.md)
   Test file formats, runner behaviour, and practical workflow.
 
@@ -86,21 +88,21 @@ validating the language against the implementation, use
 - [Idiomatic Nerd](idiomatic-nerd.md)
   Project preferences for expressing decisions, values and shared error handling.
 
-The learner-facing manual lives under:
+The learning guide lives under:
 
-- [manual/README.md](manual/README.md)
+- [learn/README.md](learn/README.md)
 
 The implementation-derived language specs live under:
 
 - [spec/README.md](spec/README.md)
 
-Manual authoring guidance lives alongside the manual:
+Learning-guide authoring guidance lives alongside the chapters:
 
-- [manual/MANUAL-STYLE.md](manual/MANUAL-STYLE.md)
+- [learn/AUTHORING.md](learn/AUTHORING.md)
 
-Use the manual appendix for source-level syntax reference:
+Use the learning appendix for source-level syntax reference:
 
-- [manual/appendix-a-syntax-reference.md](manual/appendix-a-syntax-reference.md)
+- [learn/Appendix-A-Syntax-and-Pragmas.md](learn/Appendix-A-Syntax-and-Pragmas.md)
 
 Older language-design notes should not be added here unless they are still
 actively maintained. Retain outdated planning material only when the roadmap
@@ -113,7 +115,7 @@ explicitly keeps it visible.
 
 ## Maintenance
 
-Keep current behaviour in the manual, specs and subsystem docs, and open work in
+Keep current behaviour in the learning guide, specs and subsystem docs, and open work in
 [the roadmap](../ROADMAP.md).
 Completed audits, one-off repair reports and superseded handoffs belong in Git
 history. Keep reproducible validation tools, source provenance and current

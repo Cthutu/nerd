@@ -32,7 +32,7 @@ Read the project and documentation indexes first:
   LSP document state, partial front-end analysis, completion, hover, rename,
   and jump-to-definition behaviour.
 
-For language-surface changes, read [../docs/manual/README.md](../docs/manual/README.md)
+For language-surface changes, read [../docs/learn/README.md](../docs/learn/README.md)
 and [../docs/spec/README.md](../docs/spec/README.md) before editing source.
 
 `compiler/cgen/` is the optional HIR-to-C backend selected by `build --cgen`.

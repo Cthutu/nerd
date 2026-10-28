@@ -30,8 +30,8 @@ Follow the README's current Catching Up reading order. It currently points to:
 
 Read `docs/compiler-pipeline.md` for architectural contracts. For a concrete
 task, follow the relevant subsystem links and local instructions before editing.
-Language changes need the affected learner-facing manual and implementation-derived
-specs; compiler changes need the relevant internals. Avoid loading every manual
+Language changes need the affected learning guide and implementation-derived
+specs; compiler changes need the relevant internals. Avoid loading every learning
 chapter or historical validation record for an unrelated task.
 
 ## Establish the working state

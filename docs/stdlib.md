@@ -104,7 +104,7 @@ experimental until its dependencies and syntax surface are covered by the
 
 ## Documentation Policy
 
-- Keep core language rules in [language manual](manual/README.md).
+- Keep core language rules in [learning guide](learn/README.md).
 - Keep implementation notes in the existing compiler documentation.
 - Keep public standard library signatures, ownership notes, and examples here.
 - Mark unstable or experimental APIs clearly when this document becomes a fuller
@@ -301,7 +301,7 @@ return whole units. Constructors remain `from_secs`, `from_ms`, `from_us`, and
 
 ### `std.term`
 
-See the learner-facing [`std.term` manual](manual/std-term.md) for lifecycle,
+See the learner-facing [`std.term` manual](stdlib-term.md) for lifecycle,
 input, framebuffer, and capability examples.
 
 Framebuffer rectangle APIs keep positions signed so callers can draw partially

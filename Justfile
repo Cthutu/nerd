@@ -28,8 +28,16 @@ clean:
 format:
     python3 build/format.py
 
+# Package the compiler, learning guide, library, Scoop manifest and examples.
+dist *args:
+    python3 build/dist.py {{args}}
+
+test-docs *args: (build "nerd" "--skip-mod-sync")
+    python3 build/test_docs.py --nerd _bin/nerd-debug{{exe_suffix}} {{args}}
+
 test *args:
     python3 build/test_harness.py
+    python3 build/test_dist.py
     python3 build/test_clean.py
     python3 build/test_memory.py
     python3 build/test_runtime_threads.py
@@ -37,6 +45,7 @@ test *args:
     just build nerd --skip-mod-sync
     python3 build/test.py {{args}}
     python3 build/test_frame.py --nerd _bin/nerd-debug{{exe_suffix}}
+    python3 build/test_docs.py --nerd _bin/nerd-debug{{exe_suffix}}
     python3 tests/stdlib-capabilities/check_capabilities.py --compiler _bin/nerd-debug{{exe_suffix}}
     python3 build/test_std_thread_sync.py --nerd _bin/nerd-debug{{exe_suffix}}
     python3 build/test_std_thread_sync.py --nerd _bin/nerd-debug{{exe_suffix}} --cgen
@@ -60,6 +69,7 @@ test-release *args:
     python3 build/test_harness.py
     just build-release nerd --skip-mod-sync
     python3 build/test.py --nerd _bin/nerd{{exe_suffix}} {{args}}
+    python3 build/test_docs.py --nerd _bin/nerd{{exe_suffix}}
     python3 tests/stdlib-capabilities/check_capabilities.py --compiler _bin/nerd{{exe_suffix}}
     python3 build/test_std_thread_sync.py --nerd _bin/nerd{{exe_suffix}}
     python3 build/test_std_thread_sync.py --nerd _bin/nerd{{exe_suffix}} --cgen

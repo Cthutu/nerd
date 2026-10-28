@@ -842,7 +842,7 @@ buffer is required. These runtime checks are independent of release mode.
 ## Related Documents
 
 - [FORMAT.md](FORMAT.md) for formatter rules
-- [../manual/appendix-a-syntax-reference.md](../manual/appendix-a-syntax-reference.md)
+- [../learn/Appendix-A-Syntax-and-Pragmas.md](../learn/Appendix-A-Syntax-and-Pragmas.md)
   for the source-level syntax reference
 - [build-directives.md](build-directives.md) for build-system metadata
 # Atomics
