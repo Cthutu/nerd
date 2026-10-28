@@ -420,6 +420,9 @@ bool error_0343_duplicate_enum_variant(NerdSource source,
 bool error_0344_invalid_associated_function_return(NerdSource source,
                                                    ErrorSpan  span,
                                                    string     symbol);
+bool error_0344_unrelated_impl_function(NerdSource source,
+                                        ErrorSpan  span,
+                                        string     symbol);
 bool error_0345_discarded_value(NerdSource source,
                                 ErrorSpan  span,
                                 string     type_name);

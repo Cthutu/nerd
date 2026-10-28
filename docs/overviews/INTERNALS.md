@@ -357,6 +357,24 @@ For tests:
 
 ## Execution Flow
 
+Impl member collection recognises `Self` and a structurally identical spelling
+of the impl target in receiver and factory annotations. After bindings and
+dependency order are available, method classification resolves concrete aliases
+and checks record declaration origins across imports, rather than accepting
+unrelated records whose layouts have been interned together. Generic signatures
+retain syntax-level target relationships while concrete portions are resolved.
+Unrelated members fail at their declaration; trait signature diagnostics take
+precedence over the ownership check.
+
+Associated calls bind generic parameters from actual arguments before checking
+the substituted parameter types. Their two-pass argument scan handles ordinary
+arguments before contextual casts, and resolves the return during instantiation
+after those parameters are known.
+Factory target matching follows aliases to their defining declarations across
+modules, preventing a generic factory with an identical record layout from
+capturing an alias-qualified call. Method hover follows imported declaration
+metadata before rendering the signature in its defining module.
+
 The VS Code debug adapter associates child variable references with the parent
 stack frame, including references returned by aggregate evaluation and synthetic
 array/enum expansion. Nested dynamic-array fields therefore retain the frame

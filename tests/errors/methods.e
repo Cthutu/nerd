@@ -45,27 +45,26 @@ main :: fn () -> i32 {
 }
 ¬
 {
-  "message": "Impl function `init` cannot be called as an associated function",
-  "source_file": "tests/errors/methods.e",
-  "primary_location": {
-    "line": 14,
-    "column": 23
-  },
-  "references": [
-    {
-      "kind": "primary",
-      "line": 14,
-      "column": 23,
-      "length": 1,
-      "message": "`init` is called through a type, so its return type must contain `Self`"
-    }
-  ],
-  "notes": [],
-  "help": [
-    "Change the impl function return type to `Self`, `^Self`, or a type such as `?Self`, or call it through a receiver value."
-  ]
+    "message": "Impl function `init` has no receiver or return type related to the impl target",
+    "source_file": "tests/errors/methods.e",
+    "primary_location": {
+        "line": 8,
+        "column": 5
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 8,
+            "column": 5,
+            "length": 4,
+            "message": "The first parameter must be the impl target or a pointer to it, or the return type must contain it"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Use `Self` or the explicit target type for a receiver or factory return type, or move this function outside the impl block."
+    ]
 }
-
 ¬
 Counter :: plex {
     window_count i32
@@ -414,4 +413,232 @@ main :: fn () {
   "help": [
     "Call the method through a value, for example `value.get()`."
   ]
+}
+
+¬
+Thing :: plex { value i32 }
+impl Thing {
+    unrelated :: fn () -> i32 { return 1 }
+}
+main :: fn () => 0
+¬
+{
+    "message": "Impl function `unrelated` has no receiver or return type related to the impl target",
+    "source_file": "tests/errors/methods.e",
+    "primary_location": {
+        "line": 3,
+        "column": 5
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 3,
+            "column": 5,
+            "length": 9,
+            "message": "The first parameter must be the impl target or a pointer to it, or the return type must contain it"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Use `Self` or the explicit target type for a receiver or factory return type, or move this function outside the impl block."
+    ]
+}
+¬
+Thing :: plex { value i32 }
+Other :: plex { value i32 }
+impl Thing {
+    unrelated :: fn (_value: Other) -> Other { return { value: 1 } }
+}
+main :: fn () => 0
+¬
+{
+    "message": "Impl function `unrelated` has no receiver or return type related to the impl target",
+    "source_file": "tests/errors/methods.e",
+    "primary_location": {
+        "line": 4,
+        "column": 5
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 4,
+            "column": 5,
+            "length": 9,
+            "message": "The first parameter must be the impl target or a pointer to it, or the return type must contain it"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Use `Self` or the explicit target type for a receiver or factory return type, or move this function outside the impl block."
+    ]
+}
+¬
+Thing :: plex { value i32 }
+impl Thing {
+    unrelated :: fn (_number: i32, _value: Thing) -> i32 { return 1 }
+}
+main :: fn () => 0
+¬
+{
+    "message": "Impl function `unrelated` has no receiver or return type related to the impl target",
+    "source_file": "tests/errors/methods.e",
+    "primary_location": {
+        "line": 3,
+        "column": 5
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 3,
+            "column": 5,
+            "length": 9,
+            "message": "The first parameter must be the impl target or a pointer to it, or the return type must contain it"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Use `Self` or the explicit target type for a receiver or factory return type, or move this function outside the impl block."
+    ]
+}
+¬
+Thing :: plex { value i32 }
+impl Thing {
+    unrelated :: fn (_value: ^^Thing) -> i32 { return 1 }
+}
+main :: fn () => 0
+¬
+{
+    "message": "Impl function `unrelated` has no receiver or return type related to the impl target",
+    "source_file": "tests/errors/methods.e",
+    "primary_location": {
+        "line": 3,
+        "column": 5
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 3,
+            "column": 5,
+            "length": 9,
+            "message": "The first parameter must be the impl target or a pointer to it, or the return type must contain it"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Use `Self` or the explicit target type for a receiver or factory return type, or move this function outside the impl block."
+    ]
+}
+¬
+Box :: plex [T] { value T }
+impl [T] Box[T] {
+    unrelated :: fn () -> Box[i32] { return { value: 1 } }
+}
+main :: fn () => 0
+¬
+{
+    "message": "Impl function `unrelated` has no receiver or return type related to the impl target",
+    "source_file": "tests/errors/methods.e",
+    "primary_location": {
+        "line": 3,
+        "column": 5
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 3,
+            "column": 5,
+            "length": 9,
+            "message": "The first parameter must be the impl target or a pointer to it, or the return type must contain it"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Use `Self` or the explicit target type for a receiver or factory return type, or move this function outside the impl block."
+    ]
+}
+¬
+Thing :: plex { value i32 }
+impl Thing {
+    copy :: fn (value: Thing) -> Thing { return value }
+}
+main :: fn () { _value := Thing.copy(Thing { value: 1 }) }
+¬
+{
+    "message": "Receiver method `copy` cannot be called through a type",
+    "source_file": "tests/errors/methods.e",
+    "primary_location": {
+        "line": 5,
+        "column": 37
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 5,
+            "column": 37,
+            "length": 1,
+            "message": "`copy` requires a receiver value"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Call the method through a value, for example `value.copy()`."
+    ]
+}
+¬
+Thing :: plex { value i32 }
+Utility :: trait { unrelated :: fn () -> i32 }
+impl Utility for Thing {
+    unrelated :: fn () -> i32 { return 1 }
+}
+main :: fn () => 0
+¬
+{
+    "message": "Impl function `unrelated` has no receiver or return type related to the impl target",
+    "source_file": "tests/errors/methods.e",
+    "primary_location": {
+        "line": 4,
+        "column": 5
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 4,
+            "column": 5,
+            "length": 9,
+            "message": "The first parameter must be the impl target or a pointer to it, or the return type must contain it"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Use `Self` or the explicit target type for a receiver or factory return type, or move this function outside the impl block."
+    ]
+}
+¬
+one :: use test.impl_target_types
+two :: use test.impl_target_other
+impl one.Shape {
+    unrelated :: fn (_value: two.Shape) -> i32 { return 1 }
+}
+main :: fn () => 0
+¬
+{
+    "message": "Impl function `unrelated` has no receiver or return type related to the impl target",
+    "source_file": "tests/errors/methods.e",
+    "primary_location": {
+        "line": 4,
+        "column": 5
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 4,
+            "column": 5,
+            "length": 9,
+            "message": "The first parameter must be the impl target or a pointer to it, or the return type must contain it"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Use `Self` or the explicit target type for a receiver or factory return type, or move this function outside the impl block."
+    ]
 }

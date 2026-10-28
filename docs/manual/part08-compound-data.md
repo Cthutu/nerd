@@ -541,6 +541,20 @@ main :: fn () {
 }
 ```
 
+`Self` is shorthand for the impl target type. You can write the concrete target
+in signatures instead: inside `impl Counter`, `self: Counter` and
+`self: ^Counter` are receivers, and `-> Counter` is a factory return type.
+Aliases of that type work too. Existing wrapped factory returns such as
+`?Self` can likewise use the concrete target, such as `?Counter`.
+
+Every impl function must have one of those relationships to the target: its
+first parameter is the target or a pointer to it, or its declared return type
+contains the target. Unrelated helper functions belong outside the impl block;
+the compiler checks this even when the function is never called. A function
+with a receiver is called through a value, including when it also returns the
+target type. Generic factories infer their type arguments from the target and
+the supplied arguments, just as receiver methods do.
+
 Methods can be public inside a module:
 
 ```nerd

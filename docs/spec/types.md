@@ -185,6 +185,20 @@ Generic application uses square brackets on a type name, for example
 `Map[string, i32]`. Parser support permits an empty bracket list, but the useful
 language form is a non-empty type list.
 
+Impl function signatures must relate to the target type. A first parameter of
+the target type or a pointer to it makes a receiver method. Otherwise, a declared
+return type containing the target makes an associated factory. `Self`, the
+explicit target type, and aliases of that target are accepted consistently;
+generic target spellings retain their complete argument list. The existing
+pointer, optional/result, tuple and container forms containing `Self` also
+accept the explicit target. Unrelated functions are diagnosed at their
+declaration even if unused, including in trait implementations after signature
+validation. Layout equality with another record does not establish ownership.
+
+Associated factory calls infer generic parameters from arguments before
+validating their substituted signatures. Arguments requiring contextual casts
+are deferred until other arguments supply their types.
+
 ## Aggregate Forms
 
 | Form                   | Description                                                                      |

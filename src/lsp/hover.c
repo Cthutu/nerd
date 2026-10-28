@@ -2527,6 +2527,21 @@ internal string lsp_method_hover_text(const LspDocument* doc,
         return s("");
     }
 
+    if (decl->import_module_index != sema_no_decl() &&
+        decl->import_decl_index != sema_no_decl()) {
+        LspModuleView module = {0};
+        if (lsp_program_module_view(
+                &doc->program, decl->import_module_index, &module)) {
+            LspDocument module_doc     = *doc;
+            module_doc.source          = module.lexer->source.source;
+            module_doc.front_end.lexer = *module.lexer;
+            module_doc.front_end.ast   = *module.ast;
+            module_doc.front_end.sema  = *module.sema;
+            return lsp_method_hover_text(
+                &module_doc, arena, decl->import_decl_index);
+        }
+    }
+
     const SemaMethod* method = NULL;
     for (u32 i = 0; i < array_count(doc->front_end.sema.methods); ++i) {
         if (doc->front_end.sema.methods[i].decl_index == decl_index) {

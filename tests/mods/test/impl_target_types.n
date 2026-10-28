@@ -1,0 +1,15 @@
+pub Shape :: plex { value i32 }
+pub ShapeAlias :: Shape
+
+impl Shape {
+    pub make :: fn (value: i32) -> Shape { return { value } }
+    pub get :: fn (self: Shape) -> i32 { return self.value }
+    pub put :: fn (self: ^Shape, value: i32) { self.value = value }
+    pub generic_make :: fn [U] (_other: U) -> Shape { return { value: 14 } }
+}
+
+pub Box :: plex [T] { value T }
+impl [T] Box[T] {
+    pub make :: fn (value: T) -> Box[T] { return { value } }
+    pub get :: fn (self: Box[T]) -> T { return self.value }
+}

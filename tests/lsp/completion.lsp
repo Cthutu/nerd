@@ -754,6 +754,14 @@ main :: fn () {}
         "kind": 9
       },
       {
+        "label": "impl_target_other",
+        "kind": 9
+      },
+      {
+        "label": "impl_target_types",
+        "kind": 9
+      },
+      {
         "label": "imported_callback",
         "kind": 9
       },
