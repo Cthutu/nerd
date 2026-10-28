@@ -357,6 +357,12 @@ For tests:
 
 ## Execution Flow
 
+HIR assigns expression-body source locations to their synthesised return
+statements. LLVM uses the same statement marker path as explicit returns, so
+parameterless expression-bodied functions retain call and return locations.
+Missing call locations can make LLVM discard debug metadata for the entire
+combined module, including unrelated imported functions and the entry point.
+
 The formatter measures compact plex-literal candidates at their destination
 column before collapsing multiline input. Nested candidates are measured in a
 flat mode to avoid repeated recursive width measurement. Declaration grouping

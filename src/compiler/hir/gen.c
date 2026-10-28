@@ -4547,6 +4547,10 @@ internal u32 hir_lower_function_body(Hir*         hir,
                 return_type < array_count(sema->types) &&
                 sema->types[return_type].kind == STK_Enum &&
                 (sema->types[return_type].flags & (STF_Optional | STF_Result));
+            string source_path = {0};
+            u32    source_line = 0;
+            hir_node_source_location(
+                sema, lexer, ast, expr_node_index, &source_path, &source_line);
             u32 stmt_index = hir_add_stmt(
                 hir,
                 (HirStmt){
@@ -4567,6 +4571,8 @@ internal u32 hir_lower_function_body(Hir*         hir,
                                          ? return_type
                                          : hir_node_type(sema, expr_node_index),
                     .body_block_index = hir_no_index(),
+                    .source_line      = source_line,
+                    .source_path      = source_path,
                 });
             array_push(hir->blocks[block_index].stmt_indices, stmt_index);
             hir->blocks[block_index].stmt_count++;

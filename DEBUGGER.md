@@ -14,7 +14,10 @@ Windows native links select DWARF debug information with `/debug:dwarf`.
 
 Metadata describes compile units, module/part source paths, function names,
 statement locations, implicit-exit anchors, lexical scopes, parameters, locals
-and globals. Composite immutable locals have stack storage in debug builds so
+and globals. Implicit returns in expression-bodied functions retain the body's
+source location, including parameterless forwarding calls. LLVM requires those
+call locations to preserve debug information for the combined program.
+Composite immutable locals have stack storage in debug builds so
 LLDB can inspect strings, slices, fixed arrays, tuples and plexes. Source-facing
 function names are kept distinct from compiler-generated implementation names.
 
