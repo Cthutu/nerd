@@ -27,6 +27,10 @@ payloads. It retries dynamic-array `.count`, `.capacity` and `.data` watches
 using runtime-header expressions and reports unsupported Nerd-only forms.
 Native field access and indexing work where emitted types describe the storage.
 This is a supported subset of watch expressions, not a general Nerd evaluator.
+Nested records, array elements and enum payloads retain their stack-frame
+context when expanded, so dynamic-array fields use the same presentation as
+locals. Header reads account for the 32-byte aligned header before the payload:
+count is 24 bytes back and capacity is 16 bytes back.
 
 Linux smoke tools cover source breakpoints, imported modules and folder parts,
 step-over, call stacks, locals and watches using CodeLLDB's bundled LLDB.

@@ -109,6 +109,13 @@ console.log(JSON.stringify(result));
     if result.get("supportedNative") is not None:
         return fail("native watch expression was incorrectly rejected", json.dumps(result, indent=2))
 
+    nested_result = subprocess.run(
+        ["node", str(ROOT / "build" / "check_debugger_nested_variables.cjs")],
+        cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    )
+    if nested_result.returncode != 0:
+        return fail("nested debugger variable expansion failed", nested_result.stdout + nested_result.stderr)
+    print(nested_result.stdout.strip())
     print("debugger-adapter-transforms ok")
     return 0
 

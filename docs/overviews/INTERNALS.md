@@ -357,6 +357,12 @@ For tests:
 
 ## Execution Flow
 
+The VS Code debug adapter associates child variable references with the parent
+stack frame, including references returned by aggregate evaluation and synthetic
+array/enum expansion. Nested dynamic-array fields therefore retain the frame
+needed for header and element evaluation. Header watches and expansions share
+the padded native layout: count at payload minus 24 bytes, capacity minus 16.
+
 HIR assigns expression-body source locations to their synthesised return
 statements. LLVM uses the same statement marker path as explicit returns, so
 parameterless expression-bodied functions retain call and return locations.

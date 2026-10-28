@@ -141,8 +141,8 @@ def main() -> int:
         "expression bytes[2]",
         "expression slice.data[1]",
         "expression numbers[1]",
+        "expression numbers ? *((unsigned long long *)((char *)numbers - 24)) : 0",
         "expression numbers ? *((unsigned long long *)((char *)numbers - 16)) : 0",
-        "expression numbers ? *((unsigned long long *)((char *)numbers - 8)) : 0",
     ]
     lldb_cmd = [str(lldb), "--batch"]
     for command in commands:

@@ -570,8 +570,13 @@ function dynamicArrayHeaderWatchExpression(expression: string): string | undefin
         return base;
     }
 
-    const offset = field === "count" ? 16 : 8;
-    return `${base} ? *((unsigned long long *)((char *)${base} - ${offset})) : 0`;
+    return dynamicArrayHeaderValueExpression(base, field as "count" | "capacity");
+}
+
+function dynamicArrayHeaderValueExpression(base: string, field: "count" | "capacity"): string {
+    // The three-word header is padded to 32 bytes before the aligned payload.
+    const offset = field === "count" ? 24 : 16;
+    return `(${base}) ? *((unsigned long long *)((char *)(${base}) - ${offset})) : 0`;
 }
 
 function dynamicArrayWatchBaseName(expression: string): string | undefined {
@@ -1103,6 +1108,7 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
         let summary: PendingDynamicArraySummary | undefined;
         for (let index = 0; index < variables.length; ++index) {
             const variable = variables[index];
+            this.rememberVariableFrame(variable.variablesReference, frameId);
             const name = variable.name;
             const evaluateName = variable.evaluateName ?? name;
             if (!name || !evaluateName) {
@@ -1137,7 +1143,7 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
                         message.request_seq,
                         index,
                         "count",
-                        this.dynamicArrayHeaderExpression(dynamicArray, 2),
+                        this.dynamicArrayHeaderExpression(dynamicArray, "count"),
                         frameId
                     );
                     this.requestDynamicArraySummaryEvaluation(
@@ -1145,7 +1151,7 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
                         message.request_seq,
                         index,
                         "capacity",
-                        this.dynamicArrayHeaderExpression(dynamicArray, 1),
+                        this.dynamicArrayHeaderExpression(dynamicArray, "capacity"),
                         frameId
                     );
                 }
@@ -1341,6 +1347,7 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
         if (message.success === false) {
             return;
         }
+        this.rememberVariableFrame(message.body.variablesReference, request?.frameId);
 
         const type = message.body.type;
         const result = message.body.result;
@@ -1397,6 +1404,12 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
         }
 
         return false;
+    }
+
+    private rememberVariableFrame(reference: unknown, frameId: number | undefined) {
+        if (typeof reference === "number" && reference > 0 && frameId !== undefined) {
+            this.scopeFrames.set(reference, frameId);
+        }
     }
 
     private startSyntheticEnumExpansion(
@@ -1479,6 +1492,9 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
                     );
                 }
             } else if (pending.kind === "payload") {
+                this.rememberVariableFrame(
+                    body.variablesReference, expansion.syntheticEnum.frameId
+                );
                 expansion.payload = {
                     evaluateName: `${expansion.syntheticEnum.baseExpression}.payload`,
                     name: "payload",
@@ -1547,18 +1563,18 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
             this.requestSyntheticEvaluation(expansion, "count", `${array.baseExpression}.count`);
             this.requestSyntheticEvaluation(expansion, "data", `(void*)${array.baseExpression}.data`);
         } else {
-            this.requestSyntheticEvaluation(expansion, "count", this.dynamicArrayHeaderExpression(array, 2));
+            this.requestSyntheticEvaluation(expansion, "count", this.dynamicArrayHeaderExpression(array, "count"));
             this.requestSyntheticEvaluation(
                 expansion,
                 "capacity",
-                this.dynamicArrayHeaderExpression(array, 1)
+                this.dynamicArrayHeaderExpression(array, "capacity")
             );
             this.requestSyntheticEvaluation(expansion, "data", `(void*)${array.baseExpression}`);
         }
     }
 
-    private dynamicArrayHeaderExpression(array: SyntheticDynamicArray, offset: number): string {
-        return `((unsigned long long *)${array.baseExpression})[-${offset}]`;
+    private dynamicArrayHeaderExpression(array: SyntheticDynamicArray, field: "count" | "capacity"): string {
+        return dynamicArrayHeaderValueExpression(array.baseExpression, field);
     }
 
     private requestSyntheticEvaluation(
@@ -1616,6 +1632,7 @@ class NerdCodeLldbDebugAdapter implements vscode.DebugAdapter {
             } else if (pending.kind === "data") {
                 expansion.data = body.result as string | undefined;
             } else if (pending.kind === "item" && pending.itemIndex !== undefined) {
+                this.rememberVariableFrame(body.variablesReference, expansion.array.frameId);
                 const evaluateName =
                     expansion.array.kind === "slice"
                         ? `${expansion.array.baseExpression}.data[${pending.itemIndex}]`
