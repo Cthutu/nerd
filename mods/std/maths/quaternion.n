@@ -1,0 +1,151 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Hamilton quaternions for right-handed rotations. Multiplication composes
+-- rotations right operand first; all angles are measured in radians.
+
+-- A quaternion with vector part (x, y, z) and scalar part w.
+pub Quaternion :: plex [T] #c {
+    v Vec3[T]  -- Vector part (x, y, z).
+    w T        -- Scalar part.
+}
+
+impl [T] Quaternion[T] {
+
+    -- Returns the identity rotation; default zero storage is not a rotation.
+    pub identity :: fn () -> Self {
+        return { v: { x: 0 y: 0 z: 0 } w: 1 }
+    }
+
+    -- Returns the four-dimensional dot product.
+    pub dot :: fn (self: Self, other: Self) -> T {
+        return self.v.x * other.v.x + self.v.y * other.v.y + self.v.z * other.v.z + self.w * other.w
+    }
+
+    -- Returns the squared quaternion magnitude.
+    pub length_squared :: fn (self: Self) -> T {
+        return self.dot(self)
+    }
+
+    -- Returns the conjugate, which inverts a unit rotation.
+    pub conjugate :: fn (self: Self) -> Self {
+        return { v: { x: -self.v.x y: -self.v.y z: -self.v.z } w: self.w }
+    }
+
+    -- Returns the opposite representation of the same rotation.
+    pub negated :: fn (self: Self) -> Self {
+        return { v: { x: -self.v.x y: -self.v.y z: -self.v.z } w: -self.w }
+    }
+
+    -- Scales all four components without normalising.
+    pub scale :: fn (self: Self, factor: T) -> Self {
+        return { v: { x: self.v.x * factor y: self.v.y * factor z: self.v.z * factor } w: self.w * factor }
+    }
+
+    -- Returns the Hamilton product; other acts first on rotated vectors.
+    pub mul :: fn (self: Self, other: Self) -> Self {
+        return {
+            v: {
+                x : self.w * other.v.x + self.v.x * other.w + self.v.y * other.v.z - self.v.z * other.v.y
+                y : self.w * other.v.y - self.v.x * other.v.z + self.v.y * other.w + self.v.z * other.v.x
+                z : self.w * other.v.z + self.v.x * other.v.y - self.v.y * other.v.x + self.v.z * other.w
+            }
+            w: self.w * other.w - self.v.x * other.v.x - self.v.y * other.v.y - self.v.z * other.v.z
+        }
+    }
+
+    -- Returns a unit quaternion, or nil for zero or non-finite components.
+    pub normalised :: fn (self: Self) -> ?Self {
+        components := Vec4[T] { x: self.v.x y: self.v.y z: self.v.z w: self.w }
+        unit       := components.normalised()?
+
+        return { v: { x: unit.x y: unit.y z: unit.z } w: unit.w }
+    }
+
+    -- Returns a right-handed rotation about a finite, nonzero axis.
+    pub from_axis_angle :: fn (axis: Vec3[T], angle: T) -> ?Self {
+        on !is_finite(angle.as(f64)) => return nil
+        unit   := axis.normalised()?
+        half   := angle.as(f64) * 0.5
+        sine   := sin(half).as(T)
+        cosine := cos(half).as(T)
+
+        return { v: { x: unit.x * sine y: unit.y * sine z: unit.z * sine } w: cosine }
+    }
+
+    -- Rotates a vector, normalising first; nil rejects an invalid quaternion.
+    pub rotate :: fn (self: Self, value: Vec3[T]) -> ?Vec3[T] {
+        unit   := self.normalised()?
+        vector := Vec3[T] { x: unit.v.x y: unit.v.y z: unit.v.z }
+        twice  := vector.cross(value).scale(2)
+
+        return value.add(twice.scale(unit.w)).add(vector.cross(twice))
+    }
+
+    -- Converts to a column-major rotation matrix, or nil for invalid input.
+    pub to_mat3 :: fn (self: Self) -> ?Mat3[T] {
+        unit := self.normalised()?
+        xx   := unit.v.x * unit.v.x
+        yy   := unit.v.y * unit.v.y
+        zz   := unit.v.z * unit.v.z
+        xy   := unit.v.x * unit.v.y
+        xz   := unit.v.x * unit.v.z
+        yz   := unit.v.y * unit.v.z
+        wx   := unit.w * unit.v.x
+        wy   := unit.w * unit.v.y
+        wz   := unit.w * unit.v.z
+
+        return Mat3[T] {
+            c0 : { x: 1 - 2 * (yy + zz) y: 2 * (xy + wz) z: 2 * (xz - wy) }
+            c1 : { x: 2 * (xy - wz) y: 1 - 2 * (xx + zz) z: 2 * (yz + wx) }
+            c2 : { x: 2 * (xz + wy) y: 2 * (yz - wx) z: 1 - 2 * (xx + yy) }
+        }
+    }
+
+    -- Spherically interpolates along the shortest rotation arc; t may extrapolate.
+    pub slerp :: fn (self: Self, other: Self, t: T) -> ?Self {
+        on !is_finite(t.as(f64)) => return nil
+        left   := self.normalised()?
+        right  := other.normalised()?
+        cosine := left.dot(right)
+
+        on cosine.as(f64) < 0 => {
+            right  = right.negated()
+            cosine = -cosine
+        }
+        cosine = clamp(cosine.as(f64), 0.0, 1.0).as(T)
+        on cosine.as(f64) > 0.9995 => {
+            blended := Self {
+                v: {
+                    x : left.v.x + (right.v.x - left.v.x) * t
+                    y : left.v.y + (right.v.y - left.v.y) * t
+                    z : left.v.z + (right.v.z - left.v.z) * t
+                }
+                w: left.w + (right.w - left.w) * t
+            }
+            return blended.normalised()
+        }
+        angle       := acos(cosine.as(f64))
+        denominator := sin(angle)
+        first       := sin((1.0 - t.as(f64)) * angle) / denominator
+        second      := sin(t.as(f64) * angle) / denominator
+
+        blended := Self {
+            v: {
+                x : left.v.x * first.as(T) + right.v.x * second.as(T)
+                y : left.v.y * first.as(T) + right.v.y * second.as(T)
+                z : left.v.z * first.as(T) + right.v.z * second.as(T)
+            }
+            w: left.w * first.as(T) + right.w * second.as(T)
+        }
+        return blended.normalised()
+    }
+
+}
+
+-- Single-precision quaternion alias.
+pub QuaternionF32 :: Quaternion[f32]
+
+-- Double-precision quaternion alias.
+pub QuaternionF64 :: Quaternion[f64]

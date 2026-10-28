@@ -37,6 +37,7 @@ from the beginning.
 - [Building a small program](Building-a-Small-Program.md)
 - [Understanding diagnostics](Diagnostics-and-Debugging.md)
 - [Standard-library tutorials](../tutorials/README.md)
+- [Vectors, matrices and quaternions](../stdlib-maths.md)
 - [`std.term`](../stdlib-term.md)
 - [Toolchain setup](../toolchain.md) and [debugger support](../../DEBUGGER.md)
 

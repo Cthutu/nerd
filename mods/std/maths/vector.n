@@ -1,0 +1,284 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Generic vectors with component arithmetic and checked floating-point
+-- normalisation.
+
+-- A 2-component vector; use f32 or f64 for geometric operations.
+pub Vec2 :: plex [T] #c {
+    x T  -- X component.
+    y T  -- Y component.
+}
+
+impl [T] Vec2[T] {
+
+    -- Tests whether every component is finite.
+    pub is_finite :: fn (self: Self) -> bool {
+        return is_finite(self.x.as(f64)) && is_finite(self.y.as(f64))
+    }
+
+    -- Returns the zero vector.
+    pub zero :: fn () -> Self {
+        return Self { x: 0 y: 0 }
+    }
+
+    -- Returns the component-wise sum.
+    pub add :: fn (self: Self, other: Self) -> Self {
+        return Self { x: self.x + other.x y: self.y + other.y }
+    }
+
+    -- Returns the component-wise difference.
+    pub sub :: fn (self: Self, other: Self) -> Self {
+        return Self { x: self.x - other.x y: self.y - other.y }
+    }
+
+    -- Returns the additive inverse.
+    pub negated :: fn (self: Self) -> Self {
+        return Self { x: -self.x y: -self.y }
+    }
+
+    -- Multiplies each component by a scalar.
+    pub scale :: fn (self: Self, factor: T) -> Self {
+        return Self { x: self.x * factor y: self.y * factor }
+    }
+
+    -- Divides each component; the caller must supply a nonzero divisor.
+    pub divide :: fn (self: Self, divisor: T) -> Self {
+        return Self { x: self.x / divisor y: self.y / divisor }
+    }
+
+    -- Returns the dot product.
+    pub dot :: fn (self: Self, other: Self) -> T {
+        return self.x * other.x + self.y * other.y
+    }
+
+    -- Returns squared Euclidean length.
+    pub length_squared :: fn (self: Self) -> T {
+        return self.dot(self)
+    }
+
+    -- Returns Euclidean length for floating-point components.
+    pub length :: fn (self: Self) -> T {
+        return sqrt(self.length_squared().as(f64)).as(T)
+    }
+
+    -- Returns a unit vector, or nil for zero or non-finite input.
+    pub normalised :: fn (self: Self) -> ?Self {
+        on !self.is_finite() => return nil
+        magnitude := max(abs(self.x.as(f64)), abs(self.y.as(f64)))
+        on magnitude <= 0 || !is_finite(magnitude.as(f64)) => return nil
+        unit := self.divide(magnitude.as(T))
+        return unit.divide(unit.length())
+    }
+
+    -- Interpolates components; t outside [0, 1] extrapolates.
+    pub lerp :: fn (self: Self, other: Self, t: T) -> Self {
+        return self.add(other.sub(self).scale(t))
+    }
+
+    -- Returns the signed two-dimensional cross product.
+    pub cross :: fn (self: Self, other: Self) -> T {
+        return self.x * other.y - self.y * other.x
+    }
+
+}
+
+-- f32 vector alias.
+pub Vec2F32 :: Vec2[f32]
+
+-- f64 vector alias.
+pub Vec2F64 :: Vec2[f64]
+
+-- A 3-component vector; use f32 or f64 for geometric operations.
+pub Vec3 :: plex [T] #c {
+    x T  -- X component.
+    y T  -- Y component.
+    z T  -- Z component.
+}
+
+impl [T] Vec3[T] {
+
+    -- Returns +X, the right direction.
+    pub right :: fn () -> Self {
+        return { x: 1 y: 0 z: 0 }
+    }
+    -- Returns +Y, the forward direction along the XY ground plane.
+    pub forward :: fn () -> Self {
+        return { x: 0 y: 1 z: 0 }
+    }
+    -- Returns +Z, the up direction.
+    pub up :: fn () -> Self {
+        return { x: 0 y: 0 z: 1 }
+    }
+
+    -- Tests whether every component is finite.
+    pub is_finite :: fn (self: Self) -> bool {
+        return is_finite(self.x.as(f64)) && is_finite(self.y.as(f64)) && is_finite(self.z.as(f64))
+    }
+
+    -- Returns the zero vector.
+    pub zero :: fn () -> Self {
+        return Self { x: 0 y: 0 z: 0 }
+    }
+
+    -- Returns the component-wise sum.
+    pub add :: fn (self: Self, other: Self) -> Self {
+        return Self { x: self.x + other.x y: self.y + other.y z: self.z + other.z }
+    }
+
+    -- Returns the component-wise difference.
+    pub sub :: fn (self: Self, other: Self) -> Self {
+        return Self { x: self.x - other.x y: self.y - other.y z: self.z - other.z }
+    }
+
+    -- Returns the additive inverse.
+    pub negated :: fn (self: Self) -> Self {
+        return Self { x: -self.x y: -self.y z: -self.z }
+    }
+
+    -- Multiplies each component by a scalar.
+    pub scale :: fn (self: Self, factor: T) -> Self {
+        return Self { x: self.x * factor y: self.y * factor z: self.z * factor }
+    }
+
+    -- Divides each component; the caller must supply a nonzero divisor.
+    pub divide :: fn (self: Self, divisor: T) -> Self {
+        return Self { x: self.x / divisor y: self.y / divisor z: self.z / divisor }
+    }
+
+    -- Returns the dot product.
+    pub dot :: fn (self: Self, other: Self) -> T {
+        return self.x * other.x + self.y * other.y + self.z * other.z
+    }
+
+    -- Returns squared Euclidean length.
+    pub length_squared :: fn (self: Self) -> T {
+        return self.dot(self)
+    }
+
+    -- Returns Euclidean length for floating-point components.
+    pub length :: fn (self: Self) -> T {
+        return sqrt(self.length_squared().as(f64)).as(T)
+    }
+
+    -- Returns a unit vector, or nil for zero or non-finite input.
+    pub normalised :: fn (self: Self) -> ?Self {
+        on !self.is_finite() => return nil
+        magnitude := max(max(abs(self.x.as(f64)), abs(self.y.as(f64))),
+                         abs(self.z.as(f64)))
+        on magnitude <= 0 || !is_finite(magnitude.as(f64)) => return nil
+        unit := self.divide(magnitude.as(T))
+        return unit.divide(unit.length())
+    }
+
+    -- Interpolates components; t outside [0, 1] extrapolates.
+    pub lerp :: fn (self: Self, other: Self, t: T) -> Self {
+        return self.add(other.sub(self).scale(t))
+    }
+
+    -- Returns the right-handed cross product: X cross Y is Z.
+    pub cross :: fn (self: Self, other: Self) -> Self {
+        return Self { x: self.y * other.z - self.z * other.y y: self.z * other.x - self.x * other.z z: self.x * other.y - self.y * other.x }
+    }
+
+    -- Adds a homogeneous component; use 1 for positions and 0 for directions.
+    pub extend :: fn (self: Self, w: T) -> Vec4[T] {
+        return Vec4[T] { x: self.x y: self.y z: self.z w }
+    }
+
+}
+
+-- f32 vector alias.
+pub Vec3F32 :: Vec3[f32]
+
+-- f64 vector alias.
+pub Vec3F64 :: Vec3[f64]
+
+-- A 4-component vector; use f32 or f64 for geometric operations.
+pub Vec4 :: plex [T] #c {
+    x T  -- X component.
+    y T  -- Y component.
+    z T  -- Z component.
+    w T  -- W component.
+}
+
+impl [T] Vec4[T] {
+
+    -- Tests whether every component is finite.
+    pub is_finite :: fn (self: Self) -> bool {
+        return is_finite(self.x.as(f64)) && is_finite(self.y.as(f64)) && is_finite(self.z.as(f64)) && is_finite(self.w.as(f64))
+    }
+
+    -- Returns the zero vector.
+    pub zero :: fn () -> Self {
+        return Self { x: 0 y: 0 z: 0 w: 0 }
+    }
+
+    -- Returns the component-wise sum.
+    pub add :: fn (self: Self, other: Self) -> Self {
+        return Self { x: self.x + other.x y: self.y + other.y z: self.z + other.z w: self.w + other.w }
+    }
+
+    -- Returns the component-wise difference.
+    pub sub :: fn (self: Self, other: Self) -> Self {
+        return Self { x: self.x - other.x y: self.y - other.y z: self.z - other.z w: self.w - other.w }
+    }
+
+    -- Returns the additive inverse.
+    pub negated :: fn (self: Self) -> Self {
+        return Self { x: -self.x y: -self.y z: -self.z w: -self.w }
+    }
+
+    -- Multiplies each component by a scalar.
+    pub scale :: fn (self: Self, factor: T) -> Self {
+        return Self { x: self.x * factor y: self.y * factor z: self.z * factor w: self.w * factor }
+    }
+
+    -- Divides each component; the caller must supply a nonzero divisor.
+    pub divide :: fn (self: Self, divisor: T) -> Self {
+        return Self { x: self.x / divisor y: self.y / divisor z: self.z / divisor w: self.w / divisor }
+    }
+
+    -- Returns the dot product.
+    pub dot :: fn (self: Self, other: Self) -> T {
+        return self.x * other.x + self.y * other.y + self.z * other.z + self.w * other.w
+    }
+
+    -- Returns squared Euclidean length.
+    pub length_squared :: fn (self: Self) -> T {
+        return self.dot(self)
+    }
+
+    -- Returns Euclidean length for floating-point components.
+    pub length :: fn (self: Self) -> T {
+        return sqrt(self.length_squared().as(f64)).as(T)
+    }
+
+    -- Returns a unit vector, or nil for zero or non-finite input.
+    pub normalised :: fn (self: Self) -> ?Self {
+        on !self.is_finite() => return nil
+        magnitude := max(max(max(abs(self.x.as(f64)), abs(self.y.as(f64))), abs(self.z.as(f64))),
+                         abs(self.w.as(f64)))
+        on magnitude <= 0 || !is_finite(magnitude.as(f64)) => return nil
+        unit := self.divide(magnitude.as(T))
+        return unit.divide(unit.length())
+    }
+
+    -- Interpolates components; t outside [0, 1] extrapolates.
+    pub lerp :: fn (self: Self, other: Self, t: T) -> Self {
+        return self.add(other.sub(self).scale(t))
+    }
+
+    -- Returns the first three components without perspective division.
+    pub xyz :: fn (self: Self) -> Vec3[T] {
+        return Vec3[T] { x: self.x y: self.y z: self.z }
+    }
+
+}
+
+-- f32 vector alias.
+pub Vec4F32 :: Vec4[f32]
+
+-- f64 vector alias.
+pub Vec4F64 :: Vec4[f64]

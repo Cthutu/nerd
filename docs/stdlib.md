@@ -198,6 +198,10 @@ double quotes; plain arguments such as `/C` are passed without quotes.
 
 ### `std.maths`
 
+See [maths](stdlib-maths.md) for vectors, matrices, quaternions and the
+right-handed XY-ground/+Z-up convention. The API remains one folder module;
+constants, trigonometry, rectangles and geometry live in separate source parts.
+
 - `pi`
   Untyped floating-point literal for the circle constant.
 - `sin(value: f64) -> f64`

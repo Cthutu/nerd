@@ -1,0 +1,91 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Trigonometry in radians, backed by the host mathematical runtime.
+
+on "linux" {
+
+    math_library :: "m"
+    -- C runtime sin binding.
+    math_sin :: ffi math_library sin (value: f64) -> f64
+    -- C runtime cos binding.
+    math_cos :: ffi math_library cos (value: f64) -> f64
+    -- C runtime tan binding.
+    math_tan :: ffi math_library tan (value: f64) -> f64
+    -- C runtime asin binding.
+    math_asin :: ffi math_library asin (value: f64) -> f64
+    -- C runtime acos binding.
+    math_acos :: ffi math_library acos (value: f64) -> f64
+    -- C runtime atan2 binding.
+    math_atan2 :: ffi math_library atan2 (y: f64, x: f64) -> f64
+    -- C runtime square-root binding.
+    math_sqrt :: ffi math_library sqrt (value: f64) -> f64
+
+}
+
+on "windows" {
+
+    math_library :: "ucrtbase"
+    -- C runtime sin binding.
+    math_sin :: ffi math_library sin (value: f64) -> f64
+    -- C runtime cos binding.
+    math_cos :: ffi math_library cos (value: f64) -> f64
+    -- C runtime tan binding.
+    math_tan :: ffi math_library tan (value: f64) -> f64
+    -- C runtime asin binding.
+    math_asin :: ffi math_library asin (value: f64) -> f64
+    -- C runtime acos binding.
+    math_acos :: ffi math_library acos (value: f64) -> f64
+    -- C runtime atan2 binding.
+    math_atan2 :: ffi math_library atan2 (y: f64, x: f64) -> f64
+    -- C runtime square-root binding.
+    math_sqrt :: ffi math_library sqrt (value: f64) -> f64
+
+}
+
+-- Returns the sine of an angle in radians.
+pub sin :: fn (value: f64) -> f64 {
+    return math_sin(value)
+}
+
+-- Returns the cosine of an angle in radians.
+pub cos :: fn (value: f64) -> f64 {
+    return math_cos(value)
+}
+
+-- Returns the tangent of an angle in radians.
+pub tan :: fn (value: f64) -> f64 {
+    return math_tan(value)
+}
+
+-- Returns the inverse sine in radians; inputs must be in [-1, 1].
+pub asin :: fn (value: f64) -> f64 {
+    return math_asin(value)
+}
+
+-- Returns the inverse cosine in radians; inputs must be in [-1, 1].
+pub acos :: fn (value: f64) -> f64 {
+    return math_acos(value)
+}
+
+-- Returns the angle of (x, y) in radians, using both signs.
+pub atan2 :: fn (y: f64, x: f64) -> f64 {
+    return math_atan2(y, x)
+}
+
+-- Converts degrees to radians.
+pub radians :: fn (value: f64) -> f64 {
+    return value * pi / 180.0
+}
+
+-- Converts radians to degrees.
+pub degrees :: fn (value: f64) -> f64 {
+    return value * 180.0 / pi
+}
+
+test "trigonometric functions use radians" {
+    assert math_near(sin(pi / 2.0), 1.0)
+    assert math_near(cos(pi), -1.0)
+    assert math_near(tan(pi / 4.0), 1.0)
+}

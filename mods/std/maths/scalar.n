@@ -1,0 +1,53 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Scalar arithmetic and floating-point helpers.
+
+-- Returns the square root; negative inputs produce NaN.
+pub sqrt :: fn (value: f64) -> f64 {
+    return math_sqrt(value)
+}
+
+-- Returns the absolute value.
+pub abs :: fn (value: f64) -> f64 {
+    return on value < 0 => -value else value
+}
+
+-- Returns the smaller value.
+pub min :: fn (left: f64, right: f64) -> f64 {
+    return on left < right => left else right
+}
+
+-- Returns the larger value.
+pub max :: fn (left: f64, right: f64) -> f64 {
+    return on left > right => left else right
+}
+
+-- Restricts a value to an inclusive, ordered interval.
+pub clamp :: fn (value: f64, low: f64, high: f64) -> f64 {
+    return min(max(value, low), high)
+}
+
+-- Linearly interpolates; t outside [0, 1] extrapolates.
+pub lerp :: fn [T] (left: T, right: T, t: T) -> T {
+    return left + (right - left) * t
+}
+
+-- Tests whether a floating-point value is finite.
+pub is_finite :: fn (value: f64) -> bool {
+    return value >= -1.7976931348623157e308 && value <= 1.7976931348623157e308
+}
+
+-- Returns true when two floating-point values are close enough for tests.
+math_near :: fn (left: f64, right: f64) -> bool {
+    difference := left - right
+    on difference < 0.0 => difference = -difference
+    return difference < 0.000000000001
+}
+
+test "pi is an untyped float literal" {
+    value : f64 = pi
+
+    assert math_near(value, 3.141592653589793)
+}

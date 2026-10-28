@@ -1,0 +1,38 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Source-level contracts for scalar helpers and the geometric convention.
+
+test "maths scalar helpers and angle conversions" {
+    assert abs(-3.0) == 3.0
+    assert min(2.0, 3.0) == 2.0
+    assert max(2.0, 3.0) == 3.0
+    assert clamp(5.0, 1.0, 4.0) == 4.0
+    assert lerp(2.0, 4.0, 0.5) == 3.0
+    assert math_near(radians(180.0), pi)
+    assert math_near(degrees(half_pi), 90.0)
+    assert math_near(sqrt(9.0), 3.0)
+    assert math_near(asin(1.0), half_pi)
+    assert math_near(acos(-1.0), pi)
+    assert math_near(atan2(1.0, 0.0), half_pi)
+}
+
+test "maths right forward up form a right-handed basis" {
+    right   := Vec3F64.right()
+    forward := Vec3F64.forward()
+    up      := Vec3F64.up()
+
+    assert right.cross(forward) == up
+    assert forward.cross(up) == right
+    assert up.cross(right) == forward
+}
+
+test "maths positive rotation about up turns right towards forward" {
+    rotation := QuaternionF64.from_axis_angle(Vec3F64.up(), half_pi) \ QuaternionF64.identity()
+    turned   := rotation.rotate(Vec3F64.right()) \ Vec3F64.zero()
+
+    assert math_near(turned.x, 0.0)
+    assert math_near(turned.y, 1.0)
+    assert math_near(turned.z, 0.0)
+}

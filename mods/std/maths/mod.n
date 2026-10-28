@@ -1,0 +1,12 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Shared mathematical constants. Sibling files are parts of std.maths. Geometry
+-- is right-handed: XY ground, +X right, +Y forward and +Z up. Angles are
+-- radians; matrices store columns and act on column vectors.
+
+pub pi      :: 3.14159265358979323846264338327950288  -- Circle constant.
+pub tau     :: 6.28318530717958647692528676655900576  -- Full turn in radians.
+pub half_pi :: 1.57079632679489661923132169163975144  -- Quarter turn in
+                                                      -- radians.

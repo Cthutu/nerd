@@ -1,0 +1,233 @@
+-- Nerd Standard Library (NSL)
+--
+-- Copyright (c) 2026 Matt Davies
+--
+-- Column-major matrices acting on column vectors; A.mul(B) applies B first.
+
+-- A 3 by 3 matrix stored as 3 contiguous columns.
+pub Mat3 :: plex [T] #c {
+    c0 Vec3[T]  -- Column 0.
+    c1 Vec3[T]  -- Column 1.
+    c2 Vec3[T]  -- Column 2.
+}
+
+impl [T] Mat3[T] {
+
+    -- Returns the identity matrix.
+    pub identity :: fn () -> Self {
+        return Self { c0: { x: 1 y: 0 z: 0 } c1: { x: 0 y: 1 z: 0 } c2: { x: 0 y: 0 z: 1 } }
+    }
+
+    -- Returns a matrix containing only zeroes.
+    pub zero :: fn () -> Self {
+        return Self { c0: { x: 0 y: 0 z: 0 } c1: { x: 0 y: 0 z: 0 } c2: { x: 0 y: 0 z: 0 } }
+    }
+
+    -- Multiplies a column vector by this matrix.
+    pub mul_vector :: fn (self: Self, value: Vec3[T]) -> Vec3[T] {
+        return self.c0.scale(value.x)
+                      .add(self.c1.scale(value.y))
+                      .add(self.c2.scale(value.z))
+    }
+
+    -- Returns self times other; the right operand acts first.
+    pub mul :: fn (self: Self, other: Self) -> Self {
+        return Self { c0: self.mul_vector(other.c0) c1: self.mul_vector(other.c1) c2: self.mul_vector(other.c2) }
+    }
+
+    -- Exchanges rows and columns.
+    pub transpose :: fn (self: Self) -> Self {
+        return Self { c0: { x: self.c0.x y: self.c1.x z: self.c2.x } c1: { x: self.c0.y y: self.c1.y z: self.c2.y } c2: { x: self.c0.z y: self.c1.z z: self.c2.z } }
+    }
+
+    -- Returns the signed volume scale.
+    pub determinant :: fn (self: Self) -> T {
+        return self.c0.dot(self.c1.cross(self.c2))
+    }
+
+    -- Returns the inverse, or nil for a zero/non-finite determinant.
+    pub inverse :: fn (self: Self) -> ?Self {
+        determinant := self.determinant()
+        on determinant.as(f64) == 0 ||
+            !is_finite(determinant.as(f64)) => return nil
+        cofactors := Self { c0: self.c1.cross(self.c2).divide(determinant) c1: self.c2.cross(self.c0).divide(determinant) c2: self.c0.cross(self.c1).divide(determinant) }
+        on !cofactors.c0.is_finite() ||
+            !cofactors.c1.is_finite() ||
+            !cofactors.c2.is_finite() => return nil
+        return cofactors.transpose()
+    }
+
+    -- Returns a three-dimensional diagonal scaling matrix.
+    pub scaling :: fn (factors: Vec3[T]) -> Self {
+        return Self { c0: { x: factors.x y: 0 z: 0 } c1: { x: 0 y: factors.y z: 0 } c2: { x: 0 y: 0 z: factors.z } }
+    }
+
+}
+
+-- f32 matrix alias.
+pub Mat3F32 :: Mat3[f32]
+
+-- f64 matrix alias.
+pub Mat3F64 :: Mat3[f64]
+
+-- A 4 by 4 matrix stored as 4 contiguous columns.
+pub Mat4 :: plex [T] #c {
+    c0 Vec4[T]  -- Column 0.
+    c1 Vec4[T]  -- Column 1.
+    c2 Vec4[T]  -- Column 2.
+    c3 Vec4[T]  -- Column 3.
+}
+
+impl [T] Mat4[T] {
+
+    -- Returns the identity matrix.
+    pub identity :: fn () -> Self {
+        return Self {
+            c0 : { x: 1 y: 0 z: 0 w: 0 }
+            c1 : { x: 0 y: 1 z: 0 w: 0 }
+            c2 : { x: 0 y: 0 z: 1 w: 0 }
+            c3 : { x: 0 y: 0 z: 0 w: 1 }
+        }
+    }
+
+    -- Returns a matrix containing only zeroes.
+    pub zero :: fn () -> Self {
+        return Self {
+            c0 : { x: 0 y: 0 z: 0 w: 0 }
+            c1 : { x: 0 y: 0 z: 0 w: 0 }
+            c2 : { x: 0 y: 0 z: 0 w: 0 }
+            c3 : { x: 0 y: 0 z: 0 w: 0 }
+        }
+    }
+
+    -- Multiplies a column vector by this matrix.
+    pub mul_vector :: fn (self: Self, value: Vec4[T]) -> Vec4[T] {
+        return self.c0.scale(value.x)
+                      .add(self.c1.scale(value.y))
+                      .add(self.c2.scale(value.z))
+                      .add(self.c3.scale(value.w))
+    }
+
+    -- Returns self times other; the right operand acts first.
+    pub mul :: fn (self: Self, other: Self) -> Self {
+        return Self {
+            c0 : self.mul_vector(other.c0)
+            c1 : self.mul_vector(other.c1)
+            c2 : self.mul_vector(other.c2)
+            c3 : self.mul_vector(other.c3)
+        }
+    }
+
+    -- Exchanges rows and columns.
+    pub transpose :: fn (self: Self) -> Self {
+        return Self {
+            c0 : { x: self.c0.x y: self.c1.x z: self.c2.x w: self.c3.x }
+            c1 : { x: self.c0.y y: self.c1.y z: self.c2.y w: self.c3.y }
+            c2 : { x: self.c0.z y: self.c1.z z: self.c2.z w: self.c3.z }
+            c3 : { x: self.c0.w y: self.c1.w z: self.c2.w w: self.c3.w }
+        }
+    }
+
+    -- Returns an affine translation; positions use homogeneous w = 1.
+    pub translation :: fn (offset: Vec3[T]) -> Self {
+        return Self { c0: { x: 1 y: 0 z: 0 w: 0 } c1: { x: 0 y: 1 z: 0 w: 0 } c2: { x: 0 y: 0 z: 1 w: 0 } c3: { x: offset.x y: offset.y z: offset.z w: 1 } }
+    }
+
+    -- Returns a three-dimensional affine scaling matrix.
+    pub scaling :: fn (factors: Vec3[T]) -> Self {
+        return Self {
+            c0 : { x: factors.x y: 0 z: 0 w: 0 }
+            c1 : { x: 0 y: factors.y z: 0 w: 0 }
+            c2 : { x: 0 y: 0 z: factors.z w: 0 }
+            c3 : { x: 0 y: 0 z: 0 w: 1 }
+        }
+    }
+
+    -- Embeds a linear transform in an affine matrix.
+    pub from_mat3 :: fn (linear: Mat3[T]) -> Self {
+        return Self {
+            c0 : linear.c0.extend(0)
+            c1 : linear.c1.extend(0)
+            c2 : linear.c2.extend(0)
+            c3 : { x: 0 y: 0 z: 0 w: 1 }
+        }
+    }
+
+    -- Transforms a direction, ignoring translation; performs no division.
+    pub transform_direction :: fn (self: Self, value: Vec3[T]) -> Vec3[T] {
+        return self.mul_vector(value.extend(0)).xyz()
+    }
+
+    -- Transforms a position with perspective division, or nil if undefined.
+    pub transform_point :: fn (self: Self, value: Vec3[T]) -> ?Vec3[T] {
+        result := self.mul_vector(value.extend(1))
+        on result.w.as(f64) == 0 || !is_finite(result.w.as(f64)) => return nil
+        projected := result.xyz().divide(result.w)
+        on !is_finite(projected.x.as(f64)) ||
+            !is_finite(projected.y.as(f64)) ||
+            !is_finite(projected.z.as(f64)) => return nil
+        return projected
+    }
+
+    -- Returns the inverse using partial pivoting, or nil for singular/non-finite input.
+    pub inverse :: fn (self: Self) -> ?Self {
+        rows : [4][8]T =
+                         [[self.c0.x, self.c1.x, self.c2.x, self.c3.x, 1, 0, 0, 0], [self.c0.y, self.c1.y, self.c2.y, self.c3.y, 0, 1, 0, 0], [self.c0.z, self.c1.z, self.c2.z, self.c3.z, 0, 0, 1, 0], [self.c0.w, self.c1.w, self.c2.w, self.c3.w, 0, 0, 0, 1]]
+        for column := 0;
+            column < 4;
+            column += 1 {
+            pivot := column
+            for row := column + 1;
+                row < 4;
+                row += 1 {
+                on abs(rows[row][column].as(f64)) > abs(rows[pivot][column].as(f64)) => pivot = row
+            }
+            magnitude := abs(rows[pivot][column].as(f64))
+            on magnitude <= 0 || !is_finite(magnitude.as(f64)) => return nil
+            on pivot != column => {
+                temporary := rows[pivot]
+                rows[pivot] = rows[column]
+                rows[column] = temporary
+            }
+            divisor := rows[column][column]
+            for index := 0;
+                index < 8;
+                index += 1 {
+                rows[column][index] = rows[column][index] / divisor
+            }
+            for row := 0;
+                row < 4;
+                row += 1 {
+                on row == column => again
+                factor := rows[row][column]
+                for index := 0;
+                    index < 8;
+                    index += 1 {
+                    rows[row][index] = rows[row][index] - factor * rows[column][index]
+                }
+            }
+        }
+        for row := 0;
+            row < 4;
+            row += 1 {
+            for column := 4;
+                column < 8;
+                column += 1 {
+                on !is_finite(rows[row][column].as(f64)) => return nil
+            }
+        }
+        return Self {
+            c0 : { x: rows[0][4] y: rows[1][4] z: rows[2][4] w: rows[3][4] }
+            c1 : { x: rows[0][5] y: rows[1][5] z: rows[2][5] w: rows[3][5] }
+            c2 : { x: rows[0][6] y: rows[1][6] z: rows[2][6] w: rows[3][6] }
+            c3 : { x: rows[0][7] y: rows[1][7] z: rows[2][7] w: rows[3][7] }
+        }
+    }
+
+}
+
+-- f32 matrix alias.
+pub Mat4F32 :: Mat4[f32]
+
+-- f64 matrix alias.
+pub Mat4F64 :: Mat4[f64]

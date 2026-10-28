@@ -58,6 +58,8 @@ validating the language against the implementation, use
   Interpolated-string lowering, HIR/LLVM string ops, and runtime helper model.
 - [stdlib.md](stdlib.md)
   Working notes for the evolving standard library surface.
+- [stdlib-maths.md](stdlib-maths.md)
+  Scalar helpers, vectors, matrices, quaternions and the geometric convention.
 - [stdlib-system.md](stdlib-system.md)
   Desktop dialogs and browser/file-manager integration on Windows and Linux.
 - [stdlib-thread-sync.md](stdlib-thread-sync.md)
