@@ -63,7 +63,7 @@ evaluation, noncopyable storage and generic dispatch; `display-signatures.e`
 checks invalid canonical and imported trait signatures. Both backend paths and
 the existing imported-display and result-main tests exercise the new contract.
 
-The teaching reference is `/home/matt/nd`; it was not changed. Use valid teaching
+The teaching reference is now [the learning guide](learn/README.md). Use valid teaching
 examples and intended language rules as regression contracts. A transformed
 batch failing is not sufficient evidence of a compiler bug. The failed batching
 trials included changed names, missing returns and contextual-type changes;

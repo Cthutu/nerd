@@ -2,7 +2,7 @@
 
 Confirmed compiler bugs take priority. Track reproductions and fixes in
 [compiler issues](docs/compiler-issues.md). Current behaviour belongs in the
-[manual](docs/manual/README.md), [specs](docs/spec/README.md) and subsystem docs;
+[learning guide](docs/learn/README.md), [specs](docs/spec/README.md) and subsystem docs;
 completed plans remain in Git history.
 
 ## Active Standard-Library Work

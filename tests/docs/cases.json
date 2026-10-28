@@ -1,0 +1,359 @@
+[
+  {
+    "chapter": "02-First-Programs.md",
+    "section": "Command-line arguments",
+    "block": 1,
+    "command": "run",
+    "status": 0,
+    "stdout": "{executable}\n"
+  },
+  {
+    "chapter": "04-Variables-and-Scope.md",
+    "section": "Functions that never return",
+    "block": 1,
+    "command": "run",
+    "status": 42,
+    "stdout": ""
+  },
+  {
+    "chapter": "04-Variables-and-Scope.md",
+    "section": "Functions that never return",
+    "block": 2,
+    "command": "run",
+    "status": 42,
+    "stdout": ""
+  },
+  {
+    "chapter": "05-Plexes-Unions-Enums-and-Tuples.md",
+    "section": "More destructuring forms",
+    "block": 1,
+    "command": "run",
+    "status": 42,
+    "stdout": ""
+  },
+  {
+    "chapter": "05-Plexes-Unions-Enums-and-Tuples.md",
+    "section": "More destructuring forms",
+    "block": 2,
+    "command": "check"
+  },
+  {
+    "chapter": "06-Arrays-Slices-and-Dynamic-Arrays.md",
+    "section": "Payload byte sizes and data pointers",
+    "block": 1,
+    "command": "run",
+    "status": 42,
+    "stdout": "array bytes: 12, slice bytes: 8\n"
+  },
+  {
+    "chapter": "18-Boxes-and-Ownership.md",
+    "section": "Allocating a value",
+    "block": 1,
+    "command": "run",
+    "status": 42,
+    "stdout": ""
+  },
+  {
+    "chapter": "18-Boxes-and-Ownership.md",
+    "section": "Ownership moves",
+    "block": 1,
+    "command": "run",
+    "status": 42,
+    "stdout": ""
+  },
+  {
+    "chapter": "18-Boxes-and-Ownership.md",
+    "section": "Ownership moves",
+    "block": 2,
+    "command": "run",
+    "status": 42,
+    "stdout": ""
+  },
+  {
+    "chapter": "18-Boxes-and-Ownership.md",
+    "section": "Borrowing without moving",
+    "block": 1,
+    "command": "run",
+    "status": 42,
+    "stdout": ""
+  },
+  {
+    "chapter": "18-Boxes-and-Ownership.md",
+    "section": "Allocating several elements",
+    "block": 1,
+    "command": "run",
+    "status": 42,
+    "stdout": ""
+  },
+  {
+    "chapter": "18-Boxes-and-Ownership.md",
+    "section": "Releasing storage early",
+    "block": 1,
+    "command": "run",
+    "status": 42,
+    "stdout": ""
+  },
+  {
+    "chapter": "19-Assertions-and-Testing.md",
+    "section": "Runtime assertions",
+    "block": 1,
+    "command": "run",
+    "status": 0,
+    "stdout": "checks passed\n"
+  },
+  {
+    "chapter": "19-Assertions-and-Testing.md",
+    "section": "Runtime assertions",
+    "block": 2,
+    "command": "run",
+    "status": 0,
+    "stdout": ""
+  },
+  {
+    "chapter": "19-Assertions-and-Testing.md",
+    "section": "A named source test",
+    "block": 1,
+    "command": "test",
+    "status": 0,
+    "stdout": "2 tests passed\n"
+  },
+  {
+    "chapter": "19-Assertions-and-Testing.md",
+    "section": "Test-only declarations",
+    "block": 1,
+    "command": "test",
+    "status": 0,
+    "stdout": "2 tests passed\n"
+  },
+  {
+    "chapter": "19-Assertions-and-Testing.md",
+    "section": "Checking an error-handling contract",
+    "block": 1,
+    "command": "test",
+    "status": 0,
+    "stdout": "2 tests passed\n"
+  },
+  {
+    "chapter": "20-Compile-Time-Parameters-and-Macros.md",
+    "section": "Declaring a compile-time parameter",
+    "block": 1,
+    "command": "run",
+    "status": 42,
+    "stdout": ""
+  },
+  {
+    "chapter": "20-Compile-Time-Parameters-and-Macros.md",
+    "section": "Specialisation and runtime parameters",
+    "block": 1,
+    "command": "run",
+    "status": 42,
+    "stdout": ""
+  },
+  {
+    "chapter": "20-Compile-Time-Parameters-and-Macros.md",
+    "section": "Compile-time defaults",
+    "block": 1,
+    "command": "run",
+    "status": 42,
+    "stdout": ""
+  },
+  {
+    "chapter": "20-Compile-Time-Parameters-and-Macros.md",
+    "section": "Source filename and line number",
+    "block": 1,
+    "command": "run",
+    "status": 0,
+    "stdout": "{source}\nline 3\n"
+  },
+  {
+    "chapter": "20-Compile-Time-Parameters-and-Macros.md",
+    "section": "Source filename and line number",
+    "block": 2,
+    "command": "run",
+    "status": 0,
+    "stdout": "{source}:6: ready\n"
+  },
+  {
+    "chapter": "20-Compile-Time-Parameters-and-Macros.md",
+    "section": "Embedding a file",
+    "block": 1,
+    "command": "run",
+    "status": 0,
+    "stdout": "Hello from an asset!\n"
+  },
+  {
+    "chapter": "21-Atomic-Values.md",
+    "section": "Declaring atomic storage",
+    "block": 1,
+    "command": "run",
+    "status": 42,
+    "stdout": ""
+  },
+  {
+    "chapter": "21-Atomic-Values.md",
+    "section": "One operation versus several operations",
+    "block": 1,
+    "command": "run",
+    "status": 42,
+    "stdout": ""
+  },
+  {
+    "chapter": "21-Atomic-Values.md",
+    "section": "Borrowing atomic storage",
+    "block": 1,
+    "command": "run",
+    "status": 42,
+    "stdout": ""
+  },
+  {
+    "chapter": "21-Atomic-Values.md",
+    "section": "Explicit operations",
+    "block": 1,
+    "command": "run",
+    "status": 42,
+    "stdout": ""
+  },
+  {
+    "chapter": "21-Atomic-Values.md",
+    "section": "Comparing and exchanging",
+    "block": 1,
+    "command": "run",
+    "status": 42,
+    "stdout": ""
+  },
+  {
+    "chapter": "21-Atomic-Values.md",
+    "section": "Memory ordering",
+    "block": 1,
+    "command": "run",
+    "status": 42,
+    "stdout": ""
+  },
+  {
+    "chapter": "22-Advanced-C-Interoperability.md",
+    "section": "Receiving variadic arguments",
+    "block": 1,
+    "command": "run",
+    "status": 42,
+    "stdout": ""
+  },
+  {
+    "chapter": "22-Advanced-C-Interoperability.md",
+    "section": "Borrowing and copying a cursor",
+    "block": 1,
+    "command": "run",
+    "status": 42,
+    "stdout": ""
+  },
+  {
+    "chapter": "22-Advanced-C-Interoperability.md",
+    "section": "Formatting an argument stream",
+    "block": 1,
+    "command": "run",
+    "status": 0,
+    "stdout": "answer: 42\n"
+  },
+  {
+    "chapter": "22-Advanced-C-Interoperability.md",
+    "section": "Forwarding to C `va_list` functions",
+    "block": 1,
+    "command": "run",
+    "status": 0,
+    "stdout": "answer: 42\n"
+  },
+  {
+    "chapter": "22-Advanced-C-Interoperability.md",
+    "section": "Exporting a C-callable function",
+    "block": 1,
+    "command": "artifacts"
+  },
+  {
+    "chapter": "22-Advanced-C-Interoperability.md",
+    "section": "Intrinsic declarations",
+    "block": 1,
+    "command": "check"
+  },
+  {
+    "chapter": "23-Building-and-Configuring-Programs.md",
+    "section": "A small multi-module program",
+    "block": 1,
+    "command": "run",
+    "status": 0,
+    "stdout": ""
+  },
+  {
+    "chapter": "23-Building-and-Configuring-Programs.md",
+    "section": "A small multi-module program",
+    "block": 2,
+    "command": "run",
+    "status": 0,
+    "stdout": "Hello, world!\n"
+  },
+  {
+    "chapter": "23-Building-and-Configuring-Programs.md",
+    "section": "Source build settings",
+    "block": 1,
+    "command": "run",
+    "status": 0,
+    "stdout": "tracing enabled\n"
+  },
+  {
+    "chapter": "23-Building-and-Configuring-Programs.md",
+    "section": "Guards and evaluation order",
+    "block": 1,
+    "command": "run",
+    "status": 0,
+    "stdout": "trace configuration\n"
+  },
+  {
+    "chapter": "23-Building-and-Configuring-Programs.md",
+    "section": "Resolving paths and native libraries",
+    "block": 1,
+    "command": "run",
+    "status": 0,
+    "stdout": ""
+  },
+  {
+    "chapter": "02-First-Programs.md",
+    "section": "Hello world",
+    "block": 1,
+    "command": "run",
+    "status": 0,
+    "stdout": "Hello, world!\n"
+  },
+  {
+    "chapter": "06-Arrays-Slices-and-Dynamic-Arrays.md",
+    "section": "Element types from later uses",
+    "block": 1,
+    "command": "run",
+    "status": 42,
+    "stdout": ""
+  },
+  {
+    "chapter": "09-Branching-and-Pattern-Matching.md",
+    "section": "Plex patterns",
+    "block": 1,
+    "command": "run",
+    "status": 42,
+    "stdout": ""
+  },
+  {
+    "chapter": "14-String-Interpolation.md",
+    "section": "Formatting your own types with `Display`",
+    "block": 1,
+    "command": "run",
+    "status": 0,
+    "stdout": "point=(3, 4)\n"
+  },
+  {
+    "chapter": "23-Building-and-Configuring-Programs.md",
+    "section": "A small multi-module program",
+    "block": 2,
+    "command": "run",
+    "status": 0,
+    "stdout": "Hello, Ada!\n",
+    "args": [
+      "Ada"
+    ]
+  }
+]

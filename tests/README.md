@@ -27,6 +27,8 @@ describes each regression family.
 - `cgen/`: additional C-specific source probes. `build/test_cgen.py` also
   discovers language programs and selected process/diagnostic command contracts.
 - `install/`, `ffi/`, `mods/`: installation, host-code and imported source fixtures.
+- `docs/`: teaching-example expectations; the runner extracts source directly
+  from `docs/learn` and checks behaviour in both debug and release gates.
 - `stdlib-capabilities/`: executable language/atomic and native-layout probes,
   included in the default debug/release gates.
 - `stdlib-system/`: desktop-provider fixtures; `build/test_std_system.py` checks

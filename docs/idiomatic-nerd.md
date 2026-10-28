@@ -2,7 +2,7 @@
 
 This guide records the project's preferences for clear, natural Nerd code.
 Grow it from concrete examples encountered during development. The
-[manual](manual/README.md) teaches the language; this guide helps choose between
+[learning guide](learn/README.md) teaches the language; this guide helps choose between
 valid ways to express a program. Early teaching examples may introduce one
 concept at a time before adopting these patterns.
 
@@ -63,7 +63,7 @@ run. An early argument-count guard is also a separate decision: it ensures an
 argument exists before dispatch indexes it. The preference is one construct
 per decision, rather than a limit on the number of `on` expressions in a function.
 
-See [Branching with `on`](manual/part06-branching-with-on.md) for the available
+See [Branching with `on`](learn/09-Branching-and-Pattern-Matching.md) for the available
 forms and their semantics.
 
 ## Let branches produce their result

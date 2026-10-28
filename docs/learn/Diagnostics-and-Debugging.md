@@ -1,6 +1,6 @@
-# Part 13: Diagnostics And Debugging
+# Diagnostics and Debugging
 
-[Manual Index](README.md) | Previous: [Building A Small Program](part12-building-a-small-program.md) | Next: [Syntax Reference](appendix-a-syntax-reference.md)
+[Learning guide](README.md)
 
 Compiler diagnostics are messages produced when the compiler cannot accept a
 program. They are meant to point at the source rule that was broken. Read them

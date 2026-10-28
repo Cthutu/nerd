@@ -484,7 +484,7 @@ the usual fixed-array borrow) copies, with equal lengths and overlap-safe
 semantics. Nested slice values prefer filling when compatible with one element.
 Bounds and copy lengths are checked before writing, including in release
 builds. Direct string ranges and non-copyable/atomic elements are rejected.
-See [the manual](manual/part08-compound-data.md#assigning-to-a-range) for examples.
+See [the learning guide](learn/06-Arrays-Slices-and-Dynamic-Arrays.md#assigning-a-range) for examples.
 
 Strings share the same field and slicing surface where it preserves the string
 type:
