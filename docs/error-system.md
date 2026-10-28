@@ -37,6 +37,22 @@ return error_0300_unknown_symbol(...);
 
 ## Failure Policy
 
+### Interpolation delimiters
+
+An unfinished interpolation expression is diagnosed at its opening `{`, rather
+than at a later source string accidentally consumed after a missing `}`. The
+lexer includes an unmatched `(` or `[` reference when available and suggests
+the corresponding closer before `}`. A possible outer closing quote is a
+secondary reference; end-of-source cases include an explanatory note.
+
+Quoted operands, nested interpolations, match bodies and multiline strings
+remain legal inside interpolation. A genuinely unterminated nested string
+retains the string-literal diagnostic. `tests/errors/interpolation-delimiters.e`
+checks the source spans and help, while the matching language fixture checks
+valid nested delimiters in both backends.
+
+### Classification
+
 Every failure point while compiling user language source must be one of two
 things:
 

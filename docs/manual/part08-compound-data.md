@@ -65,6 +65,13 @@ at the first element, `.count` is the element count, and `.bytes` is the byte
 size of their element storage. For a `[N]T`, `.bytes` and `.size` are the same
 value, while `.count` is `N`.
 
+An array literal in an unannotated local can acquire its element type from later
+usage. A concrete slice parameter or record field supplies context for each
+`{ ... }` element, including through aliases and nested arrays. This determines
+the elements' types; it does not change the local array into an owning collection
+or extend its storage lifetime. A slice returned from a function must still
+refer to storage that remains alive after that function returns.
+
 ## Slices
 
 A slice is a view into contiguous storage. Slice types are written `[]T`.
@@ -534,6 +541,20 @@ main :: fn () {
 }
 ```
 
+`Self` is shorthand for the impl target type. You can write the concrete target
+in signatures instead: inside `impl Counter`, `self: Counter` and
+`self: ^Counter` are receivers, and `-> Counter` is a factory return type.
+Aliases of that type work too. Existing wrapped factory returns such as
+`?Self` can likewise use the concrete target, such as `?Counter`.
+
+Every impl function must have one of those relationships to the target: its
+first parameter is the target or a pointer to it, or its declared return type
+contains the target. Unrelated helper functions belong outside the impl block;
+the compiler checks this even when the function is never called. A function
+with a receiver is called through a value, including when it also returns the
+target type. Generic factories infer their type arguments from the target and
+the supplied arguments, just as receiver methods do.
+
 Methods can be public inside a module:
 
 ```nerd
@@ -557,7 +578,7 @@ required function members:
 
 ```nerd
 Display :: trait {
-    show :: fn (self: Self) -> string
+    show :: fn (self: ^Self) -> string
 }
 ```
 
@@ -580,7 +601,7 @@ Point :: plex {
 }
 
 impl Display for Point {
-    show :: fn (self: Self) -> string {
+    show :: fn (self: ^Self) -> string {
         return $"{self.x}, {self.y}"
     }
 }
@@ -636,7 +657,7 @@ type parameters:
 ```nerd
 impl [T] Display for Box[T]
 where T: Display {
-    show :: fn (self: Self) -> string {
+    show :: fn (self: ^Self) -> string {
         return self.value.show()
     }
 }
@@ -651,8 +672,12 @@ can be used.
 The `core` module is implicitly available in every module. It defines the
 language-known traits and result types:
 
-- `Display` supplies `show :: fn (self: Self) -> string`. String interpolation uses
-  this trait for non-built-in values.
+- `Display` supplies `show :: fn (self: ^Self) -> string`. String interpolation uses
+  an explicit implementation before built-in structural formatting. The receiver
+  borrows the value, so formatting does not copy an arena or other owned state.
+  Both `value.show()` and interpolation take the address automatically; an
+  intermediate expression is evaluated once into temporary storage. Implementations
+  must use the pointer receiver and return `string`; a by-value receiver is an error.
 - `Eq` supplies `eq :: fn (self: Self, other: Self) -> bool`. The `==` and `!=` operators
   use this trait for non-built-in values. Arrays, slices, and boxes support
   content equality when their elements support `Eq`. Plexes and enums

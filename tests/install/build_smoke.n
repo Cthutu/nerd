@@ -1,3 +1,6 @@
+answer :: fn () => 42
+forward :: fn () => answer()
+
 main :: fn() -> i32 {
-    return 0
+    return forward() - 42
 }

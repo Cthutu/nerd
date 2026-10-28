@@ -202,19 +202,19 @@ main :: fn () {
 }
 ¬
 {
-    "message": "Type mismatch: expected `u64`, found `i32`",
+    "message": "Type mismatch: expected `i32`, found `u64`",
     "source_file": "tests/errors/contextual-casts.e",
     "primary_location": {
         "line": 3,
-        "column": 21
+        "column": 12
     },
     "references": [
         {
             "kind": "primary",
             "line": 3,
-            "column": 21,
+            "column": 12,
             "length": 1,
-            "message": "This expression has type `i32`"
+            "message": "This expression has type `u64`"
         }
     ],
     "notes": [],
@@ -249,5 +249,66 @@ main :: fn () {
     "notes": [],
     "help": [
         "Change the expression or annotation so both sides use the same type."
+    ]
+}
+¬
+take_u64 :: fn (_value: u64) {}
+take_u32 :: fn (_value: u32) {}
+main :: fn () {
+    source: i32 = 7
+    cast := source.as()
+    alias := cast
+    take_u64(cast)
+    take_u32(alias)
+}
+¬
+{
+    "message": "Type mismatch: expected `u64`, found `u32`",
+    "source_file": "tests/errors/contextual-casts.e",
+    "primary_location": {
+        "line": 5,
+        "column": 19
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 5,
+            "column": 19,
+            "length": 1,
+            "message": "This expression has type `u32`"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Change the expression or annotation so both sides use the same type."
+    ]
+}
+¬
+take_u64 :: fn (_value: u64) {}
+main :: fn () {
+    source := "hello"
+    cast := source.as()
+    take_u64(cast)
+}
+¬
+{
+    "message": "Cannot cast `string` to `u64`",
+    "source_file": "tests/errors/contextual-casts.e",
+    "primary_location": {
+        "line": 4,
+        "column": 19
+    },
+    "references": [
+        {
+            "kind": "primary",
+            "line": 4,
+            "column": 19,
+            "length": 1,
+            "message": "This cast is not supported"
+        }
+    ],
+    "notes": [],
+    "help": [
+        "Use explicit casts only between compatible primitive types."
     ]
 }

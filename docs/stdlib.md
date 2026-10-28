@@ -234,7 +234,7 @@ The trigonometric functions take radians and return `f64` values.
 - `epr(text: string) -> void`
 - `eprn(text: string) -> void` and `eprn() -> void`
 - `Display`
-  Requires `show :: fn (self: Self) -> string`.
+  Requires `show :: fn (self: ^Self) -> string`.
 - `Eq`
   Requires `eq :: fn (self: Self, other: Self) -> bool`.
 - `Order`
@@ -432,7 +432,7 @@ home for raw OpenGL commands.
 ### `std.traits`
 
 - `Display`
-  Requires `show :: fn (self: Self) -> string`.
+  Requires `show :: fn (self: ^Self) -> string`.
 - `Eq`
   Requires `eq :: fn (self: Self, other: Self) -> bool`.
 - `Order`

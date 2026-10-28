@@ -1,0 +1,3 @@
+pub ByValue :: trait {
+    render :: fn (self: Self) -> string
+}

@@ -19,6 +19,13 @@
 
 typedef uint8_t u8;
 
+// Dynamic-array payloads follow this header at a 16-byte boundary. Keep this
+// layout aligned with the native backend's dynamic-array header.
+typedef struct {
+    _Alignas(16) void* data;
+    size_t            count, capacity;
+} NrtArray;
+
 typedef struct {
     u8*    data;
     size_t count;
@@ -516,6 +523,27 @@ void* nrt_mem_alloc(size_t size,
 #endif
 
     return user;
+}
+
+// Return a fresh header, including for an empty source. Elements are copied
+// shallowly; references and nested dynamic-array handles retain their values.
+void* nrt_array_copy(const void* source,
+                     size_t      count,
+                     size_t      item_size,
+                     const char* source_path,
+                     uint32_t    line)
+{
+    if (item_size != 0 && count > (SIZE_MAX - sizeof(NrtArray)) / item_size) {
+        nrt_heap_abort("dynamic array copy size overflow");
+    }
+    size_t    bytes = count * item_size;
+    NrtArray* result =
+        nrt_mem_alloc(sizeof(NrtArray) + bytes, 16, source_path, line);
+    *result = (NrtArray){.data = result + 1, .count = count, .capacity = count};
+    if (bytes != 0) {
+        memcpy(result->data, source, bytes);
+    }
+    return result;
 }
 
 // Validate before either backend reserves runtime-sized local stack storage.

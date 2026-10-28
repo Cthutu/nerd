@@ -125,10 +125,7 @@ on "linux" {
         info.platform_info.resize_event_valid = yes
         info.platform_info.resize_event_width = width
         info.platform_info.resize_event_height = height
-        info.events.push(FrameEvent.Resized {
-            width
-            height
-        })
+        info.events.push(FrameEvent.Resized { width height })
     }
 
     -- Records the last known non-fullscreen geometry for later restoration.
@@ -372,13 +369,9 @@ on "linux" {
         frame_linux_update_modifier_state(system, scan_code, is_down)
 
         on is_down {
-            yes => info.events.push(FrameEvent.KeyPress {
-                scan_code
-            })
+            yes => info.events.push(FrameEvent.KeyPress { scan_code })
 
-            no => info.events.push(FrameEvent.KeyRelease {
-                scan_code
-            })
+            no => info.events.push(FrameEvent.KeyRelease { scan_code })
         }
 
         on !is_down => return
@@ -395,9 +388,7 @@ on "linux" {
 
         codepoint := frame_linux_decode_utf8(buffer[0..count.as(usize)])
         on codepoint != 0 => {
-            info.events.push(FrameEvent.Character {
-                codepoint
-            })
+            info.events.push(FrameEvent.Character { codepoint })
         }
     }
 
@@ -476,11 +467,7 @@ on "linux" {
         platform_info.full_screen = no
         platform_info.resizable = frame.resizable
 
-        info := FrameInfo {
-            id
-            events: nil
-            platform_info
-        }
+        info := FrameInfo { id events: nil platform_info }
         system.frames.push(info)
         frame.id = id
         frame_linux_apply_resize_hints(frame_system_find_info(system, id),

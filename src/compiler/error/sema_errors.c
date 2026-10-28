@@ -1544,6 +1544,29 @@ bool error_0344_invalid_associated_function_return(NerdSource source,
     return false;
 }
 
+bool error_0344_unrelated_impl_function(NerdSource source,
+                                        ErrorSpan  span,
+                                        string     symbol)
+{
+    ErrorInfo error = error_init(
+        source,
+        span,
+        "Impl function `" STRINGP
+        "` has no receiver or return type related to the impl target",
+        STRINGV(symbol));
+    error_add_reference(&error,
+                        ERROR_REF_PRIMARY,
+                        span,
+                        "The first parameter must be the impl target or a "
+                        "pointer to it, or the return type must contain it");
+    error_add_help(
+        &error,
+        "Use `Self` or the explicit target type for a receiver or factory "
+        "return type, or move this function outside the impl block.");
+    error_render(&error);
+    return false;
+}
+
 //------------------------------------------------------------------------------
 // Report an expression statement that discards a non-void value.
 

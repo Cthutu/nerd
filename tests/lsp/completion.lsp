@@ -754,6 +754,14 @@ main :: fn () {}
         "kind": 9
       },
       {
+        "label": "impl_target_other",
+        "kind": 9
+      },
+      {
+        "label": "impl_target_types",
+        "kind": 9
+      },
+      {
         "label": "imported_callback",
         "kind": 9
       },
@@ -8333,11 +8341,11 @@ main :: fn () {
                 "uri": "__REPO_URI__/mods/std/vulkan/mod.n",
                 "range": {
                   "start": {
-                    "line": 218,
+                    "line": 234,
                     "character": 4
                   },
                   "end": {
-                    "line": 218,
+                    "line": 234,
                     "character": 24
                   }
                 }
@@ -8412,11 +8420,11 @@ main :: fn () {
                 "uri": "__REPO_URI__/mods/std/vulkan/mod.n",
                 "range": {
                   "start": {
-                    "line": 198,
+                    "line": 214,
                     "character": 4
                   },
                   "end": {
-                    "line": 198,
+                    "line": 214,
                     "character": 21
                   }
                 }
@@ -8599,7 +8607,6 @@ main :: fn () {
     "result": null
   }
 ]
-
 ¬
 main :: fn () {
     count := 3

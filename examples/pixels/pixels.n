@@ -39,12 +39,7 @@ pixels_draw :: fn (layer: ^PixelLayer, frame: u32) {
     }, user = ^frame)
 
     bar_width := (frame % layer.pixel_width()) + 1
-    layer.fill(PixelRect {
-        x      : 0
-        y      : 0
-        width  : bar_width
-        height : 3
-    }, 0xffffffff)
+    layer.fill(PixelRect { x: 0 y: 0 width: bar_width height: 3 }, 0xffffffff)
 }
 
 -- Resolve the layer handle, update its pixels and present all frame layers.
@@ -82,7 +77,8 @@ main :: fn () {
 
     -- A fixed logical resolution gives deliberately large pixels when scaled.
     -- The layer handle identifies storage owned by gfx, not a separate allocation.
-    handle := gfx.create_pixel_layer(^frame, PixelLayerMode.FixedSizeAutoScale {
+    handle := gfx.create_pixel_layer(^frame,
+                                     PixelLayerMode.FixedSizeAutoScale {
         width  : 160
         height : 120
     })

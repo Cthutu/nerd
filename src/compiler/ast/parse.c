@@ -2598,9 +2598,10 @@ internal bool ast_parse_enum_payload_pattern(AstParseState* state,
 
 bool ast_parse_enum_variant_pattern(AstParseState* state, u32* out_pattern)
 {
-    AstToken variant   = state->token;
-    u32      qualifier = U32_MAX;
-    u32      symbol    = variant.value.symbol_handle;
+    AstToken variant    = state->token;
+    u32      qualifier  = U32_MAX;
+    u32      symbol     = variant.value.symbol_handle;
+    u32      name_token = variant.token_index;
 
     ASSERT(variant.kind == TK_Symbol, "Expected enum variant pattern");
     if (!ast_next_token(state)) {
@@ -2630,7 +2631,8 @@ bool ast_parse_enum_variant_pattern(AstParseState* state, u32* out_pattern)
                                                  TK_Symbol,
                                                  state->token.kind);
             }
-            symbol = state->token.value.symbol_handle;
+            symbol     = state->token.value.symbol_handle;
+            name_token = state->token.token_index;
             if (ast_peek_kind_at(state, 0) == TK_Dot) {
                 u32 field = U32_MAX;
                 if (!ast_emit_node(state,
@@ -2727,6 +2729,19 @@ bool ast_parse_enum_variant_pattern(AstParseState* state, u32* out_pattern)
         }
     }
 
+    // The same braced syntax may name a record type. Retain its complete
+    // spelling; semantic analysis disambiguates it from an enum payload.
+    u32 record_type = U32_MAX;
+    if (braced_payload &&
+        !ast_emit_node(
+            state,
+            (AstNode){.kind = qualifier == U32_MAX ? AK_SymbolRef : AK_Field,
+                      .token_index = name_token,
+                      .a           = qualifier == U32_MAX ? symbol : qualifier,
+                      .b           = qualifier == U32_MAX ? 0 : symbol},
+            &record_type)) {
+        return false;
+    }
     u32 enum_pattern_index = (u32)array_count(state->enum_patterns);
     array_push(state->enum_patterns,
                (AstEnumPattern){
@@ -2737,13 +2752,15 @@ bool ast_parse_enum_variant_pattern(AstParseState* state, u32* out_pattern)
                    .pattern_count        = pattern_count,
                    .braced_payload       = braced_payload,
                });
-    return ast_emit_pattern(state,
-                            (AstPattern){
-                                .kind        = APK_EnumVariant,
-                                .token_index = variant.token_index,
-                                .a           = enum_pattern_index,
-                            },
-                            out_pattern);
+    return ast_emit_pattern(
+        state,
+        (AstPattern){
+            .kind        = APK_EnumVariant,
+            .token_index = variant.token_index,
+            .a           = enum_pattern_index,
+            .c           = record_type == U32_MAX ? 0 : record_type + 1,
+        },
+        out_pattern);
 }
 
 internal bool ast_parse_enum_payload_pattern(AstParseState* state,

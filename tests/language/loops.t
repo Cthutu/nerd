@@ -1099,7 +1099,7 @@ QueueInfo :: plex {
 }
 impl Display for QueueInfo {
 
-    show :: fn (self: Self) -> string {
+    show :: fn (self: ^Self) -> string {
         flags := [1, 2, 4, 8, 16, 32, 64, 256, 1024]
         names := ["graphics", "compute", "transfer", "sparse", "protected",
                   "decode", "encode", "flow", "data graph"]

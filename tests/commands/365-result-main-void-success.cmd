@@ -1,6 +1,6 @@
 Problem :: plex {}
 impl Display for Problem {
-    show :: fn (_self: Self) -> string { prn("unexpected display")
+    show :: fn (_self: ^Self) -> string { prn("unexpected display")
  return "unreachable" }
 }
 main :: fn () -> void\Problem {

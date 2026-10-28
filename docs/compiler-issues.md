@@ -1,5 +1,68 @@
 # Compiler issues found during feature-test cleanup
 
+## Fixed: record-field context did not reach local array elements
+
+For a `World` with `mobs []Mob`, a local `mobs := [{ id: 1, name: "Bear" }]`
+followed by `return { mobs }` failed with an unknown plex type. Usage inference
+propagated record field context but stopped at arrays and slice destinations.
+It now carries element context through array literals and their local aliases,
+including tuple projections and nested arrays. Fixed-array storage/lifetimes
+remain unchanged: returning a slice of a local array still leaves a dangling
+view. The original shape is checked without executing that unsafe factory;
+runtime regressions keep borrowed arrays alive or return inline arrays by value.
+
+The C comparison exposed a pre-existing empty-array initializer bug: `{0}`
+cannot initialise a struct whose first member is a zero-length array. Aggregate
+zero initialisation now uses Clang's empty initializer extension, preserving
+the declared storage representation. Enum defaults
+continue to use their declared first discriminant.
+
+### Open: nested zero-sized array representation in Windows C output
+
+The following explicit-type probe passes LLVM, but generated Windows C is rejected:
+
+```nerd
+Mob :: plex { id u32 name string }
+main :: fn () {
+    values: [2][0]Mob
+    assert values.count == 2
+}
+```
+
+Clang's
+Microsoft ABI gives the zero-array wrapper size 4 and alignment 8, so it cannot
+be an array element. Packing/alignment experiments do not produce a true
+zero-sized record on this target. This needs a deliberate representation for
+zero-sized values and embedded fields, including `.size`, indexing, addresses
+and FFI layout; dummy bytes or a global ABI switch would change the contract.
+It is independent of contextual inference (the probe uses an explicit type).
+
+## Fixed: a missing interpolation brace blamed a later string literal
+
+An interpolation such as `$"{count} location{plural(count), {other} mobs>"`
+could consume following source as expression tokens and nested strings, then
+report an unterminated literal at an unrelated location name. Diagnostic 0110
+now anchors the unfinished expression's opening `{`, identifies a possible
+closing quote and gives delimiter-specific help. The interpolation-delimiters
+error/runtime fixtures cover the reproduction, EOF, calls, indexes, nested
+interpolations and valid quoted/multiline operands.
+
+## Fixed: interpolation ignored a pointer-receiver Display implementation
+
+A `World` plex with `show(self: ^World)` compiled but interpolated structurally.
+The previous core requirement was by value; imported trait signature checks
+incorrectly used foreign node indices in the local AST and could skip validation.
+Backend Display discovery then required an exact by-value receiver match.
+
+Core Display now requires `show(self: ^Self) -> string`. Imported requirements
+are checked in their defining module, and mismatched receivers/returns are
+diagnosed. Sema selects interpolation methods and HIR emits normal borrowed
+calls, with explicit implementations taking precedence over built-in formatting.
+`display-borrow.t` checks the World reproduction, receiver identity, exactly-once
+evaluation, noncopyable storage and generic dispatch; `display-signatures.e`
+checks invalid canonical and imported trait signatures. Both backend paths and
+the existing imported-display and result-main tests exercise the new contract.
+
 The teaching reference is `/home/matt/nd`; it was not changed. Use valid teaching
 examples and intended language rules as regression contracts. A transformed
 batch failing is not sufficient evidence of a compiler bug. The failed batching

@@ -60,6 +60,16 @@ local aliases, address expressions, tuples, and nested literal fields. Declared
 field types then provide context for field values. Conflicting record types are
 errors; inference does not select a record merely by matching its field names.
 
+Concrete array and slice usages also supply element context through local array
+literal initialisers. For example, a returned record field of type `[]Mob` can
+determine `Mob` for the elements of a local `mobs := [{ ... }]`. Context passes
+through aliases, tuple projections, nested arrays, and both contextual and
+explicitly typed record literals. Empty arrays can acquire an element type in
+the same way. Unannotated local arrays retain their fixed length and inline
+storage; using them as slices borrows that storage and does not extend its
+lifetime. Explicit annotations/casts and incompatible element constraints remain
+checked normally.
+
 Context can also come from an explicit numeric cast in a later compound assignment.
 For example, `total := 0` followed by `total += value.as(u64)` infers `total`
 as `u64`; an untyped compound operand does not override the default by itself.
@@ -113,7 +123,7 @@ in type identity. A function type without `-> type` has return type `void`.
 Missing names in callback fields and nested function types produce a diagnostic
 with `name: Type` as help.
 Trait requirements require parameter names, for example
-`show :: fn (self: Self) -> string`. Names document the requirement and do not
+`show :: fn (self: ^Self) -> string`. Names document the requirement and do not
 have to match the names in its implementation.
 A trait may use
 `trait [Item] { next :: fn (self: Self) -> Item }` to declare generic parameters.
@@ -122,13 +132,20 @@ language features. A trait may use `trait for Value` to name the self type
 `Value` instead of `Self`.
 
 Trait implementations attach those required functions to a concrete type:
-`impl Display for Point { show :: fn (self: Self) -> string { ... } }`.
+`impl Display for Point { show :: fn (self: ^Self) -> string { ... } }`.
 Language-required traits such as `Display` are canonical declarations from
 `core`. The core declarations currently include `Display`, `Eq`, `Order`,
 `Default`, and `Iterator[Item]`. Optional and result values are built-in types,
 written `?T` and `T\E`; there are no core `Option` or `Result` enums. Core names are
 available through the implicit `core` import unless shadowed by a local
 declaration. All other public core bindings use the same implicit import.
+The canonical `Display.show` requires `fn (self: ^Self) -> string`.
+Signature validation follows imported trait declarations in their defining
+module; it does not interpret their node indices in the implementing module.
+Concrete generic Display methods are checked when specialised. Interpolation
+selects an explicit core Display implementation before structural formatting,
+borrows addressable operands, and evaluates other operands once into temporary
+storage. It does not copy noncopyable arena-containing values to format them.
 `Display.show(value)` supplies interpolation for non-built-in values. `Eq.eq`
 supplies equality for non-built-in values used with `==` and `!=`.
 `Order.compare(lhs, rhs)` supplies ordering for non-built-in values used with
@@ -168,6 +185,20 @@ Generic application uses square brackets on a type name, for example
 `Map[string, i32]`. Parser support permits an empty bracket list, but the useful
 language form is a non-empty type list.
 
+Impl function signatures must relate to the target type. A first parameter of
+the target type or a pointer to it makes a receiver method. Otherwise, a declared
+return type containing the target makes an associated factory. `Self`, the
+explicit target type, and aliases of that target are accepted consistently;
+generic target spellings retain their complete argument list. The existing
+pointer, optional/result, tuple and container forms containing `Self` also
+accept the explicit target. Unrelated functions are diagnosed at their
+declaration even if unused, including in trait implementations after signature
+validation. Layout equality with another record does not establish ownership.
+
+Associated factory calls infer generic parameters from arguments before
+validating their substituted signatures. Arguments requiring contextual casts
+are deferred until other arguments supply their types.
+
 ## Aggregate Forms
 
 | Form                   | Description                                                                      |
@@ -182,6 +213,21 @@ language form is a non-empty type list.
 | `plex #packed { ... }` | Packed plex with C-compatible layout and packed storage.                         |
 | `union { ... }`        | Raw union with named alternatives sharing storage.                               |
 | `enum { ... }`         | Tagged enum, optionally with payload variants.                                   |
+
+### Copying into dynamic arrays
+
+A fixed array `[N]T` or slice `[]T` implicitly converts to `[..]T` when a
+dynamic-array destination is expected, including initialisers, assignments,
+plex fields, function arguments and returns. Generic `[..]T` parameters infer
+`T` from either source form. Element types must match; this conversion does not
+perform per-element numeric or plex conversions.
+
+The conversion evaluates the source once, allocates a fresh buffer, and copies
+its elements shallowly. The source remains unchanged and the resulting count
+equals the source count. Empty sources produce an empty owned buffer. Nested
+references are not cloned. Existing dynamic-array-to-dynamic-array handle
+copying remains unchanged. Replacement assignment does not free the previous
+destination buffer; the program is responsible for releasing owned storage.
 
 ### Optional and result types
 

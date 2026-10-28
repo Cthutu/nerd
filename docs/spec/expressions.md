@@ -152,6 +152,12 @@ arithmetic operands in the normal left-to-right inference order. An unresolved
 or conflicting destination is an error; conversion validity is identical to
 `.as(Type)`.
 
+A concrete later use of an inferred local can constrain an empty `.as()` in
+its initialiser, including through local aliases, arithmetic and tuple fields.
+Resolved imported function parameters supply context in the same way as local
+function parameters. Constraints apply to the cast's result, not its operand;
+conflicting result types are errors and unconstrained casts remain errors.
+
 `.as(count)` infers the destination slice type for a pointer-to-slice cast, with
 a `usize` count. A single named argument is resolved as a type when it names a
 type, otherwise as a count expression. `.as(Type, count)` remains explicit.

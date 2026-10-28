@@ -15,16 +15,10 @@ send_bytes :: fn (stream   : ^Socket,
     -- A writable readiness entry permits a send attempt; it does not promise
     -- that the whole remaining buffer fits. Reuse the same absolute deadline.
     entries := [
-        PollEntry {
-            socket : stream
-            write  : yes
-            ...
-        },
+        PollEntry { socket: stream write: yes ... },
     ]
     for offset < bytes.count {
-        on now() >= deadline => return NetworkError.TimedOut {
-            code: 0
-        }!
+        on now() >= deadline => return NetworkError.TimedOut { code: 0 }!
         on poll(entries[..], deadline = deadline)? == 0 => return NetworkError.TimedOut {
             code: 0
         }!
@@ -51,16 +45,10 @@ receive_bytes :: fn (stream   : ^Socket,
                      deadline : Instant) -> void\NetworkError {
     offset : usize = 0
     entries := [
-        PollEntry {
-            socket : stream
-            read   : yes
-            ...
-        },
+        PollEntry { socket: stream read: yes ... },
     ]
     for offset < bytes.count {
-        on now() >= deadline => return NetworkError.TimedOut {
-            code: 0
-        }!
+        on now() >= deadline => return NetworkError.TimedOut { code: 0 }!
         on poll(entries[..], deadline = deadline)? == 0 => return NetworkError.TimedOut {
             code: 0
         }!

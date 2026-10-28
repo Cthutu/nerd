@@ -365,6 +365,32 @@ internal bool lsp_use_is_used(const LspDocument* doc, u32 use_index)
     return false;
 }
 
+bool lsp_module_path_token_range(
+    const Lexer* lexer, const Ast* ast, u32 module_node, u32* first, u32* last)
+{
+    if (module_node >= array_count(ast->nodes)) {
+        return false;
+    }
+    const AstNode* module = &ast->nodes[module_node];
+    if (module->kind != AK_ModRef ||
+        module->a >= array_count(ast->module_paths) ||
+        module->token_index >= array_count(lexer->tokens) ||
+        lexer->tokens[module->token_index].kind != TK_Symbol) {
+        return false;
+    }
+    *first = *last            = module->token_index;
+    const AstModulePath* path = &ast->module_paths[module->a];
+    for (u32 i = 1; i < path->symbol_count; ++i) {
+        if (*last + 2 >= array_count(lexer->tokens) ||
+            lexer->tokens[*last + 1].kind != TK_Dot ||
+            lexer->tokens[*last + 2].kind != TK_Symbol) {
+            break;
+        }
+        *last += 2;
+    }
+    return true;
+}
+
 bool lsp_use_module_path_range(const LspDocument* doc,
                                u32                use_index,
                                usize*             out_start,
@@ -381,41 +407,13 @@ bool lsp_use_module_path_range(const LspDocument* doc,
         return false;
     }
 
-    const AstNode* module = &ast->nodes[use->a];
-    if (module->kind != AK_ModRef ||
-        module->a >= array_count(ast->module_paths) ||
-        module->token_index >= array_count(lexer->tokens)) {
+    u32 first, last;
+    if (!lsp_module_path_token_range(lexer, ast, use->a, &first, &last)) {
         return false;
     }
-
-    const AstModulePath* path  = &ast->module_paths[module->a];
-    const Token*         first = &lexer->tokens[module->token_index];
-    if (first->kind != TK_Symbol) {
-        return false;
-    }
-
-    u32 last_symbol_token = module->token_index;
-    u32 symbols_seen      = 0;
-    for (u32 i = module->token_index; i < array_count(lexer->tokens); ++i) {
-        const Token* token = &lexer->tokens[i];
-        if (token->kind == TK_Symbol) {
-            last_symbol_token = i;
-            symbols_seen++;
-            if (symbols_seen >= path->symbol_count) {
-                *out_start = first->offset;
-                *out_end   = lex_token_end_offset(
-                    lexer, &lexer->tokens[last_symbol_token]);
-                return true;
-            }
-            continue;
-        }
-
-        if (token->kind != TK_Dot) {
-            break;
-        }
-    }
-
-    return lsp_token_range(lexer, module->token_index, out_start, out_end);
+    *out_start = lexer->tokens[first].offset;
+    *out_end   = lex_token_end_offset(lexer, &lexer->tokens[last]);
+    return true;
 }
 
 internal void lsp_add_unused_use_diagnostics(Arena*             arena,

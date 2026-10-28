@@ -124,10 +124,7 @@ on "windows" {
     frame_windows_push_resize :: fn (info: ^FrameInfo, width: u16, height: u16) {
         info.platform_info.width = width
         info.platform_info.height = height
-        info.events.push(FrameEvent.Resized {
-            width
-            height
-        })
+        info.events.push(FrameEvent.Resized { width height })
     }
 
     frame_windows_default_proc :: fn (window  : HWND,
@@ -283,9 +280,7 @@ on "windows" {
                     frame_windows_update_modifier_state(frame_windows_current_system,
                                                         scan_code,
                                                         yes)
-                    info.events.push(FrameEvent.KeyPress {
-                        scan_code
-                    })
+                    info.events.push(FrameEvent.KeyPress { scan_code })
                 }
                 return 0
             }
@@ -297,9 +292,7 @@ on "windows" {
                     frame_windows_update_modifier_state(frame_windows_current_system,
                                                         scan_code,
                                                         yes)
-                    info.events.push(FrameEvent.KeyPress {
-                        scan_code
-                    })
+                    info.events.push(FrameEvent.KeyPress { scan_code })
                 }
                 return 0
             }
@@ -311,9 +304,7 @@ on "windows" {
                     frame_windows_update_modifier_state(frame_windows_current_system,
                                                         scan_code,
                                                         no)
-                    info.events.push(FrameEvent.KeyRelease {
-                        scan_code
-                    })
+                    info.events.push(FrameEvent.KeyRelease { scan_code })
                 }
                 return 0
             }
@@ -325,9 +316,7 @@ on "windows" {
                     frame_windows_update_modifier_state(frame_windows_current_system,
                                                         scan_code,
                                                         no)
-                    info.events.push(FrameEvent.KeyRelease {
-                        scan_code
-                    })
+                    info.events.push(FrameEvent.KeyRelease { scan_code })
                 }
                 return 0
             }
@@ -336,9 +325,7 @@ on "windows" {
                 on info != nil => {
                     codepoint := wparam.as(u32)
                     on codepoint != 0 => {
-                        info.events.push(FrameEvent.Character {
-                            codepoint
-                        })
+                        info.events.push(FrameEvent.Character { codepoint })
                     }
                 }
                 return 0
@@ -504,11 +491,7 @@ on "windows" {
             platform_info.resizable = frame.resizable
             platform_info.closed_queued = no
 
-            info := FrameInfo {
-                id
-                events: nil
-                platform_info
-            }
+            info := FrameInfo { id events: nil platform_info }
             frame_windows_push_resize(^info, frame.width, frame.height)
             system.frames.push(info)
             frame.id = id

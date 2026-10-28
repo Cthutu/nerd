@@ -68,10 +68,7 @@ VulkanContext :: plex {
 -- resources for the caller to release with vk_done.
 vk_init :: fn (frame: ^Frame) -> ?VulkanContext {
     -- Begin with empty handles; each successful step fills its owned state.
-    ctx: VulkanContext = {
-        frame
-        ...
-    }
+    ctx : VulkanContext = { frame ... }
 
     create_vk_instance(^ctx)?
     undo destroy_vk_instance(^ctx)

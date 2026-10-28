@@ -577,7 +577,7 @@ main :: fn () -> i32 {
 ¬
 hir 0
 module module.generics.input(generics.input)
-import import.0 __trait_Display_for_c_string_show from module.core(core).decl.N: fn (^i8) -> string
+import import.0 __trait_Display_for_c_string_show from module.core(core).decl.N: fn (^^i8) -> string
 bind __trait_Display_for_c_string_show = import.0
 bind Point = type.0
 bind __trait_Display_for_Point_show = fn.0

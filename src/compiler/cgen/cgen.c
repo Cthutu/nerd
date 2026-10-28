@@ -60,14 +60,15 @@ typedef struct {
     Array(u32) local_types;
     Array(COverride) overrides;
     Array(CExport) exports;
-    string macro_path;
-    cstr   interpolation_arena;
-    u32    macro_line;
-    bool   global_init;
-    bool   returning;
-    u32    constant_depth, expected_type, local_scope;
-    u32    module, next, return_type, va_local;
-    bool   failed;
+    string         macro_path;
+    const HirExpr* conversion_source;
+    cstr           interpolation_arena;
+    u32            macro_line;
+    bool           global_init;
+    bool           returning;
+    u32            constant_depth, expected_type, local_scope;
+    u32            module, next, return_type, va_local;
+    bool           failed;
 } CGen;
 
 #define CF(...) cgen_format(c, __VA_ARGS__)
@@ -315,6 +316,14 @@ internal cstr cgen_zero(CGen* c, u32 t)
                       ->type_param_values[cgen_type(c, t)->first_param_type]
                 : 0;
         return CF("(%s){.tag=%lld}", cgen_ctype(c, t), (long long)tag);
+    }
+    SemaTypeKind kind = cgen_kind(c, t);
+    if (kind == STK_Array || kind == STK_Plex || kind == STK_Union ||
+        kind == STK_Tuple) {
+        // An explicit scalar zero cannot initialise an empty array member.
+        // Clang's empty aggregate initializer also handles nested zero-sized
+        // arrays without changing their layout or adding dummy storage.
+        return CF("(%s){}", cgen_ctype(c, t));
     }
     return CF("(%s){0}", cgen_ctype(c, t));
 }
@@ -687,6 +696,24 @@ internal CValue cgen_coerce(CGen* c, CValue v, u32 t)
     }
     if (to == STK_Bool) {
         return cgen_temp(c, t, cgen_truth(c, v));
+    }
+    if (to == STK_DynamicArray && (from == STK_Array || from == STK_Slice)) {
+        const HirExpr* source = c->conversion_source;
+        cstr           count = from == STK_Array
+                                   ? CF("%u", cgen_type(c, v.type)->return_type)
+                                   : CF("%s.count", v.text);
+        return cgen_temp(
+            c,
+            t,
+            CF("(NcgArray*)nrt_array_copy(%s.data,%s,sizeof(%s),%s,%u)",
+               v.text,
+               count,
+               cgen_ctype(c, cgen_type(c, t)->first_param_type),
+               cgen_quote(c,
+                          source != NULL
+                              ? source->source_path
+                              : cgen_front(c)->lexer.source.source_path),
+               source != NULL ? source->source_line : 0));
     }
     if (to == STK_Enum) {
         const SemaType* st = cgen_type(c, t);
@@ -1839,7 +1866,10 @@ internal void cgen_display(CGen* c, CValue value, u32 depth)
         const SemaType* fn = cgen_type(c, d->type_index);
         if (fn->kind != STK_Function || fn->param_count != 1 ||
             cgen_kind(c, fn->return_type) != STK_String ||
-            cgen_canonical(c, cgen_field_type(c, d->type_index, 0)) !=
+            cgen_kind(c, cgen_field_type(c, d->type_index, 0)) != STK_Pointer ||
+            cgen_canonical(c,
+                           cgen_type(c, cgen_field_type(c, d->type_index, 0))
+                               ->first_param_type) !=
                 cgen_canonical(c, value.type)) {
             continue;
         }
@@ -1850,7 +1880,7 @@ internal void cgen_display(CGen* c, CValue value, u32 depth)
         CValue text =
             cgen_temp(c,
                       fn->return_type,
-                      CF("%s(%s)",
+                      CF("%s(&%s)",
                          cgen_decl(c, c->module, method->decl_index, 0),
                          value.text));
         CGEN_OUT("nrt_string_builder_append_string(&%s);\n", text.text);
@@ -2310,7 +2340,17 @@ internal bool cgen_integer(CGen* c, u32 t)
         return false;
     }
 }
+internal CValue cgen_expr_impl(CGen* c, u32 index);
 internal CValue cgen_expr(CGen* c, u32 index)
+{
+    const HirExpr* source = index < array_count(cgen_hir(c)->exprs)
+                                ? &cgen_hir(c)->exprs[index]
+                                : NULL;
+    CValue         result = cgen_expr_impl(c, index);
+    c->conversion_source  = source;
+    return result;
+}
+internal CValue cgen_expr_impl(CGen* c, u32 index)
 {
     if (index == U32_MAX) {
         return (CValue){"0", U32_MAX, false};

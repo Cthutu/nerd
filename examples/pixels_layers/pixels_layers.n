@@ -61,12 +61,11 @@ draw_foreground :: fn (layer: ^PixelLayer, tick: u32) {
     width  := layer.pixel_width()
     height := layer.pixel_height()
 
-    layer.paint({
-        x : 0
-        y : 0
-        width
-        height
-    }, fn (pixels: []u32, width: u32, height: u32, stride: u32, user: ^void) {
+    layer.paint({ x: 0 y: 0 width height }, fn (pixels : []u32,
+                                                width  : u32,
+                                                height : u32,
+                                                stride : u32,
+                                                user   : ^void) {
         tick := (user.as(^u32))^
         for y in [0 .. height] {
             for x in [0 .. width] {
@@ -84,38 +83,14 @@ draw_foreground :: fn (layer: ^PixelLayer, tick: u32) {
         }
     }, user = ^tick)
 
-    layer.fill(PixelRect {
-        x : 0
-        y : 0
-        width
-        height: 2
-    }, 0xffffffff)
-    layer.fill(PixelRect {
-        x : 0
-        y : height - 2
-        width
-        height: 2
-    }, 0xffffffff)
-    layer.fill(PixelRect {
-        x     : 0
-        y     : 0
-        width : 2
-        height
-    }, 0xffffffff)
-    layer.fill(PixelRect {
-        x     : width - 2
-        y     : 0
-        width : 2
-        height
-    }, 0xffffffff)
+    layer.fill(PixelRect { x: 0 y: 0 width height: 2 }, 0xffffffff)
+    layer.fill(PixelRect { x: 0 y: height - 2 width height: 2 }, 0xffffffff)
+    layer.fill(PixelRect { x: 0 y: 0 width: 2 height }, 0xffffffff)
+    layer.fill(PixelRect { x: width - 2 y: 0 width: 2 height }, 0xffffffff)
 
     bar_width := (tick % width) + 1
-    layer.fill(PixelRect {
-        x      : 4
-        y      : height - 8
-        width  : bar_width
-        height : 4
-    }, 0xffffcc40)
+    layer.fill(PixelRect { x: 4 y: height - 8 width: bar_width height: 4 },
+               0xffffcc40)
 }
 
 -- Handles resolve to graphics-owned layers. Updating both before render
@@ -159,7 +134,8 @@ main :: fn () {
     -- Each mode controls its own logical size independently of the other layer.
     background := gfx.create_pixel_layer(^frame,
                                          PixelLayerMode.FitToWindow { pixel_scale: 4 })
-    foreground := gfx.create_pixel_layer(^frame, PixelLayerMode.FixedSizeAutoScale {
+    foreground := gfx.create_pixel_layer(^frame,
+                                         PixelLayerMode.FixedSizeAutoScale {
         width  : 96
         height : 72
     })

@@ -13,6 +13,7 @@ typedef enum {
     LSP_RENAME_LOCAL,
     LSP_RENAME_DECL,
     LSP_RENAME_SYMBOL,
+    LSP_RENAME_MEMBER,
 } LspRenameKind;
 
 typedef struct {
@@ -21,6 +22,9 @@ typedef struct {
     u32           token_index;
     string        name;
     cstr          origin_path;
+    usize         member_offset;
+    const Lexer*  owner_lexer;
+    u32           owner_node;
 } LspRenameTarget;
 
 typedef struct {
@@ -38,6 +42,7 @@ typedef struct {
     const Lexer* lexer;
     u32          token_index;
     bool         is_declaration;
+    string       shorthand_name;
 } LspRenameOccurrence;
 
 typedef struct {
@@ -185,7 +190,13 @@ internal bool lsp_rename_valid_new_name(string name)
             return false;
         }
     }
-    return true;
+    Lexer lexer = {0};
+    bool valid = lex((NerdSource){.source = name, .source_path = s("<rename>")},
+                     &lexer) &&
+                 array_count(lexer.tokens) > 0 &&
+                 lexer.tokens[0].kind == TK_Symbol;
+    lex_done(&lexer);
+    return valid;
 }
 
 internal cstr lsp_rename_cstr(Arena* arena, string value)
@@ -529,6 +540,588 @@ internal bool lsp_rename_token_list_contains(Array(u32) tokens, u32 token_index)
     return false;
 }
 
+internal bool lsp_rename_member_in_type(const ProgramInfo* program,
+                                        LspModuleView      view,
+                                        u32                type,
+                                        string             name,
+                                        u32                depth,
+                                        LspRenameTarget*   target);
+
+internal bool lsp_rename_member_declaration(LspModuleView    view,
+                                            u32              owner,
+                                            u32              token,
+                                            u32              symbol,
+                                            LspRenameTarget* target)
+{
+    if (!view.info || !view.info->resolved_path ||
+        token >= array_count(view.lexer->tokens)) {
+        return false;
+    }
+    *target = (LspRenameTarget){
+        .kind          = LSP_RENAME_MEMBER,
+        .index         = token,
+        .token_index   = token,
+        .name          = lex_symbol(view.lexer, symbol),
+        .origin_path   = view.info->resolved_path,
+        .member_offset = view.lexer->tokens[token].offset,
+        .owner_lexer   = view.lexer,
+        .owner_node    = owner,
+    };
+    return true;
+}
+
+internal bool lsp_rename_member_in_node(const ProgramInfo* program,
+                                        LspModuleView      view,
+                                        u32                owner,
+                                        string             name,
+                                        u32                depth,
+                                        LspRenameTarget*   target)
+{
+    if (owner >= array_count(view.ast->nodes) || depth > 32) {
+        return false;
+    }
+    const AstNode* node = &view.ast->nodes[owner];
+    if (node->kind == AK_TypeEnum) {
+        const AstEnumTypeInfo* info = &view.ast->enum_types[node->a];
+        for (u32 i = 0; i < info->variant_count; ++i) {
+            const AstEnumVariant* variant =
+                &view.ast->enum_variants[info->first_variant + i];
+            if (string_eq(lex_symbol(view.lexer, variant->symbol_handle),
+                          name)) {
+                return lsp_rename_member_declaration(view,
+                                                     owner,
+                                                     variant->token_index,
+                                                     variant->symbol_handle,
+                                                     target);
+            }
+        }
+    } else if (node->kind == AK_TypePlex) {
+        const AstPlexTypeInfo* info = &view.ast->plex_types[node->a];
+        for (u32 i = 0; i < info->field_count; ++i) {
+            const AstPlexField* field =
+                &view.ast->plex_fields[info->first_field + i];
+            if (field->symbol_handle != U32_MAX &&
+                string_eq(lex_symbol(view.lexer, field->symbol_handle), name)) {
+                return lsp_rename_member_declaration(view,
+                                                     owner,
+                                                     field->token_index,
+                                                     field->symbol_handle,
+                                                     target);
+            }
+            for (u32 j = 0;
+                 field->bit_field_group && j < field->bit_field_count;
+                 ++j) {
+                const AstPlexBitField* bit =
+                    &view.ast->plex_bit_fields[field->first_bit_field + j];
+                if (bit->symbol_handle != U32_MAX &&
+                    string_eq(lex_symbol(view.lexer, bit->symbol_handle),
+                              name)) {
+                    return lsp_rename_member_declaration(view,
+                                                         owner,
+                                                         bit->token_index,
+                                                         bit->symbol_handle,
+                                                         target);
+                }
+            }
+            if (field->embedded &&
+                field->type_node_index <
+                    array_count(view.sema->node_type_indices) &&
+                lsp_rename_member_in_type(
+                    program,
+                    view,
+                    view.sema->node_type_indices[field->type_node_index],
+                    name,
+                    depth + 1,
+                    target)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+internal bool lsp_rename_member_in_type(const ProgramInfo* program,
+                                        LspModuleView      view,
+                                        u32                type,
+                                        string             name,
+                                        u32                depth,
+                                        LspRenameTarget*   target)
+{
+    if (depth > 32 || type >= array_count(view.sema->types)) {
+        return false;
+    }
+    SemaType st = view.sema->types[type];
+    if (st.kind == STK_Pointer || st.kind == STK_Box) {
+        return lsp_rename_member_in_type(
+            program, view, st.first_param_type, name, depth + 1, target);
+    }
+    if (st.kind != STK_Plex && st.kind != STK_Union && st.kind != STK_Enum) {
+        return false;
+    }
+
+    // Follow imported record identity rather than comparing field spellings
+    // or structural layouts from unrelated declarations.
+    for (u32 i = 0; i < array_count(view.sema->imported_records); ++i) {
+        const SemaImportedRecord* record = &view.sema->imported_records[i];
+        if (record->destination_type != type) {
+            continue;
+        }
+        for (u32 m = 0; m < array_count(program->modules); ++m) {
+            LspModuleView origin = {0};
+            if (lsp_program_module_view(program, m, &origin) &&
+                origin.sema == record->source) {
+                return lsp_rename_member_in_type(program,
+                                                 origin,
+                                                 record->source_type,
+                                                 name,
+                                                 depth + 1,
+                                                 target);
+            }
+        }
+    }
+    // Named record aliases retain their declaration identity even when their
+    // underlying structural types have identical fields.
+    for (u32 i = 0; i < array_count(view.sema->decls); ++i) {
+        const SemaDecl* decl = &view.sema->decls[i];
+        if (decl->type_index == type &&
+            decl->import_module_index != sema_no_decl()) {
+            LspModuleView origin = {0};
+            if (lsp_program_module_view(
+                    program, decl->import_module_index, &origin) &&
+                decl->import_decl_index < array_count(origin.sema->decls)) {
+                const SemaDecl* original =
+                    &origin.sema->decls[decl->import_decl_index];
+                if (lsp_rename_member_in_type(program,
+                                              origin,
+                                              original->type_index,
+                                              name,
+                                              depth + 1,
+                                              target)) {
+                    return true;
+                }
+            }
+        }
+        if (decl->kind == SK_TypeAlias && decl->type_index == type &&
+            decl->import_module_index == sema_no_decl() &&
+            lsp_rename_member_in_node(program,
+                                      view,
+                                      decl->value_node_index,
+                                      name,
+                                      depth + 1,
+                                      target)) {
+            return true;
+        }
+    }
+    // A generic application identifies its template even when this instance's
+    // concrete element types differ from those of the most recent instance.
+    for (u32 i = 0; i < array_count(view.ast->nodes); ++i) {
+        const AstNode* node = &view.ast->nodes[i];
+        if ((node->kind != AK_TypeApply && node->kind != AK_Index) ||
+            i >= array_count(view.sema->node_type_indices) ||
+            view.sema->node_type_indices[i] != type) {
+            continue;
+        }
+        u32 base = node->kind == AK_TypeApply
+                       ? view.ast->type_applications[node->a].target_node_index
+                       : node->a;
+        u32 decl_index = sema_no_decl();
+        if (!lsp_sema_node_decl(view.sema, base, &decl_index) &&
+            base < array_count(view.ast->nodes) &&
+            view.ast->nodes[base].kind == AK_SymbolRef) {
+            decl_index = lsp_rename_find_decl_by_symbol(
+                view.sema, view.ast->nodes[base].a);
+        }
+        if (decl_index >= array_count(view.sema->decls)) {
+            continue;
+        }
+        const SemaDecl* decl  = &view.sema->decls[decl_index];
+        LspModuleView   owner = view;
+        if (decl->import_module_index != sema_no_decl()) {
+            if (!lsp_program_module_view(
+                    program, decl->import_module_index, &owner) ||
+                decl->import_decl_index >= array_count(owner.sema->decls)) {
+                continue;
+            }
+            decl = &owner.sema->decls[decl->import_decl_index];
+        }
+        if (lsp_rename_member_in_node(program,
+                                      owner,
+                                      decl->value_node_index,
+                                      name,
+                                      depth + 1,
+                                      target)) {
+            return true;
+        }
+    }
+    u32 owner = U32_MAX;
+    for (u32 i = 0; i < array_count(view.ast->nodes); ++i) {
+        if ((view.ast->nodes[i].kind == AK_TypePlex ||
+             view.ast->nodes[i].kind == AK_TypeEnum) &&
+            i < array_count(view.sema->node_type_indices) &&
+            view.sema->node_type_indices[i] == type) {
+            if (owner != U32_MAX) {
+                return false;
+            }
+            owner = i;
+        }
+    }
+    return owner != U32_MAX &&
+           lsp_rename_member_in_node(
+               program, view, owner, name, depth + 1, target);
+}
+
+internal LspModuleView lsp_rename_document_module(const LspDocument* doc)
+{
+    LspModuleView view = {.lexer = &doc->front_end.lexer,
+                          .ast   = &doc->front_end.ast,
+                          .sema  = &doc->front_end.sema};
+    for (u32 m = 0; m < array_count(doc->program.modules); ++m) {
+        LspModuleView candidate = {0};
+        if (lsp_program_module_view(&doc->program, m, &candidate) &&
+            candidate.lexer->tokens == view.lexer->tokens) {
+            view.info         = candidate.info;
+            view.module_index = m;
+            break;
+        }
+    }
+    return view;
+}
+
+internal bool lsp_rename_member_type_expression(const ProgramInfo* program,
+                                                LspModuleView      view,
+                                                u32                node_index,
+                                                string             name,
+                                                u32                depth,
+                                                LspRenameTarget*   target)
+{
+    if (depth > 32 || node_index >= array_count(view.ast->nodes)) {
+        return false;
+    }
+    const AstNode* node = &view.ast->nodes[node_index];
+    if (node->kind == AK_Expression || node->kind == AK_TypePointer) {
+        return lsp_rename_member_type_expression(
+            program, view, node->a, name, depth + 1, target);
+    }
+    if (node->kind == AK_TypeApply || node->kind == AK_Index) {
+        u32 base = node->kind == AK_TypeApply
+                       ? view.ast->type_applications[node->a].target_node_index
+                       : node->a;
+        return lsp_rename_member_type_expression(
+            program, view, base, name, depth + 1, target);
+    }
+    if (node->kind == AK_SymbolRef || node->kind == AK_Field) {
+        u32 decl_index = sema_no_decl();
+        if (!lsp_sema_node_decl(view.sema, node_index, &decl_index) &&
+            node->kind == AK_SymbolRef) {
+            decl_index = lsp_rename_find_decl_by_symbol(view.sema, node->a);
+        }
+        if (decl_index < array_count(view.sema->decls)) {
+            const SemaDecl* decl   = &view.sema->decls[decl_index];
+            LspModuleView   origin = view;
+            if (decl->import_module_index != sema_no_decl()) {
+                if (!lsp_program_module_view(
+                        program, decl->import_module_index, &origin) ||
+                    decl->import_decl_index >=
+                        array_count(origin.sema->decls)) {
+                    return false;
+                }
+                decl = &origin.sema->decls[decl->import_decl_index];
+            }
+            if ((decl->kind == SK_TypeAlias ||
+                 decl->kind == SK_GenericTypeAlias) &&
+                decl->value_node_index != node_index &&
+                lsp_rename_member_type_expression(program,
+                                                  origin,
+                                                  decl->value_node_index,
+                                                  name,
+                                                  depth + 1,
+                                                  target)) {
+                return true;
+            }
+        }
+    }
+    if (lsp_rename_member_in_node(
+            program, view, node_index, name, depth + 1, target)) {
+        return true;
+    }
+    u32 type = sema_no_type();
+    return lsp_sema_node_type(view.sema, node_index, &type) &&
+           lsp_rename_member_in_type(
+               program, view, type, name, depth + 1, target);
+}
+
+// Follow annotations and constructor syntax before canonical semantic types:
+// materialisation can intern two separately named records to the same layout.
+internal bool lsp_rename_member_expression(const ProgramInfo* program,
+                                           LspModuleView      view,
+                                           u32                node_index,
+                                           string             name,
+                                           u32                depth,
+                                           LspRenameTarget*   target)
+{
+    if (depth > 32 || node_index >= array_count(view.ast->nodes)) {
+        return false;
+    }
+    const AstNode* node = &view.ast->nodes[node_index];
+    if (node->kind == AK_Expression || node->kind == AK_Deref ||
+        node->kind == AK_AddressOf) {
+        return lsp_rename_member_expression(
+            program, view, node->a, name, depth + 1, target);
+    }
+    if (node->kind == AK_Plex || node->kind == AK_PlexUpdate) {
+        const AstPlexLiteralInfo* literal = &view.ast->plex_literals[node->a];
+        if (literal->target_node_index != U32_MAX) {
+            bool found =
+                node->kind == AK_PlexUpdate
+                    ? lsp_rename_member_expression(program,
+                                                   view,
+                                                   literal->target_node_index,
+                                                   name,
+                                                   depth + 1,
+                                                   target)
+                    : lsp_rename_member_type_expression(
+                          program,
+                          view,
+                          literal->target_node_index,
+                          name,
+                          depth + 1,
+                          target);
+            if (found) {
+                return true;
+            }
+        }
+    }
+    if (node->kind == AK_SymbolRef) {
+        u32 local_index = sema_no_local();
+        if (lsp_sema_node_local(view.sema, node_index, &local_index) &&
+            local_index < array_count(view.sema->locals)) {
+            const SemaLocal* local = &view.sema->locals[local_index];
+            if (lsp_rename_member_type_expression(program,
+                                                  view,
+                                                  local->type_node_index,
+                                                  name,
+                                                  depth + 1,
+                                                  target)) {
+                return true;
+            }
+            if (local->value_node_index != node_index &&
+                lsp_rename_member_expression(program,
+                                             view,
+                                             local->value_node_index,
+                                             name,
+                                             depth + 1,
+                                             target)) {
+                return true;
+            }
+            if (lsp_rename_member_in_type(program,
+                                          view,
+                                          local->type_index,
+                                          name,
+                                          depth + 1,
+                                          target)) {
+                return true;
+            }
+        } else if (lsp_rename_member_type_expression(
+                       program, view, node_index, name, depth + 1, target)) {
+            return true;
+        }
+    }
+    u32 type = sema_no_type();
+    return lsp_sema_node_type(view.sema, node_index, &type) &&
+           lsp_rename_member_in_type(
+               program, view, type, name, depth + 1, target);
+}
+
+internal bool lsp_rename_member_pattern(const LspDocument* doc,
+                                        LspModuleView      view,
+                                        u32                token,
+                                        string             name,
+                                        LspRenameTarget*   target,
+                                        bool*              shorthand)
+{
+    const Ast*  ast  = view.ast;
+    const Sema* sema = view.sema;
+    for (u32 i = 0; i < array_count(ast->patterns); ++i) {
+        const AstPattern* pattern = &ast->patterns[i];
+        u32               type    = i < array_count(sema->pattern_type_indices)
+                                        ? sema->pattern_type_indices[i]
+                                        : sema_no_type();
+        bool              matches = pattern->kind == APK_Value &&
+                                    pattern->token_index == token &&
+                                    type < array_count(sema->types) &&
+                                    sema->types[type].kind == STK_Enum;
+        if (matches) {
+            u32 value = pattern->a;
+            while (value < array_count(ast->nodes) &&
+                   ast->nodes[value].kind == AK_Expression) {
+                value = ast->nodes[value].a;
+            }
+            u32 local, decl;
+            if (lsp_sema_node_local(sema, value, &local) ||
+                lsp_sema_node_decl(sema, value, &decl)) {
+                matches = false;
+            }
+        }
+        if (pattern->kind == APK_EnumVariant) {
+            matches = ast->enum_patterns[pattern->a].token_index == token;
+        } else if (pattern->kind == APK_Plex) {
+            for (u32 j = 0; j < pattern->b; ++j) {
+                const AstPlexPatternField* field =
+                    &ast->pattern_fields[pattern->a + j];
+                if (field->token_index == token) {
+                    matches = true;
+                    *shorthand =
+                        ast->patterns[field->pattern_index].kind == APK_Bind &&
+                        ast->patterns[field->pattern_index].token_index ==
+                            token;
+                }
+            }
+        }
+        if (matches) {
+            if (pattern->kind == APK_EnumVariant &&
+                lsp_rename_member_type_expression(
+                    &doc->program,
+                    view,
+                    ast->enum_patterns[pattern->a].qualifier_node_index,
+                    name,
+                    0,
+                    target)) {
+                return true;
+            }
+            if (pattern->kind == APK_Plex && pattern->c > 0 &&
+                lsp_rename_member_type_expression(
+                    &doc->program, view, pattern->c - 1, name, 0, target)) {
+                return true;
+            }
+            for (u32 n = 0; n < array_count(ast->nodes); ++n) {
+                if (ast->nodes[n].kind != AK_On) {
+                    continue;
+                }
+                const AstOnInfo* on = &ast->ons[ast->nodes[n].b];
+                for (u32 b = 0; b < on->branch_count; ++b) {
+                    const AstOnBranch* branch =
+                        &ast->on_branches[on->first_branch + b];
+                    for (u32 p = 0; p < branch->pattern_count; ++p) {
+                        if (ast->pattern_items[branch->pattern_index + p] ==
+                                i &&
+                            lsp_rename_member_expression(&doc->program,
+                                                         view,
+                                                         ast->nodes[n].a,
+                                                         name,
+                                                         0,
+                                                         target)) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            if (lsp_rename_member_in_type(
+                    &doc->program, view, type, name, 0, target)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+internal bool lsp_rename_member_at_token(const LspDocument* doc,
+                                         u32                token,
+                                         LspRenameTarget*   target,
+                                         bool*              shorthand)
+{
+    LspModuleView view  = lsp_rename_document_module(doc);
+    const Ast*    ast   = view.ast;
+    const Sema*   sema  = view.sema;
+    const Lexer*  lexer = view.lexer;
+    if (token >= array_count(lexer->tokens) ||
+        lexer->tokens[token].kind != TK_Symbol) {
+        return false;
+    }
+    string name =
+        lex_symbol(lexer, lsp_rename_symbol_handle_at_token(lexer, token));
+    *shorthand = false;
+    // Declarations do not have an expression node for each member token.
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode*  node      = &ast->nodes[i];
+        LspRenameTarget candidate = {0};
+        if ((node->kind == AK_TypePlex || node->kind == AK_TypeEnum) &&
+            lsp_rename_member_in_node(
+                &doc->program, view, i, name, 0, &candidate) &&
+            candidate.owner_lexer == lexer && candidate.index == token) {
+            *target = candidate;
+            return true;
+        }
+    }
+    if (lsp_rename_member_pattern(doc, view, token, name, target, shorthand)) {
+        return true;
+    }
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* node = &ast->nodes[i];
+        u32            type = sema_no_type();
+        if (node->kind == AK_Field && node->token_index == token) {
+            if (lsp_rename_member_expression(
+                    &doc->program, view, node->a, name, 0, target)) {
+                return true;
+            }
+            lsp_sema_node_type(sema, node->a, &type);
+        } else if ((node->kind == AK_SymbolRef ||
+                    node->kind == AK_EnumVariant) &&
+                   node->token_index == token) {
+            u32 local, decl;
+            if (lsp_sema_node_local(sema, i, &local) ||
+                lsp_sema_node_decl(sema, i, &decl)) {
+                continue;
+            }
+            for (u32 l = 0; l < array_count(sema->locals); ++l) {
+                u32 value = sema->locals[l].value_node_index;
+                while (value < array_count(ast->nodes) &&
+                       ast->nodes[value].kind == AK_Expression) {
+                    value = ast->nodes[value].a;
+                }
+                if (value == i && lsp_rename_member_type_expression(
+                                      &doc->program,
+                                      view,
+                                      sema->locals[l].type_node_index,
+                                      name,
+                                      0,
+                                      target)) {
+                    return true;
+                }
+            }
+            lsp_sema_node_type(sema, i, &type);
+            if (type >= array_count(sema->types) ||
+                sema->types[type].kind != STK_Enum) {
+                continue;
+            }
+        } else if (node->kind == AK_Plex || node->kind == AK_PlexUpdate) {
+            const AstPlexLiteralInfo* literal = &ast->plex_literals[node->a];
+            for (u32 j = 0; j < literal->field_count; ++j) {
+                const AstPlexLiteralField* field =
+                    &ast->plex_literal_fields[literal->first_field + j];
+                if (field->token_index != token) {
+                    continue;
+                }
+                lsp_sema_node_type(sema, i, &type);
+                *shorthand =
+                    field->value_node_index < array_count(ast->nodes) &&
+                    ast->nodes[field->value_node_index].kind == AK_SymbolRef &&
+                    ast->nodes[field->value_node_index].token_index == token;
+                if (lsp_rename_member_expression(
+                        &doc->program, view, i, name, 0, target)) {
+                    return true;
+                }
+                break;
+            }
+        }
+        if (type < array_count(sema->types) &&
+            lsp_rename_member_in_type(
+                &doc->program, view, type, name, 0, target)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 internal bool lsp_rename_target_from_token(const LspDocument* doc,
                                            u32                token_index,
                                            LspRenameTarget*   out_target)
@@ -540,6 +1133,12 @@ internal bool lsp_rename_target_from_token(const LspDocument* doc,
     if (token_index >= array_count(lexer->tokens) ||
         lexer->tokens[token_index].kind != TK_Symbol) {
         return false;
+    }
+
+    bool shorthand = false;
+    if (lsp_rename_member_at_token(doc, token_index, out_target, &shorthand)) {
+        out_target->token_index = token_index;
+        return true;
     }
 
     for (u32 i = 0; i < array_count(sema->locals); ++i) {
@@ -868,6 +1467,44 @@ internal void lsp_rename_collect_module_decl_occurrences(
         uri = lsp_rename_path_to_uri(arena, module.info->resolved_path);
     }
 
+    if (target->kind == LSP_RENAME_MEMBER) {
+        LspDocument member_doc     = {.source  = lexer->source.source,
+                                      .program = *program};
+        member_doc.front_end.lexer = *lexer;
+        member_doc.front_end.ast   = *ast;
+        member_doc.front_end.sema  = *sema;
+        for (u32 t = 0; t < array_count(lexer->tokens); ++t) {
+            if (lexer->tokens[t].kind != TK_Symbol ||
+                !string_eq(
+                    lex_symbol(lexer,
+                               lsp_rename_symbol_handle_at_token(lexer, t)),
+                    target->name)) {
+                continue;
+            }
+            LspRenameTarget member    = {0};
+            bool            shorthand = false;
+            if (!lsp_rename_member_at_token(
+                    &member_doc, t, &member, &shorthand) ||
+                member.member_offset != target->member_offset ||
+                strcmp(member.origin_path, target->origin_path) != 0) {
+                continue;
+            }
+            bool declaration =
+                strcmp(module.info->resolved_path, target->origin_path) == 0 &&
+                lexer->tokens[t].offset == target->member_offset;
+            lsp_rename_add_occurrence(occurrences, uri, lexer, t, declaration);
+            if (shorthand) {
+                for (u32 i = 0; i < array_count(*occurrences); ++i) {
+                    if ((*occurrences)[i].lexer == lexer &&
+                        (*occurrences)[i].token_index == t) {
+                        (*occurrences)[i].shorthand_name = target->name;
+                    }
+                }
+            }
+        }
+        return;
+    }
+
     for (u32 i = 0; i < array_count(sema->decls); ++i) {
         const SemaDecl* decl = &sema->decls[i];
         if (!lsp_rename_decl_matches(program, module_index, decl, target) ||
@@ -1052,7 +1689,7 @@ void lsp_handle_references(LspState* state, const LspMessage* message)
                                      json_bool(include_decl_value);
     JsonValue* references          = json_new_array(message->arena);
 
-    if (target.kind == LSP_RENAME_DECL) {
+    if (target.kind == LSP_RENAME_DECL || target.kind == LSP_RENAME_MEMBER) {
         Array(LspRenameOccurrence) occurrences =
             lsp_rename_collect_decl_occurrences(
                 state, message->arena, &context, &target);
@@ -1145,8 +1782,30 @@ void lsp_handle_rename(LspState* state, const LspMessage* message)
         return;
     }
 
+    if (target.kind == LSP_RENAME_MEMBER &&
+        !string_eq(target.name, json_string(new_name_value))) {
+        for (u32 m = 0; m < array_count(context.doc->program.modules); ++m) {
+            LspModuleView owner = {0};
+            if (!lsp_program_module_view(&context.doc->program, m, &owner) ||
+                strcmp(owner.info->resolved_path, target.origin_path) != 0) {
+                continue;
+            }
+            LspRenameTarget existing = {0};
+            if (lsp_rename_member_in_node(&context.doc->program,
+                                          owner,
+                                          target.owner_node,
+                                          json_string(new_name_value),
+                                          0,
+                                          &existing)) {
+                lsp_rename_request_context_done(&context);
+                lsp_cancel(response, message->arena);
+                return;
+            }
+        }
+    }
+
     JsonValue* changes = json_new_object(message->arena);
-    if (target.kind == LSP_RENAME_DECL) {
+    if (target.kind == LSP_RENAME_DECL || target.kind == LSP_RENAME_MEMBER) {
         Array(LspRenameEditGroup) groups = NULL;
         Array(LspRenameOccurrence) occurrences =
             lsp_rename_collect_decl_occurrences(
@@ -1163,8 +1822,15 @@ void lsp_handle_rename(LspState* state, const LspMessage* message)
             JsonValue* range = lsp_rename_make_range(
                 message->arena, occurrence.lexer->source, start, end);
             json_object_set_object(edit, "range", range);
+            string replacement = json_string(new_name_value);
+            if (occurrence.shorthand_name.count > 0) {
+                replacement = string_format(message->arena,
+                                            STRINGP ": " STRINGP,
+                                            STRINGV(replacement),
+                                            STRINGV(occurrence.shorthand_name));
+            }
             json_object_set_string(
-                edit, message->arena, "newText", json_string(new_name_value));
+                edit, message->arena, "newText", replacement);
             json_array_push(
                 lsp_rename_edit_group(message->arena, &groups, occurrence.uri),
                 edit);
@@ -1201,8 +1867,38 @@ void lsp_handle_rename(LspState* state, const LspMessage* message)
             }
 
             json_object_set_object(edit, "range", range);
+            string       replacement = json_string(new_name_value);
+            const Ast*   ast         = &context.doc->front_end.ast;
+            const Lexer* lexer       = &context.doc->front_end.lexer;
+            for (u32 f = 0; f < array_count(ast->plex_literal_fields); ++f) {
+                const AstPlexLiteralField* field = &ast->plex_literal_fields[f];
+                if (field->token_index == token &&
+                    field->value_node_index < array_count(ast->nodes) &&
+                    ast->nodes[field->value_node_index].kind == AK_SymbolRef &&
+                    ast->nodes[field->value_node_index].token_index == token) {
+                    replacement = string_format(
+                        message->arena,
+                        STRINGP ": " STRINGP,
+                        STRINGV(lex_symbol(lexer, field->symbol_handle)),
+                        STRINGV(replacement));
+                    break;
+                }
+            }
+            for (u32 f = 0; f < array_count(ast->pattern_fields); ++f) {
+                const AstPlexPatternField* field = &ast->pattern_fields[f];
+                if (field->token_index == token &&
+                    ast->patterns[field->pattern_index].kind == APK_Bind &&
+                    ast->patterns[field->pattern_index].token_index == token) {
+                    replacement = string_format(
+                        message->arena,
+                        STRINGP ": " STRINGP,
+                        STRINGV(lex_symbol(lexer, field->symbol_handle)),
+                        STRINGV(replacement));
+                    break;
+                }
+            }
             json_object_set_string(
-                edit, message->arena, "newText", json_string(new_name_value));
+                edit, message->arena, "newText", replacement);
             json_array_push(edits, edit);
         }
 

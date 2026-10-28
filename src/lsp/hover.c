@@ -438,7 +438,6 @@ internal u32 lsp_find_modref_node_at_token(const Lexer* lexer,
                                            const Ast*   ast,
                                            u32          token_index)
 {
-    UNUSED(lexer);
     for (u32 i = 0; i < array_count(ast->nodes); ++i) {
         const AstNode* node = &ast->nodes[i];
         if (node->kind != AK_ModRef ||
@@ -446,16 +445,11 @@ internal u32 lsp_find_modref_node_at_token(const Lexer* lexer,
             continue;
         }
 
-        const AstModulePath* path          = &ast->module_paths[node->a];
-        u32                  current_token = node->token_index;
-        for (u32 j = 0; j < path->symbol_count; ++j) {
-            if (current_token == token_index) {
-                return i;
-            }
-            current_token += 1;
-            if (j + 1 < path->symbol_count) {
-                current_token += 1;
-            }
+        u32 first, last;
+        if (lsp_module_path_token_range(lexer, ast, i, &first, &last) &&
+            token_index >= first && token_index <= last &&
+            lexer->tokens[token_index].kind == TK_Symbol) {
+            return i;
         }
     }
 
@@ -2531,6 +2525,21 @@ internal string lsp_method_hover_text(const LspDocument* doc,
     const SemaDecl* decl = NULL;
     if (!lsp_sema_decl(&doc->front_end.sema, decl_index, &decl)) {
         return s("");
+    }
+
+    if (decl->import_module_index != sema_no_decl() &&
+        decl->import_decl_index != sema_no_decl()) {
+        LspModuleView module = {0};
+        if (lsp_program_module_view(
+                &doc->program, decl->import_module_index, &module)) {
+            LspDocument module_doc     = *doc;
+            module_doc.source          = module.lexer->source.source;
+            module_doc.front_end.lexer = *module.lexer;
+            module_doc.front_end.ast   = *module.ast;
+            module_doc.front_end.sema  = *module.sema;
+            return lsp_method_hover_text(
+                &module_doc, arena, decl->import_decl_index);
+        }
     }
 
     const SemaMethod* method = NULL;
@@ -5934,6 +5943,48 @@ internal JsonValue* lsp_modref_file_location(const Lexer* lexer,
     return location;
 }
 
+// The whole use clause is navigable, including its keyword, dots and the
+// position immediately after the module path.
+internal JsonValue* lsp_use_definition_at_offset(const Lexer* lexer,
+                                                 const Ast*   ast,
+                                                 usize        offset,
+                                                 Arena*       arena)
+{
+    for (u32 i = 0; i < array_count(ast->nodes); ++i) {
+        const AstNode* use          = &ast->nodes[i];
+        u32            modref_index = use->kind == AK_Use ? use->a : i;
+        if ((use->kind != AK_Use && use->kind != AK_ModRef) ||
+            modref_index >= array_count(ast->nodes) ||
+            use->token_index >= array_count(lexer->tokens)) {
+            continue;
+        }
+        const AstNode* module = &ast->nodes[modref_index];
+        if (module->kind != AK_ModRef ||
+            module->a >= array_count(ast->module_paths)) {
+            continue;
+        }
+        u32 first_symbol, last_symbol;
+        if (!lsp_module_path_token_range(
+                lexer, ast, modref_index, &first_symbol, &last_symbol)) {
+            continue;
+        }
+        u32 start_token = use->token_index;
+        if (use->kind == AK_ModRef) {
+            if (start_token == 0 ||
+                lexer->tokens[start_token - 1].kind != TK_use) {
+                continue;
+            }
+            --start_token;
+        }
+        if (offset >= lexer->tokens[start_token].offset &&
+            offset <=
+                lex_token_end_offset(lexer, &lexer->tokens[last_symbol])) {
+            return lsp_modref_file_location(lexer, ast, modref_index, arena);
+        }
+    }
+    return NULL;
+}
+
 // An imported-module failure can discard the root AST. Parse the open buffer
 // alone so import navigation remains available without analysing its imports.
 internal JsonValue* lsp_source_import_definition(LspState*         state,
@@ -5968,10 +6019,12 @@ internal JsonValue* lsp_source_import_definition(LspState*         state,
     Lexer      lexer    = {0};
     JsonValue* location = NULL;
     if (lex(source, &lexer)) {
-        Ast    ast       = ast_parse(&lexer);
+        Ast ast = ast_parse(&lexer);
+        location =
+            lsp_use_definition_at_offset(&lexer, &ast, offset, message->arena);
         u32    token_end = 0;
         Token* token     = lex_find(&lexer, offset, &token_end);
-        if (token && token->kind == TK_Symbol) {
+        if (location == NULL && token && token->kind == TK_Symbol) {
             u32 modref = lsp_find_modref_node_at_token(
                 &lexer, &ast, lsp_token_index_from_pointer(&lexer, token));
             if (modref != U32_MAX) {
@@ -6009,6 +6062,14 @@ void lsp_handle_definition(LspState* state, const LspMessage* message)
         } else {
             lsp_cancel(response, message->arena);
         }
+        return;
+    }
+
+    JsonValue* import_location = lsp_use_definition_at_offset(
+        &doc->front_end.lexer, &doc->front_end.ast, offset, message->arena);
+    if (import_location != NULL) {
+        json_object_set_object(response, "result", import_location);
+        lsp_send_response(message->arena, response);
         return;
     }
 

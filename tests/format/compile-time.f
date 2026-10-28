@@ -32,9 +32,7 @@ pragma ignored(1, 2.5, "text", yes, no)
 main :: fn () => 0
 
 broken :: fn () {
-    value :: Thing {
-        ...
-    }
+    value :: Thing { ... }
 }
 ¬
 load::fn[T](value:^atomic[T],order::AtomicLoadOrder=SequentiallyConsistent)->T{return value^}

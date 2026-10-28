@@ -1749,10 +1749,28 @@ internal u32 hir_lower_expr(Hir*         hir,
                             u32          node_index)
 {
     node_index = hir_unwrap_node(ast, node_index);
-    if (hir_ast_is_arithmetic(ast, node_index)) {
-        return hir_lower_arithmetic_tree(hir, lexer, ast, sema, node_index);
+    u32 result =
+        hir_ast_is_arithmetic(ast, node_index)
+            ? hir_lower_arithmetic_tree(hir, lexer, ast, sema, node_index)
+            : hir_lower_expr_impl(hir, lexer, ast, sema, node_index);
+    if (result < array_count(hir->exprs)) {
+        HirExpr* expr = &hir->exprs[result];
+        u32      type = expr->type_index;
+        if (expr->source_line == 0 && type < array_count(sema->types) &&
+            (sema->types[type].kind == STK_Array ||
+             sema->types[type].kind == STK_Slice ||
+             sema->types[type].kind == STK_DynamicArray)) {
+            // Dynamic-array literals allocate directly; borrowed collections
+            // may also allocate when converted to an owned dynamic array.
+            hir_node_source_location(sema,
+                                     lexer,
+                                     ast,
+                                     node_index,
+                                     &expr->source_path,
+                                     &expr->source_line);
+        }
     }
-    return hir_lower_expr_impl(hir, lexer, ast, sema, node_index);
+    return result;
 }
 
 internal u32 hir_lower_expr_impl(Hir*         hir,
@@ -1958,7 +1976,67 @@ internal u32 hir_lower_expr_impl(Hir*         hir,
                                     hir, lexer, ast, sema, node->b),
                             });
     case AK_InterpPartExpr:
-        return hir_lower_expr(hir, lexer, ast, sema, node->a);
+        {
+            u32 receiver = hir_lower_expr(hir, lexer, ast, sema, node->a);
+            u32 decl     = sema->node_method_call_decl_indices[node_index];
+            if (decl == sema_no_decl()) {
+                return receiver;
+            }
+            u32 fn_type       = hir_node_type(sema, node_index);
+            u32 receiver_type = hir_function_param_type(sema, fn_type, 0);
+            if (sema->node_method_call_receiver_refs[node_index] ||
+                sema->node_method_call_receiver_derefs[node_index]) {
+                receiver = hir_add_expr(
+                    hir,
+                    (HirExpr){
+                        .kind               = HIR_EXPR_Unary,
+                        .type_index         = receiver_type,
+                        .symbol_handle      = U32_MAX,
+                        .local_index        = sema_no_local(),
+                        .operand_expr_index = receiver,
+                        .unary_op =
+                            sema->node_method_call_receiver_refs[node_index]
+                                ? (sema_node_is_addressable(ast, sema, node->a)
+                                       ? HIR_UNARY_AddressOf
+                                       : HIR_UNARY_AddressOfValue)
+                                : HIR_UNARY_Deref,
+                    });
+            }
+            u32 binding = hir_decl_binding(hir, decl);
+            u32 callee  = hir_add_expr(
+                hir,
+                (HirExpr){
+                    .kind       = HIR_EXPR_LocalRef,
+                    .type_index = fn_type,
+                    .symbol_handle =
+                        sema->node_lowered_symbol_handles[node_index],
+                    .local_index = sema_no_local(),
+                    .ref_kind    = binding != hir_no_index() ? HIR_REF_Binding
+                                                             : HIR_REF_Decl,
+                    .ref_index   = binding != hir_no_index() ? binding : decl,
+                });
+            u32 first_arg = (u32)array_count(hir->call_args);
+            array_push(hir->call_args,
+                       ((HirCallArg){
+                           .expr_index    = receiver,
+                           .symbol_handle = U32_MAX,
+                       }));
+            return hir_add_expr(
+                hir,
+                (HirExpr){
+                    .kind              = HIR_EXPR_Call,
+                    .type_index        = sema->types[fn_type].return_type,
+                    .symbol_handle     = U32_MAX,
+                    .local_index       = sema_no_local(),
+                    .callee_expr_index = callee,
+                    .first_arg         = first_arg,
+                    .arg_count         = 1,
+                    .source_line =
+                        hir_node_source_line(sema, lexer, ast, node_index),
+                    .source_path =
+                        hir_node_source_path(sema, lexer, ast, node_index),
+                });
+        }
     case AK_InterpolatedString:
         {
             Array(HirCallArg) lowered_parts = NULL;
@@ -3306,6 +3384,20 @@ internal u32 hir_lower_pattern(Hir*         hir,
 
             const AstEnumPattern* enum_pattern =
                 &ast->enum_patterns[pattern->a];
+            if (pattern_index < array_count(sema->pattern_type_indices)) {
+                u32 type = sema->pattern_type_indices[pattern_index];
+                if (type < array_count(sema->types) &&
+                    sema->types[type].kind == STK_Plex &&
+                    enum_pattern->braced_payload &&
+                    enum_pattern->pattern_count == 1) {
+                    return hir_lower_pattern(
+                        hir,
+                        lexer,
+                        ast,
+                        sema,
+                        ast->pattern_items[enum_pattern->first_pattern]);
+                }
+            }
             Array(HirPatternChild) children = NULL;
             u32 child_count                 = enum_pattern->pattern_count;
             if (enum_pattern->braced_payload &&
@@ -4455,6 +4547,10 @@ internal u32 hir_lower_function_body(Hir*         hir,
                 return_type < array_count(sema->types) &&
                 sema->types[return_type].kind == STK_Enum &&
                 (sema->types[return_type].flags & (STF_Optional | STF_Result));
+            string source_path = {0};
+            u32    source_line = 0;
+            hir_node_source_location(
+                sema, lexer, ast, expr_node_index, &source_path, &source_line);
             u32 stmt_index = hir_add_stmt(
                 hir,
                 (HirStmt){
@@ -4475,6 +4571,8 @@ internal u32 hir_lower_function_body(Hir*         hir,
                                          ? return_type
                                          : hir_node_type(sema, expr_node_index),
                     .body_block_index = hir_no_index(),
+                    .source_line      = source_line,
+                    .source_path      = source_path,
                 });
             array_push(hir->blocks[block_index].stmt_indices, stmt_index);
             hir->blocks[block_index].stmt_count++;

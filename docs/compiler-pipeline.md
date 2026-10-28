@@ -206,6 +206,12 @@ at the language level: functions, types, values, imports, exports, locals, and
 control-flow constructs are represented as compiler facts rather than as C or
 LLVM spelling.
 
+Interpolation parts with an explicit core Display implementation carry semantic
+method selection and receiver adaptation. HIR lowers them to ordinary calls to
+`show(^value)` before string appending. Addressable values are borrowed; other
+expressions use the existing address-of-value temporary, preserving exactly-once
+evaluation. LLVM and C therefore share the dispatch and borrowing behaviour.
+
 HIR separates entity identity from source names. Functions, types and stored
 values have HIR-local identities; binding records name those entities. Imports,
 module aliases and exports have explicit records. Renaming a source binding

@@ -89,6 +89,37 @@ view := names[..]  -- borrow the dynamic array as a slice
 
 The slice borrows the array storage. It does not own the contents.
 
+## Copying Arrays And Slices
+
+A fixed array or slice can initialise a dynamic array with the same element
+type. The conversion allocates a fresh buffer and copies the elements:
+
+```nerd
+source := [1, 2, 3]
+owned: [..]i32 = source
+defer owned.free()
+
+view := source[1..]
+part: [..]i32 = view
+defer part.free()
+source[1] = 99
+assert part[0] == 2
+```
+
+This also works in plex fields, assignments, function arguments and returns.
+A function returning `[..]T` can return a local fixed array: the elements are
+copied before its local storage expires. Unannotated local array literals keep
+their fixed-array type; the destination supplies the dynamic-array conversion.
+
+The copy is shallow, like `.append()`. Slices, pointers and dynamic arrays inside
+the elements still reference their original storage. Copying a dynamic array
+to another dynamic-array variable still copies its handle and shares storage;
+use a slice of it when you want a fresh buffer.
+
+Free each newly allocated buffer once. An assignment replaces the destination
+handle without automatically freeing its previous buffer. Use `.append()` to
+add to an existing buffer instead.
+
 ## Clearing And Freeing
 
 `.clear()` resets the count but keeps capacity:

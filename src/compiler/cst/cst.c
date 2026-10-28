@@ -4283,12 +4283,14 @@ internal bool cst_parse_expr_bp(CstParseState* state, u8 min_bp, u32* out_node)
                     break;
                 }
                 if (cst_current_token(state).kind != TK_Symbol) {
+                    array_free(fields);
                     return false;
                 }
                 u32 field_token  = state->token_index;
                 u32 field_symbol = cst_current_symbol_handle(state);
                 if (!cst_parse_plex_literal_field_value(
                         state, field_token, field_symbol, &right)) {
+                    array_free(fields);
                     return false;
                 }
                 array_push(fields,

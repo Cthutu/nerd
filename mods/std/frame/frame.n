@@ -491,11 +491,7 @@ test "FrameSystem loop returns no after destroying final frame" {
     system := FrameSystem.init()
     defer system.done()
     platform_info : PlatformFrameInfo
-    system.frames.push(FrameInfo {
-        id     : 1
-        events : nil
-        platform_info
-    })
+    system.frames.push(FrameInfo { id: 1 events: nil platform_info })
 
     frame := Frame {
         id          : 1
@@ -562,11 +558,7 @@ test "Frame context reports invalid platform record" {
     system := FrameSystem.init()
     defer system.done()
     platform_info : PlatformFrameInfo
-    system.frames.push(FrameInfo {
-        id     : 1
-        events : nil
-        platform_info
-    })
+    system.frames.push(FrameInfo { id: 1 events: nil platform_info })
 
     frame := Frame {
         system      : ^system
@@ -595,11 +587,7 @@ test "FrameSystem done releases owned frame and event arrays" {
     events        : [..]FrameEvent
 
     events.push(FrameEvent.None)
-    system.frames.push(FrameInfo {
-        id: 1
-        events
-        platform_info
-    })
+    system.frames.push(FrameInfo { id: 1 events platform_info })
     system.left_alt_down = yes
 
     system.done()

@@ -14,7 +14,10 @@ Windows native links select DWARF debug information with `/debug:dwarf`.
 
 Metadata describes compile units, module/part source paths, function names,
 statement locations, implicit-exit anchors, lexical scopes, parameters, locals
-and globals. Composite immutable locals have stack storage in debug builds so
+and globals. Implicit returns in expression-bodied functions retain the body's
+source location, including parameterless forwarding calls. LLVM requires those
+call locations to preserve debug information for the combined program.
+Composite immutable locals have stack storage in debug builds so
 LLDB can inspect strings, slices, fixed arrays, tuples and plexes. Source-facing
 function names are kept distinct from compiler-generated implementation names.
 
@@ -24,6 +27,10 @@ payloads. It retries dynamic-array `.count`, `.capacity` and `.data` watches
 using runtime-header expressions and reports unsupported Nerd-only forms.
 Native field access and indexing work where emitted types describe the storage.
 This is a supported subset of watch expressions, not a general Nerd evaluator.
+Nested records, array elements and enum payloads retain their stack-frame
+context when expanded, so dynamic-array fields use the same presentation as
+locals. Header reads account for the 32-byte aligned header before the payload:
+count is 24 bytes back and capacity is 16 bytes back.
 
 Linux smoke tools cover source breakpoints, imported modules and folder parts,
 step-over, call stacks, locals and watches using CodeLLDB's bundled LLDB.

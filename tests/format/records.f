@@ -45,10 +45,7 @@ Person :: plex {
     age  u8
 }
 
-matt :: Person {
-    name : "Matt"
-    age  : 53
-}
+matt :: Person { name: "Matt" age: 53 }
 
 main :: fn () {
     prn($"His name is {matt.name} and he is {matt.age} years old")
@@ -87,12 +84,9 @@ Packed :: plex #packed {
 main :: fn () {
     p     := Point { x y name }
     short := Point { x y name }
+    q     := p with { y name: "second" }
+    pp    := ^q
 
-    q := p with {
-        y
-        name: "second"
-    }
-    pp := ^q
     prn($"{pp.name} {pp.x} {pp.y}")
     packed := Packed { a: 1 b: 2 }
 }
@@ -156,14 +150,8 @@ Room :: plex {
 }
 
 rooms : []Room : [
-    {
-        name  : "Hall"
-        exits : [1, 2, 3]
-    },
-    {
-        name  : "Cellar"
-        exits : [4, 5, 6]
-    },
+    { name : "Hall"   exits : [1, 2, 3] },
+    { name : "Cellar" exits : [4, 5, 6] },
 ]
 
 items : []i32 : [
@@ -203,16 +191,8 @@ Room :: plex {
 }
 
 rooms : []Room : [
-    {
-        name        : "Hall"
-        description : "A dusty entrance hall."
-        exits       : [0, 1, 2, 3]
-    },
-    {
-        name        : "Kitchen"
-        description : "An old kitchen."
-        exits       : [0, 0, 0, 1]
-    },
+    { name : "Hall"    description : "A dusty entrance hall." exits : [0, 1, 2, 3] },
+    { name : "Kitchen" description : "An old kitchen."        exits : [0, 0, 0, 1] },
 ]
 
 items : []Room : [
@@ -609,9 +589,7 @@ pub Shader :: plex {
 impl Shader {
 
     pub new :: fn (vertex_shader: string, fragment_shader: string) -> ?Self {
-        return Self {
-            id: 1
-        }
+        return Self { id: 1 }
     }
 
 }
@@ -625,7 +603,8 @@ height:300
 }
 ¬
 main :: fn () {
-    pixels := gfx_system.create_pixel_layer(^main_window, PixelLayerMode.FixedSizeAutoScale {
+    pixels := gfx_system.create_pixel_layer(^main_window,
+                                            PixelLayerMode.FixedSizeAutoScale {
         width  : 400
         height : 300
     })
@@ -650,10 +629,7 @@ LineIterator :: plex {
 
 impl string {
 
-    pub lines :: fn (source: Self) => LineIterator {
-        text   : source
-        offset : 0
-    }
+    pub lines :: fn (source: Self) => LineIterator { text: source offset: 0 }
 
 }
 ¬

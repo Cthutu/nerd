@@ -75,6 +75,8 @@ Use `:=` to introduce a mutable binding whose type is inferred from its
 initialiser and available usage context. Numeric literals can take their type
 from later uses, including calls with concrete parameter types and assignments
 to typed destinations. This also works independently for tuple fields.
+An empty `.as()` in an initialiser can likewise take its destination type from
+a later use of the variable, without changing the cast operand's type.
 
 A later call can also supply the type of a `{ ... }` plex literal, including
 when the call takes its address:

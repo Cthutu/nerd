@@ -1,5 +1,42 @@
 # Internals
 
+Usage constraints include array literals. A concrete array/slice destination
+constrains literal element types recursively before local materialisation,
+including record fields, aliases and tuple projections. The temporary literal
+constraint table records a fixed-array type with the literal's own count, so
+slice context does not change a local's storage or ownership. Matching explicitly
+typed record literals also propagate their field context. Normal inference
+retains length, annotation, cast, field and range validation.
+
+The usage-constraint table also records result types for empty contextual casts.
+Local aliases, arithmetic and tuple projections share those constraints without
+propagating them into the cast operand. Known imported function signatures
+participate even though their declarations are represented as builtin functions.
+Normal cast inference validates each conversion after constraints converge;
+missing or conflicting destinations remain errors.
+
+C aggregate zero initialisers use `(type){}` rather than a scalar `{0}`, which
+Clang rejects for an empty array member. Enum initialisation retains its
+first-discriminant path. Windows C representation of nested zero-sized arrays
+remains open; see the reproduction in `docs/compiler-issues.md`.
+
+Interpolation expression lexing retains the opening brace and outstanding
+parenthesis/bracket origins for diagnostic 0110. A quote following a complete
+operand at the outer interpolation brace level diagnoses the unfinished field.
+If a missing `}` has already caused a quote to consume later lines as a nested
+literal, its origin is retained for the later diagnostic without rejecting valid
+multiline strings. Plain and nested unterminated literals retain diagnostic 0106.
+
+Core Display requires `show(self: ^Self) -> string`. Trait signature validation
+reads imported requirements from their defining AST and substitutes the target
+type in that module before importing the required function type. This prevents
+silently accepting mismatched receivers or returns for imported traits.
+Interpolation resolves explicit Display methods in sema, including imported and
+generic implementations, and lowers them to ordinary borrowed HIR calls. Implicit
+address-taking marks arena-containing operands as borrowed. Built-in formatting
+remains the fallback, and result-main error rendering uses the pointer signature
+in both backends.
+
 Anonymous `plex` and `union` members promote field names through the existing
 record-group side tables. AST and CST parsers use a temporary field stack so
 recursive type parsing cannot interleave parent and child field ranges. The
@@ -320,6 +357,60 @@ For tests:
 
 ## Execution Flow
 
+Impl member collection recognises `Self` and a structurally identical spelling
+of the impl target in receiver and factory annotations. After bindings and
+dependency order are available, method classification resolves concrete aliases
+and checks record declaration origins across imports, rather than accepting
+unrelated records whose layouts have been interned together. Generic signatures
+retain syntax-level target relationships while concrete portions are resolved.
+Unrelated members fail at their declaration; trait signature diagnostics take
+precedence over the ownership check.
+
+Associated calls bind generic parameters from actual arguments before checking
+the substituted parameter types. Their two-pass argument scan handles ordinary
+arguments before contextual casts, and resolves the return during instantiation
+after those parameters are known.
+Factory target matching follows aliases to their defining declarations across
+modules, preventing a generic factory with an identical record layout from
+capturing an alias-qualified call. Method hover follows imported declaration
+metadata before rendering the signature in its defining module.
+
+The VS Code debug adapter associates child variable references with the parent
+stack frame, including references returned by aggregate evaluation and synthetic
+array/enum expansion. Nested dynamic-array fields therefore retain the frame
+needed for header and element evaluation. Header watches and expansions share
+the padded native layout: count at payload minus 24 bytes, capacity minus 16.
+
+HIR assigns expression-body source locations to their synthesised return
+statements. LLVM uses the same statement marker path as explicit returns, so
+parameterless expression-bodied functions retain call and return locations.
+Missing call locations can make LLVM discard debug metadata for the entire
+combined module, including unrelated imported functions and the entry point.
+
+The formatter measures compact plex-literal candidates at their destination
+column before collapsing multiline input. Nested candidates are measured in a
+flat mode to avoid repeated recursive width measurement. Declaration grouping
+and array-row alignment use the resulting layout so a second formatting pass
+produces the same output. Comments and blank field groups prevent compaction.
+
+The CST parser releases partially collected plex-literal field lists before
+recovering from an incomplete field, so formatting unfinished source does not
+leak compiler allocations.
+
+Braced branch heads can name either a typed plex pattern or an enum payload.
+Their existing `AstPattern.c` slot retains the complete possible type spelling
+as a syntax node. Sema disambiguates from the subject type and records the
+result in `pattern_type_indices`; HIR lowers a record interpretation directly
+through its nested plex pattern. This keeps `Mob { name }` valid as a branch
+head without changing enum payload syntax or mutating the parsed AST.
+
+LSP import navigation and import ranges share a token-range helper that follows
+only source-visible dotted components. Grouped import prefixes are not counted
+again when finding a leaf's end. Member rename keys fields and variants by their
+declaration path and token offset, follows imported and generic owners, and
+uses source annotations before materialised structural type IDs. This avoids
+renaming unrelated members when record layouts have been interned together.
+
 The `nerd` executable is mostly orchestration:
 
 1. parse CLI input
@@ -588,6 +679,11 @@ array expression used to allocate a capacity-bearing dynamic-array local uses
 the local declaration location, which LLVM passes to the runtime allocator for
 leak diagnostics.
 
+HIR retains source locations for dynamic-array literals too, including empty
+literals and literals nested in record fields. Both backends use the literal's
+location for its allocation; freeing an outer collection does not free nested
+dynamic arrays, whose leaks must still point to their own literal.
+
 Dynamic-array heap storage pads its three-word header to 32 bytes before the
 first element. Both LLVM lowering and the compatibility C helper preserve the
 allocator's 16-byte alignment across allocation, growth, reserve and pointer
@@ -595,6 +691,22 @@ conversions. The former 24-byte prefix misaligned LLVM enums with wide payloads;
 optimized Windows Dungeon then faulted on an aligned SIMD store while appending
 terminal input events. Regression checks exercise these stores and their values
 in debug/release targets at jobs 1/4, including explicit capacity and reserve.
+
+Fixed arrays and slices also implicitly convert to dynamic arrays with matching
+element types. Sema accepts the conversion and generic dynamic-array parameters
+bind their element type from either source form. HIR retains the actual source
+type; the LLVM and C coercion paths call `nrt_array_copy` to allocate a fresh
+buffer and copy the payload shallowly. The shared `NrtArray` header is also used
+by C growth helpers. The runtime checks payload-size overflow and avoids reading
+empty sources. Backend expression emission retains the most recently emitted
+expression's source location for allocation diagnostics on these implicit copies.
+Dynamic-array literals require runtime allocation even when their elements are
+constant, so LLVM excludes them and their enclosing aggregates from static
+constant backing generation.
+
+Runtime-declaration discovery includes dynamic arrays nested in aggregate
+fields, including unions. LLVM's union and enum storage conversions recognise
+dynamic-array handles as pointer values in both directions.
 
 Implicit fixed-array-to-slice call arguments are lowered from the address of the
 original HIR array expression. This preserves the language's borrowed-view

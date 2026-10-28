@@ -1,0 +1,4 @@
+pub Mob :: plex { name string }
+pub State :: enum { Idle Busy }
+pub make_mob :: fn () -> Mob { return { name: "gnoll" } }
+pub initial_state :: fn () -> State { return Idle }

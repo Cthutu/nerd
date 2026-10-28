@@ -303,12 +303,17 @@ c: u64 = a.as() + 1       -- arithmetic passes that expected type to operands
 
 consume :: fn (value: u64) { prn($"{value}") }
 consume(3.1415.as())       -- the parameter supplies u64; conversion yields 3
+
+upper := a.as()
+consume(upper)            -- this later use supplies u64 through the local
 ```
 
 Annotations, assignment targets, parameters, return annotations and typed
 aggregate elements supply the expected type. Conversion rules remain exactly
 the same as `.as(Type)`, including narrowing and truncation. The compiler reports
-an error for `b := a.as()` because no concrete destination is available. Keep
+an error for `b := a.as()` when no concrete destination is available from its
+declaration or uses. Later uses can supply the destination through local aliases,
+arithmetic and tuple fields; conflicting destinations are errors. Keep
 `.as(Type)` when you want the conversion type to remain explicit independently
 of its surrounding code.
 

@@ -114,6 +114,9 @@ Definition on a module path in `use` opens the resolved module source file
 (`mod.n` for a folder module). This also works when an earlier import fails:
 navigation resolves the path without requiring the target module to have been
 loaded or analysed. Any component of the module path selects the same file.
+The `use` keyword, path separators and the end of the path are navigable too,
+including module aliases and grouped imports. Grouped paths stop at the current
+entry instead of including the following import or statement.
 
 Rename supports same-document semantic renames for locals and syntax-fallback
 renames. For top-level declarations, it resolves the declaration origin to a
@@ -126,6 +129,15 @@ tokens with the same symbol so simple renames keep working while code is
 mid-edit. If imported-module analysis fails before the front end preserves a
 root AST, rename lexes and parses just the open buffer for that same syntax
 fallback.
+
+Plex and union fields and enum variants support prepare-rename, rename and
+references. Member identity follows the owning declaration through annotations,
+constructors, imported types and generic applications, rather than matching
+spelling or a canonical record layout. This keeps equally named fields in other
+types separate, even when their layouts are identical. Literal fields, updates
+and patterns participate in the rename. Renaming a shorthand field writes an
+explicit label such as `label: name`, preserving its local value or binding.
+Renames that collide with another member of the same owner are rejected.
 
 References use the same target-resolution path as rename. The handler honours
 `includeDeclaration` for locals, local top-level declarations, and imported

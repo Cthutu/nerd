@@ -181,70 +181,72 @@ bool  lsp_token_range(const Lexer* lexer,
                       u32          token_index,
                       usize*       out_start,
                       usize*       out_end);
-bool  lsp_use_module_path_range(const LspDocument* doc,
-                                u32                use_index,
-                                usize*             out_start,
-                                usize*             out_end);
-bool  lsp_sema_decl(const Sema* sema, u32 decl_index, const SemaDecl** out);
-bool  lsp_sema_local(const Sema* sema, u32 local_index, const SemaLocal** out);
-bool  lsp_sema_scope(const Sema* sema, u32 scope_index, const SemaScope** out);
-bool  lsp_sema_type(const Sema* sema, u32 type_index, const SemaType** out);
-bool  lsp_sema_decl_by_symbol(const Sema*      sema,
-                              u32              symbol_handle,
-                              const SemaDecl** out_decl,
-                              u32*             out_decl_index);
-bool  lsp_decl_view_decl(const LspDeclarationView* view,
-                         u32                       decl_index,
-                         const SemaDecl**          out);
-bool  lsp_decl_view_decl_by_symbol(const LspDeclarationView* view,
-                                   u32                       symbol_handle,
-                                   const SemaDecl**          out_decl,
-                                   u32*                      out_decl_index);
-bool  lsp_binding_view_local(const LspBindingView* view,
-                             u32                   local_index,
-                             const SemaLocal**     out);
-bool  lsp_binding_view_scope(const LspBindingView* view,
-                             u32                   scope_index,
-                             const SemaScope**     out);
-bool  lsp_binding_view_node_decl(const LspBindingView* view,
+bool  lsp_module_path_token_range(
+    const Lexer* lexer, const Ast* ast, u32 module_node, u32* first, u32* last);
+bool lsp_use_module_path_range(const LspDocument* doc,
+                               u32                use_index,
+                               usize*             out_start,
+                               usize*             out_end);
+bool lsp_sema_decl(const Sema* sema, u32 decl_index, const SemaDecl** out);
+bool lsp_sema_local(const Sema* sema, u32 local_index, const SemaLocal** out);
+bool lsp_sema_scope(const Sema* sema, u32 scope_index, const SemaScope** out);
+bool lsp_sema_type(const Sema* sema, u32 type_index, const SemaType** out);
+bool lsp_sema_decl_by_symbol(const Sema*      sema,
+                             u32              symbol_handle,
+                             const SemaDecl** out_decl,
+                             u32*             out_decl_index);
+bool lsp_decl_view_decl(const LspDeclarationView* view,
+                        u32                       decl_index,
+                        const SemaDecl**          out);
+bool lsp_decl_view_decl_by_symbol(const LspDeclarationView* view,
+                                  u32                       symbol_handle,
+                                  const SemaDecl**          out_decl,
+                                  u32*                      out_decl_index);
+bool lsp_binding_view_local(const LspBindingView* view,
+                            u32                   local_index,
+                            const SemaLocal**     out);
+bool lsp_binding_view_scope(const LspBindingView* view,
+                            u32                   scope_index,
+                            const SemaScope**     out);
+bool lsp_binding_view_node_decl(const LspBindingView* view,
+                                u32                   node_index,
+                                u32*                  out_decl_index);
+bool lsp_binding_view_node_local(const LspBindingView* view,
                                  u32                   node_index,
-                                 u32*                  out_decl_index);
-bool  lsp_binding_view_node_local(const LspBindingView* view,
-                                  u32                   node_index,
-                                  u32*                  out_local_index);
-bool  lsp_binding_view_node_scope(const LspBindingView* view,
-                                  u32                   node_index,
-                                  u32*                  out_scope_index);
-bool  lsp_type_fact_view_type(const LspTypeFactView* view,
-                              u32                    type_index,
-                              const SemaType**       out);
-bool  lsp_type_fact_view_node_type(const LspTypeFactView* view,
-                                   u32                    node_index,
+                                 u32*                  out_local_index);
+bool lsp_binding_view_node_scope(const LspBindingView* view,
+                                 u32                   node_index,
+                                 u32*                  out_scope_index);
+bool lsp_type_fact_view_type(const LspTypeFactView* view,
+                             u32                    type_index,
+                             const SemaType**       out);
+bool lsp_type_fact_view_node_type(const LspTypeFactView* view,
+                                  u32                    node_index,
+                                  u32*                   out_type_index);
+bool lsp_type_fact_view_type_param(const LspTypeFactView* view,
+                                   u32                    param_index,
+                                   u32*                   out_symbol,
                                    u32*                   out_type_index);
-bool  lsp_type_fact_view_type_param(const LspTypeFactView* view,
-                                    u32                    param_index,
-                                    u32*                   out_symbol,
-                                    u32*                   out_type_index);
-bool  lsp_sema_node_decl(const Sema* sema, u32 node_index, u32* out_decl_index);
-bool  lsp_sema_node_local(const Sema* sema,
-                          u32         node_index,
-                          u32*        out_local_index);
-bool  lsp_sema_node_scope(const Sema* sema,
-                          u32         node_index,
-                          u32*        out_scope_index);
-bool  lsp_sema_node_type(const Sema* sema, u32 node_index, u32* out_type_index);
-bool  lsp_on_branch_local_type(const LspDocument* doc,
-                               u32                local_index,
-                               u32*               out_type_index);
-bool  lsp_sema_type_param(const Sema* sema,
-                          u32         param_index,
-                          u32*        out_symbol,
-                          u32*        out_type_index);
-bool  lsp_module_export_decl(const LspModuleView* view,
-                             u32                  export_index,
-                             const SemaDecl**     out_decl,
-                             u32*                 out_decl_index);
-u32   lsp_module_export_count(const LspModuleView* view);
+bool lsp_sema_node_decl(const Sema* sema, u32 node_index, u32* out_decl_index);
+bool lsp_sema_node_local(const Sema* sema,
+                         u32         node_index,
+                         u32*        out_local_index);
+bool lsp_sema_node_scope(const Sema* sema,
+                         u32         node_index,
+                         u32*        out_scope_index);
+bool lsp_sema_node_type(const Sema* sema, u32 node_index, u32* out_type_index);
+bool lsp_on_branch_local_type(const LspDocument* doc,
+                              u32                local_index,
+                              u32*               out_type_index);
+bool lsp_sema_type_param(const Sema* sema,
+                         u32         param_index,
+                         u32*        out_symbol,
+                         u32*        out_type_index);
+bool lsp_module_export_decl(const LspModuleView* view,
+                            u32                  export_index,
+                            const SemaDecl**     out_decl,
+                            u32*                 out_decl_index);
+u32  lsp_module_export_count(const LspModuleView* view);
 
 //------------------------------------------------------------------------------
 // LSP message handling

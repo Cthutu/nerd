@@ -1,8 +1,5 @@
 /* Helpers used by the C backend, following the nrt allocator contract. */
-typedef struct {
-    _Alignas(16) void* data;
-    uintptr_t count, capacity;
-} NcgArray;
+typedef NrtArray NcgArray;
 static void ncg_reserve(NcgArray**  slot,
                         uintptr_t   capacity,
                         uintptr_t   size,

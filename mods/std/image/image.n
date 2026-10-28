@@ -134,12 +134,7 @@ test "image format rejects unknown data" {
 }
 
 test "image free releases storage and clears dimensions" {
-    image := Image {
-        width    : 2
-        height   : 2
-        channels : 4
-        data     : nil
-    }
+    image := Image { width: 2 height: 2 channels: 4 data: nil }
     image.data.resize_undefined_to(16)
 
     image.free()

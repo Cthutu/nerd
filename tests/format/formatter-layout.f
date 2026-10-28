@@ -412,9 +412,7 @@ main :: fn () {
     compress_error :: fn (error: CompressionError) -> [..]u8\CompressionError {
     }
 
-    result := Err(Error.InvalidData {
-        message
-    })
+    result := Err(Error.InvalidData { message })
 
     counts     : [16]u16
     next_codes : [16]u16

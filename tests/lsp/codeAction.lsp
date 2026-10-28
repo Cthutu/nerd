@@ -1989,7 +1989,7 @@ main :: fn () -> i32 {
 
 ¬
 Display :: trait {
-    show :: fn (self: Self) -> string
+    show :: fn (self: ^Self) -> string
     reset :: fn (self: Self)
 }
 
@@ -2175,7 +2175,7 @@ impl Display for Point {
                     "character": 0
                   }
                 },
-                "newText": "    show :: fn (_self: Self) -> string {\n        result: string\n        return result\n    }\n\n    reset :: fn (_self: Self) {\n    }\n"
+                "newText": "    show :: fn (_self: ^Self) -> string {\n        result: string\n        return result\n    }\n\n    reset :: fn (_self: Self) {\n    }\n"
               }
             ]
           }
@@ -7212,7 +7212,7 @@ impl Display for Sha1Hash {
                     "character": 0
                   }
                 },
-                "newText": "    show :: fn (_self: Self) -> string {\n        result: string\n        return result\n    }\n"
+                "newText": "    show :: fn (_self: ^Self) -> string {\n        result: string\n        return result\n    }\n"
               }
             ]
           }
@@ -7241,7 +7241,7 @@ impl Display for Sha1Hash {
                     "character": 0
                   }
                 },
-                "newText": "    show :: fn (_self: Self) -> string {\n        result: string\n        return result\n    }\n"
+                "newText": "    show :: fn (_self: ^Self) -> string {\n        result: string\n        return result\n    }\n"
               }
             ]
           }

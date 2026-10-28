@@ -253,7 +253,7 @@ dynarray.field.done.9:
 on.body.11:
   ret i32 3
 on.end.10:
-  %t21 = call ptr @nrt_mem_alloc(i64 96, i64 16, ptr @.macro.file.m0, i32 0)
+  %t21 = call ptr @nrt_mem_alloc(i64 96, i64 16, ptr @.macro.file.m0, i32 16)
   %t22 = getelementptr inbounds { ptr, i64, i64 }, ptr %t21, i64 0, i32 0
   %t23 = getelementptr inbounds { ptr, i64, i64 }, ptr %t21, i64 0, i32 1
   %t24 = getelementptr inbounds { ptr, i64, i64 }, ptr %t21, i64 0, i32 2

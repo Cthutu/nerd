@@ -103,6 +103,48 @@ bool error_0106_unterminated_string_literal(NerdSource source, ErrorSpan span)
     return false;
 }
 
+bool error_0110_unterminated_interpolation(NerdSource source,
+                                           ErrorSpan  expression,
+                                           ErrorSpan  delimiter,
+                                           char       closing_delimiter,
+                                           usize      boundary)
+{
+    ErrorInfo error_info =
+        error_init(source, expression, "Unterminated interpolation expression");
+    error_add_reference(&error_info,
+                        ERROR_REF_PRIMARY,
+                        expression,
+                        "This interpolation expression starts here");
+    if (closing_delimiter) {
+        error_add_reference(&error_info,
+                            ERROR_REF_SECONDARY,
+                            delimiter,
+                            "This '%c' still needs a matching '%c'",
+                            closing_delimiter == ')' ? '(' : '[',
+                            closing_delimiter);
+        error_add_help(&error_info,
+                       "Add '%c', then '}', before the string's closing quote.",
+                       closing_delimiter);
+    } else {
+        error_add_help(&error_info,
+                       "Add '}' to close the interpolation before the string's "
+                       "closing quote.");
+    }
+    if (boundary < source.source.count) {
+        error_add_reference(&error_info,
+                            ERROR_REF_SECONDARY,
+                            (ErrorSpan){.start = boundary, .end = boundary + 1},
+                            "Possible closing quote reached before the "
+                            "interpolation was complete");
+    } else {
+        error_add_note(&error_info,
+                       "Reached the end of the source before the interpolation "
+                       "was closed.");
+    }
+    error_render(&error_info);
+    return false;
+}
+
 bool error_0107_unterminated_packed_integer_literal(NerdSource source,
                                                     ErrorSpan  span)
 {
