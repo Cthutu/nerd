@@ -241,7 +241,8 @@ pub Frame :: plex {
     full_screen bool
 
     -- Set to no to ask the platform window manager to prevent user resizing.
-    -- Programmatic size changes through `apply` are still allowed.
+    -- Programmatic size changes through `apply` are still allowed. Fullscreen
+    -- temporarily overrides the fixed size and restores it on exit.
     resizable   bool
 }
 

@@ -335,6 +335,10 @@ FrameContext\FrameError` is the public way to resolve platform handles;
 detached, closed, and invalid frames report explicit `FrameError` values.
 
 `Frame.resizable = no` asks the window manager to prevent user resizing.
+Fullscreen temporarily overrides the fixed windowed size; leaving fullscreen
+restores the saved windowed dimensions and their resize constraints. On Linux,
+X11 minimum/maximum size hints are cleared while fullscreen and restored using
+the saved dimensions before requesting the return to windowed mode.
 On Windows, fixed frames remove the resize/maximise styles and report equal
 minimum and maximum tracking sizes through `WM_GETMINMAXINFO`. These limits
 use the current outer window dimensions, including its non-client border.

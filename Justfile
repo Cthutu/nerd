@@ -36,6 +36,7 @@ test *args:
     python3 build/test_threads.py
     just build nerd --skip-mod-sync
     python3 build/test.py {{args}}
+    python3 build/test_frame.py --nerd _bin/nerd-debug{{exe_suffix}}
     python3 tests/stdlib-capabilities/check_capabilities.py --compiler _bin/nerd-debug{{exe_suffix}}
     python3 build/test_std_thread_sync.py --nerd _bin/nerd-debug{{exe_suffix}}
     python3 build/test_std_thread_sync.py --nerd _bin/nerd-debug{{exe_suffix}} --cgen

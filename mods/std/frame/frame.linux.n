@@ -151,7 +151,8 @@ on "linux" {
     frame_linux_apply_resize_hints :: fn (info: ^FrameInfo, frame: ^Frame) {
         hints : XSizeHints
         info.platform_info.resizable = frame.resizable
-        on !frame.resizable => {
+        on !frame.resizable &&
+            !frame.full_screen => {
             hints.flags = (X_SIZE_HINT_P_MIN_SIZE | X_SIZE_HINT_P_MAX_SIZE).as(XLong)
             hints.min_width = frame.width.as(i32)
             hints.min_height = frame.height.as(i32)
@@ -490,6 +491,13 @@ on "linux" {
         _ := XStoreName(info.platform_info.display,
                         info.platform_info.window,
                         frame_c_string_temp(frame.title))
+        -- `update` may have copied fullscreen dimensions into the public frame.
+        -- Restore the windowed size before publishing fixed-size constraints.
+        on info.platform_info.full_screen &&
+            !frame.full_screen => {
+            frame.width = info.platform_info.restore_width
+            frame.height = info.platform_info.restore_height
+        }
         frame_linux_apply_resize_hints(info, frame)
         frame_linux_apply_fullscreen(info, frame)
         on !info.platform_info.full_screen => {

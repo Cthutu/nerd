@@ -38,3 +38,7 @@ The Python fixture harness is distinct from `nerd test`, which executes unit
 tests declared in Nerd sources. Default recipes retain stdlib unit tests,
 Raptor and native thread/sync contracts. Generated trial inputs, logs and
 measurements are local evidence; do not commit them as replacement fixtures.
+
+`frame/` contains the Linux fixed-size fullscreen lifecycle probe.
+`build/test_frame.py` runs it against an isolated Xlib peer in `just test`,
+without requiring a display server. Interactive desktop checks remain separate.

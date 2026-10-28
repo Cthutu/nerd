@@ -1,0 +1,60 @@
+use std.frame
+
+ffi "frame-peer" mock_hints_flags () -> i64
+
+main :: fn () {
+    system := FrameSystem.init()
+    defer system.done()
+    frame := Frame { width: 800 height: 600 resizable: no ... }
+    system.apply(^frame)
+    for _ in [0..3] {
+        frame.full_screen = yes
+        system.apply(^frame)
+        system.update(^frame)
+        assert frame.width == 1920
+        assert frame.height == 1080
+        -- Reapplying a fullscreen snapshot must not lock it to the display size.
+        system.apply(^frame)
+        assert mock_hints_flags() == 0
+        frame.resizable = yes
+        system.apply(^frame)
+        assert mock_hints_flags() == 0
+        frame.resizable = no
+        system.apply(^frame)
+        assert mock_hints_flags() == 0
+        frame.full_screen = no
+        system.apply(^frame)
+        system.update(^frame)
+        assert frame.width == 800
+        assert frame.height == 600
+    }
+    frame.width = 640
+    frame.height = 480
+    system.apply(^frame)
+    system.update(^frame)
+    assert frame.width == 640
+    assert frame.height == 480
+    frame.full_screen = yes
+    system.apply(^frame)
+    system.update(^frame)
+    frame.full_screen = no
+    system.apply(^frame)
+    system.update(^frame)
+    assert frame.width == 640
+    assert frame.height == 480
+    frame.resizable = yes
+    system.apply(^frame)
+    assert mock_hints_flags() == 0
+    system.close(^frame)
+    -- Starting fullscreen preserves the requested initial windowed size too.
+    frame = Frame { width: 320 height: 240 full_screen: yes resizable: no ... }
+    system.apply(^frame)
+    system.update(^frame)
+    assert frame.width == 1920
+    frame.full_screen = no
+    system.apply(^frame)
+    system.update(^frame)
+    assert frame.width == 320
+    assert frame.height == 240
+    system.close(^frame)
+}
