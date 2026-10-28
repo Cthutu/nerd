@@ -43,6 +43,6 @@ from the beginning.
 ## Distribution
 
 Run `just dist` from the repository root to build `_dist/nerd.zip` containing
-this checkout's release compiler, VS Code extension, LLVM Scoop manifest,
-standard library, examples and documentation. `just package` builds the VS Code
-extension alone. See [distribution packaging](../distribution.md).
+this checkout's release compiler, learning guide, standard library, LLVM Scoop
+manifest and examples. `just package` builds the VS Code extension separately.
+See [distribution packaging](../distribution.md).

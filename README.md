@@ -118,7 +118,7 @@ python3 build/build.py
 ```
 
 Start learning Nerd with the [learning guide](docs/learn/README.md).
-`just dist` builds the compiler, extension, library, examples and documentation
+`just dist` packages the compiler, learning guide, library, Scoop manifest and examples
 as `_dist/nerd.zip`; `just package` packages only the VS Code extension. See
 [distribution packaging](docs/distribution.md).
 

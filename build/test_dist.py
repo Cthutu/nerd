@@ -24,6 +24,8 @@ class DistributionTests(unittest.TestCase):
                 "mods/core.n": "core",
                 "examples/hello/main.n": "example",
                 "docs/learn/README.md": "learning guide",
+                "docs/learn/example.md": "[Chapter](README.md)\n[Toolchain](../toolchain.md#setup)\n```nerd\n-- [Code](../toolchain.md)\n```\n",
+                "docs/toolchain.md": "developer documentation",
                 "README.md": "repository guide",
                 "DEBUGGER.md": "debugger guide",
                 "ROADMAP.md": "open work",
@@ -33,16 +35,26 @@ class DistributionTests(unittest.TestCase):
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(content, encoding="utf-8")
             subprocess.run(["git", "add", "mods", "examples", "docs"], cwd=root, check=True)
+            hooks = root / "disabled-hooks"
+            hooks.mkdir()
+            subprocess.run(["git", "-c", "user.name=Distribution Test", "-c", "user.email=test@example.invalid",
+                            "-c", f"core.hooksPath={hooks}", "-c", "commit.gpgsign=false",
+                            "commit", "-qm", "fixture"], cwd=root, check=True)
+            revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
             (root / "examples/hello/main.out").write_bytes(b"untracked binary")
             output = root / "_dist/nerd.zip"
             package(root, output)
             with ZipFile(output) as archive:
                 self.assertEqual(set(archive.namelist()), {
-                    "nerd.exe" if os.name == "nt" else "nerd", "test-1.vsix",
+                    "nerd.exe" if os.name == "nt" else "nerd",
                     "llvm-tools.json", "mods/core.n", "examples/hello/main.n", "docs/learn/README.md",
-                    "README.md", "DEBUGGER.md", "ROADMAP.md",
+                    "docs/learn/example.md",
                 })
                 self.assertEqual(archive.read("docs/learn/README.md"), b"learning guide")
+                self.assertEqual(archive.read("docs/learn/example.md").decode(),
+                                 '[Chapter](README.md)\n'
+                                 f'[Toolchain](https://github.com/Cthutu/nerd/blob/{revision}/docs/toolchain.md#setup)\n'
+                                 '```nerd\n-- [Code](../toolchain.md)\n```\n')
             previous = output.read_bytes()
             (root / "mods/core.n").unlink()
             with self.assertRaises(FileNotFoundError):

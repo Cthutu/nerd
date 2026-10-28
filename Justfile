@@ -28,7 +28,7 @@ clean:
 format:
     python3 build/format.py
 
-# Package the compiler, extension, library, examples and documentation.
+# Package the compiler, learning guide, library, Scoop manifest and examples.
 dist *args:
     python3 build/dist.py {{args}}
 
