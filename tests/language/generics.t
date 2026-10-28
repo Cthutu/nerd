@@ -969,3 +969,63 @@ main :: fn () {
 ¬
 
 ¬
+
+=== case: generic-impl-builtin-casts ===
+Cell :: plex [T] { value T }
+impl [T] Cell[T] {
+    wide :: fn (self: Self) -> f64 { return self.value.as(f64) }
+    narrow :: fn (self: Self) -> f32 { return self.value.as(f32) }
+    same :: fn (self: Self) -> T { return self.value.as(T) }
+}
+main :: fn () {
+    single := Cell[f32] { value: 4.5 }
+    double := Cell[f64] { value: 8.25 }
+    assert single.wide() == 4.5
+    assert double.narrow() == 8.25
+    assert single.same() == 4.5 && double.same() == 8.25
+    prn("generic impl casts")
+}
+¬
+0
+¬
+generic impl casts
+
+¬
+¬
+=== case: generic-forward-field-concrete-alias ===
+Outer :: plex [T] { inner Inner[T] }
+OuterF32 :: Outer[f32]
+OuterF64 :: Outer[f64]
+Inner :: plex [T] { value T }
+main :: fn () {
+    single := OuterF32 { inner: { value: 42.0 } }
+    double := OuterF64 { inner: { value: 24.0 } }
+    assert single.inner.value == 42.0 && double.inner.value == 24.0
+    prn("forward generic fields")
+}
+¬
+0
+¬
+forward generic fields
+
+¬
+¬
+=== case: generic-array-tuple-item-indices ===
+unrelated :: fn (other: i32) -> i32 { return other + 1 }
+make :: fn [T] (value: T) -> T {
+    items := [value, value]
+    pair := (items[0], items[1])
+    return pair.0
+}
+main :: fn () {
+    assert make(42) == 42
+    assert make(4.5) == 4.5
+    assert unrelated(0) == 1
+    prn("generic array and tuple references")
+}
+¬
+0
+¬
+generic array and tuple references
+¬
+¬

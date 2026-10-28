@@ -1,5 +1,12 @@
 # Internals
 
+Generic type aliases are registered before concrete aliases instantiate their
+fields, preserving forward generic references across module parts. Type-expression
+marking descends through expression wrappers, and generic array/tuple validation
+follows item-table indices rather than treating them as AST node indices.
+LLVM coercion emits floating-point width conversions, including for imported
+untyped floating constants before adopting the caller's result type.
+
 Usage constraints include array literals. A concrete array/slice destination
 constrains literal element types recursively before local materialisation,
 including record fields, aliases and tuple projections. The temporary literal

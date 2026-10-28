@@ -5115,6 +5115,20 @@ internal LlvmValue llvm_coerce_value_to_type(LlvmFunctionContext* ctx,
 
     SemaTypeKind target_kind = llvm_type_kind(ctx->sema, target_type);
     SemaTypeKind source_kind = llvm_type_kind(ctx->sema, value.type_index);
+    if (sema_type_is_float(ctx->sema, target_type) &&
+        sema_type_is_float(ctx->sema, value.type_index) &&
+        (target_kind == STK_F32) != (source_kind == STK_F32)) {
+        string result = llvm_temp(ctx);
+        sb_format(ctx->sb,
+                  "  " STRINGP " = %s " STRINGP " " STRINGP " to " STRINGP "\n",
+                  STRINGV(result),
+                  target_kind == STK_F32 ? "fptrunc" : "fpext",
+                  STRINGV(llvm_type_string(ctx, value.type_index)),
+                  STRINGV(value.value),
+                  STRINGV(llvm_type_string(ctx, target_type)));
+        return (LlvmValue){
+            .ok = true, .type_index = target_type, .value = result};
+    }
     if (target_kind == STK_DynamicArray &&
         (source_kind == STK_Array || source_kind == STK_Slice)) {
         string data = llvm_temp(ctx), count;
@@ -6546,8 +6560,10 @@ llvm_emit_imported_constant_value(LlvmFunctionContext* ctx,
             }
             if (result_type != sema_no_type() &&
                 llvm_float_bits(ctx->sema, result_type) > 0 &&
-                llvm_type_kind(source_ctx.sema, result.type_index) ==
-                    STK_UntypedInteger) {
+                (llvm_type_kind(source_ctx.sema, result.type_index) ==
+                     STK_UntypedInteger ||
+                 llvm_type_kind(source_ctx.sema, result.type_index) ==
+                     STK_UntypedFloat)) {
                 result = llvm_coerce_value_to_type(
                     &source_ctx,
                     result,

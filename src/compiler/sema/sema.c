@@ -7773,6 +7773,34 @@ sema_classify_type_aliases(const Lexer* lexer, const Ast* ast, Sema* sema)
     }
 
     bool ok = true;
+    // Register generic type declarations before any concrete alias can
+    // instantiate them. A generic field may name a later declaration.
+    for (u32 i = 0; i < array_count(sema->decls); ++i) {
+        const SemaDecl* decl = &sema->decls[i];
+        if (decl->kind != SK_Constant ||
+            decl->type_node_index != sema_no_type() ||
+            decl->value_node_index == sema_no_decl()) {
+            continue;
+        }
+        u32 value =
+            sema_unwrap_type_candidate_node(ast, decl->value_node_index);
+        if (sema_type_node_generic_params_index(ast, value) == U32_MAX) {
+            continue;
+        }
+        bool ignored_is_type = false;
+        u32  ignored_type    = sema_no_type();
+        if (!sema_try_classify_type_alias(lexer,
+                                          ast,
+                                          sema,
+                                          i,
+                                          i,
+                                          alias_states,
+                                          &ignored_is_type,
+                                          &ignored_type)) {
+            array_free(alias_states);
+            return false;
+        }
+    }
     for (u32 i = 0; i < array_count(sema->decls); ++i) {
         bool ignored_is_type = false;
         u32  ignored_type    = sema_no_type();
@@ -7808,6 +7836,11 @@ sema_mark_type_expr_nodes(const Ast* ast, Sema* sema, u32 node_index)
     const AstNode* node                 = &ast->nodes[node_index];
 
     switch (node->kind) {
+    case AK_Expression:
+    case AK_Statement:
+        sema_mark_type_expr_nodes(ast, sema, node->a);
+        break;
+
     case AK_TypeNever:
         break;
 
@@ -11860,7 +11893,12 @@ internal bool sema_validate_generic_body_refs_node(const Lexer* lexer,
     case AK_Array:
         for (u32 i = 0; i < node->b; ++i) {
             if (!sema_validate_generic_body_refs_node(
-                    lexer, ast, sema, locals, generic_params, node->a + i)) {
+                    lexer,
+                    ast,
+                    sema,
+                    locals,
+                    generic_params,
+                    ast->tuple_items[node->a + i])) {
                 return false;
             }
         }

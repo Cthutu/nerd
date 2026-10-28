@@ -5,6 +5,12 @@ Confirmed compiler bugs take priority. Track reproductions and fixes in
 [learning guide](docs/learn/README.md), [specs](docs/spec/README.md) and subsystem docs;
 completed plans remain in Git history.
 
+## Confirmed compiler follow-ups
+
+- Repair compound assignment through nested array indices and associated calls
+  through `Self` inside generic impl functions. Minimal reproductions are in
+  [compiler issues](docs/compiler-issues.md).
+
 ## Active Standard-Library Work
 
 ### Kerberos and integration

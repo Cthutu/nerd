@@ -141,3 +141,64 @@ the declaration by its stable index after recursively resolving the RHS.
 The qualified-generic program in [generics.t](../tests/language/generics.t)
 retains aliases, nested instantiations, wide values, local module aliases,
 associated constructors and explicit/inferred function calls as one regression.
+
+
+## Fixed: generic maths declarations fail before instantiation
+
+The maths split supplied minimal reproductions for three semantic-analysis bugs:
+
+- `Cell[T]` methods containing `self.value.as(f64)` reported `f64` as an unknown
+  symbol. Type-expression marking stopped at expression wrappers, leaving the
+  child identifier visible to the generic body's linear validation pass.
+- `Outer :: plex [T] { inner Inner[T] }`, followed by a concrete `Outer[f32]`
+  alias before the `Inner` declaration, reported an unknown `Inner`. Registering
+  generic type declarations before concrete aliases restores forward references.
+- Generic array and tuple literals traversed raw AST node offsets instead of
+  `tuple_items`, sometimes diagnosing an unrelated function's parameter.
+
+Focused independent cases in `generics.t` exercise all three, including both
+floating precisions. The library tests also instantiate them across module parts.
+
+## Fixed: untyped floating constants are not rounded for f32 call arguments
+
+Passing an untyped `pi` constant to an `f32` parameter emitted a `float` operand
+with an unrounded f64 hexadecimal payload; LLVM rejected it. The coercion path
+now emits `fptrunc`/`fpext` when floating widths differ. Imported untyped float
+constants are coerced in the source module's type context before adopting the
+caller's type index. `primitives.t` checks local/imported positive and negative
+constants; the maths fixture checks an imported quarter-turn in f32 and f64.
+
+## Open: compound assignment through nested array indices
+
+Minimal reproduction:
+
+```nerd
+main :: fn () {
+    rows: [2][2]f64 = [[2.0, 4.0], [6.0, 8.0]]
+    rows[0][0] /= 2.0
+    assert rows[0][0] == 1.0
+}
+```
+
+The parser incorrectly expects `=` at `/=`. Ordinary indexed assignment works;
+maths elimination uses explicit assignments. This is a compiler limitation, not
+an intended restriction on compound assignment.
+
+## Open: associated calls through Self inside generic impl functions
+
+```nerd
+Cell :: plex [T] { value T }
+impl [T] Cell[T] {
+    zero :: fn () -> Self { return { value: 0 } }
+    make :: fn (_value: T) -> Self { return Self.zero() }
+}
+main :: fn () {
+    cell := Cell[i32].make(42)
+    assert cell.value == 0
+}
+```
+
+The call reports unknown `Self`; spelling `Cell[T].zero()` inside `make` instead
+reports unknown `T`. Concrete associated calls from callers work. Maths factory
+bodies construct their result directly and do not depend on this unresolved
+compiler behaviour.

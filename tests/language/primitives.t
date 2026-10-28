@@ -846,3 +846,23 @@ Structural equality passed
 ¬
 
 ¬
+
+=== case: untyped-float-call-rounding ===
+use std.maths
+local_pi :: 3.14159265358979323846
+accept :: fn (value: f32) -> f32 { return value }
+main :: fn () {
+    local := accept(local_pi)
+    imported := accept(pi)
+    negative := accept(-pi)
+    assert local > 3.14 && local < 3.15
+    assert imported == local
+    assert negative == -local
+    prn("local and imported float constants round to f32")
+}
+¬
+0
+¬
+local and imported float constants round to f32
+¬
+¬
