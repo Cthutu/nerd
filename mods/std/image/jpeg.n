@@ -4,7 +4,7 @@
 --
 -- Decodes baseline sequential 8-bit JPEG images.
 
-use std.math
+use std.maths
 
 JPEG_MARKER_PREFIX :: 0xff
 JPEG_SOI           :: 0xd8

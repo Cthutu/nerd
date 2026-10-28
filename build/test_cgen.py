@@ -259,7 +259,7 @@ def copts_checks(nerd, tmp, env):
     work = tmp / "copts with spaces"
     work.mkdir()
     source = work / "app.n"
-    source.write_text('use std.math\nmain :: fn () { assert sin(0.0) == 0.0 }\n', encoding="utf-8")
+    source.write_text('use std.maths\nmain :: fn () { assert sin(0.0) == 0.0 }\n', encoding="utf-8")
     no_compiler = {**env, "PATH": str(work / "empty-path")}
 
     def options(*args, environment=env):

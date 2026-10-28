@@ -2,6 +2,7 @@ use std.memory
 use std.text
 use std.slice
 use std.time
+maths :: use std.maths
 
 main :: fn () -> i32 {
     bytes := alloc(8)
@@ -14,6 +15,9 @@ main :: fn () -> i32 {
     on 10.as(Instant).add(from_ns(5)) != 15 => return 4
     on from_ms(1500).to_secs() != 1 => return 5
     on from_ms(1500).secs() != 1.5 => return 6
+    on maths.sin(0.0) != 0.0 => return 7
+    point := maths.PointI32 { x: 3 y: 4 }
+    on point.x != 3 || point.y != 4 => return 8
     return 0
 }
 ¬

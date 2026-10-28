@@ -34,7 +34,7 @@
 -- `term_alternate_screen_enable` are available for code that needs direct
 -- terminal control.
 
-use std.math
+use std.maths
 use std.text
 use std.time
 

@@ -47,7 +47,7 @@ library is organised into three layers:
 - `std.files`
   Portable file handles, whole-file operations, filesystem queries, and lexical
   path processing.
-- `std.math`
+- `std.maths`
   Mathematical constants, scalar functions, and small geometry helper types.
 - `std.memory`
   Low-level allocation wrappers.
@@ -196,7 +196,7 @@ for. On Linux, termination by a signal returns `128` plus the signal number.
 Windows array arguments are quoted when empty or containing spaces, tabs, or
 double quotes; plain arguments such as `/C` are passed without quotes.
 
-### `std.math`
+### `std.maths`
 
 - `pi`
   Untyped floating-point literal for the circle constant.
