@@ -11,6 +11,7 @@
     },
     "bin": [
         "bin\\opt.exe",
-        "bin\\llc.exe"
+        "bin\\llc.exe",
+        "bin\\lld-link.exe"
     ]
 }

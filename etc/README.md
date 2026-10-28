@@ -3,12 +3,14 @@
 ## LLVM tools (Windows x64)
 
 `llvm-tools.json` installs the official LLVM 20.1.8 full archive and exposes
-`opt` (LLVM optimizer) and `llc` (LLVM static compiler) through Scoop shims.
+`opt` (LLVM optimizer), `llc` (LLVM static compiler), and `lld-link` (Windows
+linker) through Scoop shims.
 The download is approximately 896 MB and needs additional space when extracted.
 
 This supplies tools omitted from the standard LLVM Windows installer package.
-It can coexist with an existing `scoop install llvm`: this manifest exposes only
-`opt` and `llc`, rather than adding the entire archive's bin directory to PATH.
+This manifest exposes only these three tools, rather than adding the entire
+archive's bin directory to PATH. An existing `scoop install llvm` may also
+provide `lld-link`; use `Get-Command lld-link` to check which installation runs.
 
 ### Install
 
@@ -23,10 +25,11 @@ scoop install .\llvm-tools.json
 ```powershell
 opt --version
 llc --version
-Get-Command opt, llc
+lld-link --version
+Get-Command opt, llc, lld-link
 ```
 
-Both tools should report LLVM 20.1.8. If the commands are unavailable, open a
+All three tools should report version 20.1.8. If the commands are unavailable, open a
 new PowerShell session and try again. `Get-Command` shows which commands are
 being resolved if another installation is taking precedence.
 
