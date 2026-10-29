@@ -50,6 +50,18 @@ check_f32 :: fn () {
     assert !Mat3[f32].zero().inverse()
     scale := Mat4[f32].scaling(Vec3[f32] { x: 2 y: 3 z: 4 })
     translation := Mat4[f32].translation(Vec3[f32] { x: 10 y: 20 z: 30 })
+    point4 := Vec4[f32].point(1.0, 2.0, 3.0)
+    direction4 := Vec4[f32].vector(1.0, 2.0, 3.0)
+    assert point4.xyz() == direction4.xyz()
+    assert point4.w == 1 && direction4.w == 0
+    assert point4.xyz().to_point() == point4
+    assert direction4.xyz().to_vector() == direction4
+    moved4 := translation.mul_vector(point4)
+    unchanged4 := translation.mul_vector(direction4)
+    assert moved4.xyz() == Vec3[f32] { x: 11 y: 22 z: 33 }
+    assert moved4.w == 1
+    assert unchanged4 == direction4
+
     transform := translation.mul(scale)
     position := Vec3[f32] { x: 1 y: 2 z: 3 }
     moved := transform.transform_point(position) \ Vec3[f32].zero()
@@ -156,6 +168,18 @@ check_f64 :: fn () {
     assert !Mat3[f64].zero().inverse()
     scale := Mat4[f64].scaling(Vec3[f64] { x: 2 y: 3 z: 4 })
     translation := Mat4[f64].translation(Vec3[f64] { x: 10 y: 20 z: 30 })
+    point4 := Vec4[f64].point(1.0, 2.0, 3.0)
+    direction4 := Vec4[f64].vector(1.0, 2.0, 3.0)
+    assert point4.xyz() == direction4.xyz()
+    assert point4.w == 1 && direction4.w == 0
+    assert point4.xyz().to_point() == point4
+    assert direction4.xyz().to_vector() == direction4
+    moved4 := translation.mul_vector(point4)
+    unchanged4 := translation.mul_vector(direction4)
+    assert moved4.xyz() == Vec3[f64] { x: 11 y: 22 z: 33 }
+    assert moved4.w == 1
+    assert unchanged4 == direction4
+
     transform := translation.mul(scale)
     position := Vec3[f64] { x: 1 y: 2 z: 3 }
     moved := transform.transform_point(position) \ Vec3[f64].zero()

@@ -146,21 +146,21 @@ impl [T] Mat4[T] {
     -- Embeds a linear transform in an affine matrix.
     pub from_mat3 :: fn (linear: Mat3[T]) -> Self {
         return Self {
-            c0 : linear.c0.extend(0)
-            c1 : linear.c1.extend(0)
-            c2 : linear.c2.extend(0)
+            c0 : linear.c0.to_vector()
+            c1 : linear.c1.to_vector()
+            c2 : linear.c2.to_vector()
             c3 : { x: 0 y: 0 z: 0 w: 1 }
         }
     }
 
     -- Transforms a direction, ignoring translation; performs no division.
     pub transform_direction :: fn (self: Self, value: Vec3[T]) -> Vec3[T] {
-        return self.mul_vector(value.extend(0)).xyz()
+        return self.mul_vector(value.to_vector()).xyz()
     }
 
     -- Transforms a position with perspective division, or nil if undefined.
     pub transform_point :: fn (self: Self, value: Vec3[T]) -> ?Vec3[T] {
-        result := self.mul_vector(value.extend(1))
+        result := self.mul_vector(value.to_point())
         on result.w.as(f64) == 0 || !is_finite(result.w.as(f64)) => return nil
         projected := result.xyz().divide(result.w)
         on !is_finite(projected.x.as(f64)) ||

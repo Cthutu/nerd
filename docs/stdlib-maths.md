@@ -46,8 +46,19 @@ and returns `nil` for zero or non-finite input.
 
 `Vec2.cross` returns a signed scalar; `Vec3.cross` returns a right-handed
 vector. `Vec3.right()`, `forward()` and `up()` return the unit basis.
-`Vec3.extend(w)` adds a homogeneous component; `Vec4.xyz()` drops it without
-perspective division.
+`Vec4.point(x, y, z)` constructs a homogeneous point with `w = 1`, while
+`Vec4.vector(x, y, z)` constructs a direction with `w = 0`. Affine translation
+therefore moves the point and leaves the direction unchanged. Existing `Vec3`
+values convert with `to_point()` and `to_vector()`. For example:
+
+```nerd
+point := Vec4F32.point(1.0, 2.0, 3.0)
+direction := Vec4F32.vector(1.0, 2.0, 3.0)
+```
+
+`Vec3.extend(w)` remains available for an arbitrary homogeneous component;
+`Vec4.xyz()` drops `w` without perspective division. These constructors encode
+the homogeneous component; they do not introduce separate point/vector types.
 
 ## Matrices
 

@@ -182,7 +182,17 @@ impl [T] Vec3[T] {
         return Self { x: self.y * other.z - self.z * other.y y: self.z * other.x - self.x * other.z z: self.x * other.y - self.y * other.x }
     }
 
-    -- Adds a homogeneous component; use 1 for positions and 0 for directions.
+    -- Returns a homogeneous point with w = 1.
+    pub to_point :: fn (self: Self) -> Vec4[T] {
+        return Vec4[T] { x: self.x y: self.y z: self.z w: 1 }
+    }
+
+    -- Returns a homogeneous direction with w = 0.
+    pub to_vector :: fn (self: Self) -> Vec4[T] {
+        return Vec4[T] { x: self.x y: self.y z: self.z w: 0 }
+    }
+
+    -- Adds an arbitrary homogeneous component.
     pub extend :: fn (self: Self, w: T) -> Vec4[T] {
         return Vec4[T] { x: self.x y: self.y z: self.z w }
     }
@@ -204,6 +214,16 @@ pub Vec4 :: plex [T] #c {
 }
 
 impl [T] Vec4[T] {
+
+    -- Constructs a homogeneous point affected by affine translation.
+    pub point :: fn (x: T, y: T, z: T) -> Self {
+        return Self { x y z w: 1 }
+    }
+
+    -- Constructs a homogeneous direction unaffected by affine translation.
+    pub vector :: fn (x: T, y: T, z: T) -> Self {
+        return Self { x y z w: 0 }
+    }
 
     -- Tests whether every component is finite.
     pub is_finite :: fn (self: Self) -> bool {
