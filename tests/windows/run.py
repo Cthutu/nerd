@@ -28,41 +28,17 @@ class Stage:
 
 
 def plan(folder: Path) -> list[Stage]:
+    # Correctness commands share the dashboard catalogue. This runner retains
+    # native evidence collection and the serial benchmark/manual workflow.
+    tests_root = str(ROOT / 'tests')
+    if tests_root not in sys.path:
+        sys.path.insert(0, tests_root)
+    from harness.plan import make_plan
+    stages = [Stage(item.name, list(item.command), item.needs) for item in
+              make_plan(ROOT, network=True, nexus=True, editors=True,
+                        debugger=True, split_fixtures=False)]
     python = sys.executable
     suffix = '.exe' if os.name == 'nt' else ''
-    stages = [Stage('build-debug', [python, 'build/build.py', 'nerd', '--skip-mod-sync']),
-              Stage('build-release', [python, 'build/build.py', '-r', 'nerd', '--skip-mod-sync'])]
-    for name in ['harness', 'clean', 'memory', 'runtime_threads', 'threads']:
-        stages.append(Stage(name.replace('_', '-'), [python, f'build/test_{name}.py']))
-    stages.append(Stage('fixtures', [python, 'build/test.py'], ('build-debug',)))
-    for mode in ['debug', 'release']:
-        nerd = str(ROOT / '_bin' / (('nerd-debug' if mode == 'debug' else 'nerd') + suffix))
-        needs = ('build-' + mode,)
-        stages.append(Stage('doctor-' + mode, [nerd, 'doctor'], needs))
-        if mode == 'release':
-            stages.append(Stage('fixtures-release', [python, 'build/test.py', '--nerd', nerd], needs))
-        stages.append(Stage('stdlib-capabilities-' + mode,
-                            [python, 'tests/stdlib-capabilities/check_capabilities.py', '--compiler', nerd], needs))
-        for backend, flags in [('llvm', []), ('c', ['--cgen'])]:
-            for name in ['std_thread_sync', 'raptor', 'std_system']:
-                stages.append(Stage(f'{name.replace("_", "-")}-{backend}-{mode}',
-                                    [python, f'build/test_{name}.py', '--nerd', nerd] + flags, needs))
-            for target, target_flags in [('debug', []), ('release', ['--release'])]:
-                for name in ['network', 'nexus']:
-                    stages.append(Stage(f'{name}-{backend}-{target}-{mode}',
-                                        [python, f'build/test_{name}.py', '--compiler', nerd]
-                                        + flags + target_flags, needs))
-        for name in ['profile', 'render_threads', 'expression_depth', 'jobs', 'front_threads',
-                     'toolchain', 'install', 'format_workflow', 'cgen', 'build_settings', 'windows_stdio']:
-            command = [python, f'build/test_{name}.py', '--nerd', nerd]
-            stages.append(Stage(name.replace('_', '-') + '-' + mode,
-                                command, needs))
-        stages.append(Stage('debugger-' + mode,
-                            [python, 'build/check_debugger_stepping.py', '--nerd', nerd, '--jobs', '4'], needs))
-        stages.append(Stage('editor-' + mode,
-                            [python, 'build/check_editor_integrations.py', '--nerd', nerd], needs))
-    stages.append(Stage('benchmark-accounting', [python, 'build/test_benchmark_usage.py']))
-    stages.append(Stage('adapter-transforms', [python, 'build/check_debugger_adapter_transforms.py']))
     # Benchmark only after every selected correctness stage succeeds. Never run
     # latency measurements concurrently with compiler builds or other tests.
     needs = tuple(stage.name for stage in stages)

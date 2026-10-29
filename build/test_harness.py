@@ -2,6 +2,10 @@
 """Regression checks for grouped fixture dispatch and independent programs."""
 from pathlib import Path
 from types import SimpleNamespace
+import contextlib
+import io
+import json
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -65,6 +69,30 @@ class GroupedFixtures(unittest.TestCase):
     def test_release_metadata_is_a_complete_comment_line(self):
         self.assertEqual(runner.language_flags('-- test-release\nmain :: fn () {}'), ['-r'])
         self.assertEqual(runner.language_flags('main :: fn () { prn("-- test-release") }'), [])
+
+    def test_machine_progress_retains_failure_details(self):
+        source = self.fixture('source.t', 'main :: fn () {}')
+        compiler = self.fixture('nerd', '')
+        output = io.StringIO()
+        with patch.object(sys, 'argv', ['test.py', '--nerd', str(compiler), '--kind', 'language', '--events']), \
+             patch.object(runner, 'NERD', compiler), \
+             patch.object(runner, 'collect', return_value=[('language', source)]), \
+             patch.object(runner, 'rel', side_effect=lambda p: p.name), \
+             patch.object(runner, 'test_language', return_value=[runner.Failure(source, 'precise\ndiagnostic')]), \
+             contextlib.redirect_stdout(output):
+            self.assertEqual(runner.main(), 1)
+        events = [json.loads(line.removeprefix('@@NERD_TEST@@')) for line in output.getvalue().splitlines()]
+        self.assertEqual([e['status'] for e in events], ['suite', 'start', 'fail'])
+        self.assertEqual(events[0]['total'], 1)
+        self.assertEqual(events[-1]['detail'], 'precise\ndiagnostic')
+
+    def test_empty_fixture_selection_is_an_error(self):
+        compiler = self.fixture('nerd', '')
+        with patch.object(sys, 'argv', ['test.py', '--nerd', str(compiler), '--filter', 'missing']), \
+             patch.object(runner, 'NERD', compiler), patch.object(runner, 'collect', return_value=[]), \
+             contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as error:
+            runner.main()
+        self.assertEqual(error.exception.code, 2)
 
 
 if __name__ == '__main__':

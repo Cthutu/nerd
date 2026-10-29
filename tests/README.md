@@ -1,8 +1,17 @@
 # Test suite
 
-Run `just test` for the compiler gate and `just test-release` for the release
-compiler. Network and Nexus example integrations are opt-in through
-`just test-network` and `just test-nexus`; their CLI flags are forwarded.
+Run `just test` for the unified debug/release correctness gate and full-screen
+terminal dashboard. Success exits automatically; interactive failures stay for
+review. `--plain` streams text, and non-terminal/CI runs never pause. Use
+`just test-debug`, `just test-release`, `just test-stdlib`, or `just test --suite
+NAME` for focused work. `just test --filter maths` selects matching fixtures.
+Network/Nexus and installed editor/debugger integrations remain opt-in.
+
+`tests/run.py` is the entry point. `harness/` owns the shared catalogue, process
+supervision, results and dashboard, including subprocess and pseudo-terminal
+regressions. [Testing](../docs/testing.md) documents navigation, selection,
+reports and cancellation. Native Windows evidence collection reuses the same
+catalogue and retains its separate benchmark/manual workflow.
 
 [Feature inventory and teaching-doc gaps](../docs/test-features.md) explains
 where coverage belongs. [Harness formats and commands](../docs/testing.md)

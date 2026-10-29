@@ -64,10 +64,11 @@ completion sequence is:
 6. Report the commit, verification, installation and push outcomes, plus a useful
    next step when one remains.
 
-Use focused `python3 build/test.py --filter ...` checks while iterating. Do not
-replace the normal gate with a new validation/reporting system. `just do`
-includes cleaning and additional release checks; use it when requested rather
-than silently substituting it for the README sequence. Full Windows desktop
+Use focused `just test --suite ...` or `just test --filter ...` checks while
+iterating. The unified gate in `tests/run.py` runs both compiler profiles, using
+the catalogue and dashboard under `tests/harness`. `build/test.py` remains the
+focused fixture runner. `just do` cleans, runs the unified gate once, and installs;
+use it when requested rather than silently substituting it for the README sequence. Full Windows desktop
 validation, benchmarks and network/Nexus integration runs have their own scope;
 read their instructions when those checks are requested or relevant.
 

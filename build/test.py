@@ -1379,6 +1379,8 @@ def main() -> int:
     parser.add_argument("--filter", default="", help="Only run test paths containing this text")
     parser.add_argument("--nerd", type=pathlib.Path, default=NERD,
                         help="Compiler executable to test (default: checkout debug compiler)")
+    parser.add_argument("--kind", choices=tuple(SUITE_LABELS), help="Run one fixture family")
+    parser.add_argument("--events", action="store_true", help="Emit structured dashboard progress")
     args = parser.parse_args()
     NERD = args.nerd.resolve()
     if not NERD.is_file():
@@ -1397,28 +1399,45 @@ def main() -> int:
         "examples": test_example,
     }
 
-    cases = [(kind, path) for kind, path in collect(args.filter) if args.filter in rel(path)]
+    cases = [(kind, path) for kind, path in collect(args.filter)
+             if args.filter in rel(path) and (args.kind is None or kind == args.kind)]
+    if not cases:
+        parser.error("no fixtures match the selection")
+
+    def event(status, **fields):
+        if args.events:
+            print("@@NERD_TEST@@" + json.dumps(dict(status=status, **fields)), flush=True)
+
+    event("suite", total=len(cases))
     counts: dict[str, SuiteCounts] = {kind: SuiteCounts() for kind in runners}
     failures: list[Failure] = []
     for kind, path in cases:
         counts[kind].total += 1
+        event("start", kind=kind, name=rel(path))
         platforms = case_platforms(path)
         if platforms and current_platform() not in platforms:
             counts[kind].skipped += 1
-            print_result_line(None, SUITE_LABELS[kind], rel(path))
+            if not args.events:
+                print_result_line(None, SUITE_LABELS[kind], rel(path))
+            event("skip", kind=kind, name=rel(path), detail="Not supported on this host")
             continue
         case_failures = runners[kind](path)
         if case_failures:
             counts[kind].failed += 1
-            print_result_line(False, SUITE_LABELS[kind], rel(path))
-            for failure in case_failures:
-                out(failure.message)
+            if not args.events:
+                print_result_line(False, SUITE_LABELS[kind], rel(path))
+                for failure in case_failures:
+                    out(failure.message)
+            event("fail", kind=kind, name=rel(path), detail="\n".join(f.message for f in case_failures))
             failures.extend(case_failures)
         else:
             counts[kind].passed += 1
-            print_result_line(True, SUITE_LABELS[kind], rel(path))
+            if not args.events:
+                print_result_line(True, SUITE_LABELS[kind], rel(path))
+            event("pass", kind=kind, name=rel(path))
 
-    print_summary(counts)
+    if not args.events:
+        print_summary(counts)
     return 1 if failures else 0
 
 

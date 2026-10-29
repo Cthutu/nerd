@@ -1,4 +1,5 @@
 _*
+!tests/harness/__init__.py
 
 *.vsix
 node_modules/

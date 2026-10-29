@@ -1,5 +1,18 @@
 # Windows validation handoff
 
+## Shared catalogue and terminal dashboard — 29 October 2026
+
+The `test-dashboard` branch replaces the normal gate with `tests/run.py` and
+shares correctness commands with this native runner. Portable runner checks and
+Linux pseudo-terminal success/failure/cancellation tests are included in the
+normal gate. Native Windows terminal validation remains pending: check arrow
+navigation, resize, failure acknowledgement, Ctrl-C/process-tree cleanup, UTF-8
+and redirected/no-pause operation in a native console. Use `--ui-probe success`
+and `--ui-probe failure` with `tests/harness/check_runner.py` for deliberate UI
+probes (the latter should hold until acknowledgement and exit 1). Do not count
+that expected probe failure as a compiler failure. Native results still belong
+under `tests/windows/results/`; retain the existing benchmark/manual procedure.
+
 ## Main language feature integration — 23 October 2026
 
 Validate `main` after pulling its configured upstream. The integration brings in

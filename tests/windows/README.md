@@ -1,5 +1,10 @@
 # Windows validation handoff
 
+Correctness commands are shared with the terminal dashboard through
+`tests/harness/plan.py`. This native runner retains Windows evidence, manual
+checks and serial benchmarks. The normal `just test` gate runs debug/release
+correctness without those optional native-validation steps.
+
 On Windows, pull the branch named in the latest handoff from its verified
 upstream, then tell Codex:
 

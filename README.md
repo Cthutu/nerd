@@ -31,6 +31,12 @@ If you are new to the repository, read these in order:
 5. [DEBUGGER.md](DEBUGGER.md)
    Current debugger behaviour and remaining native checks.
 
+`just test` runs the shared checks and both compiler profiles in a live terminal
+dashboard. Success exits automatically; interactive failures pause for review.
+Use `--plain --no-pause` for unattended text output, `--suite` or `--filter` for
+focused runs, and `--network`/`--nexus` for optional integrations. See
+[testing](docs/testing.md) for keys, commands and saved results.
+
 Current architectural contracts live in [the compiler pipeline](docs/compiler-pipeline.md).
 Historical decisions, reviews and measurements remain in Git history.
 

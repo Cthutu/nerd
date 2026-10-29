@@ -29,12 +29,14 @@ class RunnerTests(unittest.TestCase):
                         self.assertEqual('--release' in command, target == 'release')
 
     def test_plan_covers_just_test_scripts(self):
-        # Keep newly added common gates from silently missing native validation.
-        import re
-        recipes = (run.ROOT / 'Justfile').read_text().split('\ntest *args:', 1)[1].split('\ntest-build:', 1)[0]
-        scripts = set(re.findall(r'python3 ([\w/]+\.py)', recipes))
-        planned = {s.command[1] for s in run.plan(Path('results')) if len(s.command) > 1}
-        self.assertFalse(scripts - planned, f'Missing scripts: {scripts - planned}')
+        # The same catalogue supplies both harnesses; additions must remain in
+        # native evidence collection, including every compiler/profile pairing.
+        import sys
+        sys.path.insert(0, str(run.ROOT / 'tests'))
+        from harness.plan import make_plan
+        expected = {tuple(s.command) for s in make_plan(split_fixtures=False)}
+        planned = {tuple(s.command) for s in run.plan(Path('results'))}
+        self.assertFalse(expected - planned, f'Missing commands: {expected - planned}')
 
     def test_dependencies_and_unknown_stage(self):
         stages = run.plan(Path('results with spaces').resolve())

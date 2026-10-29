@@ -1,42 +1,124 @@
 # Testing
 
-The repository regression test runner lives in
-[build/test.py](../build/test.py).
+`just test` runs the unified correctness gate through
+[`tests/run.py`](../tests/run.py). The shared catalogue is
+[`tests/harness/plan.py`](../tests/harness/plan.py); it also supplies correctness
+commands to native Windows validation. Specialised runners retain their existing
+assertions and can still be invoked directly. The fixture runner remains
+[`build/test.py`](../build/test.py).
 
-`just test` is the main regression gate.
+## Live dashboard
 
-It runs cleanup, allocator and thread checks, builds the checkout's debug compiler,
-runs the fixture suite, then runs the profiling, scheduling, toolchain,
-installation-smoke, C-output, build-settings and Windows-stdio checks. It stops
-at the first failing stage; a fixture failure does not mean the later checks ran.
-C differential checks compile with `nerd build --cgen --copts` so imported
-external libraries use the same link options as native output.
-Python subprocess output is decoded as UTF-8 on every host, including Windows.
-The Windows installation smoke test also requires `llvm-dwarfdump` on `PATH`
-to verify source-level debug information. Keep LLVM tools outside the checkout
-so `just clean` does not remove them.
+In an interactive terminal, the runner uses the full screen to show shared,
+debug and release progress, gate status, the current fixture, elapsed time and
+live output. Successful runs close the dashboard automatically. Failed runs
+finish their independent checks, then hold the failure view until Enter or q.
+A failed compiler build blocks only its dependents; blocked checks are never
+reported as passing.
 
-`just test-release` builds and selects the release compiler for the fixture suite.
-For a focused run against either binary, use `python3 build/test.py --nerd
-_bin/nerd --filter ...` (append `.exe` on Windows). The default remains the
-checkout's debug compiler. A missing selected compiler fails before running cases.
+| Key | Action |
+| --- | --- |
+| Up/Down or k/j | Select a gate |
+| f | Show failed/blocked gates only |
+| g | Follow the running gate |
+| PageUp/PageDown | Scroll the selected gate's details |
+| l | Toggle failure details and the complete gate log |
+| End | Return to the log tail |
+| q, Escape, Ctrl-C while running | Cancel the run and terminate test subprocesses |
+| Enter or q after failure | Close the dashboard and return a failure status |
 
-`just do` runs `clean`, `test`, `test-release`, then `install`. Use a native
-Clang/LLVM toolchain and SDK/CRT environment for each host; see
-[toolchain setup](toolchain.md). WSL uses the Linux tools, not Windows executables.
+Resizing is supported. The dashboard uses Python's standard library and ANSI
+terminal control, with no additional UI dependencies. Non-terminal output,
+`CI` environments and `--plain` use streaming text and **never wait for input**.
+`--no-pause` also suppresses failure acknowledgement in a terminal.
 
-The `nerd test <root-filename>` command is reserved for unit tests declared in
-Nerd source code. It is not the repository regression harness.
+## Selecting tests
 
-Release smoke checks live beside the main harness:
+```sh
+just test                         # Shared checks and both compiler profiles
+just test-debug                   # Debug compiler only
+just test-release                 # Release compiler only
+just test-stdlib                  # Standard-library source tests, both profiles
+just test --suite language errors # Named suites plus compiler builds
+just test --filter maths          # Matching fixtures, both compiler profiles
+just test --only cgen-debug       # One gate and its prerequisites
+just test --list                  # Commands without executing anything
+just test --list-suites
+just test --plain --no-pause       # Explicit unattended mode
+```
+
+Filters select fixture paths and imply fixture-only execution unless a suite or
+gate selection is also supplied. An empty/unknown selection fails rather than
+reporting success with zero tests. Build gates normally run first; `--skip-build`
+explicitly reuses existing binaries and fails if a required binary is absent.
+`--timeout SECONDS` changes the default 1,200-second deadline per gate.
+
+The default runs cleanup/allocator/thread and harness checks, builds each
+compiler, then runs language, diagnostic, semantic, HIR/LLVM, formatter, LSP,
+command, stdlib, example and teaching fixtures, plus native capability/frame,
+library lifecycle, profiling/scheduling, toolchain, installation, C-output,
+build-settings and stdio gates. Both compiler profiles get the same correctness
+gates. Gates run serially to avoid sharing fixture artefacts or interfering with
+profiling/scheduling checks. Specialised suites may retain their own bounded
+internal parallel work.
+
+Network and Nexus remain opt-in, with LLVM/C and debug/release target programs:
+
+```sh
+just test --network --nexus
+just test --suite network         # Focus the network matrix only
+```
+
+The existing `just test-network` and `just test-nexus` commands retain their
+focused runner flags. Installed editor/Neovim and CodeLLDB checks are separately
+selected with `--editors` and `--debugger` and require their normal native tools
+and editor dependencies. Performance benchmarks and interactive native desktop
+validation remain separate from correctness tests.
+
+## Logs, results and cancellation
+
+Each run saves readable gate logs and an atomically updated `summary.json` under
+`_test-results/<run>/`. The summary records the starting Git revision/dirty flag,
+commands, durations and outcomes. `--output PATH` selects a new results directory. Failed
+fixture artefacts continue to stay beside their fixtures. Generated evidence is
+ignored and remains until `just clean` removes it.
+
+Stage exit codes decide success; fixture events provide exact live progress and
+failure details. Negative tests which reject invalid input are positive results;
+Raptor's expected assertion rejections are labelled as passing checks.
+
+The harness returns 0 on success, 1 for failed/blocked tests, 2 for invalid
+selections/options, and 130 on cancellation. Cancellation and gate deadlines
+terminate process trees and restore the terminal. Linux also reaps orphaned
+children that started new sessions; Windows uses native process-tree termination.
+Native Windows terminal behaviour requires validation on that host.
+
+`just do` runs `clean`, the unified `test` gate once, then `install`. It does not
+repeat release tests. Use native Clang/LLVM and SDK/CRT tools for each host; see
+[toolchain setup](toolchain.md). WSL uses Linux tools, not Windows executables.
+
+The underlying fixture runner remains useful for focused tooling work:
+
+```sh
+python3 build/test.py --filter maths --nerd _bin/nerd-debug
+python3 build/test.py --kind format
+```
+
+Its `--events` mode emits structured case progress for the dashboard. Python
+subprocess output is decoded as UTF-8 on every host, including Windows. The
+Windows installation smoke check requires `llvm-dwarfdump` on PATH; keep LLVM
+tools outside the checkout so cleaning does not remove them.
+
+`nerd test <root-filename>` runs tests declared in Nerd source, rather than the
+repository harness. For example, `just run nerd test mods/std/maths/mod.n` runs
+only the maths source tests.
+
+After installation, editor/compiler smoke checks remain available:
 
 ```sh
 python3 build/test_install.py --nerd _bin/nerd-debug
 python3 build/check_editor_integrations.py --nerd _bin/nerd-debug
 ```
-
-After `just install`, run the same scripts with the installed `nerd` binary by
-omitting `--nerd` or by setting `NERD_BIN`.
 
 ## Test Families
 

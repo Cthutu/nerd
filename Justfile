@@ -1,3 +1,5 @@
+set positional-arguments
+
 export NERD_LIB_PATH := justfile_directory() + "/mods"
 
 default:
@@ -35,46 +37,18 @@ dist *args:
 test-docs *args: (build "nerd" "--skip-mod-sync")
     python3 build/test_docs.py --nerd _bin/nerd-debug{{exe_suffix}} {{args}}
 
+# Unified correctness gate: debug and release, live dashboard in terminals.
 test *args:
-    python3 build/test_harness.py
-    python3 build/test_dist.py
-    python3 build/test_clean.py
-    python3 build/test_memory.py
-    python3 build/test_runtime_threads.py
-    python3 build/test_threads.py
-    just build nerd --skip-mod-sync
-    python3 build/test.py {{args}}
-    python3 build/test_frame.py --nerd _bin/nerd-debug{{exe_suffix}}
-    python3 build/test_docs.py --nerd _bin/nerd-debug{{exe_suffix}}
-    python3 tests/stdlib-capabilities/check_capabilities.py --compiler _bin/nerd-debug{{exe_suffix}}
-    python3 build/test_std_thread_sync.py --nerd _bin/nerd-debug{{exe_suffix}}
-    python3 build/test_std_thread_sync.py --nerd _bin/nerd-debug{{exe_suffix}} --cgen
-    python3 build/test_raptor.py --nerd _bin/nerd-debug{{exe_suffix}}
-    python3 build/test_raptor.py --nerd _bin/nerd-debug{{exe_suffix}} --cgen
-    python3 build/test_profile.py --nerd _bin/nerd-debug{{exe_suffix}}
-    python3 build/test_render_threads.py --nerd _bin/nerd-debug{{exe_suffix}}
-    python3 build/test_expression_depth.py --nerd _bin/nerd-debug{{exe_suffix}}
-    python3 build/test_jobs.py --nerd _bin/nerd-debug{{exe_suffix}}
-    python3 build/test_front_threads.py --nerd _bin/nerd-debug{{exe_suffix}}
-    python3 build/test_toolchain.py --nerd _bin/nerd-debug{{exe_suffix}}
-    python3 build/test_install.py --nerd _bin/nerd-debug{{exe_suffix}}
-    python3 build/test_format_workflow.py --nerd _bin/nerd-debug{{exe_suffix}}
-    python3 build/test_cgen.py --nerd _bin/nerd-debug{{exe_suffix}}
-    python3 build/test_build_settings.py --nerd _bin/nerd-debug{{exe_suffix}}
-    python3 build/test_windows_stdio.py --nerd _bin/nerd-debug{{exe_suffix}}
-    python3 build/test_std_system.py --nerd _bin/nerd-debug{{exe_suffix}}
-    python3 build/test_std_system.py --nerd _bin/nerd-debug{{exe_suffix}} --cgen
+    python3 tests/run.py "$@"
+
+test-debug *args:
+    python3 tests/run.py --profile debug "$@"
 
 test-release *args:
-    python3 build/test_harness.py
-    just build-release nerd --skip-mod-sync
-    python3 build/test.py --nerd _bin/nerd{{exe_suffix}} {{args}}
-    python3 build/test_docs.py --nerd _bin/nerd{{exe_suffix}}
-    python3 tests/stdlib-capabilities/check_capabilities.py --compiler _bin/nerd{{exe_suffix}}
-    python3 build/test_std_thread_sync.py --nerd _bin/nerd{{exe_suffix}}
-    python3 build/test_std_thread_sync.py --nerd _bin/nerd{{exe_suffix}} --cgen
-    python3 build/test_raptor.py --nerd _bin/nerd{{exe_suffix}}
-    python3 build/test_raptor.py --nerd _bin/nerd{{exe_suffix}} --cgen
+    python3 tests/run.py --profile release "$@"
+
+test-stdlib *args:
+    python3 tests/run.py --suite stdlib "$@"
 
 # Optional example integration checks; independent of compiler regression gates.
 test-network *args: (build "nerd" "--skip-mod-sync")
@@ -157,7 +131,6 @@ alias ti := test-install
 do:
     just clean
     just test
-    just test-release
     just install
 
 # Build against this checkout's compiler and library, without opening a window.
