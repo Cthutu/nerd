@@ -120,5 +120,14 @@ main :: fn () -> ?void {
 ```
 
 The grouped maths runtime fixture checks both precisions and LLVM/C backends,
-including handedness, multiplication order, pivot swaps, homogeneous division,
-quaternion/matrix agreement and invalid inputs.
+including handedness, multiplication order, pivot swaps, projective horizons
+and negative w, nonzero singular matrices, quaternion interpolation endpoints
+and extrapolation, and non-finite inputs.
+
+Source-level tests additionally check component arithmetic, every transpose
+entry, cross-product identities, reflected scales, arbitrary-axis rotation
+lengths, and quaternion/matrix composition agreement. Run them with:
+
+```sh
+nerd test mods/std/maths/mod.n
+```

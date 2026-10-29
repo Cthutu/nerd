@@ -2,7 +2,7 @@
 --
 -- Copyright (c) 2026 Matt Davies
 --
--- Source-level contracts for scalar helpers and the geometric convention.
+-- Source-level scalar, vector, matrix and rotation contracts.
 
 test "maths scalar helpers and angle conversions" {
     assert abs(-3.0) == 3.0
@@ -35,4 +35,132 @@ test "maths positive rotation about up turns right towards forward" {
     assert math_near(turned.x, 0.0)
     assert math_near(turned.y, 1.0)
     assert math_near(turned.z, 0.0)
+}
+
+-- Compares all components of two double-precision vectors in source tests.
+math_vec3_near :: fn (left: Vec3F64, right: Vec3F64) -> bool {
+    return math_near(left.x, right.x) && math_near(left.y, right.y) && math_near(left.z, right.z)
+}
+
+test "maths Vec2 and Vec4 arithmetic includes every component" {
+    left  := Vec2F64 { x: 3 y: 4 }
+    right := Vec2F64 { x: -1 y: 2 }
+
+    assert left.add(right) == Vec2F64 { x: 2 y: 6 }
+    assert left.sub(right) == Vec2F64 { x: 4 y: 2 }
+    assert left.dot(right) == 5
+    assert left.length_squared() == 25
+    assert left.divide(2) == Vec2F64 { x: 1.5 y: 2 }
+    assert left.lerp(right, 0.25) == Vec2F64 { x: 2 y: 3.5 }
+    assert left.lerp(right, -1) == Vec2F64 { x: 7 y: 6 }
+    four  := Vec4F64 { x: 2 y: 4 z: 6 w: 8 }
+    other := Vec4F64 { x: 1 y: -2 z: 3 w: -4 }
+
+    assert four.add(other) == Vec4F64 { x: 3 y: 2 z: 9 w: 4 }
+    assert four.sub(other) == Vec4F64 { x: 1 y: 6 z: 3 w: 12 }
+    assert four.negated().scale(-1) == four
+    assert four.divide(2) == Vec4F64 { x: 1 y: 2 z: 3 w: 4 }
+    assert four.length_squared() == 120
+    assert four.lerp(other, 0.5) == Vec4F64 { x: 1.5 y: 1 z: 4.5 w: 2 }
+}
+
+test "maths cross product is antisymmetric distributive and perpendicular" {
+    a     := Vec3F64 { x: 1 y: 2 z: 3 }
+    b     := Vec3F64 { x: 4 y: 5 z: 6 }
+    c     := Vec3F64 { x: 7 y: -8 z: 9 }
+    cross := a.cross(b)
+
+    assert cross == Vec3F64 { x: -3 y: 6 z: -3 }
+    assert cross == b.cross(a).negated()
+    assert cross.dot(a) == 0 && cross.dot(b) == 0
+    assert a.cross(b.add(c)) == a.cross(b).add(a.cross(c))
+}
+
+test "maths transpose exchanges each row and column" {
+    three     := Mat3F64 {
+        c0 : { x: 1 y: 2 z: 3 }
+        c1 : { x: 4 y: 5 z: 6 }
+        c2 : { x: 7 y: 8 z: 9 }
+    }
+    expected3 := Mat3F64 {
+        c0 : { x: 1 y: 4 z: 7 }
+        c1 : { x: 2 y: 5 z: 8 }
+        c2 : { x: 3 y: 6 z: 9 }
+    }
+
+    assert three.transpose() == expected3
+    four := Mat4F64 {
+        c0 : { x: 1 y: 2 z: 3 w: 4 }
+        c1 : { x: 5 y: 6 z: 7 w: 8 }
+        c2 : { x: 9 y: 10 z: 11 w: 12 }
+        c3 : { x: 13 y: 14 z: 15 w: 16 }
+    }
+    expected4 := Mat4F64 {
+        c0 : { x: 1 y: 5 z: 9 w: 13 }
+        c1 : { x: 2 y: 6 z: 10 w: 14 }
+        c2 : { x: 3 y: 7 z: 11 w: 15 }
+        c3 : { x: 4 y: 8 z: 12 w: 16 }
+    }
+
+    assert four.transpose() == expected4
+}
+
+test "maths Mat3 reflection has negative determinant and an inverse" {
+    mirror := Mat3F64.scaling(Vec3F64 { x: -2 y: 3 z: 4 })
+    assert mirror.determinant() == -24
+    assert mirror.mul_vector(Vec3F64 { x: 5 y: 6 z: 7 }) == Vec3F64 { x: -10 y: 18 z: 28 }
+    optional := mirror.inverse()
+    assert !(!optional)
+    inverse := optional \ Mat3F64.zero()
+    assert math_near(inverse.c0.x, -0.5)
+    assert math_near(inverse.c1.y, 1.0 / 3.0)
+    assert math_near(inverse.c2.z, 0.25)
+}
+
+test "maths matrix composition is associative but not commutative" {
+    scale := Mat3F64.scaling(Vec3F64 { x: 2 y: 3 z: 4 })
+    shear := Mat3F64 {
+        c0 : { x: 1 y: 0 z: 0 }
+        c1 : { x: 2 y: 1 z: 0 }
+        c2 : { x: 0 y: 0 z: 1 }
+    }
+    third := Mat3F64 {
+        c0 : { x: 1 y: 0 z: 0 }
+        c1 : { x: 0 y: 1 z: 0 }
+        c2 : { x: 0 y: 3 z: 1 }
+    }
+    value := Vec3F64 { x: 1 y: 2 z: 3 }
+
+    assert scale.mul(shear).mul_vector(value) == Vec3F64 { x: 10 y: 6 z: 12 }
+    assert shear.mul(scale).mul_vector(value) == Vec3F64 { x: 14 y: 6 z: 12 }
+    assert scale.mul(shear).mul(third) == scale.mul(shear.mul(third))
+}
+
+test "maths quaternion rotation preserves length and conjugate reverses it" {
+    optional := QuaternionF64.from_axis_angle(Vec3F64 { x: 1 y: 2 z: 3 }, 0.7)
+    assert !(!optional)
+    rotation := optional \ QuaternionF64.identity()
+    value    := Vec3F64 { x: 2 y: -3 z: 5 }
+    turned   := rotation.rotate(value) \ Vec3F64.zero()
+
+    assert math_near(turned.length_squared(), value.length_squared())
+    recovered := rotation.conjugate().rotate(turned) \ Vec3F64.zero()
+    assert math_vec3_near(recovered, value)
+    unit := rotation.mul(rotation.conjugate())
+    assert math_near(unit.w, 1.0)
+    assert math_vec3_near(unit.v, Vec3F64.zero())
+}
+
+test "maths quaternion and matrix composition agree" {
+    first    := QuaternionF64.from_axis_angle(Vec3F64 { x: 1 y: 2 z: 3 }, 0.7) \ QuaternionF64.identity()
+    second   := QuaternionF64.from_axis_angle(Vec3F64 { x: -2 y: 1 z: 4 }, -1.2) \ QuaternionF64.identity()
+    combined := first.mul(second).to_mat3() \ Mat3F64.zero()
+    left     := first.to_mat3() \ Mat3F64.zero()
+    right    := second.to_mat3() \ Mat3F64.zero()
+    expected := left.mul(right)
+
+    assert math_vec3_near(combined.c0, expected.c0)
+    assert math_vec3_near(combined.c1, expected.c1)
+    assert math_vec3_near(combined.c2, expected.c2)
+    assert math_near(combined.determinant(), 1.0)
 }
