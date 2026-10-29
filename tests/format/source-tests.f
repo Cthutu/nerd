@@ -18,3 +18,9 @@ test {
     }
 
 }
+¬
+test "maths arbitrary-axis quaternion composition agrees with matrix composition without changing the handedness"{assert yes}
+¬
+test "maths arbitrary-axis quaternion composition agrees with matrix composition without changing the handedness" {
+    assert yes
+}

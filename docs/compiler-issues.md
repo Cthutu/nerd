@@ -202,3 +202,13 @@ The call reports unknown `Self`; spelling `Cell[T].zero()` inside `make` instead
 reports unknown `T`. Concrete associated calls from callers work. Maths factory
 bodies construct their result directly and do not depend on this unresolved
 compiler behaviour.
+
+
+## Fixed: formatter wraps long source-test names into invalid syntax
+
+Adding maths tests exposed that a long `test "..."` name was rewritten into
+multiple string fragments with continuation syntax. Test declarations require a
+single string token, so formatting valid source made it fail to parse. The
+formatter now suppresses wrapping for the name only and restores normal string
+formatting for the body. `tests/format/source-tests.f` preserves a long label;
+a format/test round trip verifies the output remains executable.

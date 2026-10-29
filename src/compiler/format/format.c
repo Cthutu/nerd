@@ -7424,7 +7424,12 @@ internal void format_emit_test(StringBuilder* sb,
     bool is_decl_block = test->a == U32_MAX;
     if (!is_decl_block) {
         sb_append_char(sb, ' ');
+        // Test declarations require one string token for their name; unlike
+        // expression strings, the label cannot use continuation syntax.
+        bool saved_suppress_wrap      = g_format_suppress_string_wrap;
+        g_format_suppress_string_wrap = true;
         format_emit_expr(sb, cst, lexer, test->a, 0);
+        g_format_suppress_string_wrap = saved_suppress_wrap;
     }
     sb_append_cstr(sb, " {\n");
     if (is_decl_block) {

@@ -46,6 +46,10 @@ The formatter should be deterministic and idempotent.
 
 ## Code Layout Rules
 
+- Source-test names remain a single string token, even beyond the normal wrap
+  width. String continuation syntax is not valid for declaration names; strings
+  inside the test body follow the normal wrapping rules.
+
 - Core syntax spacing is normalised rather than preserving arbitrary user spacing.
 - Binding and function tokens such as `::`, `:`, `=`, and `=>` use normalised spacing.
 - Binary operators use surrounding spaces.
