@@ -49,6 +49,11 @@ open module starts exporting a type that another open module already imports.
 
 `didClose` clears the stored document and publishes an empty diagnostic set.
 
+Incremental edit positions use UTF-16 code units and are converted to UTF-8 byte
+offsets in the stored document. Columns beyond a line clamp at that line's end.
+`python build/test_lsp_unicode_sync.py` checks smart quotes, multibyte characters,
+surrogate pairs, CRLF, and multiple edits in one notification.
+
 ## Diagnostics Flow
 
 The diagnostics path is tightly coupled to the compiler error system:

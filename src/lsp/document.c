@@ -859,22 +859,58 @@ bool lsp_type_fact_view(LspState* state, string uri, LspTypeFactView* out_view)
 
 usize lsp_offset_from_position(string source, u64 line, u64 character)
 {
-    u64   current_line      = 0;
-    u64   current_character = 0;
-    usize offset            = 0;
-    while (offset < source.count) {
-        if (current_line == line && current_character == character) {
+    usize offset = 0;
+    for (u64 current_line = 0; current_line < line; ++current_line) {
+        while (offset < source.count && source.data[offset] != '\n') {
+            ++offset;
+        }
+        if (offset == source.count) {
             return offset;
         }
-        u8 c = source.data[offset++];
-        if (c == '\n') {
-            current_line++;
-            current_character = 0;
-        } else {
-            current_character++;
-        }
+        ++offset;
     }
-    return source.count;
+
+    // LSP defaults to UTF-16 code units, while Nerd source offsets are bytes.
+    // Clamp beyond-line columns at the line end, not in the next line. Invalid
+    // UTF-8 bytes each consume one unit so incomplete editor text stays usable.
+    u64 units = 0;
+    while (offset < source.count && units < character) {
+        u8 lead = source.data[offset];
+        if (lead == '\r' || lead == '\n') {
+            break;
+        }
+        usize width     = 1;
+        u32   codepoint = lead;
+        if (lead >= 0xc2 && lead <= 0xdf) {
+            width     = 2;
+            codepoint = lead & 0x1f;
+        } else if (lead >= 0xe0 && lead <= 0xef) {
+            width     = 3;
+            codepoint = lead & 0x0f;
+        } else if (lead >= 0xf0 && lead <= 0xf4) {
+            width     = 4;
+            codepoint = lead & 0x07;
+        }
+        bool valid = width <= source.count - offset;
+        for (usize i = 1; valid && i < width; ++i) {
+            u8 next   = source.data[offset + i];
+            valid     = (next & 0xc0) == 0x80;
+            codepoint = (codepoint << 6) | (next & 0x3f);
+        }
+        if (!valid || (width == 3 && codepoint < 0x800) ||
+            (width == 4 && codepoint < 0x10000) || codepoint > 0x10ffff ||
+            (codepoint >= 0xd800 && codepoint <= 0xdfff)) {
+            width     = 1;
+            codepoint = lead;
+        }
+        u64 step = codepoint > 0xffff ? 2 : 1;
+        if (step > character - units) {
+            break; // Do not split a surrogate pair / UTF-8 sequence.
+        }
+        offset += width;
+        units += step;
+    }
+    return offset;
 }
 
 internal bool lsp_apply_change(LspDocument* doc, JsonValue* change)

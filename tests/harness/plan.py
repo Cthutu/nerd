@@ -76,6 +76,7 @@ def make_plan(root=ROOT, profile='all', *, network=False, nexus=False,
             ('install', 'installation'), ('format_workflow', 'format'),
             ('cgen', 'cgen'), ('build_settings', 'configuration'),
             ('windows_stdio', 'stdio'),
+            ('lsp_unicode_sync', 'lsp'),
         ]:
             add(name.replace('_', '-') + '-' + mode, suite, mode,
                 [python, f'build/test_{name}.py', '--nerd', compiler], needs)
