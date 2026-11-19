@@ -33,7 +33,8 @@ describes each regression family.
   ordered subsequences, with source and snapshot separated by `¬`.
 - `core/runtime-foundation.c`, `core/runtime-io.linux.c`: runtime byte/string
   primitives, integer conversion, virtual memory, variadic cursors, Linux binary
-  I/O, interruptions, terminal policy and fatal worker exits. The `runtime` suite
+  I/O, interruptions, terminal policy, fatal worker exits, SIGABRT dispositions
+  and the hidden stack-failure hook. The `runtime` suite
   runs hosted oracles and a Linux runtime-object undefined-symbol regression;
   it does not yet assert that complete executables are libc-free.
 - `commands/*.cmd`: CLI syntax, argument passing, output artifacts, exit and

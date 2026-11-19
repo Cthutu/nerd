@@ -14,7 +14,7 @@ REMOVED_SYMBOLS = {
     'bcmp', 'memcmp', 'memcpy', 'memmove', 'memset', 'strcmp', 'strlen', 'calloc', 'free',
     'mmap', 'mprotect', 'munmap', 'read', 'write', 'ioctl', 'isatty', 'exit',
     'fwrite', 'fputc', 'fflush', 'vfprintf', 'getc', 'getchar', 'ungetc',
-    'stdin', 'stdout', 'stderr',
+    'stdin', 'stdout', 'stderr', 'abort', '__stack_chk_fail',
 }
 
 
@@ -63,6 +63,16 @@ def check_linux_io(output):
     ):
         result = run(mode)
         assert (result.returncode, result.stdout, result.stderr) == (127, stdout, stderr), result
+    for mode, stderr in (
+        ('signal-default', b''), ('signal-ignore', b''), ('signal-blocked', b''),
+        ('signal-handler', b'abort handler\n'), ('signal-worker', b''),
+        ('stack-fail', b'fatal: stack corruption detected\n'),
+        ('slice-abort', b'fatal: string slice out of bounds\n'),
+    ):
+        result = run(mode)
+        assert (result.returncode, result.stdout, result.stderr) == (-signal.SIGABRT, b'', stderr), result
+    result = run('signal-handler-exit')
+    assert (result.returncode, result.stdout, result.stderr) == (42, b'', b''), result
     result = run('normal-return')
     assert (result.returncode, result.stdout, result.stderr) == (
         0, b'normal\n', b'foreign atexit\n'), result
@@ -151,7 +161,7 @@ def main():
                 assert result.stderr == '', result.stderr
                 if raw_linux:
                     io_output = directory / 'runtime-io'
-                    subprocess.run(cc + flags + [optimisation, '-pthread',
+                    subprocess.run(cc + flags + [optimisation, '-pthread', '-fstack-protector-all',
                         str(ROOT / 'tests/core/runtime-io.linux.c'), '-o', str(io_output)],
                         check=True, timeout=60)
                     check_linux_io(io_output)
@@ -160,13 +170,20 @@ def main():
                 # Inspect nrt alone: the host test oracle intentionally uses libc.
                 for pic in (False, True):
                     obj = directory / 'nrt.o'
-                    subprocess.run(cc + flags + ['-O2'] + (['-fPIC'] if pic else []) + [
+                    subprocess.run(cc + flags + ['-O2', '-fstack-protector-strong'] + (['-fPIC'] if pic else []) + [
                         '-c', str(ROOT / 'data/nrt.c'), '-o', str(obj)],
                         check=True, timeout=60)
                     symbols = subprocess.check_output(['nm', '-u', str(obj)], text=True)
                     undefined = {line.split()[-1].split('@')[0]
                                  for line in symbols.splitlines() if line.split()}
                     assert not undefined & REMOVED_SYMBOLS, symbols
+                    # The compiler ABI hook is runtime-owned but never exported.
+                    table = subprocess.check_output(['readelf', '-Ws', str(obj)], text=True)
+                    hook = [line.split() for line in table.splitlines()
+                            if line.split() and line.split()[-1] == '__stack_chk_fail']
+                    assert len(hook) == 1 and hook[0][3:6] == ['FUNC', 'GLOBAL', 'HIDDEN'], table
+                    relocations = subprocess.check_output(['readelf', '-rW', str(obj)], text=True)
+                    assert '__stack_chk_fail' in relocations, 'compiler stack checks were not emitted'
             print('[PASS] runtime foundation:', 'release' if release else 'debug')
 
 

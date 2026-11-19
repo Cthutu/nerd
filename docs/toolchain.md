@@ -79,8 +79,12 @@ conversion. Variadic cursors use the Nerd allocator rather than `calloc`/`free`.
 On Linux x86-64 and AArch64, the runtime's virtual-memory operations use raw
 `mmap`, `mprotect` and `munmap` syscalls. Standard output/error and line input use
 raw `write`/`read`, terminal detection uses `ioctl(TCGETS)`, and status-127 fatal
-failures use `exit_group`. Runtime diagnostics have a private string/unsigned
-integer/width formatter; user `VaList.format` still uses libc. This private
+failures use `exit_group`. Internal signal aborts unblock and deliver SIGABRT to
+the calling thread, retrying with its default disposition if a handler returns
+or the signal was ignored. If the signal syscalls cannot terminate the process,
+the runtime falls back to status 127 rather than returning to invalid state.
+Runtime diagnostics have a private string/unsigned integer/width formatter;
+user `VaList.format` still uses libc. This private
 bridge handles kernel negative error results directly; it does not change the
 public `os.linux` libc-style error convention or write libc's `errno`.
 
@@ -94,20 +98,27 @@ Fatal runtime exits skip foreign `atexit` handlers and libc buffer flushing,
 including when triggered by a worker. Normal return still follows hosted CRT
 shutdown. Windows/macOS retain their existing hosted I/O and exit paths.
 
-Remaining direct dependencies include floating-point/variadic formatting,
-environment queries, page-size discovery, libc `abort` for signal-based internal
-failures, CRT startup, stack-protection and TLS services. Linux linking still
-supplies all the runtime libraries listed above. pthreads, socket/errno bindings, `execvp` and libm also need
-replacement before the standard library is independent of libc. External FFI
-libraries can retain their own transitive libc dependencies.
+The Linux runtime supplies a hidden `__stack_chk_fail` compiler-ABI hook that
+reports stack corruption and takes the signal-abort path. Stack protection is
+not disabled: canary storage/initialisation still depends on the hosted runtime
+(TLS or an ABI-specific guard) and must be owned before startup is freestanding.
+
+On validated Linux x86-64, remaining direct runtime imports are `getenv`,
+`sysconf`, `snprintf`, `vsnprintf` and (for PIC TLS) `__tls_get_addr`. Other target
+ABIs can additionally require a canary guard symbol. Executable startup remains
+CRT-owned. Linux linking still supplies all the runtime libraries listed above. pthreads,
+socket/errno bindings, `execvp` and libm also need replacement before the standard
+library is independent of libc. External FFI libraries can retain their own
+transitive libc dependencies.
 
 `just test --suite runtime` checks the runtime foundation against a hosted test
 oracle at `-O0` and `-O2`, debug and release. Linux probes include binary and
 redirected I/O, line boundaries/truncation, terminal colour policy, interrupted
-reads/writes, full/broken pipes and fatal exit from a worker. On supported Linux
-hosts it also checks normal and PIC runtime objects for the removed undefined
-symbols, guarding
-against compiler optimisation reintroducing calls. This is a partial boundary,
+reads/writes, full/broken pipes, fatal worker exits, blocked/ignored/handled
+SIGABRT and the stack-corruption hook. Stack-protected probe builds verify that
+the hook stays defined and hidden in normal/PIC runtime objects, with compiler
+stack-check relocations still emitted. Undefined-symbol checks guard against
+compiler optimisation reintroducing removed calls. This is a partial boundary,
 not an assertion that the whole executable is freestanding. Final acceptance
 must inspect executable `PT_INTERP`, `DT_NEEDED` and undefined symbols as well as
 run the normal behavioural gates. AArch64's syscall bridge still needs native

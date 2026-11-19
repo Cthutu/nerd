@@ -114,12 +114,16 @@ static intptr_t nrt_linux_syscall6(intptr_t number,
 enum {
     NRT_SYS_READ = 0, NRT_SYS_WRITE = 1, NRT_SYS_IOCTL = 16,
     NRT_SYS_MMAP = 9, NRT_SYS_MPROTECT = 10, NRT_SYS_MUNMAP = 11,
+    NRT_SYS_RT_SIGACTION = 13, NRT_SYS_RT_SIGPROCMASK = 14,
+    NRT_SYS_GETPID = 39, NRT_SYS_GETTID = 186, NRT_SYS_TGKILL = 234,
     NRT_SYS_EXIT_GROUP = 231
 };
 #else
 enum {
     NRT_SYS_READ = 63, NRT_SYS_WRITE = 64, NRT_SYS_IOCTL = 29,
     NRT_SYS_MMAP = 222, NRT_SYS_MPROTECT = 226, NRT_SYS_MUNMAP = 215,
+    NRT_SYS_RT_SIGACTION = 134, NRT_SYS_RT_SIGPROCMASK = 135,
+    NRT_SYS_GETPID = 172, NRT_SYS_GETTID = 178, NRT_SYS_TGKILL = 131,
     NRT_SYS_EXIT_GROUP = 94
 };
 #endif
@@ -449,6 +453,49 @@ static _Noreturn void nrt_fatal_exit(void)
     exit(127);
 #endif
 }
+
+// Preserve abort's SIGABRT contract, including blocked/ignored dispositions and
+// a handler that returns. Signal the calling thread, not an arbitrary worker.
+// These are kernel signal layouts, not libc sigset_t/struct sigaction layouts.
+static _Noreturn void nrt_signal_abort(void)
+{
+#if defined(NRT_LINUX_RAW_SYSCALLS)
+    enum { NRT_SIGABRT = 6, NRT_SIG_UNBLOCK = 1 };
+    uint64_t mask = UINT64_C(1) << (NRT_SIGABRT - 1);
+    intptr_t process = nrt_linux_syscall6(NRT_SYS_GETPID, 0, 0, 0, 0, 0, 0);
+    intptr_t thread = nrt_linux_syscall6(NRT_SYS_GETTID, 0, 0, 0, 0, 0, 0);
+    nrt_linux_syscall6(NRT_SYS_RT_SIGPROCMASK, NRT_SIG_UNBLOCK,
+                       (uintptr_t)&mask, 0, sizeof(mask), 0, 0);
+    nrt_linux_syscall6(NRT_SYS_TGKILL, (uintptr_t)process, (uintptr_t)thread,
+                       NRT_SIGABRT, 0, 0, 0);
+    // Ignoring SIGABRT or returning from its handler must not resume execution.
+    // Both supported 64-bit kernel ABIs encode SIG_DFL/flags/mask as zero; the
+    // zero padding also covers the optional restorer slot without libc headers.
+    uintptr_t default_action[4] = {0};
+    nrt_linux_syscall6(NRT_SYS_RT_SIGACTION, NRT_SIGABRT,
+                       (uintptr_t)default_action, 0, sizeof(mask), 0, 0);
+    nrt_linux_syscall6(NRT_SYS_RT_SIGPROCMASK, NRT_SIG_UNBLOCK,
+                       (uintptr_t)&mask, 0, sizeof(mask), 0, 0);
+    nrt_linux_syscall6(NRT_SYS_TGKILL, (uintptr_t)process, (uintptr_t)thread,
+                       NRT_SIGABRT, 0, 0, 0);
+    // A syscall sandbox can deny signal delivery. Never return to damaged state.
+    nrt_fatal_exit();
+#else
+    abort();
+#endif
+}
+
+#if defined(NRT_LINUX_RAW_SYSCALLS)
+// Own the compiler ABI failure hook without disabling stack protection. The
+// canary storage/initialisation still belongs to hosted startup for now.
+// Hidden linkage keeps the helper out of the public Nerd shared-library ABI.
+__attribute__((visibility("hidden"), no_stack_protector))
+_Noreturn void __stack_chk_fail(void)
+{
+    nrt_eprintfn("fatal: stack corruption detected");
+    nrt_signal_abort();
+}
+#endif
 
 void nrt_pr(const void* data, size_t count)
 {
@@ -1193,7 +1240,7 @@ void nrt_string_slice(NerdString* out,
         !string_is_utf8_boundary(value, start) ||
         !string_is_utf8_boundary(value, end)) {
         nrt_eprintfn("fatal: string slice out of bounds");
-        abort();
+        nrt_signal_abort();
     }
 
     *out = (NerdString){.data = value->data + start, .count = end - start};
@@ -1418,7 +1465,7 @@ static void string_builder_ensure_capacity(size_t needed)
     u8* data = (u8*)nrt_mem_realloc(g_string_builder_data, capacity, 16, NULL, 0);
     if (data == NULL) {
         nrt_eprintfn("fatal: string builder allocation failed");
-        abort();
+        nrt_signal_abort();
     }
     nrt_mem_leak(data);
     g_string_builder_data     = data;
@@ -1462,7 +1509,7 @@ void nrt_string_builder_finish_in(NerdString* out, size_t start, NrtArena* arena
     }
     if (start > g_string_builder_cursor) {
         nrt_eprintfn("fatal: invalid string builder mark");
-        abort();
+        nrt_signal_abort();
     }
 
     size_t count = g_string_builder_cursor - start;
@@ -1664,7 +1711,7 @@ NrtVaList* nrt_va_create(void)
 {
     NrtVaList* cursor = nrt_mem_alloc(sizeof(*cursor), _Alignof(NrtVaList), NULL, 0);
     if (cursor == NULL) {
-        abort();
+        nrt_signal_abort();
     }
     *cursor = (NrtVaList){0};
     cursor->owner = cursor;

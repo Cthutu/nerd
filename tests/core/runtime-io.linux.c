@@ -5,6 +5,7 @@
 #include <limits.h>
 #include <pthread.h>
 #include <signal.h>
+#include <sys/prctl.h>
 #include <sys/time.h>
 
 #define CHECK(condition)                                                       \
@@ -45,6 +46,24 @@ static void* failing_worker(void* context)
     (void)context;
     nrt_abort("worker failure", 14);
     return NULL;
+}
+
+static void returning_abort_handler(int number)
+{
+    (void)number;
+    nrt_eprn("abort handler", 13);
+}
+
+static void exiting_abort_handler(int number)
+{
+    (void)number;
+    _Exit(42);
+}
+
+static void* aborting_worker(void* context)
+{
+    (void)context;
+    nrt_signal_abort();
 }
 
 static void check_diagnostics(void)
@@ -100,7 +119,44 @@ static void check_diagnostics(void)
 int main(int argc, char** argv)
 {
     CHECK(argc == 2);
-    if (strcmp(argv[1], "output") == 0) {
+    // Observe signal termination without producing core dumps in the test gate.
+    CHECK(prctl(PR_SET_DUMPABLE, 0) == 0);
+    if (strncmp(argv[1], "signal-", 7) == 0) {
+        CHECK(atexit(foreign_done) == 0);
+        struct sigaction action = {0};
+        CHECK(sigemptyset(&action.sa_mask) == 0);
+        action.sa_handler = SIG_DFL;
+        if (strcmp(argv[1], "signal-ignore") == 0) {
+            action.sa_handler = SIG_IGN;
+        }
+        if (strcmp(argv[1], "signal-handler") == 0) {
+            action.sa_handler = returning_abort_handler;
+        }
+        if (strcmp(argv[1], "signal-handler-exit") == 0) {
+            action.sa_handler = exiting_abort_handler;
+        }
+        CHECK(sigaction(SIGABRT, &action, NULL) == 0);
+        if (strcmp(argv[1], "signal-blocked") == 0) {
+            sigset_t mask;
+            CHECK(sigemptyset(&mask) == 0);
+            CHECK(sigaddset(&mask, SIGABRT) == 0);
+            CHECK(pthread_sigmask(SIG_BLOCK, &mask, NULL) == 0);
+        }
+        if (strcmp(argv[1], "signal-worker") == 0) {
+            pthread_t worker;
+            CHECK(pthread_create(&worker, NULL, aborting_worker, NULL) == 0);
+            CHECK(pthread_join(worker, NULL) == 0);
+            CHECK(false);
+        }
+        nrt_signal_abort();
+    } else if (strcmp(argv[1], "stack-fail") == 0) {
+        CHECK(atexit(foreign_done) == 0);
+        __stack_chk_fail();
+    } else if (strcmp(argv[1], "slice-abort") == 0) {
+        NerdString result;
+        nrt_string_slice(&result, NULL, 0, 1);
+        CHECK(false);
+    } else if (strcmp(argv[1], "output") == 0) {
         nrt_pr(NULL, 999);
         nrt_epr(NULL, 999);
         nrt_pr("A\0B", 3);

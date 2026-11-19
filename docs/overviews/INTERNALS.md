@@ -301,8 +301,8 @@ For deeper implementation notes, use these companion documents:
 `no_builtin` on the byte loops prevents optimisation from restoring libc calls.
 Variadic cursors use the same tracked allocator as other runtime allocations.
 On Linux x86-64/AArch64, a private inline-assembly syscall bridge implements
-virtual-memory reservation/commitment/release, descriptor I/O, terminal detection
-and fatal status-127 process exits, interpreting kernel negative error results
+virtual-memory reservation/commitment/release, descriptor I/O, terminal detection,
+fatal status-127 process exits and SIGABRT delivery, interpreting kernel negative error results
 without accessing libc errno. Output retries EINTR and partial writes; other
 errors end the void output operation. Line input uses a process-wide lock and
 single-byte CR pushback, not libc FILE state or bulk read-ahead. Linux diagnostic
@@ -313,9 +313,16 @@ so leak reporting can retain the bookkeeping lock. User variadic formatting is
 separate and remains hosted.
 
 Other platforms retain their native paths. The public Linux syscall API is
-unchanged. The runtime is still hosted: startup/TLS, float/variadic formatting,
-environment/page-size queries and libc signal-abort dependencies are described
-in [toolchain setup](../toolchain.md#experimental-linux-libc-removal).
+unchanged. The signal-abort helper uses the kernel's 64-bit signal set and
+zero default action, not libc's signal layouts. It unblocks and signals the
+calling thread, then restores default disposition and retries if necessary.
+The hidden `__stack_chk_fail` compiler-ABI hook reports corruption through that
+path; its own entry has no stack protector to avoid recursive failure. Ordinary
+stack protection stays enabled; the host runtime still supplies canary storage
+and initialisation (TLS or a target-specific guard).
+The runtime is still hosted: startup/TLS, float/variadic formatting and
+environment/page-size queries are described in
+[toolchain setup](../toolchain.md#experimental-linux-libc-removal).
 `build/test_runtime_foundation.py` checks primitives, Linux I/O/fatal-exit
 behaviour and the partial undefined-symbol boundary for embedded normal/PIC
 objects. Fatal Linux runtime exits do not flush foreign FILE buffers or invoke

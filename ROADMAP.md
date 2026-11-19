@@ -81,12 +81,13 @@ completed plans remain in Git history.
 
 ### Experimental Linux libc removal
 
-- Replace remaining runtime float/variadic formatting, environment queries,
-  page-size discovery and signal-based internal abort. Preserve diagnostic,
-  input, formatting and allocation contracts; do not substitute static libc.
+- Replace remaining runtime float/variadic formatting, environment queries and
+  page-size discovery. Preserve diagnostic, input, formatting and allocation
+  contracts; do not substitute static libc.
 - Own executable startup, argument/environment/auxiliary-vector handling and TLS
   before removing CRT objects, the loader and automatic libc/libm/libgcc links.
-  Audit compiler-inserted memory, stack-protection and arithmetic helpers. Choose
+  Own stack-canary initialisation/TLS as well as the runtime's hidden failure
+  hook. Audit compiler-inserted memory and arithmetic helpers. Choose
   and validate the executable relocation model rather than assuming static PIE
   works without startup relocation.
 - Replace pthread-backed threads/synchronisation, libc socket/errno wrappers,

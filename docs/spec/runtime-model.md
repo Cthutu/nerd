@@ -217,7 +217,15 @@ returning the exit status to the host. Non-returning termination such as
 failed assertions and runtime status-127 failures terminate the whole process
 with `exit_group`, even if raised by a worker. They do not run foreign `atexit`
 callbacks or flush foreign libc streams. A normal return still uses hosted CRT
-shutdown. Internal signal-based runtime aborts remain a separate libc path.
+shutdown. Internal signal-based failures, such as invalid string slicing, use a
+separate SIGABRT path. On Linux x86-64/AArch64 the runtime unblocks SIGABRT in
+the calling thread and sends it there. If the signal is ignored or its handler
+returns, the runtime restores the default disposition, unblocks and sends it
+again. A signal-handler escape remains possible, as with C `abort`. If signal
+syscalls cannot terminate the process, the fallback exits with status 127. The
+runtime's hidden compiler stack-check failure hook diagnoses stack corruption
+and uses this same signal path; stack canary storage/initialisation remains
+host-runtime-owned.
 
 For an optional `main`, absence returns status 1 silently; presence returns 0
 for `?void` or the `?i32` payload. Result `main` returns (`void\E`, `i32\E`)
