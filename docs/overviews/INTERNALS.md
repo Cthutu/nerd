@@ -74,6 +74,10 @@ the complete type for invalid/unfinished source instead of splitting its
 element type into another statement. This does not make array types valid
 runtime initialisers; newline-separated array literals keep their boundaries.
 
+The value-form `on` parser leaves an enclosing table's `else =>` and
+`else as name =>` untouched when completing a nested branch expression;
+only a trailing braced `else` is consumed as that expression's error handler.
+
 LLVM and C pattern binders for void optional/result success payloads retain
 their semantic binding without allocating or storing a payload. Debug
 materialisation must not introduce `alloca void`, and generated C must not refer

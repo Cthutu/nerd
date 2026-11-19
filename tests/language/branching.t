@@ -2064,3 +2064,40 @@ main :: fn () {
 ¬
 
 ¬
+
+=== case: nested-on-outer-fallback ===
+choose :: fn (key: i32, enabled: bool) -> i32 {
+    return on key {
+        0 => on enabled { yes => 11 else => 12 }
+        1 => on enabled { yes => 21 else => 22 }
+        else => 30
+    }
+}
+bound :: fn (key: i32, enabled: bool) -> i32 {
+    return on key {
+        0 => on enabled { yes => 1 else => 2 }
+        else as other => other + 100
+    }
+}
+main :: fn () {
+    assert choose(0, yes) == 11
+    assert choose(0, no) == 12
+    assert choose(1, yes) == 21
+    assert choose(1, no) == 22
+    assert choose(2, yes) == 30
+    assert bound(0, no) == 2
+    assert bound(7, yes) == 107
+    value := 0
+    on 0 {
+        0 => on yes { yes => { value = 42 } else => { value = 1 } }
+        else => { value = 2 }
+    }
+    assert value == 42
+}
+¬
+0
+¬
+
+¬
+
+¬
