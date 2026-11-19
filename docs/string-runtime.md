@@ -9,9 +9,9 @@ implementation details.
 The current implementation is intentionally simple:
 
 - interpolated strings with only compile-time parts lower to string literals
-- runtime interpolated strings are backed by the global temporary string arena
+- runtime interpolated strings are backed by the thread-local temporary string arena
 - lowering is explicit in HIR and LLVM
-- the C runtime uses a global append-only arena-backed builder
+- the C runtime uses a thread-local append-only arena-backed builder
 - conversion support includes built-in values and `Display.show` for types that
   implement the canonical `core.Display` trait
 
@@ -50,13 +50,16 @@ The runtime provides:
 - `nrt_arena_pr(...)` and `nrt_arena_prn(...)` for placing finished strings in
   a selected arena
 
-The `nrt_to_string_<type>` helpers currently use straightforward C formatting and a
-shared scratch buffer, then `nrt_string_builder_append_string(...)` copies the
-result into the arena.
+Integer `nrt_to_string_<type>` helpers use runtime-owned decimal conversion,
+including unsigned arithmetic for the signed minimum. Each helper has its own
+thread-local scratch buffer. Floating-point conversion still uses C `snprintf`;
+variadic formatting still uses `vsnprintf`. The builder copies these borrowed
+results before their scratch storage is reused.
 
 The runtime is compiled to an object file by the build system and embedded in
 the compiler binary. During executable builds the backend writes that object
-beside the temporary `.link.ll` file and links both with clang. Runtime helpers
+beside the temporary `.link.ll` file and links the generated object and runtime
+with the platform LLVM linker. Runtime helpers
 use pointer/scalar parameters for Nerd strings rather than passing or returning
 string structs by value, so the same generated LLVM works with both MSVC-style
 and Unix-style C ABIs.

@@ -19,6 +19,107 @@
 
 typedef uint8_t u8;
 
+// Keep these primitives runtime-owned. LLVM may otherwise turn their loops back
+// into libc calls, even when the source no longer mentions libc functions.
+#if defined(__clang__)
+#define NRT_NO_BUILTIN __attribute__((no_builtin))
+#else
+#define NRT_NO_BUILTIN
+#endif
+
+static NRT_NO_BUILTIN void nrt_bytes_copy(void* destination,
+                                         const void* source,
+                                         size_t count)
+{
+    u8* out = destination;
+    const u8* in = source;
+    for (size_t i = 0; i < count; ++i) out[i] = in[i];
+}
+
+static NRT_NO_BUILTIN void nrt_bytes_move(void* destination,
+                                         const void* source,
+                                         size_t count)
+{
+    u8* out = destination;
+    const u8* in = source;
+    if ((uintptr_t)out <= (uintptr_t)in) {
+        for (size_t i = 0; i < count; ++i) out[i] = in[i];
+    } else {
+        while (count != 0) {
+            --count;
+            out[count] = in[count];
+        }
+    }
+}
+
+static NRT_NO_BUILTIN int nrt_bytes_compare(const void* left,
+                                            const void* right,
+                                            size_t count)
+{
+    const u8* a = left;
+    const u8* b = right;
+    for (size_t i = 0; i < count; ++i) {
+        if (a[i] != b[i]) return (int)a[i] - (int)b[i];
+    }
+    return 0;
+}
+
+static NRT_NO_BUILTIN size_t nrt_cstr_count(const char* text)
+{
+    size_t count = 0;
+    while (text[count] != '\0') ++count;
+    return count;
+}
+
+static bool nrt_cstr_equal(const char* left, const char* right)
+{
+    size_t count = nrt_cstr_count(left);
+    return count == nrt_cstr_count(right) &&
+           nrt_bytes_compare(left, right, count) == 0;
+}
+
+// These are raw kernel results, not libc's -1/errno convention. Keep the bridge
+// private: the public os.linux syscall API still has its existing error contract.
+#if defined(__linux__) && (defined(__x86_64__) || defined(__aarch64__))
+static intptr_t nrt_linux_syscall6(intptr_t number,
+                                  uintptr_t a0, uintptr_t a1, uintptr_t a2,
+                                  uintptr_t a3, uintptr_t a4, uintptr_t a5)
+{
+#if defined(__x86_64__)
+    register uintptr_t r10 __asm__("r10") = a3;
+    register uintptr_t r8 __asm__("r8") = a4;
+    register uintptr_t r9 __asm__("r9") = a5;
+    intptr_t result;
+    __asm__ volatile("syscall"
+                     : "=a"(result)
+                     : "a"(number), "D"(a0), "S"(a1), "d"(a2),
+                       "r"(r10), "r"(r8), "r"(r9)
+                     : "rcx", "r11", "memory", "cc");
+    return result;
+#else
+    register uintptr_t x0 __asm__("x0") = a0;
+    register uintptr_t x1 __asm__("x1") = a1;
+    register uintptr_t x2 __asm__("x2") = a2;
+    register uintptr_t x3 __asm__("x3") = a3;
+    register uintptr_t x4 __asm__("x4") = a4;
+    register uintptr_t x5 __asm__("x5") = a5;
+    register intptr_t x8 __asm__("x8") = number;
+    __asm__ volatile("svc 0"
+                     : "+r"(x0)
+                     : "r"(x1), "r"(x2), "r"(x3), "r"(x4), "r"(x5), "r"(x8)
+                     : "memory", "cc");
+    return (intptr_t)x0;
+#endif
+}
+
+#if defined(__x86_64__)
+enum { NRT_SYS_MMAP = 9, NRT_SYS_MPROTECT = 10, NRT_SYS_MUNMAP = 11 };
+#else
+enum { NRT_SYS_MMAP = 222, NRT_SYS_MPROTECT = 226, NRT_SYS_MUNMAP = 215 };
+#endif
+#define NRT_LINUX_RAW_MEMORY 1
+#endif
+
 // Dynamic-array payloads follow this header at a 16-byte boundary. Keep this
 // layout aligned with the native backend's dynamic-array header.
 typedef struct {
@@ -269,7 +370,7 @@ bool nrt_string_eq(const NerdString* lhs, const NerdString* rhs)
     if (lhs->count == 0) {
         return true;
     }
-    return memcmp(lhs->data, rhs->data, lhs->count) == 0;
+    return nrt_bytes_compare(lhs->data, rhs->data, lhs->count) == 0;
 }
 
 bool nrt_slice_eq(const void* lhs,
@@ -284,7 +385,7 @@ bool nrt_slice_eq(const void* lhs,
     if (lhs_count == 0) {
         return true;
     }
-    return memcmp(lhs, rhs, lhs_count * element_size) == 0;
+    return nrt_bytes_compare(lhs, rhs, lhs_count * element_size) == 0;
 }
 
 // Bulk assignment checks remain enabled in release builds. Validate before
@@ -312,7 +413,7 @@ void nrt_slice_copy(void*       destination,
         exit(127);
     }
     if (count != 0 && element_size != 0) {
-        memmove(destination, source, count * element_size);
+        nrt_bytes_move(destination, source, count * element_size);
     }
 }
 
@@ -329,7 +430,7 @@ void nrt_slice_fill(void*       destination,
         return;
     }
     for (size_t i = 0; i < count; ++i) {
-        memcpy((u8*)destination + i * element_size, value, element_size);
+        nrt_bytes_copy((u8*)destination + i * element_size, value, element_size);
     }
 }
 
@@ -369,6 +470,13 @@ static void* nrt_mem_reserve(size_t size, bool writable)
     DWORD protect = writable ? PAGE_READWRITE : PAGE_NOACCESS;
     DWORD type    = writable ? MEM_RESERVE | MEM_COMMIT : MEM_RESERVE;
     return VirtualAlloc(NULL, size, type, protect);
+#elif defined(NRT_LINUX_RAW_MEMORY)
+    int prot = writable ? PROT_READ | PROT_WRITE : PROT_NONE;
+    intptr_t result = nrt_linux_syscall6(NRT_SYS_MMAP, 0, size, prot,
+                                        MAP_PRIVATE | MAP_ANONYMOUS,
+                                        (uintptr_t)-1, 0);
+    // Linux reserves [-4095, -1] for syscall errors, including ENOMEM.
+    return (uintptr_t)result >= (uintptr_t)-4095 ? NULL : (void*)result;
 #else
     int prot = writable ? PROT_READ | PROT_WRITE : PROT_NONE;
     void* memory =
@@ -384,6 +492,9 @@ static bool nrt_arena_commit(u8* memory, size_t size)
     }
 #if defined(_WIN32)
     return VirtualAlloc(memory, size, MEM_COMMIT, PAGE_READWRITE) != NULL;
+#elif defined(NRT_LINUX_RAW_MEMORY)
+    return nrt_linux_syscall6(NRT_SYS_MPROTECT, (uintptr_t)memory, size,
+                              PROT_READ | PROT_WRITE, 0, 0, 0) == 0;
 #else
     return mprotect(memory, size, PROT_READ | PROT_WRITE) == 0;
 #endif
@@ -397,6 +508,8 @@ static void nrt_mem_release(void* memory, size_t size)
 #if defined(_WIN32)
     (void)size;
     VirtualFree(memory, 0, MEM_RELEASE);
+#elif defined(NRT_LINUX_RAW_MEMORY)
+    nrt_linux_syscall6(NRT_SYS_MUNMAP, (uintptr_t)memory, size, 0, 0, 0, 0);
 #else
     munmap(memory, size);
 #endif
@@ -506,7 +619,7 @@ void* nrt_mem_alloc(size_t size,
     debug->next               = g_nrt_heap_head;
     debug->source_path        = (NerdString){
         .data  = (u8*)source_path,
-        .count = source_path != NULL ? strlen(source_path) : 0,
+        .count = source_path != NULL ? nrt_cstr_count(source_path) : 0,
     };
     debug->requested_size     = size;
     debug->index              = ++g_nrt_heap_next_index;
@@ -541,7 +654,7 @@ void* nrt_array_copy(const void* source,
         nrt_mem_alloc(sizeof(NrtArray) + bytes, 16, source_path, line);
     *result = (NrtArray){.data = result + 1, .count = count, .capacity = count};
     if (bytes != 0) {
-        memcpy(result->data, source, bytes);
+        nrt_bytes_copy(result->data, source, bytes);
     }
     return result;
 }
@@ -570,7 +683,7 @@ void* nrt_mem_realloc(void*       memory,
     size_t old_size = nrt_mem_size(memory);
     void*  result   = nrt_mem_alloc(size, alignment, source_path, line);
     if (result != NULL && old_size > 0 && size > 0) {
-        memcpy(result, memory, old_size < size ? old_size : size);
+        nrt_bytes_copy(result, memory, old_size < size ? old_size : size);
     }
     nrt_mem_free(memory);
     return result;
@@ -693,7 +806,7 @@ static void nrt_arena_debug_track(NrtArena*   arena,
         .used_size      = (size_t)(arena->current - arena->base),
         .source_path    = (NerdString){
                .data  = (u8*)source_path,
-               .count = source_path != NULL ? strlen(source_path) : 0,
+               .count = source_path != NULL ? nrt_cstr_count(source_path) : 0,
         },
         .index          = ++g_nrt_arena_next_index,
         .line           = line,
@@ -888,7 +1001,7 @@ void nrt_arena_pr(NerdString*       out,
     }
     u8* data = (u8*)nrt_arena_alloc(arena, count, 1, NULL, 0);
     if (count > 0) {
-        memcpy(data, text->data, count);
+        nrt_bytes_copy(data, text->data, count);
     }
     *out = (NerdString){.data = data, .count = count};
 }
@@ -917,7 +1030,7 @@ void nrt_arena_prn(NerdString*       out,
     }
     u8* data = (u8*)nrt_arena_alloc(arena, count + 1, 1, NULL, 0);
     if (count > 0) {
-        memcpy(data, text->data, count);
+        nrt_bytes_copy(data, text->data, count);
     }
     data[count] = '\n';
     *out = (NerdString){.data = data, .count = count + 1};
@@ -967,12 +1080,12 @@ static bool nrt_stderr_supports_colour(void)
     char term[5];
     if (GetEnvironmentVariableA("NO_COLOR", no_colour, sizeof(no_colour)) > 0 ||
         (GetEnvironmentVariableA("TERM", term, sizeof(term)) == 4 &&
-         strcmp(term, "dumb") == 0)) return false;
+         nrt_cstr_equal(term, "dumb"))) return false;
 #else
     const char* no_colour = getenv("NO_COLOR");
     const char* term = getenv("TERM");
     if ((no_colour != NULL && no_colour[0] != '\0') ||
-        (term != NULL && strcmp(term, "dumb") == 0)) return false;
+        (term != NULL && nrt_cstr_equal(term, "dumb"))) return false;
 #endif
 #if defined(_WIN32)
     HANDLE handle = nrt_windows_stream_handle(stderr);
@@ -1027,8 +1140,8 @@ static void nrt_print_memory_leaks(void)
     size_t heap_bytes      = 0;
     size_t arena_count     = 0;
     size_t arena_committed = 0;
-    size_t index_width     = strlen("index");
-    size_t bytes_width     = strlen("bytes");
+    size_t index_width     = nrt_cstr_count("index");
+    size_t bytes_width     = nrt_cstr_count("bytes");
     for (NrtHeapDebugHeader* allocation = g_nrt_heap_head;
          allocation != NULL;
          allocation = allocation->next) {
@@ -1185,7 +1298,7 @@ void nrt_string_builder_append_string(const NerdString* str)
     string_builder_ensure_capacity(g_string_builder_cursor + str->count);
 
     if (str->count > 0) {
-        memcpy(g_string_builder_data + g_string_builder_cursor,
+        nrt_bytes_copy(g_string_builder_data + g_string_builder_cursor,
                str->data,
                str->count);
         g_string_builder_cursor += str->count;
@@ -1213,7 +1326,7 @@ void nrt_string_builder_finish_in(NerdString* out, size_t start, NrtArena* arena
     u8*    data  = NULL;
     if (count > 0) {
         data = (u8*)nrt_arena_alloc(arena, count, 1, NULL, 0);
-        memcpy(data, g_string_builder_data + start, count);
+        nrt_bytes_copy(data, g_string_builder_data + start, count);
     }
     *out = (NerdString){.data = data, .count = count};
     g_string_builder_cursor = start;
@@ -1283,20 +1396,31 @@ void nrt_to_string_bool(NerdString* out, bool value)
                  : (NerdString){.data = (u8*)"no", .count = 2};
 }
 
-#define DEF_TO_STRING_INT(name, type, format, cast_type)                       \
-    void nrt_to_string_##name(NerdString* out, type value)                         \
-    {                                                                          \
-        static _Thread_local u8 buffer[64];                                    \
-        int count =                                                            \
-            snprintf((char*)buffer, sizeof(buffer), format, (cast_type)value); \
-        if (out == NULL) {                                                     \
-            return;                                                            \
-        }                                                                      \
-        if (count < 0) {                                                       \
-            *out = (NerdString){0};                                            \
-            return;                                                            \
-        }                                                                      \
-        *out = (NerdString){.data = buffer, .count = (size_t)count};           \
+static void nrt_integer_string(NerdString* out, u8* buffer,
+                                uint64_t value, bool negative)
+{
+    if (out == NULL) return;
+    // Unsigned subtraction also handles INT64_MIN without signed overflow.
+    if (negative) value = (uint64_t)0 - value;
+    u8 reversed[20];
+    size_t count = 0;
+    do {
+        reversed[count++] = (u8)('0' + value % 10);
+        value /= 10;
+    } while (value != 0);
+    size_t cursor = 0;
+    if (negative) buffer[cursor++] = '-';
+    while (count != 0) buffer[cursor++] = reversed[--count];
+    buffer[cursor] = '\0';
+    *out = (NerdString){.data = buffer, .count = cursor};
+}
+
+#define DEF_TO_STRING_INT(name, type, signed_value)                            \
+    void nrt_to_string_##name(NerdString* out, type value)                      \
+    {                                                                         \
+        static _Thread_local u8 buffer[21];                                    \
+        nrt_integer_string(out, buffer, (uint64_t)value,                        \
+                           (signed_value) && (int64_t)value < 0);              \
     }
 
 #define DEF_TO_STRING_FLOAT(name, type)                                        \
@@ -1315,16 +1439,16 @@ void nrt_to_string_bool(NerdString* out, bool value)
         *out = (NerdString){.data = buffer, .count = (size_t)count};           \
     }
 
-DEF_TO_STRING_INT(i8, int8_t, "%d", int)
-DEF_TO_STRING_INT(i16, int16_t, "%d", int)
-DEF_TO_STRING_INT(i32, int, "%d", int)
-DEF_TO_STRING_INT(i64, int64_t, "%lld", long long)
-DEF_TO_STRING_INT(u8, uint8_t, "%u", unsigned int)
-DEF_TO_STRING_INT(u16, uint16_t, "%u", unsigned int)
-DEF_TO_STRING_INT(u32, uint32_t, "%u", unsigned int)
-DEF_TO_STRING_INT(u64, uint64_t, "%llu", unsigned long long)
-DEF_TO_STRING_INT(isize, intptr_t, "%td", ptrdiff_t)
-DEF_TO_STRING_INT(usize, uintptr_t, "%zu", size_t)
+DEF_TO_STRING_INT(i8, int8_t, true)
+DEF_TO_STRING_INT(i16, int16_t, true)
+DEF_TO_STRING_INT(i32, int, true)
+DEF_TO_STRING_INT(i64, int64_t, true)
+DEF_TO_STRING_INT(u8, uint8_t, false)
+DEF_TO_STRING_INT(u16, uint16_t, false)
+DEF_TO_STRING_INT(u32, uint32_t, false)
+DEF_TO_STRING_INT(u64, uint64_t, false)
+DEF_TO_STRING_INT(isize, intptr_t, true)
+DEF_TO_STRING_INT(usize, uintptr_t, false)
 DEF_TO_STRING_FLOAT(f32, float)
 DEF_TO_STRING_FLOAT(f64, double)
 
@@ -1375,10 +1499,11 @@ typedef struct NrtVaList {
 
 NrtVaList* nrt_va_create(void)
 {
-    NrtVaList* cursor = calloc(1, sizeof(*cursor));
+    NrtVaList* cursor = nrt_mem_alloc(sizeof(*cursor), _Alignof(NrtVaList), NULL, 0);
     if (cursor == NULL) {
         abort();
     }
+    *cursor = (NrtVaList){0};
     cursor->owner = cursor;
     return cursor;
 }
@@ -1398,7 +1523,7 @@ void nrt_va_done(NrtVaList* cursor)
     while (cursor != NULL) {
         NrtVaList* next = cursor->next;
         va_end(cursor->args);
-        free(cursor);
+        nrt_mem_free(cursor);
         cursor = next;
     }
 }

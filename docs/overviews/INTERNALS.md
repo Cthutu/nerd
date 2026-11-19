@@ -295,6 +295,20 @@ For deeper implementation notes, use these companion documents:
 - [../lsp.md](../lsp.md)
 - [../testing.md](../testing.md)
 
+## Runtime platform boundary
+
+`data/nrt.c` owns byte/string primitives and decimal integer conversion; Clang
+`no_builtin` on the byte loops prevents optimisation from restoring libc calls.
+Variadic cursors use the same tracked allocator as other runtime allocations.
+On Linux x86-64/AArch64, a private inline-assembly syscall bridge implements
+virtual-memory reservation, commitment and release, interpreting kernel negative
+error results without accessing libc errno. Other platforms retain their native
+paths. The public Linux syscall API is unchanged. The runtime is still hosted:
+startup/TLS, stdio, floating-point/variadic formatting and other remaining libc
+services are described in [toolchain setup](../toolchain.md#experimental-linux-libc-removal).
+`build/test_runtime_foundation.py` checks behaviour and the partial undefined
+symbol boundary for embedded normal/PIC objects.
+
 ## C output
 
 `src/compiler/cgen/cgen.c` implements the optional HIR-to-C backend. It consumes

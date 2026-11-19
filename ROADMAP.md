@@ -79,6 +79,26 @@ completed plans remain in Git history.
 
 ## Compiler and tooling
 
+### Experimental Linux libc removal
+
+- Replace remaining runtime stdio, float/variadic formatting, environment and
+  terminal queries, page-size discovery and termination. Preserve diagnostic,
+  input, formatting and allocation contracts; do not substitute static libc.
+- Own executable startup, argument/environment/auxiliary-vector handling and TLS
+  before removing CRT objects, the loader and automatic libc/libm/libgcc links.
+  Audit compiler-inserted memory, stack-protection and arithmetic helpers. Choose
+  and validate the executable relocation model rather than assuming static PIE
+  works without startup relocation.
+- Replace pthread-backed threads/synchronisation, libc socket/errno wrappers,
+  PATH-search execution and libm. Keep LLVM and C output aligned, and define
+  hosted shared-library/FFI compatibility separately from standalone startup.
+- Prove absence of direct dependencies with ELF inspection and behavioural
+  regressions in both compiler profiles/backends. Validate native architectures
+  separately; foreign libraries may retain transitive libc dependencies. The
+  current partial runtime boundary is documented in [toolchain setup](docs/toolchain.md#experimental-linux-libc-removal).
+
+### Other compiler work
+
 - Fix Windows C representation of nested zero-sized arrays, preserving logical
   sizes, addresses, indexing and embedded/FFI layouts. The explicit `[2][0]Mob`
   reproduction and observed Clang ABI limitation are in

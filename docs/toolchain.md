@@ -71,6 +71,32 @@ tests were run on Linux. Other hosts currently report an explicit unsupported
 linking configuration. Cross-compilation is not provided by these environment
 settings.
 
+## Experimental Linux libc removal
+
+Linux output is **not yet libc-free**. The runtime owns its byte copying,
+overlap-safe moving, comparison, C-string length/equality and decimal integer
+conversion. Variadic cursors use the Nerd allocator rather than `calloc`/`free`.
+On Linux x86-64 and AArch64, the runtime's virtual-memory operations use raw
+`mmap`, `mprotect` and `munmap` syscalls. This private bridge handles kernel
+negative error results directly; it does not change the public `os.linux`
+libc-style error convention or write libc's `errno`.
+
+Remaining direct dependencies include stdio, floating-point/variadic formatting,
+environment/terminal queries, page-size discovery, process termination, CRT
+startup and TLS services. Linux linking still supplies all the runtime libraries
+listed above. pthreads, socket/errno bindings, `execvp` and libm also need
+replacement before the standard library is independent of libc. External FFI
+libraries can retain their own transitive libc dependencies.
+
+`just test --suite runtime` checks the runtime foundation against a hosted test
+oracle at `-O0` and `-O2`, debug and release. On supported Linux hosts it also
+checks normal and PIC runtime objects for the removed undefined symbols, guarding
+against compiler optimisation reintroducing calls. This is a partial boundary,
+not an assertion that the whole executable is freestanding. Final acceptance
+must inspect executable `PT_INTERP`, `DT_NEEDED` and undefined symbols as well as
+run the normal behavioural gates. AArch64's syscall bridge still needs native
+validation; this does not broaden the standard library's supported layouts.
+
 ## Output and diagnostics
 
 `--obj` stops after object generation. `--lib` archives the generated object and
