@@ -42,18 +42,18 @@ and [llc](https://llvm.org/docs/CommandGuide/llc.html) references.
 
 ## Host runtime requirements
 
-Linux requires the native libc development/startup files (`Scrt1.o`, `crti.o`,
-`crtn.o`, libc and libm), the dynamic loader, and `libgcc_s.so.1` for compiler
-runtime helpers. The latter is a runtime library; Nerd invokes no GCC tools.
-Common x86-64 and AArch64 library layouts are searched directly. Nonstandard
-layouts can set `NERD_CRT_DIR` and `NERD_DYNAMIC_LINKER` to the CRT library
-directory and dynamic loader path. Executables are linked as PIE. Linux
-executable links use a dedicated PIC runtime with the experimental metadata
-preinit hook; shared-library links use the hosted PIC runtime. Additional FFI
-libraries must be installed in the native linker search paths. Experimental
-Linux executable builds currently require GNU libc's preinit calling convention;
-musl executable startup is deliberately unsupported until independent startup
-replaces that bridge.
+Linux runtime-only executables use Nerd-owned startup/TLS and need no CRT
+objects, loader, libc, libm or libgcc at execution time. This path is validated
+on native x86-64. The compiler executable itself remains hosted.
+
+Foreign-library builds and explicit `--hosted` builds use PIE, the hosted
+runtime, native libc startup files (`Scrt1.o`, `crti.o`, `crtn.o`), the
+dynamic loader and runtime libraries. Common x86-64/AArch64 layouts are searched;
+nonstandard installations can set `NERD_CRT_DIR` and `NERD_DYNAMIC_LINKER`.
+Doctor reports these as optional hosted dependencies and proves its independent
+link/run path even when they are unavailable. FFI library discovery/validation
+still happens in the hosted compiler. Building Nerd itself, or compiling its
+generated C, still requires the appropriate C development headers.
 
 Windows requires Visual Studio C++ runtime libraries and the Windows SDK.
 `lld-link` can discover installed SDK/CRT libraries when `LIB` is unset. For a
@@ -77,76 +77,111 @@ settings.
 
 ## Experimental Linux libc removal
 
-Linux output is **not yet libc-free**. The runtime owns its byte copying,
-overlap-safe moving, comparison, C-string length/equality and decimal integer
-conversion. Variadic cursors use the Nerd allocator rather than `calloc`/`free`.
-On Linux x86-64 and AArch64, the runtime's virtual-memory operations use raw
-`mmap`, `mprotect` and `munmap` syscalls. Standard output/error and line input use
-raw `write`/`read`, terminal detection uses `ioctl(TCGETS)`, and status-127 fatal
-failures use `exit_group`. Internal signal aborts unblock and deliver SIGABRT to
-the calling thread, retrying with its default disposition if a handler returns
-or the signal was ignored. If the signal syscalls cannot terminate the process,
-the runtime falls back to status 127 rather than returning to invalid state.
-Runtime diagnostics have a private string/unsigned integer/width formatter;
-user `VaList.format` still uses libc. This private
-bridge handles kernel negative error results directly; it does not change the
-public `os.linux` libc-style error convention or write libc's `errno`.
+**Runtime-only Linux x86-64 programs are libc-free**, including standard-library
+files, threads/synchronisation, maths, sockets and process launching. This means
+independent executable code, not a statically linked libc. The compiler remains
+hosted; native AArch64 validation and broader ABI/accuracy hardening are still
+outstanding. This branch remains experimental.
 
-Linux runtime output is unbuffered and retries interrupted and short writes.
-Other write errors stop the current output operation; the void print API does
-not report errors. The kernel's normal SIGPIPE policy remains in effect. Line
-input serialises runtime readers, handles LF/CRLF/CR and retains at most one
-lookahead byte for CR. Foreign `FILE` streams are separate: callers mixing Nerd
-I/O with libc stdio must flush/synchronise the foreign streams explicitly.
-Fatal runtime exits skip foreign `atexit` handlers and libc buffer flushing,
-including when triggered by a worker. Normal return still follows hosted CRT
-shutdown. Windows/macOS retain their existing hosted I/O and exit paths.
+```sh
+nerd build --freestanding main.n        # Refuse a hosted fallback
+nerd build --hosted main.n              # Explicit foreign CRT/TLS/LD_PRELOAD ABI
+nerd build --cgen main.n
+clang main.c $(nerd build --copts main.n) -o main
+```
 
-The Linux runtime supplies a hidden `__stack_chk_fail` compiler-ABI hook that
-reports stack corruption and takes the signal-abort path. Stack protection is
-not disabled: canary storage/initialisation still depends on the hosted runtime
-(TLS or an ABI-specific guard) and must be owned before startup is freestanding.
+Without either flag, LLVM first links the independent runtime, using section
+garbage collection and `--as-needed` so unused foreign declarations do not
+create runtime dependencies. It inspects the result for `DT_NEEDED`. Dynamic
+foreign-library or unsupported relocation requirements select a fresh hosted
+link/runtime instead; native
+and foreign libc TLS are never mixed. A failed native link can take that path
+only when HIR references foreign functions outside the runtime-owned ABI. `--freestanding` prohibits it.
+The two flags are mutually exclusive and apply only to Linux executable builds.
 
-Linux executables capture `AT_PAGESZ`, `NO_COLOR` and `TERM` in an ELF preinit
-hook, before shared-library and executable constructors can mutate the initial
-environment vector. Page size must be present, nonzero and a power of two; there
-is no `/proc` dependency or fallback guess. Colour policy uses copied startup
-flags, so later foreign `setenv`/`unsetenv` calls do not change it. Terminal
-capability is still checked when reporting. The hook uses GNU libc's three-argument
-preinit ABI: this is a hosted transition, not independent kernel startup.
+Recommended C options make a conservative HIR callable-reference check: calls
+outside the runtime-owned ABI select hosted compilation. Runtime-only options
+include `NRT_LINUX_EXECUTABLE=1`, `NRT_FREESTANDING=1`, local-exec TLS,
+freestanding compilation, stack protection and `-nostdlib -no-pie`. Foreign
+functions in unreachable source bodies can make this query more conservative
+than LLVM's final section collection. Explicit freestanding C options reject
+such foreign calls rather than producing a binary with an unusable loader/TLS
+combination. Manually compiling generated C without its reported options retains
+the hosted path. Object/archive/shared-library outputs also remain hosted.
 
-On validated Linux x86-64, the executable runtime's remaining direct imports are
-`snprintf`, `vsnprintf` and (for PIC TLS) `__tls_get_addr`. Object/static/shared
-library runtimes retain `getenv` and `sysconf`: they belong to a foreign host and
-must not install an executable preinit hook or assume an initial stack layout.
-Other target ABIs can additionally require a canary guard symbol. Executable
-startup remains CRT-owned. Linux linking still supplies the runtime libraries
-listed above.
+### Executable substrate
 
-For C output, executable `--copts` includes `-DNRT_LINUX_EXECUTABLE=1` to select
-the same preinit path. Object/library options omit it. Manually compiling C
-without the reported options retains hosted metadata lookup for compatibility. pthreads,
-socket/errno bindings, `execvp` and libm also need replacement before the standard
-library is independent of libc. External FFI libraries can retain their own
-transitive libc dependencies.
+The standalone executable is fixed-address **ET_EXEC**, not PIE. Its objects
+can be PIC, but all relocations are resolved at link time; there is no unowned
+static-PIE relocation phase. `_start` preserves the initial kernel stack,
+aligns the call stack and captures argc/argv/envp and auxv before constructors.
+`AT_PAGESZ` must occur exactly once, be nonzero and be a power of two: no guessed
+page size and no `/proc` lookup. Copied `NO_COLOR`/`TERM` flags survive
+constructor environment mutation; terminal capability is checked when reporting.
 
-`just test --suite runtime` checks the runtime foundation against a hosted test
-oracle at `-O0` and `-O2`, debug and release. Linux probes include binary and
-redirected I/O, line boundaries/truncation, terminal colour policy, interrupted
-reads/writes, full/broken pipes, fatal worker exits, blocked/ignored/handled
-SIGABRT and the stack-corruption hook. Stack-protected probe builds verify that
-the hook stays defined and hidden in normal/PIC runtime objects, with compiler
-stack-check relocations still emitted. Undefined-symbol checks guard against
-compiler optimisation reintroducing removed calls. Separate executable-runtime
-checks also reject `getenv`/`sysconf` and require a preinit section, while hosted
-objects must not contain one. Synthetic auxv tests cover page sizes and invalid
-records; a DSO constructor that changes/removes environment entries verifies
-capture ordering. LLVM and recommended C invocations inspect actual binaries.
-This is a partial boundary,
-not an assertion that the whole executable is freestanding. Final acceptance
-must inspect executable `PT_INTERP`, `DT_NEEDED` and undefined symbols as well as
-run the normal behavioural gates. AArch64's syscall bridge still needs native
-validation; this does not broaden the standard library's supported layouts.
+Startup reads `PT_TLS` through `AT_PHDR`, copies the initial TLS image into
+fresh zero-backed storage, honours TLS alignment (including alignment larger
+than a page), installs the thread pointer, and seeds the canary from
+`AT_RANDOM`. x86-64 uses local-exec TLS, `arch_prctl(ARCH_SET_FS)` and the
+ABI guard at FS:40; AArch64 has its own thread-pointer/global-guard path.
+Link-resolved RELRO tables are protected before preinit/init arrays run; fini
+arrays run in reverse after a
+normal main return. Normal and fatal process exits use kernel `exit_group`.
+Startup has no GNU libc constructor-convention dependency. Hosted parser/I/O
+oracles supply explicit metadata without a preinit bridge.
+
+The runtime owns byte/string primitives and compiler memory helpers; allocation,
+descriptor I/O, terminal detection and fatal/signal termination use raw syscalls.
+The hidden stack-check hook remains enabled and reports corruption before
+SIGABRT. The embedded executable runtime is built with strong stack protection.
+Normal calls cannot run with uninitialised TLS/canaries.
+
+Threads use `clone`, independent initial TLS images, guarded 8 MiB usable stacks,
+kernel TID-clear/futex joins and runtime-owned mutex/condition state. Joins wait
+for kernel thread exit before unmapping TLS/stack/control storage. Public
+`os.linux` calls retain -1/error-code semantics through runtime-owned per-thread
+errno; hosted calls continue to use libc errno. Socket bindings use syscalls;
+`execvp` owns PATH lookup, permission-error precedence and ENOEXEC shell fallback.
+The shell/executable deliberately launched by an application may itself use
+libc; that is not linked into the Nerd process.
+
+Linux float and variadic formatting is runtime-owned, locale-independent and
+round-to-nearest/ties-to-even. Binary64 decimal conversion uses an exact integer
+coefficient before rounding. Integer/pointer/string/character/count and
+`f/e/g/a` conversions, flags, widths, precisions and `*` are supported.
+Positional, wide-character and long-double formats are not supported; invalid
+formats return an empty result through `VaList.format`. See
+[string runtime](string-runtime.md). Standalone maths uses hardware square root,
+Payne–Hanek full-range reduction and runtime trigonometric/inverse functions;
+it is not advertised as a correctly-rounded replacement for every libm/fenv API.
+
+Output is unbuffered, retries EINTR/short writes and retains normal kernel
+SIGPIPE policy. Runtime line input handles LF/CRLF/CR with at most one pushback
+byte. Foreign FILE buffering must be synchronised explicitly. Fatal exits skip
+foreign atexit/buffer flushing. Hosted normal returns retain CRT shutdown.
+External X11/GL/Vulkan and other FFI libraries may retain libc dependencies;
+`--hosted` is also required for intentional LD_PRELOAD interposition.
+Windows/macOS keep their existing hosted startup.
+
+### Acceptance and remaining validation
+
+`just test --suite runtime` includes `build/test_libc_free.py` for each compiler
+profile. It runs LLVM/C debug/release programs and rejects any ELF `PT_INTERP`,
+`DT_NEEDED` or undefined symbols. It proves argument/status handling, binary files,
+formatting, maths, TLS/errno isolation, joins, PATH errors and script execution.
+A no-CRT C bootstrap probe additionally checks constructors/destructors,
+over-aligned TLS, actual compiler canary failure, SIGABRT and worker-wide fatal
+termination at O0/O2. Failed acceptance artefacts are retained under `_tmp`.
+
+Hosted foundation oracles still check byte/VM/I/O contracts, auxv errors,
+interruptions, SIGABRT dispositions and symbol boundaries. New differential
+formatting tests compare thousands of binary64 patterns/precisions against the
+host formatter; maths checks full-exponent random values and IEEE edge cases
+against a separately loaded libm (8e-15 relative comparison, not an exhaustive
+accuracy proof). Network/Nexus execution remains opt-in; their normal binaries
+use independent startup, while preload fault-injection subjects explicitly use
+hosted startup. Native AArch64, alternative C SDKs/libcs, resource-exhaustion
+injection and exhaustive numerical/fenv compatibility remain separate gates.
 
 ## Output and diagnostics
 

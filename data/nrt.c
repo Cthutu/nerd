@@ -6,6 +6,16 @@
 #include <stdarg.h>
 #include <string.h>
 #include <stdatomic.h>
+#if defined(__linux__)
+#ifndef NRT_FORMAT_INCLUDED
+#include "nfmt.h"
+#endif
+#define NRT_FORMAT nrt_format
+#define NRT_VFORMAT nrt_vformat
+#else
+#define NRT_FORMAT snprintf
+#define NRT_VFORMAT vsnprintf
+#endif
 #if defined(_WIN32)
 #include <windows.h>
 #include <fcntl.h>
@@ -20,7 +30,7 @@ typedef uint8_t u8;
 // Keep these primitives runtime-owned. LLVM may otherwise turn their loops back
 // into libc calls, even when the source no longer mentions libc functions.
 #if defined(__clang__)
-#define NRT_NO_BUILTIN __attribute__((no_builtin))
+#define NRT_NO_BUILTIN __attribute__((no_builtin, no_stack_protector))
 #else
 #define NRT_NO_BUILTIN
 #endif
@@ -69,7 +79,7 @@ static NRT_NO_BUILTIN size_t nrt_cstr_count(const char* text)
     return count;
 }
 
-static bool nrt_cstr_equal(const char* left, const char* right)
+static NRT_NO_BUILTIN bool nrt_cstr_equal(const char* left, const char* right)
 {
     size_t count = nrt_cstr_count(left);
     return count == nrt_cstr_count(right) &&
@@ -79,7 +89,7 @@ static bool nrt_cstr_equal(const char* left, const char* right)
 // These are raw kernel results, not libc's -1/errno convention. Keep the bridge
 // private: the public os.linux syscall API still has its existing error contract.
 #if defined(__linux__) && (defined(__x86_64__) || defined(__aarch64__))
-static intptr_t nrt_linux_syscall6(intptr_t number,
+static NRT_NO_BUILTIN intptr_t nrt_linux_syscall6(intptr_t number,
                                   uintptr_t a0, uintptr_t a1, uintptr_t a2,
                                   uintptr_t a3, uintptr_t a4, uintptr_t a5)
 {
@@ -498,8 +508,8 @@ _Noreturn void __stack_chk_fail(void)
 #endif
 
 #if defined(NRT_LINUX_EXECUTABLE)
-#if !defined(NRT_LINUX_RAW_SYSCALLS) || !defined(__GLIBC__)
-#error "Experimental Linux executable metadata requires the GNU libc preinit ABI"
+#if !defined(NRT_LINUX_RAW_SYSCALLS)
+#error "Linux executable metadata requires a supported raw-syscall target"
 #endif
 
 typedef struct {
@@ -510,7 +520,7 @@ typedef struct {
 
 static NrtProcessMetadata g_nrt_process_metadata;
 
-static const char* nrt_environment_value(const char* entry, const char* key)
+static NRT_NO_BUILTIN const char* nrt_environment_value(const char* entry, const char* key)
 {
     while (*key != '\0' && *entry == *key) {
         ++entry;
@@ -519,9 +529,8 @@ static const char* nrt_environment_value(const char* entry, const char* key)
     return *key == '\0' && *entry == '=' ? entry + 1 : NULL;
 }
 
-// Accept explicit vectors so a future kernel _start can supply the same data
-// without the hosted preinit bridge. Copy policy flags, not borrowed env strings.
-static bool nrt_read_process_metadata(const char* const* environment,
+// Accept explicit initial-stack vectors. Copy policy flags, not borrowed strings.
+static NRT_NO_BUILTIN bool nrt_read_process_metadata(const char* const* environment,
                                       const uintptr_t* auxiliary,
                                       NrtProcessMetadata* metadata)
 {
@@ -552,26 +561,6 @@ static bool nrt_read_process_metadata(const char* const* environment,
     return metadata->page_size != 0;
 }
 
-// GNU libc's executable preinit ABI supplies argc/argv/envp before shared-library
-// and executable constructors can shorten or replace the original env vector.
-static void nrt_linux_process_preinit(int argc, char** argv, char** environment)
-{
-    (void)argc;
-    (void)argv;
-    const char* const* env = (const char* const*)environment;
-    const char* const* end = env;
-    if (end != NULL) {
-        while (*end != NULL) ++end;
-    }
-    if (end == NULL || !nrt_read_process_metadata(env, (const uintptr_t*)(end + 1),
-                                                  &g_nrt_process_metadata)) {
-        nrt_eprintfn("fatal: missing or invalid Linux process metadata");
-        nrt_fatal_exit();
-    }
-}
-
-__attribute__((used, section(".preinit_array")))
-static void (*const g_nrt_linux_preinit)(int, char**, char**) = nrt_linux_process_preinit;
 #endif
 
 void nrt_pr(const void* data, size_t count)
@@ -1699,7 +1688,7 @@ static void nrt_integer_string(NerdString* out, u8* buffer,
     {                                                                          \
         static _Thread_local u8 buffer[64];                                    \
         int count =                                                            \
-            snprintf((char*)buffer, sizeof(buffer), "%g", (double)value);     \
+            NRT_FORMAT((char*)buffer, sizeof(buffer), "%g", (double)value);     \
         if (out == NULL) {                                                     \
             return;                                                            \
         }                                                                      \
@@ -1838,7 +1827,7 @@ void nrt_va_format(NerdString* out, NrtVaList* cursor, const char* format)
 {
     va_list measure;
     va_copy(measure, cursor->args);
-    int count = vsnprintf(NULL, 0, format, measure);
+    int count = NRT_VFORMAT(NULL, 0, format, measure);
     va_end(measure);
     if (count < 0) {
         *out = (NerdString){0};
@@ -1848,7 +1837,7 @@ void nrt_va_format(NerdString* out, NrtVaList* cursor, const char* format)
         nrt_arena_alloc(nrt_temp_arena(), (size_t)count + 1, 1, NULL, 0);
     va_list render;
     va_copy(render, cursor->args);
-    int written = vsnprintf(buffer, (size_t)count + 1, format, render);
+    int written = NRT_VFORMAT(buffer, (size_t)count + 1, format, render);
     va_end(render);
     *out = written < 0
                ? (NerdString){0}
@@ -1866,3 +1855,7 @@ void* nrt_va_native(NrtVaList* cursor)
     return &cursor->args;
 #endif
 }
+
+#if defined(NRT_FREESTANDING) && !defined(NRT_LINUX_EMBEDDED)
+#include "nlinux.h"
+#endif

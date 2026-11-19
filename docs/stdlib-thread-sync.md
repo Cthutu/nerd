@@ -42,8 +42,9 @@ Starting an active owner or passing a null callback returns `no`. Native start
 failure resets an idle owner; the caller still owns the context. Join failure
 retains ownership and must be handled before freeing the context. There is no
 detach, cancellation, forced termination, timeout or implicit destructor. Do
-not exit the process with unjoined workers. Default stack sizing comes from the
-native threading API.
+not exit the process with unjoined workers. Independent Linux workers have an
+8 MiB usable stack rounded to the kernel page size, with a guard page at each
+end. Hosted and Windows workers retain their native API's default stack sizing.
 
 The trampolines call `nrt_thread_init` before the callback and `nrt_thread_done`
 after normal callback return. Worker heap allocations remain explicitly owned;
@@ -86,10 +87,17 @@ variables. Returning from the callback lets the CRT perform its native thread
 cleanup; the joining owner closes the handle. See Microsoft's
 [`_beginthreadex` contract](https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/beginthread-beginthreadex?view=msvc-170).
 
-Linux bindings currently target **x86-64 glibc** and use pthreads. The opaque
-mutex and condition storage matches
+Linux x86-64 standalone executables satisfy the binding ABI with runtime-owned
+kernel clone/TLS, guarded stacks, TID-clear/futex joins and futex mutex/condition
+state. No pthread library is linked into those programs. Join waits for kernel
+thread exit before unmapping the stack, TLS and control record. Attributes other
+than the default/null form are not implemented by this private substrate.
+
+Hosted/foreign-library Linux output uses libc pthreads. Its opaque storage matches
 [glibc's x86 ABI declarations](https://github.com/bminor/glibc/blob/master/sysdeps/x86/nptl/bits/pthreadtypes-arch.h).
-Do not assume these layouts on musl, another libc or another architecture.
+The standalone implementation uses only its own state inside those storage
+budgets; that does not establish hosted ABI compatibility with musl or another
+architecture. Native AArch64 remains unvalidated.
 `tests/stdlib-thread-sync/native-layout.c` validates sizes and alignments against
 the actual platform headers before the runner executes Nerd tests.
 
@@ -112,7 +120,11 @@ waiters, signal/broadcast, notification before waiting, cleanup/reinitialisation
 concurrent heap/interpolation allocations and worker TLS cleanup. The example
 checks a 100-element one-slot producer/consumer pipeline with total 5050.
 
-Native OS resource-exhaustion fault injection, forced spurious wake scheduling,
+Preload-based startup failure injection explicitly uses `--hosted`; it cannot
+interpose independent kernel clone calls. The separate libc-free acceptance gate
+inspects actual LLVM/C executables and exercises fresh worker TLS/errno, self-join,
+repeated creation/join and fatal termination. Native OS resource-exhaustion fault
+injection, forced spurious wake scheduling,
 timed waits, cancellation, thread identity and broader stress testing remain
 future work. Native Windows evidence and Linux/WSL gaps are recorded in
 [the validation note](https://github.com/Cthutu/nerd/blob/fac0feae825d73a478466410956c1ca7749a2a8a/validation/windows/results/20261001-thread-sync/README.md).

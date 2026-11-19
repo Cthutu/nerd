@@ -19,6 +19,17 @@ scope; the split does not introduce public child imports.
 `clamp` expects ordered bounds; interpolation extrapolates outside `[0, 1]`.
 The existing point, rectangle and trigonometric APIs remain available.
 
+## Linux executable backend
+
+Independent Linux executables resolve these math bindings to Nerd-owned code,
+not libm: hardware square root, full-exponent Payne–Hanek range reduction and
+trigonometric/inverse approximations. Hosted/foreign-library and other-platform
+outputs retain their host mathematical library. Results are not promised to be
+bit-identical to every libm or correctly rounded for every binary64 input.
+`tests/core/runtime-maths.linux.c` compares random full-exponent bit patterns and
+IEEE edge cases against a separately loaded libm with an 8e-15 relative threshold;
+this is a regression oracle, not an exhaustive error bound or fenv guarantee.
+
 ## Coordinate and storage conventions
 
 Geometry is **right-handed: XY ground, +X right, +Y forward, +Z up**.

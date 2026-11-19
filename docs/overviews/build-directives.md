@@ -24,6 +24,11 @@ can be comma-separated. These filters are evaluated by the build tooling and are
 separate from Nerd source-level platform keys such as `"debug"`, `"release"`,
 and `"x64"`.
 
+Run outputs are invalidated by their declaring source, file arguments and
+transitively quoted local C includes (with cycle suppression). This includes the
+runtime headers under `data/`, so a header-only runtime edit cannot leave an old
+embedded object in the compiler. System SDK headers are not recursively watched.
+
 Unknown directives are treated as errors by the build tooling.
 
 ## Module `.build` Files

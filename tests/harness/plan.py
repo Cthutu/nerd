@@ -65,6 +65,9 @@ def make_plan(root=ROOT, profile='all', *, network=False, nexus=False,
         else:
             add('fixtures' if mode == 'debug' else 'fixtures-release', 'fixtures', mode,
                 [python, 'build/test.py', '--nerd', compiler, *fixture_args], needs, fixture=True)
+        if sys.platform.startswith('linux'):
+            add('libc-free-' + mode, 'runtime', mode,
+                [python, 'build/test_libc_free.py', '--nerd', compiler], needs)
         add('doctor-' + mode, 'toolchain', mode, [compiler, 'doctor'], needs)
         add('docs-' + mode, 'docs', mode, [python, 'build/test_docs.py', '--nerd', compiler], needs)
         add('frame-' + mode, 'frame', mode, [python, 'build/test_frame.py', '--nerd', compiler], needs)

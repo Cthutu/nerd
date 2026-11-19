@@ -92,9 +92,11 @@ uses `-c`; shared libraries use the host shared-library flag and, on POSIX,
 `-fPIC`. Link modes reuse the LLVM backend's external-library filtering and
 deduplication, including Windows CRT defaults and windowed executables.
 Static archives require a separate `ar` or `llvm-lib` invocation. Linux executable
-options additionally define `NRT_LINUX_EXECUTABLE=1`, selecting the runtime's
-metadata preinit hook. Object/static/shared-library options omit it. Manually
-compiled C without the reported options retains the hosted metadata path.
+options select independent startup/local-exec TLS and `-nostdlib` for runtime-only
+programs; a conservative HIR callable-reference query selects hosted options for
+foreign calls. `--freestanding` rejects those foreign C requirements;
+`--hosted` explicitly chooses the foreign CRT/TLS ABI. Object/archive/shared
+options and manual C compilation without the recommended flags remain hosted.
 
 C library exports use the same root-export ABI validation as LLVM. Native
 function bodies are emitted under their public assembler symbols (also supporting
@@ -240,12 +242,18 @@ The naming rule to remember is:
 The compiler build produces the runtime object before compiling `nerd` itself.
 `src/nerd.c` has a build directive that compiles `data/nrt.c` to
 `_obj/runtime/nrt.o` and the hosted PIC `nrt.pic.o`; on Linux it also builds
-`nrt.exe.o` with `NRT_LINUX_EXECUTABLE=1`. `llvm_runtime.c` embeds these objects
-with `#embed`. Linux executables (including doctor) select `nrt.exe.o`, which
-captures startup metadata through an ELF preinit hook. Static libraries retain
-`nrt.o`, shared libraries retain `nrt.pic.o`, and object-only output contains no
-runtime. The preinit hook uses GNU libc's calling convention; independent `_start`
-and TLS remain unfinished.
+`nrt.exe.o` with `NRT_LINUX_EXECUTABLE=1`, `NRT_FREESTANDING=1`, local-exec TLS,
+freestanding compilation, strong stack protection and per-function/data sections.
+`llvm_runtime.c` embeds these objects with `#embed`. Linux runtime-only executables
+(including doctor) use `nrt.exe.o`: kernel-stack metadata, `_start`, TLS/canaries,
+compiler helpers, raw syscalls, formatting, threads and maths are runtime-owned.
+Runtime headers `data/nfmt.h`, `nlinux.h` and `nmath.h` are also embedded in C output;
+run-directive dependency tracking follows local includes to avoid stale objects.
+The linker first tries fixed-address ET_EXEC with section collection/as-needed
+libraries and no interpreter. A real dynamic dependency or unresolved foreign
+call triggers a fresh hosted PIC/CRT link, unless `--freestanding` forbids it.
+`--hosted` selects that ABI directly. Static libraries retain `nrt.o`, shared
+libraries retain `nrt.pic.o`, and object-only output contains no runtime.
 
 For a normal program build, the backend renders each module's LLVM IR in memory.
 It writes module `.ll` sidecars only when requested with `--llvm`. Executable
@@ -300,7 +308,8 @@ helpers use reserved `nrt_` names and hidden visibility in shared libraries.
 The runtime toolchain is `opt` (release optimisation), `llc` (native object
 emission), and `ld.lld` on Linux, `lld-link` on Windows, or `ld64.lld` on macOS.
 Static libraries use `llvm-ar` or Windows `llvm-lib`. Nerd does not invoke Clang.
-The host SDK still supplies startup objects and system/runtime libraries.
+The host SDK supplies startup objects and system/runtime libraries for hosted
+and foreign-library outputs, not independent Linux executables.
 See [Toolchain and doctor](toolchain.md) for installation and diagnostics.
 
 Debug builds emit source-level LLVM debug metadata and use `llc -O0`.

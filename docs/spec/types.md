@@ -425,7 +425,10 @@ definition parameter binds it without adding a fixed ABI parameter. `next[T]()`
 accepts promoted scalar C types and pointers and consumes exactly one argument;
 it neither knows nor checks the remaining length or actual types. `copy()`
 creates independent traversal. `format(^i8)` formats a copied list and returns
-`string` in the temporary arena.
+`string` in the temporary arena. Linux uses runtime-owned, locale-independent
+formatting for promoted scalar/pointer arguments, not `vsnprintf`; its supported
+conversions and rounding/unsupported-format policy are documented in
+[the string runtime](../string-runtime.md).
 
 A `VaList` function parameter borrows the cursor. A local cursor must be
 initialised with `copy()`. Cursors cannot be returned, ordinarily assigned,

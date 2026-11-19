@@ -49,6 +49,10 @@ def main():
                 executable = Path(temporary) / (f"test-{index}-{release}" + suffix)
                 output = executable.with_suffix(".c") if args.cgen else executable
                 command = [str(args.nerd.resolve()), "build", source, "-o", str(output)]
+                if source.endswith('start-failure.n'):
+                    command.append('--hosted')  # Interpose the foreign pthread API.
+                elif sys.platform.startswith('linux'):
+                    command.append('--freestanding')
                 if release:
                     command.append("-r")
                 if args.cgen:

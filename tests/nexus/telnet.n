@@ -4,8 +4,13 @@ use std.network
 use std.nexus
 use std.time
 
-ffi "c" {
-    fflush (stream: ^void) -> i32
+-- Linux runtime output is unbuffered; only the Windows stream needs flushing.
+on "windows" {
+
+    ffi "c" {
+        fflush (stream: ^void) -> i32
+    }
+
 }
 
 configure :: fn (socket: ^NetSocket) -> void\NexusError {
@@ -356,7 +361,9 @@ oversized_server :: fn () -> void\NexusError {
     server.bind("tcp://127.0.0.1:0")?
     address := server.local_address()?
     prn($"{address.port}")
-    _       := fflush(nil)
+    on "windows" {
+        _ := fflush(nil)
+    }
     message := Message.create(^server)
 
     defer message.done()
@@ -381,7 +388,9 @@ echo_server :: fn () -> void\NexusError {
     server.bind("tcp://127.0.0.1:0")?
     address := server.local_address()?
     prn($"{address.port}")
-    _     := fflush(nil)
+    on "windows" {
+        _ := fflush(nil)
+    }
     reply := Message.create(^server)
 
     defer reply.done()
@@ -404,7 +413,9 @@ wire_server :: fn (character: bool) -> void\NexusError {
     server.bind("tcp://127.0.0.1:0")?
     address := server.local_address()?
     prn($"{address.port}")
-    _       := fflush(nil)
+    on "windows" {
+        _ := fflush(nil)
+    }
     message := Message.create(^server)
 
     defer message.done()

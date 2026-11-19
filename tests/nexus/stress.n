@@ -7,8 +7,13 @@ use std.time
 
 signal :: use std.signal
 
-ffi "c" {
-    fflush (stream: ^void) -> i32
+-- Linux runtime output is unbuffered; only the Windows stream needs flushing.
+on "windows" {
+
+    ffi "c" {
+        fflush (stream: ^void) -> i32
+    }
+
 }
 
 connection_changed :: fn (id: u64, connected: bool) {
@@ -16,7 +21,9 @@ connection_changed :: fn (id: u64, connected: bool) {
         yes   => prn($"[Client {id}] connected")
         else  => prn($"[Client {id}] disconnected")
     }
-    _ := fflush(nil)
+    on "windows" {
+        _ := fflush(nil)
+    }
 }
 
 serve :: fn () -> void\NexusError {
@@ -43,7 +50,9 @@ serve :: fn () -> void\NexusError {
     server.set_option(NetOption.Nonblocking, 1)?
     server.set_connection_handler(connection_changed)
     prn($"Listening on {server.local_url()?}")
-    _ := fflush(nil)
+    on "windows" {
+        _ := fflush(nil)
+    }
 
     for {
         requested := shutdown.requested() else {
@@ -67,7 +76,9 @@ serve :: fn () -> void\NexusError {
                     on !stalled[i] => {
                         stalled[i] = yes
                         prn("Send blocked")
-                        _ := fflush(nil)
+                        on "windows" {
+                            _ := fflush(nil)
+                        }
                     }
                     again
                 }
@@ -82,7 +93,9 @@ serve :: fn () -> void\NexusError {
             pending[i] = no
             on stalled[i] => {
                 prn("Send resumed")
-                _ := fflush(nil)
+                on "windows" {
+                    _ := fflush(nil)
+                }
                 stalled[i] = no
             }
         }
@@ -113,7 +126,9 @@ serve :: fn () -> void\NexusError {
     -- Publish completion after socket cancellation and disconnect callbacks.
     server.close()
     prn("Nexus stress stopped.")
-    _ := fflush(nil)
+    on "windows" {
+        _ := fflush(nil)
+    }
 }
 
 main :: fn () -> i32 {

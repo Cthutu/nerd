@@ -1,0 +1,60 @@
+use os.linux
+use std.files
+use std.maths
+use std.thread
+
+WorkerState :: plex {
+    value         u64
+    arena_address usize
+}
+
+worker :: fn (context: ^void) {
+    state := context.as(^WorkerState)
+    state.arena_address = current_temp_arena().as(usize)
+    for i: u64 = 0; i < 1000; i += 1 {
+        text := $"{i}: {1.25}"
+        assert text.count >= 7
+        state.value += i
+    }
+    assert syscall(0xffffffffffffffff, 0, 0, 0, 0, 0, 0) == -1
+    assert last_error() == 38
+}
+
+formatted :: fn (format: ^i8, args: ...) => args.format(format)
+
+checks :: fn (args: []string) -> i32\FileError {
+    assert args.count == 3 && args[1] == "hello"
+    assert $"{1.25}" == "1.25"
+    assert formatted("%*.*f %s %d\0".data.as(^i8), 8, 2, 1.25, "ok\0".data, 42) == "    1.25 ok 42"
+    assert abs(sin(1e300) - -0.8178819121159085) < 0.00000000000001
+    assert abs(cos(1e300) - -0.5753861119575491) < 0.00000000000001
+    assert sqrt(9.0) == 3.0
+    assert abs(atan2(1.0, 0.0) - half_pi) < 0.00000000000001
+    write_text(args[2], "owned bytes\0after zero")?
+    assert read_text(args[2])? == "owned bytes\0after zero"
+    assert file_info(args[2])?.size == 22
+    remove(args[2])?
+    assert !exists(args[2])
+    assert last_error() == ENOENT
+    state  : WorkerState
+    thread : Thread
+
+    assert thread.start(worker, (^state).as(^void))
+    assert thread.join()
+    assert state.value == 499500
+    assert state.arena_address != current_temp_arena().as(usize)
+    assert last_error() == ENOENT
+    prn("libc-free language passed")
+    return 42
+}
+
+main :: fn (args: []string) -> i32 {
+    on checks(args) {
+        value => return value
+
+        _error! => {
+            assert no
+            return 1
+        }
+    }
+}

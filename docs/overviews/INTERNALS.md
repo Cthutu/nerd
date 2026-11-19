@@ -318,21 +318,26 @@ zero default action, not libc's signal layouts. It unblocks and signals the
 calling thread, then restores default disposition and retries if necessary.
 The hidden `__stack_chk_fail` compiler-ABI hook reports corruption through that
 path; its own entry has no stack protector to avoid recursive failure. Ordinary
-stack protection stays enabled; the host runtime still supplies canary storage
-and initialisation (TLS or a target-specific guard).
-Linux executables use a separate `nrt.exe.o` built with
-`NRT_LINUX_EXECUTABLE=1`; `llvm_runtime.c` selects it for native links and doctor.
-C executable `--copts` selects the same mode. A static `.preinit_array` callback
-uses GNU libc's argc/argv/envp ABI to capture the original auxiliary vector and
-colour environment settings before DSO/executable constructors mutate them.
-The metadata parser accepts explicit environment/auxv vectors so independent
-startup can reuse it later. It copies only policy flags, requires a valid
-`AT_PAGESZ` and performs no allocation. Later `setenv` calls do not change those
-flags. Library/object runtimes retain hosted lookups and no preinit section;
-manual C builds without the reported options retain that compatibility path.
-Musl startup is not supported by this transitional executable mode.
-The runtime is still hosted: CRT entry/TLS and float/variadic formatting remain
-open in [toolchain setup](../toolchain.md#experimental-linux-libc-removal).
+stack protection stays enabled. The executable runtime seeds its own guard from
+AT_RANDOM and installs TLS before protected callbacks/main can run; hosted
+objects retain the foreign host's guard/TLS.
+Linux executables first use `nrt.exe.o` (`NRT_LINUX_EXECUTABLE=1`,
+`NRT_FREESTANDING=1`, local-exec TLS and strong stack protection).
+`data/nlinux.h` owns entry, PT_TLS initialisation/alignment, kernel threads,
+futex mutexes/conditions, errno/socket wrappers and PATH execution.
+`data/nmath.h` supplies native maths, with full-range Payne–Hanek reduction.
+`data/nfmt.h` supplies exact-coefficient decimal/hexadecimal float and scalar
+variadic formatting. All three are embedded with the runtime in C output.
+Linking uses fixed-address ET_EXEC, section collection and as-needed libraries;
+actual DT_NEEDED or unresolved foreign calls trigger a fresh hosted PIC/CRT
+link unless `--freestanding` was requested. `--hosted` selects the foreign ABI
+directly. C options use a conservative callable-reference query for that policy.
+A separate per-profile libc-free gate runs LLVM/C debug/release programs and
+checks no interpreter, DT_NEEDED or undefined symbols; native bootstrap probes
+check constructors, over-aligned fresh TLS, worker exits and actual canary failure.
+Library/object runtimes retain hosted lookup and no executable entry. Manually
+compiled C without the recommended options remains hosted.
+See [toolchain setup](../toolchain.md#experimental-linux-libc-removal).
 `build/test_runtime_foundation.py` checks primitives, Linux I/O/fatal-exit
 behaviour and the partial undefined-symbol boundary for embedded normal/PIC
 objects. Fatal Linux runtime exits do not flush foreign FILE buffers or invoke

@@ -26,7 +26,9 @@ Phase records contain:
   null if the host cannot provide a thread CPU clock; it never substitutes wall
   time while calling it CPU time. Windows uses `GetThreadTimes`.
 - `success`: whether the measured operation succeeded. Failed front-end phases
-  and tools still emit their record when they return normally.
+  and tools still emit their record when they return normally. Automatic Linux
+  linking records both a native attempt and any subsequent hosted link; a failed
+  speculative native tool record is not itself the final command status.
 - `output_bytes`: emitted module or combined LLVM text size where available;
   zero means not measured for that phase, not necessarily empty output.
 - Allocation deltas: heap allocations/reallocations, arena requested/committed

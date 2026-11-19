@@ -11,6 +11,27 @@ import unittest
 from unittest.mock import patch
 
 import test as runner
+import build as builder
+import os
+
+
+class RuntimeBuildDependencies(unittest.TestCase):
+    def test_nested_runtime_headers_invalidate_cached_object(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            source=root/'runtime.c'; header=root/'runtime.h'; nested=root/'nested.h'
+            source.write_text('#include "runtime.h"\n')
+            header.write_text('#include "nested.h"\n')
+            nested.write_text('#include "runtime.h"\n')
+            output=root/'runtime.o';output.touch()
+            command=['clang','-c',str(source),'-o',str(output)]
+            deps=builder._run_directive_deps(command,output)
+            self.assertEqual(set(deps),{source,header,nested})
+            directive=builder.RunDirective(source=source,line_no=1,command=command,output=output,deps=deps)
+            self.assertFalse(builder.run_directive_needs_rebuild(directive))
+            future=output.stat().st_mtime+2
+            os.utime(nested,(future,future))
+            self.assertTrue(builder.run_directive_needs_rebuild(directive))
 
 
 class GroupedFixtures(unittest.TestCase):

@@ -4,6 +4,7 @@
 --
 -- Native IPv4 socket bindings used by std.network. These declarations mirror
 -- the platform ABI; portable ownership and errors live in std.network.
+-- Standalone executables supply syscall wrappers; hosted builds use libc.
 
 on "linux" {
 

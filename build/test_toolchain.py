@@ -198,7 +198,12 @@ def main():
                 readelf = shutil.which('readelf')
                 assert readelf, 'Missing readelf for executable runtime inspection'
                 sections = subprocess.check_output([readelf, '-SW', str(executable)], text=True)
-                assert '.preinit_array' in sections, sections
+                assert '.preinit_array' not in sections, sections
+                headers = subprocess.check_output(['readelf', '-lW', str(executable)], text=True)
+                assert 'INTERP' not in headers, headers
+                dynamic = subprocess.check_output(['readelf', '-dW', str(executable)], text=True)
+                assert '(NEEDED)' not in dynamic, dynamic
+                assert not subprocess.check_output(['nm', '-u', str(executable)], text=True).strip()
                 symbols = subprocess.check_output([readelf, '-Ws', str(executable)], text=True)
                 undefined = {line.split()[7].split('@')[0] for line in symbols.splitlines()
                              if len(line.split()) >= 8 and line.split()[6] == 'UND'}
@@ -313,8 +318,14 @@ def main():
                 (bindir / missing).symlink_to(original)
             if sys.platform.startswith('linux'):
                 env['NERD_CRT_DIR'] = str(work / 'absent-sdk')
-                assert '[ERROR] libc startup objects' in run('doctor', success=False)
+                env['NERD_DYNAMIC_LINKER'] = str(work / 'absent-loader')
+                assert 'optional hosted libc startup objects: unavailable' in run('doctor')
+                run('build', '--freestanding', source, '-o', executable)
+                subprocess.run([str(executable)], check=True, env=env)
+                assert 'Cannot find native CRT objects' in run('build', '--hosted', source,
+                    '-o', work / 'needs-host', success=False)
                 del env['NERD_CRT_DIR']
+                del env['NERD_DYNAMIC_LINKER']
             opt_path = bindir / 'opt'
             real_opt = opt_path.readlink()
             opt_path.unlink()

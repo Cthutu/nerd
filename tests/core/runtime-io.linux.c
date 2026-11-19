@@ -118,6 +118,14 @@ static void check_diagnostics(void)
 
 int main(int argc, char** argv)
 {
+#if defined(NRT_LINUX_EXECUTABLE)
+    // Hosted oracle: initialise explicit metadata without any CRT-specific
+    // constructor argument convention. The native bootstrap is tested
+    // separately.
+    uintptr_t auxiliary[] = {6, (uintptr_t)sysconf(_SC_PAGESIZE), 0, 0};
+    CHECK(nrt_read_process_metadata(
+        (const char* const*)environ, auxiliary, &g_nrt_process_metadata));
+#endif
     CHECK(argc == 2);
     // Observe signal termination without producing core dumps in the test gate.
     CHECK(prctl(PR_SET_DUMPABLE, 0) == 0);

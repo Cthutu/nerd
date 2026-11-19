@@ -209,14 +209,16 @@ than EINTR ends the current read. This helper is distinct from `std.io.input`.
 
 ## Core Lifecycle
 
-Normal LLVM Linux executable builds and C builds using executable `--copts`
-first capture runtime metadata in a GNU libc ELF preinit hook. The page size
-comes from kernel `AT_PAGESZ`, not a guessed constant. `NO_COLOR`/`TERM` policy
-flags are copied before shared-library/executable constructors; later foreign
-environment changes do not alter the executable runtime's colour policy.
-Object/static/shared-library runtimes and C compiled without those options
-retain hosted lookup. Independent startup/TLS and musl executable support remain
-unfinished.
+Runtime-only Linux executables use independent `_start`, initial-stack metadata,
+TLS and canary setup; recommended C `--copts` selects the same substrate. They
+link as fixed-address ET_EXEC without libc, a loader or default runtime libraries.
+Page size comes from validated kernel `AT_PAGESZ`; policy flags for `NO_COLOR` and
+`TERM` are copied before constructors. TLS initial images/alignment come from
+`PT_TLS`; canaries come from `AT_RANDOM`. Threads own kernel clone/futex resources
+and fresh TLS, and public Linux syscall/socket error codes are thread-local.
+Hosted/foreign-library outputs and manual C without its recommended options
+retain hosted metadata/TLS. `--freestanding` forbids hosted fallback;
+`--hosted` explicitly selects it. Native AArch64 remains unvalidated.
 
 Executable startup then initialises module globals, then automatically calls
 the private `core_init` hook before calling the program's `main`. After every
@@ -225,8 +227,8 @@ returning the exit status to the host. Non-returning termination such as
 `abort` does not run normal shutdown. On Linux x86-64/AArch64, source `abort`,
 failed assertions and runtime status-127 failures terminate the whole process
 with `exit_group`, even if raised by a worker. They do not run foreign `atexit`
-callbacks or flush foreign libc streams. A normal return still uses hosted CRT
-shutdown. Internal signal-based failures, such as invalid string slicing, use a
+callbacks or flush foreign libc streams. Independent normal returns run fini
+arrays then exit through the kernel; hosted outputs retain CRT shutdown. Internal signal-based failures, such as invalid string slicing, use a
 separate SIGABRT path. On Linux x86-64/AArch64 the runtime unblocks SIGABRT in
 the calling thread and sends it there. If the signal is ignored or its handler
 returns, the runtime restores the default disposition, unblocks and sends it

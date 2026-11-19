@@ -1,7 +1,12 @@
 use std.nexus
 
-ffi "c" {
-    fflush (stream: ^void) -> i32
+-- Linux runtime output is unbuffered; only the Windows stream needs flushing.
+on "windows" {
+
+    ffi "c" {
+        fflush (stream: ^void) -> i32
+    }
+
 }
 
 exchange :: fn (socket: ^NetSocket) -> void\NexusError {
@@ -36,15 +41,17 @@ serve :: fn () -> void\NexusError {
     server.set_option(NetOption.RecvTimeoutMs, 5000)?
     address := server.local_address()?
     prn($"{address.port}")
-    _ := fflush(nil)
+    on "windows" {
+        _ := fflush(nil)
+    }
     exchange(^server)?
 }
 
 main :: fn () -> i32 {
     on serve() {
-        _! => {
-            return 1
-        } else => {
+        _! => return 1
+
+        else => {
         }
     }
     prn("Nexus TCP C interoperability passed")

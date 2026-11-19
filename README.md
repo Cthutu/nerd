@@ -160,6 +160,10 @@ LLVM backend status:
   Windows and `main` on Linux, so the same JSON files work on both platforms.
 - The previous IR/C backend has been removed; HIR is the compiler middle layer
   and LLVM IR is the executable backend output.
+- On experimental Linux x86-64 builds, runtime-only executables are independent
+  of libc. `nerd build --freestanding source.n` enforces that boundary;
+  `--hosted` selects foreign CRT/TLS and `LD_PRELOAD` compatibility. See
+  [Linux runtime requirements and acceptance](docs/toolchain.md#experimental-linux-libc-removal).
 - `nerd doctor` checks LLVM tools and host linking dependencies with a compile/link/run probe.
   See [toolchain setup](docs/toolchain.md). Nerd uses `opt`, `llc`, and LLVM linkers;
   it does not invoke Clang to build Nerd programs.

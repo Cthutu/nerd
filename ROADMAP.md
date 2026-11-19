@@ -81,24 +81,27 @@ completed plans remain in Git history.
 
 ### Experimental Linux libc removal
 
-- Replace remaining runtime float/variadic formatting. Preserve diagnostic,
-  input, formatting and allocation contracts; do not substitute static libc.
-- Replace the GNU libc preinit bridge with independent executable startup and
-  explicit initial-stack/auxiliary-vector handling. Restore musl compatibility
-  without relying on its constructor arguments. Own TLS before removing CRT
-  objects, the loader and automatic libc/libm/libgcc links. Keep hosted-library
-  metadata lookup separate from executable startup.
-  Own stack-canary initialisation/TLS as well as the runtime's hidden failure
-  hook. Audit compiler-inserted memory and arithmetic helpers. Choose
-  and validate the executable relocation model rather than assuming static PIE
-  works without startup relocation.
-- Replace pthread-backed threads/synchronisation, libc socket/errno wrappers,
-  PATH-search execution and libm. Keep LLVM and C output aligned, and define
-  hosted shared-library/FFI compatibility separately from standalone startup.
-- Prove absence of direct dependencies with ELF inspection and behavioural
-  regressions in both compiler profiles/backends. Validate native architectures
-  separately; foreign libraries may retain transitive libc dependencies. The
-  current partial runtime boundary is documented in [toolchain setup](docs/toolchain.md#experimental-linux-libc-removal).
+Runtime-only Linux x86-64 executables now own entry/TLS/canaries, formatting,
+kernel threads/futex synchronisation, socket/errno/PATH wrappers and maths.
+LLVM/C debug/release acceptance runs inspect complete binaries for no interpreter,
+DT_NEEDED or undefined symbols; no static libc is substituted.
+`--freestanding` enforces the boundary and `--hosted` opts into foreign CRT/TLS
+and preload interposition. See [toolchain setup](docs/toolchain.md#experimental-linux-libc-removal).
+
+- Validate native AArch64 separately, including its kernel-thread entry, TLS,
+  guard, maths and existing standard-library ABI/layout limitations. Test
+  alternative C SDKs/libcs rather than inferring portability from x86-64.
+- Keep the fixed-address ET_EXEC relocation model explicit. Static PIE/ASLR for
+  the executable needs owned relocation/IFUNC handling before enabling it;
+  allocated relocation tables currently require hosted startup.
+- Extend independent resource-exhaustion/fault injection and sustained resource
+  accounting for raw clone/TLS/stack cleanup, futex joins and condition wakeups.
+  Hosted preload tests are not evidence for native clone failure paths.
+- Continue numerical hard-case/error-bound work beyond the random/edge libm
+  differential oracle. Native maths is not claimed correctly rounded; full fenv,
+  locale/wide/long-double/positional printf compatibility is not implemented.
+- Preserve the explicit foreign/shared-library boundary: arbitrary external
+  libraries may retain libc, and the compiler executable itself remains hosted.
 
 ### Other compiler work
 

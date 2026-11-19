@@ -52,9 +52,21 @@ The runtime provides:
 
 Integer `nrt_to_string_<type>` helpers use runtime-owned decimal conversion,
 including unsigned arithmetic for the signed minimum. Each helper has its own
-thread-local scratch buffer. Floating-point conversion still uses C `snprintf`;
-variadic formatting still uses `vsnprintf`. The builder copies these borrowed
-results before their scratch storage is reused.
+thread-local scratch buffer. Linux floating-point and variadic formatting uses
+`data/nfmt.h`, not libc; other platforms retain `snprintf`/`vsnprintf`. Binary64
+values become exact decimal integer coefficients before ties-to-even rounding,
+including subnormals, signed zero and carry across exponent boundaries. The
+builder copies borrowed results before scratch storage is reused.
+
+Linux `VaList.format` is locale-independent (decimal point `.`), with integer
+`d/i/u/o/x/X`, string `s`, byte `c`, pointer `p`, count `n`, float `f/F/e/E/g/G/a/A`
+and literal `%` conversions. It supports the ordinary sign/space/alternate/
+left/zero flags, numeric or `*` width/precision and scalar integer lengths
+`hh/h/l/ll/z/t/j`. Formatting measures and renders copies, without consuming the
+original cursor. Invalid/overflowing formats return an empty result; positional,
+wide-character and long-double conversions are not supported. It uses nearest/
+ties-to-even rounding rather than a foreign floating-point environment. The
+maths/formatting differential oracles are hosted tests, not executable dependencies.
 
 The runtime is compiled to an object file by the build system and embedded in
 the compiler binary. During executable builds the backend writes that object

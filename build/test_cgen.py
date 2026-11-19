@@ -293,11 +293,26 @@ def copts_checks(nerd, tmp, env):
     run([executable], env)
     if sys.platform.startswith('linux'):
         section_table = run(['readelf', '-SW', executable], env).stdout.decode('utf-8')
-        assert '.preinit_array' in section_table, section_table
+        assert '.preinit_array' not in section_table, section_table
+        headers = run(['readelf', '-lW', executable], env).stdout.decode('utf-8')
+        assert 'INTERP' not in headers, headers
+        dynamic = run(['readelf', '-dW', executable], env).stdout.decode('utf-8')
+        assert '(NEEDED)' not in dynamic, dynamic
+        assert not run(['nm', '-u', executable], env).stdout.strip()
         table = run(['readelf', '-Ws', executable], env).stdout.decode('utf-8')
         undefined = {line.split()[7].split('@')[0] for line in table.splitlines()
                      if len(line.split()) >= 8 and line.split()[6] == 'UND'}
         assert not undefined & {'getenv', 'sysconf'}, table
+    if sys.platform.startswith('linux'):
+        strict = options('--freestanding', source)
+        assert '-DNRT_FREESTANDING=1' in strict and '-nostdlib' in strict, strict
+        hosted = options('--hosted', source)
+        assert '-DNRT_LINUX_EXECUTABLE=1' not in hosted and '-nostdlib' not in hosted, hosted
+        run(['clang', source.with_suffix('.c'), *hosted, '-o', executable], env)
+        run([executable], env)
+        foreign = 'native_abs :: ffi "c" abs (value: i32) -> i32\nmain :: fn () => native_abs(-42)'
+        rejected = run([nerd, 'build', '--copts', '--freestanding', foreign], env, check=False)
+        assert rejected.returncode and not rejected.stdout, rejected
     if os.name != "nt":
         run(["bash", "-c", 'clang "$1" $("$2" build --cgen --copts -r "$3") -o "$4"',
              "copts-test", source.with_suffix(".c"), nerd, source, executable], env)

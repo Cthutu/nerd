@@ -1,0 +1,9 @@
+use os.linux
+use std.text
+
+main :: fn (args: []string) -> i32 {
+    assert args.count == 2
+    arguments : [3]^i8 = [args[1].c_string(), "payload".c_string(), nil]
+    assert execvp(args[1].c_string(), ^arguments[0]) == -1
+    return last_error()
+}

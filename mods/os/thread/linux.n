@@ -2,20 +2,20 @@
 --
 -- Copyright (c) 2026 Matt Davies
 --
--- Linux x86-64 glibc pthread bindings. The native layout test must pass before
--- using these opaque layouts on another libc or architecture.
+-- Linux x86-64 thread ABI. Standalone executables supply runtime-owned kernel
+-- threads/futex state; hosted builds use glibc pthreads in the same storage.
 
 on "linux" {
 
     -- Native pthread entry ABI; its result is not exposed by std.thread.
     pub NativeThreadEntry :: fn (context: ^void) -> ^void
 
-    -- Opaque glibc x86-64 pthread_mutex_t (40 bytes, eight-byte alignment).
+    -- Opaque native mutex budget (40 bytes, eight-byte alignment).
     pub NativeMutex :: plex #c {
         storage [5]usize  -- Native storage, accessed only by pthread functions.
     }
 
-    -- Opaque glibc x86-64 pthread_cond_t (48 bytes, eight-byte alignment).
+    -- Opaque native condition budget (48 bytes, eight-byte alignment).
     pub NativeCondition :: plex #c {
         storage [6]usize  -- Native storage, accessed only by pthread functions.
     }
@@ -31,7 +31,7 @@ on "linux" {
         pub native_thread_join :: pthread_join (handle : usize,
                                                 result : ^^void) -> i32
 
-        -- Returns the calling thread's pthread identifier.
+        -- Returns the calling thread's opaque native identifier.
         pub native_thread_self :: pthread_self () -> usize
 
         -- Compares native thread identifiers.

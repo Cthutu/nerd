@@ -37,5 +37,6 @@ and [../docs/spec/README.md](../docs/spec/README.md) before editing source.
 
 `compiler/cgen/` is the optional HIR-to-C backend selected by `build --cgen`.
 It emits a single C translation unit, embedding the runtime and small array
-helpers from `data/`. See `docs/compiler-pipeline.md` for its lowering and test
-contract.
+helpers from `data/`. `nfmt.h` owns Linux formatting, `nmath.h` native maths,
+and `nlinux.h` standalone entry/TLS/syscalls/threads. Hosted library runtimes are
+separate. See `docs/compiler-pipeline.md` for lowering, link policy and tests.

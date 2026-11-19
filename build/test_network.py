@@ -69,6 +69,10 @@ def main() -> None:
         for index, (source, expected) in enumerate(cases):
             executable = directory / (f"case-{index}" + suffix)
             command = [compiler, "build", source, "-o", str(executable)]
+            if source.endswith('interrupted.n'):
+                command.append('--hosted')  # LD_PRELOAD is a hosted ABI contract.
+            elif sys.platform.startswith('linux'):
+                command.append('--freestanding')
             if args.release:
                 command.append("--release")
             if args.cgen:

@@ -455,7 +455,7 @@ on "linux" {
     pub EISDIR  :: 21
     pub EINVAL  :: 22
 
-    -- Returns the calling thread's current C library error code.
+    -- Returns the calling thread's Linux binding error code (native or hosted).
     pub last_error :: fn () => c_errno_location()^
 
     pub POLLIN :: 0x0001  -- File descriptor has data available to read.

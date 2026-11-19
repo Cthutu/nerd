@@ -147,10 +147,15 @@ def main():
         directory = Path(directory)
         output = directory / ('runtime.exe' if os.name == 'nt' else 'runtime')
         if raw_linux:
-            provider = directory / 'metadata-provider.so'
-            subprocess.run(cc + ['-std=c23', '-D_GNU_SOURCE', '-O2', '-fPIC', '-shared',
-                str(ROOT / 'tests/core/runtime-metadata-provider.linux.c'), '-o', str(provider)],
-                check=True, timeout=60)
+            for optimisation in ('-O0', '-O2'):
+                for name, libraries in (('format', []), ('maths', ['-ldl', '-lm'])):
+                    oracle = directory / ('runtime-' + name)
+                    subprocess.run(cc + ['-std=c23', '-Wall', '-Wextra', '-Werror', '-fno-builtin', optimisation,
+                        str(ROOT / ('tests/core/runtime-' + name + '.linux.c')), *libraries, '-o', str(oracle)],
+                        check=True, timeout=60)
+                    result = subprocess.run([str(oracle)], capture_output=True, timeout=30)
+                    assert (result.returncode, result.stdout, result.stderr) == (
+                        0, ('runtime ' + name + ' passed\n').encode(), b''), result
         for release in (False, True):
             flags = ['-std=c23', '-Wall', '-Wextra', '-Werror']
             flags += ['-DNDEBUG'] if release else []
@@ -174,22 +179,16 @@ def main():
                         check_linux_io(io_output)
                     metadata_output = directory / 'runtime-metadata'
                     subprocess.run(cc + flags + [optimisation, '-DNRT_LINUX_EXECUTABLE=1',
-                        str(ROOT / 'tests/core/runtime-metadata.linux.c'), str(provider),
+                        str(ROOT / 'tests/core/runtime-metadata.linux.c'),
                         '-o', str(metadata_output)], check=True, timeout=60)
-                    for no_colour, term in ((None, 'xterm'), ('', 'dumb'), ('1', 'xterm'), (None, None)):
-                        env = dict(os.environ, REMOVE_BEFORE_MAIN='1')
-                        for key, value in (('NO_COLOR', no_colour), ('TERM', term)):
-                            env.pop(key, None)
-                            if value is not None:
-                                env[key] = value
-                        result = subprocess.run([str(metadata_output), str(int(bool(no_colour))),
-                            str(int(term == 'dumb'))], env=env, capture_output=True, timeout=10)
-                        assert (result.returncode, result.stdout, result.stderr) == (
-                            0, b'runtime metadata passed\n', b''), result
+                    result = subprocess.run([str(metadata_output)], capture_output=True, timeout=10)
+                    assert (result.returncode, result.stdout, result.stderr) == (
+                        0, b'runtime metadata passed\n', b''), result
             if raw_linux:
                 # Match the optimised embedded runtime build, including PIC.
                 # Inspect nrt alone: the host test oracle intentionally uses libc.
-                for variant in ([], ['-DNRT_LINUX_EXECUTABLE=1']):
+                for variant in ([], ['-DNRT_LINUX_EXECUTABLE=1', '-DNRT_FREESTANDING=1',
+                                      '-ftls-model=local-exec', '-ffreestanding', '-fno-builtin']):
                     for pic in (False, True):
                         obj = directory / 'nrt.o'
                         subprocess.run(cc + flags + variant + ['-O2', '-fstack-protector-strong'] + (['-fPIC'] if pic else []) + [
@@ -198,10 +197,13 @@ def main():
                         symbols = subprocess.check_output(['nm', '-u', str(obj)], text=True)
                         undefined = {line.split()[-1].split('@')[0]
                                      for line in symbols.splitlines() if line.split()}
-                        removed = REMOVED_SYMBOLS | ({'getenv', 'sysconf'} if variant else set())
+                        removed = REMOVED_SYMBOLS | {'snprintf', 'vsnprintf'} | ({'getenv', 'sysconf', '__tls_get_addr'} if variant else set())
                         assert not undefined & removed, symbols
+                        if variant:
+                            assert undefined <= {'main', '__preinit_array_start', '__preinit_array_end',
+                                '__init_array_start', '__init_array_end', '__fini_array_start', '__fini_array_end'}, symbols
                         sections = subprocess.check_output(['readelf', '-SW', str(obj)], text=True)
-                        assert ('.preinit_array' in sections) == bool(variant), sections
+                        assert '.preinit_array' not in sections, sections
                         # The compiler ABI hook is runtime-owned but never exported.
                         table = subprocess.check_output(['readelf', '-Ws', str(obj)], text=True)
                         hook = [line.split() for line in table.splitlines()

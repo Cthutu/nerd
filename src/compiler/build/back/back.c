@@ -15,6 +15,9 @@
 #endif
 #include <stdio.h>
 #include <stdlib.h>
+#if OS_LINUX
+#    include <elf.h>
+#endif
 
 #include <compiler/build/back/back.h>
 #include <compiler/build/back/llvm_runtime.h>
@@ -117,6 +120,82 @@ internal void back_end_append_hir_extern_link_flags(StringBuilder* link_flags,
         }
     }
 }
+
+#if OS_LINUX
+// Inspect the linked result, not the declaration catalogue: unused FFI imports
+// must not make an otherwise independent executable hosted.
+internal int back_end_linux_dynamic_dependencies(cstr path)
+{
+    FILE* file = fopen(path, "rb");
+    if (!file) {
+        return -1;
+    }
+    Elf64_Ehdr header;
+    int        result = -1;
+    if (fread(&header, sizeof(header), 1, file) != 1 ||
+        memcmp(header.e_ident, ELFMAG, SELFMAG) != 0 ||
+        header.e_ident[EI_CLASS] != ELFCLASS64 || header.e_type != ET_EXEC ||
+        header.e_phentsize != sizeof(Elf64_Phdr)) {
+        goto done;
+    }
+    result = 0;
+    for (u32 i = 0; i < header.e_phnum; ++i) {
+        Elf64_Phdr ph;
+        if (fseek(file, (long)(header.e_phoff + i * sizeof(ph)), SEEK_SET) !=
+                0 ||
+            fread(&ph, sizeof(ph), 1, file) != 1) {
+            result = -1;
+            break;
+        }
+        if (ph.p_type != PT_DYNAMIC) {
+            continue;
+        }
+        if (fseek(file, (long)ph.p_offset, SEEK_SET) != 0) {
+            result = -1;
+            break;
+        }
+        for (u64 n = 0; n < ph.p_filesz / sizeof(Elf64_Dyn); ++n) {
+            Elf64_Dyn dyn;
+            if (fread(&dyn, sizeof(dyn), 1, file) != 1) {
+                result = -1;
+                break;
+            }
+            if (dyn.d_tag == DT_NEEDED) {
+                result = 1;
+                break;
+            }
+            if (dyn.d_tag == DT_NULL) {
+                break;
+            }
+        }
+        break;
+    }
+    // Standalone startup does not implement IFUNC/static-PIE relocation. An
+    // allocated relocation table must take the hosted path, never run
+    // half-init.
+    if (result == 0 && header.e_shentsize == sizeof(Elf64_Shdr)) {
+        for (u32 i = 0; i < header.e_shnum; ++i) {
+            Elf64_Shdr sh;
+            if (fseek(file,
+                      (long)(header.e_shoff + i * sizeof(sh)),
+                      SEEK_SET) != 0 ||
+                fread(&sh, sizeof(sh), 1, file) != 1) {
+                result = -1;
+                break;
+            }
+            if (sh.sh_size && (sh.sh_flags & SHF_ALLOC) &&
+                (sh.sh_type == SHT_RELA || sh.sh_type == SHT_REL ||
+                 sh.sh_type == 19)) {
+                result = 1;
+                break;
+            }
+        }
+    }
+done:
+    fclose(file);
+    return result;
+}
+#endif
 
 internal bool back_end_write_text_file(cstr path, string text)
 {
@@ -894,11 +973,10 @@ internal bool back_end_render_llvm_modules(Arena*                    arena,
     return true;
 }
 
-// Direct LLVM toolchain. The host SDK supplies CRT objects and system
-// libraries; Nerd never uses a C compiler driver to discover or invoke these
-// tools.
-internal bool
-back_end_run_tool(Arena* arena, string command, cstr ir, cstr runtime)
+// Direct LLVM toolchain. Only hosted links require the host CRT/system
+// libraries. Capture speculative native links through the same profiling path
+// without publishing diagnostics until the runtime policy has been decided.
+internal ShellResult back_end_capture_tool(Arena* arena, string command)
 {
     TimingProbe probe  = timing_probe_begin();
     ShellResult result = shell_capture(back_end_cstr(arena, command), arena);
@@ -912,6 +990,13 @@ back_end_run_tool(Arena* arena, string command, cstr ir, cstr runtime)
     memcpy(tool, command.data, count);
     timing_probe_end(
         probe, "tool", tool, (string){0}, result.exit_code == 0, 0);
+    return result;
+}
+
+internal bool
+back_end_run_tool(Arena* arena, string command, cstr ir, cstr runtime)
+{
+    ShellResult result = back_end_capture_tool(arena, command);
     return result.exit_code == 0 || back_end_report_llvm_tool_failure(
                                         arena, result, command, ir, runtime);
 }
@@ -970,6 +1055,9 @@ internal bool back_end_compile_object(Arena*                    arena,
     string command =
         string_format(arena,
                       "llc --mtriple=%s -filetype=obj -relocation-model=pic "
+#if OS_LINUX
+                      "-function-sections -data-sections "
+#endif
                       "-O%s -o \"%s\" \"%s\"",
                       triple,
                       artifacts->release ? "2" : "0",
@@ -1180,6 +1268,55 @@ internal bool back_end_link_native(Arena*                    arena,
             &command, " \"%.*s.lib\"", (int)(i - start), flags.data + start);
     }
 #elif OS_LINUX
+    if (!shared && !artifacts->hosted) {
+        sb_init(&command, arena);
+        sb_format(&command,
+                  "ld.lld --gc-sections --as-needed --no-dynamic-linker -e "
+                  "_start -o \"%s\" \"%s\" \"%s\"",
+                  artifacts->binary_path,
+                  object,
+                  runtime);
+        if (!back_end_append_library_paths(&command, program, false)) {
+            return false;
+        }
+#    if ARCH_X86_64
+        sb_append_cstr(&command,
+                       " -L/usr/lib/x86_64-linux-gnu -L/lib/x86_64-linux-gnu "
+                       "-L/usr/lib64 -L/lib64");
+#    elif ARCH_ARM64
+        sb_append_cstr(&command,
+                       " -L/usr/lib/aarch64-linux-gnu -L/lib/aarch64-linux-gnu "
+                       "-L/usr/lib64 -L/lib64");
+#    endif
+        sb_append_cstr(&command, " -L/usr/lib -L/lib");
+        back_end_append_hir_extern_link_flags(&command, program, " ");
+        ShellResult native =
+            back_end_capture_tool(arena, sb_to_string(&command));
+        if (native.exit_code == 0) {
+            int dependencies =
+                back_end_linux_dynamic_dependencies(artifacts->binary_path);
+            if (dependencies < 0) {
+                return error_runtime("Cannot inspect linked ELF executable");
+            }
+            if (dependencies == 0) {
+                goto linked;
+            }
+        }
+        // A real foreign-library reference requires its hosted TLS/CRT ABI.
+        // Never use a static libc archive to disguise this boundary.
+        if (artifacts->freestanding ||
+            !cgen_requires_hosted_libraries(program)) {
+            if (native.exit_code == 0) {
+                return error_runtime("Executable requires foreign libraries or "
+                                     "hosted relocations in libc-free mode");
+            }
+            return back_end_report_llvm_tool_failure(
+                arena, native, sb_to_string(&command), ir, runtime);
+        }
+        if (!back_end_llvm_runtime_write_pic_object(runtime)) {
+            return false;
+        }
+    }
     cstr crt = back_end_linux_crt_dir(arena);
     if (!crt) {
         return error_runtime("Cannot find native CRT objects; install the libc "
@@ -1248,6 +1385,9 @@ internal bool back_end_link_native(Arena*                    arena,
     if (!back_end_run_tool(arena, sb_to_string(&command), ir, runtime)) {
         return false;
     }
+#if OS_LINUX
+linked:
+#endif
     path_remove(object);
 #if OS_POSIX
     if (!shared && chmod(artifacts->binary_path, 0755) != 0) {
@@ -1344,15 +1484,14 @@ bool back_end_doctor(void)
     cstr crt    = back_end_linux_crt_dir(&arena);
     bool crt_ok = crt && path_exists(path_join(&arena, crt, "Scrt1.o")) &&
                   path_exists(path_join(&arena, crt, "crtn.o"));
-    prn("[%s] libc startup objects%s",
-        crt_ok ? "OK" : "ERROR",
-        crt_ok ? "" : " — install libc development files or set NERD_CRT_DIR");
+    prn("[INFO] optional hosted libc startup objects: %s",
+        crt_ok ? "available"
+               : "unavailable (only foreign/--hosted builds need them)");
     bool loader_ok =
         back_end_linux_loader() && path_exists(back_end_linux_loader());
-    prn("[%s] dynamic loader%s",
-        loader_ok ? "OK" : "ERROR",
-        loader_ok ? "" : " — set NERD_DYNAMIC_LINKER to the host loader");
-    ok = crt_ok && loader_ok && ok;
+    prn("[INFO] optional hosted dynamic loader: %s",
+        loader_ok ? "available"
+                  : "unavailable (only foreign/--hosted builds need it)");
 #elif OS_MACOS
     ShellResult sdk =
         shell_capture("xcrun --sdk macosx --show-sdk-path", &arena);
@@ -1664,10 +1803,12 @@ internal bool back_end_emit_llvm_artifacts(const ProgramInfo*        program,
         memory_before = compiler_memory_profile_begin();
         timing_start  = back_end_timing_begin(timing);
         bool wrote_runtime =
-            artifacts->output_kind == NERD_BUILD_OUTPUT_Executable
+            artifacts->output_kind == NERD_BUILD_OUTPUT_Executable &&
+                    !artifacts->hosted
                 ? back_end_llvm_runtime_write_executable_object(
                       runtime_object_path)
-            : artifacts->output_kind == NERD_BUILD_OUTPUT_SharedLibrary
+            : (artifacts->output_kind == NERD_BUILD_OUTPUT_SharedLibrary ||
+               artifacts->output_kind == NERD_BUILD_OUTPUT_Executable)
                 ? back_end_llvm_runtime_write_pic_object(runtime_object_path)
                 : back_end_llvm_runtime_write_object(runtime_object_path);
         if (!wrote_runtime) {
@@ -1774,7 +1915,22 @@ internal bool back_end_print_c_options(const ProgramInfo*        program,
     }
 #if OS_LINUX
     if (artifacts->output_kind == NERD_BUILD_OUTPUT_Executable) {
-        sb_append_cstr(&flags, " -DNRT_LINUX_EXECUTABLE=1");
+        bool foreign = cgen_requires_hosted_libraries(program);
+        if (artifacts->freestanding && foreign) {
+            arena_done(&arena);
+            return error_runtime(
+                "Standalone C options require runtime-owned FFI calls; use "
+                "--hosted for foreign libraries");
+        }
+        if (!artifacts->hosted && !foreign) {
+            sb_append_cstr(&flags, " -DNRT_LINUX_EXECUTABLE=1");
+            sb_append_cstr(
+                &flags,
+                " -DNRT_FREESTANDING=1 -ffreestanding -fno-builtin "
+                "-ftls-model=local-exec -fstack-protector-strong "
+                "-ffunction-sections -fdata-sections -nostdlib -no-pie "
+                "-Wl,--gc-sections,--as-needed,--no-dynamic-linker,-e,_start");
+        }
     }
 #endif
 #if OS_WINDOWS
@@ -1807,6 +1963,19 @@ bool back_end_program(ProgramInfo*              program,
         artifacts = &default_artifacts;
     }
 
+    if (artifacts->hosted && artifacts->freestanding) {
+        return error_runtime(
+            "Hosted and freestanding startup are mutually exclusive");
+    }
+    if ((artifacts->hosted || artifacts->freestanding) &&
+        artifacts->output_kind != NERD_BUILD_OUTPUT_Executable) {
+        return error_runtime("Linux startup flags require executable output");
+    }
+#if !OS_LINUX
+    if (artifacts->hosted || artifacts->freestanding) {
+        return error_runtime("Linux startup flags require Linux");
+    }
+#endif
     if ((artifacts->emit_c_file || artifacts->print_c_options) &&
         artifacts->output_kind != NERD_BUILD_OUTPUT_Executable &&
         !back_end_validate_c_exports(program)) {

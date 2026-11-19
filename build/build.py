@@ -511,6 +511,21 @@ def _run_directive_deps(command: list[str], output: Path) -> tuple[Path, ...]:
             continue
         if path.exists() and path.is_file():
             deps.append(path)
+    # Runtime compilation is a run directive too. Follow local includes so a
+    # change to an embedded runtime header cannot leave a stale object cached.
+    pending = list(deps)
+    seen = set(deps)
+    while pending:
+        source = pending.pop()
+        if source.suffix not in {'.c', '.h'}:
+            continue
+        for include in re.findall(r'^\s*#\s*include\s*"([^"]+)"',
+                                  source.read_text(encoding='utf-8', errors='ignore'), re.MULTILINE):
+            header = (source.parent / include).resolve()
+            if header.is_file() and header not in seen:
+                seen.add(header)
+                deps.append(header)
+                pending.append(header)
     return tuple(deps)
 
 

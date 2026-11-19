@@ -2,24 +2,24 @@
 --
 -- Copyright (c) 2026 Matt Davies
 --
--- Trigonometry in radians, backed by the host mathematical runtime.
+-- Trigonometry in radians, backed by the selected native or hosted runtime.
 
 on "linux" {
 
     math_library :: "m"
-    -- C runtime sin binding.
+    -- Mathematical runtime sin binding.
     math_sin :: ffi math_library sin (value: f64) -> f64
-    -- C runtime cos binding.
+    -- Mathematical runtime cos binding.
     math_cos :: ffi math_library cos (value: f64) -> f64
-    -- C runtime tan binding.
+    -- Mathematical runtime tan binding.
     math_tan :: ffi math_library tan (value: f64) -> f64
-    -- C runtime asin binding.
+    -- Mathematical runtime asin binding.
     math_asin :: ffi math_library asin (value: f64) -> f64
-    -- C runtime acos binding.
+    -- Mathematical runtime acos binding.
     math_acos :: ffi math_library acos (value: f64) -> f64
-    -- C runtime atan2 binding.
+    -- Mathematical runtime atan2 binding.
     math_atan2 :: ffi math_library atan2 (y: f64, x: f64) -> f64
-    -- C runtime square-root binding.
+    -- Mathematical runtime square-root binding.
     math_sqrt :: ffi math_library sqrt (value: f64) -> f64
 
 }

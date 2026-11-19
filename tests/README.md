@@ -34,10 +34,14 @@ describes each regression family.
 - `core/runtime-foundation.c`, `core/runtime-io.linux.c`: runtime byte/string
   primitives, integer conversion, virtual memory, variadic cursors, Linux binary
   I/O, interruptions, terminal policy, fatal worker exits, SIGABRT dispositions
-  and the hidden stack-failure hook. `core/runtime-metadata*.linux.c` probes
-  auxv parsing and capture before environment-mutating DSO constructors. The
-  `runtime` suite runs hosted/executable variants and runtime-object symbol checks;
-  it does not yet assert that complete executables are libc-free.
+  and the hidden stack-failure hook. Metadata oracles check synthetic auxv records;
+  formatting/maths oracles compare against separately hosted reference libraries.
+  `core/runtime-start.linux.c` proves independent entry, constructor-time metadata,
+  over-aligned fresh TLS, actual canary failure and worker termination. Per-profile
+  `build/test_libc_free.py` stages run LLVM/C debug/release programs and reject any
+  interpreter, DT_NEEDED or undefined symbols in the complete ELF executables.
+  Failed acceptance artefacts remain under `_tmp`. Network binaries are inspected
+  by the default gate; loopback execution remains opt-in.
 - `commands/*.cmd`: CLI syntax, argument passing, output artifacts, exit and
   shutdown behaviour, allocator diagnostics and diagnostic rendering.
 - `cgen/`: additional C-specific source probes. `build/test_cgen.py` also

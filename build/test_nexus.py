@@ -410,6 +410,7 @@ def main() -> None:
         directory = Path(temporary)
         suffix = ".exe" if os.name == "nt" else ""
         executables = []
+        commands = []
         for index, source in enumerate((
             "tests/nexus/main.n",
             "tests/nexus/interop.n",
@@ -439,6 +440,8 @@ def main() -> None:
                 copy.write_text(instrumented)
                 source = str(copy)
             command = [str(args.compiler.resolve()), "build", source, "-o", str(target)]
+            if sys.platform.startswith("linux"):
+                command.append("--freestanding")
             if args.release:
                 command.append("--release")
             if args.cgen:
@@ -448,6 +451,7 @@ def main() -> None:
                 flags = shlex.split(run(command + ["--copts"], env))
                 run(["clang", str(target.with_suffix(".c")), *flags, "-o", str(target)], env)
             executables.append(target)
+            commands.append(command)
         (contracts, server, example, socket_api, udp_server, multi_client,
          request_reply, parity, timing, telnet, telnet_example, echo_server,
          timeouts, stress) = executables
@@ -479,6 +483,15 @@ def main() -> None:
             shim = directory / "fragmented.so"
             run(["clang", "-shared", "-fPIC", "-Wall", "-Wextra", "-Werror",
                  "tests/nexus/fragmented.c", "-ldl", "-o", str(shim)], env)
+            # First exercise the independent binaries above, then rebuild only
+            # interposition subjects against the hosted loader/TLS ABI.
+            for index in (0, 3, 7, 8, 9, 11):
+                command = [part for part in commands[index] if part != '--freestanding'] + ['--hosted']
+                run(command, env)
+                if args.cgen:
+                    flags = shlex.split(run(command + ['--copts'], env))
+                    run(['clang', str(executables[index].with_suffix('.c')), *flags,
+                         '-o', str(executables[index])], env)
             injected = dict(env, LD_PRELOAD=str(shim))
             for _ in range(3):
                 if run([str(contracts)], injected, timeout=20).strip() != "Nexus buffer and framing contracts passed":

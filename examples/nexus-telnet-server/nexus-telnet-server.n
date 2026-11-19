@@ -8,9 +8,14 @@ use std.network
 use std.time
 
 -- Flush readiness/log lines even when stdout is captured by the test runner.
--- Shutdown itself uses std.signal, not an application OS signal handler.
-ffi "c" {
-    fflush (stream: ^void) -> i32
+-- Shutdown itself uses std.signal, not an application OS signal handler. Linux
+-- runtime output is unbuffered; only the Windows stream needs flushing.
+on "windows" {
+
+    ffi "c" {
+        fflush (stream: ^void) -> i32
+    }
+
 }
 
 prepare_echo :: fn (message: ^Message, escaped: ^Message) -> void\NexusError {
@@ -35,7 +40,9 @@ connection_changed :: fn (id: u64, connected: bool) {
         yes   => $"[Client {id}] connected"
         else  => $"[Client {id}] disconnected"
     })
-    _ := fflush(nil)
+    on "windows" {
+        _ := fflush(nil)
+    }
 }
 
 log_line :: fn (message: ^Message) {
@@ -63,7 +70,9 @@ log_line :: fn (message: ^Message) {
         }
     }
     prn("")
-    _ := fflush(nil)
+    on "windows" {
+        _ := fflush(nil)
+    }
 }
 
 main :: fn () -> i32 {
@@ -115,7 +124,10 @@ main :: fn () -> i32 {
     prn($"Listening on {bound}")
     prn("Connect with telnet, type a line, and press Enter. Ctrl+C stops the "
         +"server.")
-    _ := fflush(nil)
+    on "windows" {
+        _ := fflush(nil)
+    }
+
     server.set_connection_handler(connection_changed)
     -- Immediate operations let us visit every pending client each turn. Sleep
     -- briefly between turns to avoid spinning while idle, and poll shutdown.

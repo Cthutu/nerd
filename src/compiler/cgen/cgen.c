@@ -13,6 +13,18 @@ static const unsigned char cgen_runtime[] = {
 #embed "../../../data/nrt.c"
 };
 
+static const unsigned char cgen_math_runtime[] = {
+#embed "../../../data/nmath.h"
+};
+
+static const unsigned char cgen_linux[] = {
+#embed "../../../data/nlinux.h"
+};
+
+static const unsigned char cgen_format_runtime[] = {
+#embed "../../../data/nfmt.h"
+};
+
 static const unsigned char cgen_helpers[] = {
 #embed "../../../data/ncg.c"
 };
@@ -3560,6 +3572,126 @@ internal FILE* cgen_open_output(cstr path)
     return file;
 }
 
+bool cgen_requires_hosted_libraries(const ProgramInfo* program)
+{
+    static const cstr supplied[] = {"syscall",
+                                    "__errno_location",
+                                    "execvp",
+                                    "socket",
+                                    "bind",
+                                    "listen",
+                                    "accept",
+                                    "connect",
+                                    "getsockname",
+                                    "getpeername",
+                                    "send",
+                                    "recv",
+                                    "sendto",
+                                    "recvfrom",
+                                    "shutdown",
+                                    "close",
+                                    "select",
+                                    "getsockopt",
+                                    "ioctl",
+                                    "htons",
+                                    "htonl",
+                                    "ntohs",
+                                    "ntohl",
+                                    "sin",
+                                    "cos",
+                                    "tan",
+                                    "asin",
+                                    "acos",
+                                    "atan2",
+                                    "sqrt",
+                                    "pthread_create",
+                                    "pthread_join",
+                                    "pthread_self",
+                                    "pthread_equal",
+                                    "pthread_mutex_init",
+                                    "pthread_mutex_destroy",
+                                    "pthread_mutex_lock",
+                                    "pthread_mutex_unlock",
+                                    "pthread_cond_init",
+                                    "pthread_cond_destroy",
+                                    "pthread_cond_wait",
+                                    "pthread_cond_signal",
+                                    "pthread_cond_broadcast",
+                                    "memcpy",
+                                    "memmove",
+                                    "memset",
+                                    "memcmp",
+                                    "bcmp",
+                                    "strlen",
+                                    "strcmp",
+                                    "abort"};
+    CGen              state      = {.program = program};
+    CGen*             c          = &state;
+    arena_init(&c->arena);
+    for (u32 m = 0; m < array_count(program->modules); ++m) {
+        array_push(c->offsets, (u32)array_count(c->type_map));
+        for (u32 t = 0;
+             t < array_count(program->modules[m].front_end.sema.types);
+             ++t) {
+            array_push(c->type_map, U32_MAX);
+        }
+    }
+    bool hosted = false;
+    for (u32 m = 0; m < array_count(program->modules) && !hosted; ++m) {
+        const Hir* hir = &program->modules[m].front_end.hir;
+        for (u32 i = 0; i < array_count(hir->exprs) && !hosted; ++i) {
+            c->module = m;
+            if (hir->exprs[i].type_index == U32_MAX ||
+                cgen_kind(c, hir->exprs[i].type_index) != STK_Function) {
+                continue;
+            }
+            u32 owner = U32_MAX, fi = U32_MAX;
+            if (!cgen_resolve(c, m, i, U32_MAX, &owner, &fi, 0)) {
+                continue;
+            }
+            const FrontEndState* front = &program->modules[owner].front_end;
+            const HirFunction*   fn    = &front->hir.functions[fi];
+            if (fn->kind != HIR_FUNCTION_Ffi) {
+                continue;
+            }
+            bool runtime = false, standard = false;
+            for (u32 e = 0; e < array_count(front->hir.externs); ++e) {
+                const HirExtern* ext = &front->hir.externs[e];
+                if (ext->symbol_handle != fn->ffi_symbol_handle) {
+                    continue;
+                }
+                runtime  = string_eq(ext->library, s("nrt"));
+                standard = ext->library.count == 0 ||
+                           string_eq(ext->library, s("c")) ||
+                           string_eq(ext->library, s("m")) ||
+                           string_eq(ext->library, s("pthread"));
+            }
+            if (runtime) {
+                continue;
+            }
+            string name  = lex_symbol(&front->lexer, fn->ffi_symbol_handle);
+            bool   found = false;
+            if (standard) {
+                for (usize j = 0; j < sizeof(supplied) / sizeof(*supplied);
+                     ++j) {
+                    if (string_eq(name, string_from_cstr(supplied[j]))) {
+                        found = true;
+                        break;
+                    }
+                }
+            }
+            if (!found) {
+                hosted = true;
+            }
+        }
+    }
+    array_free(c->types);
+    array_free(c->offsets);
+    array_free(c->type_map);
+    arena_done(&c->arena);
+    return hosted;
+}
+
 bool cgen_save_program(const ProgramInfo*        program,
                        const NerdArtifactConfig* artifacts)
 {
@@ -3576,8 +3708,17 @@ bool cgen_save_program(const ProgramInfo*        program,
     if (artifacts->release) {
         sb_append_cstr(&c->out, "#define NDEBUG 1\n");
     }
+    sb_append_cstr(&c->out, "\n#if defined(__linux__)\n");
+    sb_append_string(
+        &c->out,
+        string_from((u8*)cgen_format_runtime, sizeof(cgen_format_runtime)));
+    sb_append_cstr(&c->out, "\n#endif\n#define NRT_LINUX_EMBEDDED 1\n");
     sb_append_string(&c->out,
                      string_from((u8*)cgen_runtime, sizeof(cgen_runtime)));
+    sb_append_string(
+        &c->out,
+        string_from((u8*)cgen_math_runtime, sizeof(cgen_math_runtime)));
+    sb_append_string(&c->out, string_from((u8*)cgen_linux, sizeof(cgen_linux)));
     sb_append_string(&c->out,
                      string_from((u8*)cgen_helpers, sizeof(cgen_helpers)));
     if (artifacts->output_kind != NERD_BUILD_OUTPUT_Executable) {
@@ -3827,7 +3968,10 @@ bool cgen_save_program(const ProgramInfo*        program,
             u32 t = cgen_field_type(c, fn->type_index, 0);
             sb_format(
                 &c->out,
-                "NerdString* args=calloc((size_t)argc,sizeof(NerdString)); "
+                "\n#if defined(__linux__)\nNerdString "
+                "args_storage[argc>0?argc:1]; NerdString* args=args_storage;\n"
+                "#else\nNerdString* "
+                "args=calloc((size_t)argc,sizeof(NerdString));\n#endif\n"
                 "for(int i=0;i<argc;++i) "
                 "args[i]=(NerdString){(uint8_t*)argv[i],strlen(argv[i])};\n");
             args = CF("(%s){args,(uintptr_t)argc}", cgen_ctype(c, t));
@@ -3879,7 +4023,8 @@ bool cgen_save_program(const ProgramInfo*        program,
                       args);
         }
         if (ft->param_count) {
-            sb_append_cstr(&c->out, "free(args);\n");
+            sb_append_cstr(&c->out,
+                           "\n#if !defined(__linux__)\nfree(args);\n#endif\n");
         }
         sb_append_cstr(&c->out, "nrt_core_done(); return result;\n}\n");
         if (program->windowed) {
