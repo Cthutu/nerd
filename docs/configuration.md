@@ -61,6 +61,10 @@ The compiler does not change `LIB`, `PATH`, or the launched program’s environm
 On Windows, quotes, newlines, `%` and `!` in resolved paths are rejected to avoid
 command-shell expansion.
 
+Executable links require only FFI libraries referenced by HIR expressions;
+merely importing or re-exporting foreign declarations does not add unused link
+dependencies. Shared-library exports retain their declared FFI dependencies.
+
 Paths are resolved for native linking and executable/shared-library `--copts`,
 which emits equivalent Clang `-L` arguments. Missing or empty environment
 variables produce a diagnostic naming the variable and declaring file.
