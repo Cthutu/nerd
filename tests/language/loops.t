@@ -1433,3 +1433,44 @@ main :: fn () {
 ¬
 
 ¬
+
+=== case: loop-headers-in-pattern-scopes ===
+get :: fn () -> string\string { return "abc" }
+main :: fn () {
+    count: usize = 0
+    on get() {
+        text => {
+            start: usize = 0
+            for start < text.count {
+                end := start
+                for end < text.count && text[end] != 0 {
+                    count += 1
+                    end += 1
+                }
+                start = end + 1
+            }
+            for byte in text {
+                on byte^ != 0 => count += 1
+            }
+        }
+        _error! => { assert no }
+    }
+    assert count == 6
+    on 3 {
+        bound => {
+            for index: i32 = 0; index < bound; index += 1 {
+                for nested: i32 = 0; nested < bound; nested += 1 {
+                    count += 1
+                }
+            }
+        }
+    }
+    assert count == 15
+}
+¬
+0
+¬
+
+¬
+
+¬

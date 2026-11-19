@@ -8843,28 +8843,8 @@ internal bool sema_collect_block_statements(const Lexer* lexer,
                                                sema)) {
                 return false;
             }
-            if (for_info->iterable_node_index != U32_MAX &&
-                !sema_resolve_node_refs(lexer,
-                                        ast,
-                                        owner_decl_index,
-                                        current_function_symbol,
-                                        sema_no_scope(),
-                                        scope_index,
-                                        for_info->iterable_node_index,
-                                        sema)) {
-                return false;
-            }
-            if (for_info->condition_node_index != U32_MAX &&
-                !sema_resolve_node_refs(lexer,
-                                        ast,
-                                        owner_decl_index,
-                                        current_function_symbol,
-                                        sema_no_scope(),
-                                        child_scope,
-                                        for_info->condition_node_index,
-                                        sema)) {
-                return false;
-            }
+            // Resolve loop headers with the enclosing expression, after
+            // pattern/guard binders have been installed in their scopes.
             i = for_end;
             continue;
         }
@@ -9404,14 +9384,53 @@ internal bool sema_collect_function_locals(const Lexer* lexer,
                                       sema);
     }
 
-    return sema_collect_block_statements(lexer,
-                                         ast,
-                                         owner_decl_index,
-                                         current_function_symbol,
-                                         scope_index,
-                                         fn_def->a + 1,
-                                         fn_start->b,
-                                         sema);
+    if (!sema_collect_block_statements(lexer,
+                                       ast,
+                                       owner_decl_index,
+                                       current_function_symbol,
+                                       scope_index,
+                                       fn_def->a + 1,
+                                       fn_start->b,
+                                       sema)) {
+        return false;
+    }
+    // Nested headers may refer to pattern binders whose branch scopes are
+    // installed after their bodies are first collected.
+    for (u32 i = fn_def->a + 1; i < fn_start->b; ++i) {
+        if (ast->nodes[i].kind == AK_FnStart) {
+            i = ast->nodes[i].b + 1;
+            continue;
+        }
+        if (ast->nodes[i].kind != AK_For) {
+            continue;
+        }
+        u32               for_scope = sema->node_scope_indices[i];
+        const AstForInfo* info      = &ast->fors[ast->nodes[i].a];
+        if (for_scope == sema_no_scope()) {
+            continue;
+        }
+        if ((info->condition_node_index != U32_MAX &&
+             !sema_resolve_node_refs(lexer,
+                                     ast,
+                                     owner_decl_index,
+                                     current_function_symbol,
+                                     capture_scope_index,
+                                     for_scope,
+                                     info->condition_node_index,
+                                     sema)) ||
+            (info->iterable_node_index != U32_MAX &&
+             !sema_resolve_node_refs(lexer,
+                                     ast,
+                                     owner_decl_index,
+                                     current_function_symbol,
+                                     capture_scope_index,
+                                     sema->scopes[for_scope].parent_scope_index,
+                                     info->iterable_node_index,
+                                     sema))) {
+            return false;
+        }
+    }
+    return true;
 }
 
 internal bool sema_resolve_pattern_refs(const Lexer* lexer,
@@ -10321,6 +10340,7 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
                     return false;
                 }
             }
+            sema->scopes[for_scope].parent_scope_index = scope_index;
             if (for_info->iterable_node_index != U32_MAX &&
                 !sema_resolve_node_refs(lexer,
                                         ast,
@@ -10332,14 +10352,33 @@ internal bool sema_resolve_node_refs(const Lexer* lexer,
                                         sema)) {
                 return false;
             }
-            return for_info->condition_node_index == U32_MAX ||
+            if ((for_info->condition_node_index != U32_MAX &&
+                 !sema_resolve_node_refs(lexer,
+                                         ast,
+                                         owner_decl_index,
+                                         current_function_symbol,
+                                         capture_scope_index,
+                                         for_scope,
+                                         for_info->condition_node_index,
+                                         sema)) ||
+                !sema_resolve_node_refs(lexer,
+                                        ast,
+                                        owner_decl_index,
+                                        current_function_symbol,
+                                        capture_scope_index,
+                                        for_scope,
+                                        node->b,
+                                        sema)) {
+                return false;
+            }
+            return for_info->else_block_index == U32_MAX ||
                    sema_resolve_node_refs(lexer,
                                           ast,
                                           owner_decl_index,
                                           current_function_symbol,
                                           capture_scope_index,
                                           for_scope,
-                                          for_info->condition_node_index,
+                                          for_info->else_block_index,
                                           sema);
         }
     case AK_SymbolRef:

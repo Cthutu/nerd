@@ -74,6 +74,11 @@ the complete type for invalid/unfinished source instead of splitting its
 element type into another statement. This does not make array types valid
 runtime initialisers; newline-separated array literals keep their boundaries.
 
+Loop header references are resolved after function-local collection, once
+pattern and guard binders exist and branch block scopes have been reparented.
+The deferred header pass skips nested function bodies. Resolving a loop as a
+branch expression also reparents its pre-collected loop scope.
+
 The value-form `on` parser leaves an enclosing table's `else =>` and
 `else as name =>` untouched when completing a nested branch expression;
 only a trailing braced `else` is consumed as that expression's error handler.
