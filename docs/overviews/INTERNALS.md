@@ -74,6 +74,10 @@ the complete type for invalid/unfinished source instead of splitting its
 element type into another statement. This does not make array types valid
 runtime initialisers; newline-separated array literals keep their boundaries.
 
+HIR field lowering makes implicit pointer dereferences explicit for
+dynamic-array receivers, including pointer chains. Both backends therefore
+see the same collection lvalue for intrinsic methods and header fields.
+
 Loop header references are resolved after function-local collection, once
 pattern and guard binders exist and branch block scopes have been reparented.
 The deferred header pass skips nested function bodies. Resolving a loop as a

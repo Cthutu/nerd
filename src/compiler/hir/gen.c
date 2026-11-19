@@ -2805,16 +2805,39 @@ internal u32 hir_lower_expr_impl(Hir*         hir,
                                              : decl_index,
                     });
             }
+            u32 receiver      = hir_lower_expr(hir, lexer, ast, sema, node->a);
+            u32 receiver_type = hir->exprs[receiver].type_index;
+            u32 target_type   = receiver_type;
+            while (target_type < array_count(sema->types) &&
+                   sema->types[target_type].kind == STK_Pointer) {
+                target_type = sema->types[target_type].first_param_type;
+            }
+            if (target_type < array_count(sema->types) &&
+                sema->types[target_type].kind == STK_DynamicArray) {
+                // Sema accepts implicit pointer dereference for collection
+                // members. Make it explicit before either backend dispatches
+                // dynamic-array intrinsic methods or reads header fields.
+                while (receiver_type != target_type) {
+                    receiver_type = sema->types[receiver_type].first_param_type;
+                    receiver = hir_add_expr(hir,
+                                            (HirExpr){
+                                                .kind       = HIR_EXPR_Unary,
+                                                .type_index = receiver_type,
+                                                .unary_op   = HIR_UNARY_Deref,
+                                                .operand_expr_index = receiver,
+                                            });
+                }
+            }
+            return hir_add_expr(
+                hir,
+                (HirExpr){
+                    .kind               = HIR_EXPR_Field,
+                    .type_index         = hir_node_type(sema, node_index),
+                    .symbol_handle      = node->b,
+                    .local_index        = sema_no_local(),
+                    .operand_expr_index = receiver,
+                });
         }
-        return hir_add_expr(hir,
-                            (HirExpr){
-                                .kind       = HIR_EXPR_Field,
-                                .type_index = hir_node_type(sema, node_index),
-                                .symbol_handle      = node->b,
-                                .local_index        = sema_no_local(),
-                                .operand_expr_index = hir_lower_expr(
-                                    hir, lexer, ast, sema, node->a),
-                            });
     case AK_Plex:
     case AK_PlexUpdate:
         {
