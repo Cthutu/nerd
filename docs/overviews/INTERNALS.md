@@ -83,6 +83,12 @@ The value-form `on` parser leaves an enclosing table's `else =>` and
 `else as name =>` untouched when completing a nested branch expression;
 only a trailing braced `else` is consumed as that expression's error handler.
 
+Executable link flags include an FFI library only when HIR expressions
+reference one of its function bindings (directly or through imports/module
+fields). Mere re-exports do not require unused foreign libraries. Shared-library
+outputs retain declared libraries for their exported FFI wrappers. Deduplication
+uses the libraries actually included, not earlier unused declarations.
+
 Payload-bearing enum constructor calls use the unwrapped success type as
 their contextual enum when the expected type is optional or result. The normal
 wrapper conversion still wraps the constructed enum after payload checking.
