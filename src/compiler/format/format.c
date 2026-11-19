@@ -5973,8 +5973,13 @@ internal bool format_collect_guard_return(const Cst*   cst,
     if (on->kind != COK_Bool || on->branch_count != 1) {
         return false;
     }
-    const CstOnBranch* branch      = &cst->on_branches[on->first_branch];
-    u32                block_index = format_collapsible_expr_block_index(
+    const CstOnBranch* branch = &cst->on_branches[on->first_branch];
+    // Aligned guard rendering only carries condition and return text. An
+    // extraction binder must stay in the general on emitter.
+    if (branch->binder_symbol_handle != U32_MAX) {
+        return false;
+    }
+    u32 block_index = format_collapsible_expr_block_index(
         cst, lexer, branch->expr_node_index);
     u32 return_expr = U32_MAX;
     if (block_index != U32_MAX) {

@@ -91,6 +91,10 @@ Payload-bearing enum constructor calls use the unwrapped success type as
 their contextual enum when the expected type is optional or result. The normal
 wrapper conversion still wraps the constructed enum after payload checking.
 
+Guard-return alignment only groups plain boolean guards. Extraction guards
+with explicit binders stay with the general `on` emitter, which preserves
+bracketed payload bindings when collapsing single-return blocks.
+
 LLVM and C pattern binders for void optional/result success payloads retain
 their semantic binding without allocating or storing a payload. Debug
 materialisation must not introduce `alloca void`, and generated C must not refer
