@@ -5,9 +5,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
-#ifndef NDEBUG
 #include <stdatomic.h>
-#endif
 #if defined(_WIN32)
 #include <windows.h>
 #include <fcntl.h>
@@ -113,11 +111,19 @@ static intptr_t nrt_linux_syscall6(intptr_t number,
 }
 
 #if defined(__x86_64__)
-enum { NRT_SYS_MMAP = 9, NRT_SYS_MPROTECT = 10, NRT_SYS_MUNMAP = 11 };
+enum {
+    NRT_SYS_READ = 0, NRT_SYS_WRITE = 1, NRT_SYS_IOCTL = 16,
+    NRT_SYS_MMAP = 9, NRT_SYS_MPROTECT = 10, NRT_SYS_MUNMAP = 11,
+    NRT_SYS_EXIT_GROUP = 231
+};
 #else
-enum { NRT_SYS_MMAP = 222, NRT_SYS_MPROTECT = 226, NRT_SYS_MUNMAP = 215 };
+enum {
+    NRT_SYS_READ = 63, NRT_SYS_WRITE = 64, NRT_SYS_IOCTL = 29,
+    NRT_SYS_MMAP = 222, NRT_SYS_MPROTECT = 226, NRT_SYS_MUNMAP = 215,
+    NRT_SYS_EXIT_GROUP = 94
+};
 #endif
-#define NRT_LINUX_RAW_MEMORY 1
+#define NRT_LINUX_RAW_SYSCALLS 1
 #endif
 
 // Dynamic-array payloads follow this header at a 16-byte boundary. Keep this
@@ -291,11 +297,132 @@ void nrt_windows_init_stdio(void)
 }
 #endif
 
+// Linux runtime streams are descriptors, not libc FILE objects. Avoid bulk
+// read-ahead: other APIs may also read descriptor zero (CR handling retains one
+// pushback byte). Foreign FILE buffering is separate; callers mixing it with
+// Nerd I/O must synchronise it themselves.
+static void nrt_write_bytes(bool error_stream, const void* data, size_t count)
+{
+    if (data == NULL || count == 0) return;
+#if defined(NRT_LINUX_RAW_SYSCALLS)
+    const u8* bytes = data;
+    while (count != 0) {
+        size_t chunk = count > 0x7ffff000u ? 0x7ffff000u : count;
+        intptr_t written = nrt_linux_syscall6(NRT_SYS_WRITE,
+                                              error_stream ? 2 : 1,
+                                              (uintptr_t)bytes, chunk, 0, 0, 0);
+        if (written == -4) continue; // EINTR: no bytes transferred.
+        if (written <= 0) return; // Includes EAGAIN, EBADF and ignored SIGPIPE.
+        bytes += (size_t)written;
+        count -= (size_t)written;
+    }
+#else
+    fwrite(data, 1, count, error_stream ? stderr : stdout);
+#endif
+}
+
+#if defined(NRT_LINUX_RAW_SYSCALLS)
+typedef struct {
+    u8 data[256];
+    size_t count;
+} NrtDiagnostic;
+
+static void nrt_diagnostic_byte(NrtDiagnostic* output, u8 byte)
+{
+    output->data[output->count++] = byte;
+    if (output->count == sizeof(output->data)) {
+        nrt_write_bytes(true, output->data, output->count);
+        output->count = 0;
+    }
+}
+
+// Only the private runtime diagnostic vocabulary, not a printf replacement for
+// user VaList.format: strings, unsigned decimals, widths, left alignment and %%.
+static void nrt_diagnostic_format(const char* format, va_list args)
+{
+    NrtDiagnostic output;
+    output.count = 0;
+    while (*format != '\0') {
+        if (*format != '%') {
+            nrt_diagnostic_byte(&output, (u8)*format++);
+            continue;
+        }
+        ++format;
+        if (*format == '%') {
+            nrt_diagnostic_byte(&output, '%');
+            ++format;
+            continue;
+        }
+        bool left = *format == '-';
+        if (left) ++format;
+        size_t width = 0;
+        if (*format == '*') {
+            int value = va_arg(args, int);
+            if (value < 0) left = true;
+            width = value < 0 ? (size_t)-(int64_t)value : (size_t)value;
+            ++format;
+        } else {
+            while (*format >= '0' && *format <= '9') {
+                width = width * 10 + (size_t)(*format++ - '0');
+            }
+        }
+        enum { NRT_DIAG_INT, NRT_DIAG_SIZE, NRT_DIAG_LLONG } length = NRT_DIAG_INT;
+        if (*format == 'z') {
+            length = NRT_DIAG_SIZE;
+            ++format;
+        } else if (format[0] == 'l' && format[1] == 'l') {
+            length = NRT_DIAG_LLONG;
+            format += 2;
+        }
+        const u8* text;
+        size_t count;
+        u8 digits[20];
+        if (*format == 's' && length == NRT_DIAG_INT) {
+            const char* value = va_arg(args, const char*);
+            text = (const u8*)(value != NULL ? value : "(null)");
+            count = nrt_cstr_count((const char*)text);
+        } else if (*format == 'u') {
+            uint64_t value = length == NRT_DIAG_SIZE ? va_arg(args, size_t)
+                             : length == NRT_DIAG_LLONG ? va_arg(args, unsigned long long)
+                                                      : va_arg(args, unsigned int);
+            size_t cursor = sizeof(digits);
+            do {
+                digits[--cursor] = (u8)('0' + value % 10);
+                value /= 10;
+            } while (value != 0);
+            text = digits + cursor;
+            count = sizeof(digits) - cursor;
+        } else {
+            // A new internal format must be implemented/tested, not silently
+            // misread (which could consume the remaining arguments incorrectly).
+            nrt_write_bytes(true, output.data, output.count);
+            const char* invalid = "[invalid runtime diagnostic format]";
+            nrt_write_bytes(true, invalid, nrt_cstr_count(invalid));
+            return;
+        }
+        ++format;
+        size_t padding = width > count ? width - count : 0;
+        if (!left) {
+            for (size_t i = 0; i < padding; ++i) nrt_diagnostic_byte(&output, ' ');
+        }
+        for (size_t i = 0; i < count; ++i) nrt_diagnostic_byte(&output, text[i]);
+        if (left) {
+            for (size_t i = 0; i < padding; ++i) nrt_diagnostic_byte(&output, ' ');
+        }
+    }
+    nrt_write_bytes(true, output.data, output.count);
+}
+#endif
+
 static void nrt_eprintf(const char* format, ...)
 {
     va_list args;
     va_start(args, format);
+#if defined(NRT_LINUX_RAW_SYSCALLS)
+    nrt_diagnostic_format(format, args);
+#else
     vfprintf(stderr, format, args);
+#endif
     va_end(args);
 }
 
@@ -303,44 +430,52 @@ static void nrt_eprintfn(const char* format, ...)
 {
     va_list args;
     va_start(args, format);
+#if defined(NRT_LINUX_RAW_SYSCALLS)
+    nrt_diagnostic_format(format, args);
+#else
     vfprintf(stderr, format, args);
+#endif
     va_end(args);
-    nrt_eprintf("\n");
+    nrt_write_bytes(true, "\n", 1);
 }
 
-static void nrt_write_bytes(FILE* stream, const void* data, size_t count)
+// Fatal runtime failures do not unwind Nerd or foreign atexit handlers. All
+// Nerd output is already written; a failure in a worker must stop the process.
+static _Noreturn void nrt_fatal_exit(void)
 {
-    if (data != NULL && count > 0) {
-        fwrite(data, 1, count, stream);
-    }
+#if defined(NRT_LINUX_RAW_SYSCALLS)
+    for (;;) nrt_linux_syscall6(NRT_SYS_EXIT_GROUP, 127, 0, 0, 0, 0, 0);
+#else
+    exit(127);
+#endif
 }
 
 void nrt_pr(const void* data, size_t count)
 {
-    nrt_write_bytes(stdout, data, count);
+    nrt_write_bytes(false, data, count);
 }
 
 void nrt_epr(const void* data, size_t count)
 {
-    nrt_write_bytes(stderr, data, count);
+    nrt_write_bytes(true, data, count);
 }
 
 void nrt_prn(const void* data, size_t count)
 {
     nrt_pr(data, count);
-    fputc('\n', stdout);
+    nrt_write_bytes(false, "\n", 1);
 }
 
 void nrt_eprn(const void* data, size_t count)
 {
     nrt_epr(data, count);
-    fputc('\n', stderr);
+    nrt_write_bytes(true, "\n", 1);
 }
 
 void nrt_abort(const void* data, size_t count)
 {
     nrt_eprn(data, count);
-    exit(127);
+    nrt_fatal_exit();
 }
 
 void nrt_nerd_assert(bool condition,
@@ -353,10 +488,10 @@ void nrt_nerd_assert(bool condition,
     }
     nrt_eprintf("assertion failed at %s:%u: ", source_path, line);
     if (message != NULL && message->count > 0) {
-        fwrite(message->data, 1, message->count, stderr);
+        nrt_write_bytes(true, message->data, message->count);
     }
     nrt_eprintf("\n");
-    exit(127);
+    nrt_fatal_exit();
 }
 
 bool nrt_string_eq(const NerdString* lhs, const NerdString* rhs)
@@ -394,7 +529,7 @@ void nrt_slice_check(size_t count, size_t start, size_t end)
 {
     if (start > end || end > count) {
         nrt_eprintfn("fatal: slice assignment range out of bounds");
-        exit(127);
+        nrt_fatal_exit();
     }
 }
 
@@ -406,11 +541,11 @@ void nrt_slice_copy(void*       destination,
 {
     if (count != source_count) {
         nrt_eprintfn("fatal: slice assignment lengths differ");
-        exit(127);
+        nrt_fatal_exit();
     }
     if (element_size != 0 && count > SIZE_MAX / element_size) {
         nrt_eprintfn("fatal: slice assignment size overflow");
-        exit(127);
+        nrt_fatal_exit();
     }
     if (count != 0 && element_size != 0) {
         nrt_bytes_move(destination, source, count * element_size);
@@ -424,7 +559,7 @@ void nrt_slice_fill(void*       destination,
 {
     if (element_size != 0 && count > SIZE_MAX / element_size) {
         nrt_eprintfn("fatal: slice assignment size overflow");
-        exit(127);
+        nrt_fatal_exit();
     }
     if (element_size == 0) {
         return;
@@ -461,7 +596,7 @@ static size_t nrt_align_up(size_t value, size_t alignment)
 static void nrt_arena_abort(const char* message)
 {
     nrt_eprintfn("fatal: %s", message);
-    exit(127);
+    nrt_fatal_exit();
 }
 
 static void* nrt_mem_reserve(size_t size, bool writable)
@@ -470,7 +605,7 @@ static void* nrt_mem_reserve(size_t size, bool writable)
     DWORD protect = writable ? PAGE_READWRITE : PAGE_NOACCESS;
     DWORD type    = writable ? MEM_RESERVE | MEM_COMMIT : MEM_RESERVE;
     return VirtualAlloc(NULL, size, type, protect);
-#elif defined(NRT_LINUX_RAW_MEMORY)
+#elif defined(NRT_LINUX_RAW_SYSCALLS)
     int prot = writable ? PROT_READ | PROT_WRITE : PROT_NONE;
     intptr_t result = nrt_linux_syscall6(NRT_SYS_MMAP, 0, size, prot,
                                         MAP_PRIVATE | MAP_ANONYMOUS,
@@ -492,7 +627,7 @@ static bool nrt_arena_commit(u8* memory, size_t size)
     }
 #if defined(_WIN32)
     return VirtualAlloc(memory, size, MEM_COMMIT, PAGE_READWRITE) != NULL;
-#elif defined(NRT_LINUX_RAW_MEMORY)
+#elif defined(NRT_LINUX_RAW_SYSCALLS)
     return nrt_linux_syscall6(NRT_SYS_MPROTECT, (uintptr_t)memory, size,
                               PROT_READ | PROT_WRITE, 0, 0, 0) == 0;
 #else
@@ -508,7 +643,7 @@ static void nrt_mem_release(void* memory, size_t size)
 #if defined(_WIN32)
     (void)size;
     VirtualFree(memory, 0, MEM_RELEASE);
-#elif defined(NRT_LINUX_RAW_MEMORY)
+#elif defined(NRT_LINUX_RAW_SYSCALLS)
     nrt_linux_syscall6(NRT_SYS_MUNMAP, (uintptr_t)memory, size, 0, 0, 0, 0);
 #else
     munmap(memory, size);
@@ -518,7 +653,7 @@ static void nrt_mem_release(void* memory, size_t size)
 static void nrt_heap_abort(const char* message)
 {
     nrt_eprintfn("fatal: %s", message);
-    exit(127);
+    nrt_fatal_exit();
 }
 
 static size_t nrt_heap_prefix_size(size_t alignment)
@@ -1092,6 +1227,10 @@ static bool nrt_stderr_supports_colour(void)
     DWORD  mode   = 0;
     return handle != INVALID_HANDLE_VALUE && GetConsoleMode(handle, &mode) &&
            SetConsoleMode(handle, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+#elif defined(NRT_LINUX_RAW_SYSCALLS)
+    u8 attributes[64]; // Large enough for the kernel TCGETS termios on both ABIs.
+    return nrt_linux_syscall6(NRT_SYS_IOCTL, 2, 0x5401,
+                              (uintptr_t)attributes, 0, 0, 0) == 0;
 #else
     return isatty(STDERR_FILENO) != 0;
 #endif
@@ -1099,14 +1238,18 @@ static bool nrt_stderr_supports_colour(void)
 
 void nrt_report_main_error(const NerdString* message)
 {
+#if !defined(NRT_LINUX_RAW_SYSCALLS)
     fflush(stdout);
+#endif
     bool colour = nrt_stderr_supports_colour();
     if (colour) nrt_epr("\033[31m", 5);
     nrt_epr("Error: ", 7);
     if (message != NULL) nrt_epr(message->data, message->count);
     if (colour) nrt_epr("\033[0m", 4);
     nrt_eprn(NULL, 0);
+#if !defined(NRT_LINUX_RAW_SYSCALLS)
     fflush(stderr);
+#endif
 }
 
 #ifndef NDEBUG
@@ -1123,7 +1266,7 @@ static size_t nrt_decimal_width(uint64_t value)
 static void nrt_print_source_location(NerdString source_path, uint32_t line)
 {
     if (source_path.count > 0) {
-        nrt_write_bytes(stderr, source_path.data, source_path.count);
+        nrt_write_bytes(true, source_path.data, source_path.count);
     } else {
         nrt_eprintf("<unknown>");
     }
@@ -1452,40 +1595,60 @@ DEF_TO_STRING_INT(usize, uintptr_t, false)
 DEF_TO_STRING_FLOAT(f32, float)
 DEF_TO_STRING_FLOAT(f64, double)
 
+#if defined(NRT_LINUX_RAW_SYSCALLS)
+static int g_nrt_stdin_pushback = -1;
+static atomic_flag g_nrt_stdin_lock = ATOMIC_FLAG_INIT;
+#endif
+
+static int nrt_stdin_byte(void)
+{
+#if defined(NRT_LINUX_RAW_SYSCALLS)
+    if (g_nrt_stdin_pushback >= 0) {
+        int byte = g_nrt_stdin_pushback;
+        g_nrt_stdin_pushback = -1;
+        return byte;
+    }
+    u8 byte;
+    intptr_t result;
+    do {
+        result = nrt_linux_syscall6(NRT_SYS_READ, 0, (uintptr_t)&byte, 1, 0, 0, 0);
+    } while (result == -4); // EINTR; EOF/other errors terminate this read.
+    return result == 1 ? byte : -1;
+#else
+    return getchar();
+#endif
+}
+
+static void nrt_stdin_unread(int byte)
+{
+#if defined(NRT_LINUX_RAW_SYSCALLS)
+    g_nrt_stdin_pushback = byte;
+#else
+    ungetc(byte, stdin);
+#endif
+}
+
 size_t nrt_read_line(u8* buffer, size_t capacity)
 {
+#if defined(NRT_LINUX_RAW_SYSCALLS)
+    // The descriptor and its single-byte pushback belong to the process, not TLS.
+    while (atomic_flag_test_and_set_explicit(&g_nrt_stdin_lock, memory_order_acquire)) {}
+#endif
     size_t count = 0;
-    int    ch    = 0;
-
-    while (count < capacity && (ch = getchar()) != EOF) {
-        if (ch == '\n') {
-            return count;
+    for (;;) {
+        int byte = nrt_stdin_byte();
+        if (byte < 0 || byte == '\n') break;
+        if (byte == '\r') {
+            int next = nrt_stdin_byte();
+            if (next >= 0 && next != '\n') nrt_stdin_unread(next);
+            break;
         }
-        if (ch == '\r') {
-            int next = getchar();
-            if (next != '\n' && next != EOF) {
-                ungetc(next, stdin);
-            }
-            return count;
-        }
-        buffer[count++] = (u8)ch;
+        // Consume the whole line even if the caller supplied a short/empty view.
+        if (count < capacity) buffer[count++] = (u8)byte;
     }
-
-    if (count == capacity) {
-        while ((ch = getchar()) != EOF) {
-            if (ch == '\n') {
-                break;
-            }
-            if (ch == '\r') {
-                int next = getchar();
-                if (next != '\n' && next != EOF) {
-                    ungetc(next, stdin);
-                }
-                break;
-            }
-        }
-    }
-
+#if defined(NRT_LINUX_RAW_SYSCALLS)
+    atomic_flag_clear_explicit(&g_nrt_stdin_lock, memory_order_release);
+#endif
     return count;
 }
 

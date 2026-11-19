@@ -58,6 +58,12 @@ Examples of what `core.n` provides include:
 | Arena methods such as `.alloc`, `.mark`, `.reset`, and `.done` | Allocate and manage arena storage. |
 | `Display`, `Eq`, `Order`, `Default`, `Iterator[Item]` | The standard traits used by the language features from Chapter 13. |
 
+On Linux x86-64/AArch64, the core print helpers write directly to standard
+output/error without libc buffering. If you mix them with a foreign library's
+buffered C stdio, explicitly flush the foreign stream before switching to Nerd
+output; the two APIs do not share a buffer. Fatal `abort`/assertion failures do
+not flush foreign streams or run foreign `atexit` callbacks.
+
 The file contains Nerd declarations, just like your own module files. Some
 operations delegate to the runtime; `core.n` supplies their Nerd-facing helpers
 and methods. Primitive types such as `i32` and `bool`, the `arena` type, and

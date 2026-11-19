@@ -301,13 +301,25 @@ For deeper implementation notes, use these companion documents:
 `no_builtin` on the byte loops prevents optimisation from restoring libc calls.
 Variadic cursors use the same tracked allocator as other runtime allocations.
 On Linux x86-64/AArch64, a private inline-assembly syscall bridge implements
-virtual-memory reservation, commitment and release, interpreting kernel negative
-error results without accessing libc errno. Other platforms retain their native
-paths. The public Linux syscall API is unchanged. The runtime is still hosted:
-startup/TLS, stdio, floating-point/variadic formatting and other remaining libc
-services are described in [toolchain setup](../toolchain.md#experimental-linux-libc-removal).
-`build/test_runtime_foundation.py` checks behaviour and the partial undefined
-symbol boundary for embedded normal/PIC objects.
+virtual-memory reservation/commitment/release, descriptor I/O, terminal detection
+and fatal status-127 process exits, interpreting kernel negative error results
+without accessing libc errno. Output retries EINTR and partial writes; other
+errors end the void output operation. Line input uses a process-wide lock and
+single-byte CR pushback, not libc FILE state or bulk read-ahead. Linux diagnostic
+formatting uses a 256-byte stack buffer and the private `%s`/`%u`/`%llu`/`%zu`
+vocabulary with widths/left alignment; unsupported conversions emit an explicit
+marker rather than misreading varargs. It allocates no runtime heap/arena storage,
+so leak reporting can retain the bookkeeping lock. User variadic formatting is
+separate and remains hosted.
+
+Other platforms retain their native paths. The public Linux syscall API is
+unchanged. The runtime is still hosted: startup/TLS, float/variadic formatting,
+environment/page-size queries and libc signal-abort dependencies are described
+in [toolchain setup](../toolchain.md#experimental-linux-libc-removal).
+`build/test_runtime_foundation.py` checks primitives, Linux I/O/fatal-exit
+behaviour and the partial undefined-symbol boundary for embedded normal/PIC
+objects. Fatal Linux runtime exits do not flush foreign FILE buffers or invoke
+foreign `atexit` callbacks; normal hosted return still does.
 
 ## C output
 

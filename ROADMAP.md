@@ -81,8 +81,8 @@ completed plans remain in Git history.
 
 ### Experimental Linux libc removal
 
-- Replace remaining runtime stdio, float/variadic formatting, environment and
-  terminal queries, page-size discovery and termination. Preserve diagnostic,
+- Replace remaining runtime float/variadic formatting, environment queries,
+  page-size discovery and signal-based internal abort. Preserve diagnostic,
   input, formatting and allocation contracts; do not substitute static libc.
 - Own executable startup, argument/environment/auxiliary-vector handling and TLS
   before removing CRT objects, the loader and automatic libc/libm/libgcc links.

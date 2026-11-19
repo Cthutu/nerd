@@ -108,7 +108,7 @@ static void check_mapping(void)
     CHECK(memory[page] == 0 && memory[page * 2 - 1] == 0);
     memory[page * 2 - 1] = 31;
     CHECK(nrt_arena_commit(NULL, 0));
-#if defined(NRT_LINUX_RAW_MEMORY)
+#if defined(NRT_LINUX_RAW_SYSCALLS)
     CHECK(!nrt_arena_commit(memory + 1, page));
     CHECK(nrt_mem_reserve(0, true) == NULL);
     CHECK(nrt_mem_reserve(SIZE_MAX, true) == NULL);

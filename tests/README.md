@@ -31,8 +31,9 @@ describes each regression family.
   Each triple starts a fresh server. Windows-only cases stay separate.
 - `hir/*.hir`, `llvm/*.ll`: focused lowering assertions; expected lines are
   ordered subsequences, with source and snapshot separated by `¬`.
-- `core/runtime-foundation.c`: runtime byte/string primitives, integer conversion,
-  virtual-memory operations and variadic cursor ownership. The `runtime` suite
+- `core/runtime-foundation.c`, `core/runtime-io.linux.c`: runtime byte/string
+  primitives, integer conversion, virtual memory, variadic cursors, Linux binary
+  I/O, interruptions, terminal policy and fatal worker exits. The `runtime` suite
   runs hosted oracles and a Linux runtime-object undefined-symbol regression;
   it does not yet assert that complete executables are libc-free.
 - `commands/*.cmd`: CLI syntax, argument passing, output artifacts, exit and

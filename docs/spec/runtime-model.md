@@ -192,13 +192,32 @@ It owns the source-level allocation API and an explicit leak-reporting command,
 while compiler-generated dynamic-array and arena operations use the same
 low-level allocation substrate.
 
+## Standard Streams
+
+On Linux x86-64/AArch64, core `pr`/`prn` and `epr`/`eprn` write bytes directly
+to descriptors 1 and 2, without libc buffering. Interrupted and short writes are
+retried; other errors end that output operation without an error result from
+the void print helpers. SIGPIPE follows the process's kernel signal policy.
+Foreign libc FILE streams do not share runtime buffering: mixed stdio/descriptor
+access requires explicit foreign flushing/synchronisation.
+
+The runtime `nrt_read_line` helper serialises its own Linux readers. It returns
+bytes before LF, CRLF or CR, discards excess bytes when the destination is full,
+and consumes one line even for a zero-capacity destination. It does not bulk
+read ahead; handling CR can retain one byte of lookahead. EOF or an error other
+than EINTR ends the current read. This helper is distinct from `std.io.input`.
+
 ## Core Lifecycle
 
 Executable startup first initialises module globals, then automatically calls
 the private `core_init` hook before calling the program's `main`. After every
 normal return from `main`, the generated entry wrapper calls `core_done` before
 returning the exit status to the host. Non-returning termination such as
-`abort` does not run normal shutdown.
+`abort` does not run normal shutdown. On Linux x86-64/AArch64, source `abort`,
+failed assertions and runtime status-127 failures terminate the whole process
+with `exit_group`, even if raised by a worker. They do not run foreign `atexit`
+callbacks or flush foreign libc streams. A normal return still uses hosted CRT
+shutdown. Internal signal-based runtime aborts remain a separate libc path.
 
 For an optional `main`, absence returns status 1 silently; presence returns 0
 for `?void` or the `?i32` payload. Result `main` returns (`void\E`, `i32\E`)
