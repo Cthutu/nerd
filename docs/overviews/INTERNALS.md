@@ -78,6 +78,10 @@ The value-form `on` parser leaves an enclosing table's `else =>` and
 `else as name =>` untouched when completing a nested branch expression;
 only a trailing braced `else` is consumed as that expression's error handler.
 
+Guard-return alignment only groups plain boolean guards. Extraction guards
+with explicit binders stay with the general `on` emitter, which preserves
+bracketed payload bindings when collapsing single-return blocks.
+
 LLVM and C pattern binders for void optional/result success payloads retain
 their semantic binding without allocating or storing a payload. Debug
 materialisation must not introduce `alloca void`, and generated C must not refer
