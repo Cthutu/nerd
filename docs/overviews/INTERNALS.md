@@ -83,6 +83,10 @@ The value-form `on` parser leaves an enclosing table's `else =>` and
 `else as name =>` untouched when completing a nested branch expression;
 only a trailing braced `else` is consumed as that expression's error handler.
 
+Payload-bearing enum constructor calls use the unwrapped success type as
+their contextual enum when the expected type is optional or result. The normal
+wrapper conversion still wraps the constructed enum after payload checking.
+
 LLVM and C pattern binders for void optional/result success payloads retain
 their semantic binding without allocating or storing a payload. Debug
 materialisation must not introduce `alloca void`, and generated C must not refer
