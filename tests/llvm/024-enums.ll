@@ -72,7 +72,7 @@ on.end.0:
 
 define internal i32 @fn.1() {
   %t3 = alloca i64
-  %t0 = insertvalue { i32, i32 } poison, i32 7, 0
+  %t0 = insertvalue { i32, i32 } zeroinitializer, i32 7, 0
   %t1 = insertvalue { i32, i32 } %t0, i32 4, 1
   store i64 0, ptr %t3
   store { i32, i32 } %t1, ptr %t3

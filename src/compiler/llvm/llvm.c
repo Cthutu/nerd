@@ -6933,29 +6933,18 @@ internal LlvmValue llvm_emit_enum_constructor(LlvmFunctionContext* ctx,
                      .path_count == 1)) {
             payload = args[0];
         } else if (llvm_type_is_record(ctx->sema, variant_payload_type)) {
-            string variant_payload_type_string =
-                llvm_type_string(ctx, variant_payload_type);
-            string aggregate = s("poison");
+            // Arguments use logical declaration order; record storage may be
+            // reordered for alignment or contain packed/embedded fields.
+            payload = (LlvmValue){.ok         = true,
+                                  .type_index = variant_payload_type,
+                                  .value      = s("zeroinitializer")};
             for (u32 i = 0; i < expr->arg_count; ++i) {
-                LlvmValue arg      = args[i];
-                string    temp     = llvm_temp(ctx);
-                string    arg_type = llvm_type_string(ctx, arg.type_index);
-                sb_format(ctx->sb,
-                          "  " STRINGP " = insertvalue " STRINGP " " STRINGP
-                          ", " STRINGP " " STRINGP ", %u\n",
-                          STRINGV(temp),
-                          STRINGV(variant_payload_type_string),
-                          STRINGV(aggregate),
-                          STRINGV(arg_type),
-                          STRINGV(arg.value),
-                          i);
-                aggregate = temp;
+                payload = llvm_insert_record_field(ctx, payload, i, args[i]);
+                if (!payload.ok) {
+                    array_free(args);
+                    return payload;
+                }
             }
-            payload = (LlvmValue){
-                .ok         = true,
-                .type_index = variant_payload_type,
-                .value      = aggregate,
-            };
         } else {
             payload = args[0];
         }

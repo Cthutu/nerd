@@ -15,6 +15,14 @@ slice context does not change a local's storage or ownership. Matching explicitl
 typed record literals also propagate their field context. Normal inference
 retains length, annotation, cast, field and range validation.
 
+HIR lowers record literal/update and named enum-payload fields with their declared
+field types, explicitly constructing optional/result success wrappers rather than
+retagging payload scalars as aggregates. LLVM packs named enum payloads through
+logical record-field insertion, preserving alignment-based storage reordering and
+packed/embedded field handling rather than assuming declaration indices are LLVM
+aggregate indices. `optional-record-fields.t` covers literals, updates, optional
+numbers/strings and result payloads across both backends.
+
 The usage-constraint table also records result types for empty contextual casts.
 Local aliases, arithmetic and tuple projections share those constraints without
 propagating them into the cast operand. Known imported function signatures

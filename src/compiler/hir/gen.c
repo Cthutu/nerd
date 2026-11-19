@@ -2882,12 +2882,17 @@ internal u32 hir_lower_expr_impl(Hir*         hir,
                                     array_push(
                                         lowered_args,
                                         (HirCallArg){
-                                            .expr_index = hir_lower_expr(
-                                                hir,
-                                                lexer,
-                                                ast,
-                                                sema,
-                                                field->value_node_index),
+                                            .expr_index =
+                                                hir_lower_expr_with_expected(
+                                                    hir,
+                                                    lexer,
+                                                    ast,
+                                                    sema,
+                                                    field->value_node_index,
+                                                    sema->type_param_types
+                                                        [payload
+                                                             ->first_param_type +
+                                                         field_index]),
                                             .symbol_handle = field_symbol,
                                         });
                                     break;
@@ -2930,13 +2935,29 @@ internal u32 hir_lower_expr_impl(Hir*         hir,
             for (u32 i = 0; i < literal->field_count; ++i) {
                 const AstPlexLiteralField* field =
                     &ast->plex_literal_fields[literal->first_field + i];
-                array_push(
-                    lowered_args,
-                    (HirCallArg){
-                        .expr_index = hir_lower_expr(
-                            hir, lexer, ast, sema, field->value_node_index),
-                        .symbol_handle = field->symbol_handle,
-                    });
+                u32 field_type = sema_no_type();
+                if (expr_type < array_count(sema->types)) {
+                    const SemaType* record = &sema->types[expr_type];
+                    for (u32 j = 0; j < record->param_count; ++j) {
+                        u32 parameter = record->first_param_type + j;
+                        if (sema->type_param_symbols[parameter] ==
+                            field->symbol_handle) {
+                            field_type = sema->type_param_types[parameter];
+                            break;
+                        }
+                    }
+                }
+                array_push(lowered_args,
+                           (HirCallArg){
+                               .expr_index = hir_lower_expr_with_expected(
+                                   hir,
+                                   lexer,
+                                   ast,
+                                   sema,
+                                   field->value_node_index,
+                                   field_type),
+                               .symbol_handle = field->symbol_handle,
+                           });
             }
             u32 first_arg = (u32)array_count(hir->call_args);
             for (u32 i = 0; i < array_count(lowered_args); ++i) {
